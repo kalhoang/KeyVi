@@ -53,8 +53,19 @@ public struct SimulatedTextField: Sendable, Hashable {
     }
 }
 
+extension EngineState {
+    /// The text the engine believes precedes the cursor: the history entries it still holds (committed
+    /// texts and boundary characters, oldest first) followed by the active display (ENG-T31).
+    public var viewText: String {
+        var text = ""
+        for entry in history.entries { text += entry.text }
+        return text + activeDisplay
+    }
+}
+
 /// Runs events through a `Session` and a `SimulatedTextField`, checking after every event that the
-/// field ends with the active display and that every edit is well formed (ENG-T31, ENG-T34).
+/// field ends with the engine's view (history plus active display), that the engine never asks to delete
+/// more characters than it produced, and that every edit is well formed (ENG-T31, ENG-T34).
 public struct EngineDriver: Sendable {
     public private(set) var session: Session
     public private(set) var field: SimulatedTextField
@@ -75,18 +86,25 @@ public struct EngineDriver: Sendable {
     /// Sends one event; throws on a contract violation.
     @discardableResult
     public mutating func send(_ event: EngineEvent) throws -> EngineOutput {
+        let viewCount = session.state.viewText.count
         let output = session.handle(event)
         outputs.append(output)
         try field.apply(event, output)
-        if case .edit(let edit, _) = output.action, edit.deleteCount != edit.deleteUTF16Count {
-            throw SimulatedTextField.Violation(event: event, reason: "deleteCount != deleteUTF16Count (ENG-R631)")
+        if case .edit(let edit, _) = output.action {
+            guard edit.deleteCount <= viewCount else {
+                throw SimulatedTextField.Violation(
+                    event: event, reason: "deletes \(edit.deleteCount) characters, the engine produced \(viewCount)")
+            }
+            guard edit.deleteCount == edit.deleteUTF16Count else {
+                throw SimulatedTextField.Violation(event: event, reason: "deleteCount != deleteUTF16Count (ENG-R631)")
+            }
         }
         guard output.composingText == session.state.activeDisplay else {
             throw SimulatedTextField.Violation(event: event, reason: "composingText differs from the display")
         }
-        guard field.text.ends(with: session.state.activeDisplay) else {
-            throw SimulatedTextField.Violation(
-                event: event, reason: "field \(field.string) does not end with \(session.state.activeDisplay)")
+        let view = session.state.viewText
+        guard field.text.ends(with: view) else {
+            throw SimulatedTextField.Violation(event: event, reason: "field \(field.string) does not end with \(view)")
         }
         return output
     }

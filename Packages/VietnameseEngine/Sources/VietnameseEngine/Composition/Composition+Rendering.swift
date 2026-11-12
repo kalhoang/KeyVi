@@ -11,7 +11,7 @@ extension Composition {
 
     /// ENG-R532: the text a commit writes for the composed form. An open `ươ` (no coda, no ending) is
     /// written `uơ` with the tone on `ơ` (`thưở` -> `thuở`, `hươ` -> `huơ`). Literal tokens keep their
-    /// display: their vowel group is never open because the literal tail follows it. Section 8 (E3)
+    /// display: their vowel group is never open because the literal tail follows it. The commit (8.1)
     /// calls this when it keeps the composed form.
     package func committedText(style: ToneStyle) -> String {
         render(style: style, committed: true)

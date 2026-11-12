@@ -61,8 +61,15 @@ struct CompositionPropertyTests {
         // ENG-R601, ENG-T33: the cached state equals a replay of the raw keys.
         let replayed = Composition(replaying: token.composition.raw, rules: rules)
         #expect(replayed == token.composition, "replay differs for \(token.rawText)")
-        let expectedDisplay = token.showsRawKeys ? token.rawText : replayed.display(style: rules.toneStyle)
-        #expect(token.display == expectedDisplay, "display of \(token.rawText)")
+        // A token re-opened by Backspace (ENG-R1002) shows what its commit wrote, which is the ENG-R532
+        // spelling of an open `ươ` until the next key or Backspace recomputes the display.
+        if token.showsRawKeys {
+            #expect(token.display == token.rawText, "display of \(token.rawText)")
+        } else {
+            let composed = replayed.display(style: rules.toneStyle)
+            let committed = replayed.committedText(style: rules.toneStyle)
+            #expect(token.display == composed || token.display == committed, "display of \(token.rawText)")
+        }
         // ENG-T37: no display in composing mode is non-viable.
         if !token.composition.isLiteral {
             let letters = token.composition.letters.map(\.letter)

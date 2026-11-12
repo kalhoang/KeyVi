@@ -3,7 +3,8 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Case (9.1), boundaries as E2 handles them (commit unchanged), resets (10.2) and long tokens (6.5).
+/// Case (9.1), boundary classification (9.2), resets (10.2) and long tokens (6.5). The commit decision
+/// itself is tested in Commit/.
 @Suite("Composition: case (9.1)")
 struct CaseTests {
     @Test func outputLettersTakeTheCaseOfTheirKeys() throws {
@@ -50,8 +51,8 @@ struct CaseTests {
 
 @Suite("Composition: boundaries and resets (9.2, 10.2)")
 struct BoundaryAndResetTests {
-    @Test func boundaryCommitsUnchangedAndPassesThrough() throws {
-        // E2: the commit keeps the display; section 8 adds the restore decision.
+    @Test func boundaryCommitsAndPassesThrough() throws {
+        // ENG-R910: a kept token leaves its display and the boundary key passes through.
         var driver = try Typing.driver("vieejt ")
         #expect(driver.field.string == "việt ")
         #expect(driver.state.activeDisplay.isEmpty && driver.state.historyCount == 1)
@@ -68,10 +69,10 @@ struct BoundaryAndResetTests {
             "{", "}", "<", ">", "_", "=", "+", "*", "&", "%", "$", "^", "~", "`", "|", "é", "ß", "ư", "\u{00A0}",
         ]
         for boundary in boundaries {
-            var driver = try Typing.driver("aa")
+            var driver = try Typing.driver("vieejt")
             try driver.send(.key(KeyInput(boundary)))
             #expect(driver.state.activeDisplay.isEmpty, "\(boundary) should end the token")
-            #expect(driver.field.string == "â" + String(boundary))
+            #expect(driver.field.string == "việt" + String(boundary))
         }
     }
 

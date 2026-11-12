@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: MPL-2.0
+
+extension MacroTable {
+    /// ENG-R1101: an expansion holds at most 4,000 characters.
+    package static let maximumExpansionLength = 4_000
+
+    /// Validates `entries` (ENG-R1101, ENG-R1103) and builds the lookup of ENG-R1105. Throws the first
+    /// problem found, in entry order: an empty trigger, a character that is not printable ASCII without
+    /// whitespace, a trigger longer than 32 characters, an expansion longer than 4,000 characters, a
+    /// trigger equal to an earlier one ignoring case, then a trigger that a shorter trigger shadows.
+    ///
+    /// Shadowing (ENG-R1103): typing `T` passes through every prefix of `T`; a punctuation character
+    /// is a boundary, so when `T` continues with punctuation after a prefix `P` that is itself a trigger,
+    /// `P` fires first and `T` can never fire (`ad` shadows `ad.` and also `ad.x`). Digits are not
+    /// treated as punctuation: they are token keys in VNI (spec: "plus trailing punctuation").
+    ///
+    /// The engine does not normalise expansions; the host stores them in NFC (ENG-R1101). Edits that
+    /// replace or remove an expansion count grapheme clusters and UTF-16 units separately, so any text
+    /// is handled exactly.
+    static func validatedLookup(_ entries: [Entry]) throws -> [MacroKey: Int] {
+        var lookup: [MacroKey: Int] = [:]
+        lookup.reserveCapacity(entries.count)
+        for (index, entry) in entries.enumerated() {
+            let key = try validatedKey(entry)
+            guard lookup[key] == nil else { throw ValidationError.duplicateTrigger(entry.trigger) }
+            lookup[key] = index
+        }
+        for entry in entries {
+            let bytes = Array(entry.trigger.utf8)
+            for length in 1..<bytes.count where isPunctuation(bytes[length]) {
+                if let key = MacroKey(lowercasing: bytes[0..<length]), let shorter = lookup[key] {
+                    throw ValidationError.shadowedByShorterTrigger(trigger: entry.trigger, shorter: entries[shorter].trigger)
+                }
+            }
+        }
+        return lookup
+    }
+
+    /// The lookup of a table whose entries are known to be valid (`MacroTable.empty`).
+    static func unvalidatedLookup(_ entries: [Entry]) -> [MacroKey: Int] {
+        var lookup: [MacroKey: Int] = [:]
+        for (index, entry) in entries.enumerated() {
+            if let key = MacroKey(lowercasing: entry.trigger.utf8), lookup[key] == nil { lookup[key] = index }
+        }
+        return lookup
+    }
+
+    private static func validatedKey(_ entry: Entry) throws -> MacroKey {
+        let trigger = entry.trigger
+        guard !trigger.isEmpty else { throw ValidationError.emptyTrigger(trigger) }
+        guard trigger.utf8.allSatisfy(MacroKey.isTriggerByte) else {
+            throw ValidationError.invalidTriggerCharacter(trigger)
+        }
+        guard trigger.utf8.count <= MacroKey.capacity, let key = MacroKey(lowercasing: trigger.utf8) else {
+            throw ValidationError.triggerTooLong(trigger)
+        }
+        guard entry.expansion.count <= maximumExpansionLength else {
+            throw ValidationError.expansionTooLong(trigger)
+        }
+        return key
+    }
+
+    /// Printable ASCII that is neither a letter nor a digit: a boundary in every configuration except
+    /// the brackets with the Telex bracket option, which are counted as punctuation here because they are
+    /// boundaries by default (ENG-R104).
+    @inline(__always)
+    private static func isPunctuation(_ byte: UInt8) -> Bool {
+        MacroKey.isTriggerByte(byte) && !ASCII.isLetter(byte) && !ASCII.isDigit(byte)
+    }
+
+    /// The entry whose trigger equals `key` (ENG-R1105: one hash lookup whatever the table size).
+    @inline(__always)
+    package func entry(for key: MacroKey) -> Entry? {
+        guard let index = lookup[key] else { return nil }
+        return entries[index]
+    }
+
+    package var isEmpty: Bool { entries.isEmpty }
+}

@@ -32,6 +32,25 @@ package enum DisplayEdit {
         return TextEdit(deleteCount: deleteCount, deleteUTF16Count: deleteUTF16Count, insert: insert)
     }
 
+    /// ENG-R611 for text that may contain user data (macro expansions, section 11): the common prefix is
+    /// taken by grapheme cluster with identical scalars (canonically equivalent but differently encoded
+    /// clusters are replaced, so the engine's view stays byte-exact), and the deleted span is counted in
+    /// clusters and UTF-16 units separately (ENG-R630, ENG-R631). For engine-produced text it gives the
+    /// same edit as `edit(from:to:)`.
+    package static func graphemeEdit(from old: String, to new: String) -> TextEdit {
+        var oldIndex = old.startIndex
+        var newIndex = new.startIndex
+        while oldIndex != old.endIndex, newIndex != new.endIndex,
+            old[oldIndex].unicodeScalars.elementsEqual(new[newIndex].unicodeScalars)
+        {
+            old.formIndex(after: &oldIndex)
+            new.formIndex(after: &newIndex)
+        }
+        let deleted = old[oldIndex...]
+        return TextEdit(
+            deleteCount: deleted.count, deleteUTF16Count: deleted.utf16.count, insert: String(new[newIndex...]))
+    }
+
     /// The action for a key added to the token (ENG-R610): `passThrough` when the new display is the
     /// old one plus exactly the typed character, otherwise the minimal edit with the key swallowed
     /// (an empty edit swallows a key that changes nothing visible).

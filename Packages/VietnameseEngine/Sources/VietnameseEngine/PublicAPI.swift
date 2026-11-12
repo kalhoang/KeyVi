@@ -3,7 +3,7 @@
 // Public API of the engine, as proposed in spec/01-engine.md section 12.2.
 // The types and signatures are the contract shared by every track. Do not change a public signature
 // without updating docs/architecture/contracts.md and every caller. Composition lives in Composition/
-// and Engine/; macro validation and commit rules (section 8, 11) are still to be implemented.
+// and Engine/, commit rules (section 8) in Commit/, macros (section 11) in Macros/.
 
 public enum InputMethod: Sendable, Hashable {
     case telex(TelexOptions)
@@ -115,13 +115,19 @@ public struct MacroTable: Sendable {
     }
 
     let entries: [Entry]
+    /// Lowercased trigger -> index into `entries` (ENG-R1105).
+    let lookup: [MacroKey: Int]
 
+    /// Validates the table (ENG-R1101, ENG-R1103; Macros/MacroTable+Validation.swift).
     public init(_ entries: [Entry]) throws {
-        // STUB: validation (ENG-R1101, ENG-R1103) is implemented by the engine track.
+        self.lookup = try Self.validatedLookup(entries)
         self.entries = entries
     }
 
-    init(validated entries: [Entry]) { self.entries = entries }
+    init(validated entries: [Entry]) {
+        self.entries = entries
+        self.lookup = Self.unvalidatedLookup(entries)
+    }
 
     public static let empty = MacroTable(validated: [])
 }
@@ -157,16 +163,23 @@ public struct EngineState: Sendable, Hashable {
     package var history = History()
     /// The previous event was a restore toggle (ENG-R702).
     package var previousEventWasRestoreToggle = false
+    /// The languages of the last three committed tokens of the run (ENG-R823). Kept across Return and Tab
+    /// (the run goes on), cleared by a reset.
+    package var recentLanguages = RecentLanguages()
 
     init() {}
 
-    /// The display of the active token (6.1), empty when there is none.
+    /// The display of the active token (6.1), empty when there is none. After Backspace re-opens a
+    /// committed token (ENG-R1002) it is the text that commit left on screen.
     public var activeDisplay: String { active?.display ?? "" }
-    /// The raw keys of the active token exactly as typed (ENG-R602).
+    /// The raw keys of the active token exactly as typed (ENG-R602); for a re-opened macro expansion the
+    /// span as typed (ENG-R1104).
     public var activeRawKeys: String { active?.rawText ?? "" }
-    /// The active token is in literal mode (4.5) or shows its raw keys (ENG-R701).
+    /// The active token is in literal mode (4.5), shows its raw keys (ENG-R701) or is a re-opened macro
+    /// expansion (ENG-R1104).
     public var isLiteral: Bool { active?.isLiteral ?? false }
-    /// Committed tokens kept in the history (ENG-R1001).
+    /// Committed tokens kept in the history (ENG-R1001); a macro expansion counts as one token
+    /// (ENG-R1104). A re-opened token is active, not in the history.
     public var historyCount: Int { history.tokenCount }
 }
 
@@ -215,11 +228,14 @@ public struct Engine: Sendable {
     public let resources: Resources
     /// The composition rules derived from `configuration` once (Engine/Reducer.swift).
     package let rules: ComposerRules
+    /// The restore policy of 8.1 for this configuration and these resources (Commit/CommitRules.swift).
+    package let commitPolicy: CommitPolicy
 
     public init(configuration: EngineConfiguration, resources: Resources) {
         self.configuration = configuration
         self.resources = resources
         self.rules = ComposerRules(configuration)
+        self.commitPolicy = CommitPolicy(resources: resources, configuration: configuration)
     }
 
     /// The pure reducer of section 2 (ENG-R1210). The work is done by `process(_:_:)`.
