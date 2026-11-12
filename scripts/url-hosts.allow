@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# URL hosts allowed inside the shipped app (QA-R60, PLT-R906). The site and appcast host comes from
+# scripts/brand.env and is always allowed. Adding a host needs a decision record and a /rieng-tu
+# update in the same PR. One host per line; "*.example.org" allows subdomains.
+
+# GitHub: repository, issue forms opened in the browser by "Open GitHub issue" (PLT-R1205).
+github.com
+# GitHub release asset hosts, only relevant if Pa chooses GitHub Releases for archives (PLT-R906,
+# spec/02-platform.md section 14 item 4). Keep while that option exists in scripts/publish-release.
+objects.githubusercontent.com
+release-assets.githubusercontent.com
+# Mail link domain for the support address (QA-R51; address still VERIFY).
+kal.vn
+
+# Identifiers that are never contacted: XML namespaces and DTD URIs inside property lists and the
+# Sparkle framework's appcast parser. VERIFY this list against the first real Release build.
+www.apple.com
+apple.com
+www.w3.org
+www.andymatuschak.org
+sparkle-project.org
+purl.org
+ns.adobe.com
