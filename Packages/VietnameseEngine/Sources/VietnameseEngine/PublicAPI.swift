@@ -1,0 +1,263 @@
+// SPDX-License-Identifier: MPL-2.0
+//
+// Public API of the engine, as proposed in spec/01-engine.md section 12.2.
+// SCAFFOLD STUB: the types and signatures are the contract shared by every track; the bodies are
+// placeholders that the engine track replaces. Do not change a public signature without updating
+// docs/architecture/contracts.md and every caller.
+
+public enum InputMethod: Sendable, Hashable {
+    case telex(TelexOptions)
+    case vni
+}
+
+public struct TelexOptions: Sendable, Hashable {
+    public var standaloneW: Bool  // default true (ENG-R103)
+    public var bracketKeys: Bool  // default false (ENG-R104)
+    public init(standaloneW: Bool = true, bracketKeys: Bool = false) {
+        self.standaloneW = standaloneW
+        self.bracketKeys = bracketKeys
+    }
+}
+
+public enum ToneStyle: Sendable, Hashable { case traditional, modern }
+public enum AppContext: Sendable, Hashable { case general, code }
+
+public struct EngineConfiguration: Sendable, Hashable {
+    public var inputMethod: InputMethod
+    public var toneStyle: ToneStyle
+    public var autoRestore: Bool
+    public var appContext: AppContext
+    public var historyLimit: Int
+    public init(
+        inputMethod: InputMethod = .telex(TelexOptions()),
+        toneStyle: ToneStyle = .traditional,
+        autoRestore: Bool = true,
+        appContext: AppContext = .general,
+        historyLimit: Int = 16
+    ) {
+        self.inputMethod = inputMethod
+        self.toneStyle = toneStyle
+        self.autoRestore = autoRestore
+        self.appContext = appContext
+        self.historyLimit = max(1, historyLimit)
+    }
+}
+
+public struct KeyInput: Sendable, Hashable {
+    public var character: Character
+    public var fromKeypad: Bool
+    public init(_ character: Character, fromKeypad: Bool = false) {
+        self.character = character
+        self.fromKeypad = fromKeypad
+    }
+}
+
+public enum ResetReason: Sendable, Hashable {
+    case cursorMoved, pointerClicked, focusChanged, applicationChanged,
+        inputSourceChanged, secureInputChanged, eventTapReenabled,
+        shortcut, forwardDelete, modeToggled, configurationChanged, unknown
+}
+
+public enum EngineEvent: Sendable, Hashable {
+    case key(KeyInput)
+    case backspace
+    case restoreToggle
+    case reset(ResetReason)
+}
+
+public struct TextEdit: Sendable, Hashable {
+    public var deleteCount: Int  // grapheme clusters before the cursor (ENG-R630)
+    public var deleteUTF16Count: Int  // the same span in UTF-16 code units (ENG-R631)
+    public var insert: String  // NFC, may be empty
+    public init(deleteCount: Int, deleteUTF16Count: Int, insert: String) {
+        self.deleteCount = deleteCount
+        self.deleteUTF16Count = deleteUTF16Count
+        self.insert = insert
+    }
+}
+
+public enum KeyAction: Sendable, Hashable {
+    case passThrough
+    case edit(TextEdit, thenPassThrough: Bool)
+}
+
+public enum CommitRule: Sendable, Hashable {
+    case unchanged, userChoice, userList, abbreviation, camelCase, escape,
+        invalid, extendedSpelling, notEnglish, notAttested,
+        codeContext, englishRun, ambiguityTable, techList, defaultVietnamese
+}
+
+public enum CommitDecision: Sendable, Hashable {
+    case kept(CommitRule)
+    case restored(CommitRule)
+    case macro  // section 11
+}
+
+public struct MacroTable: Sendable {
+    public struct Entry: Sendable, Hashable {
+        public var trigger: String  // 1...32 printable ASCII, no whitespace
+        public var expansion: String  // NFC, at most 4,000 characters
+        public var adaptCase: Bool  // default true
+        public init(trigger: String, expansion: String, adaptCase: Bool = true) {
+            self.trigger = trigger
+            self.expansion = expansion
+            self.adaptCase = adaptCase
+        }
+    }
+
+    public enum ValidationError: Error, Sendable, Hashable {
+        case emptyTrigger(String)
+        case triggerTooLong(String)
+        case invalidTriggerCharacter(String)
+        case expansionTooLong(String)
+        case duplicateTrigger(String)
+        case shadowedByShorterTrigger(trigger: String, shorter: String)
+    }
+
+    let entries: [Entry]
+
+    public init(_ entries: [Entry]) throws {
+        // STUB: validation (ENG-R1101, ENG-R1103) is implemented by the engine track.
+        self.entries = entries
+    }
+
+    init(validated entries: [Entry]) { self.entries = entries }
+
+    public static let empty = MacroTable(validated: [])
+}
+
+public enum LearningSignal: Sendable, Hashable {
+    case preferredRaw(raw: String)
+    case preferredVietnamese(raw: String)
+}
+
+public struct EngineOutput: Sendable, Hashable {
+    public var action: KeyAction
+    public var composingText: String
+    public var decision: CommitDecision?
+    public var learning: LearningSignal?
+    public init(
+        action: KeyAction, composingText: String, decision: CommitDecision? = nil,
+        learning: LearningSignal? = nil
+    ) {
+        self.action = action
+        self.composingText = composingText
+        self.decision = decision
+        self.learning = learning
+    }
+}
+
+public struct EngineState: Sendable, Hashable {
+    public static let initial = EngineState()
+    init() {}
+    // STUB: the engine track defines the stored representation.
+    public var activeDisplay: String { "" }
+    public var activeRawKeys: String { "" }
+    public var isLiteral: Bool { false }
+    public var historyCount: Int { 0 }
+}
+
+public struct WordSet: Sendable {
+    let storage: Set<String>
+    public init<S: Sequence>(_ words: S) where S.Element == String { storage = Set(words) }
+    public func contains(_ word: some StringProtocol) -> Bool { storage.contains(String(word)) }
+}
+
+public enum Language: Sendable, Hashable { case vietnamese, english }
+
+public struct Resources: Sendable {
+    public var english: WordSet
+    public var techAlways: WordSet
+    public var techCodeOnly: WordSet
+    public var attestedSyllables: WordSet
+    public var ambiguity: [String: Language]
+    public var userKeepRaw: WordSet
+    public var userKeepVietnamese: WordSet
+    public var macros: MacroTable
+
+    public init(
+        english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
+        attestedSyllables: WordSet, ambiguity: [String: Language],
+        userKeepRaw: WordSet, userKeepVietnamese: WordSet,
+        macros: MacroTable = .empty
+    ) {
+        self.english = english
+        self.techAlways = techAlways
+        self.techCodeOnly = techCodeOnly
+        self.attestedSyllables = attestedSyllables
+        self.ambiguity = ambiguity
+        self.userKeepRaw = userKeepRaw
+        self.userKeepVietnamese = userKeepVietnamese
+        self.macros = macros
+    }
+
+    public static let empty = Resources(
+        english: WordSet([]), techAlways: WordSet([]), techCodeOnly: WordSet([]),
+        attestedSyllables: WordSet([]), ambiguity: [:],
+        userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+}
+
+public struct Engine: Sendable {
+    public let configuration: EngineConfiguration
+    public let resources: Resources
+
+    public init(configuration: EngineConfiguration, resources: Resources) {
+        self.configuration = configuration
+        self.resources = resources
+    }
+
+    public func reduce(_ state: EngineState, _ event: EngineEvent) -> (EngineState, EngineOutput) {
+        // STUB: passes every key through until the engine track implements composition.
+        (state, EngineOutput(action: .passThrough, composingText: ""))
+    }
+}
+
+public struct Session: Sendable {
+    public let engine: Engine
+    public private(set) var state: EngineState
+
+    public init(engine: Engine, state: EngineState = .initial) {
+        self.engine = engine
+        self.state = state
+    }
+
+    public mutating func handle(_ event: EngineEvent) -> EngineOutput {
+        let (next, output) = engine.reduce(state, event)
+        state = next
+        return output
+    }
+}
+
+public enum Validity: Sendable, Hashable { case standard, extended, invalid }
+public enum Tone: Int, Sendable, Hashable { case level, acute, grave, hook, tilde, dot }
+
+public struct SyllableAnalysis: Sendable, Hashable {
+    public var onset: String
+    public var vowelGroup: String
+    public var coda: String
+    public var tone: Tone
+    public var validity: Validity
+    public var toneLetterOffset: Int?  // offset in characters, nil if no tone
+    public init(
+        onset: String, vowelGroup: String, coda: String, tone: Tone, validity: Validity,
+        toneLetterOffset: Int?
+    ) {
+        self.onset = onset
+        self.vowelGroup = vowelGroup
+        self.coda = coda
+        self.tone = tone
+        self.validity = validity
+        self.toneLetterOffset = toneLetterOffset
+    }
+}
+
+public enum Orthography {
+    public static func analyze(_ word: String) -> SyllableAnalysis {
+        // STUB
+        SyllableAnalysis(
+            onset: "", vowelGroup: "", coda: "", tone: .level, validity: .invalid,
+            toneLetterOffset: nil)
+    }
+
+    public static func validity(of word: String) -> Validity { analyze(word).validity }
+}

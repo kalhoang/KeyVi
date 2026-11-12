@@ -1,0 +1,250 @@
+| # | Group | Method | Style | Options | Keys typed | Output before boundary | Note |
+|---|---|---|---|---|---|---|---|
+| W001 | Basic Telex | Telex | trad | - | `as` | `á` |  |
+| W002 | Basic Telex | Telex | trad | - | `af` | `à` |  |
+| W003 | Basic Telex | Telex | trad | - | `ar` | `ả` |  |
+| W004 | Basic Telex | Telex | trad | - | `ax` | `ã` |  |
+| W005 | Basic Telex | Telex | trad | - | `aj` | `ạ` |  |
+| W006 | Basic Telex | Telex | trad | - | `aa` | `â` |  |
+| W007 | Basic Telex | Telex | trad | - | `aw` | `ă` |  |
+| W008 | Basic Telex | Telex | trad | - | `ee` | `ê` |  |
+| W009 | Basic Telex | Telex | trad | - | `oo` | `ô` |  |
+| W010 | Basic Telex | Telex | trad | - | `ow` | `ơ` |  |
+| W011 | Basic Telex | Telex | trad | - | `uw` | `ư` |  |
+| W012 | Basic Telex | Telex | trad | - | `dd` | `đ` |  |
+| W013 | Basic Telex | Telex | trad | - | `w` | `ư` | standalone w is a vowel (option on) |
+| W014 | Basic Telex | Telex | trad | - | `vieetj` | `việt` |  |
+| W015 | Basic Telex | Telex | trad | - | `nam` | `nam` |  |
+| W016 | Basic Telex | Telex | trad | - | `tieengs` | `tiếng` |  |
+| W017 | Basic Telex | Telex | trad | - | `dduwowcj` | `được` |  |
+| W018 | Basic Telex | Telex | trad | - | `nguwowif` | `người` |  |
+| W019 | Basic Telex | Telex | trad | - | `khoong` | `không` |  |
+| W020 | Basic Telex | Telex | trad | - | `chaof` | `chào` |  |
+| W021 | Basic Telex | Telex | trad | - | `banj` | `bạn` |  |
+| W022 | Basic Telex | Telex | trad | - | `cuar` | `của` | ua diphthong: tone on u |
+| W023 | Basic Telex | Telex | trad | - | `muaf` | `mùa` |  |
+| W024 | Basic Telex | Telex | trad | - | `muwaf` | `mừa` | ưa: tone on ư (modified letter) |
+| W025 | Basic Telex | Telex | trad | - | `mias` | `mía` | ia diphthong: tone on i |
+| W026 | Basic Telex | Telex | trad | - | `tooi` | `tôi` |  |
+| W027 | Basic Telex | Telex | trad | - | `ddaauf` | `đầu` |  |
+| W028 | Basic Telex | Telex | trad | - | `nhaf` | `nhà` |  |
+| W029 | Basic Telex | Telex | trad | - | `cos` | `có` |  |
+| W030 | Basic Telex | Telex | trad | - | `nhuwng` | `nhưng` |  |
+| W031 | Basic Telex | Telex | trad | - | `trowif` | `trời` |  |
+| W032 | Basic Telex | Telex | trad | - | `nuwowcs` | `nước` |  |
+| W033 | Free-order entry | Telex | trad | - | `tieesng` | `tiếng` | tone before coda |
+| W034 | Free-order entry | Telex | trad | - | `caanf` | `cần` | tone after coda (REG-09) |
+| W035 | Free-order entry | Telex | trad | - | `caafn` | `cần` |  |
+| W036 | Free-order entry | Telex | trad | - | `hopwj` | `hợp` | w and tone after coda (REG-09) |
+| W037 | Free-order entry | Telex | trad | - | `howjp` | `hợp` |  |
+| W038 | Free-order entry | Telex | trad | - | `dangd` | `đang` | đ key after the rhyme |
+| W039 | Free-order entry | Telex | trad | - | `chwa` | `chưa` | standalone w then vowel |
+| W040 | Free-order entry | Telex | trad | - | `hw` | `hư` |  |
+| W041 | Free-order entry | Telex | trad | - | `thw` | `thư` |  |
+| W042 | Free-order entry | Telex | trad | - | `swr` | `sử` |  |
+| W043 | Free-order entry | Telex | trad | - | `wsng` | `ứng` |  |
+| W044 | Free-order entry | Telex | trad | - | `wngs` | `ứng` | tone after coda (REG-09) |
+| W045 | Free-order entry | Telex | trad | - | `twngf` | `từng` |  |
+| W046 | Free-order entry | Telex | trad | - | `ddeens` | `đến` |  |
+| W047 | Free-order entry | Telex | trad | - | `ddeesn` | `đến` |  |
+| W048 | Free-order entry | Telex | trad | - | `muoons` | `muốn` |  |
+| W049 | Free-order entry | Telex | trad | - | `moojt` | `một` | tone before coda |
+| W050 | Free-order entry | Telex | trad | - | `mootj` | `một` | tone after coda (REG-09) |
+| W051 | Free-order entry | Telex | trad | - | `phucws` | `phức` | w and tone after coda (REG-09) |
+| W052 | Free-order entry | Telex | trad | - | `tapj` | `tạp` |  |
+| W053 | Free-order entry | Telex | trad | - | `conf` | `còn` |  |
+| W054 | Free-order entry | Telex | trad | - | `hangf` | `hàng` |  |
+| W055 | Free-order entry | Telex | trad | - | `chinhs` | `chính` |  |
+| W056 | Free-order entry | Telex | trad | - | `xacs` | `xác` |  |
+| W057 | Free-order entry | Telex | trad | - | `tawts` | `tắt` | (REG-09) |
+| W058 | Free-order entry | Telex | trad | - | `trawngs` | `trắng` |  |
+| W059 | Free-order entry | Telex | trad | - | `hawngf` | `hằng` |  |
+| W060 | Free-order entry | Telex | trad | - | `tucj` | `tục` | (REG-09) |
+| W061 | Free-order entry | Telex | trad | - | `nguyeenx` | `nguyễn` |  |
+| W062 | Tone placement | Telex | trad | - | `hoaf` | `hòa` | open oa, traditional style |
+| W063 | Tone placement | Telex | modern | - | `hoaf` | `hoà` | open oa, modern style |
+| W064 | Tone placement | Telex | trad | - | `khoer` | `khỏe` | open oe, traditional |
+| W065 | Tone placement | Telex | modern | - | `khoer` | `khoẻ` | open oe, modern |
+| W066 | Tone placement | Telex | trad | - | `thuyr` | `thủy` | open uy, traditional |
+| W067 | Tone placement | Telex | modern | - | `thuyr` | `thuỷ` | open uy, modern (REG-11) |
+| W068 | Tone placement | Telex | trad | - | `hoafn` | `hoàn` | coda present: same in both styles |
+| W069 | Tone placement | Telex | modern | - | `hoafn` | `hoàn` | coda present: same in both styles |
+| W070 | Tone placement | Telex | trad | - | `toans` | `toán` |  |
+| W071 | Tone placement | Telex | trad | - | `huyts` | `huýt` |  |
+| W072 | Tone placement | Telex | trad | - | `huynhf` | `huỳnh` |  |
+| W073 | Tone placement | Telex | trad | - | `xoays` | `xoáy` | three-letter group: middle letter (REG-11) |
+| W074 | Tone placement | Telex | trad | - | `hoaif` | `hoài` |  |
+| W075 | Tone placement | Telex | modern | - | `ngoaif` | `ngoài` |  |
+| W076 | Tone placement | Telex | trad | - | `khuyur` | `khuỷu` | uyu |
+| W077 | Tone placement | Telex | trad | - | `ngoeoj` | `ngoẹo` | oeo |
+| W078 | Tone placement | Telex | trad | - | `tuooir` | `tuổi` |  |
+| W079 | Tone placement | Telex | trad | - | `ruwowuj` | `rượu` |  |
+| W080 | Tone placement | Telex | trad | - | `hieeur` | `hiểu` |  |
+| W081 | Tone placement | Telex | trad | - | `yeeus` | `yếu` |  |
+| W082 | Tone placement | Telex | trad | - | `khuyeenr` | `khuyển` |  |
+| W083 | Tone placement | Telex | trad | - | `thuowr` | `thưở` | open ươ shown while typing; becomes thuở at the boundary |
+| W084 | Tone placement | Telex | trad | - | `huow` | `hươ` | becomes huơ at the boundary |
+| W085 | Tone placement | Telex | trad | - | `mwaf` | `mừa` |  |
+| W086 | Tone placement | Telex | trad | - | `luwar` | `lửa` |  |
+| W087 | Tone placement | Telex | trad | - | `cuwus` | `cứu` |  |
+| W088 | Tone placement | Telex | trad | - | `guwir` | `gửi` |  |
+| W089 | Tone placement | Telex | trad | - | `soocs` | `sốc` |  |
+| W090 | Tone placement | Telex | trad | - | `sooocs` | `soóc` | oo escape gives the loan rhyme ooc; tone on second o |
+| W091 | Tone placement | Telex | trad | - | `boooong` | `booong` | escape is sticky: no fourth-o circumflex |
+| W092 | Tone placement | Telex | trad | - | `booong` | `boong` | loan rhyme oong |
+| W093 | Tone placement | Telex | trad | - | `huychj` | `huỵch` | rhyme uych |
+| W094 | Tone placement | Telex | trad | - | `tuyps` | `tuýp` |  |
+| W095 | Tone placement | Telex | trad | - | `oaf` | `òa` |  |
+| W096 | Tone placement | Telex | modern | - | `oaf` | `oà` |  |
+| W097 | Tone placement | Telex | trad | - | `uyr` | `ủy` |  |
+| W098 | Tone placement | Telex | modern | - | `uyr` | `uỷ` |  |
+| W099 | Tone placement | Telex | trad | - | `hoeen` | `hoeen` | oê is not a nucleus: second e stays a letter, token goes literal |
+| W100 | Tone placement | Telex | trad | - | `hueej` | `huệ` | uê: tone on ê |
+| W101 | gi and qu onsets | Telex | trad | - | `giaf` | `già` |  |
+| W102 | gi and qu onsets | Telex | trad | - | `gif` | `gì` |  |
+| W103 | gi and qu onsets | Telex | trad | - | `gifn` | `gìn` | gi with no following vowel: i is the nucleus |
+| W104 | gi and qu onsets | Telex | trad | - | `gisup` | `giúp` | tone typed on i, moves to u when u arrives (REG-11) |
+| W105 | gi and qu onsets | Telex | trad | - | `giusp` | `giúp` |  |
+| W106 | gi and qu onsets | Telex | trad | - | `giuwax` | `giữa` |  |
+| W107 | gi and qu onsets | Telex | trad | - | `gieengs` | `giếng` | gi + iêng written giêng |
+| W108 | gi and qu onsets | Telex | trad | - | `gieets` | `giết` |  |
+| W109 | gi and qu onsets | Telex | trad | - | `giuwowngf` | `giường` |  |
+| W110 | gi and qu onsets | Telex | trad | - | `gioir` | `giỏi` |  |
+| W111 | gi and qu onsets | Telex | trad | - | `quar` | `quả` |  |
+| W112 | gi and qu onsets | Telex | trad | - | `quys` | `quý` | u belongs to qu: tone on y in both styles |
+| W113 | gi and qu onsets | Telex | trad | - | `quis` | `quí` |  |
+| W114 | gi and qu onsets | Telex | trad | - | `quyeets` | `quyết` |  |
+| W115 | gi and qu onsets | Telex | trad | - | `quoocs` | `quốc` | qu + ôc |
+| W116 | gi and qu onsets | Telex | trad | - | `quowr` | `quở` | qu + ơ: no horn on the u of qu |
+| W117 | gi and qu onsets | Telex | trad | - | `quawng` | `quăng` |  |
+| W118 | gi and qu onsets | Telex | trad | - | `quaanf` | `quần` |  |
+| W119 | gi and qu onsets | Telex | trad | - | `quyfnh` | `quỳnh` |  |
+| W120 | gi and qu onsets | Telex | trad | - | `quaay` | `quây` | qu + ây |
+| W121 | uo horn handling | Telex | trad | - | `tuowng` | `tương` |  |
+| W122 | uo horn handling | Telex | trad | - | `tuwowng` | `tương` |  |
+| W123 | uo horn handling | Telex | trad | - | `tuwong` | `tương` | horn on u only is completed to ươ |
+| W124 | uo horn handling | Telex | trad | - | `thuowng` | `thương` |  |
+| W125 | uo horn handling | Telex | trad | - | `cuwowis` | `cưới` |  |
+| W126 | uo horn handling | Telex | trad | - | `cuwowiso` | `cuối` | o after ươ switches to uô (REG-12) |
+| W127 | uo horn handling | Telex | trad | - | `cuoois` | `cuối` |  |
+| W128 | uo horn handling | Telex | trad | - | `cuooisw` | `cưới` | w after uô switches to ươ |
+| W129 | uo horn handling | Telex | trad | - | `huouw` | `hươu` | ươu |
+| W130 | uo horn handling | Telex | trad | - | `thuoww` | `thuow` | second w escapes both horns (REG-12) |
+| W131 | Escape by doubling | Telex | trad | - | `ass` | `as` |  |
+| W132 | Escape by doubling | Telex | trad | - | `aaa` | `aa` |  |
+| W133 | Escape by doubling | Telex | trad | - | `aww` | `aw` |  |
+| W134 | Escape by doubling | Telex | trad | - | `ddd` | `dd` |  |
+| W135 | Escape by doubling | Telex | trad | - | `ddi` | `đi` |  |
+| W136 | Escape by doubling | Telex | trad | - | `ddid` | `did` | escape of đ (REG-10) |
+| W137 | Escape by doubling | Telex | trad | - | `ww` | `w` | escape of standalone ư |
+| W138 | Escape by doubling | Telex | trad | - | `www` | `ww` | escape is sticky; boundary may restore www from the tech list |
+| W139 | Escape by doubling | Telex | trad | - | `uww` | `uw` |  |
+| W140 | Escape by doubling | Telex | trad | - | `nhaamff` | `nhâmf` | escape of tone (REG-24) |
+| W141 | Escape by doubling | Telex | trad | - | `nhes` | `nhé` |  |
+| W142 | Escape by doubling | Telex | trad | - | `nhese` | `nhế` | e after é is a circumflex request |
+| W143 | Escape by doubling | Telex | trad | - | `nhesee` | `nhée` | (REG-13) |
+| W144 | Escape by doubling | Telex | trad | - | `chuwaa` | `chưaa` | ưâ impossible: a stays a letter (REG-13) |
+| W145 | Escape by doubling | Telex | trad | - | `cuaa` | `cuaa` | c + uâ impossible: a stays a letter (REG-13) |
+| W146 | Escape by doubling | Telex | trad | - | `khoaa` | `khoaa` | oâ impossible |
+| W147 | Escape by doubling | Telex | trad | - | `boss` | `bos` | boundary restores boss (lexicon) |
+| W148 | Escape by doubling | Telex | trad | - | `traffic` | `trafic` | boundary restores traffic (REG-27) |
+| W149 | Escape by doubling | Telex | trad | - | `wfa` | `ừa` |  |
+| W150 | Escape by doubling | Telex | trad | - | `wfaaa` | `ừaaa` | stretching keeps the tone where it was (REG-13) |
+| W151 | Tone removal | Telex | trad | - | `asz` | `a` | z removes the tone |
+| W152 | Tone removal | Telex | trad | - | `aszz` | `az` | second z has nothing to remove: literal |
+| W153 | Tone removal | Telex | trad | - | `quz` | `quz` | no nucleus: z is literal, no crash |
+| W154 | Tone removal | Telex | trad | - | `QUZ` | `QUZ` | no crash |
+| W155 | Tone removal | Telex | trad | - | `qutz` | `qutz` | no crash |
+| W156 | Tone removal | Telex | trad | - | `za` | `za` | z with no tone to remove is a letter (REG-25) |
+| W157 | Tone removal | Telex | trad | - | `zas` | `zá` | teencode z onset (Tier B) |
+| W158 | Tone removal | Telex | trad | - | `vieejtz` | `viêt` |  |
+| W159 | VNI | VNI | trad | - | `a1` | `á` |  |
+| W160 | VNI | VNI | trad | - | `a2` | `à` |  |
+| W161 | VNI | VNI | trad | - | `a3` | `ả` |  |
+| W162 | VNI | VNI | trad | - | `a4` | `ã` |  |
+| W163 | VNI | VNI | trad | - | `a5` | `ạ` |  |
+| W164 | VNI | VNI | trad | - | `a6` | `â` |  |
+| W165 | VNI | VNI | trad | - | `a8` | `ă` |  |
+| W166 | VNI | VNI | trad | - | `o7` | `ơ` |  |
+| W167 | VNI | VNI | trad | - | `u7` | `ư` |  |
+| W168 | VNI | VNI | trad | - | `d9` | `đ` |  |
+| W169 | VNI | VNI | trad | - | `vie65t` | `việt` |  |
+| W170 | VNI | VNI | trad | - | `vie6t5` | `việt` | tone after coda |
+| W171 | VNI | VNI | trad | - | `tieng61` | `tiếng` | (REG-09) |
+| W172 | VNI | VNI | trad | - | `nhieu62` | `nhiều` | (REG-09) |
+| W173 | VNI | VNI | trad | - | `nua73` | `nửa` | (REG-09) |
+| W174 | VNI | VNI | trad | - | `duoc795` | `được` | 7 on uo horns both; 9 after the rhyme |
+| W175 | VNI | VNI | trad | - | `d9uo7c5` | `được` |  |
+| W176 | VNI | VNI | trad | - | `truong72` | `trường` |  |
+| W177 | VNI | VNI | trad | - | `mot65` | `một` |  |
+| W178 | VNI | VNI | trad | - | `hoa2` | `hòa` |  |
+| W179 | VNI | VNI | modern | - | `hoa2` | `hoà` |  |
+| W180 | VNI | VNI | trad | - | `a11` | `a1` | escape: literal digit |
+| W181 | VNI | VNI | trad | - | `a66` | `a6` |  |
+| W182 | VNI | VNI | trad | - | `d99` | `d9` | escape of đ |
+| W183 | VNI | VNI | trad | - | `qu0` | `qu0` | no nucleus: 0 is literal, no crash |
+| W184 | VNI | VNI | trad | - | `a10` | `a` | 0 removes the tone |
+| W185 | VNI | VNI | trad | - | `2024` | `2024` | no vowel: digits are literal |
+| W186 | VNI | VNI | trad | - | `b2` | `b2` | no vowel: literal digit, token goes literal |
+| W187 | VNI | VNI | trad | - | `u7a4` | `ữa` |  |
+| W188 | VNI | VNI | trad | - | `gio61ng` | `giống` |  |
+| W189 | VNI | VNI | trad | - | `quy1` | `quý` |  |
+| W190 | VNI | VNI | trad | - | `ca6u2` | `cầu` |  |
+| W191 | VNI | VNI | trad | - | `kho6ng` | `không` |  |
+| W192 | VNI | VNI | trad | - | `huo7` | `hươ` |  |
+| W193 | VNI | VNI | trad | - | `Kro6ng` | `Krông` |  |
+| W194 | VNI | VNI | trad | - | `gi1up` | `giúp` | relocation from i to u |
+| W195 | VNI | VNI | trad | - | `ho2an` | `hoàn` |  |
+| W196 | VNI | VNI | trad | - | `ho2a` | `hòa` |  |
+| W197 | VNI | VNI | modern | - | `ho2a` | `hoà` |  |
+| W198 | VNI | VNI | trad | - | `tie61ng` | `tiếng` |  |
+| W199 | VNI | VNI | trad | - | `ddu7o7c5` | `ddu7o7c5` | Telex dd means nothing in VNI: literal |
+| W200 | VNI | VNI | trad | - | `vieejt` | `vieejt` | Telex keys in VNI: never transformed |
+| W201 | Case | Telex | trad | - | `Vieetj` | `Việt` |  |
+| W202 | Case | Telex | trad | - | `VIEETJ` | `VIỆT` |  |
+| W203 | Case | Telex | trad | - | `DDaf` | `Đà` |  |
+| W204 | Case | Telex | trad | - | `Ddaf` | `Đà` |  |
+| W205 | Case | Telex | trad | - | `dDaf` | `đà` | case of đ follows the first d |
+| W206 | Case | Telex | trad | - | `TIEENGS` | `TIẾNG` |  |
+| W207 | Case | Telex | trad | - | `TieengS` | `Tiếng` | case of a tone key is ignored |
+| W208 | Case | Telex | trad | - | `W` | `Ư` |  |
+| W209 | Case | Telex | trad | - | `NGUWOWIF` | `NGƯỜI` |  |
+| W210 | Case | Telex | trad | - | `Aas` | `Ấ` | case of â follows the vowel letter |
+| W211 | Non-viable input (before boundary) | Telex | trad | - | `text` | `tẽt` | shown while typing; boundary restores text |
+| W212 | Non-viable input (before boundary) | Telex | trad | - | `user` | `ủe` | boundary restores user |
+| W213 | Non-viable input (before boundary) | Telex | trad | - | `wifi` | `ừii` | boundary restores wifi |
+| W214 | Non-viable input (before boundary) | Telex | trad | - | `USB` | `ÚB` | boundary restores USB |
+| W215 | Non-viable input (before boundary) | Telex | trad | - | `case` | `cáe` | boundary restores case |
+| W216 | Non-viable input (before boundary) | Telex | trad | - | `mother` | `mother` | th coda impossible: literal from h on (REG-03) |
+| W217 | Non-viable input (before boundary) | Telex | trad | - | `keyboard` | `keyboard` | ey impossible: literal from y on (REG-03) |
+| W218 | Non-viable input (before boundary) | Telex | trad | - | `startup` | `startup` | st onset impossible: literal from t on (REG-03) |
+| W219 | Non-viable input (before boundary) | Telex | trad | - | `facebook` | `facebook` | f onset impossible: literal from the first key |
+| W220 | Non-viable input (before boundary) | Telex | trad | - | `java` | `java` | j onset impossible |
+| W221 | Non-viable input (before boundary) | Telex | trad | - | `password` | `pasword` | literal after the escape, no second mark (REG-19); boundary restores |
+| W222 | Non-viable input (before boundary) | Telex | trad | - | `verbose` | `vẻbose` | b impossible after vẻ: literal; boundary restores (REG-18) |
+| W223 | Non-viable input (before boundary) | Telex | trad | - | `qw` | `qw` | qư impossible: w is a letter (REG-20) |
+| W224 | Non-viable input (before boundary) | Telex | trad | - | `qww` | `qww` |  |
+| W225 | Non-viable input (before boundary) | Telex | trad | - | `year` | `year` | yea impossible before the tone key arrives (REG-03) |
+| W226 | Names and loanwords | Telex | trad | - | `Kroong` | `Krông` | Tier B cluster kr |
+| W227 | Names and loanwords | Telex | trad | - | `DDawsk` | `Đắk` | Tier B coda k |
+| W228 | Names and loanwords | Telex | trad | - | `Lawsk` | `Lắk` |  |
+| W229 | Names and loanwords | Telex | trad | - | `Pawsc` | `Pắc` | p onset |
+| W230 | Names and loanwords | Telex | trad | - | `Thuootj` | `Thuột` | Buôn Ma Thuột |
+| W231 | Names and loanwords | Telex | trad | - | `Buoon` | `Buôn` |  |
+| W232 | Names and loanwords | Telex | trad | - | `pias` | `pía` | bánh pía (REG-08) |
+| W233 | Names and loanwords | Telex | trad | - | `buyts` | `buýt` | labial + medial: Tier B loan (xe buýt) |
+| W234 | Names and loanwords | Telex | trad | - | `quowrn` | `quởn` | Tier B qu + ơn |
+| W235 | Names and loanwords | Telex | trad | - | `huow` | `hươ` | becomes huơ at the boundary |
+| W236 | Backspace inside a token | Telex | trad | - | `vieejt⌫` | `việ` | ⌫ = Backspace |
+| W237 | Backspace inside a token | Telex | trad | - | `vieejt⌫⌫` | `vi` | deleting ệ takes its tone with it |
+| W238 | Backspace inside a token | Telex | trad | - | `hoaf⌫` | `hò` | tone was on o: stays |
+| W239 | Backspace inside a token | Telex | modern | - | `hoaf⌫` | `ho` | tone was on à: removed with it |
+| W240 | Backspace inside a token | Telex | trad | - | `hoafn⌫` | `hòa` | tone relocates after the coda is deleted |
+| W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhầm` | deleting the escape letter restores the tone (REG-24) |
+| W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `á` | deleting the escape letter restores the tone |
+| W243 | Backspace inside a token | Telex | trad | - | `duwowngf⌫⌫⌫` | `dư` | ơ deleted with its horn and tone; ư keeps its horn |
+| W244 | Options | Telex | trad | brackets=True | `[` | `ơ` | bracket option on |
+| W245 | Options | Telex | trad | brackets=True | `]` | `ư` | bracket option on |
+| W246 | Options | Telex | trad | standalone_w=False | `w` | `w` | standalone w off |
+| W247 | Options | Telex | trad | standalone_w=False | `tw` | `tw` | standalone w off |
+| W248 | Options | Telex | trad | standalone_w=False | `tuw` | `tư` | w as a modifier still works |

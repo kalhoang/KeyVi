@@ -1,0 +1,35 @@
+# Secrets and local env (never commit)
+.env
+.env.*
+!.env.example
+
+# SwiftPM / Xcode
+.build/
+.build-*/
+.swiftpm/
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+*.dSYM/
+*.dSYM.zip
+
+# Generated project (XcodeGen output, never committed)
+*.xcodeproj
+
+# Release artefacts
+dist/
+*.dmg
+*.zip
+*.tar.gz
+appcast-local/
+
+# Data downloads (inputs are pinned by checksum and fetched by scripts)
+data/cache/
+
+# Node / site
+node_modules/
+site/dist/
+
+# macOS
+.DS_Store

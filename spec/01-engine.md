@@ -1,0 +1,1320 @@
+# 01. Engine: Vietnamese composition core
+
+| Field | Value |
+|---|---|
+| Spec file | `01-engine.md` |
+| Requirement prefix | `ENG-R` (requirements), `ENG-T` (tests), `REG` (regressions), `W` / `B` / `E` (worked examples) |
+| Status | Draft v0.2, 2026-11-13 (adversarial review applied: contamination scan clean, linguistic fixes, cross-file alignment) |
+| Owner | Pa Kal |
+| Product names | `{{AppName}}` (display name), `{{app-slug}}` (ASCII slug). No name is chosen in this file. |
+| Engine licence intent | Embeddable by any app, with file-level copyleft: MPL-2.0 (see ENG-R109). App licence is decided elsewhere. |
+
+Keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. Anything marked **VERIFY:** is not confirmed and must be checked before it is relied on.
+
+**Clean-room statement.** This file describes behaviour, contracts and constraints derived from public knowledge of Vietnamese orthography, the public definitions of Telex and VNI, Unicode, Apple documentation and user-reported problems with existing input methods. It contains no code, identifiers, table layouts or orderings from XKey, OpenKey, Unikey or any GPL project. Implementers MUST NOT consult those sources. All Swift signatures below are new designs.
+
+---
+
+## 0. Terms
+
+| Term | Meaning |
+|---|---|
+| Key | One character delivered by the host after keyboard-layout mapping (`"a"`, `"A"`, `"6"`, `" "`, `"\n"`). The engine never sees key codes. |
+| Token | The run of keys the engine is composing, from the first key after a boundary or reset up to the next boundary. One token is at most one Vietnamese syllable. |
+| Raw keys | The exact characters typed for the token, case preserved, after Backspace edits (section 7.4). |
+| Letters | The engine's internal letter sequence for the token: base letter, vowel modifier (breve, circumflex, horn), d-stroke, letter case. |
+| Display | The text the engine believes is on screen for the token right now. |
+| Transform key | A key that changes letters or tone instead of adding a letter: Telex `s f r x j z a e o w d` (and `[ ]` when enabled), VNI `0`-`9`. |
+| Boundary | A key that ends the token (space, punctuation, Return...). See section 9. |
+| Commit | What the engine does at a boundary: final normalisation and the restore decision (section 8). |
+| Reset | An event telling the engine that its picture of the text before the cursor is no longer reliable. State is dropped and no text is edited. |
+| Run | The tokens committed since the last reset in the same text field. |
+| History | Committed tokens of the current run kept so that Backspace can re-open them (section 10). |
+| Literal mode | Per-token state in which every further key is appended exactly as typed. |
+| Tier A / Tier B / invalid | Standard Vietnamese / extended (names, loans, teencode) / neither. Section 3.12. |
+| Viable | The letters typed so far can still grow into a Tier B syllable. Section 3.14. |
+| Traditional / modern style | Tone placement conventions `hòa, khỏe, thủy` / `hoà, khoẻ, thuỷ`. Section 5.2. |
+
+---
+
+## 1. Scope for v1
+
+### 1.1 What the engine does
+
+- **ENG-R101** The engine MUST support two input methods: Telex and VNI (key maps in section 4).
+  *Rationale: these two cover virtually all Mac users; other schemes add settings without users.*
+- **ENG-R102** The engine MUST output Unicode text in Normalization Form C using only precomposed Vietnamese letters (for example U+1EC7 for `ệ`, U+0111 for `đ`). It MUST NOT emit combining marks.
+  *Rationale: every Vietnamese letter has a single precomposed code point, which makes deletion counts exact (section 6.4).*
+- **ENG-R103** Telex MUST offer one option, **standalone w** (`w` typed while the token has no vowel yet becomes the vowel `ư`, as in `w` -> `ư`, `thw` -> `thư`), default ON. When OFF, `w` is only a modifier key. This option replaces the separate "Simple Telex" input methods found in other products.
+  *Rationale: most Telex users expect `w` = `ư`; the English words it used to damage (`wifi`, `with`, `world`) are now repaired by restore (section 8). One toggle is clearer than two near-identical methods.*
+- **ENG-R104** Telex MUST offer one option, **bracket keys** (`[` = `ơ`, `]` = `ư`), default OFF.
+  *Rationale: brackets collide with code, Markdown and emoticons; users reported `[[` / `]]` turning into `?` or `ư`.*
+- **ENG-R105** The engine MUST support traditional and modern tone placement (section 5.2). Default: traditional. Open question Q2 for Pa.
+- **ENG-R106** Automatic restore of non-Vietnamese words MUST be ON by default and MUST NOT require any download (section 8).
+- **ENG-R107** Free-order entry (tone, modifier and `đ` keys typed after later letters, section 4.6) MUST always be on. There is no "free marking" setting.
+  *Rationale: in the audited incumbent the most frequent support answer was "turn on free marking", which means the default was wrong. With the viability rule (sections 3.14 and 4.4) free order has no false positives on valid Vietnamese.*
+- **ENG-R108** The engine MUST accept a **restore toggle** event that switches the current token between its Vietnamese form and the keys as typed (section 7.2). The host binds it to a hotkey only when the user sets one (`03-product.md` D8: unset by default; Escape is the suggested key).
+- **ENG-R109** The engine MUST be a standalone Swift package with no dependency on the app. Its licence is MPL-2.0.
+  *Rationale: file-level copyleft keeps changes to the engine's own files open, while any app can still embed the engine; through MPL-2.0 section 3.3 it combines with GPL-2.0 projects, which Apache-2.0 does not. Bundled word lists keep their own notices (section 8.2).*
+- **ENG-R110** The engine MUST match and expand macros (text expansion) at commit, as specified in section 11. The macro table is user data supplied by the host; the engine ships with an empty table.
+  *Rationale: every Vietnamese input method users compare against has macros; doing the match inside the engine keeps the edit exact and the trigger restorable.*
+
+### 1.2 Non-goals for v1
+
+- **ENG-R120** No legacy encodings: no TCVN3 (ABC), VNI-Windows, VIQR output, Windows-1258, and no decomposed (NFD) output.
+  *Rationale: they were broken in the incumbent, are rarely needed on macOS today, and every one of them multiplies test surface. A host-side converter can be added later without touching the engine.*
+- **ENG-R121** No "Quick Telex" shortcuts (`cc`, `gg`, `kk`, `nn`, `tt`, `pp`, `qq`, `uu` expanding to consonant clusters) and no quick start or end consonants. Not even as an option.
+  *Rationale: they were on by default in the incumbent and mangled ordinary typing (`cc` became `ch`, `kkk` became `khk`, `nn` became `ng`, `tt` became `th`).*
+- **ENG-R122** No dictionary spell checking and no "suggest a correction" feature. Restore (section 8) is the only correction the engine makes.
+- **ENG-R123** No automatic capitalisation of sentence starts in the engine (host feature, later version).
+- **ENG-R124** No word prediction, autocomplete, translation or any feature that sends text anywhere.
+- **ENG-R125** Withdrawn on review: macros are in v1 (ENG-R110, section 11). The number is kept so that references stay stable.
+- **ENG-R126** No VIQR input, no other Vietnamese schemes, no Nôm.
+- **ENG-R127** No multi-syllable segmentation: text typed without spaces is composed one syllable at a time and anything that does not fit one syllable goes literal.
+- **ENG-R128** The engine performs no file, network or logging I/O of any kind.
+
+---
+
+## 2. Architecture in one paragraph
+
+The host (event tap or input-method controller, specified elsewhere) converts each physical key into a character using the active keyboard layout and sends it to the engine together with control events (Backspace, restore toggle, resets). The engine is a pure function `reduce(state, event) -> (state, output)`. The output says whether the host lets the original key through or replaces text (delete N characters before the cursor, insert a string), and carries the current composing text for marked-text hosts, a reason code when a token is committed, and an optional learning signal. The engine has no global state, no I/O and no knowledge of which app is in front except a small context hint chosen by the host (section 8.6).
+
+---
+
+## 3. Syllable model
+
+### 3.1 Structure
+
+A Vietnamese syllable is `[onset] [medial] nucleus [coda] + tone`. In spelling, a written syllable is: onset letters, then a **vowel group** (medial glide, nucleus and any semivowel ending, all written with vowel letters), then an optional **consonant coda**, plus one tone mark on one vowel letter.
+
+### 3.2 Letters, modifiers and tones
+
+- Vowel letters (12): `a ă â e ê i o ô ơ u ư y`.
+- Consonant letters used by Tier A: `b c d đ g h k l m n p q r s t v x`. Tier B adds `z` as an onset and `k` as a coda (section 3.12).
+- Vowel modifiers: breve (`ă`), circumflex (`â ê ô`), horn (`ơ ư`). Stroke: `đ`.
+- Six tones: ngang (no mark), sắc (acute), huyền (grave), hỏi (hook above), ngã (tilde), nặng (dot below). In this file tones are numbered 0 to 5 in that order. Output uses precomposed letters only (ENG-R102).
+- **ENG-R301** The engine MUST contain a generated table of all 146 Vietnamese letters it can emit (12 vowels x 6 tones x 2 cases, plus `đ` and `Đ`; the six untoned `a e i o u y` are plain ASCII), built from Unicode character data and ordered by code point. No other source may be used for this table.
+
+### 3.3 Onsets
+
+| Onset | Tier | Constraint |
+|---|---|---|
+| (none) | A | See 3.10 for vowels that may start a syllable. |
+| `b` `m` `p` `ph` `v` | A | Labials. No medial glide after them in Tier A (Tier B allows loans such as `buýt`, `phuy`, `voan`). `p` is accepted (loans and rare native words: `pin`, `pía`). |
+| `c` | A | Only before vowels that are not `e ê i y iê ia`. Never with a medial glide (that sound is written `qu`). |
+| `k` | A | Only before `e ê i y` and `iê/ia`. Tier B: before any vowel (`Kon`, `Kạn`, `Krông`). |
+| `q` | A | Only as `qu`; the `u` is the medial glide and is never tone-bearing. Rhymes after `qu`: section 3.8. |
+| `g` | A | Not before `e ê iê ia y`. Before an `i` rhyme with no further vowel letter (`gì`, `gìn`, `gỉ`) the spelling `gi` stands for the `gi` onset plus nucleus `i`; this is valid. |
+| `gh` | A | Only before `e ê i` and `iê/ia`. |
+| `gi` | A | Recognised as the onset when the letter after `gi` is a vowel letter. Absorbs the `i` of `iê`: `gi + iêc` and `gi + iêng` are written `giêc`, `giêng` (`giếc`, `giếng`). Rhymes after `gi`: section 3.9. |
+| `ng` | A | Not before `e ê i y iê ia`. |
+| `ngh` | A | Only before `e ê i` and `iê/ia`. |
+| `ch` `d` `đ` `h` `kh` `l` `n` `nh` `r` `s` `t` `th` `tr` `x` | A | No special constraint beyond 3.10. |
+| `bl` `br` `dr` `đr` `gl` `gr` `kl` `kr` `pl` `pr` | B | Clusters found in ethnic-minority place names (`Krông`, `Đăk Glei`, `M'Đrắk`, `Ia Grai`, `Kon Plông`, `Chư Prông`). |
+| `z` | B | Teencode (`zá`, `zui`, `zậy`). |
+| `dz` | B | Colloquial (mostly Southern) spelling of the `d`/`v` sound: `dzô`, `dzậy`, `dzui`, `dzữ`, `dzìa`. Follows the same constraints as `d`. In Telex the `z` of `dz` arrives before any vowel, so ENG-R411 makes it a letter, never tone removal. Required by the product owner (P0-2 in 03-product.md). |
+
+`f`, `j` and `w` are not onsets in any tier. In Telex `f` and `j` are tone keys and `w` is a vowel modifier; a token that starts with them is never Vietnamese, so it goes literal at once (`facebook`, `java` are never touched). Decision (Pa, 13/11/2026): the slang onsets supported are `z` and `dz`; `f`, `j` and `w` stay out because they would make common English words (`for`, `fix`, `jar`, `was`) compose.
+
+- **ENG-R316** Whether a token is Vietnamese is decided only by the rules of this section (Tier A / Tier B), never by a word list. The attested-syllable data of section 8 may only break a tie when the raw keys are also an English word; it MUST NOT cause a valid syllable whose raw keys are not English to be restored. A valid syllable that no dictionary contains (`hẹo`, `dzậy`, `quởn`) therefore composes and is kept at commit exactly like a dictionary word, and the result is the same whichever boundary key ends it (REG-28, REG-29).
+
+### 3.4 Medial glide
+
+- Written `o` before `a ă e` (`hoa`, `hoặc`, `khoẻ`).
+- Written `u` before `â ê ơ y yê` (`xuân`, `huệ`, `huơ`, `tuy`, `khuyên`) and always after `q`.
+- Forbidden after `c k gh ngh gi` and, in Tier A, after labials (3.3).
+
+### 3.5 Nuclei and vowel groups
+
+- Monophthongs: `a ă â e ê i/y o ô ơ u ư`, plus the long `oo` of loans (`boong`, `soóc`).
+- Diphthongs: `iê` (written `ia` when open, `iê` before a coda, `yê` with no onset or after the medial `u`, `ya` only in `uya`), `uô` (written `ua` open, `uô` closed), `ươ` (written `ưa` open, `ươ` closed; `uơ` in `huơ`, `thuở`).
+- Three-letter vowel groups, in alphabetical order: `iêu oai oay oeo uây uôi uya uyu ươi ươu yêu`, plus `uyê` (always closed) and the Tier B `oao`.
+
+### 3.6 Codas
+
+- Consonant codas: `c ch m n ng nh p t`. Tier B adds `k` as a spelling variant of `c` (`Đắk`, `Lắk`, `Búk`).
+- Semivowel endings `i y o u` are part of the vowel group in spelling (`ai`, `ay`, `ao`, `au`).
+- Which codas follow which vowels is fully determined by the rhyme inventory below; the engine MUST NOT encode separate coda rules that disagree with it.
+
+### 3.7 Rhyme inventory, Tier A (156 rhymes)
+
+Rhymes are written as they appear after an ordinary consonant onset. Grouped by nucleus; one example word each.
+
+| Nucleus group | Rhymes (example) | Count |
+|---|---|---|
+| a | `a` ba, `ac` các, `ach` sách, `ai` hai, `am` cam, `an` bàn, `ang` sang, `anh` anh, `ao` cao, `ap` đáp, `at` hát, `au` sau, `ay` tay | 13 |
+| medial o + a | `oa` hoa, `oac` khoác, `oach` hoạch, `oai` ngoài, `oam` ngoạm, `oan` toàn, `oang` hoàng, `oanh` doanh, `oat` thoát, `oay` xoáy | 10 |
+| ă | `ăc` mặc, `ăm` năm, `ăn` ăn, `ăng` răng, `ăp` gặp, `ăt` mắt | 6 |
+| medial o + ă | `oăc` ngoặc, `oăm` hoắm, `oăn` xoăn, `oăng` hoẵng, `oăt` thoắt | 5 |
+| â | `âc` bậc, `âm` âm, `ân` cân, `âng` tầng, `âp` lập, `ât` mất, `âu` đâu, `ây` đây | 8 |
+| medial u + â | `uân` xuân, `uâng` khuâng, `uât` thuật, `uây` khuấy | 4 |
+| e | `e` xe, `ec` séc, `em` em, `en` đen, `eng` xẻng, `eo` mèo, `ep` đẹp, `et` hét | 8 |
+| medial o + e | `oe` khoẻ, `oen` hoen, `oeo` ngoẹo, `oet` khoét | 4 |
+| ê | `ê` về, `êch` ếch, `êm` đêm, `ên` tên, `ênh` bệnh, `êp` bếp, `êt` hết, `êu` kêu | 8 |
+| medial u + ê | `uê` huệ, `uêch` khuếch, `uênh` huênh | 3 |
+| i | `i` đi, `ich` thích, `im` tim, `in` tin, `inh` xinh, `ip` kịp, `it` ít, `iu` dịu | 8 |
+| y (open) | `y` ý, kỹ | 1 |
+| medial u + y | `uy` tuy, `uych` huých, `uyn` tuyn, `uynh` huynh, `uyp` tuýp, `uyt` huýt, `uyu` khuỷu | 7 |
+| iê / ia | `ia` mía, `iêc` việc, `iêm` kiếm, `iên` tiên, `iêng` tiếng, `iêp` tiếp, `iêt` biết, `iêu` hiểu | 8 |
+| yê (no onset only) | `yêm` yếm, `yên` yên, `yêng` yểng, `yêt` yết, `yêu` yêu | 5 |
+| medial u + iê | `uya` khuya, `uyên` khuyên, `uyêt` tuyệt | 3 |
+| o | `o` to, `oc` học, `oi` đói, `om` gom, `on` con, `ong` mong, `op` họp, `ot` ngọt | 8 |
+| oo (loans) | `ooc` soóc, `oong` boong | 2 |
+| ô | `ô` cô, `ôc` ốc, `ôi` tôi, `ôm` ôm, `ôn` hôn, `ông` không, `ôp` hộp, `ôt` một | 8 |
+| ơ | `ơ` cơ, `ơi` với, `ơm` cơm, `ơn` hơn, `ơp` lớp, `ơt` ớt | 6 |
+| medial u + ơ | `uơ` huơ, thuở (only after `h`, `th` in Tier A) | 1 |
+| u | `u` thu, `uc` lúc, `ui` vui, `um` cúm, `un` bún, `ung` chung, `up` húp, `ut` phút | 8 |
+| uô / ua | `ua` của, `uôc` cuộc, `uôi` tuổi, `uôm` buồm, `uôn` muốn, `uông` uống, `uôt` suốt | 7 |
+| ư | `ư` thư, `ưc` đức, `ưi` gửi, `ưng` những, `ưt` đứt, `ưu` cứu | 6 |
+| ươ / ưa | `ưa` mưa, `ươc` được, `ươi` người, `ươm` bướm, `ươn` vườn, `ương` đường, `ươp` cướp, `ươt` vượt, `ươu` rượu | 9 |
+| **Total** | | **156** |
+
+- **ENG-R302** The engine's Tier A rhyme set MUST be exactly this table plus the `qu` and `gi` rules of 3.8 and 3.9. Adding or removing a rhyme requires a spec change and a corpus update.
+- **ENG-R303** `ch`/`nh` codas appear only after `a`, `ê`, `i` and the medial forms `oa`, `uê`, `uy`; this is a property of the table, listed here so that reviewers can check it.
+
+### 3.8 Rhymes after `qu` (41 rhymes)
+
+After `qu` the medial glide is already present, so the rhyme is written without it.
+
+`a` quà, `ac` quác, `ach` quách, `ai` quai, `an` quan, `ang` quang, `anh` quanh, `ao` quào, `at` quát, `au` quạu, `ay` quay, `ăc` quắc, `ăm` quắm, `ăn` quăn, `ăng` quăng, `ăp` quặp, `ăt` quắt, `ân` quân, `âng` quầng, `ât` quất, `ây` quây, `e` que, `en` quen, `eo` quẹo, `et` quét, `ê` quê, `êch` quệch, `ên` quên, `ênh` quềnh, `êt` quết, `êu` quều, `i` qui, `it` quít, `y` quý, `ych` quých, `ynh` quỳnh, `yt` quýt, `yên` quyên, `yêt` quyết, `ơ` quơ, `ôc` quốc.
+
+Tier B adds `o` (quọ) and `ơn` (quởn).
+
+- **ENG-R304** `qui`/`quy`, `quít`/`quýt` are both valid. The engine MUST keep the letter the user typed.
+
+### 3.9 Rhymes after `gi`, and `g` + `i`
+
+- **ENG-R305** When `g i` is followed by another vowel letter, the onset is `gi` and the rhyme is the rest. Allowed rhymes after `gi`: every Tier A rhyme that does not start with `i` or `y` and does not start with a medial glide, plus `êc` and `êng` (from `gi + iêc` and `gi + iêng`: `giếc` as in `cá giếc`, `giếng`, `giêng`). Examples: `già`, `giữ`, `giúp`, `giỏi`, `giấy`, `giết`, `giũa`, `giuộc`, `giường`. Tier B adds medial rhymes (`gioăng`).
+  *Review note: `êc` was missing from the first draft; without it `giếc` would have been restored to `gieecs`.*
+- **ENG-R306** When `g i` is not followed by a vowel letter, the parse is onset `g` plus an `i` rhyme (`gì`, `gìn`, `gỉ`), and this is valid in Tier A.
+- **ENG-R307** The `gi` decision is made on the current letters every time (section 6.1). Typing `g i s u p` shows `gí` after the third key and `giú` after the fourth, because the arrival of `u` turns `i` into part of the onset (REG-11).
+
+### 3.10 Spelling constraints (Tier A)
+
+- **ENG-R310** `k`, `gh`, `ngh` only before `e ê i y iê ia`; `c`, `g`, `ng` never before them, except the `g` + `i` case of ENG-R306.
+- **ENG-R311** `q` only as `qu`, followed by a rhyme from 3.8.
+- **ENG-R312** Medial rhymes (`oa… oă… oe… uâ… uê… uy… uya uyê… uơ`) are invalid after `c k gh ngh gi`, and after `b m p ph v` in Tier A.
+- **ENG-R313** `yê…` rhymes only with no onset. With no onset, `iê…` is invalid (`yêu`, never `iêu`); `ia` with no onset is valid (`ỉa`).
+- **ENG-R314** Open `y` (the rhyme `y`) is Tier A only with no onset or after `h k l m s t th v` (`ý`, `hy`, `kỹ`, `lý`, `mỹ`, `sỹ`, `tỷ`, `Thy`, `Vy`); after other onsets it is Tier B. Open `i` is valid after every onset that allows `i`. Article 9 of Decision 1989/QĐ-BGDĐT (2018) prescribes `i` after an onset in textbooks (`kĩ`, `lí`, `mĩ`) but keeps `y` in proper names (`Vy`, `Vỹ`, `Thy Ngọc`); the engine accepts both spellings and never rewrites one into the other.
+- **ENG-R315** `uơ` is Tier A only after `h` and `th`; elsewhere Tier B.
+- **ENG-R316** `ươ` with no coda and no ending (open) is never valid in the committed text; see 5.5.
+
+### 3.11 Tone constraints
+
+- **ENG-R320** Rhymes ending in `c`, `ch`, `p`, `t` accept only sắc and nặng. All other rhymes accept all six tones.
+- **ENG-R321** In Tier B the `k` coda accepts all six tones (`Đăk Mil` is written with and without sắc in practice).
+
+### 3.12 Validity tiers and the policy for names, loans and slang
+
+| Tier | Definition | Purpose |
+|---|---|---|
+| A (standard) | Onset of 3.3 marked A, rhyme from 3.7 / 3.8 / 3.9, all constraints of 3.10 and 3.11. | What a Vietnamese dictionary accepts. |
+| B (extended) | Tier A, plus: onsets marked B; `k` before any vowel; `k` coda as a variant of `c` with any tone; medial glide after labials and after `gi`; open `y` after any onset; `uơ` after any onset; extra rhymes `oao oap oăp oem oeng oec oep uên uêt uêu ưm ưn ưp`; `qu` + `o`, `qu` + `ơn`. | Ethnic-minority place names (`Krông Pắk`, `Đắk Lắk`, `Kon Plông`), established loans (`buýt`, `phuy`, `voan`), interjections (`ừm`) and teencode or colloquial spellings (`zá`, `hok`, `dzô`, `dzậy`). |
+| Invalid | Anything else. | Restored at commit (section 8). |
+
+- **ENG-R330** Composition (section 4) MUST use Tier B to decide what can still be typed, so that names and loans compose normally.
+- **ENG-R331** At commit, a Tier B word that is not Tier A is kept unless its raw keys are an English word (section 8, rule L6). Names such as `Krông` (raw `kroong`), `Đắk` (raw `ddawsk`) and `Pắc` are therefore never restored.
+- **ENG-R332** Proper nouns are not detected by capitalisation. Capitalised words follow the same rules as lowercase words.
+  *Rationale: sentence starts are capitalised too; capital letters carry no reliable signal.*
+- **ENG-R333** Place names written with an apostrophe (`M'Đrắk`, `Đắk R'lấp`, `Cư M'gar`) are handled as two tokens because the apostrophe is a boundary (section 9); each part composes on its own.
+- **ENG-R334** Words outside Tier B that a user still wants (rare slang, brand spellings) are covered by the user "keep as typed" and "keep Vietnamese" lists (section 8.7), never by widening the tiers ad hoc.
+
+### 3.13 Parsing a letter string (normative)
+
+Input: a lowercase letter string with modifiers (tone marks removed). Output: onset, vowel group, coda, remainder.
+
+1. Onset: if the string starts with `qu`, onset is `qu`. Else if it starts with `gi` and the third letter is a vowel letter, onset is `gi`. Else the longest multi-letter onset that matches, taken from the alphabetical set `bl br ch dr đr gh gl gr kh kl kr ng ngh nh ph pl pr th tr` (longest match, so `ngh` wins over `ng`). Else, if the first letter is a consonant, that letter. Else no onset.
+2. Vowel group: the maximal run of vowel letters after the onset.
+3. Coda: the maximal run of consonant letters after the vowel group.
+4. Remainder: anything after the coda. A non-empty remainder or an empty vowel group makes the string invalid.
+5. Validity: look up (onset, vowel group + coda) in Tier A, then Tier B, then check the tone against 3.11.
+
+- **ENG-R340** The parse MUST be a pure function of the letters. It MUST NOT depend on keys, history or configuration.
+
+### 3.14 Viability (normative)
+
+- **ENG-R345** The letters of a token are **viable** if, after the display normalisation of 5.5, they are a prefix of at least one Tier B syllable (tone ignored), where an unmodified vowel letter matches the same letter with any modifier and `d` matches `d` or `đ`. A modified vowel letter matches only itself.
+- **ENG-R346** Viability MUST be computed from a structure generated from the tier tables (a trie, sorted prefix set or automaton). It MUST NOT be hand-written.
+
+### 3.15 Reference counts
+
+A throwaway reference model of the tables above (written while drafting this spec, not shipped) produced, after the review additions of `gi + êc` (ENG-R305) and `th + y` (ENG-R314): 156 Tier A rhymes, 41 `qu` rhymes, **3,368** Tier A onset-rhyme pairs, **15,412** Tier A toned syllables, and 6,209 Tier B onset-rhyme pairs (including Tier A). The first draft, before those two additions, had 3,366 / 15,404 / 6,208.
+
+- **ENG-R350** The implementation's generator MUST print its own counts in CI. Any difference from these numbers MUST be explained in the pull request that introduces it (either the model or the implementation is wrong).
+
+---
+
+## 4. Key maps
+
+### 4.1 Telex
+
+| Key | Role | Effect | Example |
+|---|---|---|---|
+| `s` | tone | sắc | `as` -> `á` |
+| `f` | tone | huyền | `af` -> `à` |
+| `r` | tone | hỏi | `ar` -> `ả` |
+| `x` | tone | ngã | `ax` -> `ã` |
+| `j` | tone | nặng | `aj` -> `ạ` |
+| `z` | tone removal | removes the tone; a letter if there is no tone | `asz` -> `a`, `za` -> `za` |
+| `a` `e` `o` | circumflex | on the same letter in the vowel group | `aa` -> `â`, `ee` -> `ê`, `oo` -> `ô`, `cuwowio` -> `cuôi` |
+| `w` | horn / breve | `a` -> `ă`, `o` -> `ơ`, `u` -> `ư`, `uo` -> `ươ`, `ua` -> `ưa` (not after `q`), `qua` -> `quă`, `oa` -> `oă`, `uu` -> `ưu`, `ui` -> `ưi`; alone -> `ư` (option) | `aw` -> `ă`, `tuowng` -> `tương`, `w` -> `ư` |
+| `d` | stroke | `d` that starts the token -> `đ` | `dd` -> `đ`, `dangd` -> `đang` |
+| `[` `]` | letters (option, default off) | `ơ`, `ư` | `[` -> `ơ` |
+| other letters | letter | | |
+
+All roles apply to uppercase keys too. The case of a transform key never matters; the case of each output letter comes from the key that produced that letter (section 9.1).
+
+### 4.2 VNI
+
+| Key | Role | Effect |
+|---|---|---|
+| `1` `2` `3` `4` `5` | tone | sắc, huyền, hỏi, ngã, nặng |
+| `0` | tone removal | removes the tone; literal `0` if there is no tone |
+| `6` | circumflex | on `a`, `e` or `o` in the vowel group (rightmost eligible first) |
+| `7` | horn | on `o` or `u`; `uo` -> `ươ`, `ua` -> `ưa`, `uu` -> `ưu`, `ui` -> `ưi` |
+| `8` | breve | on `a` (`oa` -> `oă`, `qua` -> `quă`) |
+| `9` | stroke | `d` that starts the token -> `đ` |
+| letters | letter | |
+
+- **ENG-R401** Digits typed on the numeric keypad (host sets `fromKeypad`) MUST NOT act as VNI keys; they are boundaries.
+- **ENG-R402** Shifted digits produce symbols (`@`, `(`, `!`...) and are boundaries; the engine sees the symbol, never the digit (REG-14).
+- **ENG-R403** In VNI, Telex transform letters are plain letters and in Telex, digits are boundaries. The two methods MUST never mix: no VNI output ever contains a transform that only Telex defines, and the restore of a VNI token reproduces the digits typed (REG-05).
+
+### 4.3 Order of interpretation for each key (normative)
+
+For each key while composing a token:
+
+1. If the token is in literal mode, append the key verbatim and stop.
+2. If the key has a transform role whose kind has not been escaped in this token (4.7), try the roles in this order and stop at the first that applies: tone or tone removal, circumflex, horn or breve, stroke, standalone `w`, bracket letters.
+3. Otherwise treat the key as a letter: append it. If the letters are no longer viable (3.14), enter literal mode (4.5).
+4. A VNI digit that does not apply is appended as a literal character and the token enters literal mode.
+
+### 4.4 When a transform applies (normative)
+
+- **ENG-R410 Tone.** Applies when the parse of the current letters has a non-empty vowel group (the `u` of `qu` and the `i` of a `gi` onset do not count). If the current tone equals the key's tone, the key escapes (4.7). Otherwise it replaces the current tone. Tone keys never fail because of the coda; an invalid tone/coda pair is judged at commit.
+- **ENG-R411 Tone removal.** Applies when the token has a tone. Otherwise the key is a letter (Telex `z`) or literal (VNI `0`). This is the only behaviour for `qu` with no vowel: `quz` -> `quz`, `qu0` -> `qu0`, never a crash (REG-01).
+- **ENG-R412 Circumflex.** Target: a letter in the vowel group with the key's base letter (Telex) or with base `a`, `e` or `o`, rightmost first (VNI `6`). If the target already has a circumflex, the key escapes. Otherwise the target gets a circumflex, replacing any horn or breve on it; if the target is the `o` of a `u o` pair, the horn is also removed from the `u` (`ươ` + `o` -> `uô`). The transform applies only if the result is viable; otherwise the next target is tried, then the key falls through to step 3.
+- **ENG-R413 Horn and breve (Telex `w`).** Candidate target sets, in order: (a) a `u o` pair inside the vowel group (both letters get a horn), then (b) single letters of the vowel group from right to left: `a` gets a breve, `o` or `u` gets a horn. A set whose letters already carry exactly that modifier is skipped. The first set whose result is viable is applied. If none applies and the vowel group already has a horn or breve, the key escapes: every horn and breve in the vowel group is removed, an `ư` that was created by a standalone `w` is removed, and the key is appended as a letter. If none applies, the vowel group is empty and standalone `w` is on, `ư` is appended if viable. Otherwise the key falls through to step 3.
+- **ENG-R414** VNI `7` follows ENG-R413 restricted to `o` and `u` with no standalone case. VNI `8` follows it restricted to `a`.
+- **ENG-R415 Stroke.** Applies when the first letter of the token is `d`. An unstroked `d` becomes `đ` if viable; a stroked one escapes. Otherwise Telex `d` is a letter and VNI `9` is literal.
+- **ENG-R416** A transform that would make the letters non-viable MUST NOT be applied. The key then becomes a letter or literal according to 4.3. Consequences: `chưa` + `a` -> `chưaa` (no `ưâ`), `cua` + `a` -> `cuaa` (no `c` + `uâ`), `khoa` + `a` -> `khoaa`, `q` + `w` -> `qw` (no `qư`) (REG-13, REG-20).
+
+### 4.5 Literal mode
+
+- **ENG-R420** When a letter makes the token non-viable, the token enters literal mode: the display at that moment is frozen and every later key of the token is appended exactly as typed, with no further transform.
+  *Rationale: this stops double marking inside English words (`password` used to receive two marks) and keeps names like `mother`, `startup`, `keyboard` untouched from the first impossible letter (REG-19, REG-03).*
+- **ENG-R421** Literal mode ends only at the end of the token, or when Backspace removes the key that caused it (the token is then recomputed, section 7.4).
+
+### 4.6 Free-order entry
+
+- **ENG-R430** Tone, modifier and stroke keys MAY be typed anywhere after the letters they act on, including after the coda: `caanf`, `caafn` -> `cần`; `hopwj`, `howjp` -> `hợp`; `dangd` -> `đang`; `chwa` -> `chưa`; `wngs`, `wsng` -> `ứng`; `mootj`, `moojt` -> `một`; `phucws` -> `phức`; VNI `vie6t5`, `vie65t` -> `việt`, `duoc795` -> `được` (REG-09).
+- **ENG-R431** A circumflex key typed after the coda applies to the matching vowel (`cana` -> `cân`) because a vowel letter after a coda is never viable as a letter.
+- **ENG-R432** A tone key typed before any vowel is a letter (`tsa` goes literal at `s`).
+
+### 4.7 Escape by doubling
+
+- **ENG-R440** Typing a transform key whose effect is already present removes the effect and appends the key itself as a letter (Telex) or literal character (VNI): `ass` -> `as`, `aaa` -> `aa`, `aww` -> `aw`, `ddd` -> `dd`, `ww` -> `w`, `nhaamff` -> `nhâmf`, VNI `a11` -> `a1`, `d99` -> `d9`.
+- **ENG-R441** Escape is sticky per kind for the rest of the token. Kinds: tone, circumflex, Telex `w`, VNI horn, VNI breve, stroke. After an escape, keys of that kind are letters (Telex) or literal (VNI). Example: `boooong` -> `booong`, while `booong` -> `boong`.
+- **ENG-R442** The escaped letter is an ordinary letter for viability; if it makes the token non-viable, literal mode starts (`ass` -> `as`, then literal).
+
+### 4.8 What the options change
+
+| Option | Default | Effect |
+|---|---|---|
+| Telex standalone `w` | on | Off: `w` never creates `ư` by itself; `tw` -> `tw`, `tuw` -> `tư` still works. |
+| Telex bracket keys | off | On: `[` -> `ơ`, `]` -> `ư` as letters; doubling escapes (`[[` -> `[`). Off: brackets are boundaries. |
+| Tone style | traditional | Section 5.2. |
+| Auto restore | on | Off: commit never restores; everything else is unchanged. |
+
+- **ENG-R450** There MUST be no other engine option in v1.
+
+---
+
+## 5. Tone placement
+
+### 5.1 Rules (normative, apply in order)
+
+Let the vowel group be the vowel letters after the onset (the `u` of `qu` and the `i` of a `gi` onset are not part of it).
+
+1. **Modified letter.** If the vowel group contains `ă â ê ô ơ ư`, the tone goes on the last such letter. (`ươ` -> on `ơ`; `ưa`, `ưu`, `ưi` -> on `ư`; `uô`, `iê`, `yê`, `uyê`, `uâ`, `uê`, `oă`, `uơ` -> on the modified letter.)
+2. **Consonant coda.** Else, if there is a consonant coda, the tone goes on the last letter of the vowel group (`toán`, `hoàn`, `huýt`, `huỳnh`, `soóc`, `tuýp`).
+3. **Open or semivowel ending.** Else:
+   - one vowel letter: on it;
+   - two letters: for `oa`, `oe`, `uy`, on the first letter in traditional style and on the second in modern style; for every other pair (`ai ao au ay eo iu oi ui ia ua` and so on), on the first;
+   - three letters: on the middle letter (`oai` -> `hoài`, `oay` -> `xoáy`, `oeo` -> `ngoẹo`, `uyu` -> `khuỷu`, `uya` -> `khuya` with tone on `y`);
+   - four or more letters (never valid): on the second letter, so that the result is still deterministic.
+
+- **ENG-R501** These rules MUST be applied to the current letters on every key (section 6.1); tone position is never stored.
+- **ENG-R502** `qu` and `gi` onsets make placement identical in both styles: `quý`, `quả`, `quở`, `già`, `giữa`, `giũa`, `giếng`.
+
+### 5.2 Traditional and modern style
+
+| Vowel group (no coda) | Traditional (default) | Modern |
+|---|---|---|
+| `oa` | `hòa`, `óa` | `hoà`, `oá` |
+| `oe` | `khỏe`, `lòe` | `khoẻ`, `loè` |
+| `uy` | `thủy`, `ủy` | `thuỷ`, `uỷ` |
+
+These three open pairs are the only difference. With a coda (`hoàn`, `khoét`, `huýt`) or with three letters (`hoài`, `ngoẹo`), both styles agree.
+
+- **ENG-R510** Default MUST be traditional.
+  *Rationale: it matches the bulk of existing digital Vietnamese text and the habit of adult users. Decision 1989/QĐ-BGDĐT (25 May 2018), Article 8.1, uses modern examples (`hoà nhạc`, `quý hoá`, `thuỷ thủ`, `mạnh khoẻ`) and its Article 1 limits its scope to curricula and textbooks, so students taught since 2018 may prefer modern while press, law and most existing text stay traditional (the Fisheries Law of 2017 is still titled `Luật Thủy sản`). Pa decides the final default (Q2). Verified against the published text of the decision on 13 November 2026.*
+- **ENG-R511** Both styles follow Article 8.2 of that decision for two-letter nuclei: tone on the first letter of `ia`, `ua`, `ưa` (`bìa`, `lụa`, `lửa`) and on the second letter of `iê`, `yê`, `uô`, `uơ` (`biển`, `thuyền`, `nhuộm`, `được`, `thuở`). Only the three open glide pairs of 5.2 differ between the styles.
+
+### 5.3 Placement examples
+
+| Keys (Telex) | Traditional | Modern | Rule |
+|---|---|---|---|
+| `hoaf` | hòa | hoà | 3, pair `oa` |
+| `hoafn` | hoàn | hoàn | 2 |
+| `khoer` | khỏe | khoẻ | 3, pair `oe` |
+| `thuyr` | thủy | thuỷ | 3, pair `uy` |
+| `huyts` | huýt | huýt | 2 |
+| `huynhf` | huỳnh | huỳnh | 2 |
+| `xoays` | xoáy | xoáy | 3, three letters |
+| `hoaif` | hoài | hoài | 3, three letters |
+| `khuyur` | khuỷu | khuỷu | 3, three letters |
+| `ngoeoj` | ngoẹo | ngoẹo | 3, three letters |
+| `cuar` | của | của | 3, pair `ua` |
+| `mias` | mía | mía | 3, pair `ia` |
+| `muwaf` | mừa | mừa | 1 |
+| `tuooir` | tuổi | tuổi | 1 |
+| `ruwowuj` | rượu | rượu | 1, last modified letter |
+| `hieeur` | hiểu | hiểu | 1 |
+| `khuyeenr` | khuyển | khuyển | 1 |
+| `hueej` | huệ | huệ | 1 |
+| `quys` | quý | quý | `qu` onset |
+| `giuwax` | giữa | giữa | `gi` onset, rule 1 |
+| `sooocs` | soóc | soóc | 2, second `o` |
+
+### 5.4 Relocation while typing
+
+Because placement is recomputed on every key, the tone moves when the syllable grows or shrinks:
+
+| Keys so far | Display | What changed |
+|---|---|---|
+| `h o a f` | hòa (trad) / hoà (modern) | open `oa` |
+| `+ n` | hoàn | coda arrived: rule 2 |
+| `g i s` | gí | `i` is the nucleus |
+| `+ u` | giú | `i` became part of `gi`: tone moves to `u` |
+| `+ p` | giúp | |
+| `h o a f n` then Backspace | hòa (trad) | coda removed: back to rule 3 |
+
+- **ENG-R520** Relocation MUST produce a minimal edit (section 6.3) and never leave a stray mark.
+
+### 5.5 Horn handling for `uo`
+
+- **ENG-R530** Within a `u o` pair of the vowel group, a horn on either letter means a horn on both in the display: `tuwong` -> `tương`, `tuwowng` -> `tương`, `tuowng` -> `tương`. The `u` of `qu` is never part of such a pair (`quơ`, `quở`).
+- **ENG-R531** While typing, an open pair is shown as `ươ` (`ngươ` before `i` arrives, `thươ` before `ng` arrives).
+  *Rationale: `ươ` followed by a coda or ending (`người`, `thương`, `đường`, `rượu`) is far more frequent than open `uơ`; showing `ươ` keeps the edit for the next key to a single insertion.*
+- **ENG-R532** At commit, an open `ươ` (no coda, no ending) is written `uơ`, tone on `ơ`: `thuowr` + space -> `thuở`, `huow` + space -> `huơ`. A reset (section 10) commits nothing, so no edit is made in that case.
+- **ENG-R533** A circumflex on the `o` of `ươ` removes both horns (`cươi` + `o` -> `cuôi`); a `w` on `uô` replaces the circumflex with horns on both (`cuối` + `w` -> `cưới`) (REG-12).
+- **ENG-R534** A second `w` on a fully horned pair escapes: `thuoww` -> `thuow` (REG-12).
+
+---
+
+## 6. Composition model
+
+### 6.1 Recompute from raw keys
+
+- **ENG-R601** The display of a token MUST be a pure function of (raw keys, configuration). The recommended implementation replays the raw keys through the rules of section 4 on every event; an incremental implementation is allowed only if a property test proves it equal to replay for every generated and fuzzed sequence.
+  *Rationale: replay makes restore exact (the raw keys are the source of truth), makes Telex and VNI unable to leak into each other, and turns tone relocation, Backspace and re-opened words into the same operation.*
+- **ENG-R602** The token state MUST keep the raw keys exactly as typed (characters with case). Derived data (letters, tone, escape kinds, literal flag, frozen display) MAY be cached.
+
+### 6.2 Output of one event
+
+- **ENG-R610** For every event the engine returns one action:
+  - `passThrough`: the host delivers the original key unchanged. Used whenever the new display equals the old display plus exactly the typed character, and for keys the engine does not handle.
+  - `edit(delete, insert, thenPassThrough)`: the host deletes `delete` characters before the cursor, inserts `insert`, then delivers the original key if `thenPassThrough` is true (used at boundaries so that the space or punctuation reaches the app as a real key).
+  - An edit with `delete = 0` and an empty `insert` means "swallow the key" (for example a second `w` that changes nothing visible).
+- **ENG-R611** Edits MUST be minimal: compute the longest common prefix of the old and new display (by character), delete the rest of the old display and insert the rest of the new one.
+  *Rationale: fewer synthetic deletions means fewer app glitches (autocomplete in browser address bars, spreadsheets), which were about half of all reported bugs.*
+
+Example trace (Telex, traditional):
+
+| Key | Action | Display |
+|---|---|---|
+| `v` `i` `e` | passThrough each | vie |
+| `e` | edit(delete 1, insert `ê`) | viê |
+| `j` | edit(delete 1, insert `ệ`) | việ |
+| `t` | passThrough | việt |
+
+| Key | Action | Display |
+|---|---|---|
+| `h` `o` `a` | passThrough each | hoa |
+| `f` | edit(delete 2, insert `òa`) | hòa |
+| `n` | edit(delete 2, insert `oàn`) | hoàn |
+
+VNI `duoc795`: `d u o c` pass through; `7` -> edit(delete 3, insert `ươc`); `9` -> edit(delete 4, insert `đươc`); `5` -> edit(delete 2, insert `ợc`).
+
+### 6.3 Marked-text hosts
+
+- **ENG-R620** Every output MUST also carry `composingText`, the full display of the active token (empty when there is none), so that an input-method host can show it as marked text and commit it at the boundary instead of applying edits.
+
+### 6.4 What "delete count" counts
+
+- **ENG-R630** `delete` counts **user-perceived characters (extended grapheme clusters)** of text that the engine itself produced or let through for the current token and for re-opened history (section 10). The engine MUST NOT ask for deletion of anything it did not produce.
+- **ENG-R631** Because the engine only emits ASCII and precomposed Vietnamese letters (all in the Basic Multilingual Plane, none combining), for every engine-produced span: grapheme clusters = Unicode scalars = UTF-16 code units. The edit MUST carry both `deleteCount` (clusters) and `deleteUTF16Count` (UTF-16 units), and a test MUST assert they are equal for every edit.
+- **ENG-R632** The host maps `deleteCount` to Backspace events (one per cluster) or to a UTF-16 range for accessibility or marked-text replacement. If an app is known to normalise text to NFD (one cluster becomes several units), that is a host concern; the engine contract stays in clusters.
+
+### 6.5 No fixed-size limits
+
+- **ENG-R640** Raw keys, letters and history MUST use growable storage. No sequence of events may cause a trap, truncation or out-of-bounds access, whatever its length (REG-02).
+- **ENG-R641** The engine MAY switch a token to literal mode once it holds more than 64 raw keys while still composing, purely to bound replay cost. No Vietnamese syllable needs more than about 15 keys. Restore stays exact because raw keys are kept in full.
+
+---
+
+## 7. Escape, restore and tone removal
+
+### 7.1 Doubled keys
+
+Defined in 4.7. Doubling is the always-available, per-key way to get a literal letter.
+
+### 7.2 Restore toggle (host hotkey, unset by default)
+
+- **ENG-R701** On `restoreToggle`, when the previous event was not a `restoreToggle`: if the active token's display differs from its raw keys, the engine MUST replace the display with the raw keys (edit, key swallowed) and flag the token **user-restored** (literal for the rest of the token, never changed by commit). Otherwise, if the token is flagged restored (by a commit rule, section 8, or by the user) and its composed form differs from the raw keys, the engine MUST replace the display with the composed form and flag the token **user-kept**.
+- **ENG-R702** A `restoreToggle` that immediately follows another `restoreToggle` (no other event in between) MUST return `passThrough` and change nothing. A second consecutive press therefore always reaches the app with its normal meaning.
+  *Rationale: a toggle that flips back and forth on every press would trap the user in Spotlight or a dialog, where Escape also means "close"; the review replaced the earlier flip-back behaviour with this rule. The Vietnamese form is still one step away: Backspace (or any other event) followed by the toggle composes the token again (E02b), and an automatic restore is undone the same way (ENG-R704).*
+- **ENG-R703** If there is no active token, or neither branch of ENG-R701 applies, `restoreToggle` MUST return `passThrough`, so the key keeps its normal meaning (closing Spotlight, dialogs, Vim insert mode).
+- **ENG-R704** To undo an automatic restore, the user presses Backspace once (re-opening the word, section 10) and then the toggle. Example: `test` + space commits `test ` (restored by rule L11); Backspace re-opens `test` in its restored state; the toggle shows `tét` and marks the token user-kept.
+- **ENG-R705** The restore of a VNI token MUST reproduce the digits typed (`vie65t` + toggle -> `vie65t`), and a Telex token the letters typed, including doubled letters (`traffic`) (REG-05, REG-27).
+
+Default binding (host side, `03-product.md` D8 and PRD-R18): **no key is bound by default**. Automatic restore (section 8) covers the common cases, and a bound key would surprise users in Vim, terminals, games, remote desktops and Spotlight, where Escape already means something. When the user sets a key, Escape is the suggested choice because it is one key, free inside a word in ordinary text fields, and known to users of other input methods; the host then consumes it only under ENG-R701 and disables the binding in contexts where a rule says so. The engine author's original proposal (Escape bound by default) is recorded in open question Q4 for Pa.
+
+### 7.3 Tone removal
+
+`z` (Telex) and `0` (VNI) remove the tone (ENG-R411). They never remove vowel modifiers or `đ`; those are removed by doubling (`aa` + `a`, `dd` + `d`). With no tone present the key is a letter or literal digit, which also covers `qu` with no vowel and every other vowel-less token (REG-01, REG-25).
+
+### 7.4 Backspace inside a token
+
+- **ENG-R710** Backspace removes the last visible character of the token. In composing mode the engine removes from the raw keys: the key that produced that letter, every modifier or stroke key that targeted that letter, and every tone key if the tone is displayed on that letter. Then it recomputes. In literal mode it removes the last raw key and recomputes (which may leave literal mode).
+- **ENG-R711** If the removed letter was produced by an escape, only the escaping key is removed, so the escaped effect comes back: `nhaamff` + Backspace -> `nhầm`; `ass` + Backspace -> `á` (REG-24).
+- **ENG-R712** If the recomputed display equals the old display minus its last character, the action is `passThrough` (the app deletes the character itself). Otherwise the engine swallows the Backspace and returns an edit (for example traditional `hoàn` + Backspace -> `hòa`).
+- **ENG-R713** Backspace with no active token is handled by the history rules of section 10.
+
+Examples: `vieejt` + Backspace -> `việ`, + Backspace -> `vi` (the tone goes with `ệ`); traditional `hoaf` + Backspace -> `hò` (tone was on `o`); modern `hoaf` + Backspace -> `ho` (tone was on `à`); `duwowngf` + 3 Backspaces -> `dư`.
+
+---
+
+## 8. Restore policy for English and other non-Vietnamese tokens
+
+### 8.1 Decision at commit (normative, first matching rule wins)
+
+Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, the token flags (escape used, user-restored, user-kept), the language of the previous tokens in the run (8.3), the app context (8.6) and the resources (8.2). "R is English" means the lowercased `R` is in the English lexicon or the tech-always list.
+
+| Rule | Condition | Result |
+|---|---|---|
+| L0 | `C` equals `R` (nothing was transformed) | nothing to decide |
+| L1 | token is user-restored or user-kept (7.2) | keep the user's choice |
+| L2 | `R` in the user keep-as-typed list / keep-Vietnamese list | restore / keep |
+| L3 | `C` contains no vowel letter | keep (abbreviations such as `đc`, `ĐL`, `ĐHQG`) |
+| L3b | the raw keys are camel case (ENG-R904): `useState` composes as `ueState` | restore |
+| L4 | an escape was used in the token | keep `C` if `C` is an English word; else restore if `R` is English; else keep `C` |
+| L5 | `C` is invalid | restore |
+| L6 | `C` is Tier B but not Tier A | restore if `R` is English, else keep |
+| L7 | `R` is not English | keep |
+| L8 | `C` is not in the attested-syllable list | restore |
+| L9 | app context is `code` and `R` is in the code-only tech list | restore |
+| L10 | the run is in English (8.3) | restore |
+| L11 | ambiguity table row for `R`: `en` -> restore, `vi` -> keep; no row: restore if `R` is in the tech-always list, else keep | as stated |
+
+- **ENG-R801** The engine MUST implement exactly this order. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text.
+- **ENG-R802** When auto restore is off, rules L3b to L11 MUST NOT restore anything. L1 and L2 (the user's own choices) still apply.
+- **ENG-R803** A restore at commit is an edit that replaces `C` with `R` followed by the boundary key (`thenPassThrough`).
+
+### 8.2 Data: what ships, from where, under which licence
+
+All data is bundled in the app and loaded at start. Nothing is downloaded (ENG-R106).
+
+| Resource | Content | Source and licence | Notes |
+|---|---|---|---|
+| English lexicon | Common English words, lowercase, ASCII letters only | SCOWL (Kevin Atkinson), size levels up to 35 (VERIFY final level by measuring collisions), American and British variants. Licence: permissive MIT/X11-style notice that must be reproduced in documentation; most component lists are public domain. VERIFY: the readme states that some lists used COCA-derived data under an NDA "within the rights given"; confirm the chosen levels are redistributable. Alternatives: 12dicts by Alan Beale (public domain), ENABLE (public domain). | Only membership matters, not frequency. |
+| Tech-always list | Words with no common Vietnamese reading that should always stay as typed: `www`, `http`, `https`, `wifi`, `usb`, `ios`, `macos`, `json`, `html`, `api`, `url`, `a4`, `mp3`, `mp4`, `4g`, `5g`, `h2o`, brand and product names... | Written by the project, licensed with the engine. | Reviewed by Pa. |
+| Code-only tech list | Shell commands and flags that collide with Vietnamese: `tar`, `less`, `more`, `cat`, `top`, `make`, `sed`, `awk`... | Written by the project. | Used only in the `code` context (L9). |
+| Attested syllables | Vietnamese syllables (with tone) that actually occur | Built by a reproducible script from legally safe text: Vietnamese legal normative documents (VERIFY: Vietnam IP Law 2005, Article 15, excludes legal normative and administrative documents from copyright protection), plus syllables added by Pa. MUST NOT use hunspell-vi or the Aspell Vietnamese list (GPL), Wiktionary (CC BY-SA), or data from any other input method. | Used only by L8, never to block typing. |
+| Ambiguity table | Rows `raw -> vi or en` for English words whose Telex typing produces an attested Vietnamese syllable | Generated candidate list (8.3), each row decided by Pa. | Decides L11. |
+
+Do **not** use: wordfreq data (CC BY-SA 4.0), google-10000-english (derived from an LDC corpus; its own licence file advises against commercial use), hunspell-vi (GPL).
+
+- **ENG-R810** Each resource MUST be built by a script in the repository from pinned inputs with recorded checksums, and the build output MUST be byte-reproducible.
+- **ENG-R811** The app MUST show the SCOWL notice (and any other required notice) in its acknowledgements.
+- **ENG-R812** The engine core MUST NOT embed the data; the data target provides it (section 12.1), so the core stays small and testable with tiny fixtures.
+
+### 8.3 Ambiguity policy (words valid in both languages)
+
+Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`, `was` -> `ứa`, `has` -> `há`, `its` -> `ít`, `us` -> `ú`, `of` -> `ò`, `or` -> `ỏ`, `if` -> `ì`, `this` -> `thí`, `these` -> `thế`, `there` -> `thể`, `been` -> `bên`, `car` -> `cả`, `test` -> `tét`, `best` -> `bét`, `list` -> `lít`, `max` -> `mã`, `did` -> `đi`, `theme` -> `thêm`, `now` -> `nơ`, `how` -> `hơ`, `low` -> `lơ`. Words like `me`, `to`, `no`, `in`, `on`, `an` contain no transform key and are never an issue.
+
+- **ENG-R820 Generation.** A build-time tool types every word of the English lexicon and the tech lists through the engine (Telex, default options, traditional and modern) and lists the words whose display is an attested Tier A syllable. That list is the candidate set for the ambiguity table.
+- **ENG-R821 Decision.** Every candidate becomes a row of the table with `vi` or `en`. Rows nobody has reviewed yet are marked unreviewed and behave as `vi` (never damage Vietnamese). Pa reviews at least the 300 most frequent candidates before v1. Proposed starting decisions (Pa to confirm):
+
+  | Raw | Display | Proposed | Why |
+  |---|---|---|---|
+  | as | á | vi | Southern particle, very common in chat |
+  | is | í | en | rarely typed alone in Vietnamese |
+  | was | ứa | en | `ứa` is rare |
+  | has | há | vi | `há miệng`, `há hốc` |
+  | its | ít | vi | `ít` is very common |
+  | this | thí | vi | `thí sinh`, `thí nghiệm` |
+  | these, there | thế, thể | vi | very common Vietnamese |
+  | been, car | bên, cả | vi | very common Vietnamese |
+  | test | tét | en | constant in tech chat; `bánh tét` can be typed `tets` |
+  | best, list, cost, room | bét, lít, cót, rôm | en | English is the likelier intent; Vietnamese typable with tone at the end |
+  | did, theme, max | đi, thêm, mã | vi | very common Vietnamese |
+
+- **ENG-R822 Entry order matters.** The table is keyed by the exact raw keys, so a Vietnamese word blocked by an `en` row stays typable with another order: `tets` -> `tét` (L7, raw is not English).
+- **ENG-R823 English run.** The language of a committed token is: `vi` if its committed text contains a Vietnamese-only letter (`ă â đ ê ô ơ ư` or any toned vowel); `en` if it was restored (by the user or by a rule) or if it is an unchanged ASCII word that is in the English lexicon and is not a valid Vietnamese syllable (`the` is valid Vietnamese, `and` and `you` are not); `neutral` otherwise (digits, `a`, `the`, `I`). The run is in English when the nearest non-neutral token among the previous three committed tokens of the run is `en`. In an English run, rule L10 restores every remaining collision (`this is the best car`).
+- **ENG-R824** Retroactive correction of an earlier token (for example fixing the first word of `This is a test` after the second word reveals English) is out of scope for v1. Candidate for v1.1.
+
+### 8.4 When restore happens
+
+- **ENG-R830** Restore decisions MUST be made only at commit (a boundary key). There is no mid-word "instant restore".
+  *Rationale: mid-word decisions cannot know the rest of the word; literal mode (4.5) already stops further marking as soon as a word is impossible, which removes the flicker that mattered (double marks).*
+- **ENG-R831** A reset commits nothing and restores nothing (section 10).
+- **ENG-R832** Restore MUST behave the same for the first word typed after focusing a field as for any other word (REG-18).
+
+### 8.5 Tokens that are never restored
+
+- **ENG-R840** Tokens with no vowel letter (L3): `đc`, `đt`, `ĐL`, `ĐHQG`, `ĐBSCL` (REG-17).
+- **ENG-R841** Tokens the user toggled (L1).
+- **ENG-R842** Tokens whose display equals their raw keys (L0).
+- **ENG-R843** Valid Vietnamese typed in Vietnamese context, unless the exact raw keys are an `en` row of the reviewed ambiguity table or the user list says otherwise. Words in Tier B (`Krông`, `Đắk`, `Lắk`, `quởn`) and Tier A (`Buôn Ma Thuột`, `Pắc`, `huơ`, `huých`, `huỵch`, `pía`, `giếc`) are kept (REG-08).
+
+### 8.6 App context (host-supplied)
+
+- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`). Nothing else changes; Vietnamese prompts typed in a terminal compose exactly as elsewhere.
+- **ENG-R851** The engine MUST NOT receive bundle identifiers, window titles or any other app information.
+
+### 8.7 User lists and learning
+
+- **ENG-R860** Resources include two user lists: keep-as-typed and keep-Vietnamese, keyed by lowercased raw keys. The host stores them locally and shows them in settings, where entries can be removed.
+- **ENG-R861** When a token committed as user-restored or user-kept differs from what the rules alone would have decided, the output MUST carry a learning signal (`preferredRaw(raw)` or `preferredVietnamese(raw)`). The engine never stores it; the host decides whether to add it to a user list (proposal: after the same signal twice; Q5).
+
+### 8.8 Measurable targets
+
+| ID | Target |
+|---|---|
+| ENG-R870 | Generated Vietnamese corpus (13.2): 100 % pass, including commit in Vietnamese context. The only allowed exclusions are raw strings that are `en` rows of the ambiguity table; they are listed by the test. |
+| ENG-R871 | English corpus (13.3), Telex defaults, English-run context: at least 99.5 % of words unchanged after commit; every failure listed in `known-exceptions.txt` with a reason. |
+| ENG-R872 | Same corpus in Vietnamese context: at most 3 % of words changed (VERIFY after building the data), and 100 % of changed words are ambiguity rows with decision `vi` (reviewed or unreviewed). |
+| ENG-R873 | Vietnamese prose corpus (13.4) typed by three simulated typists (canonical order, tone at end, free order): at least 99.95 % of tokens identical to the source; every difference attributable to an `en` row. |
+| ENG-R874 | VNI: words without digits are never changed (100 %). |
+| ENG-R875 | Zero crashes in fuzzing (13.6). |
+
+---
+
+## 9. Case, numbers, punctuation and boundaries
+
+### 9.1 Case
+
+- **ENG-R901** Each output letter takes the case of the key that produced the letter: `Vieetj` -> `Việt`, `VIEETJ` -> `VIỆT`, `DDaf` and `Ddaf` -> `Đà`, `dDaf` -> `đà`, `Aas` -> `Ấ`.
+- **ENG-R902** The case of transform keys is ignored: `TieengS` -> `Tiếng`. Caps Lock is not special: the host delivers the character it produced.
+- **ENG-R903** A standalone `ư` takes the case of the `w` key (`W` -> `Ư`). An escape letter takes the case of the escaping key.
+- **ENG-R904** A token in which a lowercase letter is later followed by an uppercase letter and then by another lowercase letter (camel case: `iPhone`, `MacBook`, `useState`, `VnExpress`) MUST enter literal mode at the second lowercase letter if it is not already literal, and is restored at commit if it was transformed (rule L3b; `useState` shows `ueState` while typing and commits as `useState`). `tIẾNG` (inverted caps) stays Vietnamese.
+- **ENG-R905** Case operations MUST NOT depend on the system locale.
+
+### 9.2 Boundaries
+
+| Key | Telex | VNI | After commit |
+|---|---|---|---|
+| Space, any whitespace | boundary | boundary | keep history |
+| `. , ; : ! ?` and every other ASCII punctuation or symbol character (apostrophe, quotes, hyphen, slash, backslash, `@ # ( ) { } < > _ = + * & % $ ^ ~`, backquote, vertical bar) | boundary | boundary | keep history |
+| `[` `]` | boundary unless the bracket option is on | boundary | keep history |
+| Digits `0`-`9` (main row) | boundary | transform or literal (4.2) | keep history |
+| Keypad digits | boundary | boundary | keep history |
+| Return (`"\n"`), Tab (`"\t"`) | hard boundary | hard boundary | commit, then clear history |
+| Any letter outside `A-Z a-z` (for example `é`, `ß` from another layout, or a precomposed Vietnamese letter) | boundary | boundary | keep history |
+
+- **ENG-R910** A boundary key commits the active token (section 8) and is then delivered (`passThrough`, or `thenPassThrough` after an edit). The engine records boundary characters in the history so that Backspace can walk back over them (section 10) and so that macro triggers containing punctuation or digits can be matched across them (section 11). Before committing, the engine checks the macro table (ENG-R1103).
+- **ENG-R911** The apostrophe and hyphen are boundaries: `don't` composes as `don`, `'`, `t`; `M'Đrắk` as `M`, `'`, `Đrắk`.
+- **ENG-R912** Return and Tab commit and then clear the history, because chat apps send on Return and Tab usually moves focus.
+
+---
+
+## 10. Context: Backspace across boundaries, cursor moves and resets
+
+### 10.1 Re-opening the previous word
+
+- **ENG-R1001** After a commit, the token (raw keys, display, flags) and the boundary characters typed after it stay in the history (default limit 16 tokens; older ones are dropped, never a crash).
+- **ENG-R1002** Backspace with no active token removes the last recorded boundary character (`passThrough`). When the last boundary character before a token is removed, that token is re-opened as the active token with all its raw keys and flags, so further keys edit it: `chao` + space, Backspace, `f` -> `chào` (REG-07). This MUST work across `", "`, `". "` and double spaces.
+- **ENG-R1003** Backspace continues into the re-opened token by the rules of 7.4, and past its start into the previous history entry.
+- **ENG-R1004** If the history is empty, Backspace is `passThrough` and changes nothing.
+
+### 10.2 Resets (host-sent)
+
+- **ENG-R1010** The host MUST send `reset(reason)` for: cursor movement keys (arrows, Home, End, Page Up/Down, with or without modifiers), mouse clicks in the text area, focus change, app switch, input source change, Secure Event Input turning on or off, the event tap being re-enabled after a timeout, any shortcut with Command or Control, Forward Delete, mode toggle (Vietnamese/English), configuration change, and any case where the host cannot vouch for the text before the cursor.
+- **ENG-R1011** On reset the engine MUST clear the active token and the history and return no edit. Text on screen stays as it is.
+  *Rationale: the incumbent did not reset after the tap was re-enabled and then sent wrong deletions.*
+- **ENG-R1012** After a reset, the next key starts a fresh token; it is treated exactly like any other first key (REG-18, REG-22).
+
+---
+
+## 11. Macros (text expansion)
+
+Macros are a v1 feature. `03-product.md` section 8 owns the editor, storage, import, the per-app switch and the "not in English mode" rule; the engine owns matching and expansion so that the edit is exact and the trigger is restorable.
+
+- **ENG-R1101** A macro table maps a **trigger** to an **expansion**. Trigger: 1 to 32 characters of printable ASCII without whitespace (letters, digits and punctuation such as `@`, `;`, `.`, `~`), compared case-insensitively against the keys as typed. Vietnamese letters are not allowed in triggers because matching is on raw keys (`dc`, not `đc`). Expansion: NFC text of at most 4,000 characters, newlines allowed.
+- **ENG-R1102 Matching window.** The engine keeps the **span**: the raw characters typed since the last whitespace, Return, Tab or reset, including boundary characters such as punctuation and digits that were passed through (so `@@`, `ad.`, `k1` are matchable), capped at 32 characters (a longer span cannot match and is not looked up). Because triggers are matched on raw keys, composition state, literal mode and escapes do not matter (this resolves the former Q6).
+- **ENG-R1103 Expansion.** On a boundary key, before rule L0 of section 8.1, if the lowercased span equals a trigger, the engine MUST replace the span's display (the committed tokens and boundary characters it consists of, all engine-produced or passed through, so ENG-R630 holds) with the expansion and deliver the boundary key (`thenPassThrough`). The terminator is therefore whitespace, Return, Tab, or a punctuation key, whichever comes first after a complete trigger. A trigger that equals another trigger plus trailing punctuation can never fire (the shorter one fires first); the host's editor MUST reject such a pair with an explanation. Case: trigger typed in all capitals -> expansion uppercased; first letter capital -> first letter of the expansion capitalised; otherwise as stored. Adaptive casing MAY be turned off per entry (`adaptCase: false`), and is skipped when the trigger contains no letters.
+- **ENG-R1104** An expansion is recorded in the history as one token with raw keys equal to the span as typed and display equal to the expansion, flagged literal. Backspace into it deletes one character at a time (`passThrough`); the restore toggle right after an expansion (after one Backspace re-opens it) brings back the span as typed, and `CommitDecision.macro` names the decision.
+- **ENG-R1105** Macro matching MUST be a hash lookup on the lowercased span: cost independent of the table size. Tables of 10,000 entries MUST stay within ENG-R1230.
+- **ENG-R1106** Macro contents are user data: never logged, never in diagnostics, synced only if the user opts in to sync (`02-platform.md` PLT-R1011).
+- **ENG-R1107** Whether macros are active in a given field is decided by the host (English mode, per-app rule `features.macros`, `03-product.md` D10); the host passes an empty table in that case. Changing the table is a configuration change (ENG-R1211).
+
+Examples (table: `vn` -> `Việt Nam`, `@@` -> `kal@example.com`, `dc` -> `được`): `vn` + space -> `Việt Nam `; `Vn` + space -> `Việt Nam `; `VN` + space -> `VIỆT NAM `; `vn.` -> `Việt Nam.`; `@@` + Return -> `kal@example.com` + Return; `dc` + space -> `được ` (the span `dc` matches before any restore decision; without the macro, `đc` would be kept by L3); `vnd` + space -> no macro (span `vnd`).
+
+---
+
+## 12. Engine API (Swift)
+
+### 12.1 Package layout
+
+| Target | Kind | Contents | Dependencies |
+|---|---|---|---|
+| `VietnameseEngine` | library | Core: orthography, composition, commit rules. | Swift standard library only (no Foundation, no AppKit, no UIKit). |
+| `VietnameseEngineData` | library | Bundled resources (8.2) and their notices, `Resources.bundled()`. | `VietnameseEngine`, Foundation (resource loading). |
+| `VietnameseEngineTesting` | library (tests only) | Independent oracle, corpus generators, simulated text field, fuzz drivers. | `VietnameseEngine`. |
+| `lexicon-builder` | executable | Builds resource files from pinned inputs (ENG-R810). | Foundation. |
+
+- **ENG-R1201** Swift 6 language mode with complete strict concurrency checking, using the latest stable toolchain at implementation time (VERIFY version). Package platforms: `.macOS(.v13)` as the floor so that the engine never constrains the app's own minimum (decided in the platform spec). The core SHOULD also build on Linux so CI can fuzz cheaply.
+- **ENG-R1202** No global or static mutable state anywhere in the package. No singletons.
+- **ENG-R1203** All public types MUST be `Sendable`. Value types MUST be `Hashable` where listed. Large immutable data (lexicons) MAY sit behind a final class with only `let` properties.
+
+### 12.2 Public API (proposed)
+
+```swift
+public enum InputMethod: Sendable, Hashable { case telex(TelexOptions), vni }
+
+public struct TelexOptions: Sendable, Hashable {
+    public var standaloneW: Bool      // default true
+    public var bracketKeys: Bool      // default false
+    public init(standaloneW: Bool = true, bracketKeys: Bool = false)
+}
+
+public enum ToneStyle: Sendable, Hashable { case traditional, modern }
+public enum AppContext: Sendable, Hashable { case general, code }
+
+public struct EngineConfiguration: Sendable, Hashable {
+    public var inputMethod: InputMethod   // default .telex(TelexOptions())
+    public var toneStyle: ToneStyle       // default .traditional
+    public var autoRestore: Bool          // default true
+    public var appContext: AppContext     // default .general
+    public var historyLimit: Int          // default 16 tokens, minimum 1
+    public init(inputMethod: InputMethod = .telex(TelexOptions()),
+                toneStyle: ToneStyle = .traditional,
+                autoRestore: Bool = true,
+                appContext: AppContext = .general,
+                historyLimit: Int = 16)
+}
+
+public struct KeyInput: Sendable, Hashable {
+    public var character: Character
+    public var fromKeypad: Bool
+    public init(_ character: Character, fromKeypad: Bool = false)
+}
+
+public enum ResetReason: Sendable, Hashable {
+    case cursorMoved, pointerClicked, focusChanged, applicationChanged,
+         inputSourceChanged, secureInputChanged, eventTapReenabled,
+         shortcut, forwardDelete, modeToggled, configurationChanged, unknown
+}
+
+public enum EngineEvent: Sendable, Hashable {
+    case key(KeyInput)
+    case backspace
+    case restoreToggle
+    case reset(ResetReason)
+}
+
+public struct TextEdit: Sendable, Hashable {
+    public var deleteCount: Int        // grapheme clusters before the cursor
+    public var deleteUTF16Count: Int   // the same span in UTF-16 code units
+    public var insert: String          // NFC, may be empty
+}
+
+public enum KeyAction: Sendable, Hashable {
+    case passThrough
+    case edit(TextEdit, thenPassThrough: Bool)
+}
+
+public enum CommitRule: Sendable, Hashable {
+    case unchanged, userChoice, userList, abbreviation, camelCase, escape,
+         invalid, extendedSpelling, notEnglish, notAttested,
+         codeContext, englishRun, ambiguityTable, techList, defaultVietnamese
+}
+
+public enum CommitDecision: Sendable, Hashable {
+    case kept(CommitRule)
+    case restored(CommitRule)
+    case macro            // section 11
+}
+
+public struct MacroTable: Sendable {
+    public struct Entry: Sendable, Hashable {
+        public var trigger: String      // 1...32 printable ASCII, no whitespace
+        public var expansion: String    // NFC, at most 4,000 characters
+        public var adaptCase: Bool      // default true
+        public init(trigger: String, expansion: String, adaptCase: Bool = true)
+    }
+    public init(_ entries: [Entry]) throws   // throws on invalid or conflicting triggers (ENG-R1101, ENG-R1103)
+    public static let empty: MacroTable
+}
+
+public enum LearningSignal: Sendable, Hashable {
+    case preferredRaw(raw: String)
+    case preferredVietnamese(raw: String)
+}
+
+public struct EngineOutput: Sendable, Hashable {
+    public var action: KeyAction
+    public var composingText: String
+    public var decision: CommitDecision?
+    public var learning: LearningSignal?
+}
+
+public struct EngineState: Sendable, Hashable {
+    public static let initial: EngineState
+    public var activeDisplay: String { get }
+    public var activeRawKeys: String { get }
+    public var isLiteral: Bool { get }
+    public var historyCount: Int { get }
+}
+
+public struct WordSet: Sendable {
+    public init<S: Sequence>(_ words: S) where S.Element == String
+    public func contains(_ word: some StringProtocol) -> Bool
+}
+
+public enum Language: Sendable, Hashable { case vietnamese, english }
+
+public struct Resources: Sendable {
+    public init(english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
+                attestedSyllables: WordSet, ambiguity: [String: Language],
+                userKeepRaw: WordSet, userKeepVietnamese: WordSet,
+                macros: MacroTable = .empty)
+    public static let empty: Resources
+}
+
+public struct Engine: Sendable {
+    public init(configuration: EngineConfiguration, resources: Resources)
+    public func reduce(_ state: EngineState, _ event: EngineEvent) -> (EngineState, EngineOutput)
+}
+
+public struct Session: Sendable {
+    public init(engine: Engine, state: EngineState = .initial)
+    public private(set) var state: EngineState
+    public mutating func handle(_ event: EngineEvent) -> EngineOutput
+}
+
+public enum Validity: Sendable, Hashable { case standard, extended, invalid }
+public enum Tone: Int, Sendable, Hashable { case level, acute, grave, hook, tilde, dot }
+
+public struct SyllableAnalysis: Sendable, Hashable {
+    public var onset: String
+    public var vowelGroup: String
+    public var coda: String
+    public var tone: Tone
+    public var validity: Validity
+    public var toneLetterOffset: Int?   // offset in characters, nil if no tone
+}
+
+public enum Orthography {
+    public static func analyze(_ word: String) -> SyllableAnalysis
+    public static func validity(of word: String) -> Validity
+}
+
+// In VietnameseEngineData:
+extension Resources {
+    public static func bundled(userKeepRaw: WordSet, userKeepVietnamese: WordSet,
+                               macros: MacroTable = .empty) throws -> Resources
+}
+```
+
+- **ENG-R1210** `Engine.reduce` MUST be deterministic and side-effect free: no clock, randomness, locale, environment or I/O. Same state and event give the same result.
+- **ENG-R1211** Changing configuration means creating a new `Engine`; the host sends `reset(.configurationChanged)` with it.
+- **ENG-R1212** `Orthography.analyze` exists for the diagnostics window ("why did this word change?") and for tests. It works only on text the user explicitly pastes there.
+
+### 12.3 Privacy
+
+- **ENG-R1220** The engine MUST NOT log, print, persist or transmit keys or text. `CommitDecision` reason codes contain no text; `LearningSignal` contains text only so the host can update a user list the user can see.
+
+### 12.4 Performance budget
+
+- **ENG-R1230** Per event, release build, measured on the slowest supported Apple Silicon machine (baseline: M1): p50 at most 5 µs, p99 at most 25 µs, p99.9 at most 100 µs, including commits and macro lookups. Worst case seen in a 10-million-event fuzz run: at most 1 ms. These numbers are the single source for the engine budget; `02-platform.md` PLT-R307 and `04-quality-release.md` QA-R14 reference them.
+- **ENG-R1231** `Resources.bundled` loads in at most 50 ms and resident memory for all resources is at most 8 MB.
+- **ENG-R1232** Per-event work SHOULD be proportional to the token length, not to the history or lexicon size (lexicon lookups by hash or trie).
+- **ENG-R1233** CI MUST fail when the performance test exceeds the budget by more than 20 % on the CI machine after calibration against a fixed reference benchmark.
+
+---
+
+## 13. Acceptance tests
+
+### 13.1 Independent oracle
+
+- **ENG-T01** `VietnameseEngineTesting` MUST contain an oracle that produces expected strings directly from the tables of section 3 and the rules of section 5 (spelling a syllable from onset, rhyme, tone and style), without calling the engine's composition code. The engine is tested against it.
+
+### 13.2 Generated Vietnamese corpus
+
+- **ENG-T02** For every Tier A onset-rhyme pair (3,368), every allowed tone (15,412 toned syllables), both input methods and both tone styles, generate these key sequences and assert that the display after the last key, and the committed text after a space in Vietnamese context, equal the oracle:
+  - **O1 canonical:** letters in order, each modifier key right after the letter it modifies, the `w` (VNI `7`) of `ươ` after the `o`, stroke key right after `d`, tone key last.
+  - **O2 tone before coda:** as O1 but the tone key right after the vowel group.
+  - **O3 everything at the end:** base letters only, then stroke, modifier keys and tone key after the last letter.
+  - **O4 tone early:** tone key right after the first letter of the vowel group (exercises relocation).
+  - In Telex, the loan rhymes `oong` / `ooc` need the escape: the literal `oo` is typed `ooo` (`booong` -> `boong`).
+- **ENG-T03** Variants for every Tier A syllable with Telex O1: Titlecase (first key uppercase), all uppercase, and for `ươ` the explicit `uwow` spelling.
+- **ENG-T04** The reference model used for this spec passed all O1 to O4 cases with these rules: 237,792 cases for the first draft and 237,916 after the review additions of ENG-R305 and ENG-R314 (each toned syllable contributes 2 methods x 2 styles x 4 orders, 3 orders for the level tone), plus the ENG-T03 variants (30,928 before the additions; the generator prints the current count). The implementation MUST reach the same 100 %.
+
+### 13.3 English corpus
+
+- **ENG-T10** The English lexicon (8.2) plus both tech lists, each word typed in Telex with default options followed by a space: (a) after a seed English token (English run) and (b) after a seed Vietnamese token. Assert ENG-R871 and ENG-R872. The test prints the full list of changed words with the rule that changed them.
+- **ENG-T11** Documented exceptions live in `known-exceptions.txt` (word, display, rule, reason). Adding an exception requires review by Pa.
+- **ENG-T12** Spot list that MUST stay unchanged after commit with defaults in any context: `text user case wifi USB data verbose password traffic boss coffee less tomorrow mother keyboard startup facebook java year plans grows ask zoom two wow does www`.
+
+### 13.4 Vietnamese prose corpus
+
+- **ENG-T20** At least 200,000 syllables of legally safe Vietnamese text (8.2) split into tokens; each token typed by three simulated typists (canonical, tone at end, free order with modifiers after the coda); assert ENG-R873.
+
+### 13.5 Regression list
+
+| ID | Lesson (from the audit and user reports) | Requirements | Examples / tests |
+|---|---|---|---|
+| REG-01 | `qu` + tone removal with no vowel crashed | ENG-R411 | W153-W155, W183, `qqz`, `Quzhou`, `qut0` |
+| REG-02 | Restoring tokens longer than 32 keys crashed (fixed-size buffers) | ENG-R640, ENG-R641 | fuzz with 33, 64, 1,000 and 100,000-key tokens; restore equals raw |
+| REG-03 | English restore off by default and needing a download; `text user case wifi USB` got marks | ENG-R106, 8.1 | B001-B007, ENG-T12 |
+| REG-04 | Quick Telex on by default (`cc` -> `ch`, `kkk` -> `khk`) | ENG-R121 | `cc kkk nn tt gg TT` stay as typed |
+| REG-05 | VNI restore/undo emitted Telex keys | ENG-R403, ENG-R705 | E03, `ba6c3` commit -> `ba6c3` (B047) |
+| REG-06 | Legacy encodings broken | ENG-R102, ENG-R120 | every insert string is NFC with no combining marks |
+| REG-07 | Backspacing across `", "`, `". "`, double space lost the previous word | ENG-R1002 | `chao`, space, Backspace, `f` -> `chào`; same with `", "`, `". "`, two spaces |
+| REG-08 | Restore damaged valid words and names; rhyme `uych` missing | 3.7, ENG-R843 | W226-W235, B036-B039, `huých`, `huỵch`, `tọe` kept |
+| REG-09 | Tone/modifier keys after the coda were ignored | ENG-R430 | W033-W060, W170-W174 |
+| REG-10 | `did` typed `ddid` was "corrected" to `ddi` | ENG-R440, L4 | W136, B015 |
+| REG-11 | Wrong tone position for `uy` (style), `xoáy`, `giúp` typed with tone on `i` | 5.1, 5.2, ENG-R307 | W062-W067, W073, W104, W194 |
+| REG-12 | `thuơ` stuck on `w`; `ươi` could not switch to `uôi`; `thuo` + `w` could not continue to `thương` | 5.5 | W121-W130 |
+| REG-13 | Stretched words lost or moved marks (`ừa` + `aaa`, `nhé` + `ee`, `chưa` + `a` -> `chưâ`) | ENG-R416, ENG-R441 | W141-W146, W149-W150 |
+| REG-14 | VNI turned `@`, `(` and other shifted digits into marks | ENG-R401, ENG-R402 | `o@gmail.com` stays as typed; `(đây là ví dụ)` keeps the brackets |
+| REG-15 | Brackets became `ư` / `?` | ENG-R104 | `[[` and `]]` stay brackets by default; W244-W245 with the option |
+| REG-16 | QWERTZ `y`/`z` confusion | section 2, `KeyInput` | engine receives characters only; host test with QWERTZ, AZERTY, Dvorak |
+| REG-17 | `ĐL` (abbreviation of `Đà Lạt`) restored to `DDL` | ENG-R840 | B040, B041 |
+| REG-18 | First word after re-focusing a field not restored | ENG-R832, ENG-R1012 | `reset(.focusChanged)` then `verbose` + space -> `verbose ` |
+| REG-19 | English word received two marks (`password`) | ENG-R420 | W221, B008 |
+| REG-20 | `qw` gave `qư`; `hw`, `thw`, `chw` did not give `ư`; users wanted `w` off | ENG-R413, ENG-R103 | W039-W041, W223-W224, W246-W248 |
+| REG-21 | `dda` gave `â` | ENG-R415 | `dda` -> `đa` |
+| REG-22 | Engine not reset when the tap was re-enabled | ENG-R1010, ENG-R1011 | `reset(.eventTapReenabled)` clears token and history |
+| REG-23 | Debug mode wrote keystrokes to a file | ENG-R1220 | static check: no logging or I/O symbols in the core |
+| REG-24 | After deleting an extra tone key the tone could not be re-applied | ENG-R711 | W241 |
+| REG-25 | Teencode `zá` impossible because `z` always meant tone removal | ENG-R411, Tier B `z` | W156-W157 |
+| REG-26 | Misspellings `nghãi`, `nghô` accepted | 3.10, ENG-R420 | B044, B045 |
+| REG-27 | Restore after doubled letters lost a letter (`traffic` -> `trafic`) | L4 | W148, B009 |
+| REG-28 | (Product owner, P0-2) Slang onset `dz` could not be typed: the predecessor only allowed one-letter extra onsets | 3.3 `dz`, ENG-R316 | W249-W252, B053-B054 |
+| REG-29 | (Product owner, P0-2) `hẹo` worked "sometimes": a dictionary without `hẹo` restored it to `heoj` at Space but not at a comma, because only Space triggered restore | ENG-R316, ENG-R910 | W253, B055-B056 |
+| REG-30 | (Product owner, P0-3) English restore fired only on Space; `, . ; : ! ?` and the like left `tẽt`, so the user had to type Space then Backspace | ENG-R910, 9 (boundary table), ENG-R803 | B057-B064 |
+
+### 13.6 Fuzz invariants
+
+Run at least 1,000,000 random events per pull request and 100,000,000 nightly, over the alphabet of ASCII letters (both cases), digits, punctuation, space, Return, Tab, a few non-ASCII letters, Backspace, restore toggle and every reset reason, with token lengths up to 100,000 keys, with and without a macro table of 1,000 random triggers (including punctuation-only triggers).
+
+- **ENG-T30 No crash.** No trap, no precondition failure, no unbounded memory growth beyond the configured history.
+- **ENG-T31 Simulated field.** Applying every action to a simulated text field (passThrough inserts the key or deletes one character for Backspace) yields, after every event, a text whose tail equals the engine's view (history plus active display). The engine never asks to delete more characters than it produced.
+- **ENG-T32 Restore is exact.** For any token, `restoreToggle` produces exactly the raw keys typed since the token started (after Backspace edits), and toggling twice returns the composed display.
+- **ENG-T33 Determinism and replay.** Replaying the same events from `.initial` gives identical outputs; an incremental implementation equals full replay at every step.
+- **ENG-T34 Encoding.** Every inserted string is NFC, contains no combining marks, and `deleteCount == deleteUTF16Count` for every edit.
+- **ENG-T35 Method isolation.** In VNI, no output character is a letter that was not typed, except the Vietnamese letters derived from typed letters; in particular `w` appears only if typed.
+- **ENG-T36 Escape.** For every transform key K and token T where K applies, T + K + K ends with the literal K.
+- **ENG-T37 Viability.** No display in composing mode is non-viable.
+
+### 13.7 Performance test
+
+- **ENG-T40** A benchmark replays the prose corpus (13.4) with the three typists and a fuzz stream, records per-event latency and asserts ENG-R1230 and ENG-R1231.
+
+### 13.8 Worked examples: composition (253 rows)
+
+Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the display after the last key, before any space. Every row was checked against the reference model; the implementation's test suite MUST contain all of them.
+
+| # | Group | Method | Style | Options | Keys typed | Output before boundary | Note |
+|---|---|---|---|---|---|---|---|
+| W001 | Basic Telex | Telex | trad | - | `as` | `á` |  |
+| W002 | Basic Telex | Telex | trad | - | `af` | `à` |  |
+| W003 | Basic Telex | Telex | trad | - | `ar` | `ả` |  |
+| W004 | Basic Telex | Telex | trad | - | `ax` | `ã` |  |
+| W005 | Basic Telex | Telex | trad | - | `aj` | `ạ` |  |
+| W006 | Basic Telex | Telex | trad | - | `aa` | `â` |  |
+| W007 | Basic Telex | Telex | trad | - | `aw` | `ă` |  |
+| W008 | Basic Telex | Telex | trad | - | `ee` | `ê` |  |
+| W009 | Basic Telex | Telex | trad | - | `oo` | `ô` |  |
+| W010 | Basic Telex | Telex | trad | - | `ow` | `ơ` |  |
+| W011 | Basic Telex | Telex | trad | - | `uw` | `ư` |  |
+| W012 | Basic Telex | Telex | trad | - | `dd` | `đ` |  |
+| W013 | Basic Telex | Telex | trad | - | `w` | `ư` | standalone w is a vowel (option on) |
+| W014 | Basic Telex | Telex | trad | - | `vieetj` | `việt` |  |
+| W015 | Basic Telex | Telex | trad | - | `nam` | `nam` |  |
+| W016 | Basic Telex | Telex | trad | - | `tieengs` | `tiếng` |  |
+| W017 | Basic Telex | Telex | trad | - | `dduwowcj` | `được` |  |
+| W018 | Basic Telex | Telex | trad | - | `nguwowif` | `người` |  |
+| W019 | Basic Telex | Telex | trad | - | `khoong` | `không` |  |
+| W020 | Basic Telex | Telex | trad | - | `chaof` | `chào` |  |
+| W021 | Basic Telex | Telex | trad | - | `banj` | `bạn` |  |
+| W022 | Basic Telex | Telex | trad | - | `cuar` | `của` | ua diphthong: tone on u |
+| W023 | Basic Telex | Telex | trad | - | `muaf` | `mùa` |  |
+| W024 | Basic Telex | Telex | trad | - | `muwaf` | `mừa` | ưa: tone on ư (modified letter) |
+| W025 | Basic Telex | Telex | trad | - | `mias` | `mía` | ia diphthong: tone on i |
+| W026 | Basic Telex | Telex | trad | - | `tooi` | `tôi` |  |
+| W027 | Basic Telex | Telex | trad | - | `ddaauf` | `đầu` |  |
+| W028 | Basic Telex | Telex | trad | - | `nhaf` | `nhà` |  |
+| W029 | Basic Telex | Telex | trad | - | `cos` | `có` |  |
+| W030 | Basic Telex | Telex | trad | - | `nhuwng` | `nhưng` |  |
+| W031 | Basic Telex | Telex | trad | - | `trowif` | `trời` |  |
+| W032 | Basic Telex | Telex | trad | - | `nuwowcs` | `nước` |  |
+| W033 | Free-order entry | Telex | trad | - | `tieesng` | `tiếng` | tone before coda |
+| W034 | Free-order entry | Telex | trad | - | `caanf` | `cần` | tone after coda (REG-09) |
+| W035 | Free-order entry | Telex | trad | - | `caafn` | `cần` |  |
+| W036 | Free-order entry | Telex | trad | - | `hopwj` | `hợp` | w and tone after coda (REG-09) |
+| W037 | Free-order entry | Telex | trad | - | `howjp` | `hợp` |  |
+| W038 | Free-order entry | Telex | trad | - | `dangd` | `đang` | đ key after the rhyme |
+| W039 | Free-order entry | Telex | trad | - | `chwa` | `chưa` | standalone w then vowel |
+| W040 | Free-order entry | Telex | trad | - | `hw` | `hư` |  |
+| W041 | Free-order entry | Telex | trad | - | `thw` | `thư` |  |
+| W042 | Free-order entry | Telex | trad | - | `swr` | `sử` |  |
+| W043 | Free-order entry | Telex | trad | - | `wsng` | `ứng` |  |
+| W044 | Free-order entry | Telex | trad | - | `wngs` | `ứng` | tone after coda (REG-09) |
+| W045 | Free-order entry | Telex | trad | - | `twngf` | `từng` |  |
+| W046 | Free-order entry | Telex | trad | - | `ddeens` | `đến` |  |
+| W047 | Free-order entry | Telex | trad | - | `ddeesn` | `đến` |  |
+| W048 | Free-order entry | Telex | trad | - | `muoons` | `muốn` |  |
+| W049 | Free-order entry | Telex | trad | - | `moojt` | `một` | tone before coda |
+| W050 | Free-order entry | Telex | trad | - | `mootj` | `một` | tone after coda (REG-09) |
+| W051 | Free-order entry | Telex | trad | - | `phucws` | `phức` | w and tone after coda (REG-09) |
+| W052 | Free-order entry | Telex | trad | - | `tapj` | `tạp` |  |
+| W053 | Free-order entry | Telex | trad | - | `conf` | `còn` |  |
+| W054 | Free-order entry | Telex | trad | - | `hangf` | `hàng` |  |
+| W055 | Free-order entry | Telex | trad | - | `chinhs` | `chính` |  |
+| W056 | Free-order entry | Telex | trad | - | `xacs` | `xác` |  |
+| W057 | Free-order entry | Telex | trad | - | `tawts` | `tắt` | (REG-09) |
+| W058 | Free-order entry | Telex | trad | - | `trawngs` | `trắng` |  |
+| W059 | Free-order entry | Telex | trad | - | `hawngf` | `hằng` |  |
+| W060 | Free-order entry | Telex | trad | - | `tucj` | `tục` | (REG-09) |
+| W061 | Free-order entry | Telex | trad | - | `nguyeenx` | `nguyễn` |  |
+| W062 | Tone placement | Telex | trad | - | `hoaf` | `hòa` | open oa, traditional style |
+| W063 | Tone placement | Telex | modern | - | `hoaf` | `hoà` | open oa, modern style |
+| W064 | Tone placement | Telex | trad | - | `khoer` | `khỏe` | open oe, traditional |
+| W065 | Tone placement | Telex | modern | - | `khoer` | `khoẻ` | open oe, modern |
+| W066 | Tone placement | Telex | trad | - | `thuyr` | `thủy` | open uy, traditional |
+| W067 | Tone placement | Telex | modern | - | `thuyr` | `thuỷ` | open uy, modern (REG-11) |
+| W068 | Tone placement | Telex | trad | - | `hoafn` | `hoàn` | coda present: same in both styles |
+| W069 | Tone placement | Telex | modern | - | `hoafn` | `hoàn` | coda present: same in both styles |
+| W070 | Tone placement | Telex | trad | - | `toans` | `toán` |  |
+| W071 | Tone placement | Telex | trad | - | `huyts` | `huýt` |  |
+| W072 | Tone placement | Telex | trad | - | `huynhf` | `huỳnh` |  |
+| W073 | Tone placement | Telex | trad | - | `xoays` | `xoáy` | three-letter group: middle letter (REG-11) |
+| W074 | Tone placement | Telex | trad | - | `hoaif` | `hoài` |  |
+| W075 | Tone placement | Telex | modern | - | `ngoaif` | `ngoài` |  |
+| W076 | Tone placement | Telex | trad | - | `khuyur` | `khuỷu` | uyu |
+| W077 | Tone placement | Telex | trad | - | `ngoeoj` | `ngoẹo` | oeo |
+| W078 | Tone placement | Telex | trad | - | `tuooir` | `tuổi` |  |
+| W079 | Tone placement | Telex | trad | - | `ruwowuj` | `rượu` |  |
+| W080 | Tone placement | Telex | trad | - | `hieeur` | `hiểu` |  |
+| W081 | Tone placement | Telex | trad | - | `yeeus` | `yếu` |  |
+| W082 | Tone placement | Telex | trad | - | `khuyeenr` | `khuyển` |  |
+| W083 | Tone placement | Telex | trad | - | `thuowr` | `thưở` | open ươ shown while typing; becomes thuở at the boundary |
+| W084 | Tone placement | Telex | trad | - | `huow` | `hươ` | becomes huơ at the boundary |
+| W085 | Tone placement | Telex | trad | - | `mwaf` | `mừa` |  |
+| W086 | Tone placement | Telex | trad | - | `luwar` | `lửa` |  |
+| W087 | Tone placement | Telex | trad | - | `cuwus` | `cứu` |  |
+| W088 | Tone placement | Telex | trad | - | `guwir` | `gửi` |  |
+| W089 | Tone placement | Telex | trad | - | `soocs` | `sốc` |  |
+| W090 | Tone placement | Telex | trad | - | `sooocs` | `soóc` | oo escape gives the loan rhyme ooc; tone on second o |
+| W091 | Tone placement | Telex | trad | - | `boooong` | `booong` | escape is sticky: no fourth-o circumflex |
+| W092 | Tone placement | Telex | trad | - | `booong` | `boong` | loan rhyme oong |
+| W093 | Tone placement | Telex | trad | - | `huychj` | `huỵch` | rhyme uych |
+| W094 | Tone placement | Telex | trad | - | `tuyps` | `tuýp` |  |
+| W095 | Tone placement | Telex | trad | - | `oaf` | `òa` |  |
+| W096 | Tone placement | Telex | modern | - | `oaf` | `oà` |  |
+| W097 | Tone placement | Telex | trad | - | `uyr` | `ủy` |  |
+| W098 | Tone placement | Telex | modern | - | `uyr` | `uỷ` |  |
+| W099 | Tone placement | Telex | trad | - | `hoeen` | `hoeen` | oê is not a nucleus: second e stays a letter, token goes literal |
+| W100 | Tone placement | Telex | trad | - | `hueej` | `huệ` | uê: tone on ê |
+| W101 | gi and qu onsets | Telex | trad | - | `giaf` | `già` |  |
+| W102 | gi and qu onsets | Telex | trad | - | `gif` | `gì` |  |
+| W103 | gi and qu onsets | Telex | trad | - | `gifn` | `gìn` | gi with no following vowel: i is the nucleus |
+| W104 | gi and qu onsets | Telex | trad | - | `gisup` | `giúp` | tone typed on i, moves to u when u arrives (REG-11) |
+| W105 | gi and qu onsets | Telex | trad | - | `giusp` | `giúp` |  |
+| W106 | gi and qu onsets | Telex | trad | - | `giuwax` | `giữa` |  |
+| W107 | gi and qu onsets | Telex | trad | - | `gieengs` | `giếng` | gi + iêng written giêng |
+| W108 | gi and qu onsets | Telex | trad | - | `gieets` | `giết` |  |
+| W109 | gi and qu onsets | Telex | trad | - | `giuwowngf` | `giường` |  |
+| W110 | gi and qu onsets | Telex | trad | - | `gioir` | `giỏi` |  |
+| W111 | gi and qu onsets | Telex | trad | - | `quar` | `quả` |  |
+| W112 | gi and qu onsets | Telex | trad | - | `quys` | `quý` | u belongs to qu: tone on y in both styles |
+| W113 | gi and qu onsets | Telex | trad | - | `quis` | `quí` |  |
+| W114 | gi and qu onsets | Telex | trad | - | `quyeets` | `quyết` |  |
+| W115 | gi and qu onsets | Telex | trad | - | `quoocs` | `quốc` | qu + ôc |
+| W116 | gi and qu onsets | Telex | trad | - | `quowr` | `quở` | qu + ơ: no horn on the u of qu |
+| W117 | gi and qu onsets | Telex | trad | - | `quawng` | `quăng` |  |
+| W118 | gi and qu onsets | Telex | trad | - | `quaanf` | `quần` |  |
+| W119 | gi and qu onsets | Telex | trad | - | `quyfnh` | `quỳnh` |  |
+| W120 | gi and qu onsets | Telex | trad | - | `quaay` | `quây` | qu + ây |
+| W121 | uo horn handling | Telex | trad | - | `tuowng` | `tương` |  |
+| W122 | uo horn handling | Telex | trad | - | `tuwowng` | `tương` |  |
+| W123 | uo horn handling | Telex | trad | - | `tuwong` | `tương` | horn on u only is completed to ươ |
+| W124 | uo horn handling | Telex | trad | - | `thuowng` | `thương` |  |
+| W125 | uo horn handling | Telex | trad | - | `cuwowis` | `cưới` |  |
+| W126 | uo horn handling | Telex | trad | - | `cuwowiso` | `cuối` | o after ươ switches to uô (REG-12) |
+| W127 | uo horn handling | Telex | trad | - | `cuoois` | `cuối` |  |
+| W128 | uo horn handling | Telex | trad | - | `cuooisw` | `cưới` | w after uô switches to ươ |
+| W129 | uo horn handling | Telex | trad | - | `huouw` | `hươu` | ươu |
+| W130 | uo horn handling | Telex | trad | - | `thuoww` | `thuow` | second w escapes both horns (REG-12) |
+| W131 | Escape by doubling | Telex | trad | - | `ass` | `as` |  |
+| W132 | Escape by doubling | Telex | trad | - | `aaa` | `aa` |  |
+| W133 | Escape by doubling | Telex | trad | - | `aww` | `aw` |  |
+| W134 | Escape by doubling | Telex | trad | - | `ddd` | `dd` |  |
+| W135 | Escape by doubling | Telex | trad | - | `ddi` | `đi` |  |
+| W136 | Escape by doubling | Telex | trad | - | `ddid` | `did` | escape of đ (REG-10) |
+| W137 | Escape by doubling | Telex | trad | - | `ww` | `w` | escape of standalone ư |
+| W138 | Escape by doubling | Telex | trad | - | `www` | `ww` | escape is sticky; boundary may restore www from the tech list |
+| W139 | Escape by doubling | Telex | trad | - | `uww` | `uw` |  |
+| W140 | Escape by doubling | Telex | trad | - | `nhaamff` | `nhâmf` | escape of tone (REG-24) |
+| W141 | Escape by doubling | Telex | trad | - | `nhes` | `nhé` |  |
+| W142 | Escape by doubling | Telex | trad | - | `nhese` | `nhế` | e after é is a circumflex request |
+| W143 | Escape by doubling | Telex | trad | - | `nhesee` | `nhée` | (REG-13) |
+| W144 | Escape by doubling | Telex | trad | - | `chuwaa` | `chưaa` | ưâ impossible: a stays a letter (REG-13) |
+| W145 | Escape by doubling | Telex | trad | - | `cuaa` | `cuaa` | c + uâ impossible: a stays a letter (REG-13) |
+| W146 | Escape by doubling | Telex | trad | - | `khoaa` | `khoaa` | oâ impossible |
+| W147 | Escape by doubling | Telex | trad | - | `boss` | `bos` | boundary restores boss (lexicon) |
+| W148 | Escape by doubling | Telex | trad | - | `traffic` | `trafic` | boundary restores traffic (REG-27) |
+| W149 | Escape by doubling | Telex | trad | - | `wfa` | `ừa` |  |
+| W150 | Escape by doubling | Telex | trad | - | `wfaaa` | `ừaaa` | stretching keeps the tone where it was (REG-13) |
+| W151 | Tone removal | Telex | trad | - | `asz` | `a` | z removes the tone |
+| W152 | Tone removal | Telex | trad | - | `aszz` | `az` | second z has nothing to remove: literal |
+| W153 | Tone removal | Telex | trad | - | `quz` | `quz` | no nucleus: z is literal, no crash |
+| W154 | Tone removal | Telex | trad | - | `QUZ` | `QUZ` | no crash |
+| W155 | Tone removal | Telex | trad | - | `qutz` | `qutz` | no crash |
+| W156 | Tone removal | Telex | trad | - | `za` | `za` | z with no tone to remove is a letter (REG-25) |
+| W157 | Tone removal | Telex | trad | - | `zas` | `zá` | teencode z onset (Tier B) |
+| W158 | Tone removal | Telex | trad | - | `vieejtz` | `viêt` |  |
+| W159 | VNI | VNI | trad | - | `a1` | `á` |  |
+| W160 | VNI | VNI | trad | - | `a2` | `à` |  |
+| W161 | VNI | VNI | trad | - | `a3` | `ả` |  |
+| W162 | VNI | VNI | trad | - | `a4` | `ã` |  |
+| W163 | VNI | VNI | trad | - | `a5` | `ạ` |  |
+| W164 | VNI | VNI | trad | - | `a6` | `â` |  |
+| W165 | VNI | VNI | trad | - | `a8` | `ă` |  |
+| W166 | VNI | VNI | trad | - | `o7` | `ơ` |  |
+| W167 | VNI | VNI | trad | - | `u7` | `ư` |  |
+| W168 | VNI | VNI | trad | - | `d9` | `đ` |  |
+| W169 | VNI | VNI | trad | - | `vie65t` | `việt` |  |
+| W170 | VNI | VNI | trad | - | `vie6t5` | `việt` | tone after coda |
+| W171 | VNI | VNI | trad | - | `tieng61` | `tiếng` | (REG-09) |
+| W172 | VNI | VNI | trad | - | `nhieu62` | `nhiều` | (REG-09) |
+| W173 | VNI | VNI | trad | - | `nua73` | `nửa` | (REG-09) |
+| W174 | VNI | VNI | trad | - | `duoc795` | `được` | 7 on uo horns both; 9 after the rhyme |
+| W175 | VNI | VNI | trad | - | `d9uo7c5` | `được` |  |
+| W176 | VNI | VNI | trad | - | `truong72` | `trường` |  |
+| W177 | VNI | VNI | trad | - | `mot65` | `một` |  |
+| W178 | VNI | VNI | trad | - | `hoa2` | `hòa` |  |
+| W179 | VNI | VNI | modern | - | `hoa2` | `hoà` |  |
+| W180 | VNI | VNI | trad | - | `a11` | `a1` | escape: literal digit |
+| W181 | VNI | VNI | trad | - | `a66` | `a6` |  |
+| W182 | VNI | VNI | trad | - | `d99` | `d9` | escape of đ |
+| W183 | VNI | VNI | trad | - | `qu0` | `qu0` | no nucleus: 0 is literal, no crash |
+| W184 | VNI | VNI | trad | - | `a10` | `a` | 0 removes the tone |
+| W185 | VNI | VNI | trad | - | `2024` | `2024` | no vowel: digits are literal |
+| W186 | VNI | VNI | trad | - | `b2` | `b2` | no vowel: literal digit, token goes literal |
+| W187 | VNI | VNI | trad | - | `u7a4` | `ữa` |  |
+| W188 | VNI | VNI | trad | - | `gio61ng` | `giống` |  |
+| W189 | VNI | VNI | trad | - | `quy1` | `quý` |  |
+| W190 | VNI | VNI | trad | - | `ca6u2` | `cầu` |  |
+| W191 | VNI | VNI | trad | - | `kho6ng` | `không` |  |
+| W192 | VNI | VNI | trad | - | `huo7` | `hươ` |  |
+| W193 | VNI | VNI | trad | - | `Kro6ng` | `Krông` |  |
+| W194 | VNI | VNI | trad | - | `gi1up` | `giúp` | relocation from i to u |
+| W195 | VNI | VNI | trad | - | `ho2an` | `hoàn` |  |
+| W196 | VNI | VNI | trad | - | `ho2a` | `hòa` |  |
+| W197 | VNI | VNI | modern | - | `ho2a` | `hoà` |  |
+| W198 | VNI | VNI | trad | - | `tie61ng` | `tiếng` |  |
+| W199 | VNI | VNI | trad | - | `ddu7o7c5` | `ddu7o7c5` | Telex dd means nothing in VNI: literal |
+| W200 | VNI | VNI | trad | - | `vieejt` | `vieejt` | Telex keys in VNI: never transformed |
+| W201 | Case | Telex | trad | - | `Vieetj` | `Việt` |  |
+| W202 | Case | Telex | trad | - | `VIEETJ` | `VIỆT` |  |
+| W203 | Case | Telex | trad | - | `DDaf` | `Đà` |  |
+| W204 | Case | Telex | trad | - | `Ddaf` | `Đà` |  |
+| W205 | Case | Telex | trad | - | `dDaf` | `đà` | case of đ follows the first d |
+| W206 | Case | Telex | trad | - | `TIEENGS` | `TIẾNG` |  |
+| W207 | Case | Telex | trad | - | `TieengS` | `Tiếng` | case of a tone key is ignored |
+| W208 | Case | Telex | trad | - | `W` | `Ư` |  |
+| W209 | Case | Telex | trad | - | `NGUWOWIF` | `NGƯỜI` |  |
+| W210 | Case | Telex | trad | - | `Aas` | `Ấ` | case of â follows the vowel letter |
+| W211 | Non-viable input (before boundary) | Telex | trad | - | `text` | `tẽt` | shown while typing; boundary restores text |
+| W212 | Non-viable input (before boundary) | Telex | trad | - | `user` | `ủe` | boundary restores user |
+| W213 | Non-viable input (before boundary) | Telex | trad | - | `wifi` | `ừii` | boundary restores wifi |
+| W214 | Non-viable input (before boundary) | Telex | trad | - | `USB` | `ÚB` | boundary restores USB |
+| W215 | Non-viable input (before boundary) | Telex | trad | - | `case` | `cáe` | boundary restores case |
+| W216 | Non-viable input (before boundary) | Telex | trad | - | `mother` | `mother` | th coda impossible: literal from h on (REG-03) |
+| W217 | Non-viable input (before boundary) | Telex | trad | - | `keyboard` | `keyboard` | ey impossible: literal from y on (REG-03) |
+| W218 | Non-viable input (before boundary) | Telex | trad | - | `startup` | `startup` | st onset impossible: literal from t on (REG-03) |
+| W219 | Non-viable input (before boundary) | Telex | trad | - | `facebook` | `facebook` | f onset impossible: literal from the first key |
+| W220 | Non-viable input (before boundary) | Telex | trad | - | `java` | `java` | j onset impossible |
+| W221 | Non-viable input (before boundary) | Telex | trad | - | `password` | `pasword` | literal after the escape, no second mark (REG-19); boundary restores |
+| W222 | Non-viable input (before boundary) | Telex | trad | - | `verbose` | `vẻbose` | b impossible after vẻ: literal; boundary restores (REG-18) |
+| W223 | Non-viable input (before boundary) | Telex | trad | - | `qw` | `qw` | qư impossible: w is a letter (REG-20) |
+| W224 | Non-viable input (before boundary) | Telex | trad | - | `qww` | `qww` |  |
+| W225 | Non-viable input (before boundary) | Telex | trad | - | `year` | `year` | yea impossible before the tone key arrives (REG-03) |
+| W226 | Names and loanwords | Telex | trad | - | `Kroong` | `Krông` | Tier B cluster kr |
+| W227 | Names and loanwords | Telex | trad | - | `DDawsk` | `Đắk` | Tier B coda k |
+| W228 | Names and loanwords | Telex | trad | - | `Lawsk` | `Lắk` |  |
+| W229 | Names and loanwords | Telex | trad | - | `Pawsc` | `Pắc` | p onset |
+| W230 | Names and loanwords | Telex | trad | - | `Thuootj` | `Thuột` | Buôn Ma Thuột |
+| W231 | Names and loanwords | Telex | trad | - | `Buoon` | `Buôn` |  |
+| W232 | Names and loanwords | Telex | trad | - | `pias` | `pía` | bánh pía (REG-08) |
+| W233 | Names and loanwords | Telex | trad | - | `buyts` | `buýt` | labial + medial: Tier B loan (xe buýt) |
+| W234 | Names and loanwords | Telex | trad | - | `quowrn` | `quởn` | Tier B qu + ơn |
+| W235 | Names and loanwords | Telex | trad | - | `huow` | `hươ` | becomes huơ at the boundary |
+| W236 | Backspace inside a token | Telex | trad | - | `vieejt⌫` | `việ` | ⌫ = Backspace |
+| W237 | Backspace inside a token | Telex | trad | - | `vieejt⌫⌫` | `vi` | deleting ệ takes its tone with it |
+| W238 | Backspace inside a token | Telex | trad | - | `hoaf⌫` | `hò` | tone was on o: stays |
+| W239 | Backspace inside a token | Telex | modern | - | `hoaf⌫` | `ho` | tone was on à: removed with it |
+| W240 | Backspace inside a token | Telex | trad | - | `hoafn⌫` | `hòa` | tone relocates after the coda is deleted |
+| W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhầm` | deleting the escape letter restores the tone (REG-24) |
+| W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `á` | deleting the escape letter restores the tone |
+| W243 | Backspace inside a token | Telex | trad | - | `duwowngf⌫⌫⌫` | `dư` | ơ deleted with its horn and tone; ư keeps its horn |
+| W244 | Options | Telex | trad | bracket keys on | `[` | `ơ` | bracket option on |
+| W245 | Options | Telex | trad | bracket keys on | `]` | `ư` | bracket option on |
+| W246 | Options | Telex | trad | standalone w off | `w` | `w` | standalone w off |
+| W247 | Options | Telex | trad | standalone w off | `tw` | `tw` | standalone w off |
+| W248 | Options | Telex | trad | standalone w off | `tuw` | `tư` | w as a modifier still works |
+| W249 | Slang and rare words | Telex | trad | - | `dzoo` | `dzô` | `dz` onset, Tier B (REG-28) |
+| W250 | Slang and rare words | Telex | trad | - | `dzaayj` | `dzậy` | tone on the first letter of `ây` |
+| W251 | Slang and rare words | Telex | trad | - | `Dzui` | `Dzui` | capital `D`, no marks |
+| W252 | Slang and rare words | VNI | trad | - | `dzo6` | `dzô` | `dz` onset in VNI |
+| W253 | Slang and rare words | Telex | trad | - | `heoj` | `hẹo` | absent from common dictionaries, valid Tier A `eo` + nặng (REG-29) |
+
+Rows W249-W253 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
+
+### 13.9 Worked examples: commit decisions (52 rows, plus 13.9.1)
+
+Each row types the keys, then a space. Fixture data for this table only: the English lexicon contains `test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class`; the tech-always list contains `www wifi usb`; the code-only list contains `tar`; every Tier A syllable is attested except `dóe hẻ dổ pót sáy ửa tơn dơn`; the ambiguity table is the proposal in ENG-R821. "Previous token" is the language of the run (8.3).
+
+| # | Keys typed, then Space | Method | Previous token | App context | Committed text | Rule that decided |
+|---|---|---|---|---|---|---|
+| B001 | `text` | Telex | none | general | `text` | L5 invalid: restore |
+| B002 | `user` | Telex | none | general | `user` | L5 invalid: restore |
+| B003 | `wifi` | Telex | none | general | `wifi` | L5 invalid: restore |
+| B004 | `USB` | Telex | none | general | `USB` | L5 invalid: restore |
+| B005 | `case` | Telex | none | general | `case` | L5 invalid: restore |
+| B006 | `data` | Telex | none | general | `data` | L5 invalid: restore |
+| B007 | `verbose` | Telex | none | general | `verbose` | L5 invalid: restore |
+| B008 | `password` | Telex | none | general | `password` | L4 escape, raw is English: restore |
+| B009 | `traffic` | Telex | none | general | `traffic` | L4 escape, raw is English: restore |
+| B010 | `boss` | Telex | none | general | `boss` | L4 escape, raw is English: restore |
+| B011 | `coffee` | Telex | none | general | `coffee` | L4 escape, raw is English: restore |
+| B012 | `less` | Telex | none | general | `less` | L4 escape, raw is English: restore |
+| B013 | `tomorrow` | Telex | none | general | `tomorrow` | L4 escape, raw is English: restore |
+| B014 | `ass` | Telex | none | general | `as` | L4 escape, escaped form is English: keep |
+| B015 | `ddid` | Telex | none | general | `did` | L4 escape, escaped form is English: keep |
+| B016 | `uww` | Telex | none | general | `uw` | L4 escape: keep |
+| B017 | `plans` | Telex | none | general | `plans` | L6 extended only, raw is English: restore |
+| B018 | `grows` | Telex | none | general | `grows` | L6 extended only, raw is English: restore |
+| B019 | `ask` | Telex | none | general | `ask` | L6 extended only, raw is English: restore |
+| B020 | `zoom` | Telex | none | general | `zoom` | L6 extended only, raw is English: restore |
+| B021 | `two` | Telex | none | general | `two` | L6 extended only, raw is English: restore |
+| B022 | `wow` | Telex | none | general | `wow` | L6 extended only, raw is English: restore |
+| B023 | `does` | Telex | none | general | `does` | L8 not attested, raw is English: restore |
+| B024 | `test` | Telex | none | general | `test` | L11 ambiguity row = en: restore |
+| B025 | `test` | Telex | vi | general | `test` | L11 ambiguity row = en: restore |
+| B026 | `tets` | Telex | none | general | `tét` | L7 raw not English: keep |
+| B027 | `this` | Telex | none | general | `thí` | L11 ambiguity row = vi: keep |
+| B028 | `this` | Telex | en | general | `this` | L10 English run: restore |
+| B029 | `car` | Telex | vi | general | `cả` | L11 ambiguity row = vi: keep |
+| B030 | `car` | Telex | en | general | `car` | L10 English run: restore |
+| B031 | `is` | Telex | vi | general | `is` | L11 ambiguity row = en: restore |
+| B032 | `as` | Telex | vi | general | `á` | L11 ambiguity row = vi: keep |
+| B033 | `did` | Telex | vi | general | `đi` | L11 ambiguity row = vi: keep |
+| B034 | `tar` | Telex | vi | general | `tả` | L11 no row, default vi: keep |
+| B035 | `tar` | Telex | vi | code | `tar` | L9 code context, code-only tech word: restore |
+| B036 | `Kroong` | Telex | none | general | `Krông` | L6 extended, raw not English: keep |
+| B037 | `DDawsk` | Telex | none | general | `Đắk` | L6 extended, raw not English: keep |
+| B038 | `Pawsc` | Telex | none | general | `Pắc` | L7 raw not English: keep |
+| B039 | `Thuootj` | Telex | none | general | `Thuột` | L7 raw not English: keep |
+| B040 | `ddc` | Telex | none | general | `đc` | L3 no vowel: keep |
+| B041 | `DDL` | Telex | none | general | `ĐL` | L3 no vowel: keep |
+| B042 | `thuowr` | Telex | none | general | `thuở` | L7 raw not English: keep |
+| B043 | `huow` | Telex | none | general | `huơ` | L7 raw not English: keep |
+| B044 | `nghaxi` | Telex | none | general | `nghaxi` | L0 output equals the keys typed: nothing to decide |
+| B045 | `nghoo` | Telex | none | general | `nghoo` | L0 output equals the keys typed: nothing to decide |
+| B046 | `hok` | Telex | none | general | `hok` | L0 output equals the keys typed: nothing to decide |
+| B047 | `ba6c3` | VNI | none | general | `ba6c3` | L5 invalid: restore |
+| B048 | `vie65t` | VNI | none | general | `việt` | L7 raw not English: keep |
+| B049 | `a1` | VNI | vi | general | `á` | L7 raw not English: keep |
+| B050 | `year` | Telex | none | general | `year` | L0 output equals the keys typed: nothing to decide |
+| B051 | `mother` | Telex | none | general | `mother` | L0 output equals the keys typed: nothing to decide |
+| B052 | `baans` | Telex | none | general | `bấn` | L7 raw not English: keep |
+
+#### 13.9.1 Commit at every boundary key (P0-3)
+
+Same fixtures as 13.9. The decision at commit MUST NOT depend on which boundary key ends the token: every key classed as a boundary in section 9 (whitespace, every ASCII punctuation or symbol, Return, Tab) runs the same commit as Space, and the boundary key reaches the app after the edit (`thenPassThrough`), so the text is in the right order. For Return, the edit is applied before Return is delivered, so a chat app never sends the unrestored text.
+
+| # | Keys typed | Boundary key | Method | Previous token | App context | Text after the boundary | Rule that decided |
+|---|---|---|---|---|---|---|---|
+| B053 | `dzaayj` | Space | Telex | none | general | `dzậy ` | L6 extended, raw not English: keep |
+| B054 | `dzoo` | `,` | Telex | none | general | `dzô,` | L6 extended, raw not English: keep |
+| B055 | `heoj` | Space | Telex | none | general | `hẹo ` | raw not English: keep (ENG-R316) |
+| B056 | `heoj` | `,` | Telex | none | general | `hẹo,` | same as B055 |
+| B057 | `text` | `,` | Telex | none | general | `text,` | L5 invalid: restore |
+| B058 | `text` | `.` | Telex | none | general | `text.` | L5 invalid: restore |
+| B059 | `user` | `;` | Telex | none | general | `user;` | L5 invalid: restore |
+| B060 | `wifi` | `?` | Telex | none | general | `wifi?` | L5 invalid: restore |
+| B061 | `case` | `!` | Telex | none | general | `case!` | L5 invalid: restore |
+| B062 | `USB` | `)` | Telex | none | general | `USB)` | L5 invalid: restore |
+| B063 | `text` | `:` | Telex | none | general | `text:` | L5 invalid: restore |
+| B064 | `text` | Return | Telex | none | general | `text` then a new line | L5 invalid: restore, then Return is delivered |
+
+Rows B053-B064 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
+
+### 13.10 Worked examples: restore toggle
+
+| # | Events | Result |
+|---|---|---|
+| E01 | `vieejt`, toggle | `vieejt` (key swallowed) |
+| E02 | `vieejt`, toggle, toggle | `vieejt`; the second toggle passes through (ENG-R702) |
+| E02b | `vieejt`, toggle, Backspace, toggle | `việ` (Backspace shortens the restored token to `vieej`; the next toggle is not consecutive, so ENG-R701 composes it and marks it user-kept) |
+| E03 | VNI `vie65t`, toggle | `vie65t` |
+| E04 | `test`, space (commits `test `), Backspace, toggle | `tét` |
+| E05 | `ban`, toggle | Escape passes through; text stays `ban` |
+| E06 | `vieejt`, space, toggle | Escape passes through (no active token) |
+| E07 | VNI `d9uo7c5`, toggle | `d9uo7c5` |
+| E08 | `traffic` (shows `trafic`), toggle | `traffic` |
+
+---
+
+## 14. Traceability: audit lessons to requirements
+
+| Lesson | Where handled |
+|---|---|
+| Never crash on any key sequence | ENG-R411, ENG-R640, ENG-T30, REG-01, REG-02 |
+| English restore off by default, needed a download | ENG-R106, section 8, REG-03 |
+| Quick Telex on by default | ENG-R121, REG-04 |
+| VNI restore emitted Telex keys | ENG-R403, ENG-R601, ENG-R705, REG-05 |
+| Legacy encodings broken, rarely used | ENG-R120 |
+| Backspace across punctuation lost context | section 10.1, REG-07 |
+| Restore damaged words, names, missing rhymes | sections 3.7 and 3.12, ENG-R843, REG-08 |
+| Blocking work per keystroke | ENG-R1210, ENG-R1230 (the engine never blocks; tap threading is in the host spec) |
+| Engine not reset after tap re-enable | ENG-R1010, ENG-R1011, REG-22 |
+| Keystrokes logged to a file | ENG-R128, ENG-R1220, REG-23 |
+| Wrong defaults fixed by "toggle setting X" | ENG-R107, ENG-R450 (few options, right defaults) |
+| Per-app special cases never converged | ENG-R851: the engine knows nothing about apps; only `general` / `code` |
+| Layout independence (QWERTZ, AZERTY, Dvorak) | section 2, `KeyInput` carries characters, REG-16 |
+| Settings export, iCloud sync, per-app memory, smart switch | host and settings specs; the engine has no persistent state |
+| Macros (text expansion), restore of the trigger | section 11, ENG-R110, `CommitDecision.macro` |
+| Ethnic-minority place names and loanwords restored | Tier B (3.12), ENG-R331, ENG-R843 |
+
+---
+
+## 15. Open questions for Pa
+
+| # | Question | Proposal in this spec |
+|---|---|---|
+| Q1 | Engine licence: MIT or Apache-2.0? | MPL-2.0 (ENG-R109) |
+| Q2 | Default tone style: traditional (`hòa`, `thủy`) or modern (`hoà`, `thuỷ`, textbook standard since 2018)? | Traditional (ENG-R510) |
+| Q3 | Review of the ambiguity table: confirm the proposed rows in ENG-R821 and review the top 300 generated candidates. | Unreviewed rows default to `vi` |
+| Q4 | Restore hotkey: the product spec ships it unset (D8) and auto restore does the work; the engine author had proposed Escape bound by default (disabled in terminals, IDEs, games, remote desktops). Confirm unset. | Unset (7.2) |
+| Q5 | Learn from the user's toggles automatically (after two identical signals) or only on explicit confirmation? | Automatic after two, visible and removable in settings |
+| Q6 | Resolved on review: macro triggers are matched on raw keys, so literal mode is irrelevant (ENG-R1102). Remaining question: is the trigger character set (printable ASCII, no Vietnamese letters) acceptable? | Yes |
+| Q7 | Attested-syllable source: is building from Vietnamese legal texts (not copyright-protected, VERIFY) plus Pa's additions acceptable, or does Pa prefer hand curation only? | Legal texts plus Pa's review |
+| Q8 | Resolved (Pa, 13/11/2026): keep teencode `z` onset and `k` coda in v1, and add the `dz` onset (P0-2). `f`, `j`, `w` stay out. | Keep, plus `dz` |

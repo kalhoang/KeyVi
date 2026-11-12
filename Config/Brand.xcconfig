@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+// Single source of the product name. The name is TEMPORARY ("Kal Key"); Pa will choose the final
+// name later (spec/00-overview.md section 4). Rename with: scripts/rename-app.sh "<Display Name>" <slug>
+// Never hard-code the display name, slug or bundle ID anywhere else in code or UI strings.
+
+APP_DISPLAY_NAME = Kal Key
+APP_SLUG = kalkey
+APP_BUNDLE_ID_RELEASE = vn.kal.kalkey
+APP_BUNDLE_ID_DEV = vn.kal.kalkey.dev
+APP_SITE_HOST = kalkey.kal.vn
