@@ -114,7 +114,7 @@ public struct MacroTable: Sendable {
         case shadowedByShorterTrigger(trigger: String, shorter: String)
     }
 
-    let entries: [Entry]
+    package let entries: [Entry]
     /// Lowercased trigger -> index into `entries` (ENG-R1105).
     let lookup: [MacroKey: Int]
 
