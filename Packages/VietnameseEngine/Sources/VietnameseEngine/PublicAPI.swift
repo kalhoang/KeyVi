@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Public API of the engine, as proposed in spec/01-engine.md section 12.2.
-// SCAFFOLD STUB: the types and signatures are the contract shared by every track; the bodies are
-// placeholders that the engine track replaces. Do not change a public signature without updating
-// docs/architecture/contracts.md and every caller.
+// The types and signatures are the contract shared by every track. Do not change a public signature
+// without updating docs/architecture/contracts.md and every caller. Composition lives in Composition/
+// and Engine/; macro validation and commit rules (section 8, 11) are still to be implemented.
 
 public enum InputMethod: Sendable, Hashable {
     case telex(TelexOptions)
@@ -149,12 +149,25 @@ public struct EngineOutput: Sendable, Hashable {
 
 public struct EngineState: Sendable, Hashable {
     public static let initial = EngineState()
+
+    /// The token being composed; nil between tokens (after a boundary, a reset, or when Backspace
+    /// removed its last key).
+    package var active: ActiveToken?
+    /// The committed tokens and boundary characters of the run (section 10).
+    package var history = History()
+    /// The previous event was a restore toggle (ENG-R702).
+    package var previousEventWasRestoreToggle = false
+
     init() {}
-    // STUB: the engine track defines the stored representation.
-    public var activeDisplay: String { "" }
-    public var activeRawKeys: String { "" }
-    public var isLiteral: Bool { false }
-    public var historyCount: Int { 0 }
+
+    /// The display of the active token (6.1), empty when there is none.
+    public var activeDisplay: String { active?.display ?? "" }
+    /// The raw keys of the active token exactly as typed (ENG-R602).
+    public var activeRawKeys: String { active?.rawText ?? "" }
+    /// The active token is in literal mode (4.5) or shows its raw keys (ENG-R701).
+    public var isLiteral: Bool { active?.isLiteral ?? false }
+    /// Committed tokens kept in the history (ENG-R1001).
+    public var historyCount: Int { history.tokenCount }
 }
 
 public struct WordSet: Sendable {
@@ -200,15 +213,20 @@ public struct Resources: Sendable {
 public struct Engine: Sendable {
     public let configuration: EngineConfiguration
     public let resources: Resources
+    /// The composition rules derived from `configuration` once (Engine/Reducer.swift).
+    package let rules: ComposerRules
 
     public init(configuration: EngineConfiguration, resources: Resources) {
         self.configuration = configuration
         self.resources = resources
+        self.rules = ComposerRules(configuration)
     }
 
+    /// The pure reducer of section 2 (ENG-R1210). The work is done by `process(_:_:)`.
     public func reduce(_ state: EngineState, _ event: EngineEvent) -> (EngineState, EngineOutput) {
-        // STUB: passes every key through until the engine track implements composition.
-        (state, EngineOutput(action: .passThrough, composingText: ""))
+        var next = state
+        let output = process(&next, event)
+        return (next, output)
     }
 }
 
@@ -221,10 +239,9 @@ public struct Session: Sendable {
         self.state = state
     }
 
+    /// Same result as `engine.reduce(state, event)`, computed in place (no copy of the state).
     public mutating func handle(_ event: EngineEvent) -> EngineOutput {
-        let (next, output) = engine.reduce(state, event)
-        state = next
-        return output
+        engine.process(&state, event)
     }
 }
 
