@@ -251,13 +251,4 @@ public struct SyllableAnalysis: Sendable, Hashable {
     }
 }
 
-public enum Orthography {
-    public static func analyze(_ word: String) -> SyllableAnalysis {
-        // STUB
-        SyllableAnalysis(
-            onset: "", vowelGroup: "", coda: "", tone: .level, validity: .invalid,
-            toneLetterOffset: nil)
-    }
-
-    public static func validity(of word: String) -> Validity { analyze(word).validity }
-}
+// `Orthography` (analyze, validity) lives in Orthography/Orthography.swift.
