@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sparkle feed. One stable URL that never moves (PRD-R73, PLT-R1101): https://{{host}}/appcast.xml
+  This is the initial, empty feed. scripts/publish-release rewrites it on Pa's Mac with signed items;
+  beta builds are items tagged <sparkle:channel>beta</sparkle:channel> in this same feed.
+  The build replaces {{AppName}} and {{host}} when copying it, so the file itself carries no brand literal.
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>{{AppName}}</title>
+    <link>https://{{host}}/appcast.xml</link>
+    <description>Most recent updates</description>
+    <language>en</language>
+  </channel>
+</rss>

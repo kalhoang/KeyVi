@@ -1,0 +1,4 @@
+{
+  "_comment": "Fallback used only when site/data/releases.json is absent. Empty on purpose: the site shows 'no release yet' instead of invented versions. scripts/publish-release writes the real file; the accepted shape is documented in schema/releases.schema.json.",
+  "releases": []
+}
