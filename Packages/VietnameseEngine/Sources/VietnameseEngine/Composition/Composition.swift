@@ -7,8 +7,8 @@
 /// (raw keys, configuration). Appending a key applies one more step of the same fold; every other
 /// change (Backspace, ENG-R710) rebuilds the state by replaying the remaining keys
 /// (`init(replaying:rules:)`). The only shortcut, dropping the last key of a literal tail, gives the
-/// state that replay gives by construction; `CompositionReplayTests` checks the equality on generated
-/// and random sequences (ENG-T33).
+/// state that replay gives by construction; `CompositionPropertyTests` checks the equality on random
+/// event streams after every event (ENG-T33).
 package struct Composition: Sendable, Hashable {
     /// ENG-R641: once a composing token holds this many raw keys, the next key enters literal mode.
     /// This bounds replay and keeps every composing key index below 64 (`KeySet`).

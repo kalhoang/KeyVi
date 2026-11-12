@@ -21,15 +21,6 @@ package struct KeySet: Sendable, Hashable {
 
     @inline(__always)
     package mutating func formUnion(_ other: KeySet) { bits |= other.bits }
-
-    @inline(__always)
-    package func union(_ other: KeySet) -> KeySet {
-        var result = self
-        result.bits |= other.bits
-        return result
-    }
-
-    package var isEmpty: Bool { bits == 0 }
 }
 
 /// One letter of a composing token: its identity, its case, and the keys that made it (6.1).

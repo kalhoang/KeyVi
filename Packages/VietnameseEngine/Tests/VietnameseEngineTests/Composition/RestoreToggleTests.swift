@@ -57,6 +57,24 @@ struct RestoreToggleTests {
         #expect(driver.state.activeDisplay == "viết")
     }
 
+    @Test func tokenRestoredByARuleComposesOnToggle() {
+        // ENG-R701 second branch for a token that a commit rule restored and Backspace re-opened (E3
+        // builds such tokens; ENG-R704): it shows its raw keys, the toggle brings the composed form back
+        // and marks it user-kept.
+        let configuration = EngineConfiguration()
+        let rules = ComposerRules(configuration)
+        let composition = Composition(replaying: Array("test".utf8), rules: rules)
+        var token = ActiveToken(composition: composition, display: "test", userChoice: .none, restoredByRule: true)
+        #expect(token.showsRawKeys && token.isLiteral)
+        #expect(token.composedDisplay(style: .traditional) == "tét")
+        let action = token.toggleRestore(rules: rules)
+        #expect(action == .edit(TextEdit(deleteCount: 3, deleteUTF16Count: 3, insert: "ét"), thenPassThrough: false))
+        #expect(token.display == "tét" && token.userChoice == .kept && !token.showsRawKeys)
+        // A user-kept token whose display differs from its raw keys restores again (first branch).
+        #expect(token.toggleRestore(rules: rules) != nil)
+        #expect(token.display == "test" && token.userChoice == .restored)
+    }
+
     @Test func toggleWithoutTokenPassesThrough() throws {
         var driver = EngineDriver(configuration: EngineConfiguration())
         try driver.send(.restoreToggle)
