@@ -10,16 +10,8 @@ package enum HornNormalisation {
     package static func display(_ letters: [Letter], parse: SyllableParse) -> [Letter] {
         guard parse.vowelCount >= 2 else { return letters }
         var result = letters
-        var offset = parse.vowelStart
-        while offset + 1 < parse.codaStart {
-            let first = result[offset]
-            let second = result[offset + 1]
-            let isPair = (first == .u || first == .uHorn) && (second == .o || second == .oHorn)
-            if isPair, first == .uHorn || second == .oHorn {
-                result[offset] = .uHorn
-                result[offset + 1] = .oHorn
-            }
-            offset += 1
+        for offset in parse.vowelRange {
+            result[offset] = displayLetter(at: offset, in: letters, parse: parse)
         }
         return result
     }
@@ -29,14 +21,42 @@ package enum HornNormalisation {
         display(letters, parse: SyllableParser.parse(letters))
     }
 
+    /// The display form of the letter at `offset` (ENG-R530), computed locally so that composition
+    /// can render and check viability without building a normalised copy (ENG-R1230).
+    ///
+    /// A `u o` pair is a `u` or `ư` followed by an `o` or `ơ` inside the vowel group. A letter cannot be
+    /// the second letter of one pair and the first of another (it would have to be both `o` and `u`),
+    /// so looking at the two neighbours is exact.
+    @inline(__always)
+    package static func displayLetter<C: RandomAccessCollection>(at offset: Int, in letters: C, parse: SyllableParse)
+        -> Letter
+    where C.Element == Letter, C.Index == Int {
+        let letter = letters[letters.startIndex + offset]
+        guard offset >= parse.vowelStart, offset < parse.codaStart else { return letter }
+        if letter == .u, offset + 1 < parse.codaStart, letters[letters.startIndex + offset + 1] == .oHorn {
+            return .uHorn
+        }
+        if letter == .o, offset > parse.vowelStart, letters[letters.startIndex + offset - 1] == .uHorn {
+            return .oHorn
+        }
+        return letter
+    }
+
     /// ENG-R532: at commit an open `ươ` (vowel group exactly `ươ`, no coda, nothing after) is written
     /// `uơ` (`thươ` -> `thuơ`, displayed with the tone on `ơ`). Other letters are returned unchanged.
     package static func committed(_ letters: [Letter], parse: SyllableParse) -> [Letter] {
-        guard parse.vowelCount == 2, !parse.hasCoda, !parse.hasRemainder,
-            letters[parse.vowelStart] == .uHorn, letters[parse.vowelStart + 1] == .oHorn
-        else { return letters }
+        guard isOpenHornPair(letters, parse: parse) else { return letters }
         var result = letters
         result[parse.vowelStart] = .u
         return result
+    }
+
+    /// Whether the display letters have the open `ươ` of ENG-R532: vowel group exactly `ươ`, no coda,
+    /// no remainder.
+    package static func isOpenHornPair<C: RandomAccessCollection>(_ letters: C, parse: SyllableParse) -> Bool
+    where C.Element == Letter, C.Index == Int {
+        guard parse.vowelCount == 2, !parse.hasCoda, !parse.hasRemainder else { return false }
+        let start = letters.startIndex + parse.vowelStart
+        return letters[start] == .uHorn && letters[start + 1] == .oHorn
     }
 }
