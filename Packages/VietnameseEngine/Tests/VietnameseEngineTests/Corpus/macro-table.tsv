@@ -1,0 +1,13 @@
+# Macro fixture table used by macros.tsv (spec/01-engine.md section 11; spec/04-quality-release.md QA-R4).
+# Hand curated. Columns: trigger, expansion, adapt_case (yes or no). TSV escapes: \n newline, \s space.
+trigger	expansion	adapt_case
+vn	Việt Nam	yes
+@@	kal@example.com	yes
+dc	được	yes
+k1	khu 1	yes
+ad.	địa chỉ	yes
+hcm	Hồ Chí Minh	yes
+ttt	Thân thiện	no
+sig	Trân trọng,\nKal	yes
+!!	(quan trọng)	yes
+1st	đầu tiên	yes
