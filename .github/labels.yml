@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Full label set of QA-R45 plus the PR labels of QA-R6 and QA-R15 and the labels that the
+# diagnostics-block action applies automatically (QA-R44). Read by scripts/sync-labels.sh.
+# Format: a list of entries with name, color (6 hex digits, no #) and description (max 100 characters).
+# Dynamic labels `app:<bundle ID>` are created by the diagnostics action on first use and are
+# not listed here (QA-R45).
+
+# Type
+- name: bug
+  color: "d73a4a"
+  description: "Something does not work as specified"
+- name: compat
+  color: "0e8a16"
+  description: "Compatibility with a specific app or macOS version"
+- name: feature
+  color: "a2eeef"
+  description: "Request for a new behaviour or a default change"
+- name: docs
+  color: "0075ca"
+  description: "Documentation, FAQ or UI explanation"
+- name: question
+  color: "d876e3"
+  description: "A question (prefer GitHub Discussions)"
+
+# Area
+- name: "area:engine"
+  color: "5319e7"
+  description: "Typing engine: composition, tone placement, restore"
+- name: "area:injection"
+  color: "5319e7"
+  description: "Delivering edits to apps: strategies, ordering, timing"
+- name: "area:hotkey"
+  color: "5319e7"
+  description: "Toggle and restore hotkeys"
+- name: "area:per-app"
+  color: "5319e7"
+  description: "Per-app rules, memory and compatibility profiles"
+- name: "area:ui"
+  color: "5319e7"
+  description: "Menu, settings, HUD and other interface"
+- name: "area:onboarding"
+  color: "5319e7"
+  description: "First-run flow and practice field"
+- name: "area:update"
+  color: "5319e7"
+  description: "Sparkle updates, channels and appcast"
+- name: "area:permissions"
+  color: "5319e7"
+  description: "Accessibility, Input Monitoring, Secure Input"
+- name: "area:macros"
+  color: "5319e7"
+  description: "Macros: matching, editor, import and export"
+- name: "area:site"
+  color: "5319e7"
+  description: "Website and compatibility matrix page"
+
+# Priority
+- name: P0
+  color: "b60205"
+  description: "Cannot type, text loss across apps, freeze, security, settings loss on update"
+- name: P1
+  color: "d93f0b"
+  description: "A Tier 1 app is broken or a common sequence is wrong"
+- name: P2
+  color: "fbca04"
+  description: "A Tier 2 app or a rare sequence"
+- name: P3
+  color: "c5def5"
+  description: "Cosmetic"
+
+# Status
+- name: needs-info
+  color: "fef2c0"
+  description: "Waiting for the reporter; closes after 21 days without an answer"
+- name: confirmed
+  color: "0e8a16"
+  description: "Reproduced, with a failing test linked"
+- name: fixed-in-beta
+  color: "bfdadc"
+  description: "Fixed in a beta; ask the reporter to confirm"
+- name: fixed-in-release
+  color: "1d76db"
+  description: "Fixed in a stable release; closes as verified or after 14 days"
+- name: verified
+  color: "0e8a16"
+  description: "The reporter or another affected user confirmed the fix"
+- name: closed-unverified
+  color: "cfd3d7"
+  description: "Closed after the grace period with no confirmation"
+- name: wontfix
+  color: "ffffff"
+  description: "Declined, with a reason in the comments"
+- name: known-limitation
+  color: "e4e669"
+  description: "Cannot be fixed on our side yet; documented with a workaround"
+
+# Resolution tags for metrics (QA-R48, QA-R50)
+- name: "resolution:setting-workaround"
+  color: "f9d0c4"
+  description: "Resolved by telling the user to change a setting; opens a defaults follow-up"
+- name: update-regression
+  color: "e99695"
+  description: "Settings or permissions were lost on update, or an update broke typing"
+- name: reopened
+  color: "f9d0c4"
+  description: "The reporter said it is still broken after a fix"
+
+# Pull request labels
+- name: corpus-change
+  color: "006b75"
+  description: "PR changes expected output of engine corpus cases (QA-R6); reason required"
+- name: perf-baseline
+  color: "006b75"
+  description: "PR changes the performance baseline file (QA-R15); reason required"
+- name: security-review
+  color: "b60205"
+  description: "Security-sensitive PR; the checklist in the PR template is mandatory (QA-R59)"
+- name: dependencies
+  color: "0366d6"
+  description: "Dependency or GitHub Actions update (Dependabot)"
+
+# Applied automatically from the diagnostics block (QA-R44)
+- name: "arch:arm64"
+  color: "ededed"
+  description: "Apple silicon (from diagnostics)"
+- name: "arch:x86_64"
+  color: "ededed"
+  description: "Intel (from diagnostics)"
+- name: "method:telex"
+  color: "ededed"
+  description: "Telex typing method (from diagnostics)"
+- name: "method:vni"
+  color: "ededed"
+  description: "VNI typing method (from diagnostics)"
+- name: "macos:15"
+  color: "ededed"
+  description: "macOS 15 Sequoia (from diagnostics)"
+- name: "macos:26"
+  color: "ededed"
+  description: "macOS 26 (from diagnostics)"
+- name: "macos:27"
+  color: "ededed"
+  description: "macOS 27 (from diagnostics)"

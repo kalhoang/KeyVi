@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Blank issues are disabled (QA-R43). Questions go to Discussions; security reports go private.
+# VERIFY: replace OWNER/REPO with the real repository path before the repository becomes public.
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea (GitHub Discussions)
+    url: https://github.com/OWNER/REPO/discussions
+    about: Ask how something works, or discuss an idea, before opening a bug or a feature request.
+  - name: Security vulnerability (private)
+    url: https://github.com/OWNER/REPO/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue. See SECURITY.md for the process and timelines.
