@@ -144,6 +144,20 @@ struct OptionAndEscapeTests {
         #expect(try Typing.display("asS") == "aS")
     }
 
+    @Test func readingsOfDecision0102() throws {
+        // VNI 7 and 8 escape only on their own modifier (ENG-R414).
+        #expect(try Typing.display("a87", Typing.vni) == "ă7")
+        #expect(try Typing.display("o78", Typing.vni) == "ơ8")
+        #expect(try Typing.display("a88", Typing.vni) == "a8")
+        // A bracket key escapes only its own letter.
+        #expect(try Typing.display("[]", Self.brackets) == "ơ]")
+        // A circumflex on the o of ươ removes the horn of a standalone ư too (ENG-R412, ENG-R533).
+        #expect(try Typing.display("woo") == "uô")
+        // The second w completes the stored pair (swallowed), the third escapes (ENG-R413, ENG-R534).
+        #expect(try Typing.display("tuwow") == "tươ")
+        #expect(try Typing.display("tuwoww") == "tuow")
+    }
+
     @Test func doubledTransformEndsWithTheKey() throws {
         // ENG-T36 on hand-picked tokens.
         let telex = [

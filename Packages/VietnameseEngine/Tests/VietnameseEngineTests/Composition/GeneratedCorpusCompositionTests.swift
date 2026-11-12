@@ -36,16 +36,27 @@ struct GeneratedCorpusCompositionTests {
         }
     }
 
-    /// Runs one case; returns a failure description or nil.
+    /// Runs one case; returns a failure description or nil. The outputs are applied to a simulated
+    /// field, which must end up holding exactly the display (ENG-T31, ENG-R611 over the whole corpus).
     private static func failure(of generated: GeneratedCase, engines: Engines) -> String? {
         var session = Session(engine: engines[generated.configuration])
-        for event in generated.events { _ = session.handle(event) }
+        var field = SimulatedTextField()
+        for event in generated.events {
+            do {
+                try field.apply(event, session.handle(event))
+            } catch {
+                return "\(generated.keys): \(error)"
+            }
+        }
         let display = session.state.activeDisplay
         let committed = session.state.active?.composition.committedText(style: generated.style) ?? ""
-        guard display == generated.expectedDisplay, committed == generated.expectedCommitted else {
+        guard display == generated.expectedDisplay, committed == generated.expectedCommitted,
+            field.text.elementsEqual(display)
+        else {
             return
                 "\(generated.method) \(generated.style) \(generated.kind) \(generated.keys): display \(display) "
-                + "(oracle \(generated.expectedDisplay)), committed \(committed) (oracle \(generated.expectedCommitted))"
+                + "(oracle \(generated.expectedDisplay)), committed \(committed) (oracle \(generated.expectedCommitted)), "
+                + "field \(field.string)"
         }
         return nil
     }

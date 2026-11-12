@@ -13,7 +13,7 @@ Licence: MPL-2.0 (see `LICENSE`). Bundled word lists in `VietnameseEngineData` k
 |---|---|
 | `VietnameseEngine` | Core: letters, orthography (syllable tiers, viability, tone placement), composition, commit rules. Standard library only. |
 | `VietnameseEngineData` | Bundled resources and `Resources.bundled()`. |
-| `VietnameseEngineTesting` | Test support: independent oracle, generated corpus, spec fixture loaders. |
+| `VietnameseEngineTesting` | Test support: independent oracle, generated corpus, spec fixture loaders, simulated text field and engine driver, seeded random event streams. |
 | `lexicon-builder` | Builds the bundled resources from pinned inputs. |
 
 ## API sketch
@@ -53,9 +53,15 @@ Never edit these files by hand; change the spec or the generator and regenerate.
 | `Tests/VietnameseEngineTests/Letters` | the letter model and the generated letter table, re-derived from Unicode data |
 | `Tests/VietnameseEngineTests/Orthography` | parser (3.13), validity tiers (3.10 to 3.12), viability (3.14), tone placement (5.1 to 5.4), horn normalisation (5.5), `Orthography.analyze`, and the inventory counts printed for ENG-R350 |
 | `Tests/VietnameseEngineTests/Oracle` | the oracle (ENG-T01) and the generated O1 to O4 corpus and variants (ENG-T02, ENG-T03) |
+| `Tests/VietnameseEngineTests/Composition` | composition through `Engine.reduce`: worked examples W001-W253, the 6.2 edit traces, restore toggles, every generated corpus case against the oracle, rule tests, replay-equivalence properties and a per-event microbenchmark |
 | `Tests/VietnameseEngineTests/Fixtures` | integrity of the extracted spec fixtures and the 13.9 fixture resources |
 | `Tests/VietnameseEngineTests/Corpus` | data files (QA-R4), read through `CorpusFiles` |
 
-The counts and their differences from the spec's reference model are explained in
+The whole generated corpus (237,824 O1 to O4 cases and 31,676 variants) runs in the default `swift test`,
+split into parallel shards. `Scripts/bench-composition.sh` prints per-event latency in a release build.
+
+The composition model and the readings of sections 4 to 7 are recorded in
+`docs/decisions/0102-engine-composition-model.md`. The counts and their differences from the spec's
+reference model are explained in
 `docs/decisions/0100-engine-syllable-counts.md`; the internal representations in
 `docs/decisions/0101-engine-letter-model-and-orthography-structures.md`.
