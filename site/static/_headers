@@ -1,0 +1,13 @@
+# Security and caching headers for hosts that read this file (Cloudflare Pages, Netlify). Other hosts: copy by hand.
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+
+/appcast.xml
+  Cache-Control: public, max-age=300
+  Content-Type: application/rss+xml; charset=utf-8
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

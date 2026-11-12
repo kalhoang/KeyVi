@@ -1,0 +1,15 @@
+{
+  "_comment": "Sample fallback used only when compat/matrix.json is absent. Every row is unverified on purpose; the real matrix comes from the compatibility track (QA-R17).",
+  "entries": [
+    { "name": "Safari", "category": "browser", "tier": 1, "status": "unverified" },
+    { "name": "Google Chrome", "category": "browser", "tier": 1, "status": "unverified" },
+    { "name": "Microsoft Word", "category": "office", "tier": 1, "status": "unverified" },
+    { "name": "Microsoft Excel", "category": "office", "tier": 1, "status": "unverified" },
+    { "name": "Zalo", "category": "chat", "tier": 1, "status": "unverified" },
+    { "name": "Slack", "category": "chat", "tier": 1, "status": "unverified" },
+    { "name": "Visual Studio Code", "category": "editor", "tier": 1, "status": "unverified" },
+    { "name": "Terminal", "category": "terminal", "tier": 1, "status": "unverified" },
+    { "name": "iTerm2", "category": "terminal", "tier": 1, "status": "unverified" },
+    { "name": "Figma", "category": "design", "tier": 1, "status": "unverified" }
+  ]
+}
