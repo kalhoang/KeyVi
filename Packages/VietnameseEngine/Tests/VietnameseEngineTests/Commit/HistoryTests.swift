@@ -150,3 +150,67 @@ struct ResetTests {
         #expect(driver.field.string == "and thí ")
     }
 }
+
+/// Internal behaviour of `History` that the public events cannot reach directly.
+@Suite("History internals")
+struct HistoryInternalsTests {
+    private func committed(_ keys: String) -> CommittedToken {
+        let rules = ComposerRules(EngineConfiguration())
+        let composition = Composition(replaying: Array(keys.utf8), rules: rules)
+        let display = composition.display(style: .traditional)
+        let token = ActiveToken(composition: composition, display: display, userChoice: .none, restoredByRule: false)
+        return CommittedToken(
+            token: token, committedText: display, decision: .kept(.notEnglish), language: .vietnamese,
+            languagesBefore: RecentLanguages())
+    }
+
+    @Test func equalityIgnoresTheHeadOffset() {
+        // The same logical entries reached after many trims (compacted storage) and after a few (head
+        // offset) are equal and hash equal.
+        func history(rounds: Int) -> History {
+            var history = History()
+            for _ in 0..<rounds {
+                history.record(committed("ban"), limit: 2)
+                history.record(boundary: " ", limit: 2)
+            }
+            return history
+        }
+        let many = history(rounds: 100)
+        var few = history(rounds: 3)
+        // Trimming drops up to the oldest surplus token; the space after it stays.
+        #expect(many.entries.count == 5 && many.tokenCount == 2 && many.startsMidSpan)
+        #expect(many == few)
+        #expect(Set([many, few]).count == 1)
+        few.record(boundary: ",", limit: 2)
+        #expect(many != few)
+    }
+
+    @Test func trimmingInsideASpanMarksTheStartUnknown() {
+        // A macro span cannot reach back past entries that were dropped (ENG-R1102).
+        var history = History()
+        history.record(committed("x"), limit: 1)
+        history.record(boundary: ".", limit: 1)
+        history.record(committed("y"), limit: 1)
+        #expect(history.startsMidSpan && history.tokenCount == 1)
+        history.clear()
+        #expect(!history.startsMidSpan && history.isEmpty)
+    }
+
+    @Test func backspaceWithATokenLastInTheHistory() {
+        // Defensive path of ENG-R1003: a history that ends with a token (no boundary after it) re-opens the
+        // token and deletes into it.
+        let engine = Engine(configuration: EngineConfiguration(), resources: .empty)
+        var state = EngineState.initial
+        state.history.record(committed("vieejt"), limit: 16)
+        let (next, output) = engine.reduce(state, .backspace)
+        #expect(next.activeDisplay == "việ" && next.historyCount == 0)
+        #expect(output.action == .passThrough && output.composingText == "việ")
+    }
+
+    @Test func capitalisingTextWithoutLetters() {
+        #expect(MacroCase.capitalisingFirstLetter("...") == "...")
+        #expect(MacroCase.capitalisingFirstLetter("") == "")
+        #expect(MacroCase.capitalisingFirstLetter("ßx") == "SSx")
+        #expect(MacroCase.capitalisingFirstLetter("日本") == "日本")
+    }
+}

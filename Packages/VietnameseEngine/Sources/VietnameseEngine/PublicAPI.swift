@@ -124,12 +124,12 @@ public struct MacroTable: Sendable {
         self.entries = entries
     }
 
-    init(validated entries: [Entry]) {
+    private init(entries: [Entry], lookup: [MacroKey: Int]) {
         self.entries = entries
-        self.lookup = Self.unvalidatedLookup(entries)
+        self.lookup = lookup
     }
 
-    public static let empty = MacroTable(validated: [])
+    public static let empty = MacroTable(entries: [], lookup: [:])
 }
 
 public enum LearningSignal: Sendable, Hashable {

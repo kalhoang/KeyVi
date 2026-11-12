@@ -20,7 +20,7 @@ commit and quality work lands.
 | ENG-T01 oracle | `Sources/VietnameseEngineTesting/Oracle/SyllableOracle.swift` | `Oracle/SyllableOracleTests.swift` |
 | ENG-T02, ENG-T03, ENG-T04 generated corpus | `Sources/VietnameseEngineTesting/Oracle/KeySequenceGenerator.swift`, `GeneratedCorpus.swift` | `Oracle/GeneratedCorpusTests.swift` (prints case counts) |
 | 13.8, 13.9, 13.9.1, 13.10 worked examples | `Scripts/extract-spec-examples.py`, `Tests/VietnameseEngineTests/Corpus/*.tsv`, `Sources/VietnameseEngineTesting/Fixtures/` | `Fixtures/SpecFixtureFileTests.swift` |
-| ENG-R1201, ENG-R1202 (standard library only, no mutable static state) | whole core target | checked by review; the core has no `import` and no `static var` |
+| ENG-R1201, ENG-R1202 (standard library only, no mutable static state), ENG-R128, ENG-R1220 | whole core target | `RegressionTests.reg23` (no `import`, logging or I/O symbols, no `static var` in the core sources) |
 | 4.1, 4.2, ENG-R401 to ENG-R403 (key maps, keypad and shifted digits, method isolation) | `Composition/KeyRoles.swift`, `Engine/TokenKey.swift` | `Composition/TokenLifecycleTests.swift` (`digitsByMethod`), worked examples W159-W200, `CompositionPropertyTests` (ENG-T35) |
 | 4.3, 4.4, ENG-R410 to ENG-R416 (order of interpretation, transforms, viability gating) | `Composition/Composition.swift`, `Composition/Composition+Transforms.swift` | `Composition/WorkedExampleTests.swift`, `Composition/GeneratedCorpusCompositionTests.swift`, `Composition/CompositionRuleTests.swift` |
 | 4.5, ENG-R420, ENG-R421 (literal mode) | `Composition/Composition.swift` (`enterLiteral`), `Composition/Composition+Rendering.swift` | `CompositionRuleTests` (`literalModeFreezesTheDisplay`), W211-W225 |
@@ -34,9 +34,22 @@ commit and quality work lands.
 | 6.3, ENG-R620 (`composingText`) | `Engine/Reducer.swift` | `EngineDriver` checks it after every event |
 | 6.4, ENG-R630, ENG-R631 (delete counts) | `Engine/DisplayEdit.swift` | `SimulatedTextField` (never deletes more than the field holds, UTF-16 span check), `deleteCount == deleteUTF16Count` asserted for every edit |
 | 6.5, ENG-R640, ENG-R641 (growable storage, 64-key cap) | `Composition/Composition.swift` (`composingKeyLimit`), `Composition/ComposedLetter.swift` (`KeySet`) | `LongTokenTests` (33 to 100,000 keys, REG-02) |
-| 7.2, ENG-R701 to ENG-R703, ENG-R705 (restore toggle within the active token) | `Engine/ActiveToken.swift` (`toggleRestore`), `Engine/Reducer.swift` | `RestoreToggleTests` (E01, E02, E02b, E03, E05, E06, E07, E08) |
+| 7.2, ENG-R701 to ENG-R705 (restore toggle) | `Engine/ActiveToken.swift` (`toggleRestore`), `Engine/Reducer.swift` | `RestoreToggleTests` (E01-E08, E02b) |
 | 7.3, ENG-R411 (tone removal) | `Composition/Composition+Transforms.swift` (`removeTone`) | W151-W158, W183, W184, `CompositionRuleTests` (`toneRemovalWithoutVowelNeverCrashes`) |
 | 7.4, ENG-R710 to ENG-R712 (Backspace inside a token) | `Composition/Composition+Rendering.swift` (`backspace`), `Engine/ActiveToken.swift` | W236-W243, `EditTraceTests` (`backspaceActions`) |
 | 9.1, ENG-R901 to ENG-R905 (case, camel case) | `Composition/ComposedLetter.swift` (`CamelCaseTracker`), `Composition/Composition.swift` | W201-W210, `CaseTests` |
-| ENG-R910, ENG-R912, ENG-R1011 as far as E2 goes (commit unchanged, history recording, resets) | `Engine/Reducer.swift`, `Engine/History.swift` | `BoundaryAndResetTests` |
+| 8.1, ENG-R801 to ENG-R803 (rules L0-L11 in order, reason codes, auto restore off, restore as edit then boundary) | `Commit/CommitRules.swift` (`CommitPolicy`, rule-to-`CommitRule` table), `Commit/CommittedTextFacts.swift`, `Engine/Reducer+Commit.swift` | `Commit/CommitDecisionTests.swift` (B001-B064), `Commit/CommitRuleTests.swift` |
+| 8.3, ENG-R822, ENG-R823 (entry order, language of committed tokens, English run) | `Commit/TokenLanguage.swift` (`RecentLanguages`), `Engine/History.swift` (`languagesBefore`) | `EnglishRunTests`, B025-B033 |
+| 8.4, 8.5, ENG-R830 to ENG-R832, ENG-R840 to ENG-R843 | `Commit/CommitRules.swift`, `Engine/Reducer.swift` (reset) | `CommitRuleTests`, `GeneratedCorpusCommitTests` (ENG-R843, ENG-R870) |
+| 8.6, ENG-R850 (app context `code`, L9) | `Commit/CommitRules.swift` | B035, `CommitRuleTests.l4ToL11` |
+| 8.7, ENG-R860, ENG-R861 (user lists, learning signals) | `Commit/CommitRules.swift` (`learningSignal`) | `CommitRuleTests` (`l1UserChoiceWithLearningSignals`, `l2UserLists`), `RestoreToggleTests.e04UndoesTheAutomaticRestore` |
+| ENG-R532 at commit, ENG-R704 (undo of an automatic restore) | `Engine/Reducer+Commit.swift`, `Engine/History.swift` (`reopened`) | `CommitRuleTests.openHornPairIsWrittenUoAtCommit`, E04, `editing.tsv` ED018, ED019 |
+| ENG-R870 (generated corpus committed in Vietnamese context) | - | `Commit/GeneratedCorpusCommitTests.swift` (lists the excluded `en` rows and the L8 restores of the 13.9 unattested list) |
+| ENG-T12 spot list | - | `Commit/SpotListTests.swift` (documents which words need real data) |
+| 9.2, ENG-R910 to ENG-R912 (every boundary key, history recording, Return and Tab) | `Engine/TokenKey.swift`, `Engine/Reducer+Commit.swift` | `CommitDecisionTests.sameDecisionAtEveryBoundaryKey` (13.9.1 over 66 keys), `BoundaryAndResetTests`, REG-29, REG-30 |
+| 10.1, ENG-R1001 to ENG-R1004 (history limit, re-open across boundaries) | `Engine/History.swift`, `Engine/Reducer+Backspace.swift` | `Commit/HistoryTests.swift`, `editing.tsv`, REG-07 |
+| 10.2, ENG-R1010 to ENG-R1012 (resets) | `Engine/Reducer.swift` | `ResetTests` (every `ResetReason`), REG-18, REG-22 |
+| 11, ENG-R1101 to ENG-R1105 (macro validation, span, expansion, history token, hash lookup) | `Macros/MacroTable+Validation.swift`, `Macros/MacroKey.swift`, `Macros/MacroSpan.swift`, `Macros/MacroCase.swift`, `Engine/Reducer+Commit.swift` (`expandMacro`), `Engine/ActiveToken.swift` (macro tokens) | `Commit/MacroTests.swift`, `macros.tsv` + `macro-table.tsv` (`QACorpusTests`), `CommitPropertyTests` (1,000 random triggers), `EngineBenchmarkTests` (10,000 entries) |
+| 13.5 REG-01 to REG-30 | whole engine | `Commit/RegressionTests.swift` (one test per id) |
+| ENG-T31 (simulated field equals the engine view, no over-deletion), ENG-T32, ENG-T33 | `Sources/VietnameseEngineTesting/Simulation/SimulatedTextField.swift` (`EngineDriver`, `viewText`) | every driver-based test, `CommitPropertyTests` |
 | ENG-R1210 (determinism), ENG-R1230 (budget, sanity only) | `Engine/Reducer.swift` | `CompositionPropertyTests` (`determinism`), `EngineBenchmarkTests`, `Scripts/bench-composition.sh` |

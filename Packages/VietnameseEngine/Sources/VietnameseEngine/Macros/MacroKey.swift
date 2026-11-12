@@ -12,8 +12,6 @@ package struct MacroKey: Sendable, Hashable {
     private var word3: UInt64 = 0
     package private(set) var count: UInt8 = 0
 
-    package init() {}
-
     /// The key of `bytes`, folded to lowercase (ASCII only, ENG-R905). Nil when there are more than 32
     /// bytes or a byte is not printable ASCII (`0x21...0x7E`; triggers contain no whitespace).
     package init?(lowercasing bytes: some Sequence<UInt8>) {

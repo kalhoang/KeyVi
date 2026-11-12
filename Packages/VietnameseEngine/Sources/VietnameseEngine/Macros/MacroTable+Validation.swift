@@ -36,15 +36,6 @@ extension MacroTable {
         return lookup
     }
 
-    /// The lookup of a table whose entries are known to be valid (`MacroTable.empty`).
-    static func unvalidatedLookup(_ entries: [Entry]) -> [MacroKey: Int] {
-        var lookup: [MacroKey: Int] = [:]
-        for (index, entry) in entries.enumerated() {
-            if let key = MacroKey(lowercasing: entry.trigger.utf8), lookup[key] == nil { lookup[key] = index }
-        }
-        return lookup
-    }
-
     private static func validatedKey(_ entry: Entry) throws -> MacroKey {
         let trigger = entry.trigger
         guard !trigger.isEmpty else { throw ValidationError.emptyTrigger(trigger) }

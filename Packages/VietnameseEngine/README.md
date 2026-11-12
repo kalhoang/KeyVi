@@ -27,6 +27,7 @@ for key in "vieetj " {
     let output = session.handle(.key(KeyInput(key)))
     // output.action: .passThrough, or .edit(TextEdit(delete, insert), thenPassThrough:)
     // output.composingText: the active token for marked-text hosts
+    // output.decision: at a boundary, the rule of 8.1 that decided (or .macro)
 }
 
 Orthography.validity(of: "Krông")   // .extended (Tier B)
@@ -42,7 +43,9 @@ The full public API is in `Sources/VietnameseEngine/PublicAPI.swift` (spec secti
 | `Sources/VietnameseEngine/Generated/LetterTable.swift` (146 letters, ENG-R301) | `python3 -I Scripts/generate-letter-table.py` | `--check` |
 | `Tests/VietnameseEngineTests/Corpus/{worked-examples,commit-decisions,restore-toggle,commit-fixtures}.tsv` (spec 13.8 to 13.10) | `python3 -I Scripts/extract-spec-examples.py` | `--check` |
 
-Never edit these files by hand; change the spec or the generator and regenerate.
+Never edit these files by hand; change the spec or the generator and regenerate. The hand-curated QA-R4
+corpus files `macros.tsv`, `macro-table.tsv` and `editing.tsv` are edited by hand (one case per line;
+format in their headers and in `VietnameseEngineTesting/Fixtures/QACorpus.swift`).
 
 ## Tests
 
@@ -53,7 +56,8 @@ Never edit these files by hand; change the spec or the generator and regenerate.
 | `Tests/VietnameseEngineTests/Letters` | the letter model and the generated letter table, re-derived from Unicode data |
 | `Tests/VietnameseEngineTests/Orthography` | parser (3.13), validity tiers (3.10 to 3.12), viability (3.14), tone placement (5.1 to 5.4), horn normalisation (5.5), `Orthography.analyze`, and the inventory counts printed for ENG-R350 |
 | `Tests/VietnameseEngineTests/Oracle` | the oracle (ENG-T01) and the generated O1 to O4 corpus and variants (ENG-T02, ENG-T03) |
-| `Tests/VietnameseEngineTests/Composition` | composition through `Engine.reduce`: worked examples W001-W253, the 6.2 edit traces, restore toggles, every generated corpus case against the oracle, rule tests, replay-equivalence properties and a per-event microbenchmark |
+| `Tests/VietnameseEngineTests/Composition` | composition through `Engine.reduce`: worked examples W001-W253, the 6.2 edit traces, restore toggles E01-E08 and E02b, every generated corpus case against the oracle, rule tests, replay-equivalence properties and a per-event microbenchmark |
+| `Tests/VietnameseEngineTests/Commit` | commit decisions B001-B064 (with every boundary key), rules L0-L11, the English run, history and Backspace across boundaries, resets, macros, REG-01 to REG-30, the QA-R4 `macros` and `editing` corpora, the generated corpus committed in Vietnamese context (ENG-R870), the ENG-T12 spot list and commit properties with random macro tables |
 | `Tests/VietnameseEngineTests/Fixtures` | integrity of the extracted spec fixtures and the 13.9 fixture resources |
 | `Tests/VietnameseEngineTests/Corpus` | data files (QA-R4), read through `CorpusFiles` |
 
@@ -61,7 +65,8 @@ The whole generated corpus (237,824 O1 to O4 cases and 31,676 variants) runs in 
 split into parallel shards. `Scripts/bench-composition.sh` prints per-event latency in a release build.
 
 The composition model and the readings of sections 4 to 7 are recorded in
-`docs/decisions/0102-engine-composition-model.md`. The counts and their differences from the spec's
+`docs/decisions/0102-engine-composition-model.md`; commit decisions, boundaries, history and macros
+(sections 8 to 11) in `docs/decisions/0103-engine-commit-history-macros.md`. The counts and their differences from the spec's
 reference model are explained in
 `docs/decisions/0100-engine-syllable-counts.md`; the internal representations in
 `docs/decisions/0101-engine-letter-model-and-orthography-structures.md`.
