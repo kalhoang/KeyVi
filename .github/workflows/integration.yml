@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Platform integration on the self-hosted Mac (QA-R10 to QA-R16, QA-R21, PLT-R821, section 13.2).
+#
+# QA-R13: the self-hosted runner holds granted permissions, so this workflow MUST only run code from
+# main and release tags of this repository. There is deliberately no pull_request trigger, and every
+# job re-checks the ref. Repository settings must also restrict the runner group to this repository
+# and to the main branch and v* tags (docs/decisions/0503-release-pipeline.md, runner setup runbook).
+name: Integration
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      soak:
+        description: Also run the soak test (QA-R16)
+        type: boolean
+        default: false
+  schedule:
+    # Nightly soak and end-to-end benchmarks, 02:17 in Vietnam (UTC+7).
+    - cron: "17 19 * * *"
+
+permissions:
+  contents: read
+
+# One self-hosted Mac: never run two integration jobs at the same time, never cancel a running one.
+concurrency:
+  group: integration-self-hosted
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    name: TestHost integration and CompatHarness scenarios
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: [self-hosted, macOS, ARM64, tcc-granted]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Toolchain
+        run: |
+          {
+            echo "### Toolchain (self-hosted)"
+            echo "- macOS: $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
+            echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Integration tests in the test host (QA-R11)
+        run: scripts/run-integration.sh tests --out .build/integration
+      - name: Compatibility scenarios (PLT-R530, QA-R21)
+        if: hashFiles('compat/scenarios/**') != ''
+        run: scripts/run-integration.sh compat --out .build/integration
+      - name: End-to-end platform benchmarks (PLT-R821, PLT-R822)
+        run: scripts/run-integration.sh bench --out .build/integration
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: integration-results
+          path: .build/integration
+          if-no-files-found: ignore
+          retention-days: 30
+
+  nightly:
+    name: Nightly soak and benchmarks
+    if: >-
+      (github.event_name == 'schedule' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.soak &&
+       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+    runs-on: [self-hosted, macOS, ARM64, tcc-granted]
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Integration tests in the test host (QA-R11)
+        run: scripts/run-integration.sh tests --out .build/integration
+      - name: Soak, 1,000,000 keystrokes (QA-R16, section 13.6)
+        run: scripts/run-integration.sh soak --out .build/integration
+      - name: End-to-end platform benchmarks, self-hosted subset (section 13.4)
+        run: scripts/run-integration.sh bench --out .build/integration
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-integration-results
+          path: .build/integration
+          if-no-files-found: ignore
+          retention-days: 30

@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Dependabot (QA-R24): GitHub Actions pinned by SHA and SwiftPM packages. Dependabot updates the SHA
+# pins and keeps the "# vX.Y.Z" comments in sync. Not covered (bumped by hand, see ADR 0500): the
+# Swift container image digest, XcodeGen and actionlint pins, the Xcode version, and Sparkle when it
+# is declared in project.yml instead of a Package.swift.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+    labels: [dependencies]
+
+  - package-ecosystem: swift
+    directories:
+      - /Packages/VietnameseEngine
+      - /Packages/VietnameseEngineFuzz
+      - /Packages/AppCore
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore
+    labels: [dependencies]

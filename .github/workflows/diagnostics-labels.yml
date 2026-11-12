@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Applies labels from the diagnostics block of new or edited issues (QA-R44): app:<bundle ID>,
+# macos:<major>, arch:arm64|x86_64, method:telex|vni. Block format: docs/decisions/0501.
+#
+# Security: the issue body is untrusted. It reaches the parser only through an environment variable
+# (never interpolated into a shell command), the parser validates every value against strict
+# patterns, and the job can only write labels. Labels are only added, never removed.
+name: Diagnostics labels
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions: {}
+
+jobs:
+  label:
+    name: Label from diagnostics block
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - name: Parse the diagnostics block
+        id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          python3 -I scripts/parse-diagnostics.py > labels.txt
+          echo "count=$(wc -l < labels.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          cat labels.txt
+      - name: Apply labels
+        if: steps.parse.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          while IFS= read -r label; do
+            [[ -n "$label" ]] || continue
+            gh label create "$label" --repo "$GITHUB_REPOSITORY" --color ededed \
+              --description "Set automatically from the diagnostics block" 2>/dev/null || true
+            gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label "$label"
+          done < labels.txt

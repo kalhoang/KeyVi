@@ -1,0 +1,227 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Release pipeline (QA-R30, QA-R31, PLT-R1103), triggered by a v* tag. In order:
+#   1. re-run the full CI suite on the tagged commit and require a green integration run on it
+#   2. build the universal Release app, signed with Developer ID in a temporary keychain
+#   3. verify the signature and that the designated requirement is unchanged against the previous
+#      release (a change makes macOS re-ask permissions: hard failure)
+#   4. notarise and staple the app, create and sign the DMG, notarise and staple the DMG
+#   5. verify again (stapler, spctl), SHA-256 sums, GitHub artifact attestation
+#   6. upload everything to a DRAFT GitHub Release
+# NO Sparkle EdDSA signing here (QA-R32): Pa runs scripts/publish-release on his Mac afterwards.
+#
+# Repository settings this workflow relies on (docs/decisions/0503-release-pipeline.md):
+#   - environment `release`: required reviewer Pa, deployment rule "tags matching v*", secrets
+#     DEVELOPER_ID_P12_BASE64, DEVELOPER_ID_P12_PASSWORD, ASC_API_KEY_P8_BASE64, ASC_API_KEY_ID,
+#     ASC_API_ISSUER_ID (environment-scoped, not repository-wide)
+#   - tag protection / ruleset: only Pa can create v* tags
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Validate tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build: ${{ steps.version.outputs.build }}
+      channel: ${{ steps.version.outputs.channel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: version
+        name: Version, build number and channel
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          build="$(scripts/build-number.sh "$version")"
+          channel=stable
+          [[ "$version" == *-beta.* ]] && channel=beta
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "channel=$channel"
+          } >> "$GITHUB_OUTPUT"
+          echo "Release $version (build $build, $channel)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Tagged commit is on main or a release branch (QA-R25)
+        run: |
+          if ! git branch -r --contains "$GITHUB_SHA" | grep -Eq '^ *origin/(main|release/[0-9]+\.[0-9]+)$'; then
+            echo "::error::$GITHUB_SHA is not on origin/main or origin/release/x.y"
+            exit 1
+          fi
+
+  ci:
+    name: CI suite on the tag
+    needs: tag
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      actions: read
+
+  integration-gate:
+    name: Integration green on this commit
+    needs: tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 170
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require the latest integration.yml run on the commit to be green (QA-R30 step 1)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/require-integration-green.sh "$GITHUB_SHA" --timeout-minutes 150
+
+  build:
+    name: Build, sign, notarise, draft release
+    needs: [tag, ci, integration-gate]
+    runs-on: xcode-27
+    timeout-minutes: 150
+    environment: release
+    permissions:
+      contents: write # draft GitHub Release
+      id-token: write # artifact attestation
+      attestations: write
+    env:
+      VERSION: ${{ needs.tag.outputs.version }}
+      BUILD: ${{ needs.tag.outputs.build }}
+      CHANNEL: ${{ needs.tag.outputs.channel }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/select-xcode
+      - name: Release gates on data (PLT-R506 reviewBy, QA-R19 Tier 1 freshness for stable)
+        run: |
+          python3 -I scripts/check-rules.py --release
+          if [[ "$CHANNEL" == "stable" ]]; then python3 -I scripts/compat-stale-report.py --release; fi
+      - name: Brand values
+        id: brand
+        run: |
+          # shellcheck source=/dev/null
+          source scripts/brand.env
+          echo "slug=$APP_SLUG" >> "$GITHUB_OUTPUT"
+      - name: Temporary signing keychain and API key (QA-R31)
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+        run: scripts/ci-signing.sh setup
+      - name: Build universal Release app (QA-R30 step 2)
+        id: build
+        env:
+          SLUG: ${{ steps.brand.outputs.slug }}
+        run: |
+          out="dist/$SLUG-$VERSION"
+          app="$(scripts/build-release.sh "$VERSION" "$BUILD" --keychain "$SIGNING_KEYCHAIN" --out "$out" | tail -n1)"
+          echo "out=$out" >> "$GITHUB_OUTPUT"
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+      - name: Designated requirement of the previous release
+        id: previous
+        run: |
+          prev="$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          if [[ -n "$prev" ]]; then
+            gh release download "$prev" --repo "$GITHUB_REPOSITORY" --pattern designated-requirement.txt --dir .build/previous
+            echo "file=.build/previous/designated-requirement.txt" >> "$GITHUB_OUTPUT"
+          else
+            echo "No previous release: first release, comparing with the expected requirement only."
+          fi
+      - name: Verify signature and designated requirement (QA-R30 step 3)
+        env:
+          APP: ${{ steps.build.outputs.app }}
+          OUT: ${{ steps.build.outputs.out }}
+          PREVIOUS_DR: ${{ steps.previous.outputs.file }}
+        run: |
+          args=(--app "$APP" --pre-notarization --write-dr "$OUT/designated-requirement.txt")
+          [[ -n "$PREVIOUS_DR" ]] && args+=(--previous-dr "$PREVIOUS_DR")
+          scripts/verify-release.sh "${args[@]}"
+      - name: Notarise and staple the app (QA-R30 steps 5 and 6)
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          APP: ${{ steps.build.outputs.app }}
+          OUT: ${{ steps.build.outputs.out }}
+        run: scripts/notarize.sh "$APP" --log-dir "$OUT"
+      - name: Create and sign the DMG (QA-R30 step 4)
+        id: dmg
+        env:
+          APP: ${{ steps.build.outputs.app }}
+          OUT: ${{ steps.build.outputs.out }}
+          SLUG: ${{ steps.brand.outputs.slug }}
+        run: |
+          dmg="$(scripts/make-dmg.sh "$APP" --keychain "$SIGNING_KEYCHAIN" --out "$OUT/$SLUG-$VERSION.dmg" | tail -n1)"
+          echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
+      - name: Notarise and staple the DMG
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          DMG: ${{ steps.dmg.outputs.dmg }}
+          OUT: ${{ steps.build.outputs.out }}
+        run: scripts/notarize.sh "$DMG" --log-dir "$OUT"
+      - name: Update archive for Sparkle (signed later on Pa's Mac, QA-R32)
+        env:
+          APP: ${{ steps.build.outputs.app }}
+          OUT: ${{ steps.build.outputs.out }}
+          SLUG: ${{ steps.brand.outputs.slug }}
+        run: ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/$SLUG-$VERSION.zip"
+      - name: Full verification (stapler, Gatekeeper, URL hosts)
+        env:
+          APP: ${{ steps.build.outputs.app }}
+          DMG: ${{ steps.dmg.outputs.dmg }}
+          PREVIOUS_DR: ${{ steps.previous.outputs.file }}
+        run: |
+          args=(--app "$APP" --dmg "$DMG")
+          [[ -n "$PREVIOUS_DR" ]] && args+=(--previous-dr "$PREVIOUS_DR")
+          scripts/verify-release.sh "${args[@]}"
+      - name: SHA-256 checksums (QA-R30 step 7)
+        env:
+          OUT: ${{ steps.build.outputs.out }}
+          SLUG: ${{ steps.brand.outputs.slug }}
+        run: |
+          cd "$OUT"
+          shasum -a 256 "$SLUG-$VERSION.dmg" "$SLUG-$VERSION.zip" > SHA256SUMS
+          cat SHA256SUMS >> "$GITHUB_STEP_SUMMARY"
+      - name: Build provenance attestation (QA-R30 step 7)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            ${{ steps.build.outputs.out }}/${{ steps.brand.outputs.slug }}-${{ needs.tag.outputs.version }}.dmg
+            ${{ steps.build.outputs.out }}/${{ steps.brand.outputs.slug }}-${{ needs.tag.outputs.version }}.zip
+      - name: Draft GitHub Release (QA-R30 step 8)
+        env:
+          OUT: ${{ steps.build.outputs.out }}
+          SLUG: ${{ steps.brand.outputs.slug }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          notes="$OUT/release-notes.md"
+          python3 -I scripts/lib/publish_helpers.py changelog-notes --file CHANGELOG.md --version "$VERSION" > "$notes"
+          {
+            echo ""
+            echo "Build $BUILD. Draft created by release.yml; publish with scripts/publish-release on the maintainer's Mac (EdDSA signing, appcast, site, Homebrew)."
+          } >> "$notes"
+          flags=(--draft --verify-tag --title "$VERSION" --notes-file "$notes")
+          [[ "$CHANNEL" == "beta" ]] && flags+=(--prerelease)
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" "${flags[@]}" \
+            "$OUT/$SLUG-$VERSION.dmg" "$OUT/$SLUG-$VERSION.zip" "$OUT/SHA256SUMS" \
+            "$OUT/designated-requirement.txt" "$OUT/build-info.json" \
+            "$OUT"/notarization-*.json
+      - name: Remove signing material
+        if: always()
+        run: scripts/ci-signing.sh cleanup

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# actionlint configuration: runner labels that actionlint does not know yet.
+#   xcode-27     GitHub-hosted Xcode 27 image (public preview label, verified 2026-11-13, ADR 0500)
+#   tcc-granted  label of the self-hosted integration Mac with permissions granted (QA-R12)
+self-hosted-runner:
+  labels:
+    - xcode-27
+    - tcc-granted

@@ -1,0 +1,170 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Continuous integration (QA-R22, QA-R2, QA-R5, QA-R8 per PR, QA-R14, QA-R24, PLT-R820).
+# Runner labels, Xcode and Swift pins were verified on 2026-11-13: docs/decisions/0500.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # release.yml re-runs the full suite on the tagged commit (QA-R30 step 1).
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  ENGINE: Packages/VietnameseEngine
+  APPCORE: Packages/AppCore
+
+jobs:
+  engine-linux:
+    name: Engine on Linux (tests, corpus, property, 60 s fuzz)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      # Official Swift toolchain image, pinned by digest (swift:6.4.2-noble). Same Swift as Xcode 27.2.
+      image: swift:6.4.2-noble@sha256:23d9b28ad97fb1cf1999edc3a0cb265ee915ed42299a9344e7173d5a6d2b05f4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install python3 for the repository scripts
+        run: command -v python3 >/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends python3)
+      - name: Build engine
+        run: swift build --package-path "$ENGINE"
+      - name: Engine tests, corpus and property tests (QA-R5, QA-R8)
+        run: swift test --package-path "$ENGINE" --parallel
+      - name: Coverage-guided fuzzing, 60 s per target (QA-R8)
+        run: scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out
+      - name: Upload fuzz findings
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-findings-pr
+          path: .build/fuzz-out
+          if-no-files-found: ignore
+          retention-days: 14
+
+  scripts:
+    name: Scripts and workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ACTIONLINT_VERSION: "1.7.12"
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck (preinstalled on the Ubuntu image)
+        run: |
+          shellcheck --version | head -n2
+          find scripts -type f \( -name '*.sh' -o -name 'publish-release' \) -print0 \
+            | xargs -0 shellcheck -x -P scripts:scripts/lib
+      - name: actionlint (pinned download, SHA-256 verified)
+        run: |
+          curl -fsSL -o /tmp/actionlint.tgz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tgz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tgz -C /tmp actionlint
+          /tmp/actionlint -color -config-file scripts/actionlint.yaml
+      - name: Script self-tests
+        run: scripts/tests/run.sh --no-macos
+      - name: SPDX headers (CLR-R11)
+        run: scripts/check-spdx.sh
+
+  macos-tests:
+    name: macOS lint, tests and coverage
+    # Xcode 27 image (macOS 27, preview label as of 2026-11-13); fallback documented in ADR 0500.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read # coverage baseline from the latest green main run
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/select-xcode
+      - name: Lint (swift-format, bundle IDs, log interpolation, rules, forward delete, SPDX)
+        run: scripts/lint.sh --skip shellcheck
+      - name: Coverage baseline from main (QA-R2, drop of more than 1 point fails)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          if [[ -n "$run_id" ]]; then
+            gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name coverage-summary --dir .build/coverage-baseline
+          fi
+      - name: Engine tests with coverage (at least 95 %, QA-R2)
+        run: |
+          scripts/coverage.sh --package "$ENGINE" --min 95 \
+            --exclude '^Sources/(lexicon-builder|engine-benchmark|VietnameseEngineTesting)/' \
+            --baseline .build/coverage-baseline/engine.json --summary-out .build/coverage/engine.json
+      - name: AppCore tests with coverage (at least 80 %, QA-R2)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: |
+          scripts/coverage.sh --package "$APPCORE" --min 80 \
+            --exclude '^Sources/(CompatHarness|TestSupport)/' \
+            --baseline .build/coverage-baseline/appcore.json --summary-out .build/coverage/appcore.json
+      - name: Bundled data is reproducible (ENG-R810)
+        run: swift run --package-path "$ENGINE" lexicon-builder check
+      - name: Engine benchmark gate (ENG-R1230, ENG-R1233, QA-R14)
+        run: scripts/bench-compare.sh --output .build/bench/median.json
+      - name: Upload coverage and benchmark results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-summary
+          path: .build/coverage/
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: engine-benchmark
+          path: .build/bench/
+          if-no-files-found: ignore
+          retention-days: 90
+
+  macos-app:
+    name: macOS universal Debug build (unsigned)
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check for the app project
+        id: project
+        run: |
+          if [[ -f project.yml ]]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - uses: ./.github/actions/select-xcode
+        if: steps.project.outputs.present == 'true'
+      - name: Install pinned XcodeGen
+        if: steps.project.outputs.present == 'true'
+        run: scripts/install-xcodegen.sh
+      - name: Generate the Xcode project
+        if: steps.project.outputs.present == 'true'
+        run: xcodegen generate
+      - name: Build universal Debug, unsigned (PLT-R105)
+        if: steps.project.outputs.present == 'true'
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -destination 'generic/platform=macOS' -derivedDataPath .build/DerivedData \
+            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' build
+      - name: URL host allowlist on the built app (QA-R60)
+        if: steps.project.outputs.present == 'true'
+        run: |
+          app="$(find .build/DerivedData/Build/Products/Debug -maxdepth 1 -name '*.app' -type d | head -n1)"
+          test -n "$app"
+          scripts/check-url-hosts.sh --list "$app"
