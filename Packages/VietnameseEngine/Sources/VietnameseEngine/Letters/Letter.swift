@@ -11,7 +11,7 @@ package enum LetterModifier: UInt8, Sendable, Hashable, CaseIterable {
 /// Case and tone are not part of the identity: composition keeps them next to the letter and the
 /// letter table (ENG-R301) turns (letter, tone, case) into the emitted scalar. The code is a dense
 /// index so that per-key tables (viability automaton, rhyme keys) are flat arrays (ENG-R1230).
-package struct Letter: Hashable, Sendable, Comparable, CustomStringConvertible {
+package struct Letter: Hashable, Sendable, CustomStringConvertible {
     package let code: UInt8
 
     /// Number of distinct letters; codes are `0..<count`.
@@ -22,8 +22,6 @@ package struct Letter: Hashable, Sendable, Comparable, CustomStringConvertible {
         precondition(Int(code) < Letter.count, "letter code out of range")
         self.code = code
     }
-
-    package static func < (lhs: Letter, rhs: Letter) -> Bool { lhs.code < rhs.code }
 
     // Codes follow the Vietnamese alphabet (a ă â b c d đ e ê ... u ư v x y) with the four letters
     // that Vietnamese spelling does not use (f j w z) at their ASCII positions.

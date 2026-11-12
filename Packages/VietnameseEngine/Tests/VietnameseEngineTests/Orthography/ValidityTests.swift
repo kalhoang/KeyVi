@@ -60,6 +60,7 @@ struct ValidityTests {
         #expect(Orthography.validity(of: "d\u{0323}") == .invalid)  // a tone on a consonant
         #expect(Orthography.validity(of: "a\u{0301}\u{0300}") == .invalid)  // two tones on one letter
         #expect(Orthography.validity(of: "a\u{0306}\u{0302}") == .invalid)  // two modifiers
+        #expect(Orthography.validity(of: "c\u{0327}a") == .invalid)  // a mark that is not Vietnamese
     }
 
     @Test func everyToneOfEveryInventorySyllable() {

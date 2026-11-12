@@ -61,6 +61,7 @@ struct SyllableParserTests {
         #expect(Letter.spelling(word[parse.vowelRange]) == example.vowelGroup)
         #expect(Letter.spelling(word[parse.codaStart..<parse.remainderStart]) == example.coda)
         #expect(Letter.spelling(word[parse.remainderStart...]) == example.remainder)
+        #expect(Letter.spelling(word[parse.rhymeRange]) == example.vowelGroup + example.coda)
         #expect(parse.isWellFormed == (!example.vowelGroup.isEmpty && example.remainder.isEmpty))
     }
 

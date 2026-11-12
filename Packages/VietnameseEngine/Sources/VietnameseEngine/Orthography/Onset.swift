@@ -21,11 +21,6 @@ package enum Onset: UInt8, CaseIterable, Sendable, Hashable, CustomStringConvert
         }
     }
 
-    /// The onsets that start Tier A syllables (28 including no onset).
-    package static let standardOnsets: [Onset] = allCases.filter { $0.tier == .standard }
-    /// The onsets that start Tier B syllables, Tier A ones included.
-    package static let extendedOnsets: [Onset] = allCases.filter { $0.tier != nil }
-
     /// Lowercase spelling, indexed by raw value (same order as the cases above).
     private static let spellings: [String] = [
         "",
@@ -40,11 +35,6 @@ package enum Onset: UInt8, CaseIterable, Sendable, Hashable, CustomStringConvert
     package var description: String { spelling }
 
     package var letters: [Letter] { Letter.letters(spelling)! }
-
-    /// The onset whose spelling is exactly `letters`, if any.
-    package static func spelled(_ letters: some Collection<Letter>) -> Onset? {
-        bySpelling[Array(letters)]
-    }
 
     private static let bySpelling: [[Letter]: Onset] = {
         var table: [[Letter]: Onset] = [:]

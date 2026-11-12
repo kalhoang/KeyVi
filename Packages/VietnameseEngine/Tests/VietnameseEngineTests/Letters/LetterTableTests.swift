@@ -143,6 +143,16 @@ struct LetterTests {
         #expect(Letter.all.allSatisfy { $0.viabilityMatches($0) })
     }
 
+    @Test func spellingsAndDescriptions() {
+        #expect(Letter.letters("nghiêng").map { Letter.spelling($0) } == "nghiêng")
+        #expect(Letter.letters("á") == nil)  // tones are not letters
+        #expect(Letter.letters("A") == nil)  // spellings are lowercase
+        #expect(Letter.letters("a1") == nil)
+        #expect("\(Letter.uHorn)" == "ư")
+        #expect("\(Onset.ngh)" == "ngh" && Onset.dStrokeR.spelling == "đr" && Onset.none.letters.isEmpty)
+        #expect(SyllableTables.rhymes.first.map { "\($0)" } == "a")
+    }
+
     @Test func modifiedVowels() {
         #expect(String(Letter.all.filter(\.isModifiedVowel).map(\.character)) == "ăâêôơư")
         #expect(!Letter.dStroke.isModifiedVowel)
