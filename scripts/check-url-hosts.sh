@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: LicenseRef-App-Pending
+#
+# QA-R60 / PLT-R906: the shipped binary may contain URL hosts only from an allowlist (site and
+# appcast host, GitHub, the mail link). Any other host means a network endpoint was added without a
+# decision record and an update to the privacy page.
+#
+# Scans every Mach-O file, property list and strings file inside an .app bundle (or a single file)
+# for scheme://host and mailto:user@host references. Hosts that are XML namespace or DTD identifiers
+# (never contacted) are allowed separately in scripts/url-hosts.allow.
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/check-url-hosts.sh [--allow FILE] [--list] PATH...
+
+PATH is an .app bundle, a binary or a directory. Fails when a URL host outside the allowlist
+appears (QA-R60). The site host from scripts/brand.env is always allowed.
+
+Options:
+  --allow FILE  allowlist (default scripts/url-hosts.allow): one host or *.suffix per line
+  --list        print every host found with its status, then apply the gate
+  -h, --help    show this help
+Exit status: 0 clean, 1 hosts outside the allowlist, 2 usage error.
+EOF
+}
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+load_brand
+
+allow_file="$REPO_ROOT/scripts/url-hosts.allow"
+list=0
+paths=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help) usage; exit 0 ;;
+    --allow) allow_file="${2:?--allow needs a value}"; shift 2 ;;
+    --list) list=1; shift ;;
+    -*) usage >&2; exit 2 ;;
+    *) paths+=("$1"); shift ;;
+  esac
+done
+[[ ${#paths[@]} -gt 0 ]] || { usage >&2; exit 2; }
+require_cmd strings file
+
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
+candidates="$workdir/files"
+: >"$candidates"
+for p in "${paths[@]}"; do
+  [[ -e "$p" ]] || die "not found: $p"
+  if [[ -d "$p" ]]; then
+    find "$p" -type f \( -perm -u+x -o -name '*.plist' -o -name '*.strings' -o -name '*.dylib' \
+      -o -name '*.json' -o -name '*.xcstrings' -o -name '*.loctable' \) -print >>"$candidates"
+  else
+    printf '%s\n' "$p" >>"$candidates"
+  fi
+done
+
+hosts="$workdir/hosts"
+: >"$hosts"
+dump_text() {
+  local f="$1" kind
+  kind="$(file -b "$f" 2>/dev/null || true)"
+  case "$kind" in
+    *Mach-O*) strings -a "$f" ;;
+    *"Apple binary property list"*) plutil -convert xml1 -o - "$f" 2>/dev/null || strings -a "$f" ;;
+    *text* | *XML* | *JSON*) cat "$f" ;;
+    *) return 0 ;;
+  esac
+}
+
+while IFS= read -r f; do
+  dump_text "$f" \
+    | LC_ALL=C grep -Eo '([A-Za-z][A-Za-z0-9+.-]*://[A-Za-z0-9.-]+|mailto:[^@[:space:]"]+@[A-Za-z0-9.-]+)' \
+    | sed -E 's#^mailto:[^@]+@#mailto:#; s#^[A-Za-z][A-Za-z0-9+.-]*://##' \
+    | LC_ALL=C tr '[:upper:]' '[:lower:]' >>"$hosts" || true
+done <"$candidates"
+
+py - "$allow_file" "$APP_SITE_HOST" "$list" "$hosts" <<'PY'
+import sys
+
+allow_file, site_host, list_flag, hosts_file = sys.argv[1:]
+allowed = {site_host.lower()}
+suffixes = []
+with open(allow_file, encoding="utf-8") as handle:
+    for raw in handle:
+        line = raw.split("#", 1)[0].strip().lower()
+        if not line:
+            continue
+        if line.startswith("*."):
+            suffixes.append(line[1:])
+        else:
+            allowed.add(line)
+
+found = {}
+with open(hosts_file, encoding="utf-8", errors="replace") as handle:
+    for raw in handle:
+        entry = raw.strip().rstrip(".")
+        if not entry:
+            continue
+        mail = entry.startswith("mailto:")
+        host = entry.removeprefix("mailto:")
+        # Ignore format strings and placeholders such as %@ or localhost-only test schemes.
+        if not host or "." not in host and host != "localhost":
+            continue
+        found.setdefault(host, mail)
+
+bad = []
+for host in sorted(found):
+    ok = host in allowed or any(host.endswith(suffix) for suffix in suffixes) or host == "localhost"
+    if list_flag == "1":
+        print(f"{'ok ' if ok else 'BAD'} {'mailto:' if found[host] else ''}{host}")
+    if not ok:
+        bad.append(host)
+
+for host in bad:
+    print(f"check-url-hosts: host outside the allowlist: {host} (QA-R60: needs a decision record "
+          f"and a /rieng-tu update)", file=sys.stderr)
+print(f"check-url-hosts: {len(found)} host(s), {len(bad)} outside the allowlist", file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY

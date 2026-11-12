@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Selects the pinned Xcode with xcode-select and records the toolchain in the job summary (QA-R23).
+# The pin lives in one place: the default of the `xcode` input below (docs/decisions/0500).
+name: Select pinned Xcode
+description: Switch to the pinned Xcode and record Xcode, Swift and macOS versions
+inputs:
+  xcode:
+    description: Xcode version installed on the runner image as /Applications/Xcode_<version>.app
+    required: false
+    default: "27.2"
+outputs:
+  developer-dir:
+    description: Selected developer directory
+    value: ${{ steps.select.outputs.developer-dir }}
+runs:
+  using: composite
+  steps:
+    - id: select
+      shell: bash
+      env:
+        XCODE_VERSION: ${{ inputs.xcode }}
+      run: |
+        set -euo pipefail
+        app="/Applications/Xcode_${XCODE_VERSION}.app"
+        if [[ ! -d "$app" ]]; then
+          echo "::error::Xcode ${XCODE_VERSION} is not installed on this runner image (expected $app)"
+          ls -d /Applications/Xcode_*.app || true
+          exit 1
+        fi
+        sudo xcode-select --switch "$app/Contents/Developer"
+        echo "DEVELOPER_DIR=$app/Contents/Developer" >> "$GITHUB_ENV"
+        echo "developer-dir=$app/Contents/Developer" >> "$GITHUB_OUTPUT"
+        {
+          echo "### Toolchain"
+          echo ""
+          echo "- Runner image: ${ImageOS:-unknown} ${ImageVersion:-}"
+          echo "- macOS: $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
+          echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+          echo "- Swift: $(swift --version 2>&1 | head -n1)"
+        } >> "$GITHUB_STEP_SUMMARY"

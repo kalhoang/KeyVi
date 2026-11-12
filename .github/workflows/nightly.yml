@@ -1,0 +1,150 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Nightly checks (QA-R22): 30-minute fuzzing per input method with sanitizers and 100,000,000-event
+# property run (QA-R8, ENG section 13.6), sanitizer test runs on macOS, dependency audit (QA-R24),
+# stale compatibility rows (QA-R19) and rule reviewBy dates (PLT-R506).
+name: Nightly
+
+on:
+  schedule:
+    - cron: "23 18 * * *" # 01:23 in Vietnam (UTC+7)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+env:
+  ENGINE: Packages/VietnameseEngine
+  APPCORE: Packages/AppCore
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.product }} (30 min, ASan + UBSan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    container:
+      image: swift:6.4.2-noble@sha256:23d9b28ad97fb1cf1999edc3a0cb265ee915ed42299a9344e7173d5a6d2b05f4
+    strategy:
+      fail-fast: false
+      matrix:
+        # One fuzz target per input method (contract: docs/decisions/0502).
+        product: [fuzz-telex, fuzz-vni]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install python3 for the repository scripts
+        run: command -v python3 >/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends python3)
+      - name: Fuzz for 30 minutes
+        env:
+          PRODUCT: ${{ matrix.product }}
+        run: |
+          scripts/fuzz.sh --seconds 1800 --sanitizers fuzzer,address,undefined \
+            --product "$PRODUCT" --out ".build/fuzz-out"
+      - name: Upload findings
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-findings-${{ matrix.product }}
+          path: .build/fuzz-out
+          if-no-files-found: ignore
+          retention-days: 30
+
+  report-findings:
+    name: Open issues for fuzz findings
+    needs: fuzz
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: fuzz-findings-*
+          path: findings
+      - name: Report minimised inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          for list in findings/*/findings.txt; do
+            dir="$(dirname "$list")"
+            # Paths in findings.txt are absolute inside the fuzz container; rebase them here.
+            while IFS=$'\t' read -r product file; do
+              printf '%s\t%s\n' "$product" "$dir/$product/$(basename "$file")"
+            done < "$list" > "$list.local"
+            scripts/fuzz-report-issue.sh "$list.local"
+          done
+
+  property:
+    name: Property run, 100,000,000 events (ENG section 13.6)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    container:
+      image: swift:6.4.2-noble@sha256:23d9b28ad97fb1cf1999edc3a0cb265ee915ed42299a9344e7173d5a6d2b05f4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Property tests (release build)
+        env:
+          ENGINE_FUZZ_EVENTS: "100000000"
+          # Test-name filter for the property and fuzz-invariant suites (contract: ADR 0502).
+          ENGINE_PROPERTY_FILTER: "Property|Fuzz|Invariant"
+        run: swift test --package-path "$ENGINE" -c release --filter "$ENGINE_PROPERTY_FILTER"
+
+  sanitizers-macos:
+    name: macOS tests with sanitizers
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/select-xcode
+      - name: Engine tests with AddressSanitizer and UBSan
+        run: swift test --package-path "$ENGINE" --sanitize=address --sanitize=undefined
+      - name: AppCore tests with ThreadSanitizer (hot-path concurrency, PLT-R203)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: swift test --package-path "$APPCORE" --sanitize=thread
+      - name: AppCore tests with AddressSanitizer
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: swift test --package-path "$APPCORE" --sanitize=address
+
+  dependency-audit:
+    name: Dependency audit (QA-R24)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pins and GitHub advisories
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/dependency-audit.py
+
+  compat-freshness:
+    name: Stale compatibility rows and rule review dates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Stale compatibility rows (QA-R19, PLT-R531)
+        run: python3 -I scripts/compat-stale-report.py
+      - name: Rule reviewBy dates (PLT-R506; more than 30 days overdue fails)
+        run: |
+          status=0
+          python3 -I scripts/check-rules.py --release --reviewby-report > reviewby.md || status=$?
+          cat reviewby.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

@@ -1,0 +1,353 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: LicenseRef-App-Pending
+#
+# Final release step, run on Pa's Mac (QA-R32, QA-R37, PLT-R1103): the Sparkle EdDSA private key
+# stays in the login keychain and never reaches CI.
+#
+#   1. Take the notarised update archive (.zip) and DMG built by .github/workflows/release.yml
+#      (downloaded from the draft GitHub Release with --from-github, or local files), verify the
+#      SHA-256 sums, the GitHub build provenance attestation, the code signature, the stapled ticket
+#      and Gatekeeper assessment.
+#   2. EdDSA-sign the update archive with Sparkle's sign_update (from the resolved SwiftPM artifacts
+#      or a pinned, checksum-verified download).
+#   3. Insert the appcast item (site/static/appcast.xml): sparkle:version, shortVersionString,
+#      minimumSystemVersion, edSignature, length, release-notes links vi/en, channel for betas,
+#      phasedRolloutInterval for stable (QA-R34, QA-R35).
+#   4. Add the release to site/data/releases.json (download page, QA-R37).
+#   5. Render the Homebrew cask from packaging/homebrew/Casks/cask.rb.template (stable only,
+#      QA-R36) into dist/homebrew/ and, with --tap-dir, into Pa's tap checkout.
+#   6. Optionally (--github-release) publish the draft GitHub Release and point URLs at its assets.
+#
+# Default is a dry run: everything is written inside a temporary copy and printed; nothing in the
+# repository, the tap or on GitHub changes. Use --apply to write for real.
+set -euo pipefail
+
+SPARKLE_VERSION="2.10.1"
+SPARKLE_TARBALL_SHA256="1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27"
+PHASED_ROLLOUT_SECONDS=86400 # 1 day per group (PLT-R1106)
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/publish-release <version> [--beta] [--dry-run | --apply] [options]
+
+  <version>             X.Y.Z (stable) or X.Y.Z-beta.N (with --beta)
+
+Inputs:
+  --from-github         download <slug>-<version>.zip, .dmg and SHA256SUMS from release v<version>
+  --archive FILE        update archive (default dist/<slug>-<version>/<slug>-<version>.zip)
+  --dmg FILE            disk image   (default dist/<slug>-<version>/<slug>-<version>.dmg)
+  --notes-vi FILE       short release notes, Vietnamese (default: CHANGELOG.vi.md section)
+  --notes-en FILE       short release notes, English (default: CHANGELOG.md section)
+  --repo OWNER/NAME     GitHub repository (default: gh repo view)
+
+Behaviour:
+  --dry-run             default: write into a temporary copy and print every change
+  --apply               write site/static/appcast.xml, site/data/releases.json and the cask
+  --github-release      publish the draft GitHub Release and use its asset URLs (archive hosting
+                        on GitHub, spec/02-platform.md section 14 item 4)
+  --download-base URL   base URL for the archive and DMG (default https://<site host>/download)
+  --no-phasing          skip phased rollout (P0 hotfix, QA-R35)
+  --critical            mark as critical update (security or data-loss fixes only, QA-R34)
+  --minimum-autoupdate-version BUILD   force a manual install for older builds (PLT-R1109)
+  --tap-dir DIR         Homebrew tap checkout; the rendered cask is written to DIR/Casks/
+  --tap-commit          commit the cask in --tap-dir (never pushes)
+  --sparkle-account NAME   keychain account of the EdDSA key (sign_update --account)
+  --sign-in-dry-run     call sign_update during a dry run too (keychain prompt)
+  --skip-attestation    do not run `gh attestation verify` (builds made on Pa's Mac have none)
+  --skip-gatekeeper     skip stapler and Gatekeeper checks (dry runs with test builds; refused
+                        together with --apply)
+  -h, --help            show this help
+
+Environment: SPARKLE_SIGN_UPDATE=/path/to/sign_update overrides the lookup.
+EOF
+}
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+version=""
+beta=0
+apply=0
+from_github=0
+github_release=0
+archive=""
+dmg=""
+notes_vi_file=""
+notes_en_file=""
+repo=""
+download_base=""
+phasing=1
+critical=0
+min_autoupdate=""
+tap_dir=""
+tap_commit=0
+sparkle_account=""
+sign_in_dry_run=0
+skip_attestation=0
+skip_gatekeeper=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h | --help) usage; exit 0 ;;
+    --beta) beta=1; shift ;;
+    --dry-run) apply=0; shift ;;
+    --apply) apply=1; shift ;;
+    --from-github) from_github=1; shift ;;
+    --github-release) github_release=1; shift ;;
+    --archive) archive="${2:?}"; shift 2 ;;
+    --dmg) dmg="${2:?}"; shift 2 ;;
+    --notes-vi) notes_vi_file="${2:?}"; shift 2 ;;
+    --notes-en) notes_en_file="${2:?}"; shift 2 ;;
+    --repo) repo="${2:?}"; shift 2 ;;
+    --download-base) download_base="${2:?}"; shift 2 ;;
+    --no-phasing) phasing=0; shift ;;
+    --critical) critical=1; shift ;;
+    --minimum-autoupdate-version) min_autoupdate="${2:?}"; shift 2 ;;
+    --tap-dir) tap_dir="${2:?}"; shift 2 ;;
+    --tap-commit) tap_commit=1; shift ;;
+    --sparkle-account) sparkle_account="${2:?}"; shift 2 ;;
+    --sign-in-dry-run) sign_in_dry_run=1; shift ;;
+    --skip-attestation) skip_attestation=1; shift ;;
+    --skip-gatekeeper) skip_gatekeeper=1; shift ;;
+    -*) usage >&2; exit 2 ;;
+    *) [[ -z "$version" ]] || { usage >&2; exit 2; }; version="$1"; shift ;;
+  esac
+done
+[[ -n "$version" ]] || { usage >&2; exit 2; }
+version="${version#v}"
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]] || die "invalid version: $version"
+if [[ "$version" == *-beta.* && $beta -eq 0 ]]; then die "$version is a beta version: pass --beta"; fi
+if [[ "$version" != *-beta.* && $beta -eq 1 ]]; then die "--beta needs an X.Y.Z-beta.N version"; fi
+[[ -z "$min_autoupdate" || "$min_autoupdate" =~ ^[0-9]+$ ]] || die "--minimum-autoupdate-version takes a build number"
+channel="stable"
+[[ $beta -eq 1 ]] && channel="beta"
+if [[ $skip_gatekeeper -eq 1 && $apply -eq 1 ]]; then die "--skip-gatekeeper cannot be combined with --apply"; fi
+
+load_brand
+cd "$REPO_ROOT"
+work="$(mktemp -d "${TMPDIR:-/tmp}/publish-release.XXXXXX")"
+trap 'rm -rf "$work"' EXIT
+mode="DRY RUN"
+[[ $apply -eq 1 ]] && mode="APPLY"
+info "$mode: publishing $APP_DISPLAY_NAME $version ($channel)"
+
+# Output root: the repository with --apply, a temporary copy of the touched files otherwise.
+if [[ $apply -eq 1 ]]; then
+  out_root="$REPO_ROOT"
+else
+  out_root="$work/repo"
+  mkdir -p "$out_root/site/static" "$out_root/site/data"
+  [[ -f site/static/appcast.xml ]] && cp site/static/appcast.xml "$out_root/site/static/"
+  [[ -f site/data/releases.json ]] && cp site/data/releases.json "$out_root/site/data/"
+fi
+
+gh_repo_args=()
+if [[ $from_github -eq 1 || $github_release -eq 1 || $skip_attestation -eq 0 ]]; then
+  require_cmd gh
+  repo="${repo:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
+  gh_repo_args=(--repo "$repo")
+fi
+
+# --- 1. Inputs -------------------------------------------------------------------------------
+base_name="$APP_SLUG-$version"
+if [[ $from_github -eq 1 ]]; then
+  dl="$work/download"
+  mkdir -p "$dl"
+  info "downloading assets of v$version from $repo"
+  gh release download "v$version" "${gh_repo_args[@]}" --dir "$dl" \
+    --pattern "$base_name.zip" --pattern "$base_name.dmg" --pattern "SHA256SUMS"
+  archive="$dl/$base_name.zip"
+  dmg="$dl/$base_name.dmg"
+  (cd "$dl" && shasum -a 256 -c SHA256SUMS) || die "SHA256SUMS verification failed"
+fi
+archive="${archive:-$REPO_ROOT/dist/$base_name/$base_name.zip}"
+dmg="${dmg:-$REPO_ROOT/dist/$base_name/$base_name.dmg}"
+[[ -f "$archive" ]] || die "update archive not found: $archive"
+[[ -f "$dmg" ]] || die "DMG not found: $dmg"
+
+if [[ $skip_attestation -eq 0 ]]; then
+  info "verifying build provenance attestations"
+  gh attestation verify "$archive" "${gh_repo_args[@]}" >/dev/null || die "attestation check failed for $archive"
+  gh attestation verify "$dmg" "${gh_repo_args[@]}" >/dev/null || die "attestation check failed for $dmg"
+else
+  warn "attestation check skipped"
+fi
+
+info "checking the app inside the update archive"
+ditto -x -k "$archive" "$work/app"
+app="$(find "$work/app" -maxdepth 1 -name '*.app' -type d | head -n1)"
+[[ -n "$app" ]] || die "no .app at the top level of $archive"
+plist="$app/Contents/Info.plist"
+bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
+short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
+build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
+min_system="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")"
+[[ "$bundle_id" == "$APP_BUNDLE_ID_RELEASE" ]] || die "bundle ID $bundle_id != $APP_BUNDLE_ID_RELEASE"
+[[ "$short_version" == "$version" ]] || die "archive version $short_version != $version"
+[[ "$build" =~ ^[0-9]+$ ]] || die "CFBundleVersion is not an integer: $build"
+expected_build="$("$REPO_ROOT/scripts/build-number.sh" "$version")"
+[[ "$build" == "$expected_build" ]] || warn "build $build differs from the scheme value $expected_build"
+codesign --verify --deep --strict "$app" || die "code signature check failed"
+codesign --verify --strict "$dmg" || die "DMG signature check failed"
+if [[ $skip_gatekeeper -eq 0 ]]; then
+  xcrun stapler validate "$app" >/dev/null || die "the app in the archive is not stapled"
+  spctl --assess --type execute "$app" || die "Gatekeeper rejects the app"
+  xcrun stapler validate "$dmg" >/dev/null || die "the DMG is not stapled"
+else
+  warn "stapler and Gatekeeper checks skipped (--skip-gatekeeper)"
+fi
+
+archive_len="$(stat -f %z "$archive")"
+dmg_len="$(stat -f %z "$dmg")"
+dmg_sha="$(sha256_of "$dmg")"
+
+# --- 2. EdDSA signature ----------------------------------------------------------------------
+find_sign_update() {
+  if [[ -n "${SPARKLE_SIGN_UPDATE:-}" ]]; then
+    printf '%s\n' "$SPARKLE_SIGN_UPDATE"
+    return
+  fi
+  local candidate
+  for candidate in \
+    "$REPO_ROOT"/.build/artifacts/sparkle/Sparkle/bin/sign_update \
+    "$HOME"/Library/Developer/Xcode/DerivedData/*/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  local cache="$HOME/Library/Caches/$APP_SLUG-release-tools/sparkle-$SPARKLE_VERSION"
+  if [[ ! -x "$cache/bin/sign_update" ]]; then
+    info "downloading Sparkle $SPARKLE_VERSION (pinned SHA-256)"
+    mkdir -p "$cache"
+    fetch_verified "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz" \
+      "$SPARKLE_TARBALL_SHA256" "$cache/sparkle.tar.xz"
+    tar -xJf "$cache/sparkle.tar.xz" -C "$cache" ./bin/sign_update 2>/dev/null \
+      || tar -xJf "$cache/sparkle.tar.xz" -C "$cache" bin/sign_update
+    rm -f "$cache/sparkle.tar.xz"
+  fi
+  printf '%s\n' "$cache/bin/sign_update"
+}
+
+if [[ $apply -eq 1 || $sign_in_dry_run -eq 1 ]]; then
+  sign_update="$(find_sign_update)"
+  info "signing with $sign_update"
+  sign_args=()
+  [[ -n "$sparkle_account" ]] && sign_args=(--account "$sparkle_account")
+  sig_line="$("$sign_update" ${sign_args[@]+"${sign_args[@]}"} "$archive")"
+  ed_signature="$(sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' <<<"$sig_line")"
+  signed_len="$(sed -n 's/.*length="\([0-9]*\)".*/\1/p' <<<"$sig_line")"
+  [[ -n "$ed_signature" ]] || die "sign_update returned no signature"
+  [[ "$signed_len" == "$archive_len" ]] || die "sign_update length $signed_len != file size $archive_len"
+  "$sign_update" --verify "$archive" "$ed_signature" ${sign_args[@]+"${sign_args[@]}"} >/dev/null 2>&1 \
+    || warn "sign_update --verify did not confirm the signature (older sign_update without --verify?)"
+else
+  ed_signature="DRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRY=="
+  info "dry run: EdDSA signing skipped (use --sign-in-dry-run to exercise sign_update)"
+fi
+
+# --- 3. URLs ---------------------------------------------------------------------------------
+site_url="https://$APP_SITE_HOST"
+if [[ $github_release -eq 1 ]]; then
+  asset_base="https://github.com/$repo/releases/download/v$version"
+else
+  asset_base="${download_base:-$site_url/download}"
+fi
+asset_base="${asset_base%/}"
+archive_url="$asset_base/$base_name.zip"
+dmg_url="$asset_base/$base_name.dmg"
+anchor="v$version"
+notes_url_vi="$site_url/nhat-ky-thay-doi/#$anchor"
+notes_url_en="$site_url/en/changelog/#$anchor"
+
+notes_for() {
+  local file="$1" changelog="$2"
+  if [[ -n "$file" ]]; then
+    cat "$file"
+  else
+    py scripts/lib/publish_helpers.py changelog-notes --file "$changelog" --version "$version"
+  fi
+}
+notes_vi="$(notes_for "$notes_vi_file" CHANGELOG.vi.md)"
+notes_en="$(notes_for "$notes_en_file" CHANGELOG.md)"
+[[ -n "$notes_en" ]] || warn "no English notes for $version (CHANGELOG.md)"
+[[ -n "$notes_vi" ]] || warn "no Vietnamese notes for $version (CHANGELOG.vi.md); using the English notes"
+notes_vi="${notes_vi:-$notes_en}"
+today="$(date -u +%Y-%m-%d)"
+
+# --- 4. Appcast and releases.json -------------------------------------------------------------
+appcast_args=(
+  --appcast "$out_root/site/static/appcast.xml" --app-name "$APP_DISPLAY_NAME" --site-url "$site_url/"
+  --version "$version" --build "$build" --minimum-system-version "$min_system" --channel "$channel"
+  --url "$archive_url" --length "$archive_len" --signature "$ed_signature"
+  --notes-url-vi "$notes_url_vi" --notes-url-en "$notes_url_en"
+)
+if [[ $phasing -eq 1 ]]; then
+  appcast_args+=(--phased-interval "$PHASED_ROLLOUT_SECONDS")
+else
+  appcast_args+=(--phased-interval 0)
+fi
+[[ $critical -eq 1 ]] && appcast_args+=(--critical)
+[[ -n "$min_autoupdate" ]] && appcast_args+=(--minimum-autoupdate-version "$min_autoupdate")
+
+info "appcast item"
+py scripts/lib/publish_helpers.py appcast-insert "${appcast_args[@]}"
+info "releases.json entry"
+py scripts/lib/publish_helpers.py releases-add --file "$out_root/site/data/releases.json" \
+  --version "$version" --build "$build" --channel "$channel" --date "$today" --dmg-url "$dmg_url" \
+  --sha256 "$dmg_sha" --size "$dmg_len" --minimum-system-version "$min_system" \
+  --notes-vi "$notes_vi" --notes-en "$notes_en"
+
+# --- 5. Homebrew cask (stable only) ------------------------------------------------------------
+if [[ "$channel" == "stable" ]]; then
+  cask_out="$out_root/dist/homebrew/Casks/$APP_SLUG.rb"
+  info "Homebrew cask"
+  py scripts/lib/publish_helpers.py render-cask --template packaging/homebrew/Casks/cask.rb.template \
+    --zap scripts/zap-paths.txt --folder "$APP_STORAGE_FOLDER" --bundle-id "$APP_BUNDLE_ID_RELEASE" \
+    --out "$cask_out" --slug "$APP_SLUG" --app-name "$APP_DISPLAY_NAME" --version "$version" \
+    --sha256 "$dmg_sha" --url "$dmg_url" --site-host "$APP_SITE_HOST" \
+    --desc "Vietnamese input method (Telex and VNI)"
+  if [[ -n "$tap_dir" ]]; then
+    [[ -d "$tap_dir/.git" ]] || die "--tap-dir is not a git checkout: $tap_dir"
+    if [[ $apply -eq 1 ]]; then
+      mkdir -p "$tap_dir/Casks"
+      cp "$cask_out" "$tap_dir/Casks/$APP_SLUG.rb"
+      if [[ $tap_commit -eq 1 ]]; then
+        git -C "$tap_dir" add "Casks/$APP_SLUG.rb"
+        git -C "$tap_dir" commit -m "chore: update $APP_SLUG to $version"
+        info "tap commit created; push it with: git -C '$tap_dir' push"
+      fi
+    else
+      info "dry run: would copy the cask to $tap_dir/Casks/$APP_SLUG.rb"
+    fi
+  fi
+else
+  info "beta release: Homebrew cask unchanged (the cask follows the stable channel)"
+fi
+
+# --- 6. GitHub release -------------------------------------------------------------------------
+if [[ $github_release -eq 1 ]]; then
+  if [[ $apply -eq 1 ]]; then
+    prerelease=false
+    [[ "$channel" == "beta" ]] && prerelease=true
+    gh release edit "v$version" "${gh_repo_args[@]}" --draft=false --prerelease="$prerelease"
+    info "GitHub release v$version published"
+  else
+    info "dry run: would publish the draft GitHub release v$version"
+  fi
+fi
+
+# --- Summary -----------------------------------------------------------------------------------
+if [[ $apply -eq 1 ]]; then
+  cat >&2 <<EOF
+
+Done. Next steps:
+  1. Review and commit: git add site/static/appcast.xml site/data/releases.json && git commit
+  2. Upload $base_name.zip and $base_name.dmg to $asset_base/ (unless --github-release)
+  3. Deploy the site (site.yml) so the appcast, download page and changelog agree (QA-R37)
+  4. Push the tap commit if one was created
+EOF
+else
+  info "dry run complete: files written under $out_root (deleted on exit); nothing published"
+  if command -v git >/dev/null 2>&1; then
+    git --no-pager diff --no-index --stat "$REPO_ROOT/site/static/appcast.xml" "$out_root/site/static/appcast.xml" 2>/dev/null || true
+  fi
+fi

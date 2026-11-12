@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Website build (QA-R22, PRD-R73): Vietnamese at /, English at /en/, compatibility matrix from
+# compat/matrix.json, changelog from CHANGELOG.md, download data from site/data/releases.json and the
+# Sparkle feed site/static/appcast.xml (one stable URL, PLT-R1101).
+#
+# Deployment is a placeholder until Pa chooses the hosting (spec/02-platform.md section 14, PRD-R75:
+# HTTPS on a domain Pa controls). It runs only when the repository variable SITE_DEPLOY_TARGET is
+# set, inside the `site` environment. See the deploy job below for the options to fill in.
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "compat/**"
+      - "CHANGELOG.md"
+      - "CHANGELOG.vi.md"
+      - ".github/workflows/site.yml"
+  pull_request:
+    paths:
+      - "site/**"
+      - "compat/**"
+      - "CHANGELOG.md"
+      - "CHANGELOG.vi.md"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: Build (node site/build.mjs -> site/dist)
+        run: node site/build.mjs
+      - name: Appcast is well-formed XML
+        run: |
+          if [[ -f site/dist/appcast.xml ]]; then
+            python3 -I -c 'import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])' site/dist/appcast.xml
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-dist
+          path: site/dist
+          retention-days: 14
+
+  deploy:
+    name: Deploy site (placeholder)
+    needs: build
+    if: >-
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      vars.SITE_DEPLOY_TARGET != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: site
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site-dist
+          path: site-dist
+      - name: Deploy
+        env:
+          TARGET: ${{ vars.SITE_DEPLOY_TARGET }}
+        run: |
+          # PLACEHOLDER: Pa has not chosen the hosting yet. Fill in exactly one branch, add the
+          # needed secrets to the `site` environment, and record the choice in a decision record.
+          #   github-pages : add actions/configure-pages, actions/upload-pages-artifact and
+          #                  actions/deploy-pages (pinned by SHA) with pages: write and id-token: write
+          #   cloudflare   : wrangler pages deploy site-dist --project-name <name> (API token secret)
+          #   rsync        : rsync over SSH to the server behind the site host (deploy key secret)
+          # The appcast must stay at https://<site host>/appcast.xml and be served over HTTPS (PRD-R75).
+          echo "::error::Site deployment target '$TARGET' is not implemented yet (placeholder)."
+          exit 1
