@@ -1,0 +1,169 @@
+# Runbook: release
+
+Owner: the maintainer (Pa). Specification: QA-R26 to QA-R37, QA-R40 to QA-R42, PLT-R1101 to PLT-R1110, [spec/04-quality-release.md](../../spec/04-quality-release.md) section 3.
+
+This runbook takes a release from "main is green" to "appcast published and verified". No step is undocumented; if you had to improvise, fix this file in the same change (spec acceptance, section 9).
+
+Brand values (`{{AppName}}`, `{{app-slug}}`, site host, bundle ID) come from `scripts/brand.env`. In the commands below, load them first:
+
+```sh
+source scripts/brand.env   # APP_DISPLAY_NAME, APP_SLUG, APP_BUNDLE_ID_RELEASE, APP_SITE_HOST
+```
+
+Related runbooks: [rollback](rollback.md), [appcast pull](appcast-pull.md), [key rotation](key-rotation.md), [certificate renewal](certificate-renewal.md), [notarization setup](notarization-setup.md), [self-hosted runner](self-hosted-runner.md).
+
+## 0. One-time prerequisites
+
+Do these once; the sections linked from each line explain how.
+
+- [ ] Developer ID Application certificate in the login keychain ([certificate renewal](certificate-renewal.md)).
+- [ ] `notarytool` credentials (App Store Connect API key) ([notarization setup](notarization-setup.md)).
+- [ ] Sparkle EdDSA key in the login keychain, with two offline encrypted backups (QA-R32, [key rotation](key-rotation.md)). The public key (`SUPublicEDKey`) and the feed URL are fixed in the app from the first public build (QA-R33).
+- [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
+- [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
+- [ ] Homebrew tap repository exists (template: `packaging/homebrew/Casks/cask.rb.template`).
+- [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
+
+## 1. Decide the version and build number
+
+1. Semantic Versioning for `CFBundleShortVersionString` (QA-R26): MAJOR for breaking changes to the settings format or minimum macOS, MINOR for features, PATCH for fixes. Betas: `X.Y.Z-beta.N`.
+2. `CFBundleVersion` is a single integer that increases with every build published to any channel, including betas and rollbacks. Sparkle compares this value, not the short version. Take the highest build in `site/data/releases.json` and add 1.
+3. A stable release must have been on beta for at least 72 hours with no new P0 or P1 regression, except a hotfix for a P0 (QA-R29).
+
+## 2. Pre-flight checklist (QA-R30 step 1, section 3.7)
+
+All must be true on the commit you will tag. Record the evidence (links) in the release PR or the release issue.
+
+- [ ] `ci.yml` green on the commit: lint, build, engine corpus on macOS and Linux, app logic tests, coverage, property tests, 60 s fuzz, benchmark compare.
+- [ ] Latest `integration.yml` run on this exact commit is green on the newest macOS release available (QA-R12, QA-R23).
+- [ ] Latest `nightly.yml` is green within the last 24 hours (fuzz with sanitizers, dependency audit) (spec/02-platform.md sections 13.4 and 13.8).
+- [ ] **P0 tests pass** (PRD-R0). A build that fails any P0 test is not released, not even as a private alpha.
+- [ ] Tier 1 compatibility script done for this release candidate: [compat/SCRIPT.md](../../compat/SCRIPT.md), results in `compat/matrix.json`. Tier 1 rows are at most 90 days old (QA-R19).
+- [ ] Upgrade test passed (section 5 below).
+- [ ] Network egress test green: only the allowed host (spec/02-platform.md section 13.7).
+- [ ] No compatibility rule is past `reviewBy` by more than 30 days (spec/02-platform.md section 13.8).
+- [ ] Provenance review done for the first public release and for 1.0, and a report exists for this release (CLR-R13, [provenance](../provenance/README.md)).
+- [ ] `THIRD_PARTY_NOTICES.md` complete (CLR-R6, CLR-R7).
+- [ ] `CHANGELOG.md` section written in user-visible language with app names, plus Vietnamese and English release notes.
+- [ ] No open P0 issue. No unresolved `update-regression` issue.
+
+## 3. Prepare the release commit
+
+1. Move the `Unreleased` entries of `CHANGELOG.md` under `## [X.Y.Z] - YYYY-MM-DD`; leave an empty `Unreleased` section.
+2. Write the release notes in both languages. Five lines maximum visible, led by user-visible fixes listed by app name, with a link to the changelog page (PRD-R51). For stable releases add the single plain donation line at the bottom of the website release notes, never in the in-app update window (PRD-R57).
+3. Set the version and build number as the build script and project settings document (the `App` target reads them; `scripts/build-release.sh <version> <build>` takes them as arguments).
+4. Merge through a pull request into `main` (branch protection: required checks, linear history, signed commits, no force-push; QA-R25). Patch releases of an older minor come from a `release/x.y` branch.
+
+## 4. Tag and build
+
+Tags are signed and created on the commit you pre-flighted:
+
+```sh
+git switch main && git pull --ff-only
+git tag -s "vX.Y.Z" -m "X.Y.Z"          # beta: vX.Y.Z-beta.N
+git push origin "vX.Y.Z"
+```
+
+Pushing a `v*` tag starts `release.yml` (GitHub-hosted macOS, environment `release`). It performs, in order (QA-R30):
+
+1. Re-runs the full `ci.yml` suite on the tagged commit and requires the latest `integration.yml` run on that commit to be green. No test gate means no release.
+2. Builds a universal Release archive: hardened runtime, no `get-task-allow`, no unnecessary entitlements, signed with the Developer ID Application certificate.
+3. Verifies the signature (`codesign --verify --deep --strict`) and that the designated requirement equals the previous release's (bundle ID and Team ID unchanged). A changed designated requirement makes macOS ask for permissions again: hard failure.
+4. Creates the DMG (app plus Applications link, background, signed).
+5. Notarizes with `notarytool` using the App Store Connect API key and waits; fails on any issue in the log.
+6. Staples the ticket to the app and the DMG; validates with `stapler validate` and `spctl --assess`.
+7. Produces SHA-256 checksums and a build provenance attestation (GitHub artifact attestations).
+8. Uploads the notarized DMG and update archive as a **draft** GitHub Release.
+
+The job waits for your manual approval of the `release` environment (QA-R31). Approve only after confirming the tag and commit. Certificates are imported into a temporary keychain that the job deletes at the end.
+
+**Doing the same locally** (when signing runs on Pa's Mac instead of CI, open decision 14; the scripts support both):
+
+```sh
+scripts/build-release.sh X.Y.Z BUILD     # archive, sign, designated-requirement check
+scripts/make-dmg.sh                       # DMG
+scripts/notarize.sh                       # notarytool submit, wait, staple
+scripts/verify-release.sh                 # all checks of section 6
+```
+
+See the header comment of each script for its inputs and environment variables (VERIFY the exact variable names against the scripts).
+
+## 5. Release candidate checks on the built DMG
+
+Run these on the notarized artefact, not on a debug build.
+
+1. **Fresh install** on macOS 15, 26 and 27 (spec/02-platform.md section 13.5): Gatekeeper passes without a warning; launching from the mounted DMG triggers the move-to-Applications offer and never a permission request.
+2. **Upgrade test** (QA-R40, PLT-R1108), on the self-hosted runner or a clean VM:
+   1. Install the previous stable from its DMG and grant permissions.
+   2. Change at least 10 settings, add per-app rules and 50 macros.
+   3. Update through Sparkle (a local appcast pointing at the candidate) to the release candidate.
+   4. Verify: settings, rules, per-app memory and macros are identical (byte-identical apart from migrations); permissions are still granted with no new prompt; the tap is active within 2 seconds of relaunch; typing works in the test host within 5 seconds with no user action.
+3. **Channel switch**: beta to stable and back.
+4. **Tier 1 compatibility script** on the candidate (section 2).
+5. **First-launch self-check** (QA-R42): permission state, tap creation; on failure the targeted permission screen shows, not a silent failure.
+
+Any settings loss or permission loss after an update blocks the release (PRD-R52).
+
+## 6. Verify the artefact
+
+```sh
+scripts/verify-release.sh
+```
+
+At minimum it must confirm (and you check by hand if the script is not yet complete):
+
+```sh
+codesign --verify --deep --strict --verbose=2 "{{AppName}}.app"
+codesign -d -r- "{{AppName}}.app"        # designated requirement: same bundle ID and Team ID as the previous release
+codesign -d --entitlements - "{{AppName}}.app"   # no entitlements
+spctl --assess --type execute --verbose "{{AppName}}.app"
+xcrun stapler validate "{{AppName}}.dmg"
+shasum -a 256 "{{AppName}}.dmg"          # must equal the checksum file from the workflow
+```
+
+Also confirm the hardened runtime flag is present (`codesign -dv` shows `flags=0x10000(runtime)`), the minimum system version is 15.0, and the app contains only allowed URL hosts (appcast host, site host, GitHub, mail link; QA-R60).
+
+## 7. Publish (on Pa's Mac)
+
+The Sparkle EdDSA private key is never in CI (QA-R32, PLT-R1103). The final step runs locally with the key in the login keychain.
+
+1. Download the draft release's DMG and update archive, or use the locally built ones.
+2. **Dry run first**, and read the diff:
+
+   ```sh
+   scripts/publish-release X.Y.Z --dry-run            # beta: scripts/publish-release X.Y.Z-beta.N --beta --dry-run
+   ```
+
+3. Publish for real:
+
+   ```sh
+   scripts/publish-release X.Y.Z                      # beta: add --beta
+   ```
+
+   The script, in one pass (QA-R32, QA-R34, QA-R36, QA-R37):
+   - signs the update archive with Sparkle's `sign_update` (EdDSA);
+   - adds the appcast item to `site/static/appcast.xml` with `sparkle:version` (build integer), `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`, the EdDSA signature and length, release notes links in both languages, and `sparkle:channel="beta"` for betas. Stable releases use phased rollout (`sparkle:phasedRolloutInterval`, for example 24 hours per group; a P0 hotfix may skip it). `sparkle:criticalUpdate` only for security or data-loss fixes (PRD-R54);
+   - writes `site/data/releases.json` (version, build, channel, date, DMG URL, SHA-256, minimum system version, notes in Vietnamese and English), which feeds the download page and changelog;
+   - bumps the Homebrew cask in the tap (`auto_updates true`, `depends_on macos: ">= :sequoia"`, `zap` paths per PLT-R1012). Betas do not change the cask.
+
+   The appcast, the website and the cask are updated by this one script so they never disagree.
+4. Review `git diff` in the repository (appcast, releases.json), commit and push through a pull request to `main` (`site.yml` builds and deploys the website and appcast when `site/` changes).
+5. Un-draft the GitHub Release (mark betas as pre-release).
+
+The appcast URL is one stable address, `https://{{app-slug}}.kal.vn/appcast.xml`. It never moves (PRD-R73, PRD-R75).
+
+## 8. Verify after publishing
+
+- [ ] `curl -sSf https://$APP_SITE_HOST/appcast.xml | xmllint --noout -` passes, and the new item is present with the right channel.
+- [ ] The DMG URL in `site/data/releases.json` downloads, and its SHA-256 equals the value on the download page.
+- [ ] On a machine with the previous version: "Check for Updates..." offers the new build (manual checks get it immediately even with phased rollout).
+- [ ] `brew update && brew install --cask OWNER/tap/{{app-slug}}` works in a fresh shell for a stable release (tap owner: VERIFY).
+- [ ] Download page, changelog page and appcast show the same version and date.
+
+## 9. After the release
+
+1. For each fixed issue: label `fixed-in-beta` (with the beta version) or `fixed-in-release` (with the version) and ask the reporter to confirm (QA-R46). Do not close issues because a fix merged.
+2. Post a pinned announcement for notable changes.
+3. Watch for 24 hours. If a P0 appears: pull the appcast item first, within 1 hour of confirmation ([appcast pull](appcast-pull.md)), then follow [rollback](rollback.md).
+4. Keep the signed update archives of the last 3 releases (PLT-R1107) and keep every DMG downloadable from the archive page (QA-R38).
+5. First public release and 1.0: record the stage transition and its exit-criteria evidence as an ADR in `docs/decisions/` (PRD-R4).
