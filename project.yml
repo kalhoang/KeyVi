@@ -1,0 +1,133 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+#
+# XcodeGen spec (docs/decisions/0301-xcodegen-project.md). `xcodegen generate` writes App.xcodeproj, which is
+# never committed. Target and scheme names are brand-neutral; the product name, bundle IDs and site host come
+# from Config/Brand.xcconfig through Config/Debug.xcconfig and Config/Release.xcconfig.
+# FROZEN for wave-1 workstreams: changes go through the integrator (docs/architecture/workstreams.md).
+
+name: App
+options:
+  deploymentTarget:
+    macOS: "15.0"
+  developmentLanguage: vi
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+  # PLT-R104, PLT-R910: the resolved Sparkle revision is committed at Config/Package.resolved and copied into
+  # the generated project; CI builds with -disableAutomaticPackageResolution so a mismatch fails.
+  postGenCommand: >-
+    mkdir -p App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm &&
+    cp Config/Package.resolved App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_ENTITLEMENTS: ""
+    DEAD_CODE_STRIPPING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+packages:
+  AppCore:
+    path: Packages/AppCore
+  VietnameseEngine:
+    path: Packages/VietnameseEngine
+  # PLT-R104: the only third-party runtime dependency, pinned exactly (docs/decisions/0304-sparkle-version-pin.md).
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.1
+
+targets:
+  App:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+    settings:
+      base:
+        PRODUCT_NAME: $(APP_DISPLAY_NAME)
+        PRODUCT_MODULE_NAME: App
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
+        INFOPLIST_FILE: App/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - package: AppCore
+        products: [AppModel, RealtimeSupport, Diagnostics, SettingsStore, CompatRules, Injection, InputHost, ShellCore]
+      - package: VietnameseEngine
+        products: [VietnameseEngine, VietnameseEngineData]
+      - package: Sparkle
+        product: Sparkle
+    postCompileScripts:
+      # PLT-R503, PRD-R38: ship compat/rules.json as compat-rules.json and compat/matrix.json as
+      # compat-matrix.json. Missing files fail Release builds; Debug falls back to the embedded ruleset.
+      - name: Copy compatibility data
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          dest="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "$dest"
+          for pair in "rules.json:compat-rules.json" "matrix.json:compat-matrix.json"; do
+            src="${SRCROOT}/compat/${pair%%:*}"
+            if [ -f "$src" ]; then
+              cp "$src" "$dest/${pair##*:}"
+            elif [ "${CONFIGURATION}" = "Release" ]; then
+              echo "error: missing $src" >&2; exit 1
+            else
+              echo "warning: missing $src (Debug uses the embedded ruleset)"
+            fi
+          done
+
+  # QA-R10 test host app for platform integration tests. Never shipped.
+  TestHost:
+    type: application
+    platform: macOS
+    sources:
+      - path: TestHost/Sources
+      - path: TestHost/Resources
+    settings:
+      base:
+        PRODUCT_NAME: TestHost
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID_DEV).testhost
+        INFOPLIST_FILE: TestHost/Info.plist
+
+  # PLT-R398D spike S1: minimal InputMethodKit input method. Built and installed only by Pa
+  # (SpikeIMK/README.md). Never shipped and never creates an event tap (PLT-R207).
+  SpikeIMK:
+    type: application
+    platform: macOS
+    sources:
+      - path: SpikeIMK/Sources
+    settings:
+      base:
+        PRODUCT_NAME: SpikeIMK
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID_DEV).inputmethod.SpikeIMK
+        INFOPLIST_FILE: SpikeIMK/Info.plist
+
+schemes:
+  App:
+    build:
+      targets:
+        App: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  TestHost:
+    build:
+      targets:
+        TestHost: all
+  SpikeIMK:
+    build:
+      targets:
+        SpikeIMK: all

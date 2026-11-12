@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+#include "Brand.xcconfig"
+#include "Signing.xcconfig"
+#include "Sparkle.xcconfig"
+
+// PLT-R750: Developer ID Application, hardened runtime, secure timestamp, no entitlements (PLT-R908).
+APP_BUNDLE_ID = $(APP_BUNDLE_ID_RELEASE)
+CODE_SIGN_IDENTITY = $(CODE_SIGN_IDENTITY_RELEASE)
+OTHER_CODE_SIGN_FLAGS = --timestamp
+// PLT-R105: universal binary.
+ARCHS = $(ARCHS_STANDARD)
+ONLY_ACTIVE_ARCH = NO
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
