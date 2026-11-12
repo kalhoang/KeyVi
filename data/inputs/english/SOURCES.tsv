@@ -1,0 +1,4 @@
+# English word list source (spec/01-engine.md 8.2). Fetched by data/fetch.sh; `lexicon-builder import scowl`
+# extracts the component lists into inputs/english/scowl-2020.12.07/ and the licence into data/licenses/.
+id	file	url	sha256	bytes	retrieved	title	number	issued	issuer	page
+scowl-2020.12.07	scowl-2020.12.07.tar.gz	https://downloads.sourceforge.net/project/wordlist/SCOWL/2020.12.07/scowl-2020.12.07.tar.gz	5587667caa20c4891390c2d42dbb4d5c4c3f41bee77af1457ece3ba23fb859cc	2569810	2026-11-13	SCOWL (Spell Checker Oriented Word Lists) 2020.12.07	2020.12.07	2020-12-07	Kevin Atkinson	http://wordlist.aspell.net/

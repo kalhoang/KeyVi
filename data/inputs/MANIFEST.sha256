@@ -1,0 +1,36 @@
+# SHA-256 of every pinned build input, relative to data/. Regenerate with `lexicon-builder pin`.
+# Verify without the tool: cd data && shasum -a 256 -c inputs/MANIFEST.sha256
+e579c9b6f3943c45e4f60ffb854b593753527a8b6de67cf9a98cc91a86bf4675  inputs/ambiguity.tsv
+8aec42dc706a16238f445d16104f4b386746c316b775443e97a9674a0837b22a  inputs/attested-additions.txt
+c45f29f3969710868e9037e43a41d7a17df701042dd240e89e4011873c26bbd7  inputs/english/SOURCES.tsv
+6ed66394d8b46ed12feac7aad989dfc4620c4f2051316ab774560aae71140994  inputs/english/scowl-2020.12.07/american-words.10
+a7ae730cd5f2ee11b584c163bf0750cc7659e336c3a04da1a8a2e9c44b604b9e  inputs/english/scowl-2020.12.07/american-words.20
+c999d002cfe31a2c3d9726eee1b87697402bb71cc831a2c63d064403c6a3a7fb  inputs/english/scowl-2020.12.07/american-words.35
+cdf5841d5cbd9c0c07bddd7a2eb65b1d3d4c4dc7990f30edccfc0abb7d1236fa  inputs/english/scowl-2020.12.07/british-words.10
+50a1f325b1b278e418c0084428b1919f2a1ddc2bafc99234e1cf2e442dfca6c3  inputs/english/scowl-2020.12.07/british-words.20
+afb66faedb0c23d4619aab67110b58f0f640799811f51ef4182f5814f733c2ab  inputs/english/scowl-2020.12.07/british-words.35
+b205f1522869e4224dbe863df68384406bd7384b6449369da0d804a4a8c7f060  inputs/english/scowl-2020.12.07/british_z-words.10
+ef753e8715274875746ce111ce287ace4f60f238ebc167423fc022e289491868  inputs/english/scowl-2020.12.07/british_z-words.20
+c36736b97d534084d47355223dcea277a1cecb35132e9cdb25cc5f87b33b03c9  inputs/english/scowl-2020.12.07/british_z-words.35
+f19988ecdb0280ab63340e5c5e155a814ab3d0f225ae60f5cb9e000252283b0b  inputs/english/scowl-2020.12.07/english-words.10
+618998fff18fb9e143a5bab49e669ec48c023758f0db476d6b64ec06994ba71e  inputs/english/scowl-2020.12.07/english-words.20
+f36ace33ff09bd5eda5f3ccbcc9971c1b6a8887fa62f5ad7f93e3c220d871388  inputs/english/scowl-2020.12.07/english-words.35
+9a280beee3465a05bd2a6a11331463e822a78959de00bf0652635943aed93b25  inputs/legal/SOURCES.tsv
+f3c435d58e2c2a25f88f80a7e29120ae310e4c2880aca620c32fc9234515c4d9  inputs/legal/administrative-violations-law.txt
+e74a6df0ae3555dd9edc15059bf5bc1ac9f97da953d203fbb03f3d84c1bfbd7f  inputs/legal/civil-procedure-code.txt
+817b50647c6c126c538cb981f0e2ba76f90b18d7c2612c83410f8aa4c4921aad  inputs/legal/commercial-law.txt
+3f7f181ed5a8316e33838e872a950aa34bd41468cfd037bf871c82e0e05c39ac  inputs/legal/competition-law.txt
+e6d446df4ea70f13f88e65c40d955f524b4e80b77dc37ff3e539bf914244fac7  inputs/legal/criminal-procedure-code.txt
+84854327c1858115d0c526a93ac0c7c93b82f498c2dc5f474f3f6d140a914b9a  inputs/legal/enterprise-law.txt
+b97105c90de3862b49d9f31fd8a9ba9ded7436da49a9824c5eabbed561159c41  inputs/legal/ip-law.txt
+201042bdf853cc090251d07a7b3eaf862bc3f7c0f98ec07582b9dad7e312ddc2  inputs/legal/it-law.txt
+5c990bec11701e05e1cce08ff7c3e6cabaf776ca7520b6d211cb593f22f05e5d  inputs/legal/labour-code.txt
+66a24dd6ccbe8daf391527828d9fbc70271500314369bc2dd3d0a0d679aca2f5  inputs/legal/penal-code.txt
+5bc3ee6d42db3e8d950ad4effa26f5365439a1c5e70d5c1f654d677415185de1  inputs/legal/publishing-law.txt
+759ff8e6df5384dfa7e490bed83fcecf407390bde3fdf703c508af342d00f597  inputs/legal/science-technology-law.txt
+12936db64db99fad88f474463ccc037da7c14bed6f1919c6c607053fe5c3373a  inputs/legal/technology-transfer-law.txt
+c0480059f7635c35ed7c3f8501c2a56b61464a978c2647bcef90e85fcee2d85b  inputs/tech-always.txt
+13538de0397699541b75daa0e06e02ec07fca2511215208bade163ab3b4d950d  inputs/tech-code-only.txt
+283326a422e29c510e2ba6805518c418ce3c35ed1fadc3eec83d2da4f6c5a055  licenses/SCOWL-2020.12.07-Copyright.txt
+23243cedb0d5ef29e8a17ca56552f9fd65b11139b1611d1c35e0234dfc53c475  licenses/SCOWL-2020.12.07-README.txt
+3317859adeca78e1d9bc474a8ff974ab0709f685bccdec98b0b678479a96207c  licenses/bundled-notices.txt

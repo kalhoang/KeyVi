@@ -1,0 +1,33 @@
+# ambiguity.tsv: decisions for English words whose Telex typing is an attested Vietnamese syllable (spec/01-engine.md 8.3).
+# Rule L11: decision en -> restore the raw keys, vi -> keep the Vietnamese display. Keyed by the exact lowercased raw keys
+# (ENG-R822: another key order stays typable, e.g. tets -> tét).
+# status: proposed = ENG-R821 starting decision (applies as written until Pa confirms), reviewed = decided by Pa,
+# unreviewed = generated candidate nobody has decided yet; behaves as vi whatever the decision column says (ENG-R821).
+# Candidates come from `lexicon-builder ambiguity-candidates --merge` (ENG-R820). Pa reviews at least the 300 most frequent.
+# Columns are tab-separated. Lines starting with '#' are comments.
+raw	decision	status	display	note
+as	vi	proposed	á	Southern particle, very common in chat (ENG-R821)
+is	en	proposed	í	rarely typed alone in Vietnamese (ENG-R821)
+was	en	proposed	ứa	ứa is rare (ENG-R821)
+has	vi	proposed	há	há miệng, há hốc (ENG-R821)
+its	vi	proposed	ít	ít is very common (ENG-R821)
+this	vi	proposed	thí	thí sinh, thí nghiệm (ENG-R821)
+these	vi	proposed	thế	very common Vietnamese (ENG-R821)
+there	vi	proposed	thể	very common Vietnamese (ENG-R821)
+been	vi	proposed	bên	very common Vietnamese (ENG-R821)
+car	vi	proposed	cả	very common Vietnamese (ENG-R821)
+test	en	proposed	tét	constant in tech chat; bánh tét can be typed tets (ENG-R821)
+best	en	proposed	bét	English is the likelier intent; Vietnamese typable with tone at the end (ENG-R821)
+list	en	proposed	lít	English is the likelier intent; Vietnamese typable with tone at the end (ENG-R821)
+cost	en	proposed	cót	English is the likelier intent; Vietnamese typable with tone at the end (ENG-R821)
+room	en	proposed	rôm	English is the likelier intent; Vietnamese typable with tone at the end (ENG-R821)
+did	vi	proposed	đi	very common Vietnamese (ENG-R821)
+theme	vi	proposed	thêm	very common Vietnamese (ENG-R821)
+max	vi	proposed	mã	very common Vietnamese (ENG-R821)
+us	vi	unreviewed	ú	spec 8.3 example, no ENG-R821 proposal
+of	vi	unreviewed	ò	spec 8.3 example, no ENG-R821 proposal
+or	vi	unreviewed	ỏ	spec 8.3 example, no ENG-R821 proposal
+if	vi	unreviewed	ì	spec 8.3 example, no ENG-R821 proposal
+now	vi	unreviewed	nơ	spec 8.3 example, no ENG-R821 proposal
+how	vi	unreviewed	hơ	spec 8.3 example, no ENG-R821 proposal
+low	vi	unreviewed	lơ	spec 8.3 example, no ENG-R821 proposal
