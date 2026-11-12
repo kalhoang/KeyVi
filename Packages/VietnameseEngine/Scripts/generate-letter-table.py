@@ -83,10 +83,9 @@ def render():
         "    package static let entries: [LetterTableEntry] = [",
     ]
     for scalar, base, modifier, tone, upper in entries():
-        name = unicodedata.name(chr(scalar))
+        lines.append(f"        // {unicodedata.name(chr(scalar))}")
         lines.append(
             f'        LetterTableEntry(0x{scalar:04X}, "{base}", .{modifier}, .{tone}, uppercase: {"true" if upper else "false"}),'
-            f"  // {name}"
         )
     lines += ["    ]", "}", ""]
     return "\n".join(lines)

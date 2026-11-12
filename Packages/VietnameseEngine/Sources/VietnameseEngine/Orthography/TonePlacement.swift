@@ -7,7 +7,8 @@ package enum TonePlacement {
     /// The offset of the letter that carries the tone, or nil when the vowel group is empty (a tone
     /// key then does not apply, ENG-R410). The vowel group excludes the `u` of `qu` and the `i` of a
     /// `gi` onset, which makes both styles agree after those onsets (ENG-R502).
-    package static func toneOffset<C: RandomAccessCollection>(in letters: C, parse: SyllableParse, style: ToneStyle) -> Int?
+    package static func toneOffset<C: RandomAccessCollection>(in letters: C, parse: SyllableParse, style: ToneStyle)
+        -> Int?
     where C.Element == Letter {
         guard parse.hasVowelGroup else { return nil }
         let start = letters.startIndex

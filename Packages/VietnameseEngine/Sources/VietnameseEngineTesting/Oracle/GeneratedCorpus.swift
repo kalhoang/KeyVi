@@ -43,7 +43,8 @@ public enum GeneratedCorpus {
             let rhyme = pair.rhyme.spelling
             for tone in pair.tones {
                 for style in [ToneStyle.traditional, .modern] {
-                    let display = SyllableOracle.spell(onset: onset, rhyme: rhyme, tone: tone, style: style, form: .display)
+                    let display = SyllableOracle.spell(
+                        onset: onset, rhyme: rhyme, tone: tone, style: style, form: .display)
                     let committed = SyllableOracle.spell(onset: onset, rhyme: rhyme, tone: tone, style: style)
                     for method in CorpusMethod.allCases {
                         for order in CorpusOrder.allCases {
@@ -72,7 +73,9 @@ public enum GeneratedCorpus {
             let rhyme = pair.rhyme.spelling
             for tone in pair.tones {
                 for variant in CorpusVariant.allCases {
-                    guard let keys = KeySequenceGenerator.variantKeys(onset: onset, rhyme: rhyme, tone: tone, variant: variant)
+                    guard
+                        let keys = KeySequenceGenerator.variantKeys(
+                            onset: onset, rhyme: rhyme, tone: tone, variant: variant)
                     else { continue }
                     let casing: SyllableOracle.Casing =
                         switch variant {
@@ -81,7 +84,8 @@ public enum GeneratedCorpus {
                         case .explicitUwow: .lowercase
                         }
                     func spell(_ form: SyllableOracle.Form) -> String {
-                        SyllableOracle.spell(onset: onset, rhyme: rhyme, tone: tone, style: .traditional, casing: casing, form: form)
+                        SyllableOracle.spell(
+                            onset: onset, rhyme: rhyme, tone: tone, style: .traditional, casing: casing, form: form)
                     }
                     try body(
                         GeneratedCase(

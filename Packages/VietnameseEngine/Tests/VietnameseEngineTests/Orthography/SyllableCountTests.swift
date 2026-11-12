@@ -13,14 +13,19 @@ struct SyllableCountTests {
 
     @Test func rhymeCounts() {
         let standard = RhymeInventory.standard
-        print("[ENG-R350] Tier A rhymes: \(standard.count) (spec 156); qu rhymes: \(RhymeInventory.afterQu.count) (spec 41)")
+        print(
+            "[ENG-R350] Tier A rhymes: \(standard.count) (spec 156); qu rhymes: \(RhymeInventory.afterQu.count) (spec 41)"
+        )
         #expect(standard.count == 156)
         #expect(Set(standard).count == 156)
         #expect(RhymeInventory.afterQu.count == 41)
         #expect(Set(RhymeInventory.afterQu).count == 41)
         #expect(RhymeInventory.extendedExtra.count == 13)
         // Group sizes as printed in the 3.7 table.
-        #expect(RhymeInventory.standardGroups.map(\.rhymes.count) == [13, 10, 6, 5, 8, 4, 8, 4, 8, 3, 8, 1, 7, 8, 5, 3, 8, 2, 8, 6, 1, 8, 7, 6, 9])
+        #expect(
+            RhymeInventory.standardGroups.map(\.rhymes.count) == [
+                13, 10, 6, 5, 8, 4, 8, 4, 8, 3, 8, 1, 7, 8, 5, 3, 8, 2, 8, 6, 1, 8, 7, 6, 9,
+            ])
         // 189 distinct spellings: 156 + ych ynh yt + êc êng + 13 Tier B extras + 15 k variants.
         #expect(SyllableTables.rhymes.count == 189)
         #expect(SyllableTables.rhymes.filter { $0.coda == .k }.count == 15)
@@ -45,8 +50,11 @@ struct SyllableCountTests {
         let withoutDz = pairs.filter { $0.onset != .dz }
         let dz = pairs.filter { $0.onset == .dz }
         let d = pairs.filter { $0.onset == .d }
-        print("[ENG-R350] Tier B pairs incl. Tier A, without dz: \(withoutDz.count) (spec 6,209 incl. the giu duplicate)")
-        print("[ENG-R350] Tier B pairs incl. Tier A, with dz: \(pairs.count) (dz adds \(dz.count), the Tier B pairs of d)")
+        print(
+            "[ENG-R350] Tier B pairs incl. Tier A, without dz: \(withoutDz.count) (spec 6,209 incl. the giu duplicate)")
+        print(
+            "[ENG-R350] Tier B pairs incl. Tier A, with dz: \(pairs.count) (dz adds \(dz.count), the Tier B pairs of d)"
+        )
         #expect(withoutDz.count == 6_208)
         #expect(withoutDz.count + Self.modelDuplicatePairs.count == 6_209)
         #expect(pairs.count == 6_387)

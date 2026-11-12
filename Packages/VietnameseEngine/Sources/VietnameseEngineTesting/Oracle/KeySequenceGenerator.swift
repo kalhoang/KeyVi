@@ -83,7 +83,9 @@ public enum KeySequenceGenerator {
     }
 
     /// The keys typing `onset` + `rhyme` with `tone` in `order`; nil for O4 with the level tone.
-    public static func keys(onset: String, rhyme: String, tone: Tone, method: CorpusMethod, order: CorpusOrder) -> String? {
+    public static func keys(onset: String, rhyme: String, tone: Tone, method: CorpusMethod, order: CorpusOrder)
+        -> String?
+    {
         let letters = Array(onset) + Array(rhyme)
         let units = units(letters, method: method, explicitUwow: false)
         let vowelStart = onset.count
@@ -112,7 +114,9 @@ public enum KeySequenceGenerator {
     public static func variantKeys(onset: String, rhyme: String, tone: Tone, variant: CorpusVariant) -> String? {
         switch variant {
         case .titlecase:
-            guard let keys = keys(onset: onset, rhyme: rhyme, tone: tone, method: .telex, order: .o1) else { return nil }
+            guard let keys = keys(onset: onset, rhyme: rhyme, tone: tone, method: .telex, order: .o1) else {
+                return nil
+            }
             return keys.prefix(1).uppercased() + keys.dropFirst()
         case .uppercase:
             return keys(onset: onset, rhyme: rhyme, tone: tone, method: .telex, order: .o1)?.uppercased()

@@ -34,12 +34,16 @@ struct LetterTableTests {
                     let scalars = Array(composed.unicodeScalars)
                     try #require(scalars.count == 1, "no precomposed form for \(text)")
                     derived.append(
-                        LetterTableEntry(scalars[0].value, Unicode.Scalar(vowel.base)!, vowel.modifier, tone, uppercase: upper))
+                        LetterTableEntry(
+                            scalars[0].value, Unicode.Scalar(vowel.base)!, vowel.modifier, tone, uppercase: upper))
                 }
             }
         }
-        for (upper, name) in [(false, "LATIN SMALL LETTER D WITH STROKE"), (true, "LATIN CAPITAL LETTER D WITH STROKE")] {
-            let scalar = try #require((0x0100...0x017F).compactMap(Unicode.Scalar.init).first { $0.properties.name == name })
+        for (upper, name) in [
+            (false, "LATIN SMALL LETTER D WITH STROKE"), (true, "LATIN CAPITAL LETTER D WITH STROKE"),
+        ] {
+            let scalar = try #require(
+                (0x0100...0x017F).compactMap(Unicode.Scalar.init).first { $0.properties.name == name })
             derived.append(LetterTableEntry(scalar.value, "d", .stroke, .level, uppercase: upper))
         }
         derived.sort { $0.scalarValue < $1.scalarValue }
@@ -47,8 +51,12 @@ struct LetterTableTests {
     }
 
     @Test func entriesAgreeWithUnicodeCharacterNames() {
-        let toneWords: [Tone: String] = [.acute: "ACUTE", .grave: "GRAVE", .hook: "HOOK ABOVE", .tilde: "TILDE", .dot: "DOT BELOW"]
-        let modifierWords: [LetterModifier: String] = [.breve: "BREVE", .circumflex: "CIRCUMFLEX", .horn: "HORN", .stroke: "STROKE"]
+        let toneWords: [Tone: String] = [
+            .acute: "ACUTE", .grave: "GRAVE", .hook: "HOOK ABOVE", .tilde: "TILDE", .dot: "DOT BELOW",
+        ]
+        let modifierWords: [LetterModifier: String] = [
+            .breve: "BREVE", .circumflex: "CIRCUMFLEX", .horn: "HORN", .stroke: "STROKE",
+        ]
         for entry in LetterTable.entries {
             let name = entry.scalar.properties.name ?? ""
             #expect(name.hasPrefix(entry.isUppercase ? "LATIN CAPITAL LETTER " : "LATIN SMALL LETTER "), "\(name)")

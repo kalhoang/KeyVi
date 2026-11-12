@@ -10,9 +10,10 @@
 /// proportional to the token length and allocation free (ENG-R1230, ENG-R1232).
 package struct ViabilityAutomaton: Sendable {
     /// The automaton for the engine's Tier B inventory, `dz` included.
-    package static let shared = ViabilityAutomaton(syllables: SyllableTables.extendedPairs.map {
-        HornNormalisation.display($0.letters)
-    })
+    package static let shared = ViabilityAutomaton(
+        syllables: SyllableTables.extendedPairs.map {
+            HornNormalisation.display($0.letters)
+        })
 
     /// The state for "no letter typed yet".
     package let start: UInt16
@@ -126,7 +127,9 @@ package struct ViabilityAutomaton: Sendable {
 
     /// Merges states with identical outgoing transitions, children first (reverse breadth-first
     /// order). All live states accept, so equal transitions mean equal languages.
-    private static func minimise(_ automaton: SubsetAutomaton) -> (start: UInt16, transitions: [UInt16], stateCount: Int) {
+    private static func minimise(_ automaton: SubsetAutomaton) -> (
+        start: UInt16, transitions: [UInt16], stateCount: Int
+    ) {
         var canonical = [Int](repeating: 0, count: automaton.stateCount)
         var registry: [[Int]: Int] = [:]
         var representatives: [[Int]] = [[Int](repeating: 0, count: Letter.count)]  // dead state

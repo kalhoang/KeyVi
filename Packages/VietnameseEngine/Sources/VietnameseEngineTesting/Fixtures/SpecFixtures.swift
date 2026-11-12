@@ -28,7 +28,8 @@ public enum SpecFixtures {
         ("its", "ít", .vietnamese), ("this", "thí", .vietnamese), ("these", "thế", .vietnamese),
         ("there", "thể", .vietnamese), ("been", "bên", .vietnamese), ("car", "cả", .vietnamese),
         ("test", "tét", .english), ("best", "bét", .english), ("list", "lít", .english), ("cost", "cót", .english),
-        ("room", "rôm", .english), ("did", "đi", .vietnamese), ("theme", "thêm", .vietnamese), ("max", "mã", .vietnamese),
+        ("room", "rôm", .english), ("did", "đi", .vietnamese), ("theme", "thêm", .vietnamese),
+        ("max", "mã", .vietnamese),
     ]
 
     /// Every Tier A toned syllable in lowercase, committed form (`thuở`), in both tone styles (so
@@ -38,7 +39,9 @@ public enum SpecFixtures {
         for pair in SyllableTables.standardPairs {
             for tone in pair.tones {
                 for style in [ToneStyle.traditional, .modern] {
-                    result.insert(SyllableOracle.spell(onset: pair.onset.spelling, rhyme: pair.rhyme.spelling, tone: tone, style: style))
+                    result.insert(
+                        SyllableOracle.spell(
+                            onset: pair.onset.spelling, rhyme: pair.rhyme.spelling, tone: tone, style: style))
                 }
             }
         }

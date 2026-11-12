@@ -47,7 +47,8 @@ public struct TSVTable: Sendable {
                 continue
             }
             guard fields.count <= columns.count else {
-                throw FixtureError(file: name, line: lineNumber, reason: "\(fields.count) fields, header has \(columns.count)")
+                throw FixtureError(
+                    file: name, line: lineNumber, reason: "\(fields.count) fields, header has \(columns.count)")
             }
             var values: [String: String] = [:]
             for (index, field) in fields.enumerated() {

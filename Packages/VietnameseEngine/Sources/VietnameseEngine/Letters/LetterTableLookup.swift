@@ -10,7 +10,9 @@ package struct LetterTableEntry: Sendable, Hashable {
     package let tone: Tone
     package let isUppercase: Bool
 
-    package init(_ scalarValue: UInt32, _ base: Unicode.Scalar, _ modifier: LetterModifier, _ tone: Tone, uppercase: Bool) {
+    package init(
+        _ scalarValue: UInt32, _ base: Unicode.Scalar, _ modifier: LetterModifier, _ tone: Tone, uppercase: Bool
+    ) {
         self.scalarValue = scalarValue
         self.base = base
         self.modifier = modifier

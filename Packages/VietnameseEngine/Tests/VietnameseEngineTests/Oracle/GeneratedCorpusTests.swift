@@ -7,14 +7,18 @@ import VietnameseEngineTesting
 /// over it belongs to the composition tests).
 @Suite("Generated corpus (ENG-T02, ENG-T03)")
 struct GeneratedCorpusTests {
-    private func keys(_ onset: String, _ rhyme: String, _ tone: Tone, _ method: CorpusMethod, _ order: CorpusOrder) -> String? {
+    private func keys(_ onset: String, _ rhyme: String, _ tone: Tone, _ method: CorpusMethod, _ order: CorpusOrder)
+        -> String?
+    {
         KeySequenceGenerator.keys(onset: onset, rhyme: rhyme, tone: tone, method: method, order: order)
     }
 
     @Test func caseCounts() {
         let counts = GeneratedCorpus.counts()
         print("[ENG-T04] O1-O4 cases: \(counts.orders) (spec 237,916 includes 92 duplicate cases of the giu spelling)")
-        print("[ENG-T04] ENG-T03 variant cases: \(counts.variants) (Titlecase and all caps per toned syllable, uwow per toned ươ syllable)")
+        print(
+            "[ENG-T04] ENG-T03 variant cases: \(counts.variants) (Titlecase and all caps per toned syllable, uwow per toned ươ syllable)"
+        )
         // 15,406 toned syllables, of which 2,169 level: 4 x (3 x 2,169 + 4 x 13,237).
         #expect(counts.orders == 237_824)
         #expect(counts.orders + 92 == 237_916)
@@ -98,7 +102,8 @@ struct GeneratedCorpusTests {
         #expect(thuo?.expectedDisplay == "thưở")
         #expect(thuo?.expectedCommitted == "thuở")
         #expect(thuo?.events.count == 6)
-        #expect(thuo?.configuration == EngineConfiguration(inputMethod: .telex(TelexOptions()), toneStyle: .traditional))
+        #expect(
+            thuo?.configuration == EngineConfiguration(inputMethod: .telex(TelexOptions()), toneStyle: .traditional))
     }
 
     @Test func variantCasesUseTraditionalTelex() {
@@ -118,7 +123,8 @@ struct GeneratedCorpusTests {
         // ENG-R403: Telex sequences are letters only; VNI sequences are letters and digits.
         GeneratedCorpus.forEachOrderCase { generated in
             let allowed: (Character) -> Bool =
-                generated.method == .telex ? { $0.isASCII && $0.isLetter } : { $0.isASCII && ($0.isLetter || $0.isNumber) }
+                generated.method == .telex
+                ? { $0.isASCII && $0.isLetter } : { $0.isASCII && ($0.isLetter || $0.isNumber) }
             #expect(generated.keys.allSatisfy(allowed), "\(generated.keys)")
         }
     }

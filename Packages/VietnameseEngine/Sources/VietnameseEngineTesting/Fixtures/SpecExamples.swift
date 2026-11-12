@@ -10,7 +10,9 @@ public enum FixtureMethod: String, Sendable, Hashable {
 
 /// Language of the previous token in a commit example (13.9 "Previous token", 8.3).
 public enum PreviousToken: String, Sendable, Hashable {
-    case none, vietnamese = "vi", english = "en"
+    case none
+    case vietnamese = "vi"
+    case english = "en"
 
     /// Keys of a seed token that gives the run this language under ENG-R823 with the 13.9 fixtures:
     /// `việt` contains Vietnamese-only letters; `and` is an unchanged lexicon word that is not valid
@@ -46,7 +48,8 @@ public struct WorkedExample: Sendable, Hashable {
         switch method {
         case .vni: return .vni
         case .telex:
-            return .telex(TelexOptions(standaloneW: options != "standalone w off", bracketKeys: options == "bracket keys on"))
+            return .telex(
+                TelexOptions(standaloneW: options != "standalone w off", bracketKeys: options == "bracket keys on"))
         }
     }
 
@@ -172,7 +175,8 @@ public enum SpecExamples {
                 throw FixtureError(file: table.name, line: row.line, reason: "boundary must be one character")
             }
             guard let previous = PreviousToken(rawValue: row["previous"]) else {
-                throw FixtureError(file: table.name, line: row.line, reason: "unknown previous token \(row["previous"])")
+                throw FixtureError(
+                    file: table.name, line: row.line, reason: "unknown previous token \(row["previous"])")
             }
             guard let outcome = CommitDecisionExample.Outcome(rawValue: row["outcome"]) else {
                 throw FixtureError(file: table.name, line: row.line, reason: "unknown outcome \(row["outcome"])")
@@ -184,7 +188,8 @@ public enum SpecExamples {
             default: throw FixtureError(file: table.name, line: row.line, reason: "unknown context \(row["context"])")
             }
             return CommitDecisionExample(
-                id: row["id"], keys: row["keys"], boundary: boundary, method: try method(row, table), previous: previous,
+                id: row["id"], keys: row["keys"], boundary: boundary, method: try method(row, table),
+                previous: previous,
                 context: context, expectedText: row["expected_text"], committed: row["committed"],
                 ruleText: row["rule_text"], ruleCode: row["rule_code"], outcome: outcome)
         }

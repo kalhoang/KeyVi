@@ -32,9 +32,10 @@ package enum SyllableTables {
         add(RhymeInventory.afterQuExtended)
         add(RhymeInventory.afterGiExtra)
         add(RhymeInventory.extendedExtra)
-        add((RhymeInventory.standard + RhymeInventory.extendedExtra).filter { $0.hasSuffix("c") }.map {
-            String($0.dropLast()) + "k"
-        })
+        add(
+            (RhymeInventory.standard + RhymeInventory.extendedExtra).filter { $0.hasSuffix("c") }.map {
+                String($0.dropLast()) + "k"
+            })
         return spellings.enumerated().map { Rhyme(id: $0.offset, spelling: $0.element) }
     }()
 
@@ -124,7 +125,9 @@ package enum SyllableTables {
         for onset in Onset.allCases {
             for rhyme in rhymes {
                 let tier = tier(onset, rhyme)
-                if tier != .invalid, include(tier) { result.append(SyllablePair(onset: onset, rhyme: rhyme, tier: tier)) }
+                if tier != .invalid, include(tier) {
+                    result.append(SyllablePair(onset: onset, rhyme: rhyme, tier: tier))
+                }
             }
         }
         return result

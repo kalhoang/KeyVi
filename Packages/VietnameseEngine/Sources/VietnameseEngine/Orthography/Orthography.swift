@@ -9,11 +9,13 @@ public enum Orthography {
     /// A word containing anything other than letters, or more than one tone mark, is invalid.
     public static func analyze(_ word: String) -> SyllableAnalysis {
         guard let decoded = DecodedWord(word) else {
-            return SyllableAnalysis(onset: "", vowelGroup: "", coda: "", tone: .level, validity: .invalid, toneLetterOffset: nil)
+            return SyllableAnalysis(
+                onset: "", vowelGroup: "", coda: "", tone: .level, validity: .invalid, toneLetterOffset: nil)
         }
         let letters = decoded.letters
         let parse = SyllableParser.parse(letters)
-        let validity = decoded.toneCount > 1 ? .invalid : SyllableTables.validity(of: letters, parse: parse, tone: decoded.tone)
+        let validity =
+            decoded.toneCount > 1 ? .invalid : SyllableTables.validity(of: letters, parse: parse, tone: decoded.tone)
         return SyllableAnalysis(
             onset: Letter.spelling(letters[0..<parse.vowelStart]),
             vowelGroup: Letter.spelling(letters[parse.vowelStart..<parse.codaStart]),
@@ -77,5 +79,7 @@ struct DecodedWord {
     }
 
     private static let modifierMarks: [UInt32: LetterModifier] = [0x0306: .breve, 0x0302: .circumflex, 0x031B: .horn]
-    private static let toneMarks: [UInt32: Tone] = [0x0301: .acute, 0x0300: .grave, 0x0309: .hook, 0x0303: .tilde, 0x0323: .dot]
+    private static let toneMarks: [UInt32: Tone] = [
+        0x0301: .acute, 0x0300: .grave, 0x0309: .hook, 0x0303: .tilde, 0x0323: .dot,
+    ]
 }

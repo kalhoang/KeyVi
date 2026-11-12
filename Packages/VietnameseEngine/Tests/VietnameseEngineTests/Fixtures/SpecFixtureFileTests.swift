@@ -10,7 +10,8 @@ struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
         let rows = try SpecExamples.workedExamples(tsv: CorpusFiles.text(SpecExamples.workedExamplesFile))
         #expect(rows.count == 253)
-        #expect(rows.map(\.id) == (1...253).map { "W" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
+        #expect(
+            rows.map(\.id) == (1...253).map { "W" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
         #expect(Set(rows.map(\.options)) == ["-", "bracket keys on", "standalone w off"])
         #expect(rows.filter { $0.method == .vni }.map(\.id).count == 43)
         let first = try #require(rows.first)
@@ -18,7 +19,11 @@ struct SpecFixtureFileTests {
         let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
         #expect(byID["W063"]?.style == .modern)
         #expect(byID["W090"]?.keys == "sooocs" && byID["W090"]?.expected == "soóc")
-        #expect(byID["W236"]?.events == [.key(KeyInput("v")), .key(KeyInput("i")), .key(KeyInput("e")), .key(KeyInput("e")), .key(KeyInput("j")), .key(KeyInput("t")), .backspace])
+        #expect(
+            byID["W236"]?.events == [
+                .key(KeyInput("v")), .key(KeyInput("i")), .key(KeyInput("e")), .key(KeyInput("e")), .key(KeyInput("j")),
+                .key(KeyInput("t")), .backspace,
+            ])
         #expect(byID["W244"]?.inputMethod == .telex(TelexOptions(bracketKeys: true)))
         #expect(byID["W246"]?.inputMethod == .telex(TelexOptions(standaloneW: false)))
         #expect(byID["W252"]?.configuration.inputMethod == .vni)
@@ -31,7 +36,8 @@ struct SpecFixtureFileTests {
     @Test func commitDecisions() throws {
         let rows = try SpecExamples.commitDecisions(tsv: CorpusFiles.text(SpecExamples.commitDecisionsFile))
         #expect(rows.count == 64)
-        #expect(rows.map(\.id) == (1...64).map { "B" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
+        #expect(
+            rows.map(\.id) == (1...64).map { "B" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
         #expect(rows.prefix(52).allSatisfy { $0.boundary == " " })
         #expect(rows.suffix(12).map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n"])
         for row in rows {
@@ -59,7 +65,11 @@ struct SpecFixtureFileTests {
         #expect(rows.map(\.id) == ["E01", "E02", "E02b", "E03", "E04", "E05", "E06", "E07", "E08"])
         let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
         #expect(byID["E03"]?.method == .vni && byID["E07"]?.configuration.inputMethod == .vni)
-        #expect(byID["E04"]?.events == [.key(KeyInput("t")), .key(KeyInput("e")), .key(KeyInput("s")), .key(KeyInput("t")), .key(KeyInput(" ")), .backspace, .restoreToggle])
+        #expect(
+            byID["E04"]?.events == [
+                .key(KeyInput("t")), .key(KeyInput("e")), .key(KeyInput("s")), .key(KeyInput("t")), .key(KeyInput(" ")),
+                .backspace, .restoreToggle,
+            ])
         #expect(byID["E02"]?.lastAction == .passThrough && byID["E01"]?.lastAction == .edit)
         #expect(byID["E02b"]?.expectedActive == "việ")
         #expect(byID["E06"]?.expectedActive == "" && byID["E06"]?.lastAction == .passThrough)
@@ -76,7 +86,8 @@ struct SpecFixtureFileTests {
         let ambiguity = rows.filter { $0.kind == "ambiguity" }
         #expect(ambiguity.map(\.value) == SpecFixtures.ambiguityProposals.map(\.raw))
         #expect(ambiguity.map(\.display) == SpecFixtures.ambiguityProposals.map(\.display))
-        #expect(ambiguity.map(\.decision) == SpecFixtures.ambiguityProposals.map { $0.language == .english ? "en" : "vi" })
+        #expect(
+            ambiguity.map(\.decision) == SpecFixtures.ambiguityProposals.map { $0.language == .english ? "en" : "vi" })
     }
 
     @Test func commitResources() {
@@ -102,16 +113,24 @@ struct SpecFixtureFileTests {
         #expect(throws: FixtureError.self) { try TSVTable(name: "empty", text: "# only a comment\n") }
         #expect(throws: FixtureError.self) { try TSVTable(name: "wide", text: "a\tb\n1\t2\t3\n") }
         #expect(throws: FixtureError.self) { try TSVTable(name: "escape", text: "a\nx\\q\n") }
-        #expect(throws: FixtureError.self) { try SpecExamples.workedExamples(tsv: "id\tmethod\tstyle\nW1\tVNX\ttrad\n") }
+        #expect(throws: FixtureError.self) {
+            try SpecExamples.workedExamples(tsv: "id\tmethod\tstyle\nW1\tVNX\ttrad\n")
+        }
         #expect(throws: FixtureError.self) { try SpecExamples.workedExamples(tsv: "id\tmethod\tstyle\nW1\tVNI\tnew\n") }
         #expect(throws: FixtureError.self) {
-            try SpecExamples.commitDecisions(tsv: "id\tboundary\tmethod\tprevious\toutcome\tcontext\nB1\t\tVNI\tnone\tkept\tgeneral\n")
+            try SpecExamples.commitDecisions(
+                tsv: "id\tboundary\tmethod\tprevious\toutcome\tcontext\nB1\t\tVNI\tnone\tkept\tgeneral\n")
         }
         #expect(throws: FixtureError.self) {
-            try SpecExamples.commitDecisions(tsv: "id\tboundary\tmethod\tprevious\toutcome\tcontext\nB1\t,\tVNI\tvi\tkept\tremote\n")
+            try SpecExamples.commitDecisions(
+                tsv: "id\tboundary\tmethod\tprevious\toutcome\tcontext\nB1\t,\tVNI\tvi\tkept\tremote\n")
         }
-        #expect(throws: FixtureError.self) { try SpecExamples.restoreToggles(tsv: "id\tmethod\tevents\tlast_action\nE1\tVNI\tjump\tedit\n") }
-        #expect(throws: FixtureError.self) { try SpecExamples.restoreToggles(tsv: "id\tmethod\tevents\tlast_action\nE1\tVNI\ttoggle\tmaybe\n") }
+        #expect(throws: FixtureError.self) {
+            try SpecExamples.restoreToggles(tsv: "id\tmethod\tevents\tlast_action\nE1\tVNI\tjump\tedit\n")
+        }
+        #expect(throws: FixtureError.self) {
+            try SpecExamples.restoreToggles(tsv: "id\tmethod\tevents\tlast_action\nE1\tVNI\ttoggle\tmaybe\n")
+        }
     }
 
     @Test func escapesAndShortRows() throws {
