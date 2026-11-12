@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+// Signing identities (public information: team IDs appear in every signature).
+// Team: Pa's individual Apple Developer team (PLT-R750). Bundle ID and Team ID must never change after release.
+DEVELOPMENT_TEAM = N2J45D3NKD
+CODE_SIGN_STYLE = Manual
+// Debug/dev builds: Apple Development identity, bundle ID suffix .dev (PLT-R751).
+CODE_SIGN_IDENTITY_DEV = Apple Development
+// Release builds: Developer ID Application, hardened runtime, secure timestamp (PLT-R750).
+CODE_SIGN_IDENTITY_RELEASE = Developer ID Application

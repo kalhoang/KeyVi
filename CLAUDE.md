@@ -40,7 +40,7 @@ UI strings take the app name as a format argument. `scripts/rename-app.sh` must 
 ## Commands
 - Engine: `cd Packages/VietnameseEngine && swift build && swift test`
 - AppCore: `cd Packages/AppCore && swift build && swift test`
-- App: `xcodegen generate && xcodebuild -scheme KalKey -configuration Debug build` (the `.xcodeproj` is generated, not committed)
+- App: `xcodegen generate && xcodebuild -project App.xcodeproj -scheme App -configuration Debug build` (the `.xcodeproj` is generated, not committed; internal target/scheme names are brand-neutral: `App`, `TestHost`, `SpikeIMK`)
 - Lint: `scripts/lint.sh` (swift-format, bundle-ID literal lint, log interpolation lint, URL host allowlist)
 - When several agents build the same package at once, use a private scratch path: `swift build --scratch-path .build-<name>`.
 
