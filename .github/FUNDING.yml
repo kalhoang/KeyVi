@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# GitHub Sponsor button (PRD-R57). Donations are a tip jar, never a nag.
+# VERIFY: replace the placeholder with the maintainer's GitHub Sponsors handle once the
+# Sponsors profile is approved (docs/runbooks/donation-setup.md). Keep the line commented
+# until then: an unknown handle makes GitHub show a broken button.
+# github: [REPLACE-WITH-SPONSORS-HANDLE]
+#
+# Polar.sh is NOT used for donations (PRD-R60); Buy Me a Coffee is not used.

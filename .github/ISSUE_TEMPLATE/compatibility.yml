@@ -1,0 +1,135 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Compatibility report form (QA-R43, QA-R20). Steps come from compat/SCRIPT.md (QA-R18).
+name: Compatibility report (Báo cáo tương thích)
+description: Results of the 12-step compatibility script for one app (Kết quả kiểm tra tương thích một ứng dụng)
+title: "[Compat] "
+labels: ["compat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run the script in [compat/SCRIPT.md](../blob/main/compat/SCRIPT.md). It takes under 3 minutes per app. Use only the test text from the script, never private text, and never a password field.
+
+        A maintainer confirms community results before the status changes to "Hoạt động tốt" (QA-R20). Your handle is recorded as the verifier.
+  - type: input
+    id: app
+    attributes:
+      label: App name (Tên ứng dụng)
+      placeholder: For example Google Chrome
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version (Phiên bản ứng dụng)
+      placeholder: For example 130.0.1
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version (Phiên bản macOS)
+      description: From the output of `sw_vers` or the Apple menu, About This Mac.
+      placeholder: For example 15.1 (24B83)
+    validations:
+      required: true
+  - type: dropdown
+    id: step-01
+    attributes:
+      label: "Step 1: Telex paragraph with all six tones"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-02
+    attributes:
+      label: "Step 2: VNI paragraph with all six tones"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-03
+    attributes:
+      label: "Step 3: English words stay unchanged (text user wifi USB)"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-04
+    attributes:
+      label: "Step 4: Edit a word after a comma and space (chao, then Backspace twice, then f)"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-05
+    attributes:
+      label: "Step 5: Delete and retype the first character of a line"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-06
+    attributes:
+      label: "Step 6: First character in an empty field (ddi gives đi)"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-07
+    attributes:
+      label: "Step 7: Type at 15 keys per second"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-08
+    attributes:
+      label: "Step 8: Toggle hotkey (Control+Shift)"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-09
+    attributes:
+      label: "Step 9: Expand a macro (vn gives Việt Nam)"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-10
+    attributes:
+      label: "Step 10: Autocomplete is not duplicated"
+      options: ["pass", "fail", "n/a (the app has no autocomplete)"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-11
+    attributes:
+      label: "Step 11: Undo (Command+Z) leaves sensible text"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: dropdown
+    id: step-12
+    attributes:
+      label: "Step 12: No stray invisible characters (checked with pbpaste and xxd)"
+      options: ["pass", "fail", "n/a"]
+    validations:
+      required: true
+  - type: textarea
+    id: failures
+    attributes:
+      label: "For every fail, the first wrong word or the symptom (Với mỗi bước lỗi: từ sai đầu tiên hoặc triệu chứng)"
+      description: One line per failing step. Do not paste private text.
+      placeholder: "Step 7: letters out of order in the second run, first wrong word was ..."
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics block (Khối chẩn đoán)
+      description: Menu, Báo lỗi... > Mở GitHub copies the block. Paste it exactly as it is, including the first line with the format version and the fence lines.
+      placeholder: Paste the diagnostics block here
+    validations:
+      required: true

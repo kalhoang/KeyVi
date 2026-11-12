@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Feature request form (QA-R43). Problem first, then proposed behaviour.
+# Few settings is a product principle (PRD principle 5): most requests should become a better default.
+name: Feature request (Đề xuất tính năng)
+description: Suggest a new behaviour or a change of default (Đề xuất tính năng mới hoặc thay đổi mặc định)
+title: "[Feature] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Features are reviewed in a monthly batch and answered with accept, decline with a reason, or later. Please read the list of deliberate non-goals in [spec/03-product.md](../blob/main/spec/03-product.md) section 3.2 first.
+
+        Every setting is a maintenance cost, so the first question is always whether the default can simply be better.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem you have (Vấn đề bạn gặp)
+      description: Describe the situation and what is hard or impossible today. Start with the problem, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour (Hành vi bạn đề xuất)
+      description: What should happen instead, in plain words, with an example.
+    validations:
+      required: true
+  - type: dropdown
+    id: persona
+    attributes:
+      label: Who is this for? (Dành cho ai?)
+      options:
+        - Office worker (Excel, Sheets, Word, Zalo, Teams)
+        - Developer (terminal, IDE, CLI tools)
+        - Designer (Figma, Adobe, Canva)
+        - Gamer (games, Discord)
+        - Bilingual writer (Notion, Obsidian, Docs)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Is this a default change or a new setting? (Đổi mặc định hay thêm tùy chọn mới?)
+      options:
+        - A default change (the existing behaviour should be different for everyone)
+        - A new setting (some users need one value and others need the other)
+        - A new behaviour with no setting
+        - I am not sure
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead (Cách bạn làm hiện nay)
+      description: Workarounds, other tools, or per-app rules you already use.
+    validations:
+      required: false
