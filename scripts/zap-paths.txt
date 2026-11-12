@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Every storage path the app creates (PLT-R1012), for the Homebrew cask `zap` stanza and the
+# uninstall help page. Source: spec/02-platform.md Appendix A and PLT-R1001, PLT-R903, PLT-R905.
+#
+# Tokens (rendered by `python3 -I scripts/lib/publish_helpers.py render-zap`, also used by
+# scripts/publish-release for the cask):
+#   {{storage-folder}}  the display name, or the slug when the display name contains non-ASCII
+#                       characters (folder-name rule of PLT-R903; permanent once released)
+#   {{bundle-id}}       APP_BUNDLE_ID_RELEASE from scripts/brand.env
+# The app itself (/Applications/<name>.app or ~/Applications) is removed by the cask's `app` stanza.
+
+# Settings, rule overrides, per-app modes, macros and their backups (PLT-R1001, PLT-R1005)
+~/Library/Application Support/{{storage-folder}}
+# Logs and time-boxed captures (PLT-R903, PLT-R905)
+~/Library/Logs/{{storage-folder}}
+# Sparkle state and user defaults (Appendix A)
+~/Library/Preferences/{{bundle-id}}.plist
+~/Library/Caches/{{bundle-id}}
+# Created by the system frameworks for any app with this bundle ID: URL session storage (Sparkle
+# downloads) and saved window state. Not in Appendix A; listed so zap leaves nothing behind.
+~/Library/HTTPStorages/{{bundle-id}}
+~/Library/HTTPStorages/{{bundle-id}}.binarycookies
+~/Library/Saved Application State/{{bundle-id}}.savedState

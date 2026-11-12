@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# TEMPLATE: rendered by scripts/publish-release (python3 -I scripts/lib/publish_helpers.py render-cask).
+# TEMPLATE: Placeholders come from scripts/brand.env and the release; do not edit rendered casks by hand.
+# TEMPLATE: Lines starting with "# TEMPLATE:" are dropped from the rendered cask.
+# TEMPLATE: QA-R36, PLT-R1110: auto_updates true, minimum macOS Sequoia, zap paths per PLT-R1012.
+cask "{{app-slug}}" do
+  version "{{version}}"
+  sha256 "{{sha256}}"
+
+  url "{{dmg-url}}"
+  name "{{AppName}}"
+  desc "{{desc}}"
+  homepage "https://{{site-host}}/"
+
+  # TEMPLATE: The Sparkle strategy reads the appcast; short_version matches the cask version format.
+  # TEMPLATE: VERIFY that items with sparkle:channel="beta" are ignored by the strategy (Homebrew docs).
+  livecheck do
+    url "https://{{site-host}}/appcast.xml"
+    strategy :sparkle, &:short_version
+  end
+
+  auto_updates true
+  depends_on macos: ">= :sequoia"
+
+  app "{{AppName}}.app"
+
+  zap trash: [
+{{zap-paths}},
+  ]
+end
