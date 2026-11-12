@@ -91,8 +91,8 @@ struct SpecFixtureFileTests {
     }
 
     @Test func commitResources() {
-        let all = SpecFixtures.allStandardSyllables()
-        let attested = SpecFixtures.attestedSyllables()
+        let all = SpecFixtures.allStandardSyllables
+        let attested = SpecFixtures.attestedSyllables
         #expect(SpecFixtures.unattestedSyllables.allSatisfy(all.contains))
         #expect(attested.count == all.count - SpecFixtures.unattestedSyllables.count)
         #expect(attested.contains("hòa") && attested.contains("hoà") && attested.contains("thuở"))

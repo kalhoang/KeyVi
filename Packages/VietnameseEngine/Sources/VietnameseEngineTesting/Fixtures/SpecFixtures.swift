@@ -33,8 +33,8 @@ public enum SpecFixtures {
     ]
 
     /// Every Tier A toned syllable in lowercase, committed form (`thuở`), in both tone styles (so
-    /// `hòa` and `hoà` are both present), spelled by the oracle from the engine's tables.
-    public static func allStandardSyllables() -> Set<String> {
+    /// `hòa` and `hoà` are both present), spelled by the oracle from the engine's tables. Computed once.
+    public static let allStandardSyllables: Set<String> = {
         var result = Set<String>()
         for pair in SyllableTables.standardPairs {
             for tone in pair.tones {
@@ -46,13 +46,11 @@ public enum SpecFixtures {
             }
         }
         return result
-    }
+    }()
 
     /// 13.9: every Tier A syllable is attested except `unattestedSyllables`. Lowercase; commit rules
     /// look up the lowercased committed display.
-    public static func attestedSyllables() -> Set<String> {
-        allStandardSyllables().subtracting(unattestedSyllables)
-    }
+    public static let attestedSyllables: Set<String> = allStandardSyllables.subtracting(unattestedSyllables)
 
     /// The 13.9 resources, with optional user lists and macros for tests that need them.
     public static func commitResources(
@@ -60,7 +58,7 @@ public enum SpecFixtures {
     ) -> Resources {
         Resources(
             english: WordSet(englishLexicon), techAlways: WordSet(techAlways), techCodeOnly: WordSet(techCodeOnly),
-            attestedSyllables: WordSet(attestedSyllables()),
+            attestedSyllables: WordSet(attestedSyllables),
             ambiguity: Dictionary(uniqueKeysWithValues: ambiguityProposals.map { ($0.raw, $0.language) }),
             userKeepRaw: WordSet(userKeepRaw), userKeepVietnamese: WordSet(userKeepVietnamese), macros: macros)
     }
