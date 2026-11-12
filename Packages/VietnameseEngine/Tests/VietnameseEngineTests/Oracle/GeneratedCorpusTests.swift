@@ -97,7 +97,8 @@ struct GeneratedCorpusTests {
         }
         #expect(methods == Set(CorpusMethod.allCases))
         #expect(kinds == Set(CorpusOrder.allCases.map { GeneratedCase.Kind.order($0) }))
-        let thuo = try? #require(found)
+        #expect(found != nil)
+        let thuo = found
         #expect(thuo?.keys == "thuowr")
         #expect(thuo?.expectedDisplay == "thưở")
         #expect(thuo?.expectedCommitted == "thuở")

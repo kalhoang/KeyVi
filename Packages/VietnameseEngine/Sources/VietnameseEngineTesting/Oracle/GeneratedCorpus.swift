@@ -38,7 +38,15 @@ public enum GeneratedCorpus {
     /// Calls `body` for every O1 to O4 case: each toned syllable contributes 2 methods x 2 styles x
     /// 4 orders (3 for the level tone, which has no O4).
     public static func forEachOrderCase(_ body: (GeneratedCase) throws -> Void) rethrows {
-        for pair in SyllableTables.standardPairs {
+        try forEachOrderCase(shard: 0, of: 1, body)
+    }
+
+    /// The O1 to O4 cases of one shard: the Tier A pairs whose index modulo `shardCount` is `shard`.
+    /// The shards partition the corpus, so tests can run them in parallel.
+    public static func forEachOrderCase(shard: Int, of shardCount: Int, _ body: (GeneratedCase) throws -> Void)
+        rethrows
+    {
+        for (index, pair) in SyllableTables.standardPairs.enumerated() where index % shardCount == shard {
             let onset = pair.onset.spelling
             let rhyme = pair.rhyme.spelling
             for tone in pair.tones {
@@ -68,7 +76,14 @@ public enum GeneratedCorpus {
     /// and the explicit `uwow` spelling for every one whose rhyme contains `ươ`. Telex O1, traditional
     /// style (the default).
     public static func forEachVariantCase(_ body: (GeneratedCase) throws -> Void) rethrows {
-        for pair in SyllableTables.standardPairs {
+        try forEachVariantCase(shard: 0, of: 1, body)
+    }
+
+    /// The ENG-T03 variant cases of one shard (same partition as `forEachOrderCase(shard:of:_:)`).
+    public static func forEachVariantCase(shard: Int, of shardCount: Int, _ body: (GeneratedCase) throws -> Void)
+        rethrows
+    {
+        for (index, pair) in SyllableTables.standardPairs.enumerated() where index % shardCount == shard {
             let onset = pair.onset.spelling
             let rhyme = pair.rhyme.spelling
             for tone in pair.tones {
