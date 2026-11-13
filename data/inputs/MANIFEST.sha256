@@ -1,6 +1,6 @@
 # SHA-256 of every pinned build input, relative to data/. Regenerate with `lexicon-builder pin`.
 # Verify without the tool: cd data && shasum -a 256 -c inputs/MANIFEST.sha256
-e579c9b6f3943c45e4f60ffb854b593753527a8b6de67cf9a98cc91a86bf4675  inputs/ambiguity.tsv
+dbb8f7a3c6ddeb32f47cbb4d071302894216a5330ea6c64208af76f033f3f57d  inputs/ambiguity.tsv
 8aec42dc706a16238f445d16104f4b386746c316b775443e97a9674a0837b22a  inputs/attested-additions.txt
 c45f29f3969710868e9037e43a41d7a17df701042dd240e89e4011873c26bbd7  inputs/english/SOURCES.tsv
 6ed66394d8b46ed12feac7aad989dfc4620c4f2051316ab774560aae71140994  inputs/english/scowl-2020.12.07/american-words.10
