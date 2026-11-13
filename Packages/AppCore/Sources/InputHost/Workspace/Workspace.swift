@@ -26,8 +26,17 @@ public enum ConflictingInput: Sendable, Hashable {
     case builtInVietnameseSource(id: InputSourceID, name: String)
 }
 
+/// Pure: each conflicting app once (by bundle) in `running` order, then each enabled Vietnamese input source once.
 public enum ConflictDetector {
     public static func detect(
         running: [ProcessIdentity], enabledSources: [InputSourceInfo], conflictingApps: Set<BundleKey>
-    ) -> [ConflictingInput] { unimplemented() }
+    ) -> [ConflictingInput] {
+        var seenApps = Set<BundleKey>()
+        let apps = running.filter { conflictingApps.contains($0.bundle) && seenApps.insert($0.bundle).inserted }
+            .map { ConflictingInput.runningApp(bundle: $0.bundle, name: $0.localizedName ?? $0.processName) }
+        var seenSources = Set<InputSourceID>()
+        let sources = enabledSources.filter { $0.isBuiltInVietnamese && seenSources.insert($0.id).inserted }
+            .map { ConflictingInput.builtInVietnameseSource(id: $0.id, name: $0.localizedName) }
+        return apps + sources
+    }
 }
