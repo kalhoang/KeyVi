@@ -143,8 +143,9 @@ public struct InvariantChecker: Sendable {
         public var escapeCheckOneIn = 6
         /// One `Engine.reduce` comparison every this many events (small states only).
         public var pureReduceOneIn = 64
-        /// QA-R7 P2 hang detector. Debug builds under parallel test load need a generous value; the
-        /// release benchmark measures the 1 ms worst case of ENG-R1230.
+        /// QA-R7 P2 hang detector, compared with the CPU time of the event (`hangClockNanoseconds`), so time
+        /// the scheduler parks the thread under load does not count. Debug builds still need a generous
+        /// value; the release benchmark measures the 1 ms worst case of ENG-R1230.
         public var hangThresholdNanoseconds: Int64 = 250_000_000
         /// An extra NFC check of every insert (tests pass Foundation's normalisation).
         public var nfcCheck: (@Sendable (String) -> Bool)?
@@ -194,10 +195,12 @@ public struct InvariantChecker: Sendable {
         let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
         let before = takesPureReduceSample(index) ? session.state : nil
         let start = Self.uptimeNanoseconds()
+        let cpuStart = Self.hangClockNanoseconds()
         let output = session.handle(event)
+        let cpu = Int64(clamping: Self.hangClockNanoseconds() &- cpuStart)
         let elapsed = Int64(clamping: Self.uptimeNanoseconds() &- start)
         statistics.events += 1
-        try record(elapsed, index: index)
+        try record(elapsed, cpu: cpu, index: index)
         if let before { try checkPureReduce(before, event, output, index: index) }
         try checkEdit(output, produced: produced, index: index)
         try applyToField(event, output, index: index)
@@ -549,11 +552,12 @@ public struct InvariantChecker: Sendable {
 
     // MARK: - Bookkeeping
 
-    private mutating func record(_ elapsed: Int64, index: Int) throws {
+    private mutating func record(_ elapsed: Int64, cpu: Int64, index: Int) throws {
         statistics.slowestEventNanoseconds = max(statistics.slowestEventNanoseconds, elapsed)
         if elapsed > 1_000_000 { statistics.eventsOverOneMillisecond += 1 }
-        if elapsed > options.hangThresholdNanoseconds {
-            throw violation("QA-R7 P2", "an event took \(elapsed / 1_000) µs", index)
+        if cpu > options.hangThresholdNanoseconds {
+            let detail = "an event took \(cpu / 1_000) µs of CPU time (\(elapsed / 1_000) µs wall)"
+            throw violation("QA-R7 P2", detail, index)
         }
     }
 
@@ -618,6 +622,19 @@ public struct InvariantChecker: Sendable {
         #else
         var time = timespec()
         clock_gettime(CLOCK_MONOTONIC, &time)
+        return UInt64(time.tv_sec) &* 1_000_000_000 &+ UInt64(time.tv_nsec)
+        #endif
+    }
+
+    /// The hang clock of QA-R7 P2: CPU time of the calling thread in nanoseconds. Unlike wall time it does not
+    /// advance while the scheduler parks the thread (parallel test cases, a VM booting on the same machine), so a
+    /// loaded machine cannot fake a hang, while a loop that burns CPU still trips the detector.
+    public static func hangClockNanoseconds() -> UInt64 {
+        #if canImport(Darwin)
+        return clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)
+        #else
+        var time = timespec()
+        clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time)
         return UInt64(time.tv_sec) &* 1_000_000_000 &+ UInt64(time.tv_nsec)
         #endif
     }

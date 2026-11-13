@@ -97,6 +97,23 @@ struct FuzzTests {
         }
     }
 
+    /// QA-R7 P2: the hang detector counts the time the engine thread actually runs, so a test thread that the
+    /// scheduler parks under load (parallel test cases, a VM booting next to `swift test`) is not reported as a
+    /// hang, while a loop that burns CPU still is.
+    @Test("The hang clock ignores time the thread is not running (QA-R7 P2)")
+    func hangClockIgnoresParkedTime() {
+        let start = InvariantChecker.hangClockNanoseconds()
+        usleep(150_000)
+        let parked = InvariantChecker.hangClockNanoseconds() &- start
+        #expect(parked < 50_000_000, "the hang clock advanced \(parked / 1_000) µs while the thread slept 150 ms")
+
+        let busyStart = InvariantChecker.hangClockNanoseconds()
+        var accumulator: UInt64 = 0
+        for value in 0..<2_000_000 as Range<UInt64> { accumulator = accumulator &* 31 &+ value }
+        #expect(accumulator != 1)
+        #expect(InvariantChecker.hangClockNanoseconds() &- busyStart > 0, "a busy loop advances the hang clock")
+    }
+
     /// ENG-T33: the same stream gives the same outputs, run after run.
     @Test("Determinism and replay (ENG-T33)")
     func determinism() throws {
