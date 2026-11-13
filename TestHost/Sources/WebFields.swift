@@ -40,6 +40,11 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
     private(set) var mirrors: [TestHostField: MirrorTextField] = [:]
     /// A focus request that arrived while a page was loading; applied once it finished.
     private var pendingFocus: TestHostField?
+    /// The load requested last, until it finished or failed: a focus request right after Reset fields must wait for
+    /// the new page even before WebKit reports it as loading. A load replaced by a newer one (its failure is a
+    /// cancellation) does not end the wait.
+    private var currentLoad: WKNavigation?
+    private var pageLoading: Bool { currentLoad != nil }
 
     override init() {
         let configuration = WKWebViewConfiguration()
@@ -90,7 +95,7 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
     func load(_ url: URL) {
         guard url.isFileURL, url.pathExtension == "html" else { return }
         for mirror in mirrors.values { mirror.stringValue = "" }
-        webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        currentLoad = webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         if let index = Self.pages.firstIndex(of: url.lastPathComponent) { picker.selectItem(at: index) }
     }
 
@@ -98,10 +103,11 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
         loadPage(named: Self.pages[max(0, sender.indexOfSelectedItem)])
     }
 
-    /// Reset fields: back to `fields.html` when an earlier scenario opened another page, so scenarios without an
-    /// `openURL` step (web input, textarea, contenteditable) always find their elements.
+    /// Reset fields: a fresh load of `fields.html`, also when it is shown already, so scenarios without an `openURL`
+    /// step (web input, textarea, contenteditable) find their elements on a new page with no focus or selection
+    /// left by the previous scenario. Keeping the page failed `testhost.web.textarea` after `testhost.web.input` in
+    /// every full VM run; on its own, on a fresh page, it passed (integration-suite.md 10.4).
     func resetPage() {
-        guard webView.url?.lastPathComponent != Self.pages[0] else { return }
         loadPage(named: Self.pages[0])
     }
 
@@ -135,7 +141,7 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
     /// under test two focus changes, the second one only after the first keys (the VM runs left the first word in
     /// the web textarea untransformed).
     func focusElement(_ field: TestHostField) {
-        guard !webView.isLoading else {
+        guard !pageLoading else {
             pendingFocus = field
             return
         }
@@ -146,13 +152,21 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
         }
     }
 
-    /// Reset fields: no element of the page keeps the focus, so the next focus request is the only focus change.
-    func blurPage() {
-        webView.evaluateJavaScript(
-            "document.activeElement && document.activeElement.blur && document.activeElement.blur()")
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loadEnded(navigation) }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+        loadEnded(navigation)
     }
 
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    func webView(
+        _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error
+    ) { loadEnded(navigation) }
+
+    /// The last requested load ended: a focus request that waited for it runs now. Navigations inside the page
+    /// (none of the bundled pages makes one) and replaced loads are ignored.
+    private func loadEnded(_ navigation: WKNavigation?) {
+        guard let navigation, navigation === currentLoad else { return }
+        currentLoad = nil
         guard let field = pendingFocus else { return }
         pendingFocus = nil
         focusElement(field)

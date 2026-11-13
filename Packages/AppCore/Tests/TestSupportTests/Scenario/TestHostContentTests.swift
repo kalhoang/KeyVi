@@ -180,6 +180,22 @@ private func testHostFieldIDs() throws -> [String] {
         #expect(try testHostFieldIDs().contains(TestHostControls.typingField))
     }
 
+    /// Reset fields reloads `fields.html` every time, so each web scenario starts on a freshly loaded page, like a
+    /// fresh launch. Keeping an already shown `fields.html` failed `testhost.web.textarea` in every full VM run
+    /// (it follows `testhost.web.input` on the same page), while it passed on its own on a fresh page (control run
+    /// 20261113T204207Z-integration, integration-suite.md 10.4). A focus request that arrives during the reload
+    /// waits for it on the controller's own flag, set when the load is requested.
+    @Test func resetReloadsTheFieldsPageEveryTime() throws {
+        let web = try read(sourcesDirectory.appendingPathComponent("WebFields.swift"))
+        let start = try #require(web.range(of: "func resetPage() {"))
+        let end = try #require(web.range(of: "\n    }\n", range: start.upperBound..<web.endIndex))
+        let body = String(web[start.upperBound..<end.lowerBound])
+        #expect(body.contains("loadPage(named: Self.pages[0])"))
+        #expect(!body.contains("guard"), "no early return when fields.html is already shown")
+        #expect(web.contains("guard !pageLoading else"))
+        #expect(!web.contains("webView.isLoading"))
+    }
+
     @Test func pickerListsExactlyTheBundledPages() throws {
         let web = try read(sourcesDirectory.appendingPathComponent("WebFields.swift"))
         let listed = matches(#""([a-z-]+\.html)""#, in: web)
