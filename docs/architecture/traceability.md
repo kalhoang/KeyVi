@@ -252,7 +252,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 
 | ID | Requirement (short) | Owner module / file | Verification | Workstream | Pa |
 |---|---|---|---|---|---|
-| ENG-R862 | Learned entries stored per app, typed entries global | `SettingsStore/LearnedWords.swift`, `InputHost/Integration/LearningTracker.swift`, `TapSettingsPublisher.focusChanged(to:)`; ADR 0320 | U (`PerAppLearningTests.swift`: `LearningTrackerTests`, `FocusedAppWordListTests`, `HostPerAppLearningTests`) | engine track; W5-B |  |
+| ENG-R862 | Learned entries stored per app, typed entries global | `SettingsStore/LearnedWords.swift`, `InputHost/Integration/LearningTracker.swift`, `TapSettingsPublisher.focusChanged(to:)`; ADR 0320 | U (`PerAppLearningTests.swift`: `LearningTrackerTests`, `FocusedAppWordListTests`, `HostPerAppLearningTests`, in particular `HostPerAppLearningTests.aWordTypedBeforeTheFocusMovesBelongsToTheAppWhereItWasTyped`) | engine track; W5-B |  |
 | ENG-R906 | Bracket letters uppercase under Caps Lock | `KeyPipeline` reports `KeyInput.capsLock` from the event flags (PLT-R304) | E, U (`KeyPipelineCapsLockTests`) | engine track; W5-A |  |
 | ENG-R1103 | Shadowed macro triggers rejected, including a trailing digit | Macros pane editor and importer refuse the pair; ADR 0321 | E, U (`MacroEditorTests`, `MacroEngineAgreementTests`) | engine track; W5-B |  |
 
@@ -296,7 +296,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R33 | Macros never sent; count only in diagnostics | `DiagnosticsReport.SettingsSection.macroCount` | U | W1-A, W1-G |  |
 | PRD-R34 | Apps pane rows | `AppsPaneModel`, Apps pane | U, M | W1-G, W2-B |  |
 | PRD-R35 | Compatibility status from matrix | `MatrixStatusResolver` | U | W1-C, W1-G |  |
-| PRD-R36 | At most three compatibility choices under Advanced | `CompatibilityModeChoice` | U, M | W1-G, W2-B |  |
+| PRD-R36 | At most three compatibility choices under Advanced | `CompatibilityModeChoice` | U (`GuidedOverrideSlotTests.onlyThePlainChoicesAreSelectable`), M | W1-G, W2-B |  |
 | PRD-R37 | Report button per app row | Apps pane | M | W2-B |  |
 | PRD-R38 | Both compatibility files ship in the app | `project.yml` copy phase | R | skeleton (done); W1-C |  |
 | PRD-R39 | Tier lists | `compat/matrix.json` `tier` | D | W1-C; Pa |  |
