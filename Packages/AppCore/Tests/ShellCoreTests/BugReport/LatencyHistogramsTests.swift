@@ -32,6 +32,17 @@ import Testing
         #expect(histograms.allSatisfy { $0.samples == 0 && $0.bins.isEmpty })
     }
 
+    @Test func everyMetricHasItsOwnTitleAndIdentity() throws {
+        let titles = LatencyMetric.allCases.map(\.title)
+        #expect(Set(titles).count == titles.count)
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let english = Localizer(language: .english, appBundle: app.bundle)
+        for metric in LatencyMetric.allCases where metric != .echo {
+            #expect(english.string(metric.title).hasPrefix(metric.rawValue.uppercased() + ":"))
+        }
+        #expect(LatencyHistograms.make(Self.metrics()).map(\.id) == LatencyMetric.allCases)
+    }
+
     @Test func metricsReadTheirOwnSnapshot() {
         let t2 = Self.snapshot([10: 3])
         let t6 = Self.snapshot([20: 5])
