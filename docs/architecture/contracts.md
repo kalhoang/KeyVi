@@ -9390,6 +9390,21 @@ public struct Localizer: Sendable {
         date.formatted(Date.FormatStyle(date: .long, time: .omitted, locale: locale))
     }
 
+    /// PRD-R65: an ISO calendar day (`YYYY-MM-DD`, as `compat-matrix.json` writes `lastVerified`) in the selected
+    /// language, in the same long style as `formatDate`. Text that is not a valid day is returned unchanged.
+    public func formatDay(iso day: String, timeZone: TimeZone = .current) -> String {
+        guard let match = day.wholeMatch(of: /(\d{4})-(\d{2})-(\d{2})/) else { return day }
+        let parts = DateComponents(year: Int(match.1), month: Int(match.2), day: Int(match.3))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        // A day that does not exist (2026-02-30) rolls over in `date(from:)`; reading it back catches that.
+        guard let date = calendar.date(from: parts) else { return day }
+        let back = calendar.dateComponents([.year, .month, .day], from: date)
+        guard back.year == parts.year, back.month == parts.month, back.day == parts.day else { return day }
+        return date.formatted(
+            Date.FormatStyle(date: .long, time: .omitted, locale: locale, calendar: calendar, timeZone: timeZone))
+    }
+
     public func formatNumber(_ number: Int) -> String {
         number.formatted(IntegerFormatStyle<Int>(locale: locale))
     }
@@ -9620,16 +9635,19 @@ public enum StatusPresentation {
 
     /// VoiceOver label key for the status item (PLT-R211: the label is truthful about the reason). PRD-R10
     /// labels are used where they fit; the dimmed and slashed glyphs, which cover several states, get a
-    /// reason-specific label otherwise.
+    /// reason-specific label otherwise, so every pause reason is said in plain words even without a status line.
     public static func accessibilityLabelKey(icon: StatusIconState, state: HostState) -> String {
         switch (icon, state) {
         case (.paused, .starting):
             return MenuText.iconStarting.rawValue
         case (.paused, .paused(.noTextFocus)):
             return MenuText.iconPausedNoTextFocus.rawValue
-        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)),
-            (.paused, .paused(.diagnosticsTest)):
-            return MenuText.iconPausedOther.rawValue
+        case (.paused, .paused(.userDisabled)):
+            return MenuText.iconPausedUserDisabled.rawValue
+        case (.paused, .paused(.sessionInactive)):
+            return MenuText.iconPausedSessionInactive.rawValue
+        case (.paused, .paused(.diagnosticsTest)):
+            return MenuText.iconPausedDiagnosticsTest.rawValue
         case (.notWorking, .failOpen(let reason)) where reason != .permissionRevoked:
             return MenuText.iconNotWorkingFailOpen.rawValue
         default:
