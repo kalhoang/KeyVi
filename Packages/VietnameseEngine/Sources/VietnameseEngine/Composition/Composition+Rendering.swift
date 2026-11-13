@@ -36,18 +36,14 @@ extension Composition {
             text.unicodeScalars.append(scalar)
         }
         if let literalStart {
-            for key in raw[literalStart...] { text.unicodeScalars.append(Unicode.Scalar(key)) }
+            // The literal tail is ASCII keys: one validated copy, not one append per key (REG-02).
+            text += String(decoding: raw[literalStart...], as: UTF8.self)
         }
         return text
     }
 
     /// The raw keys as a string (restore reproduces them exactly, ENG-R705).
-    package var rawText: String {
-        var text = ""
-        text.reserveCapacity(raw.count)
-        for key in raw { text.unicodeScalars.append(Unicode.Scalar(key)) }
-        return text
-    }
+    package var rawText: String { ASCII.string(raw) }
 }
 
 extension Composition {

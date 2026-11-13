@@ -180,4 +180,13 @@ package enum ASCII {
 
     @inline(__always)
     package static func lowercased(_ byte: UInt8) -> UInt8 { isUppercaseLetter(byte) ? byte + 32 : byte }
+
+    /// The string of ASCII `bytes` (token keys are ASCII, `TokenKey`), built in one copy rather than
+    /// scalar by scalar, so long literal tokens commit in time proportional to a memory copy (REG-02).
+    package static func string(_ bytes: [UInt8], lowercasing: Bool = false) -> String {
+        String(unsafeUninitializedCapacity: bytes.count) { buffer in
+            for (index, byte) in bytes.enumerated() { buffer[index] = lowercasing ? lowercased(byte) : byte }
+            return bytes.count
+        }
+    }
 }

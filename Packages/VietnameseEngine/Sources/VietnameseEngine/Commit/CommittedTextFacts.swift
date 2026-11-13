@@ -16,18 +16,25 @@ package struct CommittedTextFacts: Sendable, Hashable {
     /// for the lexicon (L4) and attested-syllable (L8) lookups.
     package private(set) var lowercased = ""
 
+    /// No syllable has more letters (`ngh` + a four-letter rhyme such as `iêng`, 3.3 and 3.7): a longer
+    /// text is invalid without a parse.
+    package static let maximumSyllableLetters = 8
+
     package init(_ text: String) {
         var letters: [Letter] = []
-        letters.reserveCapacity(text.utf8.count)
+        letters.reserveCapacity(Self.maximumSyllableLetters + 1)
         var tone = Tone.level
         var toneCount = 0
         var onlyLetters = true
-        lowercased.reserveCapacity(text.utf8.count)
+        // The lowercase form is collected as UTF-8 bytes and turned into a string once (long literal
+        // tokens, REG-02); lowercase letters have the same UTF-8 length as their capitals.
+        var lowercaseBytes: [UInt8] = []
+        lowercaseBytes.reserveCapacity(text.utf8.count)
         for scalar in text.unicodeScalars {
             guard let glyph = Self.glyph(scalar) else {
                 onlyLetters = false
                 if scalar.value >= 0x80 { isASCII = false }
-                lowercased.unicodeScalars.append(scalar)
+                UTF8.encode(scalar) { lowercaseBytes.append($0) }
                 continue
             }
             if scalar.value >= 0x80 {
@@ -39,10 +46,13 @@ package struct CommittedTextFacts: Sendable, Hashable {
                 tone = glyph.tone
                 toneCount += 1
             }
-            letters.append(glyph.letter)
-            lowercased.unicodeScalars.append(LetterTable.scalar(glyph.letter, tone: glyph.tone, uppercase: false))
+            if letters.count <= Self.maximumSyllableLetters { letters.append(glyph.letter) }
+            UTF8.encode(LetterTable.scalar(glyph.letter, tone: glyph.tone, uppercase: false)) {
+                lowercaseBytes.append($0)
+            }
         }
-        if onlyLetters, toneCount <= 1, !letters.isEmpty {
+        lowercased = String(decoding: lowercaseBytes, as: UTF8.self)
+        if onlyLetters, toneCount <= 1, !letters.isEmpty, letters.count <= Self.maximumSyllableLetters {
             validity = SyllableTables.validity(of: letters, tone: tone)
         }
     }

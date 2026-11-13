@@ -1,0 +1,144 @@
+{
+  "budget" : {
+    "max" : 1000000,
+    "p50" : 5000,
+    "p99" : 25000,
+    "p999" : 100000,
+    "resourcesLoadMilliseconds" : 50,
+    "resourcesResidentBytes" : 8388608
+  },
+  "clockOverheadNanoseconds" : 0,
+  "configuration" : "release",
+  "date" : "2026-11-13T00:41:40Z",
+  "engineColdInitMilliseconds" : 12.408708,
+  "latency" : {
+    "events" : 1601300,
+    "max" : 262000,
+    "p50" : 125,
+    "p99" : 792,
+    "p999" : 2125
+  },
+  "longTokens" : [
+    {
+      "boundaryNanoseconds" : 792,
+      "keys" : "m",
+      "length" : 64,
+      "maxKeyNanoseconds" : 1625,
+      "toggleNanoseconds" : 167
+    },
+    {
+      "boundaryNanoseconds" : 709,
+      "keys" : "ddam",
+      "length" : 64,
+      "maxKeyNanoseconds" : 334,
+      "toggleNanoseconds" : 333
+    },
+    {
+      "boundaryNanoseconds" : 1292,
+      "keys" : "m",
+      "length" : 256,
+      "maxKeyNanoseconds" : 375,
+      "toggleNanoseconds" : 166
+    },
+    {
+      "boundaryNanoseconds" : 1250,
+      "keys" : "ddam",
+      "length" : 256,
+      "maxKeyNanoseconds" : 250,
+      "toggleNanoseconds" : 792
+    },
+    {
+      "boundaryNanoseconds" : 12083,
+      "keys" : "m",
+      "length" : 4096,
+      "maxKeyNanoseconds" : 1667,
+      "toggleNanoseconds" : 417
+    },
+    {
+      "boundaryNanoseconds" : 13792,
+      "keys" : "ddam",
+      "length" : 4096,
+      "maxKeyNanoseconds" : 14666,
+      "toggleNanoseconds" : 9000
+    },
+    {
+      "boundaryNanoseconds" : 290875,
+      "keys" : "m",
+      "length" : 100000,
+      "maxKeyNanoseconds" : 18834,
+      "toggleNanoseconds" : 8250
+    },
+    {
+      "boundaryNanoseconds" : 287209,
+      "keys" : "ddam",
+      "length" : 100000,
+      "maxKeyNanoseconds" : 11250,
+      "toggleNanoseconds" : 213250
+    }
+  ],
+  "machine" : {
+    "cpu" : "Apple M4",
+    "model" : "Mac16,10",
+    "operatingSystem" : "Version 27.2 (Build 26B123)",
+    "processors" : 10
+  },
+  "referenceNanoseconds" : 10326875,
+  "resources" : {
+    "available" : false,
+    "coldLoadMilliseconds" : 0.011875,
+    "medianLoadMilliseconds" : 0.000583,
+    "residentBytes" : 0
+  },
+  "runs" : 5,
+  "schema" : 1,
+  "workloads" : [
+    {
+      "latency" : {
+        "events" : 301001,
+        "max" : 52750,
+        "p50" : 167,
+        "p99" : 916,
+        "p999" : 1583
+      },
+      "name" : "typists-telex"
+    },
+    {
+      "latency" : {
+        "events" : 300299,
+        "max" : 92625,
+        "p50" : 167,
+        "p99" : 875,
+        "p999" : 2042
+      },
+      "name" : "typists-vni"
+    },
+    {
+      "latency" : {
+        "events" : 500000,
+        "max" : 44875,
+        "p50" : 84,
+        "p99" : 833,
+        "p999" : 4250
+      },
+      "name" : "fuzz-telex"
+    },
+    {
+      "latency" : {
+        "events" : 500000,
+        "max" : 69083,
+        "p50" : 125,
+        "p99" : 709,
+        "p999" : 1666
+      },
+      "name" : "fuzz-vni"
+    }
+  ],
+  "worstCase" : {
+    "events" : 10000000,
+    "eventsOverBudgetRaw" : 0,
+    "eventsOverBudgetRemeasured" : 0,
+    "maxRawNanoseconds" : 293417,
+    "maxRemeasuredNanoseconds" : 41750,
+    "slowestEvent" : "key % other; active token 4021 keys, display 4021 bytes, 5 history tokens"
+  }
+}

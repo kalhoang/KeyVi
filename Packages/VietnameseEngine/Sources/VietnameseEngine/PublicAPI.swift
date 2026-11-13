@@ -185,8 +185,16 @@ public struct EngineState: Sendable, Hashable {
 
 public struct WordSet: Sendable {
     let storage: Set<String>
-    public init<S: Sequence>(_ words: S) where S.Element == String { storage = Set(words) }
-    public func contains(_ word: some StringProtocol) -> Bool { storage.contains(String(word)) }
+    /// The longest word in UTF-8 bytes: a longer word is rejected without hashing it, so a lookup costs
+    /// O(1) for the long literal tokens of REG-02 (ENG-R1232).
+    let maximumUTF8Count: Int
+    public init<S: Sequence>(_ words: S) where S.Element == String {
+        storage = Set(words)
+        maximumUTF8Count = storage.reduce(0) { max($0, $1.utf8.count) }
+    }
+    public func contains(_ word: some StringProtocol) -> Bool {
+        word.utf8.count <= maximumUTF8Count && storage.contains(String(word))
+    }
 }
 
 public enum Language: Sendable, Hashable { case vietnamese, english }

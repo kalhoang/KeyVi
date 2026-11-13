@@ -84,10 +84,7 @@ package struct ActiveToken: Sendable, Hashable {
 
     package var rawText: String {
         guard let macroKeys else { return composition.rawText }
-        var text = ""
-        text.reserveCapacity(macroKeys.raw.count)
-        for key in macroKeys.raw { text.unicodeScalars.append(Unicode.Scalar(key)) }
-        return text
+        return ASCII.string(macroKeys.raw)
     }
 
     /// The composed form (the display the rules give, whatever the restore flags say).

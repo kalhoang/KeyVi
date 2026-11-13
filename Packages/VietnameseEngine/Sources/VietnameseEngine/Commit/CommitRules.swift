@@ -14,20 +14,16 @@ package struct CommitInputs: Sendable {
     package let userChoice: UserChoice
 
     package init(token: ActiveToken, style: ToneStyle) {
-        committed = token.composition.committedText(style: style)
+        // A literal token's commit form is its display (ENG-R532 does not apply to it), which the token
+        // already holds: no render pass over a long literal tail (REG-02).
+        let reusesDisplay = token.composition.isLiteral && !token.showsRawKeys
+        committed = reusesDisplay ? token.display : token.composition.committedText(style: style)
         raw = token.rawText
-        rawLowercased = Self.asciiLowercased(token.composition.raw)
+        rawLowercased = ASCII.string(token.composition.raw, lowercasing: true)
         facts = CommittedTextFacts(committed)
         escapeUsed = token.composition.escapeUsed
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
-    }
-
-    private static func asciiLowercased(_ keys: [UInt8]) -> String {
-        var text = ""
-        text.reserveCapacity(keys.count)
-        for key in keys { text.unicodeScalars.append(Unicode.Scalar(ASCII.lowercased(key))) }
-        return text
     }
 }
 
@@ -105,7 +101,8 @@ package struct CommitPolicy: Sendable {
     }
 
     /// Rules L3b to L11, the ones that auto restore governs (ENG-R802).
-    private func decideAutomatic(_ inputs: CommitInputs, rawLowercased r: String, runIsEnglish: Bool) -> CommitDecision {
+    private func decideAutomatic(_ inputs: CommitInputs, rawLowercased r: String, runIsEnglish: Bool) -> CommitDecision
+    {
         // L3b: camel case (ENG-R904).
         if inputs.camelCase { return restore(.camelCase) }
         // L4: an escape was used.
@@ -143,7 +140,8 @@ package struct CommitPolicy: Sendable {
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the
     /// rules alone would have decided. The signal carries the lowercased raw keys, the key of the user
     /// lists (ENG-R860).
-    package func learningSignal(_ inputs: CommitInputs, decision: CommitDecision, runIsEnglish: Bool) -> LearningSignal? {
+    package func learningSignal(_ inputs: CommitInputs, decision: CommitDecision, runIsEnglish: Bool) -> LearningSignal?
+    {
         guard decision == .restored(.userChoice) || decision == .kept(.userChoice) else { return nil }
         let rulesAlone = decide(inputs, runIsEnglish: runIsEnglish, includeUserChoice: false)
         switch (decision.restores, rulesAlone.restores) {
