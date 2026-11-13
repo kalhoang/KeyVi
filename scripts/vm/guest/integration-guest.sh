@@ -65,6 +65,9 @@ for key in NSAutomaticCapitalizationEnabled NSAutomaticDashSubstitutionEnabled N
   defaults write -g "$key" -bool false
 done
 note "text substitutions off; languages: $(defaults read -g AppleLanguages 2>/dev/null | tr -d '\n ' | cut -c1-40)"
+# Spotlight indexing of the checkout and the derived data kept the 6 GB guest swapping, so slowly that copying the
+# logs back after a run took ten minutes; a throwaway VM needs no index.
+sudo -n mdutil -a -i off >/dev/null 2>&1 && note "Spotlight indexing off"
 
 step "input sources the scenarios select (section 2 step 4)"
 # Every layout a TestHost scenario names, read from the scenarios so the list follows them.
