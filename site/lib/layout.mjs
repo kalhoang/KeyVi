@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Page shell: head (canonical, hreflang, CSP), header, language switch, footer.
 // Privacy by construction (PRD-R74): system fonts, one local stylesheet, no third-party anything, except the
-// optional cookieless analytics of lib/analytics.mjs when site/config.json sets a key (Pa, 2026-11-13, Q7).
+// optional cookieless Umami analytics of lib/analytics.mjs when site/config.json configures it (Pa, 2026-11-13, Q7).
 import { analyticsCspAdditions, analyticsScriptTag } from "./analytics.mjs";
 import { fingerprintAssets } from "./fingerprint.mjs";
 import { extendCsp } from "./headers.mjs";
@@ -90,7 +90,7 @@ export function renderDocument(ctx, page) {
   const { ui, lang } = page;
   const fullTitle = page.isHome ? page.title : `${page.title} · ${ctx.brand.name}`;
   const analytics = ctx.config.analytics;
-  const scripts = [...(page.scripts ?? []).map((src) => `<script src="${esc(src)}" defer></script>`), analyticsScriptTag(analytics, ctx.assets.analytics?.path)].filter(Boolean).join("\n  ");
+  const scripts = [...(page.scripts ?? []).map((src) => `<script src="${esc(src)}" defer></script>`), analyticsScriptTag(analytics, ctx.brand.host)].filter(Boolean).join("\n  ");
   const csp = extendCsp(CSP, analyticsCspAdditions(analytics));
   const robots = page.robots ? `<meta name="robots" content="${esc(page.robots)}">\n  ` : "";
   const canonical = page.routeId === undefined ? "" : `<link rel="canonical" href="${esc(absolute(ctx, page.path))}">`;

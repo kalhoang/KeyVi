@@ -2,6 +2,7 @@
 # inputs of node deploy/site/build.mjs and the nginx configuration, never the rest of the repository (ADR 0602).
 *
 !scripts/brand.env
+!scripts/url-hosts.allow
 !compat/matrix.json
 !CHANGELOG.md
 !CHANGELOG.vi.md

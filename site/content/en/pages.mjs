@@ -113,10 +113,11 @@ export const privacy = {
   h1: "Privacy",
   lede: "The principle: what you type never leaves your Mac and is never written to disk, except in one case you start yourself (a typing trace for a bug report, described below). The only automatic network traffic is the update check.",
   updated: "Last updated: 13 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
-  // The "This website" analytics line: `off` when site/config.json has no PostHog key, `posthog` when it has one.
+  // The "This website" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
+  // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
   analytics: {
     off: "<strong>Visitor analytics: none.</strong> No Google Analytics, no third-party measurement, no tracking pixels.",
-    posthog: "<strong>Visitor analytics: PostHog Cloud in cookieless mode.</strong> The pages of this website (not the app, not the release-notes pages) load PostHog's measurement library from <code>{{analyticsAssets}}</code> and send page views to <code>{{analyticsHost}}</code>. No cookies, nothing stored in your browser, no session recording, no click tracking, no user profiles. To count visitors without identifying you, PostHog computes a hash of your IP address and browser with a value that changes every day; the IP address is not stored. No advertising and no other third party.",
+    umami: "<strong>Visitor analytics: Umami, self-hosted by the project.</strong> The pages of this website (not the app, not the release-notes pages) load Umami's script from <code>{{analyticsOrigin}}</code>, a server the project runs itself, and send it page views: the page address, the referring page, the screen size and the browser language. Umami uses no cookies and nothing is stored in your browser; it collects no personal data and keeps no user profiles. To count visitors, the server derives a visit identifier from a one-way hash of your IP address and browser with a value that changes every month; the IP address is not stored, only the approximate country and city derived from it and the browser, operating system and device type. If your browser sends Do Not Track, nothing is sent at all. Only aggregated page views are looked at (per page, referrer and country); the data is not shared with anyone and there is no advertising.",
   },
   html: `
 <h2 id="summary">Summary</h2>

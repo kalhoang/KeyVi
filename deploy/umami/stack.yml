@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Portainer stack of the website analytics: Umami 3.5.0, self-hosted on the Kalera Docker Swarm, cookieless
+# (Pa, 2026-11-13, Q7 follow-up; ADR 0602 decision 7; docs/runbooks/analytics.md). This is the file deployed as
+# the Portainer stack (stack id 72, environment F3D id 7); keep the two in step.
+# Secrets never live here: DATABASE_URL (the PostgreSQL URL of the analytics database on the shared server) and
+# APP_SECRET come from the stack's environment variables in Portainer.
+# Traefik: the shared traefik2 runs the v3 Swarm provider and skips a service whose labels mix traefik.docker.* and
+# traefik.swarm.* ("both Docker and Swarm labels are defined"), so this stack uses traefik.swarm.network only.
+# DISABLE_TELEMETRY and DISABLE_UPDATES stop Umami's own calls to its vendor (anonymous telemetry, update check).
+version: "3.8"
+services:
+  umami:
+    image: ghcr.io/umami-software/umami:3.5.0
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      APP_SECRET: ${APP_SECRET}
+      DISABLE_TELEMETRY: "1"
+      DISABLE_UPDATES: "1"
+    networks:
+      - traefik_public
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/heartbeat >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 10s
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+      labels:
+        traefik.enable: "true"
+        traefik.swarm.network: traefik_public
+        traefik.http.middlewares.keyvi-umami-redirect.redirectscheme.scheme: https
+        traefik.http.middlewares.keyvi-umami-redirect.redirectscheme.permanent: "true"
+        traefik.http.routers.keyvi-umami-http.entrypoints: web
+        traefik.http.routers.keyvi-umami-http.rule: Host(`stats.kal.vn`)
+        traefik.http.routers.keyvi-umami-http.middlewares: keyvi-umami-redirect
+        traefik.http.routers.keyvi-umami.entrypoints: websecure
+        traefik.http.routers.keyvi-umami.rule: Host(`stats.kal.vn`)
+        traefik.http.routers.keyvi-umami.tls: "true"
+        traefik.http.routers.keyvi-umami.tls.certresolver: cloudflare
+        traefik.http.services.keyvi-umami.loadbalancer.server.port: "3000"
+networks:
+  traefik_public:
+    external: true

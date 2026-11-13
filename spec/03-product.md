@@ -462,7 +462,7 @@ PRD-R73 Static site, Vietnamese at `/` and English at `/en/`. Required pages:
 | `/ung-ho` | Donate | Same content as the in-app block |
 | `/appcast.xml` | Sparkle feed | One stable URL that never moves; beta builds are items with `sparkle:channel="beta"` in the same feed (PLT-R1101, QA-R28) |
 
-PRD-R74 The website MUST NOT use trackers or cookies that require consent. Traffic numbers come from cookieless aggregate analytics (decision of the product owner, 13/11/2026): PostHog Cloud in cookieless mode (no cookies, no local storage, IP addresses not stored), so no consent banner is needed. The project key is a configuration value; while it is empty the site loads no analytics. `/rieng-tu` describes exactly what is collected.
+PRD-R74 The website MUST NOT use trackers or cookies that require consent. Traffic numbers come from cookieless aggregate analytics (decision of the product owner, 13/11/2026): Umami, self-hosted by the project (no cookies, no local storage, no personal data, IP addresses not stored, Do Not Track respected, aggregated page views only), so no consent banner is needed. The script URL and the website id are configuration values; while they are empty the site loads no analytics. Analytics never runs in the app or on the release-notes pages. `/rieng-tu` describes exactly what is collected.
 
 PRD-R75 The appcast host MUST serve over HTTPS from a domain Pa controls, so the feed can outlive any hosting provider.
 
@@ -496,7 +496,7 @@ All answered on 13/11/2026; every answer and where it is implemented is listed i
 2. App licence: GPL-3.0-or-later for the app, MPL-2.0 for the engine packages, the `data/` pipeline and the reference model (ADR 0006). A paid Pro edition may follow after 1.0 at 99,000 VND for a lifetime licence; it never locks correct Vietnamese typing.
 3. Default tone placement: traditional, with the setting (D2).
 4. Restore-last-word hotkey: Escape by default, with an on/off setting and automatic exclusions through compatibility rules (D8, PRD-R18, PLT-R353).
-5. Website analytics: PostHog Cloud in cookieless mode (PRD-R74).
+5. Website analytics: self-hosted Umami, cookieless (PRD-R74; first answer PostHog Cloud, replaced the same day).
 6. Donation: bank VietQR only, bank name and account number shown, holder name not shown, no public sponsor list for now (PRD-R59, PRD-R61).
 7. Minimum macOS: macOS 12.0 with Intel support (PRD-R8, PLT-R106; `docs/decisions/0315-minimum-macos-12.md`).
 8. Macro shortcuts: keep printable ASCII without spaces, no Vietnamese letters (PRD-R29).

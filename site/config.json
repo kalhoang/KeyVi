@@ -11,7 +11,8 @@
     "link": ""
   },
   "analytics": {
-    "posthogKey": "",
-    "posthogHost": "https://us.i.posthog.com"
+    "provider": "umami",
+    "scriptUrl": "https://stats.kal.vn/script.js",
+    "websiteId": "42572ae2-f406-4ed3-ba33-8324a046d7c9"
   }
 }

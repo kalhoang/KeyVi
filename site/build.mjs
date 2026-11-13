@@ -75,7 +75,6 @@ export async function build(options = {}) {
   await Promise.all(pages.map((page) => writeFileDeep(join(outDir, page.file), page.html)));
   await cp(join(SITE_DIR, "static"), outDir, { recursive: true, filter: (src) => !src.endsWith(`${sep}appcast.xml`) && !src.endsWith(`${sep}_headers`) });
   await writeHeaders(outDir, ctx.config.analytics, options.noindex === true);
-  if (ctx.assets.analytics) await writeFileDeep(join(outDir, ctx.assets.analytics.path.slice(1)), ctx.assets.analytics.source);
   await writeFileDeep(join(outDir, "appcast.xml"), await renderAppcast(join(SITE_DIR, "static", "appcast.xml"), ctx.brand));
   await writeFileDeep(join(outDir, "sitemap.xml"), renderSitemap(ctx.brand, isoDay(today)));
   await writeFileDeep(join(outDir, "robots.txt"), renderRobots(ctx.brand));
@@ -88,7 +87,7 @@ export async function build(options = {}) {
   return summary;
 }
 
-/** dist/_headers: static/_headers with the analytics origins in the site-wide CSP and, for a preview, noindex. */
+/** dist/_headers: static/_headers with the analytics origin in the site-wide CSP and, for a preview, noindex. */
 async function writeHeaders(outDir, analytics, noindex) {
   const rules = parseHeaders(await readFile(join(SITE_DIR, "static", "_headers"), "utf8"));
   const adapted = adaptHeaders(rules, { cspAdditions: analyticsCspAdditions(analytics), noindex });

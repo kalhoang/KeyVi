@@ -64,7 +64,7 @@ All answered on 13/11/2026; the app licence followed the same evening. The full 
 | 15 | Archive hosting | `{{app-slug}}.kal.vn` only | 02 s.14, PLT-R906 |
 | 16 | Self-hosted Mac runner for compatibility automation | Proposed: a tart macOS virtual machine on Pa's Mac (awaiting Pa) | 02 s.14, 04 QA-R12 |
 | 17 | IMKit edition later | Decide after spike S1 | 02 PLT-R207, PLT-R398D |
-| 18 | Website analytics | PostHog Cloud, cookieless | 03 PRD-R74 |
+| 18 | Website analytics | Self-hosted Umami, cookieless | 03 PRD-R74 |
 | 19 | Donation account details, public sponsor list | Bank VietQR, bank name and account number shown, no holder name; no sponsor list for now | 03 PRD-R59, PRD-R61 |
 
 ## 6. Suggested first steps for the implementation repository

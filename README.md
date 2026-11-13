@@ -94,7 +94,7 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 | `App/`, `TestHost/` | Menu-bar app and the test host app |
 | `compat/` | Per-app behaviour rules, verification matrix, [compatibility script](compat/SCRIPT.md) |
 | `data/` | Pinned inputs for bundled word lists |
-| `site/`, `deploy/site/` | The website (Vietnamese at `/`, English at `/en/`) and its container for the Kalera Docker Swarm ([site deploy runbook](docs/runbooks/site-deploy.md)) |
+| `site/`, `deploy/site/`, `deploy/umami/` | The website (Vietnamese at `/`, English at `/en/`), its container for the Kalera Docker Swarm ([site deploy runbook](docs/runbooks/site-deploy.md)) and its self-hosted, cookieless analytics ([analytics runbook](docs/runbooks/analytics.md)) |
 | `docs/` | [Decisions](docs/decisions/), [architecture](docs/architecture/), [runbooks](docs/runbooks/release.md), [support replies](docs/support/replies.md), [managed Macs](docs/support/managed-macs.md), [provenance](docs/provenance/README.md) |
 | `spec/` | The specification, the single source of truth |
 

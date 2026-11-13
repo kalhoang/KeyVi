@@ -32,7 +32,7 @@ export function renderPrivacy(ctx, lang) {
   const m = c.privacy;
   // The website section states the analytics this build really ships (site/config.json `analytics`, ADR 0602).
   const analytics = ctx.config.analytics;
-  const analyticsHtml = analytics.enabled ? f(m.analytics.posthog, { analyticsHost: analytics.apiHost, analyticsAssets: analytics.assetsHost }) : m.analytics.off;
+  const analyticsHtml = analytics.enabled ? f(m.analytics.umami, { analyticsOrigin: analytics.origin }) : m.analytics.off;
   const body = `
     <h1>${esc(m.h1)}</h1>
     <p class="lede">${esc(m.lede)}</p>

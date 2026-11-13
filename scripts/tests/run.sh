@@ -192,6 +192,21 @@ printf 'APP_REPOSITORY_URL="http://insecure.example/o/r"\n' >>"$T/brand-repo.env
 expect 1 "brand values are validated (https repository URL)" \
   env BRAND_ENV="$T/brand-repo.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
 contains "invalid repository URL named" "APP_REPOSITORY_URL invalid"
+# ADR 0602 amendment: `site:` lines of the allowlist name hosts only the website may contact (the Umami
+# analytics host). They are never allowed inside the app, whose only automatic traffic is the update check.
+mkdir -p "$T/u/Site.app/Contents/Resources"
+printf 'www.apple.com\nsite: stats.example.vn\n' >"$T/u/allow-site"
+printf '{"feed": "https://testapp.example.vn/appcast.xml", "dtd": "http://www.apple.com/DTDs/x"}\n' \
+  >"$T/u/Site.app/Contents/Resources/config.json"
+expect 0 "site: lines do not disturb the app hosts" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" --allow "$T/u/allow-site" "$T/u/Site.app"
+printf '{"tracker": "https://stats.example.vn/script.js"}\n' >"$T/u/Site.app/Contents/Resources/extra.json"
+expect 1 "a website-only host inside the app fails" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" --allow "$T/u/allow-site" "$T/u/Site.app"
+contains "website-only host explained" "stats.example.vn is allowed for the website only"
+printf 'site: \n' >"$T/u/allow-bad"
+expect 2 "an empty site: line is refused" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" --allow "$T/u/allow-bad" "$T/u/Site.app"
 
 echo "== check-brand-sync.py"
 cat >"$T/sync.xcconfig" <<'EOF'

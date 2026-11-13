@@ -114,10 +114,11 @@ export const privacy = {
   h1: "Riêng tư",
   lede: "Nguyên tắc: nội dung bạn gõ không rời khỏi máy và không được ghi xuống ổ đĩa, trừ một trường hợp do chính bạn bắt đầu (bản ghi thao tác gõ để báo lỗi, mô tả bên dưới). Lưu lượng mạng tự động duy nhất của ứng dụng là kiểm tra cập nhật.",
   updated: "Cập nhật lần cuối: 13/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
-  // The "Trang web" analytics line: `off` when site/config.json has no PostHog key, `posthog` when it has one.
+  // The "Trang web" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
+  // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
   analytics: {
     off: "<strong>Phân tích truy cập: không có.</strong> Không Google Analytics, không công cụ đo lường của bên thứ ba, không pixel theo dõi.",
-    posthog: "<strong>Phân tích truy cập: PostHog Cloud ở chế độ không cookie.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải thư viện đo lường của PostHog từ <code>{{analyticsAssets}}</code> và gửi lượt xem trang tới <code>{{analyticsHost}}</code>. Không cookie, không lưu gì trong trình duyệt, không ghi lại phiên, không ghi thao tác bấm, không hồ sơ người dùng. Để đếm số người xem mà không nhận diện bạn, PostHog tính một mã băm từ địa chỉ IP và trình duyệt cùng một giá trị đổi mỗi ngày; địa chỉ IP không được lưu. Không có quảng cáo hay bên thứ ba nào khác.",
+    umami: "<strong>Phân tích truy cập: Umami, do dự án tự vận hành.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải mã của Umami từ <code>{{analyticsOrigin}}</code>, một máy chủ do chính dự án vận hành, và gửi tới đó lượt xem trang: địa chỉ trang, trang dẫn tới, kích thước màn hình và ngôn ngữ của trình duyệt. Umami không dùng cookie và không lưu gì trong trình duyệt của bạn; dự án không thu thập dữ liệu cá nhân và không lập hồ sơ người dùng. Để đếm số người xem, máy chủ tạo một mã lượt truy cập bằng cách băm một chiều địa chỉ IP và trình duyệt của bạn cùng một giá trị đổi mỗi tháng; địa chỉ IP không được lưu, chỉ lưu quốc gia và thành phố ước tính từ địa chỉ đó cùng loại trình duyệt, hệ điều hành và thiết bị. Nếu trình duyệt của bạn bật Do Not Track, không có gì được gửi đi. Dự án chỉ xem số liệu tổng hợp (theo trang, nguồn truy cập và quốc gia); dữ liệu không được chia sẻ với ai và không có quảng cáo.",
   },
   html: `
 <h2 id="tom-tat">Tóm tắt</h2>

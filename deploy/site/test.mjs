@@ -133,17 +133,27 @@ try {
     assertEquivalent(rules, await readFile(join(plain, "nginx", "locations.conf"), "utf8"), "preview");
   });
 
-  await check("every request path gets exactly the headers of _headers (analytics on, indexable)", async () => {
-    const configPath = join(tmp, "config.json");
-    const base = JSON.parse(await readFile(join(HERE, "..", "..", "site", "config.json"), "utf8"));
-    await writeFile(configPath, JSON.stringify({ ...base, analytics: { posthogKey: "phc_TestProjectKey0123456789abcdef", posthogHost: "https://eu.i.posthog.com" } }));
+  await check("every request path gets exactly the headers of _headers (Umami analytics of site/config.json, indexable)", async () => {
     const out = join(tmp, "analytics");
-    const result = await buildImageContent({ outDir: out, strict: "false", noindex: "false", today: "2026-11-13", configPath });
+    const result = await buildImageContent({ outDir: out, strict: "false", noindex: "false", today: "2026-11-13" });
     assert.equal(result.noindex, false);
     const rules = parseHeaders(await readFile(join(out, "nginx", "_headers"), "utf8"));
     assert.ok(!headersForPath(rules, "/").some(([name]) => name === "X-Robots-Tag"));
-    assert.match(headersForPath(rules, "/").find(([name]) => name === "Content-Security-Policy")[1], /connect-src 'self' https:\/\/eu\.i\.posthog\.com/);
+    const csp = headersForPath(rules, "/").find(([name]) => name === "Content-Security-Policy")[1];
+    assert.match(csp, /script-src 'self' https:\/\/stats\.kal\.vn(;|$)/);
+    assert.match(csp, /connect-src 'self' https:\/\/stats\.kal\.vn(;|$)/);
     assertEquivalent(rules, await readFile(join(out, "nginx", "locations.conf"), "utf8"), "analytics");
+  });
+
+  await check("without analytics the image's CSP names no other host", async () => {
+    const configPath = join(tmp, "config.json");
+    const base = JSON.parse(await readFile(join(HERE, "..", "..", "site", "config.json"), "utf8"));
+    await writeFile(configPath, JSON.stringify({ ...base, analytics: undefined }));
+    const out = join(tmp, "no-analytics");
+    await buildImageContent({ outDir: out, strict: "false", noindex: "false", today: "2026-11-13", configPath });
+    const rules = parseHeaders(await readFile(join(out, "nginx", "_headers"), "utf8"));
+    const csp = headersForPath(rules, "/").find(([name]) => name === "Content-Security-Policy")[1];
+    assert.ok(!/https?:\/\//.test(csp), csp);
   });
 
   await check("nested prefixes and exact paths inside a prefix keep every matching block", () => {
