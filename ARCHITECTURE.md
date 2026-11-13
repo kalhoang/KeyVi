@@ -239,7 +239,7 @@ before the next key is processed (PLT-R391).
 
 - **No per-app branches in code** (PLT-R501). Bundle IDs appear only in `compat/rules.json` (shipped as
   `compat-rules.json`), test fixtures, `compat/matrix.json` and the conflicting-apps list inside the rules
-  file. A CI lint fails on bundle-ID-shaped literals elsewhere; reverse-DNS constants that are not bundle IDs
+  file (each of its bundle IDs records where it was read in `compat/conflicting-apps.json`, PLT-R399). A CI lint fails on bundle-ID-shaped literals elsewhere; reverse-DNS constants that are not bundle IDs
   (pasteboard types, distributed notification names) live only in files named `ReverseDNSConstants.swift`,
   and each one is allowed by a pattern in `scripts/lint-bundle-ids.allow` or an inline
   `lint:allow-bundle-id <reason>` marker (ADR 0505).

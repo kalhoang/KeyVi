@@ -36,6 +36,15 @@
    `MainNotice.postingBroken`. The first miss of a run sends `MainNotice.echoMissed`, on which the utility queue
    checks `CGPreflightPostEventAccess()` (false also means posting broken); the poster never preflights per
    post.
+
+   **Forgiven echoes (final review, 2026-11-13).** Events posted while the tap is disabled bypass it and never
+   echo. Expectations posted before a tap re-enable (a tap-disabled event, or the watchdog's recovery after a
+   trip) are therefore forgiven through `EchoTracker.forgiveLostEchoes(postedAtOrBefore:)`, called on the
+   tap-disabled event (`KeyPipeline+Flow.swift`) and around every re-enable (`TapSession.reenable`, which also
+   covers the watchdog window). A forgiven expectation still keeps its job in flight until the 200 ms timeout,
+   so holding is unchanged, but its timeout does not count toward the three-miss `postingBroken` rule
+   (PLT-R330, PLT-R306, PLT-R323). Without this, one watchdog trip while typing fast turned three lost echoes
+   into a `postingBroken` outage of at least 30 s.
 4. **Fallback.** If PLT-R301 VERIFY (a) shows that the app's own session tap does not receive its posted
    events, `JobQueue(policy: .untilPosted)` restores the literal reading (in flight until posted) and PLT-R323
    is removed as the spec instructs ("fall back to permission polling only"). The policy is a constructor

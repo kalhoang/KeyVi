@@ -66,7 +66,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R101 | Swift 6 strict concurrency, pinned toolchain | `Packages/AppCore/Package.swift`, `project.yml` | L | all (integrator); CI track pins Xcode |  |
 | PLT-R102 | SwiftPM targets and responsibilities | `Packages/AppCore/Package.swift`, ADR 0302 | D | skeleton (done) |  |
 | PLT-R103 | Engine package permissive, no AppKit/CG/Carbon | `Packages/VietnameseEngine` | L | engine track |  |
-| PLT-R104 | Sparkle only runtime dependency, exact pin, resolved file committed | `project.yml`, `Config/Package.resolved` | L | skeleton (done); W2-D |  |
+| PLT-R104 | Sparkle only runtime dependency, exact pin, resolved file committed | `project.yml`, `Config/Package.resolved`; unit evidence: UpdaterTests `BuiltBundleTests` (run by `ci.yml` macos-app) | L, U | skeleton (done); W2-D |  |
 | PLT-R105 | Universal binary | `Config/Release.xcconfig` | R | skeleton (done); release track (`lipo` check) |  |
 | PLT-R106 | macOS 15 minimum, no API newer than 14 outside Synchronization | `Package.swift`, `project.yml` | L | all; CI track (availability lint) |  |
 | PLT-R107 | Test matrix macOS 15, 26, 27 plus next beta | self-hosted runner, `compat/matrix.json` | M, V | W2-E2; Pa | **Pa** |
@@ -86,7 +86,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R303 | Dedicated tap thread with only the tap source | `TapThread` | I (instrumented) | W1-F2 |  |
 | PLT-R304 | Allowed operations in the callback | `InputHost/Pipeline` | U, I (instrumented 30 min) | W1-F1 |  |
 | PLT-R305 | Forbidden operations in the callback | `InputHost/Pipeline`, `RealtimeSupport` | I (debug assertion layer), L | W1-F1 |  |
-| PLT-R306 | Callback watchdog 250 ms, fail-open, retry 2 s | `TapWatchdog`, `CallbackWatchdog`, ADR 0309, ADR 0309 (recovery only after the callback returned) | U, I (test hook) | W1-F2 |  |
+| PLT-R306 | Callback watchdog 250 ms, fail-open, retry 2 s | `TapWatchdog`, `CallbackWatchdog`, ADR 0309 (recovery only after the callback returned); soak counter `InputHostController.recordHealth(.watchdogTrip)` increments `watchdogTrips`; echoes lost around the re-enable are forgiven (`EchoTracker.forgiveLostEchoes`, ADR 0311) | U (`watchdogTripDisablesAndTheReturnedCallbackReenables_PLT_R306`, `jobsPostedAroundAWatchdogTripDoNotBreakPosting_PLT_R306`), I (test hook) | W1-F2 |  |
 | PLT-R307 | Engine contract | `InputHost/Engine/EngineBridge.swift`, ADR 0306 | U, E | W1-F1; W2-A (catalog from bundled resources); engine track |  |
 | PLT-R310 | Decision pipeline steps 1-10 | `KeyPipeline` | P, U | W1-F1 |  |
 | PLT-R311 | FIFO worker, hold/replay while in flight | `KeyPipeline`, `Injection/Queue.swift`, `Worker.swift`, ADR 0311 | P | W1-F1, W1-D; W2-A (combined suite) |  |
@@ -123,7 +123,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R370 | Observe TIS selection change, publish snapshot | `InputSourceMonitor` | U | W1-E |  |
 | PLT-R371 | Pause for input methods and non-ASCII layouts | `InputSourceMonitor`, `HostStateResolver` | U, I (Japanese source on runner) | W1-E, W1-F1; W2-E2 |  |
 | PLT-R372 | Pause for a built-in Vietnamese source | `InputSourceMonitor` | U, M | W1-E; Pa | **Pa** |
-| PLT-R373 | Optional layout-to-mode binding | `InputSourceMonitor`, `LayoutModeBinding` | U | W1-E; W2-B (UI) |  |
+| PLT-R373 | Optional layout-to-mode binding | `InputSourceMonitor`, `LayoutModeBinding`, `HostStateResolution.effectiveMode` (a bound layout decides the mode; the toggle hotkey does nothing on a bound layout) | U (pipeline tests, HostRig `layoutBindingDecidesTheMode_PLT_R373`), M | W1-E; W2-B (UI) |  |
 | PLT-R380 | AX thread observers on focused and overlay apps | `FocusTracker` | U (fake AX) | W1-E |  |
 | PLT-R381 | System-wide AX focus is authoritative | `FocusTracker` | U, C (Spotlight, Raycast) | W1-E; Pa | **Pa** |
 | PLT-R382 | Idle revalidation flag | `KeyPipeline`, `FocusTracker` | U | W1-F1, W1-E |  |
@@ -145,7 +145,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |
 | PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table | U, M, V | W1-C, W1-G; Pa | **Pa** |
 | PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | skeleton (done, runnable spike); Pa runs it | **Pa** |
-| PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring) |  |
+| PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps`, source registry `compat/conflicting-apps.json` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring) |  |
 | PLT-R401 | EditJob contents | `Injection/Jobs.swift` | U | W1-D |  |
 | PLT-R402 | Minimal edits (common prefix trim) | `EditMinimizer` | U | W1-D |  |
 | PLT-R403 | NFC insertions, grapheme delete counts | `InjectionWorker` | U | W1-D |  |
@@ -195,8 +195,8 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R751 | Dev builds use .dev bundle ID and Apple Development | `Config/Debug.xcconfig` | L | skeleton (done) |  |
 | PLT-R752 | Updates in place keep identity and trust | Sparkle, release scripts | R, M (13.5) | W2-D; release track; Pa | **Pa** |
 | PLT-R760 | MDM / PPPC documentation | `docs/support/managed-macs.md` | D, V | docs track (done; macOS 27 DDM note VERIFY) |  |
-| PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` (log2 buckets plus gate-aligned sub-buckets for T2 and T3, `PlatformMetrics.reset()`) | U (`MetricsPrecisionTests`, `HotPathAllocationTests`) | W1-A; W3-A |  |
-| PLT-R802 | Signposts around callback, job, AX | `PlatformSignposts` | U, I | W1-A |  |
+| PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` (log2 buckets plus gate-aligned sub-buckets for T2 and T3, `PlatformMetrics.reset()`); echo round trip recorded by `EchoTracker(roundTrip:)` into `metrics.echoRoundTrip` | U (`MetricsPrecisionTests`, `HotPathAllocationTests`, `echoedJobsRecordTheRoundTrip`) | W1-A; W3-A |  |
+| PLT-R802 | Signposts around callback, job, AX | `PlatformSignposts`, emitted by `KeyPipeline.handle` (tap callback), `WorkerCore.process` (injection job), `InstrumentedFieldAccess` (worker AX calls) and `FocusCore.timed` (focus AX calls) | U (HostRig `signpostsReachTheTapCallback_PLT_R802`), I, M (Instruments) | W1-A |  |
 | PLT-R803 | No steady-state timer faster than 2 s | `TapWatchdog`, monitors, ADR 0309 | U, I (wakeups) | W1-F2, W1-E |  |
 | PLT-R810 | Built-in latency probe | `LatencyProbeDriver`, `DiagnosticsWindowController` | U, M | W2-C; Pa runs it | **Pa** |
 | PLT-R820 | Hosted CI microbenchmarks with fakes | pipeline benchmark in `Tests/InputHostTests/Pipeline` | L | W1-F1; CI track |  |
@@ -206,7 +206,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R902 | Typed logging API; interpolation lint | `Diagnostics/LogEvent.swift`, `Redaction.swift` | U, L | W1-A; CI track (lint) |  |
 | PLT-R903 | Log location, permissions, rotation, retention | `DiagnosticsLogger`, `LogStorePolicy` | U | W1-A; W1-B (legacy folder move, ADR 0307) |  |
 | PLT-R904 | No verbose/debug content mode | Diagnostics | D, L | W1-A |  |
-| PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController` | U, M | W1-A, W2-C; Pa | **Pa** |
+| PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController`; key and engine records from `KeyPipeline+Capture.swift`, focus records from `FocusCore.recordFocusCapture` | U (`KeyPipelineCaptureTests`, HostRig `typingTraceRecordsKeysEngineDecisionsAndFocus_PLT_R905`), M | W1-A, W2-C; Pa | **Pa** |
 | PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle; egress test: `TestSupport/Scenario/EgressCheck.swift` (`compat-harness egress`), hook `checkForUpdates`, [integration-suite.md](../runbooks/integration-suite.md) section 5 | L, I (13.7) | W2-D, W2-E2, W3-A; CI track |  |
 | PLT-R907 | No translation feature in v1 | n/a | D | n/a |  |
 | PLT-R908 | Hardened runtime, no entitlements, not sandboxed | `project.yml`, `Config/Release.xcconfig` | R | skeleton; release track |  |
@@ -227,11 +227,11 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1010 | Export and import | `SettingsStore` export/import, Settings UI | U, M | W1-B, W2-B |  |
 | PLT-R1011 | iCloud sync later, opt-in | n/a in v1 | D | n/a |  |
 | PLT-R1012 | Storage paths for zap and uninstall page | ADR 0307, cask | D | release track; docs track |  |
-| PLT-R1101 | Sparkle feed and beta channel | `UpdaterController`, `App/Info.plist` | U, M | W2-D; Pa | **Pa** |
-| PLT-R1102 | EdDSA mandatory, HTTPS, verify before extraction | `App/Info.plist`, `Config/Sparkle.xcconfig` | R, V | W2-D; release track | **Pa** |
+| PLT-R1101 | Sparkle feed and beta channel | `UpdaterController`, `App/Info.plist`; unit evidence: UpdaterTests `UpdatePolicyTests` and `BuiltBundleTests` (run by `ci.yml` macos-app) | U, M | W2-D; Pa | **Pa** |
+| PLT-R1102 | EdDSA mandatory, HTTPS, verify before extraction | `App/Info.plist`, `Config/Sparkle.xcconfig`; unit evidence: UpdaterTests `BuiltBundleTests` (run by `ci.yml` macos-app) | U, R, V | W2-D; release track | **Pa** |
 | PLT-R1103 | EdDSA key custody on Pa's Mac | `scripts/publish-release` | M | release track; Pa | **Pa** |
 | PLT-R1104 | Semver short version, integer build | `project.yml`, release scripts | L, R | release track |  |
-| PLT-R1105 | Daily check, background download, install on quit, idle relaunch | `UpdaterController` | U, M | W2-D; Pa | **Pa** |
+| PLT-R1105 | Daily check, background download, install on quit, idle relaunch | `UpdaterController`, `RelaunchGate`; unit evidence: UpdaterTests `RelaunchGateTests`, `UpdatePolicyTests` (run by `ci.yml` macos-app) | U, M | W2-D; Pa | **Pa** |
 | PLT-R1106 | Phased rollout, critical flag only for security | appcast scripts | R | release track |  |
 | PLT-R1107 | Rollback procedure | runbooks | M (drill) | docs/release tracks; Pa | **Pa** |
 | PLT-R1108 | Update tests before publication | self-hosted runner (13.5) | I, M | W2-E2; Pa | **Pa** |

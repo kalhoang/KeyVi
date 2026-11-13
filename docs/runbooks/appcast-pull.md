@@ -51,14 +51,14 @@ What it does and does not do: it stops new automatic installs after the next upd
 
 ## If the pipeline is down (emergency path)
 
-The appcast is a static file served from `{{app-slug}}.kal.vn` (a domain Pa controls, PRD-R75). If CI or `site.yml` cannot run, build and upload the site manually (`node site/build.mjs`, then upload `site/dist` using the deployment method documented by the site track; VERIFY and write the exact command here when it exists). Then do step 5.
+The appcast is a static file served from `{{app-slug}}.kal.vn` (a domain Pa controls, PRD-R75). If CI cannot run, build, push and redeploy the site image by hand from Pa's Mac: [site deploy](site-deploy.md) section 3 (build and push), then "Update the service" with "Re-pull image" in Portainer (section 9). Then do step 5.
 
 ## After pulling
 
-1. Open or update the pinned issue and the website banner ([rollback](rollback.md) section 2).
+1. Open or update the pinned issue and the [website banner](rollback.md#website-banner) ([rollback](rollback.md) section 2).
 2. Record the time of confirmation and the time of the pull. The target is under 1 hour.
 3. Re-adding an item later (after a fix) is a normal publish: new build number, [release](release.md) section 7. Never re-add a pulled item with the same build number.
 
 ## Absence mode (QA-R54)
 
-When Pa is unavailable for more than a week: website banner plus pinned issue with the expected return date. P0 handling is limited to this runbook. Pa may choose to give one trusted person repository admin access and this runbook for that period (a suggestion, not a decision).
+When Pa is unavailable for more than a week: [website banner](rollback.md#website-banner) plus pinned issue with the expected return date. P0 handling is limited to this runbook. Pa may choose to give one trusted person repository admin access and this runbook for that period (a suggestion, not a decision).
