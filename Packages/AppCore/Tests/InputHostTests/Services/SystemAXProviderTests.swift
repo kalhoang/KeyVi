@@ -134,6 +134,78 @@ struct SystemAXProviderTests {
         #expect(attributes.editable == nil)
     }
 
+    /// 02-platform.md 5.5: browser chrome (the omnibox under a toolbar) is not inside the web area, so no URL
+    /// is read for it even though the window shows a page; nothing beyond the window is walked.
+    @Test func browserChromeHasNoDocumentURL() {
+        let table = AXReadTable()
+        let toolbar = AXReadTable.element(10)
+        let application = AXReadTable.element(11)
+        table.set(table.field, kAXRoleAttribute, .success("AXTextField" as CFString))
+        table.chain(from: table.field, through: [(table.group, "AXGroup"), (toolbar, "AXToolbar")])
+        table.chain(from: toolbar, through: [(table.window, "AXWindow"), (application, "AXApplication")])
+        table.set(table.webArea, kAXRoleAttribute, .success(AXAttributeReader.webAreaRole as CFString))
+        table.set(table.webArea, kAXURLAttribute, .success(URL(string: "https://example.test/sheet")! as CFURL))
+        let request = AXAttributeRequest(includeDocumentURL: true, includeWindowTitle: false)
+        guard case .success(let attributes) = table.reader().read(request: request) else {
+            Issue.record("expected attributes")
+            return
+        }
+        #expect(attributes.documentURL == nil)
+        #expect(attributes.ancestorRoles == ["AXGroup", "AXToolbar", "AXWindow", "AXApplication"])
+        #expect(!table.requested(kAXURLAttribute))
+    }
+
+    /// The focused element can be the web area itself.
+    @Test func theFocusedWebAreaGivesItsOwnURL() {
+        let table = AXReadTable()
+        table.set(table.field, kAXRoleAttribute, .success(AXAttributeReader.webAreaRole as CFString))
+        table.set(table.field, kAXURLAttribute, .success(URL(string: "https://example.test/page")! as CFURL))
+        let request = AXAttributeRequest(includeDocumentURL: true, includeWindowTitle: false)
+        guard case .success(let attributes) = table.reader().read(request: request) else {
+            Issue.record("expected attributes")
+            return
+        }
+        #expect(attributes.documentURL == "https://example.test/page")
+    }
+
+    /// Web content nests deeper than the six ancestors used for matching: the search for the web area goes on
+    /// (only when the URL is requested) and reports the chain up to it, so the core can see it is web content.
+    @Test func aDeepWebAreaIsFoundAndReportedWithItsChain() {
+        let table = AXReadTable()
+        table.set(table.field, kAXRoleAttribute, .success("AXTextArea" as CFString))
+        let groups = (1...8).map { (AXReadTable.element(20 + $0), "AXGroup") }
+        table.chain(from: table.field, through: groups + [(table.webArea, AXAttributeReader.webAreaRole)])
+        table.set(table.webArea, kAXURLAttribute, .success(URL(string: "https://example.test/deep")! as CFURL))
+        let request = AXAttributeRequest(includeDocumentURL: true, includeWindowTitle: false)
+        guard case .success(let attributes) = table.reader().read(request: request) else {
+            Issue.record("expected attributes")
+            return
+        }
+        #expect(attributes.documentURL == "https://example.test/deep")
+        #expect(attributes.ancestorRoles == Array(repeating: "AXGroup", count: 8) + [AXAttributeReader.webAreaRole])
+        guard case .success(let plain) = table.reader().read(request: AXAttributeRequest.none) else {
+            Issue.record("expected attributes")
+            return
+        }
+        #expect(plain.ancestorRoles.count == SystemAXProvider.maximumAncestors)
+    }
+
+    /// The extended search is bounded and reports nothing extra when it finds no web area.
+    @Test func theWebAreaSearchIsBounded() {
+        let table = AXReadTable()
+        table.set(table.field, kAXRoleAttribute, .success("AXTextArea" as CFString))
+        let groups = (1...30).map { (AXReadTable.element(40 + $0), "AXGroup") }
+        table.chain(from: table.field, through: groups)
+        let request = AXAttributeRequest(includeDocumentURL: true, includeWindowTitle: false)
+        guard case .success(let attributes) = table.reader().read(request: request) else {
+            Issue.record("expected attributes")
+            return
+        }
+        #expect(attributes.documentURL == nil)
+        #expect(attributes.ancestorRoles.count == SystemAXProvider.maximumAncestors)
+        #expect(table.parentReads == SystemAXProvider.maximumWebAreaDepth)
+    }
+
     @Test func ancestorsStopAtSixLevelsAndMissingValuesAreNil() {
         let table = AXReadTable()
         var cursor = table.field
@@ -216,6 +288,17 @@ final class AXReadTable {
     }
 
     func requested(_ attribute: String) -> Bool { requestedAttributes.contains(attribute) }
+    var parentReads: Int { requestedAttributes.filter { $0 == kAXParentAttribute }.count }
+
+    /// `start` -> parents in order, each with its role.
+    func chain(from start: AXUIElement, through parents: [(AXUIElement, String)]) {
+        var cursor = start
+        for (parent, role) in parents {
+            set(cursor, kAXParentAttribute, .success(parent))
+            set(parent, kAXRoleAttribute, .success(role as CFString))
+            cursor = parent
+        }
+    }
 
     func reader() -> AXAttributeReader {
         timedOut = false

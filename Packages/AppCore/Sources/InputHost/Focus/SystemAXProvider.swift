@@ -12,6 +12,9 @@ public final class SystemAXProvider: AXProvider {
     /// PLT-R384, seconds.
     public static let messagingTimeout: Float = 0.1
     public static let maximumAncestors = 6
+    /// How far up the web area is looked for when a document URL is requested (browser engines only). Web
+    /// content nests deeper than the six ancestors used for matching; the walk also stops at the window.
+    public static let maximumWebAreaDepth = 16
 
     private let systemWide: AXElementReference
 
@@ -133,7 +136,9 @@ struct AXReadFunctions {
 struct AXAttributeReader {
     static let identifierAttribute = "AXIdentifier"
     static let domClassListAttribute = "AXDOMClassList"
-    static let webAreaRole = "AXWebArea"
+    static let webAreaRole = FocusCore.webAreaRole
+    /// Above these there is no web content: the walk for a web area stops here.
+    static let webAreaBoundaryRoles: Set<String> = ["AXWindow", "AXApplication"]
 
     let element: AXUIElement
     var functions = AXReadFunctions.system
@@ -167,9 +172,13 @@ struct AXReadSession {
         let subrole = string(element, kAXSubroleAttribute)
         let identifier = string(element, AXAttributeReader.identifierAttribute)
         let domClasses = strings(element, AXAttributeReader.domClassListAttribute)
-        let ancestors = ancestorChain(of: element)
+        var ancestors = ancestorChain(of: element)
         let title = request.includeWindowTitle ? windowTitle(of: element) : nil
-        let url = request.includeDocumentURL ? documentURL(ancestors: ancestors) : nil
+        var url: String?
+        if request.includeDocumentURL {
+            ancestors += webAreaExtension(of: ancestors)
+            url = documentURL(element: element, role: role, ancestors: ancestors)
+        }
         return FocusAttributes(
             role: role, subrole: subrole, identifier: identifier, domClasses: domClasses, editable: editable,
             ancestorRoles: ancestors.map(\.role), documentURL: url, windowTitle: title)
@@ -200,13 +209,39 @@ struct AXReadSession {
     }
 
     private mutating func ancestorChain(of start: AXUIElement) -> [(element: AXUIElement, role: String)] {
+        parents(of: start, limit: SystemAXProvider.maximumAncestors, stopAt: [])
+    }
+
+    /// Up to `limit` parents, nearest first; stops after a parent whose role is in `stopAt`.
+    private mutating func parents(
+        of start: AXUIElement, limit: Int, stopAt: Set<String>
+    ) -> [(element: AXUIElement, role: String)] {
         var chain: [(element: AXUIElement, role: String)] = []
         var cursor = start
-        while chain.count < SystemAXProvider.maximumAncestors, let parent = element(cursor, kAXParentAttribute) {
-            chain.append((parent, string(parent, kAXRoleAttribute) ?? ""))
+        while chain.count < limit, let parent = element(cursor, kAXParentAttribute) {
+            let role = string(parent, kAXRoleAttribute) ?? ""
+            chain.append((parent, role))
+            if stopAt.contains(role) { break }
             cursor = parent
         }
         return chain
+    }
+
+    /// 02-platform.md 5.5: parents above the six matching ancestors up to the nearest web area, when the six do
+    /// not reach one and do not end at the window (browser chrome). Empty when no web area is found within
+    /// `maximumWebAreaDepth`, so nothing extra is reported.
+    private mutating func webAreaExtension(
+        of ancestors: [(element: AXUIElement, role: String)]
+    ) -> [(element: AXUIElement, role: String)] {
+        let boundaries = AXAttributeReader.webAreaBoundaryRoles
+        guard ancestors.count == SystemAXProvider.maximumAncestors, let top = ancestors.last?.element,
+            !ancestors.contains(where: { $0.role == AXAttributeReader.webAreaRole || boundaries.contains($0.role) })
+        else { return [] }
+        let more = parents(
+            of: top, limit: SystemAXProvider.maximumWebAreaDepth - ancestors.count,
+            stopAt: boundaries.union([AXAttributeReader.webAreaRole]))
+        guard let index = more.firstIndex(where: { $0.role == AXAttributeReader.webAreaRole }) else { return [] }
+        return Array(more[...index])
     }
 
     private mutating func windowTitle(of start: AXUIElement) -> String? {
@@ -214,10 +249,15 @@ struct AXReadSession {
         return string(window, kAXTitleAttribute)
     }
 
-    /// The nearest web area's `AXURL`, kept in memory for matching only (PLT-R383).
-    private mutating func documentURL(ancestors: [(element: AXUIElement, role: String)]) -> String? {
-        guard let webArea = ancestors.first(where: { $0.role == AXAttributeReader.webAreaRole })?.element,
-            let value = value(webArea, kAXURLAttribute), CFGetTypeID(value) == CFURLGetTypeID()
+    /// The `AXURL` of the focused web area: the element itself or its nearest web area ancestor, never anything
+    /// outside the web content (02-platform.md 5.5). Kept in memory for matching only (PLT-R383).
+    private mutating func documentURL(
+        element: AXUIElement, role: String?, ancestors: [(element: AXUIElement, role: String)]
+    ) -> String? {
+        let webArea =
+            role == AXAttributeReader.webAreaRole
+            ? element : ancestors.first(where: { $0.role == AXAttributeReader.webAreaRole })?.element
+        guard let webArea, let value = value(webArea, kAXURLAttribute), CFGetTypeID(value) == CFURLGetTypeID()
         else { return nil }
         return (value as! CFURL as URL).absoluteString
     }
