@@ -1,13 +1,13 @@
 # ENG-T11 (spec/01-engine.md 13.3): English words that may change after commit in an English run, one per
 # line: word<TAB>display<TAB>rule<TAB>reason. Adding an exception requires review by Pa.
 # The fixture run (13.9 lists, QA-R4 hand list) restores every word. The entries below come from the run with
-# the bundled resources (VietnameseEngineDataTests, EnglishCorpusGateTests; docs/decisions/0202) and are PENDING
-# Pa's review. They change identically after a Vietnamese seed, because rules L4, L6 and L7 decide before the run
+# the bundled resources (VietnameseEngineDataTests, EnglishCorpusGateTests; docs/decisions/0202); the product owner
+# accepted them as known issues on 13/11/2026 (docs/decisions/0005-pa-decisions-2026-11-13.md). They change identically after a Vietnamese seed, because rules L4, L6 and L7 decide before the run
 # language (L10) or the ambiguity table (L11) is read; the ENG-R872 test accepts exactly these entries.
 # L4: a doubled tone key escapes (s, f, r, x, j: `pass` types `pá` then `pas`); when the escaped form is itself an
 # English word, L4 keeps it. Data cannot change this without dropping a common English word from the lexicon.
 ass	as	L4	the escape leaves the English word "as", which L4 keeps
-awk	ăk	L6	code-only command (spec 8.2 example), not English by 8.1: L6 keeps the Tier B display outside the code context; L9 restores it in the code context
+awk	ăk	L6	code-only command (spec 8.2 example), not English by 8.1: L6 keeps the Tier B display in every context, the code context included, because it decides before L9 (open point in docs/decisions/0005)
 barred	bared	L4	the escape leaves the English word "bared", which L4 keeps
 barring	baring	L4	the escape leaves the English word "baring", which L4 keeps
 basses	bases	L4	the escape leaves the English word "bases", which L4 keeps
@@ -19,7 +19,7 @@ busts	buts	L4	the escape leaves the English word "buts", which L4 keeps
 casts	cats	L4	the escape leaves the English word "cats", which L4 keeps
 chaffed	chafed	L4	the escape leaves the English word "chafed", which L4 keeps
 chaffing	chafing	L4	the escape leaves the English word "chafing", which L4 keeps
-chown	chơn	L7	code-only command, not English by 8.1: L7 keeps the Tier A display chơn (Chơn Thành, chơn chất) outside the code context; L9 restores it in the code context (review of docs/decisions/0202)
+chown	chơn	L7	code-only command, not English by 8.1: L7 keeps the Tier A display chơn (Chơn Thành, chơn chất, attested by the product owner on 13/11/2026) in every context, the code context included, because L7 decides before L9 (open point in docs/decisions/0005)
 corral	coral	L4	the escape leaves the English word "coral", which L4 keeps
 corrals	corals	L4	the escape leaves the English word "corals", which L4 keeps
 costs	cots	L4	the escape leaves the English word "cots", which L4 keeps
@@ -27,7 +27,7 @@ dessert	desert	L4	the escape leaves the English word "desert", which L4 keeps
 desserts	deserts	L4	the escape leaves the English word "deserts", which L4 keeps
 doses	does	L4	the escape leaves the English word "does", which L4 keeps
 duress	dues	L4	the escape leaves the English word "dues", which L4 keeps
-ef	è	L7	code-only flag, not English by 8.1: L7 keeps the Tier A display è (è cổ) outside the code context; L9 restores it in the code context (review of docs/decisions/0202)
+ef	è	L7	code-only flag, not English by 8.1: L7 keeps the Tier A display è (è cổ) in every context, the code context included, because it decides before L9 (open point in docs/decisions/0005)
 gasps	gaps	L4	the escape leaves the English word "gaps", which L4 keeps
 gusts	guts	L4	the escape leaves the English word "guts", which L4 keeps
 hiss	his	L4	the escape leaves the English word "his", which L4 keeps

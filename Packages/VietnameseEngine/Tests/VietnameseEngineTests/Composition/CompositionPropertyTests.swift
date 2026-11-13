@@ -58,8 +58,10 @@ struct CompositionPropertyTests {
             #expect(edit.deleteCount == edit.deleteUTF16Count)
         }
         guard let token = state.active else { return }
-        // ENG-R601, ENG-T33: the cached state equals a replay of the raw keys.
-        let replayed = Composition(replaying: token.composition.raw, rules: rules)
+        // ENG-R601, ENG-T33: the cached state equals a replay of the raw keys (and of the Caps Lock state
+        // of the bracket keys, ENG-R906).
+        let replayed = Composition(
+            replaying: token.composition.raw, capsLockKeys: token.composition.capsLockKeys, rules: rules)
         #expect(replayed == token.composition, "replay differs for \(token.rawText)")
         // A token re-opened by Backspace (ENG-R1002) shows what its commit wrote, which is the ENG-R532
         // spelling of an open `ươ` until the next key or Backspace recomputes the display.

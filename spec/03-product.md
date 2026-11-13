@@ -108,13 +108,13 @@ PRD-R6 A setting the user never touched MUST follow future default changes; a se
 | # | Setting (UI label vi / en) | Default | Why |
 |---|---|---|---|
 | D1 | Kiểu gõ / Typing method | **Telex** | Most common method among Vietnamese Mac users; VNI one click away in onboarding and menu |
-| D2 | Kiểu đặt dấu / Tone placement | **Traditional (hòa, thủy, khỏe)** | Matches what most Vietnamese readers see in press, law and the long-standing default of popular Windows IMEs, so text "looks normal" to recipients. Modern (hoà, thuỷ, khoẻ) is one toggle away. Evidence recorded in ENG-R510: Decision 1989/QĐ-BGDĐT (25 May 2018), Article 8, prescribes the modern placement for curricula and textbooks only, so readers taught after 2018 may prefer modern. Pa confirms the default (open decision 3) |
+| D2 | Kiểu đặt dấu / Tone placement | **Traditional (hòa, thủy, khỏe)** | Matches what most Vietnamese readers see in press, law and the long-standing default of popular Windows IMEs, so text "looks normal" to recipients. Modern (hoà, thuỷ, khoẻ) is one toggle away. Evidence recorded in ENG-R510: Decision 1989/QĐ-BGDĐT (25 May 2018), Article 8, prescribes the modern placement for curricula and textbooks only, so readers taught after 2018 may prefer modern. Confirmed by the product owner on 13/11/2026; the setting stays |
 | D3 | Đặt dấu tự do / Type tone marks anywhere in the word | **Always on, not a setting** | Users type the tone key after the final consonant (`vietj`, `tieengs`), in the middle, or the `đ` key at the end (`dangd`); the engine's viability rule makes this safe for every valid syllable (ENG-R107). XKey's most common support answer was "turn this on", which is why it is not a switch here |
 | D4 | Tự khôi phục từ tiếng Anh / Automatic English restore | **On** | #1 request; words like text, user, case, wifi, USB, with, this must come out unchanged. Bundled data, no download (data licence per CLR-R6) |
 | D5 | Telex: `w` đứng riêng thành `ư` / Telex: lone `w` becomes `ư` | **On** | Standard Telex; English restore reverts `w` in English words. Off for users who never want it |
 | D6 | Telex: phím `[` `]` thành `ơ` `ư` / Bracket keys produce ơ, ư | **Off** | Mangles code and Markdown (`[`, `]` typed twice produced `?`-like output in XKey reports) |
 | D7 | Gõ tắt phụ âm nhanh / Quick consonant shortcuts | **Not offered** (non-goal, section 3.2) | Mangles normal typing (cc becomes ch, kkk becomes khk); the engine does not implement it (ENG-R121) |
-| D8 | Phím khôi phục từ vừa gõ / Restore-last-word hotkey | **Unset** (Escape is the suggested key when the user sets one) | Automatic English restore covers the common cases; a bound key would surprise users in vim, terminals, Spotlight and dialogs. When set, the key is consumed only if the current word contains a transformation, a second consecutive press always passes through (ENG-R701, ENG-R702), and per-app rules disable it in terminals, remote clients and games (PLT-R353) |
+| D8 | Phím khôi phục từ vừa gõ / Restore-last-word hotkey | **Escape**, with an on/off setting (decision of the product owner, 13/11/2026) | One key that users of other input methods know, free inside a word in ordinary text fields. The key is consumed only if the current word contains a transformation; a second consecutive press always passes through (ENG-R701, ENG-R702), so Escape still closes Spotlight and dialogs. Compatibility rules turn it off automatically in terminals, IDEs and code editors, games and remote desktop clients, where Escape has its own meaning (PLT-R353) |
 | D9 | Gõ tắt (macro) / Macros | **On, empty list** | Costs nothing until the user adds an entry |
 | D10 | Gõ tắt khi ở chế độ tiếng Anh / Expand macros in English mode | **Off** | Prevents surprise expansions while coding |
 | D11 | Phím chuyển Việt/Anh / VI/EN toggle hotkey | **Tap Control+Shift** (press and release both modifiers, no other key or click in between, within 500 ms) | Same muscle memory as Unikey/EVKey on Windows; no clash with macOS input-source shortcuts (Control+Space, Control+Option+Space), Spotlight (Command+Space), Character Viewer (Control+Command+Space) or the Globe key. Holding the chord for other shortcuts does not toggle |
@@ -187,7 +187,7 @@ PRD-R16 If the user records a combo that macOS already uses (Command+Space, Cont
 
 PRD-R17 Globe/fn as a toggle: MAY be offered as an option only if the platform spec confirms it can be detected reliably without conflicting with the macOS "Press Globe key to" setting; when held with another key it MUST NOT toggle. VERIFY.
 
-PRD-R18 Only two configurable global hotkeys exist in v1: VI/EN toggle (default set, D11) and "Restore last word" (default unset, D8; the recorder suggests Escape and explains the second-press rule). No other default global hotkeys.
+PRD-R18 Only two configurable global hotkeys exist in v1: VI/EN toggle (default set, D11) and "Restore last word" (default Escape, D8; it can be turned off or recorded as another key, and the setting explains the second-press rule). No other default global hotkeys.
 
 ### 6.2 Per-app VI/EN memory and rules
 
@@ -212,7 +212,7 @@ PRD-R24 The Settings window MUST have at most five panes, in this order. Rarely 
 | Pane (vi / en) | Contents |
 |---|---|
 | **Chung / General** | Open at login (D17); toggle hotkey (D11); remember per app (D12); switch indicator (D14); interface language (D18). Advanced: sound on switch (D15), click icon to toggle (D16) |
-| **Gõ phím / Typing** | Method Telex/VNI (D1) with a live practice field; tone placement traditional/modern (D2) showing `hòa`/`hoà` side by side; English restore (D4) with its two user lists (keep as typed, keep Vietnamese; ENG-R860). Advanced: lone `w` (D5), brackets (D6), restore-last-word hotkey (D8) |
+| **Gõ phím / Typing** | Method Telex/VNI (D1) with a live practice field; tone placement traditional/modern (D2) showing `hòa`/`hoà` side by side; English restore (D4) with its two user lists (keep as typed, keep Vietnamese; ENG-R860); each learned entry shows the app it was learned in and can be removed or made global (ENG-R862). Advanced: lone `w` (D5), brackets (D6), restore-last-word hotkey (D8) |
 | **Ứng dụng / Apps** | Section 9 |
 | **Gõ tắt / Macros** | Section 8 |
 | **Giới thiệu & Hỗ trợ / About & Support** | Version, channel, update controls (D19 to D21), diagnostics (D26), Report a problem, Export/Import/Reset settings, licences and acknowledgements, privacy summary, donation block (section 13) |
@@ -231,7 +231,7 @@ Acceptance: a new user finds and changes Telex to VNI in under 15 seconds in a m
 
 ## 8. Macros (text expansion)
 
-PRD-R29 A macro is `shortcut -> expansion` (engine contract: `01-engine.md` section 11). Shortcut: 1 to 32 printable ASCII characters without spaces (letters, digits and punctuation such as `@`, `;`, `.`, `~`); Vietnamese letters are not allowed because the shortcut is matched on the keys as typed (`dc`, not `đc`), and the editor says so. Expansion: up to 4,000 characters, multi-line allowed. The editor rejects a shortcut that equals an existing shortcut plus trailing punctuation (the shorter one would always fire first) and explains why.
+PRD-R29 A macro is `shortcut -> expansion` (engine contract: `01-engine.md` section 11). Shortcut: 1 to 32 printable ASCII characters without spaces (letters, digits and punctuation such as `@`, `;`, `.`, `~`); Vietnamese letters are not allowed because the shortcut is matched on the keys as typed (`dc`, not `đc`), and the editor says so. Expansion: up to 4,000 characters, multi-line allowed. The editor rejects a shortcut that equals an existing shortcut plus trailing punctuation or a trailing main-row digit (the shorter one would always fire first) and explains why (digit added on 13/11/2026, ENG-R1103).
 
 PRD-R30 Expansion triggers when the shortcut is typed followed by space, Return, Tab or a punctuation character; the terminator is kept (`vn.` gives `Việt Nam.`). Case adapts: `vn` -> `Việt Nam`, `Vn` -> `Việt Nam`, `VN` -> `VIỆT NAM` (adaptive casing MAY be turned off per macro; it is skipped for shortcuts without letters, such as `@@`). Backspace right after an expansion followed by the restore hotkey brings the shortcut back as typed.
 
@@ -260,7 +260,7 @@ PRD-R37 Each app row has `Báo lỗi với ứng dụng này...` which opens the
 PRD-R38 Both compatibility files (`compat-rules.json` for behaviour, `compat/matrix.json` for verification status) ship inside the app and update only with app updates (no separate download in v1, PLT-R504). The website compatibility matrix is generated from `compat/matrix.json`.
 
 PRD-R39 Tier lists (initial; maintained per QA-R):
-- Tier 1 (verified every release): Safari, Chrome, Edge, Firefox, Arc or its successor, Notes, TextEdit, Pages, Word, Excel, PowerPoint, Outlook, Google Docs and Sheets (in Chrome and Safari), Zalo, Messenger (web and app), Telegram, Slack, Discord, Notion, Obsidian, VS Code, Cursor, Terminal, iTerm2, JetBrains IDE (one), Spotlight, Finder rename, Figma.
+- Tier 1 (re-verified for every stable release candidate; every row at most 90 days old at release time, PLT-R531, QA-R19): Safari, Chrome, Edge, Firefox, Arc or its successor, Notes, TextEdit, Pages, Word, Excel, PowerPoint, Outlook, Google Docs and Sheets (in Chrome and Safari), Zalo, Messenger (web and app), Telegram, Slack, Discord, Notion, Obsidian, VS Code, Cursor, Terminal, iTerm2, JetBrains IDE (one), Spotlight, Finder rename, Figma.
 - Tier 2 (verified every minor release): Raycast, Alfred, Ghostty, WezTerm, Warp, tmux in a terminal, Teams, Zoom chat, LibreOffice, OneNote, Anki, Adobe Illustrator, Photoshop, InDesign, Affinity, Canva, DaVinci Resolve, Logi Options+ coexistence, Microsoft Remote Desktop / Windows App, Chrome Remote Desktop, a full-screen game, iPhone Mirroring.
 
 ---
@@ -306,7 +306,7 @@ PRD-R40 Onboarding runs on first launch and can be reopened from About & Support
 - For the built-in input source: `Bạn có thể giữ hoặc gỡ bộ gõ Tiếng Việt của macOS. Khi dùng {{AppName}}, hãy chọn bàn phím ABC hoặc U.S.` with a button to open Keyboard settings.
 
 **Screen 6: Import (conditional)**
-- Shown if a known export file or a known competitor app is detected (section 15). Title: `Mang gõ tắt và cài đặt từ {{OtherApp}}`. Body: `Bạn có thể nhập danh sách gõ tắt đã xuất từ {{OtherApp}}.` Buttons: `Chọn tệp...`, `Để sau`.
+- Shown if a known export file or a known competitor app is detected (section 15). Title: `Mang gõ tắt và cài đặt từ {{OtherApp}}`. Body: `Bạn có thể chuyển danh sách gõ tắt từ {{OtherApp}} sang bằng tệp văn bản theo mẫu.` Buttons: `Chọn tệp...`, `Để sau`. (No importer reads another input method's own files yet: the user exports or retypes the list in the text template of PRD-R32. Body changed by the product owner on 13/11/2026.)
 
 **Screen 7: Try it**
 - Title: `Thử gõ một chút`
@@ -391,15 +391,15 @@ PRD-R55 No Sparkle system profile submission (disabled, not offered).
 
 PRD-R56 {{AppName}} is free. Donations are a tip jar, never a nag.
 
-PRD-R57 Donation entry points, and only these: the `Ủng hộ {{AppName}}...` menu item; the donation block in About & Support; the website `/ung-ho` page; the GitHub repository Sponsor button; one plain line at the bottom of release notes on the website (not in the in-app update window).
+PRD-R57 Donation entry points, and only these: the `Ủng hộ {{AppName}}...` menu item; the donation block in About & Support; the website `/ung-ho` page; the GitHub repository Sponsor button, only if GitHub Sponsors is enabled later; one plain line at the bottom of release notes on the website (not in the in-app update window).
 
 PRD-R58 Forbidden: popups, timers, counters, "you have typed N words" messages, badges, features locked behind donating, donation prompts in onboarding, during updates or after a crash or bug report.
 
-PRD-R59 Donation block content: a short thank-you line (`{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.`); VietQR (Napas) QR code for Pa's personal bank account with the account name shown in text; MoMo QR; GitHub Sponsors link. QR images are bundled assets, not fetched. VERIFY the account details with Pa before the first public build.
+PRD-R59 Donation block content: a short thank-you line (`{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.`); a VietQR (Napas) QR code for Pa's bank account (LioBank, an OCB digital bank, NAPAS BIN 970448, account 688688678) with the bank name and the account number shown in text and the holder name shown nowhere (the VietQR payload carries no name; bank apps show the holder after lookup). No MoMo QR and no other payment link for now (decision of the product owner, 13/11/2026). QR images are bundled assets, not fetched.
 
 PRD-R60 Polar.sh MUST NOT be used for donations (its acceptable-use policy prohibits donations and sponsorship); Polar is only an option if a paid product is ever sold. Buy Me a Coffee is not used (Vietnam is not a payout country).
 
-PRD-R61 Optional, Pa's choice: a public thank-you list of sponsors who opt in on the website. No donor data is stored in the app.
+PRD-R61 No public sponsor list for now (decision of the product owner, 13/11/2026); if one is added later, it lists only sponsors who opt in, on the website. No donor data is stored in the app.
 
 ---
 
@@ -462,7 +462,7 @@ PRD-R73 Static site, Vietnamese at `/` and English at `/en/`. Required pages:
 | `/ung-ho` | Donate | Same content as the in-app block |
 | `/appcast.xml` | Sparkle feed | One stable URL that never moves; beta builds are items with `sparkle:channel="beta"` in the same feed (PLT-R1101, QA-R28) |
 
-PRD-R74 The website MUST NOT use third-party trackers or cookies that require consent. If Pa wants traffic numbers, use cookieless aggregate analytics and disclose it on `/rieng-tu`. Open question for Pa.
+PRD-R74 The website MUST NOT use trackers or cookies that require consent. Traffic numbers come from cookieless aggregate analytics (decision of the product owner, 13/11/2026): PostHog Cloud in cookieless mode (no cookies, no local storage, IP addresses not stored), so no consent banner is needed. The project key is a configuration value; while it is empty the site loads no analytics. `/rieng-tu` describes exactly what is collected.
 
 PRD-R75 The appcast host MUST serve over HTTPS from a domain Pa controls, so the feed can outlive any hosting provider.
 
@@ -480,7 +480,7 @@ PRD-R76 Success is measured only from data that exists without instrumenting use
 | App-specific share of bugs | Issue labels | Falling release over release |
 | Time to fix P0/P1 | Issue timestamps | P0 within 72 h, P1 within the next release |
 | "Toggle setting X" resolutions | Issue labels `resolution:setting-workaround` | Under 5% of closed bugs; each one triggers a defaults review |
-| Compatibility coverage | Matrix data | 100% of Tier 1 verified within 30 days, Tier 2 within 90 days |
+| Compatibility coverage | Matrix data | 100% of Tier 1 rows re-verified for every stable release candidate and at most 90 days old at release time (PLT-R531); Tier 2 within 90 days |
 | Settings loss after update | Issue label `update-regression` | Zero |
 | Qualitative | Voluntary feedback, forum mentions (voz, tinhte, Facebook groups) | Net positive sentiment; tracked manually monthly |
 
@@ -490,11 +490,13 @@ PRD-R77 No in-app survey, rating prompt or usage counter.
 
 ## 18. Open decisions for Pa
 
-1. Product name (`{{AppName}}`, `{{app-slug}}`).
-2. App licence (engine is MPL-2.0); affects contribution rules in QA-R and whether a paid edition is ever possible.
-3. Default tone placement: traditional is proposed (D2, evidence in ENG-R510); confirm.
-4. Restore-last-word hotkey unset by default (D8); the engine author had proposed Escape bound by default (ENG Q4). Confirm unset.
-5. Website analytics: none, or cookieless aggregate (PRD-R74).
-6. Donation account details and whether to show a public sponsor list (PRD-R59, PRD-R61).
-7. Minimum macOS 15 (PRD-R8, PLT-R106); confirm, or accept the cost of supporting 14.
-8. Macro shortcuts limited to printable ASCII without spaces, no Vietnamese letters (PRD-R29); confirm.
+All answered on 13/11/2026 except the app licence; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+
+1. Product name: decided; the display name and slug live only in `Config/Brand.xcconfig` and `scripts/brand.env`, and this spec keeps the placeholders.
+2. App licence: not decided; files outside the engine keep `LicenseRef-App-Pending`.
+3. Default tone placement: traditional, with the setting (D2).
+4. Restore-last-word hotkey: Escape by default, with an on/off setting and automatic exclusions through compatibility rules (D8, PRD-R18, PLT-R353).
+5. Website analytics: PostHog Cloud in cookieless mode (PRD-R74).
+6. Donation: bank VietQR only, bank name and account number shown, holder name not shown, no public sponsor list for now (PRD-R59, PRD-R61).
+7. Minimum macOS: macOS 12.0 with Intel support (PRD-R8, PLT-R106; `docs/decisions/0315-minimum-macos-12.md`).
+8. Macro shortcuts: keep printable ASCII without spaces, no Vietnamese letters (PRD-R29).

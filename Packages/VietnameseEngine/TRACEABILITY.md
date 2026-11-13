@@ -52,7 +52,8 @@ Where the owner is another track, the row says so.
 | ENG-R313 | `yê` only without onset, `iê` invalid without onset | `Orthography/SyllableRules.swift` | `ValidityTests`, `rhymes-rare.tsv` RR043-RR044 |
 | ENG-R314 | Open `y` after the listed onsets; `i` and `y` both kept | `Orthography/RhymeInventory.swift` (`openYStandardOnsets`) | `ValidityTests`, `rhymes-rare.tsv` RR028-RR031 |
 | ENG-R315 | `uơ` Tier A only after `h`, `th` | `Orthography/RhymeInventory.swift` (`uoStandardOnsets`) | `ValidityTests`, `rhymes-rare.tsv` RR004-RR007 |
-| ENG-R316 | (3.3) Vietnamese decided by the tiers only; attested data only breaks English ties; same result at every boundary. (3.10) open `ươ` never valid in committed text | `Commit/CommitRules.swift` (L7 before L8), `Composition/Composition+Rendering.swift` (`committedText`) | `RegressionTests.reg28`, `reg29`, B055-B056, `HornCompositionTests.commitFormOfAnOpenPair` |
+| ENG-R316 | Vietnamese decided by the tiers only; attested data only breaks English ties; same result at every boundary (3.3) | `Commit/CommitRules.swift` (L7 before L8) | `RegressionTests.reg28`, `reg29`, B055-B056 |
+| ENG-R317 | Open `ươ` never valid in committed text (3.10; numbered ENG-R316 in the first spec version) | `Composition/Composition+Rendering.swift` (`committedText`), `Orthography/HornNormalisation.swift` | `HornCompositionTests.commitFormOfAnOpenPair`, `ValidityTests.invalid` |
 | ENG-R320 | `c ch p t` codas: sắc and nặng only | `Orthography/SyllableTables.swift` | `SyllableCountTests.tonesPerRhymeFollowTheCoda` |
 | ENG-R321 | Tier B `k` coda takes all tones | `Orthography/SyllableTables.swift` | `ValidityTests.extended` |
 | ENG-R330 | Composition uses Tier B | `Orthography/ViabilityAutomaton.swift` (built from `extendedPairs`) | `ViabilityTests.everyPrefixOfEveryTierBSyllableIsViable`, B036-B037 |
@@ -137,7 +138,7 @@ Where the owner is another track, the row says so.
 
 | ID | Requirement | Code | Tests |
 |---|---|---|---|
-| ENG-R801 | Rules L0-L11 in order, a reason code per commit | `Commit/CommitRules.swift` (`CommitPolicy.decide`) | B001-B064, `CommitRuleTests` (one test per rule) |
+| ENG-R801 | Rules L0-L11 in order (L3 never keeps a token with an escape), a reason code per commit | `Commit/CommitRules.swift` (`CommitPolicy.decide`) | B001-B064, `CommitRuleTests` (one test per rule) |
 | ENG-R802 | Auto restore off: L3b-L11 never restore | `Commit/CommitRules.swift` (`restore`) | `CommitRuleTests.autoRestoreOff`, `collisions.tsv` CO034 |
 | ENG-R803 | Restore is an edit then the boundary key | `Engine/Reducer+Commit.swift` | `CommitRuleTests.restoreIsAnEditThenTheBoundaryKey`, B064 |
 | ENG-R810 | Resources built reproducibly from pinned inputs | `lexicon-builder` (`build`, `check`, `pin`), `data/inputs/MANIFEST.sha256` | `LexiconBuilderTests.buildTwiceGivesIdenticalBytesEqualToTheCommittedResources`, `checkPassesOnTheCommittedOutputs`, `BuilderUnitTests.buildIsAPureFunctionOfThePinnedInputs`, `manifestVerificationNamesChangedUnpinnedAndMissingFiles`, `portableSHA256MatchesCryptoKit` |
@@ -151,7 +152,7 @@ Where the owner is another track, the row says so.
 | ENG-R830 | Decisions only at commit | `Engine/Reducer+Commit.swift` | `CommitRuleTests.noMidWordRestore` |
 | ENG-R831 | Reset commits and restores nothing | `Engine/Reducer.swift` | `ResetTests.resetClearsTokenAndHistory` |
 | ENG-R832 | First word after focus treated like any other | `Engine/Reducer.swift` | `CommitRuleTests.firstWordAfterFocusIsTreatedLikeAnyOther`, `RegressionTests.reg18` |
-| ENG-R840 | No-vowel tokens never restored | `Commit/CommitRules.swift` (L3) | B040-B041, `CommitRuleTests.l3Abbreviations`, `RegressionTests.reg17` |
+| ENG-R840 | No-vowel tokens without an escape never restored | `Commit/CommitRules.swift` (L3) | B040-B041, `CommitRuleTests.l3Abbreviations`, `RegressionTests.reg17` |
 | ENG-R841 | Toggled tokens never restored by the rules | `Commit/CommitRules.swift` (L1) | `RequirementGapTests.neverRestored`, `CommitRuleTests.l1UserChoiceWithLearningSignals` |
 | ENG-R842 | Display equal to the keys: nothing to decide | `Commit/CommitRules.swift` (L0) | `CommitRuleTests.l0NothingTransformed`, `RequirementGapTests.neverRestored` |
 | ENG-R843 | Valid Vietnamese and names kept | `Commit/CommitRules.swift` | `GeneratedCorpusCommitTests.committedTextEqualsTheOracle`, `proper-nouns.tsv`, `rhymes-rare.tsv`, `RegressionTests.reg08` |
@@ -159,7 +160,8 @@ Where the owner is another track, the row says so.
 | ENG-R851 | No app information reaches the engine | `PublicAPI.swift` (no such field) | `PublicAPITests.closedOptionSet` |
 | ENG-R860 | User keep-as-typed and keep-Vietnamese lists | `Commit/CommitRules.swift` (L2) | `CommitRuleTests.l2UserLists`, `proper-nouns.tsv` PN208 |
 | ENG-R861 | Learning signal when the user's toggle disagrees | `Commit/CommitRules.swift` (`learningSignal`) | `CommitRuleTests.l1UserChoiceWithLearningSignals`, E04 |
-| ENG-R870 | Generated corpus committed: 100 % (`en` rows excluded) | - | `GeneratedCorpusCommitTests` (fixtures), `GeneratedCorpusGateTests` (bundled data, 269,500 cases, exclusions listed per shard and in total) |
+| ENG-R862 | Host policy: learned entries stored per app, typed entries global | host (AppCore, later wave); the engine only emits the signal (ENG-R861) and receives the lists (ENG-R860) | host tests (AppCore) |
+| ENG-R870 | Generated corpus committed: 100 % (`en` rows excluded, generated L8 and tech-always rows included) | - | `GeneratedCorpusCommitTests` (fixtures), `GeneratedCorpusGateTests` (bundled data, 269,500 cases, exclusions listed per shard and in total) |
 | ENG-R871 | English corpus in an English run: 99.5 % unchanged | harness `VietnameseEngineTesting/Corpora/CorpusTargets.swift` | `EnglishCorpusGateTests.englishRun` (bundled lexicon and tech lists, 40,701 words, 99.87 %), `CorpusTargetTests.englishCorpus` (fixture words) |
 | ENG-R872 | English corpus in Vietnamese context: at most 3 % changed, all `vi` candidates | same harness | `EnglishCorpusGateTests.vietnameseContext` (0.97 %; `vi` rows or ENG-T11 entries), `CorpusTargetTests.englishCorpus` (candidate rule) |
 | ENG-R873 | Prose by three typists: 99.95 % identical | `ProseCorpusCheck` | `ProseCorpusGateTests.typist` (`data/corpus/prose-vi.txt`, 250,006 tokens, both methods, both tone styles), `CorpusTargetTests.proseToneStyle`, `CorpusTargetTests.prose` (sample text) |
@@ -175,6 +177,7 @@ Where the owner is another track, the row says so.
 | ENG-R903 | Standalone `ư` and escape letters take the key's case | `Composition/Composition+Transforms.swift` | `CaseTests` |
 | ENG-R904 | Camel case goes literal, restored at commit | `Composition/ComposedLetter.swift` (`CamelCaseTracker`) | `CaseTests.camelCaseGoesLiteral`, `CommitRuleTests.l3bCamelCase` |
 | ENG-R905 | Case operations locale independent | `Composition/KeyRoles.swift` (`ASCII`), `Macros/MacroCase.swift` | `StaticSourceTests.coreIsClean` (no `Locale`) |
+| ENG-R906 | Bracket letters uppercase under Caps Lock or in an all-caps word | `PublicAPI.swift` (`KeyInput.capsLock`), `Composition/Composition.swift` (`capsLockKeys`), `Composition/Composition+Transforms.swift` (`applyBracket`), `Composition/Composition+Rendering.swift` | `BracketCaseTests` |
 | ENG-R910 | Boundaries commit and are delivered; recorded in history | `Engine/Reducer+Commit.swift`, `Engine/TokenKey.swift` | `CommitDecisionTests.sameDecisionAtEveryBoundaryKey`, `BoundaryAndResetTests` |
 | ENG-R911 | Apostrophe and hyphen are boundaries | `Engine/TokenKey.swift` | `CommitRuleTests.apostropheAndHyphenAreBoundaries` |
 | ENG-R912 | Return and Tab clear the history | `Engine/Reducer+Commit.swift` (`finishBoundary`) | `BoundaryAndResetTests.returnAndTabClearTheHistory`, `editing.tsv` ED011-ED012 |
@@ -226,14 +229,14 @@ Where the owner is another track, the row says so.
 | ENG-T01 | Independent oracle | `VietnameseEngineTesting/Oracle/SyllableOracle.swift` | `SyllableOracleTests` |
 | ENG-T02 | Generated corpus O1-O4, both methods and styles | `VietnameseEngineTesting/Oracle/KeySequenceGenerator.swift`, `GeneratedCorpus.swift` | `GeneratedCorpusCompositionTests.orderCases`, `GeneratedCorpusCommitTests` |
 | ENG-T03 | Titlecase, uppercase, explicit `uwow` variants | same | `GeneratedCorpusCompositionTests.variantCases` |
-| ENG-T04 | 100 % of the reference model's cases | same | `GeneratedCorpusTests.caseCounts` (prints counts) |
+| ENG-T04 | 100 % of the 237,824 O1-O4 cases and 31,676 variants | same | `GeneratedCorpusTests.caseCounts` (prints counts) |
 | ENG-T10 | English lexicon in both contexts | `VietnameseEngineTesting/Corpora/CorpusTargets.swift` (`EnglishCorpusCheck`) | `EnglishCorpusGateTests` (bundled data), `CorpusTargetTests.englishCorpus` (fixtures) |
-| ENG-T11 | `known-exceptions.txt` | `Corpus/known-exceptions.txt` (51 entries pending Pa's review) | `EnglishCorpusGateTests` (every English-run change listed, no stale entry), `CorpusTargetTests.englishCorpus` |
+| ENG-T11 | `known-exceptions.txt` | `Corpus/known-exceptions.txt` (53 entries: 50 L4, 1 L6, 2 L7; accepted as known issues on 13/11/2026, docs/decisions/0005) | `EnglishCorpusGateTests` (every English-run change listed, no stale entry), `CorpusTargetTests.englishCorpus` |
 | ENG-T12 | Spot list unchanged | `VietnameseEngineTesting/Fixtures/SpotList.swift` | `SpotListTests` (13.9 fixtures), `SpotListGateTests` (bundled data) |
 | ENG-T20 | Prose corpus, three typists | `ProseCorpusCheck`; corpus `data/corpus/prose-vi.txt` (`lexicon-builder prose-corpus`) | `ProseCorpusGateTests`, `LexiconBuilderTests.proseCorpusHasAtLeast200000SyllablesAndIsReproducible`, `CorpusTargetTests.prose` |
 | ENG-T30 | No crash, bounded memory | `InvariantChecker` | `FuzzTests.randomStreams`, `longTokens`, `Packages/VietnameseEngineFuzz` |
 | ENG-T31 | Simulated field equals the engine's view; no over-deletion | `InvariantChecker`, `Simulation/SimulatedTextField.swift` | Fuzz, every corpus case |
-| ENG-T32 | Restore exact; toggling twice gives the composed display | `InvariantChecker.checkRestore` | Fuzz, `restore-exact.tsv` |
+| ENG-T32 | Restore exact; a consecutive toggle passes through, a later one gives the composed display | `InvariantChecker.checkRestore` | Fuzz, `restore-exact.tsv` |
 | ENG-T33 | Determinism and replay | `InvariantChecker` (replay, pure `reduce`) | Fuzz, `FuzzTests.determinism`, `CompositionPropertyTests` |
 | ENG-T34 | NFC, no combining marks, equal counts | `InvariantChecker.checkEdit` | Fuzz (Foundation NFC check in tests) |
 | ENG-T35 | VNI method isolation | `InvariantChecker.checkMethodIsolation` | Fuzz (VNI combinations) |

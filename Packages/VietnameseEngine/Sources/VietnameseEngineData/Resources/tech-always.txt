@@ -44,7 +44,6 @@ cli
 cloudflare
 cmnd
 cmyk
-co2
 conda
 copilot
 covid

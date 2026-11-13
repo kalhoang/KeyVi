@@ -1088,13 +1088,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You can import the macro list you exported from %@."
+            "value" : "You can bring over your macro list from %@ using a text file that follows the template."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bạn có thể nhập danh sách gõ tắt đã xuất từ %@."
+            "value" : "Bạn có thể chuyển danh sách gõ tắt từ %@ sang bằng tệp văn bản theo mẫu."
           }
         }
       }

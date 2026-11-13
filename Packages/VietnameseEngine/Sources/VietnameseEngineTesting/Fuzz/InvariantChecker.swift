@@ -430,7 +430,8 @@ public struct InvariantChecker: Sendable {
     /// one the flags call for.
     private mutating func checkReplay(_ token: ActiveToken, index: Int) throws {
         statistics.replayChecks += 1
-        let replayed = Composition(replaying: token.composition.raw, rules: rules)
+        let replayed = Composition(
+            replaying: token.composition.raw, capsLockKeys: token.composition.capsLockKeys, rules: rules)
         guard replayed == token.composition else {
             throw violation(
                 "ENG-T33", "cached composition differs from replay for \(token.rawText.debugDescription)", index)

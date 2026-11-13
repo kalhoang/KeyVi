@@ -384,13 +384,14 @@ wifi6
 
 # Paper sizes, chemistry, health and finance abbreviations
 # a3 and a5 are not listed: in VNI they type the everyday syllables ạ (the particle) and ả (cô ả), which
-# rule L11 would restore everywhere (review of docs/decisions/0202). a4 types ã, not a word.
+# rule L11 would restore everywhere (review of docs/decisions/0202). a4 types ã, not a word. co2 is not listed
+# either: VNI co2 types cò (con cò, cò kè), so it is Vietnamese; CO2 is typed with the escape, co22
+# (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md).
 a4
 atm
 b5
 cccd
 cmnd
-co2
 covid
 dna
 h2o

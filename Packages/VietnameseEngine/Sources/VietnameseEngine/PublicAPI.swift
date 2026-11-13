@@ -83,11 +83,15 @@ public struct KeyInput: Sendable, Hashable {
     public var character: Character
     /// The key is on the numeric keypad: its digits are boundaries, never VNI keys (ENG-R401).
     public var fromKeypad: Bool
+    /// Caps Lock was on for this key. Keys with a case already arrive in their case (ENG-R902); only keys
+    /// without case use it: a Telex bracket key then types an uppercase letter (ENG-R906).
+    public var capsLock: Bool
 
     /// A key event for `character`.
-    public init(_ character: Character, fromKeypad: Bool = false) {
+    public init(_ character: Character, fromKeypad: Bool = false, capsLock: Bool = false) {
         self.character = character
         self.fromKeypad = fromKeypad
+        self.capsLock = capsLock
     }
 }
 

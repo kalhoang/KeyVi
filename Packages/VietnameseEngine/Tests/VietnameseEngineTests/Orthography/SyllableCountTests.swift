@@ -2,12 +2,13 @@
 import Testing
 import VietnameseEngine
 
-/// ENG-R350: the generator prints its own counts; differences from spec 3.15 are explained in
-/// docs/decisions/0100-engine-syllable-counts.md.
+/// ENG-R350: the generator prints its own counts, which spec 3.15 quotes since the product owner's decision
+/// of 13/11/2026 (docs/decisions/0005-pa-decisions-2026-11-13.md). The reference model's higher counts are
+/// explained in docs/decisions/0100-engine-syllable-counts.md and spec/reference-model/README.md.
 @Suite("Syllable inventory counts (ENG-R350)")
 struct SyllableCountTests {
-    /// Pairs the spec's reference model counts twice: the spelling `giu` is generated both as `g` +
-    /// `iu` and as `gi` + `u`, but 3.13 parses it only as `gi` + `u` (ENG-R305, ENG-R306).
+    /// Pairs the reference model (spec/reference-model) counts twice: the spelling `giu` is generated both
+    /// as `g` + `iu` and as `gi` + `u`, but 3.13 parses it only as `gi` + `u` (ENG-R305, ENG-R306).
     static let modelDuplicatePairs = [("g", "iu")]
     static let modelDuplicateTonedSyllables = 6  // `iu` takes all six tones
 
@@ -34,11 +35,11 @@ struct SyllableCountTests {
     @Test func tierAPairsAndTonedSyllables() {
         let pairs = SyllableTables.standardPairs
         let toned = pairs.reduce(0) { $0 + $1.tones.count }
-        print("[ENG-R350] Tier A onset-rhyme pairs: \(pairs.count) (spec 3,368 counts g+iu and gi+u separately)")
-        print("[ENG-R350] Tier A toned syllables: \(toned) (spec 15,412)")
+        print("[ENG-R350] Tier A onset-rhyme pairs: \(pairs.count) (spec 3,367)")
+        print("[ENG-R350] Tier A toned syllables: \(toned) (spec 15,406)")
         #expect(pairs.count == 3_367)
         #expect(toned == 15_406)
-        // Reconciliation with spec 3.15: add back the duplicate the reference model counts.
+        // Reconciliation with the reference model, which counts the `giu` duplicate (3,368 / 15,412).
         #expect(pairs.count + Self.modelDuplicatePairs.count == 3_368)
         #expect(toned + Self.modelDuplicateTonedSyllables == 15_412)
         // Every pair is spelled differently (the inventory has no duplicates by construction).
@@ -51,7 +52,7 @@ struct SyllableCountTests {
         let dz = pairs.filter { $0.onset == .dz }
         let d = pairs.filter { $0.onset == .d }
         print(
-            "[ENG-R350] Tier B pairs incl. Tier A, without dz: \(withoutDz.count) (spec 6,209 incl. the giu duplicate)")
+            "[ENG-R350] Tier B pairs incl. Tier A, without dz: \(withoutDz.count) (spec 6,208; 6,387 with dz)")
         print(
             "[ENG-R350] Tier B pairs incl. Tier A, with dz: \(pairs.count) (dz adds \(dz.count), the Tier B pairs of d)"
         )

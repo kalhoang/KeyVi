@@ -53,7 +53,7 @@ Keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. Any
 - **ENG-R106** Automatic restore of non-Vietnamese words MUST be ON by default and MUST NOT require any download (section 8).
 - **ENG-R107** Free-order entry (tone, modifier and `đ` keys typed after later letters, section 4.6) MUST always be on. There is no "free marking" setting.
   *Rationale: in the audited incumbent the most frequent support answer was "turn on free marking", which means the default was wrong. With the viability rule (sections 3.14 and 4.4) free order has no false positives on valid Vietnamese.*
-- **ENG-R108** The engine MUST accept a **restore toggle** event that switches the current token between its Vietnamese form and the keys as typed (section 7.2). The host binds it to a hotkey only when the user sets one (`03-product.md` D8: unset by default; Escape is the suggested key).
+- **ENG-R108** The engine MUST accept a **restore toggle** event that switches the current token between its Vietnamese form and the keys as typed (section 7.2). The host binds it to a hotkey (`03-product.md` D8: Escape by default, with a setting to turn it off or choose another key).
 - **ENG-R109** The engine MUST be a standalone Swift package with no dependency on the app. Its licence is MPL-2.0.
   *Rationale: file-level copyleft keeps changes to the engine's own files open, while any app can still embed the engine; through MPL-2.0 section 3.3 it combines with GPL-2.0 projects, which Apache-2.0 does not. Bundled word lists keep their own notices (section 8.2).*
 - **ENG-R110** The engine MUST match and expand macros (text expansion) at commit, as specified in section 11. The macro table is user data supplied by the host; the engine ships with an empty table.
@@ -110,7 +110,7 @@ A Vietnamese syllable is `[onset] [medial] nucleus [coda] + tone`. In spelling, 
 | `ng` | A | Not before `e ê i y iê ia`. |
 | `ngh` | A | Only before `e ê i` and `iê/ia`. |
 | `ch` `d` `đ` `h` `kh` `l` `n` `nh` `r` `s` `t` `th` `tr` `x` | A | No special constraint beyond 3.10. |
-| `bl` `br` `dr` `đr` `gl` `gr` `kl` `kr` `pl` `pr` | B | Clusters found in ethnic-minority place names (`Krông`, `Đăk Glei`, `M'Đrắk`, `Ia Grai`, `Kon Plông`, `Chư Prông`). |
+| `bl` `br` `dr` `đr` `gl` `gr` `kl` `kr` `pl` `pr` | B | Clusters found in ethnic-minority place names (`Krông`, `Đắk Glong`, `M'Đrắk`, `Ia Grai`, `Kon Plông`, `Chư Prông`). |
 | `z` | B | Teencode (`zá`, `zui`, `zậy`). |
 | `dz` | B | Colloquial (mostly Southern) spelling of the `d`/`v` sound: `dzô`, `dzậy`, `dzui`, `dzữ`, `dzìa`. Follows the same constraints as `d`. In Telex the `z` of `dz` arrives before any vowel, so ENG-R411 makes it a letter, never tone removal. Required by the product owner (P0-2 in 03-product.md). |
 
@@ -197,7 +197,7 @@ Tier B adds `o` (quọ) and `ơn` (quởn).
 - **ENG-R313** `yê…` rhymes only with no onset. With no onset, `iê…` is invalid (`yêu`, never `iêu`); `ia` with no onset is valid (`ỉa`).
 - **ENG-R314** Open `y` (the rhyme `y`) is Tier A only with no onset or after `h k l m s t th v` (`ý`, `hy`, `kỹ`, `lý`, `mỹ`, `sỹ`, `tỷ`, `Thy`, `Vy`); after other onsets it is Tier B. Open `i` is valid after every onset that allows `i`. Article 9 of Decision 1989/QĐ-BGDĐT (2018) prescribes `i` after an onset in textbooks (`kĩ`, `lí`, `mĩ`) but keeps `y` in proper names (`Vy`, `Vỹ`, `Thy Ngọc`); the engine accepts both spellings and never rewrites one into the other.
 - **ENG-R315** `uơ` is Tier A only after `h` and `th`; elsewhere Tier B.
-- **ENG-R316** `ươ` with no coda and no ending (open) is never valid in the committed text; see 5.5.
+- **ENG-R317** `ươ` with no coda and no ending (open) is never valid in the committed text; see 5.5. *(Numbered ENG-R316 in the first version, which duplicated the ID of 3.3; renumbered by the product owner's decision of 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)*
 
 ### 3.11 Tone constraints
 
@@ -212,6 +212,8 @@ Tier B adds `o` (quọ) and `ơn` (quởn).
 | B (extended) | Tier A, plus: onsets marked B; `k` before any vowel; `k` coda as a variant of `c` with any tone; medial glide after labials and after `gi`; open `y` after any onset; `uơ` after any onset; extra rhymes `oao oap oăp oem oeng oec oep uên uêt uêu ưm ưn ưp`; `qu` + `o`, `qu` + `ơn`. | Ethnic-minority place names (`Krông Pắk`, `Đắk Lắk`, `Kon Plông`), established loans (`buýt`, `phuy`, `voan`), interjections (`ừm`) and teencode or colloquial spellings (`zá`, `hok`, `dzô`, `dzậy`). |
 | Invalid | Anything else. | Restored at commit (section 8). |
 
+Readings of the Tier B row confirmed by the product owner (13/11/2026, docs/decisions/0100-engine-syllable-counts.md): the `k` coda variant does not apply after `qu` or `gi`; the medial rhymes allowed after `gi` are only those that start with the medial `o` (`gioăng`), because `u` + vowel after `gi` is already the nucleus `u` (`giũa`, `giuộc`); and no medial glide follows `kl` or `kr` (3.4 forbids it after `k`).
+
 - **ENG-R330** Composition (section 4) MUST use Tier B to decide what can still be typed, so that names and loans compose normally.
 - **ENG-R331** At commit, a Tier B word that is not Tier A is kept unless its raw keys are an English word (section 8, rule L6). Names such as `Krông` (raw `kroong`), `Đắk` (raw `ddawsk`) and `Pắc` are therefore never restored.
 - **ENG-R332** Proper nouns are not detected by capitalisation. Capitalised words follow the same rules as lowercase words.
@@ -223,7 +225,7 @@ Tier B adds `o` (quọ) and `ơn` (quởn).
 
 Input: a lowercase letter string with modifiers (tone marks removed). Output: onset, vowel group, coda, remainder.
 
-1. Onset: if the string starts with `qu`, onset is `qu`. Else if it starts with `gi` and the third letter is a vowel letter, onset is `gi`. Else the longest multi-letter onset that matches, taken from the alphabetical set `bl br ch dr đr gh gl gr kh kl kr ng ngh nh ph pl pr th tr` (longest match, so `ngh` wins over `ng`). Else, if the first letter is a consonant, that letter. Else no onset.
+1. Onset: if the string starts with `qu`, onset is `qu`. Else if it starts with `gi` and the third letter is a vowel letter, onset is `gi`. Else the longest multi-letter onset that matches, taken from the alphabetical set `bl br ch dr dz đr gh gl gr kh kl kr ng ngh nh ph pl pr th tr` (longest match, so `ngh` wins over `ng`). Else, if the first letter is a consonant, that letter. Else no onset.
 2. Vowel group: the maximal run of vowel letters after the onset.
 3. Coda: the maximal run of consonant letters after the vowel group.
 4. Remainder: anything after the coda. A non-empty remainder or an empty vowel group makes the string invalid.
@@ -238,9 +240,11 @@ Input: a lowercase letter string with modifiers (tone marks removed). Output: on
 
 ### 3.15 Reference counts
 
-A throwaway reference model of the tables above (written while drafting this spec, not shipped) produced, after the review additions of `gi + êc` (ENG-R305) and `th + y` (ENG-R314): 156 Tier A rhymes, 41 `qu` rhymes, **3,368** Tier A onset-rhyme pairs, **15,412** Tier A toned syllables, and 6,209 Tier B onset-rhyme pairs (including Tier A). The first draft, before those two additions, had 3,366 / 15,404 / 6,208.
+The generator of the implementation, built from the tables above, prints: 156 Tier A rhymes, 41 `qu` rhymes, **3,367** Tier A onset-rhyme pairs, **15,406** Tier A toned syllables, and **6,208** Tier B onset-rhyme pairs including Tier A (**6,387** with the `dz` onset of 3.3, which adds the 179 Tier B pairs of `d`).
 
-- **ENG-R350** The implementation's generator MUST print its own counts in CI. Any difference from these numbers MUST be explained in the pull request that introduces it (either the model or the implementation is wrong).
+*History: the first version of this section quoted a throwaway reference model (spec/reference-model/, not shipped): 3,368 / 15,412 / 6,209 after the review additions of `gi + êc` (ENG-R305) and `th + y` (ENG-R314), 3,366 / 15,404 / 6,208 before them. The model counts the spelling `giu` twice (as `g` + `iu` and as `gi` + `u`), but the parse of 3.13 reads it only as `gi` + `u`, so each of its counts was one pair (six toned syllables) too high. The product owner adopted the implementation's numbers on 13/11/2026 (docs/decisions/0005-pa-decisions-2026-11-13.md, analysis in docs/decisions/0100-engine-syllable-counts.md).*
+
+- **ENG-R350** The implementation's generator MUST print its own counts in CI. Any difference from these numbers MUST be explained in the pull request that introduces it (either the tables or the implementation is wrong).
 
 ---
 
@@ -470,7 +474,7 @@ VNI `duoc795`: `d u o c` pass through; `7` -> edit(delete 3, insert `ươc`); `9
 
 Defined in 4.7. Doubling is the always-available, per-key way to get a literal letter.
 
-### 7.2 Restore toggle (host hotkey, unset by default)
+### 7.2 Restore toggle (host hotkey, Escape by default)
 
 - **ENG-R701** On `restoreToggle`, when the previous event was not a `restoreToggle`: if the active token's display differs from its raw keys, the engine MUST replace the display with the raw keys (edit, key swallowed) and flag the token **user-restored** (literal for the rest of the token, never changed by commit). Otherwise, if the token is flagged restored (by a commit rule, section 8, or by the user) and its composed form differs from the raw keys, the engine MUST replace the display with the composed form and flag the token **user-kept**.
 - **ENG-R702** A `restoreToggle` that immediately follows another `restoreToggle` (no other event in between) MUST return `passThrough` and change nothing. A second consecutive press therefore always reaches the app with its normal meaning.
@@ -479,7 +483,7 @@ Defined in 4.7. Doubling is the always-available, per-key way to get a literal l
 - **ENG-R704** To undo an automatic restore, the user presses Backspace once (re-opening the word, section 10) and then the toggle. Example: `test` + space commits `test ` (restored by rule L11); Backspace re-opens `test` in its restored state; the toggle shows `tét` and marks the token user-kept.
 - **ENG-R705** The restore of a VNI token MUST reproduce the digits typed (`vie65t` + toggle -> `vie65t`), and a Telex token the letters typed, including doubled letters (`traffic`) (REG-05, REG-27).
 
-Default binding (host side, `03-product.md` D8 and PRD-R18): **no key is bound by default**. Automatic restore (section 8) covers the common cases, and a bound key would surprise users in Vim, terminals, games, remote desktops and Spotlight, where Escape already means something. When the user sets a key, Escape is the suggested choice because it is one key, free inside a word in ordinary text fields, and known to users of other input methods; the host then consumes it only under ENG-R701 and disables the binding in contexts where a rule says so. The engine author's original proposal (Escape bound by default) is recorded in open question Q4 for Pa.
+Default binding (host side, `03-product.md` D8 and PRD-R18): **Escape is bound by default**, with an on/off setting (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md; the first version left it unset). Escape is one key, free inside a word in ordinary text fields, and known to users of other input methods. The host consumes it only when the engine answers with an edit (ENG-R701); otherwise it passes through with its normal meaning (ENG-R702, ENG-R703), so a second press always closes Spotlight or a dialog. Compatibility rules turn the binding off where Escape has its own meaning (terminals, IDEs and code editors, games, remote desktop clients: `features.restoreHotkey: false`, `02-platform.md` PLT-R353), never per-app code. The engine is unaffected: it only sees `restoreToggle` events.
 
 ### 7.3 Tone removal
 
@@ -507,18 +511,18 @@ Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, t
 | L0 | `C` equals `R` (nothing was transformed) | nothing to decide |
 | L1 | token is user-restored or user-kept (7.2) | keep the user's choice |
 | L2 | `R` in the user keep-as-typed list / keep-Vietnamese list | restore / keep |
-| L3 | `C` contains no vowel letter | keep (abbreviations such as `đc`, `ĐL`, `ĐHQG`) |
+| L3 | `C` contains no vowel letter and no escape was used in the token | keep (abbreviations such as `đc`, `ĐL`, `ĐHQG`) |
 | L3b | the raw keys are camel case (ENG-R904): `useState` composes as `ueState` | restore |
 | L4 | an escape was used in the token | keep `C` if `C` is an English word; else restore if `R` is English; else keep `C` |
 | L5 | `C` is invalid | restore |
 | L6 | `C` is Tier B but not Tier A | restore if `R` is English, else keep |
 | L7 | `R` is not English | keep |
 | L8 | `C` is not in the attested-syllable list | restore |
-| L9 | app context is `code` and `R` is in the code-only tech list | restore |
+| L9 | app context is `code` and `R` is in the code-only tech list | restore (reached only when L6 and L7 did not decide, see ENG-R850) |
 | L10 | the run is in English (8.3) | restore |
 | L11 | ambiguity table row for `R`: `en` -> restore, `vi` -> keep; no row: restore if `R` is in the tech-always list, else keep | as stated |
 
-- **ENG-R801** The engine MUST implement exactly this order. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text.
+- **ENG-R801** The engine MUST implement exactly this order, including the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)*
 - **ENG-R802** When auto restore is off, rules L3b to L11 MUST NOT restore anything. L1 and L2 (the user's own choices) still apply.
 - **ENG-R803** A restore at commit is an edit that replaces `C` with `R` followed by the boundary key (`thenPassThrough`).
 
@@ -574,26 +578,28 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 
 ### 8.5 Tokens that are never restored
 
-- **ENG-R840** Tokens with no vowel letter (L3): `đc`, `đt`, `ĐL`, `ĐHQG`, `ĐBSCL` (REG-17).
+- **ENG-R840** Tokens with no vowel letter and no escape (L3): `đc`, `đt`, `ĐL`, `ĐHQG`, `ĐBSCL` (REG-17).
 - **ENG-R841** Tokens the user toggled (L1).
 - **ENG-R842** Tokens whose display equals their raw keys (L0).
 - **ENG-R843** Valid Vietnamese typed in Vietnamese context, unless the exact raw keys are an `en` row of the reviewed ambiguity table or the user list says otherwise. Words in Tier B (`Krông`, `Đắk`, `Lắk`, `quởn`) and Tier A (`Buôn Ma Thuột`, `Pắc`, `huơ`, `huých`, `huỵch`, `pía`, `giếc`) are kept (REG-08).
 
 ### 8.6 App context (host-supplied)
 
-- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`). Nothing else changes; Vietnamese prompts typed in a terminal compose exactly as elsewhere.
+- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`). Because L6 and L7 decide before L9 (8.1), L9 only reaches code-only words whose raw keys are also English (in the English lexicon or the tech-always list); code-only words that are not English keep their Vietnamese display in `code` too (`chown` -> `chơn` and `ef` -> `è` by L7, `awk` -> `ăk` by L6). VERIFY (open point for Pa, docs/decisions/0005-pa-decisions-2026-11-13.md, "Found while applying the decisions"): keep this order, or let L9 decide before L6 and L7 for code-only words. Nothing else changes; Vietnamese prompts typed in a terminal compose exactly as elsewhere.
 - **ENG-R851** The engine MUST NOT receive bundle identifiers, window titles or any other app information.
 
 ### 8.7 User lists and learning
 
 - **ENG-R860** Resources include two user lists: keep-as-typed and keep-Vietnamese, keyed by lowercased raw keys. The host stores them locally and shows them in settings, where entries can be removed.
-- **ENG-R861** When a token committed as user-restored or user-kept differs from what the rules alone would have decided, the output MUST carry a learning signal (`preferredRaw(raw)` or `preferredVietnamese(raw)`). The engine never stores it; the host decides whether to add it to a user list (proposal: after the same signal twice; Q5).
+- **ENG-R861** When a token committed as user-restored or user-kept differs from what the rules alone would have decided, the output MUST carry a learning signal (`preferredRaw(raw)` or `preferredVietnamese(raw)`). The engine never stores it; the host decides whether to add it to a user list (ENG-R862).
+
+- **ENG-R862** Host policy for learning (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md): the host adds an entry once the same learning signal (same list, same raw keys) has been seen twice in the same app, and stores the learned entry **for that app** (bundle identifier); it applies only in that app. Entries the user types in settings stay global. Settings shows the app next to each learned entry and lets the user remove it or make it global. The engine still knows nothing about apps (ENG-R851): for the focused app the host passes the global entries plus that app's learned entries as the user lists of `Resources`.
 
 ### 8.8 Measurable targets
 
 | ID | Target |
 |---|---|
-| ENG-R870 | Generated Vietnamese corpus (13.2): 100 % pass, including commit in Vietnamese context. The only allowed exclusions are raw strings that are `en` rows of the ambiguity table; they are listed by the test. |
+| ENG-R870 | Generated Vietnamese corpus (13.2): 100 % pass, including commit in Vietnamese context. The only allowed exclusions are raw strings that are `en` rows of the ambiguity table; they are listed by the test. Rows that the data build generates for rule L8 (raw keys an English word, display a valid syllable that is not attested) or for tech-always words count as such rows: they are marked `[generated:unattested]` or `[generated:tech-always]`, and the build fails when a row's reason no longer holds (policy accepted by the product owner on 13/11/2026). |
 | ENG-R871 | English corpus (13.3), Telex defaults, English-run context: at least 99.5 % of words unchanged after commit; every failure listed in `known-exceptions.txt` with a reason. |
 | ENG-R872 | Same corpus in Vietnamese context: at most 3 % of words changed (VERIFY after building the data), and 100 % of changed words are ambiguity rows with decision `vi` (reviewed or unreviewed). |
 | ENG-R873 | Vietnamese prose corpus (13.4) typed by three simulated typists (canonical order, tone at end, free order): at least 99.95 % of tokens identical to the source; every difference attributable to an `en` row. |
@@ -607,10 +613,11 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 ### 9.1 Case
 
 - **ENG-R901** Each output letter takes the case of the key that produced the letter: `Vieetj` -> `Việt`, `VIEETJ` -> `VIỆT`, `DDaf` and `Ddaf` -> `Đà`, `dDaf` -> `đà`, `Aas` -> `Ấ`.
-- **ENG-R902** The case of transform keys is ignored: `TieengS` -> `Tiếng`. Caps Lock is not special: the host delivers the character it produced.
+- **ENG-R902** The case of transform keys is ignored: `TieengS` -> `Tiếng`. Caps Lock is not special for keys that have a case: the host delivers the character it produced. The host also reports the Caps Lock state with every key (`KeyInput.capsLock`); only keys without a case use it (ENG-R906).
 - **ENG-R903** A standalone `ư` takes the case of the `w` key (`W` -> `Ư`). An escape letter takes the case of the escaping key.
 - **ENG-R904** A token in which a lowercase letter is later followed by an uppercase letter and then by another lowercase letter (camel case: `iPhone`, `MacBook`, `useState`, `VnExpress`) MUST enter literal mode at the second lowercase letter if it is not already literal, and is restored at commit if it was transformed (rule L3b; `useState` shows `ueState` while typing and commits as `useState`). `tIẾNG` (inverted caps) stays Vietnamese.
 - **ENG-R905** Case operations MUST NOT depend on the system locale.
+- **ENG-R906** A letter produced by a Telex bracket key (ENG-R104), a key without case, is uppercase when Caps Lock was on for that key or when the token is an all-caps word, meaning that at least two other letters of the token were produced by keys with a case and all of them are uppercase: Caps Lock `[` -> `Ơ`, `TH[` -> `THƠ`, `TR]` -> `TRƯ`, `T[I` -> `TƠI`. Otherwise it is lowercase: `Th[` -> `Thơ`, `T[` -> `Tơ`, `[i` -> `ơi`. The case follows the current letters (6.1): `T[I` shows `Tơ` after the second key and `TƠI` after the third. The Caps Lock state of each bracket key is part of the token's input, so Backspace and replay keep it (ENG-R601). *(Decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)*
 
 ### 9.2 Boundaries
 
@@ -654,7 +661,7 @@ Macros are a v1 feature. `03-product.md` section 8 owns the editor, storage, imp
 
 - **ENG-R1101** A macro table maps a **trigger** to an **expansion**. Trigger: 1 to 32 characters of printable ASCII without whitespace (letters, digits and punctuation such as `@`, `;`, `.`, `~`), compared case-insensitively against the keys as typed. Vietnamese letters are not allowed in triggers because matching is on raw keys (`dc`, not `đc`). Expansion: NFC text of at most 4,000 characters, newlines allowed.
 - **ENG-R1102 Matching window.** The engine keeps the **span**: the raw characters typed since the last whitespace, Return, Tab or reset, including boundary characters such as punctuation and digits that were passed through (so `@@`, `ad.`, `k1` are matchable), capped at 32 characters (a longer span cannot match and is not looked up). Because triggers are matched on raw keys, composition state, literal mode and escapes do not matter (this resolves the former Q6).
-- **ENG-R1103 Expansion.** On a boundary key, before rule L0 of section 8.1, if the lowercased span equals a trigger, the engine MUST replace the span's display (the committed tokens and boundary characters it consists of, all engine-produced or passed through, so ENG-R630 holds) with the expansion and deliver the boundary key (`thenPassThrough`). The terminator is therefore whitespace, Return, Tab, or a punctuation key, whichever comes first after a complete trigger. A trigger that equals another trigger plus trailing punctuation can never fire (the shorter one fires first); the host's editor MUST reject such a pair with an explanation. Case: trigger typed in all capitals -> expansion uppercased; first letter capital -> first letter of the expansion capitalised; otherwise as stored. Adaptive casing MAY be turned off per entry (`adaptCase: false`), and is skipped when the trigger contains no letters.
+- **ENG-R1103 Expansion.** On a boundary key, before rule L0 of section 8.1, if the lowercased span equals a trigger, the engine MUST replace the span's display (the committed tokens and boundary characters it consists of, all engine-produced or passed through, so ENG-R630 holds) with the expansion and deliver the boundary key (`thenPassThrough`). The terminator is therefore whitespace, Return, Tab, or a punctuation key, whichever comes first after a complete trigger. A trigger that equals another trigger plus trailing punctuation can never fire (the shorter one fires first); the host's editor MUST reject such a pair with an explanation. A trailing main-row digit counts like punctuation in this check (`k` and `k1`: in Telex the digit is a boundary, so `k` fires first); the engine's table validation and the host's editor apply the same check (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md; implemented in a later wave). Case: trigger typed in all capitals -> expansion uppercased; first letter capital -> first letter of the expansion capitalised; otherwise as stored. Adaptive casing MAY be turned off per entry (`adaptCase: false`), and is skipped when the trigger contains no letters.
 - **ENG-R1104** An expansion is recorded in the history as one token with raw keys equal to the span as typed and display equal to the expansion, flagged literal. Backspace into it deletes one character at a time (`passThrough`); the restore toggle right after an expansion (after one Backspace re-opens it) brings back the span as typed, and `CommitDecision.macro` names the decision.
 - **ENG-R1105** Macro matching MUST be a hash lookup on the lowercased span: cost independent of the table size. Tables of 10,000 entries MUST stay within ENG-R1230.
 - **ENG-R1106** Macro contents are user data: never logged, never in diagnostics, synced only if the user opts in to sync (`02-platform.md` PLT-R1011).
@@ -709,7 +716,8 @@ public struct EngineConfiguration: Sendable, Hashable {
 public struct KeyInput: Sendable, Hashable {
     public var character: Character
     public var fromKeypad: Bool
-    public init(_ character: Character, fromKeypad: Bool = false)
+    public var capsLock: Bool         // Caps Lock was on for this key (ENG-R906)
+    public init(_ character: Character, fromKeypad: Bool = false, capsLock: Bool = false)
 }
 
 public enum ResetReason: Sendable, Hashable {
@@ -839,7 +847,7 @@ extension Resources {
 
 ### 12.4 Performance budget
 
-- **ENG-R1230** Per event, release build, measured on the slowest supported Apple Silicon machine (baseline: M1): p50 at most 5 µs, p99 at most 25 µs, p99.9 at most 100 µs, including commits and macro lookups. Worst case seen in a 10-million-event fuzz run: at most 1 ms. These numbers are the single source for the engine budget; `02-platform.md` PLT-R307 and `04-quality-release.md` QA-R14 reference them.
+- **ENG-R1230** Per event, release build, measured on the slowest supported Apple Silicon machine (baseline: M1): p50 at most 5 µs, p99 at most 25 µs, p99.9 at most 100 µs, including commits and macro lookups. Worst case seen in a 10-million-event fuzz run: at most 1 ms. These numbers are the single source for the engine budget; `02-platform.md` PLT-R307 and `04-quality-release.md` QA-R14 reference them. No M1 is available, so the committed benchmark baseline was measured on an M4 and says so (decision of the product owner, 13/11/2026).
 - **ENG-R1231** `Resources.bundled` loads in at most 50 ms and resident memory for all resources is at most 8 MB.
 - **ENG-R1232** Per-event work SHOULD be proportional to the token length, not to the history or lexicon size (lexicon lookups by hash or trie).
 - **ENG-R1233** CI MUST fail when the performance test exceeds the budget by more than 20 % on the CI machine after calibration against a fixed reference benchmark.
@@ -854,14 +862,14 @@ extension Resources {
 
 ### 13.2 Generated Vietnamese corpus
 
-- **ENG-T02** For every Tier A onset-rhyme pair (3,368), every allowed tone (15,412 toned syllables), both input methods and both tone styles, generate these key sequences and assert that the display after the last key, and the committed text after a space in Vietnamese context, equal the oracle:
+- **ENG-T02** For every Tier A onset-rhyme pair (3,367), every allowed tone (15,406 toned syllables), both input methods and both tone styles, generate these key sequences and assert that the display after the last key, and the committed text after a space in Vietnamese context, equal the oracle:
   - **O1 canonical:** letters in order, each modifier key right after the letter it modifies, the `w` (VNI `7`) of `ươ` after the `o`, stroke key right after `d`, tone key last.
   - **O2 tone before coda:** as O1 but the tone key right after the vowel group.
   - **O3 everything at the end:** base letters only, then stroke, modifier keys and tone key after the last letter.
   - **O4 tone early:** tone key right after the first letter of the vowel group (exercises relocation).
   - In Telex, the loan rhymes `oong` / `ooc` need the escape: the literal `oo` is typed `ooo` (`booong` -> `boong`).
-- **ENG-T03** Variants for every Tier A syllable with Telex O1: Titlecase (first key uppercase), all uppercase, and for `ươ` the explicit `uwow` spelling.
-- **ENG-T04** The reference model used for this spec passed all O1 to O4 cases with these rules: 237,792 cases for the first draft and 237,916 after the review additions of ENG-R305 and ENG-R314 (each toned syllable contributes 2 methods x 2 styles x 4 orders, 3 orders for the level tone), plus the ENG-T03 variants (30,928 before the additions; the generator prints the current count). The implementation MUST reach the same 100 %.
+- **ENG-T03** Variants for every Tier A toned syllable with Telex O1: Titlecase (first key uppercase), all uppercase, and for every toned syllable whose rhyme contains `ươ` the explicit `uwow` spelling (31,676 variant cases: 2 x 15,406 + 864).
+- **ENG-T04** The O1 to O4 corpus has 237,824 cases (each toned syllable contributes 2 methods x 2 styles x 4 orders, 3 orders for the level tone), plus the 31,676 ENG-T03 variants; the generator prints the current counts (ENG-R350). The implementation MUST pass 100 % of them. *(The first version quoted the reference model's 237,916 cases and 30,928 variants, which counted the spelling `giu` twice and covered `uwow` for the level tone only; see 3.15.)*
 
 ### 13.3 English corpus
 
@@ -914,7 +922,7 @@ Run at least 1,000,000 random events per pull request and 100,000,000 nightly, o
 
 - **ENG-T30 No crash.** No trap, no precondition failure, no unbounded memory growth beyond the configured history.
 - **ENG-T31 Simulated field.** Applying every action to a simulated text field (passThrough inserts the key or deletes one character for Backspace) yields, after every event, a text whose tail equals the engine's view (history plus active display). The engine never asks to delete more characters than it produced.
-- **ENG-T32 Restore is exact.** For any token, `restoreToggle` produces exactly the raw keys typed since the token started (after Backspace edits), and toggling twice returns the composed display.
+- **ENG-T32 Restore is exact.** For any token, `restoreToggle` produces exactly the raw keys typed since the token started (after Backspace edits). A second toggle right after it passes through and changes nothing (ENG-R702); a toggle that follows any other event (for example Backspace and then the toggle, E02b) returns the composed display (ENG-R701 second branch).
 - **ENG-T33 Determinism and replay.** Replaying the same events from `.initial` gives identical outputs; an incremental implementation equals full replay at every step.
 - **ENG-T34 Encoding.** Every inserted string is NFC, contains no combining marks, and `deleteCount == deleteUTF16Count` for every edit.
 - **ENG-T35 Method isolation.** In VNI, no output character is a letter that was not typed, except the Vietnamese letters derived from typed letters; in particular `w` appears only if typed.
@@ -1308,13 +1316,15 @@ Rows B053-B064 were added from the product owner's P0 list after the reference-m
 
 ## 15. Open questions for Pa
 
-| # | Question | Proposal in this spec |
+All answered on 13/11/2026; every answer and the place that implements it is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+
+| # | Question | Answer (Pa, 13/11/2026) |
 |---|---|---|
-| Q1 | Engine licence: MIT or Apache-2.0? | MPL-2.0 (ENG-R109) |
-| Q2 | Default tone style: traditional (`hòa`, `thủy`) or modern (`hoà`, `thuỷ`, textbook standard since 2018)? | Traditional (ENG-R510) |
-| Q3 | Review of the ambiguity table: confirm the proposed rows in ENG-R821 and review the top 300 generated candidates. | Unreviewed rows default to `vi` |
-| Q4 | Restore hotkey: the product spec ships it unset (D8) and auto restore does the work; the engine author had proposed Escape bound by default (disabled in terminals, IDEs, games, remote desktops). Confirm unset. | Unset (7.2) |
-| Q5 | Learn from the user's toggles automatically (after two identical signals) or only on explicit confirmation? | Automatic after two, visible and removable in settings |
-| Q6 | Resolved on review: macro triggers are matched on raw keys, so literal mode is irrelevant (ENG-R1102). Remaining question: is the trigger character set (printable ASCII, no Vietnamese letters) acceptable? | Yes |
-| Q7 | Attested-syllable source: is building from Vietnamese legal texts (not copyright-protected, VERIFY) plus Pa's additions acceptable, or does Pa prefer hand curation only? | Legal texts plus Pa's review |
-| Q8 | Resolved (Pa, 13/11/2026): keep teencode `z` onset and `k` coda in v1, and add the `dz` onset (P0-2). `f`, `j`, `w` stay out. | Keep, plus `dz` |
+| Q1 | Engine licence: MIT or Apache-2.0? | Not decided yet; the engine stays MPL-2.0 (ENG-R109) and the app licence stays pending. |
+| Q2 | Default tone style: traditional (`hòa`, `thủy`) or modern (`hoà`, `thuỷ`, textbook standard since 2018)? | Traditional by default, with the setting to change it (ENG-R510, `03-product.md` D2). |
+| Q3 | Review of the ambiguity table: confirm the proposed rows in ENG-R821 and review the top 300 generated candidates. | Lists stay unreviewed for now; unreviewed rows behave as `vi` (ENG-R821). Review later. |
+| Q4 | Restore hotkey: unset (first version) or Escape bound by default? | Escape bound by default, with an on/off setting; compatibility rules turn it off in terminals, IDEs and code editors, games and remote desktop clients (7.2, `03-product.md` D8, `02-platform.md` PLT-R353). |
+| Q5 | Learn from the user's toggles automatically (after two identical signals) or only on explicit confirmation? | Automatic, but learned entries are stored per app; entries typed in settings stay global (ENG-R862). |
+| Q6 | Macro triggers are matched on raw keys (ENG-R1102); is the trigger character set (printable ASCII, no Vietnamese letters) acceptable? | Yes, keep the current set. |
+| Q7 | Attested-syllable source: Vietnamese legal texts plus Pa's additions, or hand curation only? | Keep the current attested sources (legal texts plus reviewed additions). |
+| Q8 | Keep teencode `z` onset and `k` coda in v1, and add the `dz` onset (P0-2)? `f`, `j`, `w` stay out. | Keep, plus `dz` (resolved earlier the same day). |

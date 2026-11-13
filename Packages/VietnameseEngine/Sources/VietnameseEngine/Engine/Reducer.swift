@@ -23,7 +23,7 @@ extension Engine {
         switch event {
         case .key(let input):
             switch TokenKey.classify(input, rules: rules) {
-            case .token(let key): return appendKey(key, to: &state)
+            case .token(let key): return appendKey(key, capsLock: input.capsLock, to: &state)
             case .boundary(let isHard): return commit(at: input.character, isHard: isHard, &state)
             }
         case .backspace:
@@ -41,10 +41,10 @@ extension Engine {
 
     /// A key of the token (sections 4 to 6). The token is moved out of the state while it changes so
     /// that its storage is uniquely referenced.
-    private func appendKey(_ key: UInt8, to state: inout EngineState) -> EngineOutput {
+    private func appendKey(_ key: UInt8, capsLock: Bool, to state: inout EngineState) -> EngineOutput {
         var token = state.active ?? ActiveToken()
         state.active = nil
-        let action = token.append(key, rules: rules)
+        let action = token.append(key, capsLock: capsLock, rules: rules)
         state.active = token
         return EngineOutput(action: action, composingText: token.display)
     }

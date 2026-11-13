@@ -48,7 +48,11 @@ public enum RandomEvents {
         case 45..<63: return .key(KeyInput(letters.randomElement(using: &generator) ?? "a"))
         case 63..<77:
             return .key(KeyInput(digits.randomElement(using: &generator) ?? "1", fromKeypad: roll == 76))
-        case 77..<85: return .key(KeyInput(boundaries.randomElement(using: &generator) ?? " "))
+        case 77..<85:
+            // ENG-R906: bracket keys sometimes carry Caps Lock, so replay must keep that state.
+            let character = boundaries.randomElement(using: &generator) ?? " "
+            let bracket = character == "[" || character == "]"
+            return .key(KeyInput(character, capsLock: bracket && Bool.random(using: &generator)))
         case 85..<95: return .backspace
         case 95..<98: return .restoreToggle
         default: return .reset(resets.randomElement(using: &generator) ?? .unknown)

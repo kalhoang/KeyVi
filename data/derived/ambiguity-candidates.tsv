@@ -608,8 +608,7 @@ nextjs	telex	nét	nét	yes	tech-always	1	en/proposed	en/proposed
 a4	vni	ã	ã	no	tech-always	0	en/proposed	en/proposed
 aux	telex	ãu	ãu	no	tech-always	0	en/proposed	en/proposed
 auxf	telex	àu	àu	no	tech-always	0	en/proposed	en/proposed
-chown	telex	chơn	chơn	no	tech-code-only	0	vi/unreviewed	vi/unreviewed
-co2	vni	cò	cò	yes	tech-always	0	en/proposed	en/proposed
+chown	telex	chơn	chơn	yes	tech-code-only	0	vi/unreviewed	vi/unreviewed
 ef	telex	è	è	no	tech-code-only	0	vi/unreviewed	vi/unreviewed
 exe	telex	ễ	ễ	no	tech-always	0	en/proposed	en/proposed
 momo	telex	môm	môm	no	tech-always	0	en/proposed	en/proposed
