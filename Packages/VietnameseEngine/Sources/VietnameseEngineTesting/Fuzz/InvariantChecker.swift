@@ -6,12 +6,14 @@ public import VietnameseEngine
 public struct FuzzViolation: Error, Sendable, Hashable, CustomStringConvertible {
     /// The requirement or property that failed (`ENG-T31`, `QA-R7 P2`...).
     public let invariant: String
+    /// What was observed.
     public let detail: String
     /// Zero-based index of the event in the checked stream.
     public let eventIndex: Int
     /// The last events before and including the failing one, oldest first.
     public let recentEvents: [EngineEvent]
 
+    /// A violation report.
     public init(invariant: String, detail: String, eventIndex: Int, recentEvents: [EngineEvent]) {
         self.invariant = invariant
         self.detail = detail
@@ -19,6 +21,7 @@ public struct FuzzViolation: Error, Sendable, Hashable, CustomStringConvertible 
         self.recentEvents = recentEvents
     }
 
+    /// The invariant, the event index, the detail and the last events in corpus notation.
     public var description: String {
         "\(invariant) at event \(eventIndex): \(detail). Last events: \(KeyNotation.render(recentEvents))"
     }
@@ -27,23 +30,40 @@ public struct FuzzViolation: Error, Sendable, Hashable, CustomStringConvertible 
 /// Counters of a checked stream. `outputDigest` is an FNV-1a digest of every output, so two runs of the
 /// same stream can be compared for determinism without storing the outputs (ENG-T33).
 public struct FuzzStatistics: Sendable, Hashable {
+    /// Events sent.
     public var events = 0
+    /// Events that returned an edit.
     public var edits = 0
+    /// Commits decided by the rules of 8.1.
     public var commits = 0
+    /// Commits that restored the keys as typed.
     public var restoredCommits = 0
+    /// Commits that kept the composed form.
     public var keptCommits = 0
+    /// Macro expansions (ENG-R1103).
     public var macroExpansions = 0
+    /// Reset events.
     public var resets = 0
+    /// The most raw keys an active token held.
     public var longestToken = 0
+    /// Restore-toggle probes made (ENG-T32).
     public var restoreChecks = 0
+    /// Escape probes where the key applied (ENG-T36).
     public var escapeChecks = 0
+    /// Replay comparisons of the cached composition (ENG-T33).
     public var replayChecks = 0
+    /// Comparisons of `Engine.reduce` with `Session.handle` (ENG-T33).
     public var pureReduceChecks = 0
+    /// Full comparisons of the field with the engine's view (ENG-T31).
     public var fullFieldChecks = 0
+    /// The slowest event seen (QA-R7 P2).
     public var slowestEventNanoseconds: Int64 = 0
+    /// Events slower than 1 ms (preemption included).
     public var eventsOverOneMillisecond = 0
+    /// FNV-1a digest of every output, for determinism checks (ENG-T33).
     public var outputDigest: UInt64 = 0xCBF2_9CE4_8422_2325
 
+    /// Empty statistics.
     public init() {}
 
     /// Adds the counters of `other` (the digest is combined, so the order of merging matters).
@@ -101,6 +121,7 @@ public struct FuzzStatistics: Sendable, Hashable {
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
 /// over a window and in full periodically and at `finish()`.
 public struct InvariantChecker: Sendable {
+    /// What the checker compares, how often, and its thresholds.
     public struct Options: Sendable {
         /// Characters of the field tail compared after every event (the whole view when it is shorter).
         public var tailWindow = 48
@@ -124,12 +145,17 @@ public struct InvariantChecker: Sendable {
         /// keep the whole field.
         public var trimsField = true
 
+        /// Empty statistics.
         public init() {}
     }
 
+    /// The engine under test.
     public let engine: Engine
+    /// The checker's options.
     public let options: Options
+    /// The session the events go to.
     public private(set) var session: Session
+    /// Counters of the stream so far.
     public private(set) var statistics = FuzzStatistics()
 
     private var field: [Character] = []
@@ -139,6 +165,7 @@ public struct InvariantChecker: Sendable {
     private let rules: ComposerRules
     private let clock = ContinuousClock()
 
+    /// A checker for `engine`; `probeSeed` drives the escape probes (ENG-T36).
     public init(engine: Engine, options: Options = Options(), probeSeed: UInt64 = 0xE5CA_9E00) {
         self.engine = engine
         self.options = options

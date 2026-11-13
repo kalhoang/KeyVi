@@ -6,6 +6,7 @@ public import VietnameseEngine
 public enum CorpusMethod: String, Sendable, Hashable, CaseIterable {
     case telex, vni
 
+    /// The engine input method with default options.
     public var inputMethod: InputMethod {
         switch self {
         case .telex: return .telex(TelexOptions())

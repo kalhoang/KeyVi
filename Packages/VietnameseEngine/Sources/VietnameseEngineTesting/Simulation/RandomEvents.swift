@@ -7,8 +7,10 @@ public import VietnameseEngine
 public struct SeededGenerator: RandomNumberGenerator, Sendable {
     private var state: UInt64
 
+    /// A generator whose stream is fixed by `seed`.
     public init(seed: UInt64) { state = seed }
 
+    /// The next 64 random bits.
     public mutating func next() -> UInt64 {
         state &+= 0x9E37_79B9_7F4A_7C15
         var value = state
@@ -37,6 +39,7 @@ public enum RandomEvents {
         (0..<count).map { _ in event(using: &generator) }
     }
 
+    /// One random event.
     public static func event(using generator: inout SeededGenerator) -> EngineEvent {
         let roll = Int.random(in: 0..<100, using: &generator)
         switch roll {

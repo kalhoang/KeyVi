@@ -6,10 +6,14 @@ public import VietnameseEngine
 /// restore, app context, history limit), with or without the random macro table, with the 13.9 fixture
 /// resources or empty ones.
 public struct FuzzCombination: Sendable, Hashable, CustomStringConvertible {
+    /// The engine configuration.
     public let configuration: EngineConfiguration
+    /// Whether the random macro table is used.
     public let withMacros: Bool
+    /// The 13.9 fixture resources when true, empty resources otherwise.
     public let fixtureResources: Bool
 
+    /// A combination.
     public init(configuration: EngineConfiguration, withMacros: Bool, fixtureResources: Bool = true) {
         self.configuration = configuration
         self.withMacros = withMacros
@@ -64,6 +68,7 @@ public struct FuzzCombination: Sendable, Hashable, CustomStringConvertible {
         return SpecFixtures.commitResources(userKeepRaw: ["tets"], userKeepVietnamese: ["test"], macros: table)
     }
 
+    /// A compact label such as `telex,traditional,restore,general,h16,macros,fixtures`.
     public var description: String {
         let method: String
         switch configuration.inputMethod {

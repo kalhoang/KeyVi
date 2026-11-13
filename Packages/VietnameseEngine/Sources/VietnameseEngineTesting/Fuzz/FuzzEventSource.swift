@@ -10,7 +10,9 @@ public import VietnameseEngine
 /// and bursts of token keys with no boundary (long tokens, up to `maximumBurst` keys, ENG-R640, REG-02).
 /// The stream depends only on the seed and the parameters (ENG-T33).
 public struct FuzzEventSource: Sendable {
+    /// The stream is for Telex (else VNI).
     public let isTelex: Bool
+    /// Bracket keys are token keys (Telex option).
     public let bracketKeys: Bool
     /// Triggers of the macro table in use (typed as moves so that expansions are frequent).
     public let triggers: [String]
@@ -33,6 +35,7 @@ public struct FuzzEventSource: Sendable {
         "hoa2n", "nguye64n", "tie61ng", "o@gmail", "u7o7",
     ]
 
+    /// A stream for `configuration` from `seed`; `triggers` are typed as moves, bursts stay within `maximumBurst` keys.
     public init(seed: UInt64, configuration: EngineConfiguration, triggers: [String] = [], maximumBurst: Int = 4_096) {
         generator = SeededGenerator(seed: seed)
         switch configuration.inputMethod {

@@ -4,9 +4,13 @@ public import VietnameseEngine
 
 /// One word whose committed text differs from the word typed.
 public struct ChangedWord: Sendable, Hashable, CustomStringConvertible {
+    /// The word as written in the source.
     public let word: String
+    /// The text the engine left on screen for it.
     public let committed: String
+    /// The decision of the commit that ended the word, if any.
     public let decision: CommitDecision?
+    /// The word, its committed text and the decision.
     public var description: String { "\(word) -> \(committed) (\(decision.map { "\($0)" } ?? "no decision"))" }
 }
 
@@ -18,8 +22,11 @@ public struct ChangedWord: Sendable, Hashable, CustomStringConvertible {
 /// The words come from the data track's lexicon and tech lists; the tests run it with the 13.9 fixtures
 /// until those exist.
 public struct EnglishCorpusReport: Sendable {
+    /// Number of words checked.
     public let words: Int
+    /// Words changed after the English seed token (ENG-R871).
     public let changedInEnglishRun: [ChangedWord]
+    /// Words changed after the Vietnamese seed token (ENG-R872).
     public let changedInVietnameseContext: [ChangedWord]
 
     /// ENG-R871: the share of words unchanged in an English run, known exceptions not counted as failures.
@@ -46,6 +53,7 @@ public struct EnglishCorpusReport: Sendable {
     }
 }
 
+/// Runs the English corpus check of ENG-T10.
 public enum EnglishCorpusCheck {
     /// Types every word after each seed and reports the words whose committed text changed.
     public static func run(
@@ -99,14 +107,19 @@ public enum EnglishCorpusCheck {
 /// first, then stroke, modifiers and tone after the coda). Syllables are spelled by the oracle's key
 /// generator from `Orthography.analyze`; words that are not Tier A syllables are typed as they are.
 public enum ProseCorpusCheck {
+    /// The result of one typist over one text.
     public struct Report: Sendable {
+        /// Number of words typed.
         public let tokens: Int
+        /// Words whose typed result differs from the source.
         public let differences: [ChangedWord]
+        /// The share of words typed exactly (ENG-R873).
         public var identicalShare: Double {
             tokens > 0 ? Double(tokens - differences.count) / Double(tokens) : 1
         }
     }
 
+    /// The three typists of ENG-T20, in the order canonical, tone at end, free order.
     public static let typists: [CorpusOrder] = [.o2, .o1, .o3]
 
     /// Types `text` with `order` in `method` and compares each word with the source.

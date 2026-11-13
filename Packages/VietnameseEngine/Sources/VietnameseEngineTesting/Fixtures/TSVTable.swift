@@ -2,16 +2,21 @@
 
 /// An error in a corpus file.
 public struct FixtureError: Error, Sendable, Hashable, CustomStringConvertible {
+    /// The file name.
     public let file: String
+    /// 1-based line number.
     public let line: Int
+    /// What is wrong.
     public let reason: String
 
+    /// An error at `line` of `file`.
     public init(file: String, line: Int, reason: String) {
         self.file = file
         self.line = line
         self.reason = reason
     }
 
+    /// `file:line: reason`.
     public var description: String { "\(file):\(line): \(reason)" }
 }
 
@@ -19,6 +24,7 @@ public struct FixtureError: Error, Sendable, Hashable, CustomStringConvertible {
 /// starting with `#` are comments, the first other line is the header, fields use the escapes
 /// `\t`, `\n`, `\r`, `\\` and `\s` (a space).
 public struct TSVTable: Sendable {
+    /// One data line of the file.
     public struct Row: Sendable {
         /// 1-based line number in the file.
         public let line: Int
@@ -28,10 +34,14 @@ public struct TSVTable: Sendable {
         public subscript(_ column: String) -> String { fields[column] ?? "" }
     }
 
+    /// The file name, for error messages.
     public let name: String
+    /// The column names of the header line.
     public let header: [String]
+    /// The data lines, in file order.
     public let rows: [Row]
 
+    /// An error at `line` of `file`.
     public init(name: String, text: String) throws {
         self.name = name
         var header: [String]?

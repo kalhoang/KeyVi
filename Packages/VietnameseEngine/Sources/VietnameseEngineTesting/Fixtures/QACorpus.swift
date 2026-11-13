@@ -12,11 +12,16 @@ public import VietnameseEngine
 ///
 /// In corpus files the TSV escapes apply first (`\s` space, `\n` Return, `\t` Tab, `\\` backslash).
 public enum KeyNotation {
+    /// Backspace.
     public static let backspace: Character = "⌫"
+    /// The restore toggle (7.2).
     public static let toggle: Character = "⎋"
+    /// A reset with reason `.unknown` (10.2).
     public static let reset: Character = "⟲"
+    /// Marks the next digit as typed on the numeric keypad (ENG-R401).
     public static let keypad: Character = "⌨"
 
+    /// The events that `keys` denotes in this notation.
     public static func events(_ keys: String) -> [EngineEvent] {
         var events: [EngineEvent] = []
         var keypadNext = false
@@ -64,25 +69,35 @@ public enum KeyNotation {
 /// output. The expected output is the whole simulated text field after the keystrokes; the expected
 /// restore output is the field after one more restore toggle (`-` when the row does not check it).
 public struct QACorpusCase: Sendable, Hashable, CustomStringConvertible {
+    /// The corpus file the case comes from.
     public let file: String
+    /// 1-based line number of the case in its file.
     public let line: Int
+    /// The case identifier (unique across all corpus files).
     public let id: String
+    /// Telex or VNI.
     public let method: FixtureMethod
     /// `-` or comma-separated flags: `modern`, `code`, `no-auto-restore`, `no-standalone-w`, `brackets`,
     /// `empty-resources` (no word lists instead of the 13.9 fixtures), `no-macros`, `history=N`,
     /// `qa-english` (the QA-R4 English hand list added to the fixture lexicon), `keep-vi=a|b` and
     /// `keep-raw=a|b` (the user keep-Vietnamese and keep-as-typed lists of 8.7).
     public let options: Set<String>
+    /// The keystrokes, in `KeyNotation` with the TSV escapes and repetitions expanded.
     public let keys: String
+    /// The whole simulated text field after the keystrokes.
     public let expected: String
     /// Nil for `-`.
     public let expectedRestore: String?
+    /// Why the case exists (requirement, report or reading).
     public let note: String
 
+    /// File, line, id and keys, for test reports.
     public var description: String { "\(file):\(line) \(id) \(keys.debugDescription)" }
 
+    /// The events of the keystrokes.
     public var events: [EngineEvent] { KeyNotation.events(keys) }
 
+    /// The engine configuration that the method and options describe.
     public var configuration: EngineConfiguration {
         let inputMethod: InputMethod =
             method == .vni
@@ -129,8 +144,11 @@ public struct QACorpusCase: Sendable, Hashable, CustomStringConvertible {
 
 /// Loaders for the hand-curated QA-R4 corpus files under `Tests/VietnameseEngineTests/Corpus/`.
 public enum QACorpus {
+    /// The QA-R4 `macros` case file.
     public static let macrosFile = "macros.tsv"
+    /// The macro fixture table read by the `macros` cases.
     public static let macroTableFile = "macro-table.tsv"
+    /// The QA-R4 `editing` case file.
     public static let editingFile = "editing.tsv"
 
     /// Every QA-R4 case file (one case per line, `cases(file:tsv:)`), run by one loader.

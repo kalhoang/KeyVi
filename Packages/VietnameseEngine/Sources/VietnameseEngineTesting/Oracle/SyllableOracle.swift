@@ -7,6 +7,7 @@ public import VietnameseEngine
 /// placement code of the engine. It works on `Character`s; the only engine data it reads is the raw
 /// generated letter table (ENG-R301) to obtain precomposed code points.
 public enum SyllableOracle {
+    /// The case pattern of a spelled syllable.
     public enum Casing: Sendable, Hashable, CaseIterable {
         case lowercase
         /// First letter uppercase (`Việt`, `Đà`).
@@ -14,6 +15,7 @@ public enum SyllableOracle {
         case uppercase
     }
 
+    /// The display form (open `ươ` while typing, ENG-R531) or the committed form (ENG-R532).
     public enum Form: Sendable, Hashable, CaseIterable {
         /// What the token shows while typing: an open `uơ` is shown as `ươ` (ENG-R531).
         case display

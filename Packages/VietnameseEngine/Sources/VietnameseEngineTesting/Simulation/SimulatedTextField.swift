@@ -10,15 +10,21 @@ public import VietnameseEngine
 public struct SimulatedTextField: Sendable, Hashable {
     /// A violation of the output contract (ENG-R630, ENG-R631, ENG-T31).
     public struct Violation: Error, Sendable, Hashable, CustomStringConvertible {
+        /// The event whose output broke the contract.
         public let event: EngineEvent
+        /// What was wrong.
         public let reason: String
+        /// The event and the reason.
         public var description: String { "\(event): \(reason)" }
     }
 
+    /// The field's characters; the cursor is after the last one.
     public private(set) var text: [Character]
 
+    /// A field holding `text`.
     public init(text: String = "") { self.text = Array(text) }
 
+    /// The field as a string.
     public var string: String { String(text) }
 
     /// Applies one event's output. Throws when the engine asks to delete more characters than the
@@ -67,20 +73,26 @@ extension EngineState {
 /// field ends with the engine's view (history plus active display), that the engine never asks to delete
 /// more characters than it produced, and that every edit is well formed (ENG-T31, ENG-T34).
 public struct EngineDriver: Sendable {
+    /// The session under test.
     public private(set) var session: Session
+    /// The simulated field.
     public private(set) var field: SimulatedTextField
+    /// Every output so far.
     public private(set) var outputs: [EngineOutput] = []
 
+    /// A driver for a new engine.
     public init(configuration: EngineConfiguration, resources: Resources = .empty) {
         session = Session(engine: Engine(configuration: configuration, resources: resources))
         field = SimulatedTextField()
     }
 
+    /// A driver for `engine`.
     public init(engine: Engine) {
         session = Session(engine: engine)
         field = SimulatedTextField()
     }
 
+    /// The session's state.
     public var state: EngineState { session.state }
 
     /// Sends one event; throws on a contract violation.

@@ -4,16 +4,23 @@ public import VietnameseEngine
 
 /// One generated Vietnamese corpus case (ENG-T02, ENG-T03).
 public struct GeneratedCase: Sendable, Hashable {
+    /// An order of ENG-T02 or a variant of ENG-T03.
     public enum Kind: Sendable, Hashable {
         case order(CorpusOrder)
         case variant(CorpusVariant)
     }
 
+    /// The onset spelling (spec 3.3).
     public let onset: String
+    /// The rhyme spelling (spec 3.7 to 3.9).
     public let rhyme: String
+    /// The tone.
     public let tone: Tone
+    /// Telex or VNI.
     public let method: CorpusMethod
+    /// Traditional or modern placement.
     public let style: ToneStyle
+    /// The order or variant.
     public let kind: Kind
     /// The keys typed, without the boundary.
     public let keys: String
