@@ -156,9 +156,13 @@ extension InputHostController {
     }
 
     func permissionsChanged(_ status: PermissionStatus) {
+        let previous = latestPermissions
         latestPermissions = status
         feed(.permissionsChanged(status))
         onEvent?(.permissionsChanged(status))
+        // PLT-R331: a permission change is one of the watchdog's check points; a tap the system left disabled
+        // during the change (status still ready) runs the PLT-R330 procedure now, not at the next 5 s tick.
+        if previous != nil, previous != status { session?.watchdog.checkNow() }
     }
 
     /// Queues a state refresh behind the work already queued on the ax thread, so it reads the snapshot that

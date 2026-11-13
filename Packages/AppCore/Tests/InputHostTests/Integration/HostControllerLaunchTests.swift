@@ -253,6 +253,22 @@ struct HostControllerLifecycleTests {
         #expect(rig.liveHandles.count == 1)
     }
 
+    /// PLT-R331: a permission change is one of the watchdog's check points, so a tap the system left disabled
+    /// while the status stayed ready is re-enabled at once, not at the next 5 s tick.
+    @Test func permissionChangeChecksTheTapAtOnce_PLT_R331() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let handle = try #require(rig.liveHandles.first)
+        handle.setEnabled(false)  // disabled by the system during the change
+        rig.permissions.set(trusted: true, post: true, listen: false)  // Input Monitoring off, still ready
+        _ = rig.controller.permissionMonitor?.checkNow()
+        rig.settle()
+        #expect(rig.controller.latestPermissions?.listenEvent == .denied)
+        #expect(rig.lifecyclePhase == .running)
+        #expect(handle.isEnabled, "PLT-R330 step 1 ran without waiting for the 5 s tick")
+    }
+
     @Test func sleepLockAndUserSwitchPauseUntilEveryReasonCleared_PLT_R333() async {
         let rig = HostRig()
         await rig.start()
