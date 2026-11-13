@@ -116,7 +116,7 @@ struct NoticeBanner: View {
     var body: some View {
         let localizer = model.localizer
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: notice.isWarning ? "exclamationmark.triangle.fill" : "info.circle.fill")
+            Image(systemName: notice.isWarning ? "exclamationmark.triangle.fill" : SettingsSymbol.infoFill)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
                 Text(verbatim: notice.message).fixedSize(horizontal: false, vertical: true)

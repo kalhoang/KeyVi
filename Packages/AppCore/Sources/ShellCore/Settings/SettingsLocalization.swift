@@ -46,3 +46,9 @@ extension Localizer {
         string(control.accessibilityHintKey, table: Control.table)
     }
 }
+
+/// SF Symbol names that the PLT-R501 bundle-ID lint would otherwise read as reverse-DNS identifiers.
+public enum SettingsSymbol {
+    public static let info = "info.circle"  // lint:allow-bundle-id SF Symbol name, not an app
+    public static let infoFill = "info.circle.fill"  // lint:allow-bundle-id SF Symbol name, not an app
+}

@@ -225,7 +225,7 @@ extension MatrixStatus {
     public var symbolName: String {
         switch self {
         case .works: "checkmark.circle"
-        case .worksWithNotes: "info.circle"
+        case .worksWithNotes: SettingsSymbol.info
         case .notVerified: "questionmark.circle"
         case .knownLimitation: "exclamationmark.triangle"
         }

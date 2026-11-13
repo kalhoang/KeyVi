@@ -100,3 +100,11 @@ import Testing
                 == "app-macros-20261113.json")
     }
 }
+
+@Suite struct MacroImportFormatTests {
+    @Test func anUnrecognisedFileIsRefusedWithoutALine() {
+        let binary = Data([0x00, 0x01, 0x02, 0x03])
+        let result = MacroImportSession.open(binary, fileExtension: nil, existing: [])
+        #expect(result == .failure(.invalidFile(firstInvalid: nil)))
+    }
+}

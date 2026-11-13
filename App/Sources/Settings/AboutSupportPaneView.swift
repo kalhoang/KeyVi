@@ -53,7 +53,7 @@ struct UpdatesSection: View {
                 .fixedSize()
                 .settingsAccessibility(SupportControl.channel, localizer)
             }
-            if let note = model.channelNote { IssueLine(symbol: "info.circle", text: localizer.string(note)) }
+            if let note = model.channelNote { IssueLine(symbol: SettingsSymbol.info, text: localizer.string(note)) }
             ToggleSetting(
                 model: model, item: .automaticallyCheckForUpdates, control: SupportControl.autoCheck,
                 isOn: settings.automaticallyCheckForUpdates

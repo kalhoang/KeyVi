@@ -89,8 +89,9 @@ final class SettingsWindowModel {
         loginItem = LoginItemPresentation(status: loginService.status)
     }
 
+    /// Takes the newest state: a reply that arrives after a newer `onChange` (lower generation) is ignored.
     func apply(_ newState: SettingsState) {
-        guard newState != state else { return }
+        guard newState.generation >= state.generation, newState != state else { return }
         state = newState
         macroList.replace(with: newState.macros)
         language.select(newState.effective.interfaceLanguage)  // PRD-R63

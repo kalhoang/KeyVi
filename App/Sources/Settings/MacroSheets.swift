@@ -82,7 +82,7 @@ struct MacroCheckLines: View {
                     text: MacroIssueText.text(issue, shortcut: draft.shortcut, localizer: localizer))
             }
             ForEach(check.warnings, id: \.self) { warning in
-                IssueLine(symbol: "info.circle", text: MacroIssueText.warningText(warning, localizer: localizer))
+                IssueLine(symbol: SettingsSymbol.info, text: MacroIssueText.warningText(warning, localizer: localizer))
             }
             if let error = model.macroDraftError { IssueLine(symbol: "exclamationmark.octagon", text: error) }
         }

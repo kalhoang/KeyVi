@@ -188,3 +188,32 @@ import Testing
         }
     }
 }
+
+@Suite struct SettingsLocalizationHelperTests {
+    @Test func keysResolveThroughTheirOwnTables() throws {
+        #expect(SettingsText.table == .settings && SettingsControl.table == .settings)
+        #expect(MacrosText.table == .macros && MacrosControl.table == .macros)
+        #expect(AppsText.table == .apps && AppsControl.table == .apps)
+        #expect(SupportText.table == .support && SupportControl.table == .support)
+        let l = try Localizers()
+        #expect(l.vi.string(AppsText.ruleIgnore) == "Bỏ qua")
+        #expect(l.en.accessibilityLabel(AppsControl.rowReport) == "Report a problem with this app")
+        #expect(l.vi.accessibilityHint(SupportControl.checkNow) == "Kiểm tra bản mới ngay bây giờ.")
+        #expect(SettingsControl.panePicker.accessibilityLabelKey == "settings.control.panePicker.accessibilityLabel")
+        let text = CatalogText(key: "support.donate.title", table: .support)
+        #expect(text == CatalogText(SupportText.donateTitle))
+        #expect(l.en.format(text, "App") == "Support App")
+        #expect(l.vi.string(CatalogText(MacrosText.add)) == "Thêm gõ tắt")
+        #expect(SettingsSymbol.info != SettingsSymbol.infoFill)
+    }
+
+    @Test func importSummaryNamesSettingsWithoutAVisibleTitle() throws {
+        let l = try Localizers()
+        #expect(SettingNames.name(forKey: "typingMethod", l.vi) == "Kiểu gõ")
+        #expect(SettingNames.name(forKey: "firstSeenAppMode", l.vi) == "Chế độ cho ứng dụng mới")
+        #expect(SettingNames.name(forKey: "macrosInEnglishMode", l.en) == "Macros in English mode")
+        #expect(SettingNames.name(forKey: "optedInRules", l.en) == "Compatibility rules you turned on")
+        #expect(SettingNames.name(forKey: "somethingNew", l.vi) == "somethingNew")
+        #expect(ListFormat.join(["a", "b", "c"], l.en) == "a, b, and c")
+    }
+}
