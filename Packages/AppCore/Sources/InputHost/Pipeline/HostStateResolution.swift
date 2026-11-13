@@ -36,16 +36,12 @@ enum HostStateResolution {
         return .ready(effectiveMode)
     }
 
-    /// PLT-R386 gating from the focus snapshot: `whenKnown` pauses only when AX says the focused element is not
-    /// editable text; `always` transforms only when AX confirms editable text. `byEngine` is resolved to a
-    /// concrete value on the ax thread (HostDecisionMapper); if it ever arrives here it gates like `never`.
+    /// PLT-R386 gating from the focus snapshot, with the ax thread's own definition (`TextFocusGate`): a text
+    /// role or the search-field subrole is editable text whatever the settable flag says, so the tap and the
+    /// menu never pause a field the ax thread published as ready (PLT-R523: one resolution, not two).
+    /// `byEngine` is resolved to a concrete value on the ax thread; if it ever arrives here it gates like `never`.
     static func lacksTextFocus(_ focus: FocusSnapshot) -> Bool {
-        let known = focus.field.axAvailability == .available
-        switch focus.decision.requireTextFocus {
-        case .never, .byEngine: return false
-        case .whenKnown: return known && focus.field.editable == false
-        case .always: return !(known && focus.field.editable == true)
-        }
+        TextFocusGate.blocks(focus.decision.requireTextFocus, field: focus.field)
     }
 
     /// PLT-R373: with the layout binding on, a layout designated VI or EN decides the mode, ahead of the toggle
