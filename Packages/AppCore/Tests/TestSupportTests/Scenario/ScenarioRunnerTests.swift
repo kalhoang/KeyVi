@@ -54,6 +54,38 @@ import Testing
                 == 1 + Int(ScenarioRunner.readbackSettleNanoseconds / ScenarioRunner.readbackPollNanoseconds))
     }
 
+    /// Command plus a digit moves focus or switches windows (TestHost's Window menu): the keys after it wait for
+    /// the shortcut settle, or they reach the old window (the first VM runs lost the first word typed after
+    /// Command+1 in testhost.perWindowRule.*). Editing shortcuts such as Command+A do not wait.
+    @Test func keysAfterAFocusShortcutWaitForTheShortcutSettle() async {
+        let driver = FakeDriver()
+        let clock = ManualClock()
+        let scenario = makeScenario(keys: ["command+2", "v", "i", "command+1", "command+a", "space", "shift+d"])
+        let result = await runner(driver: driver, readback: FakeReadback(result: .success("đi")), clock: clock)
+            .run(scenario)
+        #expect(driver.typed.all == [["command+2"], ["v", "i", "command+1"], ["command+a", "space", "shift+d"]])
+        #expect(result.durationSeconds == 2 * Double(ScenarioRunner.shortcutSettleNanoseconds) / 1_000_000_000)
+        #expect(ScenarioRunner.isFocusShortcut("shift+command+1") && !ScenarioRunner.isFocusShortcut("command+a"))
+        #expect(!ScenarioRunner.isFocusShortcut("shift+2") && !ScenarioRunner.isFocusShortcut("command+f10"))
+        #expect(!ScenarioRunner.isFocusShortcut("1") && !ScenarioRunner.isFocusShortcut("command"))
+    }
+
+    /// The reason names what differed, with the observed state next to the expected one, never the typed text.
+    @Test func aFailureNamesTheMismatchedExpectations() {
+        let expect = Scenario.Expectation(
+            text: "duyeetj", paused: true, holderBundleId: bundle("org.example.product.dev.testhost"))
+        let observation = ScenarioObservation(paused: false, holderBundleId: bundle("org.example.product.dev.testhost"))
+        #expect(
+            ScenarioVerdict.reason(for: .fail, expect: expect, text: "duyeetj", observation: observation)
+                == "observed state differs from expect (paused expected true, observed false)")
+        let other = ScenarioObservation(paused: true, holderBundleId: bundle("com.example.Other"))
+        #expect(
+            ScenarioVerdict.reason(for: .fail, expect: expect, text: "duyệt", observation: other)
+                == "observed state differs from expect (text, holder expected org.example.product.dev.testhost, "
+                + "observed com.example.Other)")
+        #expect(ScenarioVerdict.reason(for: .pass, expect: expect, text: "duyeetj", observation: nil) == nil)
+    }
+
     /// A person is asked once; only machine readbacks are polled.
     @Test func aHumanReadbackIsAskedOnce() async {
         let clock = ManualClock()
@@ -101,7 +133,8 @@ import Testing
         let broken = FakeReadback(result: .failure(TestFailure.injected))
         #expect(await runner(readback: broken).run(makeScenario()).reason == "readback ax: injected")
         let wrong = FakeReadback(result: .success("ddi"))
-        #expect(await runner(readback: wrong).run(makeScenario()).reason == "observed state differs from expect")
+        #expect(
+            await runner(readback: wrong).run(makeScenario()).reason == "observed state differs from expect (text)")
         let human = FakeReadback(result: .failure(HumanReadbackRequired()))
         #expect(
             await runner(readback: human).run(makeScenario(readback: .human)).reason

@@ -88,6 +88,17 @@ enum AX {
         return found
     }
 
+    /// Brings the element's window to the front and makes it the main window, so the keys go there: a field of a
+    /// window behind takes AX focus without its window becoming key (the first VM runs typed the second window's
+    /// scenarios into TestHost's main window). Best effort: an app without AX windows keeps its own order.
+    static func raiseWindow(of element: AXUIElement) {
+        guard let window = attribute(element, kAXWindowAttribute), CFGetTypeID(window) == AXUIElementGetTypeID()
+        else { return }
+        let axWindow = window as! AXUIElement  // type ID checked on the line above
+        _ = AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+        _ = AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, kCFBooleanTrue)
+    }
+
     static func set(_ element: AXUIElement, _ name: String, _ value: CFTypeRef) throws {
         let result = AXUIElementSetAttributeValue(element, name as CFString, value)
         guard result == .success else { throw LiveError.axFailure("set " + name, result.rawValue) }

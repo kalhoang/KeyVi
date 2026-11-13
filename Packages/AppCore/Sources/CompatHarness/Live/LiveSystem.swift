@@ -47,7 +47,9 @@ struct LiveSystemActions: SystemActions {
 
     func focusField(identifier: String, in bundle: BundleKey) async throws {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first?.activate()
-        try AX.set(try await AX.element(identifier, in: bundle, sleeper: sleeper), kAXFocusedAttribute, kCFBooleanTrue)
+        let element = try await AX.element(identifier, in: bundle, sleeper: sleeper)
+        AX.raiseWindow(of: element)
+        try AX.set(element, kAXFocusedAttribute, kCFBooleanTrue)
     }
 
     func selectInputSource(_ source: InputSourceID) async throws {

@@ -72,7 +72,7 @@ extension ScenarioRunner {
             }
             for segment in schedule.segments(of: scenario.keys) {
                 stage = "typing"
-                if !segment.keys.isEmpty { try await driver.type(Array(segment.keys), profile: scenario.timing) }
+                try await type(Array(segment.keys), profile: scenario.timing)
                 if let step = segment.then {
                     stage = "setup " + step.action.rawValue
                     try await setup.perform(step, for: scenario)
@@ -85,7 +85,8 @@ extension ScenarioRunner {
             stage = "state probe"
             let observation = try await probe?.observe(after: scenario)
             outcome = ScenarioVerdict.outcome(expect: scenario.expect, text: observed, observation: observation)
-            reason = ScenarioVerdict.reason(for: outcome)
+            reason = ScenarioVerdict.reason(
+                for: outcome, expect: scenario.expect, text: observed, observation: observation)
             if outcome == .pass, let repetition = scenario.repetition,
                 let failure = try await runRepetition(repetition, of: scenario, stage: &stage)
             {
@@ -113,6 +114,34 @@ extension ScenarioRunner {
     /// replacement: the first VM run read "xin chào Việt Na" for "xin chào Việt Nam".
     static let readbackSettleNanoseconds: UInt64 = 2_000_000_000
     static let readbackPollNanoseconds: UInt64 = 100_000_000
+
+    /// Pause after a focus shortcut in a key script before the next key: Command plus a digit moves focus or
+    /// switches windows (TestHost's Window menu, a browser's tabs), which the target app and the app under test
+    /// handle on their next turns; the first VM runs lost the word typed right after Command+1. Editing shortcuts
+    /// (Command+A of every soak chunk) do not wait.
+    static let shortcutSettleNanoseconds: UInt64 = 300_000_000
+
+    /// `command+<digit>`, with any further modifiers.
+    static func isFocusShortcut(_ key: String) -> Bool {
+        let parts = key.split(separator: "+")
+        guard parts.count > 1, let last = parts.last, last.count == 1, last.first?.isNumber == true else {
+            return false
+        }
+        return parts.dropLast().contains("command")
+    }
+
+    /// Types `keys`, waiting `shortcutSettleNanoseconds` after every focus shortcut.
+    func type(_ keys: [String], profile: Scenario.TimingProfile) async throws {
+        var run: [String] = []
+        for key in keys {
+            run.append(key)
+            guard Self.isFocusShortcut(key) else { continue }
+            try await driver.type(run, profile: profile)
+            run = []
+            clock.sleep(until: MonotonicInstant(nanoseconds: clock.now().nanoseconds &+ Self.shortcutSettleNanoseconds))
+        }
+        if !run.isEmpty { try await driver.type(run, profile: profile) }
+    }
 
     /// The field's text, read again every poll while it differs from the expectation, until the settle time passed.
     /// A scenario without an expected text, and a person's readback, are read once.
@@ -161,6 +190,40 @@ public enum ScenarioVerdict {
         case .fail: "observed state differs from expect"
         case .needsHuman: "needs a person: expectation not observable here"
         }
+    }
+
+    /// The verdict's reason with, for a failure, what differed: `text` (never the text itself, PLT-R901), the
+    /// placeholder residue, and the observed app state next to the expected one (pause, holder bundle ID, first
+    /// key after release). Lets the VM triage tell a text mismatch from a state mismatch.
+    static func reason(
+        for outcome: ScenarioResult.Outcome, expect: Scenario.Expectation, text: String?,
+        observation: ScenarioObservation?
+    ) -> String? {
+        guard outcome == .fail, let base = reason(for: outcome) else { return reason(for: outcome) }
+        let differences = mismatches(expect: expect, text: text, observation: observation)
+        return differences.isEmpty ? base : base + " (" + differences.joined(separator: ", ") + ")"
+    }
+
+    static func mismatches(expect: Scenario.Expectation, text: String?, observation: ScenarioObservation?)
+        -> [String]
+    {
+        var differences: [String] = []
+        if let expected = expect.text, text != expected { differences.append("text") }
+        if expect.noPlaceholderResidue == true, let text, hasPlaceholderResidue(text) {
+            differences.append("placeholder residue")
+        }
+        func state<Value: Equatable>(_ name: String, _ expected: Value?, _ observed: Value?, _ show: (Value) -> String)
+        {
+            guard let expected, let observed, expected != observed else { return }
+            differences.append(name + " expected " + show(expected) + ", observed " + show(observed))
+        }
+        state("paused", expect.paused, observation?.paused) { String($0) }
+        state("holder", expect.holderBundleId, observation?.holderBundleId) { $0.rawValue }
+        state(
+            "firstKeyAfterReleaseComposed", expect.firstKeyAfterReleaseComposed,
+            observation?.firstKeyAfterReleaseComposed
+        ) { String($0) }
+        return differences
     }
 
     /// `true` matches or nothing expected, `false` mismatch, `nil` expected but not observed.
