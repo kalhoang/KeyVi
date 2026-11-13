@@ -112,6 +112,34 @@ import Testing
         #expect(tiered.count == tier1.count + tier2.count)
     }
 
+    /// PRD-R34, PRD-R35: the Apps pane takes the one unscoped row of a bundle ID; rows for web apps or tools
+    /// inside the app (same host bundle ID) are listed separately and never replace it.
+    @Test func appEntryIsTheOneUnscopedRowPRDR35() throws {
+        let matrix = try Build.seededMatrix()
+        let chrome = bundleKey("com.google.Chrome")
+        #expect(matrix.appEntry(for: chrome)?.displayName == "Google Chrome")
+        #expect(matrix.scopedEntries(for: chrome).count == 5)
+        #expect(matrix.scopedEntries(for: chrome).allSatisfy { $0.scope == .webApp })
+        let terminal = bundleKey("com.apple.Terminal")
+        #expect(matrix.appEntry(for: terminal)?.displayName == "Terminal")
+        #expect(matrix.scopedEntries(for: terminal).map(\.displayName) == ["tmux (in Terminal)"])
+        #expect(matrix.scopedEntries(for: terminal).map(\.scope) == [.inApp])
+        #expect(matrix.appEntry(for: bundleKey("com.example.unknown")) == nil)
+        for (bundle, rows) in Dictionary(grouping: matrix.entries, by: \.bundleId) {
+            #expect(rows.filter { ($0.scope ?? .app) == .app }.count == 1, "app rows for \(bundle.rawValue)")
+        }
+        var explicit = entry(.notVerified, lastVerified: nil)
+        explicit.scope = .app
+        var web = entry(.notVerified, lastVerified: nil)
+        web.scope = .webApp
+        let built = MatrixDocument(schemaVersion: 1, entries: [web, explicit])
+        #expect(built.appEntry(for: explicit.bundleId) == explicit)
+        #expect(built.scopedEntries(for: explicit.bundleId) == [web])
+        let json = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(built))
+        let schema = JSONSchemaSubset(try RepoFiles.json(RepoFiles.schema("matrix.schema.json")))
+        #expect(schema.errors(json).isEmpty)
+    }
+
     @Test func seededMatrixReferencesOnlyShippedRules() throws {
         let ruleIDs = Set(try Build.seededDocument().rules.map(\.id))
         for row in try Build.seededMatrix().entries {

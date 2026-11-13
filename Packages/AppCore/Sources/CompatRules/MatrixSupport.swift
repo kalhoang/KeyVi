@@ -2,6 +2,7 @@
 //
 // Loading and display rules for compat/matrix.json (QA-R17, QA-R19, PRD-R35).
 
+public import AppModel
 public import Foundation
 
 /// Reads compat-matrix.json from the app bundle or compat/matrix.json in CI.
@@ -35,4 +36,22 @@ enum MatrixFreshness {
         }
         return ISODay(today).days(since: verified) > staleAfterDays ? .notVerified : entry.status
     }
+}
+
+/// Row selection for the in-app Apps pane (PRD-R34, PRD-R35): one status per app.
+extension MatrixDocument {
+    /// The row that stands for the whole app: scope absent or `app`. The linter allows at most one per bundle
+    /// ID; if a hand-edited file has more, the first wins.
+    public func appEntry(for bundle: BundleKey) -> MatrixEntry? {
+        entries.first { $0.bundleId == bundle && $0.isAppRow }
+    }
+
+    /// Rows about web apps or tools inside the app, in file order (for a detail view).
+    public func scopedEntries(for bundle: BundleKey) -> [MatrixEntry] {
+        entries.filter { $0.bundleId == bundle && !$0.isAppRow }
+    }
+}
+
+extension MatrixEntry {
+    var isAppRow: Bool { (scope ?? .app) == .app }
 }

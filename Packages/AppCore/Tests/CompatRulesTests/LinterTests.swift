@@ -171,16 +171,20 @@ import Testing
     /// Acceptance, PLT-R531 and 13.3: Tier 1 rows older than 90 days block a release.
     @Test func tier1RowsOlderThan90DaysBlockRelease() {
         let row90 = verifiedRow(for: "clean.rule", tier: 1, lastVerified: "2026-08-15")  // 90 days
-        let row91 = verifiedRow(for: "clean.rule", tier: 1, lastVerified: "2026-08-14")  // 91 days
-        let tier2Old = verifiedRow(for: "clean.rule", tier: 2, lastVerified: "2025-01-01")
+        var row91 = verifiedRow(for: "clean.rule", tier: 1, lastVerified: "2026-08-14")  // 91 days
+        row91.bundleId = bundleKey("com.example.second")
+        var tier2Old = verifiedRow(for: "clean.rule", tier: 2, lastVerified: "2025-01-01")
+        tier2Old.bundleId = bundleKey("com.example.third")
         var neverVerified = verifiedRow(for: "clean.rule", tier: 1)
+        neverVerified.bundleId = bundleKey("com.example.fourth")
         neverVerified.status = .notVerified
         neverVerified.lastVerified = nil
         let matrix = MatrixDocument(schemaVersion: 1, entries: [row90, row91, tier2Old, neverVerified])
         #expect(lint([Self.clean], matrix: matrix).isEmpty)
         let release = lint([Self.clean], matrix: matrix, release: true)
         #expect(codes(release) == [.tier1MatrixRowOlderThan90Days, .tier1MatrixRowOlderThan90Days])
-        #expect(release.allSatisfy { $0.severity == .error && $0.bundle == bundleKey("com.example.editor") })
+        #expect(release.allSatisfy { $0.severity == .error })
+        #expect(release.map(\.bundle) == [row91.bundleId, neverVerified.bundleId])
     }
 
     @Test func matrixRowShapeAndReferences() {
@@ -188,7 +192,9 @@ import Testing
         noDate.lastVerified = nil
         var noNote = verifiedRow(for: "clean.rule")
         noNote.status = .knownLimitation
+        noNote.bundleId = bundleKey("com.example.second")
         var bad = verifiedRow(for: "missing.rule")
+        bad.bundleId = bundleKey("com.example.third")
         bad.category = "editor"
         bad.tier = 3
         bad.lastVerified = "VERIFY"
@@ -199,6 +205,30 @@ import Testing
         #expect(codes(findings, .error).filter { $0 == .schemaInvalid }.count == 8)
         #expect(codes(findings).contains(.matrixRuleUnknown))
         #expect(findings.contains { $0.detail == "Editor: unknown category" })
+    }
+
+    /// PRD-R34, PRD-R35: the Apps pane shows one status per app, so each bundle ID has at most one app row;
+    /// web-app and in-app rows of the same bundle ID carry a scope.
+    @Test func atMostOneAppRowPerBundlePRDR35() {
+        let app = verifiedRow(for: "clean.rule")
+        var webApp = verifiedRow(for: "clean.rule")
+        webApp.displayName = "Web app (Editor)"
+        webApp.scope = .webApp
+        var tool = verifiedRow(for: "clean.rule")
+        tool.displayName = "Tool (in Editor)"
+        tool.scope = .inApp
+        #expect(lint([Self.clean], matrix: MatrixDocument(schemaVersion: 1, entries: [app, webApp, tool])).isEmpty)
+        var explicitApp = verifiedRow(for: "clean.rule")
+        explicitApp.displayName = "Editor again"
+        explicitApp.scope = .app
+        let findings = lint(
+            [Self.clean], matrix: MatrixDocument(schemaVersion: 1, entries: [app, webApp, explicitApp]))
+        #expect(
+            findings == [
+                LintFinding(
+                    severity: .error, code: .schemaInvalid, rule: ruleID("clean.rule"), bundle: app.bundleId,
+                    detail: "Editor again: a second app row for this bundle ID (set scope webApp or inApp)")
+            ])
     }
 
     @Test func validatorIssuesAreReportedAsSchemaFindings() {

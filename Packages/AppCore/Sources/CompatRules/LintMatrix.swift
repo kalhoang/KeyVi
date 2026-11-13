@@ -31,7 +31,18 @@ struct MatrixRowChecks {
         for entry in matrix.entries {
             findings += shapeFindings(entry) + referenceFindings(entry, ruleIDs: ruleIDs) + freshnessFindings(entry)
         }
-        return findings
+        return findings + duplicateAppRowFindings(matrix.entries)
+    }
+
+    /// PRD-R34, PRD-R35: one app row per bundle ID, so the Apps pane has a single status to show.
+    private func duplicateAppRowFindings(_ entries: [MatrixEntry]) -> [LintFinding] {
+        var seen = Set<BundleKey>()
+        return entries.filter(\.isAppRow).compactMap { entry in
+            if seen.insert(entry.bundleId).inserted { return nil }
+            return LintFinding(
+                severity: .error, code: .schemaInvalid, rule: entry.ruleId, bundle: entry.bundleId,
+                detail: entry.displayName + ": a second app row for this bundle ID (set scope webApp or inApp)")
+        }
     }
 
     private func shapeFindings(_ entry: MatrixEntry) -> [LintFinding] {

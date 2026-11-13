@@ -30,11 +30,15 @@ public struct MatrixEntry: Sendable, Hashable, Codable {
     public var verifier: String?
     public var issues: [Int]
     public var checks: MatrixChecks?
+    /// Absent or `app` for the row that stands for the whole app (one per bundle ID, the Apps pane status);
+    /// `webApp` or `inApp` for a row about a web app or a tool inside the host app (same bundle ID).
+    public var scope: MatrixScope?
 
     public init(
         bundleId: BundleKey, displayName: String, category: String, tier: Int? = nil, ruleId: RuleID? = nil,
         status: MatrixStatus, note: LocalizedNote? = nil, lastVerified: String? = nil, appVersion: String? = nil,
-        macOS: String? = nil, verifier: String? = nil, issues: [Int] = [], checks: MatrixChecks? = nil
+        macOS: String? = nil, verifier: String? = nil, issues: [Int] = [], checks: MatrixChecks? = nil,
+        scope: MatrixScope? = nil
     ) {
         self.bundleId = bundleId
         self.displayName = displayName
@@ -49,7 +53,14 @@ public struct MatrixEntry: Sendable, Hashable, Codable {
         self.verifier = verifier
         self.issues = issues
         self.checks = checks
+        self.scope = scope
     }
+}
+
+/// What a matrix row is about (PRD-R34, PRD-R35): the app itself, a web app inside a browser, or a tool inside
+/// the host app (tmux in a terminal, an editor's integrated terminal).
+public enum MatrixScope: String, Sendable, Hashable, Codable, CaseIterable {
+    case app, webApp, inApp
 }
 
 /// User-facing values (PRD-R35).
