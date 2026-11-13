@@ -72,11 +72,16 @@ final class LatencyProbeModel {
         let show: @MainActor @Sendable (LatencyProbeResult.Profile) -> Void = { [weak self] profile in
             self?.phase = .running(profile)
         }
+        phase = .running(.normal)
         Task { [weak self] in
+            // Let the cleared text view become first responder before the first key is posted.
+            try? await Task.sleep(for: Self.focusDelay)
             let result = await session.run(script: script) { profile in Task { await show(profile) } }
             self?.finish(result)
         }
     }
+
+    static let focusDelay: Duration = .milliseconds(300)
 
     private func finish(_ result: LatencyProbeResult) {
         phase = .done(result)
