@@ -255,6 +255,8 @@ struct LaunchSequenceTests {
             best = min(best, elapsed)
             rig.stop()
         }
+        // A sanitizer slows every instruction several times over; the timing is meaningful only without one.
+        guard !AllocationCounter.isSanitizerActive else { return }
         #expect(best < .milliseconds(300), "S1 target, best of three: \(best)")
     }
 }
