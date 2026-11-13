@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// One tap: the tap thread with its `KeyPipeline`, its watchdog and the echo tracker it settles jobs with
+// (PLT-R302, PLT-R306, PLT-R323, ADR 0309, ADR 0311). The lifecycle owner creates a fresh session for every
+// `.createTap` and never two at once. Workstream W2-A.
+
+internal import AppModel
+internal import Diagnostics
+internal import Foundation
+internal import Injection
+internal import RealtimeSupport
+internal import Synchronization
+
+/// The production pipeline: the real engine and the uptime clock (the same base the callback stamps with).
+typealias ProductionPipeline = KeyPipeline<VietnameseCompositionEngineFactory, MachClock>
+
+/// Creates the tap thread for a pipeline context. Production: `TapThread` over the dependencies' factory.
+typealias TapThreadMaker = @Sendable (PipelineContext) -> any TapControlStarting
+
+/// `TapThread` as the session needs it: start once, then control from any thread.
+protocol TapControlStarting: TapControl {
+    func start() -> Bool
+    func waitUntilExited(timeout: Duration) -> Bool
+}
+
+extension TapThread: TapControlStarting {}
+
+final class TapSession: Sendable {
+    /// How long `.createTap` waits for the previous tap thread to leave its run loop (ADR 0309). A stopped
+    /// thread exits within one run-loop turn; a stuck one never does, and then no second tap is created.
+    static let previousExitTimeout: Duration = .seconds(1)
+
+    let thread: any TapControlStarting
+    let echo: EchoTracker
+    let watchdog: TapWatchdog
+
+    init(thread: any TapControlStarting, echo: EchoTracker, watchdog: TapWatchdog) {
+        self.thread = thread
+        self.echo = echo
+        self.watchdog = watchdog
+    }
+
+    /// PLT-R730 removal: the watchdog stops first so it never reports on a tap that is going away.
+    func remove() {
+        watchdog.stop()
+        thread.stop()
+    }
+
+    /// Settles every expectation this session's tracker still holds (and every one waiting in the queue) as
+    /// timed out, so the job queue's in-flight count is exact before the next session takes over. Only after
+    /// the tap thread exited: `EchoTracker` is tap-thread state and the thread exit orders the accesses.
+    /// The next session gets a fresh tracker, whose miss counter starts at zero, so the misses that broke
+    /// posting cannot break the recreated tap again (W1-F2 request, PLT-R731).
+    func retireEchoes() {
+        _ = echo.settle(now: MonotonicInstant(nanoseconds: .max))
+    }
+}
+
+extension TapSession {
+    /// The production thread maker: one `TapThread` whose handler factory builds the pipeline on the tap thread.
+    static func productionThreadMaker(factory: any EventTapFactory) -> TapThreadMaker {
+        { context in
+            TapThread(factory: factory) {
+                ProductionPipeline(context: context, factory: VietnameseCompositionEngineFactory(), clock: MachClock())
+            }
+        }
+    }
+}

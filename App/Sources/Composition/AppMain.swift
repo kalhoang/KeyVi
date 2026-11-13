@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Entry point of the menu-bar app (LSUIElement, PLT-R201). SKELETON: shows the bootstrap status item only; the
-// composition root (`AppEnvironment`) is built by workstream W2-A (docs/architecture/contracts.md "AppShell").
+// Entry point of the menu-bar app (LSUIElement, PLT-R201). It builds the composition root and forwards the
+// application events to it; everything else lives in `AppEnvironment`. Workstream W2-A.
 
 import AppKit
 import ShellCore
@@ -9,7 +9,7 @@ import ShellCore
 @main
 @MainActor
 final class AppMain: NSObject, NSApplicationDelegate {
-    private var bootstrap: BootstrapStatusItem?
+    private var environment: AppEnvironment?
 
     static func main() {
         let application = NSApplication.shared
@@ -20,8 +20,23 @@ final class AppMain: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // W2-A: LaunchGuard -> AppLocationCheck -> LegacyStorageMigrator -> SettingsStore.load -> RulesLoader
-        // -> InputHostController -> StatusItemController -> Onboarding (first launch) -> UpdaterController.
-        bootstrap = BootstrapStatusItem(brand: Brand.from(.main), strings: BootstrapStrings(languageCode: "vi"))
+        let environment = AppEnvironment(bundle: .main)
+        self.environment = environment
+        environment.start()
     }
+
+    /// Quit waits for the settings flush (PLT-R1003); the reply comes from `AppEnvironment.terminate`.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let environment else { return .terminateNow }
+        environment.terminate { sender.reply(toApplicationShouldTerminate: true) }
+        return .terminateLater
+    }
+
+    /// `<slug>://...` opens Settings and nothing else (PLT-R909).
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { environment?.handle(url: url) }
+    }
+
+    /// A menu-bar app keeps running when its last window closes.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }

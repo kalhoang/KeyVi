@@ -1,0 +1,330 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "conflicts.dismiss" : {
+      "comment" : "PLT-R399 conflict notice button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã hiểu"
+          }
+        }
+      }
+    },
+    "conflicts.dismiss.hint" : {
+      "comment" : "VoiceOver hint of the dismiss button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes this notice. It does not appear again until the next launch."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng thông báo này. Thông báo không hiện lại cho đến lần mở sau."
+          }
+        }
+      }
+    },
+    "conflicts.help.hint" : {
+      "comment" : "PLT-R399 conflict notice: hint of the help button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the help page on the website."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang hướng dẫn trên trang web."
+          }
+        }
+      }
+    },
+    "conflicts.openKeyboard.hint" : {
+      "comment" : "PLT-R399 conflict notice: hint of the button that opens Keyboard settings for the built-in Vietnamese input source (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens Keyboard settings, where you can choose the ABC or U.S. keyboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở phần cài đặt Bàn phím, nơi bạn có thể chọn bàn phím ABC hoặc U.S."
+          }
+        }
+      }
+    },
+    "move.failed.body" : {
+      "comment" : "PLT-R710 move failure body. Argument: app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag %@ to the Applications folder in Finder, then open it from there."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hãy kéo %@ vào thư mục Ứng dụng trong Finder, rồi mở ứng dụng từ đó."
+          }
+        }
+      }
+    },
+    "move.failed.quit" : {
+      "comment" : "PLT-R710 move failure button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát"
+          }
+        }
+      }
+    },
+    "move.failed.quit.hint" : {
+      "comment" : "VoiceOver hint of the quit button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes the app without asking for any permission."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng ứng dụng mà không xin quyền nào."
+          }
+        }
+      }
+    },
+    "move.failed.title" : {
+      "comment" : "PLT-R710 move failure title. Argument: app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not move %@ to the Applications folder"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không chuyển được %@ vào thư mục Ứng dụng"
+          }
+        }
+      }
+    },
+    "safeMode.body" : {
+      "comment" : "PLT-R1009 safe-mode alert body. Argument: app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ stopped unexpectedly several times right after opening, so this time it uses the default settings and does not read or write your settings files. You can reset the settings, go back to your saved settings, or report the problem."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đã dừng đột ngột nhiều lần ngay sau khi mở, nên lần này ứng dụng dùng cài đặt mặc định và không đọc hay ghi các tệp cài đặt của bạn. Bạn có thể đặt lại cài đặt, dùng lại cài đặt đã lưu, hoặc báo lỗi."
+          }
+        }
+      }
+    },
+    "safeMode.exit" : {
+      "comment" : "Safe-mode alert button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Saved Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng lại cài đặt đã lưu"
+          }
+        }
+      }
+    },
+    "safeMode.exit.hint" : {
+      "comment" : "VoiceOver hint of the exit button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leaves safe mode and reads your settings files again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát chế độ an toàn và đọc lại các tệp cài đặt của bạn."
+          }
+        }
+      }
+    },
+    "safeMode.later" : {
+      "comment" : "Safe-mode alert button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Now"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Để sau"
+          }
+        }
+      }
+    },
+    "safeMode.later.hint" : {
+      "comment" : "VoiceOver hint of the later button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continues in safe mode. You can come back to this choice from Report a Problem in the menu."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếp tục ở chế độ an toàn. Bạn có thể quay lại lựa chọn này từ mục Báo lỗi trong menu."
+          }
+        }
+      }
+    },
+    "safeMode.report" : {
+      "comment" : "Safe-mode alert button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a Problem..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi..."
+          }
+        }
+      }
+    },
+    "safeMode.report.hint" : {
+      "comment" : "VoiceOver hint of the report button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the bug report, which sends diagnostic information without anything you typed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở phần báo lỗi để gửi thông tin chẩn đoán, không kèm nội dung bạn gõ."
+          }
+        }
+      }
+    },
+    "safeMode.reset" : {
+      "comment" : "Safe-mode alert button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt lại cài đặt"
+          }
+        }
+      }
+    },
+    "safeMode.reset.hint" : {
+      "comment" : "VoiceOver hint of the reset button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restores the default settings, keeps your text shortcuts and leaves safe mode."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa cài đặt về mặc định, giữ nguyên gõ tắt, rồi thoát chế độ an toàn."
+          }
+        }
+      }
+    },
+    "safeMode.title" : {
+      "comment" : "PLT-R1009 safe-mode alert title. Argument: app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is running in safe mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đang chạy ở chế độ an toàn"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
