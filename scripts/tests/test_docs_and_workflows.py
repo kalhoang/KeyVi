@@ -206,13 +206,16 @@ class NoticesTests(unittest.TestCase):
 
 
     def test_acknowledgements_claim_matches_the_app(self):
-        # ENG-R811: the SCOWL notice must reach users. Until App code shows NOTICES.txt the notices may not say so.
+        # ENG-R811: the SCOWL notice must reach users. The paragraph says the app shows NOTICES.txt exactly when App
+        # code reads it (`Resources.bundledNotices`, called or passed as a function).
         sources = (REPO / "App" / "Sources").rglob("*.swift")
-        shown = any("bundledNotices()" in path.read_text(encoding="utf-8") for path in sources)
+        shown = any("Resources.bundledNotices" in path.read_text(encoding="utf-8") for path in sources)
         data = " ".join(self.section(3).split())
-        self.assertNotIn("which the app shows in its acknowledgements", data)
         if shown:
             self.assertNotIn("not yet implemented", data, "App code shows NOTICES.txt now; update section 3")
+            self.assertNotIn("VERIFY", data, "the About & Support pane shows NOTICES.txt; close the VERIFY")
+            self.assertIn("About & Support", data)
+            self.assertIn("Resources.bundledNotices()", data)
         else:
             self.assertIn("VERIFY", data)
             self.assertIn("not yet implemented", data)
