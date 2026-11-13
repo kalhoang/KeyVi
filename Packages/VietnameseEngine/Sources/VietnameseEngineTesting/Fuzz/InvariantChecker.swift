@@ -120,6 +120,9 @@ public struct InvariantChecker: Sendable {
         public var nfcCheck: (@Sendable (String) -> Bool)?
         /// Events kept for violation reports.
         public var reportWindow = 48
+        /// Drops the field text before an empty engine view (bounded memory in long streams). Corpus runs
+        /// keep the whole field.
+        public var trimsField = true
 
         public init() {}
     }
@@ -285,6 +288,7 @@ public struct InvariantChecker: Sendable {
 
     /// Text before an empty engine view is never compared again, so it is dropped (bounded memory).
     private mutating func trimField() {
+        guard options.trimsField else { return }
         let state = session.state
         if state.active == nil, state.history.isEmpty { field.removeAll(keepingCapacity: true) }
     }

@@ -69,7 +69,9 @@ public struct QACorpusCase: Sendable, Hashable, CustomStringConvertible {
     public let id: String
     public let method: FixtureMethod
     /// `-` or comma-separated flags: `modern`, `code`, `no-auto-restore`, `no-standalone-w`, `brackets`,
-    /// `empty-resources` (no word lists instead of the 13.9 fixtures), `no-macros`, `history=N`.
+    /// `empty-resources` (no word lists instead of the 13.9 fixtures), `no-macros`, `history=N`,
+    /// `qa-english` (the QA-R4 English hand list added to the fixture lexicon), `keep-vi=a|b` and
+    /// `keep-raw=a|b` (the user keep-Vietnamese and keep-as-typed lists of 8.7).
     public let options: Set<String>
     public let keys: String
     public let expected: String
@@ -98,16 +100,30 @@ public struct QACorpusCase: Sendable, Hashable, CustomStringConvertible {
             historyLimit: historyLimit)
     }
 
-    /// The 13.9 fixture resources (or empty ones), with `macros` unless the row says `no-macros`.
+    /// The 13.9 fixture resources (or empty ones), with `macros` unless the row says `no-macros`, the
+    /// user lists the row names, and the QA-R4 English hand list when the row says `qa-english`.
     public func resources(macros: MacroTable) -> Resources {
         let table = options.contains("no-macros") ? MacroTable.empty : macros
+        let keepVietnamese = listOption("keep-vi=")
+        let keepRaw = listOption("keep-raw=")
         guard !options.contains("empty-resources") else {
             return Resources(
                 english: WordSet([]), techAlways: WordSet([]), techCodeOnly: WordSet([]),
-                attestedSyllables: WordSet([]), ambiguity: [:], userKeepRaw: WordSet([]),
-                userKeepVietnamese: WordSet([]), macros: table)
+                attestedSyllables: WordSet([]), ambiguity: [:], userKeepRaw: WordSet(keepRaw),
+                userKeepVietnamese: WordSet(keepVietnamese), macros: table)
         }
-        return SpecFixtures.commitResources(macros: table)
+        var resources = SpecFixtures.commitResources(
+            userKeepRaw: keepRaw, userKeepVietnamese: keepVietnamese, macros: table)
+        if options.contains("qa-english") {
+            resources.english = WordSet(SpecFixtures.englishLexicon + QACorpus.englishHandList)
+        }
+        return resources
+    }
+
+    private func listOption(_ prefix: String) -> [String] {
+        options.filter { $0.hasPrefix(prefix) }.flatMap {
+            $0.dropFirst(prefix.count).split(separator: "|").map(String.init)
+        }
     }
 }
 
@@ -116,6 +132,45 @@ public enum QACorpus {
     public static let macrosFile = "macros.tsv"
     public static let macroTableFile = "macro-table.tsv"
     public static let editingFile = "editing.tsv"
+
+    /// Every QA-R4 case file (one case per line, `cases(file:tsv:)`), run by one loader.
+    public static let caseFiles = [
+        "rhymes-rare.tsv", "no-shortcuts.tsv", "macros.tsv", "proper-nouns.tsv", "english.tsv", "collisions.tsv",
+        "editing.tsv", "crash-regressions.tsv", "restore-exact.tsv", "layouts.tsv",
+    ]
+
+    /// The other files of the corpus folder: spec examples extracted by `Scripts/extract-spec-examples.py`
+    /// and the macro fixture table.
+    public static let fixtureFiles = [
+        "worked-examples.tsv", "commit-decisions.tsv", "restore-toggle.tsv", "commit-fixtures.tsv", macroTableFile,
+    ]
+
+    /// QA-R4 `english`: the hand list of English words and tech terms that must restore unchanged.
+    public static let englishHandList = [
+        "text", "user", "case", "wifi", "usb", "with", "this", "year", "your", "our", "their", "early", "traffic",
+        "current", "issue", "google", "github", "iphone", "macos",
+    ]
+
+    /// Expands the repetition notation of the corpus files: `«X»×N` stands for `X` written `N` times (long
+    /// tokens of `crash-regressions`). `«`, `»` and `×` are reserved like the other notation characters.
+    public static func expandRepetitions(_ field: String, file: String, line: Int) throws -> String {
+        guard field.contains("«") else { return field }
+        var result = ""
+        var rest = Substring(field)
+        while let open = rest.firstIndex(of: "«") {
+            result += rest[..<open]
+            guard let close = rest[open...].firstIndex(of: "»"), rest[close...].dropFirst().first == "×" else {
+                throw FixtureError(file: file, line: line, reason: "bad repetition in \(field)")
+            }
+            let digits = rest[rest.index(close, offsetBy: 2)...].prefix(while: \.isNumber)
+            guard let count = Int(digits), count > 0 else {
+                throw FixtureError(file: file, line: line, reason: "bad repetition count in \(field)")
+            }
+            result += String(repeating: String(rest[rest.index(after: open)..<close]), count: count)
+            rest = rest[digits.endIndex...]
+        }
+        return result + rest
+    }
 
     /// A case file: columns `id`, `method`, `options`, `keys`, `expected`, `restore`, `note`.
     public static func cases(file: String, tsv text: String) throws -> [QACorpusCase] {
@@ -131,17 +186,22 @@ public enum QACorpus {
             let options = row["options"] == "-" ? [] : Set(row["options"].split(separator: ",").map(String.init))
             let known: Set<String> = [
                 "modern", "code", "no-auto-restore", "no-standalone-w", "brackets", "empty-resources", "no-macros",
+                "qa-english",
             ]
-            for option in options where !known.contains(option) && !option.hasPrefix("history=") {
+            let prefixes = ["history=", "keep-vi=", "keep-raw="]
+            for option in options where !known.contains(option) && !prefixes.contains(where: option.hasPrefix) {
                 throw FixtureError(file: file, line: row.line, reason: "unknown option \(option)")
             }
             guard !row["keys"].isEmpty, !row["id"].isEmpty else {
                 throw FixtureError(file: file, line: row.line, reason: "empty id or keys")
             }
+            func expanded(_ column: String) throws -> String {
+                try expandRepetitions(row[column], file: file, line: row.line)
+            }
             return QACorpusCase(
-                file: file, line: row.line, id: row["id"], method: method, options: options, keys: row["keys"],
-                expected: row["expected"], expectedRestore: row["restore"] == "-" ? nil : row["restore"],
-                note: row["note"])
+                file: file, line: row.line, id: row["id"], method: method, options: options, keys: try expanded("keys"),
+                expected: try expanded("expected"),
+                expectedRestore: row["restore"] == "-" ? nil : try expanded("restore"), note: row["note"])
         }
     }
 
@@ -159,15 +219,20 @@ public enum QACorpus {
         return try MacroTable(entries)
     }
 
-    /// Runs one case through an engine driver (simulated field, ENG-T31 checks after every event) and
-    /// returns the field text and, if the row checks it, the field after one more restore toggle.
+    /// Runs one case through an `InvariantChecker` (the fuzz invariants of 13.6 after every event, the whole
+    /// field kept) and returns the field text and, if the row checks it, the field after one more restore
+    /// toggle.
     public static func run(_ corpusCase: QACorpusCase, macros: MacroTable) throws -> (text: String, restore: String?) {
-        var driver = EngineDriver(
-            configuration: corpusCase.configuration, resources: corpusCase.resources(macros: macros))
-        try driver.send(corpusCase.events)
-        let text = driver.field.string
+        let engine = Engine(configuration: corpusCase.configuration, resources: corpusCase.resources(macros: macros))
+        var options = InvariantChecker.Options()
+        options.trimsField = false
+        var checker = InvariantChecker(engine: engine, options: options)
+        try checker.send(corpusCase.events)
+        try checker.finish()
+        let text = checker.fieldText
         guard corpusCase.expectedRestore != nil else { return (text, nil) }
-        try driver.send(.restoreToggle)
-        return (text, driver.field.string)
+        try checker.send(.restoreToggle)
+        try checker.finish()
+        return (text, checker.fieldText)
     }
 }

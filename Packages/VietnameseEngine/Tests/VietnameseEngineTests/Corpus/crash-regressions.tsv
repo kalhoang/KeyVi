@@ -1,0 +1,53 @@
+# QA-R4 category "crash-regressions" (spec/04-quality-release.md): every sequence that publicly crashed a
+# Vietnamese engine (spec/01-engine.md REG-01, REG-02, ENG-R411, ENG-R640, ENG-R641): Telex quz, QUZ, qqz,
+# qutz, Quzhou; VNI qu0, qut0; tokens of 33, 64, 256 and 4,096 keys with and without marks; long runs of a
+# single key; alternating tone keys. Source: public bug reports (the sequences, not any code). Each case
+# must not trap, must keep every fuzz invariant (InvariantChecker) and, without a boundary, the restore
+# toggle must give back exactly the keys typed. Minimised fuzz findings are added here when fixed (QA-R8).
+# Long tokens use the repetition notation «X»×N (X written N times). Resources: the 13.9 fixtures.
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+CR001	Telex	-	quz\s	quz\s	-	REG-01: tone removal with no vowel is a letter (ENG-R411)
+CR002	Telex	-	QUZ\s	QUZ\s	-	REG-01 capitals
+CR003	Telex	-	qqz\s	qqz\s	-	REG-01
+CR004	Telex	-	qutz\s	qutz\s	-	REG-01
+CR005	Telex	-	Quzhou\s	Quzhou\s	-	REG-01
+CR006	VNI	-	qu0\s	qu0\s	-	REG-01: VNI tone removal with no vowel is a literal digit
+CR007	VNI	-	qut0\s	qut0\s	-	REG-01
+CR008	Telex	-	quz	quz	quz	REG-01 before the boundary, toggle passes through
+CR009	VNI	-	qu0	qu0	qu0	REG-01
+CR010	Telex	-	«blinh»×6blk	«blinh»×6blk	«blinh»×6blk	33 keys, no marks
+CR011	Telex	-	«blinh»×6blk\s	«blinh»×6blk\s	-	33 keys committed
+CR012	Telex	-	«vieejt»×5vie	việt«vieejt»×4vie	«vieejt»×5vie	33 keys with marks
+CR013	Telex	-	«vieejt»×5vie\s	«vieejt»×5vie\s	-	33 keys with marks, committed (restored, L5)
+CR014	Telex	-	«blinh»×12blhm	«blinh»×12blhm	«blinh»×12blhm	64 keys, no marks
+CR015	Telex	-	«dduwowcj»×8	dược«dduwowcj»×7	«dduwowcj»×8	64 keys with marks: the ninth key d escapes the stroke (ENG-R415) and goes literal (ENG-R442)
+CR016	Telex	-	«dduwowcj»×8\s	dược«dduwowcj»×7\s	-	committed: an escape was used, L4 keeps the composed form
+CR017	Telex	-	a«sfrxj»×13	ảxj	a«sfrxj»×13	66 keys alternating tones: composing until the 64-key cap, then literal (ENG-R641)
+CR018	Telex	-	a«sfrxj»×13\s	a«sfrxj»×13\s	-	committed
+CR019	VNI	-	a«12345»×13	ả45	a«12345»×13	VNI alternating tones past the cap
+CR020	VNI	-	a«12345»×13\s	a«12345»×13\s	-	committed
+CR021	Telex	-	«blinh»×51b	«blinh»×51b	«blinh»×51b	256 keys, no marks
+CR022	Telex	-	«tuwowngf»×32	tường«tuwowngf»×31	«tuwowngf»×32	256 keys with marks
+CR023	Telex	-	«tuwowngf»×32\s	«tuwowngf»×32\s	-	committed
+CR024	Telex	-	«blinh»×819b	«blinh»×819b	«blinh»×819b	4,096 keys, no marks
+CR025	Telex	-	«nguwowif»×512	người«nguwowif»×511	«nguwowif»×512	4,096 keys with marks
+CR026	Telex	-	«nguwowif»×512\s	«nguwowif»×512\s	-	committed
+CR027	VNI	-	«d9uo7c5»×585d	được«d9uo7c5»×584d	«d9uo7c5»×585d	4,096 VNI keys with marks
+CR028	Telex	-	«a»×4096	«a»×4095	«a»×4096	single key a: â, then the escape aa, then literal
+CR029	Telex	-	«w»×4096	«w»×4095	«w»×4096	single key w: ư, then the escape w, then literal
+CR030	Telex	-	«d»×4096	«d»×4095	«d»×4096	single key d
+CR031	Telex	-	«s»×4096	«s»×4096	«s»×4096	single key s (no vowel: letters)
+CR032	Telex	-	«z»×1000\s	«z»×1000\s	-	single key z
+CR033	VNI	-	«6»×1000	«6»×1000	«6»×1000	VNI single key 6 with no vowel: literal digits
+CR034	VNI	-	«0»×1000\s	«0»×1000\s	-	VNI 0
+CR035	VNI	-	a«1»×1000	a«1»×999	a«1»×1000	VNI a then 1 repeated: á, the escape a1, then literal
+CR036	Telex	-	vie«sf»×500	víe«fs»×469f	vie«sf»×500	alternating tone keys after a vowel group
+CR037	Telex	-	«a⌫»×500a	a	a	a key and Backspace repeated
+CR038	Telex	-	«vieejt⎋»×100	việt«vieejt»×99	việt«vieejt»×99	toggle on a long token, 100 times: the last (even) toggle composes it; one more passes through (ENG-R702)
+CR039	Telex	-	«⌫»×100«⎋»×10«⟲»×10			Backspace, toggles and resets with nothing typed
+CR040	Telex	brackets	«[»×1000	«[»×999	«[»×1000	bracket key repeated with the option on (4.8)
+CR041	Telex	-	«[»×100\s	«[»×100\s	-	brackets are boundaries by default (REG-15)
+CR042	Telex	-	«qu»×2048	«qu»×2048	«qu»×2048	qu repeated, 4,096 keys
+CR043	Telex	history=1	«a\s»×2000⌫⌫⌫	«a\s»×1998a	-	history limit 1: old entries dropped, never a crash (ENG-R1001)

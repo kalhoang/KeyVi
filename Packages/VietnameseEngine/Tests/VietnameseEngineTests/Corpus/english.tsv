@@ -1,0 +1,36 @@
+# QA-R4 category "english" (spec/04-quality-release.md): English words and tech terms that MUST restore
+# unchanged, the QA-R4 hand list (QACorpus.englishHandList), typed in Telex with default options and
+# committed at a boundary. Resources: the 13.9 fixtures with the hand list added to the English lexicon
+# (option qa-english), so the rules of 8.1 that need a lexicon (L4, L6, L8, L10) apply to these words.
+# Words that are also valid Vietnamese with an ambiguity row "vi" (this) restore only in an English run
+# (ENG-R823, L10); their run rows start with an English token. The permissive word list of QA-R4 is the
+# data track's English lexicon (ENG-T10); this file is the hand list.
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+EN001	Telex	qa-english	text\s	text\s	-	L5 invalid
+EN002	Telex	qa-english	user\s	user\s	-	L5
+EN003	Telex	qa-english	case\s	case\s	-	L5
+EN004	Telex	qa-english	wifi\s	wifi\s	-	L5
+EN005	Telex	qa-english	USB\s	USB\s	-	L5, capitals
+EN006	Telex	qa-english	with\s	with\s	-	standalone w composes ưi, then literal; L5 restores
+EN007	Telex	qa-english	and\sthis\s	and\sthis\s	-	L10 English run (ambiguity row vi)
+EN008	Telex	qa-english	this\s	thí\s	-	alone: ambiguity row vi keeps thí (B027); listed to show the context matters
+EN009	Telex	qa-english	year\s	year\s	-	L0 nothing composed
+EN010	Telex	qa-english	your\s	your\s	-	L0
+EN011	Telex	qa-english	our\s	our\s	-	L0
+EN012	Telex	qa-english	their\s	their\s	-	L0
+EN013	Telex	qa-english	early\s	early\s	-	L0
+EN014	Telex	qa-english	traffic\s	traffic\s	-	L4 escape, raw is English (B009)
+EN015	Telex	qa-english	current\s	current\s	-	L4 escape (rr), raw is English
+EN016	Telex	qa-english	issue\s	issue\s	-	L4 escape (ss), raw is English
+EN017	Telex	qa-english	google\s	google\s	-	L5
+EN018	Telex	qa-english	github\s	github\s	-	L0
+EN019	Telex	qa-english	iphone\s	iphone\s	-	L0
+EN020	Telex	qa-english	macOS\s	macOS\s	-	L0
+EN021	Telex	qa-english	iPhone\s	iPhone\s	-	camel case, L0
+EN022	Telex	qa-english	text,\suser;\swifi?\sUSB)\scase!\n	text,\suser;\swifi?\sUSB)\scase!\n	-	every boundary key commits the same way (P0-3)
+EN023	Telex	qa-english	traffic\scurrent\sissue\swith\stext\s	traffic\scurrent\sissue\swith\stext\s	-	a sentence
+EN024	Telex	-	current\s	curent\s	-	without the hand list current is not English: L4 keeps the escaped form
+EN025	Telex	qa-english	Traffic\sCurrent\sIssue\s	Traffic\sCurrent\sIssue\s	-	capitalised (ENG-R332)
+EN026	Telex	qa-english	GITHUB\sMACOS\s	GITHUB\sMACOS\s	-	all capitals

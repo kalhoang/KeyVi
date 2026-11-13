@@ -1,0 +1,33 @@
+# QA-R4 category "restore-exact" (spec/04-quality-release.md): restore reproduces the keys typed exactly
+# (spec/01-engine.md ENG-R701, ENG-R705, REG-05, REG-27, ENG-T32): VNI digits stay digits, doubled letters
+# stay doubled, case is preserved. The restore column is the field after one more restore toggle.
+# Hand curated; resources: the 13.9 fixtures.
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+RE001	VNI	-	ba6c3\s	ba6c3\s	-	REG-05, B047: restored at commit with the digits
+RE002	VNI	-	vie65t	việt	vie65t	E03: VNI digits stay digits
+RE003	VNI	-	d9uo7c5	được	d9uo7c5	E07
+RE004	VNI	-	Vie65t	Việt	Vie65t	case preserved
+RE005	VNI	-	VIE65T	VIỆT	VIE65T	all capitals
+RE006	Telex	-	traffic	trafic	traffic	E08, REG-27: the doubled f stays doubled
+RE007	Telex	-	current	curent	current	doubled r
+RE008	Telex	-	TRAFFIC	TRAFIC	TRAFFIC	capitals
+RE009	Telex	-	coffee	cofee	coffee	two doublings
+RE010	Telex	-	password	pasword	password	B008
+RE011	Telex	-	boss	bos	boss	B010
+RE012	Telex	-	ass	as	ass	B014: escape kept at commit, the toggle still gives the keys
+RE013	Telex	-	www	ww	www	ENG-T12 www
+RE014	Telex	-	vieejt	việt	vieejt	E01
+RE015	Telex	-	Vieejt	Việt	Vieejt	case of each key
+RE016	Telex	-	VIEEJT	VIỆT	VIEEJT	capitals
+RE017	Telex	-	DDawsk	Đắk	DDawsk	stroke keys
+RE018	Telex	-	TieengS	Tiếng	TieengS	the case of transform keys is kept in the raw keys (ENG-R902)
+RE019	Telex	-	useState\s	useState\s	-	camel case restored at commit (L3b, ENG-R904)
+RE020	Telex	-	test\s⌫	test	tét	E04: re-opened in its restored state, the toggle composes it
+RE021	Telex	-	vieejt⎋⌫⎋	việ	-	E02b: Backspace on the restored token, then the toggle composes vieej
+RE022	Telex	-	nguwowif⌫⌫	ngư	nguw	Backspace removes keys; the toggle gives the remaining keys
+RE023	VNI	-	nguo72i⌫	ngườ	nguo72	VNI after Backspace (the tone stays on ờ)
+RE024	Telex	-	dduwowcj\s⌫	được	dduwowcj	re-opened kept token: the toggle gives the keys (ENG-R1002)
+RE025	Telex	-	«vieejt»×6	việtvieejtvieejtvieejtvieejtvieejt	«vieejt»×6	36 keys: literal after the first syllable, restore exact
+RE026	VNI	-	«vie65t»×11	việt«vie65t»×10	«vie65t»×11	66 keys (past the 64-key cap, ENG-R641)
