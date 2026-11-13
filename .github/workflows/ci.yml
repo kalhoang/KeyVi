@@ -308,15 +308,25 @@ jobs:
             -disableAutomaticPackageResolution \
             ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' build
       - name: Both slices and the macOS 12.0 floor (PLT-R105, PLT-R106, ADR 0315)
+        # Must run before the test action below: it rebuilds the app with ONLY_ACTIVE_ARCH=YES (Debug.xcconfig).
+        # Debug builds keep the code in Contents/MacOS/*.debug.dylib (ENABLE_DEBUG_DYLIB) and the executable is a
+        # small launcher stub, so every Mach-O file in Contents/MacOS is checked, not only the executable.
         if: steps.project.outputs.present == 'true'
         run: |
-          app="$(find .build/DerivedData/Build/Products/Debug -maxdepth 1 -name '*.app' -type d | head -n1)"
-          test -n "$app"
+          # shellcheck source=/dev/null
+          source scripts/brand.env
+          app=".build/DerivedData/Build/Products/Debug/$APP_DISPLAY_NAME.app"
+          test -d "$app"
           plist="$app/Contents/Info.plist"
           binary="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")"
-          for arch in arm64 x86_64; do
-            lipo "$binary" -verify_arch "$arch"
-            otool -arch "$arch" -l "$binary" | grep -A4 LC_BUILD_VERSION | grep -Eq 'minos 12\.0$'
+          test -f "$binary"
+          shopt -s nullglob
+          for file in "$binary" "$app/Contents/MacOS/"*.debug.dylib; do
+            for arch in arm64 x86_64; do
+              lipo "$file" -verify_arch "$arch"
+              otool -arch "$arch" -l "$file" | grep -A4 LC_BUILD_VERSION | grep -Eq 'minos 12\.0$'
+            done
+            echo "$(basename "$file"): $(lipo -archs "$file"), minos 12.0"
           done
           test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" = 12.0
       - name: URL host allowlist on the built app (QA-R60)
