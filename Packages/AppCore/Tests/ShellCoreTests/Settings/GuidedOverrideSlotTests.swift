@@ -167,6 +167,16 @@ import Testing
         #expect(!CompatibilityModeChoice.guidedTest.needsClipboardExplanation)
     }
 
+    /// PRD-R36: only automatic and the three plain choices can be picked; the guided result is a status row in the
+    /// group (selected, not selectable), so the pane never offers a fourth non-automatic choice.
+    @Test func onlyThePlainChoicesAreSelectable() {
+        for choice in CompatibilityModeChoice.choices {
+            #expect(choice.isSelectable)
+        }
+        #expect(!CompatibilityModeChoice.guidedTest.isSelectable)
+        #expect(CompatibilityModeChoice.allCases.filter { $0.isSelectable } == CompatibilityModeChoice.choices)
+    }
+
     /// Choosing the state again writes nothing: it is a result, not a mode the pane can write.
     @Test func choosingTheStateAgainKeepsTheResult() async throws {
         let (harness, _) = try await applied(

@@ -228,7 +228,8 @@ struct ScopedRows: View {
 }
 
 /// PRD-R36: automatic plus at most three plain choices, each explained in one sentence; paste asks first. While a
-/// guided test result is in force it is listed too, selected, so the pane never shows "automatic" for it (PLT-R540).
+/// guided test result is in force it is listed too, selected but disabled (a state, not a choice), so the pane never
+/// shows "automatic" for it (PLT-R540).
 struct CompatibilityChoices: View {
     @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
@@ -241,6 +242,7 @@ struct CompatibilityChoices: View {
             Picker(selection: choice) {
                 ForEach(CompatibilityModeChoice.options(current: row.compatibilityMode), id: \.self) { choice in
                     CompatibilityChoiceLabel(localizer: localizer, choice: choice).tag(choice)
+                        .disabled(!choice.isSelectable)
                 }
             } label: {
                 Text(verbatim: localizer.string(AppsText.compatTitle))

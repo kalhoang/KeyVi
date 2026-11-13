@@ -11687,6 +11687,10 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
         current == .guidedTest ? choices + [.guidedTest] : choices
     }
 
+    /// PRD-R36: whether the user can pick this row. The guided test's result is a status row in the radio group
+    /// (shown selected, never selectable), so the pane offers no fourth non-automatic choice; "Tự động" removes it.
+    public var isSelectable: Bool { self != .guidedTest }
+
     /// PLT-R408: 5 ms between synthetic events.
     static let slowerPacingMicroseconds = 5_000
 
