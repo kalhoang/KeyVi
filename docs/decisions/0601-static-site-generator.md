@@ -67,6 +67,22 @@
 
 ## Consequences
 
-Hosting is undecided (spec 02 s.14). The output works on GitHub Pages, Cloudflare Pages or Netlify; only
-`static/_headers` is host-specific. The CI `site.yml` workflow should run `node site/test.mjs` and then
-`node site/build.mjs` (with `--strict` for releases).
+The output works on any static host; `static/_headers` holds the headers in the Cloudflare Pages and Netlify
+format, and [ADR 0602](0602-site-hosting-kalera-swarm.md) turns the same file into the nginx configuration of the
+container that serves the site on the Kalera Docker Swarm.
+
+Amendment, final review (2026-11-13):
+
+- `site.yml` runs `node site/test.mjs` and then the build, on pull requests and on `main`. The build is strict
+  (`--strict`) when the repository variable `SITE_STRICT` is `true`. The deployed image is built by
+  `.github/workflows/site-image.yml` on the branch `prod` only (ADR 0602), strict unless `SITE_STRICT` is
+  `false`; a non-strict build is a preview and always sends `X-Robots-Tag: noindex` (Pa, 2026-11-13: deploy a
+  preview with `SITE_STRICT=false` and `noindex` until the first public release).
+- `site/config.json` has a `banner` object (the QA-R38 and QA-R54 notice): when `enabled`, every page shows its
+  `vi` or `en` text and an optional HTTPS `link` at the top, as escaped text with no script. The rollback and
+  absence runbooks switch it on and off.
+- `site/config.json` has an `analytics` object (Pa, 2026-11-13, Q7): an empty `posthogKey` means no analytics
+  script at all; a key enables PostHog Cloud in cookieless mode on the website pages (never in the app, never on
+  release-notes pages), and the build adds exactly the PostHog hosts to the CSP. This replaces "Website
+  analytics: none" of decision 5 and ADR 0001 item 18 for builds that set a key; `/rieng-tu` describes whichever
+  state the build has.
