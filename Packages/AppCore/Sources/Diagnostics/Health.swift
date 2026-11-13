@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+
+public import AppModel
+public import Foundation
+internal import Synchronization
+
+/// Metadata-only health event (PLT-R1206).
+public struct HealthEvent: Sendable, Hashable, Codable {
+    public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
+        case tapTimeout, tapDisabledByUserInput, tapReenabled, watchdogTrip, flush, fallbackActivated,
+            axCircuitBreakerTrip, echoLoss, postingBroken, permissionTransition, secureInputEpisode,
+            ruleLoadError, ruleTie, placeholderResidue, pasteRestoreSkipped, generationDiscard,
+            settingsRecovered, settingsNewerSchema, safeModeEntered
+    }
+
+    public enum Detail: Sendable, Hashable, Codable {
+        case count(Int)
+        case durationMicroseconds(UInt64)
+        case permission(PermissionKind, from: PermissionState, to: PermissionState)
+        case fallback(from: InjectionStrategy, to: InjectionStrategy)
+        case secureInput(holder: BundleKey?, holderKind: SecureInputHolder.Kind?, durationMilliseconds: UInt64)
+        case failOpen(FailOpenReason)
+    }
+
+    public var kind: Kind
+    public var at: Date
+    public var bundle: BundleKey?
+    public var rule: RuleID?
+    public var detail: Detail?
+
+    public init(kind: Kind, at: Date, bundle: BundleKey? = nil, rule: RuleID? = nil, detail: Detail? = nil) {
+        self.kind = kind
+        self.at = at
+        self.bundle = bundle
+        self.rule = rule
+        self.detail = detail
+    }
+}
+
+/// In-memory ring of recent health events (the report shows the last 50, PLT-R1202), mirrored to the log
+/// file so events from before a crash remain explainable (PRD-R46). Not used on the tap thread.
+/// Implemented in the skeleton (docs/decisions/0313-testability-seams.md); W1-A adds the log-file mirror.
+public final class HealthEventLog: Sendable {
+    private struct Ring {
+        var events: [HealthEvent] = []
+        var next = 0
+    }
+
+    private let capacity: Int
+    private let ring = Mutex(Ring())
+
+    public init(capacity: Int = 256) {
+        precondition(capacity > 0)
+        self.capacity = capacity
+    }
+
+    public func record(_ event: HealthEvent) {
+        ring.withLock { ring in
+            if ring.events.count < capacity {
+                ring.events.append(event)
+            } else {
+                ring.events[ring.next] = event
+            }
+            ring.next = (ring.next + 1) % capacity
+        }
+    }
+
+    /// Newest last, at most `limit` events.
+    public func recent(limit: Int) -> [HealthEvent] {
+        ring.withLock { ring in
+            let ordered =
+                ring.events.count < capacity
+                ? ring.events : Array(ring.events[ring.next...] + ring.events[..<ring.next])
+            return Array(ordered.suffix(max(0, limit)))
+        }
+    }
+
+    /// Count of events of `kind` within `window` before `now` (PLT-R330 "more than 3 within 10 minutes").
+    public func count(of kind: HealthEvent.Kind, within window: TimeInterval, now: Date) -> Int {
+        let start = now.addingTimeInterval(-window)
+        return ring.withLock { ring in
+            ring.events.reduce(0) { $0 + ($1.kind == kind && $1.at >= start && $1.at <= now ? 1 : 0) }
+        }
+    }
+}

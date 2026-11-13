@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "_comment": "PLT-R704, PRD-R64. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint).",
+  "entries": []
+}

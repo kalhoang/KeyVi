@@ -1,0 +1,45 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "common.back" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Quay lại" } }
+      }
+    },
+    "common.continue" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tiếp tục" } }
+      }
+    },
+    "common.skip" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bỏ qua" } }
+      }
+    },
+    "menu.quit" : {
+      "comment" : "PRD-R11 item 8. %@ is the app name.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit %@" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thoát %@" } }
+      }
+    },
+    "skeleton.statusItem.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the menu bar icon in the development skeleton (PRD-R10 style). %@ is the app name.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@: typing is not active yet" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "%@: bộ gõ chưa hoạt động" } }
+      }
+    },
+    "skeleton.statusLine" : {
+      "comment" : "Status line of the development skeleton menu (PRD-R11 item 1). No placeholder.",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Development build: typing is not active yet." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bản dựng thử nghiệm: bộ gõ chưa hoạt động." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compat/schema/scenario.schema.json",
+  "title": "Compatibility scenario (compat/scenarios/<id>.json)",
+  "description": "PLT-R530. Executed by compat-harness on the self-hosted runner only. Twin of TestSupport/Scenario/Scenario.swift. License: LicenseRef-App-Pending.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "targetBundleId", "setup", "keys", "timing", "method", "expect", "readback"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" },
+    "targetBundleId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$" },
+    "setup": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action"],
+        "properties": {
+          "action": { "enum": ["launch", "openURL", "seedHistory", "focusField", "selectInputSource", "setSecureInput", "wait"] },
+          "value": { "type": "string" }
+        }
+      }
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^([a-z0-9]|space|return|tab|backspace|escape|left|right|up|down|shift|control|option|command|comma|period|semicolon|slash|minus|equal|quote|leftBracket|rightBracket|[a-z]+\\+[a-z0-9]+)$" }
+    },
+    "timing": { "enum": ["normal", "fast", "burst"] },
+    "method": { "enum": ["telex", "vni"] },
+    "layout": { "type": "string" },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "text": { "type": "string" },
+        "paused": { "type": "boolean" },
+        "holderBundleId": { "type": "string" },
+        "firstKeyAfterReleaseComposed": { "type": "boolean" }
+      }
+    },
+    "readback": { "enum": ["ax", "webdriver", "terminalCapture", "human"] }
+  }
+}

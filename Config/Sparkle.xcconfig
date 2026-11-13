@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+// Sparkle 2 settings (PLT-R1101, PLT-R1102, docs/decisions/0304-sparkle-version-pin.md).
+// `//` starts a comment in xcconfig files, hence the `$()` in the URL.
+SPARKLE_FEED_URL = https:/$()/$(APP_SITE_HOST)/appcast.xml
+// EdDSA public key generated on Pa's Mac with Sparkle's `generate_keys` (QA-R32, QA-R33). VERIFY: fill in
+// before the first public build; it never changes afterwards except through the rotation runbook.
+SPARKLE_PUBLIC_ED_KEY =

@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+#include "Brand.xcconfig"
+#include "Signing.xcconfig"
+#include "Sparkle.xcconfig"
+
+// PLT-R751: development builds use the .dev bundle ID and Apple Development signing so TCC grants never
+// collide with release grants.
+APP_BUNDLE_ID = $(APP_BUNDLE_ID_DEV)
+CODE_SIGN_IDENTITY = $(CODE_SIGN_IDENTITY_DEV)
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
+ONLY_ACTIVE_ARCH = YES
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+ENABLE_TESTABILITY = YES

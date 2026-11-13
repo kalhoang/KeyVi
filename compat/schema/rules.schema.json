@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compat/schema/rules.schema.json",
+  "title": "Compatibility rules (compat/rules.json, shipped as compat-rules.json)",
+  "description": "Schema version 1 of 02-platform.md section 5.4. Twin of Packages/AppCore/Sources/CompatRules/Schema.swift; CI validates the rules file against both. License: LicenseRef-App-Pending.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "rulesetVersion", "defaults", "bundleGroups", "conflictingInputApps", "secureInputHints", "rules"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "rulesetVersion": { "type": "string", "pattern": "^[0-9]{4}\\.[0-9]{1,2}\\.[0-9]+$" },
+    "defaults": { "$ref": "#/$defs/defaults" },
+    "bundleGroups": {
+      "type": "object",
+      "description": "Reserved names: terminals, webkitBrowsers (PLT-R510).",
+      "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
+      "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/bundleId" }, "uniqueItems": true }
+    },
+    "conflictingInputApps": { "type": "array", "items": { "$ref": "#/$defs/bundleId" }, "uniqueItems": true },
+    "secureInputHints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bundleId", "hintKey"],
+        "properties": {
+          "bundleId": { "$ref": "#/$defs/bundleId" },
+          "hintKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)+$" }
+        }
+      }
+    },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/shippedRule" } }
+  },
+  "$defs": {
+    "bundleId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$", "maxLength": 255 },
+    "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$", "maxLength": 128 },
+    "isoDate": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "strategy": { "enum": ["backspaceReplace", "selectReplace", "axReplace", "paste", "passThrough"] },
+    "engine": { "enum": ["electron", "chromium", "cef", "gecko", "jvm", "qt", "catalyst", "ios", "webkitBrowser", "native"] },
+    "defaultMode": { "enum": ["inherit", "vi", "en"] },
+    "requireTextFocus": { "enum": ["never", "whenKnown", "always", "byEngine"] },
+    "verifyReentry": { "enum": ["never", "whenReadable"] },
+    "delayUs": { "type": "integer", "minimum": 0, "maximum": 50000 },
+    "versionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)*" },
+        "max": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)*" }
+      }
+    },
+    "stringList": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1, "uniqueItems": true },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Section 4 keys plus the 5.4 extras. No key can request forward delete (PLT-R407).",
+      "properties": {
+        "unicodeChunk": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "interEventDelayUs": { "$ref": "#/$defs/delayUs" },
+        "postDeleteSettleUs": { "$ref": "#/$defs/delayUs" },
+        "firstEditDelayUs": { "$ref": "#/$defs/delayUs" },
+        "inlineCompletion": { "enum": ["none", "axSelection", "placeholder", "axSelectionThenPlaceholder"] },
+        "allowMultiCharEvents": { "type": "boolean" },
+        "allowSplit": { "type": "boolean" },
+        "longTextThreshold": { "type": "integer", "minimum": 1, "maximum": 4000 },
+        "restoreDelayMs": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "verifyAfterEdit": { "type": "boolean" }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "params", "fallback", "defaultMode", "requireTextFocus", "verifyReentry"],
+      "properties": {
+        "strategy": { "$ref": "#/$defs/strategy" },
+        "params": { "$ref": "#/$defs/params" },
+        "fallback": { "type": "array", "items": { "$ref": "#/$defs/strategy" } },
+        "defaultMode": { "$ref": "#/$defs/defaultMode" },
+        "requireTextFocus": { "$ref": "#/$defs/requireTextFocus" },
+        "verifyReentry": { "$ref": "#/$defs/verifyReentry" }
+      }
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bundleIds": { "type": "array", "items": { "$ref": "#/$defs/bundleId" }, "minItems": 1, "uniqueItems": true },
+        "bundleGroup": { "type": "string" },
+        "engines": { "type": "array", "items": { "$ref": "#/$defs/engine" }, "minItems": 1, "uniqueItems": true },
+        "appCategories": { "$ref": "#/$defs/stringList" },
+        "appVersion": { "$ref": "#/$defs/versionRange" },
+        "macOS": { "$ref": "#/$defs/versionRange" },
+        "ax": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "roles": { "$ref": "#/$defs/stringList" },
+            "subroles": { "$ref": "#/$defs/stringList" },
+            "identifiers": { "$ref": "#/$defs/stringList" },
+            "domClasses": { "$ref": "#/$defs/stringList" },
+            "ancestorRoles": { "$ref": "#/$defs/stringList" },
+            "editable": { "type": "boolean" }
+          }
+        },
+        "web": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "urlPrefixes": { "type": "array", "items": { "type": "string", "pattern": "^https?://" }, "minItems": 1 } }
+        },
+        "titlePattern": { "type": "string", "maxLength": 200 }
+      },
+      "dependentRequired": { "titlePattern": ["bundleIds"] }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "autoCapitalize": { "type": "boolean" },
+        "macros": { "type": "boolean" },
+        "englishRestore": { "type": "boolean" },
+        "restoreHotkey": { "type": "boolean" }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "$ref": "#/$defs/strategy" },
+        "params": { "$ref": "#/$defs/params" },
+        "fallback": { "type": "array", "items": { "$ref": "#/$defs/strategy" } },
+        "defaultMode": { "$ref": "#/$defs/defaultMode" },
+        "requireTextFocus": { "$ref": "#/$defs/requireTextFocus" },
+        "verifyReentry": { "$ref": "#/$defs/verifyReentry", "description": "Per-rule value required by PLT-R342; not in the 5.4 field table." },
+        "axEnable": { "enum": ["none", "manual"] },
+        "overlay": { "type": "boolean" },
+        "requiresUserOptIn": { "type": "boolean" },
+        "engineContext": { "enum": ["general", "code"] },
+        "features": { "$ref": "#/$defs/features" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "evidence", "tested", "addedIn", "reviewBy"],
+      "properties": {
+        "reason": { "type": "string", "minLength": 10 },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "ref"],
+            "properties": { "type": { "type": "string" }, "ref": { "type": "string" } }
+          }
+        },
+        "tested": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["app", "appVersion", "macOS", "date", "result"],
+            "properties": {
+              "app": { "type": "string" },
+              "appVersion": { "type": "string" },
+              "macOS": { "type": "string" },
+              "date": { "type": "string" },
+              "result": { "enum": ["pass", "fail"] }
+            }
+          },
+          "contains": { "type": "object", "properties": { "result": { "const": "pass" } } }
+        },
+        "notes": { "type": "string" },
+        "addedIn": { "type": "string" },
+        "reviewBy": { "$ref": "#/$defs/isoDate" }
+      }
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario", "automation"],
+      "properties": {
+        "scenario": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" },
+        "automation": { "enum": ["automated", "manual"] }
+      }
+    },
+    "shippedRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "summary", "match", "action", "provenance", "test"],
+      "properties": {
+        "id": { "$ref": "#/$defs/ruleId" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "match": { "$ref": "#/$defs/match" },
+        "action": { "$ref": "#/$defs/action" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "test": { "$ref": "#/$defs/test" }
+      }
+    },
+    "userOverrideRule": {
+      "description": "rule-overrides.json entries (PLT-R522, PLT-R1205): same rule shape, id prefixed user., provenance from the guided test, no titlePattern (PLT-R502).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "summary", "match", "action"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^user\\.[A-Za-z0-9_.-]+$" },
+        "summary": { "type": "string" },
+        "match": { "allOf": [{ "$ref": "#/$defs/match" }, { "not": { "required": ["titlePattern"] } }] },
+        "action": { "$ref": "#/$defs/action" },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "date"],
+          "properties": {
+            "source": { "const": "user-suggestion" },
+            "appVersion": { "type": "string" },
+            "macOS": { "type": "string" },
+            "date": { "$ref": "#/$defs/isoDate" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Secure Event Input (PLT-R395-R398C, P0-1). Only two pause signals exist: the OS secure-input state and an
+// `AXSecureTextField` focus (PLT-R398A). No heuristics.
+
+public import AppModel
+public import Foundation
+public import RealtimeSupport
+
+/// Production (`SystemSecureInputProbe`): `IsSecureEventInputEnabled()` (Carbon); holder via
+/// `IORegistryEntryCreateCFProperty(IORegistryGetRootEntry(kIOMainPortDefault), "IOConsoleUsers", ...)`,
+/// selecting the entry of the current console session and reading `kCGSSessionSecureInputPID`.
+/// Never calls `EnableSecureEventInput` (PLT-R398).
+public protocol SecureInputProbe: Sendable {
+    func isSecureEventInputEnabled() -> Bool
+    func secureInputHolderPID() -> Int32?
+}
+
+public struct SystemSecureInputProbe: SecureInputProbe {
+    public init() {}
+    public func isSecureEventInputEnabled() -> Bool { unimplemented() }
+    public func secureInputHolderPID() -> Int32? { unimplemented() }
+}
+
+/// Identity of a process for focus, holder naming and conflict detection.
+public struct ProcessIdentity: Sendable, Hashable {
+    public var pid: Int32
+    /// Bundle ID, or SHA-256 of the executable path for bundle-less processes (PLT-R393).
+    public var bundle: BundleKey
+    public var bundleURL: URL?
+    public var shortVersion: String?  // CFBundleShortVersionString
+    public var buildVersion: String?  // CFBundleVersion (fingerprint cache key)
+    public var appCategory: String?  // LSApplicationCategoryType
+    public var localizedName: String?
+    /// `proc_name`, used to recognise `loginwindow` without a bundle-ID literal (PLT-R396, PLT-R501).
+    public var processName: String
+
+    public init(
+        pid: Int32, bundle: BundleKey, bundleURL: URL?, shortVersion: String?, buildVersion: String?,
+        appCategory: String?, localizedName: String?, processName: String
+    ) {
+        self.pid = pid
+        self.bundle = bundle
+        self.bundleURL = bundleURL
+        self.shortVersion = shortVersion
+        self.buildVersion = buildVersion
+        self.appCategory = appCategory
+        self.localizedName = localizedName
+        self.processName = processName
+    }
+}
+
+/// Production: `NSRunningApplication(processIdentifier:)`, `proc_pidpath`, `proc_name`, `Bundle(url:)`.
+public protocol ProcessIdentityProvider: Sendable {
+    func identity(of pid: Int32) -> ProcessIdentity?
+    func isAlive(_ pid: Int32) -> Bool  // kill(pid, 0) != ESRCH
+    func runningApplications() -> [ProcessIdentity]
+}
+
+/// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a
+/// `SecureInputSnapshot` and names the likely holder with the data-driven hint key (PLT-R396, PLT-R397).
+///
+/// Episodes and generations: the generation changes on every OS transition, so the tap's "resumed by key"
+/// evidence (PLT-R398B) stays valid while the OS flag is stuck. `keyEvidence(generation:)` ENDS episode N: the
+/// next poll that still sees the OS flag on starts a new episode with a new generation even though no "off" was
+/// observed in between (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
+public final class SecureInputMonitor: Sendable {
+    public static let pollInterval: Duration = .seconds(2)
+
+    public init(
+        probe: any SecureInputProbe, processes: any ProcessIdentityProvider,
+        hintKey: @escaping @Sendable (BundleKey) -> String?, scheduler: any TimerScheduler,
+        publish: @escaping @Sendable (SecureInputSnapshot) -> Void
+    ) { unimplemented() }
+
+    public func start() { unimplemented() }
+    public func stop() { unimplemented() }
+    /// Synchronous poll (menu open, PLT-R395).
+    public func pollNow() -> SecureInputSnapshot { unimplemented() }
+    /// The tap processed a key while paused for secure input (PLT-R398B): records the episode end; the state
+    /// stays "resumed" for this generation until the next poll (see the type comment).
+    public func keyEvidence(generation: UInt64) { unimplemented() }
+}
