@@ -168,7 +168,7 @@ public final class InputHostController {
         self.init(
             dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
-            loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.runningMacOSVersion,
+            loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
             runsWorkerThread: true)
     }
 

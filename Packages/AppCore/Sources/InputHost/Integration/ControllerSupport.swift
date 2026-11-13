@@ -3,7 +3,7 @@
 // Small Sendable helpers of `InputHostController`: the rule set shared with the utility-queue secure-input
 // monitor, the coalesced main-thread refresh, and the constants the controller starts from. Workstream W2-A.
 
-internal import AppModel
+public import AppModel
 internal import CompatRules
 internal import Foundation
 internal import Injection
@@ -57,7 +57,8 @@ extension InputHostController {
             macrosInEnglishMode: false, rememberPerApp: true)
     }
 
-    nonisolated static var runningMacOSVersion: LooseVersion {
+    /// The running macOS as a `LooseVersion` (pane names and deep links, PRD-R64; focus matching, PLT-R520).
+    public nonisolated static var macOSVersion: LooseVersion {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return LooseVersion("\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)")
             ?? LooseVersion("15.0")!
