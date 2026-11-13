@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Hotkey recorder of the Settings window (PRD-R15, PRD-R16, PRD-R18). While recording, a local event monitor
-// takes the window's key events (they never reach a button) and the tap's hotkeys are suspended (ADR 0305).
+// Hotkey recorder of the Settings window (PRD-R15, PRD-R16, PRD-R18). The capture lifecycle (key monitor, tap
+// hotkey suspension, ADR 0305) lives in ShellCore's HotkeyCaptureController; this file adapts it to the views and
+// supplies the NSEvent local monitor.
 
 import AppKit
 import AppModel
@@ -9,14 +10,10 @@ import InputHost
 import ShellCore
 
 extension SettingsWindowModel {
+    var recorder: HotkeyRecorderSession? { capture.session }
+
     /// The role being recorded right now (a finished or rejected session stays on screen but is not recording).
-    var recordingRole: HotkeyRole? {
-        guard let recorder else { return nil }
-        switch recorder.state {
-        case .idle, .recording: return recorder.role
-        case .finished, .rejected: return nil
-        }
-    }
+    var recordingRole: HotkeyRole? { capture.recordingRole }
 
     /// Line under the recorder: live keys, a rejection reason or the PRD-R16 conflict warning.
     func recorderStatus(for role: HotkeyRole) -> String? {
@@ -24,40 +21,26 @@ extension SettingsWindowModel {
         return HotkeyRecorderText.status(recorder.state, role: role, appName: appName, localizer: localizer)
     }
 
-    /// PRD-R16: a saved binding that macOS also uses keeps its warning while it is in use.
+    /// PRD-R16: a saved binding that macOS also uses keeps its warning while it is in use. Cached per store state.
     func conflictWarning(for role: HotkeyRole) -> String? {
-        let binding = role == .toggleMode ? settings.toggleHotkey : settings.restoreHotkey
-        guard let binding, let conflict = HotkeyRecorder.conflict(for: binding, layout: readLayout()) else {
-            return nil
+        capture.savedConflict(for: role).map {
+            HotkeyRecorderText.conflictMessage($0, appName: appName, localizer: localizer)
         }
-        return HotkeyRecorderText.conflictMessage(conflict, appName: appName, localizer: localizer)
     }
 
     var conflictHelpURL: URL? { HotkeyRecorderText.helpURL(siteHost: brand.siteHost, localizer: localizer) }
 
     func hasConflict(for role: HotkeyRole) -> Bool {
         if let recorder, recorder.role == role, case .finished(_, _?) = recorder.state { return true }
-        return conflictWarning(for: role) != nil
+        return capture.savedConflict(for: role) != nil
     }
 
-    func startRecording(_ role: HotkeyRole) {
-        cancelRecording()
-        recorder = HotkeyRecorderSession(role: role, layout: readLayout())
-        actions?.setHotkeyRecorderActive(true)
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) {
-            [weak self] event in
-            MainActor.assumeIsolated { self?.record(event) }
-            return nil
-        }
-    }
+    func startRecording(_ role: HotkeyRole) { capture.start(role) }
 
-    func cancelRecording() {
-        let wasCapturing = keyMonitor != nil
-        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
-        keyMonitor = nil
-        recorder = nil
-        if wasCapturing { actions?.setHotkeyRecorderActive(false) }
-    }
+    func cancelRecording() { capture.cancel() }
+
+    /// The window resigned key (another app or window took the keyboard): stop swallowing its keys.
+    func interruptRecording() { capture.interrupt() }
 
     func useDefaultToggle() {
         cancelRecording()
@@ -70,27 +53,33 @@ extension SettingsWindowModel {
         edit(.restoreHotkey(binding))
     }
 
-    private func record(_ event: NSEvent) {
-        guard var session = recorder, let input = Self.recorderEvent(event) else { return }
-        let state = session.handle(input)
-        recorder = session
-        switch state {
-        case .finished(let binding, _):
-            let role = session.role
-            stopMonitoring()
-            edit(role == .toggleMode ? .toggleHotkey(binding) : .restoreHotkey(binding))
-        case .rejected:
-            stopMonitoring()
-        case .idle, .recording:
-            break
+    func saveRecorded(_ binding: HotkeyBinding, for role: HotkeyRole) {
+        edit(role == .toggleMode ? .toggleHotkey(binding) : .restoreHotkey(binding))
+    }
+
+    func refreshSavedConflicts() {
+        capture.refreshSavedConflicts(toggle: settings.toggleHotkey, restore: settings.restoreHotkey)
+    }
+}
+
+/// While recording, takes every key event of the app's windows so none reaches a button or field (ADR 0305).
+@MainActor
+final class LocalKeyMonitor: RecorderKeyMonitoring {
+    private var token: Any?
+
+    func install(_ handler: @escaping @MainActor (RecorderKeyEvent) -> Void) {
+        remove()
+        token = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
+            MainActor.assumeIsolated {
+                if let input = Self.recorderEvent(event) { handler(input) }
+            }
+            return nil
         }
     }
 
-    /// Ends capturing but keeps the finished state on screen (warning or rejection reason).
-    private func stopMonitoring() {
-        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
-        keyMonitor = nil
-        actions?.setHotkeyRecorderActive(false)
+    func remove() {
+        if let token { NSEvent.removeMonitor(token) }
+        token = nil
     }
 
     static func recorderEvent(_ event: NSEvent) -> RecorderKeyEvent? {

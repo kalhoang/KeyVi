@@ -39,7 +39,7 @@ struct AppsTable: View {
     var body: some View {
         let localizer = model.localizer
         Table(rows, selection: $selection) {
-            TableColumn(localizer.string(AppsText.columnApp)) { row in AppNameCell(row: row) }
+            TableColumn(localizer.string(AppsText.columnApp)) { row in AppNameCell(model: model, row: row) }
                 .width(min: 150, ideal: 200)
             TableColumn(localizer.string(AppsText.columnRule)) { row in RulePicker(model: model, row: row) }
                 .width(min: 130, ideal: 150)
@@ -69,14 +69,15 @@ struct AppsTable: View {
 }
 
 struct AppNameCell: View {
+    let model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
         HStack(spacing: 6) {
-            if let icon = AppIdentity.icon(for: row.bundle) {
+            if let icon = model.appIdentities.icon(for: row.bundle) {
                 Image(nsImage: icon).resizable().frame(width: 18, height: 18).accessibilityHidden(true)
             }
-            Text(verbatim: AppIdentity.name(for: row.bundle, matrixName: row.matrixDisplayName)).lineLimit(1)
+            Text(verbatim: model.appName(of: row)).lineLimit(1)
         }
     }
 }
@@ -98,7 +99,7 @@ struct RulePicker: View {
         .settingsAccessibility(
             AppsControl.rowRule, localizer,
             label: localizer.accessibilityLabel(AppsControl.rowRule) + ": "
-                + AppIdentity.name(for: row.bundle, matrixName: row.matrixDisplayName))
+                + model.appName(of: row))
     }
 }
 
@@ -122,7 +123,7 @@ struct AppRowActions: View {
 
     var body: some View {
         let localizer = model.localizer
-        let name = AppIdentity.name(for: row.bundle, matrixName: row.matrixDisplayName)
+        let name = model.appName(of: row)
         HStack(spacing: 6) {
             Button(action: { model.showDetail(row) }) { Text(verbatim: localizer.string(AppsText.details)) }
                 .settingsAccessibility(
@@ -150,7 +151,7 @@ struct AppDetailSheet: View {
         if let detail = model.appDetail {
             let row = detail.row
             VStack(alignment: .leading, spacing: 12) {
-                PaneHeading(text: AppIdentity.name(for: row.bundle, matrixName: row.matrixDisplayName))
+                PaneHeading(text: model.appName(of: row))
                 Text(verbatim: localizer.format(AppsText.detailBundle, row.bundle.rawValue)).font(.callout)
                     .textSelection(.enabled)
                 StatusCell(localizer: localizer, status: row.status)

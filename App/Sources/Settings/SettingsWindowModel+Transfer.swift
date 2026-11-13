@@ -63,7 +63,7 @@ extension SettingsWindowModel {
 
     private func writeExport(_ options: ExportOptions, now: Date, to url: URL, resume: ResetRequest?) async {
         do {
-            try FilePanels.write(try await commands.export(options, now: now), to: url)
+            try await FilePanels.writeOffMain(try await commands.export(options, now: now), to: url)
             if var resume {
                 resume.exportedFileName = url.lastPathComponent
                 resetRequest = resume
@@ -87,7 +87,7 @@ extension SettingsWindowModel {
     }
 
     private func previewImport(_ url: URL) async {
-        guard let data = FilePanels.read(url, maxBytes: 5 * 1024 * 1024 + 1) else {
+        guard let data = await FilePanels.readOffMain(url, maxBytes: ImportSummary.importByteLimit) else {
             importError = localizer.string(SettingsText.importErrorUnreadable)
             return
         }
@@ -123,6 +123,11 @@ extension SettingsWindowModel {
     var appRows: [AppsPaneRow] {
         AppsPaneModel.rows(
             appModes: state.appModes, overrides: state.ruleOverrides, matrix: matrix, today: SystemWallClock().now())
+    }
+
+    /// Name shown for a row (cached LaunchServices lookup, see AppIdentityCache).
+    func appName(of row: AppsPaneRow) -> String {
+        appIdentities.name(for: row.bundle, matrixName: row.matrixDisplayName)
     }
 
     func setRule(_ rule: PerAppRule, for bundle: BundleKey) {

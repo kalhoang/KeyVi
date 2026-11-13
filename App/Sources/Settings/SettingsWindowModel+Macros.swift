@@ -76,12 +76,14 @@ extension SettingsWindowModel {
     // MARK: Import and export (PRD-R32, PRD-R2)
 
     func chooseMacroFile() {
-        FilePanels.open(types: FilePanels.macroTypes) { [weak self] url in self?.openMacroFile(url) }
+        FilePanels.open(types: FilePanels.macroTypes) { [weak self] url in
+            Task { await self?.openMacroFile(url) }
+        }
     }
 
-    func openMacroFile(_ url: URL) {
+    func openMacroFile(_ url: URL) async {
         macroImportError = nil
-        guard let data = FilePanels.read(url, maxBytes: MacroImporter.maxFileBytes) else {
+        guard let data = await FilePanels.readOffMain(url, maxBytes: MacroImporter.maxFileBytes) else {
             macroImport = nil
             macroImportError = localizer.string(MacrosText.importUnreadable)
             return
@@ -112,13 +114,16 @@ extension SettingsWindowModel {
         let name = MacroExport.fileName(slug: brand.slug, date: Date())
         let macros = macroList.macros
         FilePanels.save(suggestedName: name) { [weak self] url in
-            guard let self else { return }
-            do {
-                try FilePanels.write(try MacroExport.data(macros), to: url)
-                statusMessage = localizer.format(SettingsText.exportDone, url.lastPathComponent)
-            } catch {
-                statusMessage = localizer.string(MacrosText.exportFailed)
-            }
+            Task { await self?.writeMacroExport(macros, to: url) }
+        }
+    }
+
+    private func writeMacroExport(_ macros: [StoredMacro], to url: URL) async {
+        do {
+            try await FilePanels.writeOffMain(try MacroExport.data(macros), to: url)
+            statusMessage = localizer.format(SettingsText.exportDone, url.lastPathComponent)
+        } catch {
+            statusMessage = localizer.string(MacrosText.exportFailed)
         }
     }
 }

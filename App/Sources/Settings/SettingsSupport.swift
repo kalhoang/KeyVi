@@ -40,36 +40,56 @@ enum FilePanels {
         }
     }
 
-    /// Reads at most `maxBytes + 1` bytes, so the importer can tell an oversized file from a full one.
-    nonisolated static func read(_ url: URL, maxBytes: Int) -> Data? {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
-        defer { try? handle.close() }
-        return try? handle.read(upToCount: maxBytes + 1) ?? Data()
+    /// Reads at most `maxBytes + 1` bytes off the main thread (a slow or network volume never freezes the window),
+    /// so the importer can tell an oversized file from a full one.
+    nonisolated static func readOffMain(_ url: URL, maxBytes: Int) async -> Data? {
+        await Task.detached(priority: .userInitiated) {
+            guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+            defer { try? handle.close() }
+            return try? handle.read(upToCount: maxBytes + 1) ?? Data()
+        }.value
     }
 
-    nonisolated static func write(_ data: Data, to url: URL) throws {
-        try data.write(to: url, options: [.atomic])
+    nonisolated static func writeOffMain(_ data: Data, to url: URL) async throws {
+        try await Task.detached(priority: .userInitiated) { try data.write(to: url, options: [.atomic]) }.value
     }
 }
 
-/// Installed app name and icon for a bundle key (bundle IDs come from the user's own data, PLT-R501).
+/// Installed app name and icon for a bundle key (bundle IDs come from the user's own data, PLT-R501). Each bundle
+/// is resolved through LaunchServices once and then served from memory, so Table rows never hit NSWorkspace on a
+/// re-render; the window clears the cache when it is shown, which picks up apps installed or removed meanwhile.
 @MainActor
-enum AppIdentity {
-    static func url(for bundle: BundleKey) -> URL? {
-        guard !bundle.isExecutableHash else { return nil }
-        return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle.rawValue)
+final class AppIdentityCache {
+    private struct Entry {
+        let installedName: String?
+        let icon: NSImage?
     }
+
+    private var entries: [BundleKey: Entry] = [:]
 
     /// The installed app's display name, else the matrix name, else the bundle key itself.
-    static func name(for bundle: BundleKey, matrixName: String?) -> String {
-        if let url = url(for: bundle) {
-            let name = FileManager.default.displayName(atPath: url.path)
-            return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
-        }
-        return matrixName ?? bundle.rawValue
+    func name(for bundle: BundleKey, matrixName: String?) -> String {
+        entry(for: bundle).installedName ?? matrixName ?? bundle.rawValue
     }
 
-    static func icon(for bundle: BundleKey) -> NSImage? {
-        url(for: bundle).map { NSWorkspace.shared.icon(forFile: $0.path) }
+    func icon(for bundle: BundleKey) -> NSImage? { entry(for: bundle).icon }
+
+    func removeAll() { entries.removeAll() }
+
+    private func entry(for bundle: BundleKey) -> Entry {
+        if let cached = entries[bundle] { return cached }
+        let resolved = Self.resolve(bundle)
+        entries[bundle] = resolved
+        return resolved
+    }
+
+    private static func resolve(_ bundle: BundleKey) -> Entry {
+        guard !bundle.isExecutableHash,
+            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle.rawValue)
+        else { return Entry(installedName: nil, icon: nil) }
+        let name = FileManager.default.displayName(atPath: url.path)
+        return Entry(
+            installedName: name.hasSuffix(".app") ? String(name.dropLast(4)) : name,
+            icon: NSWorkspace.shared.icon(forFile: url.path))
     }
 }

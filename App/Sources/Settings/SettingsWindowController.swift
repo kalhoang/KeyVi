@@ -104,6 +104,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         model.cancelRecording()
     }
 
+    /// ADR 0305, PRD-R67: once another app or window takes the keyboard, the recorder stops swallowing keys and
+    /// the tap's hotkeys work again.
+    func windowDidResignKey(_ notification: Notification) {
+        model.interruptRecording()
+    }
+
     private func present() {
         Task { await model.refresh() }
         showWindow(nil)

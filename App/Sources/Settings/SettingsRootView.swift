@@ -13,7 +13,7 @@ struct SettingsRootView: View {
     var body: some View {
         let localizer = model.localizer
         VStack(alignment: .leading, spacing: 0) {
-            Picker(selection: $model.selectedPane) {
+            Picker(selection: Binding(get: { model.selectedPane }, set: { model.select($0) })) {
                 ForEach(SettingsPaneKind.allCases, id: \.self) { pane in
                     Text(verbatim: localizer.string(pane.title)).tag(pane)
                 }
@@ -41,7 +41,6 @@ struct SettingsRootView: View {
             minWidth: SettingsWindowController.minimumSize.width, minHeight: SettingsWindowController.minimumSize.height
         )
         .modifier(SettingsSheets(model: model))
-        .onChange(of: model.selectedPane) { model.statusMessage = nil }
     }
 
     @ViewBuilder private var pane: some View {

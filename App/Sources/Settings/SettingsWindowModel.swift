@@ -16,7 +16,7 @@ import ShellCore
 @Observable
 final class SettingsWindowModel {
     private(set) var state = SettingsState()
-    var selectedPane: SettingsPaneKind = .general
+    private(set) var selectedPane: SettingsPaneKind = .general
     private(set) var advancedExpanded: Set<SettingsPaneKind> = []
     private(set) var loginItem: LoginItemPresentation
     /// Short confirmation or error line under the current pane ("Đã lưu ...").
@@ -40,11 +40,12 @@ final class SettingsWindowModel {
 
     // Panes
     var macroList = MacroListState(macros: [])
-    var recorder: HotkeyRecorderSession?
     var practiceText = ""
     var keepAsTypedDraft = ""
     var keepVietnameseDraft = ""
     var wordListError: [UserWordList: String] = [:]
+    /// Enabled input sources, read when the window is shown (not per render, PLT-R373).
+    private(set) var enabledInputSources: [InputSourceInfo] = []
 
     let brand: Brand
     let language: InterfaceLanguageModel
@@ -54,9 +55,10 @@ final class SettingsWindowModel {
     @ObservationIgnored let loginService: any LoginItemService
     @ObservationIgnored let disclosures: AdvancedDisclosureMemory
     @ObservationIgnored let readInputSources: @MainActor () -> [InputSourceInfo]
-    @ObservationIgnored let readLayout: @MainActor () -> LayoutTable?
+    /// Recorder capture lifecycle (ADR 0305): monitor and tap hotkey suspension end with the recording.
+    @ObservationIgnored let capture: HotkeyCaptureController
     @ObservationIgnored weak var actions: (any SettingsActions)?
-    @ObservationIgnored var keyMonitor: Any?
+    @ObservationIgnored let appIdentities = AppIdentityCache()
 
     init(
         commands: SettingsCommands, language: InterfaceLanguageModel, updater: any UpdaterControlling,
@@ -71,10 +73,16 @@ final class SettingsWindowModel {
         self.brand = brand
         self.matrix = matrix
         readInputSources = inputSources
-        readLayout = layout
         self.disclosures = disclosures
         self.loginItem = LoginItemPresentation(status: loginItem.status)
         advancedExpanded = Set(SettingsPaneKind.allCases.filter(disclosures.isExpanded))
+        let relay = CaptureRelay()
+        capture = HotkeyCaptureController(
+            monitor: LocalKeyMonitor(),
+            setHotkeysSuspended: { relay.model?.actions?.setHotkeyRecorderActive($0) },
+            onFinished: { relay.model?.saveRecorded($1, for: $0) }, readLayout: layout)
+        relay.model = self
+        refreshSavedConflicts()
     }
 
     var localizer: Localizer { language.localizer }
@@ -85,6 +93,8 @@ final class SettingsWindowModel {
 
     /// Fetches the store's state (on show) and the login item status (it can change in System Settings).
     func refresh() async {
+        enabledInputSources = readInputSources()
+        appIdentities.removeAll()
         apply(await commands.state())
         loginItem = LoginItemPresentation(status: loginService.status)
     }
@@ -94,10 +104,17 @@ final class SettingsWindowModel {
         guard newState.generation >= state.generation, newState != state else { return }
         state = newState
         macroList.replace(with: newState.macros)
+        refreshSavedConflicts()
         language.select(newState.effective.interfaceLanguage)  // PRD-R63
     }
 
-    func select(_ pane: SettingsPaneKind) { selectedPane = pane }
+    /// Switching pane hides the recorder, so it also ends any capture (ADR 0305) and clears the status line.
+    func select(_ pane: SettingsPaneKind) {
+        guard pane != selectedPane else { return }
+        cancelRecording()
+        statusMessage = nil
+        selectedPane = pane
+    }
 
     // MARK: - Settings
 
@@ -118,8 +135,14 @@ final class SettingsWindowModel {
 
     // MARK: - Login item (D17)
 
+    /// SMAppService register / unregister runs off the main thread; the toggle shows the result when it returns.
     func setOpenAtLogin(_ enabled: Bool) {
-        loginItem = LoginItemControl.set(enabled, service: loginService)
+        let service = loginService
+        Task {
+            loginItem = await Task.detached(priority: .userInitiated) {
+                LoginItemControl.set(enabled, service: service)
+            }.value
+        }
     }
 
     func openLoginItemsSettings() { loginService.openSystemSettings() }
@@ -146,7 +169,7 @@ final class SettingsWindowModel {
     // MARK: - Layout binding (PLT-R373)
 
     var layoutBinding: LayoutBindingModel {
-        LayoutBindingModel(binding: settings.layoutBinding, enabledSources: readInputSources())
+        LayoutBindingModel(binding: settings.layoutBinding, enabledSources: enabledInputSources)
     }
 
     // MARK: - Notices (PLT-R1006, PLT-R1007, PLT-R1009)
@@ -177,4 +200,10 @@ final class SettingsWindowModel {
     func reopenOnboarding() { actions?.reopenOnboarding() }
 
     func open(_ url: URL) { NSWorkspace.shared.open(url) }
+}
+
+/// Lets the capture controller's closures reach the model without a retain cycle (the model owns the controller).
+@MainActor
+private final class CaptureRelay {
+    weak var model: SettingsWindowModel?
 }
