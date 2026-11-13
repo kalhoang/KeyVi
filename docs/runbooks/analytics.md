@@ -75,6 +75,7 @@ The shared Traefik (`traefik2` stack, network `traefik_public`) runs the v3 **Sw
 
 ## 6. Changing what is collected
 
+- What the tracker sends for each page view: the page address and the page title, the host name, the referring page, the screen size and the browser language. `/rieng-tu` lists the same fields (PRD-R74); `site/test.mjs` checks the page title is named there.
 - The tag on the website is built only by `site/lib/analytics.mjs` (the attributes `data-website-id`, `data-domains` with the site host, `data-do-not-track="true"`). Any new attribute that collects more (for example `data-performance` or `data-errors`) needs a decision record and a `/rieng-tu` update in the same pull request (QA-R60).
 - Turning analytics off: remove `analytics` from `site/config.json` and deploy the website; the CSP and the privacy page follow.
 - Deleting the collected data: Umami, Settings, Websites, {{AppName}}, Data, Reset (irreversible; take a dump first if the numbers may be needed).

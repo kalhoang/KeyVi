@@ -652,8 +652,8 @@ try {
     assert.ok(notes.some((policy) => /^default-src 'none'/.test(policy) && !/script-src|stats\./.test(policy)), "the release-notes policy allows no script");
     const privacyVi = await readFile(join(out, "rieng-tu", "index.html"), "utf8");
     const privacyEn = await readFile(join(out, "en", "privacy", "index.html"), "utf8");
-    for (const needle of ["Umami", "tự vận hành", "không dùng cookie", "không lưu gì trong trình duyệt", "không thu thập dữ liệu cá nhân", "địa chỉ IP không được lưu", "Do Not Track", "lượt xem trang", `<code>${origin}</code>`]) assert.ok(privacyVi.includes(needle), `vi privacy: ${needle}`);
-    for (const needle of ["Umami", "self-hosted", "no cookies", "nothing is stored in your browser", "no personal data", "IP address is not stored", "Do Not Track", "page views", `<code>${origin}</code>`]) assert.ok(privacyEn.includes(needle), `en privacy: ${needle}`);
+    for (const needle of ["Umami", "tự vận hành", "không dùng cookie", "không lưu gì trong trình duyệt", "không thu thập dữ liệu cá nhân", "địa chỉ IP không được lưu", "Do Not Track", "lượt xem trang", "tiêu đề trang", `<code>${origin}</code>`]) assert.ok(privacyVi.includes(needle), `vi privacy: ${needle}`);
+    for (const needle of ["Umami", "self-hosted", "no cookies", "nothing is stored in your browser", "no personal data", "IP address is not stored", "Do Not Track", "page views", "the page title", `<code>${origin}</code>`]) assert.ok(privacyEn.includes(needle), `en privacy: ${needle}`);
     assert.ok(!/PostHog/.test(privacyVi + privacyEn), "PostHog is gone");
     assert.ok(!/Phân tích truy cập: không có/.test(privacyVi) && !/Visitor analytics: none/.test(privacyEn), "the privacy page states what ships");
   });
