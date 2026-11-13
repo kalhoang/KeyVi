@@ -15,7 +15,7 @@
 # for scheme://host and mailto:user@host references. Hosts that are XML namespace or DTD identifiers
 # (never contacted) are allowed separately in scripts/url-hosts.allow.
 #
-# The shipped compat-rules.json is skipped: its web.urlPrefixes matchers (PLT-R503) name the sites a rule
+# The shipped Contents/Resources/compat-rules.json is skipped: its web.urlPrefixes matchers (PLT-R503) name the sites a rule
 # applies to, which is data the app compares with the focused page, never a host it contacts. Every other
 # file, the binaries and Info.plist included, stays strictly checked.
 set -euo pipefail
@@ -26,8 +26,8 @@ Usage: scripts/check-url-hosts.sh [--allow FILE] [--list] PATH...
 
 PATH is an .app bundle, a binary or a directory. Fails when a URL host outside the allowlist
 appears (QA-R60). From scripts/brand.env, the site host, the host of APP_REPOSITORY_URL (github.com
-while empty) and the domain of APP_SUPPORT_EMAIL are always allowed. compat-rules.json is skipped:
-its URL prefixes are rule matchers, not endpoints.
+while empty) and the domain of APP_SUPPORT_EMAIL are always allowed. The bundle's
+Contents/Resources/compat-rules.json is skipped: its URL prefixes are rule matchers, not endpoints.
 
 Options:
   --allow FILE  allowlist (default scripts/url-hosts.allow): one host or *.suffix per line
@@ -55,6 +55,11 @@ done
 [[ ${#paths[@]} -gt 0 ]] || { usage >&2; exit 2; }
 require_cmd strings file
 
+# Data files whose URLs are matchers, not network endpoints (see the header): only the shipped copy at this
+# path inside the scanned bundle, so a file with the same name anywhere else is still checked.
+skipped_relative="Contents/Resources/compat-rules.json"
+skipped_paths=()
+
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 candidates="$workdir/files"
@@ -62,9 +67,12 @@ candidates="$workdir/files"
 for p in "${paths[@]}"; do
   [[ -e "$p" ]] || die "not found: $p"
   if [[ -d "$p" ]]; then
+    p="${p%/}"
+    skipped_paths+=("$p/$skipped_relative")
     find "$p" -type f \( -perm -u+x -o -name '*.plist' -o -name '*.strings' -o -name '*.dylib' \
       -o -name '*.json' -o -name '*.xcstrings' -o -name '*.loctable' \) -print >>"$candidates"
   else
+    [[ "$p" == */"$skipped_relative" ]] && skipped_paths+=("$p")
     printf '%s\n' "$p" >>"$candidates"
   fi
 done
@@ -82,13 +90,9 @@ dump_text() {
   esac
 }
 
-# Data files whose URLs are matchers, not network endpoints (see the header).
-skipped_names=(compat-rules.json)
-
 is_skipped() {
-  local name
-  name="$(basename "$1")"
-  for skipped in "${skipped_names[@]}"; do [[ "$name" == "$skipped" ]] && return 0; done
+  local skipped
+  for skipped in ${skipped_paths[@]+"${skipped_paths[@]}"}; do [[ "$1" == "$skipped" ]] && return 0; done
   return 1
 }
 

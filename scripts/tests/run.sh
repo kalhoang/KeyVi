@@ -157,7 +157,15 @@ printf '{"rules": [{"url": "https://docs.google.com/spreadsheets/"}]}\n' >"$T/u/
 expect 1 "the same host in any other file still fails" \
   env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
 contains "host outside compat-rules.json named" "docs.google.com"
-rm "$T/u/Test.app/Contents/Resources/other.json" "$T/u/Test.app/Contents/Resources/compat-rules.json"
+rm "$T/u/Test.app/Contents/Resources/other.json"
+mkdir -p "$T/u/Test.app/Contents/Resources/Extra"
+cp "$T/u/Test.app/Contents/Resources/compat-rules.json" "$T/u/Test.app/Contents/Resources/Extra/compat-rules.json"
+expect 1 "only the shipped Contents/Resources/compat-rules.json is skipped, not a namesake elsewhere" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app/"
+contains "namesake's host named" "docs.google.com"
+expect 1 "a namesake passed as a single file is checked" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app/Contents/Resources/Extra/compat-rules.json"
+rm -r "$T/u/Test.app/Contents/Resources/Extra" "$T/u/Test.app/Contents/Resources/compat-rules.json"
 # QA-R60: the repository host and the support mail domain come from brand.env, not the allowlist.
 cp "$T/brand.env" "$T/brand-repo.env"
 printf 'APP_REPOSITORY_URL="https://git.example.org/o/r"\nAPP_SUPPORT_EMAIL="help@mail.example.vn"\n' >>"$T/brand-repo.env"
