@@ -17,7 +17,16 @@ private let sanitizerLoaded = ["__tsan_init", "__asan_init"].contains { (symbol:
     dlsym(UnsafeMutableRawPointer(bitPattern: -2), symbol) != nil  // RTLD_DEFAULT
 }
 
-@Suite(.serialized, .enabled(if: !sanitizerLoaded, "timing is not meaningful under a sanitizer"))
+/// The same under Rosetta: CI runs the x86_64 slice translated on an Apple-silicon runner (PLT-R105, ADR 0315).
+private let translated: Bool = {
+    var value: Int32 = 0
+    var size = MemoryLayout<Int32>.size
+    return sysctlbyname("sysctl.proc_translated", &value, &size, nil, 0) == 0 && value == 1
+}()
+
+@Suite(
+    .serialized,
+    .enabled(if: !sanitizerLoaded && !translated, "timing is not meaningful under a sanitizer or under Rosetta"))
 struct QueueBenchmarkTests {
     private static let iterations = 100_000
     /// Per operation, debug build.

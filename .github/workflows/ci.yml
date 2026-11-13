@@ -202,6 +202,42 @@ jobs:
           if-no-files-found: ignore
           retention-days: 90
 
+  macos-x86_64:
+    name: AppCore tests for the x86_64 slice under Rosetta (PLT-R105)
+    # ADR 0315: Intel Macs are supported (macOS 12 to 26). There is no hosted Intel runner with Xcode 27, so the
+    # Apple-silicon runner builds the x86_64 slice of the AppCore suite and runs it through Rosetta 2.
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/select-xcode
+      - name: Rosetta 2 is available
+        # Preinstalled on the hosted arm64 images (VERIFY on the xcode-27 preview image); installed otherwise.
+        run: |
+          if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+            sudo softwareupdate --install-rosetta --agree-to-license
+          fi
+          test "$(arch -x86_64 /usr/bin/uname -m)" = x86_64
+      - name: Build the AppCore tests, x86_64 slice (PLT-R105, PLT-R106)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: swift build --package-path "$APPCORE" --arch x86_64 --build-tests --scratch-path .build/x86_64
+      - name: Run the AppCore tests under Rosetta
+        # The SwiftPM test helpers of Xcode 27 are arm64-only, so `swift test --arch x86_64` cannot load the
+        # bundles. The universal `xctest` runner, started as x86_64, runs every XCTest and Swift Testing test of
+        # a bundle and exits non-zero when one fails.
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: |
+          bin="$(swift build --package-path "$APPCORE" --arch x86_64 --scratch-path .build/x86_64 --show-bin-path)"
+          failed=0
+          for bundle in "$bin"/*.xctest; do
+            echo "::group::$(basename "$bundle")"
+            arch -x86_64 xcrun xctest "$bundle" || failed=1
+            echo "::endgroup::"
+          done
+          exit "$failed"
+
   benchmarks:
     name: macOS benchmarks (engine ENG-T40, pipeline PLT-R820)
     # QA-R14: the same runner class every time (the xcode-27 image with Xcode 27.2, ADR 0500 and 0506), in a job
@@ -271,6 +307,18 @@ jobs:
             -destination 'generic/platform=macOS' -derivedDataPath .build/DerivedData \
             -disableAutomaticPackageResolution \
             ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' build
+      - name: Both slices and the macOS 12.0 floor (PLT-R105, PLT-R106, ADR 0315)
+        if: steps.project.outputs.present == 'true'
+        run: |
+          app="$(find .build/DerivedData/Build/Products/Debug -maxdepth 1 -name '*.app' -type d | head -n1)"
+          test -n "$app"
+          plist="$app/Contents/Info.plist"
+          binary="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")"
+          for arch in arm64 x86_64; do
+            lipo "$binary" -verify_arch "$arch"
+            otool -arch "$arch" -l "$binary" | grep -A4 LC_BUILD_VERSION | grep -Eq 'minos 12\.0$'
+          done
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" = 12.0
       - name: URL host allowlist on the built app (QA-R60)
         if: steps.project.outputs.present == 'true'
         run: |
