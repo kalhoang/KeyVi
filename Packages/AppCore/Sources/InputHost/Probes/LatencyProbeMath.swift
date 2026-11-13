@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Latency probe arithmetic (PLT-R810, 02-platform.md 8.1 T2 and T4): pacing, sample correlation and
+// percentiles. Pure functions over synthetic timestamps, tested with `ManualClock`.
+
+internal import AppModel
+public import Diagnostics
+internal import Foundation
+internal import Injection
+public import RealtimeSupport
+
+/// One probe key: when the driver posted it and when the probe window last reported a text change before the
+/// next key (nil when the text did not change).
+public struct LatencyProbeSample: Sendable, Hashable {
+    public var posted: MonotonicInstant
+    public var changed: MonotonicInstant?
+
+    public init(posted: MonotonicInstant, changed: MonotonicInstant?) {
+        self.posted = posted
+        self.changed = changed
+    }
+
+    /// Text-change latency in nanoseconds.
+    public var latencyNanoseconds: UInt64? { changed.map { $0.nanoseconds(since: posted) } }
+}
+
+extension LatencyProbeResult.Profile {
+    /// PLT-R810 spacing between keys: normal 120 ms, fast 40 ms, burst 5 ms.
+    public var keyInterval: Duration {
+        switch self {
+        case .normal: .milliseconds(120)
+        case .fast: .milliseconds(40)
+        case .burst: .milliseconds(5)
+        }
+    }
+}
+
+enum LatencyProbeMath {
+    /// For key i, the last change in [posted(i), posted(i+1)); for the last key, in [posted, posted + settle].
+    /// An edit changes the text twice (deletion, insertion); the last change is the visible result (T4).
+    static func correlate(posted: [MonotonicInstant], changes: [MonotonicInstant], settle: Duration)
+        -> [LatencyProbeSample]
+    {
+        let sorted = changes.sorted()
+        return posted.indices.map { index in
+            let start = posted[index]
+            let end =
+                index + 1 < posted.count
+                ? posted[index + 1] : start.advanced(byMicroseconds: microseconds(settle))
+            let last = sorted.last { $0 >= start && $0 < end }
+            return LatencyProbeSample(posted: start, changed: last)
+        }
+    }
+
+    static func result(
+        profile: LatencyProbeResult.Profile, baseline: [LatencyProbeSample], measured: [LatencyProbeSample],
+        decideToPosted: HistogramSnapshot
+    ) -> LatencyProbeResult.ProfileResult {
+        let base = baseline.compactMap(\.latencyNanoseconds)
+        let edits = measured.compactMap(\.latencyNanoseconds)
+        return LatencyProbeResult.ProfileResult(
+            profile: profile,
+            decideToPostedP50Microseconds: (decideToPosted.percentile(0.5) ?? 0) / 1_000,
+            decideToPostedP99Microseconds: (decideToPosted.percentile(0.99) ?? 0) / 1_000,
+            endToEndDeltaP50Microseconds: delta(edits, base, 0.5) / 1_000,
+            endToEndDeltaP99Microseconds: delta(edits, base, 0.99) / 1_000,
+            samples: edits.count)
+    }
+
+    /// Measured percentile minus baseline percentile, saturating at zero; zero without measured samples.
+    static func delta(_ measured: [UInt64], _ baseline: [UInt64], _ fraction: Double) -> UInt64 {
+        guard let edit = percentile(measured, fraction) else { return 0 }
+        let base = percentile(baseline, fraction) ?? 0
+        return edit > base ? edit - base : 0
+    }
+
+    /// Nearest-rank percentile; nil for no values.
+    static func percentile(_ values: [UInt64], _ fraction: Double) -> UInt64? {
+        guard !values.isEmpty else { return nil }
+        let sorted = values.sorted()
+        let rank = max(1, Int((Double(sorted.count) * fraction).rounded(.up)))
+        return sorted[min(rank, sorted.count) - 1]
+    }
+
+    /// Per-bucket difference of two snapshots of the same histogram (the run's own samples).
+    static func difference(_ after: HistogramSnapshot, _ before: HistogramSnapshot) -> HistogramSnapshot {
+        let buckets = after.buckets.indices.map { index in
+            let earlier = index < before.buckets.count ? before.buckets[index] : 0
+            return after.buckets[index] > earlier ? after.buckets[index] - earlier : 0
+        }
+        return HistogramSnapshot(buckets: buckets)
+    }
+
+    static func microseconds(_ duration: Duration) -> UInt64 {
+        let components = duration.components
+        let total = components.seconds * 1_000_000 + components.attoseconds / 1_000_000_000_000
+        return total > 0 ? UInt64(total) : 0
+    }
+}
+
+extension LatencyProbeDriver {
+    /// Dedicated thread: absolute-deadline pacing on `clock`, one keyDown and keyUp per key, then the settle
+    /// window. Returns the post instants of the keyDowns.
+    func postAll(_ keys: [KeyCode], every interval: Duration) -> [MonotonicInstant] {
+        let start = clock.now()
+        let step = LatencyProbeMath.microseconds(interval)
+        var posted: [MonotonicInstant] = []
+        posted.reserveCapacity(keys.count)
+        for (index, key) in keys.enumerated() {
+            clock.sleep(until: start.advanced(byMicroseconds: step * UInt64(index)))
+            posted.append(clock.now())
+            post(key, down: true)
+            post(key, down: false)
+        }
+        if let last = posted.last {
+            clock.sleep(until: last.advanced(byMicroseconds: LatencyProbeMath.microseconds(settle)))
+        }
+        return posted
+    }
+
+    /// Physical-like: no Unicode payload (the system derives it from the layout), no flags.
+    private func post(_ key: KeyCode, down: Bool) {
+        let event = SyntheticKeyEvent(keyCode: key, isKeyDown: down, flags: 0, unicode: .empty)
+        // A failed creation loses one sample (its change stays nil); the probe never retries or blocks.
+        try? poster.post(event, userData: marker.userData(sequence: sequence.next(), probe: true))
+    }
+}
+
+/// Runs blocking work (absolute-deadline sleeps, AX calls) on its own thread so no Swift concurrency thread or
+/// the main thread blocks while a probe types.
+enum DedicatedThread {
+    static func run<Value: Sendable>(name: String, _ body: @escaping @Sendable () -> Value) async -> Value {
+        await withCheckedContinuation { continuation in
+            let thread = Thread { continuation.resume(returning: body()) }
+            thread.name = name
+            thread.qualityOfService = .userInitiated
+            thread.start()
+        }
+    }
+}
