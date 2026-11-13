@@ -33,7 +33,7 @@ public struct VietnameseCompositionEngine: CompositionEngine {
     public var activeDisplay: String { session.state.activeDisplay }
 }
 
-public struct VietnameseCompositionEngineFactory: CompositionEngineFactory {
+public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Sendable {
     public init() {}
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> VietnameseCompositionEngine {
         VietnameseCompositionEngine(engine: settings.engines.engine(for: variant))

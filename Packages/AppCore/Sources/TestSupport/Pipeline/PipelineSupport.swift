@@ -34,7 +34,7 @@ public struct ScriptedEngine: CompositionEngine {
 
 /// Uses the reference recogniser so the suites run before W1-E's `HotkeyRecognizer` lands; switch `Hotkeys`
 /// to `HotkeyRecognizer` to run them against the production recogniser.
-public struct ScriptedEngineFactory: CompositionEngineFactory {
+public struct ScriptedEngineFactory: CompositionEngineFactory, Sendable {
     public typealias Hotkeys = ReferenceHotkeyRecognizer
     public let log: EngineEventLog?
 

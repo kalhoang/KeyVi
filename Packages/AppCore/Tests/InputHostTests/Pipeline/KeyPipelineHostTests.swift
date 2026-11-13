@@ -6,6 +6,7 @@
 
 import AppModel
 import Dispatch
+import Foundation
 import Injection
 import RealtimeSupport
 import TestSupport
@@ -134,6 +135,26 @@ import VietnameseEngine
         }
         #expect(fixture.log.feeds.isEmpty)
         #expect(fixture.snapshots.focus.load().generation == FocusGeneration(rawValue: 2_001))
+    }
+
+    /// ADR 0313: `TapThread` builds the non-Sendable pipeline inside its thread entry from a `@Sendable`
+    /// factory; the pipeline is then used only on that thread.
+    @Test func pipelineIsBuiltAndUsedOnItsOwnThread() {
+        let fixture = PipelineFixture()
+        let context = fixture.context
+        let factory = ScriptedEngineFactory(log: fixture.log)
+        let makeHandler: @Sendable () -> KeyPipeline<ScriptedEngineFactory, MachClock> = {
+            KeyPipeline(context: context, factory: factory, clock: MachClock())
+        }
+        let done = DispatchSemaphore(value: 0)
+        let thread = Thread {
+            let pipeline = makeHandler()
+            _ = pipeline.handle(PipelineFixtures.keyEvent(.keyDown, Key.a))
+            done.signal()
+        }
+        thread.start()
+        done.wait()
+        #expect(fixture.log.feeds == [.key(KeyInput("a"))])
     }
 
     @Test func toggleOverrideAppliesOnlyToTheAppItWasMadeIn() {
