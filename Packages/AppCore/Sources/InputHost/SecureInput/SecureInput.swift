@@ -6,6 +6,7 @@
 public import AppModel
 public import Foundation
 public import RealtimeSupport
+import Synchronization
 
 /// Production (`SystemSecureInputProbe`): `IsSecureEventInputEnabled()` (Carbon); holder via
 /// `IORegistryEntryCreateCFProperty(IORegistryGetRootEntry(kIOMainPortDefault), "IOConsoleUsers", ...)`,
@@ -18,8 +19,8 @@ public protocol SecureInputProbe: Sendable {
 
 public struct SystemSecureInputProbe: SecureInputProbe {
     public init() {}
-    public func isSecureEventInputEnabled() -> Bool { unimplemented() }
-    public func secureInputHolderPID() -> Int32? { unimplemented() }
+    public func isSecureEventInputEnabled() -> Bool { SecureInputSystem.isEnabled() }
+    public func secureInputHolderPID() -> Int32? { SecureInputSystem.holderPID() }
 }
 
 /// Identity of a process for focus, holder naming and conflict detection.
@@ -50,7 +51,8 @@ public struct ProcessIdentity: Sendable, Hashable {
     }
 }
 
-/// Production: `NSRunningApplication(processIdentifier:)`, `proc_pidpath`, `proc_name`, `Bundle(url:)`.
+/// Production (`SystemProcessIdentityProvider`): `NSRunningApplication(processIdentifier:)`, `proc_pidpath`,
+/// `proc_name`, `Bundle(url:)`.
 public protocol ProcessIdentityProvider: Sendable {
     func identity(of pid: Int32) -> ProcessIdentity?
     func isAlive(_ pid: Int32) -> Bool  // kill(pid, 0) != ESRCH
@@ -64,20 +66,38 @@ public protocol ProcessIdentityProvider: Sendable {
 /// evidence (PLT-R398B) stays valid while the OS flag is stuck. `keyEvidence(generation:)` ENDS episode N: the
 /// next poll that still sees the OS flag on starts a new episode with a new generation even though no "off" was
 /// observed in between (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
+///
+/// Polls are serialised; `publish` runs inside that serialisation (so snapshots are published in poll order)
+/// and must not call back into the monitor synchronously. Logic: `SecureInputMonitor+Polling.swift`.
 public final class SecureInputMonitor: Sendable {
     public static let pollInterval: Duration = .seconds(2)
+    /// PLT-R803: at least 10 % leeway on every timer.
+    public static let pollLeeway: Duration = .milliseconds(200)
+
+    let probe: any SecureInputProbe
+    let processes: any ProcessIdentityProvider
+    let hintKey: @Sendable (BundleKey) -> String?
+    let scheduler: any TimerScheduler
+    let publish: @Sendable (SecureInputSnapshot) -> Void
+    let state = Mutex(SecureInputMonitorState())
 
     public init(
         probe: any SecureInputProbe, processes: any ProcessIdentityProvider,
         hintKey: @escaping @Sendable (BundleKey) -> String?, scheduler: any TimerScheduler,
         publish: @escaping @Sendable (SecureInputSnapshot) -> Void
-    ) { unimplemented() }
+    ) {
+        self.probe = probe
+        self.processes = processes
+        self.hintKey = hintKey
+        self.scheduler = scheduler
+        self.publish = publish
+    }
 
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
+    public func start() { beginPolling() }
+    public func stop() { endPolling() }
     /// Synchronous poll (menu open, PLT-R395).
-    public func pollNow() -> SecureInputSnapshot { unimplemented() }
+    public func pollNow() -> SecureInputSnapshot { poll() }
     /// The tap processed a key while paused for secure input (PLT-R398B): records the episode end; the state
     /// stays "resumed" for this generation until the next poll (see the type comment).
-    public func keyEvidence(generation: UInt64) { unimplemented() }
+    public func keyEvidence(generation: UInt64) { recordKeyEvidence(generation: generation) }
 }
