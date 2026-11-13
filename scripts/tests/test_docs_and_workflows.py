@@ -279,6 +279,69 @@ class WorkflowCoverageTests(unittest.TestCase):
             "path: .build/bench/")
         self.assertNotIn("bench-compare.sh --output", self.job("ci.yml", "macos-tests"))
 
+    def test_macos_app_job_runs_the_updater_tests_after_a_pinned_build(self):
+        """QA-R3, QA-R22: the Sparkle wrapper tests (UpdaterTests: PLT-R1105 relaunch gate, PLT-R104 and the
+        built bundle's SU* keys) run on every pull request and in release.yml, which reuses ci.yml. Package
+        versions stay pinned to Config/Package.resolved (PLT-R910, ADR 0301)."""
+        body = self.job("ci.yml", "macos-app")
+        build = body.index("ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' build")
+        test = body.index("test -only-testing:UpdaterTests")
+        self.assertLess(build, test)
+        commands = "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("#"))
+        self.assertEqual(commands.count("-disableAutomaticPackageResolution"), 2, "build and test steps")
+        self.assertIn("-destination 'platform=macOS'", body)
+        self.assertIn("-resultBundlePath .build/UpdaterTests.xcresult", body)
+        self.assertRegex(body, r"if: failure\(\)[^\n]*\n(?:[^\n]*\n){0,3}\s*uses: actions/upload-artifact@")
+        self.assertIn("path: .build/UpdaterTests.xcresult", body)
+        run_tests = (REPO / "scripts" / "run-tests.sh").read_text(encoding="utf-8")
+        self.assertIn("test -only-testing:UpdaterTests", run_tests)
+
+    def test_coverage_drop_gate_fails_closed_when_the_baseline_download_fails(self):
+        """QA-R2: the 1-point drop gate may skip only when main has no green run yet, never on a failed
+        download or an expired artifact."""
+        body = self.job("ci.yml", "macos-tests")
+        self.assertIn("id: baseline", body)
+        self.assertIn('echo "found=true" >> "$GITHUB_OUTPUT"', body)
+        self.assertIn('echo "found=false" >> "$GITHUB_OUTPUT"', body)
+        self.assertEqual(
+            body.count("REQUIRE_BASELINE: ${{ github.event_name == 'pull_request' && "
+                       "steps.baseline.outputs.found != 'false' }}"), 2)
+        self.assertEqual(body.count('[[ "$REQUIRE_BASELINE" == true ]] && require=(--require-baseline)'), 2)
+
+    def test_pull_requests_need_a_label_to_change_corpus_or_baselines(self):
+        """QA-R6 (corpus-change) and QA-R15 (perf-baseline) are checked again on every label change, in a workflow
+        of its own so a label never re-runs or cancels the CI suite."""
+        text = (self.WORKFLOWS / "pr-labels.yml").read_text(encoding="utf-8")
+        self.assertRegex(text, r"pull_request:\n\s+types: \[opened, synchronize, reopened, labeled, unlabeled\]")
+        self.assertNotIn("labeled", (self.WORKFLOWS / "ci.yml").read_text(encoding="utf-8"))
+        body = self.job("pr-labels.yml", "labels")
+        self.assertIn("if: github.event_name == 'pull_request'", body)
+        self.assertIn("LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}", body)
+        self.assertIn('scripts/check-pr-labels.sh --base "$BASE_SHA" --head "$HEAD_SHA" --labels "$LABELS"', body)
+
+    def test_site_workflow_runs_the_site_tests_and_a_strict_build_for_deployment(self):
+        """ADR 0601, PRD-R74: links, anchors, language attributes and the privacy rules are tested on every
+        change; a deployed build refuses VERIFY markers and placeholder values (--strict)."""
+        body = self.job("site.yml", "build")
+        self.assertLess(body.index("run: node site/test.mjs"), body.index("node site/build.mjs"))
+        self.assertIn("node site/build.mjs --strict", body)
+        self.assertIn("vars.SITE_STRICT == 'true'", body)
+        self.assertIn("vars.SITE_DEPLOY_TARGET != '' && vars.SITE_STRICT != 'false'", body)
+
+    def test_nightly_thread_sanitizer_suppresses_only_the_settings_store_executor_report(self):
+        """SettingsStore runs on a DispatchSerialQueue executor (PLT-R1003); TSan sees no ordering between its
+        jobs on different GCD worker threads and reports a race that cannot happen. The suppression is scoped to
+        SettingsStore and passed to the nightly step only."""
+        body = self.job("nightly.yml", "sanitizers-macos")
+        step = body.split("AppCore tests with ThreadSanitizer", 1)[1].split("- name:", 1)[0]
+        match = re.search(r'TSAN_OPTIONS: "suppressions=\$\{\{ github\.workspace \}\}/([^"]+)"', step)
+        self.assertIsNotNone(match, "TSAN_OPTIONS with a suppressions file")
+        suppressions = REPO / match.group(1)
+        lines = [line for line in suppressions.read_text(encoding="utf-8").splitlines()
+                 if line.strip() and not line.startswith("#")]
+        self.assertEqual(lines, ["race:SettingsStore."])
+        self.assertIn('swift test --package-path "$APPCORE" --sanitize=thread', step)
+
     def test_nightly_fuzzes_each_method_for_thirty_minutes(self):
         body = self.job("nightly.yml", "fuzz")
         self.assertIn("image: swift:6.4.2-noble@sha256:", body)

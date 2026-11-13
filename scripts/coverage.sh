@@ -19,6 +19,9 @@ Options:
   --exclude REGEX      extended regex of source paths to leave out (relative to the package)
   --baseline FILE      previous summary JSON; fail when coverage drops by more than --max-drop
   --max-drop POINTS    allowed drop against the baseline (default 1.0, QA-R2)
+  --require-baseline   fail when the --baseline file is missing instead of skipping the drop check (CI uses
+                       it on pull requests once main has a green run, so an expired artifact never disables
+                       the gate)
   --summary-out FILE   write the summary JSON here (default: <package>/.build/coverage-summary.json)
   --scratch-path DIR   pass --scratch-path to swift test
   --no-test            do not run the tests; reuse the last coverage export
@@ -35,6 +38,7 @@ min=""
 exclude=""
 baseline=""
 max_drop="1.0"
+require_baseline=0
 summary_out=""
 scratch=()
 run_tests=1
@@ -46,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     --exclude) exclude="${2:?}"; shift 2 ;;
     --baseline) baseline="${2:?}"; shift 2 ;;
     --max-drop) max_drop="${2:?}"; shift 2 ;;
+    --require-baseline) require_baseline=1; shift ;;
     --summary-out) summary_out="${2:?}"; shift 2 ;;
     --scratch-path) scratch=(--scratch-path "${2:?}"); shift 2 ;;
     --no-test) run_tests=0; shift ;;
@@ -53,6 +58,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$package" && -n "$min" ]] || { usage >&2; exit 2; }
+[[ $require_baseline -eq 0 || -n "$baseline" ]] || die "--require-baseline needs --baseline"
 [[ -f "$package/Package.swift" ]] || die "not a SwiftPM package: $package"
 package="$(cd "$package" && pwd)"
 summary_out="${summary_out:-$package/.build/coverage-summary.json}"
@@ -71,13 +77,13 @@ codecov_json="$(swift test --package-path "$package" ${scratch[@]+"${scratch[@]}
 [[ -f "$codecov_json" ]] || die "coverage export not found: $codecov_json (run without --no-test)"
 mkdir -p "$(dirname "$summary_out")"
 
-py - "$codecov_json" "$package" "$min" "$exclude" "$baseline" "$max_drop" "$summary_out" <<'PY'
+py - "$codecov_json" "$package" "$min" "$exclude" "$baseline" "$max_drop" "$summary_out" "$require_baseline" <<'PY'
 import json
 import os
 import re
 import sys
 
-codecov, package, minimum, exclude, baseline, max_drop, summary_out = sys.argv[1:]
+codecov, package, minimum, exclude, baseline, max_drop, summary_out, require_baseline = sys.argv[1:]
 minimum = float(minimum)
 max_drop = float(max_drop)
 sources = os.path.join(package, "Sources") + os.sep
@@ -122,6 +128,10 @@ if baseline and os.path.exists(baseline):
     report.append(f"Baseline {previous:.2f} %, change {percent - previous:+.2f} points.")
     if previous - percent > max_drop + 1e-9:
         failures.append(f"coverage dropped {previous - percent:.2f} points (max {max_drop}, QA-R2)")
+elif baseline and require_baseline == "1":
+    report.append("")
+    report.append("Baseline summary missing; the drop check cannot run.")
+    failures.append(f"coverage baseline {baseline} is missing, so the drop check cannot run (QA-R2)")
 elif baseline:
     report.append("")
     report.append("No baseline summary available; drop check skipped.")

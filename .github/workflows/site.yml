@@ -45,8 +45,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
+      - name: Site tests (pages, links and anchors, lang attributes, PRD-R74 privacy rules, appcast, sitemap)
+        run: node site/test.mjs
       - name: Build (node site/build.mjs -> site/dist)
-        run: node site/build.mjs
+        # ADR 0601: a build that is deployed is strict, so VERIFY markers and placeholder config values never go
+        # public. SITE_STRICT=true makes every build strict; SITE_STRICT=false allows a non-strict deployment
+        # (a preview before the first public release).
+        env:
+          STRICT: >-
+            ${{ vars.SITE_STRICT == 'true' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+            vars.SITE_DEPLOY_TARGET != '' && vars.SITE_STRICT != 'false') }}
+        run: |
+          if [[ "$STRICT" == true ]]; then node site/build.mjs --strict; else node site/build.mjs; fi
       - name: Appcast is well-formed XML
         run: |
           if [[ -f site/dist/appcast.xml ]]; then

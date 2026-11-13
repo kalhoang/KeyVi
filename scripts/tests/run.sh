@@ -287,6 +287,43 @@ contains "unsigned fuzz commit named" "test: unsigned fuzz change"
 expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
   --path Packages/VietnameseEngine
 
+echo "== check-pr-labels.sh (QA-R6 corpus-change, QA-R15 perf-baseline)"
+L="$T/labels"
+corpus="Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus"
+mkdir -p "$L/$corpus" "$L/perf"
+git -C "$L" init -q
+git -C "$L" config user.name "Ada Contributor"
+git -C "$L" config user.email "ada@example.org"
+git -C "$L" config commit.gpgsign false
+printf 'vieejt\tviệt\n' >"$L/$corpus/editing.tsv"
+printf 'a\tb\n' >"$L/$corpus/layouts.tsv"
+printf '{"metrics": {}}\n' >"$L/perf/platform-baseline.json"
+git -C "$L" add -A && git -C "$L" commit -q -m "chore: base"
+label_base="$(git -C "$L" rev-parse HEAD)"
+labels_check() { # labels_check <expected exit> <name> <labels>
+  expect "$1" "$2" "$S/check-pr-labels.sh" --repo "$L" --base "$label_base" --head HEAD --labels "$3"
+}
+printf 'tieengs\ttiếng\n' >>"$L/$corpus/editing.tsv"
+git -C "$L" commit -q -am "test: add a corpus case"
+labels_check 0 "a new corpus case needs no label" ""
+printf 'vieejt\tviet\ntieengs\ttiếng\n' >"$L/$corpus/editing.tsv"
+git -C "$L" commit -q -am "test: change an expected output"
+labels_check 1 "a changed expected output needs corpus-change" "bug,perf-baseline"
+contains "names the corpus file" "$corpus/editing.tsv"
+contains "names the label" "corpus-change"
+labels_check 0 "the corpus-change label allows it" "bug,corpus-change"
+git -C "$L" reset -q --hard "$label_base"
+printf 'c\td\n' >"$L/$corpus/layouts.tsv"
+git -C "$L" commit -q -am "test: regenerate the layout corpus"
+labels_check 0 "generated corpus files are left to their generators' --check" ""
+printf '{"metrics": {"T2.p99": 1}}\n' >"$L/perf/platform-baseline.json"
+git -C "$L" commit -q -am "perf: new baseline"
+labels_check 1 "a baseline change needs perf-baseline" "corpus-change"
+contains "names the baseline" "perf/platform-baseline.json"
+contains "names the perf label" "perf-baseline"
+labels_check 0 "the perf-baseline label allows it" "perf-baseline"
+expect 1 "unknown revisions are rejected" "$S/check-pr-labels.sh" --repo "$L" --base nope --head HEAD --labels ""
+
 echo "== check-docs.py (relative links and brand literals in docs)"
 K="$T/k"
 mkdir -p "$K/docs/runbooks" "$K/docs/decisions" "$K/scripts"
@@ -406,6 +443,28 @@ if grep -Fq "engine-fuzz-vni	$F/out/engine-fuzz-vni/minimized-crash-1" "$F/out/f
 else
   ko "findings.txt names the run and the minimised input"; sed 's/^/     /' "$F/out/findings.txt"
 fi
+
+echo "== coverage.sh: the drop gate fails closed when a required baseline is missing (QA-R2)"
+CV="$T/cov"
+mkdir -p "$CV/bin" "$CV/pkg/Sources/Lib"
+printf '// swift-tools-version: 6.0\n' >"$CV/pkg/Package.swift"
+touch "$CV/pkg/Sources/Lib/A.swift"
+printf '{"data":[{"files":[{"filename":"%s","summary":{"lines":{"count":10,"covered":9}}}]}]}\n' \
+  "$(cd "$CV/pkg" && pwd)/Sources/Lib/A.swift" >"$CV/codecov.json"
+printf '#!/bin/sh\nprintf "%%s\\n" "%s"\n' "$CV/codecov.json" >"$CV/bin/swift"
+chmod +x "$CV/bin/swift"
+expect 0 "a missing optional baseline only skips the drop check" env PATH="$CV/bin:$PATH" \
+  "$S/coverage.sh" --package "$CV/pkg" --min 80 --no-test --baseline "$CV/none.json" --summary-out "$CV/s.json"
+contains "skip is reported" "No baseline summary available; drop check skipped."
+expect 1 "a missing required baseline fails" env PATH="$CV/bin:$PATH" \
+  "$S/coverage.sh" --package "$CV/pkg" --min 80 --no-test --baseline "$CV/none.json" --require-baseline \
+  --summary-out "$CV/s.json"
+contains "names the missing baseline" "coverage baseline $CV/none.json is missing"
+printf '{"percent": 92.5}\n' >"$CV/base.json"
+expect 1 "a drop of more than one point fails" env PATH="$CV/bin:$PATH" \
+  "$S/coverage.sh" --package "$CV/pkg" --min 80 --no-test --baseline "$CV/base.json" --require-baseline \
+  --summary-out "$CV/s.json"
+contains "drop reported" "coverage dropped 2.50 points"
 
 echo "== rename-app.sh in a scratch copy"
 R="$T/repo"

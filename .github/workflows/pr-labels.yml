@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+# Pull request label gate (QA-R6 corpus-change, QA-R15 perf-baseline): scripts/check-pr-labels.sh. A workflow of
+# its own, so adding or removing a label re-runs only this check and never re-runs or cancels the CI suite.
+# Its job is one of the required checks (docs/decisions/0503-release-pipeline.md).
+name: PR labels
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-labels-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  labels:
+    name: Corpus and baseline changes carry their label (QA-R6, QA-R15)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Expected-output and baseline changes are labelled
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: scripts/check-pr-labels.sh --base "$BASE_SHA" --head "$HEAD_SHA" --labels "$LABELS"

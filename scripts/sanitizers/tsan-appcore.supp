@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+#
+# ThreadSanitizer suppressions for the nightly AppCore run (.github/workflows/nightly.yml, QA-R22), passed with
+# TSAN_OPTIONS=suppressions=<this file>.
+#
+# SettingsStore is an actor whose executor is the utility DispatchSerialQueue (PLT-R1003: settings writes are
+# serialized on the utility queue). Swift hands that actor's jobs to libdispatch through a path ThreadSanitizer
+# does not intercept, so it sees no happens-before edge between two jobs that the serial queue runs one after the
+# other on different GCD worker threads, and reports a data race on actor state that cannot happen. A bare actor
+# on a DispatchSerialQueue executor doing `value += 1` reproduces the report; the same body on a default actor,
+# or as plain `queue.async` blocks on the same queue, is clean (final review, concurrency finding).
+# SettingsStoreConcurrencyTests.concurrentUpdatesAllLand remains the proof that updates are serialized.
+#
+# Scope: frames of the SettingsStore type only. Do not widen it; a report anywhere else is a real finding.
+race:SettingsStore.
