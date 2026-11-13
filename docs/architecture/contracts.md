@@ -29,7 +29,8 @@ without permissions. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) first for the
   (no locks, no allocation, no syscalls that block).
 - Conventions: SPDX header `LicenseRef-App-Pending` on every non-engine file; requirement IDs in comments
   where they drive non-obvious behaviour; no bundle-ID literals in code (PLT-R501; reverse-DNS constants that
-  are not bundle IDs go in a file named `ReverseDNSConstants.swift`, which the lint allowlists); no string
+  are not bundle IDs go in a file named `ReverseDNSConstants.swift` and are allowed by a pattern in
+  `scripts/lint-bundle-ids.allow` or an inline `lint:allow-bundle-id <reason>` marker); no string
   interpolation in log calls (PLT-R902).
 
 ## 1. Module dependencies and isolation summary
@@ -858,6 +859,9 @@ public final class SnapshotCell<Value: Sendable>: Sendable {
         writer.withLock { reclaim(&$0) }
     }
 
+    /// Boxes retired but not yet freed (tests and the watchdog's bound check).
+    var retiredCount: Int { writer.withLock { $0.retired.count } }
+
     private func reclaim(_ state: inout WriterState) {
         let now = epoch.value
         state.retired.removeAll { entry in
@@ -1033,10 +1037,13 @@ public struct MachClock: MonotonicClock {
     }
 
     public func sleep(until deadline: MonotonicInstant) {
+        // The kernel reads a deadline of 0 as "no deadline" and would block forever, so a deadline that has
+        // already passed returns at once instead of reaching mach_wait_until.
+        guard deadline > now() else { return }
         // Absolute deadline in mach ticks (PLT-R409).
         let ticks = deadline.nanoseconds.multipliedFullWidth(by: denominator)
         let (quotient, _) = numerator.dividingFullWidth(ticks)
-        mach_wait_until(quotient)
+        mach_wait_until(max(quotient, 1))
     }
 }
 ```
@@ -1126,10 +1133,10 @@ public final class ThreadConfined<Value>: @unchecked Sendable {
     @inline(__always)
     public func withValue<Result>(_ body: (inout Value) throws -> Result) rethrows -> Result {
         #if DEBUG
-            let current = UInt(bitPattern: pthread_self())
-            let (exchanged, original) = owner.compareExchange(
-                expected: 0, desired: current, ordering: .relaxed)
-            assert(exchanged || original == current, "ThreadConfined accessed from a second thread")
+        let current = UInt(bitPattern: pthread_self())
+        let (exchanged, original) = owner.compareExchange(
+            expected: 0, desired: current, ordering: .relaxed)
+        assert(exchanged || original == current, "ThreadConfined accessed from a second thread")
         #endif
         return try body(&value)
     }
@@ -1155,7 +1162,8 @@ public final class RunLoopThread: Sendable {
         self.qualityOfService = qualityOfService
     }
 
-    /// Starts the thread and returns once its run loop is ready.
+    /// Starts the thread and returns once its run loop is ready. Calling it again while the thread runs does
+    /// nothing, so a second thread can never share this object's state.
     public func start() {
         let thread = Thread { [self] in
             let runLoop = CFRunLoopGetCurrent()!
@@ -1168,10 +1176,17 @@ public final class RunLoopThread: Sendable {
             }
             ready.signal()
             CFRunLoopRun()
+            // Stopped: later `perform` and `addSource` calls become no-ops instead of targeting a dead loop.
+            state.withLock { $0 = State() }
         }
         thread.name = name
         thread.qualityOfService = qualityOfService
-        state.withLock { $0.thread = thread }
+        let alreadyStarted = state.withLock { state in
+            guard state.thread == nil else { return true }
+            state.thread = thread
+            return false
+        }
+        guard !alreadyStarted else { return }
         thread.start()
         ready.wait()
     }
@@ -1255,10 +1270,15 @@ public final class DispatchTimerScheduler: TimerScheduler {
     public func scheduleRepeating(
         every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void
     ) -> any ScheduledTimer {
+        // A zero or negative interval would make the source fire continuously (PLT-R803 "no busy waiting").
+        let period = max(interval, Self.minimumRepeatInterval)
         let timer = DispatchTimer(queue: queue)
-        timer.start(deadline: .now() + interval.dispatchInterval, repeating: interval, leeway: leeway, handler)
+        timer.start(deadline: .now() + period.dispatchInterval, repeating: period, leeway: leeway, handler)
         return timer
     }
+
+    /// Floor for repeating intervals; callers' own periods are at least 2 s at rest (PLT-R803).
+    static let minimumRepeatInterval: Duration = .milliseconds(1)
 }
 
 private final class DispatchTimer: ScheduledTimer {
@@ -1287,11 +1307,16 @@ private final class DispatchTimer: ScheduledTimer {
 }
 
 extension Duration {
-    /// Nanosecond-precision conversion for Dispatch APIs.
+    /// Nanosecond-precision conversion for Dispatch APIs. Negative durations become zero and durations
+    /// beyond `Int64.max` nanoseconds saturate instead of trapping on overflow.
     var dispatchInterval: DispatchTimeInterval {
         let (seconds, attoseconds) = components
-        let nanoseconds = seconds * 1_000_000_000 + attoseconds / 1_000_000_000
-        return .nanoseconds(Int(clamping: nanoseconds))
+        guard seconds >= 0, attoseconds >= 0 || seconds > 0 else { return .nanoseconds(0) }
+        let (scaled, overflow) = seconds.multipliedReportingOverflow(by: 1_000_000_000)
+        guard !overflow else { return .nanoseconds(Int.max) }
+        let (total, carry) = scaled.addingReportingOverflow(attoseconds / 1_000_000_000)
+        guard !carry else { return .nanoseconds(Int.max) }
+        return .nanoseconds(Int(clamping: max(0, total)))
     }
 }
 ```
@@ -1431,6 +1456,8 @@ public struct SystemInfo: Sendable, Hashable, Codable {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 internal import AppModel
+internal import CryptoKit
+internal import Security
 
 /// Per-install random salt (32 bytes) for hashed redaction (PLT-R902). Stored in the app's user defaults
 /// domain (not in the settings folder) so exports never carry it.
@@ -1441,8 +1468,19 @@ public struct RedactionSalt: Sendable, Hashable {
         self.bytes = bytes
     }
 
-    /// CSPRNG (`SecRandomCopyBytes`).
-    public static func random() -> RedactionSalt { unimplemented() }
+    /// CSPRNG (`SecRandomCopyBytes`). Falls back to the system generator (`arc4random_buf`, also a CSPRNG) in
+    /// the practically impossible case that Security reports an error.
+    public static func random() -> RedactionSalt {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let status = bytes.withUnsafeMutableBytes { buffer in
+            SecRandomCopyBytes(kSecRandomDefault, buffer.count, buffer.baseAddress!)
+        }
+        if status != errSecSuccess {
+            var generator = SystemRandomNumberGenerator()
+            bytes = bytes.map { _ in UInt8.random(in: .min ... .max, using: &generator) }
+        }
+        return RedactionSalt(bytes: bytes)
+    }
 }
 
 /// The only way a dynamic string enters a log record (PLT-R902). Either a salted, truncated SHA-256
@@ -1451,8 +1489,65 @@ public struct Redacted: Sendable, Hashable, Codable, CustomStringConvertible {
     public let description: String
     private init(description: String) { self.description = description }
 
-    public static func hashed(_ value: some StringProtocol, salt: RedactionSalt) -> Redacted { unimplemented() }
+    /// HMAC-SHA-256 keyed with the install salt (the salted SHA-256 construction that is not open to length
+    /// extension), truncated to 8 bytes and written as `h:` plus 16 lowercase hex digits. The same value hashes
+    /// to the same marker within one install, so logs can correlate events without revealing the value.
+    public static func hashed(_ value: some StringProtocol, salt: RedactionSalt) -> Redacted {
+        let code = HMAC<SHA256>.authenticationCode(for: Array(value.utf8), using: SymmetricKey(data: salt.bytes))
+        return Redacted(description: "h:" + HexEncoding.lowercase(code.prefix(8)))
+    }
+
     public static let dropped = Redacted(description: "<dropped>")
+}
+
+enum HexEncoding {
+    static func lowercase(_ bytes: some Sequence<UInt8>) -> String {
+        let digits = Array("0123456789abcdef".utf8)
+        var output: [UInt8] = []
+        for byte in bytes {
+            output.append(digits[Int(byte >> 4)])
+            output.append(digits[Int(byte & 0x0F)])
+        }
+        return String(decoding: output, as: UTF8.self)
+    }
+}
+
+/// Sanitising of the few free `String` fields that typed metadata still carries (bundle metadata, AX roles,
+/// version strings). Logs accept only token-shaped values (PLT-R902); reports keep metadata but never let a
+/// value break the line format (ADR 0501 rule 2).
+enum MetadataText {
+    /// The value if it is a metadata token (ASCII letters, digits and `. _ - + :`, at most `maxLength`
+    /// characters), else nil. Spaces, non-ASCII letters and punctuation are rejected, so prose cannot pass.
+    static func token(_ value: String, maxLength: Int = 64) -> String? {
+        guard !value.isEmpty, value.utf8.count <= maxLength else { return nil }
+        let allowed = value.utf8.allSatisfy { byte in
+            (byte >= 0x30 && byte <= 0x39) || (byte >= 0x41 && byte <= 0x5A) || (byte >= 0x61 && byte <= 0x7A)
+                || byte == 0x2E || byte == 0x5F || byte == 0x2D || byte == 0x2B || byte == 0x3A
+        }
+        return allowed ? value : nil
+    }
+
+    /// `token` or the fixed drop marker, for log fields.
+    static func logToken(_ value: String) -> String {
+        token(value) ?? Redacted.dropped.description
+    }
+
+    /// One line of at most `maxLength` characters: control characters and line or paragraph separators
+    /// (everything Python's `splitlines` breaks on) become spaces, surrounding whitespace is trimmed and
+    /// leading backticks or tildes are removed so a value can never close a fenced block.
+    static func singleLine(_ value: String, maxLength: Int = 200) -> String {
+        var scalars = String.UnicodeScalarView()
+        for scalar in value.unicodeScalars {
+            switch scalar.properties.generalCategory {
+            case .control, .lineSeparator, .paragraphSeparator: scalars.append(" ")
+            default: scalars.append(scalar)
+            }
+        }
+        var line = Substring(String(scalars).prefix(maxLength))
+        while let first = line.first, first == "`" || first == "~" || first.isWhitespace { line = line.dropFirst() }
+        while let last = line.last, last.isWhitespace { line = line.dropLast() }
+        return String(line)
+    }
 }
 ```
 <!-- /include -->
@@ -1588,10 +1683,14 @@ public final class HealthEventLog: Sendable {
 
     private let capacity: Int
     private let ring = Mutex(Ring())
+    private let mirror: (any DiagnosticsLogging)?
 
-    public init(capacity: Int = 256) {
+    /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
+    /// level for events that lose or risk losing keys and notice level otherwise (PRD-R46, PLT-R1206).
+    public init(capacity: Int = 256, mirror: (any DiagnosticsLogging)? = nil) {
         precondition(capacity > 0)
         self.capacity = capacity
+        self.mirror = mirror
     }
 
     public func record(_ event: HealthEvent) {
@@ -1603,6 +1702,7 @@ public final class HealthEventLog: Sendable {
             }
             ring.next = (ring.next + 1) % capacity
         }
+        mirror?.log(.health(event), level: event.kind.logLevel)
     }
 
     /// Newest last, at most `limit` events.
@@ -1878,7 +1978,8 @@ public struct LogStorePolicy: Sendable, Hashable {
     public var maxFiles: Int
     public var retention: TimeInterval
 
-    public init(directory: URL, maxFileBytes: Int = 1_000_000, maxFiles: Int = 5, retention: TimeInterval = 14 * 86_400) {
+    public init(directory: URL, maxFileBytes: Int = 1_000_000, maxFiles: Int = 5, retention: TimeInterval = 14 * 86_400)
+    {
         self.directory = directory
         self.maxFileBytes = maxFileBytes
         self.maxFiles = maxFiles
@@ -1895,18 +1996,62 @@ public struct LogRecord: Sendable, Codable {
     public var code: String
     /// Typed metadata fields rendered from the event (bundle keys, rule IDs, counts, durations).
     public var fields: [String: JSONValue]
+
+    public init(at: Date, level: LogLevel, category: LogCategory, code: String, fields: [String: JSONValue]) {
+        self.at = at
+        self.level = level
+        self.category = category
+        self.code = code
+        self.fields = fields
+    }
+
+    /// Renders a typed event (PLT-R902). The only way application code produces a record.
+    public init(event: LogEvent, level: LogLevel, at: Date) {
+        let rendered = event.rendered
+        self.init(at: at, level: level, category: rendered.category, code: rendered.code, fields: rendered.fields)
+    }
 }
 
 /// Production logger: renders `LogEvent` to `LogRecord`, writes JSON lines on the utility queue, mirrors to
 /// the unified log through `os.Logger` with default private redaction for dynamic values (PLT-R902).
 public final class DiagnosticsLogger: DiagnosticsLogging {
+    private let files: LogFileStore
+    private let clock: any WallClock
+    private let mirror: UnifiedLogMirror
+    private let queue: DispatchQueue
+
     public init(policy: LogStorePolicy, fileSystem: any FileSystem, clock: any WallClock, subsystem: String) {
-        unimplemented()
+        files = LogFileStore(policy: policy, fileSystem: fileSystem)
+        self.clock = clock
+        mirror = UnifiedLogMirror(subsystem: subsystem)
+        queue = DispatchQueue(label: subsystem + ".diagnostics-log", qos: .utility)
     }
 
-    public func log(_ event: LogEvent, level: LogLevel) { unimplemented() }
+    /// Never blocks: the timestamp is taken here, rendering and writing happen on the logger's serial
+    /// utility queue. Not called on the tap thread (PLT-R304); the tap writes `TapLogRecord`s instead.
+    public func log(_ event: LogEvent, level: LogLevel) {
+        let at = clock.now()
+        queue.async { [files, mirror] in
+            let record = LogRecord(event: event, level: level, at: at)
+            mirror.write(record)
+            files.append(record)
+        }
+    }
+
     /// Rotation and 14-day retention; scheduled by the utility queue at launch and every 6 hours.
-    public func maintain() { unimplemented() }
+    public func maintain() {
+        let now = clock.now()
+        queue.async { [files] in files.maintain(now: now) }
+    }
+
+    /// Waits until every record logged before this call is written. For shutdown and tests; never call it on
+    /// the tap thread or from inside a logging call.
+    public func flush() {
+        queue.sync {}
+    }
+
+    /// Writes that failed since launch (disk full, permissions). Logging never throws to its callers.
+    public var failedWrites: Int { files.failedWrites }
 }
 ```
 <!-- /include -->
@@ -1948,10 +2093,42 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     public var conflictingInputApps: [BundleKey]
     public var userReport: UserReportSection?
 
+    public init(
+        formatVersion: Int = DiagnosticsReport.formatVersion, generatedAt: Date, app: AppIdentity, system: SystemInfo,
+        hostState: HostStateCode, keyboard: KeyboardSection, permissions: PermissionsSection, tap: TapSection,
+        secureInput: SecureInputSection, focus: FocusSection?, rule: RuleSection?, settings: SettingsSection,
+        reportedAppMode: AppModeSection?, latency: LatencySection, healthEvents: [HealthEvent],
+        conflictingInputApps: [BundleKey], userReport: UserReportSection?
+    ) {
+        self.formatVersion = formatVersion
+        self.generatedAt = generatedAt
+        self.app = app
+        self.system = system
+        self.hostState = hostState
+        self.keyboard = keyboard
+        self.permissions = permissions
+        self.tap = tap
+        self.secureInput = secureInput
+        self.focus = focus
+        self.rule = rule
+        self.settings = settings
+        self.reportedAppMode = reportedAppMode
+        self.latency = latency
+        self.healthEvents = healthEvents
+        self.conflictingInputApps = conflictingInputApps
+        self.userReport = userReport
+    }
+
     public struct KeyboardSection: Sendable, Hashable, Codable {
         public var layout: InputSourceID?
         public var sourceKind: InputSourceKindCode
         public var enabledSources: [InputSourceID]
+
+        public init(layout: InputSourceID?, sourceKind: InputSourceKindCode, enabledSources: [InputSourceID]) {
+            self.layout = layout
+            self.sourceKind = sourceKind
+            self.enabledSources = enabledSources
+        }
     }
 
     public enum InputSourceKindCode: String, Sendable, Hashable, Codable {
@@ -1963,6 +2140,16 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var postEvent: PermissionState
         public var listenEvent: PermissionState
         public var health: PermissionHealthCode
+
+        public init(
+            accessibility: PermissionState, postEvent: PermissionState, listenEvent: PermissionState,
+            health: PermissionHealthCode
+        ) {
+            self.accessibility = accessibility
+            self.postEvent = postEvent
+            self.listenEvent = listenEvent
+            self.health = health
+        }
     }
 
     public enum PermissionHealthCode: String, Sendable, Hashable, Codable {
@@ -1975,12 +2162,29 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var timeoutsLast24Hours: Int
         public var userInputDisablesLast24Hours: Int
         public var lastReenableReason: HealthEvent.Kind?
+
+        public init(
+            enabled: Bool, location: String = "session", timeoutsLast24Hours: Int, userInputDisablesLast24Hours: Int,
+            lastReenableReason: HealthEvent.Kind?
+        ) {
+            self.enabled = enabled
+            self.location = location
+            self.timeoutsLast24Hours = timeoutsLast24Hours
+            self.userInputDisablesLast24Hours = userInputDisablesLast24Hours
+            self.lastReenableReason = lastReenableReason
+        }
     }
 
     public struct SecureInputSection: Sendable, Hashable, Codable {
         public var enabled: Bool
         public var likelyHolder: BundleKey?
         public var holderKind: SecureInputHolder.Kind?
+
+        public init(enabled: Bool, likelyHolder: BundleKey?, holderKind: SecureInputHolder.Kind?) {
+            self.enabled = enabled
+            self.likelyHolder = likelyHolder
+            self.holderKind = holderKind
+        }
     }
 
     public struct FocusSection: Sendable, Hashable, Codable {
@@ -1994,6 +2198,22 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var domClasses: [String]
         public var editable: Bool?
         public var secure: Bool
+
+        public init(
+            bundle: BundleKey, appVersion: String?, engine: EngineFingerprint, axAvailability: AXAvailability,
+            role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?, secure: Bool
+        ) {
+            self.bundle = bundle
+            self.appVersion = appVersion
+            self.engine = engine
+            self.axAvailability = axAvailability
+            self.role = role
+            self.subrole = subrole
+            self.identifier = identifier
+            self.domClasses = domClasses
+            self.editable = editable
+            self.secure = secure
+        }
     }
 
     public struct RuleSection: Sendable, Hashable, Codable {
@@ -2008,6 +2228,19 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         /// The user override for the reported app, so maintainers can promote it (PLT-R541). A typed projection
         /// of the override rule: no free text, no URL, no title pattern (PLT-R1203, docs/decisions/0312).
         public var userOverride: ReportedOverride?
+
+        public init(
+            rule: RuleID?, source: DecisionSource, specificity: Int, strategy: InjectionStrategy,
+            parameters: ReportedParameters, isUserOverride: Bool, userOverride: ReportedOverride?
+        ) {
+            self.rule = rule
+            self.source = source
+            self.specificity = specificity
+            self.strategy = strategy
+            self.parameters = parameters
+            self.isUserOverride = isUserOverride
+            self.userOverride = userOverride
+        }
     }
 
     /// Strategy parameters as typed values (`StrategyParams` of the rules schema without its JSON form). In the
@@ -2135,23 +2368,62 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
+
+        public init(
+            typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
+            bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
+            toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, interfaceLanguage: InterfaceLanguage,
+            updateChannel: UpdateChannel, explicitlySetKeys: [String]
+        ) {
+            self.typingMethod = typingMethod
+            self.tonePlacement = tonePlacement
+            self.englishRestore = englishRestore
+            self.standaloneW = standaloneW
+            self.bracketKeys = bracketKeys
+            self.macrosEnabled = macrosEnabled
+            self.macroCount = macroCount
+            self.macrosInEnglishMode = macrosInEnglishMode
+            self.rememberPerApp = rememberPerApp
+            self.toggleHotkey = toggleHotkey
+            self.restoreHotkeySet = restoreHotkeySet
+            self.interfaceLanguage = interfaceLanguage
+            self.updateChannel = updateChannel
+            self.explicitlySetKeys = explicitlySetKeys
+        }
     }
 
     public struct AppModeSection: Sendable, Hashable, Codable {
         public var bundle: BundleKey
         public var rule: PerAppRule?
         public var rememberedMode: TypingMode?
+
+        public init(bundle: BundleKey, rule: PerAppRule?, rememberedMode: TypingMode?) {
+            self.bundle = bundle
+            self.rule = rule
+            self.rememberedMode = rememberedMode
+        }
     }
 
     public struct LatencySection: Sendable, Hashable, Codable {
         public var metrics: MetricsSnapshot
         public var probe: LatencyProbeResult?
+
+        public init(metrics: MetricsSnapshot, probe: LatencyProbeResult?) {
+            self.metrics = metrics
+            self.probe = probe
+        }
     }
 
     public struct UserReportSection: Sendable, Hashable, Codable {
         public var symptom: Symptom
         public var reportedApp: BundleKey?
         public var reproducesInPracticeField: Bool?
+
+        public init(symptom: Symptom, reportedApp: BundleKey?, reproducesInPracticeField: Bool?) {
+            self.symptom = symptom
+            self.reportedApp = reportedApp
+            self.reproducesInPracticeField = reproducesInPracticeField
+        }
     }
 
     /// PRD-R47 chips and PLT-R1205 symptoms.
@@ -2176,17 +2448,34 @@ public struct LatencyProbeResult: Sendable, Hashable, Codable {
         public var endToEndDeltaP50Microseconds: UInt64
         public var endToEndDeltaP99Microseconds: UInt64
         public var samples: Int
+
+        public init(
+            profile: Profile, decideToPostedP50Microseconds: UInt64, decideToPostedP99Microseconds: UInt64,
+            endToEndDeltaP50Microseconds: UInt64, endToEndDeltaP99Microseconds: UInt64, samples: Int
+        ) {
+            self.profile = profile
+            self.decideToPostedP50Microseconds = decideToPostedP50Microseconds
+            self.decideToPostedP99Microseconds = decideToPostedP99Microseconds
+            self.endToEndDeltaP50Microseconds = endToEndDeltaP50Microseconds
+            self.endToEndDeltaP99Microseconds = endToEndDeltaP99Microseconds
+            self.samples = samples
+        }
     }
 
     public var ranAt: Date
     public var results: [ProfileResult]
+
+    public init(ranAt: Date, results: [ProfileResult]) {
+        self.ranAt = ranAt
+        self.results = results
+    }
 }
 
 /// Renders a report for the three outputs of PLT-R1204/PRD-R47.
 public enum DiagnosticsRenderer {
     /// Human-readable text in the interface language, shown verbatim before copying (PLT-R1204).
     public static func plainText(_ report: DiagnosticsReport, language: InterfaceLanguage) -> String {
-        unimplemented()
+        PlainTextReport(report: report, labels: ReportLabels.labels(for: language)).render()
     }
 
     /// QA-R44 block, parsed by the issue labeller (`scripts/parse-diagnostics.py`). The format is fixed by
@@ -2208,14 +2497,22 @@ public enum DiagnosticsRenderer {
     ///
     /// `<slug>` is `report.app.slug` (read from the bundle, never hard-coded). Values never contain newlines;
     /// lists are comma-separated. Keys match `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. At most 200 lines.
-    public static func issueBlock(_ report: DiagnosticsReport) -> String { unimplemented() }
+    public static func issueBlock(_ report: DiagnosticsReport) -> String { IssueBlock.render(report) }
 
     /// Inverse of `issueBlock` for tests and for the labeller contract: `nil` when no block or an unknown
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
-    public static func parseIssueBlock(_ text: String) -> [String: String]? { unimplemented() }
+    public static func parseIssueBlock(_ text: String) -> [String: String]? { IssueBlock.parse(text) }
 
-    /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47).
-    public static func json(_ report: DiagnosticsReport) throws -> Data { unimplemented() }
+    /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47): pretty-printed, sorted keys, ISO 8601
+    /// dates. Decodes back into an equal `DiagnosticsReport`.
+    public static func json(_ report: DiagnosticsReport) throws -> Data { try ReportJSON.encode(report) }
+
+    /// The reported app's user override as rule JSON in the `compat/rules.json` shape (PLT-R541, ADR 0312), so
+    /// a maintainer can paste it after adding `summary` and provenance. Content-bearing match fields are never
+    /// part of `ReportedOverride`, so they cannot appear here.
+    public static func ruleJSON(_ override: DiagnosticsReport.ReportedOverride, pretty: Bool) -> String {
+        ReportJSON.rule(override, pretty: pretty)
+    }
 }
 
 /// Keys of the issue block (ADR 0501). The labeller relies on `report.bundleId` / `focus.bundleId`,
@@ -2225,9 +2522,9 @@ public enum DiagnosticsBlockKey: String, Sendable, CaseIterable {
     case reportBundle = "report.bundleId"
     case reportAppVersion = "report.appVersion"
     case reportSymptom = "report.symptom"
-    case appVersion = "app.version"
-    case appBuild = "app.build"
-    case appChannel = "app.channel"
+    case appVersion = "app.version"  // lint:allow-bundle-id ADR 0501 block key
+    case appBuild = "app.build"  // lint:allow-bundle-id ADR 0501 block key
+    case appChannel = "app.channel"  // lint:allow-bundle-id ADR 0501 block key
     case macOSVersion = "macos.version"
     case macOSBuild = "macos.build"
     case architecture = "hw.arch"
@@ -2254,6 +2551,7 @@ public enum DiagnosticsBlockKey: String, Sendable, CaseIterable {
 public import AppModel
 public import Foundation
 public import RealtimeSupport
+internal import Synchronization
 
 public enum CaptureLimits {
     public static let defaultDuration: Duration = .seconds(60)
@@ -2270,7 +2568,9 @@ public struct CaptureSessionID: RawRepresentable, Sendable, Hashable, Codable {
 /// layout produced), never from field contents.
 public struct KeyCaptureRecord: Sendable, BitwiseCopyable {
     public enum Kind: UInt8, Sendable, BitwiseCopyable { case keyDown, keyUp, flagsChanged, mouseDown }
-    public enum Outcome: UInt8, Sendable, BitwiseCopyable { case passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp }
+    public enum Outcome: UInt8, Sendable, BitwiseCopyable {
+        case passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp
+    }
     public var kind: Kind
     public var keyCode: UInt16
     public var flags: UInt64
@@ -2308,31 +2608,221 @@ public struct CaptureSessionInfo: Sendable, Hashable, Codable {
     public var file: URL
 }
 
+/// Why a capture could not start or a session could not be read (PLT-R905).
+public enum CaptureError: Error, Sendable, Hashable {
+    /// Zero, negative or longer than `CaptureLimits.maximumDuration`.
+    case invalidDuration
+    case alreadyRecording
+    /// No capture file with this ID exists (expired, exported, discarded or never created).
+    case unknownSession
+    case storage(FileSystemError)
+}
+
 /// Owns capture state. `isRecording` is an atomic flag the tap reads once per callback; records flow through
 /// SPSC rings (tap, inject, ax producers) drained by the utility queue into
 /// `~/Library/Logs/<folder>/captures/<id>.jsonl` (0600, excluded from backup).
+///
+/// The session stops by itself when its duration is over (a one-shot timer on `scheduler`); while it runs a
+/// repeating 2 s timer drains the rings (PLT-R803). `beginGap`/`endGap` bracket secure input and secure fields:
+/// `isRecording` is false in between, records stamped inside the gap are dropped and a gap line is written.
 public final class CaptureController: Sendable {
-    public init(directory: URL, fileSystem: any FileSystem, wallClock: any WallClock, clock: any MonotonicClock) {
-        unimplemented()
+    public let tapRecords = SPSCRing<CaptureRecord>(capacity: 8_192)
+    public let injectRecords = SPSCRing<CaptureRecord>(capacity: 2_048)
+    public let focusRecords = SPSCRing<CaptureRecord>(capacity: 512)
+
+    let directory: URL
+    let fileSystem: any FileSystem
+    let wallClock: any WallClock
+    let clock: any MonotonicClock
+    private let scheduler: any TimerScheduler
+    private let recording = Atomic<Bool>(false)
+    private let session = Mutex<CaptureSession?>(nil)
+    private let writeFailures = Atomic<Int>(0)
+
+    public init(
+        directory: URL, fileSystem: any FileSystem, wallClock: any WallClock, clock: any MonotonicClock,
+        scheduler: any TimerScheduler
+    ) {
+        self.directory = directory
+        self.fileSystem = fileSystem
+        self.wallClock = wallClock
+        self.clock = clock
+        self.scheduler = scheduler
     }
 
     /// Tap-safe (one atomic load).
-    public var isRecording: Bool { unimplemented() }
-    public var tapRecords: SPSCRing<CaptureRecord> { unimplemented() }
-    public var injectRecords: SPSCRing<CaptureRecord> { unimplemented() }
-    public var focusRecords: SPSCRing<CaptureRecord> { unimplemented() }
+    public var isRecording: Bool { recording.load(ordering: .acquiring) }
+
+    /// Appends that failed while a session ran (timer-driven drains cannot throw).
+    public var failedWrites: Int { writeFailures.load(ordering: .relaxed) }
 
     /// Explicit user action only, after a confirmation that explains what is recorded (PLT-R905).
-    public func start(duration: Duration) throws -> CaptureSessionInfo { unimplemented() }
-    public func stop() -> CaptureSessionInfo? { unimplemented() }
-    public func remaining(now: Date) -> Duration? { unimplemented() }
+    public func start(duration: Duration) throws -> CaptureSessionInfo {
+        guard duration > .zero, duration <= CaptureLimits.maximumDuration else { throw CaptureError.invalidDuration }
+        return try session.withLock { (active: inout CaptureSession?) throws -> CaptureSessionInfo in
+            guard active == nil else { throw CaptureError.alreadyRecording }
+            discardPendingRecords()
+            let startedAt = wallClock.now()
+            let id = CaptureFiles.makeID(at: startedAt)
+            let info = CaptureSessionInfo(
+                id: id, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(duration.timeInterval),
+                file: CaptureFiles.url(for: id, in: directory))
+            try storage { try prepareFile(for: info) }
+            let stopTimer = scheduler.schedule(after: duration, leeway: .milliseconds(100)) { [weak self] in
+                self?.finish(reason: .timeLimit)
+            }
+            let drainTimer = scheduler.scheduleRepeating(every: CaptureFiles.drainInterval, leeway: .milliseconds(200))
+            {
+                [weak self] in self?.drainNow()
+            }
+            active = CaptureSession(info: info, start: clock.now(), timers: [stopTimer, drainTimer])
+            recording.store(true, ordering: .releasing)
+            return info
+        }
+    }
+
+    public func stop() -> CaptureSessionInfo? { finish(reason: .stopped) }
+
+    public func remaining(now: Date) -> Duration? {
+        session.withLock { active in
+            active.map { .seconds(max(0, $0.info.endsAt.timeIntervalSince(now))) }
+        }
+    }
+
+    /// Secure input turned on or a secure field got focus: record nothing until `endGap` (PLT-R905).
+    public func beginGap(_ reason: PauseCode) {
+        session.withLock { active in
+            guard active != nil, active?.openGap == nil else { return }
+            recording.store(false, ordering: .releasing)
+            active?.openGap = CaptureSession.OpenGap(reason: reason, from: clock.now())
+        }
+    }
+
+    public func endGap() {
+        session.withLock { active in
+            guard active?.openGap != nil else { return }
+            active?.closeGap(at: clock.now())
+            recording.store(true, ordering: .releasing)
+        }
+    }
+
     /// Readable rendering the user reviews before export (PLT-R905).
-    public func render(_ id: CaptureSessionID, language: InterfaceLanguage) throws -> String { unimplemented() }
+    public func render(_ id: CaptureSessionID, language: InterfaceLanguage) throws -> String {
+        let url = try existingFile(for: id)
+        drainNow()
+        let data = try storage { try fileSystem.readData(at: url, maxBytes: CaptureFiles.maximumFileBytes) }
+        return CaptureRendering.render(data, language: language)
+    }
+
     /// Writes the export and deletes the capture immediately afterwards.
-    public func export(_ id: CaptureSessionID, to destination: URL) throws { unimplemented() }
-    public func discard(_ id: CaptureSessionID) { unimplemented() }
+    public func export(_ id: CaptureSessionID, to destination: URL) throws {
+        let url = try existingFile(for: id)
+        finishIfActive(id)
+        let data = try storage { try fileSystem.readData(at: url, maxBytes: CaptureFiles.maximumFileBytes) }
+        try storage { try fileSystem.writeAtomically(data, to: destination, permissions: .ownerOnlyFile) }
+        try storage { try fileSystem.removeItem(at: url) }
+    }
+
+    public func discard(_ id: CaptureSessionID) {
+        guard let url = try? existingFile(for: id) else { return }
+        finishIfActive(id)
+        try? fileSystem.removeItem(at: url)
+    }
+
     /// Deletes captures older than 24 hours; run at launch and hourly on the utility queue.
-    public func purgeExpired(now: Date) { unimplemented() }
+    public func purgeExpired(now: Date) {
+        // Compared by name: directory listings may spell the folder differently (symlinks, trailing slash).
+        let activeName = session.withLock { $0?.info.file.lastPathComponent }
+        guard let entries = try? fileSystem.contentsOfDirectory(at: directory) else { return }
+        for url in entries where url.pathExtension == CaptureFiles.fileExtension && url.lastPathComponent != activeName
+        {
+            guard let created = try? fileSystem.attributes(at: url).creationDate else { continue }
+            if now.timeIntervalSince(created) >= CaptureLimits.retention { try? fileSystem.removeItem(at: url) }
+        }
+    }
+
+    // MARK: Session internals
+
+    @discardableResult
+    private func finish(reason: CaptureFiles.EndReason) -> CaptureSessionInfo? {
+        session.withLock { active in
+            recording.store(false, ordering: .releasing)
+            guard var current = active else { return nil }
+            for timer in current.timers { timer.cancel() }
+            let now = clock.now()
+            current.closeGap(at: now)
+            var lines = drainedLines(&current, now: now)
+            lines.append(CaptureLine(type: .end, t: now.microseconds(since: current.start), reason: reason.rawValue))
+            append(lines, to: current.info.file)
+            active = nil
+            return current.info
+        }
+    }
+
+    private func finishIfActive(_ id: CaptureSessionID) {
+        if session.withLock({ $0?.info.id == id }) { finish(reason: .stopped) }
+    }
+
+    private func drainNow() {
+        session.withLock { active in
+            guard var current = active else { return }
+            append(drainedLines(&current, now: clock.now()), to: current.info.file)
+            active = current
+        }
+    }
+
+    /// Pops every ring and returns the lines to write, oldest first. Records stamped before the session or
+    /// inside a gap are dropped (PLT-R905 "nothing is recorded while secure input is on").
+    private func drainedLines(_ session: inout CaptureSession, now: MonotonicInstant) -> [CaptureLine] {
+        var timed: [(at: MonotonicInstant, line: CaptureLine)] = session.takeUnwrittenGaps()
+        for ring in [tapRecords, injectRecords, focusRecords] {
+            while let record = ring.pop() {
+                let at = record.timestamp ?? now
+                guard session.accepts(at) else { continue }
+                timed.append((at, CaptureLine(record, start: session.start)))
+            }
+        }
+        return timed.enumerated().sorted { ($0.element.at, $0.offset) < ($1.element.at, $1.offset) }.map(\.element.line)
+    }
+
+    private func discardPendingRecords() {
+        for ring in [tapRecords, injectRecords, focusRecords] { while ring.pop() != nil {} }
+    }
+
+    private func append(_ lines: [CaptureLine], to file: URL) {
+        guard !lines.isEmpty else { return }
+        do {
+            try fileSystem.append(CaptureFiles.encode(lines), to: file, permissions: .ownerOnlyFile)
+        } catch {
+            writeFailures.wrappingAdd(1, ordering: .relaxed)
+        }
+    }
+
+    /// Directory 0700, file 0600 with the session header, both excluded from backups (PLT-R905).
+    private func prepareFile(for info: CaptureSessionInfo) throws {
+        try fileSystem.createDirectory(at: directory, permissions: .ownerOnlyDirectory)
+        try fileSystem.setExcludedFromBackup(true, at: directory)
+        let header = CaptureLine(
+            type: .session, id: info.id.rawValue, startedAt: info.startedAt, endsAt: info.endsAt,
+            formatVersion: CaptureFiles.formatVersion)
+        try fileSystem.append(CaptureFiles.encode([header]), to: info.file, permissions: .ownerOnlyFile)
+        try fileSystem.setExcludedFromBackup(true, at: info.file)
+    }
+
+    private func existingFile(for id: CaptureSessionID) throws -> URL {
+        guard CaptureFiles.isValid(id) else { throw CaptureError.unknownSession }
+        let url = CaptureFiles.url(for: id, in: directory)
+        guard fileSystem.fileExists(at: url) else { throw CaptureError.unknownSession }
+        return url
+    }
+
+    private func storage<T>(_ body: () throws -> T) throws -> T {
+        do {
+            return try body()
+        } catch let error as FileSystemError {
+            throw CaptureError.storage(error)
+        }
+    }
 }
 ```
 <!-- /include -->
@@ -2342,16 +2832,48 @@ public final class CaptureController: Sendable {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 internal import AppModel
+internal import os
 
 /// `os_signpost` intervals around the callback, job execution and AX calls in all builds (PLT-R802); zero cost
 /// when not recording. Interval names are static strings.
+///
+/// Tap-safe: when no tool records signposts `begin` and `end` are one flag check. While recording they use the
+/// format-less `os_signpost` call and a generated ID, neither of which allocates (checked by the W1-A
+/// allocation test). Signposts carry no metadata at all, only the interval name.
 public struct PlatformSignposts: Sendable {
     public enum Interval: Sendable { case tapCallback, injectionJob, axCall }
     public struct Token: Sendable { let raw: UInt64 }
 
-    public init(subsystem: String) { unimplemented() }
-    public func begin(_ interval: Interval) -> Token { unimplemented() }
-    public func end(_ interval: Interval, _ token: Token) { unimplemented() }
+    private let log: OSLog
+
+    public init(subsystem: String) {
+        log = OSLog(subsystem: subsystem, category: .pointsOfInterest)
+    }
+
+    /// A token for `end`. Its value is 0 when signposts are not being recorded.
+    @inline(__always)
+    public func begin(_ interval: Interval) -> Token {
+        guard log.signpostsEnabled else { return Token(raw: 0) }
+        let id = OSSignpostID(log: log)
+        os_signpost(.begin, log: log, name: interval.name, signpostID: id)
+        return Token(raw: id.rawValue)
+    }
+
+    @inline(__always)
+    public func end(_ interval: Interval, _ token: Token) {
+        guard token.raw != 0, log.signpostsEnabled else { return }
+        os_signpost(.end, log: log, name: interval.name, signpostID: OSSignpostID(token.raw))
+    }
+}
+
+extension PlatformSignposts.Interval {
+    var name: StaticString {
+        switch self {
+        case .tapCallback: "tapCallback"
+        case .injectionJob: "injectionJob"
+        case .axCall: "axCall"
+        }
+    }
 }
 ```
 <!-- /include -->
@@ -2487,8 +3009,17 @@ public struct UserSettings: Sendable, Hashable {
 
     public init() {}
 
-    /// Names of keys that are explicitly set, for the content-free diagnostics report.
-    public var explicitlySetKeys: [String] { unimplemented() }
+    /// Names of keys that are explicitly set, for the content-free diagnostics report: the JSON names of set
+    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `optedInRules` when
+    /// non-empty. Names only, never values (PLT-R901, PRD-R6).
+    public var explicitlySetKeys: [String] {
+        let settings = SettingFields.all.filter { $0.isSet(self) }.map(\.key)
+        let lists = [
+            (SettingListKey.keepAsTyped, keepAsTyped.isEmpty), (SettingListKey.keepVietnamese, keepVietnamese.isEmpty),
+            (SettingListKey.optedInRules, optedInRules.isEmpty),
+        ]
+        return settings + lists.filter { !$0.1 }.map(\.0)
+    }
 }
 
 /// D17 (open at login) is deliberately absent: `SMAppService.mainApp` status is the source of truth.
@@ -2722,10 +3253,31 @@ public enum MigrationError: Error, Sendable, Hashable {
 /// Chains registered migrations. Before migrating, the store copies the original to
 /// `backups/<file>.v<N>.<timestamp>.json` and keeps the newest five per file (PLT-R1005).
 public struct MigrationChain: Sendable {
-    public init(_ migrations: [any DocumentMigration]) { unimplemented() }
+    private let steps: [SettingsFile: [Int: any DocumentMigration]]
+
+    /// When two migrations claim the same file and version, the later one in the array wins.
+    public init(_ migrations: [any DocumentMigration]) {
+        var steps: [SettingsFile: [Int: any DocumentMigration]] = [:]
+        for migration in migrations { steps[migration.file, default: [:]][migration.fromVersion] = migration }
+        self.steps = steps
+    }
+
+    /// Applies each step from `from` up to `to` in order and stamps `schemaVersion` after each one, so a step
+    /// only has to transform its payload. `from == to` returns the object unchanged; going down is an error.
     public func migrate(_ object: [String: JSONValue], file: SettingsFile, from: Int, to: Int) throws
         -> [String: JSONValue]
-    { unimplemented() }
+    {
+        guard from <= to else {
+            throw MigrationError.invalidDocument(file: file, reason: "cannot migrate to an older schema")
+        }
+        var current = object
+        for version in from..<to {
+            guard let step = steps[file]?[version] else { throw MigrationError.missingStep(file: file, from: version) }
+            current = try step.migrate(current)
+            current["schemaVersion"] = .number(Double(version + 1))
+        }
+        return current
+    }
 
     /// All migrations shipped by this build (empty while every file is at version 1).
     public static let shipped = MigrationChain([])
@@ -2739,6 +3291,8 @@ public struct MigrationChain: Sendable {
 //
 // Settings persistence (PLT-R10xx). An actor whose executor is the utility serial queue, so all reads,
 // migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue").
+// Loading lives in SettingsStore+Load.swift, writing in SettingsStore+Persistence.swift, reset and import in
+// SettingsStore+Transfer.swift.
 
 public import AppModel
 public import Dispatch
@@ -2757,6 +3311,23 @@ public struct SettingsState: Sendable, Hashable {
     /// Crash-loop safe mode: defaults in memory, files untouched (PLT-R1009).
     public var safeMode: Bool
     public var notices: [StoreNotice]
+
+    /// `effective` is derived from `user` over `DefaultSettings.v1`. For consumers' tests and previews.
+    public init(
+        generation: UInt64 = 0, user: UserSettings = UserSettings(), appModes: AppModesDocument = AppModesDocument(),
+        ruleOverrides: [StoredRuleOverride] = [], macros: [StoredMacro] = [], readOnlyFiles: Set<SettingsFile> = [],
+        safeMode: Bool = false, notices: [StoreNotice] = []
+    ) {
+        self.generation = generation
+        self.user = user
+        self.effective = user.resolved()
+        self.appModes = appModes
+        self.ruleOverrides = ruleOverrides
+        self.macros = macros
+        self.readOnlyFiles = readOnlyFiles
+        self.safeMode = safeMode
+        self.notices = notices
+    }
 }
 
 /// User-visible notices (PLT-R1006, PLT-R1007, PLT-R1009), rendered by ShellCore.
@@ -2774,13 +3345,32 @@ public enum ResetScope: Sendable, Hashable {
 }
 
 public actor SettingsStore {
-    private let queue: DispatchSerialQueue
+    let queue: DispatchSerialQueue
+    let storage: DocumentStorage
+    let writtenBy: String
+    let migrations: MigrationChain
+    let launchGuard: LaunchGuard
+    let scheduler: any DebounceScheduler
+    let onChange: @Sendable (SettingsState) -> Void
+
+    var user = UserSettings()
+    var appModes = AppModesDocument()
+    var ruleOverrides: [StoredRuleOverride] = []
+    var macros: [StoredMacro] = []
+    var files: [SettingsFile: FileStatus] = [:]
+    var notices: [StoreNotice] = []
+    var safeMode = false
+    /// Nothing is written before the first `load()`: an early write would replace files not read yet.
+    var loaded = false
+    var generation: UInt64 = 0
+    var nextTimerToken: UInt64 = 0
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     /// - Parameters:
     ///   - queue: the utility serial queue (QoS utility).
     ///   - writtenBy: app version recorded in every file (PLT-R1002).
+    ///   - scheduler: debounce timers; nil = `DispatchDebounceScheduler` on `queue`. Tests pass a manual one.
     ///   - onChange: called on `queue` after each change; InputHost publishes snapshots from it, ShellCore
     ///     hops to the main actor.
     public init(
@@ -2791,50 +3381,137 @@ public actor SettingsStore {
         queue: DispatchSerialQueue,
         migrations: MigrationChain = .shipped,
         launchGuard: LaunchGuard,
+        scheduler: (any DebounceScheduler)? = nil,
         onChange: @escaping @Sendable (SettingsState) -> Void
     ) {
         self.queue = queue
-        unimplemented()
+        self.storage = DocumentStorage(location: location, fileSystem: fileSystem, wallClock: wallClock)
+        self.writtenBy = writtenBy
+        self.migrations = migrations
+        self.launchGuard = launchGuard
+        self.scheduler = scheduler ?? DispatchDebounceScheduler(queue: queue)
+        self.onChange = onChange
     }
 
     /// Loads all four files: migrate (with backups), recover from corruption (PLT-R1006), detect newer
     /// schema (PLT-R1007), honour safe mode (PLT-R1009).
-    public func load() -> SettingsState { unimplemented() }
+    public func load() -> SettingsState {
+        performLoad()
+        return state
+    }
 
-    public var state: SettingsState { unimplemented() }
+    public var state: SettingsState {
+        SettingsState(
+            generation: generation, user: user, appModes: appModes, ruleOverrides: ruleOverrides, macros: macros,
+            readOnlyFiles: Set(files.filter { $0.value.readOnly }.keys), safeMode: safeMode, notices: notices)
+    }
 
     /// Applies an explicit change (debounced write, 1 s).
-    public func updateSettings(_ change: @Sendable (inout UserSettings) -> Void) { unimplemented() }
+    public func updateSettings(_ change: @Sendable (inout UserSettings) -> Void) {
+        var next = user
+        change(&next)
+        guard next != user else { return }
+        user = next
+        changed(.settings, after: WriteDelay.standard)
+    }
 
     /// Per-app explicit rule from the menu or the Apps pane (PRD-R21). `nil` clears it.
-    public func setAppRule(_ rule: PerAppRule?, for bundle: BundleKey) { unimplemented() }
+    public func setAppRule(_ rule: PerAppRule?, for bundle: BundleKey) {
+        let next = appModes.settingRule(rule, for: bundle)
+        guard next != appModes else { return }
+        appModes = next
+        changed(.appModes, after: WriteDelay.standard)
+    }
 
     /// Remembered modes and global mode from InputHost's memory; written with a 5 s debounce (PLT-R392).
-    public func recordAppModes(_ document: AppModesDocument) { unimplemented() }
+    /// Explicit rules stay as set through `setAppRule`, so a copy that left the ax thread before a rule change
+    /// can never revert that rule.
+    public func recordAppModes(_ document: AppModesDocument) {
+        let next = appModes.recordingMemory(from: document)
+        guard next != appModes else { return }
+        appModes = next
+        changed(.appModes, after: WriteDelay.appModes)
+    }
 
-    public func addRuleOverride(_ override: StoredRuleOverride) { unimplemented() }
-    public func removeRuleOverride(id: RuleID) { unimplemented() }
-    public func replaceMacros(_ macros: [StoredMacro]) { unimplemented() }
+    /// Adds or replaces (same `user.` rule id) an override. A rule without a valid `user.` id is ignored; the
+    /// date is kept to the second so it reads back unchanged (PLT-R541 "set by you on <date>").
+    public func addRuleOverride(_ override: StoredRuleOverride) {
+        guard let id = override.ruleID else { return }
+        let stored = StoredRuleOverride(
+            createdAt: StorageTimestamp.wholeSeconds(override.createdAt), rule: override.rule)
+        var next = ruleOverrides
+        if let index = next.firstIndex(where: { $0.ruleID == id }) { next[index] = stored } else { next.append(stored) }
+        guard next != ruleOverrides else { return }
+        ruleOverrides = next
+        changed(.ruleOverrides, after: WriteDelay.standard)
+    }
+
+    public func removeRuleOverride(id: RuleID) {
+        let next = ruleOverrides.filter { $0.ruleID != id }
+        guard next != ruleOverrides else { return }
+        ruleOverrides = next
+        changed(.ruleOverrides, after: WriteDelay.standard)
+    }
+
+    /// The editor validates entries (`MacroValidator`); the store keeps them as given.
+    public func replaceMacros(_ macros: [StoredMacro]) {
+        guard macros != self.macros else { return }
+        self.macros = macros
+        changed(.macros, after: WriteDelay.standard)
+    }
 
     /// PRD-R26. The caller offers an export first.
-    public func reset(_ scope: ResetScope) { unimplemented() }
+    public func reset(_ scope: ResetScope) { performReset(scope) }
 
-    /// User confirmed using defaults after a corrupt file without backup (PLT-R1006).
-    public func confirmDefaults(for file: SettingsFile) { unimplemented() }
+    /// User confirmed using defaults after a corrupt file without backup (PLT-R1006): writes the in-memory state
+    /// of that file, including changes made meanwhile. For a state recovered from a backup (already written at
+    /// load) it only dismisses the notice.
+    public func confirmDefaults(for file: SettingsFile) {
+        guard status(file).awaitingConfirmation else {
+            // A recovered backup is already saved: confirming only dismisses the notice.
+            if notices.contains(where: { $0.isRecovery(of: file) }) {
+                notices.removeAll { $0.isRecovery(of: file) }
+                publish()
+            }
+            return
+        }
+        updateStatus(file) {
+            $0.awaitingConfirmation = false
+            $0.dirty = true
+        }
+        notices.removeAll { $0.isRecovery(of: file) }
+        writeNow(file)
+        publish()
+    }
 
     /// Leaves safe mode and resets the launch guard.
-    public func exitSafeMode() { unimplemented() }
+    public func exitSafeMode() {
+        launchGuard.reset()
+        guard safeMode else { return }
+        performLoad()
+    }
 
     /// Writes pending changes immediately (quit, update install).
-    public func flush() { unimplemented() }
+    public func flush() {
+        var noticesChanged = false
+        for file in SettingsFile.allCases {
+            cancelPendingWrite(file)
+            noticesChanged = writeNow(file) || noticesChanged
+        }
+        if noticesChanged { publish() }
+    }
 
     // MARK: Export and import (PLT-R1010, PRD-R72)
 
-    public func export(_ options: ExportOptions, now: Date) throws -> Data { unimplemented() }
+    public func export(_ options: ExportOptions, now: Date) throws -> Data { try exportData(options, now: now) }
     /// Validates untrusted data (5 MB cap, schema, no evaluation, PLT-R912) and builds a preview.
-    public func previewImport(_ data: Data) throws -> ImportPreview { unimplemented() }
+    public func previewImport(_ data: Data) throws -> ImportPreview {
+        try SettingsImporter(migrations: migrations).preview(data, baseline: ImportBaseline(user: user, macros: macros))
+    }
     /// Backs up current files, applies, migrates older schemas, lists skipped fields of newer schemas.
-    public func applyImport(_ preview: ImportPreview, choices: ImportChoices) throws { unimplemented() }
+    public func applyImport(_ preview: ImportPreview, choices: ImportChoices) throws {
+        try performImport(preview, choices: choices)
+    }
 }
 ```
 <!-- /include -->
@@ -2869,7 +3546,18 @@ public struct ExportOptions: Sendable, Hashable {
         self.includeAppModes = includeAppModes
     }
 
-    public static func fileName(slug: String, date: Date) -> String { unimplemented() }
+    /// `<slug>-settings-YYYYMMDD.json`, dated in the user's time zone.
+    public static func fileName(slug: String, date: Date) -> String {
+        fileName(slug: slug, date: date, timeZone: .current)
+    }
+
+    static func fileName(slug: String, date: Date, timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        let day = String(format: "%04d%02d%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        return "\(slug)-settings-\(day).json"
+    }
 }
 
 public struct ImportPreview: Sendable, Hashable {
@@ -2888,15 +3576,158 @@ public struct ImportChoices: Sendable, Hashable {
     public var applySettings: Bool
     public var applyAppModes: Bool
     public var applyRuleOverrides: Bool
+    /// Off = the macros in the file are ignored (the preview still lists them).
+    public var applyMacros: Bool
     public var macroDuplicates: MacroDuplicateResolution
     public init(
         applySettings: Bool = true, applyAppModes: Bool = true, applyRuleOverrides: Bool = true,
-        macroDuplicates: MacroDuplicateResolution = .keepMine
+        applyMacros: Bool = true, macroDuplicates: MacroDuplicateResolution = .keepMine
     ) {
         self.applySettings = applySettings
         self.applyAppModes = applyAppModes
         self.applyRuleOverrides = applyRuleOverrides
+        self.applyMacros = applyMacros
         self.macroDuplicates = macroDuplicates
+    }
+}
+
+/// Why an import file was refused (PLT-R912). Each case is a reason the import sheet can explain (PRD-R43).
+public enum SettingsImportError: Error, Sendable, Hashable {
+    case tooLarge(limit: Int)
+    case tooDeeplyNested(limit: Int)
+    case notJSON
+    case notAnObject
+    /// Valid JSON, but not this app's settings export (`kind` is not `settings-export`).
+    case notASettingsExport
+    case invalidSchemaVersion
+    /// A section has the wrong JSON type (`settings` and `appModes` must be objects, the others arrays).
+    case invalidSection(String)
+    /// An older export this build cannot migrate.
+    case migrationFailed(fromVersion: Int)
+    /// Crash-loop safe mode touches no files (PLT-R1009); leave safe mode first.
+    case unavailableInSafeMode
+}
+
+enum SettingsExportFormat {
+    static let kind = "settings-export"
+    static let schemaVersion = 1
+    static let maxImportBytes = 5 * 1024 * 1024
+    static let headerKeys: Set<String> = ["kind", "schemaVersion", "writtenBy", "exportedAt"]
+    static let settings = "settings", appModes = "appModes", ruleOverrides = "ruleOverrides", macros = "macros"
+    static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros]
+}
+
+/// The store's documents as an import is previewed against them.
+struct ImportBaseline: Sendable {
+    var user: UserSettings
+    var macros: [StoredMacro]
+}
+
+/// Validates an untrusted export (5 MB cap, bounded nesting, schema checks, no evaluation of content) and builds
+/// the preview (PLT-R912, PLT-R1010). Older exports are migrated section by section; content of a newer schema
+/// is read for known fields and everything else is listed in `skippedFields`.
+struct SettingsImporter {
+    let migrations: MigrationChain
+
+    func preview(_ data: Data, baseline: ImportBaseline) throws(SettingsImportError) -> ImportPreview {
+        let root = try parseRoot(data)
+        guard let version = root[EnvelopeKey.schemaVersion]?.intValue, version >= 0 else {
+            throw .invalidSchemaVersion
+        }
+        var skipped = root.keys.filter {
+            !SettingsExportFormat.headerKeys.contains($0) && !SettingsExportFormat.sectionKeys.contains($0)
+        }.sorted()
+        var content: [String: JSONValue] = [:]
+        var preview = ImportPreview(
+            schemaVersion: version, changedSettingKeys: [], appEntries: 0, ruleOverrides: 0, macros: nil,
+            skippedFields: [], content: .null)
+
+        if let section = try objectSection(root, SettingsExportFormat.settings) {
+            let object = try migrated(section, file: .settings, from: version)
+            let user = SettingsCodec.decode(object)
+            skipped += SettingsCodec.skippedPaths(in: object).map { "settings." + $0 }
+            preview.changedSettingKeys = Self.changedKeys(from: baseline.user, to: user)
+            content[SettingsExportFormat.settings] = .object(SettingsCodec.encode(user, over: [:]))
+        }
+        if let section = try objectSection(root, SettingsExportFormat.appModes) {
+            let object = try migrated(section, file: .appModes, from: version)
+            let document = AppModesCodec.decode(object)
+            skipped += AppModesCodec.skippedPaths(in: object).map { "appModes." + $0 }
+            preview.appEntries = document.apps.count
+            content[SettingsExportFormat.appModes] = .object(AppModesCodec.encode(document, over: [:]))
+        }
+        if let items = try arraySection(root, SettingsExportFormat.ruleOverrides) {
+            let object = try migrated(["overrides": .array(items)], file: .ruleOverrides, from: version)
+            let overrides = RuleOverridesCodec.decode(object)
+            skipped += RuleOverridesCodec.skippedPaths(in: object).map { "ruleOverrides." + $0 }
+            preview.ruleOverrides = overrides.count
+            content[SettingsExportFormat.ruleOverrides] = .array(RuleOverridesCodec.encodeList(overrides, over: []))
+        }
+        if let items = try arraySection(root, SettingsExportFormat.macros) {
+            let object = try migrated(["macros": .array(items)], file: .macros, from: version)
+            let rows = MacroJSONParser.rows(fromItems: arrayItems(object["macros"]))
+            preview.macros = MacroImporter.preview(rows, existing: baseline.macros)
+        }
+        preview.skippedFields = skipped
+        preview.content = .object(content)
+        return preview
+    }
+
+    private func parseRoot(_ data: Data) throws(SettingsImportError) -> [String: JSONValue] {
+        guard data.count <= SettingsExportFormat.maxImportBytes else {
+            throw .tooLarge(limit: SettingsExportFormat.maxImportBytes)
+        }
+        let root: [String: JSONValue]
+        do {
+            root = try JSONSupport.parseObject(data)
+        } catch {
+            switch error {
+            case .tooDeeplyNested(let limit): throw .tooDeeplyNested(limit: limit)
+            case .notAnObject: throw .notAnObject
+            case .empty, .invalidJSON: throw .notJSON
+            }
+        }
+        guard root["kind"]?.stringValue == SettingsExportFormat.kind else { throw .notASettingsExport }
+        return root
+    }
+
+    private func objectSection(_ root: [String: JSONValue], _ key: String) throws(SettingsImportError)
+        -> [String: JSONValue]?
+    {
+        guard let value = root[key] else { return nil }
+        guard case .object(let object) = value else { throw .invalidSection(key) }
+        return object
+    }
+
+    private func arraySection(_ root: [String: JSONValue], _ key: String) throws(SettingsImportError) -> [JSONValue]? {
+        guard let value = root[key] else { return nil }
+        guard case .array(let items) = value else { throw .invalidSection(key) }
+        return items
+    }
+
+    /// A section of an older export goes through the same migrations as the file it belongs to.
+    private func migrated(_ payload: [String: JSONValue], file: SettingsFile, from version: Int)
+        throws(SettingsImportError) -> [String: JSONValue]
+    {
+        guard version < file.currentSchemaVersion else { return payload }
+        var object = payload
+        object[EnvelopeKey.schemaVersion] = .number(Double(version))
+        do {
+            object = try migrations.migrate(object, file: file, from: version, to: file.currentSchemaVersion)
+        } catch {
+            throw .migrationFailed(fromVersion: version)
+        }
+        for key in EnvelopeKey.all { object.removeValue(forKey: key) }
+        return object
+    }
+
+    /// Setting keys whose value would change; onboarding is machine state and never imported.
+    static func changedKeys(from current: UserSettings, to imported: UserSettings) -> [String] {
+        var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
+        if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
+        if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
+        if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
+        return keys
     }
 }
 ```
@@ -2934,14 +3765,38 @@ public enum MacroRowIssue: Sendable, Hashable {
     case shortcutNotPrintableASCII  // includes Vietnamese letters (PRD-R29)
     case expansionTooLong  // > 4,000
     case shadowedBy(shorter: String)  // shortcut = other shortcut + trailing punctuation (PRD-R29)
+    /// The other shortcut equals this one plus trailing punctuation, so this one would make it unreachable
+    /// (engine `shadowedByShorterTrigger`, seen from the shorter side).
+    case shadows(longer: String)
+    /// Same shortcut, compared case-insensitively, as another entry (engine `duplicateTrigger`).
+    case duplicate(of: String)
     case malformedLine
 }
 
 public struct MacroImportRow: Sendable, Hashable {
+    /// 1-based line of a text file, or 1-based entry number in a JSON array or property list.
     public var line: Int
     public var shortcut: String
     public var expansion: String
     public var issue: MacroRowIssue?
+    /// From this app's own export only; kept when it does not clash (contracts.md 7.3 "id regenerated on
+    /// conflict"), so export then import reproduces the same macros.
+    public var id: UUID?
+    public var adaptCase: Bool
+    public var enabled: Bool
+
+    public init(
+        line: Int, shortcut: String, expansion: String, issue: MacroRowIssue? = nil, id: UUID? = nil,
+        adaptCase: Bool = true, enabled: Bool = true
+    ) {
+        self.line = line
+        self.shortcut = shortcut
+        self.expansion = expansion
+        self.issue = issue
+        self.id = id
+        self.adaptCase = adaptCase
+        self.enabled = enabled
+    }
 }
 
 public enum MacroDuplicateResolution: String, Sendable, Hashable { case keepMine, useImported }
@@ -2950,6 +3805,15 @@ public struct MacroImportPreview: Sendable, Hashable {
     public var new: [StoredMacro]
     public var duplicates: [(existing: StoredMacro, imported: StoredMacro)]
     public var invalid: [MacroImportRow]
+
+    public init(
+        new: [StoredMacro] = [], duplicates: [(existing: StoredMacro, imported: StoredMacro)] = [],
+        invalid: [MacroImportRow] = []
+    ) {
+        self.new = new
+        self.duplicates = duplicates
+        self.invalid = invalid
+    }
 
     public static func == (lhs: MacroImportPreview, rhs: MacroImportPreview) -> Bool {
         lhs.new == rhs.new && lhs.invalid == rhs.invalid
@@ -2965,25 +3829,204 @@ public struct MacroImportPreview: Sendable, Hashable {
 }
 
 public enum MacroImporter {
+    /// Files larger than this are refused before parsing (same cap as settings import, PLT-R912).
+    public static let maxFileBytes = 5 * 1024 * 1024
+
     /// Sniffs content first (plist header, JSON object, tabs vs commas), then the extension.
-    public static func detectFormat(_ data: Data, fileExtension: String?) -> MacroImportFormat? { unimplemented() }
-    public static func parse(_ data: Data, format: MacroImportFormat) -> [MacroImportRow] { unimplemented() }
-    /// Duplicates are by case-insensitive shortcut (matching is case-insensitive, ENG-R1101).
-    public static func preview(_ rows: [MacroImportRow], existing: [StoredMacro]) -> MacroImportPreview {
-        unimplemented()
+    public static func detectFormat(_ data: Data, fileExtension: String?) -> MacroImportFormat? {
+        MacroFormatSniffer.detect(data, fileExtension: fileExtension?.lowercased())
     }
 
-    public static func merge(_ preview: MacroImportPreview, into existing: [StoredMacro],
-                             resolution: MacroDuplicateResolution) -> [StoredMacro] { unimplemented() }
+    /// Rows in file order. Structural problems and per-row rules (PRD-R29) are filled in `issue`; duplicates
+    /// and shadowing need the other rows and the user's macros, so `preview` decides those. A file that cannot
+    /// be read at all yields one `malformedLine` row at line 1; an empty file yields no rows.
+    public static func parse(_ data: Data, format: MacroImportFormat) -> [MacroImportRow] {
+        guard data.count <= maxFileBytes else {
+            return [MacroImportRow(line: 1, shortcut: "", expansion: "", issue: .malformedLine)]
+        }
+        let rows: [MacroImportRow]
+        switch format {
+        case .appExport: rows = MacroJSONParser.parse(data)
+        case .tabSeparated: rows = MacroTextParser.parseTabSeparated(data)
+        case .csv: rows = MacroTextParser.parseCSV(data)
+        case .textReplacementsPlist: rows = MacroPlistParser.parse(data)
+        }
+        return rows.map(validated)
+    }
+
+    /// Duplicates are by case-insensitive shortcut (matching is case-insensitive, ENG-R1101).
+    ///
+    /// A valid row whose shortcut matches one of `existing` is a duplicate (resolved later by the user's
+    /// choice); a repeat inside the file is invalid. Shadowing (PRD-R29) is checked against the user's macros in
+    /// both directions and among the imported rows so that the longer shortcut is the one rejected, whatever
+    /// the row order. Imported rows never displace an existing macro.
+    public static func preview(_ rows: [MacroImportRow], existing: [StoredMacro]) -> MacroImportPreview {
+        var existingByKey: [String: StoredMacro] = [:]
+        for macro in existing where existingByKey[MacroValidator.key(macro.trigger)] == nil {
+            existingByKey[MacroValidator.key(macro.trigger)] = macro
+        }
+        var preview = MacroImportPreview()
+        var seen = Set<String>()
+        var candidates: [MacroImportRow] = []
+        for row in rows.map(validated) {
+            let key = MacroValidator.key(row.shortcut)
+            if row.issue != nil {
+                preview.invalid.append(row)
+            } else if !seen.insert(key).inserted {
+                preview.invalid.append(rejected(row, .duplicate(of: row.shortcut)))
+            } else if let mine = existingByKey[key] {
+                preview.duplicates.append((mine, storedMacro(from: row, id: mine.id)))
+            } else {
+                candidates.append(row)
+            }
+        }
+        addNew(candidates, existing: existing, to: &preview)
+        preview.invalid.sort { $0.line < $1.line }
+        return preview
+    }
+
+    /// Rows that conflict with the user's macros are rejected first; among the rest only the longer shortcut
+    /// of a shadowing pair is rejected.
+    private static func addNew(
+        _ candidates: [MacroImportRow], existing: [StoredMacro], to preview: inout MacroImportPreview
+    ) {
+        let existingTriggers = existing.map(\.trigger)
+        var accepted: [MacroImportRow] = []
+        for row in candidates {
+            if let issue = MacroValidator.shadowing(row.shortcut, against: existingTriggers) {
+                preview.invalid.append(rejected(row, issue))
+            } else {
+                accepted.append(row)
+            }
+        }
+        let acceptedShortcuts = accepted.map(\.shortcut)
+        var usedIDs = Set(existing.map(\.id))
+        for row in accepted {
+            if let issue = MacroValidator.shadowedBy(row.shortcut, among: acceptedShortcuts) {
+                preview.invalid.append(rejected(row, issue))
+                continue
+            }
+            let id = row.id.flatMap { usedIDs.contains($0) ? nil : $0 } ?? UUID()
+            usedIDs.insert(id)
+            preview.new.append(storedMacro(from: row, id: id))
+        }
+    }
+
+    /// `useImported` replaces each duplicate in place (keeping its id); `keepMine` leaves it. New macros are
+    /// appended; an id that is taken by then gets a fresh one, and a shortcut that is taken by then is skipped.
+    public static func merge(
+        _ preview: MacroImportPreview, into existing: [StoredMacro],
+        resolution: MacroDuplicateResolution
+    ) -> [StoredMacro] {
+        var result = existing
+        if resolution == .useImported {
+            for (mine, imported) in preview.duplicates {
+                guard let index = result.firstIndex(where: { $0.id == mine.id }) else { continue }
+                result[index] = StoredMacro(
+                    id: mine.id, trigger: imported.trigger, expansion: imported.expansion,
+                    adaptCase: imported.adaptCase, enabled: imported.enabled)
+            }
+        }
+        var ids = Set(result.map(\.id))
+        var keys = Set(result.map { MacroValidator.key($0.trigger) })
+        for macro in preview.new where keys.insert(MacroValidator.key(macro.trigger)).inserted {
+            var macro = macro
+            if !ids.insert(macro.id).inserted {
+                macro.id = UUID()
+                ids.insert(macro.id)
+            }
+            result.append(macro)
+        }
+        return result
+    }
+
+    private static func validated(_ row: MacroImportRow) -> MacroImportRow {
+        guard row.issue == nil else { return row }
+        var row = row
+        row.issue = MacroValidator.issue(shortcut: row.shortcut, expansion: row.expansion, others: [])
+        return row
+    }
+
+    private static func rejected(_ row: MacroImportRow, _ issue: MacroRowIssue) -> MacroImportRow {
+        var row = row
+        row.issue = issue
+        return row
+    }
+
+    private static func storedMacro(from row: MacroImportRow, id: UUID) -> StoredMacro {
+        StoredMacro(
+            id: id, trigger: row.shortcut, expansion: row.expansion, adaptCase: row.adaptCase, enabled: row.enabled)
+    }
 }
 
 /// Editor-side validation (PRD-R29). The engine's `MacroTable.init` stays authoritative when the table is
 /// built; a test asserts both agree on every fixture.
+///
+/// Agreement with `MacroTable.ValidationError` (ENG-R1101, ENG-R1103): `emptyTrigger` = `emptyShortcut`;
+/// `triggerTooLong` = `shortcutTooLong` (more than 32); `invalidTriggerCharacter` = `shortcutHasWhitespace` or
+/// `shortcutNotPrintableASCII` (only U+0021...U+007E are allowed); `expansionTooLong` = `expansionTooLong` (more
+/// than 4,000 characters, counted as `String.count`); `duplicateTrigger` = `duplicate(of:)`;
+/// `shadowedByShorterTrigger` = `shadowedBy(shorter:)` / `shadows(longer:)`. The editor is stricter in one place:
+/// an empty expansion is rejected (`emptyExpansion`, PRD-R43 example).
 public enum MacroValidator {
     public static let maxShortcutLength = 32
     public static let maxExpansionLength = 4_000
+
+    /// First problem of `shortcut -> expansion` among `others` (pass every macro except the one being edited;
+    /// disabled macros count, because enabling one later must not produce a table the engine rejects).
     public static func issue(shortcut: String, expansion: String, others: [StoredMacro]) -> MacroRowIssue? {
-        unimplemented()
+        if let issue = shortcutIssue(shortcut) { return issue }
+        if expansion.isEmpty { return .emptyExpansion }
+        if expansion.count > maxExpansionLength { return .expansionTooLong }
+        let key = key(shortcut)
+        if let same = others.first(where: { Self.key($0.trigger) == key }) { return .duplicate(of: same.trigger) }
+        return shadowing(shortcut, against: others.map(\.trigger))
+    }
+
+    static func shortcutIssue(_ shortcut: String) -> MacroRowIssue? {
+        if shortcut.isEmpty { return .emptyShortcut }
+        if shortcut.unicodeScalars.contains(where: { $0.properties.isWhitespace }) { return .shortcutHasWhitespace }
+        if !shortcut.unicodeScalars.allSatisfy(isPrintableASCII) { return .shortcutNotPrintableASCII }
+        if shortcut.unicodeScalars.count > maxShortcutLength { return .shortcutTooLong }
+        return nil
+    }
+
+    /// Shadowing in both directions against existing shortcuts (ENG-R1103).
+    static func shadowing(_ shortcut: String, against triggers: [String]) -> MacroRowIssue? {
+        let key = key(shortcut)
+        if let shorter = triggers.first(where: { isShadowed(key, by: Self.key($0)) }) {
+            return .shadowedBy(shorter: shorter)
+        }
+        if let longer = triggers.first(where: { isShadowed(Self.key($0), by: key) }) { return .shadows(longer: longer) }
+        return nil
+    }
+
+    /// Only the longer side of a pair is rejected among imported rows.
+    static func shadowedBy(_ shortcut: String, among shortcuts: [String]) -> MacroRowIssue? {
+        let key = key(shortcut)
+        return shortcuts.first { isShadowed(key, by: Self.key($0)) }.map { .shadowedBy(shorter: $0) }
+    }
+
+    /// `longer` starts with `shorter` followed by an ASCII punctuation character: that key is a boundary at which
+    /// the span equals `shorter`, so `shorter` expands there and `longer` can never fire, whatever comes after
+    /// the punctuation (PRD-R29, ENG-R1103, 01-engine.md section 9.2: `vn` shadows `vn.` and `vn.x`). Digits are
+    /// not treated as boundaries here: they are transform keys in VNI, so whether they end a span depends on
+    /// the typing method.
+    static func isShadowed(_ longer: String, by shorter: String) -> Bool {
+        let shorterScalars = shorter.unicodeScalars
+        guard !shorterScalars.isEmpty, longer.unicodeScalars.count > shorterScalars.count, longer.hasPrefix(shorter),
+            let next = longer.unicodeScalars.dropFirst(shorterScalars.count).first
+        else { return false }
+        return isASCIIPunctuation(next)
+    }
+
+    /// Matching key: ASCII-lowercased shortcut (ENG-R1101 case-insensitive matching).
+    static func key(_ shortcut: String) -> String { shortcut.lowercased() }
+
+    static func isPrintableASCII(_ scalar: Unicode.Scalar) -> Bool { (0x21...0x7E).contains(scalar.value) }
+
+    static func isASCIIPunctuation(_ scalar: Unicode.Scalar) -> Bool {
+        isPrintableASCII(scalar) && !(scalar.properties.isAlphabetic || ("0"..."9").contains(scalar))
     }
 }
 ```
@@ -2994,6 +4037,8 @@ public enum MacroValidator {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 internal import AppModel
+internal import Synchronization
+
 //
 // Crash-loop safe mode (PLT-R1009): three launches that did not survive 60 s within a short window start the
 // app with defaults in memory, without touching files.
@@ -3010,13 +4055,99 @@ public protocol KeyValueStore: Sendable {
 public final class LaunchGuard: Sendable {
     public static let crashThreshold = 3
     public static let survivalSeconds: Double = 60
+    /// The crashed launches of one streak all started within this many seconds of the first (the "short
+    /// window"). A launch that crashes once a day at login is not a crash loop; three tries in a row are.
+    public static let crashWindowSeconds: Double = 600
 
-    public init(store: any KeyValueStore) { unimplemented() }
+    enum Key {
+        static let inProgressSince = "launchGuard.inProgressSince"
+        static let recentCrashes = "launchGuard.recentCrashes"
+        static let firstCrashAt = "launchGuard.firstCrashAt"
+        static let appVersion = "launchGuard.appVersion"
+    }
+
+    private let store: any KeyValueStore
+    private let safeModeFlag = Atomic<Bool>(false)
+
+    public init(store: any KeyValueStore) { self.store = store }
+
     /// Called first thing at launch; returns true when safe mode must be entered.
-    public func beginLaunch(now: Double) -> Bool { unimplemented() }
-    /// Called 60 s after launch and on clean quit.
-    public func markSurvived() { unimplemented() }
-    public var recentCrashes: Int { unimplemented() }
+    ///
+    /// `now` is wall-clock seconds since 1970 (monotonic time restarts at boot). A launch that is still marked
+    /// in progress never reached `markSurvived()`, so it crashed or was killed within 60 s of starting.
+    /// `appVersion` (the bundle version) clears the streak when it differs from the version recorded by the
+    /// previous launch: installing an update is the usual way out of a crash loop, and a fixed build must not
+    /// start in safe mode because of the old build's crashes. Nil keeps the recorded version.
+    public func beginLaunch(now: Double, appVersion: String? = nil) -> Bool {
+        let previousStart = store.double(forKey: Key.inProgressSince)
+        if adoptVersion(appVersion) {
+            clearStreak()
+        } else if previousStart > 0 {
+            recordCrash(launchedAt: previousStart)
+        }
+        store.set(now, forKey: Key.inProgressSince)
+        let enter = recentCrashes >= Self.crashThreshold
+        safeModeFlag.store(enter, ordering: .sequentiallyConsistent)
+        return enter
+    }
+
+    /// Called 60 s after launch and on clean quit. In safe mode the crash count is kept, so the next launch is
+    /// safe again until the user resets or leaves safe mode (`reset()`).
+    public func markSurvived() {
+        store.set(0.0, forKey: Key.inProgressSince)
+        guard !isSafeModeActive else { return }
+        clearStreak()
+    }
+
+    public var recentCrashes: Int { store.integer(forKey: Key.recentCrashes) }
+
+    /// True after `beginLaunch` decided on safe mode, until `reset()`. `SettingsStore.load` reads it.
+    public var isSafeModeActive: Bool { safeModeFlag.load(ordering: .sequentiallyConsistent) }
+
+    /// Leaves safe mode and forgets the streak (`SettingsStore.exitSafeMode`, reset from the safe-mode notice).
+    /// The current launch stays in progress until it survives.
+    public func reset() {
+        clearStreak()
+        safeModeFlag.store(false, ordering: .sequentiallyConsistent)
+    }
+
+    /// Records `version`; true when it replaces a different recorded version.
+    private func adoptVersion(_ version: String?) -> Bool {
+        guard let version else { return false }
+        let fingerprint = Self.versionFingerprint(version)
+        let recorded = store.integer(forKey: Key.appVersion)
+        guard recorded != fingerprint else { return false }
+        store.set(fingerprint, forKey: Key.appVersion)
+        return recorded != 0
+    }
+
+    /// Stable, non-zero 32-bit FNV-1a hash of the version string. The key-value store holds numbers only, and
+    /// 32 bits stay exact even in a store that keeps every number as a `Double`; zero means "nothing recorded".
+    static func versionFingerprint(_ version: String) -> Int {
+        var hash: UInt32 = 0x811c_9dc5
+        for byte in version.utf8 {
+            hash ^= UInt32(byte)
+            hash &*= 0x0100_0193
+        }
+        return hash == 0 ? 1 : Int(hash)
+    }
+
+    private func recordCrash(launchedAt start: Double) {
+        let crashes = recentCrashes
+        let first = store.double(forKey: Key.firstCrashAt)
+        let continuesStreak = crashes > 0 && start >= first && start - first <= Self.crashWindowSeconds
+        if continuesStreak {
+            store.set(crashes + 1, forKey: Key.recentCrashes)
+        } else {
+            store.set(1, forKey: Key.recentCrashes)
+            store.set(start, forKey: Key.firstCrashAt)
+        }
+    }
+
+    private func clearStreak() {
+        store.set(0, forKey: Key.recentCrashes)
+        store.set(0.0, forKey: Key.firstCrashAt)
+    }
 }
 ```
 <!-- /include -->
@@ -3045,9 +4176,44 @@ public enum LegacyStorageMigrator {
     /// For each base (`~/Library/Application Support`, `~/Library/Logs`): if `<base>/<current>` does not exist
     /// and `<base>/<legacy>` exists for the first name in `legacyNames` (newest first), renames it to
     /// `<base>/<current>` keeping permissions (0700). Never merges, never deletes.
+    ///
+    /// Returns one result per base, in order. Names come from Info.plist (`AppLegacyStorageFolderNames`); a name
+    /// that is empty, equal to `current`, or not a single path component (`/`, `.`, `..`) is ignored so a bad
+    /// build setting can never move a folder outside its base.
     public static func migrate(
         current: String, legacyNames: [String], bases: [URL], fileSystem: any FileSystem
-    ) -> [LegacyStorageMigration] { unimplemented() }
+    ) -> [LegacyStorageMigration] {
+        guard isSinglePathComponent(current) else { return bases.map { _ in .notNeeded } }
+        let candidates = legacyNames.filter { $0 != current && isSinglePathComponent($0) }
+        return bases.map { base in
+            migrate(base: base, current: current, candidates: candidates, fileSystem: fileSystem)
+        }
+    }
+
+    private static func migrate(
+        base: URL, current: String, candidates: [String], fileSystem: any FileSystem
+    ) -> LegacyStorageMigration {
+        let currentURL = base.appendingPathComponent(current, isDirectory: true)
+        let existingLegacy = candidates.first { name in
+            fileSystem.fileExists(at: base.appendingPathComponent(name, isDirectory: true))
+        }
+        guard let legacy = existingLegacy else { return .notNeeded }
+        guard !fileSystem.fileExists(at: currentURL) else { return .skippedBothExist(legacy: legacy) }
+        let legacyURL = base.appendingPathComponent(legacy, isDirectory: true)
+        do {
+            // rename(2) keeps the inode and therefore its 0700 mode and contents.
+            try fileSystem.moveItem(at: legacyURL, to: currentURL)
+            return .moved(from: legacy)
+        } catch let error as FileSystemError {
+            return .failed(error)
+        } catch {
+            return .failed(.ioFailure(path: legacyURL.path, errno: EIO))
+        }
+    }
+
+    static func isSinglePathComponent(_ name: String) -> Bool {
+        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\0")
+    }
 }
 ```
 <!-- /include -->
@@ -3310,8 +4476,8 @@ public enum RuleProvenance: Sendable, Hashable, Codable {
     case shipped(Provenance)
     case userSuggestion(UserProvenance)
 
-    public init(from decoder: any Decoder) throws { unimplemented() }
-    public func encode(to encoder: any Encoder) throws { unimplemented() }
+    public init(from decoder: any Decoder) throws { self = try Self.decodeTagged(from: decoder) }
+    public func encode(to encoder: any Encoder) throws { try encodeTagged(to: encoder) }
 }
 
 public struct Provenance: Sendable, Hashable, Codable {
@@ -3492,7 +4658,8 @@ public struct ResolvedFeatures: Sendable, Hashable, Codable {
     public var restoreHotkey: Bool
 
     /// 5.4: all true except `autoCapitalize`.
-    public static let defaults = ResolvedFeatures(autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
+    public static let defaults = ResolvedFeatures(
+        autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
 
     public init(autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool) {
         self.autoCapitalize = autoCapitalize
@@ -3559,25 +4726,29 @@ public struct ResolvedDecision: Sendable, Hashable {
 /// Compiled, immutable rule set: shipped document plus user overrides plus opted-in IDs.
 public struct RuleSet: Sendable {
     public init(document: RulesDocument, overrides: [Rule], optedIn: Set<RuleID>) throws(RulesValidationError) {
-        unimplemented()
+        self.document = document
+        compiled = try CompiledRuleSet(document: document, overrides: overrides, optedIn: optedIn)
     }
 
     public let document: RulesDocument
+    let compiled: CompiledRuleSet
 
     /// Specificity per PLT-R520; user overrides outrank shipped rules (PLT-R522); ties resolve to the
     /// lexicographically smaller id (PLT-R521).
-    public func resolve(_ context: MatchContext) -> ResolvedDecision { unimplemented() }
+    public func resolve(_ context: MatchContext) -> ResolvedDecision {
+        compiled.resolve(context, defaults: document.defaults)
+    }
 
     /// Bundles whose AX focus is observed even when not frontmost (`overlay: true`, PLT-R380).
-    public var overlayBundles: Set<BundleKey> { unimplemented() }
+    public var overlayBundles: Set<BundleKey> { compiled.overlayBundles }
     /// Bundles with a `titlePattern` rule: only these get title-change observers (PLT-R380).
-    public var titlePatternBundles: Set<BundleKey> { unimplemented() }
-    public var conflictingInputApps: Set<BundleKey> { unimplemented() }
-    public func secureInputHintKey(for bundle: BundleKey) -> String? { unimplemented() }
+    public var titlePatternBundles: Set<BundleKey> { compiled.titlePatternBundles }
+    public var conflictingInputApps: Set<BundleKey> { compiled.conflictingInputApps }
+    public func secureInputHintKey(for bundle: BundleKey) -> String? { compiled.hintKey(for: bundle) }
     /// `bundleGroups["webkitBrowsers"]`, consumed by the fingerprinter (PLT-R510).
-    public var webkitBrowsers: Set<BundleKey> { unimplemented() }
+    public var webkitBrowsers: Set<BundleKey> { compiled.webkitBrowsers }
     /// Match signature used for duplicate detection (PLT-R521).
-    public static func signature(of match: RuleMatch) -> String { unimplemented() }
+    public static func signature(of match: RuleMatch) -> String { MatchSignature.canonical(match) }
 }
 ```
 <!-- /include -->
@@ -3617,18 +4788,20 @@ public struct RejectedOverride: Sendable, Hashable {
 
 public enum RulesLoader {
     /// Never throws and never crashes on bad input: falls back to the embedded ruleset (PLT-R503).
-    public static func load(contentsOf url: URL) -> RulesLoadResult { unimplemented() }
-    public static func decode(_ data: Data) throws(RulesValidationError) -> RulesDocument { unimplemented() }
+    public static func load(contentsOf url: URL) -> RulesLoadResult { RulesDecoding.load(contentsOf: url) }
+    public static func decode(_ data: Data) throws(RulesValidationError) -> RulesDocument {
+        try RulesDecoding.decode(data)
+    }
     /// Decodes rule-overrides.json entries; invalid entries are rejected individually.
     public static func decodeOverrides(_ raw: [JSONValue]) -> (rules: [Rule], rejected: [RejectedOverride]) {
-        unimplemented()
+        RulesDecoding.decodeOverrides(raw)
     }
 }
 
 /// Compiled-in known-good ruleset (PLT-R503): the `defaults` block and engine-only rules. It contains no
 /// bundle identifiers, so the bundle-ID literal lint (PLT-R501) stays clean.
 public enum EmbeddedRules {
-    public static var minimal: RulesDocument { unimplemented() }
+    public static var minimal: RulesDocument { EmbeddedRuleset.document }
 }
 ```
 <!-- /include -->
@@ -3649,18 +4822,29 @@ public protocol BundleInspector: Sendable {
     func frameworkNames(in bundle: URL) -> [String]
     /// Names of nested helper apps (for example `Google Chrome Helper (Renderer).app`).
     func helperAppNames(in bundle: URL) -> [String]
-    /// True if a file with this name exists anywhere under `Contents` (bounded depth, for example
-    /// `libxul.dylib`, `libjvm.dylib`).
-    func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool
+    /// True if a file with this name is at most `maxDepth` levels below `directory` (1 = directly inside), for
+    /// example `libjvm.dylib` under `<bundle>/Contents/jbr`. `directory` is a folder inside the bundle chosen by
+    /// the caller; a missing folder yields false. The fingerprinter only passes known library folders and
+    /// depths up to 6, so implementations walk a bounded subtree on the ax thread (PLT-R510, PLT-R384).
+    func containsFile(named name: String, in directory: URL, maxDepth: Int) -> Bool
     func infoDictionary(of bundle: URL) -> [String: JSONValue]?
 }
 
 public struct EngineFingerprinter: Sendable {
-    public init(inspector: any BundleInspector, webkitBrowsers: Set<BundleKey>) { unimplemented() }
+    public init(inspector: any BundleInspector, webkitBrowsers: Set<BundleKey>) {
+        self.inspector = inspector
+        self.webkitBrowsers = webkitBrowsers
+    }
+
+    let inspector: any BundleInspector
+    let webkitBrowsers: Set<BundleKey>
 
     /// Order: webkitBrowser (rules group) > electron > cef > chromium > gecko > jvm > qt > ios > catalyst >
     /// native.
-    public func fingerprint(bundleURL: URL, bundle: BundleKey?) -> EngineFingerprint { unimplemented() }
+    public func fingerprint(bundleURL: URL, bundle: BundleKey?) -> EngineFingerprint {
+        if let bundle, webkitBrowsers.contains(bundle) { return .webkitBrowser }
+        return EngineHeuristics(inspector: inspector, bundleURL: bundleURL).classify()
+    }
 }
 ```
 <!-- /include -->
@@ -3678,6 +4862,11 @@ public import Foundation
 public struct MatrixDocument: Sendable, Hashable, Codable {
     public var schemaVersion: Int
     public var entries: [MatrixEntry]
+
+    public init(schemaVersion: Int, entries: [MatrixEntry]) {
+        self.schemaVersion = schemaVersion
+        self.entries = entries
+    }
 }
 
 public struct MatrixEntry: Sendable, Hashable, Codable {
@@ -3694,6 +4883,37 @@ public struct MatrixEntry: Sendable, Hashable, Codable {
     public var verifier: String?
     public var issues: [Int]
     public var checks: MatrixChecks?
+    /// Absent or `app` for the row that stands for the whole app (one per bundle ID, the Apps pane status);
+    /// `webApp` or `inApp` for a row about a web app or a tool inside the host app (same bundle ID).
+    public var scope: MatrixScope?
+
+    public init(
+        bundleId: BundleKey, displayName: String, category: String, tier: Int? = nil, ruleId: RuleID? = nil,
+        status: MatrixStatus, note: LocalizedNote? = nil, lastVerified: String? = nil, appVersion: String? = nil,
+        macOS: String? = nil, verifier: String? = nil, issues: [Int] = [], checks: MatrixChecks? = nil,
+        scope: MatrixScope? = nil
+    ) {
+        self.bundleId = bundleId
+        self.displayName = displayName
+        self.category = category
+        self.tier = tier
+        self.ruleId = ruleId
+        self.status = status
+        self.note = note
+        self.lastVerified = lastVerified
+        self.appVersion = appVersion
+        self.macOS = macOS
+        self.verifier = verifier
+        self.issues = issues
+        self.checks = checks
+        self.scope = scope
+    }
+}
+
+/// What a matrix row is about (PRD-R34, PRD-R35): the app itself, a web app inside a browser, or a tool inside
+/// the host app (tmux in a terminal, an editor's integrated terminal).
+public enum MatrixScope: String, Sendable, Hashable, Codable, CaseIterable {
+    case app, webApp, inApp
 }
 
 /// User-facing values (PRD-R35).
@@ -3704,6 +4924,11 @@ public enum MatrixStatus: String, Sendable, Hashable, Codable, CaseIterable {
 public struct LocalizedNote: Sendable, Hashable, Codable {
     public var vi: String
     public var en: String
+
+    public init(vi: String, en: String) {
+        self.vi = vi
+        self.en = en
+    }
 }
 
 /// Columns of 13.3.
@@ -3716,6 +4941,21 @@ public struct MatrixChecks: Sendable, Hashable, Codable {
     public var restoreHotkey: MatrixCell?
     public var perAppMemory: MatrixCell?
     public var macroExpansion: MatrixCell?
+
+    public init(
+        telexBasic: MatrixCell? = nil, vniBasic: MatrixCell? = nil, inlineCompletion: MatrixCell? = nil,
+        burstTyping: MatrixCell? = nil, backspaceReentry: MatrixCell? = nil, restoreHotkey: MatrixCell? = nil,
+        perAppMemory: MatrixCell? = nil, macroExpansion: MatrixCell? = nil
+    ) {
+        self.telexBasic = telexBasic
+        self.vniBasic = vniBasic
+        self.inlineCompletion = inlineCompletion
+        self.burstTyping = burstTyping
+        self.backspaceReentry = backspaceReentry
+        self.restoreHotkey = restoreHotkey
+        self.perAppMemory = perAppMemory
+        self.macroExpansion = macroExpansion
+    }
 }
 
 public struct MatrixCell: Sendable, Hashable, Codable {
@@ -3727,11 +4967,19 @@ public struct MatrixCell: Sendable, Hashable, Codable {
     public var result: Result
     public var date: String
     public var tester: String
+
+    public init(result: Result, date: String, tester: String) {
+        self.result = result
+        self.date = date
+        self.tester = tester
+    }
 }
 
 public enum MatrixStatusResolver {
     /// Entries not verified for 120 days display as `notVerified` (QA-R19).
-    public static func displayStatus(_ entry: MatrixEntry, today: Date) -> MatrixStatus { unimplemented() }
+    public static func displayStatus(_ entry: MatrixEntry, today: Date) -> MatrixStatus {
+        MatrixFreshness.displayStatus(entry, today: today)
+    }
 }
 ```
 <!-- /include -->
@@ -3751,6 +4999,18 @@ public struct LintFinding: Sendable, Hashable {
     public var code: LintCode
     public var rule: RuleID?
     public var bundle: BundleKey?
+    /// Human-readable specifics (a decoding path, the other rule of a duplicate); never typed content.
+    public var detail: String?
+
+    public init(
+        severity: Severity, code: LintCode, rule: RuleID? = nil, bundle: BundleKey? = nil, detail: String? = nil
+    ) {
+        self.severity = severity
+        self.code = code
+        self.rule = rule
+        self.bundle = bundle
+        self.detail = detail
+    }
 }
 
 public enum LintCode: String, Sendable, Hashable, CaseIterable {
@@ -3758,6 +5018,7 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case missingProvenance  // PLT-R505
     case missingTest  // PLT-R505
     case noPassingTestedEntry  // 5.4 `tested`: at least one passing entry
+    case unverifiedTestedEntry  // a `tested` entry without an ISO date (VERIFY); release blocker
     case unknownScenario  // test.scenario has no compat/scenarios file
     case reviewByPassed  // PLT-R506 warning
     case reviewByPassedOver30Days  // PLT-R506 release blocker
@@ -3765,16 +5026,23 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case identicalMatchSignature  // PLT-R521
     case placeholderWithoutGateTest  // PLT-R422
     case manualTestWithoutMatrixRow  // PLT-R531
+    case manualMatrixRowUnverified  // PLT-R531: row lacks date, app version, macOS or tester; release blocker
     case tier1MatrixRowOlderThan90Days  // PLT-R531, 13.3 (release mode)
     case matrixRuleUnknown
+    case pasteWithoutOptIn  // PLT-R460
 }
 
 public struct RulesLinter: Sendable {
     public init(
         rules: RulesDocument, matrix: MatrixDocument?, scenarioIDs: Set<String>, today: Date, releaseMode: Bool
-    ) { unimplemented() }
+    ) {
+        context = LintContext(
+            rules: rules, matrix: matrix, scenarioIDs: scenarioIDs, today: ISODay(today), releaseMode: releaseMode)
+    }
 
-    public func run() -> [LintFinding] { unimplemented() }
+    let context: LintContext
+
+    public func run() -> [LintFinding] { LintEngine(context: context).run() }
 }
 ```
 <!-- /include -->
@@ -3897,7 +5165,8 @@ public struct KeyEventRecord: Sendable, Hashable, BitwiseCopyable {
     public var unicode: InlineUTF16
     /// Time the tap received the original (T5 held-wait metric, PLT-R314 liveness).
     public var receivedAt: MonotonicInstant
-    /// Latency-probe event (PLT-R810): replayed with the probe marker so metrics stay separated.
+    /// Latency-probe event (PLT-R810). Replayed with the ordinary echo marker (a probe-kind marker would make the
+    /// tap treat the replay as a new physical probe and hold it again); the worker routes metrics by this flag.
     public var isProbe: Bool
 
     public init(
@@ -3991,8 +5260,8 @@ public enum BoundaryReason: UInt8, Sendable, Hashable {
         secureInputChanged, tapReenabled, settingsChanged, ruleChanged, sessionChanged
 }
 
-/// Marks a hard boundary in FIFO order so the worker can end paste coalescing windows and first-edit timing
-/// (PLT-R340, PLT-R461 step 6).
+/// Marks a hard boundary in FIFO order (PLT-R340). The worker resets first-edit timing (PLT-R408); paste
+/// coalescing (PLT-R461 step 6) is bounded by `restoreDelayMs` and the `changeCount` guard, not by boundaries.
 public struct BoundaryJob: Sendable, Hashable {
     public var sequence: JobSequence
     public var reason: BoundaryReason
@@ -4079,7 +5348,7 @@ public enum MarkerMatch: Sendable, Hashable {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Reverse-DNS strings that are NOT bundle identifiers (pasteboard types). They live only in files named
-// `ReverseDNSConstants.swift`, which the bundle-ID literal lint allowlists (PLT-R501, ARCHITECTURE.md 7).
+// `ReverseDNSConstants.swift`; each is allowed by scripts/lint-bundle-ids.allow (PLT-R501, ARCHITECTURE.md 7).
 
 /// Pasteboard type names used by the `paste` strategy (PLT-R461 step 2) and by the fakes.
 public enum PasteboardTypeName {
@@ -4174,7 +5443,9 @@ public protocol FocusedFieldAccess: Sendable {
 public final class AXElementReference: @unchecked Sendable, Hashable {
     public let element: AXUIElement
     public init(_ element: AXUIElement) { self.element = element }
-    public static func == (lhs: AXElementReference, rhs: AXElementReference) -> Bool { CFEqual(lhs.element, rhs.element) }
+    public static func == (lhs: AXElementReference, rhs: AXElementReference) -> Bool {
+        CFEqual(lhs.element, rhs.element)
+    }
     public func hash(into hasher: inout Hasher) { hasher.combine(CFHash(element)) }
 }
 
@@ -4425,7 +5696,8 @@ public final class EchoTracker: @unchecked Sendable {
             count += 1
         }
         var settled = 0
-        let timeoutNanoseconds = UInt64(timeout.components.seconds) * 1_000_000_000
+        let timeoutNanoseconds =
+            UInt64(timeout.components.seconds) * 1_000_000_000
             + UInt64(timeout.components.attoseconds / 1_000_000_000)
         while count > 0 {
             let front = pending[head]
@@ -4469,7 +5741,9 @@ public final class EchoTracker: @unchecked Sendable {
 public final class CurrentFocusGeneration: Sendable {
     private let value = Atomic<UInt64>(0)
     public init() {}
-    public func store(_ generation: FocusGeneration) { value.store(generation.rawValue, ordering: .sequentiallyConsistent) }
+    public func store(_ generation: FocusGeneration) {
+        value.store(generation.rawValue, ordering: .sequentiallyConsistent)
+    }
     public func load() -> FocusGeneration { FocusGeneration(rawValue: value.load(ordering: .sequentiallyConsistent)) }
 }
 ```
@@ -4484,6 +5758,7 @@ public final class CurrentFocusGeneration: Sendable {
 internal import AppModel
 public import Diagnostics
 public import RealtimeSupport
+internal import Synchronization
 
 public struct WorkerConfiguration: Sendable, Hashable {
     /// Oldest held event may wait this long before a flush (PLT-R314, VERIFY tuning).
@@ -4540,25 +5815,44 @@ public enum FlushReason: UInt8, Sendable, Hashable {
 /// delivered are counted in `PlatformMetrics.lostWhilePostingBroken` and one `postingBroken` health event
 /// with `.count(n)` (ADR 0308, ADR 0311); conservation (PLT-R312) is guaranteed only while posting works.
 public final class InjectionWorker: Sendable {
+    private let core: Mutex<WorkerCore>
+    private let control: WorkerControl
+
     public init(
         queue: JobQueue, signal: WorkerSignal, feedback: WorkerFeedback, marker: EventMarker,
         focusGeneration: CurrentFocusGeneration, services: InjectionServices,
         configuration: WorkerConfiguration = WorkerConfiguration()
-    ) { unimplemented() }
+    ) {
+        let control = WorkerControl(signal: signal)
+        self.control = control
+        core = Mutex(
+            WorkerCore(
+                queue: queue, feedback: feedback, marker: marker, focusGeneration: focusGeneration,
+                services: services, configuration: configuration, control: control))
+    }
 
     /// Spawns the `inject` thread (QoS user-interactive). The loop drains jobs, executes them FIFO, sleeps
     /// only on its own signal with absolute deadlines (pacing, liveness), and never waits on the main or tap
     /// thread (PLT-R315).
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
+    public func start() { control.start { [self] in runThreadLoop() } }
+    public func stop() { control.stop() }
 
     /// Asynchronous request (atomic flag + signal): abandon unstarted edit jobs (replaying their triggers),
     /// replay every held event in order, request a composition reset, record a `flush` health event.
-    public func requestFlush(_ reason: FlushReason) { unimplemented() }
+    public func requestFlush(_ reason: FlushReason) { control.requestFlush(reason) }
 
     /// Deterministic mode for tests and the pipeline harness: runs the loop body on the caller's thread until
     /// the queue is empty and no deadline is pending, using the injected (fake) clock.
-    public func runUntilIdle() { unimplemented() }
+    public func runUntilIdle() { core.withLock { $0.runUntilIdle() } }
+
+    /// Body of the `inject` thread: process, then wait on the worker signal until the next deadline.
+    private func runThreadLoop() {
+        while !control.isStopRequested {
+            let idle = core.withLock { $0.runAvailable() }
+            guard !control.isStopRequested else { return }
+            if idle.isIdle { _ = control.signal.wait(until: idle.deadline) }
+        }
+    }
 }
 ```
 <!-- /include -->
@@ -4582,8 +5876,11 @@ public enum StrategyOutcome: Sendable, Hashable {
     case failedAfterPosting(FallbackReason)
 }
 
+/// Why a strategy did not deliver the edit. `historyMismatch`: the field's caret is closer to the start than the
+/// composition the engine wants to replace (the history is out of sync with the field); a per-job condition.
 public enum FallbackReason: UInt8, Sendable, Hashable {
-    case axUnavailable, axTimedOut, axWriteFailed, readbackMismatch, pasteboardUnsafe, postingFailed, jobTooLong
+    case axUnavailable, axTimedOut, axWriteFailed, readbackMismatch, pasteboardUnsafe, postingFailed, jobTooLong,
+        historyMismatch
 }
 
 /// The inject-thread environment a strategy runs in. Implemented by the worker; faked in strategy tests.
@@ -4607,7 +5904,9 @@ public protocol StrategyExecutor: Sendable {
 /// `backspaceReplace` (4.2, with 4.3 inline completion), `selectReplace` (4.4), `axReplace` (4.5),
 /// `paste` (4.6 with `PasteboardPreserver`). `passThrough` jobs are never built.
 public enum StrategyCatalog {
-    public static func executor(for strategy: InjectionStrategy) -> any StrategyExecutor { unimplemented() }
+    public static func executor(for strategy: InjectionStrategy) -> any StrategyExecutor {
+        BuiltInExecutors.executor(for: strategy, limits: StrategyLimits())
+    }
 }
 
 /// PLT-R402: trims the common grapheme prefix of the replaced text and the insertion. With unknown replaced
@@ -4615,26 +5914,39 @@ public enum StrategyCatalog {
 public enum EditMinimizer {
     public static func minimize(deleteCount: Int, replaced: String?, insertion: String)
         -> (deleteCount: Int, insertion: String)
-    { unimplemented() }
+    {
+        let edit = MinimalEdit(deleteCount: deleteCount, deleteUTF16Count: 0, replaced: replaced, insertion: insertion)
+        return (edit.deleteCount, edit.insertion)
+    }
 }
 
 /// PLT-R404/PLT-R480: one grapheme per event by default; up to `maxUTF16` units per event when allowed;
 /// never splits a grapheme cluster.
 public enum UnicodeChunker {
     public static func chunks(of text: String, maxUTF16: Int, oneGraphemePerEvent: Bool) -> [InlineUTF16] {
-        unimplemented()
+        GraphemeChunking.chunks(of: text, maxUTF16: maxUTF16, oneGraphemePerEvent: oneGraphemePerEvent)
     }
 }
 
 /// Full clipboard preservation for `paste` (PLT-R461): snapshot every item and type (abort on file promises,
 /// unmaterialisable lazy data, > 10 MB or > 100 ms), write the transient item, paste, restore after
 /// `restoreDelayMs` only if `changeCount` is unchanged, coalesce consecutive pastes within the window.
+/// Inject thread only. The restore window starts at the first `restoreIfDue` call after `beginPaste` (the worker
+/// arms it right after Command+V); a further `beginPaste` inside the window keeps the first snapshot.
 public final class PasteboardPreserver {
-    public init(pasteboard: any PasteboardAccess, limits: PasteboardLimits = PasteboardLimits()) { unimplemented() }
+    var session: PasteSession
+
+    public init(pasteboard: any PasteboardAccess, limits: PasteboardLimits = PasteboardLimits()) {
+        session = PasteSession(pasteboard: pasteboard, limits: limits)
+    }
+
     /// Step 1-2. Throws when the clipboard cannot be fully preserved: never destroy what cannot be restored.
-    public func beginPaste(_ text: String) throws(PasteboardError) { unimplemented() }
+    public func beginPaste(_ text: String) throws(PasteboardError) { try session.begin(text) }
+
     /// Steps 4-6, driven by the worker's deadlines.
-    public func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> RestoreResult { unimplemented() }
+    public func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> RestoreResult {
+        session.restoreIfDue(now: now, restoreDelay: restoreDelay)
+    }
 
     public enum RestoreResult: Sendable, Hashable { case notDue, restored, skippedUserCopied, nothingPending }
 }
@@ -4647,38 +5959,55 @@ public final class PasteboardPreserver {
 //
 // Production implementations of the injection services. They need granted permissions and are exercised by
 // the self-hosted integration suite (13.2), never by hosted CI or on the maintainer's everyday Mac.
+// Each is a thin wrapper: the logic lives in `CGEventFactory`, `AXFieldCalls` and `PasteboardIO`, which are
+// unit-tested without posting, AX trust or the general pasteboard.
 
 internal import AppModel
+internal import ApplicationServices
 
 /// CoreGraphics poster (PLT-R320-R322, PLT-R324).
 public final class CGEventPoster: EventPoster {
-    public init() { unimplemented() }
-    public func post(_ event: SyntheticKeyEvent, userData: Int64) throws(PostError) { unimplemented() }
-    public func replay(_ record: KeyEventRecord, userData: Int64) throws(PostError) { unimplemented() }
+    private let factory: CGEventFactory
+
+    public init() { factory = CGEventFactory() }
+
+    public func post(_ event: SyntheticKeyEvent, userData: Int64) throws(PostError) {
+        try factory.makeEvent(event, userData: userData).post(tap: .cgSessionEventTap)
+    }
+
+    public func replay(_ record: KeyEventRecord, userData: Int64) throws(PostError) {
+        try factory.makeReplay(record, userData: userData).post(tap: .cgSessionEventTap)
+    }
 }
 
 /// Bounded AX field access (PLT-R343).
 public final class AXFocusedFieldAccess: FocusedFieldAccess {
-    public init() { unimplemented() }
-    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange> { unimplemented() }
+    public init() {}
+    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange> {
+        AXFieldCalls.selectedRange(field.element?.element, timeout: timeout)
+    }
     public func text(_ field: FieldHandle, in range: TextRange, timeout: Duration) -> AXCallResult<String> {
-        unimplemented()
+        AXFieldCalls.text(field.element?.element, in: range, timeout: timeout)
     }
     public func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: Duration) -> AXCallResult<Void> {
-        unimplemented()
+        AXFieldCalls.setSelectedRange(field.element?.element, to: range, timeout: timeout)
     }
     public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
-        unimplemented()
+        AXFieldCalls.setSelectedText(field.element?.element, to: text, timeout: timeout)
     }
 }
 
 /// AppKit pasteboard (PLT-R461). `pasteboardName` nil = general pasteboard.
 public final class NSPasteboardAccess: PasteboardAccess {
-    public init(pasteboardName: String?) { unimplemented() }
-    public var changeCount: Int { unimplemented() }
-    public func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot { unimplemented() }
-    public func writeTransient(_ text: String) throws(PasteboardError) -> Int { unimplemented() }
-    public func restore(_ snapshot: PasteboardSnapshot) throws(PasteboardError) { unimplemented() }
+    private let io: PasteboardIO
+
+    public init(pasteboardName: String?) { io = PasteboardIO(name: pasteboardName) }
+    public var changeCount: Int { io.changeCount }
+    public func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot {
+        try io.snapshot(limits: limits)
+    }
+    public func writeTransient(_ text: String) throws(PasteboardError) -> Int { try io.writeTransient(text) }
+    public func restore(_ snapshot: PasteboardSnapshot) throws(PasteboardError) { try io.restore(snapshot) }
 }
 ```
 <!-- /include -->
@@ -4964,8 +6293,10 @@ public struct InputSourceSnapshot: Sendable {
     }
 }
 
-/// Published by the utility queue's secure-input poller (PLT-R395). `generation` changes only on
-/// transitions, so the tap's "resumed by key" evidence (PLT-R398B) stays valid while the OS flag is stuck.
+/// Published by the utility queue's secure-input poller (PLT-R395). The generation changes on every OS
+/// transition. Key evidence (PLT-R398B) ends episode N: the tap stays resumed for generation N until the next
+/// poll, and the next poll that still sees the OS flag on starts a new episode with a new generation, so
+/// on -> off -> key -> on inside one poll interval pauses again.
 public struct SecureInputSnapshot: Sendable, Hashable {
     public var generation: UInt64
     public var enabled: Bool
@@ -5049,7 +6380,10 @@ public import AppModel
 /// Modifier states covered by the table. Option and Command/Control states are classified, not translated
 /// (PLT-R350).
 public enum LayoutModifierState: Int, Sendable, Hashable, CaseIterable {
-    case none = 0, shift, capsLock, shiftCapsLock
+    case none = 0
+    case shift
+    case capsLock
+    case shiftCapsLock
 }
 
 public enum LayoutEntry: Sendable, Hashable {
@@ -5120,6 +6454,9 @@ public protocol CompositionEngine {
 
 public protocol CompositionEngineFactory {
     associatedtype Engine: CompositionEngine
+    /// The PLT-R310 step 5 recogniser the pipeline builds from the hotkey bindings of each settings generation.
+    /// Production uses `HotkeyRecognizer` (the default); test factories may name a reference recogniser.
+    associatedtype Hotkeys: HotkeyRecognizing = HotkeyRecognizer
     /// Called on the tap thread at a hard boundary; MUST NOT allocate beyond copying prebuilt values.
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> Engine
 }
@@ -5132,17 +6469,33 @@ public struct VietnameseCompositionEngine: CompositionEngine {
     public var activeDisplay: String { session.state.activeDisplay }
 }
 
-public struct VietnameseCompositionEngineFactory: CompositionEngineFactory {
+public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Sendable {
     public init() {}
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> VietnameseCompositionEngine {
         VietnameseCompositionEngine(engine: settings.engines.engine(for: variant))
     }
 }
 
-/// Eight prebuilt engines: appContext x englishRestore x macros (ENG-R850, `features`, ENG-R1107).
+/// Eight prebuilt engines: appContext x englishRestore x macros (ENG-R850, `features`, ENG-R1107). Lookup is an
+/// array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
-    public init(engines: [EngineVariant: VietnameseEngine.Engine]) { unimplemented() }
-    public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { unimplemented() }
+    private let slots: [VietnameseEngine.Engine]
+    /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
+    /// keeps it when a settings change leaves the engines alone (hotkeys, UI language, update channel), so the
+    /// tap rebuilds only the hotkeys and keeps the word being typed. `nil` means unknown: every new settings
+    /// generation builds a fresh engine, the safe default.
+    public let revision: UInt64?
+
+    /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
+    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil) {
+        let fallback =
+            engines[.default] ?? engines.values.first
+            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
+        slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
+        self.revision = revision
+    }
+
+    public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { slots[variant.catalogIndex] }
 }
 
 public enum MacroTableBuildIssue: Sendable, Hashable {
@@ -5153,20 +6506,32 @@ public enum MacroTableBuildIssue: Sendable, Hashable {
 public enum EngineBridge {
     /// D1, D2, D4, D5, D6 plus the variant.
     public static func configuration(for settings: EffectiveSettings, variant: EngineVariant) -> EngineConfiguration {
-        unimplemented()
+        EngineSettingsMapping.configuration(for: settings, variant: variant)
     }
 
     /// Enabled macros only; invalid entries are skipped and reported (the editor prevents them, PRD-R29).
     public static func macroTable(from macros: [StoredMacro]) -> (MacroTable, [MacroTableBuildIssue]) {
-        unimplemented()
+        MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
     /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches user lists and macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
-    ) rethrows -> Resources { unimplemented() }
+    ) rethrows -> Resources {
+        var resources = try bundledLoader()
+        resources.userKeepRaw = WordSet(settings.keepAsTyped)
+        resources.userKeepVietnamese = WordSet(settings.keepVietnamese)
+        resources.macros = macros
+        return resources
+    }
 
-    public static func catalog(settings: EffectiveSettings, resources: Resources) -> EngineCatalog { unimplemented() }
+    /// `revision` identifies the engine-affecting settings (see `EngineCatalog.revision`); the publisher bumps it
+    /// only when the catalog's inputs change.
+    public static func catalog(
+        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil
+    ) -> EngineCatalog {
+        EngineSettingsMapping.catalog(settings: settings, resources: resources, revision: revision)
+    }
 }
 ```
 <!-- /include -->
@@ -5328,39 +6693,99 @@ public struct PipelineContext: Sendable {
 
 /// Tap-thread pipeline. Generic over the engine factory and the clock, so production code
 /// (`KeyPipeline<VietnameseCompositionEngineFactory, MachClock>`) has no existential calls on the hot path and
-/// tests drive it with a scripted engine and a manual clock.
+/// tests drive it with a scripted engine and a manual clock. The hotkey recogniser type comes from the factory
+/// (`CompositionEngineFactory.Hotkeys`, `HotkeyRecognizer` by default).
 ///
-/// Created on the tap thread by `TapThread`'s handler factory and never shared (`TapEventHandler`, ADR 0313).
-/// At callback entry, after step 1, it calls `EchoTracker.settle(now:)`; `.postingBroken` or
-/// `WorkerFeedback.isPostingBroken` means fail open within this callback (PLT-R730). Holding while busy uses
-/// `JobQueue.inFlight`, which counts a job until its echo is seen (ADR 0311). A `scrollWheel` event only feeds
-/// `HotkeyRecognizer.handle(.scroll)` and passes (PLT-R301).
+/// Created on the tap thread by `TapThread`'s handler factory and never shared (`TapEventHandler`, ADR 0313);
+/// `init` reads the snapshots once, so it must run on the tap thread too. At callback entry, after step 1, it
+/// calls `EchoTracker.settle(now:)`; `.postingBroken` or `WorkerFeedback.isPostingBroken` means fail open within
+/// this callback (PLT-R730). Holding while busy uses `JobQueue.inFlight`, which counts a job until its echo is
+/// seen (ADR 0311). A `scrollWheel` event only feeds `HotkeyRecognizer.handle(.scroll)` and passes (PLT-R301).
+/// Steady state allocates nothing outside the engine call (PLT-R305; `PipelineAllocationTests`).
 public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: MonotonicClock>: TapEventHandler {
-    public init(context: PipelineContext, factory: Factory, clock: Clock) { unimplemented() }
+    let context: PipelineContext
+    let factory: Factory
+    let clock: Clock
+    let consumedKeys = ConsumedKeyTable()
+    var engine: Factory.Engine
+    /// The engine was fed since its last reset or creation; a reset of a clean engine is skipped.
+    var engineDirty = false
+    var hotkeys: Factory.Hotkeys
+    var seen: ObservedState
+    /// Sequence of the tap's last VI/EN toggle. Seeded from the focus snapshot and kept above every sequence
+    /// the ax thread applied, so a recreated tap's toggles still outrank stale snapshots (contracts.md 10.4,
+    /// PLT-R731).
+    var toggleSequence: UInt64 = 0
+    var toggleOverride: ToggleOverride?
+    var keyState = KeyState()
+    var outcome: EventOutcome?
+    /// The last job pushed was a `BoundaryJob` (consecutive boundaries need one job).
+    var lastPushWasBoundary = false
+
+    public init(context: PipelineContext, factory: Factory, clock: Clock) {
+        self.context = context
+        self.factory = factory
+        self.clock = clock
+        let snapshots = context.snapshots
+        snapshots.epoch.enter()
+        (engine, hotkeys, seen, toggleSequence) = snapshots.readAll {
+            settings, focus, inputSource, secureInput, lifecycle in
+            let observed = ObservedState(
+                settingsGeneration: settings.generation, focus: FocusIdentity(focus),
+                engineVariant: focus.decision.variant, inputSourceGeneration: inputSource.generation,
+                secureGeneration: secureInput.generation, lifecycleGeneration: lifecycle.generation,
+                resetCount: context.feedback.compositionResetCount, stateCode: nil, secureResumedGeneration: nil,
+                postingBroken: context.feedback.isPostingBroken,
+                pasteKeyCode: inputSource.table?.keyCode(producing: "v"), engineRevision: settings.engines.revision)
+            return (
+                factory.makeEngine(for: focus.decision.variant, settings: settings),
+                Factory.Hotkeys(toggle: settings.toggleHotkey, restore: settings.restoreHotkey), observed,
+                focus.appliedToggleSequence
+            )
+        }
+        snapshots.epoch.exit()
+    }
 
     /// The whole of PLT-R310 for one event. Brackets itself with `ReaderEpoch.enter()/exit()` and
     /// `CallbackWatchdog.enter/exit`.
-    public func handle(_ event: RawKeyEvent) -> TapVerdict { unimplemented() }
+    public func handle(_ event: RawKeyEvent) -> TapVerdict {
+        let epoch = context.snapshots.epoch
+        epoch.enter()
+        let start = clock.now()
+        context.watchdog.enter(at: start)
+        let (verdict, isProbe) = process(event, now: start)
+        // T1 (PLT-R801); latency-probe events stay out of user metrics (PLT-R810).
+        if !isProbe { context.metrics.callbackDuration.record(nanoseconds: clock.now().nanoseconds(since: start)) }
+        context.watchdog.exit()
+        epoch.exit()
+        return verdict
+    }
 
     /// Outcome of the last physical keyboard event (nil for echoes, mouse and tap-disabled events). Read by
     /// the conservation ledger in tests and by the capture.
-    public var lastOutcome: EventOutcome? { unimplemented() }
+    public var lastOutcome: EventOutcome? { outcome }
 }
 
 /// Classification of step 7 (pure, tap-safe).
 public enum KeyClassifier {
-    public static func classify(_ event: RawKeyEvent, table: LayoutTable?) -> KeyClass { unimplemented() }
+    public static func classify(_ event: RawKeyEvent, table: LayoutTable?) -> KeyClass {
+        KeyClassification.classify(event, table: table)
+    }
 }
 
 /// Host state per key (2.1), the same pure function the main thread uses for the menu icon.
 public enum HostStateResolver {
     /// Precedence: noPermission / failOpen / starting > sessionInactive > userDisabled > secureInput (unless
-    /// resumed by key evidence for this generation) > secureField > nonLatinInputSource >
-    /// builtInVietnameseSource > passThroughRule > noTextFocus > ready(mode).
+    /// resumed by key evidence for this generation) > secureField > builtInVietnameseSource >
+    /// nonLatinInputSource > passThroughRule > noTextFocus (focus pause or PLT-R386 gating) > ready(mode).
     public static func resolve(
         lifecycle: LifecycleSnapshot, secureInput: SecureInputSnapshot, secureResumedGeneration: UInt64?,
         inputSource: InputSourceSnapshot, focus: FocusSnapshot, effectiveMode: TypingMode
-    ) -> HostState { unimplemented() }
+    ) -> HostState {
+        HostStateResolution.resolve(
+            lifecycle: lifecycle, secureInput: secureInput, secureResumedGeneration: secureResumedGeneration,
+            inputSource: inputSource, focus: focus, effectiveMode: effectiveMode)
+    }
 }
 ```
 <!-- /include -->
@@ -5372,7 +6797,6 @@ public enum HostStateResolver {
 // The `tap` thread (PLT-R203, PLT-R301-R303): one active session-level, head-insert event tap whose run-loop
 // source is the only source on its run loop. Workstream W1-F2.
 
-internal import AppModel
 public import CoreFoundation
 public import CoreGraphics
 
@@ -5416,18 +6840,28 @@ public protocol EventTapFactory: Sendable {
         -> (any EventTapHandle)?
 }
 
+/// The real tap (PLT-R301): session level, head insert, active (default) option. Never used by tests on a
+/// developer Mac; they use `FakeEventTapFactory` (ADR 0313). Verified on the self-hosted runner (W2-E2).
 public struct CGEventTapFactory: EventTapFactory {
     public init() {}
     public func makeTap(mask: TapEventMask, callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?)
         -> (any EventTapHandle)?
-    { unimplemented() }
+    {
+        guard
+            let port = CGEvent.tapCreate(
+                tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
+                eventsOfInterest: mask.cgMask, callback: callback, userInfo: userInfo)
+        else { return nil }
+        return MachPortEventTapHandle(port: port)
+    }
 }
 
 /// Per-event handler created ON the tap thread and used only there (PLT-R303). `KeyPipeline` conforms.
 /// Deliberately not `Sendable`: Swift 6 cannot express "owned by this run-loop thread", so `TapThread` builds
 /// the handler inside its thread entry from a `@Sendable` factory and never lets it escape that thread. This is
 /// one of the two audited concurrency escape hatches (the other is `ThreadConfined`, ARCHITECTURE.md section 3).
-public protocol TapEventHandler: AnyObject {
+/// `SendableMetatype`: the conformance is used on the tap thread, so it must not be isolated to an actor.
+public protocol TapEventHandler: AnyObject, SendableMetatype {
     func handle(_ event: RawKeyEvent) -> TapVerdict
 }
 
@@ -5444,22 +6878,57 @@ public protocol TapControl: AnyObject, Sendable {
 /// and the `KeyPipeline` inside it are created on the tap thread), creates the tap through the factory with a
 /// C callback whose `userInfo` points at that thread's state, installs the source and runs the CFRunLoop. The
 /// callback converts the `CGEvent` into a `RawKeyEvent`, calls `handler.handle`, and returns
-/// `Unmanaged.passUnretained(event)` or nil. Generic over the handler, so the per-event call is static.
+/// `Unmanaged.passUnretained(event)` or nil. Generic over the handler, so the per-event call is static: the C
+/// callback (which cannot capture generic parameters) reaches the specialised thread state through one class
+/// method dispatch, without allocation or locking (PLT-R304, `TapCallbackBridge`).
+///
+/// A `TapThread` is single-use: after `stop()` (or a failed `start()`) the host creates a fresh one, and only
+/// once `isRunning` is false (ADR 0309). Releasing the last reference stops it.
 public final class TapThread<Handler: TapEventHandler>: TapControl, Sendable {
+    private let runtime = TapThreadRuntime()
+    private let factory: any EventTapFactory
+    private let mask: TapEventMask
+    private let makeHandler: @Sendable () -> Handler
+
     public init(
         factory: any EventTapFactory, mask: TapEventMask = .standard,
         makeHandler: @escaping @Sendable () -> Handler
-    ) { unimplemented() }
+    ) {
+        self.factory = factory
+        self.mask = mask
+        self.makeHandler = makeHandler
+    }
+
+    deinit { runtime.stop() }
 
     /// Creates the tap on a new thread (QoS user-interactive) and runs its CFRunLoop. Returns once creation
-    /// succeeded or failed; false if the factory returned nil (the thread then exits).
-    public func start() -> Bool { unimplemented() }
-    public func setEnabled(_ enabled: Bool) { unimplemented() }
-    public var isEnabled: Bool { unimplemented() }
-    public var isRunning: Bool { unimplemented() }
+    /// succeeded or failed; false if the factory returned nil (the thread then exits). True without a second
+    /// tap when already running (PLT-R302); false after `stop()`.
+    public func start() -> Bool {
+        let factory = self.factory
+        let mask = self.mask
+        let makeHandler = self.makeHandler
+        return runtime.start {
+            // Tap thread (PLT-R303): the handler and the tap are created here and never leave this thread.
+            let target = TapCallbackContext(handler: makeHandler())
+            let userInfo = Unmanaged.passUnretained(target).toOpaque()
+            guard let handle = factory.makeTap(mask: mask, callback: TapCallbackBridge.callback, userInfo: userInfo)
+            else { return nil }
+            return TapThreadRuntime.Session(handle: handle, target: target)
+        }
+    }
+
+    public func setEnabled(_ enabled: Bool) { runtime.setEnabled(enabled) }
+    public var isEnabled: Bool { runtime.isEnabled }
+    public var isRunning: Bool { runtime.isRunning }
+
     /// Disables, invalidates the handle and stops the run loop so the thread exits (PLT-R730). Never called
-    /// while the watchdog reports a callback that has not returned (ADR 0309).
-    public func stop() { unimplemented() }
+    /// while the watchdog reports a callback that has not returned (ADR 0309). Does not wait for the exit.
+    public func stop() { runtime.stop() }
+
+    /// Waits until the thread has left its run loop (or never started). False on timeout. For the owner that
+    /// recreates the tap after `stop()` (ADR 0309) and for tests; never called on the tap thread.
+    public func waitUntilExited(timeout: Duration) -> Bool { runtime.waitUntilExited(timeout: timeout) }
 }
 ```
 <!-- /include -->
@@ -5528,6 +6997,7 @@ public final class CallbackWatchdog: Sendable {
 
 internal import AppModel
 public import RealtimeSupport
+internal import Synchronization
 
 /// Why the watchdog acted.
 public enum TapTrip: Sendable, Hashable {
@@ -5541,25 +7011,271 @@ public enum TapTrip: Sendable, Hashable {
     case unexpectedlyDisabled
 }
 
+/// Frees retired snapshot boxes (ADR 0303). `TapSnapshots` conforms; tests count calls.
+public protocol SnapshotReclaiming: Sendable {
+    func reclaimAll()
+}
+
+extension TapSnapshots: SnapshotReclaiming {}
+
 /// Watchdog for the tap. The 250 ms callback check runs only while keys flow (armed by `callbackActivity()`,
 /// which the tap's activity `WakeSignal` calls, disarmed after 2 s without callbacks), so idle wakeups stay at
-/// zero (PLT-R803). Every 5 s (with leeway) it checks `isEnabled` (PLT-R331) and calls
-/// `TapSnapshots.reclaimAll()` so retired snapshot boxes are freed even when no writer publishes (ADR 0303).
+/// zero (PLT-R803). A check that finds a callback still under the limit adds one one-shot check at the moment
+/// it would cross 250 ms, so detection takes about 275 ms at worst (ADR 0309). Every 5 s (with leeway) it checks
+/// `isEnabled` (PLT-R331) and calls `reclaimAll()` so retired snapshot boxes are freed even when no writer
+/// publishes (ADR 0303).
+///
+/// After a trip the watchdog disables the tap itself (keys flow at once) and reports `onTrip`; 2 s later it
+/// reports `onCallbackReturned` if the callback has returned, otherwise `onTrip(.callbackStuck)`. A stuck
+/// callback is re-checked on every 5 s tick and reported as returned if it ever comes back; the watchdog never
+/// touches the tap again by itself. Handlers run on the scheduler's queue (utility in production), outside
+/// the watchdog's lock, so they may call back into it.
 public final class TapWatchdog: Sendable {
     public static let enabledCheckInterval: Duration = .seconds(5)
     public static let recoveryDelay: Duration = .seconds(2)
+    /// Period of the callback check while keys flow (ADR 0309).
+    public static let callbackCheckInterval: Duration = CallbackWatchdog.callbackLimit
 
+    private static let enabledCheckLeeway: Duration = .seconds(1)
+    private static let limitNanoseconds = CallbackWatchdog.callbackLimit.nanoseconds
+    private static let idleNanoseconds = CallbackWatchdog.idleAfter.nanoseconds
+    /// The crossing check lands just past the limit, so "more than 250 ms" is already true when it runs.
+    private static let crossingMargin: UInt64 = 1_000_000
+
+    private enum Mode: Sendable, Hashable {
+        /// Normal operation: the enabled check reports a disabled tap.
+        case watching
+        /// The watchdog disabled the tap; the recovery check is pending.
+        case tripped
+        /// The callback did not return within the recovery delay.
+        case stuck
+        /// The callback returned; waiting until the lifecycle owner re-enabled the tap.
+        case awaitingReenable
+    }
+
+    private enum Action {
+        case disableTap
+        case report(TapTrip)
+        case callbackReturned
+    }
+
+    /// One read of the callback watchdog and the tap, taken outside the lock.
+    private struct Observation {
+        var now: MonotonicInstant
+        var running: UInt64?
+        var lastEntry: MonotonicInstant?
+        var tapRunning: Bool
+        var tapEnabled: Bool
+    }
+
+    private struct State: Sendable {
+        var started = false
+        var mode = Mode.watching
+        var armedAt: MonotonicInstant?
+        var enabledTimer: (any ScheduledTimer)?
+        var checkTimer: (any ScheduledTimer)?
+        var crossingTimer: (any ScheduledTimer)?
+        var recoveryTimer: (any ScheduledTimer)?
+
+        mutating func disarm() {
+            checkTimer?.cancel()
+            crossingTimer?.cancel()
+            checkTimer = nil
+            crossingTimer = nil
+            armedAt = nil
+        }
+
+        mutating func cancelAll() {
+            disarm()
+            enabledTimer?.cancel()
+            recoveryTimer?.cancel()
+            enabledTimer = nil
+            recoveryTimer = nil
+        }
+    }
+
+    private let tap: any TapControl
+    private let callbacks: CallbackWatchdog
+    private let snapshots: any SnapshotReclaiming
+    private let scheduler: any TimerScheduler
+    private let clock: any MonotonicClock
+    private let onCallbackReturned: @Sendable () -> Void
+    private let onTrip: @Sendable (TapTrip) -> Void
+    private let state = Mutex(State())
+
+    /// `onCallbackReturned` maps to `LifecycleInput.callbackExited`, `onTrip` to `.watchdogTripped`.
     public init(
-        tap: any TapControl, callbacks: CallbackWatchdog, snapshots: TapSnapshots, scheduler: any TimerScheduler,
-        clock: any MonotonicClock, onTrip: @escaping @Sendable (TapTrip) -> Void
-    ) { unimplemented() }
+        tap: any TapControl, callbacks: CallbackWatchdog, snapshots: any SnapshotReclaiming,
+        scheduler: any TimerScheduler, clock: any MonotonicClock,
+        onCallbackReturned: @escaping @Sendable () -> Void, onTrip: @escaping @Sendable (TapTrip) -> Void
+    ) {
+        self.tap = tap
+        self.callbacks = callbacks
+        self.snapshots = snapshots
+        self.scheduler = scheduler
+        self.clock = clock
+        self.onCallbackReturned = onCallbackReturned
+        self.onTrip = onTrip
+    }
 
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
+    deinit { state.withLock { $0.cancelAll() } }
+
+    /// Starts the 5 s enabled check. Callbacks seen within the last 2 s arm the callback check at once, because
+    /// their activity signal may have arrived before `start()`.
+    public func start() {
+        let observation = observe()
+        let actions = state.withLock { state -> [Action] in
+            guard !state.started else { return [] }
+            state.started = true
+            state.mode = .watching
+            state.enabledTimer = scheduler.scheduleRepeating(
+                every: Self.enabledCheckInterval, leeway: Self.enabledCheckLeeway
+            ) { [weak self] in self?.enabledTick() }
+            return armIfRecentlyActive(&state, observation)
+        }
+        perform(actions)
+    }
+
+    public func stop() {
+        state.withLock {
+            $0.cancelAll()
+            $0.started = false
+            $0.mode = .watching
+        }
+    }
+
     /// The tap's activity signal fired (first callback after 2 s idle): arm the 250 ms check.
-    public func callbackActivity() { unimplemented() }
+    public func callbackActivity() {
+        let observation = observe()
+        let actions = state.withLock { state -> [Action] in
+            guard state.started else { return [] }
+            // Callbacks flow only through an enabled tap, so the lifecycle has re-enabled it after a recovery.
+            if state.mode == .awaitingReenable && observation.tapEnabled { state.mode = .watching }
+            guard state.mode == .watching, state.checkTimer == nil else { return [] }
+            return arm(&state, observation)
+        }
+        perform(actions)
+    }
+
     /// Called on wake, session activation, permission change (PLT-R331).
-    public func checkNow() { unimplemented() }
+    public func checkNow() { perform(enabledCheck()) }
+
+    // MARK: - Timers
+
+    private func enabledTick() {
+        snapshots.reclaimAll()
+        perform(enabledCheck())
+    }
+
+    private func enabledCheck() -> [Action] {
+        let observation = observe()
+        return state.withLock { state -> [Action] in
+            guard state.started else { return [] }
+            switch state.mode {
+            case .watching:
+                return observation.tapRunning && !observation.tapEnabled ? [.report(.unexpectedlyDisabled)] : []
+            case .tripped:
+                return []
+            case .stuck:
+                guard observation.running == nil else { return [] }
+                state.mode = .awaitingReenable
+                return [.callbackReturned]
+            case .awaitingReenable:
+                guard observation.tapEnabled else { return [] }
+                state.mode = .watching
+                return armIfRecentlyActive(&state, observation)
+            }
+        }
+    }
+
+    /// The repeating 250 ms check (`crossing == false`) or the one-shot crossing check (`crossing == true`).
+    private func callbackCheck(crossing: Bool) {
+        let observation = observe()
+        let actions = state.withLock { state -> [Action] in
+            if crossing { state.crossingTimer = nil }
+            guard state.started, state.mode == .watching, state.checkTimer != nil else { return [] }
+            return evaluate(&state, observation, mayDisarm: !crossing)
+        }
+        perform(actions)
+    }
+
+    /// ADR 0309: 2 s after the trip, recovery only if the callback has returned.
+    private func recoveryCheck() {
+        let observation = observe()
+        let actions = state.withLock { state -> [Action] in
+            state.recoveryTimer = nil
+            guard state.started, state.mode == .tripped else { return [] }
+            if let running = observation.running {
+                state.mode = .stuck
+                return [.report(.callbackStuck(microseconds: running / 1_000))]
+            }
+            state.mode = .awaitingReenable
+            return [.callbackReturned]
+        }
+        perform(actions)
+    }
+
+    // MARK: - Decisions (under the lock)
+
+    private func armIfRecentlyActive(_ state: inout State, _ observation: Observation) -> [Action] {
+        guard state.checkTimer == nil, let lastEntry = observation.lastEntry,
+            observation.now.nanoseconds(since: lastEntry) <= Self.idleNanoseconds
+        else { return [] }
+        return arm(&state, observation)
+    }
+
+    private func arm(_ state: inout State, _ observation: Observation) -> [Action] {
+        state.armedAt = observation.now
+        state.checkTimer = scheduler.scheduleRepeating(
+            every: Self.callbackCheckInterval, leeway: Self.callbackCheckInterval / 10
+        ) { [weak self] in self?.callbackCheck(crossing: false) }
+        return evaluate(&state, observation, mayDisarm: false)
+    }
+
+    private func evaluate(_ state: inout State, _ observation: Observation, mayDisarm: Bool) -> [Action] {
+        if let running = observation.running {
+            if running > Self.limitNanoseconds { return trip(&state, running: running) }
+            if state.crossingTimer == nil {
+                let delay = Duration.nanoseconds(Self.limitNanoseconds - running + Self.crossingMargin)
+                state.crossingTimer = scheduler.schedule(after: delay, leeway: delay / 10) { [weak self] in
+                    self?.callbackCheck(crossing: true)
+                }
+            }
+            return []
+        }
+        let lastActivity = max(observation.lastEntry ?? .zero, state.armedAt ?? .zero)
+        if mayDisarm && observation.now.nanoseconds(since: lastActivity) > Self.idleNanoseconds { state.disarm() }
+        return []
+    }
+
+    /// PLT-R306: disable the tap (keys flow), report, and check for recovery 2 s later.
+    private func trip(_ state: inout State, running: UInt64) -> [Action] {
+        state.disarm()
+        state.mode = .tripped
+        state.recoveryTimer = scheduler.schedule(after: Self.recoveryDelay, leeway: Self.recoveryDelay / 10) {
+            [weak self] in self?.recoveryCheck()
+        }
+        return [.disableTap, .report(.callbackOverLimit(microseconds: running / 1_000))]
+    }
+
+    // MARK: - Effects (outside the lock)
+
+    private func observe() -> Observation {
+        let now = clock.now()
+        return Observation(
+            now: now, running: callbacks.runningCallbackDuration(now: now), lastEntry: callbacks.lastCallbackEntry,
+            tapRunning: tap.isRunning, tapEnabled: tap.isEnabled)
+    }
+
+    private func perform(_ actions: [Action]) {
+        for action in actions {
+            switch action {
+            case .disableTap: tap.setEnabled(false)
+            case .report(let trip): onTrip(trip)
+            case .callbackReturned: onCallbackReturned()
+            }
+        }
+    }
 }
 ```
 <!-- /include -->
@@ -5568,15 +7284,19 @@ public final class TapWatchdog: Sendable {
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Lifecycle state machine of the input host (02-platform.md 2.1, PLT-R330-R332, PLT-R730, PLT-R731, ADR 0309)
+// Lifecycle state machine of the input host (02-platform.md 2.1, PLT-R330-R333, PLT-R730, PLT-R731, ADR 0309)
 // as a pure value type, so it is tested deterministically without threads, taps or services (ADR 0313).
 // `InputHostController` (main actor, W2-A) feeds it inputs and performs the effects. Workstream W1-F2.
 
 internal import AppModel
 public import Injection
+public import RealtimeSupport
 
 public enum LifecycleInput: Sendable, Hashable {
     case launched
+    /// A permission status from `PermissionMonitor`. The caller checks permissions immediately on wake, session
+    /// activation and a system tap disable (PLT-R721) and feeds the result BEFORE `.sessionActive(true)` or
+    /// `.tapDisabledBySystem`, so those inputs act on fresh permissions (PLT-R330 step 1, PLT-R333).
     case permissionsChanged(PermissionStatus)
     case tapCreated
     case tapCreationFailed
@@ -5617,19 +7337,320 @@ public enum HealthEventKindCode: String, Sendable, Hashable {
     case tapTimeout, tapDisabledByUserInput, tapReenabled, watchdogTrip, postingBroken, permissionTransition
 }
 
+/// Phases: `starting` until permissions are known and the tap is created, `noPermission`, `running` (the tap
+/// transforms, subject to per-key pauses), `sessionInactive` (PLT-R333), `failOpen(reason)` (PRD-R44: keys pass
+/// unchanged). Effects come back in the order the caller performs them. Every transition into or out of
+/// `failOpen` or `sessionInactive` (a pause) carries `.resetComposition` (PLT-R210); when the new phase is
+/// `running` the reset comes before the publish, so the tap never transforms with a stale composition.
 public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R332: retry tap creation with backoff 1, 2, 5, 10 s (cap) while permissions look granted.
     public static let backoff: [Duration] = [.seconds(1), .seconds(2), .seconds(5), .seconds(10)]
     /// PLT-R306: recovery attempt 2 s after a watchdog trip, only once the callback has returned (ADR 0309).
     public static let watchdogRecoveryDelay: Duration = .seconds(2)
+    /// PLT-R330 step 5: the notice appears when more than `instabilityThreshold` system disables fall within
+    /// this window, at most once per window.
+    public static let instabilityWindow: Duration = .seconds(600)
+    public static let instabilityThreshold = 3
+    /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
+    /// report one disable; reports closer than this count once toward the notice (both still run the procedure).
+    public static let disableCoalescingWindow: Duration = .seconds(1)
+    /// PLT-R323, PLT-R730: echo loss and OS policy leave the permission status `ready`, so failOpen(postingBroken)
+    /// retries the tap on this backoff while permissions look granted. A break soon after a recreation moves to
+    /// the next step (cap 5 minutes), so a posting path that stays broken cannot cause a create/break loop.
+    public static let postingBrokenBackoff: [Duration] = [
+        .seconds(30), .seconds(60), .seconds(120), .seconds(240), .seconds(300),
+    ]
+    /// A recreated tap that posts for longer than the previous delay plus this interval resets the backoff.
+    public static let postingBrokenStableInterval: Duration = .seconds(600)
 
-    public init() { unimplemented() }
+    /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
+    private enum TapPresence: Sendable, Hashable { case none, creating, alive }
 
-    public var phase: LifecycleSnapshot.Phase { unimplemented() }
+    public private(set) var phase: LifecycleSnapshot.Phase = .starting
+    /// The user's "turn off" switch: a pause reason (`paused(userDisabled)`), not a lifecycle phase.
+    public private(set) var userDisabled = false
+
+    private var launched = false
+    /// nil until the first status arrives.
+    private var permissionsGranted: Bool?
+    private var sessionActive = true
+    private var tap = TapPresence.none
+    private var retryAttempt = 0
+    private var retryPending = false
+    /// Nanosecond instants of the latest system disables, at most `instabilityThreshold + 1`.
+    private var recentDisables: [UInt64] = []
+    private var lastNoticeAt: UInt64?
+    /// Index into `postingBrokenBackoff` used by the latest postingBroken, and when it happened.
+    private var postingBrokenAttempt = 0
+    private var lastPostingBrokenAt: UInt64?
+
+    public init() {}
 
     /// Pure transition: returns the effects to perform, in order. Never blocks; the caller owns timers
-    /// (`TimerScheduler`) and turns their firing into `.retryTimerFired`.
-    public mutating func handle(_ input: LifecycleInput) -> [LifecycleEffect] { unimplemented() }
+    /// (`TimerScheduler`) and turns their firing into `.retryTimerFired`. `now` (the services' monotonic clock)
+    /// dates system disables for the PLT-R330 instability window.
+    public mutating func handle(_ input: LifecycleInput, at now: MonotonicInstant) -> [LifecycleEffect] {
+        switch input {
+        case .launched: return launch()
+        case .permissionsChanged(let status): return permissionsChanged(granted: Self.looksGranted(status))
+        case .sessionActive(let active): return sessionChanged(active: active)
+        case .userDisabled(let disabled): return userDisabledChanged(disabled)
+        default: break
+        }
+        guard launched else { return [] }
+        switch input {
+        case .tapCreated: return tapCreated()
+        case .tapCreationFailed: return tapCreationFailed()
+        case .retryTimerFired: return retryFired()
+        case .watchdogTripped(let trip): return watchdogTripped(trip, at: now)
+        case .callbackExited: return callbackExited()
+        case .postingBroken: return postingBroken(at: now)
+        case .tapDisabledBySystem(let byTimeout):
+            return systemDisabled(reason: byTimeout ? .tapTimeout : .tapDisabledByUserInput, at: now)
+        case .launched, .permissionsChanged, .sessionActive, .userDisabled: return []
+        }
+    }
+
+    /// "Permissions appear granted" (PLT-R332): health `ready`. `stale` and `noPermission` do not.
+    static func looksGranted(_ status: PermissionStatus) -> Bool { status.health == .ready }
+
+    // MARK: - Inputs
+
+    private mutating func launch() -> [LifecycleEffect] {
+        guard !launched else { return [] }
+        launched = true
+        switch permissionsGranted {
+        case nil: return []
+        case false?: return move(to: .noPermission)
+        case true?: return beginCreation()
+        }
+    }
+
+    private mutating func permissionsChanged(granted: Bool) -> [LifecycleEffect] {
+        let previous = permissionsGranted
+        permissionsGranted = granted
+        guard launched else { return [] }
+        var effects = granted ? permissionGranted() : permissionLost()
+        if let previous, previous != granted { effects.append(.recordHealth(.permissionTransition)) }
+        return effects
+    }
+
+    /// PLT-R731: permission back recreates the tap without a relaunch. A failOpen(postingBroken) host keeps its
+    /// own retry timer: a real revocation already moved it to failOpen(permissionRevoked).
+    private mutating func permissionGranted() -> [LifecycleEffect] {
+        switch (tap, phase) {
+        case (.none, .noPermission), (.none, .starting), (.none, .failOpen(.permissionRevoked)):
+            return beginCreation()
+        case (.creating, .noPermission):
+            // Lost and back while a creation is in flight: its result decides (PLT-R211, PLT-R332).
+            return move(to: .starting)
+        default:
+            return []
+        }
+    }
+
+    private mutating func permissionLost() -> [LifecycleEffect] {
+        var effects = cancelPendingRetry()
+        switch phase {
+        case .running, .sessionInactive:
+            effects += failOpenRemovingTap(.permissionRevoked)
+        case .starting, .failOpen(.tapUnavailable):
+            effects += move(to: .noPermission)
+        case .failOpen(.postingBroken):
+            effects += move(to: .failOpen(.permissionRevoked))
+        case .noPermission, .failOpen(.permissionRevoked), .failOpen(.watchdog), .failOpen(.callbackStuck):
+            // A tripped tap thread may still be inside its callback: it is removed once the callback returned.
+            break
+        }
+        return effects
+    }
+
+    private mutating func tapCreated() -> [LifecycleEffect] {
+        guard tap == .creating else { return [] }
+        guard wantsTap else {
+            tap = .none
+            return [.removeTap]
+        }
+        tap = .alive
+        retryAttempt = 0
+        return move(to: sessionActive ? .running : .sessionInactive)
+    }
+
+    /// PLT-R332: failOpen(tapUnavailable), retry with backoff only while permissions look granted.
+    private mutating func tapCreationFailed() -> [LifecycleEffect] {
+        guard tap == .creating else { return [] }
+        tap = .none
+        guard wantsTap else { return [] }
+        let delay = Self.backoff[min(retryAttempt, Self.backoff.count - 1)]
+        retryAttempt += 1
+        retryPending = true
+        return move(to: .failOpen(.tapUnavailable)) + [.scheduleRetry(after: delay)]
+    }
+
+    private mutating func retryFired() -> [LifecycleEffect] {
+        guard retryPending else { return [] }
+        retryPending = false
+        let retryPhase = phase == .failOpen(.tapUnavailable) || phase == .failOpen(.postingBroken)
+        guard retryPhase, permissionsGranted == true, tap == .none else { return [] }
+        // The phase stays fail-open during the attempt, so the menu does not flicker.
+        tap = .creating
+        return [.createTap]
+    }
+
+    private mutating func watchdogTripped(_ trip: TapTrip, at now: MonotonicInstant) -> [LifecycleEffect] {
+        switch trip {
+        case .callbackOverLimit:
+            // PLT-R306: the watchdog already disabled the tap (keys flow); `.disableTap` repeats it from the
+            // lifecycle owner. Nothing touches the tap thread, which may be stuck (ADR 0309).
+            guard tapIsInstalled else { return [] }
+            return publish(.failOpen(.watchdog)) + [
+                .disableTap, .requestFlush(.failOpen), .resetComposition, .recordHealth(.watchdogTrip),
+            ]
+        case .callbackStuck:
+            // ADR 0309: stay fail-open; never a second tap or tap thread (PLT-R302).
+            guard phase == .failOpen(.watchdog) else { return [] }
+            return move(to: .failOpen(.callbackStuck))
+        case .unexpectedlyDisabled:
+            // PLT-R331: the same procedure as a disabled event.
+            return systemDisabled(reason: .tapReenabled, at: now)
+        }
+    }
+
+    /// ADR 0309: the callback returned, so the same tap is re-enabled (or removed when permission went away).
+    private mutating func callbackExited() -> [LifecycleEffect] {
+        guard phase == .failOpen(.watchdog) || phase == .failOpen(.callbackStuck), tap == .alive else { return [] }
+        guard permissionsGranted == true else { return failOpenRemovingTap(.permissionRevoked) }
+        return [.reenableTap] + move(to: sessionActive ? .running : .sessionInactive) + [.recordHealth(.tapReenabled)]
+    }
+
+    /// PLT-R730: posting no longer works. PLT-R323: echo loss or OS policy can leave permissions `ready`, and the
+    /// monitor then never reports a change, so the tap is retried on the bounded `postingBrokenBackoff`.
+    private mutating func postingBroken(at now: MonotonicInstant) -> [LifecycleEffect] {
+        guard tapIsInstalled else { return [] }
+        let delay = notePostingBroken(at: now)
+        retryPending = true
+        return failOpenRemovingTap(.postingBroken) + [.recordHealth(.postingBroken), .scheduleRetry(after: delay)]
+    }
+
+    /// PLT-R330: re-enable (permissions are valid while a tap is installed: a revocation already removed it),
+    /// reset, replay held events, record the reason, and the notice after more than 3 within 10 minutes.
+    /// Every report runs the whole procedure (a second disable within the coalescing window is possible and needs
+    /// the reset), but reports within `disableCoalescingWindow` of the last counted one count once (PLT-R331).
+    private mutating func systemDisabled(reason: HealthEventKindCode, at now: MonotonicInstant) -> [LifecycleEffect] {
+        guard tapIsInstalled else { return [] }
+        var effects: [LifecycleEffect] = [
+            .reenableTap, .resetComposition, .requestFlush(.tapDisabled), .recordHealth(reason),
+        ]
+        if noteSystemDisable(at: now) { effects.append(.showTapInstabilityNotice) }
+        return effects
+    }
+
+    /// PLT-R333: resign, sleep or lock pause the host; activation re-validates the tap (re-enable, idempotent)
+    /// after the caller fed fresh permissions, then returns to running.
+    private mutating func sessionChanged(active: Bool) -> [LifecycleEffect] {
+        guard active != sessionActive else { return [] }
+        sessionActive = active
+        guard launched else { return [] }
+        if !active {
+            return phase == .running ? move(to: .sessionInactive) : []
+        }
+        guard phase == .sessionInactive, permissionsGranted == true, tap == .alive else { return [] }
+        return [.reenableTap] + move(to: .running)
+    }
+
+    /// PLT-R210: entering or leaving `paused(userDisabled)` resets the composition.
+    private mutating func userDisabledChanged(_ disabled: Bool) -> [LifecycleEffect] {
+        guard disabled != userDisabled else { return [] }
+        userDisabled = disabled
+        return launched ? [.resetComposition] : []
+    }
+
+    // MARK: - Helpers
+
+    /// A tap is installed and supposed to be enabled (not held by the watchdog).
+    private var tapIsInstalled: Bool { tap == .alive && (phase == .running || phase == .sessionInactive) }
+
+    /// A tap may be created now: permissions look granted and no tripped tap thread may still be stuck.
+    private var wantsTap: Bool {
+        guard launched, permissionsGranted == true else { return false }
+        switch phase {
+        case .failOpen(.watchdog), .failOpen(.callbackStuck): return false
+        default: return true
+        }
+    }
+
+    private mutating func beginCreation() -> [LifecycleEffect] {
+        tap = .creating
+        return move(to: .starting) + [.createTap]
+    }
+
+    private mutating func cancelPendingRetry() -> [LifecycleEffect] {
+        retryAttempt = 0
+        guard retryPending else { return [] }
+        retryPending = false
+        return [.cancelRetry]
+    }
+
+    /// PLT-R730: stop swallowing (the published phase), replay held events, reset, then remove the tap.
+    private mutating func failOpenRemovingTap(_ reason: FailOpenReason) -> [LifecycleEffect] {
+        tap = .none
+        return publish(.failOpen(reason)) + [.requestFlush(.failOpen), .resetComposition, .removeTap]
+    }
+
+    /// Sets the phase and returns the publish effect, without the PLT-R210 reset (callers place it).
+    private mutating func publish(_ new: LifecycleSnapshot.Phase) -> [LifecycleEffect] {
+        guard new != phase else { return [] }
+        phase = new
+        return [.publish(new)]
+    }
+
+    /// Sets the phase with the PLT-R210 reset when a pause or fail-open is entered or left.
+    private mutating func move(to new: LifecycleSnapshot.Phase) -> [LifecycleEffect] {
+        let old = phase
+        let published = publish(new)
+        guard !published.isEmpty, Self.holdsComposition(old) || Self.holdsComposition(new) else { return published }
+        return new == .running ? [.resetComposition] + published : published + [.resetComposition]
+    }
+
+    private static func holdsComposition(_ phase: LifecycleSnapshot.Phase) -> Bool {
+        switch phase {
+        case .failOpen, .sessionInactive: true
+        case .noPermission, .starting, .running: false
+        }
+    }
+
+    /// PLT-R330 step 5: true when this disable makes more than `instabilityThreshold` within the window and no
+    /// notice was shown during the last window.
+    private mutating func noteSystemDisable(at now: MonotonicInstant) -> Bool {
+        if let last = recentDisables.last,
+            now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < Self.disableCoalescingWindow.nanoseconds
+        {
+            return false
+        }
+        let window = Self.instabilityWindow.nanoseconds
+        recentDisables.append(now.nanoseconds)
+        recentDisables.removeAll { now.nanoseconds(since: MonotonicInstant(nanoseconds: $0)) > window }
+        if recentDisables.count > Self.instabilityThreshold + 1 { recentDisables.removeFirst() }
+        guard recentDisables.count > Self.instabilityThreshold else { return false }
+        if let lastNoticeAt, now.nanoseconds(since: MonotonicInstant(nanoseconds: lastNoticeAt)) < window {
+            return false
+        }
+        lastNoticeAt = now.nanoseconds
+        return true
+    }
+
+    /// PLT-R323: the retry delay for this postingBroken. A break within the previous delay plus
+    /// `postingBrokenStableInterval` of the previous break moves one step up the backoff; otherwise it restarts.
+    private mutating func notePostingBroken(at now: MonotonicInstant) -> Duration {
+        let backoff = Self.postingBrokenBackoff
+        if let last = lastPostingBrokenAt {
+            let horizon = backoff[postingBrokenAttempt].nanoseconds + Self.postingBrokenStableInterval.nanoseconds
+            let soon = now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < horizon
+            postingBrokenAttempt = soon ? min(postingBrokenAttempt + 1, backoff.count - 1) : 0
+        }
+        lastPostingBrokenAt = now.nanoseconds
+        return backoff[postingBrokenAttempt]
+    }
 }
 ```
 <!-- /include -->
@@ -5823,10 +7844,23 @@ public enum HotkeyResult: Sendable, Hashable {
 
 /// Toggle tap: cancels on any other key, mouse button or scroll during the hold, on holds longer than 500 ms,
 /// and ignores autorepeat (PRD-R14).
+///
+/// Auto-repeat events never fire a hotkey and never cancel a tap: they belong to a key pressed before the chord
+/// started. A restore binding is recognised only as a key or key combo (it must be a key the pipeline can
+/// consume, PRD-R18, PLT-R353); a modifier-only restore binding is ignored. Logic: `HotkeyRecognition.swift`.
 public struct HotkeyRecognizer: Sendable {
     public static let maximumTapDuration: Duration = .milliseconds(500)
-    public init(toggle: HotkeyBinding, restore: HotkeyBinding?) { unimplemented() }
-    public mutating func handle(_ input: HotkeyInput) -> HotkeyResult { unimplemented() }
+    let toggle: HotkeyBinding
+    let restore: HotkeyBinding?
+    var toggleTap: HotkeyChordTracker?
+
+    public init(toggle: HotkeyBinding, restore: HotkeyBinding?) {
+        self.toggle = toggle
+        self.restore = restore
+        toggleTap = HotkeyChordTracker(binding: toggle)
+    }
+
+    public mutating func handle(_ input: HotkeyInput) -> HotkeyResult { recognize(input) }
 }
 
 public enum RecorderState: Sendable, Hashable {
@@ -5837,7 +7871,8 @@ public enum RecorderState: Sendable, Hashable {
 }
 
 public enum RecorderRejection: String, Sendable, Hashable {
-    case unsupportedModifierTap  // modifier-only chord outside the PRD-R15 list
+    /// Modifier-only chord outside the PRD-R15 list; for the restore role every modifier-only chord (PRD-R18).
+    case unsupportedModifierTap
     case keyWithoutModifierForToggle
 }
 
@@ -5852,11 +7887,33 @@ public enum SystemShortcutConflict: String, Sendable, Hashable, CaseIterable {
     case closeWindow  // Command+W
 }
 
-/// Captures a binding in any press order and finishes when every key is released (PRD-R15).
+/// Captures a binding in any press order and finishes when every key is released (PRD-R15). Logic:
+/// `HotkeyRecording.swift`.
 public struct HotkeyRecorder: Sendable {
-    public init(role: HotkeyRole) { unimplemented() }
-    public mutating func handle(_ input: HotkeyInput) -> RecorderState { unimplemented() }
-    public static func conflict(for binding: HotkeyBinding) -> SystemShortcutConflict? { unimplemented() }
+    let role: HotkeyRole
+    let layout: LayoutTable?
+    var session = HotkeyRecordingSession()
+    var state = RecorderState.idle
+
+    public init(role: HotkeyRole) { self.init(role: role, layout: nil) }
+
+    /// `layout` names the conflicts that depend on the typed character (Command+Q, Command+W) on non-US layouts
+    /// such as AZERTY or Dvorak; without it the ABC key positions are used.
+    public init(role: HotkeyRole, layout: LayoutTable?) {
+        self.role = role
+        self.layout = layout
+    }
+
+    public mutating func handle(_ input: HotkeyInput) -> RecorderState { record(input) }
+
+    public static func conflict(for binding: HotkeyBinding) -> SystemShortcutConflict? {
+        conflict(for: binding, layout: nil)
+    }
+
+    /// PRD-R16 conflict, resolving letter keys through `layout` when given.
+    public static func conflict(for binding: HotkeyBinding, layout: LayoutTable?) -> SystemShortcutConflict? {
+        SystemShortcutCatalog.conflict(for: binding, layout: layout)
+    }
 }
 ```
 <!-- /include -->
@@ -5907,22 +7964,55 @@ public protocol LayoutTableBuilding: Sendable {
     func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable
 }
 
+/// Throws `LayoutTableError` when the `uchr` data is not a keyboard layout or `UCKeyTranslate` rejects it. A
+/// control character (Return, Tab, arrows, function keys) is `.none`; a key that only changes the dead-key state
+/// is `.deadKey` (PLT-R354). Logic: `UCKeyTranslateTable.swift`.
 public struct UCKeyTranslateLayoutBuilder: LayoutTableBuilding {
     public init() {}
-    public func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable { unimplemented() }
+    public func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable {
+        try UCKeyTranslateTable.build(from: data, keyboardType: keyboardType)
+    }
+}
+
+public enum LayoutTableError: Error, Sendable, Hashable {
+    case invalidLayoutData
+    case translationFailed(status: Int32)
 }
 
 /// Main thread: on every source change builds (or reuses) the table, classifies the source (PLT-R371,
 /// PLT-R372), applies the PLT-R373 binding and publishes an `InputSourceSnapshot`; signals a hard boundary.
+/// A snapshot (with a new generation) is published only when the source, its table or its bound mode changed.
+/// Logic: `InputSourceMonitor+Refresh.swift`.
 @MainActor
 public final class InputSourceMonitor {
-    public init(provider: any InputSourceProvider, builder: any LayoutTableBuilding,
-                publish: @escaping @Sendable (InputSourceSnapshot) -> Void) { unimplemented() }
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
-    public func apply(binding: LayoutBindingConfiguration) { unimplemented() }
+    let provider: any InputSourceProvider
+    let builder: any LayoutTableBuilding
+    let publish: @Sendable (InputSourceSnapshot) -> Void
+    var binding = LayoutBindingConfiguration(enabled: false, vietnamese: [], english: [])
+    var keyboardType: UInt32?
+    var tables: [LayoutTableKey: LayoutTable] = [:]
+    var lastPublished: InputSourceSnapshot?
+    var generation: UInt64 = 0
+    var observation: (any ObservationToken)?
+
+    public init(
+        provider: any InputSourceProvider, builder: any LayoutTableBuilding,
+        publish: @escaping @Sendable (InputSourceSnapshot) -> Void
+    ) {
+        self.provider = provider
+        self.builder = builder
+        self.publish = publish
+    }
+
+    public func start() { begin() }
+    public func stop() { end() }
+    public func apply(binding: LayoutBindingConfiguration) {
+        self.binding = binding
+        refresh()
+    }
+
     /// The tap saw a keyboard type without a table (ISO/ANSI/JIS): build one.
-    public func keyboardTypeSeen(_ keyboardType: UInt32) { unimplemented() }
+    public func keyboardTypeSeen(_ keyboardType: UInt32) { adopt(keyboardType: keyboardType) }
 }
 
 public struct LayoutBindingConfiguration: Sendable, Hashable {
@@ -5948,6 +8038,7 @@ public struct LayoutBindingConfiguration: Sendable, Hashable {
 public import AppModel
 public import Foundation
 public import RealtimeSupport
+import Synchronization
 
 /// Production (`SystemSecureInputProbe`): `IsSecureEventInputEnabled()` (Carbon); holder via
 /// `IORegistryEntryCreateCFProperty(IORegistryGetRootEntry(kIOMainPortDefault), "IOConsoleUsers", ...)`,
@@ -5960,8 +8051,8 @@ public protocol SecureInputProbe: Sendable {
 
 public struct SystemSecureInputProbe: SecureInputProbe {
     public init() {}
-    public func isSecureEventInputEnabled() -> Bool { unimplemented() }
-    public func secureInputHolderPID() -> Int32? { unimplemented() }
+    public func isSecureEventInputEnabled() -> Bool { SecureInputSystem.isEnabled() }
+    public func secureInputHolderPID() -> Int32? { SecureInputSystem.holderPID() }
 }
 
 /// Identity of a process for focus, holder naming and conflict detection.
@@ -5992,7 +8083,8 @@ public struct ProcessIdentity: Sendable, Hashable {
     }
 }
 
-/// Production: `NSRunningApplication(processIdentifier:)`, `proc_pidpath`, `proc_name`, `Bundle(url:)`.
+/// Production (`SystemProcessIdentityProvider`): `NSRunningApplication(processIdentifier:)`, `proc_pidpath`,
+/// `proc_name`, `Bundle(url:)`.
 public protocol ProcessIdentityProvider: Sendable {
     func identity(of pid: Int32) -> ProcessIdentity?
     func isAlive(_ pid: Int32) -> Bool  // kill(pid, 0) != ESRCH
@@ -6002,26 +8094,45 @@ public protocol ProcessIdentityProvider: Sendable {
 /// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a
 /// `SecureInputSnapshot` and names the likely holder with the data-driven hint key (PLT-R396, PLT-R397).
 ///
-/// Episodes and generations: the generation changes on every OS transition, so the tap's "resumed by key"
-/// evidence (PLT-R398B) stays valid while the OS flag is stuck. `keyEvidence(generation:)` ENDS episode N: the
-/// next poll that still sees the OS flag on starts a new episode with a new generation even though no "off" was
-/// observed in between (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
+/// Episodes and generations (PLT-R398B): the generation changes on every OS transition. `keyEvidence(generation:)`
+/// ENDS episode N: the tap stays resumed for generation N until the next poll, and the next poll that still sees
+/// the OS flag on starts a new episode with a new generation even though no "off" was observed in between
+/// (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
+///
+/// Snapshots are published in poll order, one at a time, outside the poll lock: `publish` may call back into
+/// the monitor (`pollNow`, `keyEvidence`); a snapshot produced meanwhile is published after it returns.
+/// Logic: `SecureInputMonitor+Polling.swift`.
 public final class SecureInputMonitor: Sendable {
     public static let pollInterval: Duration = .seconds(2)
+    /// PLT-R803: at least 10 % leeway on every timer.
+    public static let pollLeeway: Duration = .milliseconds(200)
+
+    let probe: any SecureInputProbe
+    let processes: any ProcessIdentityProvider
+    let hintKey: @Sendable (BundleKey) -> String?
+    let scheduler: any TimerScheduler
+    let delivery: OrderedDelivery<SecureInputSnapshot>
+    let state = Mutex(SecureInputMonitorState())
 
     public init(
         probe: any SecureInputProbe, processes: any ProcessIdentityProvider,
         hintKey: @escaping @Sendable (BundleKey) -> String?, scheduler: any TimerScheduler,
         publish: @escaping @Sendable (SecureInputSnapshot) -> Void
-    ) { unimplemented() }
+    ) {
+        self.probe = probe
+        self.processes = processes
+        self.hintKey = hintKey
+        self.scheduler = scheduler
+        self.delivery = OrderedDelivery(publish)
+    }
 
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
+    public func start() { beginPolling() }
+    public func stop() { endPolling() }
     /// Synchronous poll (menu open, PLT-R395).
-    public func pollNow() -> SecureInputSnapshot { unimplemented() }
+    public func pollNow() -> SecureInputSnapshot { poll() }
     /// The tap processed a key while paused for secure input (PLT-R398B): records the episode end; the state
     /// stays "resumed" for this generation until the next poll (see the type comment).
-    public func keyEvidence(generation: UInt64) { unimplemented() }
+    public func keyEvidence(generation: UInt64) { recordKeyEvidence(generation: generation) }
 }
 ```
 <!-- /include -->
@@ -6097,8 +8208,15 @@ public struct AXAttributeRequest: Sendable, Hashable {
 /// `kAXFocusedUIElementAttribute`, `kAXParentAttribute`, `AXObserverCreate` / `AXObserverAddNotification` /
 /// `AXObserverGetRunLoopSource`. Never sets `AXEnhancedUserInterface`; sets `AXManualAccessibility` only on
 /// request (PLT-R385).
+///
+/// The system-wide focus is read in two steps so the circuit breaker can stop every query to a slow pid
+/// (PLT-R384): the focused application comes from the system-wide element, the focused element from that
+/// application's element.
 public protocol AXProvider: Sendable {
-    func systemWideFocus() -> AXCallResult<AXFocusedElement?>
+    /// pid of the system-wide focused application (`kAXFocusedApplicationAttribute`, PLT-R381); nil when none.
+    func focusedApplication() -> AXCallResult<Int32?>
+    /// The focused element of application `pid` (`kAXFocusedUIElementAttribute`); nil when it has none.
+    func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?>
     func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes>
     /// Observer whose run-loop source the caller adds to the ax run loop. The handler runs on the ax thread.
     func observe(
@@ -6123,38 +8241,93 @@ public protocol FocusDecisionResolving: Sendable {
     func fingerprint(bundleURL: URL, bundle: BundleKey) -> EngineFingerprint
 }
 
-/// PLT-R384: 3 timeouts within 10 s for one pid stop AX queries to that pid for 60 s.
+/// PLT-R384: 3 timeouts within 10 s for one pid stop AX queries to that pid for 60 s. `recordTimeout` returns
+/// true when this timeout opened the breaker (the caller records one health event). Logic:
+/// `AXCircuitBreaker+Logic.swift`.
 public struct AXCircuitBreaker: Sendable {
-    public init(threshold: Int = 3, window: Duration = .seconds(10), cooldown: Duration = .seconds(60)) { unimplemented() }
-    public mutating func recordTimeout(pid: Int32, at: MonotonicInstant) -> Bool { unimplemented() }
-    public func isOpen(pid: Int32, at: MonotonicInstant) -> Bool { unimplemented() }
+    let threshold: Int
+    let windowNanoseconds: UInt64
+    let cooldownNanoseconds: UInt64
+    var recentTimeouts: [Int32: [MonotonicInstant]] = [:]
+    var openUntil: [Int32: MonotonicInstant] = [:]
+
+    public init(threshold: Int = 3, window: Duration = .seconds(10), cooldown: Duration = .seconds(60)) {
+        self.threshold = max(1, threshold)
+        windowNanoseconds = Self.nanoseconds(window)
+        cooldownNanoseconds = Self.nanoseconds(cooldown)
+    }
+
+    public mutating func recordTimeout(pid: Int32, at: MonotonicInstant) -> Bool { record(pid: pid, at: at) }
+    public func isOpen(pid: Int32, at: MonotonicInstant) -> Bool { openUntil[pid].map { at < $0 } ?? false }
 }
 
 /// The focus tracker. Owns AXObservers on the focused app and on `overlay` apps (PLT-R380), treats the
 /// system-wide AX focus as authoritative (PLT-R381), resolves rules and per-app mode, and publishes a
 /// `FocusSnapshot` plus the current generation before the next key is processed (PLT-R391).
+///
+/// Every public method may be called from any thread: it hops to the ax thread (`RunLoopThread.perform`) and
+/// returns. Rules are resolved only when the focus context changes or rules/settings change (PLT-R523). The
+/// state lives in `FocusCore` (FocusCore*.swift), confined to the ax thread.
 public final class FocusTracker: Sendable {
+    let thread: RunLoopThread
+    let core: ThreadConfined<FocusCore>
+    let mirror = FocusMirror()
+
     public init(
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
         metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion
-    ) { unimplemented() }
+    ) {
+        self.thread = thread
+        let services = FocusCore.Services(
+            thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
+            metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion)
+        core = ThreadConfined(FocusCore(services: services, mirror: mirror))
+    }
 
-    public func start(rules: any FocusDecisionResolving, memory: AppModeMemory) { unimplemented() }
-    public func stop() { unimplemented() }
+    public func start(rules: any FocusDecisionResolving, memory: AppModeMemory) {
+        perform { [self] core in core.start(sink: self, rules: rules, memory: memory) }
+    }
+
+    public func stop() { perform { $0.stop() } }
     /// Hop to the ax thread; re-resolve the current focus (rules or overrides changed, PLT-R540 acceptance).
-    public func update(rules: any FocusDecisionResolving) { unimplemented() }
-    public func update(settings: EffectiveSettings, appModes: AppModesDocument) { unimplemented() }
-    /// NSWorkspace activation, wake, idle-key flag (PLT-R381, PLT-R382): revalidate system-wide focus.
-    public func revalidate() { unimplemented() }
+    public func update(rules: any FocusDecisionResolving) { perform { $0.update(rules: rules) } }
+    public func update(settings: EffectiveSettings, appModes: AppModesDocument) {
+        perform { $0.update(settings: settings, appModes: appModes) }
+    }
+
+    /// NSWorkspace activation and wake (PLT-R381): rescan overlay apps and revalidate system-wide focus. The
+    /// idle-key flag (PLT-R382) arrives through the inbox and revalidates without the rescan.
+    public func revalidate() { perform { $0.revalidate(scanOverlays: true) } }
     /// Drains `inbox` (tap toggles first, then revalidation) on the ax thread; wired to the AX wake signal.
-    public func drainInbox() { unimplemented() }
+    public func drainInbox() { perform { $0.drainInbox() } }
+
+    /// Menu radio or click-to-toggle (D16): same memory update as a hotkey toggle, without a tap sequence
+    /// (PRD-R20).
+    public func setMode(_ mode: TypingMode) { perform { $0.setMode(mode) } }
+
+    /// Receives every changed `app-modes.json` document (on the ax thread) so the owner can persist it through
+    /// `SettingsStore.recordAppModes` (PLT-R392, PRD-R23).
+    public func setMemoryObserver(_ observer: (@Sendable (AppModesDocument) -> Void)?) {
+        perform { $0.memoryObserver = observer }
+    }
+
+    /// Rule decision behind the last published snapshot, for the diagnostics report (any thread).
+    public func currentDecision() -> ResolvedDecision? { mirror.decision }
+
+    /// Bundles on which `AXManualAccessibility` was set because a rule asked for it (PLT-R385 "record that it
+    /// did"; any thread).
+    public func manualAccessibilityBundles() -> Set<BundleKey> { mirror.manualAccessibility }
 }
 
 /// Conversion done once per focus change (rule decision -> tap decision), PLT-R386 `byEngine` resolution.
+/// A shipped `paste` strategy that needs an opt-in the user has not given falls back to the first non-paste
+/// strategy of the rule's chain (PLT-R460). Logic: `HostDecisionMapping.swift`.
 public enum HostDecisionMapper {
-    public static func map(_ decision: ResolvedDecision, engine: EngineFingerprint, optedIntoPaste: Bool) -> HostDecision {
-        unimplemented()
+    public static func map(_ decision: ResolvedDecision, engine: EngineFingerprint, optedIntoPaste: Bool)
+        -> HostDecision
+    {
+        HostDecisionMapping.map(decision, engine: engine, optedIntoPaste: optedIntoPaste)
     }
 }
 ```
@@ -6176,24 +8349,47 @@ public struct ModeResolution: Sendable, Hashable {
     /// "Bỏ qua ứng dụng này": the app sees raw keys and the toggle does nothing (PRD-R21); implemented as a
     /// user override with strategy `passThrough` (PLT-R390).
     public var ignored: Bool
+
+    public init(mode: TypingMode, source: ModeSource, ignored: Bool) {
+        self.mode = mode
+        self.source = source
+        self.ignored = ignored
+    }
 }
 
+/// Entries are kept most recently used first, as in `app-modes.json`. "Remembered" entries are those without an
+/// explicit rule (`nil` or `.remember`); only they count towards the 1,000 limit and only they are evicted.
+/// With `rememberPerApp` off (D12), memory and rule defaults are not used, explicit rules still are. The first
+/// focus of an unknown app records the mode it got (D13 "seen for the first time"). Logic:
+/// `AppModeMemory+Logic.swift`.
 public struct AppModeMemory: Sendable, Hashable {
-    public init(document: AppModesDocument, rememberPerApp: Bool, firstSeen: FirstSeenMode) { unimplemented() }
+    var global: TypingMode
+    var rememberPerApp: Bool
+    var firstSeen: FirstSeenMode
+    var entries: [AppModeEntry]
+
+    public init(document: AppModesDocument, rememberPerApp: Bool, firstSeen: FirstSeenMode) {
+        global = document.globalMode
+        self.rememberPerApp = rememberPerApp
+        self.firstSeen = firstSeen
+        entries = Self.normalized(document.apps)
+    }
 
     /// PRD-R21: ignore > always English > always Vietnamese > remembered > rule `defaultMode` / D13 > global.
-    public func resolve(bundle: BundleKey?, ruleDefault: FirstSeenMode) -> ModeResolution { unimplemented() }
+    public func resolve(bundle: BundleKey?, ruleDefault: FirstSeenMode) -> ModeResolution {
+        resolution(bundle: bundle, ruleDefault: ruleDefault)
+    }
 
     /// Manual toggle while `bundle` is the focus owner (PRD-R20). Updates the global mode too.
-    public mutating func recordToggle(bundle: BundleKey?, mode: TypingMode) { unimplemented() }
+    public mutating func recordToggle(bundle: BundleKey?, mode: TypingMode) { applyToggle(bundle: bundle, mode: mode) }
 
     /// Most-recently-used ordering for the Apps pane; LRU eviction at 1,000 remembered entries (PLT-R392).
-    public mutating func touch(_ bundle: BundleKey) { unimplemented() }
+    public mutating func touch(_ bundle: BundleKey) { moveToFront(bundle) }
 
-    public mutating func setRule(_ rule: PerAppRule?, for bundle: BundleKey) { unimplemented() }
+    public mutating func setRule(_ rule: PerAppRule?, for bundle: BundleKey) { applyRule(rule, for: bundle) }
 
-    public var globalMode: TypingMode { unimplemented() }
-    public func document() -> AppModesDocument { unimplemented() }
+    public var globalMode: TypingMode { global }
+    public func document() -> AppModesDocument { AppModesDocument(globalMode: global, apps: entries) }
 }
 ```
 <!-- /include -->
@@ -6208,6 +8404,7 @@ public import AppModel
 internal import Foundation
 public import RealtimeSupport
 public import SettingsStore
+import Synchronization
 
 /// Production (`SystemPermissionProbe`): `AXIsProcessTrusted()`, `CGPreflightPostEventAccess()`,
 /// `CGPreflightListenEventAccess()`, `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])`,
@@ -6247,20 +8444,43 @@ public struct PermissionStatus: Sendable, Hashable {
 /// Every 2 s while not ready, every 30 s while ready (timers from the injected scheduler, utility queue in
 /// production), immediately on wake, session activation and menu open (PLT-R721). Remembers the identity digest
 /// of the last grant (key-value store) for `stale`.
+///
+/// `onChange` runs for the first check after `start()` and then whenever the status changes, in check order,
+/// one at a time and outside the check lock: it may call back into the monitor (`checkNow`, `setTapUnavailable`);
+/// a status produced meanwhile is delivered after it returns. Logic: `PermissionMonitor+Checks.swift`.
 public final class PermissionMonitor: Sendable {
     public static let notReadyInterval: Duration = .seconds(2)
     public static let readyInterval: Duration = .seconds(30)
     public static let onboardingInterval: Duration = .seconds(1)
+    /// PLT-R711: fast polling stops by itself after 5 minutes.
+    public static let onboardingLimit: Duration = .seconds(300)
+    /// `KeyValueStore` key of the last granted identity (a 52-bit hash of the designated requirement digest).
+    public static let lastGrantedDigestKey = "PermissionLastGrantedIdentity"
+
+    let probe: any PermissionProbe
+    let store: any KeyValueStore
+    let scheduler: any TimerScheduler
+    let delivery: OrderedDelivery<PermissionStatus>
+    let state = Mutex(PermissionMonitorState())
 
     public init(
         probe: any PermissionProbe, store: any KeyValueStore, scheduler: any TimerScheduler,
         onChange: @escaping @Sendable (PermissionStatus) -> Void
-    ) { unimplemented() }
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
-    public func checkNow() -> PermissionStatus { unimplemented() }
+    ) {
+        self.probe = probe
+        self.store = store
+        self.scheduler = scheduler
+        self.delivery = OrderedDelivery(onChange)
+    }
+
+    public func start() { beginChecks() }
+    public func stop() { endChecks() }
+    public func checkNow() -> PermissionStatus { check() }
     /// Onboarding polls every 1 s for at most 5 minutes while visible (PLT-R711).
-    public func setFastPolling(_ enabled: Bool) { unimplemented() }
+    public func setFastPolling(_ enabled: Bool) { updateFastPolling(enabled) }
+    /// The lifecycle reports that the tap could not be created or receives no keys. With Accessibility granted
+    /// and `CGPreflightListenEventAccess()` false this sets `listenEventRequired` (PLT-R702).
+    public func setTapUnavailable(_ unavailable: Bool) { updateTapUnavailable(unavailable) }
 }
 
 /// "Đặt lại quyền" (PLT-R740): runs `/usr/bin/tccutil reset Accessibility <own bundle ID>` after the user
@@ -6288,7 +8508,7 @@ public enum WorkspaceEvent: Sendable, Hashable {
 /// `didActivateApplicationNotification`, `willSleepNotification`, `didWakeNotification`,
 /// `sessionDidResignActiveNotification`, `sessionDidBecomeActiveNotification`, and
 /// `DistributedNotificationCenter` for the screen lock and unlock notifications (names in
-/// `ReverseDNSConstants.swift`, the only file the bundle-ID lint allowlists in this module).
+/// `ReverseDNSConstants.swift`, allowed by scripts/lint-bundle-ids.allow).
 @MainActor
 public protocol WorkspaceEvents: Sendable {
     func observe(_ handler: @escaping @MainActor @Sendable (WorkspaceEvent) -> Void) -> any ObservationToken
@@ -6301,10 +8521,19 @@ public enum ConflictingInput: Sendable, Hashable {
     case builtInVietnameseSource(id: InputSourceID, name: String)
 }
 
+/// Pure: each conflicting app once (by bundle) in `running` order, then each enabled Vietnamese input source once.
 public enum ConflictDetector {
     public static func detect(
         running: [ProcessIdentity], enabledSources: [InputSourceInfo], conflictingApps: Set<BundleKey>
-    ) -> [ConflictingInput] { unimplemented() }
+    ) -> [ConflictingInput] {
+        var seenApps = Set<BundleKey>()
+        let apps = running.filter { conflictingApps.contains($0.bundle) && seenApps.insert($0.bundle).inserted }
+            .map { ConflictingInput.runningApp(bundle: $0.bundle, name: $0.localizedName ?? $0.processName) }
+        var seenSources = Set<InputSourceID>()
+        let sources = enabledSources.filter { $0.isBuiltInVietnamese && seenSources.insert($0.id).inserted }
+            .map { ConflictingInput.builtInVietnameseSource(id: $0.id, name: $0.localizedName) }
+        return apps + sources
+    }
 }
 ```
 <!-- /include -->
@@ -6328,7 +8557,9 @@ public final class LatencyProbeDriver: Sendable {
     public init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) { unimplemented() }
     /// Types `keys` (key codes from the current layout) with `profile` spacing; the probe window reports
     /// text-change times through `textChanged(at:)`.
-    public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [MonotonicInstant] { unimplemented() }
+    public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [MonotonicInstant] {
+        unimplemented()
+    }
     public func textChanged(at instant: MonotonicInstant) { unimplemented() }
     public func result(baseline: [MonotonicInstant], measured: [MonotonicInstant], metrics: PlatformMetrics)
         -> LatencyProbeResult.ProfileResult
@@ -6529,7 +8760,8 @@ public import Observation
 
 /// String tables (catalog file names). Owned per workstream (docs/architecture/workstreams.md).
 public enum StringTable: String, Sendable, CaseIterable {
-    case common = "Common"  // buttons, app-wide words
+    /// Buttons and app-wide words. Named `Localizable` because it is the default table (ADR 0310).
+    case common = "Localizable"
     case menu = "Menu"  // status item, menu, HUD, VoiceOver labels (PRD-R10, PRD-R11)
     case status = "Status"  // status lines and error states (PRD-R43), secure-input hints (PLT-R397)
     case onboarding = "Onboarding"  // PRD-R40 screens 1-8
@@ -6545,21 +8777,80 @@ public enum StringTable: String, Sendable, CaseIterable {
 public struct Localizer: Sendable {
     public let language: InterfaceLanguage
     public let locale: Locale
+    private let selected: Bundle?
+    private let fallback: Bundle?
 
     /// `appBundle` contains `vi.lproj` and `en.lproj`.
-    public init(language: InterfaceLanguage, appBundle: Bundle) { unimplemented() }
+    public init(language: InterfaceLanguage, appBundle: Bundle) {
+        self.language = language
+        locale = Self.locale(for: language)
+        selected = Self.languageBundle(language, in: appBundle)
+        // ADR 0310: a key missing in the selected language falls back to Vietnamese, the source language.
+        fallback = language == .vietnamese ? nil : Self.languageBundle(.vietnamese, in: appBundle)
+    }
 
     /// Looks up `key` in `table` of the selected language's lproj; falls back to Vietnamese, then to the key
     /// itself (a missing key is a test failure, never a crash).
-    public func string(_ key: String, table: StringTable) -> String { unimplemented() }
+    public func string(_ key: String, table: StringTable) -> String {
+        if let value = Self.lookup(key, table: table, in: selected) { return value }
+        if let value = Self.lookup(key, table: table, in: fallback) { return value }
+        return key
+    }
+
+    /// True when the selected language or the Vietnamese fallback defines `key` (data-driven keys such as
+    /// secure-input hints are shown only when copy exists, PLT-R397).
+    public func contains(_ key: String, table: StringTable) -> Bool {
+        Self.lookup(key, table: table, in: selected) != nil || Self.lookup(key, table: table, in: fallback) != nil
+    }
 
     /// Format with arguments (the app name is always an argument, never part of the copy):
     /// `String(format:locale:arguments:)` over the localized format, so `.stringsdict` plural rules apply.
-    public func format(_ key: String, table: StringTable, _ arguments: any CVarArg...) -> String { unimplemented() }
+    public func format(_ key: String, table: StringTable, _ arguments: any CVarArg...) -> String {
+        format(key, table: table, arguments: arguments)
+    }
+
+    /// Array form of `format(_:table:_:)` for callers that hold the arguments as a list (status lines).
+    public func format(_ key: String, table: StringTable, arguments: [any CVarArg]) -> String {
+        let template = string(key, table: table)
+        guard !arguments.isEmpty else { return template }
+        return String(format: template, locale: locale, arguments: arguments)
+    }
 
     /// PRD-R65: dates, numbers and versions in the selected language.
-    public func formatDate(_ date: Date) -> String { unimplemented() }
-    public func formatNumber(_ number: Int) -> String { unimplemented() }
+    public func formatDate(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle(date: .long, time: .omitted, locale: locale))
+    }
+
+    public func formatNumber(_ number: Int) -> String {
+        number.formatted(IntegerFormatStyle<Int>(locale: locale))
+    }
+
+    /// Countdown of the typing-trace HUD (PLT-R905), `m:ss`.
+    public func formatCountdown(_ remaining: Duration) -> String {
+        let clamped = max(remaining, .zero)
+        return clamped.formatted(Duration.TimeFormatStyle(pattern: .minuteSecond).locale(locale))
+    }
+
+    static func locale(for language: InterfaceLanguage) -> Locale {
+        switch language {
+        case .vietnamese: Locale(identifier: "vi_VN")
+        case .english: Locale(identifier: "en_US")
+        }
+    }
+
+    private static func languageBundle(_ language: InterfaceLanguage, in appBundle: Bundle) -> Bundle? {
+        appBundle.path(forResource: language.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
+    }
+
+    /// Sentinel returned by `localizedString` when the key is absent, so a translation that happens to equal
+    /// its key is still found.
+    private static let missing = "\u{1}missing\u{1}"
+
+    private static func lookup(_ key: String, table: StringTable, in bundle: Bundle?) -> String? {
+        guard let bundle else { return nil }
+        let value = bundle.localizedString(forKey: key, value: missing, table: table.rawValue)
+        return value == missing ? nil : value
+    }
 }
 
 /// Observable current language for SwiftUI views and AppKit controllers (menus rebuild on open).
@@ -6567,9 +8858,18 @@ public struct Localizer: Sendable {
 @Observable
 public final class InterfaceLanguageModel {
     public private(set) var localizer: Localizer
-    public init(language: InterfaceLanguage, appBundle: Bundle) { unimplemented() }
+    @ObservationIgnored private let appBundle: Bundle
+
+    public init(language: InterfaceLanguage, appBundle: Bundle) {
+        self.appBundle = appBundle
+        localizer = Localizer(language: language, appBundle: appBundle)
+    }
+
     /// Called when settings change; views observing `localizer` re-render (PRD-R63).
-    public func select(_ language: InterfaceLanguage) { unimplemented() }
+    public func select(_ language: InterfaceLanguage) {
+        guard language != localizer.language else { return }
+        localizer = Localizer(language: language, appBundle: appBundle)
+    }
 }
 ```
 <!-- /include -->
@@ -6599,20 +8899,96 @@ public enum SystemPane: String, Sendable, Hashable, CaseIterable {
     case accessibility, inputMonitoring, keyboard, inputSources, loginItems
 }
 
-public struct SystemPaneNames: Sendable, Hashable {
+public struct SystemPaneNames: Sendable, Hashable, Codable {
     public var systemSettings: String
     public var privacySecurity: String
     public var accessibility: String  // "Device Control and Data Access" on macOS 27 (PLT-R701)
     public var inputMonitoring: String
     public var keyboard: String
     public var textReplacements: String
+
+    public init(
+        systemSettings: String, privacySecurity: String, accessibility: String, inputMonitoring: String,
+        keyboard: String, textReplacements: String
+    ) {
+        self.systemSettings = systemSettings
+        self.privacySecurity = privacySecurity
+        self.accessibility = accessibility
+        self.inputMonitoring = inputMonitoring
+        self.keyboard = keyboard
+        self.textReplacements = textReplacements
+    }
+}
+
+/// Why `SystemPanes.json` was rejected (a build error: the resource ships with the app).
+public enum SystemPaneTableError: Error, Sendable, Hashable {
+    case unsupportedSchema(Int)
+    case noEntries
+    case missingEnglishNames(entry: Int)
+    case invalidDeepLink(entry: Int, pane: String)
 }
 
 public struct SystemPaneTable: Sendable {
-    public init(resource: Data) throws { unimplemented() }
+    public static let schemaVersion = 1
+    /// Language used when the macOS language has no names in the table.
+    static let fallbackLanguage = "en"
+
+    private struct Document: Decodable {
+        var schemaVersion: Int
+        var entries: [Entry]
+    }
+
+    private struct Entry: Decodable {
+        var macOS: VersionRange
+        var names: [String: SystemPaneNames]
+        var deepLinks: [String: String]
+    }
+
+    private let entries: [Entry]
+
+    public init(resource: Data) throws {
+        let document = try JSONDecoder().decode(Document.self, from: resource)
+        guard document.schemaVersion == Self.schemaVersion else {
+            throw SystemPaneTableError.unsupportedSchema(document.schemaVersion)
+        }
+        guard !document.entries.isEmpty else { throw SystemPaneTableError.noEntries }
+        for (index, entry) in document.entries.enumerated() {
+            guard entry.names[Self.fallbackLanguage] != nil else {
+                throw SystemPaneTableError.missingEnglishNames(entry: index)
+            }
+            for (pane, link) in entry.deepLinks where URL(string: link)?.scheme == nil {
+                throw SystemPaneTableError.invalidDeepLink(entry: index, pane: pane)
+            }
+        }
+        entries = document.entries
+    }
+
     /// `systemLanguage` is the macOS primary language (BCP 47); unknown languages fall back to English.
-    public func names(macOS: LooseVersion, systemLanguage: String) -> SystemPaneNames { unimplemented() }
-    public func deepLink(_ pane: SystemPane, macOS: LooseVersion) -> URL? { unimplemented() }
+    public func names(macOS: LooseVersion, systemLanguage: String) -> SystemPaneNames {
+        let names = entry(for: macOS).names
+        let language = Self.primaryLanguage(systemLanguage)
+        // Every entry has English names (checked in `init`).
+        return names[language] ?? names[Self.fallbackLanguage]!
+    }
+
+    public func deepLink(_ pane: SystemPane, macOS: LooseVersion) -> URL? {
+        entry(for: macOS).deepLinks[pane.rawValue].flatMap(URL.init(string:))
+    }
+
+    /// The entry whose range contains `macOS`; outside every range, the nearest one (a newer macOS than the
+    /// table knows uses the newest entry until the table is updated).
+    private func entry(for macOS: LooseVersion) -> Entry {
+        if let match = entries.first(where: { $0.macOS.contains(macOS) }) { return match }
+        let older = entries.filter { range in range.macOS.max.map { $0 < macOS } ?? false }
+        let newest = older.max { ($0.macOS.max ?? macOS) < ($1.macOS.max ?? macOS) }
+        return newest ?? entries[0]
+    }
+
+    /// "vi-VN" -> "vi", "en_GB" -> "en", "zh-Hant-TW" -> "zh".
+    static func primaryLanguage(_ tag: String) -> String {
+        let separators = CharacterSet(charactersIn: "-_")
+        return tag.components(separatedBy: separators).first?.lowercased() ?? fallbackLanguage
+    }
 }
 ```
 <!-- /include -->
@@ -6644,16 +9020,61 @@ public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
 }
 
 public enum StatusPresentation {
+    /// Precedence: capturing (PLT-R905 requires the changed icon for the whole recording) > host state.
+    /// `ignored` is the frontmost app's "Bỏ qua" rule; `mode` picks V or E for the lock badge.
     public static func iconState(state: HostState, mode: TypingMode, ignored: Bool, capturing: Bool)
         -> StatusIconState
-    { unimplemented() }
+    {
+        if capturing { return .capturing }
+        switch state {
+        case .noPermission, .failOpen: return .notWorking
+        case .starting: return .paused
+        case .ready(let readyMode):
+            if ignored { return .ignoredApp }
+            return readyMode == .vietnamese ? .vietnamese : .english
+        case .paused(let reason):
+            return pausedIcon(reason, mode: mode)
+        }
+    }
+
+    private static func pausedIcon(_ reason: PauseReason, mode: TypingMode) -> StatusIconState {
+        switch reason {
+        case .secureInput, .secureField:
+            return mode == .vietnamese ? .secureInputVietnamese : .secureInputEnglish
+        case .passThroughRule:
+            return .ignoredApp
+        case .nonLatinInputSource, .builtInVietnameseSource, .sessionInactive, .userDisabled, .noTextFocus:
+            return .paused
+        }
+    }
+
+    /// VoiceOver label key for the status item (PLT-R211: the label is truthful about the reason). PRD-R10
+    /// labels are used where they fit; the dimmed and slashed glyphs, which cover several states, get a
+    /// reason-specific label otherwise.
+    public static func accessibilityLabelKey(icon: StatusIconState, state: HostState) -> String {
+        switch (icon, state) {
+        case (.paused, .starting):
+            return MenuText.iconStarting.rawValue
+        case (.paused, .paused(.noTextFocus)):
+            return MenuText.iconPausedNoTextFocus.rawValue
+        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)):
+            return MenuText.iconPausedOther.rawValue
+        case (.notWorking, .failOpen(let reason)) where reason != .permissionRevoked:
+            return MenuText.iconNotWorkingFailOpen.rawValue
+        default:
+            return icon.accessibilityLabelKey
+        }
+    }
 }
 
 /// One status line (PRD-R11 item 1, PRD-R43): message key, arguments and a single concrete action.
 public struct StatusLine: Sendable, Hashable {
     public enum Action: Sendable, Hashable {
-        case grantPermission, resumeOnboarding, showHolderApp(pid: Int32), secureInputHelp, reportProblem,
-            learnMore(URL), none
+        case grantPermission, resumeOnboarding
+        case showHolderApp(pid: Int32)
+        case secureInputHelp, reportProblem
+        case learnMore(URL)
+        case none
         /// "paused: no text field detected" (02-platform.md section 6, custom text views): one click writes a
         /// user override with `requireTextFocus: never` for this app (PLT-R540).
         case overrideTextFocus(bundle: BundleKey)
@@ -6664,20 +9085,40 @@ public struct StatusLine: Sendable, Hashable {
     public var key: String  // in the `Status` table
     public var arguments: [String]  // app names, source names, never typed content
     public var action: Action
-    public init(key: String, arguments: [String], action: Action) {
+    /// Optional second line in the `Status` table: the data-driven secure-input hint (PLT-R397, PLT-R398C) or
+    /// the honest built-in fallback while permission is missing (PLT-R206).
+    public var hintKey: String?
+    /// Label of the action item (`Status` table) and its arguments; nil when the action is `.none`.
+    public var actionLabelKey: String?
+    public var actionLabelArguments: [String]
+
+    public init(
+        key: String, arguments: [String], action: Action, hintKey: String? = nil, actionLabelKey: String? = nil,
+        actionLabelArguments: [String] = []
+    ) {
         self.key = key
         self.arguments = arguments
         self.action = action
+        self.hintKey = hintKey
+        self.actionLabelKey = actionLabelKey
+        self.actionLabelArguments = actionLabelArguments
     }
 
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
     /// source, built-in Vietnamese source, no text focus with override action) > tap re-enabled notice >
     /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
+    /// (PRD-R41).
     public static func forState(
         _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
-        tapRecentlyReenabled: Bool
+        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true
     ) -> StatusLine? {
-        unimplemented()
+        let context = StatusLineBuilder(
+            appName: appName, holderHintKey: holderHintKey, frontmostApp: frontmostApp,
+            onboardingCompleted: onboardingCompleted)
+        if let line = context.hostLine(for: state) { return line }
+        if tapRecentlyReenabled { return context.tapReenabledLine() }
+        return context.knownLimitationLine()
     }
 }
 
@@ -6716,6 +9157,12 @@ public struct MenuModel: Sendable, Hashable {
         public var bundle: BundleKey
         public var displayName: String
         public var rule: PerAppRule  // checked item of the submenu
+
+        public init(bundle: BundleKey, displayName: String, rule: PerAppRule) {
+            self.bundle = bundle
+            self.displayName = displayName
+            self.rule = rule
+        }
     }
 
     public init(
@@ -6730,11 +9177,40 @@ public struct MenuModel: Sendable, Hashable {
         self.appName = appName
         self.updateCheckEnabled = updateCheckEnabled
     }
+
+    /// The menu in PRD-R11 order; `StatusItemController` renders it item by item.
+    public var entries: [MenuEntry] { MenuEntry.entries(for: self) }
 }
 
 public enum HotkeyDisplay {
     /// "⌃⇧" for the Control+Shift tap, "⌥⌘K" for combos, in the selected language for words.
-    public static func string(for binding: HotkeyBinding, localizer: Localizer) -> String { unimplemented() }
+    public static func string(for binding: HotkeyBinding, localizer: Localizer) -> String {
+        switch binding {
+        case .modifierTap(let chord): chordString(chord, localizer: localizer)
+        case .keyCombo(let modifiers, let keyCode):
+            modifierSymbols(modifiers) + HotkeyKeyNames.name(for: keyCode, localizer: localizer)
+        case .key(let keyCode): HotkeyKeyNames.name(for: keyCode, localizer: localizer)
+        }
+    }
+
+    private static func chordString(_ chord: ModifierTapChord, localizer: Localizer) -> String {
+        switch chord {
+        case .rightCommand: localizer.format(MenuText.hotkeyRight, "⌘")
+        case .rightOption: localizer.format(MenuText.hotkeyRight, "⌥")
+        case .controlShift, .commandShift, .optionShift, .controlOption: modifierSymbols(chord.modifiers)
+        }
+    }
+
+    /// Apple's display order: fn, Control, Option, Shift, Command.
+    static func modifierSymbols(_ modifiers: ModifierKeys) -> String {
+        var symbols = ""
+        if modifiers.contains(.function) { symbols += "fn" }
+        if modifiers.contains(.control) { symbols += "⌃" }
+        if modifiers.contains(.option) { symbols += "⌥" }
+        if modifiers.contains(.shift) { symbols += "⇧" }
+        if modifiers.contains(.command) { symbols += "⌘" }
+        return symbols
+    }
 }
 ```
 <!-- /include -->
@@ -6750,7 +9226,8 @@ public import Foundation
 public import InputHost
 
 public enum OnboardingScreen: Int, Sendable, Hashable, CaseIterable {
-    case welcome = 1, permission, typingMethod, switching, conflicts, importFrom, tryIt, done
+    case welcome = 1
+    case permission, typingMethod, switching, conflicts, importFrom, tryIt, done
 }
 
 public struct OnboardingInputs: Sendable, Hashable {
@@ -6774,18 +9251,99 @@ public struct OnboardingInputs: Sendable, Hashable {
 public struct ImportCandidate: Sendable, Hashable {
     public var appName: String
     public var bundle: BundleKey?
+
+    public init(appName: String, bundle: BundleKey?) {
+        self.appName = appName
+        self.bundle = bundle
+    }
 }
 
 public struct OnboardingFlow: Sendable, Hashable {
     public private(set) var screen: OnboardingScreen
-    public init(inputs: OnboardingInputs) { unimplemented() }
+    /// PRD-R42 variant: only screen 2 is shown, then the flow finishes.
+    public let permissionOnly: Bool
+    /// The last screen was left (the window closes and onboarding counts as completed, PRD-R42).
+    public private(set) var isFinished = false
+    /// Permission state as last seen, for the "Đã cấp quyền" check mark (PRD-R40 "Live state").
+    public private(set) var permissionGranted: Bool
+    /// Set when the grant advanced the flow by itself, so the next screen can confirm it; cleared on the next move.
+    public private(set) var advancedByGrant = false
+    private var history: [OnboardingScreen] = []
+
+    public init(inputs: OnboardingInputs) {
+        self.init(inputs: inputs, startAt: .welcome)
+    }
+
+    /// `startAt: .permission` resumes at screen 2 (PRD-R41). The permission-lost variant always starts there.
+    public init(inputs: OnboardingInputs, startAt: OnboardingScreen) {
+        permissionOnly = inputs.permissionLostAfterCompletion
+        screen = permissionOnly ? .permission : startAt
+        permissionGranted = Self.isGranted(inputs.permission)
+    }
+
     /// Screens 5 and 6 are skipped when their condition is false; screen 2 has no "Bỏ qua".
-    public mutating func next(inputs: OnboardingInputs) { unimplemented() }
-    public mutating func back() { unimplemented() }
-    public mutating func skip(inputs: OnboardingInputs) { unimplemented() }
+    public mutating func next(inputs: OnboardingInputs) {
+        permissionGranted = Self.isGranted(inputs.permission)
+        // PRD-R40: screen 2 cannot be left forward until permission is granted.
+        if screen == .permission && !permissionGranted { return }
+        advance(inputs: inputs)
+    }
+
+    public mutating func back() {
+        guard !isFinished, let previous = history.popLast() else { return }
+        advancedByGrant = false
+        screen = previous
+    }
+
+    public mutating func skip(inputs: OnboardingInputs) {
+        guard canSkip, !isFinished else { return }
+        advance(inputs: inputs)
+    }
+
     public var canSkip: Bool { screen != .permission }
-    /// Permission granted while on screen 2: advance within 1 s (PRD-R40 "Live state").
-    public mutating func permissionChanged(_ status: PermissionStatus, inputs: OnboardingInputs) { unimplemented() }
+
+    /// "Quay lại" is shown on every screen that has a previous one (PRD-R40).
+    public var canGoBack: Bool { !history.isEmpty && !isFinished }
+
+    /// Permission granted while on screen 2: advance within 1 s (PRD-R40 "Live state"). The permission monitor
+    /// polls every 1 s while onboarding is visible (PLT-R711), so the flow advances on the first poll after the
+    /// grant. In the PRD-R42 variant the screen stays to show "Đã cấp quyền" until the user closes it.
+    public mutating func permissionChanged(_ status: PermissionStatus, inputs: OnboardingInputs) {
+        let wasGranted = permissionGranted
+        permissionGranted = Self.isGranted(status)
+        guard screen == .permission, permissionGranted, !wasGranted, !permissionOnly, !isFinished else { return }
+        advance(inputs: inputs)
+        advancedByGrant = true
+    }
+
+    /// Accessibility trusted and, when macOS demands it, Input Monitoring too (PLT-R701, PLT-R702).
+    public static func isGranted(_ status: PermissionStatus) -> Bool { status.health == .ready }
+
+    private mutating func advance(inputs: OnboardingInputs) {
+        advancedByGrant = false
+        guard let following = following(screen, inputs: inputs), !permissionOnly else {
+            isFinished = true
+            return
+        }
+        history.append(screen)
+        screen = following
+    }
+
+    private func following(_ current: OnboardingScreen, inputs: OnboardingInputs) -> OnboardingScreen? {
+        var candidate = OnboardingScreen(rawValue: current.rawValue + 1)
+        while let screen = candidate, !Self.isShown(screen, inputs: inputs) {
+            candidate = OnboardingScreen(rawValue: screen.rawValue + 1)
+        }
+        return candidate
+    }
+
+    private static func isShown(_ screen: OnboardingScreen, inputs: OnboardingInputs) -> Bool {
+        switch screen {
+        case .conflicts: !inputs.conflicts.isEmpty
+        case .importFrom: !inputs.importCandidates.isEmpty
+        default: true
+        }
+    }
 }
 
 /// PLT-R710: the app must run from /Applications or ~/Applications and not be translocated before asking for
@@ -6798,8 +9356,26 @@ public enum AppLocationCheck {
 
     public enum Reason: String, Sendable, Hashable { case translocated, readOnlyVolume, outsideApplications }
 
+    /// Gatekeeper path randomisation runs quarantined apps from a read-only mount under a directory with this
+    /// name (VERIFY on current macOS; the App may also ask `SecTranslocateIsTranslocatedURL`).
+    static let translocationComponent = "AppTranslocation"
+
     public static func evaluate(bundleURL: URL, homeDirectory: URL, isOnReadOnlyVolume: Bool) -> Result {
-        unimplemented()
+        let bundle = bundleURL.standardizedFileURL.resolvingSymlinksInPath()
+        if bundle.pathComponents.contains(translocationComponent) { return .mustMove(reason: .translocated) }
+        if isOnReadOnlyVolume { return .mustMove(reason: .readOnlyVolume) }
+        let roots = [
+            URL(fileURLWithPath: "/Applications", isDirectory: true),
+            homeDirectory.appendingPathComponent("Applications", isDirectory: true),
+        ]
+        let inside = roots.contains { isDescendant(bundle, of: $0.standardizedFileURL.resolvingSymlinksInPath()) }
+        return inside ? .ok : .mustMove(reason: .outsideApplications)
+    }
+
+    private static func isDescendant(_ url: URL, of root: URL) -> Bool {
+        let path = url.pathComponents
+        let rootPath = root.pathComponents
+        return path.count > rootPath.count && Array(path.prefix(rootPath.count)) == rootPath
     }
 }
 ```
@@ -6826,19 +9402,78 @@ public struct BugReportDraft: Sendable, Hashable {
     /// send themselves, never into the diagnostics block.
     public var userDescription: String
     public var reproducesInPracticeField: Bool?
+
+    public init(
+        app: BundleKey?, appName: String?, symptom: DiagnosticsReport.Symptom, userDescription: String,
+        reproducesInPracticeField: Bool?
+    ) {
+        self.app = app
+        self.appName = appName
+        self.symptom = symptom
+        self.userDescription = userDescription
+        self.reproducesInPracticeField = reproducesInPracticeField
+    }
 }
 
 public enum ReportAssembler {
+    /// Metadata only (PLT-R1202). The reported app is the draft's app, else the focused app; only its memory
+    /// entry (PLT-R913) and its user override (PLT-R541, as a typed projection, ADR 0312) are included. The
+    /// draft's free text never enters the report.
     public static func report(
         identity: AppIdentity, system: SystemInfo, host: HostReportContext, settings: SettingsState,
         metrics: MetricsSnapshot, health: [HealthEvent], probe: LatencyProbeResult?, draft: BugReportDraft?,
         now: Date
-    ) -> DiagnosticsReport { unimplemented() }
+    ) -> DiagnosticsReport {
+        let reportedApp = draft?.app ?? host.focus.app?.bundle
+        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
+        let decisionOverride = host.focus.app?.bundle == reportedApp ? host.decision?.userOverride : nil
+        let mirror = ReportMirror(
+            formatVersion: DiagnosticsReport.formatVersion, generatedAt: now, app: identity, system: system,
+            hostState: host.state.code, keyboard: ReportSections.keyboard(host),
+            permissions: ReportSections.permissions(host), tap: ReportSections.tap(host, health: health, now: now),
+            secureInput: ReportSections.secureInput(host), focus: ReportSections.focus(host),
+            rule: ReportSections.rule(host.decision, userOverride: storedOverride ?? decisionOverride),
+            settings: ReportSections.settings(settings),
+            reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
+            latency: ReportMirror.Latency(metrics: metrics, probe: probe),
+            healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),
+            userReport: draft.map {
+                ReportMirror.UserReport(
+                    symptom: $0.symptom, reportedApp: $0.app, reproducesInPracticeField: $0.reproducesInPracticeField)
+            })
+        return mirror.decode()
+    }
 
     /// Typed projection of the reported app's user override (PLT-R541, ADR 0312): copies strategy, params,
     /// fallback, gating and metadata match fields; drops `summary`, `provenance`, `web.urlPrefixes` and
     /// `titlePattern` (listed by name in `omittedMatchFields`, values never copied, PLT-R1203).
-    public static func reportedOverride(from rule: Rule) -> DiagnosticsReport.ReportedOverride { unimplemented() }
+    public static func reportedOverride(from rule: Rule) -> DiagnosticsReport.ReportedOverride {
+        let match = rule.match
+        let ax = match.ax
+        var omitted: [DiagnosticsReport.OmittedMatchField] = []
+        if match.web?.urlPrefixes != nil { omitted.append(.webURLPrefixes) }
+        if match.titlePattern != nil { omitted.append(.titlePattern) }
+        let reportedMatch = DiagnosticsReport.ReportedMatch(
+            bundleIds: match.bundleIds, bundleGroup: match.bundleGroup, engines: match.engines,
+            appCategories: match.appCategories, appVersion: match.appVersion, macOS: match.macOS, axRoles: ax?.roles,
+            axSubroles: ax?.subroles, axIdentifiers: ax?.identifiers, axDomClasses: ax?.domClasses,
+            axAncestorRoles: ax?.ancestorRoles, axEditable: ax?.editable)
+        let action = rule.action
+        return DiagnosticsReport.ReportedOverride(
+            id: rule.id, match: reportedMatch, strategy: action.strategy,
+            parameters: action.params.map(reportedParameters), fallback: action.fallback,
+            requireTextFocus: action.requireTextFocus, verifyReentry: action.verifyReentry,
+            engineContext: action.engineContext, omittedMatchFields: omitted)
+    }
+
+    private static func reportedParameters(_ params: StrategyParams) -> DiagnosticsReport.ReportedParameters {
+        DiagnosticsReport.ReportedParameters(
+            unicodeChunk: params.unicodeChunk, interEventDelayUs: params.interEventDelayUs,
+            postDeleteSettleUs: params.postDeleteSettleUs, firstEditDelayUs: params.firstEditDelayUs,
+            inlineCompletion: params.inlineCompletion, allowMultiCharEvents: params.allowMultiCharEvents,
+            allowSplit: params.allowSplit, longTextThreshold: params.longTextThreshold,
+            restoreDelayMs: params.restoreDelayMs, verifyAfterEdit: params.verifyAfterEdit)
+    }
 }
 
 /// A mail draft for "Gửi qua email" (PRD-R47). The App sends it with
@@ -6860,26 +9495,104 @@ public struct MailDraft: Sendable, Hashable {
     }
 }
 
+/// The three ways out of the bug report sheet (PRD-R47, PRD-R49).
+public enum BugReportPath: String, Sendable, Hashable, CaseIterable { case github, email, saveFile }
+
 public enum BugReportComposer {
+    /// Paths the sheet offers: GitHub only with a repository URL, email only with a support address; saving the
+    /// file always works (PRD-R49: the flow works without a GitHub account).
+    public static func availablePaths(brand: Brand) -> [BugReportPath] {
+        BugReportPath.allCases.filter { path in
+            switch path {
+            case .github: brand.repositoryURL != nil
+            case .email: brand.supportEmail != nil
+            case .saveFile: true
+            }
+        }
+    }
+
     /// GitHub issue-form URL with the summary in the body (the full block is copied to the clipboard after the
     /// sheet says so, PRD-R48). `repository` is `Brand.repositoryURL`; when it is nil the GitHub button is
     /// hidden and email/save remain (PRD-R49).
     public static func githubIssueURL(repository: URL, draft: BugReportDraft, report: DiagnosticsReport) -> URL {
-        unimplemented()
+        IssueFormURL.make(repository: repository, draft: draft, report: report)
     }
 
     /// Mail draft to `Brand.supportEmail` (nil when the brand has no support address).
     public static func mail(draft: BugReportDraft, report: DiagnosticsReport, brand: Brand, localizer: Localizer)
         -> MailDraft?
-    { unimplemented() }
+    {
+        guard let address = brand.supportEmail else { return nil }
+        let summary = BugReportSummary(draft: draft, report: report)
+        let fileName = attachmentFileName(slug: brand.slug, date: report.generatedAt)
+        return MailDraft(
+            recipients: [address], subject: summary.mailSubject(localizer, appName: brand.displayName),
+            body: summary.mailBody(localizer, appName: brand.displayName, attachment: fileName),
+            attachmentFileName: fileName)
+    }
 
     /// `mailto:` fallback (subject and body only; attachments are impossible with `mailto:`).
-    public static func mailtoURL(_ draft: MailDraft) -> URL? { unimplemented() }
+    public static func mailtoURL(_ draft: MailDraft) -> URL? {
+        guard !draft.recipients.isEmpty else { return nil }
+        let recipients = draft.recipients.map(URLQueryEncoding.encodeAddress).joined(separator: ",")
+        let subject = URLQueryEncoding.encode(draft.subject)
+        // RFC 6068: line breaks in the body are CRLF.
+        let body = URLQueryEncoding.encode(draft.body.replacingOccurrences(of: "\n", with: "\r\n"))
+        return URL(string: "mailto:\(recipients)?subject=\(subject)&body=\(body)")
+    }
+
+    /// `<slug>-report-YYYYMMDD-HHMM.json` in the user's time zone.
+    static func attachmentFileName(slug: String, date: Date, timeZone: TimeZone = .current) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let stamp = String(
+            format: "%04d%02d%02d-%02d%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0, parts.hour ?? 0,
+            parts.minute ?? 0)
+        return "\(slug)-report-\(stamp).json"
+    }
 }
 
 /// Collects macOS version and build, architecture, model identifier (sysctl `hw.model`), languages.
 public enum SystemInfoReader {
-    public static func current(uiLanguage: InterfaceLanguage) -> SystemInfo { unimplemented() }
+    public static func current(uiLanguage: InterfaceLanguage) -> SystemInfo {
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        return SystemInfo(
+            macOSVersion: versionString(version), macOSBuild: sysctlString("kern.osversion") ?? "unknown",
+            architecture: hardwareArchitecture(), modelIdentifier: sysctlString("hw.model") ?? "unknown",
+            uiLanguage: uiLanguage, systemLanguage: Locale.preferredLanguages.first ?? "en")
+    }
+
+    static func versionString(_ version: OperatingSystemVersion) -> String {
+        let base = "\(version.majorVersion).\(version.minorVersion)"
+        return version.patchVersion == 0 ? base : "\(base).\(version.patchVersion)"
+    }
+
+    /// Hardware class (PRD-R45): Apple silicon reports `arm64` even when the process runs translated.
+    static func hardwareArchitecture() -> String {
+        if sysctlInt("hw.optional.arm64") == 1 { return "arm64" }
+        #if arch(arm64)
+        return "arm64"
+        #else
+        return "x86_64"
+        #endif
+    }
+
+    static func sysctlString(_ name: String) -> String? {
+        var size = 0
+        guard sysctlbyname(name, nil, &size, nil, 0) == 0, size > 0 else { return nil }
+        var buffer = [UInt8](repeating: 0, count: size)
+        guard sysctlbyname(name, &buffer, &size, nil, 0) == 0 else { return nil }
+        let bytes = buffer.prefix { $0 != 0 }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
+    static func sysctlInt(_ name: String) -> Int32? {
+        var value: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        guard sysctlbyname(name, &value, &size, nil, 0) == 0 else { return nil }
+        return value
+    }
 }
 ```
 <!-- /include -->
@@ -6913,14 +9626,99 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
     case selectThenType  // selectReplace
     case pasteText  // paste, requiresUserOptIn, clipboard explanation (PLT-R460, PLT-R462)
 
-    public func overrideRule(for bundle: BundleKey, date: String) -> JSONValue? { unimplemented() }
+    /// PLT-R408: 5 ms between synthetic events.
+    static let slowerPacingMicroseconds = 5_000
+    static let ruleIDPrefix = "user.compat."
+
+    /// Rule JSON for `rule-overrides.json` (02-platform.md 5.4 shape, `id` prefixed `user.`), or nil for
+    /// `.automatic`, which means "remove this app's compatibility override". `date` is `YYYY-MM-DD`.
+    /// `.pasteText` carries no `requiresUserOptIn` gate: the Apps pane shows the clipboard explanation before the
+    /// user picks it, and that choice is the user's opt-in for this app (PLT-R460, PLT-R462).
+    public func overrideRule(for bundle: BundleKey, date: String) -> JSONValue? {
+        guard let action else { return nil }
+        return .object([
+            "id": .string(Self.ruleID(for: bundle).rawValue),
+            "summary": .string("Compatibility mode chosen in the Apps pane: \(rawValue)"),
+            "match": .object(["bundleIds": .array([.string(bundle.rawValue)])]),
+            "action": .object(action),
+            "provenance": .object(["source": .string("user-suggestion"), "date": .string(date)]),
+        ])
+    }
+
+    private var action: [String: JSONValue]? {
+        switch self {
+        case .automatic: nil
+        case .typeSlower:
+            [
+                "strategy": .string(InjectionStrategy.backspaceReplace.rawValue),
+                "params": .object(["interEventDelayUs": .number(Double(Self.slowerPacingMicroseconds))]),
+            ]
+        case .selectThenType: ["strategy": .string(InjectionStrategy.selectReplace.rawValue)]
+        case .pasteText: ["strategy": .string(InjectionStrategy.paste.rawValue)]
+        }
+    }
+
+    /// One compatibility override per app: `user.compat.<bundle>` with characters outside the rule ID alphabet
+    /// replaced (`sha256:` keys become `sha256-`).
+    public static func ruleID(for bundle: BundleKey) -> RuleID {
+        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        let cleaned = String(bundle.rawValue.map { allowed.contains($0) ? $0 : "-" })
+        let segments = cleaned.split(separator: ".", omittingEmptySubsequences: true).joined(separator: ".")
+        let candidate = String((ruleIDPrefix + segments).prefix(128))
+        let trimmed = candidate.hasSuffix(".") ? String(candidate.dropLast()) : candidate
+        return RuleID(rawValue: trimmed) ?? RuleID(rawValue: "user.compat.app")!
+    }
+
+    /// Reads the choice back from a stored override (the inverse of `overrideRule`).
+    init?(overrideRule rule: JSONValue) {
+        guard let id = rule["id"]?.stringValue, id.hasPrefix(Self.ruleIDPrefix),
+            let strategy = rule["action"]?["strategy"]?.stringValue
+        else { return nil }
+        switch InjectionStrategy(rawValue: strategy) {
+        case .backspaceReplace where rule["action"]?["params"]?["interEventDelayUs"] != nil: self = .typeSlower
+        case .selectReplace: self = .selectThenType
+        case .paste: self = .pasteText
+        default: return nil
+        }
+    }
 }
 
 public enum AppsPaneModel {
-    /// Most recent first: apps typed in (memory order) plus apps with explicit rules (PRD-R34).
+    /// Most recent first: apps typed in (memory order) plus apps with explicit rules (PRD-R34), then apps that
+    /// only have a compatibility override.
     public static func rows(
         appModes: AppModesDocument, overrides: [StoredRuleOverride], matrix: MatrixDocument?, today: Date
-    ) -> [AppsPaneRow] { unimplemented() }
+    ) -> [AppsPaneRow] {
+        let modes = compatibilityModes(overrides)
+        var bundles = appModes.apps.map(\.bundle)
+        for bundle in modes.keys.sorted() where !bundles.contains(bundle) { bundles.append(bundle) }
+        let entries = Dictionary(appModes.apps.map { ($0.bundle, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen: Set<BundleKey> = []
+        return bundles.compactMap { bundle in
+            guard seen.insert(bundle).inserted else { return nil }
+            let entry = entries[bundle]
+            let matrixEntry = matrix?.entries.first { $0.bundleId == bundle }
+            return AppsPaneRow(
+                bundle: bundle, rule: entry?.rule ?? .remember, rememberedMode: entry?.mode,
+                status: matrixEntry.map { MatrixStatusResolver.displayStatus($0, today: today) } ?? .notVerified,
+                note: matrixEntry?.note, compatibilityMode: modes[bundle] ?? .automatic)
+        }
+    }
+
+    /// Newest compatibility override per app.
+    private static func compatibilityModes(_ overrides: [StoredRuleOverride]) -> [BundleKey: CompatibilityModeChoice] {
+        var modes: [BundleKey: CompatibilityModeChoice] = [:]
+        for stored in overrides.sorted(by: { $0.createdAt > $1.createdAt }) {
+            guard let choice = CompatibilityModeChoice(overrideRule: stored.rule),
+                case .array(let ids)? = stored.rule["match"]?["bundleIds"]
+            else { continue }
+            for case .string(let raw) in ids {
+                guard let bundle = BundleKey(rawValue: raw), modes[bundle] == nil else { continue }
+                modes[bundle] = choice
+            }
+        }
+        return modes
+    }
 }
 ```
 <!-- /include -->
@@ -6931,6 +9729,7 @@ public enum AppsPaneModel {
 
 internal import AppModel
 public import Foundation
+internal import ServiceManagement
 
 /// Launch at login (PLT-R205, D17). Production: `SMAppService.mainApp` `status`, `register()`,
 /// `unregister()`; `requiresApproval` opens System Settings > Login Items via `SMAppService.openSystemSettingsLoginItems()`.
@@ -6943,12 +9742,24 @@ public protocol LoginItemService: Sendable {
 
 public enum LoginItemStatus: String, Sendable, Hashable { case enabled, notRegistered, requiresApproval, notFound }
 
+/// Thin wrapper; only `status(from:)` is unit tested because the other members change the user's login items
+/// (verified by Pa, traceability PLT-R205).
 public struct SMAppServiceLoginItem: LoginItemService {
     public init() {}
-    public var status: LoginItemStatus { unimplemented() }
-    public func register() throws { unimplemented() }
-    public func unregister() throws { unimplemented() }
-    public func openSystemSettings() { unimplemented() }
+    public var status: LoginItemStatus { Self.status(from: SMAppService.mainApp.status) }
+    public func register() throws { try SMAppService.mainApp.register() }
+    public func unregister() throws { try SMAppService.mainApp.unregister() }
+    public func openSystemSettings() { SMAppService.openSystemSettingsLoginItems() }
+
+    static func status(from status: SMAppService.Status) -> LoginItemStatus {
+        switch status {
+        case .enabled: .enabled
+        case .notRegistered: .notRegistered
+        case .requiresApproval: .requiresApproval
+        case .notFound: .notFound
+        @unknown default: .notFound
+        }
+    }
 }
 
 /// What the About & Support pane needs from the Sparkle wrapper (App/Updater), so its view model is testable.
@@ -6966,7 +9777,13 @@ public enum UpdateChannelSelection: String, Sendable, Hashable { case stable, be
 /// PLT-R909: `<slug>://` may only open Settings; every other component or parameter is ignored.
 public enum URLSchemeRouter {
     public enum Route: Sendable, Hashable { case openSettings, ignore }
-    public static func route(_ url: URL, scheme: String) -> Route { unimplemented() }
+
+    /// Any URL with the app's scheme opens Settings and nothing else: host, path, query and fragment never select
+    /// a pane, change a setting, start a capture or export data.
+    public static func route(_ url: URL, scheme: String) -> Route {
+        guard let urlScheme = url.scheme, !scheme.isEmpty else { return .ignore }
+        return urlScheme.caseInsensitiveCompare(scheme) == .orderedSame ? .openSettings : .ignore
+    }
 }
 
 /// Donation block (PRD-R59). Account details are placeholders until Pa verifies them; QR images are bundled
@@ -7046,6 +9863,8 @@ final class AppEnvironment {
 
 import AppKit
 import AppModel
+import Observation
+import RealtimeSupport
 import ShellCore
 
 /// Actions the menu triggers; implemented by AppEnvironment.
@@ -7064,33 +9883,202 @@ protocol StatusMenuActions: AnyObject {
 
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
+    private let statusItem: NSStatusItem
+    private let menu = NSMenu()
+    private let language: InterfaceLanguageModel
+    private let menuModel: @MainActor () -> MenuModel
+    private weak var actions: (any StatusMenuActions)?
+    private var iconState: StatusIconState = .notWorking
+    private var labelKey: String?
+    private var appName: String?
+    private var clickToToggle = false
+
     /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
     init(
-        language: InterfaceLanguageModel, actions: any StatusMenuActions, menuModel: @escaping @MainActor () -> MenuModel
-    ) { unimplemented() }
+        language: InterfaceLanguageModel, actions: any StatusMenuActions,
+        menuModel: @escaping @MainActor () -> MenuModel
+    ) {
+        self.language = language
+        self.actions = actions
+        self.menuModel = menuModel
+        // PRD-R9: always visible; the default behavior does not allow the user to remove it.
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        super.init()
+        menu.delegate = self
+        menu.autoenablesItems = false
+        statusItem.menu = menu
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(statusButtonClicked(_:))
+        applyIcon()
+        observeLanguage()
+    }
 
     /// Template image `StatusIconState.templateImageName` plus `accessibilityLabel` from the Menu table.
-    func show(_ state: StatusIconState) { unimplemented() }
+    func show(_ state: StatusIconState) {
+        show(state, accessibilityLabelKey: nil)
+    }
+
+    /// `accessibilityLabelKey` from `StatusPresentation.accessibilityLabelKey(icon:state:)` keeps the VoiceOver
+    /// label truthful for states that share a glyph (PLT-R211).
+    func show(_ state: StatusIconState, accessibilityLabelKey: String?) {
+        iconState = state
+        labelKey = accessibilityLabelKey
+        appName = menuModel().appName
+        applyIcon()
+    }
+
     /// D16: primary click toggles when enabled; the menu then opens on secondary click.
-    func setClickToToggle(_ enabled: Bool) { unimplemented() }
-    func menuNeedsUpdate(_ menu: NSMenu) { unimplemented() }
+    func setClickToToggle(_ enabled: Bool) {
+        clickToToggle = enabled
+        statusItem.menu = enabled ? nil : menu
+        statusItem.button?.sendAction(on: enabled ? [.leftMouseUp, .rightMouseUp] : [.leftMouseUp])
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        let model = menuModel()
+        appName = model.appName
+        menu.removeAllItems()
+        let builder = StatusMenuBuilder(localizer: language.localizer, target: self)
+        for entry in model.entries { menu.addItem(builder.item(for: entry, model: model)) }
+    }
+
+    // MARK: - Icon and language
+
+    private func applyIcon() {
+        guard let button = statusItem.button else { return }
+        let image = NSImage(named: iconState.templateImageName) ?? StatusGlyph.image(for: iconState)
+        image.isTemplate = true
+        button.image = image
+        let localizer = language.localizer
+        button.setAccessibilityLabel(localizer.string(labelKey ?? iconState.accessibilityLabelKey, table: .menu))
+        if let appName { button.setAccessibilityHelp(localizer.format(MenuText.statusItemHint, appName)) }
+    }
+
+    /// PRD-R63: the status item's label follows a language change at once; the menu is rebuilt on next open.
+    private func observeLanguage() {
+        withObservationTracking {
+            _ = language.localizer
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.applyIcon()
+                self?.observeLanguage()
+            }
+        }
+    }
+
+    // MARK: - Actions (targets of the menu items built by StatusMenuBuilder)
+
+    @objc private func statusButtonClicked(_ sender: Any?) {
+        guard clickToToggle else { return }
+        let event = NSApp.currentEvent
+        let secondary = event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true
+        if secondary {
+            statusItem.menu = menu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil
+        } else {
+            actions?.setMode(menuModel().mode.toggled)
+        }
+    }
+
+    @objc func selectMode(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let mode = TypingMode(rawValue: raw) else { return }
+        actions?.setMode(mode)
+    }
+
+    @objc func selectMethod(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let method = TypingMethod(rawValue: raw) else { return }
+        actions?.setMethod(method)
+    }
+
+    @objc func selectRule(_ sender: NSMenuItem) {
+        guard let choice = sender.representedObject as? RuleChoice else { return }
+        actions?.setRule(choice.rule, for: choice.bundle)
+    }
+
+    @objc func reportForApp(_ sender: NSMenuItem) {
+        actions?.reportProblem(for: (sender.representedObject as? BundleChoice)?.bundle)
+    }
+
+    @objc func reportProblem(_ sender: NSMenuItem) { actions?.reportProblem(for: nil) }
+    @objc func openMacros(_ sender: NSMenuItem) { actions?.openMacros() }
+    @objc func openSettings(_ sender: NSMenuItem) { actions?.openSettings() }
+    @objc func checkForUpdates(_ sender: NSMenuItem) { actions?.checkForUpdates() }
+    @objc func openSupport(_ sender: NSMenuItem) { actions?.openSupport() }
+
+    @objc func performStatusAction(_ sender: NSMenuItem) {
+        guard let action = (sender.representedObject as? StatusActionBox)?.action else { return }
+        actions?.performStatusAction(action)
+    }
 }
 
 /// Non-activating panel near the bottom centre showing V or E for 600 ms; respects Reduce Motion; posts an
 /// accessibility announcement; never shown for automatic per-app switches (PRD-R12, PRD-R66).
 @MainActor
 final class SwitchHUDController {
-    init(language: InterfaceLanguageModel) { unimplemented() }
-    func show(_ mode: TypingMode) { unimplemented() }
+    private let language: InterfaceLanguageModel
+    private let panel = HUDPanelFactory.switchPanel()
+    private var indicator: SwitchIndicator?
+
+    convenience init(language: InterfaceLanguageModel) {
+        self.init(language: language, scheduler: DispatchTimerScheduler(queue: .main))
+    }
+
+    /// `scheduler` must deliver on the main queue; timing lives in ShellCore's `SwitchIndicator`.
+    init(language: InterfaceLanguageModel, scheduler: any TimerScheduler) {
+        self.language = language
+        indicator = SwitchIndicator(scheduler: scheduler) { [weak self] change in self?.apply(change) }
+    }
+
+    /// Callers pass only manual toggles with D14 on (`SwitchIndicator.shouldShow`); automatic per-app switches
+    /// never reach here (PRD-R12).
+    func show(_ mode: TypingMode) {
+        indicator?.show(mode)
+    }
+
+    private func apply(_ change: SwitchIndicator.Change) {
+        switch change {
+        case .show(let mode):
+            let localizer = language.localizer
+            let glyph = localizer.string(mode == .vietnamese ? MenuText.hudVietnameseGlyph : MenuText.hudEnglishGlyph)
+            let announcement = localizer.string(
+                mode == .vietnamese ? MenuText.hudVietnameseAnnouncement : MenuText.hudEnglishAnnouncement)
+            HUDPanelFactory.present(panel, content: SwitchHUDView(glyph: glyph, label: announcement))
+            HUDPanelFactory.announce(announcement, from: panel)  // PRD-R66
+        case .hide:
+            HUDPanelFactory.dismiss(panel)
+        }
+    }
 }
 
 /// Floating countdown with a Stop button on all Spaces and above full-screen apps while a typing trace
 /// records (PLT-R905).
 @MainActor
 final class CaptureHUDController {
-    init(language: InterfaceLanguageModel, stop: @escaping @MainActor () -> Void) { unimplemented() }
-    func show(remaining: Duration) { unimplemented() }
-    func hide() { unimplemented() }
+    private let language: InterfaceLanguageModel
+    private let stop: @MainActor () -> Void
+    private let panel = HUDPanelFactory.capturePanel()
+
+    init(language: InterfaceLanguageModel, stop: @escaping @MainActor () -> Void) {
+        self.language = language
+        self.stop = stop
+    }
+
+    func show(remaining: Duration) {
+        let localizer = language.localizer
+        let content = CaptureHUDView(
+            title: localizer.string(MenuText.captureTitle),
+            remaining: localizer.format(MenuText.captureRemaining, localizer.formatCountdown(remaining)),
+            stopTitle: localizer.string(MenuText.captureStop),
+            stopLabel: localizer.string(MenuText.captureStopLabel),
+            stopHint: localizer.string(MenuText.captureStopHint),
+            stop: { [weak self] in self?.stop() })
+        HUDPanelFactory.presentCapture(panel, content: content)
+    }
+
+    func hide() {
+        panel.orderOut(nil)
+    }
 }
 ```
 <!-- /include -->
@@ -7105,31 +10093,91 @@ final class CaptureHUDController {
 import AppKit
 import AppModel
 import InputHost
+import Observation
 import ShellCore
+import SwiftUI
 
 @MainActor
 protocol OnboardingActions: AnyObject {
     func openPermissionPane()  // deep link from SystemPanes.json (PLT-R704)
+    func openInputMonitoringPane()  // PLT-R702, only when macOS demands Input Monitoring
     func resetPermission()  // PLT-R740, after confirmation
     func relaunch()  // PLT-R712
     func setTypingMethod(_ method: TypingMethod)
+    func openHotkeyRecorder()  // PRD-R40 screen 4 "Đổi phím chuyển"
+    func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
+    func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
     func importMacros(from url: URL)
     func complete()
+    /// The window closed; `completed == false` means before the last screen (PRD-R41: the status line then offers
+    /// to resume at screen 2, and fast permission polling stops).
+    func onboardingClosed(completed: Bool)
 }
 
 @MainActor
-final class OnboardingWindowController: NSWindowController {
-    required init?(coder: NSCoder) { unimplemented() }
+final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
+    static let contentSize = NSSize(width: 640, height: 480)
+
+    private let model: OnboardingModel
+
+    required init?(coder: NSCoder) { nil }
 
     /// `startAt: .permission` for the "permission lost" variant (PRD-R42) and for resuming (PRD-R41).
+    /// `appName` comes from `Brand`; `panes` from `SystemPaneTable` for the running macOS and its language
+    /// (PRD-R64); `method` and `mode` are the current typing method and VI/EN mode.
     init(
         flow: OnboardingFlow, language: InterfaceLanguageModel, actions: any OnboardingActions,
-        inputs: @escaping @MainActor () -> OnboardingInputs
-    ) { unimplemented() }
+        inputs: @escaping @MainActor () -> OnboardingInputs, appName: String, panes: SystemPaneNames,
+        method: TypingMethod = .telex, mode: TypingMode = .vietnamese
+    ) {
+        model = OnboardingModel(
+            flow: flow, language: language, actions: actions, inputs: inputs, appName: appName, panes: panes,
+            method: method, mode: mode)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: Self.contentSize), styleMask: [.titled, .closable],
+            backing: .buffered, defer: false)
+        window.level = .normal  // PRD-R40: not floating
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: OnboardingRootView(model: model))
+        window.setContentSize(Self.contentSize)
+        window.center()
+        super.init(window: window)
+        window.delegate = self
+        model.onFinish = { [weak self] in self?.close() }
+        refreshTitle()
+        observeLanguage()
+    }
 
     /// Called by the permission monitor (1 s polling while visible, PLT-R711).
-    func permissionChanged(_ status: PermissionStatus) { unimplemented() }
+    func permissionChanged(_ status: PermissionStatus) {
+        model.permissionChanged(status)
+    }
+
+    /// VI/EN changes feed the try-it checklist ("press the toggle hotkey once and back", PRD-R40 screen 7).
+    func modeChanged(_ mode: TypingMode) {
+        model.modeChanged(mode)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        model.windowClosed()
+    }
+
+    /// PRD-R63: the window title follows a language change; SwiftUI content re-renders by itself.
+    private func refreshTitle() {
+        window?.title = model.localizer.format(OnboardingText.windowTitle, model.appName)
+    }
+
+    private func observeLanguage() {
+        withObservationTracking {
+            _ = model.language.localizer
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.refreshTitle()
+                self?.observeLanguage()
+            }
+        }
+    }
 }
 ```
 <!-- /include -->
@@ -7283,9 +10331,9 @@ process, so the app treats them as physical input.
 // arrows 0x7B-0x7E, Return 0x24, Tab 0x30, Escape 0x35, ANSI V 0x09.
 
 internal import AppModel
+internal import CoreGraphics
 public import Injection
 public import InputHost
-internal import CoreGraphics
 internal import RealtimeSupport
 internal import Synchronization
 
@@ -7491,7 +10539,9 @@ public final class ManualScheduler: TimerScheduler, Sendable {
     public func advance(by duration: Duration) {
         let target = clock.now().nanoseconds &+ duration.nanosecondsValue
         while let entry = popDue(before: target) {
-            if clock.now().nanoseconds < entry.deadline { clock.sleep(until: MonotonicInstant(nanoseconds: entry.deadline)) }
+            if clock.now().nanoseconds < entry.deadline {
+                clock.sleep(until: MonotonicInstant(nanoseconds: entry.deadline))
+            }
             entry.handler()
         }
         if clock.now().nanoseconds < target { clock.sleep(until: MonotonicInstant(nanoseconds: target)) }
@@ -7622,7 +10672,9 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         read { self.field.axText(in: range) }
     }
 
-    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
+        -> AXCallResult<Void>
+    {
         write { self.field.axSetSelectedRange(range) }
     }
 
@@ -7716,7 +10768,9 @@ public final class FakePasteboard: PasteboardAccess, Sendable {
             if state.conditions.contains(.writeFails) { return .failure(.writeFailed) }
             var data: [String: Data] = [PasteboardTypeName.plainText: Data(text.utf8)]
             for marker in PasteboardTypeName.markers { data[marker] = Data() }
-            state.items = [PasteboardItemData(types: [PasteboardTypeName.plainText] + PasteboardTypeName.markers, data: data)]
+            state.items = [
+                PasteboardItemData(types: [PasteboardTypeName.plainText] + PasteboardTypeName.markers, data: data)
+            ]
             state.changeCount += 1
             state.writes += 1
             return .success(state.changeCount)
@@ -7740,80 +10794,409 @@ public final class FakePasteboard: PasteboardAccess, Sendable {
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Host/HostFakes.swift -->
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Host-service fakes (W1-E). Pure Swift state behind a lock; no AX, TIS, IORegistry or TCC access. Observer
+// callbacks run synchronously on the caller's thread, outside the fake's lock.
 
 public import AppModel
+import ApplicationServices
 public import CompatRules
 public import Foundation
-public import InputHost
 public import Injection
+public import InputHost
+import Synchronization
 
 public final class FakeAXProvider: AXProvider, Sendable {
-    public init() { unimplemented() }
-    /// Sets the focused app/element; posts the given notification to observers.
-    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?) { unimplemented() }
-    public func setTimingOut(pid: Int32, _ timingOut: Bool) { unimplemented() }
-    public func systemWideFocus() -> AXCallResult<AXFocusedElement?> { unimplemented() }
-    public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
-        unimplemented()
+    private struct Observer {
+        var id: UInt64
+        var pid: Int32
+        var notifications: Set<AXNotificationKind>
+        var handler: @Sendable (AXNotificationKind) -> Void
     }
+
+    private struct State {
+        var focusedPID: Int32?
+        var attributes: [Int32: FocusAttributes] = [:]
+        var timingOut: Set<Int32> = []
+        var unavailable: Set<Int32> = []
+        var observers: [Observer] = []
+        var nextObserverID: UInt64 = 1
+        var manualRequests: [Int32] = []
+        var elementQueries: [Int32: Int] = [:]
+        var lastRequest: AXAttributeRequest?
+    }
+
+    private let state = Mutex(State())
+
+    public init() {}
+
+    /// Sets the focused app/element; posts the given notification to observers.
+    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?) {
+        state.withLock {
+            $0.focusedPID = pid
+            $0.attributes[pid] = attributes
+        }
+        if let notify { post(notify, from: pid) }
+    }
+
+    /// The focused application has no focused element.
+    public func focusWithoutElement(pid: Int32, notify: AXNotificationKind?) {
+        state.withLock {
+            $0.focusedPID = pid
+            $0.attributes[pid] = nil
+        }
+        if let notify { post(notify, from: pid) }
+    }
+
+    /// Delivers `kind` to the observers registered for `pid` (only if they asked for it).
+    public func post(_ kind: AXNotificationKind, from pid: Int32) {
+        let handlers = state.withLock { state in
+            state.observers.filter { $0.pid == pid && $0.notifications.contains(kind) }.map(\.handler)
+        }
+        for handler in handlers { handler(kind) }
+    }
+
+    public func setTimingOut(pid: Int32, _ timingOut: Bool) {
+        state.withLock {
+            if timingOut { $0.timingOut.insert(pid) } else { $0.timingOut.remove(pid) }
+        }
+    }
+
+    public func setUnavailable(pid: Int32, _ unavailable: Bool) {
+        state.withLock {
+            if unavailable { $0.unavailable.insert(pid) } else { $0.unavailable.remove(pid) }
+        }
+    }
+
+    public func focusedApplication() -> AXCallResult<Int32?> { .success(state.withLock { $0.focusedPID }) }
+
+    public func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?> {
+        let (timingOut, unavailable, hasElement) = state.withLock { state in
+            state.elementQueries[pid, default: 0] += 1
+            return (state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil)
+        }
+        if timingOut { return .timedOut }
+        if unavailable { return .unavailable }
+        guard hasElement else { return .success(nil) }
+        // An application element is a local reference: creating it sends no AX message.
+        return .success(AXFocusedElement(pid: pid, element: AXElementReference(AXUIElementCreateApplication(pid))))
+    }
+
+    public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
+        let (timingOut, stored) = state.withLock { state in
+            state.lastRequest = request
+            return (state.timingOut.contains(element.pid), state.attributes[element.pid])
+        }
+        if timingOut { return .timedOut }
+        guard var attributes = stored else { return .unavailable }
+        if !request.includeDocumentURL { attributes.documentURL = nil }
+        if !request.includeWindowTitle { attributes.windowTitle = nil }
+        return .success(attributes)
+    }
+
     public func observe(
         pid: Int32, notifications: Set<AXNotificationKind>, handler: @escaping @Sendable (AXNotificationKind) -> Void
-    ) -> (any AXObservation)? { unimplemented() }
-    public func enableManualAccessibility(pid: Int32) -> Bool { unimplemented() }
-    public var manualAccessibilityRequests: [Int32] { unimplemented() }
+    ) -> (any AXObservation)? {
+        let id = state.withLock { state -> UInt64 in
+            defer { state.nextObserverID += 1 }
+            state.observers.append(
+                Observer(id: state.nextObserverID, pid: pid, notifications: notifications, handler: handler))
+            return state.nextObserverID
+        }
+        return FakeAXObservation { [weak self] in self?.removeObserver(id) }
+    }
+
+    public func enableManualAccessibility(pid: Int32) -> Bool {
+        state.withLock { $0.manualRequests.append(pid) }
+        return true
+    }
+
+    public var manualAccessibilityRequests: [Int32] { state.withLock { $0.manualRequests } }
+    /// pid -> notifications of every live observer.
+    public var observedNotifications: [Int32: Set<AXNotificationKind>] {
+        state.withLock { state in
+            Dictionary(state.observers.map { ($0.pid, $0.notifications) }, uniquingKeysWith: { $0.union($1) })
+        }
+    }
+
+    /// Number of `focusedElement` queries per pid (circuit-breaker tests).
+    public func elementQueryCount(pid: Int32) -> Int { state.withLock { $0.elementQueries[pid, default: 0] } }
+    public var lastAttributeRequest: AXAttributeRequest? { state.withLock { $0.lastRequest } }
+
+    private func removeObserver(_ id: UInt64) { state.withLock { $0.observers.removeAll { $0.id == id } } }
+}
+
+/// Observation with an inert run-loop source (never signalled), so adding it to the ax run loop is harmless.
+public final class FakeAXObservation: AXObservation, Sendable {
+    /// CF run-loop sources may be added and removed from any thread (CFRunLoop is thread-safe).
+    private struct Source: @unchecked Sendable { let source: CFRunLoopSource }
+    /// Gives the source a unique `info` pointer. Run loops keep sources in a set compared with `CFEqual`, and
+    /// two version-0 sources with all-zero contexts are equal: removing one would remove the other (for example
+    /// `RunLoopThread`'s keep-alive source, which ends the thread).
+    private final class Identity: Sendable {}
+
+    private let identity = Identity()
+    private let source: Source
+    private let onInvalidate: @Sendable () -> Void
+    private let invalidated = Atomic<Bool>(false)
+
+    init(onInvalidate: @escaping @Sendable () -> Void) {
+        var context = CFRunLoopSourceContext()
+        context.info = Unmanaged.passUnretained(identity).toOpaque()
+        source = Source(source: CFRunLoopSourceCreate(nil, 0, &context))
+        self.onInvalidate = onInvalidate
+    }
+
+    public var runLoopSource: CFRunLoopSource { source.source }
+    public var isInvalidated: Bool { invalidated.load(ordering: .sequentiallyConsistent) }
+
+    public func invalidate() {
+        guard !invalidated.exchange(true, ordering: .sequentiallyConsistent) else { return }
+        onInvalidate()
+    }
 }
 
 public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendable {
-    public init(processes: [ProcessIdentity]) { unimplemented() }
-    public func identity(of pid: Int32) -> ProcessIdentity? { unimplemented() }
-    public func isAlive(_ pid: Int32) -> Bool { unimplemented() }
-    public func runningApplications() -> [ProcessIdentity] { unimplemented() }
+    private struct State {
+        var processes: [Int32: ProcessIdentity]
+        var order: [Int32]
+        var dead: Set<Int32> = []
+        var identityLookups: [Int32: Int] = [:]
+        var runningApplicationScans = 0
+    }
+
+    private let state: Mutex<State>
+
+    /// How often `identity(of:)` was asked for `pid` (cost checks, PLT-R382).
+    public func identityLookups(of pid: Int32) -> Int { state.withLock { $0.identityLookups[pid] ?? 0 } }
+    /// How often `runningApplications()` ran (a full scan in production).
+    public var runningApplicationScans: Int { state.withLock { $0.runningApplicationScans } }
+
+    public init(processes: [ProcessIdentity]) {
+        state = Mutex(
+            State(
+                processes: Dictionary(processes.map { ($0.pid, $0) }, uniquingKeysWith: { _, last in last }),
+                order: processes.map(\.pid)))
+    }
+
+    public func identity(of pid: Int32) -> ProcessIdentity? {
+        state.withLock { state in
+            state.identityLookups[pid, default: 0] += 1
+            return state.dead.contains(pid) ? nil : state.processes[pid]
+        }
+    }
+
+    public func isAlive(_ pid: Int32) -> Bool { state.withLock { $0.processes[pid] != nil && !$0.dead.contains(pid) } }
+
+    public func runningApplications() -> [ProcessIdentity] {
+        state.withLock { state in
+            state.runningApplicationScans += 1
+            return state.order.filter { !state.dead.contains($0) }.compactMap { state.processes[$0] }
+        }
+    }
+
+    public func add(_ process: ProcessIdentity) {
+        state.withLock {
+            if $0.processes[process.pid] == nil { $0.order.append(process.pid) }
+            $0.processes[process.pid] = process
+            $0.dead.remove(process.pid)
+        }
+    }
+
+    /// The process exits: `isAlive` is false and its identity is gone.
+    public func terminate(pid: Int32) { _ = state.withLock { $0.dead.insert(pid) } }
+
+    /// A plausible identity for tests (`bundleURL` under /Applications, process name from the bundle's last part).
+    public static func process(
+        pid: Int32, bundle: String, name: String? = nil, version: String? = "1.0", build: String? = "1"
+    ) -> ProcessIdentity {
+        let key = BundleKey(rawValue: bundle)!
+        let processName = bundle.split(separator: ".").last.map(String.init) ?? bundle
+        return ProcessIdentity(
+            pid: pid, bundle: key, bundleURL: URL(fileURLWithPath: "/Applications/\(processName).app"),
+            shortVersion: version, buildVersion: build, appCategory: nil, localizedName: name ?? processName,
+            processName: processName)
+    }
 }
 
 public final class FakeSecureInputProbe: SecureInputProbe, Sendable {
-    public init() { unimplemented() }
-    public func set(enabled: Bool, holderPID: Int32?) { unimplemented() }
-    public func isSecureEventInputEnabled() -> Bool { unimplemented() }
-    public func secureInputHolderPID() -> Int32? { unimplemented() }
+    private struct State {
+        var enabled = false
+        var holderPID: Int32?
+        var polls = 0
+    }
+
+    private let state = Mutex(State())
+
+    public init() {}
+
+    public func set(enabled: Bool, holderPID: Int32?) {
+        state.withLock {
+            $0.enabled = enabled
+            $0.holderPID = holderPID
+        }
+    }
+
+    public func isSecureEventInputEnabled() -> Bool {
+        state.withLock {
+            $0.polls += 1
+            return $0.enabled
+        }
+    }
+
+    public func secureInputHolderPID() -> Int32? { state.withLock { $0.holderPID } }
+    /// Number of `isSecureEventInputEnabled` calls (polls).
+    public var pollCount: Int { state.withLock { $0.polls } }
 }
 
 public final class FakePermissionProbe: PermissionProbe, Sendable {
-    public init(trusted: Bool = true, post: Bool = true, listen: Bool = true) { unimplemented() }
-    public func set(trusted: Bool, post: Bool, listen: Bool) { unimplemented() }
-    public func isAccessibilityTrusted() -> Bool { unimplemented() }
-    public func canPostEvents() -> Bool { unimplemented() }
-    public func canListenToEvents() -> Bool { unimplemented() }
-    public func promptForAccessibility() { unimplemented() }
-    public func requestListenEventAccess() -> Bool { unimplemented() }
-    public func requestPostEventAccess() -> Bool { unimplemented() }
-    public func signingIdentityDigest() -> String? { unimplemented() }
+    private struct State {
+        var trusted: Bool
+        var post: Bool
+        var listen: Bool
+        var digest: String? = "fake-signing-identity"
+        var accessibilityPrompts = 0
+        var listenRequests = 0
+        var postRequests = 0
+    }
+
+    private let state: Mutex<State>
+
+    public init(trusted: Bool = true, post: Bool = true, listen: Bool = true) {
+        state = Mutex(State(trusted: trusted, post: post, listen: listen))
+    }
+
+    public func set(trusted: Bool, post: Bool, listen: Bool) {
+        state.withLock {
+            $0.trusted = trusted
+            $0.post = post
+            $0.listen = listen
+        }
+    }
+
+    /// Simulates another signing identity (a different build) or an unsigned build (`nil`).
+    public func setSigningIdentityDigest(_ digest: String?) { state.withLock { $0.digest = digest } }
+
+    public func isAccessibilityTrusted() -> Bool { state.withLock { $0.trusted } }
+    public func canPostEvents() -> Bool { state.withLock { $0.post } }
+    public func canListenToEvents() -> Bool { state.withLock { $0.listen } }
+    public func promptForAccessibility() { state.withLock { $0.accessibilityPrompts += 1 } }
+    public func requestListenEventAccess() -> Bool {
+        state.withLock {
+            $0.listenRequests += 1
+            return $0.listen
+        }
+    }
+
+    public func requestPostEventAccess() -> Bool {
+        state.withLock {
+            $0.postRequests += 1
+            return $0.post
+        }
+    }
+
+    public func signingIdentityDigest() -> String? { state.withLock { $0.digest } }
+
+    public var accessibilityPromptCount: Int { state.withLock { $0.accessibilityPrompts } }
+    public var listenRequestCount: Int { state.withLock { $0.listenRequests } }
+    public var postRequestCount: Int { state.withLock { $0.postRequests } }
 }
 
 @MainActor
 public final class FakeInputSourceProvider: InputSourceProvider {
-    public init(current: InputSourceInfo, layouts: [InputSourceID: KeyboardLayoutData]) { unimplemented() }
-    public func select(_ source: InputSourceInfo) { unimplemented() }
-    public func currentSource() -> InputSourceInfo { unimplemented() }
-    public func currentLayoutData() -> KeyboardLayoutData? { unimplemented() }
-    public func enabledSources() -> [InputSourceInfo] { unimplemented() }
-    public func layoutData(for id: InputSourceID) -> KeyboardLayoutData? { unimplemented() }
-    public func currentKeyboardType() -> UInt32 { unimplemented() }
+    private var current: InputSourceInfo
+    private var layouts: [InputSourceID: KeyboardLayoutData]
+    private var handlers: [UInt64: @MainActor @Sendable () -> Void] = [:]
+    private var nextHandlerID: UInt64 = 1
+    public var enabled: [InputSourceInfo] = []
+    public var keyboardType: UInt32 = 40
+    /// Layout data returned for the current source when it is not an ASCII layout (the underlying layout).
+    public var underlyingLayout: InputSourceID?
+
+    public init(current: InputSourceInfo, layouts: [InputSourceID: KeyboardLayoutData]) {
+        self.current = current
+        self.layouts = layouts
+    }
+
+    /// Simulates the user selecting `source` and the selection notification.
+    public func select(_ source: InputSourceInfo) {
+        current = source
+        notifyChange()
+    }
+
+    /// Delivers a change notification without changing the selection (for example, enabled sources changed).
+    public func notifyChange() {
+        for handler in handlers.values { handler() }
+    }
+
+    public var observerCount: Int { handlers.count }
+
+    public func currentSource() -> InputSourceInfo { current }
+    public func currentLayoutData() -> KeyboardLayoutData? { layouts[underlyingLayout ?? current.id] }
+    public func enabledSources() -> [InputSourceInfo] { enabled }
+    public func layoutData(for id: InputSourceID) -> KeyboardLayoutData? { layouts[id] }
+    public func currentKeyboardType() -> UInt32 { keyboardType }
     public func observeChanges(_ handler: @escaping @MainActor @Sendable () -> Void) -> any ObservationToken {
-        unimplemented()
+        let id = nextHandlerID
+        nextHandlerID += 1
+        handlers[id] = handler
+        return FakeObservationToken { [weak self] in
+            onMainActor { self?.handlers[id] = nil }
+        }
     }
 }
 
 @MainActor
 public final class FakeWorkspaceEvents: WorkspaceEvents {
-    public init() { unimplemented() }
-    public func send(_ event: WorkspaceEvent) { unimplemented() }
+    private var handlers: [UInt64: @MainActor @Sendable (WorkspaceEvent) -> Void] = [:]
+    private var nextID: UInt64 = 1
+
+    public init() {}
+
+    public func send(_ event: WorkspaceEvent) {
+        for handler in handlers.values { handler(event) }
+    }
+
+    public var observerCount: Int { handlers.count }
+
     public func observe(_ handler: @escaping @MainActor @Sendable (WorkspaceEvent) -> Void) -> any ObservationToken {
-        unimplemented()
+        let id = nextID
+        nextID += 1
+        handlers[id] = handler
+        return FakeObservationToken { [weak self] in
+            onMainActor { self?.handlers[id] = nil }
+        }
+    }
+}
+
+/// Runs `body` synchronously when already on the main thread (tests), otherwise hops to the main actor.
+private func onMainActor(_ body: @escaping @MainActor @Sendable () -> Void) {
+    if Thread.isMainThread {
+        MainActor.assumeIsolated { body() }
+    } else {
+        Task { @MainActor in body() }
+    }
+}
+
+/// Calls `onCancel` once.
+public final class FakeObservationToken: ObservationToken {
+    private let onCancel: @Sendable () -> Void
+    private let cancelled = Atomic<Bool>(false)
+
+    public init(onCancel: @escaping @Sendable () -> Void) { self.onCancel = onCancel }
+
+    public var isCancelled: Bool { cancelled.load(ordering: .sequentiallyConsistent) }
+
+    public func cancel() {
+        guard !cancelled.exchange(true, ordering: .sequentiallyConsistent) else { return }
+        onCancel()
     }
 }
 
 public final class FakeBundleInspector: BundleInspector, Sendable {
-    public init(bundles: [URL: FakeBundle]) { unimplemented() }
+    private let bundles: [URL: FakeBundle]
+
+    public init(bundles: [URL: FakeBundle]) { self.bundles = bundles }
     public struct FakeBundle: Sendable, Hashable {
         public var frameworks: [String]
         public var helpers: [String]
@@ -7827,10 +11210,17 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
         }
     }
 
-    public func frameworkNames(in bundle: URL) -> [String] { unimplemented() }
-    public func helperAppNames(in bundle: URL) -> [String] { unimplemented() }
-    public func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool { unimplemented() }
-    public func infoDictionary(of bundle: URL) -> [String: JSONValue]? { unimplemented() }
+    public func frameworkNames(in bundle: URL) -> [String] { bundles[bundle]?.frameworks ?? [] }
+    public func helperAppNames(in bundle: URL) -> [String] { bundles[bundle]?.helpers ?? [] }
+    /// `files` holds paths relative to `Contents`; the depth is the number of path components.
+    public func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool {
+        bundles[bundle]?.files.contains { path in
+            let components = path.split(separator: "/")
+            return components.last.map(String.init) == name && components.count <= maxDepth
+        } ?? false
+    }
+
+    public func infoDictionary(of bundle: URL) -> [String: JSONValue]? { bundles[bundle]?.info }
 }
 ```
 <!-- /include -->
@@ -7905,10 +11295,11 @@ public import CoreGraphics
 public import InputHost
 internal import Synchronization
 
-/// Pure Swift tap handle. `install` adds an inert run-loop source (so the tap thread's run loop has a source
-/// and keeps running) and records enable/disable calls.
+/// Pure Swift tap handle. `install` adds a run-loop source that does nothing unless a test schedules a block
+/// with `performOnTapThread` (so the tap thread's run loop has a source and keeps running), and records
+/// enable/disable calls.
 public final class FakeEventTapHandle: EventTapHandle, Sendable {
-    /// CF run-loop objects are thread-safe to add and remove from any thread.
+    /// CF run-loop objects are thread-safe to add, signal, wake and remove from any thread.
     private struct Installation: @unchecked Sendable {
         var source: CFRunLoopSource
         var runLoop: CFRunLoop
@@ -7920,20 +11311,41 @@ public final class FakeEventTapHandle: EventTapHandle, Sendable {
         var invalidated = false
         var enableCalls: [Bool] = []
         var installation: Installation?
+        var installedRunLoop: Installation?
+    }
+
+    /// Blocks run by the source's perform callback, on the thread whose run loop holds the source.
+    private final class PerformQueue: Sendable {
+        private let blocks = Mutex<[@Sendable () -> Void]>([])
+        func append(_ block: @escaping @Sendable () -> Void) { blocks.withLock { $0.append(block) } }
+        func drain() {
+            let pending = blocks.withLock { blocks -> [@Sendable () -> Void] in
+                defer { blocks.removeAll() }
+                return blocks
+            }
+            for block in pending { block() }
+        }
     }
 
     private let state = Mutex(State())
+    private let queue = PerformQueue()
 
     public init() {}
 
     public func install(on runLoop: CFRunLoop) {
         var context = CFRunLoopSourceContext()
+        context.info = Unmanaged.passUnretained(queue).toOpaque()
+        context.perform = { info in
+            guard let info else { return }
+            Unmanaged<PerformQueue>.fromOpaque(info).takeUnretainedValue().drain()
+        }
         let source = CFRunLoopSourceCreate(nil, 0, &context)
         CFRunLoopAddSource(runLoop, source, .commonModes)
         let installation = Installation(source: source!, runLoop: runLoop)
         state.withLock {
             $0.installed = true
             $0.installation = installation
+            $0.installedRunLoop = installation
         }
     }
 
@@ -7959,9 +11371,24 @@ public final class FakeEventTapHandle: EventTapHandle, Sendable {
     /// Simulates the OS disabling the tap without a disabled event (PLT-R331 path).
     public func systemDisables() { state.withLock { $0.enabled = false } }
 
+    /// Runs `block` on the thread whose run loop holds this handle's source, as the tap's own callbacks would
+    /// run. False when the handle is not installed or already invalidated.
+    @discardableResult
+    public func performOnTapThread(_ block: @escaping @Sendable () -> Void) -> Bool {
+        guard let installation = state.withLock({ $0.installation }) else { return false }
+        queue.append(block)
+        CFRunLoopSourceSignal(installation.source)
+        CFRunLoopWakeUp(installation.runLoop)
+        return true
+    }
+
     public var isInstalled: Bool { state.withLock { $0.installed } }
     public var isInvalidated: Bool { state.withLock { $0.invalidated } }
     public var enableCalls: [Bool] { state.withLock { $0.enableCalls } }
+    /// Identity of the run loop the source was added to (PLT-R303 tests compare it with the tap thread's).
+    public var installedRunLoopIdentity: ObjectIdentifier? {
+        state.withLock { $0.installedRunLoop.map { ObjectIdentifier($0.runLoop) } }
+    }
 }
 
 /// Returns `FakeEventTapHandle`s, or nil while `failCreation` is set (PLT-R332 backoff tests).
@@ -7970,6 +11397,7 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
         var failCreation: Bool
         var handles: [FakeEventTapHandle] = []
         var masks: [TapEventMask] = []
+        var userInfos: [UInt] = []
     }
 
     private let state: Mutex<State>
@@ -7980,18 +11408,68 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
     /// Handles created so far (PLT-R302: tests assert at most one is alive).
     public var handles: [FakeEventTapHandle] { state.withLock { $0.handles } }
     public var requestedMasks: [TapEventMask] { state.withLock { $0.masks } }
+    /// `userInfo` of every request as a bit pattern (0 for nil), so a test can hand it to the callback bridge
+    /// from a `@Sendable` block.
+    public var userInfoBitPatterns: [UInt] { state.withLock { $0.userInfos } }
 
     public func makeTap(mask: TapEventMask, callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?)
         -> (any EventTapHandle)?
     {
         state.withLock { state in
             state.masks.append(mask)
+            state.userInfos.append(UInt(bitPattern: userInfo))
             guard !state.failCreation else { return nil }
             let handle = FakeEventTapHandle()
             state.handles.append(handle)
             return handle
         }
     }
+}
+
+/// `TapControl` without a thread: records enable calls and stops; `systemDisables()` turns the tap off the way
+/// the OS does, without an enable call (PLT-R331 tests of `TapWatchdog`).
+public final class FakeTapControl: TapControl, Sendable {
+    private struct State {
+        var enabled: Bool
+        var running: Bool
+        var enableCalls: [Bool] = []
+        var stopCalls = 0
+    }
+
+    private let state: Mutex<State>
+
+    public init(enabled: Bool = true, running: Bool = true) {
+        state = Mutex(State(enabled: enabled, running: running))
+    }
+
+    public func setEnabled(_ enabled: Bool) {
+        state.withLock {
+            $0.enabled = enabled
+            $0.enableCalls.append(enabled)
+        }
+    }
+
+    public var isEnabled: Bool { state.withLock { $0.enabled && $0.running } }
+    public var isRunning: Bool { state.withLock { $0.running } }
+
+    public func stop() {
+        state.withLock {
+            $0.running = false
+            $0.stopCalls += 1
+        }
+    }
+
+    public func systemDisables() { state.withLock { $0.enabled = false } }
+    public var enableCalls: [Bool] { state.withLock { $0.enableCalls } }
+    public var stopCalls: Int { state.withLock { $0.stopCalls } }
+}
+
+/// Counts `reclaimAll()` calls (ADR 0303: the watchdog's 5 s tick frees retired snapshot boxes).
+public final class FakeSnapshotReclaimer: SnapshotReclaiming, Sendable {
+    private let calls = Atomic<Int>(0)
+    public init() {}
+    public func reclaimAll() { calls.wrappingAdd(1, ordering: .relaxed) }
+    public var reclaimCount: Int { calls.load(ordering: .relaxed) }
 }
 ```
 <!-- /include -->
@@ -8002,28 +11480,53 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
 //
 // Pipeline property-test support (13.1): scripted engine, window-server queue model, deterministic harness,
 // conservation ledger and seeded event generator. Workstream W1-F1. `SimulatedTextField` and the injection
-// fakes live in Fakes/Common and Fakes/Injection (implemented in the skeleton, ADR 0313).
+// fakes live in Fakes/Common and Fakes/Injection (implemented in the skeleton, ADR 0313). The logic lives in
+// the files next to this one (ScriptedEngine, ConservationLedger, RandomEventGenerator, PipelineHarness,
+// ReferenceJobConsumer, PipelineFixtures); this file is the public surface.
 
 internal import AppModel
+public import Diagnostics
 public import Injection
 public import InputHost
 internal import RealtimeSupport
+internal import Synchronization
 public import VietnameseEngine
 
 /// Scripted engine: maps typed characters to edits with a tiny Telex-like table (aa -> â, s -> acute on the
-/// last vowel, w -> ư), enough to exercise deletes and inserts without the real engine.
+/// last vowel, w -> ư), enough to exercise deletes and inserts without the real engine. Rules in
+/// `ScriptedComposer`.
 public struct ScriptedEngine: CompositionEngine {
-    public init() { unimplemented() }
-    public mutating func handle(_ event: EngineEvent) -> EngineOutput { unimplemented() }
-    public var activeDisplay: String { unimplemented() }
+    private var composer = ScriptedComposer()
+    private let log: EngineEventLog?
+
+    public init() { log = nil }
+    init(log: EngineEventLog?) { self.log = log }
+
+    public mutating func handle(_ event: EngineEvent) -> EngineOutput {
+        log?.handled(event)
+        return composer.handle(event)
+    }
+
+    public var activeDisplay: String { composer.display }
 }
 
-public struct ScriptedEngineFactory: CompositionEngineFactory {
-    public init() {}
-    public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine { ScriptedEngine() }
+/// Uses the reference recogniser so the suites run before W1-E's `HotkeyRecognizer` lands; switch `Hotkeys`
+/// to `HotkeyRecognizer` to run them against the production recogniser.
+public struct ScriptedEngineFactory: CompositionEngineFactory, Sendable {
+    public typealias Hotkeys = ReferenceHotkeyRecognizer
+    public let log: EngineEventLog?
+
+    public init() { log = nil }
+    public init(log: EngineEventLog) { self.log = log }
+
+    public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine {
+        log?.made(variant)
+        return ScriptedEngine(log: log)
+    }
 }
 
-/// What happened to each physical event (PLT-R312).
+/// What happened to each physical event (PLT-R312). The harness reports every physical keyboard event with its
+/// tap outcome and every delivery to the field; `violations()` checks the rules in `LedgerState`.
 public final class ConservationLedger: Sendable {
     public struct Violation: Sendable, Hashable, CustomStringConvertible {
         public var eventIndex: Int
@@ -8031,16 +11534,33 @@ public final class ConservationLedger: Sendable {
         public var description: String { "event \(eventIndex): \(reason)" }
     }
 
-    public init() { unimplemented() }
-    public func physical(_ index: Int, _ event: RawKeyEvent, outcome: EventOutcome?) { unimplemented() }
-    public func delivered(_ record: KeyEventRecord, asReplayOf index: Int) { unimplemented() }
-    public func passedThrough(_ index: Int) { unimplemented() }
+    private let state = Mutex(LedgerState())
+
+    public init() {}
+    public func physical(_ index: Int, _ event: RawKeyEvent, outcome: EventOutcome?) {
+        state.withLock { $0.physical(index, event, outcome: outcome) }
+    }
+    public func delivered(_ record: KeyEventRecord, asReplayOf index: Int) {
+        state.withLock { $0.delivered(record, asReplayOf: index) }
+    }
+    public func passedThrough(_ index: Int) { state.withLock { $0.passedThrough(index) } }
     /// The event's replay or edit was posted while the poster was `.silentlyDropping` (ADR 0311): allowed only
     /// after posting broke, and the total must equal `PlatformMetrics.lostWhilePostingBroken`.
-    public func lostWhilePostingBroken(_ index: Int) { unimplemented() }
+    public func lostWhilePostingBroken(_ index: Int) { state.withLock { $0.lost(index) } }
+    /// The edit job created for the physical event `index` reached the field (its final event passed the tap).
+    public func editDelivered(forEvent index: Int) { state.withLock { $0.editDelivered(index) } }
+    /// The event was processed while the tap was failing open: it must pass (PLT-R730); its keyUp pairing and
+    /// ordering are not checked, because fail-open stops holding by design.
+    public func processedWhileFailingOpen(_ index: Int) { state.withLock { $0.failingOpen(index) } }
+    /// The poster stopped (false) or resumed (true) delivering. Losses are allowed only while it does not.
+    public func postingWorks(_ works: Bool) { state.withLock { $0.postingWorks(works) } }
+    /// `PlatformMetrics.lostWhilePostingBroken` at the end of the run.
+    public func lostMetric(_ value: UInt64) { state.withLock { $0.lostMetric = value } }
+    /// A property the harness checks itself (fail-open, echo handling, PLT-R210 resets).
+    public func violation(_ index: Int, _ reason: String) { state.withLock { $0.extra(index, reason) } }
     /// Exactly one outcome per physical keyboard event, replays once and in order, keyUp pairing (PLT-R313).
     /// Conservation is checked only while posting works; losses after posting broke are counted, never silent.
-    public func violations() -> [Violation] { unimplemented() }
+    public func violations() -> [Violation] { state.withLock { $0.violations() } }
 }
 
 /// Model of the WindowServer event queue between the HID system or `CGEventPost` and the session tap
@@ -8061,14 +11581,27 @@ public final class SimulatedWindowServer {
         case posted(FakeEventPoster.Posted)
     }
 
-    public init(mode: Mode) { unimplemented() }
-    public func enqueue(_ pending: Pending) { unimplemented() }
-    public func drain(maxEvents: Int) -> [Pending] { unimplemented() }
-    public var count: Int { unimplemented() }
+    public let mode: Mode
+    private var queue: [Pending] = []
+    private var head = 0
+
+    public init(mode: Mode) { self.mode = mode }
+    public func enqueue(_ pending: Pending) { queue.append(pending) }
+    public func drain(maxEvents: Int) -> [Pending] {
+        let end = head + min(max(0, maxEvents), queue.count - head)
+        let drained = Array(queue[head..<end])
+        head = end
+        if head == queue.count {
+            queue.removeAll(keepingCapacity: true)
+            head = 0
+        }
+        return drained
+    }
+    public var count: Int { queue.count - head }
 }
 
-/// Seeded random interleavings of keys, mouse downs, focus changes, tap-disabled events, secure-input
-/// toggles and permission changes (section 3 acceptance: 100,000 sequences).
+/// Seeded random interleavings of keys, chords, mouse downs, focus, settings and input-source changes,
+/// tap-disabled events, secure-input toggles and permission changes (section 3 acceptance: 100,000 sequences). Rules in `GeneratorCore`.
 public struct RandomEventGenerator: Sendable {
     public enum Step: Sendable, Hashable {
         case key(RawKeyEvent)
@@ -8081,23 +11614,51 @@ public struct RandomEventGenerator: Sendable {
         case tapDrains(maxEvents: Int)
         /// The poster starts or stops dropping silently (permission revoked mid-sequence, ADR 0311).
         case postingWorks(Bool)
+        /// A new settings generation (PLT-R1008): the restore binding and the engine revision vary.
+        case settingsChange
+        /// A new input-source generation with the same layout (PLT-R340).
+        case inputSourceChange
     }
 
-    public init(seed: UInt64) { unimplemented() }
-    public mutating func sequence(length: Int) -> [Step] { unimplemented() }
+    private var core: GeneratorCore
+
+    public init(seed: UInt64) { core = GeneratorCore(seed: seed, includePostingBreaks: false) }
+    /// `includePostingBreaks` adds `.postingWorks` steps (the posting-broken suite).
+    public init(seed: UInt64, includePostingBreaks: Bool) {
+        core = GeneratorCore(seed: seed, includePostingBreaks: includePostingBreaks)
+    }
+    public mutating func sequence(length: Int) -> [Step] { core.sequence(length: length) }
 }
 
 /// Wires a `KeyPipeline<ScriptedEngineFactory, ManualClock>` and a job consumer (W1-F1: a reference consumer;
 /// W2-A: the real `InjectionWorker` in step mode) to a `FakeEventPoster` whose events go through a
-/// `SimulatedWindowServer` back into the pipeline (echoes) and on into a `SimulatedTextField`.
+/// `SimulatedWindowServer` back into the pipeline (echoes) and on into a `SimulatedTextField`. `run` executes
+/// the steps, then settles: it drains the server and the queue and lets echo timeouts expire, so the ledger
+/// sees every delivery.
 public final class PipelineHarness {
+    private let core: HarnessCore
+
     public init(
         field: SimulatedTextField, layout: LayoutTable, clock: ManualClock,
         server: SimulatedWindowServer.Mode = .immediate
-    ) { unimplemented() }
-    public func run(_ steps: [RandomEventGenerator.Step]) { unimplemented() }
-    public var ledger: ConservationLedger { unimplemented() }
-    public var field: SimulatedTextField { unimplemented() }
+    ) {
+        core = HarnessCore(field: field, layout: layout, clock: clock, server: server, policy: .untilEcho)
+    }
+    /// `policy: .untilPosted` is the self-check of ADR 0311: with `.lagging` it must produce ordering violations.
+    public init(
+        field: SimulatedTextField, layout: LayoutTable, clock: ManualClock, server: SimulatedWindowServer.Mode,
+        policy: InFlightPolicy
+    ) {
+        core = HarnessCore(field: field, layout: layout, clock: clock, server: server, policy: policy)
+    }
+    public func run(_ steps: [RandomEventGenerator.Step]) { core.run(steps) }
+    public var ledger: ConservationLedger { core.ledger }
+    public var field: SimulatedTextField { core.field }
+    public var metrics: PlatformMetrics { core.metrics }
+    public var engineLog: EngineEventLog { core.engineLog }
+    /// Notices the pipeline sent to the main thread, drained after every step.
+    public var mainNotices: [MainNotice] { core.mainNotices }
+    public var statistics: HarnessStatistics { core.statistics }
 }
 ```
 <!-- /include -->
@@ -8111,6 +11672,7 @@ public final class PipelineHarness {
 
 public import AppModel
 public import Foundation
+public import RealtimeSupport
 
 public struct Scenario: Sendable, Hashable, Codable {
     public enum TimingProfile: String, Sendable, Hashable, Codable { case normal, fast, burst }
@@ -8124,6 +11686,11 @@ public struct Scenario: Sendable, Hashable, Codable {
 
         public var action: Action
         public var value: String?
+
+        public init(action: Action, value: String? = nil) {
+            self.action = action
+            self.value = value
+        }
     }
 
     public struct Expectation: Sendable, Hashable, Codable {
@@ -8131,6 +11698,16 @@ public struct Scenario: Sendable, Hashable, Codable {
         public var paused: Bool?
         public var holderBundleId: BundleKey?
         public var firstKeyAfterReleaseComposed: Bool?
+
+        public init(
+            text: String? = nil, paused: Bool? = nil, holderBundleId: BundleKey? = nil,
+            firstKeyAfterReleaseComposed: Bool? = nil
+        ) {
+            self.text = text
+            self.paused = paused
+            self.holderBundleId = holderBundleId
+            self.firstKeyAfterReleaseComposed = firstKeyAfterReleaseComposed
+        }
     }
 
     public var id: String
@@ -8143,6 +11720,21 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var layout: InputSourceID?
     public var expect: Expectation
     public var readback: Readback
+
+    public init(
+        id: String, targetBundleId: BundleKey, setup: [SetupStep], keys: [String], timing: TimingProfile,
+        method: Method, layout: InputSourceID? = nil, expect: Expectation, readback: Readback
+    ) {
+        self.id = id
+        self.targetBundleId = targetBundleId
+        self.setup = setup
+        self.keys = keys
+        self.timing = timing
+        self.method = method
+        self.layout = layout
+        self.expect = expect
+        self.readback = readback
+    }
 }
 
 /// Posts physical-like events (harness process, its own event source) with the timing profile.
@@ -8160,12 +11752,52 @@ public struct ScenarioResult: Sendable, Hashable, Codable {
     public var outcome: Outcome
     public var observedText: String?
     public var durationSeconds: Double
+    /// Why the outcome is `fail` or `needsHuman` (failing stage and error description: bundle ids, identifiers,
+    /// error names, never typed text, PLT-R901); nil on `pass`. Optional in `results.json` (PLT-R530, QA-R21).
+    public var reason: String?
+
+    public init(
+        scenario: String, outcome: Outcome, observedText: String?, durationSeconds: Double, reason: String? = nil
+    ) {
+        self.scenario = scenario
+        self.outcome = outcome
+        self.observedText = observedText
+        self.durationSeconds = durationSeconds
+        self.reason = reason
+    }
 }
 
 public struct ScenarioRunner: Sendable {
-    public init(driver: any KeyboardDriver, readback: any ScenarioReadback) { unimplemented() }
-    public func run(_ scenario: Scenario) async -> ScenarioResult { unimplemented() }
-    public static func load(directory: URL) throws -> [Scenario] { unimplemented() }
+    let driver: any KeyboardDriver
+    let readback: any ScenarioReadback
+    let setup: any ScenarioSetupPerformer
+    let probe: (any ScenarioStateProbe)?
+    let clock: any MonotonicClock
+
+    public init(driver: any KeyboardDriver, readback: any ScenarioReadback) {
+        self.init(driver: driver, readback: readback, setup: NoScenarioSetup(), probe: nil, clock: MachClock())
+    }
+
+    /// Full form used by `compat-harness`: performs the setup steps, asks `probe` for the app state the
+    /// expectation names (paused, holder, first key after release) and times the run with `clock`.
+    public init(
+        driver: any KeyboardDriver, readback: any ScenarioReadback, setup: any ScenarioSetupPerformer,
+        probe: (any ScenarioStateProbe)?, clock: any MonotonicClock
+    ) {
+        self.driver = driver
+        self.readback = readback
+        self.setup = setup
+        self.probe = probe
+        self.clock = clock
+    }
+
+    public func run(_ scenario: Scenario) async -> ScenarioResult { await execute(scenario) }
+
+    /// Every `*.json` file of `directory`, sorted by file name, decoded strictly and validated
+    /// (`ScenarioLoader`). Throws `ScenarioLoadError` naming the first invalid file.
+    public static func load(directory: URL) throws -> [Scenario] {
+        try ScenarioLoader().load(directory: directory)
+    }
 }
 ```
 <!-- /include -->
@@ -8185,8 +11817,8 @@ self-hosted runner.
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // QA-R10 contract: each field exposes its current text to the runner through AX (`AXValue` of the element
-// with this accessibility identifier). Web fields mirror their DOM value into a hidden native field through a
-// WKScriptMessageHandler so AX readback works the same way. Workstream W2-E1 (was W1-H).
+// with this accessibility identifier). Web fields mirror their DOM value into a native read-only field through
+// a WKScriptMessageHandler so AX readback works the same way (WebFields.swift). Workstream W2-E1.
 // The window title and labels are fixed English test-fixture text, not product copy.
 
 import AppKit
@@ -8207,46 +11839,123 @@ enum TestHostField: String, CaseIterable {
 
 @MainActor
 final class TestHostWindowController: NSWindowController {
-    private var fields: [TestHostField: NSTextField] = [:]
+    private var access: [TestHostField: (get: () -> String, reset: () -> Void)] = [:]
+    let web = WebFieldsController()
+    let secureInput = SecureInputHolder()
 
     required init?(coder: NSCoder) { nil }
 
     init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 160), styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 760), styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false)
         window.title = "TestHost"
         window.center()
         super.init(window: window)
-
-        let label = NSTextField(labelWithString: "Native text field")
-        let field = NSTextField(string: "")
-        field.placeholderString = "Type here"
-        field.setAccessibilityIdentifier(TestHostField.nativeTextField.rawValue)
-        fields[.nativeTextField] = field
-
-        let stack = NSStackView(views: [label, field])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        let content = NSView()
-        content.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: content.topAnchor),
-            field.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
-        ])
-        window.contentView = content
-        window.initialFirstResponder = field
+        let layout = TestHostLayout()
+        buildNativeFields(into: layout)
+        buildWebFields(into: layout)
+        layout.addRow("Secure input", secureInput.checkbox)
+        window.contentView = layout.contentView()
+        window.initialFirstResponder = layout.firstField
+        web.loadPage(named: WebFieldsController.pages[0])
     }
 
-    /// Clears a field before a scenario step. Fields the skeleton does not build yet are ignored.
-    func reset(_ field: TestHostField) { fields[field]?.stringValue = "" }
+    private func buildNativeFields(into layout: TestHostLayout) {
+        let textField = NSTextField(string: "")
+        textField.placeholderString = "Type here"
+        describe(textField, .nativeTextField, "Native text field", "Plain NSTextField.")
+        access[.nativeTextField] = ({ textField.stringValue }, { textField.stringValue = "" })
+        layout.addRow("Native text field", textField)
 
-    /// Current text, as the runner would read it through AX. Empty for fields not built yet.
-    func text(of field: TestHostField) -> String { fields[field]?.stringValue ?? "" }
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 360, height: 80))
+        textView.isRichText = false
+        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        describe(textView, .nativeTextView, "Native text view", "Multi-line NSTextView.")
+        access[.nativeTextView] = ({ textView.string }, { textView.string = "" })
+        layout.addRow("Native text view", Self.scrolling(textView, height: 80))
+
+        let addressBar = InlineCompletionTextView(
+            identifier: TestHostField.addressBarWithCompletion.rawValue, label: "Simulated address bar",
+            hint: "Completes from history inline and selects the suggested remainder.")
+        access[.addressBarWithCompletion] = ({ addressBar.string }, { addressBar.replaceAll(with: "") })
+        layout.addRow("Address bar (inline completion)", Self.toolbar(addressBar.embedded()))
+
+        let cell = SpreadsheetCellTextView(
+            identifier: TestHostField.spreadsheetCell.rawValue, label: "Simulated spreadsheet cell",
+            hint: "Loses keys while entering edit mode and autocompletes from its column.")
+        let dropped = NSTextField(labelWithString: "Dropped keys: 0")
+        dropped.setAccessibilityIdentifier("testhost.sim.sheetCell.dropped")
+        cell.onDroppedKey = { dropped.stringValue = "Dropped keys: " + String($0) }
+        access[.spreadsheetCell] = ({ cell.string }, { cell.replaceAll(with: "") })
+        layout.addRow("Spreadsheet cell", cell.embedded())
+        layout.addRow("", dropped)
+
+        let password = ReadableSecureTextField(string: "")
+        describe(password, .passwordField, "Password field", "Secure text field; text must arrive untransformed.")
+        access[.passwordField] = ({ password.stringValue }, { password.stringValue = "" })
+        layout.addRow("Password", password)
+    }
+
+    private func buildWebFields(into layout: TestHostLayout) {
+        layout.addRow("Page", web.picker)
+        web.webView.translatesAutoresizingMaskIntoConstraints = false
+        web.webView.heightAnchor.constraint(equalToConstant: 220).isActive = true
+        layout.addRow("Web view", web.webView)
+        let labels: [TestHostField: String] = [
+            .webInput: "Web input (mirror)", .webTextarea: "Web textarea (mirror)",
+            .webContentEditable: "Web contenteditable (mirror)",
+        ]
+        for field in WebFieldsController.mirroredFields {
+            guard let mirror = web.mirrors[field] else { continue }
+            access[field] = ({ [web] in web.text(of: field) }, { [web] in web.reset(field) })
+            layout.addRow(labels[field] ?? field.rawValue, mirror)
+        }
+    }
+
+    private func describe(_ view: NSView, _ field: TestHostField, _ label: String, _ hint: String) {
+        view.setAccessibilityIdentifier(field.rawValue)
+        view.setAccessibilityLabel(label)
+        view.setAccessibilityHelp(hint)
+    }
+
+    private static func scrolling(_ textView: NSTextView, height: CGFloat) -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.documentView = textView
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.heightAnchor.constraint(equalToConstant: height).isActive = true
+        textView.autoresizingMask = [.width]
+        return scroll
+    }
+
+    /// Wraps the address bar in an element with the toolbar role, like a browser's omnibox (rules match
+    /// `ancestorRoles: ["AXToolbar"]`, 5.6).
+    private static func toolbar(_ content: NSView) -> NSView {
+        let container = NSView()
+        container.setAccessibilityElement(true)
+        container.setAccessibilityRole(.toolbar)
+        container.setAccessibilityLabel("Simulated browser toolbar")
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            content.topAnchor.constraint(equalTo: container.topAnchor),
+            content.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        return container
+    }
+
+    /// Clears a field before a scenario step.
+    func reset(_ field: TestHostField) { access[field]?.reset() }
+
+    /// Current text, as the runner would read it through AX.
+    func text(of field: TestHostField) -> String { access[field]?.get() ?? "" }
+
+    /// Opens a local page passed by the runner (`openURL` setup step with the TestHost target).
+    func open(_ url: URL) { web.load(url) }
 }
 ```
 <!-- /include -->

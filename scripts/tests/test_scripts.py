@@ -592,6 +592,14 @@ class MatrixSchemaTests(TempDirTestCase):
         self.assertIn("bundleId com.example.A already used", result.stderr)
         self.assertEqual(py("check-matrix.py", "--matrix", str(self.tmp / "none.json")).returncode, 0)
         self.assertEqual(py("check-matrix.py", "--matrix", str(self.tmp / "none.json"), "--require").returncode, 1)
+        # Scoped rows (web apps, in-app modes) may share a bundleId with the app row, never with each other.
+        web = dict(entry, scope="webApp", displayName="Docs (web)")
+        scoped = self.write_json("scoped.json", {"schemaVersion": 1, "entries": [entry, web, dict(web, displayName="Sheets (web)")]})
+        self.assertEqual(py("check-matrix.py", "--matrix", str(scoped)).returncode, 0)
+        twice = self.write_json("twice.json", {"schemaVersion": 1, "entries": [entry, web, web]})
+        result = py("check-matrix.py", "--matrix", str(twice))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("scope webApp 'Docs (web)' already used", result.stderr)
 
 
 class DependencyAuditTests(TempDirTestCase):

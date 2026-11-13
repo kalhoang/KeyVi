@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Reverse-DNS strings that are NOT bundle identifiers (pasteboard types). They live only in files named
-// `ReverseDNSConstants.swift`, which the bundle-ID literal lint allowlists (PLT-R501, ARCHITECTURE.md 7).
+// `ReverseDNSConstants.swift`; each is allowed by scripts/lint-bundle-ids.allow (PLT-R501, ARCHITECTURE.md 7).
 
 /// Pasteboard type names used by the `paste` strategy (PLT-R461 step 2) and by the fakes.
 public enum PasteboardTypeName {

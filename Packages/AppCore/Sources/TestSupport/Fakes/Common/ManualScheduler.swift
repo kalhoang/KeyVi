@@ -48,7 +48,9 @@ public final class ManualScheduler: TimerScheduler, Sendable {
     public func advance(by duration: Duration) {
         let target = clock.now().nanoseconds &+ duration.nanosecondsValue
         while let entry = popDue(before: target) {
-            if clock.now().nanoseconds < entry.deadline { clock.sleep(until: MonotonicInstant(nanoseconds: entry.deadline)) }
+            if clock.now().nanoseconds < entry.deadline {
+                clock.sleep(until: MonotonicInstant(nanoseconds: entry.deadline))
+            }
             entry.handler()
         }
         if clock.now().nanoseconds < target { clock.sleep(until: MonotonicInstant(nanoseconds: target)) }
@@ -80,8 +82,9 @@ public final class ManualScheduler: TimerScheduler, Sendable {
 
     private func popDue(before target: UInt64) -> Entry? {
         entries.withLock { entries in
-            guard let index = entries.indices.filter({ entries[$0].deadline <= target })
-                .min(by: { (entries[$0].deadline, entries[$0].id) < (entries[$1].deadline, entries[$1].id) })
+            guard
+                let index = entries.indices.filter({ entries[$0].deadline <= target })
+                    .min(by: { (entries[$0].deadline, entries[$0].id) < (entries[$1].deadline, entries[$1].id) })
             else { return nil }
             let entry = entries[index]
             if let interval = entry.interval {
@@ -101,6 +104,7 @@ public final class ManualScheduler: TimerScheduler, Sendable {
 extension Duration {
     var nanosecondsValue: UInt64 {
         let (seconds, attoseconds) = components
-        return UInt64(clamping: max(0, seconds)) &* 1_000_000_000 &+ UInt64(clamping: max(0, attoseconds / 1_000_000_000))
+        return UInt64(clamping: max(0, seconds)) &* 1_000_000_000
+            &+ UInt64(clamping: max(0, attoseconds / 1_000_000_000))
     }
 }

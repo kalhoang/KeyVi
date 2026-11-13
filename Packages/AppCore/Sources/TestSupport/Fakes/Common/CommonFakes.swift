@@ -58,7 +58,8 @@ public final class InMemoryFileSystem: FileSystem, @unchecked Sendable {
         state.withLock {
             var node =
                 $0[url.path]
-                ?? Node(data: Data(), permissions: permissions, modified: date, created: date, excludedFromBackup: false)
+                ?? Node(
+                    data: Data(), permissions: permissions, modified: date, created: date, excludedFromBackup: false)
             node.data = (node.data ?? Data()) + data
             node.modified = date
             $0[url.path] = node
@@ -68,13 +69,16 @@ public final class InMemoryFileSystem: FileSystem, @unchecked Sendable {
     public func createDirectory(at url: URL, permissions: FilePermissions) throws {
         let date = now()
         state.withLock {
-            $0[url.path] = Node(data: nil, permissions: permissions, modified: date, created: date, excludedFromBackup: false)
+            $0[url.path] = Node(
+                data: nil, permissions: permissions, modified: date, created: date, excludedFromBackup: false)
         }
     }
 
     public func moveItem(at source: URL, to destination: URL) throws {
         try state.withLock {
-            guard let node = $0.removeValue(forKey: source.path) else { throw FileSystemError.notFound(path: source.path) }
+            guard let node = $0.removeValue(forKey: source.path) else {
+                throw FileSystemError.notFound(path: source.path)
+            }
             $0[destination.path] = node
         }
     }
@@ -122,7 +126,9 @@ public final class ManualClock: MonotonicClock, Sendable {
         nanos = Atomic(start.nanoseconds)
     }
 
-    public func now() -> MonotonicInstant { MonotonicInstant(nanoseconds: nanos.load(ordering: .sequentiallyConsistent)) }
+    public func now() -> MonotonicInstant {
+        MonotonicInstant(nanoseconds: nanos.load(ordering: .sequentiallyConsistent))
+    }
 
     public func sleep(until deadline: MonotonicInstant) {
         var current = nanos.load(ordering: .sequentiallyConsistent)

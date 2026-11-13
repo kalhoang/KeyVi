@@ -13,7 +13,7 @@ public enum WorkspaceEvent: Sendable, Hashable {
 /// `didActivateApplicationNotification`, `willSleepNotification`, `didWakeNotification`,
 /// `sessionDidResignActiveNotification`, `sessionDidBecomeActiveNotification`, and
 /// `DistributedNotificationCenter` for the screen lock and unlock notifications (names in
-/// `ReverseDNSConstants.swift`, the only file the bundle-ID lint allowlists in this module).
+/// `ReverseDNSConstants.swift`, allowed by scripts/lint-bundle-ids.allow).
 @MainActor
 public protocol WorkspaceEvents: Sendable {
     func observe(_ handler: @escaping @MainActor @Sendable (WorkspaceEvent) -> Void) -> any ObservationToken

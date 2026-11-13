@@ -63,7 +63,7 @@ let package = Package(
         // UI-free logic of the menu-bar app: view models, localisation lookup, brand, login item (PRD-R*).
         .target(
             name: "ShellCore",
-            dependencies: ["AppModel", "Diagnostics", "SettingsStore", "CompatRules", "InputHost"],
+            dependencies: ["AppModel", "Diagnostics", "SettingsStore", "CompatRules", "InputHost", "RealtimeSupport"],
             swiftSettings: strict
         ),
         // Fakes, simulated text field, pipeline harness, conservation ledger, scenario runner (QA-R1 layer 4).
@@ -82,12 +82,23 @@ let package = Package(
 
         .testTarget(name: "AppModelTests", dependencies: ["AppModel", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "RealtimeSupportTests", dependencies: ["RealtimeSupport"], swiftSettings: strict),
-        .testTarget(name: "DiagnosticsTests", dependencies: ["Diagnostics", "TestSupport"], swiftSettings: strict),
+        .testTarget(
+            name: "DiagnosticsTests",
+            dependencies: ["Diagnostics", "CompatRules", "TestSupport"],
+            exclude: ["Fixtures"],  // golden files read through #filePath
+            swiftSettings: strict
+        ),
         .testTarget(name: "SettingsStoreTests", dependencies: ["SettingsStore", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "CompatRulesTests", dependencies: ["CompatRules", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "InjectionTests", dependencies: ["Injection", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "InputHostTests", dependencies: ["InputHost", "TestSupport"], swiftSettings: strict),
-        .testTarget(name: "ShellCoreTests", dependencies: ["ShellCore", "TestSupport"], swiftSettings: strict),
+        .testTarget(
+            name: "ShellCoreTests",
+            dependencies: [
+                "ShellCore", "InputHost", "SettingsStore", "Diagnostics", "Injection", "RealtimeSupport", "TestSupport",
+            ],
+            swiftSettings: strict
+        ),
         .testTarget(name: "TestSupportTests", dependencies: ["TestSupport"], swiftSettings: strict),
     ],
     swiftLanguageModes: [.v6]

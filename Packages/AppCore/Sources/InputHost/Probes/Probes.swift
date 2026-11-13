@@ -15,7 +15,9 @@ public final class LatencyProbeDriver: Sendable {
     public init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) { unimplemented() }
     /// Types `keys` (key codes from the current layout) with `profile` spacing; the probe window reports
     /// text-change times through `textChanged(at:)`.
-    public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [MonotonicInstant] { unimplemented() }
+    public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [MonotonicInstant] {
+        unimplemented()
+    }
     public func textChanged(at instant: MonotonicInstant) { unimplemented() }
     public func result(baseline: [MonotonicInstant], measured: [MonotonicInstant], metrics: PlatformMetrics)
         -> LatencyProbeResult.ProfileResult

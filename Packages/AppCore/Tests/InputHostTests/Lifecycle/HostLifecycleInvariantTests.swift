@@ -4,6 +4,7 @@
 // check the invariants that must hold after every step, whatever the order of events.
 import AppModel
 import Testing
+
 @testable import InputHost
 
 /// Deterministic generator so failures reproduce from the seed.

@@ -197,7 +197,8 @@ public final class EchoTracker: @unchecked Sendable {
             count += 1
         }
         var settled = 0
-        let timeoutNanoseconds = UInt64(timeout.components.seconds) * 1_000_000_000
+        let timeoutNanoseconds =
+            UInt64(timeout.components.seconds) * 1_000_000_000
             + UInt64(timeout.components.attoseconds / 1_000_000_000)
         while count > 0 {
             let front = pending[head]
@@ -241,6 +242,8 @@ public final class EchoTracker: @unchecked Sendable {
 public final class CurrentFocusGeneration: Sendable {
     private let value = Atomic<UInt64>(0)
     public init() {}
-    public func store(_ generation: FocusGeneration) { value.store(generation.rawValue, ordering: .sequentiallyConsistent) }
+    public func store(_ generation: FocusGeneration) {
+        value.store(generation.rawValue, ordering: .sequentiallyConsistent)
+    }
     public func load() -> FocusGeneration { FocusGeneration(rawValue: value.load(ordering: .sequentiallyConsistent)) }
 }

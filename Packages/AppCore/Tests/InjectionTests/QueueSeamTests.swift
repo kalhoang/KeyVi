@@ -4,14 +4,20 @@
 import AppModel
 import RealtimeSupport
 import Testing
+
 @testable import Injection
 
 private func boundary(_ queue: JobQueue) -> (JobSequence, InjectionJob) {
     let sequence = queue.nextSequence()
-    return (sequence, .boundary(BoundaryJob(sequence: sequence, reason: .focusChanged, generation: FocusGeneration(rawValue: 1))))
+    return (
+        sequence,
+        .boundary(BoundaryJob(sequence: sequence, reason: .focusChanged, generation: FocusGeneration(rawValue: 1)))
+    )
 }
 
-private func ms(_ value: UInt64) -> MonotonicInstant { MonotonicInstant(nanoseconds: 1_000_000_000 + value * 1_000_000) }
+private func ms(_ value: UInt64) -> MonotonicInstant {
+    MonotonicInstant(nanoseconds: 1_000_000_000 + value * 1_000_000)
+}
 
 @Suite struct JobQueueInFlightTests {
     @Test func jobWithoutPostsSettlesWhenWorkerFinishes() {
@@ -126,7 +132,9 @@ private func ms(_ value: UInt64) -> MonotonicInstant { MonotonicInstant(nanoseco
         #expect(marker.classify(0) == .foreign)  // physical events usually carry 0
         let other = EventMarker(tag: 0x12_3456_789A)
         #expect(marker.classify(other.userData(sequence: 5, probe: false)) == .foreign)
-        #expect(marker.classify(marker.userData(sequence: EventMarker.sequenceMask + 3, probe: false)) == .echo(sequence: 2))
+        #expect(
+            marker.classify(marker.userData(sequence: EventMarker.sequenceMask + 3, probe: false)) == .echo(sequence: 2)
+        )
     }
 
     @Test func randomTagsAreNonZeroAnd40Bits() {

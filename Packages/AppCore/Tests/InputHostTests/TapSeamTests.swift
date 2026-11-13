@@ -4,17 +4,22 @@
 import CoreGraphics
 import RealtimeSupport
 import Testing
+
 @testable import InputHost
 
 @Suite struct TapEventMaskTests {
     /// PRD-R14 (MUST) cancels the toggle tap on scroll, so the standard mask includes scrollWheel (PLT-R301).
     @Test func standardMaskIncludesScrollWheel() {
         let mask = TapEventMask.standard.cgMask
-        for type: CGEventType in [.keyDown, .keyUp, .flagsChanged, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel] {
+        for type: CGEventType in [
+            .keyDown, .keyUp, .flagsChanged, .leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel,
+        ] {
             #expect(mask & (CGEventMask(1) << CGEventMask(type.rawValue)) != 0)
         }
         #expect(mask & (CGEventMask(1) << CGEventMask(CGEventType.mouseMoved.rawValue)) == 0)
-        #expect(TapEventMask(includeScrollWheel: false).cgMask & (CGEventMask(1) << CGEventMask(CGEventType.scrollWheel.rawValue)) == 0)
+        #expect(
+            TapEventMask(includeScrollWheel: false).cgMask
+                & (CGEventMask(1) << CGEventMask(CGEventType.scrollWheel.rawValue)) == 0)
     }
 }
 

@@ -201,8 +201,10 @@ public struct InputSourceSnapshot: Sendable {
     }
 }
 
-/// Published by the utility queue's secure-input poller (PLT-R395). `generation` changes only on
-/// transitions, so the tap's "resumed by key" evidence (PLT-R398B) stays valid while the OS flag is stuck.
+/// Published by the utility queue's secure-input poller (PLT-R395). The generation changes on every OS
+/// transition. Key evidence (PLT-R398B) ends episode N: the tap stays resumed for generation N until the next
+/// poll, and the next poll that still sees the OS flag on starts a new episode with a new generation, so
+/// on -> off -> key -> on inside one poll interval pauses again.
 public struct SecureInputSnapshot: Sendable, Hashable {
     public var generation: UInt64
     public var enabled: Bool

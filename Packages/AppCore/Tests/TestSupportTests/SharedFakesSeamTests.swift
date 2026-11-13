@@ -10,6 +10,7 @@ import InputHost
 import RealtimeSupport
 import Synchronization
 import Testing
+
 @testable import TestSupport
 
 private let shift = CGEventFlags.maskShift.rawValue
@@ -122,7 +123,9 @@ private func testLayout() -> LayoutTable {
     @Test func readsAreBoundedAndWritesReplaceSelection() {
         let field = SimulatedTextField(text: String(repeating: "a", count: 100))
         let access = FakeFocusedFieldAccess(field: field)
-        if case .success(let text) = access.text(handle, in: TextRange(location: 0, length: 100), timeout: .milliseconds(50)) {
+        if case .success(let text) = access.text(
+            handle, in: TextRange(location: 0, length: 100), timeout: .milliseconds(50))
+        {
             #expect(text.utf16.count == 64)
         } else {
             Issue.record("expected success")
@@ -136,9 +139,15 @@ private func testLayout() -> LayoutTable {
     @Test func timeoutAndIgnoredWrites() {
         let field = SimulatedTextField(text: "abc")
         let access = FakeFocusedFieldAccess(field: field, behaviour: .timeout)
-        if case .timedOut = access.selectedRange(handle, timeout: .milliseconds(50)) {} else { Issue.record("expected timeout") }
+        if case .timedOut = access.selectedRange(handle, timeout: .milliseconds(50)) {
+        } else {
+            Issue.record("expected timeout")
+        }
         access.setBehaviour(.writesIgnored)
-        if case .success = access.setSelectedText(handle, to: "x", timeout: .milliseconds(50)) {} else { Issue.record("expected success") }
+        if case .success = access.setSelectedText(handle, to: "x", timeout: .milliseconds(50)) {
+        } else {
+            Issue.record("expected success")
+        }
         #expect(field.text == "abc")
     }
 }
@@ -192,7 +201,9 @@ private func testLayout() -> LayoutTable {
         let clock = ManualClock()
         let scheduler = ManualScheduler(clock: clock)
         let log = Mutex<[String]>([])
-        let repeating = scheduler.scheduleRepeating(every: .seconds(2), leeway: .zero) { log.withLock { $0.append("tick") } }
+        let repeating = scheduler.scheduleRepeating(every: .seconds(2), leeway: .zero) {
+            log.withLock { $0.append("tick") }
+        }
         _ = scheduler.schedule(after: .seconds(3), leeway: .zero) { log.withLock { $0.append("once") } }
         let cancelled = scheduler.schedule(after: .seconds(1), leeway: .zero) { log.withLock { $0.append("never") } }
         cancelled.cancel()
@@ -229,7 +240,10 @@ private func testLayout() -> LayoutTable {
             decisions: [terminal: passThrough], fallback: FakeDecisionResolver.defaultDecision(engine: .chromium))
         let context = MatchContext(bundle: terminal, appVersion: nil, macOS: LooseVersion("15.0")!, engine: .native)
         #expect(resolver.resolve(context).strategy == .passThrough)
-        #expect(resolver.resolve(MatchContext(bundle: nil, appVersion: nil, macOS: LooseVersion("15.0")!, engine: .chromium)).requireTextFocus == .never)
+        #expect(
+            resolver.resolve(
+                MatchContext(bundle: nil, appVersion: nil, macOS: LooseVersion("15.0")!, engine: .chromium)
+            ).requireTextFocus == .never)
         #expect(resolver.resolvedContexts.count == 2)
         #expect(FakeDecisionResolver.defaultDecision(engine: .native).requireTextFocus == .whenKnown)
     }

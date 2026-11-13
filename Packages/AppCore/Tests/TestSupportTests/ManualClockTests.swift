@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 import RealtimeSupport
 import Testing
+
 @testable import TestSupport
 
 @Suite struct ManualClockTests {

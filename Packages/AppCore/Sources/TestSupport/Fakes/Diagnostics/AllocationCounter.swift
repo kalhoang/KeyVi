@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Counts the heap allocations the calling thread makes while a closure runs. Used by the W1-A acceptance
-// tests that prove the tap-safe primitives never allocate (PLT-R304, PLT-R305). Test-only: TestSupport is
-// never linked into the app.
+// Counts the heap allocations (and frees) the calling thread makes while a closure runs. Used by the
+// acceptance tests that prove the tap-safe primitives and the tap pipeline never allocate in steady state
+// (PLT-R304, PLT-R305). Test-only: TestSupport is never linked into the app.
 //
 // Mechanism: when the process-wide `malloc_logger` hook (the one malloc stack logging installs) is set,
 // libmalloc calls it on every allocation and free. The hook is looked up with `dlsym`, so nothing links
-// against a non-public symbol. When it cannot be found, or a sanitizer replaces the allocator (Thread
-// Sanitizer has its own), `isAvailable` is false and callers skip their allocation assertions.
+// against a non-public symbol. When it cannot be found, or a sanitizer replaces the allocator (Thread and
+// Address Sanitizer have their own), `isAvailable` is false and callers skip their allocation assertions.
+// Spans that must not be counted (for example the engine call inside the pipeline, whose own budget is
+// ENG-R1230) are excluded with `pause()` / `resume()`.
 //
 // Caveat for callers: in debug builds a `for _ in 0..<n` loop allocates an iterator box per iteration, so
 // measured loops use `while`.
@@ -16,16 +18,27 @@ internal import Darwin
 internal import Synchronization
 
 public enum AllocationCounter {
+    /// Allocations and frees seen on the measured thread outside paused spans; both are -1 when the hook is
+    /// missing on this system.
+    public struct Counts: Sendable, Hashable {
+        public var allocations: Int
+        public var deallocations: Int
+    }
+
     private typealias MallocLogger = @convention(c) (UInt32, UInt, UInt, UInt, UInt, UInt32) -> Void
 
-    /// `MALLOC_LOG_TYPE_ALLOCATE`: set for malloc, calloc, realloc and every other allocating call.
+    /// `MALLOC_LOG_TYPE_ALLOCATE` and `MALLOC_LOG_TYPE_DEALLOCATE`; realloc reports both.
     private static let allocateFlag: UInt32 = 2
+    private static let deallocateFlag: UInt32 = 4
     private static let countingThread = Atomic<UInt>(0)
+    private static let pauseDepth = Atomic<Int>(0)
     private static let allocations = Atomic<Int>(0)
+    private static let deallocations = Atomic<Int>(0)
+    /// One measurement at a time across the whole test process.
     private static let measurement = Mutex<Int>(0)
 
     /// The address of libmalloc's `malloc_logger` variable, if the running system exports it. Kept as an
-    /// integer because raw pointers are not `Sendable`; only `rawCount` dereferences it, under `measurement`.
+    /// integer because raw pointers are not `Sendable`; only `rawMeasure` dereferences it, under `measurement`.
     private static let loggerSlotAddress: UInt? = {
         let defaultHandle = UnsafeMutableRawPointer(bitPattern: -2)  // RTLD_DEFAULT
         return dlsym(defaultHandle, "malloc_logger").map { UInt(bitPattern: $0) }
@@ -38,10 +51,14 @@ public enum AllocationCounter {
     }
 
     private static let hook: MallocLogger = { type, _, _, _, _, _ in
-        guard type & AllocationCounter.allocateFlag != 0 else { return }
-        let current = UInt(bitPattern: pthread_self())
-        if current == AllocationCounter.countingThread.load(ordering: .relaxed) {
+        guard UInt(bitPattern: pthread_self()) == AllocationCounter.countingThread.load(ordering: .relaxed),
+            AllocationCounter.pauseDepth.load(ordering: .relaxed) == 0
+        else { return }
+        if type & AllocationCounter.allocateFlag != 0 {
             AllocationCounter.allocations.wrappingAdd(1, ordering: .relaxed)
+        }
+        if type & AllocationCounter.deallocateFlag != 0 {
+            AllocationCounter.deallocations.wrappingAdd(1, ordering: .relaxed)
         }
     }
 
@@ -55,8 +72,8 @@ public enum AllocationCounter {
     /// allocation is seen (positive control). Also absorbs first-use costs of the hook.
     public static let isAvailable: Bool = {
         guard loggerSlot != nil, !isSanitizerActive else { return false }
-        _ = rawCount(probeAllocation)
-        return rawCount(probeAllocation) >= 1
+        _ = rawMeasure(probeAllocation)
+        return rawMeasure(probeAllocation).allocations >= 1
     }()
 
     /// Receives the probe pointer so an optimising compiler cannot delete the malloc/free pair.
@@ -72,20 +89,36 @@ public enum AllocationCounter {
     /// available. Measurements are serialized process-wide; other threads are not counted.
     public static func count(_ body: () -> Void) -> Int? {
         guard isAvailable else { return nil }
-        return rawCount(body)
+        return rawMeasure(body).allocations
     }
 
-    private static func rawCount(_ body: () -> Void) -> Int {
+    /// Allocations and frees of the calling thread while `body` runs, outside `pause()`d spans. Returns -1
+    /// for both when the hook is missing; check `isAvailable` before asserting on the numbers.
+    public static func measure(_ body: () -> Void) -> Counts {
+        rawMeasure(body)
+    }
+
+    /// Stops counting on the measured thread until the matching `resume()`; calls nest.
+    public static func pause() { pauseDepth.wrappingAdd(1, ordering: .sequentiallyConsistent) }
+
+    /// Ends one `pause()`.
+    public static func resume() { pauseDepth.wrappingSubtract(1, ordering: .sequentiallyConsistent) }
+
+    private static func rawMeasure(_ body: () -> Void) -> Counts {
         measurement.withLock { runs in
             runs += 1
-            guard let slot = loggerSlot else { return 0 }
+            guard let slot = loggerSlot else { return Counts(allocations: -1, deallocations: -1) }
             allocations.store(0, ordering: .sequentiallyConsistent)
+            deallocations.store(0, ordering: .sequentiallyConsistent)
+            pauseDepth.store(0, ordering: .sequentiallyConsistent)
             countingThread.store(UInt(bitPattern: pthread_self()), ordering: .sequentiallyConsistent)
             let previous = slot.pointee.exchange(unsafeBitCast(hook, to: UInt.self), ordering: .sequentiallyConsistent)
             body()
             slot.pointee.store(previous, ordering: .sequentiallyConsistent)
             countingThread.store(0, ordering: .sequentiallyConsistent)
-            return allocations.load(ordering: .sequentiallyConsistent)
+            return Counts(
+                allocations: allocations.load(ordering: .sequentiallyConsistent),
+                deallocations: deallocations.load(ordering: .sequentiallyConsistent))
         }
     }
 }

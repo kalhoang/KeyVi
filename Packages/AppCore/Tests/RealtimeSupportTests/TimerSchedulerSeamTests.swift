@@ -4,6 +4,7 @@
 import Dispatch
 import Synchronization
 import Testing
+
 @testable import RealtimeSupport
 
 @Suite struct DispatchTimerSchedulerTests {
@@ -41,7 +42,12 @@ import Testing
         let timer = scheduler.scheduleRepeating(every: .milliseconds(5), leeway: .milliseconds(1)) {
             count.wrappingAdd(1, ordering: .relaxed)
         }
-        try? await Task.sleep(for: .milliseconds(60))
+        // Wait for at least two firings, bounded, so a loaded machine cannot make the test flaky.
+        var waited = 0
+        while count.load(ordering: .relaxed) < 2, waited < 200 {
+            try? await Task.sleep(for: .milliseconds(10))
+            waited += 1
+        }
         timer.cancel()
         let atCancel = count.load(ordering: .relaxed)
         try? await Task.sleep(for: .milliseconds(30))

@@ -106,7 +106,9 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         read { self.field.axText(in: range) }
     }
 
-    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
+        -> AXCallResult<Void>
+    {
         write { self.field.axSetSelectedRange(range) }
     }
 
@@ -200,7 +202,9 @@ public final class FakePasteboard: PasteboardAccess, Sendable {
             if state.conditions.contains(.writeFails) { return .failure(.writeFailed) }
             var data: [String: Data] = [PasteboardTypeName.plainText: Data(text.utf8)]
             for marker in PasteboardTypeName.markers { data[marker] = Data() }
-            state.items = [PasteboardItemData(types: [PasteboardTypeName.plainText] + PasteboardTypeName.markers, data: data)]
+            state.items = [
+                PasteboardItemData(types: [PasteboardTypeName.plainText] + PasteboardTypeName.markers, data: data)
+            ]
             state.changeCount += 1
             state.writes += 1
             return .success(state.changeCount)

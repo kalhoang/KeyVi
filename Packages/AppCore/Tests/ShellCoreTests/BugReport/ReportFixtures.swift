@@ -136,7 +136,7 @@ enum ReportFixtures {
                 AppModeEntry(bundle: reported, rule: .alwaysVietnamese, mode: .vietnamese),
             ])
         return SettingsState(
-            generation: 1, user: user, effective: user.resolved(), appModes: appModes, ruleOverrides: overrides,
+            generation: 1, user: user, appModes: appModes, ruleOverrides: overrides,
             macros: [StoredMacro(trigger: Canary.macroTrigger, expansion: Canary.macroExpansion)],
             readOnlyFiles: [], safeMode: false, notices: [])
     }

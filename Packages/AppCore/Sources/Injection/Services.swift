@@ -76,7 +76,9 @@ public protocol FocusedFieldAccess: Sendable {
 public final class AXElementReference: @unchecked Sendable, Hashable {
     public let element: AXUIElement
     public init(_ element: AXUIElement) { self.element = element }
-    public static func == (lhs: AXElementReference, rhs: AXElementReference) -> Bool { CFEqual(lhs.element, rhs.element) }
+    public static func == (lhs: AXElementReference, rhs: AXElementReference) -> Bool {
+        CFEqual(lhs.element, rhs.element)
+    }
     public func hash(into hasher: inout Hasher) { hasher.combine(CFHash(element)) }
 }
 

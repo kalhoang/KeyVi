@@ -9,9 +9,9 @@
 // arrows 0x7B-0x7E, Return 0x24, Tab 0x30, Escape 0x35, ANSI V 0x09.
 
 internal import AppModel
+internal import CoreGraphics
 public import Injection
 public import InputHost
-internal import CoreGraphics
 internal import RealtimeSupport
 internal import Synchronization
 
@@ -265,7 +265,8 @@ public final class SimulatedTextField: Sendable {
         } else if selection.length > 0 {
             state.selection = TextRange(location: selection.location, length: 0)
         } else if selection.location > 0 {
-            state.selection = TextRange(location: Self.previousBoundary(state.text, before: selection.location), length: 0)
+            state.selection = TextRange(
+                location: Self.previousBoundary(state.text, before: selection.location), length: 0)
         }
     }
 

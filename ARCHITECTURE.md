@@ -240,7 +240,8 @@ before the next key is processed (PLT-R391).
   `compat-rules.json`), test fixtures, `compat/matrix.json` and the conflicting-apps list inside the rules
   file. A CI lint fails on bundle-ID-shaped literals elsewhere; reverse-DNS constants that are not bundle IDs
   (pasteboard types, distributed notification names) live only in files named `ReverseDNSConstants.swift`,
-  which the lint allowlists.
+  and each one is allowed by a pattern in `scripts/lint-bundle-ids.allow` or an inline
+  `lint:allow-bundle-id <reason>` marker (ADR 0505).
 - **Rules** follow the 5.4 schema (`CompatRules/Schema.swift`, `compat/schema/rules.schema.json`). The loader
   validates at launch; an invalid file never crashes the app and falls back to a compiled-in ruleset that has
   only defaults and engine-level rules (PLT-R503). No remote rules (PLT-R504).

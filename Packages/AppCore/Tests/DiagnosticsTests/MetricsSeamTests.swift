@@ -5,6 +5,7 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Testing
+
 @testable import Diagnostics
 
 @Suite struct Log2HistogramTests {

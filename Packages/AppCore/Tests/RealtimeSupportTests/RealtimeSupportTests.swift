@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 import Dispatch
 import Testing
+
 @testable import RealtimeSupport
 
 @Suite struct SPSCRingTests {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 import Testing
+
 @testable import InputHost
 
 @Suite struct InputHostScaffoldTests {

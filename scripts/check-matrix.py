@@ -3,7 +3,8 @@
 """Validates compat/matrix.json against compat/schema/matrix.schema.json (QA-R17, PRD-R35).
 
 The schema is the source of truth for the field names and values that the in-app Apps page and the website
-matrix read (compat/SCRIPT.md section 5). Also rejects two entries with the same bundleId.
+matrix read (compat/SCRIPT.md section 5). Also rejects two app-level rows for one bundleId and two scoped
+rows with the same bundleId, scope and displayName.
 A missing matrix passes (nothing is verified yet) unless --require.
 
 Usage: python3 -I scripts/check-matrix.py [--matrix FILE] [--schema FILE] [--require]
@@ -24,15 +25,33 @@ import jsonschema_lite  # noqa: E402
 
 
 def problems(doc: object, schema: dict) -> list[str]:
+    """Schema errors plus duplicate rows.
+
+    Each bundleId has at most one app-level row (no scope, or scope "app"); that row drives the in-app Apps
+    page (PRD-R34, PRD-R35, MatrixDocument.appEntry). Scoped rows (webApp, inApp) describe a web app or a
+    mode inside the app, so several may share a bundleId, but never the same scope and displayName.
+    """
     found = jsonschema_lite.validate(doc, schema)
-    seen: dict[str, int] = {}
+    app_rows: dict[str, int] = {}
+    scoped_rows: dict[tuple[str, str, str], int] = {}
     entries = doc.get("entries", []) if isinstance(doc, dict) else []
     for index, entry in enumerate(entries if isinstance(entries, list) else []):
-        bundle = entry.get("bundleId") if isinstance(entry, dict) else None
-        if isinstance(bundle, str):
-            if bundle in seen:
-                found.append(f"$.entries[{index}]: bundleId {bundle} already used by entries[{seen[bundle]}]")
-            seen.setdefault(bundle, index)
+        if not isinstance(entry, dict) or not isinstance(entry.get("bundleId"), str):
+            continue
+        bundle = entry["bundleId"]
+        scope = entry.get("scope") or "app"
+        if scope == "app":
+            if bundle in app_rows:
+                found.append(f"$.entries[{index}]: bundleId {bundle} already used by entries[{app_rows[bundle]}]")
+            app_rows.setdefault(bundle, index)
+            continue
+        key = (bundle, str(scope), str(entry.get("displayName", "")))
+        if key in scoped_rows:
+            found.append(
+                f"$.entries[{index}]: bundleId {bundle} scope {scope} '{key[2]}' already used by "
+                f"entries[{scoped_rows[key]}]"
+            )
+        scoped_rows.setdefault(key, index)
     return found
 
 

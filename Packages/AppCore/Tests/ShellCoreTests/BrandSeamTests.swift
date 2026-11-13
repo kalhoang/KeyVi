@@ -3,6 +3,7 @@
 // Skeleton seam tests (ADR 0313): keep green; W1-G owns and may extend.
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct BrandTests {
