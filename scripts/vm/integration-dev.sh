@@ -19,6 +19,7 @@ Usage: scripts/vm/integration-dev.sh [options]
   --in-place           run in the base VM itself instead of a throwaway clone (keeps the builds and grants)
   --output DIR         run folder (default VM_LAB_RUNS/<UTC timestamp>-integration)
   --memory MB, --cpus N  VM size (default 6144 MB, 4 CPUs)
+  --only ID[,ID...]    run only these TestHost scenarios (IDs or PREFIX* patterns), for a control run
   -h, --help           this help
 
 Only committed files are copied (git archive HEAD). Exit status: 0 suite passed, 1 failed, 2 usage error,
@@ -35,6 +36,7 @@ in_place=0
 run_dir=""
 memory=""
 cpus=""
+only=""
 bad_usage() {
   printf 'integration-dev: %s\n' "$*" >&2
   usage >&2
@@ -43,13 +45,19 @@ bad_usage() {
 while (($#)); do
   case "$1" in
     -h | --help) usage; exit 0 ;;
-    --vm | --output | --memory | --cpus)
+    --vm | --output | --memory | --cpus | --only)
       (($# >= 2)) || bad_usage "$1 needs a value"
       case "$1" in
         --vm) base_vm="$2" ;;
         --output) run_dir="$2" ;;
         --memory) memory="$2" ;;
         --cpus) cpus="$2" ;;
+        --only)
+          # Words of the harness command line in the guest: scenario IDs and PREFIX* patterns only.
+          [[ "$2" =~ ^[A-Za-z0-9_][A-Za-z0-9._*-]*(,[A-Za-z0-9_][A-Za-z0-9._*-]*)*$ ]] ||
+            bad_usage "--only takes scenario IDs or PREFIX* patterns, comma separated"
+          only="$2"
+          ;;
       esac
       shift 2
       ;;
@@ -85,9 +93,11 @@ git -C "$REPO_ROOT" archive --format=tar HEAD | lab_ssh "$vm" "rm -rf src && mkd
 lab_log "building, granting and running the TestHost suite in $vm (about 20 to 40 minutes)"
 rc=0
 lab_wait_agent "$vm" || rc=$?
-# shellcheck disable=SC2016 # expanded by the guest's shell
-((rc != 0)) || lab_tart exec "$vm" /bin/bash -c 'cd "$HOME/src" && bash scripts/vm/guest/integration-guest.sh --out "$HOME/integration-out"' \
-  >"$run_dir/guest.log" 2>&1 || rc=$?
+guest_args=()
+[[ -z "$only" ]] || guest_args=(--only "$only")
+# shellcheck disable=SC2016 # expanded by the guest's shell; the extra arguments arrive as "$@"
+((rc != 0)) || lab_tart exec "$vm" /bin/bash -c 'cd "$HOME/src" && bash scripts/vm/guest/integration-guest.sh --out "$HOME/integration-out" "$@"' \
+  integration-guest ${guest_args[@]+"${guest_args[@]}"} >"$run_dir/guest.log" 2>&1 || rc=$?
 lab_pull "$vm" integration-out "$run_dir" || lab_log "warning: could not copy the guest logs back"
 cat "$run_dir/integration-out/summary.txt" 2>/dev/null || tail -n 20 "$run_dir/guest.log" 2>/dev/null || true
 if ((rc == 0)); then

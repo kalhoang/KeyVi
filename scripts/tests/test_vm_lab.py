@@ -647,6 +647,23 @@ class IntegrationDevArgumentTests(LabTestCase):
         self.assertEqual(self.running(), set())
 
 
+    def test_only_hands_a_validated_scenario_list_to_the_guest(self):
+        """A control run of a few scenarios (integration-suite.md 10.4): the list reaches the guest script as its
+        own argument, and anything but scenario IDs and PREFIX* patterns is refused before a VM starts."""
+        for bad in ("", "a b", "x;rm", "$(id)", "a,,b", "-x", "../x"):
+            with self.subTest(only=bad):
+                self.assertEqual(self.integration("--only", bad).returncode, 2)
+        self.assertEqual(self.tart_calls("run"), [])
+        self.integration("--output", str(self.tmp / "run"), "--only", "testhost.web.input,testhost.web.textarea")
+        guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
+        self.assertEqual(len(guest), 1, self.tart_calls("exec"))
+        self.assertTrue(guest[0].endswith(" --only testhost.web.input,testhost.web.textarea"), guest[0])
+        self.integration("--output", str(self.tmp / "run2"))
+        guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
+        self.assertNotIn("--only", guest[-1])
+        self.assertEqual(self.running(), set())
+
+
 TCC_SCHEMA = """CREATE TABLE access (service TEXT NOT NULL, client TEXT NOT NULL, client_type INTEGER NOT NULL,
   auth_value INTEGER NOT NULL, auth_reason INTEGER NOT NULL, auth_version INTEGER NOT NULL, csreq BLOB,
   policy_id INTEGER, indirect_object_identifier_type INTEGER,
@@ -811,6 +828,17 @@ class GuestVmGuardTests(unittest.TestCase):
                     self.assertFalse(self.log.exists() and self.log.read_text(encoding="utf-8"),
                                      "no tool may run before the guard")
 
+    def test_inside_a_virtual_machine_the_guest_refuses_a_malformed_only_list(self):
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(self.tmp), "FAKE_VMM": "1",
+               "LC_ALL": "C"}
+        for bad in ("a b", "x;y", ""):
+            with self.subTest(only=bad):
+                result = subprocess.run(["bash", str(INTEGRATION_GUEST), "--out", str(self.tmp / "o"), "--only", bad],
+                                        capture_output=True, text=True, env=env, cwd=self.tmp,
+                                        stdin=subprocess.DEVNULL, timeout=30)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertFalse((self.tmp / "o").exists())
+
     def test_inside_a_virtual_machine_the_guard_lets_the_script_reach_its_usage_check(self):
         for script in (GUEST, INTEGRATION_GUEST):
             with self.subTest(script=script.name):
@@ -837,6 +865,14 @@ class IntegrationGuestTests(unittest.TestCase):
         reference = (SCRIPTS / "run-integration.sh").read_text(encoding="utf-8")
         self.assertIsNotNone(self.MARKER_LINE.search(reference))
         self.assertIn('INTEGRATION_CODE_SIGN_IDENTITY:-', reference)
+
+    def test_the_guest_narrows_the_suite_only_through_the_harness_arguments(self):
+        """--only replaces the TestHost selection of `scripts/run-integration.sh tests` through
+        COMPAT_HARNESS_TESTS_ARGS; without it the guest runs the default (every testhost.* scenario)."""
+        guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        self.assertIn('COMPAT_HARNESS_TESTS_ARGS="run --scenarios compat/scenarios --only $only', guest)
+        self.assertIn("--output .build/integration/tests", guest)
+        self.assertLess(guest.index("valid_only"), guest.index('mkdir -p "$out"'))
 
     def test_the_guest_enables_every_layout_the_testhost_scenarios_select(self):
         """integration-suite.md section 2 step 4, inside the VM only: the list is read from the scenarios."""

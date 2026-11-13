@@ -11,8 +11,9 @@
 # Team ID, and library validation would refuse Sparkle). Its TCC grant is therefore tied to the cdhash and is
 # renewed by this script after every build.
 #
-# Usage: integration-guest.sh --out DIR   (from the checkout root, inside the VM only; it exits 3 on a real Mac).
-# Exit 0 when the suite passed.
+# Usage: integration-guest.sh --out DIR [--only ID[,ID...]]   (from the checkout root, inside the VM only; it exits
+# 3 on a real Mac). --only runs these scenarios (IDs or PREFIX* patterns of compat-harness) instead of every
+# testhost.* one, for a control run (integration-suite.md 10.4). Exit 0 when the suite passed.
 set -uo pipefail
 
 # Refuse to run anywhere but inside a virtual machine, before parsing arguments and before any side effect: this
@@ -23,14 +24,22 @@ set -uo pipefail
   exit 3
 }
 
+usage() {
+  echo "usage: integration-guest.sh --out DIR [--only ID[,ID...]]" >&2
+  exit 2
+}
+# Scenario IDs and PREFIX* patterns, comma separated: they become words of COMPAT_HARNESS_TESTS_ARGS.
+valid_only() { printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._*-]*(,[A-Za-z0-9_][A-Za-z0-9._*-]*)*$'; }
 out=""
+only=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --out) out="${2:-}"; shift 2 ;;
-    *) echo "usage: integration-guest.sh --out DIR" >&2; exit 2 ;;
+    --out) [ $# -ge 2 ] || usage; out="$2"; shift 2 ;;
+    --only) [ $# -ge 2 ] && valid_only "$2" || usage; only="$2"; shift 2 ;;
+    *) usage ;;
   esac
 done
-[ -n "$out" ] || { echo "usage: integration-guest.sh --out DIR" >&2; exit 2; }
+[ -n "$out" ] || usage
 mkdir -p "$out"
 summary="$out/summary.txt"
 : >"$summary"
@@ -121,6 +130,11 @@ step "TestHost suite: scripts/run-integration.sh tests"
 # app, role and identifier of the focused element, never a value). Not a screenshot: Screen Recording's consent
 # prompt then covered the windows of the following scenarios.
 mkdir -p "$out/evidence"
+if [ -n "$only" ]; then
+  # Same command line as run-integration.sh's default for `tests`, with the given selection.
+  export COMPAT_HARNESS_TESTS_ARGS="run --scenarios compat/scenarios --only $only --output .build/integration/tests"
+  note "only: $only"
+fi
 COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_EVIDENCE_DIR="$out/evidence" scripts/run-integration.sh tests >"$out/tests.log" 2>&1
 rc=$?
 cp -R .build/integration/tests "$out/results" 2>/dev/null
