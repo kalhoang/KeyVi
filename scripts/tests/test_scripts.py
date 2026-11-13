@@ -736,5 +736,51 @@ class NoticesTests(unittest.TestCase):
         self.assertEqual(missing, [], "list these bundled data files in THIRD_PARTY_NOTICES.md section 3")
 
 
+class WorkflowCoverageTests(unittest.TestCase):
+    """The CI gates the engine, data and platform tracks rely on stay in the workflows (QA-R2, QA-R5, QA-R8,
+    QA-R14, ENG-R810, ENG-R1201, PLT-R822; docs/decisions/0506-ci-coverage-after-the-engine-merge.md)."""
+
+    WORKFLOWS = REPO / ".github" / "workflows"
+
+    @classmethod
+    def job(cls, workflow: str, job_id: str) -> str:
+        import re
+        text = (cls.WORKFLOWS / workflow).read_text(encoding="utf-8")
+        body = text.split(f"\n  {job_id}:\n", 1)[1]
+        end = re.search(r"\n  [a-z][a-z0-9-]*:\n", body)  # the next job at the same indentation
+        return body[: end.start()] if end else body
+
+    def assert_runs(self, workflow: str, job_id: str, *commands: str) -> None:
+        body = self.job(workflow, job_id)
+        for command in commands:
+            with self.subTest(workflow=workflow, job=job_id, command=command):
+                self.assertIn(command, body)
+
+    def test_linux_engine_job_checks_generators_traceability_build_tests_and_fuzzing(self):
+        self.assertIn("image: swift:6.4.2-noble@sha256:", self.job("ci.yml", "engine-linux"))
+        self.assert_runs(
+            "ci.yml", "engine-linux",
+            'python3 -I "$ENGINE/Scripts/generate-letter-table.py" --check',
+            'python3 -I "$ENGINE/Scripts/extract-spec-examples.py" --check',
+            'python3 -I "$ENGINE/Scripts/generate-layout-corpus.py" --check',
+            'python3 -I "$ENGINE/Scripts/check-traceability.py"',
+            'swift build --package-path "$ENGINE"',
+            'swift test --package-path "$ENGINE"',
+            "scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out --require")
+
+    def test_pinned_data_inputs_and_bundled_data_are_checked(self):
+        self.assert_runs(
+            "ci.yml", "macos-tests",
+            "(cd data && shasum -a 256 -c inputs/MANIFEST.sha256)",
+            'swift run --package-path "$ENGINE" lexicon-builder check')
+
+    def test_nightly_fuzzes_each_method_for_thirty_minutes(self):
+        body = self.job("nightly.yml", "fuzz")
+        self.assertIn("image: swift:6.4.2-noble@sha256:", body)
+        self.assertIn("method: [telex, vni]", body)
+        self.assertIn('--seconds 1800 --sanitizers fuzzer,address,undefined', body)
+        self.assertIn('--method "$METHOD" --out ".build/fuzz-out" --require', body)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

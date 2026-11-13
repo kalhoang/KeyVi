@@ -35,7 +35,14 @@ jobs:
           persist-credentials: false
       - name: Install python3 for the repository scripts
         run: command -v python3 >/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends python3)
-      - name: Build engine
+      - name: Generated engine sources and corpus files match their generators (ENG-R301, QA-R4)
+        run: |
+          python3 -I "$ENGINE/Scripts/generate-letter-table.py" --check
+          python3 -I "$ENGINE/Scripts/extract-spec-examples.py" --check
+          python3 -I "$ENGINE/Scripts/generate-layout-corpus.py" --check
+      - name: Every engine requirement has a traceability row (spec/01-engine.md)
+        run: python3 -I "$ENGINE/Scripts/check-traceability.py"
+      - name: Build engine (ENG-R1201, Linux)
         run: swift build --package-path "$ENGINE"
       - name: Engine tests, corpus and property tests (QA-R5, QA-R8)
         run: swift test --package-path "$ENGINE" --parallel
@@ -157,6 +164,8 @@ jobs:
         # Skipped until compat/scenarios exists (W2-E1); the script also skips while the product is missing.
         if: hashFiles('compat/scenarios/**') != ''
         run: scripts/compat-dry-run.sh --out .build/compat-dry-run.txt
+      - name: Pinned data inputs match their manifest (ENG-R810)
+        run: (cd data && shasum -a 256 -c inputs/MANIFEST.sha256)
       - name: Bundled data is reproducible (ENG-R810)
         run: swift run --package-path "$ENGINE" lexicon-builder check
       - name: Engine benchmark gate (ENG-R1230, ENG-R1233, QA-R14)
