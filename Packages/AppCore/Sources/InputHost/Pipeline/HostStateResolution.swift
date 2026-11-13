@@ -48,9 +48,14 @@ enum HostStateResolution {
         }
     }
 
-    /// The tap's own toggle wins until the ax thread has applied it to memory (contracts.md 10.4, PLT-R391).
-    /// The focus owner is matched by pid, which identifies the same process the toggle was made in.
-    static func effectiveMode(focus: FocusSnapshot, override: ToggleOverride?) -> TypingMode {
+    /// PLT-R373: with the layout binding on, a layout designated VI or EN decides the mode, ahead of the toggle
+    /// hotkey, per-app memory and the global mode (the toggle does nothing on a bound layout, `KeyPipeline`).
+    /// Otherwise the tap's own toggle wins until the ax thread has applied it to memory (contracts.md 10.4,
+    /// PLT-R391); the focus owner is matched by pid, which identifies the same process the toggle was made in.
+    static func effectiveMode(
+        focus: FocusSnapshot, inputSource: InputSourceSnapshot, override: ToggleOverride?
+    ) -> TypingMode {
+        if let bound = inputSource.boundMode { return bound }
         if let override, override.sequence > focus.appliedToggleSequence,
             override.pid == (focus.app?.pid ?? ToggleOverride.noProcess)
         {

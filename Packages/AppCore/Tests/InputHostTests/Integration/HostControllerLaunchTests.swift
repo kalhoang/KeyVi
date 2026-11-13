@@ -336,6 +336,37 @@ struct HostControllerLifecycleTests {
         #expect(rig.controller.state == .ready(.vietnamese))
     }
 
+    /// PLT-R373: with the binding on, the selected layout decides the mode: switching from the VI-bound layout
+    /// to the EN-bound one passes keys and the menu shows English; switching back returns to Vietnamese.
+    @Test func layoutBindingDecidesTheMode_PLT_R373() async throws {
+        let us = InputSourceInfo(
+            id: try #require(InputSourceID(rawValue: "com.apple.keylayout.US")), kind: .asciiLayout,
+            localizedName: "U.S.", languages: ["en"], isBuiltInVietnamese: false)
+        let rig = HostRig(
+            source: HostRig.abc,
+            layoutData: [
+                HostRig.abc.id: KeyboardLayoutData(source: HostRig.abc.id, uchr: Data()),
+                us.id: KeyboardLayoutData(source: us.id, uchr: Data()),
+            ])
+        _ = await rig.store.store.load()
+        let binding = LayoutModeBinding(enabled: true, vietnamese: [HostRig.abc.id], english: [us.id])
+        await rig.store.store.updateSettings { $0.layoutBinding = .set(binding) }
+        await rig.start(preloaded: true)
+        defer { rig.stop() }
+        rig.type("aa")
+        #expect(rig.field.text == "â")
+        rig.inputSources.select(us)
+        rig.settle()
+        #expect(rig.controller.state == .ready(.english))
+        rig.type(" aa")
+        #expect(rig.field.text == "â aa")
+        rig.inputSources.select(HostRig.abc)
+        rig.settle()
+        #expect(rig.controller.state == .ready(.vietnamese))
+        rig.type(" aa")
+        #expect(rig.field.text == "â aa â")
+    }
+
     /// PLT-R405, PLT-R373: the Diagnostics window keeps one runner for the process lifetime, so the canary's key
     /// codes come from the layout current when a run starts, not when the runner was made. After a switch from
     /// ABC to AZERTY the `a` key moves; a stale table would type `q` and fail every readback.
