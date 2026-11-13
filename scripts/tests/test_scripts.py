@@ -268,6 +268,70 @@ input.method: telex
                 "### Có lỗi trong ô gõ thử không?\n\nNo, only in the app above\n")
         self.assertEqual(self.labels(body)["labels"], ["arch:arm64", "method:telex"])
 
+    def test_adr_example_with_every_v1_key_parses(self):
+        # ADR 0501 rule 4: the keys added after wave 1 are ignored by the labeller, the labels stay the same.
+        example = Adr0501Tests.example_block().replace("{{app-slug}}", "testapp")
+        self.assertIn("report.symptomDetail: duplicatedLetters", example)
+        self.assertEqual(self.labels(example)["labels"],
+                         ["app:com.google.Chrome", "macos:27", "arch:arm64", "method:telex"])
+
+
+class Adr0501Tests(unittest.TestCase):
+    """ADR 0501 names every key the app writes into the diagnostics block (QA-R44, PLT-R1202)."""
+
+    ADR = (REPO / "docs" / "decisions" / "0501-diagnostics-block-format.md").read_text(encoding="utf-8")
+    DIAGNOSTICS = REPO / "Packages" / "AppCore" / "Sources" / "Diagnostics"
+
+    @classmethod
+    def example_block(cls) -> str:
+        return cls.ADR.split("````text\n", 1)[1].split("\n````", 1)[0]
+
+    def emitted(self) -> tuple[set[str], set[str]]:
+        """Literal keys and key-family prefixes (`"latency." + name`) written by the Swift renderer."""
+        import re
+        report = (self.DIAGNOSTICS / "Report.swift").read_text(encoding="utf-8")
+        enum = report.split("public enum DiagnosticsBlockKey", 1)[1].split("\n}", 1)[0]
+        keys = set(re.findall(r'case \w+ = "([a-z][A-Za-z0-9.]*)"', enum))
+        prefixes: set[str] = set()
+        for name in ("IssueBlock.swift", "IssueBlockFields.swift"):
+            source = (self.DIAGNOSTICS / name).read_text(encoding="utf-8")
+            keys |= set(re.findall(r'list\.add\(\s*"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+|[a-z][A-Za-z0-9]*)"',
+                                   source))
+            prefixes |= set(re.findall(r'"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)*\.)"\s*\+', source))
+        return keys, prefixes
+
+    def test_every_emitted_key_is_in_the_key_reference(self):
+        keys, prefixes = self.emitted()
+        self.assertGreater(len(keys), 50, "the key scan found too little; did the Swift sources move?")
+        self.assertTrue({"latency.", "counters.", "probe.", "health.event."} <= prefixes, prefixes)
+        reference = self.ADR.split("### Key reference (v1)", 1)[1].split("### Symptom mapping", 1)[0]
+        undocumented = sorted(k for k in keys if f"`{k}`" not in reference)
+        self.assertEqual(undocumented, [], "document these keys in ADR 0501")
+        families = sorted(p for p in prefixes if f"`{p}" not in reference)
+        self.assertEqual(families, [], "document these key families in ADR 0501")
+
+    def test_example_shows_every_always_present_key(self):
+        keys, _ = self.emitted()
+        lines = self.example_block().splitlines()[2:-1]  # inside the fence, after the header
+        example_keys = [line.split(":", 1)[0] for line in lines]
+        self.assertEqual(len(example_keys), len(set(example_keys)), "a key appears twice in the example")
+        missing = sorted(k for k in keys if k not in example_keys and not k.startswith("probe."))
+        self.assertEqual(missing, [], "add these keys to the ADR 0501 example")
+
+    def test_symptom_mapping_matches_the_renderer(self):
+        import re
+        source = (self.DIAGNOSTICS / "IssueBlockFields.swift").read_text(encoding="utf-8")
+        body = source.split("static func blockSymptom", 1)[1].split("\n    }", 1)[0]
+        mapping = {}
+        for cases, chip in re.findall(r"case ([^:]+): \"(\w+)\"", body):
+            for case in re.findall(r"\.(\w+)", cases):
+                mapping[case] = chip
+        self.assertEqual(mapping["lettersOutOfOrder"], "other")
+        self.assertEqual(mapping["nothingTyped"], "cannotType")
+        table = self.ADR.split("### Symptom mapping", 1)[1]
+        documented = dict(re.findall(r"^\| `(\w+)` \| `(\w+)` \|$", table, re.MULTILINE))
+        self.assertEqual(documented, mapping)
+
 
 class IssueFormTests(unittest.TestCase):
     """QA-R43 and ADR 0501: the diagnostics textarea keeps the pasted fence (no render:) and names the header."""

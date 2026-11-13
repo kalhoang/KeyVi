@@ -1404,7 +1404,10 @@ without newlines, lists comma-separated, at most 200 lines. The labeller reads `
 `focus.bundleId`) -> `app:<bundle>`, the major of `macos.version` -> `macos:<major>`, `hw.arch` ->
 `arch:arm64|x86_64`, `input.method` -> `method:telex|vni`. Keys in `DiagnosticsBlockKey` never change within a
 format version; new keys may be added; a breaking change bumps the version. The full key list and an example
-are in ADR 0501.
+are in ADR 0501, including the keys added in wave 1 (`report.symptomDetail`, `ui.locale`, `permission.*`,
+`tap.*`, `focus.*`, `rule.*`, `settings.*`, `appMode.*`, `latency.*`, `counters.*`, `probe.*`, `conflicts`,
+`health.*`). `report.symptom` keeps the six PRD-R47 chip values: `lettersOutOfOrder` maps to `other` and
+`nothingTyped` to `cannotType`, and `report.symptomDetail` carries the exact `DiagnosticsReport.Symptom`.
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Identity.swift -->
 ```swift
