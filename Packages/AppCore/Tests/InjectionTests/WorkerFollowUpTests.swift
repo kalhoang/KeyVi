@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Worker behaviour the pipeline relies on (W1-F1 requests): re-entry verification only for `.reentry` jobs
-// (PLT-R342), restore jobs without a trigger deliver nothing when they do not run (PLT-R312, ADR 0308), and
+// Worker behaviour the pipeline relies on (W1-F1 requests): re-entry verification for every job the pipeline
+// flags (PLT-R342), restore jobs without a trigger deliver nothing when they do not run (PLT-R312, ADR 0308), and
 // ENG-R632: grapheme clusters drive Backspace events while UTF-16 units drive ranges, shown with an emoji macro.
 
 import AppModel
@@ -15,11 +15,28 @@ import Testing
 @testable import TestSupport
 
 @Suite struct WorkerReentryKindTests {
-    /// PLT-R342: only a word re-opened by Backspace is verified; `verifyBeforeApply` on any other kind is
-    /// ignored, so a stale flag cannot turn a normal edit into a pass-through.
-    @Test(arguments: [EditKind.compose, .backspaceRecompose, .restore, .macro])
-    func verificationIsOnlyForReentryJobs(_ kind: EditKind) {
+    /// PLT-R342: the flag, not the kind, drives verification. The pipeline keeps `.macro` for a macro fired on a
+    /// re-opened word and builds `.restore` jobs there too, and both still have to be checked against the field.
+    @Test(arguments: [EditKind.reentry, .macro, .restore, .compose])
+    func aFlaggedJobOnAMismatchingFieldWritesNothingPLTR342(_ kind: EditKind) {
         let rig = WorkerRig(field: SimulatedTextField(text: "xin chap"))
+        let trigger: KeyEventRecord? = kind == .restore ? nil : Fixture.triggerS
+        let edit = rig.pushEdit {
+            Fixture.job(
+                sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", kind: kind, trigger: trigger,
+                verifyBeforeApply: true)
+        }
+        rig.run()
+        #expect(rig.outcome(edit) == .passedThroughByFallback)
+        #expect(rig.field.text.hasPrefix("xin chap"))  // the mismatching word is never deleted
+        #expect(!rig.field.text.contains("ó"))
+        #expect(rig.fieldAccess.callCount == 2)  // selection, then the word before the caret; no AX write
+        #expect(rig.poster.posted.isEmpty == (trigger == nil))  // only the trigger is replayed, if there is one
+    }
+
+    @Test(arguments: [EditKind.reentry, .macro, .restore])
+    func aFlaggedJobOnAMatchingFieldIsApplied(_ kind: EditKind) {
+        let rig = WorkerRig(field: SimulatedTextField(text: "xin chao"))
         let edit = rig.pushEdit {
             Fixture.job(
                 sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", kind: kind, verifyBeforeApply: true)
@@ -27,18 +44,20 @@ import Testing
         rig.run()
         #expect(rig.outcome(edit) == .executed)
         #expect(rig.field.text == "xin chaó")
-        #expect(rig.fieldAccess.callCount == 0)  // no AX read for verification
     }
 
-    @Test func aReentryJobIsStillVerified() {
+    /// No flag, no AX read: edits of the word being typed never pay for a verification (PLT-R342, PLT-R343).
+    @Test(arguments: [EditKind.compose, .backspaceRecompose, .reentry, .restore, .macro])
+    func anUnflaggedJobIsNotVerified(_ kind: EditKind) {
         let rig = WorkerRig(field: SimulatedTextField(text: "xin chap"))
         let edit = rig.pushEdit {
             Fixture.job(
-                sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", kind: .reentry, verifyBeforeApply: true)
+                sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", kind: kind, verifyBeforeApply: false)
         }
         rig.run()
-        #expect(rig.outcome(edit) == .passedThroughByFallback)
-        #expect(rig.fieldAccess.callCount == 2)  // selection, then the word before the caret
+        #expect(rig.outcome(edit) == .executed)
+        #expect(rig.field.text == "xin chaó")
+        #expect(rig.fieldAccess.callCount == 0)
     }
 }
 
