@@ -140,13 +140,13 @@ public final class FocusTracker: Sendable {
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
         metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
-        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil
+        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
             metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture,
-            signposts: signposts)
+            signposts: signposts, scheduler: scheduler)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 
@@ -175,6 +175,12 @@ public final class FocusTracker: Sendable {
     /// `SettingsStore.recordAppModes` (PLT-R392, PRD-R23).
     public func setMemoryObserver(_ observer: (@Sendable (AppModesDocument) -> Void)?) {
         perform { $0.memoryObserver = observer }
+    }
+
+    /// Called on the ax thread after a settle re-read or an observer retry published a snapshot (PLT-R391), so the
+    /// main thread follows like it does after a notification (`FocusChangeSignalingAXProvider`). Must not block.
+    public func setDeferredPublicationObserver(_ observer: (@Sendable () -> Void)?) {
+        perform { $0.deferred.publicationObserver = observer }
     }
 
     /// Rule decision behind the last published snapshot, for the diagnostics report (any thread).
