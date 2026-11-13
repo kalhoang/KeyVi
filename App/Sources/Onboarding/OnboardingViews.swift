@@ -26,7 +26,9 @@ struct OnboardingRootView: View {
         .frame(
             width: OnboardingWindowController.contentSize.width, height: OnboardingWindowController.contentSize.height
         )
-        .sheet(isPresented: $model.showPermissionHelp) { PermissionHelpSheet(model: model) }
+        // PRD-R67: with Reduce Motion on, no implicit SwiftUI animation runs anywhere in the window.
+        .respectsReduceMotion()
+        .sheet(isPresented: $model.showPermissionHelp) { PermissionHelpSheet(model: model).respectsReduceMotion() }
     }
 
     @ViewBuilder private var screen: some View {
@@ -171,9 +173,24 @@ struct InputMonitoringNotice: View {
 }
 
 /// Placeholder illustration of the System Settings switch (VERIFY with Pa: replace with a designed asset). A short
-/// loop that becomes a static "on" switch when Reduce Motion is on (PRD-R40, PRD-R67).
+/// loop that becomes a static "on" switch when Reduce Motion is on (PRD-R40, PRD-R67). The switch is rebuilt when
+/// the setting changes, so turning Reduce Motion on while the screen is open stops the loop at once.
 struct PermissionIllustration: View {
     let label: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        IllustrationSwitch()
+            .id(reduceMotion)
+            .frame(width: 52, height: 30)
+            .accessibilityElement()
+            .accessibilityLabel(Text(verbatim: label))
+    }
+}
+
+/// The drawn switch: shape and position carry the state; the outline keeps it visible in Increase Contrast. It loops
+/// only while Reduce Motion is off; the parent rebuilds it when the setting changes.
+private struct IllustrationSwitch: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isOn = false
 
@@ -182,10 +199,7 @@ struct PermissionIllustration: View {
             Capsule().fill(isOn ? Color.accentColor : Color.secondary.opacity(0.35))
             Circle().fill(.white).padding(3).shadow(radius: 1)
         }
-        .frame(width: 52, height: 30)
         .overlay(Capsule().strokeBorder(.separator))
-        .accessibilityElement()
-        .accessibilityLabel(Text(verbatim: label))
         .onAppear {
             guard !reduceMotion else {
                 isOn = true
@@ -215,14 +229,18 @@ struct TypingMethodScreen: View {
 struct MethodCard: View {
     let model: OnboardingModel
     let method: TypingMethod
+    @FocusState private var focused: Bool
 
     var body: some View {
         let localizer = model.localizer
         let selected = model.method == method
         Button(action: { model.select(method) }) {
-            MethodCardLabel(localizer: localizer, method: method, selected: selected)
+            MethodCardLabel(localizer: localizer, method: method, selected: selected, focused: focused)
         }
         .buttonStyle(.plain)
+        // PRD-R67: a plain-style card draws its own keyboard focus ring (MethodCardLabel), always visible.
+        .focused($focused)
+        .focusEffectDisabled()
         .onboardingAccessibility(method == .telex ? .methodTelex : .methodVNI, localizer)
         .accessibilityValue(Text(verbatim: selected ? localizer.string(OnboardingText.methodSelected) : ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -230,11 +248,12 @@ struct MethodCard: View {
 }
 
 /// Card face: title, example and the selection mark. Selection is a symbol and a thicker border, never colour
-/// alone (PRD-R67).
+/// alone; keyboard focus is the system focus-ring colour drawn outside the card (PRD-R67).
 struct MethodCardLabel: View {
     let localizer: Localizer
     let method: TypingMethod
     let selected: Bool
+    var focused = false
 
     var body: some View {
         let title = localizer.string(method == .telex ? OnboardingText.methodTelexTitle : OnboardingText.methodVNITitle)
@@ -253,7 +272,13 @@ struct MethodCardLabel: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(.background))
         .overlay(
             RoundedRectangle(cornerRadius: 10).strokeBorder(
-                selected ? Color.accentColor : .secondary, lineWidth: selected ? 3 : 1))
+                selected ? Color.accentColor : .secondary, lineWidth: selected ? 3 : 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 13)
+                .strokeBorder(Color(nsColor: .keyboardFocusIndicatorColor), lineWidth: 3)
+                .padding(-3)
+                .opacity(focused ? 1 : 0))
     }
 }
 

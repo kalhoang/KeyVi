@@ -76,6 +76,21 @@ public struct Localizer: Sendable {
         date.formatted(Date.FormatStyle(date: .long, time: .omitted, locale: locale))
     }
 
+    /// PRD-R65: an ISO calendar day (`YYYY-MM-DD`, as `compat-matrix.json` writes `lastVerified`) in the selected
+    /// language, in the same long style as `formatDate`. Text that is not a valid day is returned unchanged.
+    public func formatDay(iso day: String, timeZone: TimeZone = .current) -> String {
+        guard let match = day.wholeMatch(of: /(\d{4})-(\d{2})-(\d{2})/) else { return day }
+        let parts = DateComponents(year: Int(match.1), month: Int(match.2), day: Int(match.3))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        // A day that does not exist (2026-02-30) rolls over in `date(from:)`; reading it back catches that.
+        guard let date = calendar.date(from: parts) else { return day }
+        let back = calendar.dateComponents([.year, .month, .day], from: date)
+        guard back.year == parts.year, back.month == parts.month, back.day == parts.day else { return day }
+        return date.formatted(
+            Date.FormatStyle(date: .long, time: .omitted, locale: locale, calendar: calendar, timeZone: timeZone))
+    }
+
     public func formatNumber(_ number: Int) -> String {
         number.formatted(IntegerFormatStyle<Int>(locale: locale))
     }

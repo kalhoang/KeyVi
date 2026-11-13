@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Catalog test for the shell-owned String Catalogs and the composition root's `Composition` table (PRD-R62,
-// PRD-R66, ADR 0310): every key in vi and en with matching format arguments, no empty values, no hard-coded
-// brand, no dashes, every key the code uses present, and no dead copy. W2-F extends this to all tables.
+// Shell-specific copy checks (PRD-R10, PRD-R66, ADR 0310). The generic checks of every table (vi and en,
+// format arguments, brand, dashes, referenced and orphaned keys, literal copy) live in CatalogAuditTests; the
+// control scans of every window in AccessibilitySourceAuditTests.
 
 import AppModel
 import Foundation
@@ -11,59 +11,6 @@ import Testing
 @testable import ShellCore
 
 @Suite struct ShellCatalogTests {
-    static let ownedTables: [StringTable] = [.common, .menu, .status, .onboarding, .composition]
-
-    /// Keys the code refers to, per table.
-    static func referencedKeys() -> [StringTable: Set<String>] {
-        var keys: [StringTable: Set<String>] = [:]
-        keys[.common] = Set(CommonText.allCases.map(\.rawValue))
-        keys[.menu] = Set(MenuText.allCases.map(\.rawValue))
-            .union(StatusIconState.allCases.map(\.accessibilityLabelKey))
-        keys[.status] = Set(StatusText.allCases.map(\.rawValue))
-        keys[.onboarding] = Set(OnboardingText.allCases.map(\.rawValue))
-            .union(OnboardingControl.allCases.flatMap { [$0.accessibilityLabelKey, $0.accessibilityHintKey] })
-        keys[.composition] = Set(CompositionText.allCases.map(\.rawValue))
-        return keys
-    }
-
-    @Test(arguments: ownedTables)
-    func everyKeyHasViAndEnWithMatchingArguments(table: StringTable) throws {
-        let catalog = try Catalog(table: table)
-        #expect(catalog.sourceLanguage == "vi")
-        #expect(!catalog.entries.isEmpty)
-        for (key, entry) in catalog.entries {
-            let vi = try #require(entry.values["vi"], "\(table.rawValue): \(key) has no vi value")
-            let en = try #require(entry.values["en"], "\(table.rawValue): \(key) has no en value")
-            #expect(!vi.trimmingCharacters(in: .whitespaces).isEmpty, "\(key): empty vi")
-            #expect(!en.trimmingCharacters(in: .whitespaces).isEmpty, "\(key): empty en")
-            #expect(FormatSpecifiers.of(vi) == FormatSpecifiers.of(en), "\(table.rawValue): \(key) arguments differ")
-        }
-    }
-
-    @Test(arguments: ownedTables)
-    func noBrandLiteralsAndNoDashes(table: StringTable) throws {
-        let catalog = try Catalog(table: table)
-        let brand = try BrandFiles.values()
-        for (key, entry) in catalog.entries {
-            for value in entry.values.values {
-                for literal in [brand.displayName, brand.siteHost, brand.bundleID] {
-                    #expect(!value.contains(literal), "\(key) hard-codes \(literal); pass the brand as an argument")
-                }
-                #expect(!value.contains("\u{2014}") && !value.contains("\u{2013}"), "\(key) contains a dash")
-                #expect(!value.lowercased().contains("sudo"), "\(key): PLT-R741 forbids suggesting sudo")
-            }
-        }
-    }
-
-    @Test(arguments: ownedTables)
-    func everyReferencedKeyExistsAndNoCopyIsDead(table: StringTable) throws {
-        let catalog = try Catalog(table: table)
-        let referenced = Self.referencedKeys()[table] ?? []
-        let present = Set(catalog.entries.keys)
-        #expect(referenced.subtracting(present).sorted() == [], "missing in \(table.rawValue)")
-        #expect(present.subtracting(referenced).sorted() == [], "unused in \(table.rawValue)")
-    }
-
     @Test func everyOnboardingControlHasLabelAndHint() throws {
         // PRD-R66
         let catalog = try Catalog(table: .onboarding)
@@ -102,42 +49,6 @@ import Testing
         #expect(vi.format(CompositionText.safeModeTitle, "App") == "App đang chạy ở chế độ an toàn")
         #expect(en.format(CompositionText.safeModeTitle, "App") == "App is running in safe mode")
         #expect(en.string(CompositionText.conflictsDismiss) == "OK")
-    }
-
-    @Test func everyControlInOwnedWindowsHasLabelAndHint() throws {
-        // PRD-R66: each SwiftUI control in the onboarding window and the HUDs carries a VoiceOver label and hint
-        // (system alert buttons, which have a `role:`, are labelled by their title).
-        let control = /\b(Button|TextField|Toggle)\(/
-        let labelled = /onboardingAccessibility\(|accessibilityHint\(/
-        for folder in ["App/Sources/Onboarding", "App/Sources/Shell"] {
-            let directory = RepoPaths.url(folder)
-            for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-            where file.pathExtension == "swift" {
-                let lines = try String(contentsOf: file, encoding: .utf8).components(separatedBy: "\n")
-                for (index, line) in lines.enumerated() where line.contains(control) && !line.contains("role:") {
-                    let window = lines[index..<min(lines.count, index + 8)].joined(separator: "\n")
-                    #expect(window.contains(labelled), "\(file.lastPathComponent):\(index + 1) has no label and hint")
-                }
-            }
-        }
-    }
-
-    @Test func shellSourcesHaveNoLiteralProductCopy() throws {
-        // Acceptance: no `Text("...")` literal for product copy in owned App sources (ADR 0310).
-        let folders = ["App/Sources/Shell", "App/Sources/Onboarding"]
-        let pattern =
-            /(Text|Button|Toggle|Label|Link)\(\s*"[^"]+"|\.help\(\s*"|setAccessibility(Label|Help)\(\s*"|title:\s*"[^"]+"/
-        for folder in folders {
-            let directory = RepoPaths.url(folder)
-            let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-            for file in files where file.pathExtension == "swift" {
-                let source = try String(contentsOf: file, encoding: .utf8)
-                for (index, line) in source.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                    let code = line.split(separator: "//", maxSplits: 1).first.map(String.init) ?? ""
-                    #expect(code.firstMatch(of: pattern) == nil, "\(file.lastPathComponent):\(index + 1)")
-                }
-            }
-        }
     }
 }
 

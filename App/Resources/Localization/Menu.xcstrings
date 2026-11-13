@@ -325,6 +325,24 @@
         }
       }
     },
+    "icon.paused.diagnosticsTest.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the dimmed menu bar icon while the guided test of the Diagnostics window types (PRD-R10, PLT-R211).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused: the guided test is typing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạm dừng: đang gõ thử tự động"
+          }
+        }
+      }
+    },
     "icon.paused.noTextFocus.accessibilityLabel" : {
       "comment" : "PLT-R211: paused because no text field is focused.",
       "extractionState" : "manual",
@@ -343,20 +361,38 @@
         }
       }
     },
-    "icon.paused.other.accessibilityLabel" : {
-      "comment" : "PLT-R211: other pauses; the menu status line says why.",
+    "icon.paused.sessionInactive.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the dimmed menu bar icon while the user session is not active (PRD-R10, PLT-R211).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paused"
+            "value" : "Paused: the user session is not active"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tạm dừng"
+            "value" : "Tạm dừng: phiên người dùng không hoạt động"
+          }
+        }
+      }
+    },
+    "icon.paused.userDisabled.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the dimmed menu bar icon while typing is turned off by the user (PRD-R10, PLT-R211).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused: typing is turned off for now"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạm dừng: bộ gõ đang tạm tắt"
           }
         }
       }

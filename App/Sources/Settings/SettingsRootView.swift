@@ -40,6 +40,8 @@ struct SettingsRootView: View {
         .frame(
             minWidth: SettingsWindowController.minimumSize.width, minHeight: SettingsWindowController.minimumSize.height
         )
+        // PRD-R67: with Reduce Motion on, no implicit SwiftUI animation runs anywhere in the window.
+        .respectsReduceMotion()
         .modifier(SettingsSheets(model: model))
     }
 
@@ -60,13 +62,13 @@ struct SettingsSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: presence(\.resetRequest)) { ResetSheet(model: model) }
-            .sheet(isPresented: presence(\.exportSheet)) { ExportSheet(model: model) }
-            .sheet(isPresented: importPresented) { ImportSheet(model: model) }
-            .sheet(isPresented: presence(\.macroDraft)) { MacroEditorSheet(model: model) }
-            .sheet(isPresented: macroImportPresented) { MacroImportSheet(model: model) }
-            .sheet(isPresented: presence(\.appDetail)) { AppDetailSheet(model: model) }
-            .sheet(isPresented: $model.showsLicences) { LicencesSheet(model: model) }
+            .sheet(isPresented: presence(\.resetRequest)) { ResetSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: presence(\.exportSheet)) { ExportSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: importPresented) { ImportSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: presence(\.macroDraft)) { MacroEditorSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: macroImportPresented) { MacroImportSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: presence(\.appDetail)) { AppDetailSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: $model.showsLicences) { LicencesSheet(model: model).respectsReduceMotion() }
             .modifier(MacroDeleteAlert(model: model))
             .modifier(PasteModeAlert(model: model))
     }

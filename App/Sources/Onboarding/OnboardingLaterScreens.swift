@@ -186,7 +186,10 @@ struct PermissionHelpSheet: View {
         .frame(width: 480)
         .alert(Text(verbatim: help.confirmTitle), isPresented: $model.confirmPermissionReset) {
             Button(role: .destructive, action: model.resetPermission) { Text(verbatim: help.confirmButton) }
-            Button(role: .cancel, action: {}) { Text(verbatim: localizer.string(CommonText.cancel)) }
+                .onboardingAccessibility(.confirmResetPermission, localizer, label: help.confirmButton)
+            let cancel = localizer.string(CommonText.cancel)
+            Button(role: .cancel, action: {}) { Text(verbatim: cancel) }
+                .onboardingAccessibility(.cancelResetPermission, localizer, label: cancel)
         } message: {
             Text(verbatim: help.confirmBody)
         }

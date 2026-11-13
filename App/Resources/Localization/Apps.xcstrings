@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "vi",
   "strings" : {
+    "apps.column.actions.accessibilityLabel" : {
+      "comment" : "Header of the Apps table column that holds the Details and report buttons; also its VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actions"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thao tác"
+          }
+        }
+      }
+    },
     "apps.column.app" : {
       "comment" : "PRD-R34 column.",
       "extractionState" : "manual",

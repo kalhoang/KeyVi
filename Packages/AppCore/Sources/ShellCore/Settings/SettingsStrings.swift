@@ -67,7 +67,6 @@ public enum SettingsText: String, LocalizationKey {
     case methodExplanation = "settings.typing.method.explanation"
     case methodTelex = "settings.typing.method.telex"
     case methodVNI = "settings.typing.method.vni"
-    case practiceLabel = "settings.typing.practice.label"
     case practicePlaceholder = "settings.typing.practice.placeholder"
     case toneTitle = "settings.typing.tone.title"
     case toneExplanation = "settings.typing.tone.explanation"

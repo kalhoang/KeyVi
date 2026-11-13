@@ -54,16 +54,19 @@ public enum StatusPresentation {
 
     /// VoiceOver label key for the status item (PLT-R211: the label is truthful about the reason). PRD-R10
     /// labels are used where they fit; the dimmed and slashed glyphs, which cover several states, get a
-    /// reason-specific label otherwise.
+    /// reason-specific label otherwise, so every pause reason is said in plain words even without a status line.
     public static func accessibilityLabelKey(icon: StatusIconState, state: HostState) -> String {
         switch (icon, state) {
         case (.paused, .starting):
             return MenuText.iconStarting.rawValue
         case (.paused, .paused(.noTextFocus)):
             return MenuText.iconPausedNoTextFocus.rawValue
-        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)),
-            (.paused, .paused(.diagnosticsTest)):
-            return MenuText.iconPausedOther.rawValue
+        case (.paused, .paused(.userDisabled)):
+            return MenuText.iconPausedUserDisabled.rawValue
+        case (.paused, .paused(.sessionInactive)):
+            return MenuText.iconPausedSessionInactive.rawValue
+        case (.paused, .paused(.diagnosticsTest)):
+            return MenuText.iconPausedDiagnosticsTest.rawValue
         case (.notWorking, .failOpen(let reason)) where reason != .permissionRevoked:
             return MenuText.iconNotWorkingFailOpen.rawValue
         default:

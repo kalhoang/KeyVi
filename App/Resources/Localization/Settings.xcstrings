@@ -1952,13 +1952,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The file could not be saved. Try another folder."
+            "value" : "The file could not be saved. Choose another folder."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp. Bạn thử chọn thư mục khác."
+            "value" : "Không lưu được tệp. Hãy chọn thư mục khác."
           }
         }
       }
@@ -2138,7 +2138,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS chưa bật bàn phím chữ Latin nào."
+            "value" : "macOS chưa bật bàn phím chữ Latinh nào."
           }
         }
       }
@@ -2282,7 +2282,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không đổi được tùy chọn mở khi đăng nhập. Bạn thử lại, hoặc bật trong Cài đặt hệ thống."
+            "value" : "Không đổi được tùy chọn mở khi đăng nhập. Hãy thử lại, hoặc bật trong Cài đặt hệ thống."
           }
         }
       }
@@ -2438,13 +2438,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Briefly shows V or E on screen when you switch by hand."
+            "value" : "Briefly shows V or E near the bottom of the screen when you switch by hand."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hiện chữ V hoặc E giữa màn hình trong chốc lát khi bạn tự chuyển."
+            "value" : "Hiện chữ V hoặc E ở phía dưới màn hình trong chốc lát khi bạn tự chuyển."
           }
         }
       }
@@ -3410,7 +3410,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mode for apps seen for the first time"
+            "value" : "Mode for an app seen for the first time"
           }
         },
         "vi" : {
@@ -3428,7 +3428,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Macros in English mode"
+            "value" : "Expand macros in English mode"
           }
         },
         "vi" : {
@@ -3632,7 +3632,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp %@. Thay đổi mới nhất có thể mất khi thoát. Bạn kiểm tra dung lượng ổ đĩa rồi thử lại."
+            "value" : "Không lưu được tệp %@. Thay đổi mới nhất có thể mất khi thoát. Hãy kiểm tra dung lượng ổ đĩa rồi thử lại."
           }
         }
       }
@@ -4299,24 +4299,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VNI"
-          }
-        }
-      }
-    },
-    "settings.typing.practice.label" : {
-      "comment" : "PRD-R24 live practice field.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Practice field"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ô gõ thử"
           }
         }
       }
