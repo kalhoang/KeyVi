@@ -1,0 +1,31 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "office.libreoffice.pacing",
+  "targetBundleId": "org.libreoffice.script",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "20000"
+    }
+  ],
+  "keys": [
+    "shift+n",
+    "g",
+    "u",
+    "y",
+    "e",
+    "e",
+    "x",
+    "n"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "Nguyễn"
+  },
+  "readback": "human"
+}

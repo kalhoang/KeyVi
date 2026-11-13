@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // QA-R10 contract: each field exposes its current text to the runner through AX (`AXValue` of the element
-// with this accessibility identifier). Web fields mirror their DOM value into a hidden native field through a
-// WKScriptMessageHandler so AX readback works the same way. Workstream W2-E1 (was W1-H).
+// with this accessibility identifier). Web fields mirror their DOM value into a native read-only field through
+// a WKScriptMessageHandler so AX readback works the same way (WebFields.swift). Workstream W2-E1.
 // The window title and labels are fixed English test-fixture text, not product copy.
 
 import AppKit
@@ -23,44 +23,121 @@ enum TestHostField: String, CaseIterable {
 
 @MainActor
 final class TestHostWindowController: NSWindowController {
-    private var fields: [TestHostField: NSTextField] = [:]
+    private var access: [TestHostField: (get: () -> String, reset: () -> Void)] = [:]
+    let web = WebFieldsController()
+    let secureInput = SecureInputHolder()
 
     required init?(coder: NSCoder) { nil }
 
     init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 160), styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 760), styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered, defer: false)
         window.title = "TestHost"
         window.center()
         super.init(window: window)
-
-        let label = NSTextField(labelWithString: "Native text field")
-        let field = NSTextField(string: "")
-        field.placeholderString = "Type here"
-        field.setAccessibilityIdentifier(TestHostField.nativeTextField.rawValue)
-        fields[.nativeTextField] = field
-
-        let stack = NSStackView(views: [label, field])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        let content = NSView()
-        content.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: content.topAnchor),
-            field.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
-        ])
-        window.contentView = content
-        window.initialFirstResponder = field
+        let layout = TestHostLayout()
+        buildNativeFields(into: layout)
+        buildWebFields(into: layout)
+        layout.addRow("Secure input", secureInput.checkbox)
+        window.contentView = layout.contentView()
+        window.initialFirstResponder = layout.firstField
+        web.loadPage(named: WebFieldsController.pages[0])
     }
 
-    /// Clears a field before a scenario step. Fields the skeleton does not build yet are ignored.
-    func reset(_ field: TestHostField) { fields[field]?.stringValue = "" }
+    private func buildNativeFields(into layout: TestHostLayout) {
+        let textField = NSTextField(string: "")
+        textField.placeholderString = "Type here"
+        describe(textField, .nativeTextField, "Native text field", "Plain NSTextField.")
+        access[.nativeTextField] = ({ textField.stringValue }, { textField.stringValue = "" })
+        layout.addRow("Native text field", textField)
 
-    /// Current text, as the runner would read it through AX. Empty for fields not built yet.
-    func text(of field: TestHostField) -> String { fields[field]?.stringValue ?? "" }
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 360, height: 80))
+        textView.isRichText = false
+        textView.font = .systemFont(ofSize: NSFont.systemFontSize)
+        describe(textView, .nativeTextView, "Native text view", "Multi-line NSTextView.")
+        access[.nativeTextView] = ({ textView.string }, { textView.string = "" })
+        layout.addRow("Native text view", Self.scrolling(textView, height: 80))
+
+        let addressBar = InlineCompletionTextView(
+            identifier: TestHostField.addressBarWithCompletion.rawValue, label: "Simulated address bar",
+            hint: "Completes from history inline and selects the suggested remainder.")
+        access[.addressBarWithCompletion] = ({ addressBar.string }, { addressBar.replaceAll(with: "") })
+        layout.addRow("Address bar (inline completion)", Self.toolbar(addressBar.embedded()))
+
+        let cell = SpreadsheetCellTextView(
+            identifier: TestHostField.spreadsheetCell.rawValue, label: "Simulated spreadsheet cell",
+            hint: "Loses keys while entering edit mode and autocompletes from its column.")
+        let dropped = NSTextField(labelWithString: "Dropped keys: 0")
+        dropped.setAccessibilityIdentifier("testhost.sim.sheetCell.dropped")
+        cell.onDroppedKey = { dropped.stringValue = "Dropped keys: " + String($0) }
+        access[.spreadsheetCell] = ({ cell.string }, { cell.replaceAll(with: "") })
+        layout.addRow("Spreadsheet cell", cell.embedded())
+        layout.addRow("", dropped)
+
+        let password = ReadableSecureTextField(string: "")
+        describe(password, .passwordField, "Password field", "Secure text field; text must arrive untransformed.")
+        access[.passwordField] = ({ password.stringValue }, { password.stringValue = "" })
+        layout.addRow("Password", password)
+    }
+
+    private func buildWebFields(into layout: TestHostLayout) {
+        layout.addRow("Page", web.picker)
+        web.webView.translatesAutoresizingMaskIntoConstraints = false
+        web.webView.heightAnchor.constraint(equalToConstant: 220).isActive = true
+        layout.addRow("Web view", web.webView)
+        let labels: [TestHostField: String] = [
+            .webInput: "Web input (mirror)", .webTextarea: "Web textarea (mirror)",
+            .webContentEditable: "Web contenteditable (mirror)",
+        ]
+        for field in WebFieldsController.mirroredFields {
+            guard let mirror = web.mirrors[field] else { continue }
+            access[field] = ({ [web] in web.text(of: field) }, { [web] in web.reset(field) })
+            layout.addRow(labels[field] ?? field.rawValue, mirror)
+        }
+    }
+
+    private func describe(_ view: NSView, _ field: TestHostField, _ label: String, _ hint: String) {
+        view.setAccessibilityIdentifier(field.rawValue)
+        view.setAccessibilityLabel(label)
+        view.setAccessibilityHelp(hint)
+    }
+
+    private static func scrolling(_ textView: NSTextView, height: CGFloat) -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.documentView = textView
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.heightAnchor.constraint(equalToConstant: height).isActive = true
+        textView.autoresizingMask = [.width]
+        return scroll
+    }
+
+    /// Wraps the address bar in an element with the toolbar role, like a browser's omnibox (rules match
+    /// `ancestorRoles: ["AXToolbar"]`, 5.6).
+    private static func toolbar(_ content: NSView) -> NSView {
+        let container = NSView()
+        container.setAccessibilityElement(true)
+        container.setAccessibilityRole(.toolbar)
+        container.setAccessibilityLabel("Simulated browser toolbar")
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            content.topAnchor.constraint(equalTo: container.topAnchor),
+            content.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        return container
+    }
+
+    /// Clears a field before a scenario step.
+    func reset(_ field: TestHostField) { access[field]?.reset() }
+
+    /// Current text, as the runner would read it through AX.
+    func text(of field: TestHostField) -> String { access[field]?.get() ?? "" }
+
+    /// Opens a local page passed by the runner (`openURL` setup step with the TestHost target).
+    func open(_ url: URL) { web.load(url) }
 }

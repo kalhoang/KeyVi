@@ -3,6 +3,23 @@
 <!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
 <plist version="1.0">
 <dict>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<!-- Lets the runner open a local test page with TestHost (openURL setup step). Rank None: TestHost never
+		     becomes the default handler for HTML files. -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Local test page</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>None</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.html</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>

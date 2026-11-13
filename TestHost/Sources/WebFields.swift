@@ -1,0 +1,137 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// WKWebView part of the test host (QA-R10): loads a local page from the bundle (no network, 13.2), and mirrors
+// the DOM value of every element marked `data-testhost-field` into a native read-only field with the same
+// accessibility identifier, so the runner reads web fields through AX exactly like native ones. Focusing a
+// mirror (AXFocused) moves keyboard focus into the page element it mirrors.
+
+import AppKit
+import WebKit
+
+/// Read-only native field showing a DOM value. Becoming first responder forwards focus to the page.
+final class MirrorTextField: NSTextField {
+    var onFocusRequest: (@MainActor @Sendable () -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted, let onFocusRequest { DispatchQueue.main.async(execute: onFocusRequest) }
+        return accepted
+    }
+}
+
+@MainActor
+final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+    /// Bundled local pages, in picker order. `fields.html` holds the QA-R10 input, textarea and contenteditable.
+    static let pages = [
+        "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "contenteditable-composer.html",
+    ]
+    static let messageHandler = "testhost"
+    static let mirroredFields: [TestHostField] = [.webInput, .webTextarea, .webContentEditable]
+
+    let webView: WKWebView
+    let picker = NSPopUpButton()
+    private(set) var mirrors: [TestHostField: MirrorTextField] = [:]
+
+    override init() {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 560, height: 220), configuration: configuration)
+        super.init()
+        configuration.userContentController.add(WeakMessageHandler(self), name: Self.messageHandler)
+        webView.navigationDelegate = self
+        webView.setAccessibilityLabel("Local test page")
+        webView.setAccessibilityHelp("Web page with an input, a textarea and a contenteditable element.")
+        for field in Self.mirroredFields { mirrors[field] = makeMirror(field) }
+        picker.addItems(withTitles: Self.pages)
+        picker.target = self
+        picker.action = #selector(pickPage(_:))
+        picker.setAccessibilityIdentifier("testhost.web.pagePicker")
+        picker.setAccessibilityLabel("Local test page")
+        picker.setAccessibilityHelp("Chooses which bundled test page the web view shows.")
+    }
+
+    private func makeMirror(_ field: TestHostField) -> MirrorTextField {
+        let mirror = MirrorTextField(string: "")
+        mirror.isEditable = false
+        mirror.isSelectable = true
+        mirror.setAccessibilityIdentifier(field.rawValue)
+        mirror.setAccessibilityLabel("Mirror of " + field.rawValue)
+        mirror.setAccessibilityHelp("Shows the current value of the page element; focusing it focuses that element.")
+        mirror.onFocusRequest = { @MainActor [weak self] in self?.focusElement(field) }
+        return mirror
+    }
+
+    // MARK: Pages
+
+    /// Directory of the bundled pages (XcodeGen may copy the folder or flatten its files).
+    static var pagesDirectory: URL? {
+        let bundle = Bundle.main
+        let url =
+            bundle.url(forResource: "fields", withExtension: "html", subdirectory: "Pages")
+            ?? bundle.url(forResource: "fields", withExtension: "html")
+        return url?.deletingLastPathComponent()
+    }
+
+    func loadPage(named name: String) {
+        guard let directory = Self.pagesDirectory else { return }
+        load(directory.appendingPathComponent(name))
+    }
+
+    /// Loads a local file page. Anything that is not a `file:` URL to an .html file is ignored (no network).
+    func load(_ url: URL) {
+        guard url.isFileURL, url.pathExtension == "html" else { return }
+        for mirror in mirrors.values { mirror.stringValue = "" }
+        webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        if let index = Self.pages.firstIndex(of: url.lastPathComponent) { picker.selectItem(at: index) }
+    }
+
+    @objc private func pickPage(_ sender: NSPopUpButton) {
+        loadPage(named: Self.pages[max(0, sender.indexOfSelectedItem)])
+    }
+
+    /// Blocks every navigation away from local files (13.2: pages carry no network references).
+    func webView(
+        _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void
+    ) {
+        let isLocal = navigationAction.request.url?.isFileURL ?? false
+        decisionHandler(isLocal || navigationAction.request.url?.scheme == "about" ? .allow : .cancel)
+    }
+
+    // MARK: Mirroring
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any], let raw = body["field"] as? String,
+            let field = TestHostField(rawValue: raw), let value = body["value"] as? String
+        else { return }
+        mirrors[field]?.stringValue = value
+    }
+
+    func text(of field: TestHostField) -> String { mirrors[field]?.stringValue ?? "" }
+
+    func reset(_ field: TestHostField) {
+        mirrors[field]?.stringValue = ""
+        webView.evaluateJavaScript("window.TestHost && window.TestHost.reset(" + Self.quoted(field.rawValue) + ")")
+    }
+
+    func focusElement(_ field: TestHostField) {
+        webView.window?.makeFirstResponder(webView)
+        webView.evaluateJavaScript("window.TestHost && window.TestHost.focus(" + Self.quoted(field.rawValue) + ")")
+    }
+
+    /// Field identifiers are fixed ASCII; quoting keeps the script well-formed anyway.
+    private static func quoted(_ value: String) -> String {
+        "\"" + value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+    }
+}
+
+/// `WKUserContentController` retains its handlers; this breaks the cycle with the controller.
+@MainActor
+private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var target: (any WKScriptMessageHandler)?
+    init(_ target: any WKScriptMessageHandler) { self.target = target }
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(controller, didReceive: message)
+    }
+}

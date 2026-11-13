@@ -1,0 +1,73 @@
+{
+  "benchmark": "platform",
+  "calibration": {
+    "name": "platform-reference-loop",
+    "nanoseconds": 1
+  },
+  "formatVersion": 1,
+  "metrics": {
+    "C1.cpuPercent": {
+      "budget": 0.3,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "%",
+      "value": 0.3
+    },
+    "C2.cpuPercent": {
+      "budget": 3,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "%",
+      "value": 3
+    },
+    "M1.footprintMB": {
+      "budget": 50,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "MB",
+      "value": 50
+    },
+    "T2.p99": {
+      "budget": 3,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "ms",
+      "value": 3
+    },
+    "T3.p99": {
+      "budget": 15,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "ms",
+      "value": 15
+    },
+    "T4.p99": {
+      "budget": 10,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "ms",
+      "value": 10
+    },
+    "T5.flushes": {
+      "budget": 0,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "count",
+      "value": 0
+    },
+    "T6.p95": {
+      "budget": 60,
+      "calibrated": false,
+      "placeholder": true,
+      "unit": "ms",
+      "value": 60
+    }
+  },
+  "note": "PLACEHOLDER (PLT-R822, QA-R15): every value equals its 02-platform.md 8.1 gate until the self-hosted runner measures a real baseline. Replace it in a PR labelled perf-baseline with scripts/bench-compare.sh --update-baseline. All metrics are calibrated: false (ADR 0502), so the calibration values are informational.",
+  "placeholder": true,
+  "referenceCalibration": {
+    "name": "platform-reference-loop",
+    "nanoseconds": 1
+  },
+  "runs": 0
+}

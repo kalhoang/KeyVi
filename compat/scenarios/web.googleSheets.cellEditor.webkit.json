@@ -1,0 +1,25 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "web.googleSheets.cellEditor.webkit",
+  "targetBundleId": "com.apple.Safari",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "30000"
+    }
+  ],
+  "keys": [
+    "shift+d",
+    "d"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "Đức"
+  },
+  "readback": "human"
+}

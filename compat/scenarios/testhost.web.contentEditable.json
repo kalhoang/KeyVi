@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.web.contentEditable",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.web.contentEditable"
+    }
+  ],
+  "keys": [
+    "x",
+    "i",
+    "n",
+    "space",
+    "c",
+    "h",
+    "a",
+    "o",
+    "f"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "xin chào"
+  },
+  "readback": "ax"
+}

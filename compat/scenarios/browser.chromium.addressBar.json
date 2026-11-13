@@ -1,0 +1,30 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "browser.chromium.addressBar",
+  "targetBundleId": "com.google.Chrome",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "seedHistory",
+      "value": "http://asia.localhost:8000/"
+    },
+    {
+      "action": "wait",
+      "value": "1000"
+    }
+  ],
+  "keys": [
+    "command+l",
+    "a",
+    "s"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "á"
+  },
+  "readback": "ax"
+}

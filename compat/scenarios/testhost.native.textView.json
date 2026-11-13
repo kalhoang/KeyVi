@@ -1,0 +1,41 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.native.textView",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textView"
+    }
+  ],
+  "keys": [
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "fast",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng việt"
+  },
+  "readback": "ax"
+}

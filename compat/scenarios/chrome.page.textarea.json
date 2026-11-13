@@ -1,0 +1,38 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "chrome.page.textarea",
+  "targetBundleId": "com.google.Chrome",
+  "setup": [
+    {
+      "action": "openURL",
+      "value": "{pages}/fields.html"
+    },
+    {
+      "action": "focusField",
+      "value": "#web-textarea"
+    }
+  ],
+  "keys": [
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng việt"
+  },
+  "readback": "webdriver"
+}

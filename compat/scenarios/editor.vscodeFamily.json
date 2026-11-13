@@ -1,0 +1,38 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "editor.vscodeFamily",
+  "targetBundleId": "com.microsoft.VSCode",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "3000"
+    }
+  ],
+  "keys": [
+    "command+n",
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng việt"
+  },
+  "readback": "ax"
+}

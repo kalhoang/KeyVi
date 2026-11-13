@@ -1,0 +1,32 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "browser.webkit.addressBar",
+  "targetBundleId": "com.apple.Safari",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "seedHistory",
+      "value": "http://canh.localhost:8000/"
+    },
+    {
+      "action": "wait",
+      "value": "1000"
+    }
+  ],
+  "keys": [
+    "command+l",
+    "c",
+    "a",
+    "6",
+    "u"
+  ],
+  "timing": "normal",
+  "method": "vni",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "câu"
+  },
+  "readback": "ax"
+}

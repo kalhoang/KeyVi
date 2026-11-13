@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
+<!-- 13.2 local page: a chat composer built on contenteditable. Like composers of web chat apps, it re-renders
+     its content into a paragraph on the first input (the moment some composers lose the first edit) and
+     sends on Return, clearing itself. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Contenteditable composer</title>
+  <link rel="stylesheet" href="testhost.css">
+  <script src="testhost.js"></script>
+</head>
+<body>
+  <ol id="messages" aria-label="Sent messages"></ol>
+  <label id="composer-label">Message</label>
+  <div id="composer" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false"
+       aria-labelledby="composer-label" data-placeholder="Write a message"
+       data-testhost-field="testhost.web.contentEditable"></div>
+  <script>
+    // SPDX-License-Identifier: LicenseRef-App-Pending
+    (function () {
+      "use strict";
+      var composer = document.getElementById("composer");
+      var messages = document.getElementById("messages");
+
+      function caretToEnd(node) {
+        var range = document.createRange();
+        range.selectNodeContents(node);
+        range.collapse(false);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      composer.addEventListener("input", function () {
+        if (!composer.querySelector("p") && composer.textContent.length > 0) {
+          var paragraph = document.createElement("p");
+          paragraph.textContent = composer.textContent;
+          composer.textContent = "";
+          composer.appendChild(paragraph);
+          caretToEnd(paragraph);
+        }
+      });
+
+      composer.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter" || event.shiftKey) {
+          return;
+        }
+        event.preventDefault();
+        var text = composer.innerText.replace(/\n$/, "");
+        if (text.length === 0) {
+          return;
+        }
+        var item = document.createElement("li");
+        item.textContent = text;
+        messages.appendChild(item);
+        composer.textContent = "";
+        window.TestHost.mirror(composer);
+      });
+    })();
+  </script>
+</body>
+</html>

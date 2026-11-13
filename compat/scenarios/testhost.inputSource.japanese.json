@@ -1,0 +1,29 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.inputSource.japanese",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textField"
+    }
+  ],
+  "keys": [
+    "a",
+    "i"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese",
+  "expect": {
+    "paused": true
+  },
+  "readback": "ax"
+}

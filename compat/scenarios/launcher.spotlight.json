@@ -1,0 +1,20 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "launcher.spotlight",
+  "targetBundleId": "com.apple.Spotlight",
+  "setup": [],
+  "keys": [
+    "command+space",
+    "c",
+    "o",
+    "o",
+    "s"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "cố"
+  },
+  "readback": "ax"
+}

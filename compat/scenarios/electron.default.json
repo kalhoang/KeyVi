@@ -1,0 +1,37 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "electron.default",
+  "targetBundleId": "com.tinyspeck.slackmacgap",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "20000"
+    }
+  ],
+  "keys": [
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng việt"
+  },
+  "readback": "human"
+}

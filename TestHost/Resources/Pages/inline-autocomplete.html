@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
+<!-- 13.2 local page: a field with browser-style inline autocomplete (4.3). After an insertion at the end, the
+     remainder of a matching suggestion is appended and selected, so a backspace removes only the selection:
+     the "as" -> "aá" and "dd" -> "dđ" bugs. Suggestions are bare host-like strings, never fetched. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Inline autocomplete</title>
+  <link rel="stylesheet" href="testhost.css">
+  <script src="testhost.js"></script>
+</head>
+<body>
+  <label for="address">Address</label>
+  <input id="address" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="inline"
+         aria-expanded="false" data-testhost-field="testhost.web.input"
+         data-testhost-completions="asia.example|dd.example|canh.example|books.example|coffee.example">
+  <p>Value: <span class="echo" data-testhost-echo="testhost.web.input"></span></p>
+</body>
+</html>

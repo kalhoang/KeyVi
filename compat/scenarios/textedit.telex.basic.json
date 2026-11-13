@@ -1,0 +1,39 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "textedit.telex.basic",
+  "targetBundleId": "com.apple.TextEdit",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "1500"
+    }
+  ],
+  "keys": [
+    "command+a",
+    "backspace",
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng việt"
+  },
+  "readback": "ax"
+}

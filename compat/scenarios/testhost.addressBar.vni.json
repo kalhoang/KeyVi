@@ -1,0 +1,31 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.addressBar.vni",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.sim.addressBar"
+    }
+  ],
+  "keys": [
+    "c",
+    "a",
+    "6",
+    "u"
+  ],
+  "timing": "normal",
+  "method": "vni",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "câu"
+  },
+  "readback": "ax"
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "browser.gecko.urlBar",
+  "targetBundleId": "org.mozilla.firefox",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "seedHistory",
+      "value": "http://co.localhost:8000/"
+    },
+    {
+      "action": "wait",
+      "value": "1000"
+    }
+  ],
+  "keys": [
+    "command+l",
+    "shift+c",
+    "o",
+    "s"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "Có"
+  },
+  "readback": "ax"
+}
