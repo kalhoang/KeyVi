@@ -144,7 +144,7 @@ Keys the labeler reads (QA-R44):
 
 The keys marked "stable" are the `DiagnosticsBlockKey` cases (`Packages/AppCore/Sources/Diagnostics/Report.swift`);
 the others are written by `Packages/AppCore/Sources/Diagnostics/IssueBlockFields.swift`. Amended 2026-11-13 after
-wave 1: the app emits every key below. `scripts/tests/test_scripts.py` fails when the app writes a key or a key
+wave 1: the app emits every key below. `scripts/tests/test_docs_and_workflows.py` fails when the app writes a key or a key
 family that this table does not name.
 
 | Key | Value | Notes |

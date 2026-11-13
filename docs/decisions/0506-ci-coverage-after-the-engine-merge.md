@@ -82,5 +82,5 @@ shared engine export (99.64 % of the core); `compat-lint` reports 0 errors and 3
 - A stale generated file, a missing traceability row, a changed data input, a compatibility-data error, a
   drop of the engine core below 95 %, an engine regression or a pipeline regression now fails CI instead of
   passing unseen.
-- `scripts/tests/test_scripts.py` (`WorkflowCoverageTests`) fails if one of these commands disappears from the
+- `scripts/tests/test_docs_and_workflows.py` (`WorkflowCoverageTests`) fails if one of these commands disappears from the
   workflows.

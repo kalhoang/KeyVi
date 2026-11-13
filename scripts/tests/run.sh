@@ -44,7 +44,9 @@ contains() { # contains <name> <needle> (in the last command's output)
 }
 
 echo "== Python unit tests"
-if python3 -I "$S/tests/test_scripts.py" >"$T/py.log" 2>&1; then ok "python unit tests"; else ko "python unit tests"; tail -n 40 "$T/py.log"; fi
+for suite in test_scripts test_docs_and_workflows; do
+  if python3 -I "$S/tests/$suite.py" >"$T/py.log" 2>&1; then ok "python $suite"; else ko "python $suite"; tail -n 40 "$T/py.log"; fi
+done
 
 echo "== --help of every script"
 for script in "$S"/*.sh "$S"/publish-release "$S"/*.py; do

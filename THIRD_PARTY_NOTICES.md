@@ -13,7 +13,7 @@ Sparkle is the only runtime dependency (QA-R24).
 - Project: <https://github.com/sparkle-project/Sparkle>
 - Used for: update checks, download, signature verification and installation (EdDSA).
 - Version: **2.10.1**, pinned exactly (PLT-R910): `exactVersion` in `project.yml` and revision `ab7d71291238df6e0492143b120c9b696a35f603` in [`Config/Package.resolved`](Config/Package.resolved) ([ADR 0304](docs/decisions/0304-sparkle-version-pin.md)). The release scripts download the same version's tools (`Sparkle-2.10.1.tar.xz`, SHA-256 pinned in `scripts/publish-release`).
-- Consistency (checked 2026-11-13 after wave 1): `project.yml` (`exactVersion: 2.10.1`), `Config/Package.resolved`, `scripts/publish-release` (`SPARKLE_VERSION`) and this entry name the same version and revision; `scripts/tests/test_scripts.py` (`NoticesTests`) fails if they diverge.
+- Consistency (checked 2026-11-13 after wave 1): `project.yml` (`exactVersion: 2.10.1`), `Config/Package.resolved`, `scripts/publish-release` (`SPARKLE_VERSION`) and this entry name the same version and revision; `scripts/tests/test_docs_and_workflows.py` (`NoticesTests`) fails if they diverge.
 - Licence: MIT, with additional licences for code bundled inside Sparkle (bsdiff, sais-lite, ed25519, SUSignatureVerifier).
 - Source of the notice text below: the `LICENSE` file of the Sparkle repository at tag `2.10.1`, compared line by line on 2026-11-13 (identical). Re-fetch and compare it whenever the pin changes; a pin change is a decision-record change (ADR 0304).
 

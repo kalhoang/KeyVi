@@ -71,7 +71,7 @@ Common vocabulary is not a match: Vietnamese linguistic terms, Telex and VNI let
 Every icon, image and piece of artwork in the repository has a recorded source. The review (section 3) checks
 that each asset below still matches its record and that no new asset arrived without one.
 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) section 4 carries the same entries with licences;
-`scripts/tests/test_scripts.py` (`NoticesTests`) fails when an image set in the asset catalog has no entry in
+`scripts/tests/test_docs_and_workflows.py` (`NoticesTests`) fails when an image set in the asset catalog has no entry in
 either file, or when an SVG has no source comment.
 
 | Asset | Files | Source record | Origin | Status |
