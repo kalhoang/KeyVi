@@ -24,6 +24,11 @@ final class NotificationObservationToken: NSObject, ObservationToken {
 
     /// Registers `names` on `center`. The handler runs on the main thread (TIS and NSWorkspace notifications are
     /// main-thread work, PLT-R203); `extract` copies the Sendable part of the notification first.
+    ///
+    /// On a `DistributedNotificationCenter` the observer asks for `.deliverImmediately`: the 4-argument cover
+    /// method registers with `.coalesce`, and AppKit suspends distributed delivery while the application is not
+    /// active, which a menu-bar agent almost never is. Input source changes and screen lock must arrive at once
+    /// (PLT-R370 "delivered immediately", PLT-R371, PLT-R372, PLT-R333).
     static func observe<Payload: Sendable>(
         _ names: [Notification.Name], on center: NotificationCenter,
         extract: @escaping @Sendable (Notification) -> Payload,
@@ -37,8 +42,14 @@ final class NotificationObservationToken: NSObject, ObservationToken {
                 DispatchQueue.main.async { MainActor.assumeIsolated { handler(payload) } }
             }
         }
+        let selector = #selector(received(_:))
         for name in names {
-            center.addObserver(token, selector: #selector(received(_:)), name: name, object: nil)
+            if let distributed = center as? DistributedNotificationCenter {
+                distributed.addObserver(
+                    token, selector: selector, name: name, object: nil, suspensionBehavior: .deliverImmediately)
+            } else {
+                center.addObserver(token, selector: selector, name: name, object: nil)
+            }
         }
         return token
     }

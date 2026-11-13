@@ -9,7 +9,13 @@ import Foundation
 
 @MainActor
 public final class TISInputSourceProvider: InputSourceProvider {
-    public init() {}
+    private let changeCenter: NotificationCenter
+
+    /// Observes `DistributedNotificationCenter.default()`.
+    public convenience init() { self.init(changeCenter: DistributedNotificationCenter.default()) }
+
+    /// Injectable center for the change notifications, so tests never register with the system center.
+    init(changeCenter: NotificationCenter) { self.changeCenter = changeCenter }
 
     public func currentSource() -> InputSourceInfo {
         InputSourceClassifier.info(from: TISSourceReader.raw(TISCopyCurrentKeyboardInputSource().takeRetainedValue()))
@@ -45,7 +51,7 @@ public final class TISInputSourceProvider: InputSourceProvider {
             Notification.Name(kTISNotifyEnabledKeyboardInputSourcesChanged as String),
         ]
         return NotificationObservationToken.observe(
-            names, on: DistributedNotificationCenter.default(), extract: { _ in () }, { _ in handler() })
+            names, on: changeCenter, extract: { _ in () }, { _ in handler() })
     }
 }
 
