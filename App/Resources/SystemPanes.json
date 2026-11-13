@@ -1,5 +1,69 @@
 {
   "schemaVersion": 1,
-  "_comment": "PLT-R704, PRD-R64. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint).",
-  "entries": []
+  "_comment": "PLT-R704, PRD-R64. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint). Names are in the macOS language because UI copy quotes them as the user sees them in System Settings.",
+  "entries": [
+    {
+      "_verify": "macOS 15 and 26. VERIFY the Vietnamese names of Input Monitoring and Text Replacements, and that inputSources has no dedicated anchor (it opens Keyboard).",
+      "macOS": {
+        "min": "15.0",
+        "max": "26.99"
+      },
+      "names": {
+        "en": {
+          "systemSettings": "System Settings",
+          "privacySecurity": "Privacy & Security",
+          "accessibility": "Accessibility",
+          "inputMonitoring": "Input Monitoring",
+          "keyboard": "Keyboard",
+          "textReplacements": "Text Replacements"
+        },
+        "vi": {
+          "systemSettings": "Cài đặt hệ thống",
+          "privacySecurity": "Quyền riêng tư & Bảo mật",
+          "accessibility": "Trợ năng",
+          "inputMonitoring": "Giám sát đầu vào",
+          "keyboard": "Bàn phím",
+          "textReplacements": "Thay thế văn bản"
+        }
+      },
+      "deepLinks": {
+        "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "inputMonitoring": "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+        "keyboard": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "inputSources": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "loginItems": "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
+      }
+    },
+    {
+      "_verify": "macOS 27: Accessibility is renamed Device Control and Data Access (PLT-R701, vendor documents of September to October 2026). VERIFY the exact Vietnamese and English labels and every deep link on a macOS 27.x machine.",
+      "macOS": {
+        "min": "27.0"
+      },
+      "names": {
+        "en": {
+          "systemSettings": "System Settings",
+          "privacySecurity": "Privacy & Security",
+          "accessibility": "Device Control and Data Access",
+          "inputMonitoring": "Input Monitoring",
+          "keyboard": "Keyboard",
+          "textReplacements": "Text Replacements"
+        },
+        "vi": {
+          "systemSettings": "Cài đặt hệ thống",
+          "privacySecurity": "Quyền riêng tư & Bảo mật",
+          "accessibility": "Điều khiển thiết bị và truy cập dữ liệu",
+          "inputMonitoring": "Giám sát đầu vào",
+          "keyboard": "Bàn phím",
+          "textReplacements": "Thay thế văn bản"
+        }
+      },
+      "deepLinks": {
+        "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "inputMonitoring": "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+        "keyboard": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "inputSources": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "loginItems": "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
+      }
+    }
+  ]
 }
