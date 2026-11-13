@@ -46,6 +46,8 @@ enum Builder {
         let techCodeOnly = try TechList.load(layout.inputs.appendingPathComponent("tech-code-only.txt"))
         let ambiguity = try AmbiguityRow.load(layout.inputs.appendingPathComponent("ambiguity.tsv"))
         let attested = try attestedSyllables(layout)
+        try checkGeneratedRows(
+            ambiguity, english: english, techAlways: Set(techAlways), attested: attested.syllables)
 
         var output = BuildOutput()
         let lists: [(String, [String])] = [
@@ -81,6 +83,34 @@ enum Builder {
             ))
         output.derived.append((ResourceName.attestedCandidates, Data(candidatesTSV(attested.counts).utf8)))
         return output
+    }
+
+    /// A generated `en` row (docs/decisions/0202) restates what rule L8 or the tech-always list does. When the
+    /// input it depends on changes (the display is attested, the word left the lexicon or the tech-always list),
+    /// the row would keep restoring the word on its own (rule L11) and nobody would notice: fail instead.
+    static func checkGeneratedRows(
+        _ rows: [AmbiguityRow], english: [String: Int], techAlways: Set<String>, attested: Set<String>
+    ) throws {
+        var stale: [String] = []
+        for row in rows {
+            switch row.generatedReason {
+            case .unattested:
+                if attested.contains(row.display) {
+                    stale.append("\(row.raw): display '\(row.display)' is now attested")
+                } else if english[row.raw] == nil && !techAlways.contains(row.raw) {
+                    stale.append("\(row.raw): no longer English (lexicon or tech-always), rule L8 does not apply")
+                }
+            case .techAlways:
+                if !techAlways.contains(row.raw) { stale.append("\(row.raw): no longer in tech-always.txt") }
+            case nil:
+                break
+            }
+        }
+        guard stale.isEmpty else {
+            throw BuilderError(
+                "ambiguity.tsv: generated rows whose reason no longer holds (delete each row, then merge again or "
+                    + "decide it by hand):\n" + stale.joined(separator: "\n"))
+        }
     }
 
     /// Attested set (spec/01-engine.md 8.2, used only by rule L8): legal-text tokens that are valid

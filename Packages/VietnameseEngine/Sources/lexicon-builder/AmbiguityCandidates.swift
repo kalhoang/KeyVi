@@ -125,13 +125,14 @@ struct AmbiguityCandidate {
             return AmbiguityRow(
                 raw: raw, decision: .en, status: .proposed, display: display,
                 note: "\(origin), display not attested): rule L8 restores it; proposed en to match "
-                    + "(attest the syllable with a reason and set vi to keep it)")
+                    + "(attest the syllable with a reason and set vi to keep it) "
+                    + AmbiguityRow.GeneratedReason.unattested.rawValue)
         }
         if isTechAlways {
             return AmbiguityRow(
                 raw: raw, decision: .en, status: .proposed, display: display,
                 note: "\(origin)): proposed en so that the tech-always word stays as typed, as rule L11 "
-                    + "does for tech-always words without a row")
+                    + "does for tech-always words without a row " + AmbiguityRow.GeneratedReason.techAlways.rawValue)
         }
         return AmbiguityRow(
             raw: raw, decision: .vi, status: .unreviewed, display: display,
@@ -222,15 +223,36 @@ enum AmbiguityCandidates {
         joinedLines([AmbiguityCandidate.header] + candidates.map(\.line))
     }
 
-    /// Appends the merge row of every candidate without a row (ENG-R821) and returns how many were added.
+    /// First line of the comment block that holds the generated `en` rows, always the last block of the table.
+    static let generatedBlockMarker = "# [generated en rows]"
+
+    static let generatedBlockHeader = [
+        "\(generatedBlockMarker) Added by `ambiguity-candidates --merge` (docs/decisions/0202); not decided by Pa.",
+        "# Each note ends with [generated:unattested] (English raw keys whose display is not attested: rule L8 restores",
+        "# the word whatever the row says) or [generated:tech-always] (a tech-always word, kept as typed by rule L11).",
+        "# `lexicon-builder build` fails when that reason no longer holds (the display was attested, the word left the",
+        "# lexicon or the tech-always list): delete the row, then merge again or decide it by hand.",
+    ]
+
+    /// Adds the merge row of every candidate without a row (ENG-R821) and returns how many were added:
+    /// `vi / unreviewed` rows before the generated block, generated `en` rows at its end (the block is
+    /// created on first use), so that the rows Pa reviews are not mixed with generated decisions.
     static func merge(_ candidates: [AmbiguityCandidate], into url: URL) throws -> Int {
         let existing = Set(try AmbiguityRow.load(url).map(\.raw))
         let additions = candidates.filter { !existing.contains($0.raw) }.map(\.mergeRow)
         guard !additions.isEmpty else { return 0 }
-        var text = try FileIO.readUTF8(url)
-        if !text.hasSuffix("\n") { text += "\n" }
-        text += joinedLines(additions.map(\.line))
-        try FileIO.write(text, to: url)
+        var lines = try FileIO.readUTF8(url).split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        if lines.last == "" { lines.removeLast() }
+        let generated = additions.filter { $0.generatedReason != nil }.map(\.line)
+        let reviewable = additions.filter { $0.generatedReason == nil }.map(\.line)
+        if let marker = lines.firstIndex(where: { $0.hasPrefix(generatedBlockMarker) }) {
+            lines.insert(contentsOf: reviewable, at: marker)
+        } else {
+            lines += reviewable
+            if !generated.isEmpty { lines += generatedBlockHeader }
+        }
+        lines += generated
+        try FileIO.write(joinedLines(lines), to: url)
         return additions.count
     }
 

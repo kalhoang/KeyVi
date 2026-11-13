@@ -8,6 +8,8 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineData
 
+@testable import lexicon_builder
+
 @Suite(.serialized)
 struct LexiconBuilderTests {
     // MARK: Reproducibility (ENG-R810)
@@ -147,13 +149,17 @@ struct LexiconBuilderTests {
                 "test\ttelex\ttét\ttét\tyes\tscowl-10\t0\tvi/unreviewed\ten/proposed",
                 "tar\ttelex\ttả\ttả\tyes\ttech-code-only\t2\tvi/unreviewed\t-",
             ])
-        // --merge appends the candidates without a row (ENG-R821): `is` (display not attested, restored by
-        // L8) as en/proposed, `tar` (code-only, attested) as vi/unreviewed.
+        // --merge adds the candidates without a row (ENG-R821): `tar` (code-only, attested) as vi/unreviewed,
+        // `is` (display not attested, restored by L8) as en/proposed in the generated block at the end.
         let merged = try BuilderProcess.run(arguments + ["--merge"])
         #expect(merged.status == 0, "\(merged.errors)")
         let table = try String(contentsOf: data.appendingPathComponent("inputs/ambiguity.tsv"), encoding: .utf8)
-        #expect(table.contains("\nis\ten\tproposed\tí\t"))
-        #expect(table.hasSuffix("tar\tvi\tunreviewed\ttả\tgenerated candidate (tech-code-only, corpus count 2)\n"))
+        let tar = try #require(
+            table.range(of: "\ntar\tvi\tunreviewed\ttả\tgenerated candidate (tech-code-only, corpus count 2)\n"))
+        let block = try #require(table.range(of: "\n\(AmbiguityCandidates.generatedBlockMarker)"))
+        let generated = try #require(table.range(of: "\nis\ten\tproposed\tí\t"))
+        #expect(tar.lowerBound < block.lowerBound && block.lowerBound < generated.lowerBound)
+        #expect(table.hasSuffix("\(AmbiguityRow.GeneratedReason.unattested.rawValue)\n"))
     }
 
     @Test func ambiguityCandidatesRunAgainstTheRealEngine() throws {

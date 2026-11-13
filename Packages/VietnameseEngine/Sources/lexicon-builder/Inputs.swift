@@ -103,7 +103,21 @@ struct AmbiguityRow: Equatable {
     let display: String
     let note: String
 
+    /// Why `ambiguity-candidates --merge` generated an `en` row (docs/decisions/0202), stored as a token in the
+    /// note so that `build` can fail when the reason no longer holds.
+    enum GeneratedReason: String, CaseIterable {
+        /// English raw keys whose display is not attested: rule L8 restores the word whatever the row says.
+        case unattested = "[generated:unattested]"
+        /// A tech-always word: rule L11 keeps it as typed without a row.
+        case techAlways = "[generated:tech-always]"
+    }
+
     static let header = "raw\tdecision\tstatus\tdisplay\tnote"
+
+    /// The generation reason recorded in the note, if any.
+    var generatedReason: GeneratedReason? {
+        GeneratedReason.allCases.first { note.contains($0.rawValue) }
+    }
 
     var line: String { "\(raw)\t\(decision.rawValue)\t\(status.rawValue)\t\(display)\t\(note)" }
 

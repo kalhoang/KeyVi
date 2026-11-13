@@ -59,6 +59,7 @@ private func inputs(
         #expect(candidate.mergeRow.decision == .vi)
         #expect(candidate.mergeRow.status == .unreviewed)
         #expect(candidate.mergeRow.display == "á")
+        #expect(candidate.mergeRow.generatedReason == nil, "a vi/unreviewed row has no reason to re-check")
     }
 
     @Test func unattestedEnglishDisplayIsProposedEnBecauseL8RestoresIt() throws {
@@ -69,6 +70,7 @@ private func inputs(
         #expect(candidate.mergeRow.status == .proposed)
         #expect(candidate.mergeRow.note.contains("not attested"))
         #expect(candidate.mergeRow.note.contains("L8"))
+        #expect(candidate.mergeRow.generatedReason == .unattested)
     }
 
     @Test func techAlwaysCandidateIsProposedEnSoThatItStaysAsTyped() throws {
@@ -80,6 +82,7 @@ private func inputs(
         #expect(candidate.mergeRow.decision == .en)
         #expect(candidate.mergeRow.status == .proposed)
         #expect(candidate.mergeRow.note.contains("tech-always"))
+        #expect(candidate.mergeRow.generatedReason == .techAlways)
     }
 
     @Test func codeOnlyWordOutsideTheLexiconIsViUnreviewedEvenWhenUnattested() throws {
@@ -163,6 +166,44 @@ private func inputs(
         #expect(rows[1].decision == .en && rows[1].status == .proposed)
         #expect(rows[2].decision == .en && rows[2].status == .proposed)
         #expect(try AmbiguityCandidates.merge(result, into: table) == 0)
+    }
+
+    @Test func mergeGroupsGeneratedEnRowsUnderTheirOwnBlockAndViRowsBeforeIt() throws {
+        // Medium review finding: the generated en rows are not Pa's decisions; they live in one block at the
+        // end so that the ENG-R821 review list (hand rows and vi/unreviewed candidates) stays readable.
+        let directory = try TempDirectory.make("merge-block")
+        defer { TempDirectory.remove(directory) }
+        let table = directory.appendingPathComponent("ambiguity.tsv")
+        try write("# comment\n\(AmbiguityRow.header)\ntest\ten\tproposed\ttét\tPa\n", to: table)
+        let typer = FakeTyper(
+            telex: ["as": "á", "is": "í", "exe": "ễ", "sed": "sẹ"],
+            validities: ["á": .standard, "í": .standard, "ễ": .standard, "sẹ": .standard])
+        let first = AmbiguityCandidates.candidates(
+            inputs(english: ["as": 10, "is": 10], techAlways: ["exe"], attested: ["á", "ễ"]), typer: typer)
+        #expect(try AmbiguityCandidates.merge(first, into: table) == 3)
+        var lines = try FileIO.readUTF8(table).split(separator: "\n").map(String.init)
+        var marker = try #require(lines.firstIndex { $0.hasPrefix(AmbiguityCandidates.generatedBlockMarker) })
+        #expect(lines.prefix(marker).contains { $0.hasPrefix("as\tvi\tunreviewed") })
+        #expect(lines.suffix(from: marker).contains { $0.hasPrefix("is\ten\tproposed") })
+        #expect(lines.suffix(from: marker).contains { $0.hasPrefix("exe\ten\tproposed") })
+        // A second merge keeps one block: vi rows go before it, en rows at its end.
+        let second = AmbiguityCandidates.candidates(
+            inputs(english: ["is": 10], techAlways: ["exe"], techCodeOnly: ["sed"], attested: ["ễ"]), typer: typer)
+        #expect(try AmbiguityCandidates.merge(second, into: table) == 1)
+        lines = try FileIO.readUTF8(table).split(separator: "\n").map(String.init)
+        #expect(lines.filter { $0.hasPrefix(AmbiguityCandidates.generatedBlockMarker) }.count == 1)
+        marker = try #require(lines.firstIndex { $0.hasPrefix(AmbiguityCandidates.generatedBlockMarker) })
+        #expect(lines.prefix(marker).contains { $0.hasPrefix("sed\tvi\tunreviewed") })
+        #expect(try AmbiguityRow.load(table).map(\.raw) == ["test", "as", "sed", "is", "exe"])
+    }
+
+    @Test func generatedReasonIsReadFromTheNoteToken() {
+        func row(_ note: String) -> AmbiguityRow {
+            AmbiguityRow(raw: "is", decision: .en, status: .proposed, display: "í", note: note)
+        }
+        #expect(row("x [generated:unattested] y").generatedReason == .unattested)
+        #expect(row("[generated:tech-always]").generatedReason == .techAlways)
+        #expect(row("hand-written, mentions generated candidate").generatedReason == nil)
     }
 
     @Test func tableTyperReadsAnOptionalMethodColumn() throws {

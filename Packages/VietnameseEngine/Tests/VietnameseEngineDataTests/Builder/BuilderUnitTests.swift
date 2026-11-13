@@ -236,6 +236,42 @@ import VietnameseEngine
                 atPath: layout.derived.appendingPathComponent("attested-candidates.tsv").path))
     }
 
+    @Test func buildRejectsGeneratedRowsWhoseReasonNoLongerHolds() throws {
+        // Medium review finding: a generated `en` row records a consequence of rule L8 (display not attested)
+        // or of the tech-always list. When the input it depends on changes, the row would silently keep
+        // restoring the word, so the build (and therefore `check`) fails and names the row.
+        let root = try MiniDataRoot.make()
+        defer { TempDirectory.remove(root) }
+        let layout = Layout(
+            dataRoot: root.appendingPathComponent("data"), resources: root.appendingPathComponent("out"))
+        let table = layout.inputs.appendingPathComponent("ambiguity.tsv")
+        func build(rows: [String]) throws {
+            try write(([AmbiguityRow.header] + rows).joined(separator: "\n") + "\n", to: table)
+            try FileIO.write(try InputManifest.scan(layout).text, to: layout.manifestFile)
+            _ = try Builder.build(layout)
+        }
+        let valid = [
+            "is\ten\tproposed\tí\tgenerated [generated:unattested]",
+            "www\ten\tproposed\tww\tgenerated [generated:tech-always]",
+            "test\ten\tproposed\ttét\thand row, [generated: is not a token",
+        ]
+        try build(rows: valid)
+        // á is attested (an addition of the fixture), so L8 no longer restores `as`.
+        let attested = "as\ten\tproposed\tá\tgenerated [generated:unattested]"
+        #expect(throws: BuilderError.self) { try build(rows: valid + [attested]) }
+        // `tar` is a code-only word, not English (8.1), so L8 never restores it.
+        let notEnglish = "tar\ten\tproposed\ttả\tgenerated [generated:unattested]"
+        #expect(throws: BuilderError.self) { try build(rows: valid + [notEnglish]) }
+        let notTechAlways = "usb\ten\tproposed\tú\tgenerated [generated:tech-always]"
+        #expect(throws: BuilderError.self) { try build(rows: valid + [notTechAlways]) }
+        do {
+            try build(rows: valid + [attested])
+        } catch let error as BuilderError {
+            #expect("\(error)".contains("as"))
+            #expect("\(error)".contains("attested"))
+        }
+    }
+
     @Test func proseCorpusTakesParagraphsRoundRobinAndChecksTheSize() throws {
         let root = try MiniDataRoot.make()
         defer { TempDirectory.remove(root) }
