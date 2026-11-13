@@ -249,7 +249,9 @@ private let rulesJSON = """
         let fileSystem = try makeCheckout(scenarios: [
             "a.json": scenarioJSON(
                 id: "a", target: HarnessTargets.testHostAlias,
-                setup: #"[{"action":"launch"},{"action":"focusField","value":"testhost.native.textField"}]"#),
+                setup:
+                    #"[{"action":"launch"},{"action":"setSecureInput","value":"off"},{"action":"focusField","value":"testhost.native.textField"}]"#
+            ),
             "b.json": scenarioJSON(id: "b").replacingOccurrences(of: #""đi""#, with: #""other""#),
             "h.json": scenarioJSON(id: "h", readback: "human"),
         ])
@@ -261,10 +263,12 @@ private let rulesJSON = """
         #expect(console.output.contains { $0.hasPrefix("needsHuman h") })
         #expect(console.output.last == "compat-harness run: 1 passed, 1 failed, 1 need a person")
         #expect(live.sink.records.count == 18)  // 3 scenarios x 3 keys x down/up, recorded in memory only
+        let host = "org.example.product.dev.testhost"
+        // The run ends by releasing TestHost's secure-input holder (no stuck secure input for the next job).
         #expect(
             live.system.calls.all == [
-                "launch org.example.product.dev.testhost",
-                "focus testhost.native.textField in org.example.product.dev.testhost",
+                "launch " + host, "secure false in " + host, "focus testhost.native.textField in " + host,
+                "secure false in " + host,
             ])
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20)
         let report = try JSONDecoder().decode(ScenarioRunReport.self, from: data)

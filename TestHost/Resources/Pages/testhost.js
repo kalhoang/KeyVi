@@ -106,6 +106,13 @@
       attachCompletion(input, suggestions, input.hasAttribute("data-testhost-fold-diacritics"));
     });
     document.querySelectorAll("[data-testhost-field]").forEach(mirror);
+    // "#focus=<element id>" focuses that element on load, so a browser scenario needs no AX or WebDriver to
+    // put the caret in the field (setup value "{pages}/fields.html#focus=web-textarea").
+    var match = /^#focus=([A-Za-z0-9_-]+)$/.exec(window.location.hash);
+    var target = match && document.getElementById(match[1]);
+    if (target) {
+      target.focus();
+    }
   });
 
   window.TestHost = { mirror: mirror, reset: reset, focus: focus, fold: fold, remainder: remainder,

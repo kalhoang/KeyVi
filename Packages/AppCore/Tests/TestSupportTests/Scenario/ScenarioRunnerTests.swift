@@ -41,6 +41,18 @@ import Testing
         #expect(result.observedText == "ddi")
     }
 
+    /// 13.2 layout scenarios: the scenario's layout is selected before its own setup steps.
+    @Test func layoutIsSelectedBeforeTheSetupSteps() async {
+        let setup = FakeSetup()
+        var scenario = makeScenario(setup: [.init(action: .launch)])
+        scenario.layout = InputSourceID(rawValue: "com.apple.keylayout.Dvorak")
+        _ = await runner(setup: setup).run(scenario)
+        #expect(
+            setup.steps.all == [
+                .init(action: .selectInputSource, value: "com.apple.keylayout.Dvorak"), .init(action: .launch),
+            ])
+    }
+
     @Test func setupFailureFailsWithoutTyping() async {
         let driver = FakeDriver()
         let setup = FakeSetup(failOn: .launch)

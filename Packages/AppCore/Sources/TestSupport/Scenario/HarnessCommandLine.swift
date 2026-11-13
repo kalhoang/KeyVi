@@ -21,7 +21,8 @@ public struct HarnessOptions: Sendable, Hashable {
     public var only: [String] = []
     public var seed: UInt64 = 0x5EED_CAFE
     public var keystrokes = 1_000_000
-    public var targets = ["textedit.telex.basic", "chrome.page.textarea", "terminal.zsh"]
+    /// 13.6 soak apps: TextEdit, a Chrome page, Terminal.
+    public var targets = ["textedit.telex.basic", "chrome.page.textarea", "terminal.default"]
     public var chunkKeystrokes = SoakPlan.defaultChunkKeystrokes
     public var runs = 5
     public var metrics: [String] = PlatformGates.metrics.map(\.name)

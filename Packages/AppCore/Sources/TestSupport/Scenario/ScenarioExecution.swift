@@ -48,7 +48,7 @@ extension ScenarioRunner {
         var observed: String?
         let outcome: ScenarioResult.Outcome
         do {
-            for step in scenario.setup { try await setup.perform(step, for: scenario) }
+            for step in Self.steps(of: scenario) { try await setup.perform(step, for: scenario) }
             try await driver.type(scenario.keys, profile: scenario.timing)
             if scenario.expect.text != nil { observed = try await readback.currentText(of: scenario) }
             let observation = try await probe?.observe(after: scenario)
@@ -62,6 +62,15 @@ extension ScenarioRunner {
         return ScenarioResult(
             scenario: scenario.id, outcome: outcome, observedText: observed,
             durationSeconds: Double(elapsed) / 1_000_000_000)
+    }
+}
+
+extension ScenarioRunner {
+    /// Setup steps in execution order. A scenario's `layout` is selected first, so no scenario inherits the
+    /// keyboard layout or input source a previous one switched to (13.2 layout scenarios).
+    static func steps(of scenario: Scenario) -> [Scenario.SetupStep] {
+        let layout = scenario.layout.map { [Scenario.SetupStep(action: .selectInputSource, value: $0.rawValue)] } ?? []
+        return layout + scenario.setup
     }
 }
 

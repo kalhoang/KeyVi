@@ -45,6 +45,14 @@ private let targets = HarnessTargets(
                 .testHostBundleID == nil)
     }
 
+    @Test func holderAliasResolvesInExpectations() {
+        let aliased = makeScenario(expect: .init(paused: true, holderBundleId: bundle(HarnessTargets.testHostAlias)))
+        #expect(targets.resolvingExpectation(of: aliased).expect.holderBundleId == testHostID)
+        let real = makeScenario(expect: .init(holderBundleId: bundle("com.example.Holder")))
+        #expect(targets.resolvingExpectation(of: real) == real)
+        #expect(targets.resolvingExpectation(of: makeScenario()) == makeScenario())
+    }
+
     @Test func pagesPlaceholderExpandsToAFileURL() {
         #expect(targets.expand("{pages}/fields.html") == "file:///repo/TestHost/Resources/Pages/fields.html")
         #expect(targets.expand("file:///other") == "file:///other")

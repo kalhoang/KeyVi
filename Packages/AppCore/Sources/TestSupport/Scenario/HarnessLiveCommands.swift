@@ -21,6 +21,7 @@ public struct ScenarioRunReport: Sendable, Hashable, Codable {
 /// Services shared by `run` and `soak`.
 struct LiveScenarioServices {
     var sink: any KeyEventSink
+    var system: any SystemActions
     var setup: ScenarioSetupRouter
     var readback: ReadbackRouter
     var probe: (any ScenarioStateProbe)?
@@ -41,15 +42,17 @@ extension Harness {
         let captureFile = url(
             options.terminalCapture ?? (options.output ?? ".build/integration") + "/terminal-capture.txt")
         let terminal = ScenarioSetupRouter.TerminalCapture(fileSystem: environment.fileSystem, captureFile: captureFile)
+        let system = try live.systemActions(targets: targets)
         let setup = ScenarioSetupRouter(
-            system: try live.systemActions(targets: targets), targets: targets, webDrivers: webDrivers,
+            system: system, targets: targets, webDrivers: webDrivers,
             terminal: terminal, clock: environment.clock)
         let readback = ReadbackRouter(
             targets: targets, ax: live.axReader(), webDrivers: webDrivers,
             terminal: TerminalCaptureReadback(fileSystem: environment.fileSystem, captureFile: captureFile),
             human: live.lineReader().map(HumanConfirmationReadback.init))
         return LiveScenarioServices(
-            sink: try live.keyEventSink(), setup: setup, readback: readback, probe: live.stateProbe(targets: targets))
+            sink: try live.keyEventSink(), system: system, setup: setup, readback: readback,
+            probe: live.stateProbe(targets: targets))
     }
 
     func runner(_ services: LiveScenarioServices, seed: UInt64) -> ScenarioRunner {
@@ -68,7 +71,7 @@ extension Harness {
             let services = try scenarioServices(live, targets: targets)
             var results: [ScenarioResult] = []
             for original in scenarios {
-                var scenario = original
+                var scenario = targets.resolvingExpectation(of: original)
                 if let profile = options.profile { scenario.timing = profile }
                 let result = await runner(services, seed: SeededGenerator.seed(options.seed, scenario: scenario.id))
                     .run(scenario)
@@ -76,6 +79,7 @@ extension Harness {
                     result.outcome.rawValue + " " + scenario.id + String(format: " (%.1f s)", result.durationSeconds))
                 results.append(result)
             }
+            await releaseSecureInput(after: scenarios, services: services, targets: targets)
             let report = ScenarioRunReport(
                 profile: options.profile, seed: options.seed, passed: results.count { $0.outcome == .pass },
                 failed: results.count { $0.outcome == .fail }, needsHuman: results.count { $0.outcome == .needsHuman },
@@ -90,6 +94,17 @@ extension Harness {
             environment.console.emitError("compat-harness run: " + String(describing: error))
             return .failure
         }
+    }
+
+    /// A run that switched TestHost's secure-input holder on must not leave it on for the next job.
+    func releaseSecureInput(after scenarios: [Scenario], services: LiveScenarioServices, targets: HarnessTargets) async
+    {
+        let usesHolder = scenarios.contains { scenario in
+            scenario.targetBundleId.rawValue == HarnessTargets.testHostAlias
+                && scenario.setup.contains { $0.action == .setSecureInput }
+        }
+        guard usesHolder, let testHost = targets.testHostBundleID else { return }
+        try? await services.system.setSecureInput(false, in: testHost)
     }
 
     func runSoak() async -> HarnessExit {

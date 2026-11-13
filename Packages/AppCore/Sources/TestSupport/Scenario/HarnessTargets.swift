@@ -63,6 +63,14 @@ public struct HarnessTargets: Sendable, Hashable {
         key.rawValue == Self.testHostAlias ? testHostBundleID : key
     }
 
+    /// The scenario with an aliased `expect.holderBundleId` replaced by the real bundle ID, so it compares with
+    /// what the app under test reports (PLT-R398B: TestHost holds secure input).
+    public func resolvingExpectation(of scenario: Scenario) -> Scenario {
+        var resolved = scenario
+        if let holder = scenario.expect.holderBundleId { resolved.expect.holderBundleId = resolve(holder) ?? holder }
+        return resolved
+    }
+
     /// Expands `{pages}` in a setup value.
     public func expand(_ value: String) -> String {
         guard value.contains(Self.pagesPlaceholder) else { return value }
