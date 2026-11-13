@@ -12,7 +12,7 @@
 
 public import AppModel
 public import Foundation
-public import InputHost
+import InputHost
 public import SettingsStore
 
 /// What a choice does to `rule-overrides.json` (PLT-R540), in order: the new rule is added before the one it
