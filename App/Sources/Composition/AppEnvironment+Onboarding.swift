@@ -30,12 +30,27 @@ extension AppEnvironment {
         NSApp.activate()
     }
 
+    /// Read on presentation, on every screen change, on "Kiểm tra lại" (PRD-R40 screen 5) and when the
+    /// permission status changes: all user-paced, so the conflict list is rescanned each time.
     func onboardingInputs() -> OnboardingInputs {
+        host.rescanConflicts()
         let context = host.reportContext()
+        importCandidates = Self.importCandidates(importCandidates, adding: context.conflicts)
         let completedBefore = settings.user.onboarding.completedVersion != nil
         return OnboardingInputs(
-            permission: context.permissions, conflicts: context.conflicts, importCandidates: [],
+            permission: context.permissions, conflicts: context.conflicts, importCandidates: importCandidates,
             permissionLostAfterCompletion: completedBefore && !OnboardingFlow.isGranted(context.permissions))
+    }
+
+    /// PRD-R40 screen 6: a running competitor app (the rules' conflicting input apps) is a known import source.
+    /// Nothing is read here; the import runs only after the explicit "Chọn tệp..." click (PRD-R69).
+    static func importCandidates(_ seen: [ImportCandidate], adding conflicts: [ConflictingInput]) -> [ImportCandidate] {
+        let known = Set(seen.compactMap(\.bundle))
+        let added = conflicts.compactMap { conflict -> ImportCandidate? in
+            guard case .runningApp(let bundle, let name) = conflict, !known.contains(bundle) else { return nil }
+            return ImportCandidate(appName: name, bundle: bundle)
+        }
+        return seen + added
     }
 
     /// PRD-R64: pane names of the running macOS in the system language (they are system UI, not app copy).
@@ -131,6 +146,7 @@ extension AppEnvironment: OnboardingActions {
     func onboardingClosed(completed: Bool) {
         host.setPermissionFastPolling(false)
         onboarding = nil
+        importCandidates = []
         updateIcon()
     }
 }

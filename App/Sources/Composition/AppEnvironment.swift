@@ -37,6 +37,9 @@ final class AppEnvironment {
     var launch: LaunchSequence?
     var switchHUD: SwitchHUDController?
     var onboarding: OnboardingWindowController?
+    /// PRD-R40 screen 6: competitor apps seen running while onboarding is open, kept after the user quits them on
+    /// screen 5 so the import offer still appears.
+    var importCandidates: [ImportCandidate] = []
     var settingsWindow: SettingsWindowController?
     var diagnosticsWindow: DiagnosticsWindowController?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()

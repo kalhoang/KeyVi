@@ -233,9 +233,11 @@ extension AppEnvironment: StatusMenuActions {
         return controller
     }
 
-    /// PLT-R1202: metadata only, assembled by ShellCore from the live host.
+    /// PLT-R1202: metadata only, assembled by ShellCore from the live host; conflicts are rescanned so the report
+    /// does not show an app the user has quit since launch.
     func diagnosticsReport() -> DiagnosticsReport {
-        ReportAssembler.report(
+        host.rescanConflicts()
+        return ReportAssembler.report(
             identity: appIdentity, system: SystemInfoReader.current(uiLanguage: language.localizer.language),
             host: host.reportContext(), settings: settings, metrics: diagnostics.metrics.snapshot(),
             health: diagnostics.health.recent(limit: 50), probe: nil, draft: nil, now: Date())
