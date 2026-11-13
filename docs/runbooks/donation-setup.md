@@ -1,17 +1,18 @@
 # Runbook: donation setup
 
-Owner: the maintainer. Specification: PRD-R56 to PRD-R61, spec/03-product.md section 13, open decision 19 (donation account details and the public sponsor list).
+Owner: the maintainer. Specification: PRD-R56 to PRD-R61, spec/03-product.md section 13. Pa's decisions of 2026-11-13: S8 (a bank VietQR code only, no MoMo; the bank name and the account number are shown, the account holder's name is not) and Q8 (no public sponsor list for now).
 
-{{AppName}} is free. Donations are a tip jar, never a nag. This runbook sets up the three channels that the specification allows: VietQR (Napas) to Pa's personal bank account, a MoMo QR, and GitHub Sponsors.
+{{AppName}} is free. Donations are a tip jar, never a nag. The only channel today is a VietQR (Napas 247) code for Pa's bank account. GitHub Sponsors stays possible once Pa has a sponsor page (section 4); MoMo is not used because there is no MoMo account.
 
 ## What is allowed, and what is not
 
-Entry points, and only these (PRD-R57): the `Ủng hộ {{AppName}}...` menu item, the donation block in About & Support, the website `/ung-ho` page, the GitHub repository Sponsor button, and one plain line at the bottom of the release notes on the website (not in the in-app update window).
+Entry points, and only these (PRD-R57): the `Ủng hộ {{AppName}}...` menu item, the donation block in About & Support, the website `/ung-ho` page, the GitHub repository Sponsor button (once it exists), and one plain line at the bottom of the release notes on the website (not in the in-app update window).
 
 Forbidden (PRD-R58): popups, timers, counters, "you have typed N words" messages, badges, features locked behind donating, donation prompts in onboarding, during updates or after a crash or bug report.
 
 Not used:
 
+- **MoMo**: no account (S8).
 - **Polar.sh** must not be used for donations: its acceptable-use policy prohibits donations and sponsorship. It is only an option if a paid product is ever sold (PRD-R60).
 - **Buy Me a Coffee** is not used: Vietnam is not a payout country (PRD-R60).
 
@@ -21,45 +22,81 @@ Vietnamese (draft from PRD-R59): `{{AppName}} miễn phí và sẽ luôn miễn 
 
 English equivalent: `{{AppName}} is free and always will be. If you find it useful, you can support it so Kal has more time to keep building.`
 
-The block shows the QR codes, the account name as plain text, and the GitHub Sponsors link. The QR images are bundled assets (app resources and website static files), never fetched at runtime.
+Next to the QR code, the app and the website show the bank name and the account number as plain text, and one line telling the payer to scan with a banking app. They never show the account holder's name.
 
-## 1. VietQR (Napas 247)
+## 1. The account and what is shown
 
-1. Use Pa's **personal** bank account. Open the banking app, find "Mã QR nhận tiền" (or the equivalent), and create a static QR for the account without a fixed amount. Alternatively, generate a static VietQR from the bank's own tool.
-2. Export the QR as a square PNG (at least 1024 x 1024 px, high contrast, quiet zone kept). Name it `donate-vietqr.png`.
-3. Scan it with **two different banking apps** and confirm that both show the right bank and the right **account holder name**. A wrong QR in a public build is not recoverable for users who already installed it.
-4. Decide what is printed beside the QR as text: the account holder name (required by PRD-R59), and whether to also show the bank name and account number. This is Pa's privacy choice (VERIFY).
-
-## 2. MoMo
-
-1. In the MoMo app, open "Nhận tiền" and create the personal receiving QR, with no fixed amount.
-2. Export it as `donate-momo.png` and scan-test it with a second phone.
-3. Show the name that MoMo displays when the QR is scanned.
-
-## 3. GitHub Sponsors
-
-1. Apply for GitHub Sponsors on Pa's personal account (Settings, Sponsorship). Approval, Stripe or bank payout setup and tax details take time; start early. Check that payouts are available for Vietnam (VERIFY current availability).
-2. When approved, put the handle in `.github/FUNDING.yml` (currently a placeholder; VERIFY handle). The Sponsor button then appears on the repository page.
-3. Use the sponsor profile URL for the in-app and website links.
-
-## 4. Where the files go
-
-| Asset | Used by | Notes |
+| Item | Value | Shown on screen |
 |---|---|---|
-| `donate-vietqr.png`, `donate-momo.png` | App (About & Support) and website `/ung-ho` | They replace the placeholders: in the app, the image sets `App/Resources/Donation.xcassets/DonationVietQR.imageset` and `DonationMoMo.imageset` (keep the asset names, which the app reads, and update each `Contents.json`); on the website, `site/static/assets/qr/vietqr.svg` and `momo.svg` (the donation page names these paths; a PNG needs the page changed too) |
-| Sponsor URL | App, website, `.github/FUNDING.yml` | One value, copied everywhere |
+| Bank | LioBank, a digital bank of OCB, reached through OCB's NAPAS BIN `970448` | Bank name "LioBank" |
+| Account number | `688688678` | Yes |
+| Account holder | Pa's legal name | **Never**: the QR payload carries no name. The payer's banking app looks the account up through NAPAS after the scan and shows the holder's name before the transfer is confirmed |
+| Purpose | `Ung ho {{AppName}}` (ASCII, no diacritics) | Filled in by the banking app; the payer may change it |
+| Amount | none (static code) | The payer types it |
 
-Replace the placeholder entries in `THIRD_PARTY_NOTICES.md` section 4 and [docs/provenance](../provenance/README.md) section 7 with the real images and their source (CLR-R7). The QR images contain account data by design and are public once released; do not commit them before Pa confirms the details (VERIFY).
+## 2. How the QR code is made
+
+The image is generated by `scripts/make-vietqr.py`; nothing is exported from a banking app. The payload is the EMVCo merchant-presented format as NAPAS profiles it for transfers to an account:
+
+| Tag | Content |
+|---|---|
+| `00` | Payload format `01` |
+| `01` | Point of initiation `11` (static) |
+| `38` | `00` NAPAS GUID `A000000727`; `01` beneficiary: `00` BIN `970448`, `01` account `688688678`; `02` service `QRIBFTTA` (transfer to an account) |
+| `53`, `58` | Currency `704` (VND), country `VN` |
+| `62` | `08` purpose `Ung ho {{AppName}}` |
+| `63` | CRC-16/CCITT-FALSE over everything before it, including `6304` |
+
+The code uses error correction H, and the keycap of `assets/keyvi_logo.png` sits in the centre on a light plate. The script decodes the written image again with OpenCV and fails if the result differs from the payload.
+
+One run writes the same file to both places:
+
+- `App/Resources/Donation.xcassets/DonationVietQR.imageset/vietqr.png` (asset name `DonationVietQR`, read by `DonationInfo.standard` in `Packages/AppCore/Sources/ShellCore/Services.swift`)
+- `site/static/assets/qr/vietqr.png` (the website's `/ung-ho` and `/en/donate/` pages)
+
+## 3. Re-generating it
+
+Needed after a change of account, bank or app name (the purpose names the app).
+
+1. Print the payload, standard library only:
+
+   ```sh
+   python3 -I scripts/make-vietqr.py --print-payload
+   ```
+
+2. Write and verify the image (Pillow, qrcode and OpenCV in a throwaway environment, never in the system Python):
+
+   ```sh
+   uv run --with pillow --with qrcode --with opencv-python-headless python -I scripts/make-vietqr.py
+   ```
+
+   Every output line must end with "decoded and verified".
+
+3. For a new account or bank, change the same values in three places, then re-run step 2:
+   - `scripts/make-vietqr.py`: `BANK_BIN`, `ACCOUNT` and `BANK_NAME`
+   - `Packages/AppCore/Sources/ShellCore/Services.swift`: `DonationInfo.standard`
+   - `site/content/vi/pages.mjs` and `site/content/en/pages.mjs`: `donate.vietqr` (`bankValue`, `accountValue`, `alt`)
+
+4. Run the checks. They cross-check the image against the shown details, so a stale image fails:
+   - `python3 -I scripts/tests/test_make_vietqr.py` (payload, CRC, inputs, shown details, app and website copies identical)
+   - `swift test --filter DonationQRTests` in `Packages/AppCore` (decodes the bundled image with Core Image and checks every field against `DonationInfo.standard` and the brand name)
+   - `node site/test.mjs` (the donation page shows the bank and the account number, no holder name, no MoMo)
+
+5. Record the change in `THIRD_PARTY_NOTICES.md` section 4 and [docs/provenance](../provenance/README.md) section 7 (CLR-R7).
+
+## 4. GitHub Sponsors (optional, later)
+
+1. Apply for GitHub Sponsors on Pa's personal account (Settings, Sponsorship). Approval and payout setup take time; check that payouts are available for Vietnam (VERIFY current availability).
+2. When approved, put the handle in `.github/FUNDING.yml`. The Sponsor button then appears on the repository page.
+3. Set the sponsor page URL in `site/config.json` (`sponsorsUrl`): the website's donation page shows the GitHub Sponsors card only when that value is a real URL. In the app, set `githubSponsorsURL` in `DonationInfo.standard`; the link appears only when it is set.
 
 ## 5. Optional: public thank-you list (PRD-R61)
 
-Pa's choice. If used, only sponsors who opt in appear on the website. No donor data is stored in the app, and the app never asks who donated.
+Not used for now (Q8). If Pa enables it later, only sponsors who opt in appear on the website. No donor data is stored in the app, and the app never asks who donated.
 
 ## 6. Pre-release check (before the first public build)
 
-- [ ] Both QR codes scan correctly in two apps each and show the expected name.
-- [ ] The account name text next to the QR matches the bank's account holder name.
-- [ ] `.github/FUNDING.yml` has the confirmed handle.
-- [ ] The in-app block and `/ung-ho` show the same content.
+- [ ] The QR code scans in two different banking apps, shows LioBank, the account 688688678 and Pa's name as the recipient, no fixed amount, and the purpose `Ung ho {{AppName}}`.
+- [ ] The in-app block and `/ung-ho` show the same bank name and account number, and neither shows the holder's name.
 - [ ] No donation prompt appears in onboarding, during an update, or after a bug report.
-- [ ] Open decision 19 is answered and recorded in an ADR.
+- [ ] If GitHub Sponsors is enabled: `.github/FUNDING.yml`, `site/config.json` and `DonationInfo.standard` hold the same confirmed URL.
