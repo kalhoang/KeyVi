@@ -23,8 +23,11 @@ function inline(text) {
   return out.replace(/\u0000(\d+)\u0000/g, (_, index) => codeSpans[Number(index)]);
 }
 
-/** Render Markdown to HTML. `baseLevel` shifts heading levels (1 -> baseLevel). */
-export function renderMarkdown(source, { baseLevel = 2, idPrefix = "" } = {}) {
+/**
+ * Render Markdown to HTML. `baseLevel` shifts heading levels (1 -> baseLevel). `headingId(depth, text)` may
+ * return an id for a heading (depth = number of `#` in the source); otherwise the id is a slug of the text.
+ */
+export function renderMarkdown(source, { baseLevel = 2, idPrefix = "", headingId = () => undefined } = {}) {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   const html = [];
   let paragraph = [];
@@ -62,7 +65,8 @@ export function renderMarkdown(source, { baseLevel = 2, idPrefix = "" } = {}) {
       closeList();
       const level = Math.min(6, baseLevel + heading[1].length - 1);
       const text = heading[2];
-      html.push(`<h${level} id="${esc(idPrefix + slugifyHeading(text))}">${inline(text)}</h${level}>`);
+      const id = headingId(heading[1].length, text) ?? idPrefix + slugifyHeading(text);
+      html.push(`<h${level} id="${esc(id)}">${inline(text)}</h${level}>`);
     } else if (item) {
       flushParagraph();
       if (!listOpen) html.push("<ul>");

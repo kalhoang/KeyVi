@@ -8,7 +8,7 @@
 #
 # Subcommands:
 #   tests   TestHost integration tests through xcodebuild (scheme $INTEGRATION_SCHEME, default TestHost)
-#   compat  CompatHarness scenarios (compat/scenarios), results in the output directory
+#   compat  compat-harness scenarios (compat/scenarios), results in the output directory
 #   soak    nightly soak: 1,000,000 keystrokes through the pipeline (QA-R16)
 #   bench   end-to-end platform metrics T2 to T6, C1, C2, M1, M2, compared with the baseline at
 #           25 % (PLT-R822) by scripts/bench-compare.sh
@@ -56,7 +56,8 @@ harness() {
     args=("$@")
   fi
   [[ -f Packages/AppCore/Package.swift ]] || die "Packages/AppCore not found"
-  swift run --package-path Packages/AppCore -c release CompatHarness "${args[@]}"
+  # `swift run` takes the executable PRODUCT name (compat-harness), not the target name (CompatHarness).
+  swift run --package-path Packages/AppCore -c release compat-harness "${args[@]}"
 }
 
 case "$cmd" in

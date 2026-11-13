@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: LicenseRef-App-Pending */
+/* Release-notes pages written by scripts/publish-release (ADR 0304): shown inside the in-app update window, */
+/* so they are compact and carry no site navigation. Same palette as style.css. When this file changes, bump */
+/* RELEASE_NOTES_CSS in scripts/lib/publish_helpers.py (/assets/* is cached as immutable). */
+:root {
+  color-scheme: light dark;
+  --bg: #faf8f4;
+  --ink: #1d1c1a;
+  --muted: #5a5850;
+  --line: #d9d4c6;
+  --link: #1a6a4f;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141513;
+    --ink: #ecebe6;
+    --muted: #b0aea4;
+    --line: #35362f;
+    --link: #7fd9b2;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 var(--font-body);
+}
+main {
+  max-width: 40rem;
+  padding: 0.75rem 1rem 1rem;
+}
+h1 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+h3 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.25rem;
+}
+ul {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+p {
+  margin: 0.25rem 0;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+a {
+  color: var(--link);
+}
+a:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}

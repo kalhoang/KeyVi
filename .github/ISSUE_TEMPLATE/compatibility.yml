@@ -129,7 +129,7 @@ body:
     id: diagnostics
     attributes:
       label: Diagnostics block (Khối chẩn đoán)
-      description: Menu, Báo lỗi... > Mở GitHub copies the block. Paste it exactly as it is, including the first line with the format version and the fence lines.
+      description: Menu, Báo lỗi... > Mở GitHub copies the block. Paste it exactly as it is, with its fence lines. The block starts with the header line `<slug>-diagnostics v1` (the app's short name, then the format version).
       placeholder: Paste the diagnostics block here
     validations:
       required: true

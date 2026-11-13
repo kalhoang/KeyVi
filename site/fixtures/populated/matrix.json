@@ -1,11 +1,12 @@
 {
+  "schemaVersion": 1,
   "entries": [
-    { "bundleId": "com.apple.Safari", "displayName": "Safari", "category": "browser", "tier": 1, "status": "works", "note": { "vi": "", "en": "" }, "lastVerified": "2026-12-01", "appVersion": "19.0", "macOSVersion": "26.1" },
-    { "bundleId": "com.google.Chrome", "displayName": "Chrome", "category": "browser", "tier": 1, "status": "notes", "note": { "vi": "Trong ô địa chỉ, gợi ý tự động có thể bị tắt khi đang gõ dấu.", "en": "In the address bar, inline autocomplete may be suspended while a tone is typed." }, "lastVerified": "2026-12-01", "appVersion": "140", "macOSVersion": "26.1" },
-    { "bundleId": "com.apple.iPhoneMirroring", "displayName": "iPhone Mirroring", "category": "remote", "tier": 2, "status": "limitation", "note": { "vi": "macOS không cho bộ gõ gửi phím vô ứng dụng này.", "en": "macOS does not let an input method send keys to this app." }, "lastVerified": "2026-11-20", "macOSVersion": "26.1" },
-    { "bundleId": "com.googlecode.iterm2", "displayName": "iTerm2", "category": "terminal", "tier": 1, "status": "works", "lastVerified": "2026-06-01", "appVersion": "3.6", "macOSVersion": "26.0" },
-    { "displayName": "Notes", "category": "notes", "tier": 1, "status": "ok", "note": "<script>alert(1)</script>", "lastVerified": "2026-12-02", "macOSVersion": "27.0" },
-    { "displayName": "Mystery app", "category": "weird-category", "tier": 2, "status": "???" },
-    { "category": "other", "status": "works" }
+    { "bundleId": "com.apple.Safari", "displayName": "Safari", "category": "browser", "tier": 1, "status": "works", "lastVerified": "2026-12-01", "appVersion": "19.0", "macOS": "26.1", "verifier": "maintainer", "issues": [] },
+    { "bundleId": "com.google.Chrome", "displayName": "Chrome", "category": "browser", "tier": 1, "ruleId": "browser.chromium.addressBar", "status": "worksWithNotes", "note": { "vi": "Trong ô địa chỉ, gợi ý tự động có thể bị tắt khi đang gõ dấu.", "en": "In the address bar, inline autocomplete may be suspended while a tone is typed." }, "lastVerified": "2026-12-01", "appVersion": "140", "macOS": "26.1", "verifier": "maintainer", "issues": [12] },
+    { "bundleId": "com.apple.iPhoneMirroring", "displayName": "iPhone Mirroring", "category": "remote", "tier": 2, "status": "knownLimitation", "note": { "vi": "macOS không cho bộ gõ gửi phím vô ứng dụng này.", "en": "macOS does not let an input method send keys to this app." }, "lastVerified": "2026-11-20", "macOS": "26.1", "issues": [3, 7] },
+    { "bundleId": "com.googlecode.iterm2", "displayName": "iTerm2", "category": "terminal", "tier": 1, "status": "works", "lastVerified": "2026-06-01", "appVersion": "3.6", "macOS": "26.0", "verifier": "maintainer", "issues": [] },
+    { "bundleId": "com.apple.Notes", "displayName": "Notes", "category": "notes", "tier": 1, "status": "worksWithNotes", "note": { "vi": "<script>alert(1)</script>", "en": "<script>alert(1)</script>" }, "lastVerified": "2026-12-02", "appVersion": "4.11", "macOS": "27.0", "verifier": "maintainer", "issues": [] },
+    { "displayName": "Mystery app", "category": "weird-category", "tier": 2, "status": "???", "issues": [] },
+    { "category": "other", "status": "works", "issues": [] }
   ]
 }

@@ -41,21 +41,52 @@ require_cmd() {
 }
 
 # Loads scripts/brand.env into APP_DISPLAY_NAME, APP_SLUG, APP_BUNDLE_ID_RELEASE,
-# APP_BUNDLE_ID_DEV, APP_SITE_HOST and validates their shape. BRAND_ENV may point elsewhere
-# (tests and scripts/rename-app.sh use that).
+# APP_BUNDLE_ID_DEV, APP_SITE_HOST and validates their shape. The optional APP_SUPPORT_EMAIL,
+# APP_REPOSITORY_URL and APP_LEGACY_STORAGE_FOLDER_NAMES default to empty ("not decided yet") and are
+# validated when set. BRAND_ENV may point elsewhere (tests and scripts/rename-app.sh use that).
 load_brand() {
   local file="${BRAND_ENV:-$REPO_ROOT/scripts/brand.env}"
   [[ -f "$file" ]] || die "brand file not found: $file"
+  # Optional keys must come from the file, never from a stale environment.
+  unset APP_SUPPORT_EMAIL APP_REPOSITORY_URL APP_LEGACY_STORAGE_FOLDER_NAMES
   # shellcheck source=../brand.env
   source "$file"
   : "${APP_DISPLAY_NAME:?missing in $file}" "${APP_SLUG:?missing in $file}"
   : "${APP_BUNDLE_ID_RELEASE:?missing in $file}" "${APP_BUNDLE_ID_DEV:?missing in $file}"
   : "${APP_SITE_HOST:?missing in $file}"
+  APP_SUPPORT_EMAIL="${APP_SUPPORT_EMAIL:-}"
+  APP_REPOSITORY_URL="${APP_REPOSITORY_URL:-}"
+  APP_LEGACY_STORAGE_FOLDER_NAMES="${APP_LEGACY_STORAGE_FOLDER_NAMES:-}"
   [[ "$APP_SLUG" =~ ^[a-z][a-z0-9-]*[a-z0-9]$ ]] || die "APP_SLUG has an invalid shape: $APP_SLUG"
   [[ "$APP_BUNDLE_ID_RELEASE" =~ ^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$ ]] || die "APP_BUNDLE_ID_RELEASE invalid"
   [[ "$APP_SITE_HOST" =~ ^[a-z0-9-]+(\.[a-z0-9-]+)+$ ]] || die "APP_SITE_HOST invalid"
+  if [[ -n "$APP_SUPPORT_EMAIL" && ! "$APP_SUPPORT_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$ ]]; then
+    die "APP_SUPPORT_EMAIL invalid (expected user@domain with a lowercase domain): $APP_SUPPORT_EMAIL"
+  fi
+  if [[ -n "$APP_REPOSITORY_URL" && ! "$APP_REPOSITORY_URL" =~ ^https://[a-z0-9-]+(\.[a-z0-9-]+)+/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+    die "APP_REPOSITORY_URL invalid (expected https://<host>/<owner>/<repo>): $APP_REPOSITORY_URL"
+  fi
   APP_STORAGE_FOLDER="$(storage_folder_for "$APP_DISPLAY_NAME" "$APP_SLUG")"
   export APP_DISPLAY_NAME APP_SLUG APP_BUNDLE_ID_RELEASE APP_BUNDLE_ID_DEV APP_SITE_HOST APP_STORAGE_FOLDER
+  export APP_SUPPORT_EMAIL APP_REPOSITORY_URL APP_LEGACY_STORAGE_FOLDER_NAMES
+}
+
+# Host of APP_REPOSITORY_URL, or github.com while the repository is not decided (QA-R60: the issue forms
+# live on GitHub, PRD-R47). Call after load_brand.
+repository_host() {
+  local rest="${APP_REPOSITORY_URL#https://}"
+  if [[ -n "$APP_REPOSITORY_URL" ]]; then
+    printf '%s' "${rest%%/*}"
+  else
+    printf 'github.com'
+  fi
+}
+
+# Domain of APP_SUPPORT_EMAIL, or nothing when the address is not set. Call after load_brand.
+support_email_domain() {
+  if [[ -n "$APP_SUPPORT_EMAIL" ]]; then
+    printf '%s' "${APP_SUPPORT_EMAIL##*@}"
+  fi
 }
 
 # PLT-R903: folder names use the display name, or the slug when the display name contains

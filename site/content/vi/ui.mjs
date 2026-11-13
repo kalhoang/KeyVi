@@ -36,12 +36,12 @@ export default {
   },
   status: {
     works: { label: "Hoạt động tốt", help: "Đã kiểm tra trên một phiên bản gần đây." },
-    notes: { label: "Hoạt động, có lưu ý", help: "Dùng được, kèm một ghi chú ngắn." },
-    unverified: { label: "Chưa kiểm tra", help: "Chưa có kết quả kiểm tra, hoặc kết quả đã quá 120 ngày." },
-    limitation: { label: "Hạn chế đã biết", help: "Có giới hạn đã biết, kèm giải thích và cách xử lý." },
+    worksWithNotes: { label: "Hoạt động, có lưu ý", help: "Dùng được, kèm một ghi chú ngắn." },
+    notVerified: { label: "Chưa kiểm tra", help: "Chưa có kết quả kiểm tra, hoặc kết quả đã quá 120 ngày." },
+    knownLimitation: { label: "Hạn chế đã biết", help: "Có giới hạn đã biết, kèm giải thích và cách xử lý." },
   },
   categories: {
-    browser: "Trình duyệt", office: "Văn phòng", chat: "Trò chuyện", editor: "Soạn thảo và lập trình",
+    browser: "Trình duyệt", office: "Văn phòng", chat: "Trò chuyện", developer: "Soạn thảo và lập trình",
     terminal: "Terminal", design: "Thiết kế", launcher: "Công cụ gọi nhanh", remote: "Máy tính từ xa",
     system: "Hệ thống", game: "Trò chơi", notes: "Ứng dụng ghi chú", other: "Khác",
   },

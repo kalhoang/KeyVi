@@ -2,8 +2,14 @@
 # SPDX-License-Identifier: LicenseRef-App-Pending
 #
 # QA-R60 / PLT-R906: the shipped binary may contain URL hosts only from an allowlist (site and
-# appcast host, GitHub, the mail link). Any other host means a network endpoint was added without a
-# decision record and an update to the privacy page.
+# appcast host, the repository host for issue forms, the support mail domain). Any other host means a
+# network endpoint was added without a decision record and an update to the privacy page.
+#
+# Hosts that come from scripts/brand.env (never listed in the allowlist file, so a rename or a new
+# repository needs no allowlist edit):
+#   APP_SITE_HOST         always allowed (site, appcast, release notes)
+#   APP_REPOSITORY_URL    its host is allowed; github.com while the value is empty (PRD-R47)
+#   APP_SUPPORT_EMAIL     its domain is allowed as a mailto: host when set (QA-R51)
 #
 # Scans every Mach-O file, property list and strings file inside an .app bundle (or a single file)
 # for scheme://host and mailto:user@host references. Hosts that are XML namespace or DTD identifiers
@@ -15,7 +21,8 @@ usage() {
 Usage: scripts/check-url-hosts.sh [--allow FILE] [--list] PATH...
 
 PATH is an .app bundle, a binary or a directory. Fails when a URL host outside the allowlist
-appears (QA-R60). The site host from scripts/brand.env is always allowed.
+appears (QA-R60). From scripts/brand.env, the site host, the host of APP_REPOSITORY_URL (github.com
+while empty) and the domain of APP_SUPPORT_EMAIL are always allowed.
 
 Options:
   --allow FILE  allowlist (default scripts/url-hosts.allow): one host or *.suffix per line
@@ -77,11 +84,11 @@ while IFS= read -r f; do
     | LC_ALL=C tr '[:upper:]' '[:lower:]' >>"$hosts" || true
 done <"$candidates"
 
-py - "$allow_file" "$APP_SITE_HOST" "$list" "$hosts" <<'PY'
+py - "$allow_file" "$list" "$hosts" "$APP_SITE_HOST" "$(repository_host)" "$(support_email_domain)" <<'PY'
 import sys
 
-allow_file, site_host, list_flag, hosts_file = sys.argv[1:]
-allowed = {site_host.lower()}
+allow_file, list_flag, hosts_file = sys.argv[1:4]
+allowed = {host.lower() for host in sys.argv[4:] if host}
 suffixes = []
 with open(allow_file, encoding="utf-8") as handle:
     for raw in handle:

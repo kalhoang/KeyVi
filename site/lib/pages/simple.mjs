@@ -5,14 +5,24 @@ import { renderMarkdown } from "../markdown.mjs";
 import { routePath } from "../routes.mjs";
 import { esc } from "../util.mjs";
 
+// A release heading of Keep a Changelog: `## [1.2.0] - 2026-12-01`, `## [1.3.0-beta.1] - ...`.
+const RELEASE_HEADING = /^\[?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)\]?(?:\s|$)/;
+
+/** Release headings get the id `v<version>`: each release-notes page links to #v<version> (ADR 0504). */
+export function changelogHeadingId(depth, text) {
+  const match = depth === 2 ? RELEASE_HEADING.exec(text.trim()) : null;
+  return match ? `v${match[1]}` : undefined;
+}
+
 export function renderChangelog(ctx, lang) {
   const { c, f, p, ui } = kit(ctx, lang);
   const m = c.changelog;
-  const source = ctx.data.changelog[lang].replace(/^\s*#\s[^\n]*\n/, ""); // the page owns the h1
+  // The page owns the h1. Brand tokens ({{AppName}}) are filled as plain text; the renderer escapes them.
+  const source = p(ctx.data.changelog[lang].replace(/^\s*#\s[^\n]*\n/, ""));
   const body = `
     <h1>${esc(m.h1)}</h1>
     <p class="lede">${esc(m.lede)}</p>
-    <div class="prose changelog">${renderMarkdown(source, { baseLevel: 1 })}</div>
+    <div class="prose changelog">${renderMarkdown(source, { baseLevel: 1, headingId: changelogHeadingId })}</div>
     <p class="muted prose">${f(m.donateLine)}</p>`;
   return { routeId: "changelog", navId: "changelog", title: p(ui.titles.changelog), description: p(ui.descriptions.changelog), body };
 }

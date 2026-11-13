@@ -69,11 +69,15 @@ The CI scripts call code that other tracks write. These are the names and format
 ## Integration harness (`scripts/run-integration.sh`, platform track)
 
 Default command lines (overridable with `COMPAT_HARNESS_RUN_ARGS`, `COMPAT_HARNESS_SOAK_ARGS`,
-`COMPAT_HARNESS_BENCH_ARGS`):
+`COMPAT_HARNESS_BENCH_ARGS`). The executable product is `compat-harness` (target `CompatHarness`);
+`swift run` needs the product name:
 
-- `CompatHarness run --scenarios compat/scenarios --output <dir>`
-- `CompatHarness soak --keystrokes 1000000 --output <dir>`
-- `CompatHarness bench --runs 5 --output <file.json>`: same `formatVersion` 1 format as the engine
+- `compat-harness run --scenarios compat/scenarios --output <dir>`
+- `compat-harness run --scenarios compat/scenarios --dry-run`: hosted CI (`scripts/compat-dry-run.sh`,
+  step of `ci.yml` skipped until `compat/scenarios` exists; override with `COMPAT_HARNESS_DRY_RUN_ARGS`,
+  which must keep `--dry-run`). Loads every scenario and prints the plan, posts no event.
+- `compat-harness soak --keystrokes 1000000 --output <dir>`
+- `compat-harness bench --runs 5 --output <file.json>`: same `formatVersion` 1 format as the engine
   benchmark, metric names `T1.p99`, `T2.p99`, ... from `02-platform.md` section 8.1, `budget` = the
   "Gate" column, `calibrated: false`. Compared at 25 % (PLT-R822) against
   `Packages/AppCore/Benchmarks/platform-baseline.json`.

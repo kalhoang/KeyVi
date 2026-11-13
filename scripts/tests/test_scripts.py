@@ -262,6 +262,32 @@ input.method: telex
         body = "```\ntestapp-diagnostics v1\nhw.arch: arm64\n```\ninput.method: vni\n"
         self.assertEqual(self.labels(body)["labels"], ["arch:arm64"])
 
+    def test_unfenced_paste_still_parses(self):
+        # ADR 0501 "Issue forms": no render: option, so a paste of the inner lines arrives without a fence.
+        body = ("### Khối chẩn đoán\n\ntestapp-diagnostics v1\nhw.arch: arm64\ninput.method: telex\n\n"
+                "### Có lỗi trong ô gõ thử không?\n\nNo, only in the app above\n")
+        self.assertEqual(self.labels(body)["labels"], ["arch:arm64", "method:telex"])
+
+
+class IssueFormTests(unittest.TestCase):
+    """QA-R43 and ADR 0501: the diagnostics textarea keeps the pasted fence (no render:) and names the header."""
+
+    @staticmethod
+    def field(form: str, field_id: str) -> str:
+        text = (REPO / ".github" / "ISSUE_TEMPLATE" / form).read_text(encoding="utf-8")
+        items = text.split("\n  - type: ")
+        matches = [item for item in items if f"\n    id: {field_id}\n" in item]
+        assert len(matches) == 1, f"{form}: expected one field with id {field_id}"
+        return matches[0]
+
+    def test_diagnostics_field_has_no_render_and_names_the_header(self):
+        for form in ("bug.yml", "compatibility.yml"):
+            with self.subTest(form=form):
+                field = self.field(form, "diagnostics")
+                self.assertTrue(field.startswith("textarea\n"), field[:40])
+                self.assertNotIn("render:", field)
+                self.assertIn("`<slug>-diagnostics v1`", field)
+
 
 class PublishHelpersTests(TempDirTestCase):
     SIG = "A" * 86 + "=="
@@ -274,8 +300,8 @@ class PublishHelpersTests(TempDirTestCase):
                 "--site-url", "https://example.test/", "--version", version, "--build", str(build),
                 "--minimum-system-version", "15.0", "--channel", channel,
                 "--url", f"https://example.test/download/test-{version}.zip", "--length", "1234",
-                "--signature", self.SIG, "--notes-url-vi", "https://example.test/nhat-ky-thay-doi/#v1",
-                "--notes-url-en", "https://example.test/en/changelog/#v1", "--date", "2026-11-13T10:00:00+00:00"]
+                "--signature", self.SIG, "--notes-url", f"https://example.test/release-notes/{version}/",
+                "--date", "2026-11-13T10:00:00+00:00"]
         for key, value in extra.items():
             args += [f"--{key.replace('_', '-')}"] + ([] if value is True else [str(value)])
         return self.helper(*args)
@@ -289,7 +315,11 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertIn("<sparkle:channel>beta</sparkle:channel>", text)
         self.assertIn("<sparkle:phasedRolloutInterval>86400</sparkle:phasedRolloutInterval>", text)
         self.assertIn('sparkle:edSignature="' + self.SIG + '"', text)
-        self.assertIn('xml:lang="vi"', text)
+        # ADR 0304 amendment: one bilingual page per release, no xml:lang variants.
+        self.assertIn("<sparkle:releaseNotesLink>https://example.test/release-notes/0.1.0/</sparkle:releaseNotesLink>",
+                      text)
+        self.assertEqual(text.count("<sparkle:releaseNotesLink"), 2)
+        self.assertNotIn("xml:lang", text)
         self.assertLess(text.index("0.2.0-beta.1"), text.index("<sparkle:shortVersionString>0.1.0"))
         import xml.etree.ElementTree as ET
         ET.fromstring(text.split("\n", 1)[1])
@@ -323,6 +353,81 @@ class PublishHelpersTests(TempDirTestCase):
         doc = json.loads(path.read_text(encoding="utf-8"))
         entry = doc["releases"][0]
         self.assertEqual((entry["version"], entry["dmgUrl"], entry["notes"]["vi"]), ("0.1.0", "https://example.test/d.dmg", "Sửa lỗi"))
+        common[-1:] = ["Fixes in {{AppName}}", "--app-name", "Test App"]
+        self.assertEqual(self.helper("releases-add", "--file", str(path), "--version", "0.2.0", *common).returncode, 0)
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(doc["releases"][0]["notes"]["en"], "Fixes in Test App")
+
+    def notes_page(self, out, notes_vi="### Đã sửa\n- Sửa lỗi lặp chữ trong **Chrome**",
+                   notes_en="### Fixed\n- Fixed doubled letters in **Chrome**", *extra):
+        return self.helper("release-notes-page", "--out", str(out), "--app-name", "Test App",
+                           "--version", "1.2.3", "--notes-vi", notes_vi, "--notes-en", notes_en,
+                           "--changelog-url-vi", "https://example.test/nhat-ky-thay-doi/#v1.2.3",
+                           "--changelog-url-en", "https://example.test/en/changelog/#v1.2.3", *extra)
+
+    def test_release_notes_page_is_one_bilingual_page(self):
+        # ADR 0304 amendment and PRD-R51: Vietnamese first, then English, each with a link to the changelog.
+        out = self.tmp / "release-notes" / "1.2.3" / "index.html"
+        result = self.notes_page(out)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        page = out.read_text(encoding="utf-8")
+        self.assertTrue(page.startswith("<!doctype html>\n<html lang=\"vi\">"))
+        self.assertEqual(page.count("<h1>"), 1)
+        self.assertIn("<h1>Test App 1.2.3</h1>", page)
+        self.assertLess(page.index('<section lang="vi"'), page.index('<section lang="en"'))
+        self.assertIn('<a href="https://example.test/nhat-ky-thay-doi/#v1.2.3">', page)
+        self.assertIn('<a href="https://example.test/en/changelog/#v1.2.3">', page)
+        self.assertIn("<strong>Chrome</strong>", page)
+        self.assertIn("Content-Security-Policy", page)
+        # The page is what the in-app update window shows: no donation line (PRD-R57), no scripts or styles.
+        for forbidden in ("ung-ho", "donate", "<script", "<style", "{{"):
+            self.assertNotIn(forbidden, page)
+
+    def test_release_notes_page_escapes_and_fills_tokens(self):
+        out = self.tmp / "page.html"
+        result = self.notes_page(out, "- <script>alert(1)</script> trong {{AppName}}",
+                                 "- [link](javascript:alert) and [ok](https://example.test/a)")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        page = out.read_text(encoding="utf-8")
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt; trong Test App", page)
+        self.assertNotIn("javascript", page)
+        self.assertIn("<li>link and ", page)
+        self.assertIn('<a href="https://example.test/a">ok</a>', page)
+
+    def test_release_notes_page_rejects_dashes_tokens_and_republishing(self):
+        out = self.tmp / "page.html"
+        self.assertEqual(self.notes_page(out, "- Sửa lỗi \u2014 Chrome").returncode, 1)
+        self.assertEqual(self.notes_page(out, "- {{Unknown}}").returncode, 1)
+        self.assertFalse(out.exists())
+        self.assertEqual(self.notes_page(out).returncode, 0)
+        self.assertEqual(self.notes_page(out).returncode, 1, "a published page is never overwritten")
+
+    def test_release_notes_page_refuses_more_than_five_lines_prd_r51(self):
+        # PRD-R51 is a MUST: at most five visible lines, the rest stays behind the changelog link.
+        out = self.tmp / "long.html"
+        result = self.notes_page(out, "\n".join(f"- dòng {i}" for i in range(7)))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("PRD-R51", result.stderr)
+        self.assertFalse(out.exists())
+        five = "### Đã sửa\n" + "\n".join(f"- dòng {i}" for i in range(5))
+        self.assertEqual(self.notes_page(out, five).returncode, 0, "headings do not count as visible lines")
+        english = self.notes_page(self.tmp / "long-en.html", "- một dòng", "\n".join(f"- line {i}" for i in range(6)))
+        self.assertEqual(english.returncode, 1)
+        self.assertIn("en notes", english.stderr)
+
+    def test_release_notes_page_check_validates_without_writing(self):
+        # publish-release runs --check before signing, so bad notes fail before the keychain prompt.
+        def check(notes_vi):
+            return self.helper("release-notes-page", "--check", "--app-name", "Test App", "--version", "1.2.3",
+                               "--notes-vi", notes_vi, "--notes-en", "- Fixed")
+        self.assertEqual(check("- Sửa lỗi").returncode, 0)
+        self.assertEqual(check("\n".join(f"- dòng {i}" for i in range(6))).returncode, 1)
+        self.assertEqual(check("- Sửa lỗi \u2013 Chrome").returncode, 1)
+        self.assertEqual(check("- {{Unknown}}").returncode, 1)
+        self.assertEqual(list(self.tmp.iterdir()), [])
+        no_out = self.helper("release-notes-page", "--app-name", "Test App", "--version", "1.2.3",
+                             "--notes-vi", "- a", "--notes-en", "- b")
+        self.assertNotEqual(no_out.returncode, 0, "--out is required unless --check")
 
     def test_render_cask_and_zap(self):
         out = self.tmp / "cask.rb"
@@ -458,6 +563,35 @@ class CompatStaleTests(TempDirTestCase):
         self.assertIn("| T1 |", report.stdout)
         self.assertNotIn("| Fresh |", report.stdout)
         self.assertEqual(py("compat-stale-report.py", *args, "--release").returncode, 1)
+
+
+class MatrixSchemaTests(TempDirTestCase):
+    """compat/schema/matrix.schema.json is the source of truth for the matrix (QA-R17, compat/SCRIPT.md 5)."""
+
+    SCHEMA = json.loads((REPO / "compat" / "schema" / "matrix.schema.json").read_text(encoding="utf-8"))
+
+    def test_script_example_and_site_sample_follow_the_schema(self):
+        script = (REPO / "compat" / "SCRIPT.md").read_text(encoding="utf-8")
+        section = script[script.index("## 5. Add or update a row"):script.index("## 6. Cadence")]
+        example = json.loads(section.split("```json\n", 1)[1].split("\n```", 1)[0])
+        self.assertEqual(jsonschema_lite.validate(example, self.SCHEMA), [])
+        sample = json.loads((REPO / "site" / "fixtures" / "matrix.json").read_text(encoding="utf-8"))
+        self.assertEqual(jsonschema_lite.validate(sample, self.SCHEMA), [])
+
+    def test_check_matrix(self):
+        entry = {"bundleId": "com.example.A", "displayName": "A", "category": "chat", "status": "notVerified",
+                 "issues": []}
+        good = self.write_json("good.json", {"schemaVersion": 1, "entries": [entry]})
+        self.assertEqual(py("check-matrix.py", "--matrix", str(good)).returncode, 0)
+        works = dict(entry, status="works")
+        bad = self.write_json("bad.json", {"schemaVersion": 1, "entries": [works, dict(entry, macOSVersion="27")]})
+        result = py("check-matrix.py", "--matrix", str(bad))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("missing required property 'lastVerified'", result.stderr)  # works needs the evidence
+        self.assertIn("unexpected property 'macOSVersion'", result.stderr)
+        self.assertIn("bundleId com.example.A already used", result.stderr)
+        self.assertEqual(py("check-matrix.py", "--matrix", str(self.tmp / "none.json")).returncode, 0)
+        self.assertEqual(py("check-matrix.py", "--matrix", str(self.tmp / "none.json"), "--require").returncode, 1)
 
 
 class DependencyAuditTests(TempDirTestCase):

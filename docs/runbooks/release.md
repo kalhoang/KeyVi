@@ -19,6 +19,7 @@ Do these once; the sections linked from each line explain how.
 - [ ] Developer ID Application certificate in the login keychain ([certificate renewal](certificate-renewal.md)).
 - [ ] `notarytool` credentials (App Store Connect API key) ([notarization setup](notarization-setup.md)).
 - [ ] Sparkle EdDSA key in the login keychain, with two offline encrypted backups (QA-R32, [key rotation](key-rotation.md)). The public key (`SUPublicEDKey`) and the feed URL are fixed in the app from the first public build (QA-R33).
+- [ ] `SPARKLE_PUBLIC_ED_KEY` filled in `Config/Sparkle.xcconfig` with the public key printed by `generate_keys`, as described in the [EdDSA key note of ADR 0304](../decisions/0304-sparkle-version-pin.md#runbook-note-filling-sparkle_public_ed_key). `scripts/verify-release.sh` and `scripts/publish-release` refuse a build whose `SUPublicEDKey` is empty.
 - [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
 - [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
 - [ ] Homebrew tap repository exists (template: `packaging/homebrew/Casks/cask.rb.template`).
@@ -27,7 +28,7 @@ Do these once; the sections linked from each line explain how.
 ## 1. Decide the version and build number
 
 1. Semantic Versioning for `CFBundleShortVersionString` (QA-R26): MAJOR for breaking changes to the settings format or minimum macOS, MINOR for features, PATCH for fixes. Betas: `X.Y.Z-beta.N`.
-2. `CFBundleVersion` is a single integer that increases with every build published to any channel, including betas and rollbacks. Sparkle compares this value, not the short version. Take the highest build in `site/data/releases.json` and add 1.
+2. `CFBundleVersion` is a single integer that increases with every build published to any channel, including betas and rollbacks. Sparkle compares this value, not the short version. It is derived from the version, never chosen by hand: `scripts/build-number.sh X.Y.Z` prints it (`MAJOR * 1000000 + MINOR * 10000 + PATCH * 100 + beta N or 99`, [ADR 0503](../decisions/0503-release-pipeline.md) decision 4; for example `0.1.0-beta.1` is 10001 and `0.1.0` is 10099). A rollback ships as a new, higher version.
 3. A stable release must have been on beta for at least 72 hours with no new P0 or P1 regression, except a hotfix for a P0 (QA-R29).
 
 ## 2. Pre-flight checklist (QA-R30 step 1, section 3.7)
@@ -50,8 +51,8 @@ All must be true on the commit you will tag. Record the evidence (links) in the 
 ## 3. Prepare the release commit
 
 1. Move the `Unreleased` entries of `CHANGELOG.md` under `## [X.Y.Z] - YYYY-MM-DD`; leave an empty `Unreleased` section.
-2. Write the release notes in both languages. Five lines maximum visible, led by user-visible fixes listed by app name, with a link to the changelog page (PRD-R51). For stable releases add the single plain donation line at the bottom of the website release notes, never in the in-app update window (PRD-R57).
-3. Set the version and build number as the build script and project settings document (the `App` target reads them; `scripts/build-release.sh <version> <build>` takes them as arguments).
+2. Write the release notes in both languages: the English section in `CHANGELOG.md` and the Vietnamese section, same heading, in `CHANGELOG.vi.md`. Five lines maximum visible, led by user-visible fixes listed by app name (PRD-R51); `scripts/publish-release` adds the link to the changelog page and warns above five lines. Do not write a donation line into the notes: the release-notes page is shown in the in-app update window, and the website changelog page already ends with the single plain donation line (PRD-R57).
+3. Nothing to commit for the version itself: the tag (`vX.Y.Z`) is the version, and `release.yml` passes it and its build number to `scripts/build-release.sh <version> <build>`, which sets `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
 4. Merge through a pull request into `main` (branch protection: required checks, linear history, signed commits, no force-push; QA-R25). Patch releases of an older minor come from a `release/x.y` branch.
 
 ## 4. Tag and build
@@ -77,16 +78,27 @@ Pushing a `v*` tag starts `release.yml` (GitHub-hosted macOS, environment `relea
 
 The job waits for your manual approval of the `release` environment (QA-R31). Approve only after confirming the tag and commit. Certificates are imported into a temporary keychain that the job deletes at the end.
 
-**Doing the same locally** (when signing runs on Pa's Mac instead of CI, open decision 14; the scripts support both):
+**Doing the same locally** (when signing runs on Pa's Mac instead of CI, open decision 14; the scripts support both). Same order as `release.yml`: the app is notarised and stapled before the DMG is made from it ([ADR 0503](../decisions/0503-release-pipeline.md) decision 2). The Developer ID identity is read from the login keychain; notarisation uses the keychain profile `<slug>-notary` ([notarization setup](notarization-setup.md) section 2):
 
 ```sh
-scripts/build-release.sh X.Y.Z BUILD     # archive, sign, designated-requirement check
-scripts/make-dmg.sh                       # DMG
-scripts/notarize.sh                       # notarytool submit, wait, staple
-scripts/verify-release.sh                 # all checks of section 6
+source scripts/brand.env
+version=X.Y.Z                                   # beta: X.Y.Z-beta.N
+build="$(scripts/build-number.sh "$version")"
+out="dist/$APP_SLUG-$version"
+app="$(scripts/build-release.sh "$version" "$build" | tail -n1)"   # universal, signed, build-info.json
+# Previous release's designated requirement; for the first release keep prev=() and skip the download.
+gh release download "v<previous version>" --pattern designated-requirement.txt --dir .build/previous
+prev=(--previous-dr .build/previous/designated-requirement.txt)  # first release: prev=()
+scripts/verify-release.sh --app "$app" --pre-notarization --write-dr "$out/designated-requirement.txt" "${prev[@]}"
+scripts/notarize.sh "$app" --log-dir "$out"                     # zip, submit, wait, staple the app
+dmg="$(scripts/make-dmg.sh "$app" --out "$out/$APP_SLUG-$version.dmg" | tail -n1)"
+scripts/notarize.sh "$dmg" --log-dir "$out"                     # submit, wait, staple the DMG
+ditto -c -k --sequesterRsrc --keepParent "$app" "$out/$APP_SLUG-$version.zip"   # Sparkle update archive
+scripts/verify-release.sh --app "$app" --dmg "$dmg" "${prev[@]}"
+(cd "$out" && shasum -a 256 "$APP_SLUG-$version.dmg" "$APP_SLUG-$version.zip" > SHA256SUMS)
 ```
 
-See the header comment of each script for its inputs and environment variables (VERIFY the exact variable names against the scripts).
+Inputs and environment of each script are in its header comment. In short: no script needs an environment variable on Pa's Mac; `scripts/notarize.sh` uses `NOTARY_KEYCHAIN_PROFILE` when set (otherwise `<slug>-notary`) and, in CI, `ASC_API_KEY_PATH`, `ASC_API_KEY_ID` and `ASC_API_ISSUER_ID`; `scripts/publish-release` uses `SPARKLE_SIGN_UPDATE` when set. Builds made this way carry no GitHub attestation, so publish them with `scripts/publish-release X.Y.Z --skip-attestation`.
 
 ## 5. Release candidate checks on the built DMG
 
@@ -107,10 +119,10 @@ Any settings loss or permission loss after an update blocks the release (PRD-R52
 ## 6. Verify the artefact
 
 ```sh
-scripts/verify-release.sh
+scripts/verify-release.sh --app "$app" --dmg "$dmg" "${prev[@]}"   # prev as in section 4; prev=() for the first release
 ```
 
-At minimum it must confirm (and you check by hand if the script is not yet complete):
+`release.yml` runs it twice (before notarisation with `--pre-notarization`, and after stapling). It checks the signature, the Developer ID identity and timestamp, the hardened runtime, empty entitlements, the bundle ID, the universal binary, the designated requirement (expected and unchanged against the previous release), the Sparkle public key, the URL host allowlist and, after notarisation, `stapler validate` and `spctl --assess` for the app and the DMG. The manual equivalents, for a second look:
 
 ```sh
 codesign --verify --deep --strict --verbose=2 "{{AppName}}.app"
@@ -142,12 +154,13 @@ The Sparkle EdDSA private key is never in CI (QA-R32, PLT-R1103). The final step
 
    The script, in one pass (QA-R32, QA-R34, QA-R36, QA-R37):
    - signs the update archive with Sparkle's `sign_update` (EdDSA);
-   - adds the appcast item to `site/static/appcast.xml` with `sparkle:version` (build integer), `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`, the EdDSA signature and length, release notes links in both languages, and `sparkle:channel="beta"` for betas. Stable releases use phased rollout (`sparkle:phasedRolloutInterval`, for example 24 hours per group; a P0 hotfix may skip it). `sparkle:criticalUpdate` only for security or data-loss fixes (PRD-R54);
+   - adds the appcast item to `site/static/appcast.xml` with `sparkle:version` (build integer), `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`, the EdDSA signature and length, one link to the bilingual release-notes page (no `xml:lang` variants, because Sparkle would pick them by the macOS language instead of the app's language; [ADR 0304](../decisions/0304-sparkle-version-pin.md#release-notes-language-amendment-2026-11-13-design-review-finding-15)), and `sparkle:channel="beta"` for betas. Stable releases use phased rollout (`sparkle:phasedRolloutInterval`, for example 24 hours per group; a P0 hotfix may skip it). `sparkle:criticalUpdate` only for security or data-loss fixes (PRD-R54);
+   - writes the release-notes page `site/static/release-notes/X.Y.Z/index.html` (Vietnamese first, then English, each with a link to the changelog page; no donation line because the update window shows it, PRD-R57). It needs Vietnamese notes: a `## [X.Y.Z]` section in `CHANGELOG.vi.md`, or `--notes-vi FILE`. Each language may have at most five visible lines (list items and paragraphs; `###` headings do not count, PRD-R51): the script checks this before it downloads or signs anything and stops otherwise, so keep the details in the changelog, which the page links;
    - writes `site/data/releases.json` (version, build, channel, date, DMG URL, SHA-256, minimum system version, notes in Vietnamese and English), which feeds the download page and changelog;
    - bumps the Homebrew cask in the tap (`auto_updates true`, `depends_on macos: ">= :sequoia"`, `zap` paths per PLT-R1012). Betas do not change the cask.
 
    The appcast, the website and the cask are updated by this one script so they never disagree.
-4. Review `git diff` in the repository (appcast, releases.json), commit and push through a pull request to `main` (`site.yml` builds and deploys the website and appcast when `site/` changes).
+4. Review `git diff` in the repository (appcast, release-notes page, releases.json), commit and push through a pull request to `main` (`site.yml` builds and deploys the website and appcast when `site/` changes).
 5. Un-draft the GitHub Release (mark betas as pre-release).
 
 The appcast URL is one stable address, `https://{{app-slug}}.kal.vn/appcast.xml`. It never moves (PRD-R73, PRD-R75).

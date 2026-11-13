@@ -33,7 +33,7 @@ The documentation set of QA-R66 had to be written while the product name, the ap
 10. **Provenance review rules** extend CLR-R13 slightly: the reviewer may not be any AI session that worked on this repository, and a report must exist for every public release (a delta review or a no-change statement is enough after the first public release and 1.0), following the acceptance wording of spec/05-clean-room.md section 5.
 11. **Appcast pull uses a rebase merge**, never a squash, even under time pressure, so CLR-R12 holds.
 12. **Runbook commands that depend on Sparkle's or Apple's tools** are written from public documentation and marked `VERIFY` where behaviour (rather than a plain flag) matters: key rotation, TCC handling on the runner, notarytool role, macOS 27 pane names.
-13. **Sparkle's licence** text in `THIRD_PARTY_NOTICES.md` was fetched from the `2.x` branch `LICENSE` file of the Sparkle repository and is reproduced in full, including the external licences (bsdiff, sais-lite, ed25519, SUSignatureVerifier). Re-fetch it when the pinned version changes.
+13. **Sparkle's licence** text in `THIRD_PARTY_NOTICES.md` was fetched from the `2.x` branch `LICENSE` file of the Sparkle repository and is reproduced in full, including the external licences (bsdiff, sais-lite, ed25519, SUSignatureVerifier). On 2026-11-13 it was compared with the `LICENSE` file at the pinned tag `2.10.1` and is identical. Re-fetch it when the pinned version changes.
 14. **Contributor Covenant 2.1** is used unchanged apart from the contact address, with its attribution kept (CC BY-SA 4.0).
 
 ## Placeholders (VERIFY) that Pa must fill
@@ -69,6 +69,17 @@ Search the repository with `grep -rn VERIFY` to find them all. Each row names th
 | 25 | `compat/matrix.json` field names | `compat/SCRIPT.md` section 5 | The schema in `compat/schema/` wins; adjust the example if names differ |
 | 26 | App licence, DCO or CLA | `CONTRIBUTING.md` section 3 | Open decision 2; see 0401 |
 | 27 | Rollback rehearsal log | `docs/runbooks/rollback.md` section 5 | Fill the table after the drill on the beta channel (QA-R39) |
+
+Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
+
+- **12**: the release script headers document their inputs and environment variables; `release.md`,
+  `notarization-setup.md` (keychain profile `<slug>-notary`, overridable with `NOTARY_KEYCHAIN_PROFILE`; CI
+  secret and variable names) and `key-rotation.md` (`publish-release --sparkle-account`) now state them.
+- **23**: `THIRD_PARTY_NOTICES.md` records Sparkle 2.10.1, the revision pinned in `Config/Package.resolved`.
+- **25**: `compat/SCRIPT.md` section 5 uses the names of `compat/schema/matrix.schema.json`, and a test
+  validates its example against the schema.
+- **24** is narrowed: the word-list rows of `THIRD_PARTY_NOTICES.md` section 3 point at `data/NOTICES.md`,
+  which the data track fills; the asset and site rows remain open.
 
 ## Consequences
 

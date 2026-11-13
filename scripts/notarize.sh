@@ -5,22 +5,34 @@
 # the notarisation log and fails on any status other than Accepted or on any issue in the log, then
 # staples the ticket and validates it.
 #
-# Credentials (never printed):
-#   App Store Connect API key (QA-R30: not an app-specific password):
-#     ASC_API_KEY_PATH   path to the AuthKey_<id>.p8 file
-#     ASC_API_KEY_ID     key ID
-#     ASC_API_ISSUER_ID  issuer UUID
-#   or a notarytool keychain profile created with `xcrun notarytool store-credentials`:
-#     NOTARY_KEYCHAIN_PROFILE  profile name (Pa's Mac)
+# Inputs: the .app or .dmg to notarise (an .app is zipped with ditto --keepParent for submission);
+# --log-dir (default: the directory of the target), --timeout (notarytool --timeout, default 90m),
+# --no-staple, --dry-run (print the plan, contact nobody). Reads scripts/brand.env (APP_SLUG) for the
+# default keychain profile name.
+#
+# Credentials, chosen in this order (values are never printed; QA-R30 wants an App Store Connect API key,
+# not an app-specific password):
+#   1. App Store Connect API key in the environment (CI, environment `release`):
+#        ASC_API_KEY_PATH   path to the AuthKey_<id>.p8 file (written by scripts/ci-signing.sh setup
+#                           from the secret ASC_API_KEY_P8_BASE64)
+#        ASC_API_KEY_ID     key ID (secret ASC_API_KEY_ID)
+#        ASC_API_ISSUER_ID  issuer UUID (secret ASC_API_ISSUER_ID)
+#   2. NOTARY_KEYCHAIN_PROFILE: name of a notarytool keychain profile (Pa's Mac).
+#   3. Otherwise the keychain profile "<slug>-notary" (APP_SLUG from scripts/brand.env), the name
+#      docs/runbooks/notarization-setup.md tells Pa to store with `xcrun notarytool store-credentials`.
+#
+# Outputs: notarization-<file name>.json (the notary log) in the log directory; the stapled target.
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/notarize.sh <App.app | file.dmg> [--no-staple] [--log-dir DIR] [--timeout DURATION]
+Usage: scripts/notarize.sh <App.app | file.dmg> [--no-staple] [--log-dir DIR] [--timeout DURATION] [--dry-run]
 
 An .app is zipped (ditto --keepParent) for submission and the ticket is stapled to the .app.
-A .dmg is submitted as is and stapled. Credentials come from the environment (see the header of
-this script). --timeout is passed to notarytool --timeout (default 90m).
+A .dmg is submitted as is and stapled. --timeout is passed to notarytool --timeout (default 90m).
+Credentials: ASC_API_KEY_PATH + ASC_API_KEY_ID + ASC_API_ISSUER_ID, else the keychain profile in
+NOTARY_KEYCHAIN_PROFILE, else the keychain profile "<slug>-notary" (see the header of this script).
+--dry-run prints which file and which credential source would be used, then exits.
 EOF
 }
 
@@ -30,10 +42,12 @@ target=""
 staple=1
 log_dir=""
 timeout="90m"
+dry_run=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help) usage; exit 0 ;;
     --no-staple) staple=0; shift ;;
+    --dry-run) dry_run=1; shift ;;
     --log-dir) log_dir="${2:?}"; shift 2 ;;
     --timeout) timeout="${2:?}"; shift 2 ;;
     -*) usage >&2; exit 2 ;;
@@ -49,10 +63,25 @@ if [[ -n "${ASC_API_KEY_PATH:-}" ]]; then
   : "${ASC_API_ISSUER_ID:?ASC_API_ISSUER_ID is required with ASC_API_KEY_PATH}"
   [[ -f "$ASC_API_KEY_PATH" ]] || die "ASC_API_KEY_PATH does not point to a file"
   auth=(--key "$ASC_API_KEY_PATH" --key-id "$ASC_API_KEY_ID" --issuer "$ASC_API_ISSUER_ID")
-elif [[ -n "${NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
-  auth=(--keychain-profile "$NOTARY_KEYCHAIN_PROFILE")
+  credential="App Store Connect API key (ASC_API_KEY_PATH, ASC_API_KEY_ID, ASC_API_ISSUER_ID)"
 else
-  die "no notarisation credentials: set ASC_API_KEY_PATH/ASC_API_KEY_ID/ASC_API_ISSUER_ID or NOTARY_KEYCHAIN_PROFILE"
+  if [[ -n "${NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
+    profile="$NOTARY_KEYCHAIN_PROFILE"
+  else
+    load_brand
+    profile="$APP_SLUG-notary"
+  fi
+  auth=(--keychain-profile "$profile")
+  credential="notarytool keychain profile \"$profile\""
+fi
+
+if [[ $dry_run -eq 1 ]]; then
+  case "$target" in
+    *.app | *.app/) info "dry run: would zip $(basename "$target") with ditto --keepParent and submit it" ;;
+    *) info "dry run: would submit $(basename "$target")" ;;
+  esac
+  info "dry run: credentials from the $credential; staple: $([[ $staple -eq 1 ]] && echo yes || echo no)"
+  exit 0
 fi
 
 work="$(mktemp -d)"

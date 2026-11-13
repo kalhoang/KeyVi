@@ -91,9 +91,18 @@ Value sets for the other keys follow PLT-R1202; `report.symptom` uses `missing`,
 
 ## Issue forms
 
-The bug and compatibility forms (QA-R43) declare the diagnostics field as a `textarea` with
-`render: text`, so GitHub wraps the pasted text in a fenced block even when the user pastes only the inner
-lines. The parser also finds the header inside such a block.
+Amended 2026-11-13: the field has **no** `render:` option. This replaces the earlier `render: text`, which
+disagreed with the documentation track's choice (ADR 0400 item 8).
+
+The bug and compatibility forms (QA-R43) declare the diagnostics field (`id: diagnostics`) as a plain
+`textarea` without `render:`. The app copies a block that is already fenced (rule 1), and `render: text`
+would wrap that paste in a second fence, so the copied fence lines would end up as text inside the code
+block. Without `render:`, GitHub keeps the pasted Markdown as is: the block arrives with its own fence and
+its `<slug>-diagnostics v1` header. The parser does not depend on the fence: it finds the first header line
+anywhere in the issue body, so a paste of the inner lines only (no fence) still parses, and the closing
+fence or the end of the body ends the block. Both forms tell the reporter that the block starts with the
+header line `<slug>-diagnostics v1`. `scripts/tests/test_scripts.py` fails if either form gains a `render:`
+key on that field or stops naming the header.
 
 ## Consequences
 

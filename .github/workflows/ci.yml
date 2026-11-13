@@ -77,6 +77,43 @@ jobs:
         run: scripts/tests/run.sh --no-macos
       - name: SPDX headers (CLR-R11)
         run: scripts/check-spdx.sh
+      - name: Brand files agree (Config/Brand.xcconfig and scripts/brand.env)
+        run: python3 -I scripts/check-brand-sync.py
+      - name: Remaining unimplemented() calls (report only; release.yml blocks them)
+        run: scripts/check-unimplemented.sh --report
+
+  contracts:
+    name: Architecture contracts in sync
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: docs/architecture/contracts.md matches the compiled contract sources
+        run: python3 -I docs/architecture/tools/sync_contracts.py --check
+
+  dco:
+    name: DCO sign-off on engine commits (external pull requests)
+    # ADR 0401: external contributions to the MPL-2.0 engine package need a Developer Certificate of Origin
+    # sign-off on every commit. External means the pull request comes from a fork.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Every commit touching the MPL-2.0 engine packages is signed off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          scripts/check-dco.sh --base "$BASE_SHA" --head "$HEAD_SHA" \
+            --path Packages/VietnameseEngine --path Packages/VietnameseEngineFuzz
 
   macos-tests:
     name: macOS lint, tests and coverage
@@ -115,6 +152,10 @@ jobs:
           scripts/coverage.sh --package "$APPCORE" --min 80 \
             --exclude '^Sources/(CompatHarness|TestSupport)/' \
             --baseline .build/coverage-baseline/appcore.json --summary-out .build/coverage/appcore.json
+      - name: Compatibility scenarios, plan only (compat-harness --dry-run, no events posted)
+        # Skipped until compat/scenarios exists (W2-E1); the script also skips while the product is missing.
+        if: hashFiles('compat/scenarios/**') != ''
+        run: scripts/compat-dry-run.sh --out .build/compat-dry-run.txt
       - name: Bundled data is reproducible (ENG-R810)
         run: swift run --package-path "$ENGINE" lexicon-builder check
       - name: Engine benchmark gate (ENG-R1230, ENG-R1233, QA-R14)

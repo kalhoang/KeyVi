@@ -1,15 +1,15 @@
 {
-  "_comment": "Sample fallback used only when compat/matrix.json is absent. Every row is unverified on purpose; the real matrix comes from the compatibility track (QA-R17).",
+  "schemaVersion": 1,
   "entries": [
-    { "name": "Safari", "category": "browser", "tier": 1, "status": "unverified" },
-    { "name": "Google Chrome", "category": "browser", "tier": 1, "status": "unverified" },
-    { "name": "Microsoft Word", "category": "office", "tier": 1, "status": "unverified" },
-    { "name": "Microsoft Excel", "category": "office", "tier": 1, "status": "unverified" },
-    { "name": "Zalo", "category": "chat", "tier": 1, "status": "unverified" },
-    { "name": "Slack", "category": "chat", "tier": 1, "status": "unverified" },
-    { "name": "Visual Studio Code", "category": "editor", "tier": 1, "status": "unverified" },
-    { "name": "Terminal", "category": "terminal", "tier": 1, "status": "unverified" },
-    { "name": "iTerm2", "category": "terminal", "tier": 1, "status": "unverified" },
-    { "name": "Figma", "category": "design", "tier": 1, "status": "unverified" }
+    { "bundleId": "com.apple.Safari", "displayName": "Safari", "category": "browser", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.google.Chrome", "displayName": "Google Chrome", "category": "browser", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.microsoft.Word", "displayName": "Microsoft Word", "category": "office", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.microsoft.Excel", "displayName": "Microsoft Excel", "category": "office", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.vng.zalo", "displayName": "Zalo", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.tinyspeck.slackmacgap", "displayName": "Slack", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.microsoft.VSCode", "displayName": "Visual Studio Code", "category": "developer", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.apple.Terminal", "displayName": "Terminal", "category": "terminal", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.googlecode.iterm2", "displayName": "iTerm2", "category": "terminal", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.figma.Desktop", "displayName": "Figma", "category": "design", "tier": 1, "status": "notVerified", "issues": [] }
   ]
 }

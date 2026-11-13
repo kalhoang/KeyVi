@@ -2,8 +2,10 @@
 """Helpers for scripts/publish-release (run with python3 -I).
 
 Subcommands:
-  appcast-insert   add one item to the Sparkle appcast (QA-R34, QA-R35, PLT-R1101, PLT-R1106, PLT-R1109)
-  releases-add     add one entry to site/data/releases.json (QA-R37)
+  appcast-insert     add one item to the Sparkle appcast (QA-R34, QA-R35, PLT-R1101, PLT-R1106, PLT-R1109)
+  releases-add       add one entry to site/data/releases.json (QA-R37)
+  release-notes-page write (or, with --check, only validate) the bilingual release-notes page the appcast
+                     links to (PRD-R51, ADR 0304)
   render-cask      render packaging/homebrew/Casks/cask.rb.template (QA-R36, PLT-R1110)
   render-zap       print the zap paths with brand values (PLT-R1012)
   changelog-notes  extract the notes of one version from a Keep a Changelog file
@@ -13,6 +15,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import email.utils
+import html
 import json
 import os
 import re
@@ -22,7 +25,6 @@ import xml.etree.ElementTree as ET
 
 SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
 DC_NS = "http://purl.org/dc/elements/1.1/"
-XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 S = "{%s}" % SPARKLE_NS
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(-beta\.\d+)?$")
 
@@ -64,8 +66,9 @@ def build_item(args) -> ET.Element:
     text(item, f"{S}minimumSystemVersion", args.minimum_system_version)
     if args.minimum_autoupdate_version:
         text(item, f"{S}minimumAutoupdateVersion", args.minimum_autoupdate_version)
-    text(item, f"{S}releaseNotesLink", args.notes_url_vi, {XML_LANG: "vi"})
-    text(item, f"{S}releaseNotesLink", args.notes_url_en, {XML_LANG: "en"})
+    # ADR 0304 amendment: Sparkle chooses an xml:lang variant by the macOS language, not by the app's
+    # interface language (D18), so the item links one bilingual page and carries no xml:lang variants.
+    text(item, f"{S}releaseNotesLink", args.notes_url)
     if args.channel == "beta":
         text(item, f"{S}channel", "beta")
     elif args.phased_interval > 0:
@@ -90,7 +93,7 @@ def cmd_appcast_insert(args) -> int:
         raise SystemExit("a beta version cannot go to the stable channel")
     if not re.fullmatch(r"[A-Za-z0-9+/=]{40,200}", args.signature):
         raise SystemExit("edSignature does not look like a base64 EdDSA signature")
-    for url in (args.url, args.notes_url_vi, args.notes_url_en):
+    for url in (args.url, args.notes_url):
         if not url.startswith("https://"):
             raise SystemExit(f"appcast URLs must be HTTPS (PLT-R1102): {url}")
     ET.register_namespace("sparkle", SPARKLE_NS)
@@ -122,6 +125,11 @@ def cmd_appcast_insert(args) -> int:
     return 0
 
 
+def fill_brand(value: str, app_name: str) -> str:
+    """Release notes come from CHANGELOG sections, which may say {{AppName}} (the file is brand-neutral)."""
+    return value.replace("{{AppName}}", app_name) if app_name else value
+
+
 def cmd_releases_add(args) -> int:
     doc = {"schemaVersion": 1, "releases": []}
     if os.path.exists(args.file):
@@ -142,13 +150,135 @@ def cmd_releases_add(args) -> int:
         "sha256": args.sha256,
         "size": args.size,
         "minimumSystemVersion": args.minimum_system_version,
-        "notes": {"vi": args.notes_vi, "en": args.notes_en},
+        "notes": {"vi": fill_brand(args.notes_vi, args.app_name), "en": fill_brand(args.notes_en, args.app_name)},
     }
     doc["releases"] = [entry] + doc["releases"]
     doc["schemaVersion"] = doc.get("schemaVersion", 1)
     atomic_write(args.file, json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps(entry, ensure_ascii=False, indent=2))
     return 0
+
+
+NOTES_MAX_VISIBLE_LINES = 5  # PRD-R51: five lines visible, then the "more" link to the changelog
+DASHES = ("\u2013", "\u2014")  # the site's prose rule (site/test.mjs) rejects en and em dashes
+# Bump the query when site/static/assets/release-notes.css changes (/assets/* is cached as immutable).
+RELEASE_NOTES_CSS = "/assets/release-notes.css?v=1"
+PAGE_COPY = {
+    "vi": {"heading": "Tiếng Việt", "more": "Xem nhật ký thay đổi đầy đủ"},
+    "en": {"heading": "English", "more": "Read the full changelog"},
+}
+
+
+def inline_html(value: str) -> str:
+    """Escapes the text, then renders `code`, **bold** and [label](https://...) links (other links: label)."""
+    out = html.escape(value, quote=True)
+    out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
+    out = re.sub(r"\[([^\]]+)\]\((https://[^)\s]+)\)", r'<a href="\2">\1</a>', out)
+    return re.sub(r"\[([^\]]+)\]\([^)\s]*\)", r"\1", out)
+
+
+def notes_html(notes: str) -> tuple[str, int]:
+    """Renders the short Markdown of a CHANGELOG section: ### headings, - items, paragraphs. Returns the HTML
+    and the number of visible lines (items and paragraphs)."""
+    parts: list[str] = []
+    in_list = False
+    visible = 0
+    for raw in notes.splitlines():
+        line = raw.strip()
+        item = re.match(r"^[-*+]\s+(.*)$", line)
+        if in_list and not item:
+            parts.append("</ul>")
+            in_list = False
+        if not line:
+            continue
+        heading = re.match(r"^#{2,6}\s+(.*?)\s*#*$", line)
+        if heading:
+            parts.append(f"<h3>{inline_html(heading.group(1))}</h3>")
+            continue
+        visible += 1
+        if item:
+            if not in_list:
+                parts.append("<ul>")
+                in_list = True
+            parts.append(f"<li>{inline_html(item.group(1))}</li>")
+        else:
+            parts.append(f"<p>{inline_html(line)}</p>")
+    if in_list:
+        parts.append("</ul>")
+    return "\n".join(parts), visible
+
+
+def notes_section(lang: str, notes: str, changelog_url: str) -> str:
+    copy = PAGE_COPY[lang]
+    body, _ = notes_html(notes)
+    url = html.escape(changelog_url, quote=True)
+    return (f'<section lang="{lang}" aria-labelledby="notes-{lang}">\n'
+            f'<h2 id="notes-{lang}">{copy["heading"]}</h2>\n'
+            + (body + "\n" if body else "")
+            + f'<p class="more"><a href="{url}">{copy["more"]}</a></p>\n</section>')
+
+
+def checked_notes(args) -> dict[str, str]:
+    """Fills {{AppName}} and refuses notes the site build or the update window would reject."""
+    if not VERSION_RE.match(args.version):
+        raise SystemExit(f"invalid version {args.version}")
+    notes = {"vi": fill_brand(args.notes_vi, args.app_name), "en": fill_brand(args.notes_en, args.app_name)}
+    for lang, value in notes.items():
+        if any(dash in value for dash in DASHES):
+            raise SystemExit(f"the {lang} notes contain an en or em dash; use a comma, colon or hyphen "
+                             "(the site build rejects them)")
+        if "{{" in value:
+            raise SystemExit(f"the {lang} notes contain an unfilled {{{{token}}}}")
+        _, visible = notes_html(value)
+        if visible > NOTES_MAX_VISIBLE_LINES:
+            # PRD-R51 is a MUST: the update window shows at most five lines, then the changelog link.
+            raise SystemExit(f"the {lang} notes have {visible} visible lines; PRD-R51 allows at most "
+                             f"{NOTES_MAX_VISIBLE_LINES} (keep the rest in the changelog, which the page links)")
+    return notes
+
+
+def cmd_release_notes_page(args) -> int:
+    """One bilingual page per release (ADR 0304 amendment): Vietnamese first, then English. It is what the
+    in-app update window shows, so it carries no donation line (PRD-R57) and no site navigation."""
+    notes = checked_notes(args)
+    if args.check:
+        return 0
+    if not args.out:
+        raise SystemExit("--out is required unless --check")
+    for url in (args.changelog_url_vi, args.changelog_url_en):
+        if not url.startswith("https://"):
+            raise SystemExit(f"changelog links must be HTTPS: {url}")
+    if os.path.exists(args.out) and not args.force:
+        raise SystemExit(f"{args.out} already exists: version {args.version} has been published")
+    title = html.escape(f"{args.app_name} {args.version}")
+    page = "\n".join([
+        "<!doctype html>",
+        '<html lang="vi">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<meta name="color-scheme" content="light dark">',
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'self\'; '
+        "img-src 'self'; base-uri 'none'; form-action 'none'\">",
+        '<meta name="robots" content="noindex">',
+        f"<title>{title}</title>",
+        f'<link rel="stylesheet" href="{RELEASE_NOTES_CSS}">',
+        "</head>",
+        "<body>",
+        "<main>",
+        f"<h1>{title}</h1>",
+        notes_section("vi", notes["vi"], args.changelog_url_vi),
+        notes_section("en", notes["en"], args.changelog_url_en),
+        "</main>",
+        "</body>",
+        "</html>",
+        "",
+    ])
+    atomic_write(args.out, page)
+    print(page, end="")
+    return 0
+
 
 
 def zap_lines(path: str, folder: str, bundle_id: str) -> list[str]:
@@ -239,8 +369,7 @@ def main(argv: list[str]) -> int:
     p.add_argument("--url", required=True)
     p.add_argument("--length", required=True, type=int)
     p.add_argument("--signature", required=True)
-    p.add_argument("--notes-url-vi", required=True)
-    p.add_argument("--notes-url-en", required=True)
+    p.add_argument("--notes-url", required=True, help="the bilingual release-notes page (ADR 0304)")
     p.add_argument("--date", default="")
     p.set_defaults(func=cmd_appcast_insert)
 
@@ -256,7 +385,20 @@ def main(argv: list[str]) -> int:
     p.add_argument("--minimum-system-version", required=True)
     p.add_argument("--notes-vi", default="")
     p.add_argument("--notes-en", default="")
+    p.add_argument("--app-name", default="", help="fills {{AppName}} in the notes")
     p.set_defaults(func=cmd_releases_add)
+
+    p = sub.add_parser("release-notes-page")
+    p.add_argument("--out", help="site/static/release-notes/<version>/index.html (required unless --check)")
+    p.add_argument("--check", action="store_true", help="validate the notes only; write nothing")
+    p.add_argument("--app-name", required=True)
+    p.add_argument("--version", required=True)
+    p.add_argument("--notes-vi", default="")
+    p.add_argument("--notes-en", default="")
+    p.add_argument("--changelog-url-vi", default="")
+    p.add_argument("--changelog-url-en", default="")
+    p.add_argument("--force", action="store_true", help="overwrite an existing page")
+    p.set_defaults(func=cmd_release_notes_page)
 
     for name, func in (("render-cask", cmd_render_cask), ("render-zap", cmd_render_zap)):
         p = sub.add_parser(name)

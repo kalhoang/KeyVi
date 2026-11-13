@@ -8,13 +8,13 @@ The project is pre-alpha. Sections marked **placeholder** are filled in by the t
 
 Sparkle is the only runtime dependency (QA-R24).
 
-### Sparkle 2
+### Sparkle 2.10.1
 
 - Project: <https://github.com/sparkle-project/Sparkle>
 - Used for: update checks, download, signature verification and installation (EdDSA).
-- Version: pinned exactly in `Package.resolved` (PLT-R910); record the pinned version here when the app package adds it (placeholder).
+- Version: **2.10.1**, pinned exactly (PLT-R910): `exactVersion` in `project.yml` and revision `ab7d71291238df6e0492143b120c9b696a35f603` in [`Config/Package.resolved`](Config/Package.resolved) ([ADR 0304](docs/decisions/0304-sparkle-version-pin.md)). The release scripts download the same version's tools (`Sparkle-2.10.1.tar.xz`, SHA-256 pinned in `scripts/publish-release`).
 - Licence: MIT, with additional licences for code bundled inside Sparkle (bsdiff, sais-lite, ed25519, SUSignatureVerifier).
-- Source of the notice text below: the `LICENSE` file of the Sparkle repository, `2.x` branch. Re-fetch and compare it when the pinned version changes.
+- Source of the notice text below: the `LICENSE` file of the Sparkle repository at tag `2.10.1`, compared line by line on 2026-11-13 (identical). Re-fetch and compare it whenever the pin changes; a pin change is a decision-record change (ADR 0304).
 
 ```text
 Copyright (c) 2006-2013 Andy Matuschak.
@@ -159,14 +159,14 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ## 3. Data: word lists and corpora
 
-The authoritative list, with source URL, pinned version, checksum, licence and the way the data is transformed, lives in **`data/NOTICES.md`**, maintained by the data track together with the pinned inputs in `data/`. The summary below is filled from that file (placeholder).
+The authoritative list, with source URL, pinned version, checksum, licence, the full notice text and the way the data is transformed, lives in **[`data/NOTICES.md`](data/NOTICES.md)**, maintained by the data track together with the pinned inputs in `data/` (ENG-R810, ENG-R811). Every word-list row below points there; this file only summarises it, and the notice texts that must be reproduced (for example SCOWL's) are reproduced in `data/NOTICES.md`, not copied here, so there is one copy to keep current.
 
-| Data | Used for | Source | Licence | Status |
+| Data | Used for | Source, version, notice | Licence | Status |
 |---|---|---|---|---|
-| SCOWL (Spell Checker Oriented Word Lists, Kevin Atkinson) | English lexicon for automatic restore (spec/01-engine.md section 8.2) | See `data/NOTICES.md` | MIT/X11-style notice that must be reproduced (ENG-R811); the data track also verifies that the chosen size levels are redistributable | Placeholder |
-| Public gazetteers (proper-noun corpus) | `proper-nouns` corpus file | See `data/NOTICES.md` | Record licence per CLR-R6 | Placeholder |
+| SCOWL (Spell Checker Oriented Word Lists, Kevin Atkinson) | English lexicon for automatic restore (spec/01-engine.md section 8.2) | [`data/NOTICES.md`](data/NOTICES.md), SCOWL entry | MIT/X11-style notice that must be reproduced (ENG-R811); the data track also verifies that the chosen size levels are redistributable | Filled by the data track |
+| Public gazetteers (proper-noun corpus) | `proper-nouns` corpus file | [`data/NOTICES.md`](data/NOTICES.md), gazetteer entries | Record licence per CLR-R6 | Filled by the data track |
 | Hand-written lists (tech-always list, code-only tech list, ambiguity table, collisions) | Restore data and corpus | Written for this project | Same as the engine (MPL-2.0) | Original |
-| Attested syllables | Tie-breaker data only | Built by a reproducible script from legal normative texts, plus reviewed additions | Record the exact documents and the legal basis | Placeholder |
+| Attested syllables | Tie-breaker data only | Built by a reproducible script from legal normative texts, plus reviewed additions; documents listed in [`data/NOTICES.md`](data/NOTICES.md) | Record the exact documents and the legal basis | Filled by the data track |
 
 Rules (CLR-R6): every list needs a recorded permissive licence (MIT, BSD, Apache-2.0, CC0, CC-BY or public domain). GPL and LGPL data, including the hunspell-vi and Aspell Vietnamese lists, must not be bundled or downloaded. The syllable validator is rule-based, so no Vietnamese dictionary is needed.
 

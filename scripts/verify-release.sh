@@ -8,8 +8,17 @@
 #   - bundle ID equals APP_BUNDLE_ID_RELEASE; universal binary (arm64 + x86_64)
 #   - designated requirement equals the expected default requirement for bundle ID + team, and equals
 #     the previous release's requirement when given (a change makes macOS re-ask permissions)
+#   - Sparkle EdDSA public key (SUPublicEDKey, from SPARKLE_PUBLIC_ED_KEY in Config/Sparkle.xcconfig)
+#     present and well formed: without it no later update could be verified (ADR 0304, QA-R33)
 #   - after notarisation: stapler validate (app and DMG) and spctl --assess
 #   - URL host allowlist (QA-R60)
+#
+# Inputs: --app (the built .app), --dmg (optional), --previous-dr FILE (the designated-requirement.txt asset
+# of the previous published release; leave it out for the first release), --write-dr FILE (write this
+# build's requirement, uploaded as a release asset), --pre-notarization (skip stapler and Gatekeeper).
+# Reads: scripts/brand.env (APP_BUNDLE_ID_RELEASE and the hosts for the URL check), Config/Signing.xcconfig
+# (DEVELOPMENT_TEAM), scripts/url-hosts.allow. Environment: none (BRAND_ENV overrides brand.env in tests).
+# Every check runs; the script lists every failure, then exits 1.
 set -euo pipefail
 
 usage() {
@@ -46,6 +55,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$app" && -d "$app" ]] || { usage >&2; exit 2; }
+# QA-R30: the first release has no previous requirement; a wrong path must say so, not fail in a redirection.
+[[ -z "$previous_dr" || -f "$previous_dr" ]] \
+  || die "previous designated requirement file not found: $previous_dr (leave out --previous-dr for the first release)"
 require_cmd codesign lipo spctl xcrun
 load_brand
 load_team_id
@@ -112,6 +124,17 @@ if entitlements:
 
 check_bundle_id() { [[ "$(info_value CFBundleIdentifier)" == "$APP_BUNDLE_ID_RELEASE" ]]; }
 
+check_sparkle_key() {
+  # Base64 of a 32-byte Ed25519 public key, as printed by Sparkle's generate_keys (ADR 0304 runbook note).
+  local key
+  key="$(info_value SUPublicEDKey || true)"
+  if [[ ! "$key" =~ ^[A-Za-z0-9+/]{43}=$ ]]; then
+    log "  SUPublicEDKey is empty or malformed: fill SPARKLE_PUBLIC_ED_KEY in Config/Sparkle.xcconfig"
+    log "  (docs/decisions/0304-sparkle-version-pin.md, \"Runbook note: filling SPARKLE_PUBLIC_ED_KEY\")"
+    return 1
+  fi
+}
+
 check_universal() {
   local exe archs
   exe="$app/Contents/MacOS/$(info_value CFBundleExecutable)"
@@ -153,6 +176,7 @@ check "Developer ID identity, team $APP_TEAM_ID, secure timestamp" check_identit
 check "hardened runtime flag" check_runtime
 check "no entitlements" check_entitlements
 check "bundle ID $APP_BUNDLE_ID_RELEASE" check_bundle_id
+check "Sparkle public EdDSA key (SUPublicEDKey)" check_sparkle_key
 check "universal binary (arm64 + x86_64)" check_universal
 check "designated requirement equals the expected requirement" check_dr_expected
 if [[ -n "$previous_dr" ]]; then
