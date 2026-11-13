@@ -12,6 +12,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True  # keep scripts/tests free of __pycache__
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import swift_source  # noqa: E402
 from support import REPO, py  # noqa: E402
 
 
@@ -56,18 +57,86 @@ class Adr0501Tests(unittest.TestCase):
         missing = sorted(k for k in keys if k not in example_keys and not k.startswith("probe."))
         self.assertEqual(missing, [], "add these keys to the ADR 0501 example")
 
-    def test_symptom_mapping_matches_the_renderer(self):
+    def renderer_symptoms(self) -> dict[str, str]:
+        """`DiagnosticsReport.Symptom` case -> `report.symptom` chip, as `BlockFields.blockSymptom` maps them."""
         source = (self.DIAGNOSTICS / "IssueBlockFields.swift").read_text(encoding="utf-8")
         body = source.split("static func blockSymptom", 1)[1].split("\n    }", 1)[0]
         mapping = {}
         for cases, chip in re.findall(r"case ([^:]+): \"(\w+)\"", body):
             for case in re.findall(r"\.(\w+)", cases):
                 mapping[case] = chip
+        return mapping
+
+    def test_symptom_mapping_matches_the_renderer(self):
+        mapping = self.renderer_symptoms()
         self.assertEqual(mapping["lettersOutOfOrder"], "other")
         self.assertEqual(mapping["nothingTyped"], "cannotType")
         table = self.ADR.split("### Symptom mapping", 1)[1]
         documented = dict(re.findall(r"^\| `(\w+)` \| `(\w+)` \|$", table, re.MULTILINE))
         self.assertEqual(documented, mapping)
+
+    def test_example_lists_the_keys_in_the_order_the_app_writes_them(self):
+        # ADR 0501 rule 6: the order of the example is normative, so a reordered renderer must fail here.
+        source = {name: (self.DIAGNOSTICS / name).read_text(encoding="utf-8")
+                  for name in ("Report.swift", "IssueBlock.swift", "IssueBlockFields.swift")}
+        expected = swift_source.always_present_keys(
+            source["Report.swift"], source["IssueBlock.swift"], source["IssueBlockFields.swift"])
+        self.assertGreater(len(expected), 80, "the order scan found too little; did the Swift sources move?")
+        lines = self.example_block().splitlines()[2:-1]  # inside the fence, after the header
+        example = [line.split(":", 1)[0] for line in lines]
+        events = [key for key in example if re.fullmatch(r"health\.event\.\d\d", key)]
+        self.assertEqual([key for key in example if key not in events], expected)
+        self.assertEqual(events, [f"health.event.{number:02d}" for number in range(1, len(events) + 1)])
+        self.assertEqual(example[len(example) - len(events):], events, "health.event.NN lines come last")
+        self.assertIn(f"health.events: {len(events)}", lines)
+
+    # key in the reference table -> (source file, enum, enclosing type, `;`-separated part of the value cell)
+    VALUE_SETS = {
+        "report.symptomDetail": ("Diagnostics/Report.swift", "Symptom", None, None),
+        "app.channel": ("AppModel/Vocabulary.swift", "UpdateChannel", None, None),
+        "input.method": ("AppModel/Vocabulary.swift", "TypingMethod", None, None),
+        "input.sourceType": ("Diagnostics/Report.swift", "InputSourceKindCode", None, None),
+        "permission.accessibility": ("AppModel/Vocabulary.swift", "PermissionState", None, None),
+        "permission.health": ("Diagnostics/Report.swift", "PermissionHealthCode", None, None),
+        "secureInput.holderKind": ("AppModel/HostState.swift", "Kind", "SecureInputHolder", None),
+        "focus.engine": ("AppModel/Vocabulary.swift", "EngineFingerprint", None, None),
+        "focus.ax": ("AppModel/Vocabulary.swift", "AXAvailability", None, None),
+        "rule.source": ("AppModel/Vocabulary.swift", "DecisionSource", None, None),
+        "rule.userOverrideOmitted": ("Diagnostics/Report.swift", "OmittedMatchField", None, None),
+        "settings.toneStyle": ("AppModel/Vocabulary.swift", "TonePlacement", None, None),
+        "settings.interfaceLanguage": ("AppModel/Vocabulary.swift", "InterfaceLanguage", None, None),
+        "settings.updateChannel": ("AppModel/Vocabulary.swift", "UpdateChannel", None, None),
+        "appMode.rule": ("AppModel/Vocabulary.swift", "PerAppRule", None, 1),
+        "appMode.remembered": ("AppModel/Vocabulary.swift", "TypingMode", None, 2),
+    }
+
+    def reference_row(self, key: str) -> list[str]:
+        reference = self.ADR.split("### Key reference (v1)", 1)[1].split("### Symptom mapping", 1)[0]
+        for line in reference.splitlines():
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if line.startswith("| ") and f"`{key}`" in cells[0]:
+                return cells
+        self.fail(f"no key reference row for {key}")
+
+    @staticmethod
+    def literals(cell: str) -> set[str]:
+        return {value for value in re.findall(r"`([^`]+)`", cell) if "<" not in value}
+
+    def test_key_reference_value_sets_match_the_swift_enums(self):
+        # ADR 0501 rule 4: a new enum case changes a v1 value set, so it must reach this record first.
+        sources = REPO / "Packages" / "AppCore" / "Sources"
+        for key, (path, enum, inside, part) in self.VALUE_SETS.items():
+            with self.subTest(key=key, enum=enum):
+                values = swift_source.enum_raw_values((sources / path).read_text(encoding="utf-8"), enum, inside)
+                cell = self.reference_row(key)[1]
+                self.assertEqual(self.literals(cell.split(";")[part] if part is not None else cell), set(values))
+        with self.subTest(key="report.symptom"):
+            self.assertEqual(self.literals(self.reference_row("report.symptom")[1]),
+                             set(self.renderer_symptoms().values()))
+        with self.subTest(key="probe.<profile>"):
+            report = (self.DIAGNOSTICS / "Report.swift").read_text(encoding="utf-8")
+            profiles = swift_source.enum_raw_values(report, "Profile", "LatencyProbeResult")
+            self.assertEqual(self.literals(self.reference_row("probe.<profile>.samples")[2]), set(profiles))
 
     def labels(self, body: str) -> list:
         result = py("parse-diagnostics.py", "--json", env={"ISSUE_BODY": body})
