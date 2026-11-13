@@ -33,10 +33,42 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     public var conflictingInputApps: [BundleKey]
     public var userReport: UserReportSection?
 
+    public init(
+        formatVersion: Int = DiagnosticsReport.formatVersion, generatedAt: Date, app: AppIdentity, system: SystemInfo,
+        hostState: HostStateCode, keyboard: KeyboardSection, permissions: PermissionsSection, tap: TapSection,
+        secureInput: SecureInputSection, focus: FocusSection?, rule: RuleSection?, settings: SettingsSection,
+        reportedAppMode: AppModeSection?, latency: LatencySection, healthEvents: [HealthEvent],
+        conflictingInputApps: [BundleKey], userReport: UserReportSection?
+    ) {
+        self.formatVersion = formatVersion
+        self.generatedAt = generatedAt
+        self.app = app
+        self.system = system
+        self.hostState = hostState
+        self.keyboard = keyboard
+        self.permissions = permissions
+        self.tap = tap
+        self.secureInput = secureInput
+        self.focus = focus
+        self.rule = rule
+        self.settings = settings
+        self.reportedAppMode = reportedAppMode
+        self.latency = latency
+        self.healthEvents = healthEvents
+        self.conflictingInputApps = conflictingInputApps
+        self.userReport = userReport
+    }
+
     public struct KeyboardSection: Sendable, Hashable, Codable {
         public var layout: InputSourceID?
         public var sourceKind: InputSourceKindCode
         public var enabledSources: [InputSourceID]
+
+        public init(layout: InputSourceID?, sourceKind: InputSourceKindCode, enabledSources: [InputSourceID]) {
+            self.layout = layout
+            self.sourceKind = sourceKind
+            self.enabledSources = enabledSources
+        }
     }
 
     public enum InputSourceKindCode: String, Sendable, Hashable, Codable {
@@ -48,6 +80,16 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var postEvent: PermissionState
         public var listenEvent: PermissionState
         public var health: PermissionHealthCode
+
+        public init(
+            accessibility: PermissionState, postEvent: PermissionState, listenEvent: PermissionState,
+            health: PermissionHealthCode
+        ) {
+            self.accessibility = accessibility
+            self.postEvent = postEvent
+            self.listenEvent = listenEvent
+            self.health = health
+        }
     }
 
     public enum PermissionHealthCode: String, Sendable, Hashable, Codable {
@@ -60,12 +102,29 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var timeoutsLast24Hours: Int
         public var userInputDisablesLast24Hours: Int
         public var lastReenableReason: HealthEvent.Kind?
+
+        public init(
+            enabled: Bool, location: String = "session", timeoutsLast24Hours: Int, userInputDisablesLast24Hours: Int,
+            lastReenableReason: HealthEvent.Kind?
+        ) {
+            self.enabled = enabled
+            self.location = location
+            self.timeoutsLast24Hours = timeoutsLast24Hours
+            self.userInputDisablesLast24Hours = userInputDisablesLast24Hours
+            self.lastReenableReason = lastReenableReason
+        }
     }
 
     public struct SecureInputSection: Sendable, Hashable, Codable {
         public var enabled: Bool
         public var likelyHolder: BundleKey?
         public var holderKind: SecureInputHolder.Kind?
+
+        public init(enabled: Bool, likelyHolder: BundleKey?, holderKind: SecureInputHolder.Kind?) {
+            self.enabled = enabled
+            self.likelyHolder = likelyHolder
+            self.holderKind = holderKind
+        }
     }
 
     public struct FocusSection: Sendable, Hashable, Codable {
@@ -79,6 +138,22 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var domClasses: [String]
         public var editable: Bool?
         public var secure: Bool
+
+        public init(
+            bundle: BundleKey, appVersion: String?, engine: EngineFingerprint, axAvailability: AXAvailability,
+            role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?, secure: Bool
+        ) {
+            self.bundle = bundle
+            self.appVersion = appVersion
+            self.engine = engine
+            self.axAvailability = axAvailability
+            self.role = role
+            self.subrole = subrole
+            self.identifier = identifier
+            self.domClasses = domClasses
+            self.editable = editable
+            self.secure = secure
+        }
     }
 
     public struct RuleSection: Sendable, Hashable, Codable {
@@ -93,6 +168,19 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         /// The user override for the reported app, so maintainers can promote it (PLT-R541). A typed projection
         /// of the override rule: no free text, no URL, no title pattern (PLT-R1203, docs/decisions/0312).
         public var userOverride: ReportedOverride?
+
+        public init(
+            rule: RuleID?, source: DecisionSource, specificity: Int, strategy: InjectionStrategy,
+            parameters: ReportedParameters, isUserOverride: Bool, userOverride: ReportedOverride?
+        ) {
+            self.rule = rule
+            self.source = source
+            self.specificity = specificity
+            self.strategy = strategy
+            self.parameters = parameters
+            self.isUserOverride = isUserOverride
+            self.userOverride = userOverride
+        }
     }
 
     /// Strategy parameters as typed values (`StrategyParams` of the rules schema without its JSON form). In the
@@ -220,23 +308,62 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
+
+        public init(
+            typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
+            bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
+            toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, interfaceLanguage: InterfaceLanguage,
+            updateChannel: UpdateChannel, explicitlySetKeys: [String]
+        ) {
+            self.typingMethod = typingMethod
+            self.tonePlacement = tonePlacement
+            self.englishRestore = englishRestore
+            self.standaloneW = standaloneW
+            self.bracketKeys = bracketKeys
+            self.macrosEnabled = macrosEnabled
+            self.macroCount = macroCount
+            self.macrosInEnglishMode = macrosInEnglishMode
+            self.rememberPerApp = rememberPerApp
+            self.toggleHotkey = toggleHotkey
+            self.restoreHotkeySet = restoreHotkeySet
+            self.interfaceLanguage = interfaceLanguage
+            self.updateChannel = updateChannel
+            self.explicitlySetKeys = explicitlySetKeys
+        }
     }
 
     public struct AppModeSection: Sendable, Hashable, Codable {
         public var bundle: BundleKey
         public var rule: PerAppRule?
         public var rememberedMode: TypingMode?
+
+        public init(bundle: BundleKey, rule: PerAppRule?, rememberedMode: TypingMode?) {
+            self.bundle = bundle
+            self.rule = rule
+            self.rememberedMode = rememberedMode
+        }
     }
 
     public struct LatencySection: Sendable, Hashable, Codable {
         public var metrics: MetricsSnapshot
         public var probe: LatencyProbeResult?
+
+        public init(metrics: MetricsSnapshot, probe: LatencyProbeResult?) {
+            self.metrics = metrics
+            self.probe = probe
+        }
     }
 
     public struct UserReportSection: Sendable, Hashable, Codable {
         public var symptom: Symptom
         public var reportedApp: BundleKey?
         public var reproducesInPracticeField: Bool?
+
+        public init(symptom: Symptom, reportedApp: BundleKey?, reproducesInPracticeField: Bool?) {
+            self.symptom = symptom
+            self.reportedApp = reportedApp
+            self.reproducesInPracticeField = reproducesInPracticeField
+        }
     }
 
     /// PRD-R47 chips and PLT-R1205 symptoms.
@@ -261,17 +388,34 @@ public struct LatencyProbeResult: Sendable, Hashable, Codable {
         public var endToEndDeltaP50Microseconds: UInt64
         public var endToEndDeltaP99Microseconds: UInt64
         public var samples: Int
+
+        public init(
+            profile: Profile, decideToPostedP50Microseconds: UInt64, decideToPostedP99Microseconds: UInt64,
+            endToEndDeltaP50Microseconds: UInt64, endToEndDeltaP99Microseconds: UInt64, samples: Int
+        ) {
+            self.profile = profile
+            self.decideToPostedP50Microseconds = decideToPostedP50Microseconds
+            self.decideToPostedP99Microseconds = decideToPostedP99Microseconds
+            self.endToEndDeltaP50Microseconds = endToEndDeltaP50Microseconds
+            self.endToEndDeltaP99Microseconds = endToEndDeltaP99Microseconds
+            self.samples = samples
+        }
     }
 
     public var ranAt: Date
     public var results: [ProfileResult]
+
+    public init(ranAt: Date, results: [ProfileResult]) {
+        self.ranAt = ranAt
+        self.results = results
+    }
 }
 
 /// Renders a report for the three outputs of PLT-R1204/PRD-R47.
 public enum DiagnosticsRenderer {
     /// Human-readable text in the interface language, shown verbatim before copying (PLT-R1204).
     public static func plainText(_ report: DiagnosticsReport, language: InterfaceLanguage) -> String {
-        unimplemented()
+        PlainTextReport(report: report, labels: ReportLabels.labels(for: language)).render()
     }
 
     /// QA-R44 block, parsed by the issue labeller (`scripts/parse-diagnostics.py`). The format is fixed by
@@ -293,14 +437,22 @@ public enum DiagnosticsRenderer {
     ///
     /// `<slug>` is `report.app.slug` (read from the bundle, never hard-coded). Values never contain newlines;
     /// lists are comma-separated. Keys match `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. At most 200 lines.
-    public static func issueBlock(_ report: DiagnosticsReport) -> String { unimplemented() }
+    public static func issueBlock(_ report: DiagnosticsReport) -> String { IssueBlock.render(report) }
 
     /// Inverse of `issueBlock` for tests and for the labeller contract: `nil` when no block or an unknown
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
-    public static func parseIssueBlock(_ text: String) -> [String: String]? { unimplemented() }
+    public static func parseIssueBlock(_ text: String) -> [String: String]? { IssueBlock.parse(text) }
 
-    /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47).
-    public static func json(_ report: DiagnosticsReport) throws -> Data { unimplemented() }
+    /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47): pretty-printed, sorted keys, ISO 8601
+    /// dates. Decodes back into an equal `DiagnosticsReport`.
+    public static func json(_ report: DiagnosticsReport) throws -> Data { try ReportJSON.encode(report) }
+
+    /// The reported app's user override as rule JSON in the `compat/rules.json` shape (PLT-R541, ADR 0312), so
+    /// a maintainer can paste it after adding `summary` and provenance. Content-bearing match fields are never
+    /// part of `ReportedOverride`, so they cannot appear here.
+    public static func ruleJSON(_ override: DiagnosticsReport.ReportedOverride, pretty: Bool) -> String {
+        ReportJSON.rule(override, pretty: pretty)
+    }
 }
 
 /// Keys of the issue block (ADR 0501). The labeller relies on `report.bundleId` / `focus.bundleId`,
