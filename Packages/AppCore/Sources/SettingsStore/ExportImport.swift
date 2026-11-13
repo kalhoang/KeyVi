@@ -27,7 +27,9 @@ public struct ExportOptions: Sendable, Hashable {
     }
 
     /// `<slug>-settings-YYYYMMDD.json`, dated in the user's time zone.
-    public static func fileName(slug: String, date: Date) -> String { fileName(slug: slug, date: date, timeZone: .current) }
+    public static func fileName(slug: String, date: Date) -> String {
+        fileName(slug: slug, date: date, timeZone: .current)
+    }
 
     static func fileName(slug: String, date: Date, timeZone: TimeZone) -> String {
         var calendar = Calendar(identifier: .gregorian)

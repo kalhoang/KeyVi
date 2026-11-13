@@ -148,7 +148,8 @@ public actor SettingsStore {
     /// date is kept to the second so it reads back unchanged (PLT-R541 "set by you on <date>").
     public func addRuleOverride(_ override: StoredRuleOverride) {
         guard let id = override.ruleID else { return }
-        let stored = StoredRuleOverride(createdAt: StorageTimestamp.wholeSeconds(override.createdAt), rule: override.rule)
+        let stored = StoredRuleOverride(
+            createdAt: StorageTimestamp.wholeSeconds(override.createdAt), rule: override.rule)
         var next = ruleOverrides
         if let index = next.firstIndex(where: { $0.ruleID == id }) { next[index] = stored } else { next.append(stored) }
         guard next != ruleOverrides else { return }

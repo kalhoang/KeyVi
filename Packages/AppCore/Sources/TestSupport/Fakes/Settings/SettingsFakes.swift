@@ -165,7 +165,8 @@ public struct SettingsStoreHarness: Sendable {
 
     /// A new store over the same files and key-value store as `previous` (the next launch), or over fresh ones.
     public init(
-        reusing previous: SettingsStoreHarness? = nil, writtenBy: String = "0.1.0", migrations: MigrationChain = .shipped
+        reusing previous: SettingsStoreHarness? = nil, writtenBy: String = "0.1.0",
+        migrations: MigrationChain = .shipped
     ) {
         memory = previous?.memory ?? InMemoryFileSystem()
         spy = SpyFileSystem(memory)
@@ -197,7 +198,9 @@ public struct SettingsStoreHarness: Sendable {
 
     /// Parsed JSON object of `file`, nil when absent or unreadable.
     public func object(_ file: SettingsFile) -> [String: JSONValue]? {
-        guard let data = data(file), let value = try? JSONDecoder().decode(JSONValue.self, from: data) else { return nil }
+        guard let data = data(file), let value = try? JSONDecoder().decode(JSONValue.self, from: data) else {
+            return nil
+        }
         return value.objectValue
     }
 

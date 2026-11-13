@@ -2,8 +2,8 @@
 
 import AppModel
 import Foundation
-import Testing
 import TestSupport
+import Testing
 
 @testable import SettingsStore
 
@@ -43,8 +43,13 @@ private func comparable(_ state: SettingsState) -> Content {
 
 @Suite struct SettingsExportTests {
     @Test func fileNameUsesSlugAndLocalDatePLTR1010() {
-        #expect(ExportOptions.fileName(slug: "app", date: exportDate, timeZone: TimeZone(identifier: "UTC")!) == "app-settings-20270115.json")
-        #expect(ExportOptions.fileName(slug: "app", date: exportDate.addingTimeInterval(57_600), timeZone: TimeZone(identifier: "Asia/Ho_Chi_Minh")!) == "app-settings-20270116.json")
+        #expect(
+            ExportOptions.fileName(slug: "app", date: exportDate, timeZone: TimeZone(identifier: "UTC")!)
+                == "app-settings-20270115.json")
+        #expect(
+            ExportOptions.fileName(
+                slug: "app", date: exportDate.addingTimeInterval(57_600),
+                timeZone: TimeZone(identifier: "Asia/Ho_Chi_Minh")!) == "app-settings-20270116.json")
         #expect(ExportOptions.fileName(slug: "x", date: exportDate).hasPrefix("x-settings-2027011"))
     }
 
@@ -61,7 +66,8 @@ private func comparable(_ state: SettingsState) -> Content {
         #expect(arrayItems(full["ruleOverrides"]).count == 1)  // PLT-R541
         #expect(arrayItems(full["macros"]).count == 2)
         let lean = try JSONSupport.parseObject(
-            try await harness.store.export(ExportOptions(includeMacros: false, includeAppModes: false), now: exportDate))
+            try await harness.store.export(ExportOptions(includeMacros: false, includeAppModes: false), now: exportDate)
+        )
         #expect(lean["macros"] == nil && lean["appModes"] == nil)
         #expect(lean["ruleOverrides"] != nil && lean["settings"] != nil)
     }
@@ -77,7 +83,9 @@ private func comparable(_ state: SettingsState) -> Content {
         #expect(preview.skippedFields.isEmpty)
         #expect(preview.appEntries == 4 && preview.ruleOverrides == 1)
         #expect(preview.macros?.new.count == 2)
-        #expect(preview.changedSettingKeys.contains("typingMethod") && preview.changedSettingKeys.contains("englishRestore"))
+        #expect(
+            preview.changedSettingKeys.contains("typingMethod") && preview.changedSettingKeys.contains("englishRestore")
+        )
         try await target.store.applyImport(preview, choices: ImportChoices())
         let imported = await target.store.state
         #expect(comparable(imported) == comparable(await source.store.state))
@@ -100,7 +108,9 @@ private func comparable(_ state: SettingsState) -> Content {
 
 @Suite struct SettingsImportTests {
     private func export(_ body: String, version: Int = 1) -> Data {
-        Data(#"{"kind":"settings-export","schemaVersion":\#(version),"writtenBy":"9.9","exportedAt":"2030-01-01T00:00:00Z"\#(body)}"#.utf8)
+        Data(
+            #"{"kind":"settings-export","schemaVersion":\#(version),"writtenBy":"9.9","exportedAt":"2030-01-01T00:00:00Z"\#(body)}"#
+                .utf8)
     }
 
     /// PLT-R1010, PRD-R72: a newer export is imported for known fields; the rest is listed.
@@ -112,10 +122,11 @@ private func comparable(_ state: SettingsState) -> Content {
             version: 2)
         let preview = try await harness.store.previewImport(data)
         #expect(preview.schemaVersion == 2)
-        #expect(preview.skippedFields == [
-            "cloudSync", "settings.v2List", "settings.settings.v2Setting", "appModes.v2", "appModes.apps[1]",
-            "ruleOverrides.overrides[0]",
-        ])
+        #expect(
+            preview.skippedFields == [
+                "cloudSync", "settings.v2List", "settings.settings.v2Setting", "appModes.v2", "appModes.apps[1]",
+                "ruleOverrides.overrides[0]",
+            ])
         #expect(preview.changedSettingKeys == ["typingMethod"])
         try await harness.store.applyImport(preview, choices: ImportChoices())
         let state = await harness.store.state
@@ -127,7 +138,8 @@ private func comparable(_ state: SettingsState) -> Content {
     @Test func olderExportIsMigrated() async throws {
         let harness = SettingsStoreHarness(migrations: TestMigrations.chain)
         _ = await harness.store.load()
-        let data = export(#","settings":{"prefs":{"method":"vni"}},"macros":[{"trigger":"vn","expansion":"Việt Nam"}]"#, version: 0)
+        let data = export(
+            #","settings":{"prefs":{"method":"vni"}},"macros":[{"trigger":"vn","expansion":"Việt Nam"}]"#, version: 0)
         let preview = try await harness.store.previewImport(data)
         #expect(preview.changedSettingKeys == ["typingMethod"])
         #expect(preview.macros?.new.map(\.trigger) == ["vn"])
@@ -142,7 +154,8 @@ private func comparable(_ state: SettingsState) -> Content {
         let harness = await populated()
         await harness.store.flush()
         let data = export(
-            #","settings":{"settings":{"typingMethod":"telex"}},"appModes":{"globalMode":"vi","apps":[{"bundle":"com.example.Chat","mode":"en"},{"bundle":"new.app","rule":"ignore"}]},"ruleOverrides":[{"createdAt":"2027-01-01T00:00:00Z","rule":{"id":"user.paste.1","strategy":"axReplace"}},{"createdAt":"2027-01-01T00:00:00Z","rule":{"id":"user.other"}}],"macros":[{"trigger":"VN","expansion":"VIỆT NAM"},{"trigger":"kg","expansion":"không"}]"#)
+            #","settings":{"settings":{"typingMethod":"telex"}},"appModes":{"globalMode":"vi","apps":[{"bundle":"com.example.Chat","mode":"en"},{"bundle":"new.app","rule":"ignore"}]},"ruleOverrides":[{"createdAt":"2027-01-01T00:00:00Z","rule":{"id":"user.paste.1","strategy":"axReplace"}},{"createdAt":"2027-01-01T00:00:00Z","rule":{"id":"user.other"}}],"macros":[{"trigger":"VN","expansion":"VIỆT NAM"},{"trigger":"kg","expansion":"không"}]"#
+        )
         let preview = try await harness.store.previewImport(data)
         #expect(preview.macros?.duplicates.count == 1 && preview.macros?.new.count == 1)
         harness.spy.resetCalls()
@@ -178,8 +191,15 @@ private func comparable(_ state: SettingsState) -> Content {
         _ = await harness.store.load()
         let cases: [(Data, SettingsImportError)] = [
             (Data(count: 6 * 1024 * 1024), .tooLarge(limit: 5 * 1024 * 1024)),
-            (Data((String(repeating: "[", count: 10_000) + String(repeating: "]", count: 10_000)).utf8), .tooDeeplyNested(limit: 64)),
-            (Data((#"{"kind":"settings-export","schemaVersion":1,"settings":"# + String(repeating: #"{"a":"#, count: 100)).utf8), .tooDeeplyNested(limit: 64)),
+            (
+                Data((String(repeating: "[", count: 10_000) + String(repeating: "]", count: 10_000)).utf8),
+                .tooDeeplyNested(limit: 64)
+            ),
+            (
+                Data(
+                    (#"{"kind":"settings-export","schemaVersion":1,"settings":"#
+                        + String(repeating: #"{"a":"#, count: 100)).utf8), .tooDeeplyNested(limit: 64)
+            ),
             (Data("garbage".utf8), .notJSON),
             (Data(), .notJSON),
             (Data("[1]".utf8), .notAnObject),
@@ -205,10 +225,13 @@ private func comparable(_ state: SettingsState) -> Content {
         for iteration in 0..<300 {
             var bytes = [UInt8](seeds[0])
             if iteration % 3 == 0 {
-                bytes = (0..<Int.random(in: 0...512, using: &generator)).map { _ in UInt8.random(in: 0...255, using: &generator) }
+                bytes = (0..<Int.random(in: 0...512, using: &generator)).map { _ in
+                    UInt8.random(in: 0...255, using: &generator)
+                }
             } else {
                 for _ in 0..<Int.random(in: 1...6, using: &generator) {
-                    bytes[Int.random(in: 0..<bytes.count, using: &generator)] = UInt8.random(in: 0...255, using: &generator)
+                    bytes[Int.random(in: 0..<bytes.count, using: &generator)] = UInt8.random(
+                        in: 0...255, using: &generator)
                 }
             }
             do {

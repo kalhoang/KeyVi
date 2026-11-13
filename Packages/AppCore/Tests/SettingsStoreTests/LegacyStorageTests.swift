@@ -2,8 +2,8 @@
 
 import AppModel
 import Foundation
-import Testing
 import TestSupport
+import Testing
 
 @testable import SettingsStore
 
@@ -47,7 +47,10 @@ import TestSupport
         let results = LegacyStorageMigrator.migrate(
             current: "New Name", legacyNames: ["Old Name"], bases: [support, logs], fileSystem: fs)
         #expect(results == [.notNeeded, .notNeeded])
-        #expect(LegacyStorageMigrator.migrate(current: "New Name", legacyNames: [], bases: [support], fileSystem: fs) == [.notNeeded])
+        #expect(
+            LegacyStorageMigrator.migrate(current: "New Name", legacyNames: [], bases: [support], fileSystem: fs) == [
+                .notNeeded
+            ])
     }
 
     @Test func unsafeNamesAreIgnored() throws {
@@ -55,9 +58,13 @@ import TestSupport
         try fs.createDirectory(at: URL(fileURLWithPath: "/Users/t/Library"), permissions: .ownerOnlyDirectory)
         let before = fs.nodes
         let names = ["", ".", "..", "../Library", "a/b", "New Name"]
-        let results = LegacyStorageMigrator.migrate(current: "New Name", legacyNames: names, bases: [support], fileSystem: fs)
+        let results = LegacyStorageMigrator.migrate(
+            current: "New Name", legacyNames: names, bases: [support], fileSystem: fs)
         #expect(results == [.notNeeded])
-        #expect(LegacyStorageMigrator.migrate(current: "../x", legacyNames: ["Old"], bases: [support], fileSystem: fs) == [.notNeeded])
+        #expect(
+            LegacyStorageMigrator.migrate(current: "../x", legacyNames: ["Old"], bases: [support], fileSystem: fs) == [
+                .notNeeded
+            ])
         #expect(fs.nodes == before)
     }
 
@@ -78,8 +85,11 @@ import TestSupport
         defer { try? FileManager.default.removeItem(at: base) }
         let fs = LocalFileSystem()
         try fs.createDirectory(at: folder(base, "Old Name"), permissions: .ownerOnlyDirectory)
-        try fs.writeAtomically(Data("{}".utf8), to: folder(base, "Old Name").appendingPathComponent("settings.json"), permissions: .ownerOnlyFile)
-        let results = LegacyStorageMigrator.migrate(current: "New Name", legacyNames: ["Old Name"], bases: [base], fileSystem: fs)
+        try fs.writeAtomically(
+            Data("{}".utf8), to: folder(base, "Old Name").appendingPathComponent("settings.json"),
+            permissions: .ownerOnlyFile)
+        let results = LegacyStorageMigrator.migrate(
+            current: "New Name", legacyNames: ["Old Name"], bases: [base], fileSystem: fs)
         #expect(results == [.moved(from: "Old Name")])
         let moved = folder(base, "New Name")
         #expect(try fs.attributes(at: moved).permissions == .ownerOnlyDirectory)

@@ -76,7 +76,9 @@ enum SettingFields {
                 return JSONSupport.encode(value)
             },
             rawMatches: { json, settings in
-                guard case .set(let current) = settings[keyPath: path], let value = decodeValue(json) else { return false }
+                guard case .set(let current) = settings[keyPath: path], let value = decodeValue(json) else {
+                    return false
+                }
                 return value == current
             },
             unset: { $0[keyPath: path] = .unset })

@@ -63,23 +63,30 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
         }.map(\.key)
         #expect(Set(hotkeyKeys) == ["toggleHotkey", "restoreHotkey"])
         let bareEscape = #"{"type":"key","keyCode":53}"#
-        let user = SettingsCodec.decode(try object(#"{"settings":{"toggleHotkey":\#(bareEscape),"restoreHotkey":\#(bareEscape)}}"#))
+        let user = SettingsCodec.decode(
+            try object(#"{"settings":{"toggleHotkey":\#(bareEscape),"restoreHotkey":\#(bareEscape)}}"#))
         #expect(user.toggleHotkey == .unset)
         #expect(user.restoreHotkey == .set(.key(KeyCode(rawValue: 53))))
         let noModifiers = #"{"type":"keyCombo","modifiers":0,"keyCode":49}"#
-        #expect(SettingsCodec.decode(try object(#"{"settings":{"restoreHotkey":\#(noModifiers)}}"#)).restoreHotkey == .unset)
+        #expect(
+            SettingsCodec.decode(try object(#"{"settings":{"restoreHotkey":\#(noModifiers)}}"#)).restoreHotkey == .unset
+        )
     }
 
     @Test func invalidKnownValuesReadAsUnsetAndAreListed() throws {
         let raw = try object(#"{"settings":{"typingMethod":"dvorak","englishRestore":"yes","newThing":1},"extra":2}"#)
         let user = SettingsCodec.decode(raw)
         #expect(user == UserSettings())
-        #expect(SettingsCodec.skippedPaths(in: raw) == ["extra", "settings.englishRestore", "settings.newThing", "settings.typingMethod"])
+        #expect(
+            SettingsCodec.skippedPaths(in: raw) == [
+                "extra", "settings.englishRestore", "settings.newThing", "settings.typingMethod",
+            ])
         #expect(SettingsCodec.encode(user, over: raw)["settings"]?["typingMethod"] == nil)
     }
 
     @Test func listsAreLowercasedAndRuleIDsValidated() throws {
-        let raw = try object(#"{"englishRestoreLists":{"keepAsTyped":["TeX",""," ",3]},"optedInRules":["ok.rule","bad rule",1]}"#)
+        let raw = try object(
+            #"{"englishRestoreLists":{"keepAsTyped":["TeX",""," ",3]},"optedInRules":["ok.rule","bad rule",1]}"#)
         let user = SettingsCodec.decode(raw)
         #expect(user.keepAsTyped == ["tex", " "])
         #expect(user.optedInRules == [RuleID(rawValue: "ok.rule")!])
@@ -147,13 +154,18 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
     }
 
     @Test func invalidEntriesAreDroppedAndListed() throws {
-        let raw = try object(#"""
+        let raw = try object(
+            #"""
             {"globalMode":"xx","apps":[{"bundle":"bad key!","mode":"en"},{"bundle":"a.b"},{"bundle":"a.b","mode":"en"},
              {"bundle":"c.d","mode":"vi"},{"bundle":"c.d","mode":"en"},7]}
             """#)
         let document = AppModesCodec.decode(raw)
         #expect(document.globalMode == .vietnamese)
-        #expect(document.apps == [AppModeEntry(bundle: bundle("a.b"), mode: .english), AppModeEntry(bundle: bundle("c.d"), mode: .vietnamese)])
+        #expect(
+            document.apps == [
+                AppModeEntry(bundle: bundle("a.b"), mode: .english),
+                AppModeEntry(bundle: bundle("c.d"), mode: .vietnamese),
+            ])
         #expect(AppModesCodec.skippedPaths(in: raw) == ["globalMode", "apps[0]", "apps[1]", "apps[5]"])
     }
 
@@ -169,24 +181,33 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
     }
 
     @Test func ruleEditingAndMemoryRecording() {
-        let start = AppModesDocument(globalMode: .vietnamese, apps: [
-            AppModeEntry(bundle: bundle("a.a"), mode: .english), AppModeEntry(bundle: bundle("b.b"), rule: .ignore),
-        ])
+        let start = AppModesDocument(
+            globalMode: .vietnamese,
+            apps: [
+                AppModeEntry(bundle: bundle("a.a"), mode: .english), AppModeEntry(bundle: bundle("b.b"), rule: .ignore),
+            ])
         let ruled = start.settingRule(.alwaysEnglish, for: bundle("c.c"))
         #expect(ruled.apps.first == AppModeEntry(bundle: bundle("c.c"), rule: .alwaysEnglish))
         #expect(ruled.settingRule(nil, for: bundle("c.c")) == start)
         #expect(start.settingRule(.remember, for: bundle("b.b")).apps.map(\.bundle) == [bundle("a.a")])
-        #expect(start.settingRule(.ignore, for: bundle("a.a")).apps[0] == AppModeEntry(bundle: bundle("a.a"), rule: .ignore, mode: .english))
+        #expect(
+            start.settingRule(.ignore, for: bundle("a.a")).apps[0]
+                == AppModeEntry(bundle: bundle("a.a"), rule: .ignore, mode: .english))
         // A stale copy from the ax thread that lacks b.b's rule and carries a bogus rule for a.a.
-        let stale = AppModesDocument(globalMode: .english, apps: [
-            AppModeEntry(bundle: bundle("d.d"), mode: .vietnamese), AppModeEntry(bundle: bundle("a.a"), rule: .alwaysVietnamese, mode: .english),
-        ])
+        let stale = AppModesDocument(
+            globalMode: .english,
+            apps: [
+                AppModeEntry(bundle: bundle("d.d"), mode: .vietnamese),
+                AppModeEntry(bundle: bundle("a.a"), rule: .alwaysVietnamese, mode: .english),
+            ])
         let recorded = start.recordingMemory(from: stale)
         #expect(recorded.globalMode == .english)
-        #expect(recorded.apps == [
-            AppModeEntry(bundle: bundle("d.d"), mode: .vietnamese), AppModeEntry(bundle: bundle("a.a"), mode: .english),
-            AppModeEntry(bundle: bundle("b.b"), rule: .ignore),
-        ])
+        #expect(
+            recorded.apps == [
+                AppModeEntry(bundle: bundle("d.d"), mode: .vietnamese),
+                AppModeEntry(bundle: bundle("a.a"), mode: .english),
+                AppModeEntry(bundle: bundle("b.b"), rule: .ignore),
+            ])
     }
 }
 
@@ -203,7 +224,8 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
     }
 
     @Test func invalidOverridesAreDropped() throws {
-        let raw = try object(#"""
+        let raw = try object(
+            #"""
             {"overrides":[{"createdAt":"bad","rule":{"id":"user.a"}},{"createdAt":"2026-11-13T09:00:00Z","rule":{"id":"shipped.a"}},
              {"createdAt":"2026-11-13T09:00:00Z","rule":{"id":"user.a"}},{"createdAt":"2026-11-13T10:00:00Z","rule":{"id":"user.a"}}]}
             """#)
@@ -219,7 +241,8 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
         let encoded = MacrosCodec.encode(macros, over: raw)
         #expect(arrayItems(encoded["macros"]).first?["futureMacroKey"] == .string("x"))
         #expect(MacrosCodec.decode(encoded) == macros)
-        let loose = try object(#"{"macros":[{"trigger":"a1","expansion":"b"},{"trigger":"x"},{"id":"1","trigger":"c1","expansion":"d"}]}"#)
+        let loose = try object(
+            #"{"macros":[{"trigger":"a1","expansion":"b"},{"trigger":"x"},{"id":"1","trigger":"c1","expansion":"d"}]}"#)
         let decoded = MacrosCodec.decode(loose)
         #expect(decoded.map(\.trigger) == ["a1", "c1"])
         #expect(decoded.allSatisfy { $0.adaptCase && $0.enabled })
@@ -228,7 +251,9 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
 
     @Test func duplicateMacroIDsGetFreshOnes() throws {
         let id = "6F9619FF-8B86-D011-B42D-00C04FC964FF"
-        let raw = try object(#"{"macros":[{"id":"\#(id)","trigger":"a1","expansion":"b"},{"id":"\#(id)","trigger":"c1","expansion":"d"}]}"#)
+        let raw = try object(
+            #"{"macros":[{"id":"\#(id)","trigger":"a1","expansion":"b"},{"id":"\#(id)","trigger":"c1","expansion":"d"}]}"#
+        )
         let macros = MacrosCodec.decode(raw)
         #expect(macros[0].id.uuidString == id)
         #expect(macros[1].id.uuidString != id)

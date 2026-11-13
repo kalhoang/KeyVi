@@ -16,7 +16,9 @@ enum MacroFormatSniffer {
             if body.hasPrefix("<?xml") || body.hasPrefix("<plist") || body.hasPrefix("<!DOCTYPE plist") {
                 return .textReplacementsPlist
             }
-            if body.hasPrefix("{") || body.hasPrefix("["), (try? JSONSupport.parseValue(data)) != nil { return .appExport }
+            if body.hasPrefix("{") || body.hasPrefix("["), (try? JSONSupport.parseValue(data)) != nil {
+                return .appExport
+            }
             if let format = delimitedFormat(text, fileExtension: fileExtension) { return format }
         }
         return format(forExtension: fileExtension)
@@ -93,13 +95,16 @@ enum MacroTextParser {
         for (index, line) in MacroText.lines(text).enumerated() {
             if MacroText.isBlank(line) || line.hasPrefix("#") { continue }
             guard let tab = line.firstIndex(of: "\t") else {
-                rows.append(MacroImportRow(line: index + 1, shortcut: MacroText.shortcut(line), expansion: "", issue: .malformedLine))
+                rows.append(
+                    MacroImportRow(
+                        line: index + 1, shortcut: MacroText.shortcut(line), expansion: "", issue: .malformedLine))
                 continue
             }
             let expansion = unescape(line[line.index(after: tab)...])
             rows.append(
                 MacroImportRow(
-                    line: index + 1, shortcut: MacroText.shortcut(line[..<tab]), expansion: MacroText.expansion(expansion)))
+                    line: index + 1, shortcut: MacroText.shortcut(line[..<tab]),
+                    expansion: MacroText.expansion(expansion)))
         }
         return rows
     }
@@ -115,7 +120,9 @@ enum MacroTextParser {
                 case "n": result.append("\n")
                 case "t": result.append("\t")
                 case "\\": result.append("\\")
-                default: result.append("\\"); result.append(character)
+                default:
+                    result.append("\\")
+                    result.append(character)
                 }
             } else if character == "\\" {
                 pendingBackslash = true
@@ -127,7 +134,9 @@ enum MacroTextParser {
         return result
     }
 
-    static let knownHeaders: [(String, String)] = [("shortcut", "expansion"), ("trigger", "expansion"), ("phím tắt", "nội dung")]
+    static let knownHeaders: [(String, String)] = [
+        ("shortcut", "expansion"), ("trigger", "expansion"), ("phím tắt", "nội dung"),
+    ]
 
     static func parseCSV(_ data: Data) -> [MacroImportRow] {
         guard let text = MacroText.decode(data) else { return MacroText.unreadable() }
@@ -287,7 +296,8 @@ enum MacroPlistParser {
             }
             let shortcut = entry["shortcut"] as? String ?? ""
             let phrase = entry["phrase"] as? String ?? ""
-            return MacroImportRow(line: index + 1, shortcut: MacroText.shortcut(shortcut), expansion: MacroText.expansion(phrase))
+            return MacroImportRow(
+                line: index + 1, shortcut: MacroText.shortcut(shortcut), expansion: MacroText.expansion(phrase))
         }
     }
 }

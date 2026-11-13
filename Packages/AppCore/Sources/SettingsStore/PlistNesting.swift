@@ -9,7 +9,9 @@ internal import Foundation
 enum PlistNesting {
     static func isWithinLimit(_ data: Data, limit: Int) -> Bool {
         let bytes = [UInt8](data)
-        if bytes.starts(with: MacroPlistParser.binaryMagic) { return BinaryPlistNesting.isWithinLimit(bytes, limit: limit) }
+        if bytes.starts(with: MacroPlistParser.binaryMagic) {
+            return BinaryPlistNesting.isWithinLimit(bytes, limit: limit)
+        }
         guard let first = bytes.firstIndex(where: { !isWhitespace($0) }), bytes[first] == UInt8(ascii: "<") else {
             return false
         }
@@ -85,7 +87,9 @@ enum BinaryPlistNesting {
             switch height[child] {
             case -2: return false  // cycle
             case -1:
-                guard stack.count < limit, let grandChildren = children(of: child, in: bytes, layout: layout) else { return false }
+                guard stack.count < limit, let grandChildren = children(of: child, in: bytes, layout: layout) else {
+                    return false
+                }
                 height[child] = -2
                 stack.append(Frame(object: child, children: grandChildren))
             case let known:

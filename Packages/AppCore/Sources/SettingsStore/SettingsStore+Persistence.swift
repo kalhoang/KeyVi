@@ -160,7 +160,8 @@ extension StoreNotice {
     /// Any notice about `file`.
     func concerns(_ file: SettingsFile) -> Bool {
         switch self {
-        case .recoveredFromBackup(let other, _), .corruptFileUsingDefaults(let other), .newerSchemaReadOnly(let other, _),
+        case .recoveredFromBackup(let other, _), .corruptFileUsingDefaults(let other),
+            .newerSchemaReadOnly(let other, _),
             .writeFailed(let other):
             other == file
         case .safeMode: false

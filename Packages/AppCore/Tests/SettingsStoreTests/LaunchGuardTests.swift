@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 import Foundation
-import Testing
 import TestSupport
+import Testing
 
 @testable import SettingsStore
 

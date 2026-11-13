@@ -70,7 +70,8 @@ import Testing
     /// The editor agrees with the engine contract `MacroTable.ValidationError` on every macro fixture row:
     /// each row the validator accepts satisfies the engine's documented rules (ENG-R1101, ENG-R1103).
     @Test func acceptedFixtureRowsSatisfyEngineRules() {
-        let rows = MacroImporter.parse(Data(MacroFixtures.tabSeparated.utf8), format: .tabSeparated)
+        let rows =
+            MacroImporter.parse(Data(MacroFixtures.tabSeparated.utf8), format: .tabSeparated)
             + MacroImporter.parse(Data(MacroFixtures.csv.utf8), format: .csv)
             + MacroImporter.parse(Data(MacroFixtures.textReplacementsXML.utf8), format: .textReplacementsPlist)
             + MacroImporter.parse(Data(MacroFixtures.appExport.utf8), format: .appExport)

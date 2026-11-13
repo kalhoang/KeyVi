@@ -96,9 +96,12 @@ extension SettingsStore {
         guard !safeMode else { throw .unavailableInSafeMode }
         if !loaded { performLoad() }
         let content = preview.content.objectValue ?? [:]
-        let importedUser = choices.applySettings ? content[SettingsExportFormat.settings]?.objectValue.map(SettingsCodec.decode) : nil
-        let importedModes = choices.applyAppModes ? content[SettingsExportFormat.appModes]?.objectValue.map(AppModesCodec.decode) : nil
-        let importedOverrides = choices.applyRuleOverrides
+        let importedUser =
+            choices.applySettings ? content[SettingsExportFormat.settings]?.objectValue.map(SettingsCodec.decode) : nil
+        let importedModes =
+            choices.applyAppModes ? content[SettingsExportFormat.appModes]?.objectValue.map(AppModesCodec.decode) : nil
+        let importedOverrides =
+            choices.applyRuleOverrides
             ? content[SettingsExportFormat.ruleOverrides].map { RuleOverridesCodec.decodeList(arrayItems($0)) } : nil
         let macroPreview = choices.applyMacros ? preview.macros : nil
 
@@ -116,7 +119,9 @@ extension SettingsStore {
         }
         if let importedModes { appModes = appModes.merging(imported: importedModes) }
         if let importedOverrides { ruleOverrides = Self.merging(ruleOverrides, imported: importedOverrides) }
-        if let macroPreview { macros = MacroImporter.merge(macroPreview, into: macros, resolution: choices.macroDuplicates) }
+        if let macroPreview {
+            macros = MacroImporter.merge(macroPreview, into: macros, resolution: choices.macroDuplicates)
+        }
         for file in SettingsFile.allCases where affected.contains(file) { writeNow(file) }
         publish()
     }

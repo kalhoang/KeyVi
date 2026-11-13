@@ -2,8 +2,8 @@
 
 import AppModel
 import Foundation
-import Testing
 import TestSupport
+import Testing
 
 @testable import SettingsStore
 
@@ -28,7 +28,9 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
             #expect(state.user.typingMethod == .set(.vni))
             #expect(state.user.tonePlacement == .set(.traditional))
             #expect(state.user.restoreHotkey == .set(nil))
-            #expect(state.user.toggleHotkey == .set(.keyCombo(modifiers: [.control, .command], keyCode: KeyCode(rawValue: 49))))
+            #expect(
+                state.user.toggleHotkey
+                    == .set(.keyCombo(modifiers: [.control, .command], keyCode: KeyCode(rawValue: 49))))
             #expect(state.user.layoutBinding.resolved(default: LayoutModeBinding()).enabled)
             #expect(state.user.englishRestore == .unset)
             #expect(state.user.keepAsTyped == ["tex"] && state.user.keepVietnamese == ["mas"])
@@ -37,7 +39,9 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
             #expect(state.effective.typingMethod == .vni && state.effective.englishRestore)
             #expect(state.appModes.globalMode == .english)
             #expect(state.appModes.apps.count == 4)
-            #expect(state.appModes.apps[2] == AppModeEntry(bundle: bundle("com.example.Editor"), rule: .ignore, mode: .vietnamese))
+            #expect(
+                state.appModes.apps[2]
+                    == AppModeEntry(bundle: bundle("com.example.Editor"), rule: .ignore, mode: .vietnamese))
             #expect(state.ruleOverrides.map { $0.rule["id"] } == [.string("user.paste.1")])
             #expect(state.macros.map(\.trigger) == ["vn", "@@"])
             // Nothing to migrate: loading a current file never writes.
@@ -180,7 +184,9 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
     /// PLT-R1007: a newer file is used read-only for known fields and never rewritten.
     @Test func newerSchemaIsReadOnly() async throws {
         let harness = SettingsStoreHarness()
-        harness.seed(.settings, #"{"schemaVersion":2,"writtenBy":"9.0","settings":{"typingMethod":"vni","v2Only":1},"v2Section":{}}"#)
+        harness.seed(
+            .settings,
+            #"{"schemaVersion":2,"writtenBy":"9.0","settings":{"typingMethod":"vni","v2Only":1},"v2Section":{}}"#)
         let original = harness.data(.settings)
         let state = await harness.store.load()
         #expect(state.readOnlyFiles == [.settings])
@@ -220,7 +226,9 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         #expect(harness.memory.nodes == before)
         await #expect(throws: SettingsImportError.unavailableInSafeMode) {
             try await harness.store.applyImport(
-                ImportPreview(schemaVersion: 1, changedSettingKeys: [], appEntries: 0, ruleOverrides: 0, macros: nil, skippedFields: [], content: .null),
+                ImportPreview(
+                    schemaVersion: 1, changedSettingKeys: [], appEntries: 0, ruleOverrides: 0, macros: nil,
+                    skippedFields: [], content: .null),
                 choices: ImportChoices())
         }
 

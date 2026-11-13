@@ -2,8 +2,8 @@
 
 import AppModel
 import Foundation
-import Testing
 import TestSupport
+import Testing
 
 @testable import SettingsStore
 
@@ -11,7 +11,8 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
 
 private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> StoredRuleOverride {
     StoredRuleOverride(
-        createdAt: Date(timeIntervalSince1970: seconds), rule: .object(["id": .string(id), "strategy": .string("paste")]))
+        createdAt: Date(timeIntervalSince1970: seconds),
+        rule: .object(["id": .string(id), "strategy": .string("paste")]))
 }
 
 @Suite struct SettingsStoreDebounceTests {
@@ -78,7 +79,8 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         await harness.store.addRuleOverride(override("user.a"))
         await harness.store.recordAppModes(AppModesDocument(globalMode: .english))
         await harness.store.flush()
-        #expect(harness.object(.macros) != nil && harness.object(.ruleOverrides) != nil && harness.object(.appModes) != nil)
+        #expect(
+            harness.object(.macros) != nil && harness.object(.ruleOverrides) != nil && harness.object(.appModes) != nil)
         #expect(harness.scheduler.pendingCount == 0)
         await harness.advance(by: .seconds(10))
         #expect(harness.spy.mutatingCalls.filter { $0.operation == .writeAtomically }.count == 3)
@@ -149,9 +151,12 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
     @Test func appMemorySurvivesARestart() async {
         let harness = SettingsStoreHarness()
         _ = await harness.store.load()
-        let document = AppModesDocument(globalMode: .english, apps: [
-            AppModeEntry(bundle: bundle("a.a"), mode: .english), AppModeEntry(bundle: bundle("b.b"), mode: .vietnamese),
-        ])
+        let document = AppModesDocument(
+            globalMode: .english,
+            apps: [
+                AppModeEntry(bundle: bundle("a.a"), mode: .english),
+                AppModeEntry(bundle: bundle("b.b"), mode: .vietnamese),
+            ])
         await harness.store.recordAppModes(document)
         await harness.store.flush()
         let next = SettingsStoreHarness(reusing: harness)
@@ -176,7 +181,8 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         }
         let backups = harness.paths.filter { $0.hasPrefix("backups/settings.json.v1.") }
         #expect(backups.count == 5)
-        let storage = DocumentStorage(location: harness.location, fileSystem: harness.memory, wallClock: harness.wallClock)
+        let storage = DocumentStorage(
+            location: harness.location, fileSystem: harness.memory, wallClock: harness.wallClock)
         let dates = storage.backups(of: .settings).map(\.date)
         #expect(dates == dates.sorted(by: >))
         #expect(dates.first == harness.wallClock.now())
@@ -184,8 +190,11 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
 
     @Test func sameSecondBackupsGetDistinctNames() throws {
         let harness = SettingsStoreHarness()
-        let storage = DocumentStorage(location: harness.location, fileSystem: harness.memory, wallClock: harness.wallClock)
-        for index in 0..<3 { try storage.writeBackup(Data("{\"schemaVersion\":1,\"n\":\(index)}".utf8), of: .macros, schemaVersion: 1) }
+        let storage = DocumentStorage(
+            location: harness.location, fileSystem: harness.memory, wallClock: harness.wallClock)
+        for index in 0..<3 {
+            try storage.writeBackup(Data("{\"schemaVersion\":1,\"n\":\(index)}".utf8), of: .macros, schemaVersion: 1)
+        }
         let backups = storage.backups(of: .macros)
         #expect(backups.map(\.sequence) == [2, 1, 0])
         #expect(DocumentStorage.parseBackupName(URL(fileURLWithPath: "/x/macros.json.vX.1.json"), of: .macros) == nil)
@@ -213,7 +222,8 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         await harness.store.addRuleOverride(override("user.a"))
         await harness.store.addRuleOverride(override("user.b"))
         await harness.store.addRuleOverride(override("user.a", at: 1_800_000_100))
-        await harness.store.addRuleOverride(StoredRuleOverride(createdAt: .now, rule: .object(["id": .string("shipped.x")])))
+        await harness.store.addRuleOverride(
+            StoredRuleOverride(createdAt: .now, rule: .object(["id": .string("shipped.x")])))
         var state = await harness.store.state
         #expect(state.ruleOverrides.map { $0.rule["id"] } == [.string("user.a"), .string("user.b")])
         #expect(state.ruleOverrides[0].createdAt == Date(timeIntervalSince1970: 1_800_000_100))
@@ -224,7 +234,9 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         #expect(state.ruleOverrides.count == 1)
         let next = SettingsStoreHarness(reusing: harness)
         #expect(await next.store.load().ruleOverrides == state.ruleOverrides)
-        #expect(arrayItems(harness.object(.ruleOverrides)?["overrides"]).first?["createdAt"] == .string("2027-01-15T08:00:00Z"))
+        #expect(
+            arrayItems(harness.object(.ruleOverrides)?["overrides"]).first?["createdAt"]
+                == .string("2027-01-15T08:00:00Z"))
     }
 }
 

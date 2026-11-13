@@ -2,6 +2,7 @@
 
 internal import AppModel
 internal import Synchronization
+
 //
 // Crash-loop safe mode (PLT-R1009): three launches that did not survive 60 s within a short window start the
 // app with defaults in memory, without touching files.

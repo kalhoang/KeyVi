@@ -7,10 +7,14 @@ import Testing
 
 @Suite struct MacroImporterDetectionTests {
     @Test func sniffsContentBeforeExtension() throws {
-        #expect(MacroImporter.detectFormat(Data(MacroFixtures.tabSeparated.utf8), fileExtension: "csv") == .tabSeparated)
+        #expect(
+            MacroImporter.detectFormat(Data(MacroFixtures.tabSeparated.utf8), fileExtension: "csv") == .tabSeparated)
         #expect(MacroImporter.detectFormat(Data(MacroFixtures.csv.utf8), fileExtension: "txt") == .csv)
-        #expect(MacroImporter.detectFormat(Data(MacroFixtures.textReplacementsXML.utf8), fileExtension: nil) == .textReplacementsPlist)
-        #expect(MacroImporter.detectFormat(try MacroFixtures.binaryPlist([]), fileExtension: nil) == .textReplacementsPlist)
+        #expect(
+            MacroImporter.detectFormat(Data(MacroFixtures.textReplacementsXML.utf8), fileExtension: nil)
+                == .textReplacementsPlist)
+        #expect(
+            MacroImporter.detectFormat(try MacroFixtures.binaryPlist([]), fileExtension: nil) == .textReplacementsPlist)
         #expect(MacroImporter.detectFormat(Data(MacroFixtures.appExport.utf8), fileExtension: "txt") == .appExport)
         #expect(MacroImporter.detectFormat(Data(MacroFixtures.bareMacrosJSON.utf8), fileExtension: nil) == .appExport)
     }
@@ -97,7 +101,9 @@ import Testing
     }
 
     @Test func textReplacementsBinaryPlist() throws {
-        let data = try MacroFixtures.binaryPlist([["shortcut": "vn", "phrase": "Việt Nam"], ["shortcut": "ty", "phrase": "cảm ơn"]])
+        let data = try MacroFixtures.binaryPlist([
+            ["shortcut": "vn", "phrase": "Việt Nam"], ["shortcut": "ty", "phrase": "cảm ơn"],
+        ])
         let rows = MacroImporter.parse(data, format: .textReplacementsPlist)
         #expect(rows.map(\.shortcut) == ["vn", "ty"])
         #expect(rows.allSatisfy { $0.issue == nil })
@@ -133,7 +139,8 @@ import Testing
     }
 
     @Test func deeplyNestedPlistsAreRefusedBeforeParsing() throws {
-        let xml = "<plist><array>" + String(repeating: "<array>", count: 40) + String(repeating: "</array>", count: 40)
+        let xml =
+            "<plist><array>" + String(repeating: "<array>", count: 40) + String(repeating: "</array>", count: 40)
             + "</array></plist>"
         #expect(MacroImporter.parse(Data(xml.utf8), format: .textReplacementsPlist).first?.issue == .malformedLine)
         var nested: Any = ["leaf"]
@@ -160,7 +167,9 @@ import Testing
         for length in [0, 1, 7, 64, 300, 4_096] {
             for _ in 0..<40 {
                 var bytes = (0..<length).map { _ in UInt8.random(in: 0...255, using: &generator) }
-                if length > 8, Bool.random(using: &generator) { bytes.replaceSubrange(0..<8, with: Array("bplist00".utf8)) }
+                if length > 8, Bool.random(using: &generator) {
+                    bytes.replaceSubrange(0..<8, with: Array("bplist00".utf8))
+                }
                 let data = Data(bytes)
                 for format in MacroImportFormat.allCases { _ = MacroImporter.parse(data, format: format) }
                 _ = MacroImporter.detectFormat(data, fileExtension: nil)

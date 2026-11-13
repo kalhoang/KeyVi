@@ -9,17 +9,18 @@ import Foundation
 enum MacroFixtures {
     /// Line 1 comment, 2 valid, 3 blank, 4 escapes, 5 no tab, 6 Vietnamese shortcut, 7 empty expansion,
     /// 8 shortcut with leading spaces (trimmed), 9 33-character shortcut.
-    static let tabSeparated = [
-        "# shortcut<TAB>expansion",
-        "vn\tViệt Nam",
-        "",
-        "dc\tđịa chỉ:\\n123 Lê Lợi\\tQ1\\\\",
-        "no tab here",
-        "đc\tđược",
-        "empty\t",
-        "  sp\tspaced",
-        String(repeating: "x", count: 33) + "\ttoo long",
-    ].joined(separator: "\n") + "\n"
+    static let tabSeparated =
+        [
+            "# shortcut<TAB>expansion",
+            "vn\tViệt Nam",
+            "",
+            "dc\tđịa chỉ:\\n123 Lê Lợi\\tQ1\\\\",
+            "no tab here",
+            "đc\tđược",
+            "empty\t",
+            "  sp\tspaced",
+            String(repeating: "x", count: 33) + "\ttoo long",
+        ].joined(separator: "\n") + "\n"
 
     /// Header row skipped; the record starting on line 3 spans two lines; line 5 escapes quotes; line 6 has an
     /// extra column; line 7 lacks the expansion; line 8 has an unterminated quote.

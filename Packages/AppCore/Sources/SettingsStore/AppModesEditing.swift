@@ -25,7 +25,8 @@ extension AppModesDocument {
     /// keeps the rules this document holds (rules change only through `settingRule`). Entries with a rule that
     /// the copy does not list stay, after the listed ones.
     func recordingMemory(from memory: AppModesDocument) -> AppModesDocument {
-        let rules = Dictionary(apps.compactMap { entry in entry.rule.map { (entry.bundle, $0) } }, uniquingKeysWith: { first, _ in first })
+        let rules = Dictionary(
+            apps.compactMap { entry in entry.rule.map { (entry.bundle, $0) } }, uniquingKeysWith: { first, _ in first })
         var listed = Set<BundleKey>()
         var merged: [AppModeEntry] = memory.apps.map { entry in
             listed.insert(entry.bundle)

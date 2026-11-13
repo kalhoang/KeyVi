@@ -104,7 +104,9 @@ public enum MacroImporter {
     /// and shadowing need the other rows and the user's macros, so `preview` decides those. A file that cannot
     /// be read at all yields one `malformedLine` row at line 1; an empty file yields no rows.
     public static func parse(_ data: Data, format: MacroImportFormat) -> [MacroImportRow] {
-        guard data.count <= maxFileBytes else { return [MacroImportRow(line: 1, shortcut: "", expansion: "", issue: .malformedLine)] }
+        guard data.count <= maxFileBytes else {
+            return [MacroImportRow(line: 1, shortcut: "", expansion: "", issue: .malformedLine)]
+        }
         let rows: [MacroImportRow]
         switch format {
         case .appExport: rows = MacroJSONParser.parse(data)
@@ -148,7 +150,9 @@ public enum MacroImporter {
 
     /// Rows that conflict with the user's macros are rejected first; among the rest only the longer shortcut
     /// of a shadowing pair is rejected.
-    private static func addNew(_ candidates: [MacroImportRow], existing: [StoredMacro], to preview: inout MacroImportPreview) {
+    private static func addNew(
+        _ candidates: [MacroImportRow], existing: [StoredMacro], to preview: inout MacroImportPreview
+    ) {
         let existingTriggers = existing.map(\.trigger)
         var accepted: [MacroImportRow] = []
         for row in candidates {
@@ -173,8 +177,10 @@ public enum MacroImporter {
 
     /// `useImported` replaces each duplicate in place (keeping its id); `keepMine` leaves it. New macros are
     /// appended; an id that is taken by then gets a fresh one, and a shortcut that is taken by then is skipped.
-    public static func merge(_ preview: MacroImportPreview, into existing: [StoredMacro],
-                             resolution: MacroDuplicateResolution) -> [StoredMacro] {
+    public static func merge(
+        _ preview: MacroImportPreview, into existing: [StoredMacro],
+        resolution: MacroDuplicateResolution
+    ) -> [StoredMacro] {
         var result = existing
         if resolution == .useImported {
             for (mine, imported) in preview.duplicates {
@@ -211,7 +217,8 @@ public enum MacroImporter {
     }
 
     private static func storedMacro(from row: MacroImportRow, id: UUID) -> StoredMacro {
-        StoredMacro(id: id, trigger: row.shortcut, expansion: row.expansion, adaptCase: row.adaptCase, enabled: row.enabled)
+        StoredMacro(
+            id: id, trigger: row.shortcut, expansion: row.expansion, adaptCase: row.adaptCase, enabled: row.enabled)
     }
 }
 
@@ -250,7 +257,9 @@ public enum MacroValidator {
     /// Shadowing in both directions against existing shortcuts (ENG-R1103).
     static func shadowing(_ shortcut: String, against triggers: [String]) -> MacroRowIssue? {
         let key = key(shortcut)
-        if let shorter = triggers.first(where: { isShadowed(key, by: Self.key($0)) }) { return .shadowedBy(shorter: shorter) }
+        if let shorter = triggers.first(where: { isShadowed(key, by: Self.key($0)) }) {
+            return .shadowedBy(shorter: shorter)
+        }
         if let longer = triggers.first(where: { isShadowed(Self.key($0), by: key) }) { return .shadows(longer: longer) }
         return nil
     }
