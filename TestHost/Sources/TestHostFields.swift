@@ -133,6 +133,7 @@ final class TestHostWindowController: NSWindowController {
     /// cleared text is invisible to the app's tap), and its first word stayed untransformed in the VM runs.
     @objc private func resetFields(_ sender: Any?) {
         resetAll()
+        web.blurPage()
         web.resetPage()
         onReset?()
         window?.makeFirstResponder(nil)

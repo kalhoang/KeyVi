@@ -76,6 +76,7 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     /// Longest wait for the app under test to publish the snapshot of a new focus, and the poll interval.
     public static let focusRefreshWaitNanoseconds: UInt64 = 2_000_000_000
     public static let focusRefreshPollNanoseconds: UInt64 = 100_000_000
+    public static let focusRefreshQuietNanoseconds: UInt64 = 300_000_000
 
     /// The app's T6 count (focus snapshots published since launch or the last metrics reset); nil without hooks.
     public func focusRefreshCount() async -> UInt64? {
@@ -83,16 +84,28 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
         return try? await hooks.state().metrics.focusRefresh.count
     }
 
-    /// Polls the hooks until the T6 count grew past `count`, at most `focusRefreshWaitNanoseconds`: the first key
-    /// must be decided on the new field's rule (PLT-R382 processes a key with the current snapshot, it never waits;
-    /// the VM runs left the first word untransformed when the keys came first). Best effort.
+    /// Polls the hooks until the T6 count grew past `count` and then held still for `focusRefreshQuietNanoseconds`,
+    /// at most `focusRefreshWaitNanoseconds`: the first key must be decided on the new field's rule (PLT-R382
+    /// processes a key with the current snapshot, it never waits; the VM runs left the first word untransformed
+    /// when the keys came first), and one focus request can publish more than one snapshot (a web view first,
+    /// then the element in its page). Best effort.
     public func awaitFocusRefresh(after count: UInt64?) async {
         guard let hooks, let count else { return }
         var waited: UInt64 = 0
+        var last = count
+        var quiet: UInt64 = 0
         while waited < Self.focusRefreshWaitNanoseconds {
-            if let state = try? await hooks.state(), state.metrics.focusRefresh.count > count { return }
+            if let current = try? await hooks.state().metrics.focusRefresh.count {
+                if current != last {
+                    last = current
+                    quiet = 0
+                } else if current > count {
+                    if quiet >= Self.focusRefreshQuietNanoseconds { return }
+                }
+            }
             guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil else { return }
             waited += Self.focusRefreshPollNanoseconds
+            quiet += Self.focusRefreshPollNanoseconds
         }
     }
 

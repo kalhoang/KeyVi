@@ -137,17 +137,15 @@ private let targets = HarnessTargets(
     /// when the keys came before the app's focus refresh.
     @Test func focusFieldWaitsForTheAppsFocusRefresh() async throws {
         let sleeper = RecordingSleeper()
-        let hooks = FocusRefreshHooks([4, 4, 4, 5])
+        // Before the focus: 4. The web view's snapshot (5), then its page element's (6), then quiet.
+        let hooks = FocusRefreshHooks([4, 4, 5, 6, 6, 6, 6])
         let router = ScenarioSetupRouter(
             system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
             sleeper: sleeper, hooks: hooks)
         try await router.perform(.init(action: .focusField, value: "testhost.web.textarea"), for: makeScenario())
-        #expect(hooks.requestCount == 4, "the count before the focus, then until it grew")
-        #expect(
-            sleeper.requests.all == [
-                ScenarioSetupRouter.focusRefreshPollNanoseconds, ScenarioSetupRouter.focusRefreshPollNanoseconds,
-                ScenarioSetupRouter.focusSettleNanoseconds,
-            ])
+        #expect(hooks.requestCount == 7, "the count before the focus, then until it grew and held still")
+        let poll = ScenarioSetupRouter.focusRefreshPollNanoseconds
+        #expect(sleeper.requests.all == Array(repeating: poll, count: 5) + [ScenarioSetupRouter.focusSettleNanoseconds])
     }
 
     /// No refresh within the limit (the field was focused already, or the app missed the change): the wait ends

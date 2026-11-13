@@ -130,13 +130,26 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
         webView.evaluateJavaScript("window.TestHost && window.TestHost.reset(" + Self.quoted(field.rawValue) + ")")
     }
 
+    /// Moves the page's focus first, then makes the web view first responder: WebKit gives focus back to the page's
+    /// previously focused element when the view becomes first responder, so focusing the view first showed the app
+    /// under test two focus changes, the second one only after the first keys (the VM runs left the first word in
+    /// the web textarea untransformed).
     func focusElement(_ field: TestHostField) {
-        webView.window?.makeFirstResponder(webView)
         guard !webView.isLoading else {
             pendingFocus = field
             return
         }
-        webView.evaluateJavaScript("window.TestHost && window.TestHost.focus(" + Self.quoted(field.rawValue) + ")")
+        webView.evaluateJavaScript("window.TestHost && window.TestHost.focus(" + Self.quoted(field.rawValue) + ")") {
+            [weak self] _, _ in
+            guard let self else { return }
+            self.webView.window?.makeFirstResponder(self.webView)
+        }
+    }
+
+    /// Reset fields: no element of the page keeps the focus, so the next focus request is the only focus change.
+    func blurPage() {
+        webView.evaluateJavaScript(
+            "document.activeElement && document.activeElement.blur && document.activeElement.blur()")
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
