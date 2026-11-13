@@ -25,7 +25,7 @@ export const home = {
   proof: [
     { h: "No data collection", p: "No telemetry, no analytics SDK, no \"anonymous usage data\". The only automatic network traffic is the update check.", link: "{{hrefPrivacy}}", linkText: "Read the privacy details" },
     { h: "Free", p: "{{AppName}} is free and always will be. No feature is locked, and the app never nags you for donations." },
-    { h: "Open-source engine", p: "The Vietnamese typing engine is a Swift package under the Mozilla Public License 2.0, written from scratch from Vietnamese spelling rules, with its own test suite.", link: "{{repo}}", linkText: "Read the source", external: true },
+    { h: "Open-source engine", p: "The Vietnamese typing engine is a Swift package under the Mozilla Public License 2.0, written from scratch from Vietnamese spelling rules, with its own test suite. The rest of the app is open source too, under GPL-3.0-or-later.", link: "{{repo}}", linkText: "Read the source", external: true },
   ],
   whyHeading: "What you will notice",
   why: [

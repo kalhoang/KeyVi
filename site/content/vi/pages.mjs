@@ -26,7 +26,7 @@ export const home = {
   proof: [
     { h: "Không thu thập dữ liệu", p: "Không telemetry, không SDK phân tích, không \"dữ liệu sử dụng ẩn danh\". Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật.", link: "{{hrefPrivacy}}", linkText: "Xem chi tiết về riêng tư" },
     { h: "Miễn phí", p: "{{AppName}} miễn phí và sẽ luôn miễn phí. Không có tính năng nào bị khoá, không có nhắc nhở ủng hộ trong ứng dụng." },
-    { h: "Bộ máy gõ mã nguồn mở", p: "Phần xử lý tiếng Việt là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
+    { h: "Bộ máy gõ mã nguồn mở", p: "Phần xử lý tiếng Việt là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng. Phần còn lại của ứng dụng cũng là mã nguồn mở, giấy phép GPL-3.0-or-later.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
   ],
   whyHeading: "Những điều bạn sẽ thấy khác",
   why: [

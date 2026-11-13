@@ -28,16 +28,22 @@ Word lists, dictionaries and test corpora need a recorded permissive licence (MI
 
 Process details for the similarity review that the maintainer runs before public releases: [docs/provenance/README.md](docs/provenance/README.md).
 
-## 3. Sign-off and licences (QA-R61)
+## 3. Licences, sign-off and inbound terms (QA-R61)
 
-| Area | Licence | Sign-off |
-|---|---|---|
-| `Packages/VietnameseEngine/` (and the fuzz package `Packages/VietnameseEngineFuzz/`, VERIFY against its own `LICENSE`) | MPL-2.0 (SPDX `MPL-2.0`) | Developer Certificate of Origin: add `Signed-off-by: Your Name <you@example.com>` to every commit with `git commit -s`. A DCO check (`scripts/check-dco.sh`) enforces it on pull requests from forks; the e-mail must match the commit author. |
-| Everything else (app, AppCore, TestHost, scripts, site, docs) | **Pending.** The app licence is an open decision (spec/00-overview.md section 5, item 2). Source files carry `SPDX-License-Identifier: GPL-3.0-or-later`. | **External pull requests to these areas are not accepted until the licence and the sign-off method (DCO or CLA) are decided and this section is updated.** Issues, compatibility reports and discussion are welcome now. |
+| Area | Licence |
+|---|---|
+| `Packages/VietnameseEngine/`, `Packages/VietnameseEngineFuzz/`, the `data/` pipeline and `spec/reference-model/` | MPL-2.0 (SPDX `MPL-2.0`). The three directories outside `spec/` have their own `LICENSE`; the reference model scripts carry the MPL-2.0 SPDX header. |
+| Everything else: the app, AppCore, TestHost, SpikeIMK, scripts, the website, `deploy/`, `compat/`, the docs | GPL-3.0-or-later (SPDX `GPL-3.0-or-later`), the root [LICENSE](LICENSE). |
 
-The DCO sign-off also confirms that you followed the clean-room rule above (CLR-R14). The reasoning is recorded in [docs/decisions/0401-interim-contribution-policy.md](docs/decisions/0401-interim-contribution-policy.md).
+The decision and its reasons are recorded in [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md).
 
-Every source file starts with an SPDX header (CLR-R11). The engine package uses `MPL-2.0`; everything else uses `LicenseRef-App-Pending`.
+**Sign-off for every contribution.** Every commit, in every area, carries a Developer Certificate of Origin sign-off: `Signed-off-by: Your Name <you@example.com>`, added with `git commit -s`. The e-mail must match the commit author. By signing off you certify the [Developer Certificate of Origin 1.1](https://developercertificate.org), confirm that you followed the clean-room rule above (CLR-R14) and accept the inbound terms below. `scripts/check-dco.sh` checks every commit of a pull request from a fork; fix a missing sign-off with `git commit --amend -s` or `git rebase --signoff <base>`.
+
+**Inbound terms.** A contribution to an MPL-2.0 part is licensed under MPL-2.0. A contribution to a GPL-3.0-or-later part is licensed under GPL-3.0-or-later as part of the project and is also licensed to the project under the MIT licence (the standard MIT licence text, with your own copyright notice). The MIT grant lets the maintainer also ship your change in a separately licensed Pro edition after 1.0 (ADR 0006); the free app always keeps complete, correct Vietnamese typing. Because an MIT licence is non-exclusive, the change you wrote is available under MIT terms while the app as a whole is distributed under the GPL. You keep your copyright.
+
+**No contributor licence agreement.** There is nothing to sign beyond the sign-off, and no CLA bot.
+
+Every source file starts with an SPDX header (CLR-R11): `MPL-2.0` in the MPL-2.0 parts, `GPL-3.0-or-later` everywhere else. `scripts/check-spdx.sh` (part of `scripts/lint.sh`) enforces it. Dependencies and bundled data must be permissively licensed (CLR-R6, section 7): no GPL code or data from third parties is accepted, so that the copyright holder can always ship every line of the app.
 
 ## 4. Build and test commands
 

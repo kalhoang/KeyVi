@@ -294,6 +294,11 @@ try {
     assert.match(dl, /macOS 15 Sequoia trở lên/);
   });
 
+  await check("populated: the open-source proof point names both licences (ADR 0006)", () => {
+    assert.match(read("index.html"), /MPL-2\.0\)[^<]*GPL-3\.0-or-later/);
+    assert.match(read("en", "index.html"), /Mozilla Public License 2\.0[^<]*GPL-3\.0-or-later/);
+  });
+
   await check("populated: matrix statuses, 120-day staleness (QA-R19), escaping, filters hook", () => {
     const m = read("tuong-thich", "index.html");
     for (const label of ["Hoạt động tốt", "Hoạt động, có lưu ý", "Chưa kiểm tra", "Hạn chế đã biết"]) assert.ok(m.includes(label), label);

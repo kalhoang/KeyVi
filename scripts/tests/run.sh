@@ -265,7 +265,7 @@ expect 1 "a failing harness fails" env PATH="$D/bin:$PATH" FAKE_HARNESS_STATUS=3
 expect 1 "argument override without --dry-run is refused" \
   env PATH="$D/bin:$PATH" COMPAT_HARNESS_DRY_RUN_ARGS="run --scenarios x" "$S/compat-dry-run.sh" --root "$D"
 
-echo "== check-dco.sh (ADR 0401)"
+echo "== check-dco.sh (ADR 0006: every contribution is signed off)"
 G="$T/g"
 mkdir -p "$G/Packages/VietnameseEngine" "$G/docs"
 git -C "$G" init -q
@@ -275,12 +275,19 @@ git -C "$G" config commit.gpgsign false
 printf 'base\n' >"$G/docs/a.md"
 git -C "$G" add -A && git -C "$G" commit -q -m "chore: base"
 dco_base="$(git -C "$G" rev-parse HEAD)"
-printf 'doc\n' >>"$G/docs/a.md"
-git -C "$G" commit -q -am "docs: unsigned change outside the engine"
 printf 'x\n' >"$G/Packages/VietnameseEngine/E.swift"
 git -C "$G" add -A && git -C "$G" commit -q -s -m "feat: signed engine change"
-expect 0 "signed engine commits pass; other paths are not checked" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
-contains "one engine commit checked" "1 commit(s) touching Packages/VietnameseEngine Packages/VietnameseEngineFuzz"
+printf 'doc\n' >>"$G/docs/a.md"
+git -C "$G" commit -q -s -am "docs: signed change outside the engine"
+expect 0 "signed commits in every area pass" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "every commit checked" "2 commit(s) touching every path, all signed off"
+printf 'more\n' >>"$G/docs/a.md"
+git -C "$G" commit -q -am "docs: unsigned change outside the engine"
+expect 1 "an unsigned commit outside the engine fails (GPL-covered parts need the sign-off too)" \
+  "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "unsigned app commit named" "docs: unsigned change outside the engine"
+contains "names the decision" "ADR 0006"
+git -C "$G" commit -q --amend -s --no-edit
 printf 'y\n' >>"$G/Packages/VietnameseEngine/E.swift"
 git -C "$G" commit -q -am "fix: engine change" -m "Signed-off-by: Someone Else <else@example.org>"
 expect 1 "a sign-off by someone else fails" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
@@ -291,10 +298,10 @@ expect 1 "unknown revisions are rejected" "$S/check-dco.sh" --repo "$G" --base n
 mkdir -p "$G/Packages/VietnameseEngineFuzz"
 printf 'z\n' >"$G/Packages/VietnameseEngineFuzz/F.swift"
 git -C "$G" add -A && git -C "$G" commit -q -m "test: unsigned fuzz change"
-expect 1 "the MPL-2.0 fuzz package is checked by default" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+expect 1 "the MPL-2.0 fuzz package is checked" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
 contains "unsigned fuzz commit named" "test: unsigned fuzz change"
 expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
-  --path Packages/VietnameseEngine
+  --path Packages/VietnameseEngine --path docs
 
 echo "== notarize.sh never accepts a submission without its log (QA-R30 step 5)"
 N="$T/notary"

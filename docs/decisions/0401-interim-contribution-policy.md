@@ -1,6 +1,6 @@
 # 0401. Interim contribution policy until the app licence is decided
 
-- Status: accepted (interim), 2026-11-13
+- Status: superseded by [0006](0006-app-licence-and-pro-edition.md) (app licence GPL-3.0-or-later, DCO for every contribution with inbound MIT), 2026-11-13; item 2 no longer applies
 - Spec: QA-R61, QA-R62, QA-R63, CLR-R14; spec/00-overview.md section 5 item 2 (app licence is open)
 
 ## Context

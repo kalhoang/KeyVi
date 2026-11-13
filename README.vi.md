@@ -87,8 +87,9 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 
 ## Giấy phép và nguồn gốc mã
 
-- Gói engine dùng giấy phép MPL-2.0: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE).
-- Giấy phép của ứng dụng chưa được quyết định. Cho đến khi có quyết định, các tệp nguồn ngoài engine mang dòng `SPDX-License-Identifier: GPL-3.0-or-later` và chưa có tệp `LICENSE` ở thư mục gốc.
+- {{AppName}} là phần mềm tự do theo Giấy phép Công cộng GNU (GNU GPL), phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn: [LICENSE](LICENSE). Bản quyền (c) 2026 thuộc các tác giả của {{AppName}}.
+- Các gói engine tiếng Việt và quy trình tạo danh sách từ dùng giấy phép MPL-2.0 để dự án khác có thể nhúng vào: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
+- Mọi đóng góp cần dòng ký xác nhận (Developer Certificate of Origin); đóng góp vào phần dùng GPL đồng thời được cấp cho dự án theo giấy phép MIT, không cần ký CLA ([CONTRIBUTING.md](CONTRIBUTING.md) mục 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
 - {{AppName}} là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Liên kết

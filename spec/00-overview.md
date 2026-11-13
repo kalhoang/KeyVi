@@ -43,12 +43,12 @@ Every file uses `{{AppName}}` (display name) and `{{app-slug}}` (ASCII slug: bun
 
 ## 5. Open decisions for Pa (consolidated)
 
-All answered on 13/11/2026 except the app licence. The full list of answers, with the place that implements each one (or the later wave that will), is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+All answered on 13/11/2026; the app licence followed the same evening. The full list of answers, with the place that implements each one (or the later wave that will), is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
 
 | # | Decision | Answer (Pa, 13/11/2026) | Where |
 |---|---|---|---|
 | 1 | Product name | Chosen; kept only in the brand files | section 4 |
-| 2 | App licence (affects contribution rules and any future paid edition) | Not decided; `LicenseRef-App-Pending` stays | 03 s.18, 02 s.14, 04 s.10 |
+| 2 | App licence (affects contribution rules and any future paid edition) | GPL-3.0-or-later for the app; engine packages, `data/` pipeline and reference model MPL-2.0; DCO sign-off with inbound MIT, no CLA; Pro edition after 1.0 (`docs/decisions/0006-app-licence-and-pro-edition.md`) | 03 s.18, 02 s.14, 04 s.10 |
 | 3 | Engine licence: MIT or Apache-2.0 | MPL-2.0 | ENG Q1 |
 | 4 | Default tone placement | Traditional (`hòa`, `thủy`), with the setting | ENG Q2, 03 D2 |
 | 5 | Restore-last-word hotkey | Escape by default, with an on/off setting and exclusions through compatibility rules | ENG Q4, 03 D8, PLT-R353 |

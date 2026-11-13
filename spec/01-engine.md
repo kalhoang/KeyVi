@@ -1320,7 +1320,7 @@ All answered on 13/11/2026; every answer and the place that implements it is lis
 
 | # | Question | Answer (Pa, 13/11/2026) |
 |---|---|---|
-| Q1 | Engine licence: MIT or Apache-2.0? | Not decided yet; the engine stays MPL-2.0 (ENG-R109) and the app licence stays pending. |
+| Q1 | Engine licence: MIT or Apache-2.0? | MPL-2.0 (ENG-R109); the app is GPL-3.0-or-later (`docs/decisions/0006-app-licence-and-pro-edition.md`). |
 | Q2 | Default tone style: traditional (`hòa`, `thủy`) or modern (`hoà`, `thuỷ`, textbook standard since 2018)? | Traditional by default, with the setting to change it (ENG-R510, `03-product.md` D2). |
 | Q3 | Review of the ambiguity table: confirm the proposed rows in ENG-R821 and review the top 300 generated candidates. | Lists stay unreviewed for now; unreviewed rows behave as `vi` (ENG-R821). Review later. |
 | Q4 | Restore hotkey: unset (first version) or Escape bound by default? | Escape bound by default, with an on/off setting; compatibility rules turn it off in terminals, IDEs and code editors, games and remote desktop clients (7.2, `03-product.md` D8, `02-platform.md` PLT-R353). |

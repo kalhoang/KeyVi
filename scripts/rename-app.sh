@@ -10,6 +10,7 @@
 #      (ADR 0307 amendment); the new folder name is dropped from that list.
 #   2. Rewrites every documented literal occurrence of the old values in tracked text files outside
 #      spec/ and docs/decisions/ (historical records): old display name, bundle IDs, site host, slug.
+#      The root LICENSE (the verbatim GPL-3.0 text, ADR 0006) is never rewritten.
 #   3. Leaves template placeholders ({{AppName}}, {{app-slug}}, {{storage-folder}}, {{bundle-id}})
 #      untouched: they are rendered from scripts/brand.env at build or publish time.
 # Contract: docs/decisions/0504-publish-and-rename-contracts.md. Dry run by default; --apply writes.
@@ -133,7 +134,7 @@ new_legacy = legacy_folders()
 print(f"legacy storage folders: {old_legacy or '(none)'} -> {new_legacy or '(none)'}", file=sys.stderr)
 
 BRAND_FILES = {"Config/Brand.xcconfig", "scripts/brand.env"}
-EXCLUDED = re.compile(r"^(spec/|docs/decisions/|\.git/|dist/|site/dist/)|(^|/)(\.build[^/]*|node_modules)/|"
+EXCLUDED = re.compile(r"^(spec/|docs/decisions/|\.git/|dist/|site/dist/|LICENSE$)|(^|/)(\.build[^/]*|node_modules)/|"
                       r"\.(png|jpg|jpeg|gif|icns|ico|pdf|dmg|zip|car|ttf|otf|woff2?)$")
 
 # Order matters: longest, most specific values first so a bundle ID is not half-rewritten by the slug.

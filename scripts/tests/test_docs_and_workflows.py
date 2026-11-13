@@ -705,6 +705,126 @@ class IntegrationHooksBuildTests(unittest.TestCase):
         self.assertNotIn("Integration", build)
 
 
+class LicenceTests(unittest.TestCase):
+    """ADR 0006 (Pa, 2026-11-13): the app is GPL-3.0-or-later, the engine packages, the data pipeline and the
+    reference model are MPL-2.0, every contribution is signed off (DCO) and contributions to GPL-covered parts are also
+    licensed to the project under MIT (QA-R61, PLT-R108, CLR-R11)."""
+
+    # SHA-256 of https://www.gnu.org/licenses/gpl-3.0.txt as fetched on 2026-11-13 (35,149 bytes, the verbatim text).
+    GPL3_SHA256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    # spec/reference-model is MPL-2.0 too, through the SPDX header of each script and its README (spec/ keeps brand
+    # placeholders and is never rewritten by scripts/rename-app.sh, so it holds no LICENSE naming the product).
+    MIT_DIRS = ("Packages/VietnameseEngine", "Packages/VietnameseEngineFuzz", "data")
+    # SHA-256 of the verbatim Mozilla Public License 2.0 text (https://www.mozilla.org/media/MPL/2.0/index.txt).
+    MPL2_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    ADR = REPO / "docs" / "decisions" / "0006-app-licence-and-pro-edition.md"
+    PENDING_ID = "LicenseRef-" + "App-Pending"  # split so this file does not match its own search
+
+    @staticmethod
+    def brand_name() -> str:
+        env = (REPO / "scripts" / "brand.env").read_text(encoding="utf-8")
+        return re.search(r'^APP_DISPLAY_NAME="([^"]+)"$', env, re.M).group(1)
+
+    def test_root_licence_is_the_verbatim_gpl_3_text(self):
+        data = (REPO / "LICENSE").read_bytes()
+        self.assertTrue(data.startswith(b"                    GNU GENERAL PUBLIC LICENSE\n"
+                                        b"                       Version 3, 29 June 2007\n"))
+        self.assertEqual(hashlib.sha256(data).hexdigest(), self.GPL3_SHA256, "LICENSE must be byte-exact")
+
+    def test_engine_parts_carry_the_verbatim_mpl_2_text(self):
+        for directory in self.MIT_DIRS:
+            with self.subTest(directory=directory):
+                data = (REPO / directory / "LICENSE").read_bytes()
+                self.assertTrue(data.startswith(b"Mozilla Public License Version 2.0\n"))
+                self.assertEqual(hashlib.sha256(data).hexdigest(), self.MPL2_SHA256, "LICENSE must be byte-exact")
+
+    def test_mit_parts_match_the_spdx_lint(self):
+        lint = (REPO / "scripts" / "check-spdx.sh").read_text(encoding="utf-8")
+        mit_path = re.compile(re.search(r'MIT_PATH = re\.compile\(r"([^"]+)"\)', lint).group(1))
+        for directory in self.MIT_DIRS:
+            with self.subTest(directory=directory):
+                self.assertRegex(f"{directory}/x.swift", mit_path)
+        self.assertNotRegex("App/x.swift", mit_path)
+        for script in sorted((REPO / "spec" / "reference-model").glob("*.py")):
+            with self.subTest(reference_model=script.name):
+                self.assertEqual(script.read_text(encoding="utf-8").splitlines()[0], "# SPDX-License-Identifier: MPL-2.0")
+
+    def test_a_rename_never_touches_the_gpl_text(self):
+        rename = (REPO / "scripts" / "rename-app.sh").read_text(encoding="utf-8")
+        excluded = re.search(r'EXCLUDED = re\.compile\((r"[^\n]+"\n\s+r"[^\n]+")\)', rename)
+        self.assertIsNotNone(excluded, "rename-app.sh no longer defines EXCLUDED")
+        pattern = re.compile("".join(re.findall(r'r"([^"]*)"', excluded.group(1))))
+        self.assertTrue(pattern.search("LICENSE"), "the verbatim GPL text must stay byte-exact after a rename")
+        self.assertFalse(pattern.search("data/LICENSE"), "the engine licences follow a rename")
+
+    def test_no_file_still_calls_the_app_licence_pending(self):
+        listed = run("git", "-C", str(REPO), "ls-files", check=True).stdout.splitlines()
+        offenders = []
+        for rel in listed:
+            if rel.startswith("docs/decisions/") or Path(rel).suffix.lower() in IMAGE_SUFFIXES:
+                continue  # decision records keep their history
+            path = REPO / rel
+            if path.is_file() and self.PENDING_ID in path.read_text(encoding="utf-8", errors="replace"):
+                offenders.append(rel)
+        self.assertEqual(offenders, [], "the app licence is GPL-3.0-or-later (ADR 0006)")
+
+    def test_spec_open_decision_lists_record_the_licence(self):
+        for rel, marker in (("spec/00-overview.md", "| 2 | App licence"), ("spec/02-platform.md", "2. App licence"),
+                            ("spec/03-product.md", "2. App licence"), ("spec/04-quality-release.md", "1. App licence")):
+            with self.subTest(spec=rel):
+                text = (REPO / rel).read_text(encoding="utf-8")
+                line = next(line for line in text.splitlines() if line.startswith(marker))
+                self.assertIn("GPL-3.0-or-later", line)
+                self.assertIn("0006", line)
+                self.assertNotIn("not decided", line.lower())
+        platform = (REPO / "spec" / "02-platform.md").read_text(encoding="utf-8")
+        plt_r108 = next(line for line in platform.splitlines() if line.startswith("- **PLT-R108**"))
+        for needle in ("GPL-3.0-or-later", "compat-rules.json", "injection"):
+            self.assertIn(needle, plt_r108)
+        self.assertNotIn("open decision", plt_r108)
+        quality = (REPO / "spec" / "04-quality-release.md").read_text(encoding="utf-8")
+        qa_r61 = quality.split("QA-R61 ", 1)[1].split("\nQA-R62 ", 1)[0]
+        for needle in ("Signed-off-by", "MIT", "no CLA"):
+            self.assertIn(needle, qa_r61)
+        self.assertNotIn("open for Pa", qa_r61)
+
+    def test_contributing_states_dco_and_inbound_mit_without_a_cla(self):
+        text = " ".join((REPO / "CONTRIBUTING.md").read_text(encoding="utf-8").split())
+        for needle in ("Signed-off-by", "Developer Certificate of Origin", "https://developercertificate.org",
+                       "GPL-3.0-or-later", "also licensed to the project under the MIT licence",
+                       "No contributor licence agreement", "ADR 0006", "scripts/check-dco.sh"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+        self.assertNotIn("not accepted until", text)
+
+    def test_pull_request_template_asks_for_the_sign_off_and_the_inbound_licence(self):
+        text = (REPO / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
+        section = text.split("## Sign-off and licence", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("Signed-off-by:", section)
+        self.assertIn("MIT", section)
+        self.assertIn("GPL-3.0-or-later", section)
+        self.assertNotIn("Not required for non-engine areas", text)
+
+    def test_adr_0006_records_the_decision(self):
+        text = " ".join(self.ADR.read_text(encoding="utf-8").split())
+        self.assertTrue(text.startswith("# 0006. App licence and the Pro edition"))
+        for needle in ("Status: accepted", "GPL-3.0-or-later", "MIT", "Developer Certificate of Origin", "PLT-R108",
+                       "compat-rules.json", "injection", "99,000 VND", "after 1.0", "lifetime", "private module",
+                       "signature", "offline", "Supersedes", "0401"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+        adr_0001 = (REPO / "docs" / "decisions" / "0001-defaults-for-open-decisions.md").read_text(encoding="utf-8")
+        status = next(line for line in adr_0001.splitlines() if line.startswith("- Status:"))
+        self.assertIn("0005", status)
+        self.assertIn("0006", status)
+        self.assertIn("superseded", status)
+
+    def test_the_dco_check_covers_every_path_by_default(self):
+        script = (REPO / "scripts" / "check-dco.sh").read_text(encoding="utf-8")
+        self.assertNotIn("paths=(Packages/VietnameseEngine Packages/VietnameseEngineFuzz)", script)
+        self.assertIn("ADR 0006", script)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""

@@ -1,6 +1,6 @@
 # 0001. Working defaults for the open decisions
 
-- Status: accepted (working defaults until Pa decides), 2026-11-13
+- Status: superseded by [0005](0005-pa-decisions-2026-11-13.md) for rows 1 and 3 to 19 and by [0006](0006-app-licence-and-pro-edition.md) for row 2 (working defaults until Pa decided, 2026-11-13)
 - Context: spec/00-overview.md section 5 lists 19 open decisions; "the spec's proposed default applies until Pa decides".
 
 ## Decision

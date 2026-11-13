@@ -2,6 +2,8 @@
 
 This file lists every third-party dependency, data list and asset that ships with {{AppName}} or its website, with its licence (CLR-R6, CLR-R7, QA-R66). It must be complete before every public release. Adding a dependency requires a decision record in `docs/decisions/` and an entry here (QA-R24).
 
+The project's own code is GPL-3.0-or-later (the root [LICENSE](LICENSE)); the engine packages and the `data/` pipeline are MPL-2.0 (their own `LICENSE` files; [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)). The entries below are the material that comes from elsewhere or needs a recorded source.
+
 The project is pre-alpha. Sections marked **placeholder** are filled in by the track or person that owns the item; do not remove them.
 
 ## 1. Runtime dependencies of the app
@@ -182,7 +184,7 @@ Every asset is original work created for this project unless a row below says ot
 
 - Files: `assets/keyvi_logo.png` (1024 x 1024 px: a photographed keycap with the "KV" mark and an emerald dot on an off-white background) and four 22 x 22 menu bar SVGs: `assets/keyvi_menubar_on_light.svg`, `assets/keyvi_menubar_on_dark.svg`, `assets/keyvi_menubar_off_light.svg` and `assets/keyvi_menubar_off_dark.svg` (on: solid letters and an emerald dot; off: letters at 55 % opacity and a grey dot; light and dark: the menu bar's appearance).
 - Author and date: Pa, the product owner, supplied on 2026-11-13 (decision S7) and committed in `51d7e9e`.
-- Licence: the app's licence (`LicenseRef-App-Pending`); Pa's own artwork, no third-party material.
+- Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); Pa's own artwork, no third-party material.
 - Use: not shipped as they are. Every icon below is generated from these files by a committed script, so a change to the artwork is a change here and a re-run of the script.
 
 ### App icon
@@ -190,7 +192,7 @@ Every asset is original work created for this project unless a row below says ot
 - Files: `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512.png` and `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png` (16, 32, 128, 256 and 512 pt at 1x and 2x), plus the set's `Contents.json`.
 - Source: `assets/keyvi_logo.png`, by `scripts/make-app-icon.py app-icon` on 2026-11-13: the keycap is cut out of the off-white background with a rounded-square mask, given a soft shadow and placed on Apple's macOS icon grid (an 824 px body on a 1024 px canvas).
 - Source record: this entry, the provenance table and the header of `scripts/make-app-icon.py`.
-- Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
+- Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); derived from Pa's artwork only.
 
 ### Menu-bar status icons
 
@@ -198,7 +200,7 @@ Every asset is original work created for this project unless a row below says ot
 - Source: the `light` and `dark` files of `StatusIcon-vietnamese` and `StatusIcon-english` are Pa's `keyvi_menubar_on_*` and `keyvi_menubar_off_*` files, unchanged apart from an added source comment. The high-contrast variants and the other six states are derived from the same KV mark by `scripts/make-app-icon.py menu-bar` on 2026-11-13: a badge takes the dot's place (ring, lock, pause bars, slash or recording ring) so every state differs in shape as well as colour (PRD-R10, PRD-R67).
 - Source record: an XML comment at the top of each SVG, and this entry.
 - Loading code: `App/Sources/Shell/StatusGlyph.swift` loads these images and draws no artwork of its own. Its fallback for a missing image set is the operating system's "keyboard" SF Symbol, requested by name at run time and not bundled.
-- Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
+- Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); derived from Pa's artwork only.
 - Replaces: the monochrome placeholder glyphs drawn for this repository earlier on 2026-11-13 (commits `6c21873` and `fab7dbb`).
 
 ### Donation VietQR code
@@ -206,7 +208,7 @@ Every asset is original work created for this project unless a row below says ot
 - Files: `App/Resources/Donation.xcassets/DonationVietQR.imageset/vietqr.png` (asset name `DonationVietQR`, shown in the donation block of About & Support, PRD-R59) and `site/static/assets/qr/vietqr.png` (the website's donation page). Both are the same 1024 x 1024 px file.
 - Source: generated on 2026-11-13 by `scripts/make-vietqr.py` from Pa's bank details (decision S8: LioBank through the NAPAS BIN 970448, account 688688678, purpose "Ung ho" followed by the app name). The payload follows the public EMVCo and NAPAS VietQR format and carries no account holder name. The keycap of `assets/keyvi_logo.png` sits in the centre on a light plate. The image was rendered with the `qrcode` (BSD licence) and Pillow (MIT-CMU licence) Python packages, which are generation tools only: no code of either is shipped.
 - Source record: this entry, the provenance table and [donation setup](docs/runbooks/donation-setup.md).
-- Licence: the app's licence (`LicenseRef-App-Pending`).
+- Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`).
 - Replaces: the VietQR and MoMo placeholder images (commits `25afa53` and `bb65d7c`). MoMo is not used: there is no MoMo account (S8).
 
 ### Website icons
@@ -214,7 +216,7 @@ Every asset is original work created for this project unless a row below says ot
 - Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the header logo `site/static/assets/brand/app-icon-64.png` and `site/static/assets/brand/app-icon-128.png`.
 - Source: `scripts/make-app-icon.py site` on 2026-11-13, from Pa's artwork.
 - Source record: an XML comment in `favicon.svg`, and this entry.
-- Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
+- Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); derived from Pa's artwork only.
 - Replaces: the interim favicon (a white "V" stroke on a green rounded square, commit `bb65d7c`).
 
 ### Input method spike icon (not shipped)
@@ -222,7 +224,7 @@ Every asset is original work created for this project unless a row below says ot
 - File: `SpikeIMK/Resources/SpikeIMK.tiff` (16 x 16 and 32 x 32 px: a rounded square outline with an "S1" mark), the input source icon of the `SpikeIMK` test target, which only Pa builds and installs and which is never part of a release.
 - Author and date: generated for this repository on 2026-11-13 (commit `6c21873`) by `SpikeIMK/Tools/make-icon.py`, original pixel art.
 - Source record: the header comment of `SpikeIMK/Tools/make-icon.py`, which also regenerates the file.
-- Licence: the app's licence (`LicenseRef-App-Pending`); no third-party material.
+- Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); no third-party material.
 
 ### Other assets
 
