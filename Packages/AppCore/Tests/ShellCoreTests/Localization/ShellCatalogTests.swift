@@ -91,6 +91,24 @@ import Testing
         }
     }
 
+    @Test func everyControlInOwnedWindowsHasLabelAndHint() throws {
+        // PRD-R66: each SwiftUI control in the onboarding window and the HUDs carries a VoiceOver label and hint
+        // (system alert buttons, which have a `role:`, are labelled by their title).
+        let control = /\b(Button|TextField|Toggle)\(/
+        let labelled = /onboardingAccessibility\(|accessibilityHint\(/
+        for folder in ["App/Sources/Onboarding", "App/Sources/Shell"] {
+            let directory = RepoPaths.url(folder)
+            for file in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            where file.pathExtension == "swift" {
+                let lines = try String(contentsOf: file, encoding: .utf8).components(separatedBy: "\n")
+                for (index, line) in lines.enumerated() where line.contains(control) && !line.contains("role:") {
+                    let window = lines[index..<min(lines.count, index + 8)].joined(separator: "\n")
+                    #expect(window.contains(labelled), "\(file.lastPathComponent):\(index + 1) has no label and hint")
+                }
+            }
+        }
+    }
+
     @Test func shellSourcesHaveNoLiteralProductCopy() throws {
         // Acceptance: no `Text("...")` literal for product copy in owned App sources (ADR 0310).
         let folders = ["App/Sources/Shell", "App/Sources/Onboarding"]

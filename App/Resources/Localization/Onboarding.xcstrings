@@ -433,6 +433,78 @@
         }
       }
     },
+    "onboarding.control.moveConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moves the app to the Applications folder and reopens it from there."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuyển ứng dụng vào thư mục Ứng dụng rồi mở lại từ đó."
+          }
+        }
+      }
+    },
+    "onboarding.control.moveConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move and reopen"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuyển và mở lại"
+          }
+        }
+      }
+    },
+    "onboarding.control.moveQuit.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quits without moving the app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát mà không chuyển ứng dụng."
+          }
+        }
+      }
+    },
+    "onboarding.control.moveQuit.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát"
+          }
+        }
+      }
+    },
     "onboarding.control.openAtLogin.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",

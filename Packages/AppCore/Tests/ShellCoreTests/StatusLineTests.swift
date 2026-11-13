@@ -135,6 +135,42 @@ import Testing
         #expect(unknown.action == .none)
     }
 
+    @Test func statusLineTableCoversEveryHostState() {
+        // PRD-R43, PLT-R211: every state has a decided row (a key and action, or deliberately none).
+        let expected: [HostState: (StatusText, StatusLine.Action)?] = [
+            .noPermission: (.noPermission, .grantPermission),
+            .starting: nil,
+            .ready(.vietnamese): nil,
+            .ready(.english): nil,
+            .paused(.secureInput(AllHostStates.holder)): (.secureInputHolder, .showHolderApp(pid: 42)),
+            .paused(.secureInput(nil)): (.secureInputUnknownHolder, .secureInputHelp),
+            .paused(.nonLatinInputSource(name: "Kotoeri")): (.nonLatinSource, .none),
+            .paused(.builtInVietnameseSource): (.builtInVietnamese, .none),
+            .paused(.passThroughRule(AllHostStates.rule)): nil,
+            .paused(.secureField): nil,
+            .paused(.sessionInactive): nil,
+            .paused(.userDisabled): (.userDisabled, .none),
+            .paused(.noTextFocus): (.noTextFocus, .overrideTextFocus(bundle: frontmost.bundle)),
+            .failOpen(.permissionRevoked): (.noPermission, .grantPermission),
+            .failOpen(.postingBroken): (.postingBroken, .reportProblem),
+            .failOpen(.tapUnavailable): (.tapUnavailable, .reportProblem),
+            .failOpen(.watchdog): (.watchdog, .reportProblem),
+            .failOpen(.callbackStuck): (.callbackStuck, .reopenApp),
+        ]
+        #expect(Set(expected.keys) == Set(AllHostStates.all))
+        var noLimitation = frontmost
+        noLimitation.matrixStatus = .works
+        for state in AllHostStates.all {
+            let line = line(state, app: noLimitation)
+            if let row = expected[state] ?? nil {
+                #expect(line?.key == row.0.rawValue, "\(state)")
+                #expect(line?.action == row.1, "\(state)")
+            } else {
+                #expect(line == nil, "\(state)")
+            }
+        }
+    }
+
     @Test func expectedPausesAndHealthyStatesShowNoLine() {
         for state: HostState in [
             .starting, .ready(.vietnamese), .ready(.english), .paused(.secureField), .paused(.sessionInactive),

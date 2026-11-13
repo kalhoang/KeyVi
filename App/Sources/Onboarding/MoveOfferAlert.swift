@@ -17,8 +17,12 @@ enum MoveOfferAlert {
         alert.alertStyle = .informational
         alert.messageText = content.title
         alert.informativeText = content.body
-        alert.addButton(withTitle: content.confirm)
-        alert.addButton(withTitle: content.quit)
+        let localizer = language.localizer
+        // PRD-R66: alert buttons are labelled by their titles; the hints come from the Onboarding table.
+        for (title, control) in [(content.confirm, OnboardingControl.moveConfirm), (content.quit, .moveQuit)] {
+            let button = alert.addButton(withTitle: title)
+            button.setAccessibilityHelp(localizer.string(control.accessibilityHintKey, table: .onboarding))
+        }
         return alert.runModal() == .alertFirstButtonReturn ? .move : .quit
     }
 }

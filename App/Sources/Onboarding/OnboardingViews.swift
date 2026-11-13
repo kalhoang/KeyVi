@@ -219,31 +219,41 @@ struct MethodCard: View {
     var body: some View {
         let localizer = model.localizer
         let selected = model.method == method
-        let title = localizer.string(method == .telex ? OnboardingText.methodTelexTitle : OnboardingText.methodVNITitle)
-        let example = localizer.string(
-            method == .telex ? OnboardingText.methodTelexExample : OnboardingText.methodVNIExample)
         Button(action: { model.select(method) }) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(verbatim: title).font(.headline)
-                    Spacer()
-                    // Selection is a symbol and a thicker border, never colour alone (PRD-R67).
-                    Image(systemName: selected ? "checkmark.circle.fill" : "circle").accessibilityHidden(true)
-                }
-                Text(verbatim: example).font(.callout.monospaced())
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 10).fill(.background))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10).strokeBorder(
-                    selected ? Color.accentColor : .secondary,
-                    lineWidth: selected ? 3 : 1))
+            MethodCardLabel(localizer: localizer, method: method, selected: selected)
         }
         .buttonStyle(.plain)
         .onboardingAccessibility(method == .telex ? .methodTelex : .methodVNI, localizer)
         .accessibilityValue(Text(verbatim: selected ? localizer.string(OnboardingText.methodSelected) : ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Card face: title, example and the selection mark. Selection is a symbol and a thicker border, never colour
+/// alone (PRD-R67).
+struct MethodCardLabel: View {
+    let localizer: Localizer
+    let method: TypingMethod
+    let selected: Bool
+
+    var body: some View {
+        let title = localizer.string(method == .telex ? OnboardingText.methodTelexTitle : OnboardingText.methodVNITitle)
+        let example = localizer.string(
+            method == .telex ? OnboardingText.methodTelexExample : OnboardingText.methodVNIExample)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(verbatim: title).font(.headline)
+                Spacer()
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle").accessibilityHidden(true)
+            }
+            Text(verbatim: example).font(.callout.monospaced())
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 10).fill(.background))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10).strokeBorder(
+                selected ? Color.accentColor : .secondary, lineWidth: selected ? 3 : 1))
     }
 }
 

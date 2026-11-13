@@ -239,7 +239,8 @@ public enum OnboardingText: String, LocalizationKey {
 public enum OnboardingControl: String, Sendable, CaseIterable {
     case back, skip, primary, openPermissionPane, openInputMonitoringPane, relaunch, permissionHelp,
         resetPermission, closeHelp, methodTelex, methodVNI, practiceField, changeToggleKey, conflictHelp,
-        checkAgain, openKeyboardPane, chooseImportFile, importLater, tryItField, openAtLogin
+        checkAgain, openKeyboardPane, chooseImportFile, importLater, tryItField, openAtLogin, moveConfirm,
+        moveQuit
 
     public var accessibilityLabelKey: String { "onboarding.control.\(rawValue).accessibilityLabel" }
     public var accessibilityHintKey: String { "onboarding.control.\(rawValue).accessibilityHint" }
