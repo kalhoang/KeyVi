@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // About & Support pane logic (PRD-R24, PRD-R53, PRD-R59, ENG-R811): version line, update settings applied to the
-// Sparkle wrapper, the "no downgrade" note when leaving Beta, licences and acknowledgements, donation block.
+// Sparkle wrapper, licences and acknowledgements, donation block. The "no downgrade" note when leaving Beta is the
+// updater's `UpdateChannelNote` (App/Sources/Updater, `Updates` table).
 
 public import AppModel
 
@@ -9,12 +10,6 @@ public enum AboutSupportContent {
     /// "Phiên bản 0.1.0 (12)".
     public static func versionLine(brand: Brand, localizer: Localizer) -> String {
         localizer.format(SupportText.version, brand.version, brand.build)
-    }
-
-    /// PRD-R53: switching from Beta back to Stable offers the next stable when it is newer and never downgrades
-    /// automatically, and the pane says so.
-    public static func channelNote(from previous: UpdateChannel, to selected: UpdateChannel) -> SupportText? {
-        previous == .beta && selected == .stable ? .channelNoDowngrade : nil
     }
 
     /// The Sparkle wrapper's view of the channel setting.

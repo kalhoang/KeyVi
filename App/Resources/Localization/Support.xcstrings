@@ -109,24 +109,6 @@
         }
       }
     },
-    "support.channel.noDowngrade" : {
-      "comment" : "PRD-R53: says that it does not downgrade.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Switching back to Stable does not downgrade: you get the next stable release once it is newer than the version you run."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chuyển về Ổn định không tự hạ phiên bản: bạn sẽ nhận bản ổn định kế tiếp khi nó mới hơn bản đang dùng."
-          }
-        }
-      }
-    },
     "support.channel.stable" : {
       "comment" : "Channel (site wording).",
       "extractionState" : "manual",

@@ -162,13 +162,9 @@ import VietnameseEngineData
         displayName: "App", slug: "app", siteHost: "example.invalid", bundleIdentifier: "com.example.app",
         version: "0.1.0", build: "12", supportEmail: nil)
 
-    @Test func versionAndChannelNote_PRDR53() throws {
+    @Test func versionLine_PRDR24() throws {
         let l = try Localizers()
         #expect(AboutSupportContent.versionLine(brand: brand, localizer: l.vi) == "Phiên bản 0.1.0 (12)")
-        #expect(AboutSupportContent.channelNote(from: .beta, to: .stable) == .channelNoDowngrade)
-        #expect(AboutSupportContent.channelNote(from: .stable, to: .beta) == nil)
-        #expect(AboutSupportContent.channelNote(from: .stable, to: .stable) == nil)
-        #expect(l.vi.string(SupportText.channelNoDowngrade).contains("không tự hạ phiên bản"))
     }
 
     @Test @MainActor func updateSettingsReachTheUpdater() {

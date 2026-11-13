@@ -40,6 +40,16 @@ struct ShellActionsTests {
         #expect(decoded.rules == [rule])
     }
 
+    @Test func keyboardIdleCountsOnlyKeysSinceLaunch_PLT_R1105() {
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: 12, secondsSinceLaunch: 600) == 12)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: 900, secondsSinceLaunch: 600) == .infinity)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: 600, secondsSinceLaunch: 600) == .infinity)
+        #expect(
+            KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: .infinity, secondsSinceLaunch: 5) == .infinity)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: .nan, secondsSinceLaunch: 600) == 0)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: -1, secondsSinceLaunch: 600) == 0)
+    }
+
     @Test func provenanceDayIsUTC() {
         #expect(TextFocusOverride.day(Date(timeIntervalSince1970: 1_800_000_000)) == "2027-01-15")
     }

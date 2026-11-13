@@ -87,12 +87,24 @@ enum UpdateChannelPolicy {
         }
     }
 
-    /// PRD-R53: leaving Beta never downgrades (Sparkle only offers newer builds), and the pane says so.
-    /// Consumer: the About & Support pane (W2-B, App/Sources/Settings) calls this after a channel change and shows
-    /// `localizer.format(key, appName)` as a one-line note. Not dead code while that pane is being built.
+    /// PRD-R53: leaving Beta never downgrades (Sparkle only offers newer builds), and the pane says so through
+    /// `UpdateChannelNote`.
     static func notice(switchingFrom old: UpdateChannelSelection, to new: UpdateChannelSelection) -> UpdatesText? {
         old == .beta && new == .stable ? .stableNoDowngrade : nil
     }
+}
+
+/// PRD-R53: the one-line note under the channel control of About & Support (W2-B request from W2-D). Set after
+/// every channel change from `UpdateChannelPolicy.notice(switchingFrom:to:)`; the app name is its argument.
+struct UpdateChannelNote: Sendable, Hashable {
+    private(set) var key: UpdatesText?
+
+    mutating func channelChanged(from old: UpdateChannel, to new: UpdateChannel) {
+        key = UpdateChannelPolicy.notice(
+            switchingFrom: UpdateChannelPolicy.selection(for: old), to: UpdateChannelPolicy.selection(for: new))
+    }
+
+    func text(appName: String, localizer: Localizer) -> String? { key.map { localizer.format($0, appName) } }
 }
 
 /// Which Sparkle aborts are failures worth logging (codes from Sparkle's `SUErrors.h`).

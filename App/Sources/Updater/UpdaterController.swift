@@ -230,14 +230,13 @@ extension UpdaterController: SPUUpdaterDelegate {
         _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
         immediateInstallationBlock immediateInstallHandler: @escaping () -> Void
     ) -> Bool {
-        // The installer is prepared for install at quit in both cases; the typed log has no separate event for
-        // the early relaunch.
-        log(.installScheduledOnQuit, level: .info)
         switch RelaunchGate.decision(for: idleState(), isCritical: item.isCriticalUpdate) {
         case .installNow:
+            log(.installingNow, level: .info)
             immediateInstallHandler()
             return true
         case .installOnQuit:
+            log(.installScheduledOnQuit, level: .info)
             return false
         }
     }

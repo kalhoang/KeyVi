@@ -260,7 +260,7 @@ import Testing
         let offer = offerInstall(harness)
         #expect(offer.tookOver == true)
         #expect(offer.installs == 1)
-        #expect(harness.updateEvents == [.installScheduledOnQuit])
+        #expect(harness.updateEvents == [.installingNow], "the log shows which path ran")
     }
 
     @Test("PLT-R1105: no key since launch counts as idle")
