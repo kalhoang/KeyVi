@@ -14,6 +14,10 @@
 # Scans every Mach-O file, property list and strings file inside an .app bundle (or a single file)
 # for scheme://host and mailto:user@host references. Hosts that are XML namespace or DTD identifiers
 # (never contacted) are allowed separately in scripts/url-hosts.allow.
+#
+# The shipped compat-rules.json is skipped: its web.urlPrefixes matchers (PLT-R503) name the sites a rule
+# applies to, which is data the app compares with the focused page, never a host it contacts. Every other
+# file, the binaries and Info.plist included, stays strictly checked.
 set -euo pipefail
 
 usage() {
@@ -22,7 +26,8 @@ Usage: scripts/check-url-hosts.sh [--allow FILE] [--list] PATH...
 
 PATH is an .app bundle, a binary or a directory. Fails when a URL host outside the allowlist
 appears (QA-R60). From scripts/brand.env, the site host, the host of APP_REPOSITORY_URL (github.com
-while empty) and the domain of APP_SUPPORT_EMAIL are always allowed.
+while empty) and the domain of APP_SUPPORT_EMAIL are always allowed. compat-rules.json is skipped:
+its URL prefixes are rule matchers, not endpoints.
 
 Options:
   --allow FILE  allowlist (default scripts/url-hosts.allow): one host or *.suffix per line
@@ -77,7 +82,18 @@ dump_text() {
   esac
 }
 
+# Data files whose URLs are matchers, not network endpoints (see the header).
+skipped_names=(compat-rules.json)
+
+is_skipped() {
+  local name
+  name="$(basename "$1")"
+  for skipped in "${skipped_names[@]}"; do [[ "$name" == "$skipped" ]] && return 0; done
+  return 1
+}
+
 while IFS= read -r f; do
+  is_skipped "$f" && continue
   dump_text "$f" \
     | LC_ALL=C grep -Eo '([A-Za-z][A-Za-z0-9+.-]*://[A-Za-z0-9.-]+|mailto:[^@[:space:]"]+@[A-Za-z0-9.-]+)' \
     | sed -E 's#^mailto:[^@]+@#mailto:#; s#^[A-Za-z][A-Za-z0-9+.-]*://##' \

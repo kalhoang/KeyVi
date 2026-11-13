@@ -145,6 +145,19 @@ expect 1 "unknown host fails" env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.s
 contains "unknown host named" "telemetry.example.com"
 contains "mail host checked" "elsewhere.example"
 rm "$T/u/Test.app/Contents/Resources/extra.json"
+# QA-R60: compat-rules.json is data. Its web.urlPrefixes matchers name sites the rules apply to, never hosts the
+# app contacts, so the check skips that one file; the same host anywhere else still fails.
+printf '{"rules": [{"match": {"web": {"urlPrefixes": ["https://docs.google.com/spreadsheets/"]}}}]}\n' \
+  >"$T/u/Test.app/Contents/Resources/compat-rules.json"
+expect 0 "URL prefixes in compat-rules.json are data, not endpoints" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
+expect 0 "compat-rules.json passed as a single file is skipped too" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app/Contents/Resources/compat-rules.json"
+printf '{"rules": [{"url": "https://docs.google.com/spreadsheets/"}]}\n' >"$T/u/Test.app/Contents/Resources/other.json"
+expect 1 "the same host in any other file still fails" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
+contains "host outside compat-rules.json named" "docs.google.com"
+rm "$T/u/Test.app/Contents/Resources/other.json" "$T/u/Test.app/Contents/Resources/compat-rules.json"
 # QA-R60: the repository host and the support mail domain come from brand.env, not the allowlist.
 cp "$T/brand.env" "$T/brand-repo.env"
 printf 'APP_REPOSITORY_URL="https://git.example.org/o/r"\nAPP_SUPPORT_EMAIL="help@mail.example.vn"\n' >>"$T/brand-repo.env"
