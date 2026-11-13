@@ -205,7 +205,8 @@ struct AppModeMemoryTests {
             AppModeEntry(bundle: zalo, rule: .ignore),
         ]
         let merged = AppModeMemory.merged(
-            current: live, incoming: incoming, recentlyEmitted: history(emitted), rememberPerApp: true, firstSeen: .inherit)
+            current: live, incoming: incoming, recentlyEmitted: history(emitted), rememberPerApp: true,
+            firstSeen: .inherit)
         #expect(merged.resolve(bundle: terminal, ruleDefault: .inherit).source == .alwaysVietnamese)
         #expect(merged.resolve(bundle: zalo, ruleDefault: .inherit).ignored)
         #expect(!merged.resolve(bundle: code, ruleDefault: .inherit).ignored)  // rule removed in the Apps pane
@@ -216,11 +217,13 @@ struct AppModeMemoryTests {
         let live = memory([AppModeEntry(bundle: terminal, mode: .english)])
         let imported = AppModesDocument(globalMode: .english, apps: [AppModeEntry(bundle: zalo, mode: .english)])
         let merged = AppModeMemory.merged(
-            current: live, incoming: imported, recentlyEmitted: history(live.document()), rememberPerApp: false, firstSeen: .vi)
+            current: live, incoming: imported, recentlyEmitted: history(live.document()), rememberPerApp: false,
+            firstSeen: .vi)
         #expect(merged.document() == imported)
         #expect(merged.rememberPerApp == false)
         let first = AppModeMemory.merged(
-            current: live, incoming: imported, recentlyEmitted: EmittedModeHistory(), rememberPerApp: true, firstSeen: .inherit)
+            current: live, incoming: imported, recentlyEmitted: EmittedModeHistory(), rememberPerApp: true,
+            firstSeen: .inherit)
         #expect(first.document() == imported)
     }
 

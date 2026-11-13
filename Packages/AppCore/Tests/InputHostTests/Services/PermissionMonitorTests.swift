@@ -58,7 +58,10 @@ struct PermissionMonitorTests {
         harness.monitor.setFastPolling(true)
         #expect(harness.scheduler.repeatingIntervals == [.seconds(1)])
         // PLT-R803 leeway of 10 % on a deadline that must not pass 5 minutes (PLT-R711): due at 270 s, 30 s leeway.
-        #expect(harness.timers.requests.filter { !$0.repeating } == [.init(delay: .seconds(270), leeway: .seconds(30), repeating: false)])
+        #expect(
+            harness.timers.requests.filter { !$0.repeating } == [
+                .init(delay: .seconds(270), leeway: .seconds(30), repeating: false)
+            ])
         harness.scheduler.advance(by: .seconds(269))
         #expect(harness.scheduler.repeatingIntervals == [.seconds(1)])
         harness.scheduler.advance(by: .seconds(2))
