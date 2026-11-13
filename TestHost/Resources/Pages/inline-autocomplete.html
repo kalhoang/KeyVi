@@ -12,7 +12,8 @@
 </head>
 <body>
   <label for="address">Address</label>
-  <input id="address" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="inline"
+  <!-- class testhost-inline-autocomplete: the user rule override of profile testhost-reproductions matches it. -->
+  <input id="address" class="testhost-inline-autocomplete" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="inline"
          aria-expanded="false" data-testhost-field="testhost.web.input"
          data-testhost-completions="asia.example|dd.example|canh.example|books.example|coffee.example">
   <p>Value: <span class="echo" data-testhost-echo="testhost.web.input"></span></p>

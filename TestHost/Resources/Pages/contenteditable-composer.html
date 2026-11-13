@@ -13,7 +13,8 @@
 <body>
   <ol id="messages" aria-label="Sent messages"></ol>
   <label id="composer-label">Message</label>
-  <div id="composer" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false"
+  <!-- class testhost-composer: the user rule override of profile testhost-reproductions matches it. -->
+  <div id="composer" class="testhost-composer" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false"
        aria-labelledby="composer-label" data-placeholder="Write a message"
        data-testhost-field="testhost.web.contentEditable"></div>
   <script>
