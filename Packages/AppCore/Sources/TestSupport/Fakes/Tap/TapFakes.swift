@@ -8,10 +8,11 @@ public import CoreGraphics
 public import InputHost
 internal import Synchronization
 
-/// Pure Swift tap handle. `install` adds an inert run-loop source (so the tap thread's run loop has a source
-/// and keeps running) and records enable/disable calls.
+/// Pure Swift tap handle. `install` adds a run-loop source that does nothing unless a test schedules a block
+/// with `performOnTapThread` (so the tap thread's run loop has a source and keeps running), and records
+/// enable/disable calls.
 public final class FakeEventTapHandle: EventTapHandle, Sendable {
-    /// CF run-loop objects are thread-safe to add and remove from any thread.
+    /// CF run-loop objects are thread-safe to add, signal, wake and remove from any thread.
     private struct Installation: @unchecked Sendable {
         var source: CFRunLoopSource
         var runLoop: CFRunLoop
@@ -23,20 +24,41 @@ public final class FakeEventTapHandle: EventTapHandle, Sendable {
         var invalidated = false
         var enableCalls: [Bool] = []
         var installation: Installation?
+        var installedRunLoop: Installation?
+    }
+
+    /// Blocks run by the source's perform callback, on the thread whose run loop holds the source.
+    private final class PerformQueue: Sendable {
+        private let blocks = Mutex<[@Sendable () -> Void]>([])
+        func append(_ block: @escaping @Sendable () -> Void) { blocks.withLock { $0.append(block) } }
+        func drain() {
+            let pending = blocks.withLock { blocks -> [@Sendable () -> Void] in
+                defer { blocks.removeAll() }
+                return blocks
+            }
+            for block in pending { block() }
+        }
     }
 
     private let state = Mutex(State())
+    private let queue = PerformQueue()
 
     public init() {}
 
     public func install(on runLoop: CFRunLoop) {
         var context = CFRunLoopSourceContext()
+        context.info = Unmanaged.passUnretained(queue).toOpaque()
+        context.perform = { info in
+            guard let info else { return }
+            Unmanaged<PerformQueue>.fromOpaque(info).takeUnretainedValue().drain()
+        }
         let source = CFRunLoopSourceCreate(nil, 0, &context)
         CFRunLoopAddSource(runLoop, source, .commonModes)
         let installation = Installation(source: source!, runLoop: runLoop)
         state.withLock {
             $0.installed = true
             $0.installation = installation
+            $0.installedRunLoop = installation
         }
     }
 
@@ -62,9 +84,24 @@ public final class FakeEventTapHandle: EventTapHandle, Sendable {
     /// Simulates the OS disabling the tap without a disabled event (PLT-R331 path).
     public func systemDisables() { state.withLock { $0.enabled = false } }
 
+    /// Runs `block` on the thread whose run loop holds this handle's source, as the tap's own callbacks would
+    /// run. False when the handle is not installed or already invalidated.
+    @discardableResult
+    public func performOnTapThread(_ block: @escaping @Sendable () -> Void) -> Bool {
+        guard let installation = state.withLock({ $0.installation }) else { return false }
+        queue.append(block)
+        CFRunLoopSourceSignal(installation.source)
+        CFRunLoopWakeUp(installation.runLoop)
+        return true
+    }
+
     public var isInstalled: Bool { state.withLock { $0.installed } }
     public var isInvalidated: Bool { state.withLock { $0.invalidated } }
     public var enableCalls: [Bool] { state.withLock { $0.enableCalls } }
+    /// Identity of the run loop the source was added to (PLT-R303 tests compare it with the tap thread's).
+    public var installedRunLoopIdentity: ObjectIdentifier? {
+        state.withLock { $0.installedRunLoop.map { ObjectIdentifier($0.runLoop) } }
+    }
 }
 
 /// Returns `FakeEventTapHandle`s, or nil while `failCreation` is set (PLT-R332 backoff tests).
@@ -73,6 +110,7 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
         var failCreation: Bool
         var handles: [FakeEventTapHandle] = []
         var masks: [TapEventMask] = []
+        var userInfos: [UInt] = []
     }
 
     private let state: Mutex<State>
@@ -83,12 +121,16 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
     /// Handles created so far (PLT-R302: tests assert at most one is alive).
     public var handles: [FakeEventTapHandle] { state.withLock { $0.handles } }
     public var requestedMasks: [TapEventMask] { state.withLock { $0.masks } }
+    /// `userInfo` of every request as a bit pattern (0 for nil), so a test can hand it to the callback bridge
+    /// from a `@Sendable` block.
+    public var userInfoBitPatterns: [UInt] { state.withLock { $0.userInfos } }
 
     public func makeTap(mask: TapEventMask, callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?)
         -> (any EventTapHandle)?
     {
         state.withLock { state in
             state.masks.append(mask)
+            state.userInfos.append(UInt(bitPattern: userInfo))
             guard !state.failCreation else { return nil }
             let handle = FakeEventTapHandle()
             state.handles.append(handle)

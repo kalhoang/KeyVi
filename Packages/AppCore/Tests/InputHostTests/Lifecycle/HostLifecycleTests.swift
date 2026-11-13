@@ -3,6 +3,7 @@
 // Table tests of the input host lifecycle (02-platform.md 2.1, contracts.md 10.3). W1-F2.
 import AppModel
 import Testing
+
 @testable import InputHost
 
 @Suite struct HostLifecycleLaunchTests {
@@ -196,7 +197,10 @@ import Testing
         var script = LifecycleScript()
         script.send(.launched)
         script.send(.permissionsChanged(.granted))  // createTap in flight
-        #expect(script.send(.permissionsChanged(.denied)) == [.publish(.noPermission), .recordHealth(.permissionTransition)])
+        #expect(
+            script.send(.permissionsChanged(.denied)) == [
+                .publish(.noPermission), .recordHealth(.permissionTransition),
+            ])
         #expect(script.send(.tapCreated) == [.removeTap])
         #expect(script.phase == .noPermission)
     }

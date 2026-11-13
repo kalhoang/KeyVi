@@ -3,6 +3,7 @@
 // Helpers for the HostLifecycle table tests (W1-F2).
 import AppModel
 import RealtimeSupport
+
 @testable import InputHost
 
 extension PermissionStatus {
@@ -36,8 +37,9 @@ struct LifecycleScript {
 
     mutating func advance(by duration: Duration) {
         let (seconds, attoseconds) = duration.components
-        now = MonotonicInstant(nanoseconds: now.nanoseconds + UInt64(seconds) * 1_000_000_000
-            + UInt64(attoseconds / 1_000_000_000))
+        now = MonotonicInstant(
+            nanoseconds: now.nanoseconds + UInt64(seconds) * 1_000_000_000
+                + UInt64(attoseconds / 1_000_000_000))
     }
 
     /// launch, permissions granted, tap created: the common starting point of most tables.
