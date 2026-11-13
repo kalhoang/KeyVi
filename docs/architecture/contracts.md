@@ -9082,7 +9082,9 @@ public final class GuidedTestRunner: Sendable {
     let fieldAccess: any FocusedFieldAccess
     let marker: EventMarker
     let clock: any MonotonicClock
-    let keys: GuidedTestKeys
+    /// Read when a run or removal starts, so a runner kept for the process lifetime follows input source
+    /// changes (PLT-R405, PLT-R373).
+    let currentLayout: @Sendable () -> LayoutTable?
     let sequence = ProbeSequence()
 
     /// Current strategy first, then the PLT-R1205 list: `backspaceReplace` with `axSelection`, with
@@ -9104,15 +9106,24 @@ public final class GuidedTestRunner: Sendable {
     }
 
     /// `layout` supplies the key codes of the canary keys (PLT-R405); without it the US positions are used.
-    public init(
+    public convenience init(
         poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
         layout: LayoutTable?
+    ) {
+        self.init(poster: poster, fieldAccess: fieldAccess, marker: marker, clock: clock, currentLayout: { layout })
+    }
+
+    /// `currentLayout` is read at the start of every run and removal, so the canary's key codes match the layout
+    /// in use at that moment (PLT-R405); nil falls back to the US positions.
+    public init(
+        poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
+        currentLayout: @escaping @Sendable () -> LayoutTable?
     ) {
         self.poster = poster
         self.fieldAccess = fieldAccess
         self.marker = marker
         self.clock = clock
-        keys = GuidedTestKeys(layout: layout)
+        self.currentLayout = currentLayout
     }
 
     /// Types the canary "đá â" with `candidate`, reads it back through AX when possible and removes it again
@@ -9184,7 +9195,11 @@ table, including "App in Known limitation list" and "paused: no text field detec
 `.overrideTextFocus(bundle:)` action (a user override with `requireTextFocus: never`, PLT-R540). With
 `safeMode: true` (`SettingsState.safeMode`, PLT-R1009) it shows `status.safeMode` with the
 `.safeModeChoices` action, which opens the safe-mode alert (reset, use the saved settings, report), below the
-host-state lines and above the tap notice and the known limitation. `paused(diagnosticsTest)` shows no line:
+host-state lines and above the tap notice and the known limitation. Because a host-state line (for example
+`paused(noTextFocus)` when the menu is opened from the desktop) can hide the safe-mode line,
+`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)` returns `.safeModeChoices` for both
+report items while in safe mode, and `pathToSafeModeChoices(menu:safeMode:)` pins that the choices stay at most
+two clicks away under every host state. `paused(diagnosticsTest)` shows no line:
 the guided test's panel says what is happening.
 
 Bug report paths (PRD-R47): GitHub uses `Brand.repositoryURL` (nil hides the button); email builds a
@@ -9665,6 +9680,8 @@ public struct StatusLine: Sendable, Hashable {
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
     /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
     /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// While a host-state line hides the safe-mode line, the report item still opens the safe-mode choices
+    /// (`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)`).
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
     /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
@@ -10274,6 +10291,9 @@ public enum DiagnosticsWindowAction: String, Sendable, Hashable, CaseIterable {
 public enum DiagnosticsDestination: Sendable, Hashable {
     case bugReport(preselected: BundleKey?)
     case misbehaves(BundleKey)
+    /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use saved settings, report, later) come
+    /// first, so reset and exit stay reachable whichever status line is showing.
+    case safeModeChoices
 }
 
 /// Navigation from the menu to the report (02-platform.md section 12: a first-time user produces a report in
@@ -10286,12 +10306,28 @@ public enum DiagnosticsNavigation {
     }
 
     /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
-    /// the misbehaves flow for that app (the user focused the problem field first).
-    public static func destination(reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?)
-        -> DiagnosticsDestination
-    {
+    /// the misbehaves flow for that app (the user focused the problem field first). In safe mode both open the
+    /// safe-mode choices, whose "Report a Problem..." button continues to the report (PLT-R1009).
+    public static func destination(
+        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false
+    ) -> DiagnosticsDestination {
+        if safeMode { return .safeModeChoices }
         if let bundle { return .misbehaves(bundle) }
         return .bugReport(preselected: lastFrontmost)
+    }
+
+    /// PLT-R1009: the shortest click path from the closed menu to the safe-mode choices. The status line's own
+    /// action when the safe-mode line is showing, else the report item (a host-state line can outrank the
+    /// safe-mode line). Nil outside safe mode or when the menu offers neither.
+    public static func pathToSafeModeChoices(menu: MenuModel, safeMode: Bool) -> [Click]? {
+        guard safeMode else { return nil }
+        if let line = menu.statusLine, line.action == .safeModeChoices, menu.entries.contains(.statusAction(line)) {
+            return [.statusItem, .menu(.statusAction(line))]
+        }
+        guard menu.entries.contains(.reportProblem),
+            destination(reportProblemFor: nil, lastFrontmost: nil, safeMode: true) == .safeModeChoices
+        else { return nil }
+        return [.statusItem, .menu(.reportProblem)]
     }
 
     /// The shortest click path from the closed menu to "Copy report": open the menu, choose "Báo lỗi...", press
@@ -11683,14 +11719,14 @@ final class UpdaterController: NSObject, UpdaterControlling {
     }
 
     /// Applies D19-D21 from the settings store, at launch (before `start`) and after every settings change.
-    /// Idempotent, and never reported back through `onPreferenceChange`.
+    /// Idempotent, and the stored values are never reported back through `onPreferenceChange`. A value the user
+    /// moved in Sparkle's own update window since the last push is adopted first (reported once, so the store
+    /// keeps it) rather than overwritten by the store's older value: the store publishes on every change, also
+    /// while Sparkle's window is open (PLT-R1001, PRD-R6).
     func apply(_ next: UpdatePreferences) {
-        let previous = preferences
-        preferences = next
-        guard let driver else { return }
-        push(next, to: driver)
-        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
-        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
+        let moves = sparkleMoves().filter { next.applying($0) != next }
+        commit(moves.reduce(next) { $0.applying($1) })
+        for change in moves { onPreferenceChange?(change) }
     }
 
     var currentPreferences: UpdatePreferences { preferences }
@@ -11724,8 +11760,17 @@ final class UpdaterController: NSObject, UpdaterControlling {
     private func userChanged(_ change: UpdatePreferenceChange) {
         let next = preferences.applying(change)
         guard next != preferences else { return }
-        apply(next)
+        commit(next)
         onPreferenceChange?(change)
+    }
+
+    private func commit(_ next: UpdatePreferences) {
+        let previous = preferences
+        preferences = next
+        guard let driver else { return }
+        push(next, to: driver)
+        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
+        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
     }
 
     /// Writes only values that differ: setting `automaticallyChecksForUpdates` makes Sparkle reschedule its cycle.
@@ -11743,16 +11788,20 @@ final class UpdaterController: NSObject, UpdaterControlling {
     /// defaults. Adopting it at the end of a session keeps settings.json the single source (PLT-R1001). Only a
     /// value that moved since the last push counts: Sparkle silently ignores `automaticallyDownloadsUpdates` when
     /// the bundle disallows automatic updates, and that must never turn into an explicit D20 (PRD-R6).
-    private func adoptSparkleChoices() {
-        guard let driver, let baseline = sparkleBaseline else { return }
+    private func adoptSparkleChoices() { apply(preferences) }
+
+    /// The Sparkle values that moved since the last push, as preference changes.
+    private func sparkleMoves() -> [UpdatePreferenceChange] {
+        guard let driver, let baseline = sparkleBaseline else { return [] }
         let current = SparkleChoices(of: driver)
+        var moves: [UpdatePreferenceChange] = []
         if current.automaticallyCheck != baseline.automaticallyCheck {
-            userChanged(.automaticallyCheck(current.automaticallyCheck))
+            moves.append(.automaticallyCheck(current.automaticallyCheck))
         }
         if current.automaticallyDownload != baseline.automaticallyDownload {
-            userChanged(.automaticallyInstall(current.automaticallyDownload))
+            moves.append(.automaticallyInstall(current.automaticallyDownload))
         }
-        sparkleBaseline = SparkleChoices(of: driver)
+        return moves
     }
 
     /// PRD-R43 update-failed alert. The failure itself is logged by `updater(_:didAbortWithError:)`.
