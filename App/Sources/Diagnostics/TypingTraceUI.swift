@@ -107,7 +107,7 @@ final class TypingTraceCoordinator {
         review = controller
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     static func failureKey(_ failure: TypingTraceSession.Failure) -> DiagnosticsText {

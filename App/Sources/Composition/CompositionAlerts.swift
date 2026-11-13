@@ -91,7 +91,7 @@ enum CompositionAlerts {
     /// keyboard focus (PLT-R1009, PLT-R399: the user must see the explanation).
     @discardableResult
     private static func run(_ alert: NSAlert) -> NSApplication.ModalResponse {
-        NSApp.activate()
+        NSApp.bringToFront()
         return alert.runModal()
     }
 

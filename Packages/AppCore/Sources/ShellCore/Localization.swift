@@ -80,8 +80,12 @@ public struct Localizer: Sendable {
     /// PRD-R65: an ISO calendar day (`YYYY-MM-DD`, as `compat-matrix.json` writes `lastVerified`) in the selected
     /// language, in the same long style as `formatDate`. Text that is not a valid day is returned unchanged.
     public func formatDay(iso day: String, timeZone: TimeZone = .current) -> String {
-        guard let match = day.wholeMatch(of: /(\d{4})-(\d{2})-(\d{2})/) else { return day }
-        let parts = DateComponents(year: Int(match.1), month: Int(match.2), day: Int(match.3))
+        // `YYYY-MM-DD` with ASCII digits, parsed by hand (Swift `Regex` needs macOS 13).
+        let fields = day.split(separator: "-", omittingEmptySubsequences: false)
+        guard fields.map(\.count) == [4, 2, 2],
+            fields.allSatisfy({ $0.allSatisfy { ("0"..."9").contains($0) } })
+        else { return day }
+        let parts = DateComponents(year: Int(fields[0]), month: Int(fields[1]), day: Int(fields[2]))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         // A day that does not exist (2026-02-30) rolls over in `date(from:)`; reading it back catches that.

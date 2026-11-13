@@ -245,7 +245,7 @@ struct MethodCard: View {
         .buttonStyle(.plain)
         // PRD-R67: a plain-style card draws its own keyboard focus ring (MethodCardLabel), always visible.
         .focused($focused)
-        .focusEffectDisabled()
+        .systemFocusEffectDisabled()
         .onboardingAccessibility(method == .telex ? .methodTelex : .methodVNI, localizer)
         .accessibilityValue(Text(verbatim: selected ? localizer.string(OnboardingText.methodSelected) : ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -295,12 +295,10 @@ struct PracticeField: View {
 
     var body: some View {
         let localizer = model.localizer
-        TextField(text: $text, axis: .vertical) {
-            Text(verbatim: localizer.string(OnboardingText.practicePlaceholder))
-        }
-        .textFieldStyle(.roundedBorder)
-        .lineLimit(3, reservesSpace: true)
-        .onboardingAccessibility(control, localizer)
+        TextField(growing: $text, placeholder: localizer.string(OnboardingText.practicePlaceholder))
+            .textFieldStyle(.roundedBorder)
+            .reservingLines(3)
+            .onboardingAccessibility(control, localizer)
     }
 }
 

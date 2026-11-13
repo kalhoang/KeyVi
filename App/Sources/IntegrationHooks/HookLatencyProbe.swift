@@ -52,7 +52,7 @@ final class HookLatencyProbe: NSObject, NSTextViewDelegate {
             window.close()
             self.driver = nil
         }
-        NSApp.activate()
+        NSApp.bringToFront()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(text)
         try? await Task.sleep(nanoseconds: Self.focusDelay.unsignedNanoseconds)

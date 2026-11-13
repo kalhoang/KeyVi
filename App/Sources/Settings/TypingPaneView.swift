@@ -26,11 +26,11 @@ struct TypingPaneView: View {
                     .pickerStyle(.segmented)
                     .fixedSize()
                     .settingsAccessibility(SettingsControl.typingMethod, localizer)
-                    TextField(text: $model.practiceText, axis: .vertical) {
-                        Text(verbatim: localizer.string(SettingsText.practicePlaceholder))
-                    }
+                    TextField(
+                        growing: $model.practiceText, placeholder: localizer.string(SettingsText.practicePlaceholder)
+                    )
                     .textFieldStyle(.roundedBorder)
-                    .lineLimit(2, reservesSpace: true)
+                    .reservingLines(2)
                     .settingsAccessibility(SettingsControl.practiceField, localizer)
                 }
             }

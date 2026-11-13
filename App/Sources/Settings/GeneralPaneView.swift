@@ -218,7 +218,7 @@ struct HotkeyRecorderView: View {
             RecorderStatusLine(model: model, role: role)
         }
         .onAppear { if recording { focused = true } }
-        .onChange(of: recording) { focused = true }
+        .onChange(of: recording) { _ in focused = true }
     }
 }
 

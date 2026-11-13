@@ -105,10 +105,23 @@ struct MacrosTable: View {
             }
         }
         .settingsAccessibility(MacrosControl.list, localizer)
-        .contextMenu(forSelectionType: UUID.self) { ids in
-            if let id = ids.first { MacroRowMenu(model: model, id: id) }
-        } primaryAction: { ids in
-            if let id = ids.first { model.editMacro(id) }
+        .rowMenu(model: model)
+    }
+}
+
+extension View {
+    /// Row context menu and double-click to edit, from macOS 13 (`contextMenu(forSelectionType:)`). On macOS 12
+    /// the footer shows the same actions for the selected row (ADR 0315).
+    @ViewBuilder
+    fileprivate func rowMenu(model: SettingsWindowModel) -> some View {
+        if #available(macOS 13, *) {
+            contextMenu(forSelectionType: UUID.self) { ids in
+                if let id = ids.first { MacroRowMenu(model: model, id: id) }
+            } primaryAction: { ids in
+                if let id = ids.first { model.editMacro(id) }
+            }
+        } else {
+            self
         }
     }
 }

@@ -118,11 +118,11 @@ public struct CommitDecisionExample: Sendable, Hashable {
         case "L9": rule = .codeContext
         case "L10": rule = .englishRun
         case "L11":
-            if ruleText.contains("ambiguity row") {
+            if ruleText.containsText("ambiguity row") {
                 rule = .ambiguityTable
-            } else if ruleText.contains("default vi") {
+            } else if ruleText.containsText("default vi") {
                 rule = .defaultVietnamese
-            } else if ruleText.contains("tech") {
+            } else if ruleText.containsText("tech") {
                 rule = .techList
             } else {
                 return nil

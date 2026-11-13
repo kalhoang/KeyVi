@@ -7,8 +7,9 @@
 
 name: App
 options:
+  # PLT-R105, PLT-R106: macOS 12.0 Monterey floor, universal (arm64 + x86_64); docs/decisions/0315-minimum-macos-12.md.
   deploymentTarget:
-    macOS: "15.0"
+    macOS: "12.0"
   developmentLanguage: vi
   createIntermediateGroups: true
   groupSortPosition: top
@@ -36,7 +37,7 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     MARKETING_VERSION: 0.1.0
     CURRENT_PROJECT_VERSION: 1
-    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    MACOSX_DEPLOYMENT_TARGET: "12.0"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_ENTITLEMENTS: ""
     DEAD_CODE_STRIPPING: YES

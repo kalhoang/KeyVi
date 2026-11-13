@@ -72,7 +72,7 @@ struct OnboardingHotkeyRecorder: View {
                 .font(.callout)
             }
         }
-        .onChange(of: recording) { focused = true }
+        .onChange(of: recording) { _ in focused = true }
     }
 }
 

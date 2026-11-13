@@ -50,6 +50,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     /// - Parameters:
     ///   - brand: app name, slug, version and site host (never hard-coded).
     ///   - matrix: the bundled `compat-matrix.json`; nil shows every app as not verified (PRD-R35).
+    ///   - panes: System Settings / System Preferences names of the running macOS (PRD-R64, ADR 0315).
     ///   - inputSources: enabled input sources for the layout binding (PLT-R373), read when the pane appears.
     ///   - layout: the current layout table, so the recorder names Command+Q / Command+W on any layout.
     init(
@@ -114,7 +115,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func present() {
         Task { await model.refresh() }
         showWindow(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
         window?.makeKeyAndOrderFront(nil)
     }
 

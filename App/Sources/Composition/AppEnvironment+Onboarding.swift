@@ -16,7 +16,7 @@ extension AppEnvironment {
     func presentOnboarding(startAt screen: OnboardingScreen?) {
         if let onboarding {
             onboarding.showWindow(nil)
-            NSApp.activate()
+            NSApp.bringToFront()
             return
         }
         let inputs = onboardingInputs()
@@ -28,7 +28,7 @@ extension AppEnvironment {
         onboarding = controller
         host.setPermissionFastPolling(true)
         controller.showWindow(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     /// Read on presentation, on every screen change, on "Kiểm tra lại" (PRD-R40 screen 5) and when the

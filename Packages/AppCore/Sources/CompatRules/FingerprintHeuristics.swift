@@ -58,7 +58,7 @@ struct EngineHeuristics {
     private func containsFile(_ name: String, under roots: [String], maxDepth: Int) -> Bool {
         roots.contains { root in
             inspector.containsFile(
-                named: name, in: bundleURL.appending(path: root, directoryHint: .isDirectory), maxDepth: maxDepth)
+                named: name, in: bundleURL.appendingPathComponent(root, isDirectory: true), maxDepth: maxDepth)
         }
     }
 

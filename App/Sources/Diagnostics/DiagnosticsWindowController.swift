@@ -54,7 +54,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
         model.refresh(using: build)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     /// "Báo lỗi..." (PRD-R11 item 6, PRD-R47): the sheet with the Apps pane's apps and the last frontmost app
@@ -121,7 +121,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
         probe = controller
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     private func perform(_ action: DiagnosticsWindowAction) {
@@ -177,7 +177,7 @@ final class BugReportController: NSWindowController, NSWindowDelegate {
     func present() {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     private func showPracticeField() {

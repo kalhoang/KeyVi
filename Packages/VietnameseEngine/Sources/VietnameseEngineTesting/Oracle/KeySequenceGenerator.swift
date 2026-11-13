@@ -122,7 +122,7 @@ public enum KeySequenceGenerator {
         case .uppercase:
             return keys(onset: onset, rhyme: rhyme, tone: tone, method: .telex, order: .o1)?.uppercased()
         case .explicitUwow:
-            guard rhyme.contains("ươ") else { return nil }
+            guard rhyme.containsText("ươ") else { return nil }
             let letters = Array(onset) + Array(rhyme)
             return units(letters, method: .telex, explicitUwow: true).map { $0.base + $0.modifier }.joined()
                 + toneKey(tone, .telex)

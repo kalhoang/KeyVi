@@ -14,8 +14,9 @@ let strict: [SwiftSetting] = [
 
 let package = Package(
     name: "AppCore",
-    // PLT-R106: macOS 15 (Synchronization module). No API newer than macOS 14 outside Synchronization.
-    platforms: [.macOS(.v15)],
+    // PLT-R106: macOS 12 Monterey (Pa's decision 2026-11-13, docs/decisions/0315-minimum-macos-12.md). Newer APIs
+    // only behind `#available`; RealtimeSupport provides the locks, atomics and time type used instead.
+    platforms: [.macOS(.v12)],
     products: [
         .library(name: "AppModel", targets: ["AppModel"]),
         .library(name: "RealtimeSupport", targets: ["RealtimeSupport"]),

@@ -154,7 +154,7 @@ struct DiagnosticsWindowView: View {
                 let control = DiagnosticsWindowModel.title(action)
                 Button(localizer.string(control.labelKey)) { model.perform(action) }
                     .diagnosticsControl(control, localizer)
-                    .keyboardShortcut(action == .copyReport ? .defaultAction : nil)
+                    .keyboardShortcut(.defaultAction, when: action == .copyReport)
             }
         }
     }

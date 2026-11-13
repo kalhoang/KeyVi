@@ -2,6 +2,12 @@
 
 public import VietnameseEngine
 
+#if canImport(Darwin)
+internal import Darwin
+#elseif canImport(Glibc)
+internal import Glibc
+#endif
+
 /// A broken invariant of spec 13.6 / QA-R7, with what is needed to reproduce it.
 public struct FuzzViolation: Error, Sendable, Hashable, CustomStringConvertible {
     /// The requirement or property that failed (`ENG-T31`, `QA-R7 P2`...).
@@ -166,7 +172,6 @@ public struct InvariantChecker: Sendable {
     private var recentNext = 0
     private var probeGenerator: SeededGenerator
     private let rules: ComposerRules
-    private let clock = ContinuousClock()
 
     /// A checker for `engine`; `probeSeed` drives the escape probes (ENG-T36).
     public init(engine: Engine, options: Options = Options(), probeSeed: UInt64 = 0xE5CA_9E00) {
@@ -188,9 +193,9 @@ public struct InvariantChecker: Sendable {
         let produced = producedCount(before: event)
         let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
         let before = takesPureReduceSample(index) ? session.state : nil
-        let start = clock.now
+        let start = Self.uptimeNanoseconds()
         let output = session.handle(event)
-        let elapsed = Self.nanoseconds(start.duration(to: clock.now))
+        let elapsed = Int64(clamping: Self.uptimeNanoseconds() &- start)
         statistics.events += 1
         try record(elapsed, index: index)
         if let before { try checkPureReduce(before, event, output, index: index) }
@@ -604,9 +609,16 @@ public struct InvariantChecker: Sendable {
         return FuzzViolation(invariant: invariant, detail: detail, eventIndex: index, recentEvents: ordered)
     }
 
-    private static func nanoseconds(_ duration: Duration) -> Int64 {
-        let (seconds, attoseconds) = duration.components
-        return seconds * 1_000_000_000 + attoseconds / 1_000_000_000
+    /// Monotonic time for the hang check (QA-R7 P2). A raw clock read instead of `ContinuousClock`, which needs
+    /// macOS 13 (PLT-R106: the app's floor is macOS 12); Linux keeps building for the fuzz job (ENG-R1201).
+    private static func uptimeNanoseconds() -> UInt64 {
+        #if canImport(Darwin)
+        return clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
+        #else
+        var time = timespec()
+        clock_gettime(CLOCK_MONOTONIC, &time)
+        return UInt64(time.tv_sec) &* 1_000_000_000 &+ UInt64(time.tv_nsec)
+        #endif
     }
 
     private static func hex(_ scalar: Unicode.Scalar) -> String {

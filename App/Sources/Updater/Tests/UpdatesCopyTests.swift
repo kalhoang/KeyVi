@@ -18,10 +18,12 @@ import Testing
             .union(UpdateFailureControl.allCases.flatMap { [$0.accessibilityLabelKey, $0.accessibilityHintKey] })
     }
 
-    /// `%@`, `%d`, `%1$@` ... in order of appearance, positional forms normalised.
+    /// `%@`, `%d`, `%1$@` ... in order of appearance, positional forms normalised. `NSRegularExpression`: Swift
+    /// `Regex` needs macOS 13 and this bundle builds for the macOS 12 floor (ADR 0315).
     static func arguments(_ text: String) -> [String] {
-        text.matches(of: /%(?:\d+\$)?[@dDiuUxXfFeEgGcCsS]/).map { match in
-            String(match.output.last ?? "@")
+        let specifier = try! NSRegularExpression(pattern: #"%(?:\d+\$)?[@dDiuUxXfFeEgGcCsS]"#)
+        return specifier.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { match in
+            Range(match.range, in: text).map { String(text[$0].last ?? "@") }
         }
     }
 

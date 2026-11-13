@@ -55,15 +55,28 @@ struct AppsTable: View {
                 .width(min: 110, ideal: 120)
         }
         .settingsAccessibility(AppsControl.list, localizer)
-        .contextMenu(forSelectionType: BundleKey.self) { bundles in
-            if let bundle = bundles.first {
-                Button(action: { model.reportProblem(for: bundle) }) {
-                    Text(verbatim: localizer.string(AppsText.report))
+        .rowMenu(model: model, rows: rows, localizer: localizer)
+    }
+}
+
+extension View {
+    /// Row context menu and double-click to open the details, from macOS 13 (`contextMenu(forSelectionType:)`).
+    /// On macOS 12 the Actions column offers the same two commands (ADR 0315).
+    @ViewBuilder
+    fileprivate func rowMenu(model: SettingsWindowModel, rows: [AppsPaneRow], localizer: Localizer) -> some View {
+        if #available(macOS 13, *) {
+            contextMenu(forSelectionType: BundleKey.self) { bundles in
+                if let bundle = bundles.first {
+                    Button(action: { model.reportProblem(for: bundle) }) {
+                        Text(verbatim: localizer.string(AppsText.report))
+                    }
+                    .settingsAccessibility(AppsControl.rowReport, localizer)
                 }
-                .settingsAccessibility(AppsControl.rowReport, localizer)
+            } primaryAction: { bundles in
+                if let row = rows.first(where: { bundles.contains($0.bundle) }) { model.showDetail(row) }
             }
-        } primaryAction: { bundles in
-            if let row = rows.first(where: { bundles.contains($0.bundle) }) { model.showDetail(row) }
+        } else {
+            self
         }
     }
 }
