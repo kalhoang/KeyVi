@@ -1891,6 +1891,42 @@
         }
       }
     },
+    "settings.control.wordMakeGlobal.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The word will apply in every app, not only in the app it was learned in."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ này sẽ áp dụng trong mọi ứng dụng, không chỉ trong ứng dụng đã học được nó."
+          }
+        }
+      }
+    },
+    "settings.control.wordMakeGlobal.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the word in all apps"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng từ trong mọi ứng dụng"
+          }
+        }
+      }
+    },
     "settings.control.wordRemove.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -4263,6 +4299,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chỉ dùng chữ cái, chữ số và dấu câu không dấu, không có khoảng trắng, tối đa 32 ký tự."
+          }
+        }
+      }
+    },
+    "settings.typing.list.learnedIn" : {
+      "comment" : "ENG-R862: shown next to a word learned in one app. %@ is the app's name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only in %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ trong %@"
+          }
+        }
+      }
+    },
+    "settings.typing.list.learnedNote" : {
+      "comment" : "ENG-R862 (PRD-R25 explanation): under the lists when at least one word was learned.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words with an app name next to them were learned automatically when you corrected the same word twice in that app, and apply only there."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ có tên ứng dụng bên cạnh được học tự động khi bạn sửa lại cùng một từ hai lần trong ứng dụng đó, và chỉ áp dụng trong ứng dụng đó."
+          }
+        }
+      }
+    },
+    "settings.typing.list.makeGlobal" : {
+      "comment" : "ENG-R862: help and VoiceOver label of the button that makes a learned word apply in every app. %@ is the word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use \"%@\" in all apps"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng \"%@\" trong mọi ứng dụng"
           }
         }
       }

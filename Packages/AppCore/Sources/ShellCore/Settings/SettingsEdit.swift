@@ -24,8 +24,10 @@ public enum SettingsEdit: Sendable, Hashable {
     case automaticallyInstallUpdates(Bool)  // D20
     case updateChannel(UpdateChannel)  // D21
     case layoutBinding(LayoutModeBinding)  // PLT-R373
-    case keepAsTyped(Set<String>)  // ENG-R860
-    case keepVietnamese(Set<String>)  // ENG-R860
+    case keepAsTyped(Set<String>)  // ENG-R860, the global entries
+    case keepVietnamese(Set<String>)  // ENG-R860, the global entries
+    case forgetLearnedWord(LearnedWord)  // ENG-R862 "remove"
+    case makeLearnedWordGlobal(LearnedWord)  // ENG-R862 "use in every app"
 
     public func apply(to settings: inout UserSettings) {
         switch self {
@@ -46,8 +48,10 @@ public enum SettingsEdit: Sendable, Hashable {
         case .automaticallyInstallUpdates(let value): settings.automaticallyInstallUpdates = .set(value)
         case .updateChannel(let value): settings.updateChannel = .set(value)
         case .layoutBinding(let value): settings.layoutBinding = .set(value)
-        case .keepAsTyped(let value): settings.keepAsTyped = value
-        case .keepVietnamese(let value): settings.keepVietnamese = value
+        case .keepAsTyped(let value): settings.setGlobalWords(value, in: .keepAsTyped)
+        case .keepVietnamese(let value): settings.setGlobalWords(value, in: .keepVietnamese)
+        case .forgetLearnedWord(let word): settings.forget(word)
+        case .makeLearnedWordGlobal(let word): settings.makeGlobal(word)
         }
     }
 
@@ -73,6 +77,8 @@ public enum SettingsEdit: Sendable, Hashable {
         case .layoutBinding: .layoutBinding
         case .keepAsTyped: .keepAsTyped
         case .keepVietnamese: .keepVietnamese
+        case .forgetLearnedWord(let word), .makeLearnedWordGlobal(let word):
+            word.list == .keepAsTyped ? .keepAsTyped : .keepVietnamese
         }
     }
 }

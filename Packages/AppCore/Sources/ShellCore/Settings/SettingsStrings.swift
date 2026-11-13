@@ -87,6 +87,12 @@ public enum SettingsText: String, LocalizationKey {
     case listEmpty = "settings.typing.list.empty"
     case listInvalid = "settings.typing.list.invalid"
     case listDuplicate = "settings.typing.list.duplicate"
+    /// ENG-R862, next to a learned entry. Argument: the app's name.
+    case listLearnedIn = "settings.typing.list.learnedIn"
+    /// ENG-R862, help and VoiceOver label of the "use in every app" button. Argument: the word.
+    case listMakeGlobal = "settings.typing.list.makeGlobal"
+    /// ENG-R862, under the lists when at least one entry was learned.
+    case listLearnedNote = "settings.typing.list.learnedNote"
     case standaloneWTitle = "settings.typing.standaloneW.title"
     case standaloneWExplanation = "settings.typing.standaloneW.explanation"
     case bracketsTitle = "settings.typing.brackets.title"
@@ -192,6 +198,7 @@ public enum SettingsControl: String, AccessibleControl {
     case keepVietnameseField
     case keepVietnameseAdd
     case wordRemove
+    case wordMakeGlobal  // ENG-R862
     case standaloneW
     case bracketKeys
     case resetPane

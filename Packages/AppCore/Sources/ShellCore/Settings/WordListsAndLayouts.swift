@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The two English-restore user lists of the Typing pane (ENG-R860) and the optional layout-to-mode binding of
-// General > Advanced (PLT-R373).
+// The two English-restore user lists of the Typing pane (ENG-R860), with the words learned per app (ENG-R862), and
+// the optional layout-to-mode binding of General > Advanced (PLT-R373).
 
 public import AppModel
 internal import Foundation
@@ -43,6 +43,29 @@ public enum UserWordList: String, Sendable, Hashable, CaseIterable {
         guard let entry = normalized(text) else { return .invalid }
         guard !current.contains(entry) else { return .duplicate }
         return .added(current.union([entry]))
+    }
+
+    /// The SettingsStore list this pane list shows.
+    public var restoreList: RestoreList { self == .keepAsTyped ? .keepAsTyped : .keepVietnamese }
+
+    /// One entry of the list: a global word (typed in Settings) or a word learned in one app (ENG-R862), which the
+    /// pane shows with the app's name, resolved when shown and never stored.
+    public struct Row: Sendable, Hashable, Identifiable {
+        public var word: String
+        /// nil for a global entry.
+        public var learned: LearnedWord?
+
+        public var id: String { learned.map { "app:\($0.app.rawValue):\($0.raw)" } ?? "global:" + word }
+    }
+
+    /// Every entry of this list, by word; a global entry comes before the same word learned in apps, and learned
+    /// entries of one word are ordered by bundle identifier.
+    public func rows(in settings: UserSettings) -> [Row] {
+        let global = settings.globalWords(in: restoreList).map { Row(word: $0, learned: nil) }
+        let learned = settings.learnedWords.filter { $0.list == restoreList }.map { Row(word: $0.raw, learned: $0) }
+        return (global + learned).sorted { lhs, rhs in
+            (lhs.word, lhs.learned?.app.rawValue ?? "") < (rhs.word, rhs.learned?.app.rawValue ?? "")
+        }
     }
 }
 
