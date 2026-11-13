@@ -8,16 +8,32 @@ The CI scripts call code that other tracks write. These are the names and format
 
 ## Fuzzing (`scripts/fuzz.sh`, engine track)
 
-- Package `Packages/VietnameseEngineFuzz` (MPL-2.0), one executable product per input method:
-  `fuzz-telex` and `fuzz-vni`. Each defines `LLVMFuzzerTestOneInput` and builds with
-  `-sanitize=fuzzer,address[,undefined] -parse-as-library` (flags passed by the script; libFuzzer ships
-  with the Linux Swift toolchain).
-- Seed corpus per product in `Packages/VietnameseEngineFuzz/Corpus/<product>/` (QA-R9). The script copies
-  nothing into the repository; new corpus entries stay in `.build/fuzz-out`.
-- Per PR: 60 s per product with AddressSanitizer. Nightly: 1800 s per product with AddressSanitizer and
-  UndefinedBehaviorSanitizer; minimised inputs open issues (`scripts/fuzz-report-issue.sh`).
-- Missing package or products: the script warns and passes, so CI stays green while the engine is built.
-  Nightly lists the products explicitly, so a missing product fails there.
+Amended 2026-11-13 after the engine merge: one product with a method switch replaces the two products
+(`fuzz-telex`, `fuzz-vni`) of the first version, and the seeds live in one folder.
+
+- Package `Packages/VietnameseEngineFuzz` (MPL-2.0), executable product `engine-fuzz`. Built with `-DLIBFUZZER`
+  it defines `LLVMFuzzerTestOneInput`; without the flag it has a `main` that replays files and runs seeded
+  mutations (macOS, whose toolchain has no libFuzzer). The first byte of each input selects the method and
+  the options (`Packages/VietnameseEngineFuzz/README.md`, "Input format"); `ENGINE_FUZZ_METHOD=telex|vni`
+  pins the method.
+- Build on Linux (the script passes these flags). VERIFY on the first CI run: the engine track could not link
+  libFuzzer on macOS, and whether the toolchain accepts `undefined` next to `fuzzer,address` is open.
+
+```sh
+swift build --package-path Packages/VietnameseEngineFuzz -c release --product engine-fuzz \
+  -Xswiftc -sanitize=fuzzer,address[,undefined] -Xswiftc -parse-as-library -Xswiftc -DLIBFUZZER
+```
+
+- Seed corpus in `Packages/VietnameseEngineFuzz/Corpus/` (QA-R9); a `Corpus/<product>/` folder takes
+  precedence if one is ever added. The script copies nothing into the repository; new corpus entries stay in
+  `.build/fuzz-out`. libFuzzer options: `-max_len=8192 -timeout=10 -rss_limit_mb=4096` (engine README).
+- Per PR (`ci.yml`, job `Engine on Linux`): `scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address
+  --require`, both methods in one run. Nightly (`nightly.yml`): `scripts/fuzz.sh --seconds 1800 --sanitizers
+  fuzzer,address,undefined --method <telex|vni> --require`, one job per method (QA-R8: 30 minutes per
+  method). Minimised inputs open issues (`scripts/fuzz-report-issue.sh`) named after the run
+  (`engine-fuzz-telex`, `engine-fuzz-vni`; `engine-fuzz` for the mixed PR run).
+- Without `--require` a missing package only warns. CI passes `--require` now that the package exists, so a
+  missing package or a failed build fails the job.
 
 ## Property runs (engine track)
 

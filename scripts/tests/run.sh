@@ -324,15 +324,60 @@ expect 1 "invalid label file rejected" "$S/sync-labels.sh" --file "$T/bad-labels
 
 echo "== fuzz-report-issue.sh (dry run)"
 printf 'crash' >"$T/minimized-crash-1"
-printf 'fuzz-telex\t%s\n' "$T/minimized-crash-1" >"$T/findings.txt"
+printf 'engine-fuzz-telex\t%s\n' "$T/minimized-crash-1" >"$T/findings.txt"
 expect 0 "fuzz issue dry run" "$S/fuzz-report-issue.sh" "$T/findings.txt" --dry-run
-contains "issue title" "Fuzzing finding in fuzz-telex"
+contains "issue title" "Fuzzing finding in engine-fuzz-telex"
 contains "hex dump" "63 72 61 73 68"
 
 echo "== bench-compare.sh / fuzz.sh skip cleanly when targets are missing"
 expect 0 "bench skips without product" "$S/bench-compare.sh" --package "$T/nopkg" --output "$T/bench.json"
 expect 1 "bench --require fails without product" "$S/bench-compare.sh" --package "$T/nopkg" --require --output "$T/bench.json"
 expect 0 "fuzz skips without package" "$S/fuzz.sh" --package "$T/nopkg" --out "$T/fuzz"
+expect 1 "fuzz --require fails without package" "$S/fuzz.sh" --package "$T/nopkg" --require --out "$T/fuzz"
+
+echo "== fuzz.sh builds engine-fuzz for libFuzzer and pins the method (ADR 0502)"
+F="$T/fz"
+mkdir -p "$F/pkg/Corpus" "$F/bin" "$F/build"
+printf '// fake package\n' >"$F/pkg/Package.swift"
+printf '@abc\n' >"$F/pkg/Corpus/seed.txt"
+# A fake swift records the build command and points at a fake fuzzer that records its own arguments.
+cat >"$F/bin/swift" <<EOF
+#!/bin/sh
+case "\$*" in
+  *--show-bin-path*) printf '%s\n' "$F/build" ;;
+  *) printf 'swift %s\n' "\$*" ;;
+esac
+EOF
+cat >"$F/build/engine-fuzz" <<'EOF'
+#!/bin/sh
+printf 'fuzzer method=%s args=%s\n' "${ENGINE_FUZZ_METHOD:-mixed}" "$*"
+[ -n "${FAKE_FUZZ_CRASH:-}" ] || exit 0
+for arg in "$@"; do
+  case "$arg" in -artifact_prefix=*) printf 'boom' >"${arg#-artifact_prefix=}crash-1" ;; esac
+done
+exit 1
+EOF
+chmod +x "$F/bin/swift" "$F/build/engine-fuzz"
+expect 0 "PR fuzzing builds engine-fuzz with the libFuzzer flags" \
+  env PATH="$F/bin:$PATH" "$S/fuzz.sh" --package "$F/pkg" --out "$F/out"
+contains "build command" "--product engine-fuzz -Xswiftc -sanitize=fuzzer,address -Xswiftc -parse-as-library -Xswiftc -DLIBFUZZER"
+contains "both methods by default" "fuzzer method=mixed"
+contains "seed corpus read from Corpus/" "$F/pkg/Corpus"
+contains "60 s by default" "-max_total_time=60"
+contains "engine README limits" "-max_len=8192 -timeout=10"
+expect 0 "nightly run pins the method" \
+  env PATH="$F/bin:$PATH" "$S/fuzz.sh" --package "$F/pkg" --method telex --seconds 5 \
+  --sanitizers fuzzer,address,undefined --out "$F/out"
+contains "ENGINE_FUZZ_METHOD=telex" "fuzzer method=telex"
+contains "nightly sanitizers" "-sanitize=fuzzer,address,undefined"
+expect 1 "an unknown method is refused" env PATH="$F/bin:$PATH" "$S/fuzz.sh" --package "$F/pkg" --method qwerty
+expect 1 "a crash fails and is listed" env PATH="$F/bin:$PATH" FAKE_FUZZ_CRASH=1 \
+  "$S/fuzz.sh" --package "$F/pkg" --method vni --out "$F/out"
+if grep -Fq "engine-fuzz-vni	$F/out/engine-fuzz-vni/minimized-crash-1" "$F/out/findings.txt"; then
+  ok "findings.txt names the run and the minimised input"
+else
+  ko "findings.txt names the run and the minimised input"; sed 's/^/     /' "$F/out/findings.txt"
+fi
 
 echo "== rename-app.sh in a scratch copy"
 R="$T/repo"

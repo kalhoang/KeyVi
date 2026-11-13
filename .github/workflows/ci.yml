@@ -39,8 +39,9 @@ jobs:
         run: swift build --package-path "$ENGINE"
       - name: Engine tests, corpus and property tests (QA-R5, QA-R8)
         run: swift test --package-path "$ENGINE" --parallel
-      - name: Coverage-guided fuzzing, 60 s per target (QA-R8)
-        run: scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out
+      - name: Coverage-guided fuzzing of engine-fuzz, 60 s, both methods (QA-R8)
+        # libFuzzer flags from Packages/VietnameseEngineFuzz/README.md (VERIFY on the first Linux run, ADR 0502).
+        run: scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out --require
       - name: Upload fuzz findings
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
