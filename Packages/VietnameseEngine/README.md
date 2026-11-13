@@ -54,6 +54,7 @@ The full public API, with DocC comments, is in `Sources/VietnameseEngine/PublicA
 | `Scripts/coverage.sh [--files]` | Tests with coverage; fails below 95 % line coverage of the core (QA-R2). |
 | `python3 -I Scripts/check-traceability.py` | Every spec identifier has a row in `TRACEABILITY.md`. |
 | `Scripts/bench-composition.sh` | Quick release latency figures from the test microbenchmark (not the gate). |
+| `xcodebuild docbuild -scheme VietnameseEngine -destination 'generic/platform=macOS' -derivedDataPath .build/docc` | Builds the DocC archive of the public API (macOS with Xcode, QA-R66; see the repository's ADR 0402); the nightly workflow uploads it as an artifact. |
 
 ## Generated sources and data
 

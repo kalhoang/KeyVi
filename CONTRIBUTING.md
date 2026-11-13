@@ -59,6 +59,9 @@ Other commands:
 # App (the .xcodeproj is generated, never committed)
 xcodegen generate
 xcodebuild -project App.xcodeproj -scheme App -configuration Debug build
+# Updater unit tests (no TEST_HOST, so the app is never launched); locally add -derivedDataPath under /tmp
+xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'platform=macOS' \
+  -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' test -only-testing:UpdaterTests
 
 # Lint: swift-format, bundle-ID literal lint, log interpolation lint, URL host allowlist
 scripts/lint.sh
@@ -78,7 +81,9 @@ scripts/bench-compare.sh
 # output: Packages/VietnameseEngine/.build/docc/Build/Products/Debug/VietnameseEngine.doccarchive
 
 # Website
+node site/test.mjs    # site tests: links, anchors, privacy rules, the help anchors the app opens
 node site/build.mjs   # output in site/dist
+node deploy/site/test.mjs   # the site container's nginx headers match site/static/_headers (ADR 0602)
 ```
 
 When several builds of the same package run at once (from several terminals, for example), use a private scratch path: `swift build --scratch-path .build-<name>`.

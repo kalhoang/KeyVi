@@ -52,14 +52,18 @@
 - Tag ruleset: only Pa may create or delete `v*` tags.
 - Branch protection on `main` (QA-R25): required checks from `ci.yml` (`Engine on Linux`, `Scripts and
   workflows`, `Architecture contracts in sync`, `macOS lint, tests and coverage`, `macOS universal Debug
-  build (unsigned)`, and `DCO sign-off on engine commits (external pull requests)`, which reports
-  "skipped", and therefore passes, on pull requests that do not come from a fork; ADR 0401), linear
+  build (unsigned)`, which since the final review also runs UpdaterTests, and `DCO sign-off on engine commits
+  (external pull requests)`, which reports "skipped", and therefore passes, on pull requests that do not come
+  from a fork; ADR 0401), plus `Corpus and baseline changes carry their label (QA-R6, QA-R15)` from
+  `.github/workflows/pr-labels.yml` (a workflow of its own, so a label change re-runs only that check), linear
   history, signed commits, no force push.
 - Self-hosted runner (QA-R13): register the integration Mac with labels `self-hosted, macOS, ARM64,
   tcc-granted` in a runner group limited to this repository and to the workflow `integration.yml`; in
   Actions settings require approval for all outside collaborators and keep "Run workflows from fork pull
   requests" off for private forks.
-- Environment `site` (optional) and repository variable `SITE_DEPLOY_TARGET` once hosting is chosen.
+- Website (ADR 0602): branch `prod`, environment `site` with the secret `PORTAINER_WEBHOOK_URL`, and the
+  repository variables `IMAGE_OWNER`, `SITE_IMAGE_NAME` and `SITE_STRICT`
+  ([site deploy runbook](../runbooks/site-deploy.md)).
 
 ## Consequences
 

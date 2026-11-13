@@ -27,6 +27,14 @@ anything.
 All `compat-harness` commands are run as `swift run --package-path Packages/AppCore -c release compat-harness
 <command> ...`; the table drops the prefix.
 
+The nightly workflow also runs the whole AppCore suite under ThreadSanitizer on a hosted macOS runner (PLT-R203,
+QA-R22). That step sets `TSAN_OPTIONS=suppressions=scripts/sanitizers/tsan-appcore.supp`, which holds one
+suppression, `race:SettingsStore.`. Reason: `SettingsStore` is an actor whose executor is a `DispatchSerialQueue`
+(PLT-R1003), and ThreadSanitizer cannot see the order in which that queue runs the actor's jobs, so it reports
+races on actor state that cannot happen. A local run gave 4 to 5 reports without the suppression and none with
+it; `SettingsStoreConcurrencyTests.concurrentUpdatesAllLand` is the proof that updates are serialized. Do not
+widen the suppression: a report anywhere else is a real finding.
+
 ## 2. One-time preparation (Pa, on the runner machine)
 
 These steps change system settings, so they are Pa's to do on the runner machine, never on Pa's own Mac.

@@ -44,9 +44,18 @@ contains() { # contains <name> <needle> (in the last command's output)
 }
 
 echo "== Python unit tests"
-for suite in test_scripts test_docs_and_workflows; do
+for suite in test_scripts test_docs_and_workflows test_site_deploy; do
   if python3 -I "$S/tests/$suite.py" >"$T/py.log" 2>&1; then ok "python $suite"; else ko "python $suite"; tail -n 40 "$T/py.log"; fi
 done
+
+echo "== site container (deploy/site, ADR 0602)"
+if command -v node >/dev/null 2>&1; then
+  if node "$REPO/deploy/site/test.mjs" >"$T/deploy.log" 2>&1; then ok "node deploy/site/test.mjs"; else ko "node deploy/site/test.mjs"; tail -n 40 "$T/deploy.log"; fi
+else
+  printf 'skip node deploy/site/test.mjs (node not installed)\n'
+fi
+expect 0 "help deploy/site/stack-env.sh" bash "$REPO/deploy/site/stack-env.sh" --help
+expect 0 "help deploy/site/fetch-downloads.py" python3 -I "$REPO/deploy/site/fetch-downloads.py" --help
 
 echo "== --help of every script"
 for script in "$S"/*.sh "$S"/publish-release "$S"/*.py; do

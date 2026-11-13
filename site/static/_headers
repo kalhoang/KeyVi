@@ -1,6 +1,10 @@
-# Security and caching headers for hosts that read this file (Cloudflare Pages, Netlify). Other hosts: copy by hand.
+# Security and caching headers of every response (Cloudflare Pages and Netlify format). node site/build.mjs writes the
+# deployed copy (analytics origins, preview noindex) and deploy/site turns it into the nginx configuration of the site
+# container (ADR 0602). Patterns: an exact path or a prefix ending in /*; every matching block applies.
 /*
   Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'sha256-tHqJ7OaRQqFL70L4qElaoFuuYeq22yYDkl4oDVQx2mo='; script-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
@@ -11,3 +15,9 @@
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/download/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/release-notes/*
+  Content-Security-Policy: default-src 'none'; style-src 'sha256-tHqJ7OaRQqFL70L4qElaoFuuYeq22yYDkl4oDVQx2mo='; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

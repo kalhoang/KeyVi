@@ -113,6 +113,11 @@ export const privacy = {
   h1: "Privacy",
   lede: "The principle: what you type never leaves your Mac and is never written to disk, except in one case you start yourself (a typing trace for a bug report, described below). The only automatic network traffic is the update check.",
   updated: "Last updated: 13 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
+  // The "This website" analytics line: `off` when site/config.json has no PostHog key, `posthog` when it has one.
+  analytics: {
+    off: "<strong>Visitor analytics: none.</strong> No Google Analytics, no third-party measurement, no tracking pixels.",
+    posthog: "<strong>Visitor analytics: PostHog Cloud in cookieless mode.</strong> The pages of this website (not the app, not the release-notes pages) load PostHog's measurement library from <code>{{analyticsAssets}}</code> and send page views to <code>{{analyticsHost}}</code>. No cookies, nothing stored in your browser, no session recording, no click tracking, no user profiles. To count visitors without identifying you, PostHog computes a hash of your IP address and browser with a value that changes every day; the IP address is not stored. No advertising and no other third party.",
+  },
   html: `
 <h2 id="summary">Summary</h2>
 <ul>
@@ -177,17 +182,18 @@ export const privacy = {
 
 <h2 id="website">This website</h2>
 <ul>
-  <li><strong>Visitor analytics: none.</strong> No Google Analytics, no third-party measurement, no tracking pixels.</li>
-  <li>No cookies and no tracking storage. Fonts are the ones already on your device, and all code and images are served from this site.</li>
-  <li>To estimate how many Macs run the app, each day we count the requests to <code>appcast.xml</code> in the server log and keep only the total per day. IP addresses are not retained, and there is no per-user identifier. {{verifyHtml}} Check the real server configuration before publishing.</li>
-  <li>Download counts come from the public counters of GitHub and Homebrew.</li>
+  <li>{{analyticsHtml}}</li>
+  <li>No cookies and no tracking storage. Fonts are the ones already on your device; code, images, updates and the installer (DMG) are all served from this site's own server.</li>
+  <li>The web server logs each request with only the time, method, path (without the query part), result code and size; it does not log IP addresses, browsers or referring pages. From this log we count, each day, the requests to <code>appcast.xml</code> to estimate how many Macs run the app, and the downloads of each file; only the daily totals are kept.</li>
+  <li>Connections pass through Cloudflare and the server's router before they reach the web server; like on any website, these layers see your IP address while they handle the request. {{verifyHtml}} Check how long these two layers keep their logs before publishing.</li>
+  <li>Homebrew install counts come from Homebrew's public counter.</li>
 </ul>
 
 <h2 id="feedback">Bug reports and support</h2>
 <p>When you open a GitHub issue or send an email, what you write is your choice and is covered by the policy of GitHub or your email provider. {{AppName}} never sends what you typed on its own.</p>
 
 <h2 id="donations">Donations</h2>
-<p>The app does not store or send donor information. The money moves between you and your bank, MoMo or GitHub, under their own policies.</p>
+<p>The app does not store or send donor information. The money moves between you and your bank or GitHub, under their own policies.</p>
 
 <h2 id="delete">Delete your data</h2>
 <p>Quit {{AppName}}, drag the app to the Trash, then delete the folders listed in the table above. If you installed with Homebrew, one command does it all:</p>

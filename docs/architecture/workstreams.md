@@ -110,7 +110,9 @@ same time ([ADR 0313](../decisions/0313-testability-seams.md)), so "Depends on: 
     default in `DefaultSettings` changes the effective value only for unset keys (PRD-R6).
   - Fixture per schema version (v1 now) loads, migrates and compares; migration writes a backup first.
   - Truncated `settings.json` -> renamed `.corrupt-<timestamp>`, newest valid backup loaded, notice emitted, no
-    overwrite before confirmation; no backup -> defaults in memory, nothing written (PLT-R1006).
+    data loss beyond the last 1 s debounce window (every write leaves its bytes as the newest backup; spec
+    02-platform.md section 10 acceptance), no overwrite before confirmation; no backup -> defaults in memory,
+    nothing written (PLT-R1006).
   - A file with `schemaVersion` 2 is used read-only for known fields and never rewritten (PLT-R1007).
   - Three launches that do not reach `markSurvived()` within the window enter safe mode without touching
     files (PLT-R1009).
@@ -133,7 +135,7 @@ same time ([ADR 0313](../decisions/0313-testability-seams.md)), so "Depends on: 
   resolution, params caps, `ResolvedDecision.userOverride` set for user wins), `EngineFingerprinter`,
   `MatrixStatusResolver`, `RulesLinter` and the `compat-lint` CLI (`compat-lint --rules compat/rules.json
   --matrix compat/matrix.json --scenarios compat/scenarios [--release]`, non-zero exit on errors), seeded
-  `compat/rules.json` (defaults, `terminals` and `webkitBrowsers` groups, conflicting input apps, secure-input
+  `compat/rules.json` (defaults, `terminals` and `webkitBrowsers` groups, conflicting input apps with their sources in `compat/conflicting-apps.json`, secure-input
   hints for Terminal and iTerm2, the rules of 02-platform.md 5.6 and section 6 with honest `VERIFY` notes,
   including `requireTextFocus: never` for custom text views), seeded `compat/matrix.json` with every Tier 1 and
   Tier 2 app of PRD-R39 as `notVerified`.

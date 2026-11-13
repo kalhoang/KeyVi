@@ -1,0 +1,3 @@
+# Release files fetched by deploy/site/fetch-downloads.py while the site image is built (ADR 0602).
+*
+!.gitignore

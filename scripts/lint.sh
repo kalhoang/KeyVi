@@ -20,7 +20,7 @@ Runs, in order:
   brand-sync         scripts/check-brand-sync.py          (Brand.xcconfig and brand.env agree)
   md-links           scripts/check-docs.py links          (relative links in docs/, README*.md, CONTRIBUTING.md)
   docs-brand         scripts/check-docs.py brand          (docs say {{AppName}} / {{app-slug}}, ADR 0400)
-  shellcheck         shellcheck on scripts/ (skipped when shellcheck is not installed)
+  shellcheck         shellcheck on scripts/ and deploy/ (skipped when shellcheck is not installed)
   url-hosts          scripts/check-url-hosts.sh           (QA-R60; only with --binary)
 
 Options:
@@ -88,9 +88,9 @@ shellcheck_scripts() {
   fi
   local files=()
   while IFS= read -r f; do files+=("$f"); done < <(
-    find scripts -type f \( -name '*.sh' -o -name 'publish-release' \) | sort
+    find scripts deploy -type f \( -name '*.sh' -o -name 'publish-release' \) 2>/dev/null | sort
   )
-  shellcheck -x -P scripts:scripts/lib "${files[@]}"
+  shellcheck -x -P scripts:scripts/lib:. "${files[@]}"
 }
 
 rules_args=()

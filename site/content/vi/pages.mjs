@@ -114,6 +114,11 @@ export const privacy = {
   h1: "Riêng tư",
   lede: "Nguyên tắc: nội dung bạn gõ không rời khỏi máy và không được ghi xuống ổ đĩa, trừ một trường hợp do chính bạn bắt đầu (bản ghi thao tác gõ để báo lỗi, mô tả bên dưới). Lưu lượng mạng tự động duy nhất của ứng dụng là kiểm tra cập nhật.",
   updated: "Cập nhật lần cuối: 13/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
+  // The "Trang web" analytics line: `off` when site/config.json has no PostHog key, `posthog` when it has one.
+  analytics: {
+    off: "<strong>Phân tích truy cập: không có.</strong> Không Google Analytics, không công cụ đo lường của bên thứ ba, không pixel theo dõi.",
+    posthog: "<strong>Phân tích truy cập: PostHog Cloud ở chế độ không cookie.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải thư viện đo lường của PostHog từ <code>{{analyticsAssets}}</code> và gửi lượt xem trang tới <code>{{analyticsHost}}</code>. Không cookie, không lưu gì trong trình duyệt, không ghi lại phiên, không ghi thao tác bấm, không hồ sơ người dùng. Để đếm số người xem mà không nhận diện bạn, PostHog tính một mã băm từ địa chỉ IP và trình duyệt cùng một giá trị đổi mỗi ngày; địa chỉ IP không được lưu. Không có quảng cáo hay bên thứ ba nào khác.",
+  },
   html: `
 <h2 id="tom-tat">Tóm tắt</h2>
 <ul>
@@ -178,17 +183,18 @@ export const privacy = {
 
 <h2 id="trang-web">Trang web</h2>
 <ul>
-  <li><strong>Phân tích truy cập: không có.</strong> Không Google Analytics, không công cụ đo lường của bên thứ ba, không pixel theo dõi.</li>
-  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. Phông chữ là phông có sẵn trên máy bạn, mã và hình ảnh đều phục vụ từ chính trang này.</li>
-  <li>Để ước lượng số máy đang dùng, mỗi ngày chúng tôi đếm số yêu cầu tới <code>appcast.xml</code> trong nhật ký máy chủ và chỉ giữ con số tổng theo ngày. Địa chỉ IP không được giữ lại, không có mã định danh cho từng người dùng. {{verifyHtml}} Xác minh cấu hình máy chủ thực tế trước khi công bố.</li>
-  <li>Số lượt tải lấy từ bộ đếm công khai của GitHub và của Homebrew.</li>
+  <li>{{analyticsHtml}}</li>
+  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và tệp cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.</li>
+  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Từ nhật ký này, mỗi ngày chúng tôi đếm số yêu cầu tới <code>appcast.xml</code> để ước lượng số máy đang dùng, và số lượt tải từng tệp; chỉ giữ con số tổng theo ngày.</li>
+  <li>Kết nối đi qua Cloudflare và bộ định tuyến của máy chủ trước khi tới máy chủ web; như mọi trang web, các lớp này thấy địa chỉ IP của bạn trong lúc xử lý yêu cầu. {{verifyHtml}} Xác minh thời gian lưu nhật ký của hai lớp này trước khi công bố.</li>
+  <li>Số lượt cài qua Homebrew lấy từ bộ đếm công khai của Homebrew.</li>
 </ul>
 
 <h2 id="gop-y">Báo lỗi và hỗ trợ</h2>
 <p>Khi bạn mở một issue trên GitHub hoặc gửi email, nội dung bạn viết do bạn quyết định và tuân theo chính sách của GitHub hoặc nhà cung cấp email của bạn. {{AppName}} không tự gửi những gì bạn đã gõ.</p>
 
 <h2 id="ung-ho">Ủng hộ</h2>
-<p>Ứng dụng không lưu hay gửi thông tin người ủng hộ. Việc chuyển tiền diễn ra giữa bạn và ngân hàng, MoMo hoặc GitHub, theo chính sách riêng của họ.</p>
+<p>Ứng dụng không lưu hay gửi thông tin người ủng hộ. Việc chuyển tiền diễn ra giữa bạn và ngân hàng của bạn hoặc GitHub, theo chính sách riêng của họ.</p>
 
 <h2 id="xoa-du-lieu">Xoá dữ liệu</h2>
 <p>Thoát {{AppName}}, kéo ứng dụng vào Thùng rác, rồi xoá các thư mục trong bảng ở trên. Nếu cài bằng Homebrew, một lệnh làm hết:</p>

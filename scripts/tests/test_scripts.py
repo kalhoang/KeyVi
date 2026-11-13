@@ -185,6 +185,93 @@ class CheckRulesTests(TempDirTestCase):
         self.assertIn("| `terminal.default` | 2027-05-01 |", result.stdout)
 
 
+class PlaceholderGateTests(TempDirTestCase):
+    """PLT-R422: a scoped placeholder rule needs an automated scenario that declares the 1,000-edit gate. Mirrors
+    compat-lint (CompatRules PlaceholderGate and LintEngine.placeholderFindings): a warning, an error with
+    --release."""
+
+    MESSAGE = "placeholder gate"
+
+    def gate_scenario(self, **overrides) -> dict:
+        scenario = {"id": "sheets.gate", "readback": "webdriver", "repeat": {"words": 1000, "timing": "burst"},
+                    "expect": {"noPlaceholderResidue": True}}
+        for key, value in overrides.items():
+            if value is None:
+                scenario.pop(key, None)
+            else:
+                scenario[key] = value
+        return scenario
+
+    def placeholder_rule(self, completion="placeholder", automation="automated", match=None) -> dict:
+        rule = good_rule("web.sheets.cell", match=match or {"bundleIds": ["com.example.browser"],
+                                                             "ax": {"domClasses": ["cell-input"]}})
+        rule["action"]["params"] = {"inlineCompletion": completion}
+        rule["test"] = {"scenario": "sheets.gate", "automation": automation}
+        return rule
+
+    def lint(self, rule, scenario=None, *extra):
+        scenarios = self.tmp / "scenarios"
+        scenarios.mkdir(exist_ok=True)
+        if scenario is not None:
+            (scenarios / "sheets.gate.json").write_text(json.dumps(scenario), encoding="utf-8")
+        matrix = self.write_json("matrix.json", {"entries": [{"ruleId": "web.sheets.cell"}]})
+        rules = self.write_json("rules.json", rules_doc(rule))
+        schema = self.write_json("schema.json", {"type": "object"})
+        return py("check-rules.py", "--rules", str(rules), "--schema", str(schema), "--matrix", str(matrix),
+                  "--scenarios", str(scenarios), "--today", "2026-11-13", *extra)
+
+    def test_a_declared_gate_passes_in_release_mode(self):
+        for completion in ("placeholder", "axSelectionThenPlaceholder"):
+            with self.subTest(completion=completion):
+                result = self.lint(self.placeholder_rule(completion), self.gate_scenario(), "--release")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn(self.MESSAGE, result.stderr)
+
+    def test_a_manual_test_warns_and_blocks_the_release(self):
+        rule = self.placeholder_rule(automation="manual")
+        warn = self.lint(rule, self.gate_scenario())
+        self.assertEqual(warn.returncode, 0, warn.stderr)
+        self.assertIn("warning: rule web.sheets.cell: placeholder gate needs an automated test (PLT-R422)",
+                      warn.stderr)
+        block = self.lint(rule, self.gate_scenario(), "--release")
+        self.assertEqual(block.returncode, 1)
+        self.assertIn("error: rule web.sheets.cell: placeholder gate needs an automated test (PLT-R422)",
+                      block.stderr)
+
+    def test_a_scenario_without_the_gate_blocks_the_release(self):
+        cases = {
+            "missing file": None,
+            "999 words": self.gate_scenario(repeat={"words": 999, "timing": "burst"}),
+            "steady timing": self.gate_scenario(repeat={"words": 1000, "timing": "steady"}),
+            "no repeat": self.gate_scenario(repeat=None),
+            "residue not checked": self.gate_scenario(expect={"noPlaceholderResidue": False}),
+            "no expect": self.gate_scenario(expect=None),
+            "human readback": self.gate_scenario(readback="human"),
+            "words as text": self.gate_scenario(repeat={"words": "1000", "timing": "burst"}),
+        }
+        for name, scenario in cases.items():
+            with self.subTest(case=name):
+                warn = self.lint(self.placeholder_rule(), scenario)
+                self.assertEqual(warn.returncode, 0, warn.stderr)
+                self.assertIn("warning: rule web.sheets.cell: placeholder gate: scenario sheets.gate does not "
+                              "declare repeat.words >= 1000, repeat.timing burst, expect.noPlaceholderResidue "
+                              "true and an automatic readback (ax or webdriver) (PLT-R422)", warn.stderr)
+                self.assertEqual(self.lint(self.placeholder_rule(), scenario, "--release").returncode, 1)
+
+    def test_broad_rules_and_rules_without_placeholder_are_not_gated_here(self):
+        broad = self.placeholder_rule(match={"bundleIds": ["com.example.browser"], "titlePattern": "Sheet"})
+        result = self.lint(broad, None)
+        self.assertIn("title-only rule (PLT-R422)", result.stderr)
+        self.assertNotIn(self.MESSAGE, result.stderr, "a broad rule is rejected whatever its test")
+        plain = self.placeholder_rule(completion="axSelection", automation="manual")
+        self.assertNotIn(self.MESSAGE, self.lint(plain, None, "--release").stderr)
+
+    def test_the_repository_scenarios_folder_is_the_default(self):
+        result = py("check-rules.py", "--help")
+        self.assertIn("--scenarios", result.stdout)
+        self.assertIn("compat/scenarios", result.stdout)
+
+
 class ForwardDeleteTests(TempDirTestCase):
     def test_clean_rules(self):
         path = self.write_json("rules.json", rules_doc(good_rule()))

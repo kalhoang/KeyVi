@@ -202,7 +202,10 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
 
 The harness reads app state and triggers test hooks through files, so the app needs no listening socket, XPC
 listener or distributed notification (PLT-R909). Only the test build that the self-hosted runner installs answers
-them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Release configuration never sets.
+them: the App-side adapter (`App/Sources/IntegrationHooks`) is compiled under the `INTEGRATION_HOOKS` condition,
+which the Release configuration never sets; AppCore's `IntegrationHookServer`, `PosixHookDirectory`,
+`VnodeDirectoryWatcher` and instruments are compiled into every configuration but are never instantiated without
+the adapter. `scripts/verify-release.sh` proves the adapter is absent (marker check), not every hooks type.
 
 - Condition (W3-A decision): a third xcodegen configuration, `Integration` (`project.yml` `configs`,
   `Config/Integration.xcconfig`), sets `SWIFT_ACTIVE_COMPILATION_CONDITIONS = INTEGRATION_HOOKS` with release-like

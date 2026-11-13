@@ -21,7 +21,7 @@ Also, immediately:
 ## 2. Tell users (same day)
 
 1. Publish a **pinned issue** describing the symptom, the affected versions and the workaround, in Vietnamese and English.
-2. Enable the **website banner** with the same text and a link to the pinned issue (the mechanism is documented by the site track in `site/`; VERIFY the file or setting name).
+2. <a id="website-banner"></a>Enable the **website banner**: in `site/config.json` set `"banner": { "enabled": true, "vi": "<Vietnamese text>", "en": "<English text>", "link": "https://github.com/<owner>/<repo>/issues/<n>" }` (plain text only; the link must be HTTPS), commit to `main`, then deploy it by moving `prod` to that commit ([site deploy](site-deploy.md) section 6). Every page then shows the notice at the top. Set `enabled` back to `false` when the incident is closed, and deploy again.
 3. If Pa is unavailable for more than a week, follow QA-R54: banner plus pinned issue with the expected return date; P0 handling during absence is limited to pulling the appcast item.
 
 Response targets for P0 (QA-R52): first response within 24 hours; appcast pull or workaround within 24 hours of confirmation; fix or rollback release within 72 hours.
@@ -43,7 +43,7 @@ git push origin release/1.4 v1.4.1
 
 The branch is named `release/<major>.<minor>` of the new version (here `release/1.4`), never with the patch number: `release.yml` accepts a tag only on `origin/main` or `origin/release/x.y` and fails at its first gate otherwise (QA-R25). If `release/1.4` already exists, check it out and bring the 1.3.2 code onto it with a new commit (for example `git revert` of the 1.4.0 changes) instead of creating it; never force-push a release branch.
 
-Then follow [release](release.md) sections 4 to 8 for `v1.4.1`, without the tag commands of section 4: the tag pushed above already started `release.yml`. Pre-flight still applies, including the upgrade test. A P0 hotfix may skip phased rollout and the 72-hour beta wait (QA-R29, QA-R35) but never the test gate (QA-R30).
+Then follow [release](release.md) sections 4 to 8 for `v1.4.1`, without the tag commands of section 4: the tag pushed above already started `release.yml`. Pre-flight still applies, including the upgrade test. A P0 hotfix may skip phased rollout and the 72-hour beta wait (QA-R29, QA-R35) with `scripts/publish-release X.Y.Z --p0-hotfix`, but never the test gate (QA-R30).
 
 If a clean forward fix is faster and safe, ship the fix as the new version instead; the rollback build is the fallback, not a requirement.
 

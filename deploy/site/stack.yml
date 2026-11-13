@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: LicenseRef-App-Pending
+#
+# Portainer stack of the website on the Kalera Docker Swarm (ADR 0602, docs/runbooks/site-deploy.md). Every name and
+# host comes from the stack's environment variables, printed by deploy/site/stack-env.sh from scripts/brand.env:
+# SITE_HOST, SITE_SLUG, IMAGE_OWNER, IMAGE_NAME and IMAGE_TAG (prod). TRAEFIK_CERT_RESOLVER is optional.
+#
+# Traefik labels follow the stacks that already run on this Swarm (the production stack file of Kalera PA, which the
+# Kalera infrastructure notes point to, read on 2026-11-13): network traefik_public, entrypoints websecure (TLS) and web (redirect to HTTPS),
+# certificate resolver `cloudflare` (the Cloudflare DNS challenge of the shared traefik2 stack). VERIFY on the first
+# deploy: the resolver name in traefik2's static configuration (another stack's file defaults to `letsencrypt`), and
+# whether traefik2 runs the v3 swarm provider (traefik.swarm.network) or the v2 docker provider (traefik.docker.network);
+# both labels are set, each provider reads only its own.
+# `version` is obsolete for Compose but older `docker stack deploy` releases still require it.
+version: "3.8"
+
+services:
+  site:
+    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER (deploy/site/stack-env.sh)}/${IMAGE_NAME:?set IMAGE_NAME (deploy/site/stack-env.sh)}:${IMAGE_TAG:-prod}
+    networks:
+      - traefik_public
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        order: start-first
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+        reservations:
+          memory: 32M
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=traefik_public
+        - traefik.docker.network=traefik_public
+        - traefik.http.routers.${SITE_SLUG:?set SITE_SLUG (deploy/site/stack-env.sh)}-site.rule=Host(`${SITE_HOST:?set SITE_HOST (deploy/site/stack-env.sh)}`)
+        - traefik.http.routers.${SITE_SLUG}-site.entrypoints=websecure
+        - traefik.http.routers.${SITE_SLUG}-site.tls=true
+        - traefik.http.routers.${SITE_SLUG}-site.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-cloudflare}
+        - traefik.http.routers.${SITE_SLUG}-site.service=${SITE_SLUG}-site
+        - traefik.http.services.${SITE_SLUG}-site.loadbalancer.server.port=8080
+        - traefik.http.services.${SITE_SLUG}-site.loadbalancer.healthcheck.path=/healthz
+        - traefik.http.services.${SITE_SLUG}-site.loadbalancer.healthcheck.interval=10s
+        - traefik.http.routers.${SITE_SLUG}-site-web.rule=Host(`${SITE_HOST}`)
+        - traefik.http.routers.${SITE_SLUG}-site-web.entrypoints=web
+        - traefik.http.routers.${SITE_SLUG}-site-web.middlewares=${SITE_SLUG}-site-https
+        - traefik.http.middlewares.${SITE_SLUG}-site-https.redirectscheme.scheme=https
+        - traefik.http.middlewares.${SITE_SLUG}-site-https.redirectscheme.permanent=true
+
+networks:
+  traefik_public:
+    external: true
+    name: traefik_public
