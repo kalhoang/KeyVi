@@ -518,7 +518,7 @@ Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, t
 | L6 | `C` is Tier B but not Tier A | restore if `R` is English, else keep |
 | L7 | `R` is not English | keep |
 | L8 | `C` is not in the attested-syllable list | restore |
-| L9 | app context is `code` and `R` is in the code-only tech list | restore |
+| L9 | app context is `code` and `R` is in the code-only tech list | restore (reached only when L6 and L7 did not decide, see ENG-R850) |
 | L10 | the run is in English (8.3) | restore |
 | L11 | ambiguity table row for `R`: `en` -> restore, `vi` -> keep; no row: restore if `R` is in the tech-always list, else keep | as stated |
 
@@ -585,7 +585,7 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 
 ### 8.6 App context (host-supplied)
 
-- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`). Nothing else changes; Vietnamese prompts typed in a terminal compose exactly as elsewhere.
+- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`). Because L6 and L7 decide before L9 (8.1), L9 only reaches code-only words whose raw keys are also English (in the English lexicon or the tech-always list); code-only words that are not English keep their Vietnamese display in `code` too (`chown` -> `chơn` and `ef` -> `è` by L7, `awk` -> `ăk` by L6). VERIFY (open point for Pa, docs/decisions/0005-pa-decisions-2026-11-13.md, "Found while applying the decisions"): keep this order, or let L9 decide before L6 and L7 for code-only words. Nothing else changes; Vietnamese prompts typed in a terminal compose exactly as elsewhere.
 - **ENG-R851** The engine MUST NOT receive bundle identifiers, window titles or any other app information.
 
 ### 8.7 User lists and learning
