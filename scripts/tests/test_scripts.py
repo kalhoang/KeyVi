@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -367,9 +368,50 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertIn('<a href="https://example.test/en/changelog/#v1.2.3">', page)
         self.assertIn("<strong>Chrome</strong>", page)
         self.assertIn("Content-Security-Policy", page)
-        # The page is what the in-app update window shows: no donation line (PRD-R57), no scripts or styles.
-        for forbidden in ("ung-ho", "donate", "<script", "<style", "{{"):
+        # The page is what the in-app update window shows: no donation line (PRD-R57), no scripts.
+        for forbidden in ("ung-ho", "donate", "<script", "{{"):
             self.assertNotIn(forbidden, page)
+
+    def test_release_notes_page_loads_nothing_plt_r906(self):
+        """PLT-R906: the update window shows the notes without loading anything else, so the stylesheet is inline
+        and the page's CSP allows exactly that block (its SHA-256) and nothing else."""
+        import base64
+        import hashlib
+        out = self.tmp / "self-contained.html"
+        result = self.notes_page(out)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        page = out.read_text(encoding="utf-8")
+        for forbidden in ("<link", "<script", "<img", "url(", "@import", "src="):
+            self.assertNotIn(forbidden, page)
+        style = re.search(r"<style>(.*?)</style>", page, re.S)
+        self.assertIsNotNone(style, "inline stylesheet")
+        css = (REPO / "site" / "static" / "assets" / "release-notes.css").read_text(encoding="utf-8")
+        self.assertEqual(style.group(1), css)
+        digest = base64.b64encode(hashlib.sha256(css.encode("utf-8")).digest()).decode("ascii")
+        self.assertIn(f"default-src 'none'; style-src 'sha256-{digest}'; img-src 'none';", page)
+
+    def test_beta_soak_qa_r29(self):
+        """QA-R29: a stable X.Y.Z needs its latest X.Y.Z-beta.N listed at least 72 hours (three days) earlier."""
+        path = self.write_json("releases.json", {"schemaVersion": 1, "releases": [
+            {"version": "1.3.0-beta.1", "channel": "beta", "date": "2026-11-01"},
+            {"version": "1.2.3-beta.2", "channel": "beta", "date": "2026-11-11"},
+            {"version": "1.2.3-beta.1", "channel": "beta", "date": "2026-11-09"},
+            {"version": "1.2.2", "channel": "stable", "date": "2026-11-01"},
+        ]})
+
+        def soak(version, today, file=path):
+            return self.helper("beta-soak", "--file", str(file), "--version", version, "--hours", "72",
+                               "--today", today)
+
+        self.assertEqual(soak("1.2.3", "2026-11-14").returncode, 0, "the latest beta is three days old")
+        late = soak("1.2.3", "2026-11-13")
+        self.assertEqual(late.returncode, 1, "beta.1 is old enough, but beta.2 is what becomes stable")
+        self.assertIn("the latest beta 1.2.3-beta.2 is from 2026-11-11", late.stderr)
+        self.assertEqual(soak("1.2.2", "2026-11-13").returncode, 1, "a beta of another version does not count")
+        missing = soak("1.2.3", "2026-11-13", file=self.tmp / "none.json")
+        self.assertEqual(missing.returncode, 1)
+        self.assertIn("no 1.2.3-beta.N listed", missing.stderr)
+        self.assertNotEqual(soak("1.2.3-beta.3", "2026-11-13").returncode, 0, "only stable versions are checked")
 
     def test_release_notes_page_escapes_and_fills_tokens(self):
         out = self.tmp / "page.html"

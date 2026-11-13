@@ -745,6 +745,9 @@ if [[ $no_macos -eq 0 ]]; then
   mkdir -p "$M/Config" "$M/packaging"
   cp "$REPO/Config/Signing.xcconfig" "$M/Config/"
   cp -R "$REPO/packaging/homebrew" "$M/packaging/"
+  # publish-release inlines the release-notes stylesheet into each notes page (PLT-R906).
+  mkdir -p "$M/site/static/assets"
+  cp "$REPO/site/static/assets/release-notes.css" "$M/site/static/assets/"
   printf '# Changelog\n\n## [1.2.3] - 2026-11-13\n- First public test\n' >"$M/CHANGELOG.md"
   app="$M/dist/testapp-1.2.3/Test App.app"
   mkdir -p "$app/Contents/MacOS"
@@ -805,6 +808,80 @@ EOF
   contains "long notes cite PRD-R51" "PRD-R51 allows at most 5"
   if [[ -e "$T/sign-called" ]]; then ko "long notes fail before sign_update"; else ok "long notes fail before sign_update"; fi
   cp "$T/changelog-short.md" "$M/CHANGELOG.md"
+
+  echo "== publish-release: the signing key is the one installed apps trust (QA-R33, PLT-R1102)"
+  K="$T/sparkle-bin"
+  mkdir -p "$K"
+  app_key="pfIShU4dEXqPd5ObYNfDBiQWcXozk7estwzTnF9BamQ="
+  old_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  # Fakes: generate_keys prints FAKE_KEYCHAIN_KEY (and fails without -p: it must never create a key);
+  # sign_update signs with a fixed signature and fails --verify when FAKE_VERIFY_FAILS is set.
+  cat >"$K/generate_keys" <<'EOF'
+#!/bin/sh
+printf 'generate_keys %s\n' "$*" >>"$FAKE_SPARKLE_LOG"
+case " $* " in *" -p "*) ;; *) exit 9 ;; esac
+printf '%s\n' "$FAKE_KEYCHAIN_KEY"
+EOF
+  cat >"$K/sign_update" <<'EOF'
+#!/bin/sh
+printf 'sign_update %s\n' "$*" >>"$FAKE_SPARKLE_LOG"
+case " $* " in
+  *" --verify "*) [ -z "${FAKE_VERIFY_FAILS:-}" ]; exit ;;
+esac
+for last; do :; done
+printf 'sparkle:edSignature="%s" length="%s"\n' "$(printf 'S%.0s' $(seq 86))==" "$(stat -f %z "$last")"
+EOF
+  chmod +x "$K/generate_keys" "$K/sign_update"
+  publish_signed() { # publish_signed <expected exit> <name> <keychain key> [publish-release options...]
+    local want="$1" name="$2" key="$3"
+    shift 3
+    : >"$K/log"
+    expect "$want" "$name" env SPARKLE_SIGN_UPDATE="$K/sign_update" FAKE_SPARKLE_LOG="$K/log" FAKE_KEYCHAIN_KEY="$key" \
+      "$M/scripts/publish-release" 1.2.3 --sign-in-dry-run --skip-attestation --skip-gatekeeper "$@"
+  }
+  publish_signed 1 "a keychain key other than the app's SUPublicEDKey is refused" "$old_key"
+  contains "names the mismatch" "does not match the SUPublicEDKey"
+  if grep -q '^sign_update' "$K/log"; then ko "nothing is signed with the wrong key"; else ok "nothing is signed with the wrong key"; fi
+  publish_signed 0 "the app's own key signs" "$app_key" --sparkle-account release
+  if grep -qx 'generate_keys --account release -p' "$K/log"; then
+    ok "the public half is read with -p for the chosen account"
+  else
+    ko "the public half is read with -p for the chosen account"; sed 's/^/     /' "$K/log"
+  fi
+  if grep -q '^sign_update --account release ' "$K/log" && grep -q '^sign_update --verify ' "$K/log"; then
+    ok "signed and verified with the same account"
+  else
+    ko "signed and verified with the same account"; sed 's/^/     /' "$K/log"
+  fi
+  FAKE_VERIFY_FAILS=1 publish_signed 1 "a failed sign_update --verify is fatal" "$app_key"
+  contains "names the verification" "sign_update --verify rejected the signature"
+  publish_signed 0 "a key rotation release (R1) is signed with the old key" "$old_key" --rotating-from-key "$old_key"
+  contains "the rotation is announced" "key rotation: signing with the old key"
+  publish_signed 1 "--rotating-from-key still has to match the keychain key" "$app_key" --rotating-from-key "$old_key"
+  publish_signed 1 "a malformed --rotating-from-key is refused" "$app_key" --rotating-from-key "not-a-key"
+  expect 1 "an unpinned sign_update from another project's DerivedData is never used" \
+    grep -q 'Library/Developer/Xcode/DerivedData' "$M/scripts/publish-release"
+
+  echo "== publish-release: a stable release needs 72 hours on beta (QA-R29)"
+  expect 0 "a dry run of a stable without a beta warns" "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper
+  contains "the QA-R29 warning" "QA-R29: no 1.2.3-beta.N on the beta channel for at least 72 hours"
+  printf -- '- Sửa lỗi\n' >"$T/notes-vi.md"
+  rm -f "$T/sign-called"
+  expect 1 "--apply refuses a stable without 72 hours on beta" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --apply --skip-attestation --notes-vi "$T/notes-vi.md"
+  contains "the QA-R29 error" "QA-R29: no 1.2.3-beta.N on the beta channel for at least 72 hours"
+  if [[ -e "$T/sign-called" ]]; then ko "QA-R29 fails before sign_update"; else ok "QA-R29 fails before sign_update"; fi
+  expect 0 "--p0-hotfix skips the beta period" "$M/scripts/publish-release" 1.2.3 --p0-hotfix --skip-attestation \
+    --skip-gatekeeper
+  contains "the hotfix is named" "P0 hotfix: QA-R29 beta period skipped, phased rollout off (QA-R35)"
+  if grep -q 'phasedRolloutInterval' "$T/out"; then ko "a P0 hotfix is not phased"; else ok "a P0 hotfix is not phased"; fi
+  mkdir -p "$M/site/data"
+  printf '{"schemaVersion": 1, "releases": [{"version": "1.2.3-beta.2", "channel": "beta", "date": "%s"}]}\n' \
+    "$(date -u -v-4d +%Y-%m-%d)" >"$M/site/data/releases.json"
+  expect 0 "a beta four days old satisfies QA-R29" "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper
+  if grep -q 'QA-R29' "$T/out"; then ko "no QA-R29 warning after the beta period"; else ok "no QA-R29 warning after the beta period"; fi
+  rm -f "$M/site/data/releases.json"
+
   expect 0 "build-release dry run" bash -c "cd '$M' && touch project.yml && scripts/build-release.sh 1.2.3 1020399 --dry-run"
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
