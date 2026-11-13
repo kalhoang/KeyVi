@@ -113,7 +113,6 @@ class StackTests(unittest.TestCase):
         expected = [
             "traefik.enable=true",
             "traefik.swarm.network=traefik_public",
-            "traefik.docker.network=traefik_public",
             f"{router}.entrypoints=websecure",
             f"{router}.tls=true",
             f"{router}.tls.certresolver=${{TRAEFIK_CERT_RESOLVER:-cloudflare}}",
@@ -126,7 +125,19 @@ class StackTests(unittest.TestCase):
                 self.assertIn(label, labels)
         self.assertIn("traefik.http.routers.${SITE_SLUG:?set SITE_SLUG (deploy/site/stack-env.sh)}-site.rule="
                       "Host(`${SITE_HOST:?set SITE_HOST (deploy/site/stack-env.sh)}`)", labels)
-        self.assertIn("VERIFY", self.TEXT.split("services:", 1)[0], "the unconfirmed resolver name is marked")
+        self.assertEqual([label for label in labels if label.startswith("traefik.docker.")], [],
+                         "Traefik skips a service with both Docker and Swarm labels (ADR 0602 decision 5)")
+        self.assertIn("both Docker and Swarm labels are defined", self.TEXT.split("services:", 1)[0])
+
+    def test_no_stack_on_the_swarm_mixes_traefik_providers(self):
+        stacks = sorted((REPO / "deploy").glob("*/stack.yml"))
+        self.assertGreaterEqual(len(stacks), 2, "the website and the analytics stacks")
+        for stack in stacks:
+            with self.subTest(stack=stack.relative_to(REPO).as_posix()):
+                text = "\n".join(line for line in stack.read_text(encoding="utf-8").splitlines()
+                                 if not line.lstrip().startswith("#"))
+                self.assertNotIn("traefik.docker.", text)
+                self.assertIn("traefik.swarm.network", text)
 
 
 class UmamiStackTests(unittest.TestCase):
