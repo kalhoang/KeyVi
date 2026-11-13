@@ -223,7 +223,8 @@ public enum MacroImporter {
 }
 
 /// Editor-side validation (PRD-R29). The engine's `MacroTable.init` stays authoritative when the table is
-/// built; a test asserts both agree on every fixture.
+/// built: `MacroEngineAgreementTests` builds a `MacroTable` from seeded random tables this validator accepts
+/// (typed or imported and merged) and checks pairwise agreement in both directions.
 ///
 /// Agreement with `MacroTable.ValidationError` (ENG-R1101, ENG-R1103): `emptyTrigger` = `emptyShortcut`;
 /// `triggerTooLong` = `shortcutTooLong` (more than 32); `invalidTriggerCharacter` = `shortcutHasWhitespace` or
