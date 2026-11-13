@@ -1,0 +1,222 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "updates.channel.stableNoDowngrade" : {
+      "comment" : "PRD-R53: shown in About & Support after switching from Beta to Stable. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You will get the next stable version as soon as it is newer than the one you use. %@ never goes back to an older version on its own."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn sẽ nhận bản ổn định tiếp theo khi bản đó mới hơn bản bạn đang dùng. %@ không tự quay về bản cũ hơn."
+          }
+        }
+      }
+    },
+    "updates.control.close.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the Close button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes this message. You keep using the current version."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng thông báo này. Bạn tiếp tục dùng bản hiện tại."
+          }
+        }
+      }
+    },
+    "updates.control.close.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the Close button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "updates.control.download.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the Download from Website button (PRD-R66). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the %@ download page in your browser."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang tải về của %@ trong trình duyệt."
+          }
+        }
+      }
+    },
+    "updates.control.download.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the Download from Website button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from website"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tải từ trang web"
+          }
+        }
+      }
+    },
+    "updates.control.retry.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the Try Again button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks again and downloads the new version."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra lại và tải bản cập nhật mới."
+          }
+        }
+      }
+    },
+    "updates.control.retry.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the Try Again button (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thử lại"
+          }
+        }
+      }
+    },
+    "updates.failed.body" : {
+      "comment" : "PRD-R43 update failed: alert text, second sentence of the draft. %@ is the running version, for example 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You are still using version %@, and everything works as usual."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn vẫn đang dùng bản %@, mọi thứ hoạt động bình thường."
+          }
+        }
+      }
+    },
+    "updates.failed.close" : {
+      "comment" : "Update failed alert: closes the alert (Escape).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "updates.failed.download" : {
+      "comment" : "PRD-R43 update failed: button that opens the download page of the website.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download from Website"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tải từ trang web"
+          }
+        }
+      }
+    },
+    "updates.failed.retry" : {
+      "comment" : "PRD-R43 update failed: button that checks again.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thử lại"
+          }
+        }
+      }
+    },
+    "updates.failed.title" : {
+      "comment" : "PRD-R43 update failed: alert title, first sentence of the 03-product.md draft.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The update could not be downloaded."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không tải được bản cập nhật."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

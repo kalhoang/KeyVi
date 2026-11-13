@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 // Sparkle 2 settings (PLT-R1101, PLT-R1102, docs/decisions/0304-sparkle-version-pin.md).
 // `//` starts a comment in xcconfig files, hence the `$()` in the URL.
+// The app checks both values at launch (App/Sources/Updater/UpdatePolicy.swift, `UpdaterConfiguration`): the feed
+// must be exactly https://<APP_SITE_HOST>/appcast.xml and the key a 32-byte ed25519 public key, otherwise Sparkle
+// is never started and "Check for updates" stays disabled.
 SPARKLE_FEED_URL = https:/$()/$(APP_SITE_HOST)/appcast.xml
 // EdDSA public key generated on Pa's Mac with Sparkle's `generate_keys` (QA-R32, QA-R33). VERIFY: fill in
-// before the first public build; it never changes afterwards except through the rotation runbook.
+// before the first public build; it never changes afterwards except through the rotation runbook. While it is
+// empty, builds never contact the appcast (ADR 0304 runbook note: `bin/generate_keys` from the Sparkle 2.10.1
+// distribution prints the public key to paste here; the private key stays in Pa's login Keychain).
 SPARKLE_PUBLIC_ED_KEY =
