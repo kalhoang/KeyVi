@@ -26,12 +26,7 @@ struct TypingPaneView: View {
                     .pickerStyle(.segmented)
                     .fixedSize()
                     .settingsAccessibility(SettingsControl.typingMethod, localizer)
-                    TextField(
-                        growing: $model.practiceText, placeholder: localizer.string(SettingsText.practicePlaceholder)
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .reservingLines(2)
-                    .settingsAccessibility(SettingsControl.practiceField, localizer)
+                    SettingsPracticeField(drafts: model.drafts, localizer: localizer)
                 }
             }
             SettingRow(localizer: localizer, item: .tonePlacement) {
@@ -52,8 +47,8 @@ struct TypingPaneView: View {
                 .englishRestore($0)
             }
             HStack(alignment: .top, spacing: 16) {
-                WordListView(model: model, list: .keepAsTyped, draft: $model.keepAsTypedDraft)
-                WordListView(model: model, list: .keepVietnamese, draft: $model.keepVietnameseDraft)
+                WordListView(model: model, list: .keepAsTyped)
+                WordListView(model: model, list: .keepVietnamese)
             }
             AdvancedSection(model: model, pane: .typing) {
                 ToggleSetting(
@@ -74,11 +69,24 @@ struct TypingPaneView: View {
     }
 }
 
+/// The live practice field under the method picker. It observes only the drafts, so typing in it does not
+/// re-render the pane (ADR 0315).
+struct SettingsPracticeField: View {
+    @ObservedObject var drafts: SettingsTextDrafts
+    let localizer: Localizer
+
+    var body: some View {
+        TextField(growing: $drafts.practiceText, placeholder: localizer.string(SettingsText.practicePlaceholder))
+            .textFieldStyle(.roundedBorder)
+            .reservingLines(2)
+            .settingsAccessibility(SettingsControl.practiceField, localizer)
+    }
+}
+
 /// One ENG-R860 list: entries with a remove button each, and a field to add one.
 struct WordListView: View {
     @ObservedObject var model: SettingsWindowModel
     let list: UserWordList
-    @Binding var draft: String
 
     var body: some View {
         let localizer = model.localizer
@@ -102,7 +110,7 @@ struct WordListView: View {
             }
             .frame(height: 64)
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
-            WordAddRow(model: model, list: list, draft: $draft)
+            WordAddRow(model: model, drafts: model.drafts, list: list)
             if let error = model.wordListError[list] {
                 Label {
                     Text(verbatim: error)
@@ -137,22 +145,25 @@ struct WordEntryRow: View {
     }
 }
 
+/// The add field of one list. Its text is in the drafts, which the window model does not publish, so a
+/// keystroke re-renders only this row (ADR 0315).
 struct WordAddRow: View {
     @ObservedObject var model: SettingsWindowModel
+    @ObservedObject var drafts: SettingsTextDrafts
     let list: UserWordList
-    @Binding var draft: String
 
     var body: some View {
         let localizer = model.localizer
+        let draft = Binding(get: { drafts[list] }, set: { drafts[list] = $0 })
         let field = list == .keepAsTyped ? SettingsControl.keepAsTypedField : SettingsControl.keepVietnameseField
         let add = list == .keepAsTyped ? SettingsControl.keepAsTypedAdd : SettingsControl.keepVietnameseAdd
         HStack {
-            TextField(text: $draft) { Text(verbatim: localizer.string(SettingsText.listPlaceholder)) }
+            TextField(text: draft) { Text(verbatim: localizer.string(SettingsText.listPlaceholder)) }
                 .textFieldStyle(.roundedBorder)
                 .onSubmit { model.addWord(to: list) }
                 .settingsAccessibility(field, localizer)
             Button(action: { model.addWord(to: list) }) { Text(verbatim: localizer.string(SettingsText.listAdd)) }
-                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
                 .settingsAccessibility(add, localizer)
         }
     }

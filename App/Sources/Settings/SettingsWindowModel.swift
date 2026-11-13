@@ -39,9 +39,6 @@ final class SettingsWindowModel: ObservableObject {
 
     // Panes
     @Published var macroList = MacroListState(macros: [])
-    @Published var practiceText = ""
-    @Published var keepAsTypedDraft = ""
-    @Published var keepVietnameseDraft = ""
     @Published var wordListError: [UserWordList: String] = [:]
     /// Enabled input sources, read when the window is shown (not per render, PLT-R373).
     @Published private(set) var enabledInputSources: [InputSourceInfo] = []
@@ -60,6 +57,8 @@ final class SettingsWindowModel: ObservableObject {
     let capture: HotkeyCaptureController
     weak var actions: (any SettingsActions)?
     let appIdentities = AppIdentityCache()
+    /// Practice and word-list field text, observed only by those fields (not published through this model).
+    let drafts = SettingsTextDrafts()
     /// Views observe this model; the language and the recorder it owns publish through it (ADR 0315).
     private var relays: [AnyCancellable] = []
 
@@ -161,12 +160,12 @@ final class SettingsWindowModel: ObservableObject {
     // MARK: - Word lists (ENG-R860)
 
     func addWord(to list: UserWordList) {
-        let draft = list == .keepAsTyped ? keepAsTypedDraft : keepVietnameseDraft
+        let draft = drafts[list]
         let current = Set(list.entries(in: settings))
         switch UserWordList.adding(draft, to: current) {
         case .added(let entries):
             wordListError[list] = nil
-            if list == .keepAsTyped { keepAsTypedDraft = "" } else { keepVietnameseDraft = "" }
+            drafts[list] = ""
             edit(list.edit(entries))
         case .invalid: wordListError[list] = localizer.string(SettingsText.listInvalid)
         case .duplicate: wordListError[list] = localizer.string(SettingsText.listDuplicate)
