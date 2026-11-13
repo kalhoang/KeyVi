@@ -15,12 +15,12 @@ deploy/site/stack-env.sh --owner <github owner>    # SITE_HOST, SITE_SLUG, IMAGE
 | File | Role |
 |---|---|
 | `site/static/_headers` | The only place response headers are written: CSP, HSTS, frame, referrer, permissions, caching of `appcast.xml`, `/assets/*` and `/download/*`, the strict policy of `/release-notes/*` |
-| `site/config.json` | `analytics` (empty `posthogKey` = no analytics), `banner` (incident notice) |
+| `site/config.json` | `analytics` (the self-hosted Umami; missing or empty = no analytics), `banner` (incident notice) |
 | `deploy/site/build.mjs` | Builds the image content: the site (`--strict`, `--noindex`), `nginx/_headers` and `nginx/locations.conf` generated from it, release files into `/download/` |
 | `deploy/site/nginx-headers.mjs` | `_headers` to nginx `location` blocks (every add_header with `always`) |
 | `deploy/site/nginx.conf` | nginx main configuration: port 8080, unprivileged, relative redirects, an access log with no client address, user agent or referrer |
 | `deploy/site/Dockerfile` | Two stages, base images pinned by digest; build context limited by `Dockerfile.dockerignore` |
-| `deploy/site/stack.yml` | Portainer stack: 2 replicas, rolling start-first updates with rollback, read-only root file system, healthcheck, Traefik labels |
+| `deploy/site/stack.yml` | Portainer stack: 2 replicas, rolling start-first updates with rollback, read-only root file system, healthcheck, Traefik labels (`traefik.swarm.*` provider labels only) |
 | `deploy/site/fetch-downloads.py` | Fetches every DMG and update archive that `site/data/releases.json` and the appcast place under `https://<site host>/download/` from its GitHub Release and checks SHA-256 and length |
 | `deploy/site/check-live-headers.mjs` | Asks a running container for one file per `_headers` pattern and compares every header |
 | `.github/workflows/site-image.yml` | Branch `prod`: tests, fetch, build, live header check, push, Portainer webhook |
@@ -69,7 +69,7 @@ docker logout ghcr.io
 ## 4. Create the stack in Portainer
 
 1. Portainer, environment `F3D`, **Stacks**, **Add stack**. Name: `{{app-slug}}-site`. Build method: Web editor; paste `deploy/site/stack.yml`.
-2. **Environment variables**: add each line printed by `deploy/site/stack-env.sh --owner kalhoang` (`SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER`, `IMAGE_NAME`, `IMAGE_TAG`; `IMAGE` is not used by the stack). Add `TRAEFIK_CERT_RESOLVER` only if the shared Traefik's resolver is not called `cloudflare`: VERIFY in the `traefik2` stack's static configuration (`certificatesResolvers.<name>.acme.dnsChallenge.provider: cloudflare`). The Kalera PA stack uses `cloudflare`; the Kalera dashboard's stack file defaults to `letsencrypt`.
+2. **Environment variables**: add each line printed by `deploy/site/stack-env.sh --owner kalhoang` (`SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER`, `IMAGE_NAME`, `IMAGE_TAG`; `IMAGE` is not used by the stack). `TRAEFIK_CERT_RESOLVER` is not needed: the shared Traefik's resolver is `cloudflare`, confirmed by the Umami stack on 2026-11-13 (its certificate for `stats.kal.vn` comes from that resolver). Set it only if traefik2's static configuration (`certificatesResolvers.<name>.acme.dnsChallenge.provider: cloudflare`) is ever renamed.
 3. **Deploy the stack**. Confirm with the Swarm itself, not with Portainer's status column (it has shown stale states before): `docker service ls` lists `{{app-slug}}-site_site` with `2/2`, and `docker service ps {{app-slug}}-site_site` shows both tasks `Running` and healthy.
 4. **Service webhook**: Services, `{{app-slug}}-site_site`, turn on "Service webhook", copy the URL into the GitHub secret `PORTAINER_WEBHOOK_URL` of the environment `site`. The URL redeploys the service; treat it as a secret.
 
@@ -78,7 +78,7 @@ docker logout ghcr.io
 1. In the `kal.vn` zone, create the record for the site host with the same target as the other hosts this Swarm serves through Traefik (for example the record of `kal.vn`, whose `kal-profile` stack runs on the same Swarm), **proxied** (orange cloud), as Pa decided. VERIFY the target before saving.
 2. SSL/TLS mode of the zone: **Full (strict)**. Traefik presents a valid certificate from the DNS challenge, so strict validation works; Flexible would send plain HTTP to the origin.
 3. Traefik requests the certificate on the first HTTPS request for the host. If it stays on Traefik's default certificate, the shared DNS challenge token does not cover `kal.vn` yet (section 2) or the resolver name is wrong (section 4 step 2).
-4. Cloudflare honours the origin's `Cache-Control` (`appcast.xml` 5 minutes, `/assets/*` and `/download/*` one year, pages not cached), so no cache purge is needed after a deploy: every URL under `/assets/` names the current content of its file (`?v=<content hash>`, or the hash in the file name for the analytics loader; `node site/test.mjs` checks every page), and release files under `/download/` carry their version in the name. Keep the zone's Caching Level at **Standard** (the default), which keeps the query string in the cache key.
+4. Cloudflare honours the origin's `Cache-Control` (`appcast.xml` 5 minutes, `/assets/*` and `/download/*` one year, pages not cached), so no cache purge is needed after a deploy: every URL under `/assets/` names the current content of its file (`?v=<content hash>`; `node site/test.mjs` checks every page), and release files under `/download/` carry their version in the name. Keep the zone's Caching Level at **Standard** (the default), which keeps the query string in the cache key.
 
 Checks after the first deploy:
 
@@ -103,13 +103,14 @@ curl -sS "https://$APP_SITE_HOST/healthz"                              # ok
 3. `site-image.yml` then runs the tests, fetches the release files, builds the image, starts it and runs the live header check, pushes `sha-<commit>` and `prod`, and calls the Portainer webhook. The Swarm pulls `prod` and replaces the two replicas one at a time (start-first; a failing healthcheck rolls back).
 4. Roll back the site: in Portainer, the service's **Rollback**, or set `IMAGE_TAG` to a previous `sha-<commit>` and update the stack.
 
-## 7. Analytics (optional, Q7)
+## 7. Analytics (Q7)
 
-1. In PostHog Cloud, organisation "Kalera", create a project for the website. Region (US or EU): VERIFY the organisation's region; it decides `posthogHost`.
-2. Project settings: turn on **cookieless tracking** (Web analytics) and **Discard client IP data**. Both are required for what the privacy page states.
-3. In `site/config.json`, set `analytics.posthogKey` to the project API key (`phc_...`; it is public by design) and `analytics.posthogHost` to `https://us.i.posthog.com` or `https://eu.i.posthog.com`. Pull request, then deploy (section 6).
-4. What changes, all tested by `node site/test.mjs`: every website page loads `/assets/analytics.<content hash>.js` (cookieless mode, page views only), the site-wide CSP gains exactly the two PostHog hosts, and `/rieng-tu` and `/en/privacy/` describe the analytics instead of "none". The app and the release-notes pages never load it.
-5. To stop: empty `posthogKey` and deploy.
+The website counts page views with Umami, self-hosted on the Kalera Swarm at `https://stats.kal.vn` ([analytics runbook](analytics.md), ADR 0602 decision 7). It is already configured:
+
+1. `site/config.json` holds `"analytics": { "provider": "umami", "scriptUrl": "https://stats.kal.vn/script.js", "websiteId": "<uuid>" }`. The website id is public (it appears in every page). The script host must be on a `site:` line of `scripts/url-hosts.allow`.
+2. What it changes, all tested by `node site/test.mjs` and `node deploy/site/test.mjs`: every website page carries one `<script defer ... data-domains="<site host>" data-do-not-track="true">` tag in its head, the site-wide CSP gains exactly `https://stats.kal.vn` in `script-src` and `connect-src`, and `/rieng-tu` and `/en/privacy/` describe Umami instead of "none". The app and the release-notes pages never load it.
+3. To stop: remove `analytics` from `site/config.json` (or empty its three values) and deploy (section 6).
+4. To move Umami to another host: add the host on a `site:` line of `scripts/url-hosts.allow` with a decision record, change `scriptUrl`, and deploy; the CSP follows the config.
 
 ## 8. Preview until the first public release
 
@@ -129,7 +130,7 @@ curl -sS "https://$APP_SITE_HOST/healthz"                              # ok
 
 | Symptom | Cause and fix |
 |---|---|
-| `404 page not found` from Traefik, or its default certificate | The router does not match: check `SITE_HOST`, and that the service is on `traefik_public`. If traefik2 runs the v2 docker provider, check it reads `traefik.docker.network` (both labels are set) |
+| `404 page not found` from Traefik, or its default certificate | The router does not match: check `SITE_HOST`, and that the service is on `traefik_public`. A service with both `traefik.docker.*` and `traefik.swarm.*` labels is skipped by Traefik ("both Docker and Swarm labels are defined" in the Traefik log): keep `traefik.swarm.*` only |
 | 502 or 503 | No healthy task: `docker service ps --no-trunc {{app-slug}}-site_site`; the container listens on 8080 and answers `/healthz` |
 | Certificate error | Resolver name (`TRAEFIK_CERT_RESOLVER`) or the DNS challenge token's zones |
 | Image pull fails on the nodes | GHCR package private without a Portainer registry entry (section 2) |
@@ -139,4 +140,4 @@ curl -sS "https://$APP_SITE_HOST/healthz"                              # ok
 
 ## 11. What stays with Pa
 
-Creating the repository and the `prod` branch protection, the `site` environment, its secret and the variables, the GHCR visibility, the Portainer stack and its webhook, the Cloudflare token and DNS record, the PostHog project, and the first build and push. Nobody else pushes images, calls webhooks or changes Cloudflare, Portainer or GHCR.
+Creating the repository and the `prod` branch protection, the `site` environment, its secret and the variables, the GHCR visibility, the Portainer stack and its webhook, the Cloudflare token and DNS record, and the first build and push. Nobody else pushes images, calls webhooks or changes Cloudflare, Portainer or GHCR.

@@ -5,6 +5,7 @@ The header equivalence of the container itself is tested by `node deploy/site/te
 Run: python3 -I scripts/tests/test_site_deploy.py"""
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import os
@@ -52,6 +53,7 @@ class DockerfileTests(unittest.TestCase):
     def test_the_build_stage_runs_the_image_build_script_on_the_build_platform(self):
         build, final = self.stages()
         self.assertTrue(build.startswith("--platform=$BUILDPLATFORM "), "no emulation for a cross-platform build")
+        self.assertIn("COPY scripts/url-hosts.allow scripts/url-hosts.allow", build, "the site build reads its site: hosts")
         self.assertIn("ARG SITE_STRICT=true", build)
         self.assertIn("ARG SITE_NOINDEX=auto", build)
         self.assertIn('RUN node deploy/site/build.mjs --out /out --strict "$SITE_STRICT" --noindex "$SITE_NOINDEX" '
@@ -70,7 +72,9 @@ class DockerfileTests(unittest.TestCase):
         ignore = (DEPLOY / "Dockerfile.dockerignore").read_text(encoding="utf-8").splitlines()
         rules = [line for line in ignore if line and not line.startswith("#")]
         self.assertEqual(rules[0], "*", "deny everything first")
-        for kept in ("!scripts/brand.env", "!compat/matrix.json", "!CHANGELOG.md", "!site/", "!deploy/site/"):
+        # scripts/url-hosts.allow: its `site:` lines are the hosts the analytics script may come from (ADR 0602).
+        for kept in ("!scripts/brand.env", "!scripts/url-hosts.allow", "!compat/matrix.json", "!CHANGELOG.md", "!site/",
+                     "!deploy/site/"):
             self.assertIn(kept, rules)
         self.assertIn("site/dist/", rules)
         kept = [rule[1:] for rule in rules if rule.startswith("!")]
@@ -110,7 +114,6 @@ class StackTests(unittest.TestCase):
         expected = [
             "traefik.enable=true",
             "traefik.swarm.network=traefik_public",
-            "traefik.docker.network=traefik_public",
             f"{router}.entrypoints=websecure",
             f"{router}.tls=true",
             f"{router}.tls.certresolver=${{TRAEFIK_CERT_RESOLVER:-cloudflare}}",
@@ -123,7 +126,85 @@ class StackTests(unittest.TestCase):
                 self.assertIn(label, labels)
         self.assertIn("traefik.http.routers.${SITE_SLUG:?set SITE_SLUG (deploy/site/stack-env.sh)}-site.rule="
                       "Host(`${SITE_HOST:?set SITE_HOST (deploy/site/stack-env.sh)}`)", labels)
-        self.assertIn("VERIFY", self.TEXT.split("services:", 1)[0], "the unconfirmed resolver name is marked")
+        self.assertEqual([label for label in labels if label.startswith("traefik.docker.")], [],
+                         "Traefik skips a service with both Docker and Swarm labels (ADR 0602 decision 5)")
+        self.assertIn("both Docker and Swarm labels are defined", self.TEXT.split("services:", 1)[0])
+
+    def test_no_stack_on_the_swarm_mixes_traefik_providers(self):
+        stacks = sorted((REPO / "deploy").glob("*/stack.yml"))
+        self.assertGreaterEqual(len(stacks), 2, "the website and the analytics stacks")
+        for stack in stacks:
+            with self.subTest(stack=stack.relative_to(REPO).as_posix()):
+                text = "\n".join(line for line in stack.read_text(encoding="utf-8").splitlines()
+                                 if not line.lstrip().startswith("#"))
+                self.assertNotIn("traefik.docker.", text)
+                self.assertIn("traefik.swarm.network", text)
+
+
+class UmamiStackTests(unittest.TestCase):
+    """deploy/umami/stack.yml is the Portainer stack of the website analytics (ADR 0602 decision 7,
+    docs/runbooks/analytics.md): a pinned Umami image, secrets only from the stack environment, Traefik Swarm labels."""
+
+    PATH = REPO / "deploy" / "umami" / "stack.yml"
+
+    def text(self) -> str:
+        return self.PATH.read_text(encoding="utf-8")
+
+    def labels(self) -> dict[str, str]:
+        block = self.text().split("      labels:\n", 1)[1].split("\nnetworks:", 1)[0]
+        return dict(re.findall(r"^        (traefik\.[^:]+): \"?([^\"\n]*)\"?$", block, re.M))
+
+    def test_header_and_pinned_image(self):
+        text = self.text()
+        self.assertTrue(text.startswith("# SPDX-License-Identifier: GPL-3.0-or-later\n"))
+        self.assertRegex(text, r"\n    image: ghcr\.io/umami-software/umami:3\.5\.0\n", "an exact Umami version (Pa, Q7)")
+        self.assertNotIn(":latest", text)
+
+    def test_secrets_come_from_the_stack_environment(self):
+        text = self.text()
+        self.assertIn("      DATABASE_URL: ${DATABASE_URL}\n", text)
+        self.assertIn("      APP_SECRET: ${APP_SECRET}\n", text)
+        self.assertNotRegex(text, r"postgres(ql)?://", "no connection string in the repository")
+        self.assertNotRegex(text, r"(?i)password\s*[:=]", "no password in the repository")
+        self.assertIn('DISABLE_TELEMETRY: "1"', text)
+        self.assertIn('DISABLE_UPDATES: "1"', text)
+
+    def test_one_replica_with_heartbeat_healthcheck_and_rollback(self):
+        text = self.text()
+        self.assertIn("http://127.0.0.1:3000/api/heartbeat", text)
+        self.assertRegex(text, r"\n      replicas: 1\n")
+        self.assertIn("failure_action: rollback", text)
+        self.assertRegex(text, r"networks:\n  traefik_public:\n    external: true")
+
+    def test_traefik_uses_swarm_labels_only(self):
+        labels = self.labels()
+        self.assertEqual(labels.get("traefik.enable"), "true")
+        self.assertEqual(labels.get("traefik.swarm.network"), "traefik_public")
+        self.assertEqual([name for name in labels if name.startswith("traefik.docker.")], [],
+                         "Traefik skips a service with both Docker and Swarm labels")
+        routers = {name.split(".")[3] for name in labels if name.startswith("traefik.http.routers.")}
+        self.assertEqual(len(routers), 2, "an HTTPS router and an HTTP redirect router")
+        for router in routers:
+            with self.subTest(router=router):
+                self.assertEqual(labels[f"traefik.http.routers.{router}.rule"], "Host(`stats.kal.vn`)")
+        secure = next(r for r in routers if labels[f"traefik.http.routers.{r}.entrypoints"] == "websecure")
+        self.assertEqual(labels[f"traefik.http.routers.{secure}.tls.certresolver"], "cloudflare")
+        self.assertTrue(any(name.endswith(".loadbalancer.server.port") and value == "3000" for name, value in labels.items()))
+
+    def test_the_host_is_the_allowed_analytics_host(self):
+        allow = (REPO / "scripts" / "url-hosts.allow").read_text(encoding="utf-8")
+        self.assertIn("\nsite: stats.kal.vn\n", allow)
+        config = json.loads((REPO / "site" / "config.json").read_text(encoding="utf-8"))
+        self.assertTrue(config["analytics"]["scriptUrl"].startswith("https://stats.kal.vn/"))
+
+    def test_the_runbook_covers_operations(self):
+        runbook = " ".join((REPO / "docs" / "runbooks" / "analytics.md").read_text(encoding="utf-8").split())
+        for needle in ("deploy/umami/stack.yml", "stack id 72", "environment `F3D` (id 7)", "10.148.0.2",
+                       "`{{app-slug}}_umami`", "`admin`", "kal-secret get KEYVI_UMAMI_ADMIN_PASSWORD", "DATABASE_URL",
+                       "APP_SECRET", "pg_dump", "pg_restore", "traefik.swarm.", "both Docker and Swarm labels are defined",
+                       "Purge", "script.js"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, runbook)
 
 
 class SiteImageWorkflowTests(unittest.TestCase):
@@ -186,6 +267,26 @@ class SiteImageWorkflowTests(unittest.TestCase):
         self.assertNotIn("SITE_DEPLOY_TARGET", site)
         self.assertIn("run: node deploy/site/test.mjs", site)
         self.assertEqual(site.count('- "deploy/site/**"'), 2, "push and pull_request paths")
+
+    def test_site_yml_runs_when_any_input_of_the_site_image_changes(self):
+        """A pull request that edits only a file the Dockerfile copies (scripts/url-hosts.allow decides which analytics
+        host the site build accepts) must run the site tests, or the first failure appears at image build on prod."""
+        site = (WORKFLOWS / "site.yml").read_text(encoding="utf-8")
+        triggers = site.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+        lists = {event: re.findall(r'^      - "([^"]+)"$', block.split("\n  workflow_dispatch:", 1)[0], re.M)
+                 for event, block in (("push", triggers.split("  pull_request:", 1)[0]),
+                                      ("pull_request", triggers.split("  pull_request:", 1)[1]))}
+        dockerfile = (DEPLOY / "Dockerfile").read_text(encoding="utf-8")
+        sources = re.findall(r"^COPY (?!--from)(\S+)", dockerfile, re.M)
+        self.assertIn("scripts/url-hosts.allow", sources)
+        for source in sources:
+            files = [str(path.relative_to(REPO)) + ("/x" if path.is_dir() else "") for path in REPO.glob(source.rstrip("/"))]
+            self.assertTrue(files, f"{source} matches no file")
+            for event, patterns in lists.items():
+                for name in files:
+                    with self.subTest(event=event, file=name):
+                        self.assertTrue(any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns),
+                                        f"{name} (Dockerfile COPY {source}) is missing from the {event} paths of site.yml")
 
 
 class StackEnvTests(unittest.TestCase):

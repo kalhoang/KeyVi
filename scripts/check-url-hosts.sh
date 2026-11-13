@@ -13,7 +13,9 @@
 #
 # Scans every Mach-O file, property list and strings file inside an .app bundle (or a single file)
 # for scheme://host and mailto:user@host references. Hosts that are XML namespace or DTD identifiers
-# (never contacted) are allowed separately in scripts/url-hosts.allow.
+# (never contacted) are allowed separately in scripts/url-hosts.allow. Lines of that file written
+# `site: <host>` name hosts that only the website contacts (the analytics host, ADR 0602 amendment);
+# they are never allowed inside the app and are read by site/lib/analytics.mjs instead.
 #
 # The shipped Contents/Resources/compat-rules.json is skipped: its web.urlPrefixes matchers (PLT-R503) name the sites a rule
 # applies to, which is data the app compares with the focused page, never a host it contacts. Every other
@@ -110,12 +112,19 @@ import sys
 allow_file, list_flag, hosts_file = sys.argv[1:4]
 allowed = {host.lower() for host in sys.argv[4:] if host}
 suffixes = []
+website_only = set()  # `site: <host>` lines: hosts only the website contacts, never allowed in the app
 with open(allow_file, encoding="utf-8") as handle:
-    for raw in handle:
+    for number, raw in enumerate(handle, 1):
         line = raw.split("#", 1)[0].strip().lower()
         if not line:
             continue
-        if line.startswith("*."):
+        if line.startswith("site:"):
+            host = line.removeprefix("site:").strip()
+            if not host or " " in host or "/" in host:
+                print(f"check-url-hosts: {allow_file}:{number}: expected 'site: <host>'", file=sys.stderr)
+                sys.exit(2)
+            website_only.add(host)
+        elif line.startswith("*."):
             suffixes.append(line[1:])
         else:
             allowed.add(line)
@@ -142,6 +151,10 @@ for host in sorted(found):
         bad.append(host)
 
 for host in bad:
+    if host in website_only:
+        print(f"check-url-hosts: {host} is allowed for the website only (a `site:` line), never inside the app "
+              f"(QA-R60, PLT-R906)", file=sys.stderr)
+        continue
     print(f"check-url-hosts: host outside the allowlist: {host} (QA-R60: needs a decision record "
           f"and a /rieng-tu update)", file=sys.stderr)
 print(f"check-url-hosts: {len(found)} host(s), {len(bad)} outside the allowlist", file=sys.stderr)

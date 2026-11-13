@@ -1,60 +1,87 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Optional website analytics (Pa, 2026-11-13, Q7; ADR 0601 amendment, ADR 0602): PostHog Cloud in cookieless mode.
-// site/config.json `analytics.posthogKey` empty means no analytics: no script, no third-party origin in the CSP.
-// With a key, layout.mjs adds one local loader to the pages it renders. The build writes it as
-// assets/analytics.<content hash>.js: `/assets/*` is cached for a year as immutable (site/static/_headers), so a
-// changed loader must get a new URL to reach returning visitors and Cloudflare's cache (ADR 0602).
-// Release-notes pages are static files written by scripts/publish-release and shown in the app's update window; they
-// never pass through layout.mjs and their `/release-notes/*` header policy allows no script at all.
+// Optional website analytics (Pa, 2026-11-13, Q7 and its evening follow-up; ADR 0602 amendment): Umami, self-hosted
+// by the project on the Kalera Swarm, cookieless, no consent banner (PRD-R74). site/config.json:
+//   "analytics": { "provider": "umami", "scriptUrl": "https://<host>/script.js", "websiteId": "<uuid>" }
+// A missing `analytics`, or one whose three values are empty, means no analytics: no script, no third-party origin
+// in the CSP. Otherwise every value is validated strictly: the script must be an https URL on a host listed on a
+// `site:` line of scripts/url-hosts.allow (the website-only part of the QA-R60 allowlist), and the website id must
+// be a UUID, so neither value can break out of the attribute it is written into.
+// layout.mjs adds the tag to every page it renders. Release-notes pages are static files written by
+// scripts/publish-release and shown in the app's update window; they never pass through layout.mjs and their
+// `/release-notes/*` header policy allows no script at all, so they never carry analytics.
 import { readFile } from "node:fs/promises";
-import { esc, shortHash } from "./util.mjs";
+import { esc } from "./util.mjs";
 
-/** PostHog Cloud ingestion hosts and the asset host each one serves its browser library from. */
-export const POSTHOG_HOSTS = Object.freeze({
-  "https://us.i.posthog.com": "https://us-assets.i.posthog.com",
-  "https://eu.i.posthog.com": "https://eu-assets.i.posthog.com",
-});
-export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
-export const LOADER_SOURCE = new URL("./analytics-loader.js", import.meta.url);
-
-// Project API keys are public tokens shaped `phc_<letters and digits>`; anything else is refused, so the value can
-// never break out of the attribute it is written into.
-const KEY_SHAPE = /^phc_[A-Za-z0-9]{16,80}$/;
+export const ANALYTICS_PROVIDER = "umami";
+const FIELDS = Object.freeze(["provider", "scriptUrl", "websiteId"]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HOST = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const DISABLED = Object.freeze({ enabled: false });
 
-/** Validates `analytics` of site/config.json. Returns `{ enabled: false }` or the frozen PostHog settings. */
-export function parseAnalytics(raw) {
+/** The hosts of the `site:` lines of scripts/url-hosts.allow, lower-cased, in file order. */
+export async function loadAnalyticsHosts(allowFile) {
+  const hosts = [];
+  (await readFile(allowFile, "utf8")).split("\n").forEach((raw, index) => {
+    const line = raw.split("#", 1)[0].trim().toLowerCase();
+    if (!line.startsWith("site:")) return;
+    const host = line.slice("site:".length).trim();
+    if (!HOST.test(host)) throw new Error(`${allowFile}:${index + 1}: expected "site: <host>"`);
+    hosts.push(host);
+  });
+  return Object.freeze(hosts);
+}
+
+function scriptUrlOf(raw, allowedHosts) {
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("config.json: analytics.scriptUrl must be a URL");
+  }
+  if (url.protocol !== "https:") throw new Error("config.json: analytics.scriptUrl must be an https URL");
+  if (url.username || url.password || url.port || url.search || url.hash || url.href !== raw || !url.pathname.endsWith(".js")) {
+    throw new Error("config.json: analytics.scriptUrl must be a plain https://<host>/<path>.js URL");
+  }
+  if (!allowedHosts.includes(url.hostname)) {
+    throw new Error(`config.json: analytics.scriptUrl must be on an allowed host (site: lines of scripts/url-hosts.allow: ${allowedHosts.join(", ") || "none"})`);
+  }
+  return url;
+}
+
+/**
+ * Validates `analytics` of site/config.json against the allowed hosts. Returns `{ enabled: false }` or the frozen
+ * settings `{ enabled, provider, scriptUrl, origin, websiteId }`.
+ */
+export function parseAnalytics(raw, allowedHosts) {
   if (raw === undefined || raw === null) return DISABLED;
   if (typeof raw !== "object" || Array.isArray(raw)) throw new Error("config.json: analytics must be an object");
-  const key = typeof raw.posthogKey === "string" ? raw.posthogKey.trim() : "";
-  if (raw.posthogKey !== undefined && typeof raw.posthogKey !== "string") throw new Error("config.json: analytics.posthogKey must be a string");
-  if (key === "") return DISABLED;
-  if (!KEY_SHAPE.test(key)) throw new Error("config.json: analytics.posthogKey must look like phc_<letters and digits>");
-  const apiHost = typeof raw.posthogHost === "string" && raw.posthogHost.trim() !== "" ? raw.posthogHost.trim().replace(/\/+$/, "") : DEFAULT_POSTHOG_HOST;
-  const assetsHost = POSTHOG_HOSTS[apiHost];
-  if (!assetsHost) throw new Error(`config.json: analytics.posthogHost must be one of ${Object.keys(POSTHOG_HOSTS).join(", ")}`);
-  return Object.freeze({ enabled: true, key, apiHost, assetsHost });
+  const stray = Object.keys(raw).filter((key) => !FIELDS.includes(key));
+  if (stray.length > 0) throw new Error(`config.json: analytics has unknown keys (${stray.join(", ")}); expected ${FIELDS.join(", ")}`);
+  for (const key of FIELDS) {
+    if (raw[key] !== undefined && typeof raw[key] !== "string") throw new Error(`config.json: analytics.${key} must be a string`);
+  }
+  const values = Object.fromEntries(FIELDS.map((key) => [key, (raw[key] ?? "").trim()]));
+  const set = FIELDS.filter((key) => values[key] !== "");
+  if (set.length === 0) return DISABLED;
+  if (set.length !== FIELDS.length) throw new Error(`config.json: analytics needs ${FIELDS.join(", ")} together (or all empty for no analytics)`);
+  if (values.provider !== ANALYTICS_PROVIDER) throw new Error(`config.json: analytics.provider must be "${ANALYTICS_PROVIDER}"`);
+  const url = scriptUrlOf(values.scriptUrl, allowedHosts);
+  if (!UUID.test(values.websiteId)) throw new Error("config.json: analytics.websiteId must be a UUID");
+  return Object.freeze({ enabled: true, provider: values.provider, scriptUrl: url.href, origin: url.origin, websiteId: values.websiteId.toLowerCase() });
 }
 
-/** The CSP sources analytics needs: the library from the asset host, events to the API host. Empty when off. */
+/** The CSP sources analytics needs: the script and its event endpoint, both on the Umami origin. Empty when off. */
 export function analyticsCspAdditions(analytics) {
   if (!analytics?.enabled) return {};
-  return { "script-src": [analytics.assetsHost], "connect-src": [analytics.apiHost, analytics.assetsHost] };
+  return { "script-src": [analytics.origin], "connect-src": [analytics.origin] };
 }
 
-/** The URL the loader is served under: its content hash is part of the file name. */
-export function analyticsScriptPath(source) {
-  return `/assets/analytics.${shortHash(source)}.js`;
-}
-
-/** The loader tag for a rendered page (`src` from analyticsScriptPath), or "" when analytics is off. */
-export function analyticsScriptTag(analytics, src) {
+/**
+ * The tracker tag for a rendered page, or "" when analytics is off. `data-domains` limits counting to the site host
+ * (a copy of the page elsewhere sends nothing); `data-do-not-track` honours the browser's Do Not Track setting.
+ */
+export function analyticsScriptTag(analytics, siteHost) {
   if (!analytics?.enabled) return "";
-  if (typeof src !== "string" || src === "") throw new Error("analytics: the loader URL is missing");
-  return `<script src="${esc(src)}" defer data-posthog-key="${esc(analytics.key)}" data-posthog-host="${esc(analytics.apiHost)}" data-posthog-assets="${esc(analytics.assetsHost)}"></script>`;
-}
-
-/** The loader's source text (site/lib/analytics-loader.js), written to analyticsScriptPath(source) when analytics is on. */
-export async function loaderSource() {
-  return readFile(LOADER_SOURCE, "utf8");
+  if (typeof siteHost !== "string" || !HOST.test(siteHost)) throw new Error("analytics: the site host is not a valid domain");
+  return `<script defer src="${esc(analytics.scriptUrl)}" data-website-id="${esc(analytics.websiteId)}" data-domains="${esc(siteHost)}" data-do-not-track="true"></script>`;
 }

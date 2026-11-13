@@ -11,7 +11,7 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import { build } from "./build.mjs";
-import { POSTHOG_HOSTS, analyticsScriptPath, loaderSource } from "./lib/analytics.mjs";
+import { analyticsCspAdditions, analyticsScriptTag, loadAnalyticsHosts, parseAnalytics } from "./lib/analytics.mjs";
 import { loadBrand } from "./lib/brand.mjs";
 import { CATEGORIES, STATUSES } from "./lib/data.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "./lib/headers.mjs";
@@ -127,7 +127,8 @@ function thirdPartyOrigins(html) {
 
 const cspOf = (rules, path) => headersForPath(rules, path).filter(([name]) => name === "Content-Security-Policy").map(([, value]) => value);
 
-async function checkSite(label, dist) {
+/** `allowedScriptTag`: the one external script a build may carry (the analytics tag of site/config.json, Q7). */
+async function checkSite(label, dist, { allowedScriptTag = "" } = {}) {
   const htmlFiles = (await walk(dist)).filter((f) => f.endsWith(".html"));
   const pages = new Map(await Promise.all(htmlFiles.map(async (f) => [f, await readFile(f, "utf8")])));
   const rel = (f) => f.slice(dist.length + 1);
@@ -171,7 +172,8 @@ async function checkSite(label, dist) {
 
   await check(`${label}: no external scripts, styles, fonts, frames or trackers (PRD-R74)`, async () => {
     const problems = [];
-    for (const [file, html] of pages) {
+    for (const [file, raw] of pages) {
+      const html = allowedScriptTag ? raw.replace(allowedScriptTag, "") : raw;
       if (/<script[^>]+src="(?:https?:)?\/\//i.test(html)) problems.push(`${rel(file)}: external script`);
       if (/<link[^>]+rel="(?:stylesheet|preload|preconnect|prefetch|dns-prefetch)"[^>]+href="(?:https?:)?\/\//i.test(html)) problems.push(`${rel(file)}: external link resource`);
       if (/<(?:iframe|embed|object)\b/i.test(html)) problems.push(`${rel(file)}: embedded content`);
@@ -257,11 +259,18 @@ async function assertFingerprinted(dist) {
 
 const tmp = await mkdtemp(join(tmpdir(), "site-test-"));
 try {
+  // The shipped site/config.json enables the Umami analytics (Q7). The fallback and populated builds use the same
+  // config without `analytics`, so their privacy checks see a site with no third-party origin at all; the
+  // analytics checks below build with the shipped file.
+  const shipped = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
+  const offConfig = join(tmp, "config-no-analytics.json");
+  await writeFile(offConfig, JSON.stringify({ ...shipped, analytics: undefined }));
+
   // 1. Fallback data (no releases.json, sample matrix fixture).
   const fallback = join(tmp, "fallback");
   const real = existsSync(join(SITE_DIR, "data", "releases.json"));
   const fallbackPages = await (async () => {
-    await build({ outDir: fallback, today: "2026-11-13", dataDir: real ? join(SITE_DIR, "fixtures", "empty") : undefined });
+    await build({ outDir: fallback, today: "2026-11-13", dataDir: real ? join(SITE_DIR, "fixtures", "empty") : undefined, configPath: offConfig });
     return checkSite("fallback", fallback);
   })();
 
@@ -278,7 +287,7 @@ try {
 
   // 2. Populated fixtures: releases, matrix statuses, staleness, changelog.
   const populated = join(tmp, "populated");
-  await build({ outDir: populated, today: "2026-12-10", dataDir: join(SITE_DIR, "fixtures", "populated") });
+  await build({ outDir: populated, today: "2026-12-10", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath: offConfig });
   const pop = await checkSite("populated", populated);
   const read = (...p) => pop.get(join(populated, ...p));
 
@@ -292,6 +301,11 @@ try {
     assert.match(dl, /a{64}/);
     assert.ok(!/javascript:/i.test(dl) && !/0\.5\.0/.test(dl), "entry with unsafe URL is skipped");
     assert.match(dl, /macOS 15 Sequoia trở lên/);
+  });
+
+  await check("populated: the open-source proof point names both licences (ADR 0006)", () => {
+    assert.match(read("index.html"), /MPL-2\.0\)[^<]*GPL-3\.0-or-later/);
+    assert.match(read("en", "index.html"), /Mozilla Public License 2\.0[^<]*GPL-3\.0-or-later/);
   });
 
   await check("populated: matrix statuses, 120-day staleness (QA-R19), escaping, filters hook", () => {
@@ -345,10 +359,21 @@ try {
       assert.ok(!/momo/i.test(d), `${lang}: no MoMo (S8)`);
       assert.ok(!/Tên tài khoản|Chủ tài khoản|Account name|account holder/i.test(d), `${lang}: the holder's name is never shown (S8)`);
       assert.ok(!d.includes('class="verify"'), `${lang}: real details, nothing left to verify`);
-      assert.ok(!d.includes("donate-sponsors"), `${lang}: no sponsor card while sponsorsUrl is a placeholder`);
+      assert.ok(!d.includes("donate-sponsors"), `${lang}: no sponsor card while there is no sponsor page`);
     }
     assert.ok(existsSync(join(populated, "assets", "qr", "vietqr.png")), "QR image shipped");
     assert.ok(!existsSync(join(populated, "assets", "qr", "momo.svg")), "MoMo image removed");
+    // An empty sponsorsUrl means no sponsor page: no card, no placeholder, nothing for --strict to refuse (PRD-R59).
+    assert.equal(shipped.sponsorsUrl, "", "no GitHub Sponsors page exists yet");
+    const emptyConfig = join(tmp, "sponsors-empty.json");
+    await writeFile(emptyConfig, JSON.stringify({ ...shipped, sponsorsUrl: "" }));
+    const emptyOut = join(tmp, "sponsors-empty");
+    const summary = await build({ outDir: emptyOut, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath: emptyConfig });
+    assert.ok(!summary.placeholders.includes("sponsorsUrl"), "an empty sponsorsUrl is not a placeholder");
+    for (const page of ["ung-ho/index.html", "en/donate/index.html"]) {
+      const html = await readFile(join(emptyOut, page), "utf8");
+      assert.ok(!html.includes("donate-sponsors") && !/github\.com\/sponsors/.test(html), `${page}: no sponsor card`);
+    }
     // A real sponsor page in site/config.json brings the GitHub Sponsors card back (PRD-R57).
     const configPath = join(tmp, "sponsors-config.json");
     const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
@@ -357,6 +382,12 @@ try {
     await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
     const sponsored = await readFile(join(out, "ung-ho", "index.html"), "utf8");
     assert.match(sponsored, /id="donate-sponsors"[\s\S]*href="https:\/\/github\.com\/sponsors\/example"/);
+    for (const bad of ["javascript:alert(1)", "http://github.com/sponsors/x", 42]) {
+      await writeFile(configPath, JSON.stringify({ ...base, sponsorsUrl: bad }));
+      await assert.rejects(() => build({ outDir: join(tmp, "sponsors-bad"), today: "2026-11-13", configPath }), /sponsorsUrl/, String(bad));
+    }
+    await writeFile(configPath, JSON.stringify({ ...base, sponsorsUrl: "https://github.com/sponsors/OWNER" }));
+    assert.ok((await build({ outDir: join(tmp, "sponsors-placeholder"), today: "2026-11-13", configPath })).placeholders.includes("sponsorsUrl"), "a placeholder is still reported for --strict");
   });
 
   await check("populated: favicon, touch icon and header logo come from the app icon (CLR-R7)", async () => {
@@ -376,6 +407,12 @@ try {
     for (const id of ["luu-tren-may", "gui-di", "chan-doan", "ban-ghi", "trang-web", "xoa-du-lieu"]) assert.ok(p.includes(`id="${id}"`), id);
     assert.match(p, /Phân tích truy cập: không có/);
     assert.match(read("en", "privacy", "index.html"), /Visitor analytics: none/);
+  });
+
+  await check("populated: the iTerm2 Secure Input line is the one sentence of Q38 (no VERIFY left)", () => {
+    const line = (html) => html.match(/<li><strong>iTerm2<\/strong>: ([\s\S]*?)<\/li>/)[1];
+    assert.equal(line(read("en", "support", "index.html")), "iTerm2 has Secure Keyboard Entry turned on. Turn off <em>iTerm2 &gt; Secure Keyboard Entry</em>, or finish or cancel the password prompt it is waiting for.");
+    assert.equal(line(read("ho-tro", "index.html")), "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay huỷ) lời nhắc mật khẩu đang chờ.");
   });
 
   await check("populated: support page has permission (macOS 27 naming), Secure Input, targets", () => {
@@ -471,6 +508,21 @@ try {
     assert.equal(changelogHeadingId(3, "[1.2.0] - 2026-12-01"), undefined);
   });
 
+  await check("fallback: pages state the macOS 12 Monterey floor and its permission path (Q6, ADR 0315, PRD-R40)", () => {
+    const page = (...p) => fallbackPages.get(join(fallback, ...p));
+    assert.match(page("tai-ve", "index.html"), /macOS 12 Monterey trở lên/);
+    assert.match(page("en", "download", "index.html"), /macOS 12 Monterey or later/);
+    for (const html of fallbackPages.values()) assert.ok(!/Sonoma|macOS 15 Sequoia/.test(html), "no stale macOS 15 floor");
+    const vi = page("ho-tro", "index.html");
+    const en = page("en", "support", "index.html");
+    assert.ok(vi.includes("Tùy chọn Hệ thống &gt; Bảo mật &amp; Quyền riêng tư &gt; Quyền riêng tư &gt; <strong>Trợ năng</strong>"), "vi macOS 12 path");
+    assert.ok(en.includes("System Preferences &gt; Security &amp; Privacy &gt; Privacy &gt; <strong>Accessibility</strong>"), "en macOS 12 path");
+    assert.match(vi, /macOS 12 Monterey trở lên/);
+    assert.match(en, /macOS 12 Monterey or later/);
+    assert.match(page("rieng-tu", "index.html"), /Trợ năng \(macOS 12 tới 26\)/);
+    assert.match(page("en", "privacy", "index.html"), /Accessibility \(macOS 12 to 26\)/);
+  });
+
   await check("fallback: changelog fills {{AppName}} from brand.env", () => {
     const en = fallbackPages.get(join(fallback, "en", "changelog", "index.html"));
     assert.ok(!en.includes("{{AppName}}"));
@@ -547,71 +599,107 @@ try {
     assert.deepEqual(adapted[1].headers, [["Content-Security-Policy", "default-src 'none'"]], "the release-notes policy is never widened");
   });
 
-  await check("analytics off: no loader, no PostHog, no third-party origin in pages, CSP or dist/_headers (Q7)", async () => {
+  await check("analytics off: no tag, no third-party origin in pages, CSP or dist/_headers (Q7)", async () => {
     for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
-      assert.deepEqual((await readdir(join(dist, "assets"))).filter((name) => name.startsWith("analytics")), [], `${dist}: no analytics loader without a key`);
+      assert.deepEqual((await readdir(join(dist, "assets"))).filter((name) => name.startsWith("analytics")), [], `${dist}: no analytics file`);
       for (const [file, html] of pages) {
-        assert.ok(!/analytics\.js|posthog/i.test(html), `${file}: analytics markup without a key`);
+        assert.ok(!/data-website-id|umami|posthog/i.test(html.replace(/<main[\s\S]*<\/main>/, "")), `${file}: analytics markup without a config`);
         assert.deepEqual([...thirdPartyOrigins(html)], [], `${file}: third-party origin`);
       }
       const headers = await readFile(join(dist, "_headers"), "utf8");
-      assert.ok(!/posthog|https?:\/\//i.test(headers.replace(/^#.*$/gm, "")), "dist/_headers names no other host");
+      assert.ok(!/https?:\/\//i.test(headers.replace(/^#.*$/gm, "")), "dist/_headers names no other host");
       assert.ok(!/X-Robots-Tag/.test(headers), "no noindex unless asked");
     }
+    // An analytics object whose three values are empty means no analytics too.
+    const configPath = join(tmp, "analytics-empty.json");
+    await writeFile(configPath, JSON.stringify({ ...shipped, analytics: { provider: "", scriptUrl: "", websiteId: "" } }));
+    const out = join(tmp, "analytics-empty");
+    await build({ outDir: out, today: "2026-11-13", configPath });
+    const home = await readFile(join(out, "index.html"), "utf8");
+    assert.deepEqual([...thirdPartyOrigins(home)], []);
+    assert.match(await readFile(join(out, "rieng-tu", "index.html"), "utf8"), /Phân tích truy cập: không có/);
   });
 
-  await check("analytics on: one cookieless loader on every website page, only the PostHog hosts, never on release notes", async () => {
-    const configPath = join(tmp, "analytics-config.json");
-    const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
-    const key = "phc_TestProjectKey0123456789abcdef";
-    const apiHost = "https://eu.i.posthog.com";
-    const assetsHost = POSTHOG_HOSTS[apiHost];
-    await writeFile(configPath, JSON.stringify({ ...base, analytics: { posthogKey: key, posthogHost: apiHost } }));
+  await check("analytics on (site/config.json): the Umami tag on every website page, only its origin, never on release notes", async () => {
+    // Pa, 2026-11-13 (Q7 follow-up): self-hosted Umami 3.5.0 at stats.kal.vn; the website id is public.
+    assert.deepEqual(shipped.analytics, { provider: "umami", scriptUrl: "https://stats.kal.vn/script.js", websiteId: "42572ae2-f406-4ed3-ba33-8324a046d7c9" });
+    const brand = await loadBrand(join(ROOT_DIR, "scripts", "brand.env"));
+    const origin = "https://stats.kal.vn";
+    const tag = `<script defer src="${origin}/script.js" data-website-id="42572ae2-f406-4ed3-ba33-8324a046d7c9" data-domains="${brand.host}" data-do-not-track="true"></script>`;
     const out = join(tmp, "analytics");
-    await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
-    const src = analyticsScriptPath(await loaderSource());
-    assert.match(src, /^\/assets\/analytics\.[0-9a-f]{10}\.js$/, "the loader URL carries its content hash");
-    const tag = `<script src="${src}" defer data-posthog-key="${key}" data-posthog-host="${apiHost}" data-posthog-assets="${assetsHost}"></script>`;
+    await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated") });
     const files = (await walk(out)).filter((f) => f.endsWith(".html"));
-    assert.ok(files.length >= ROUTES.length * LANGS.length);
+    assert.ok(files.length >= ROUTES.length * LANGS.length + 1, "every route in both languages and the 404 page");
     for (const file of files) {
       const html = await readFile(file, "utf8");
-      if (isReleaseNotesPage(file.slice(out.length + 1))) { assert.ok(!html.includes("analytics.js"), `${file}: loader on a release-notes page`); continue; }
-      assert.equal(html.split(tag).length - 1, 1, `${file}: exactly one analytics loader`);
-      assert.deepEqual([...thirdPartyOrigins(html)].sort(), [apiHost, assetsHost].sort(), `${file}: only the PostHog hosts`);
+      if (isReleaseNotesPage(file.slice(out.length + 1))) { assert.ok(!html.includes("data-website-id"), `${file}: analytics on a release-notes page`); continue; }
+      assert.equal(html.split(tag).length - 1, 1, `${file}: exactly one analytics tag`);
+      assert.ok(html.indexOf(tag) < html.indexOf("</head>"), `${file}: in the head`);
+      assert.deepEqual([...thirdPartyOrigins(html)], [origin], `${file}: only the Umami origin`);
       assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), `${file}: no inline script (PRD-R74)`);
+      const meta = attrs(html, "content").find((value) => /default-src/.test(value)).replace(/&#39;/g, "'");
+      assert.match(meta, new RegExp(`script-src 'self' ${origin.replace(/\./g, "\\.")};`), `${file}: meta CSP script-src`);
+      assert.match(meta, new RegExp(`connect-src 'self' ${origin.replace(/\./g, "\\.")}$`), `${file}: meta CSP connect-src`);
     }
-    const loader = await readFile(join(out, src), "utf8");
-    assert.ok(!existsSync(join(out, "assets", "analytics.js")), "no loader under a fixed name");
-    await assertFingerprinted(out);
-    for (const setting of ['cookieless_mode: "always"', 'persistence: "memory"', 'person_profiles: "never"', "autocapture: false", "disable_session_recording: true", "advanced_disable_flags: true"]) assert.ok(loader.includes(setting), setting);
-    assert.ok(loader.includes("/static/1/array.js") && !/https?:\/\//.test(loader.replace(/^\/\/.*$/gm, "")), "the loader names no host itself");
+    assert.deepEqual((await readdir(join(out, "assets"))).filter((name) => name.startsWith("analytics")), [], "no local loader: the tag loads Umami's script");
+    await checkSite("analytics", out, { allowedScriptTag: tag });
     const rules = parseHeaders(await readFile(join(out, "_headers"), "utf8"));
     const site = cspOf(rules, "/tai-ve/")[0];
-    assert.match(site, new RegExp(`script-src 'self' ${assetsHost.replace(/\./g, "\\.")}(;|$)`));
-    assert.match(site, new RegExp(`connect-src 'self' ${apiHost.replace(/\./g, "\\.")} ${assetsHost.replace(/\./g, "\\.")}(;|$)`));
+    assert.match(site, new RegExp(`script-src 'self' ${origin.replace(/\./g, "\\.")}(;|$)`));
+    assert.match(site, new RegExp(`connect-src 'self' ${origin.replace(/\./g, "\\.")}(;|$)`));
+    assert.deepEqual([...new Set(site.match(/https:\/\/[^\s;']+/g))], [origin], "the CSP names no other host");
     const notes = cspOf(rules, "/release-notes/1.0.0/");
-    assert.ok(notes.some((policy) => /^default-src 'none'/.test(policy) && !/script-src|posthog/.test(policy)));
+    assert.ok(notes.some((policy) => /^default-src 'none'/.test(policy) && !/script-src|stats\./.test(policy)), "the release-notes policy allows no script");
     const privacyVi = await readFile(join(out, "rieng-tu", "index.html"), "utf8");
     const privacyEn = await readFile(join(out, "en", "privacy", "index.html"), "utf8");
-    assert.match(privacyVi, /PostHog Cloud ở chế độ không cookie/);
-    assert.ok(privacyVi.includes(`<code>${apiHost}</code>`) && privacyVi.includes(`<code>${assetsHost}</code>`));
-    assert.match(privacyEn, /PostHog Cloud in cookieless mode/);
+    for (const needle of ["Umami", "tự vận hành", "không dùng cookie", "không lưu gì trong trình duyệt", "không thu thập dữ liệu cá nhân", "địa chỉ IP không được lưu", "Do Not Track", "lượt xem trang", "tiêu đề trang", `<code>${origin}</code>`]) assert.ok(privacyVi.includes(needle), `vi privacy: ${needle}`);
+    for (const needle of ["Umami", "self-hosted", "no cookies", "nothing is stored in your browser", "no personal data", "IP address is not stored", "Do Not Track", "page views", "the page title", `<code>${origin}</code>`]) assert.ok(privacyEn.includes(needle), `en privacy: ${needle}`);
+    assert.ok(!/PostHog/.test(privacyVi + privacyEn), "PostHog is gone");
     assert.ok(!/Phân tích truy cập: không có/.test(privacyVi) && !/Visitor analytics: none/.test(privacyEn), "the privacy page states what ships");
   });
 
-  await check("analytics config is validated (key shape, PostHog Cloud host only)", async () => {
+  await check("analytics config is validated (provider, https URL on an allowed host, UUID shape, no stray keys)", async () => {
     const configPath = join(tmp, "analytics-bad.json");
-    const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
+    const good = shipped.analytics;
     for (const [analytics, message] of [
-      [{ posthogKey: 'phc_abc"><script>' }, /posthogKey/],
-      [{ posthogKey: "phc_TestProjectKey0123456789abcdef", posthogHost: "https://tracker.example" }, /posthogHost/],
-      [{ posthogKey: 42 }, /posthogKey/],
+      [{ ...good, provider: "posthog" }, /provider/],
+      [{ ...good, provider: 42 }, /provider/],
+      [{ ...good, scriptUrl: "http://stats.kal.vn/script.js" }, /https/],
+      [{ ...good, scriptUrl: "https://tracker.example/script.js" }, /allowed host/],
+      [{ ...good, scriptUrl: "https://stats.kal.vn.evil.example/script.js" }, /allowed host/],
+      [{ ...good, scriptUrl: "https://user@stats.kal.vn/script.js" }, /scriptUrl/],
+      [{ ...good, scriptUrl: "https://stats.kal.vn:8443/script.js" }, /scriptUrl/],
+      [{ ...good, scriptUrl: 'https://stats.kal.vn/script.js"><script>alert(1)</script>' }, /scriptUrl/],
+      [{ ...good, scriptUrl: "https://stats.kal.vn/script.js?x=1" }, /scriptUrl/],
+      [{ ...good, scriptUrl: "not a url" }, /scriptUrl/],
+      [{ ...good, websiteId: "not-a-uuid" }, /websiteId/],
+      [{ ...good, websiteId: '42572ae2-f406-4ed3-ba33-8324a046d7c9" onload="x' }, /websiteId/],
+      [{ websiteId: good.websiteId }, /together/],
+      [{ ...good, scriptUrl: "" }, /together/],
+      [{ ...good, posthogKey: "phc_x" }, /posthogKey/],
       ["on", /analytics must be an object/],
+      [[], /analytics must be an object/],
     ]) {
-      await writeFile(configPath, JSON.stringify({ ...base, analytics }));
+      await writeFile(configPath, JSON.stringify({ ...shipped, analytics }));
       await assert.rejects(() => build({ outDir: join(tmp, "analytics-bad"), today: "2026-11-13", configPath }), message, JSON.stringify(analytics));
     }
+  });
+
+  await check("analytics hosts come from the site: lines of scripts/url-hosts.allow (QA-R60, ADR 0602)", async () => {
+    assert.deepEqual(await loadAnalyticsHosts(join(ROOT_DIR, "scripts", "url-hosts.allow")), ["stats.kal.vn"]);
+    const allow = join(tmp, "hosts.allow");
+    await writeFile(allow, "# comment\nwww.apple.com\n*.example.org\nsite: one.example.vn  # trailing comment\nsite: TWO.example.vn\n");
+    assert.deepEqual(await loadAnalyticsHosts(allow), ["one.example.vn", "two.example.vn"], "app hosts never count");
+    await writeFile(allow, "site: a b\n");
+    await assert.rejects(() => loadAnalyticsHosts(allow), /site:/);
+    assert.throws(() => parseAnalytics(shipped.analytics, []), /allowed host/, "no site: line, no analytics");
+    const parsed = parseAnalytics(shipped.analytics, ["stats.kal.vn"]);
+    assert.equal(parsed.origin, "https://stats.kal.vn");
+    assert.ok(Object.isFrozen(parsed));
+    assert.deepEqual(analyticsCspAdditions(parsed), { "script-src": ["https://stats.kal.vn"], "connect-src": ["https://stats.kal.vn"] });
+    assert.deepEqual(analyticsCspAdditions(parseAnalytics(undefined, [])), {});
+    assert.equal(analyticsScriptTag(parseAnalytics(null, []), "example.vn"), "");
+    assert.throws(() => analyticsScriptTag(parsed, 'x" onload="y'), /domain/);
   });
 
   await check("every /assets/ reference carries the content hash of its file (immutable /assets/* caching)", async () => {
@@ -619,8 +707,6 @@ try {
     assert.ok(headersForPath(rules, "/assets/x.js").some(([name, value]) => name === "Cache-Control" && /immutable/.test(value)),
       "this check exists because /assets/* is cached for a year");
     await assertFingerprinted(populated);
-    assert.notEqual(analyticsScriptPath("loader a"), analyticsScriptPath("loader b"), "a changed loader gets a new URL");
-    assert.equal(analyticsScriptPath("loader a"), analyticsScriptPath("loader a"), "an unchanged loader keeps its URL");
   });
 
   await check("noindex preview: X-Robots-Tag on every response only when asked (Pa, 2026-11-13)", async () => {

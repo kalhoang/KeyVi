@@ -25,7 +25,7 @@ export const home = {
   proof: [
     { h: "No data collection", p: "No telemetry, no analytics SDK, no \"anonymous usage data\". The only automatic network traffic is the update check.", link: "{{hrefPrivacy}}", linkText: "Read the privacy details" },
     { h: "Free", p: "{{AppName}} is free and always will be. No feature is locked, and the app never nags you for donations." },
-    { h: "Open-source engine", p: "The Vietnamese typing engine is a Swift package under the Mozilla Public License 2.0, written from scratch from Vietnamese spelling rules, with its own test suite.", link: "{{repo}}", linkText: "Read the source", external: true },
+    { h: "Open-source engine", p: "The Vietnamese typing engine is a Swift package under the Mozilla Public License 2.0, written from scratch from Vietnamese spelling rules, with its own test suite. The rest of the app is open source too, under GPL-3.0-or-later.", link: "{{repo}}", linkText: "Read the source", external: true },
   ],
   whyHeading: "What you will notice",
   why: [
@@ -58,8 +58,8 @@ export const download = {
   reqHeading: "System requirements",
   reqMacos: "{{macosRequirement}}",
   reqArch: "A Mac with Apple silicon or Intel (one build runs on both). macOS 27 runs on Apple silicon only.",
-  reqExcluded: "Macs that stop at macOS Sonoma (for example the 2018 and 2019 MacBook Air and some 2017 models) are not supported.",
-  reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 15 and 26, <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
+  reqExcluded: "Macs that cannot run macOS 12 Monterey are not supported. macOS 13 and 14 are supported but not tested separately.",
+  reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
   reqNoOthers: "{{AppName}} asks for no other permission (no Screen Recording, no Full Disk Access).",
   trustHeading: "Signature and notarization",
   trustBody: "Every DMG is signed with Kal's Developer ID certificate, notarized by Apple and stapled with the notarization ticket, so macOS opens it without a warning. Automatic updates use Sparkle 2 and are signed with EdDSA; the app rejects an update with a wrong signature.",
@@ -113,10 +113,11 @@ export const privacy = {
   h1: "Privacy",
   lede: "The principle: what you type never leaves your Mac and is never written to disk, except in one case you start yourself (a typing trace for a bug report, described below). The only automatic network traffic is the update check.",
   updated: "Last updated: 13 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
-  // The "This website" analytics line: `off` when site/config.json has no PostHog key, `posthog` when it has one.
+  // The "This website" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
+  // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
   analytics: {
     off: "<strong>Visitor analytics: none.</strong> No Google Analytics, no third-party measurement, no tracking pixels.",
-    posthog: "<strong>Visitor analytics: PostHog Cloud in cookieless mode.</strong> The pages of this website (not the app, not the release-notes pages) load PostHog's measurement library from <code>{{analyticsAssets}}</code> and send page views to <code>{{analyticsHost}}</code>. No cookies, nothing stored in your browser, no session recording, no click tracking, no user profiles. To count visitors without identifying you, PostHog computes a hash of your IP address and browser with a value that changes every day; the IP address is not stored. No advertising and no other third party.",
+    umami: "<strong>Visitor analytics: Umami, self-hosted by the project.</strong> The pages of this website (not the app, not the release-notes pages) load Umami's script from <code>{{analyticsOrigin}}</code>, a server the project runs itself, and send it page views: the page address, the page title, the referring page, the screen size and the browser language. Umami uses no cookies and nothing is stored in your browser; it collects no personal data and keeps no user profiles. To count visitors, the server derives a visit identifier from a one-way hash of your IP address and browser with a value that changes every month; the IP address is not stored, only the approximate country and city derived from it and the browser, operating system and device type. If your browser sends Do Not Track, nothing is sent at all. Only aggregated page views are looked at (per page, referrer and country); the data is not shared with anyone and there is no advertising.",
   },
   html: `
 <h2 id="summary">Summary</h2>
@@ -124,7 +125,7 @@ export const privacy = {
   <li>No telemetry, no analytics service, no crash-reporting SDK, no remotely loaded configuration or rules.</li>
   <li>No web view that loads remote content. Release notes are shown without loading external resources.</li>
   <li>Password fields and the macOS secure input mode are always skipped. This is not a setting.</li>
-  <li>One permission is needed: Accessibility (macOS 15 and 26) or Device Control and Data Access (macOS 27). If macOS asks for more, the app says why. There is no Screen Recording, Automation or Full Disk Access.</li>
+  <li>One permission is needed: Accessibility (macOS 12 to 26) or Device Control and Data Access (macOS 27). If macOS asks for more, the app says why. There is no Screen Recording, Automation or Full Disk Access.</li>
   <li>When permission is missing, your keyboard keeps typing normally (the app lets keys through and holds nothing back).</li>
 </ul>
 

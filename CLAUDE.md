@@ -46,8 +46,10 @@ UI strings take the app name as a format argument. `scripts/rename-app.sh` must 
 
 ## Engineering rules
 - Swift 6 language mode, complete strict concurrency. No global or static mutable state in the engine (ENG-R1202).
-- Every source file starts with an SPDX header: engine packages and the `data/` pipeline `MPL-2.0`; everything else `LicenseRef-App-Pending`
-  (app licence is an open decision for Pa).
+- Every source file starts with an SPDX header: engine packages, the `data/` pipeline and `spec/reference-model` `MPL-2.0`;
+  everything else `GPL-3.0-or-later` (Pa, 2026-11-13; `docs/decisions/0006-app-licence-and-pro-edition.md`). Root `LICENSE`
+  is the verbatim GPL-3.0 text (never edit it); the MPL-2.0 parts carry their own `LICENSE`. Contributions need a DCO sign-off;
+  contributions to GPL parts are also licensed to the project under MIT (`CONTRIBUTING.md` section 3).
 - No per-app branches in code: bundle IDs live only in `compat/rules.json`, test fixtures and the
   conflicting-apps list (PLT-R501).
 - Privacy: never log, print or persist typed content (PLT-R901, ENG-R1220). Typed logging API only.

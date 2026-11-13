@@ -145,7 +145,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |
 | PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table | U, M, V | W1-C, W1-G; Pa | **Pa** |
 | PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | skeleton (done, runnable spike); Pa runs it | **Pa** |
-| PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps`, source registry `compat/conflicting-apps.json` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring) |  |
+| PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps`, source registry `compat/conflicting-apps.json` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring); W5-A (IDs) | The bundle IDs of XKey, PHTV and Gõ Nhanh come from public Homebrew cask metadata (Pa's delegation, 2026-11-13; ADR 0005), never from the installed apps |
 | PLT-R401 | EditJob contents | `Injection/Jobs.swift` | U | W1-D |  |
 | PLT-R402 | Minimal edits (common prefix trim) | `EditMinimizer` | U | W1-D |  |
 | PLT-R403 | NFC insertions, grapheme delete counts | `InjectionWorker` | U | W1-D |  |
@@ -257,8 +257,8 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PRD-R5 | Ship exactly the listed defaults | `DefaultSettings.v1` | U | W1-B |  |
 | PRD-R6 | Unset follows defaults; set preserved forever | `Setting`, `UserSettings` | U | W1-B |  |
 | PRD-R7 | "Not a setting" items absent from UI | Settings UI | U (view model), M | W2-B |  |
-| PRD-R8 | Minimum macOS 15 | `Package.swift`, `project.yml` | L | skeleton (done) |  |
-| PRD-R9 | Monochrome template icon always visible | `StatusItemController`, assets | M | W1-G; Pa | **Pa** |
+| PRD-R8 | Minimum macOS 12 with Intel (Q6, ADR 0315) | `Package.swift`, `project.yml` | L | skeleton; W4-A |  |
+| PRD-R9 | Status icon always visible (Pa's coloured KV mark, not a template image; S7) | `StatusItemController`, `StatusGlyph`, assets from `scripts/make-app-icon.py menu-bar` | M | W1-G; W4-B; Pa | **Pa** |
 | PRD-R10 | Icon states with VoiceOver labels | `StatusPresentation`, `Menu` table, assets | U, M (VoiceOver) | W1-G; W2-F; Pa | **Pa** |
 | PRD-R11 | Menu layout | `MenuModel`, `StatusItemController` | U, M | W1-G |  |
 | PRD-R12 | Switch HUD 600 ms, non-activating, Reduce Motion | `SwitchHUDController` | U, M | W1-G; W2-F; Pa | **Pa** |
@@ -323,7 +323,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PRD-R71 | Website migration pages | `site/` | D | site track |  |
 | PRD-R72 | Own export format | `SettingsStore` export | U | W1-B |  |
 | PRD-R73 | Website pages | `site/`, served by the `deploy/site` container (ADR 0602) | D, U (`node site/test.mjs`) | site track |  |
-| PRD-R74 | No trackers on the website | `site/`; optional cookieless PostHog only when `site/config.json` sets a key (Pa, 2026-11-13, Q7; ADR 0602), never in the app or on release-notes pages | U (`node site/test.mjs`: no third-party origin without a key, only the PostHog hosts with one) | site track; Pa decision |  |
+| PRD-R74 | No trackers on the website | `site/`; optional cookieless self-hosted Umami only when `site/config.json` configures it (Pa, 2026-11-13, Q7; ADR 0602 decision 7), never in the app or on release-notes pages | U (`node site/test.mjs`: no third-party origin without the config, only the Umami origin with it) | site track; Pa decision |  |
 | PRD-R75 | Appcast host over HTTPS on a Pa-controlled domain | `deploy/site` on the Kalera Docker Swarm behind Traefik and Cloudflare (ADR 0602, [site deploy](../runbooks/site-deploy.md)), `Config/Sparkle.xcconfig` | R, U (`node deploy/site/test.mjs`), M (first deploy) | release track; Pa | **Pa** |
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |
 | PRD-R77 | No in-app survey, rating prompt or usage counter | all UI | D | all UI workstreams |  |

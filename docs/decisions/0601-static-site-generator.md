@@ -81,8 +81,10 @@ Amendment, final review (2026-11-13):
 - `site/config.json` has a `banner` object (the QA-R38 and QA-R54 notice): when `enabled`, every page shows its
   `vi` or `en` text and an optional HTTPS `link` at the top, as escaped text with no script. The rollback and
   absence runbooks switch it on and off.
-- `site/config.json` has an `analytics` object (Pa, 2026-11-13, Q7): an empty `posthogKey` means no analytics
-  script at all; a key enables PostHog Cloud in cookieless mode on the website pages (never in the app, never on
-  release-notes pages), and the build adds exactly the PostHog hosts to the CSP. This replaces "Website
-  analytics: none" of decision 5 and ADR 0001 item 18 for builds that set a key; `/rieng-tu` describes whichever
-  state the build has.
+- `site/config.json` has an `analytics` object (Pa, 2026-11-13, Q7 and its evening follow-up):
+  `{ "provider": "umami", "scriptUrl": "https://<host>/script.js", "websiteId": "<uuid>" }`. Missing, or all three
+  values empty, means no analytics script at all; a valid object adds the self-hosted Umami tracker tag to the
+  website pages (never in the app, never on release-notes pages), and the build adds exactly its origin to the CSP.
+  This replaces "Website analytics: none" of decision 5 and ADR 0001 item 18 for builds that configure it;
+  `/rieng-tu` describes whichever state the build has. The first version of this amendment used PostHog Cloud; it
+  was replaced by Umami the same day (ADR 0602 decision 7).

@@ -32,7 +32,7 @@ export function renderPrivacy(ctx, lang) {
   const m = c.privacy;
   // The website section states the analytics this build really ships (site/config.json `analytics`, ADR 0602).
   const analytics = ctx.config.analytics;
-  const analyticsHtml = analytics.enabled ? f(m.analytics.posthog, { analyticsHost: analytics.apiHost, analyticsAssets: analytics.assetsHost }) : m.analytics.off;
+  const analyticsHtml = analytics.enabled ? f(m.analytics.umami, { analyticsOrigin: analytics.origin }) : m.analytics.off;
   const body = `
     <h1>${esc(m.h1)}</h1>
     <p class="lede">${esc(m.lede)}</p>
@@ -62,6 +62,7 @@ export function renderDonate(ctx, lang) {
   const { c, f, p, ui } = kt;
   const m = c.donate;
   const account = `<dl class="facts"><dt>${esc(m.vietqr.bankLabel)}</dt><dd>${esc(m.vietqr.bankValue)}</dd><dt>${esc(m.vietqr.accountLabel)}</dt><dd>${esc(m.vietqr.accountValue)}</dd></dl>`;
+  // An empty sponsorsUrl means no sponsor page exists; a placeholder value is never linked either.
   const sponsorsUrl = ctx.config.placeholders.includes("sponsorsUrl") ? "" : ctx.config.sponsorsUrl;
   const sponsors = sponsorsUrl
     ? `

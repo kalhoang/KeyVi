@@ -3,6 +3,7 @@
 Run: python3 -I scripts/tests/test_docs_and_workflows.py"""
 from __future__ import annotations
 
+import hashlib
 import json
 import plistlib
 import re
@@ -469,31 +470,50 @@ class AssetRecordTests(unittest.TestCase):
                 self.assertIn(f"`{key}`", self.provenance_section(), "record it in docs/provenance section 7")
 
     def test_placeholder_images_are_recorded_as_placeholders(self):
+        # Every placeholder image was replaced by final artwork on 2026-11-13 (W4-B), so the set may be empty; an
+        # image that still calls itself a placeholder must be recorded as one.
         placeholders = sorted({asset_key(p) for p in tracked_images() if "placeholder" in self.header(p).lower()
                                or p.stem == "placeholder"})
-        self.assertGreaterEqual(len(placeholders), 4)
         entries = self.assets_section().split("\n### ")[1:]  # one subsection per asset group
         for key in placeholders:
             with self.subTest(asset=key):
                 records = [entry for entry in entries if f"`{key}`" in entry]
                 self.assertTrue(records and all("placeholder" in entry.lower() for entry in records),
                                 f"THIRD_PARTY_NOTICES.md section 4 must call {key} a placeholder")
-        self.assertNotIn("generated from the maintainer's own accounts", self.assets_section(),
-                         "the bundled donation images are placeholders, not account QR codes")
 
-    # Website SVGs that the artwork workstream (W4-B) replaces in parallel: the favicon derived from the logo and the
-    # donation QR images. Their source comments arrive with that change; empty this set once it is merged.
-    PENDING_SOURCE_COMMENT = frozenset({"site/static/favicon.svg", "site/static/assets/qr/vietqr.svg",
-                                        "site/static/assets/qr/momo.svg"})
+    # Pa's own artwork as supplied on 2026-11-13 (decision S7, commit 51d7e9e), by SHA-256. These files are the
+    # product owner's originals: the project never edits them, so they cannot carry the source comment that every
+    # other SVG has. Their record is THIRD_PARTY_NOTICES.md section 4 and docs/provenance section 7. The exemption
+    # holds only while a file is byte-identical to the original; an edited copy is project work and needs the comment.
+    PA_ORIGINALS = {
+        "assets/keyvi_menubar_on_light.svg": "08659e8153c5e8b39c84514e40de56b6cbeb5300ef0f7ac9e265bf1cab01b115",
+        "assets/keyvi_menubar_on_dark.svg": "b5633ee09b67ab8b88b1c2ee344f9ea765e2e7859c53014ba8f9c1e300635385",
+        "assets/keyvi_menubar_off_light.svg": "3d7151fb9a1af9efc2bbb209f8e90bf8f8cc8065e11f94a7a98178cbf1cfad4d",
+        "assets/keyvi_menubar_off_dark.svg": "d03e3d8ce33ac4541161a1533b8dcc4a0f5384200c013332e6c2da2f2e07fbfd",
+    }
+
+    @classmethod
+    def is_pa_original(cls, rel: str, content: bytes) -> bool:
+        digest = cls.PA_ORIGINALS.get(rel)
+        return digest is not None and hashlib.sha256(content).hexdigest() == digest
 
     def test_every_svg_carries_a_source_comment(self):
         for path in (p for p in tracked_images() if p.suffix.lower() == ".svg"):
-            if path.relative_to(REPO).as_posix() in self.PENDING_SOURCE_COMMENT:
+            if self.is_pa_original(path.relative_to(REPO).as_posix(), path.read_bytes()):
                 continue
             with self.subTest(svg=path.relative_to(REPO).as_posix()):
                 header = self.header(path)
                 self.assertIn("Source:", header, "add a source comment (CLR-R7)")
                 self.assertIn("CLR-R7", header)
+
+    def test_pa_originals_are_exempt_only_while_byte_identical(self):
+        for rel in self.PA_ORIGINALS:
+            with self.subTest(original=rel):
+                original = (REPO / rel).read_bytes()
+                self.assertTrue(self.is_pa_original(rel, original), f"{rel} changed: add a source comment or restore it")
+                self.assertFalse(self.is_pa_original(rel, original + b"\n"), "an edited copy loses the exemption")
+                self.assertFalse(self.is_pa_original("site/static/" + Path(rel).name, original),
+                                 "a copy elsewhere is project work and needs the comment")
 
     @staticmethod
     def header(path: Path) -> str:
@@ -683,6 +703,212 @@ class IntegrationHooksBuildTests(unittest.TestCase):
         self.assertNotIn("INTEGRATION_HOOKS", settings)  # set by the xcconfig only, never per target
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         self.assertNotIn("Integration", build)
+
+
+class LicenceTests(unittest.TestCase):
+    """ADR 0006 (Pa, 2026-11-13): the app is GPL-3.0-or-later, the engine packages, the data pipeline and the
+    reference model are MPL-2.0, every contribution is signed off (DCO) and contributions to GPL-covered parts are also
+    licensed to the project under MIT (QA-R61, PLT-R108, CLR-R11)."""
+
+    # SHA-256 of https://www.gnu.org/licenses/gpl-3.0.txt as fetched on 2026-11-13 (35,149 bytes, the verbatim text).
+    GPL3_SHA256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    # spec/reference-model is MPL-2.0 too, through the SPDX header of each script and its README (spec/ keeps brand
+    # placeholders and is never rewritten by scripts/rename-app.sh, so it holds no LICENSE naming the product).
+    MIT_DIRS = ("Packages/VietnameseEngine", "Packages/VietnameseEngineFuzz", "data")
+    # SHA-256 of the verbatim Mozilla Public License 2.0 text (https://www.mozilla.org/media/MPL/2.0/index.txt).
+    MPL2_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    ADR = REPO / "docs" / "decisions" / "0006-app-licence-and-pro-edition.md"
+    PENDING_ID = "LicenseRef-" + "App-Pending"  # split so this file does not match its own search
+
+    @staticmethod
+    def brand_name() -> str:
+        env = (REPO / "scripts" / "brand.env").read_text(encoding="utf-8")
+        return re.search(r'^APP_DISPLAY_NAME="([^"]+)"$', env, re.M).group(1)
+
+    def test_root_licence_is_the_verbatim_gpl_3_text(self):
+        data = (REPO / "LICENSE").read_bytes()
+        self.assertTrue(data.startswith(b"                    GNU GENERAL PUBLIC LICENSE\n"
+                                        b"                       Version 3, 29 June 2007\n"))
+        self.assertEqual(hashlib.sha256(data).hexdigest(), self.GPL3_SHA256, "LICENSE must be byte-exact")
+
+    def test_engine_parts_carry_the_verbatim_mpl_2_text(self):
+        for directory in self.MIT_DIRS:
+            with self.subTest(directory=directory):
+                data = (REPO / directory / "LICENSE").read_bytes()
+                self.assertTrue(data.startswith(b"Mozilla Public License Version 2.0\n"))
+                self.assertEqual(hashlib.sha256(data).hexdigest(), self.MPL2_SHA256, "LICENSE must be byte-exact")
+
+    def test_mit_parts_match_the_spdx_lint(self):
+        lint = (REPO / "scripts" / "check-spdx.sh").read_text(encoding="utf-8")
+        mit_path = re.compile(re.search(r'MIT_PATH = re\.compile\(r"([^"]+)"\)', lint).group(1))
+        for directory in self.MIT_DIRS:
+            with self.subTest(directory=directory):
+                self.assertRegex(f"{directory}/x.swift", mit_path)
+        self.assertNotRegex("App/x.swift", mit_path)
+        for script in sorted((REPO / "spec" / "reference-model").glob("*.py")):
+            with self.subTest(reference_model=script.name):
+                self.assertEqual(script.read_text(encoding="utf-8").splitlines()[0], "# SPDX-License-Identifier: MPL-2.0")
+
+    def test_a_rename_never_touches_the_gpl_text(self):
+        rename = (REPO / "scripts" / "rename-app.sh").read_text(encoding="utf-8")
+        excluded = re.search(r'EXCLUDED = re\.compile\((r"[^\n]+"\n\s+r"[^\n]+")\)', rename)
+        self.assertIsNotNone(excluded, "rename-app.sh no longer defines EXCLUDED")
+        pattern = re.compile("".join(re.findall(r'r"([^"]*)"', excluded.group(1))))
+        self.assertTrue(pattern.search("LICENSE"), "the verbatim GPL text must stay byte-exact after a rename")
+        self.assertFalse(pattern.search("data/LICENSE"), "the engine licences follow a rename")
+
+    def test_no_file_still_calls_the_app_licence_pending(self):
+        listed = run("git", "-C", str(REPO), "ls-files", check=True).stdout.splitlines()
+        offenders = []
+        for rel in listed:
+            if rel.startswith("docs/decisions/") or Path(rel).suffix.lower() in IMAGE_SUFFIXES:
+                continue  # decision records keep their history
+            path = REPO / rel
+            if path.is_file() and self.PENDING_ID in path.read_text(encoding="utf-8", errors="replace"):
+                offenders.append(rel)
+        self.assertEqual(offenders, [], "the app licence is GPL-3.0-or-later (ADR 0006)")
+
+    def test_spec_open_decision_lists_record_the_licence(self):
+        for rel, marker in (("spec/00-overview.md", "| 2 | App licence"), ("spec/02-platform.md", "2. App licence"),
+                            ("spec/03-product.md", "2. App licence"), ("spec/04-quality-release.md", "1. App licence")):
+            with self.subTest(spec=rel):
+                text = (REPO / rel).read_text(encoding="utf-8")
+                line = next(line for line in text.splitlines() if line.startswith(marker))
+                self.assertIn("GPL-3.0-or-later", line)
+                self.assertIn("0006", line)
+                self.assertNotIn("not decided", line.lower())
+        platform = (REPO / "spec" / "02-platform.md").read_text(encoding="utf-8")
+        plt_r108 = next(line for line in platform.splitlines() if line.startswith("- **PLT-R108**"))
+        for needle in ("GPL-3.0-or-later", "compat-rules.json", "injection"):
+            self.assertIn(needle, plt_r108)
+        self.assertNotIn("open decision", plt_r108)
+        quality = (REPO / "spec" / "04-quality-release.md").read_text(encoding="utf-8")
+        qa_r61 = quality.split("QA-R61 ", 1)[1].split("\nQA-R62 ", 1)[0]
+        for needle in ("Signed-off-by", "MIT", "no CLA"):
+            self.assertIn(needle, qa_r61)
+        self.assertNotIn("open for Pa", qa_r61)
+
+    def test_contributing_states_dco_and_inbound_mit_without_a_cla(self):
+        text = " ".join((REPO / "CONTRIBUTING.md").read_text(encoding="utf-8").split())
+        for needle in ("Signed-off-by", "Developer Certificate of Origin", "https://developercertificate.org",
+                       "GPL-3.0-or-later", "also licensed to the project under the MIT licence",
+                       "No contributor licence agreement", "ADR 0006", "scripts/check-dco.sh",
+                       "A pull request with an unsigned commit is not merged"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+        self.assertNotIn("not accepted until", text)
+        # The merge rule must not depend on the CI scope: the dco job of ci.yml checked only the engine paths when
+        # ADR 0006 was written, so CONTRIBUTING.md states the rule, not what CI happens to check.
+        self.assertNotIn("checks every commit of a pull request from a fork", text)
+
+    def test_pull_request_template_asks_for_the_sign_off_and_the_inbound_licence(self):
+        text = (REPO / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
+        section = text.split("## Sign-off and licence", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("Signed-off-by:", section)
+        self.assertIn("MIT", section)
+        self.assertIn("GPL-3.0-or-later", section)
+        self.assertNotIn("Not required for non-engine areas", text)
+
+    def test_adr_0006_records_the_decision(self):
+        text = " ".join(self.ADR.read_text(encoding="utf-8").split())
+        self.assertTrue(text.startswith("# 0006. App licence and the Pro edition"))
+        for needle in ("Status: accepted", "GPL-3.0-or-later", "MIT", "Developer Certificate of Origin", "PLT-R108",
+                       "compat-rules.json", "injection", "99,000 VND", "after 1.0", "lifetime", "private module",
+                       "signature", "offline", "Supersedes", "0401"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+        adr_0001 = (REPO / "docs" / "decisions" / "0001-defaults-for-open-decisions.md").read_text(encoding="utf-8")
+        status = next(line for line in adr_0001.splitlines() if line.startswith("- Status:"))
+        self.assertIn("0005", status)
+        self.assertIn("0006", status)
+        self.assertIn("superseded", status)
+
+    def test_the_dco_check_covers_every_path_by_default(self):
+        script = (REPO / "scripts" / "check-dco.sh").read_text(encoding="utf-8")
+        self.assertNotIn("paths=(Packages/VietnameseEngine Packages/VietnameseEngineFuzz)", script)
+        self.assertIn("ADR 0006", script)
+
+
+class SpecFollowUpTests(unittest.TestCase):
+    """Wave 4 cross-track requests applied to the spec and the decision records (Pa's answers S8, Q8, Q6, S7)."""
+
+    PRODUCT = (REPO / "spec" / "03-product.md").read_text(encoding="utf-8")
+
+    @classmethod
+    def requirement(cls, rid: str) -> str:
+        return cls.PRODUCT.split(f"\n{rid} ", 1)[1].split("\nPRD-R", 1)[0]
+
+    def test_donation_block_is_bank_vietqr_only(self):
+        text = self.requirement("PRD-R59")
+        for needle in ("VietQR", "LioBank", "account number", "holder name", "No MoMo", "GitHub Sponsors",
+                       "sponsor page exists"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+        self.assertNotIn("VERIFY", text)
+        overview = (REPO / "spec" / "00-overview.md").read_text(encoding="utf-8")
+        funding = next(line for line in overview.splitlines() if line.startswith("| Funding |"))
+        self.assertIn("VietQR", funding)
+        self.assertIn("GitHub Sponsors once", funding)
+        adr = (REPO / "docs" / "decisions" / "0400-documentation-decisions.md").read_text(encoding="utf-8")
+        row = next(line for line in adr.splitlines() if line.startswith("| 8 |"))
+        for needle in ("VietQR", "bank name", "account number", "holder name never", "no MoMo", "S8"):
+            with self.subTest(row8=needle):
+                self.assertIn(needle, row)
+
+    def test_menu_bar_glyphs_are_coloured_and_told_apart_without_colour(self):
+        r9 = self.requirement("PRD-R9")
+        r10 = self.requirement("PRD-R10")
+        self.assertNotIn("monochrome", r9 + r10)
+        self.assertIn("not a template", r9)
+        for needle in ("emerald dot", "letter opacity", "badge shape", "VoiceOver"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, r10)
+
+    def test_onboarding_names_the_macos_12_permission_path(self):
+        screen = self.PRODUCT.split("**Screen 2: Permission**", 1)[1].split("**Screen 3", 1)[0]
+        self.assertIn("System Preferences > Security & Privacy > Privacy > Accessibility", screen)
+        self.assertIn("Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng", screen)
+        self.assertIn("macOS 12", screen)
+
+    def test_onboarding_button_takes_the_pane_app_name_from_the_table(self):
+        """The button reads `Mở %@` with the pane app's name (App/Resources/SystemPanes.json, PLT-R704); macOS 12
+        calls it Tùy chọn Hệ thống, so the spec must not fix the label to Cài đặt hệ thống."""
+        screen = self.PRODUCT.split("**Screen 2: Permission**", 1)[1].split("**Screen 3", 1)[0]
+        button = next(line for line in screen.splitlines() if line.startswith("- Button:"))
+        self.assertIn("`Mở {{SystemSettings}}`", button)
+        self.assertIn("PLT-R704", button)
+        self.assertNotIn("`Mở Cài đặt hệ thống`", button)
+
+
+class ScriptSuiteTests(unittest.TestCase):
+    """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
+    (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
+
+    RUN_SH = (REPO / "scripts" / "tests" / "run.sh").read_text(encoding="utf-8")
+    HOSTED = re.compile(r"^(ubuntu|macos|windows)-[\w.-]+$|^(self-hosted|linux|macos|macOS|windows|x64|arm|arm64|ARM64)$")
+
+    def test_the_suite_loop_runs_every_python_test_file(self):
+        loop = re.search(r"^for suite in ([^;]+); do$", self.RUN_SH, re.M)
+        self.assertIsNotNone(loop, "run.sh no longer has the Python suite loop")
+        listed = set(loop.group(1).split())
+        files = {path.stem for path in (REPO / "scripts" / "tests").glob("test_*.py")}
+        self.assertGreaterEqual(listed, {"test_make_vietqr", "test_make_app_icon"})
+        self.assertEqual(sorted(files - listed), [], "add these suites to the loop of scripts/tests/run.sh")
+        self.assertEqual(sorted(listed - files), [], "the loop names a suite that does not exist")
+
+    def test_every_runner_label_is_declared_for_actionlint(self):
+        config = (REPO / "scripts" / "actionlint.yaml").read_text(encoding="utf-8")
+        declared = set(re.findall(r"^\s+- ([\w.-]+)$", config.split("self-hosted-runner:", 1)[1], re.M))
+        self.assertGreaterEqual(declared, {"xcode-27", "tcc-granted"})
+        labels = set()
+        for workflow in sorted((REPO / ".github" / "workflows").glob("*.yml")):
+            for value in re.findall(r"^\s+runs-on: (.+)$", workflow.read_text(encoding="utf-8"), re.M):
+                if "${{" in value:
+                    continue
+                labels |= {label.strip() for label in value.strip("[] ").split(",")}
+        custom = {label for label in labels if not self.HOSTED.match(label)}
+        self.assertGreaterEqual(custom, {"xcode-27", "tcc-granted"}, "the label scan found too little")
+        self.assertEqual(sorted(custom - declared), [], "declare these labels in scripts/actionlint.yaml")
 
 
 if __name__ == "__main__":

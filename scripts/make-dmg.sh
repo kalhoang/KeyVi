@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Creates the distribution disk image (QA-R30 step 4): the app plus an /Applications link, an
-# optional background image (packaging/dmg/background.png, see packaging/dmg/README.md), compressed
+# Creates the distribution disk image (QA-R30 step 4): the app plus an /Applications link, the licence
+# text and the third-party notices (LICENSE.txt and THIRD_PARTY_NOTICES.txt, GPL-3.0 section 4, ADR 0006),
+# an optional background image (packaging/dmg/background.png, see packaging/dmg/README.md), compressed
 # UDZO, then signed with the Developer ID identity and a secure timestamp.
 #
 # Inputs: the .app (notarised and stapled first, ADR 0503 decision 2). Options: --out (default
@@ -57,6 +58,11 @@ staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 ditto "$app" "$staging/$(basename "$app")"
 ln -s /Applications "$staging/Applications"
+# Every conveyed copy carries the GPL text and the notices of what the app bundles (GPL-3.0 section 4, ADR 0006).
+for notice in LICENSE THIRD_PARTY_NOTICES.md; do
+  [[ -f "$REPO_ROOT/$notice" ]] || die "$notice is missing at the repository root; the DMG must carry it (ADR 0006)"
+  cp "$REPO_ROOT/$notice" "$staging/${notice%.md}.txt"
+done
 background="$REPO_ROOT/packaging/dmg/background.png"
 if [[ -f "$background" ]]; then
   mkdir "$staging/.background"

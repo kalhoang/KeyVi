@@ -4,12 +4,11 @@
 # host comes from the stack's environment variables, printed by deploy/site/stack-env.sh from scripts/brand.env:
 # SITE_HOST, SITE_SLUG, IMAGE_OWNER, IMAGE_NAME and IMAGE_TAG (prod). TRAEFIK_CERT_RESOLVER is optional.
 #
-# Traefik labels follow the stacks that already run on this Swarm (the production stack file of Kalera PA, which the
-# Kalera infrastructure notes point to, read on 2026-11-13): network traefik_public, entrypoints websecure (TLS) and web (redirect to HTTPS),
-# certificate resolver `cloudflare` (the Cloudflare DNS challenge of the shared traefik2 stack). VERIFY on the first
-# deploy: the resolver name in traefik2's static configuration (another stack's file defaults to `letsencrypt`), and
-# whether traefik2 runs the v3 swarm provider (traefik.swarm.network) or the v2 docker provider (traefik.docker.network);
-# both labels are set, each provider reads only its own.
+# Traefik labels follow the stacks that already run on this Swarm: network traefik_public, entrypoints websecure (TLS)
+# and web (redirect to HTTPS), certificate resolver `cloudflare` (the Cloudflare DNS challenge of the shared traefik2
+# stack). The shared traefik2 runs the v3 Swarm provider and skips a service whose labels mix traefik.docker.* and
+# traefik.swarm.* ("both Docker and Swarm labels are defined"), so only traefik.swarm.network is set. Both facts were
+# confirmed by the analytics stack (deploy/umami/stack.yml) on 2026-11-13 (ADR 0602 decision 5).
 # `version` is obsolete for Compose but older `docker stack deploy` releases still require it.
 version: "3.8"
 
@@ -48,7 +47,6 @@ services:
       labels:
         - traefik.enable=true
         - traefik.swarm.network=traefik_public
-        - traefik.docker.network=traefik_public
         - traefik.http.routers.${SITE_SLUG:?set SITE_SLUG (deploy/site/stack-env.sh)}-site.rule=Host(`${SITE_HOST:?set SITE_HOST (deploy/site/stack-env.sh)}`)
         - traefik.http.routers.${SITE_SLUG}-site.entrypoints=websecure
         - traefik.http.routers.${SITE_SLUG}-site.tls=true

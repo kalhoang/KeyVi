@@ -27,7 +27,7 @@ without permissions. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) first for the
   `main` = `@MainActor`; `utility` = the utility serial queue (the `SettingsStore` actor's executor);
   `any` = `Sendable`, safe from every thread; `tap-safe` = may be called inside the tap callback
   (no locks, no allocation, no syscalls that block).
-- Conventions: SPDX header `LicenseRef-App-Pending` on every non-engine file; requirement IDs in comments
+- Conventions: SPDX header `GPL-3.0-or-later` on every file outside the MPL-2.0 engine packages and `data/` (ADR 0006); requirement IDs in comments
   where they drive non-obvious behaviour; no bundle-ID literals in code (PLT-R501; reverse-DNS constants that
   are not bundle IDs go in a file named `ReverseDNSConstants.swift` and are allowed by a pattern in
   `scripts/lint-bundle-ids.allow` or an inline `lint:allow-bundle-id <reason>` marker); no string

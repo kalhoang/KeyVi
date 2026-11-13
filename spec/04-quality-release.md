@@ -157,7 +157,7 @@ QA-R30 The release process MUST, in order (CI runs the tests and the unsigned bu
 1. Re-run the full `ci.yml` suite on the tagged commit and require the latest `integration.yml` run on that commit to be green. A release pipeline without a test gate is how a predecessor shipped an auto-update that left users unable to type.
 2. Build a universal Release archive with hardened runtime, no `get-task-allow`, no unnecessary entitlements, signed with Pa's Developer ID Application certificate.
 3. Verify signature (`codesign --verify --deep --strict`) and that the designated requirement matches the previous release's (bundle ID `vn.kal.{{app-slug}}` and Team ID unchanged). A changed designated requirement makes macOS re-ask permissions, so it is a hard failure.
-4. Create the DMG (app plus Applications link, background, signed).
+4. Create the DMG (app plus Applications link, the licence text and the third-party notices, background, signed).
 5. Notarise with `notarytool` using an App Store Connect API key (not an app-specific password), wait for the result, fail on any issue in the log.
 6. Staple the ticket to the app and the DMG; validate with `stapler validate` and `spctl --assess`.
 7. Produce SHA-256 checksums (and a build provenance attestation for the steps that run in GitHub Actions).
@@ -284,9 +284,9 @@ QA-R60 Any new network endpoint in the app requires a decision record and an upd
 
 ## 7. Contribution rules
 
-QA-R61 Contribution sign-off depends on the app licence decision (open for Pa):
-- Engine package (MPL-2.0): Developer Certificate of Origin (`Signed-off-by` on every commit), enforced by a DCO check. Rationale: lightweight, sufficient for open-source licences, familiar to contributors.
-- App: if Pa licenses the app under a permissive licence or GPL-3.0 with no intention to relicense, use DCO as well. If Pa wants to keep the option of relicensing the app or offering a separately licensed edition later, require a CLA (contributor grants a licence broad enough to relicense) via a CLA bot, and say so in `CONTRIBUTING.md` before accepting the first external PR. Decide before the repository becomes public.
+QA-R61 Contribution sign-off follows the licence decision of the product owner (13/11/2026; `docs/decisions/0006-app-licence-and-pro-edition.md`): the engine packages, the `data/` pipeline and the reference model are MPL-2.0, everything else is GPL-3.0-or-later.
+- Every contribution, in every area: Developer Certificate of Origin (`Signed-off-by` on every commit, the e-mail matching the commit author), enforced by a DCO check on pull requests. Rationale: lightweight and familiar to contributors.
+- Inbound terms: a contribution to a GPL-3.0-or-later part is licensed under the GPL as part of the project and is also licensed to the project under MIT, so the copyright holder can ship it in a separately licensed Pro edition later; the sign-off affirms this. There is no CLA. `CONTRIBUTING.md` states these terms.
 
 QA-R62 Every PR template includes a clean-room attestation checkbox: "I did not read or copy code from other Vietnamese input methods while writing this change (see spec/05-clean-room.md)." PRs from contributors who cannot tick it are declined politely.
 
@@ -334,9 +334,9 @@ QA-R67 Docs are part of the definition of done: a PR that changes user-visible b
 
 ## 10. Open questions for Pa
 
-All answered on 13/11/2026 except the app licence; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+All answered on 13/11/2026; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (the app licence in `docs/decisions/0006-app-licence-and-pro-edition.md`).
 
-1. App licence, which decides DCO-only versus CLA (QA-R61): not decided; files outside the engine keep `LicenseRef-App-Pending`.
+1. App licence, which decides DCO-only versus CLA (QA-R61): GPL-3.0-or-later for the app with MPL-2.0 for the engine packages, the `data/` pipeline and the reference model; DCO for every contribution plus an inbound MIT grant for GPL-covered parts, no CLA (ADR 0006).
 2. Sparkle signing: on Pa's Mac (QA-R32), together with Developer ID signing and notarisation (QA-R31).
 3. Self-hosted Mac for integration tests (QA-R12): a tart macOS virtual machine on Pa's Mac is proposed, awaiting Pa's confirmation.
 4. Support and security email addresses (QA-R51, QA-R56): one project mailbox on `kal.vn` (`APP_SUPPORT_EMAIL`).

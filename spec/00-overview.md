@@ -10,7 +10,7 @@
 | Code base | Written from scratch under clean-room rules (05-clean-room.md). No code from XKey, OpenKey, Unikey or other input methods. |
 | Brand | Personal project "by Kal", home `{{app-slug}}.kal.vn`, signed with Pa's individual Developer ID. Not a Kalera company product. |
 | Distribution | Notarized DMG, Homebrew cask, Sparkle 2 updates signed with EdDSA. No Mac App Store. |
-| Funding | Free and open source. Donations via a bank VietQR code only (no MoMo for now, decided later the same day). Polar.sh is not used for donations (its policy forbids them). |
+| Funding | Free and open source. Donations via a bank VietQR code (bank name and account number shown, never the holder name; no MoMo, decided later the same day), plus GitHub Sponsors once a sponsor page exists. Polar.sh is not used for donations (its policy forbids them). |
 | P0 | The three daily annoyances in 03-product.md section 3.0 (blocked typing in iTerm2, slang `dz` / `hẹo`, English restore only on Space) are release blockers. |
 | Slang | `z` and `dz` are accepted slang onsets; `f`, `j`, `w` are not (they would make English words compose). |
 | Memory store | The implementation uses a new, empty memory project (05-clean-room.md CLR-R8). |
@@ -43,12 +43,12 @@ Every file uses `{{AppName}}` (display name) and `{{app-slug}}` (ASCII slug: bun
 
 ## 5. Open decisions for Pa (consolidated)
 
-All answered on 13/11/2026 except the app licence. The full list of answers, with the place that implements each one (or the later wave that will), is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+All answered on 13/11/2026; the app licence followed the same evening. The full list of answers, with the place that implements each one (or the later wave that will), is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
 
 | # | Decision | Answer (Pa, 13/11/2026) | Where |
 |---|---|---|---|
 | 1 | Product name | Chosen; kept only in the brand files | section 4 |
-| 2 | App licence (affects contribution rules and any future paid edition) | Not decided; `LicenseRef-App-Pending` stays | 03 s.18, 02 s.14, 04 s.10 |
+| 2 | App licence (affects contribution rules and any future paid edition) | GPL-3.0-or-later for the app; engine packages, `data/` pipeline and reference model MPL-2.0; DCO sign-off with inbound MIT, no CLA; Pro edition after 1.0 (`docs/decisions/0006-app-licence-and-pro-edition.md`) | 03 s.18, 02 s.14, 04 s.10 |
 | 3 | Engine licence: MIT or Apache-2.0 | MPL-2.0 | ENG Q1 |
 | 4 | Default tone placement | Traditional (`hòa`, `thủy`), with the setting | ENG Q2, 03 D2 |
 | 5 | Restore-last-word hotkey | Escape by default, with an on/off setting and exclusions through compatibility rules | ENG Q4, 03 D8, PLT-R353 |
@@ -64,7 +64,7 @@ All answered on 13/11/2026 except the app licence. The full list of answers, wit
 | 15 | Archive hosting | `{{app-slug}}.kal.vn` only | 02 s.14, PLT-R906 |
 | 16 | Self-hosted Mac runner for compatibility automation | Proposed: a tart macOS virtual machine on Pa's Mac (awaiting Pa) | 02 s.14, 04 QA-R12 |
 | 17 | IMKit edition later | Decide after spike S1 | 02 PLT-R207, PLT-R398D |
-| 18 | Website analytics | PostHog Cloud, cookieless | 03 PRD-R74 |
+| 18 | Website analytics | Self-hosted Umami, cookieless | 03 PRD-R74 |
 | 19 | Donation account details, public sponsor list | Bank VietQR, bank name and account number shown, no holder name; no sponsor list for now | 03 PRD-R59, PRD-R61 |
 
 ## 6. Suggested first steps for the implementation repository

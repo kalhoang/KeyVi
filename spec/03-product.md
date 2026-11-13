@@ -143,18 +143,19 @@ PRD-R8 Minimum macOS: **macOS 12 Monterey**, on Apple silicon and Intel Macs (Pa
 
 ## 5. Menu bar UI and status indicator
 
-PRD-R9 The app MUST show a monochrome template icon in the menu bar at all times while running. The user cannot hide it (status is safety-relevant), but MAY quit the app.
+PRD-R9 The app MUST show its status icon in the menu bar at all times while running. The icon is the KV mark of the product owner's artwork (decision S7, 13/11/2026), drawn in colour and not a template image, so the emerald dot keeps its colour; light, dark and Increase Contrast variants follow the menu bar's appearance. The user cannot hide it (status is safety-relevant), but MAY quit the app.
 
-PRD-R10 Icon states (all monochrome, distinguishable without colour, each with a VoiceOver label):
+PRD-R10 Icon states, each with a VoiceOver label. The glyphs are coloured, not template images: the emerald dot (#0EA674) means Vietnamese typing is on. Every state is still told apart without colour (PRD-R67), by letter opacity (solid, dimmed, faint) and badge shape (dot, ring, lock, pause bars, slash, recording ring) in the dot's place:
 
 | State | Glyph | VoiceOver label (vi / en) |
 |---|---|---|
-| Vietnamese active | `V` in a rounded square | "Đang gõ tiếng Việt" / "Vietnamese typing on" |
-| English active | `E` in a rounded square | "Đang gõ tiếng Anh" / "English typing" |
-| Ignored app (rule) | `E` with a small dot | "Bỏ qua ứng dụng này" / "Ignored in this app" |
-| Secure Input active | `V` or `E` with a lock badge | "Ô bảo mật đang bật" / "Secure input active" |
-| Paused (non-Latin input source) | dimmed glyph | "Tạm dừng: đang dùng bộ gõ khác" / "Paused: another input source is active" |
-| Permission missing or tap failed | glyph with a slash | "Chưa gõ được: cần cấp quyền" / "Not working: permission needed" |
+| Vietnamese active | `KV` in solid letters with the emerald dot | "Đang gõ tiếng Việt" / "Vietnamese typing on" |
+| English active | `KV` with dimmed letters and a grey dot | "Đang gõ tiếng Anh" / "English typing" |
+| Ignored app (rule) | dimmed `KV` with a ring in the dot's place | "Bỏ qua ứng dụng này" / "Ignored in this app" |
+| Secure Input active | solid (Vietnamese) or dimmed (English) `KV` with a lock badge | "Ô bảo mật đang bật" / "Secure input active" |
+| Paused (non-Latin input source) | faint `KV` with pause bars | "Tạm dừng: đang dùng bộ gõ khác" / "Paused: another input source is active" |
+| Permission missing or tap failed | faint `KV` with a slash | "Chưa gõ được: cần cấp quyền" / "Not working: permission needed" |
+| Typing trace recording (D26) | solid `KV` with a recording ring | "Đang ghi thao tác gõ" / "Recording a typing trace" |
 
 PRD-R11 Menu layout (top to bottom). Items marked "conditional" appear only in that state.
 
@@ -279,8 +280,8 @@ PRD-R40 Onboarding runs on first launch and can be reopened from About & Support
 - Title: `Cho phép {{AppName}} nhận phím gõ`
 - Body: `Để thêm dấu khi bạn gõ, macOS cần bạn cho phép {{AppName}} trong mục Quyền riêng tư & Bảo mật.`
 - Bullets: `{{AppName}} chỉ xử lý phím khi bạn gõ chữ.` / `Ô mật khẩu luôn được bỏ qua.` / `Không có dữ liệu nào rời khỏi máy của bạn.`
-- Dynamic instruction (by macOS version): on macOS 27 and later `Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật {{AppName}}.`; on macOS 15 and 26 the same with `Trợ năng`. VERIFY the exact Vietnamese pane names on each macOS version from a Vietnamese-language system before release; the English names are "Device Control and Data Access" (macOS 27) and "Accessibility" (earlier). Names come from the OS-version table of PLT-R704, never from code.
-- Button: `Mở Cài đặt hệ thống`. A short looping illustration (static image when Reduce Motion is on) shows the toggle.
+- Dynamic instruction (by macOS version): on macOS 27 and later `Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật {{AppName}}.`; on macOS 13 to 26 the same with `Trợ năng`; on macOS 12, where the app is called System Preferences, `Mở Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng, rồi bật {{AppName}}.` VERIFY the exact Vietnamese pane names on each macOS version from a Vietnamese-language system before release; the English names are "Device Control and Data Access" (macOS 27), "Accessibility" (macOS 13 to 26) and "System Preferences > Security & Privacy > Privacy > Accessibility" (macOS 12). Names come from the OS-version table of PLT-R704, never from code.
+- Button: `Mở {{SystemSettings}}` (the pane app's name from the PLT-R704 table: Cài đặt hệ thống on macOS 13 and later, Tùy chọn Hệ thống on macOS 12). A short looping illustration (static image when Reduce Motion is on) shows the toggle.
 - Live state: the screen polls permission state and advances automatically within 1 s of the grant, showing `Đã cấp quyền` with a check mark. Accessibility is the only permission requested up front (PLT-R701); Input Monitoring is requested only if macOS demands it for the tap (PLT-R702), and in that case the screen says so explicitly and offers `Mở lại {{AppName}}` if a relaunch is needed. If the app was launched from the DMG or another temporary location, the move-to-Applications offer (PLT-R710) comes before this screen.
 - Help link: `Không thấy {{AppName}} trong danh sách?` opens a sheet: remove and re-add steps, and a `Đặt lại quyền` button that resets only this app's entry after confirmation.
 
@@ -395,7 +396,7 @@ PRD-R57 Donation entry points, and only these: the `Ủng hộ {{AppName}}...` m
 
 PRD-R58 Forbidden: popups, timers, counters, "you have typed N words" messages, badges, features locked behind donating, donation prompts in onboarding, during updates or after a crash or bug report.
 
-PRD-R59 Donation block content: a short thank-you line (`{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.`); a VietQR (Napas) QR code for Pa's bank account (LioBank, an OCB digital bank, NAPAS BIN 970448, account 688688678) with the bank name and the account number shown in text and the holder name shown nowhere (the VietQR payload carries no name; bank apps show the holder after lookup). No MoMo QR and no other payment link for now (decision of the product owner, 13/11/2026). QR images are bundled assets, not fetched.
+PRD-R59 Donation block content: a short thank-you line (`{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.`); a bank VietQR (Napas) QR code for Pa's bank account (LioBank, an OCB digital bank, NAPAS BIN 970448, account 688688678) with the bank name LioBank and the account number shown in text and the holder name never shown (the VietQR payload carries no name; bank apps show the holder after lookup). No MoMo QR and no other payment method (decision of the product owner, 13/11/2026, S8). A GitHub Sponsors link appears only once a sponsor page exists (the website's `sponsorsUrl` is empty until then). QR images are bundled assets, not fetched.
 
 PRD-R60 Polar.sh MUST NOT be used for donations (its acceptable-use policy prohibits donations and sponsorship); Polar is only an option if a paid product is ever sold. Buy Me a Coffee is not used (Vietnam is not a payout country).
 
@@ -462,7 +463,7 @@ PRD-R73 Static site, Vietnamese at `/` and English at `/en/`. Required pages:
 | `/ung-ho` | Donate | Same content as the in-app block |
 | `/appcast.xml` | Sparkle feed | One stable URL that never moves; beta builds are items with `sparkle:channel="beta"` in the same feed (PLT-R1101, QA-R28) |
 
-PRD-R74 The website MUST NOT use trackers or cookies that require consent. Traffic numbers come from cookieless aggregate analytics (decision of the product owner, 13/11/2026): PostHog Cloud in cookieless mode (no cookies, no local storage, IP addresses not stored), so no consent banner is needed. The project key is a configuration value; while it is empty the site loads no analytics. `/rieng-tu` describes exactly what is collected.
+PRD-R74 The website MUST NOT use trackers or cookies that require consent. Traffic numbers come from cookieless aggregate analytics (decision of the product owner, 13/11/2026): Umami, self-hosted by the project (no cookies, no local storage, no personal data, IP addresses not stored, Do Not Track respected, aggregated page views only), so no consent banner is needed. The script URL and the website id are configuration values; while they are empty the site loads no analytics. Analytics never runs in the app or on the release-notes pages. `/rieng-tu` describes exactly what is collected.
 
 PRD-R75 The appcast host MUST serve over HTTPS from a domain Pa controls, so the feed can outlive any hosting provider.
 
@@ -490,13 +491,13 @@ PRD-R77 No in-app survey, rating prompt or usage counter.
 
 ## 18. Open decisions for Pa
 
-All answered on 13/11/2026 except the app licence; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+All answered on 13/11/2026; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (the app licence in `docs/decisions/0006-app-licence-and-pro-edition.md`).
 
 1. Product name: decided; the display name and slug live only in `Config/Brand.xcconfig` and `scripts/brand.env`, and this spec keeps the placeholders.
-2. App licence: not decided; files outside the engine keep `LicenseRef-App-Pending`.
+2. App licence: GPL-3.0-or-later for the app, MPL-2.0 for the engine packages, the `data/` pipeline and the reference model (ADR 0006). A paid Pro edition may follow after 1.0 at 99,000 VND for a lifetime licence; it never locks correct Vietnamese typing.
 3. Default tone placement: traditional, with the setting (D2).
 4. Restore-last-word hotkey: Escape by default, with an on/off setting and automatic exclusions through compatibility rules (D8, PRD-R18, PLT-R353).
-5. Website analytics: PostHog Cloud in cookieless mode (PRD-R74).
+5. Website analytics: self-hosted Umami, cookieless (PRD-R74; first answer PostHog Cloud, replaced the same day).
 6. Donation: bank VietQR only, bank name and account number shown, holder name not shown, no public sponsor list for now (PRD-R59, PRD-R61).
 7. Minimum macOS: macOS 12.0 with Intel support (PRD-R8, PLT-R106; `docs/decisions/0315-minimum-macos-12.md`).
 8. Macro shortcuts: keep printable ASCII without spaces, no Vietnamese letters (PRD-R29).

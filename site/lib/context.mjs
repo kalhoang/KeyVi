@@ -3,7 +3,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { analyticsScriptPath, loaderSource } from "./analytics.mjs";
+import { loadAnalyticsHosts } from "./analytics.mjs";
 import { loadBrand } from "./brand.mjs";
 import { loadConfig } from "./config.mjs";
 import { loadChangelog, loadMatrix, loadReleases } from "./data.mjs";
@@ -12,8 +12,8 @@ import { verifyBadge } from "./layout.mjs";
 import { LANGS, ROUTES, routePath } from "./routes.mjs";
 import { esc, interp } from "./util.mjs";
 
-export const DEFAULT_MIN_MACOS = "15"; // PRD-R8, pending Pa's confirmation (ADR 0001 #6)
-const MACOS_NAMES = new Map([["15", "Sequoia"]]);
+export const DEFAULT_MIN_MACOS = "12"; // PRD-R8, PLT-R106: macOS 12 Monterey with Intel (Pa, Q6; ADR 0315)
+const MACOS_NAMES = new Map([["12", "Monterey"], ["13", "Ventura"], ["14", "Sonoma"], ["15", "Sequoia"]]);
 
 function pascal(id) {
   return id.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join("");
@@ -40,7 +40,8 @@ export async function createContext(options) {
   const warnings = [];
   const warn = (message) => warnings.push(message);
   const brand = await loadBrand(join(rootDir, "scripts", "brand.env"));
-  const config = await loadConfig(options.configPath ?? join(siteDir, "config.json"));
+  const analyticsHosts = await loadAnalyticsHosts(join(rootDir, "scripts", "url-hosts.allow"));
+  const config = await loadConfig(options.configPath ?? join(siteDir, "config.json"), { analyticsHosts });
   const fixturesDir = join(siteDir, "fixtures");
   const dataDir = options.dataDir ?? join(siteDir, "data");
   const matrixPath = options.dataDir ? join(options.dataDir, "matrix.json") : join(rootDir, "compat", "matrix.json");
@@ -51,7 +52,6 @@ export async function createContext(options) {
   const content = Object.fromEntries(await Promise.all(LANGS.map(async (lang) => [lang, await loadContent(siteDir, lang)])));
 
   const hashes = await assetHashes(join(siteDir, "static", "assets"));
-  const loader = config.analytics.enabled ? await loaderSource() : null;
   const demo = ["demo.mp4", "demo.webm"].filter((name) => existsSync(join(siteDir, "static", "assets", name)));
 
   const ctx = {
@@ -63,8 +63,8 @@ export async function createContext(options) {
     data: { releases, matrix, changelog },
     content,
     demo,
-    // Every /assets/ URL carries a content hash (lib/fingerprint.mjs); `analytics` is the loader file the build writes.
-    assets: { css: "/assets/style.css", hashes, analytics: loader === null ? null : { path: analyticsScriptPath(loader), source: loader } },
+    // Every /assets/ URL carries a content hash (lib/fingerprint.mjs).
+    assets: { css: "/assets/style.css", hashes },
   };
   ctx.tokensFor = (lang) => tokensFor(ctx, lang);
   return ctx;

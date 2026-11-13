@@ -26,7 +26,7 @@ export const home = {
   proof: [
     { h: "Không thu thập dữ liệu", p: "Không telemetry, không SDK phân tích, không \"dữ liệu sử dụng ẩn danh\". Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật.", link: "{{hrefPrivacy}}", linkText: "Xem chi tiết về riêng tư" },
     { h: "Miễn phí", p: "{{AppName}} miễn phí và sẽ luôn miễn phí. Không có tính năng nào bị khoá, không có nhắc nhở ủng hộ trong ứng dụng." },
-    { h: "Bộ máy gõ mã nguồn mở", p: "Phần xử lý tiếng Việt là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
+    { h: "Bộ máy gõ mã nguồn mở", p: "Phần xử lý tiếng Việt là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng. Phần còn lại của ứng dụng cũng là mã nguồn mở, giấy phép GPL-3.0-or-later.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
   ],
   whyHeading: "Những điều bạn sẽ thấy khác",
   why: [
@@ -59,8 +59,8 @@ export const download = {
   reqHeading: "Yêu cầu hệ thống",
   reqMacos: "{{macosRequirement}}",
   reqArch: "Máy Mac dùng chip Apple silicon hoặc Intel (một bản chạy cho cả hai). macOS 27 chỉ chạy trên Apple silicon.",
-  reqExcluded: "Máy Mac chỉ lên được tới macOS Sonoma (ví dụ MacBook Air 2018 và 2019, một số máy 2017) chưa được hỗ trợ.",
-  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 15 và 26, <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}} Tên mục trong macOS tiếng Việt cần được xác minh trên từng phiên bản.",
+  reqExcluded: "Máy Mac không cài được macOS 12 Monterey chưa được hỗ trợ. macOS 13 và 14 vẫn được hỗ trợ nhưng không được kiểm thử riêng.",
+  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}} Tên mục trong macOS tiếng Việt cần được xác minh trên từng phiên bản.",
   reqNoOthers: "{{AppName}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
   trustHeading: "Chữ ký và công chứng",
   trustBody: "Mỗi bản DMG được ký bằng chứng chỉ Developer ID của Kal, được Apple công chứng (notarize) và đính kèm vé công chứng (staple), nên macOS mở được mà không cảnh báo. Cập nhật tự động dùng Sparkle 2 và được ký EdDSA; ứng dụng từ chối bản cập nhật sai chữ ký.",
@@ -114,10 +114,11 @@ export const privacy = {
   h1: "Riêng tư",
   lede: "Nguyên tắc: nội dung bạn gõ không rời khỏi máy và không được ghi xuống ổ đĩa, trừ một trường hợp do chính bạn bắt đầu (bản ghi thao tác gõ để báo lỗi, mô tả bên dưới). Lưu lượng mạng tự động duy nhất của ứng dụng là kiểm tra cập nhật.",
   updated: "Cập nhật lần cuối: 13/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
-  // The "Trang web" analytics line: `off` when site/config.json has no PostHog key, `posthog` when it has one.
+  // The "Trang web" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
+  // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
   analytics: {
     off: "<strong>Phân tích truy cập: không có.</strong> Không Google Analytics, không công cụ đo lường của bên thứ ba, không pixel theo dõi.",
-    posthog: "<strong>Phân tích truy cập: PostHog Cloud ở chế độ không cookie.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải thư viện đo lường của PostHog từ <code>{{analyticsAssets}}</code> và gửi lượt xem trang tới <code>{{analyticsHost}}</code>. Không cookie, không lưu gì trong trình duyệt, không ghi lại phiên, không ghi thao tác bấm, không hồ sơ người dùng. Để đếm số người xem mà không nhận diện bạn, PostHog tính một mã băm từ địa chỉ IP và trình duyệt cùng một giá trị đổi mỗi ngày; địa chỉ IP không được lưu. Không có quảng cáo hay bên thứ ba nào khác.",
+    umami: "<strong>Phân tích truy cập: Umami, do dự án tự vận hành.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải mã của Umami từ <code>{{analyticsOrigin}}</code>, một máy chủ do chính dự án vận hành, và gửi tới đó lượt xem trang: địa chỉ trang, tiêu đề trang, trang dẫn tới, kích thước màn hình và ngôn ngữ của trình duyệt. Umami không dùng cookie và không lưu gì trong trình duyệt của bạn; dự án không thu thập dữ liệu cá nhân và không lập hồ sơ người dùng. Để đếm số người xem, máy chủ tạo một mã lượt truy cập bằng cách băm một chiều địa chỉ IP và trình duyệt của bạn cùng một giá trị đổi mỗi tháng; địa chỉ IP không được lưu, chỉ lưu quốc gia và thành phố ước tính từ địa chỉ đó cùng loại trình duyệt, hệ điều hành và thiết bị. Nếu trình duyệt của bạn bật Do Not Track, không có gì được gửi đi. Dự án chỉ xem số liệu tổng hợp (theo trang, nguồn truy cập và quốc gia); dữ liệu không được chia sẻ với ai và không có quảng cáo.",
   },
   html: `
 <h2 id="tom-tat">Tóm tắt</h2>
@@ -125,7 +126,7 @@ export const privacy = {
   <li>Không telemetry, không dịch vụ phân tích, không SDK báo cáo sự cố, không cấu hình hay quy tắc tải từ xa.</li>
   <li>Không có cửa sổ web tải nội dung từ xa. Ghi chú phát hành hiện mà không tải tài nguyên ngoài.</li>
   <li>Ô mật khẩu và chế độ nhập bảo mật của macOS luôn được bỏ qua. Đây không phải là cài đặt.</li>
-  <li>Chỉ cần một quyền: Trợ năng (macOS 15 và 26) hoặc Điều khiển thiết bị và truy cập dữ liệu (macOS 27). Nếu macOS đòi thêm, ứng dụng nói rõ lý do. Không có quyền Ghi màn hình, Automation hay Toàn quyền truy cập ổ đĩa.</li>
+  <li>Chỉ cần một quyền: Trợ năng (macOS 12 tới 26) hoặc Điều khiển thiết bị và truy cập dữ liệu (macOS 27). Nếu macOS đòi thêm, ứng dụng nói rõ lý do. Không có quyền Ghi màn hình, Automation hay Toàn quyền truy cập ổ đĩa.</li>
   <li>Khi thiếu quyền, bàn phím của bạn vẫn gõ bình thường (ứng dụng nhả phím ra, không giữ lại).</li>
 </ul>
 

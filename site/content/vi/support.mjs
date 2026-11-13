@@ -19,7 +19,7 @@ export const support = {
     ["{{AppName}} có gõ được trong ô mật khẩu không?", "Ô mật khẩu luôn được bỏ qua, phím đi thẳng tới ứng dụng. Đây là chủ ý và không phải cài đặt."],
     ["Tôi dùng bàn phím QWERTZ, AZERTY, Dvorak hay Colemak thì sao?", "Dùng được. {{AppName}} theo bố cục bàn phím macOS bạn đang chọn, không cần cài đặt thêm."],
     ["Ứng dụng có gửi nội dung tôi gõ đi đâu không?", "Không. Xem trang <a href=\"{{hrefPrivacy}}\">Riêng tư</a> để biết chính xác ứng dụng lưu và gửi gì."],
-    ["Mac của tôi chạy macOS 14 hoặc cũ hơn?", "{{AppName}} yêu cầu macOS 15 Sequoia trở lên. {{verifyHtml}} Mức tối thiểu này có thể thay đổi, xem trang <a href=\"{{hrefDownload}}\">Tải về</a> để biết con số hiện hành."],
+    ["Mac của tôi chạy macOS 11 hoặc cũ hơn?", "{{AppName}} yêu cầu macOS 12 Monterey trở lên, trên máy Apple silicon hoặc Intel. Xem trang <a href=\"{{hrefDownload}}\">Tải về</a> để biết con số hiện hành."],
     ["Gỡ cài đặt thế nào?", "Thoát {{AppName}}, kéo ứng dụng vào Thùng rác. Để xoá cả dữ liệu, xem mục cuối trang <a href=\"{{hrefPrivacy}}#xoa-du-lieu\">Riêng tư</a>."],
   ],
   fixHeading: "Xử lý theo triệu chứng",
@@ -30,7 +30,8 @@ export const support = {
       html: `
 <p>{{AppName}} cần quyền để nhận phím gõ. Tên mục thay đổi theo phiên bản macOS:</p>
 <ul>
-  <li>macOS 15 và 26: Cài đặt hệ thống &gt; Quyền riêng tư &amp; Bảo mật &gt; <strong>Trợ năng</strong>.</li>
+  <li>macOS 12: Tùy chọn Hệ thống &gt; Bảo mật &amp; Quyền riêng tư &gt; Quyền riêng tư &gt; <strong>Trợ năng</strong> (bấm vào ổ khóa để thay đổi).</li>
+  <li>macOS 13 tới 26: Cài đặt hệ thống &gt; Quyền riêng tư &amp; Bảo mật &gt; <strong>Trợ năng</strong>.</li>
   <li>macOS 27: Cài đặt hệ thống &gt; Quyền riêng tư &amp; Bảo mật &gt; <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> (tên tiếng Anh: <em>Device Control and Data Access</em>; trước đây là Accessibility). {{verifyHtml}}</li>
 </ul>
 <ol class="steps">
@@ -49,7 +50,7 @@ export const support = {
 <p>Menu của {{AppName}} nêu ứng dụng có thể đang giữ chế độ này (đây là phỏng đoán tốt nhất, đôi khi chưa chính xác):</p>
 <ul>
   <li><strong>Terminal</strong>: trong menu Terminal, tắt <em>Secure Keyboard Entry</em>.</li>
-  <li><strong>iTerm2</strong>: ngoài mục <em>Secure Keyboard Entry</em> trong menu iTerm2, iTerm2 còn tự bật chế độ này khi nó cho là đang hiện dòng nhập mật khẩu. Tắt mục menu, và xem phần cài đặt phát hiện mật khẩu của iTerm2. {{verifyHtml}} Tên và vị trí cài đặt trong bản iTerm2 hiện tại, và việc nó có kích hoạt trong ứng dụng dòng lệnh tắt hiển thị phím gõ hay không.</li>
+  <li><strong>iTerm2</strong>: iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay huỷ) lời nhắc mật khẩu đang chờ.</li>
   <li><strong>Trình duyệt</strong>: bấm ra ngoài ô mật khẩu hoặc đổi sang thẻ khác.</li>
   <li><strong>Trình quản lý mật khẩu</strong> hoặc ứng dụng khác: đóng cửa sổ nhập mật khẩu của nó.</li>
   <li>Không biết ứng dụng nào, hoặc menu chỉ ra <code>loginwindow</code>: khoá màn hình rồi mở lại (<kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Q</kbd>), hoặc đăng xuất rồi đăng nhập lại.</li>

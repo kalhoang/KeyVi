@@ -44,7 +44,7 @@ contains() { # contains <name> <needle> (in the last command's output)
 }
 
 echo "== Python unit tests"
-for suite in test_scripts test_docs_and_workflows test_site_deploy test_vm_lab; do
+for suite in test_scripts test_docs_and_workflows test_site_deploy test_make_vietqr test_make_app_icon test_vm_lab; do
   if python3 -I "$S/tests/$suite.py" >"$T/py.log" 2>&1; then ok "python $suite"; else ko "python $suite"; tail -n 40 "$T/py.log"; fi
 done
 
@@ -192,6 +192,21 @@ printf 'APP_REPOSITORY_URL="http://insecure.example/o/r"\n' >>"$T/brand-repo.env
 expect 1 "brand values are validated (https repository URL)" \
   env BRAND_ENV="$T/brand-repo.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
 contains "invalid repository URL named" "APP_REPOSITORY_URL invalid"
+# ADR 0602 amendment: `site:` lines of the allowlist name hosts only the website may contact (the Umami
+# analytics host). They are never allowed inside the app, whose only automatic traffic is the update check.
+mkdir -p "$T/u/Site.app/Contents/Resources"
+printf 'www.apple.com\nsite: stats.example.vn\n' >"$T/u/allow-site"
+printf '{"feed": "https://testapp.example.vn/appcast.xml", "dtd": "http://www.apple.com/DTDs/x"}\n' \
+  >"$T/u/Site.app/Contents/Resources/config.json"
+expect 0 "site: lines do not disturb the app hosts" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" --allow "$T/u/allow-site" "$T/u/Site.app"
+printf '{"tracker": "https://stats.example.vn/script.js"}\n' >"$T/u/Site.app/Contents/Resources/extra.json"
+expect 1 "a website-only host inside the app fails" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" --allow "$T/u/allow-site" "$T/u/Site.app"
+contains "website-only host explained" "stats.example.vn is allowed for the website only"
+printf 'site: \n' >"$T/u/allow-bad"
+expect 2 "an empty site: line is refused" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" --allow "$T/u/allow-bad" "$T/u/Site.app"
 
 echo "== check-brand-sync.py"
 cat >"$T/sync.xcconfig" <<'EOF'
@@ -265,7 +280,7 @@ expect 1 "a failing harness fails" env PATH="$D/bin:$PATH" FAKE_HARNESS_STATUS=3
 expect 1 "argument override without --dry-run is refused" \
   env PATH="$D/bin:$PATH" COMPAT_HARNESS_DRY_RUN_ARGS="run --scenarios x" "$S/compat-dry-run.sh" --root "$D"
 
-echo "== check-dco.sh (ADR 0401)"
+echo "== check-dco.sh (ADR 0006: every contribution is signed off)"
 G="$T/g"
 mkdir -p "$G/Packages/VietnameseEngine" "$G/docs"
 git -C "$G" init -q
@@ -275,12 +290,19 @@ git -C "$G" config commit.gpgsign false
 printf 'base\n' >"$G/docs/a.md"
 git -C "$G" add -A && git -C "$G" commit -q -m "chore: base"
 dco_base="$(git -C "$G" rev-parse HEAD)"
-printf 'doc\n' >>"$G/docs/a.md"
-git -C "$G" commit -q -am "docs: unsigned change outside the engine"
 printf 'x\n' >"$G/Packages/VietnameseEngine/E.swift"
 git -C "$G" add -A && git -C "$G" commit -q -s -m "feat: signed engine change"
-expect 0 "signed engine commits pass; other paths are not checked" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
-contains "one engine commit checked" "1 commit(s) touching Packages/VietnameseEngine Packages/VietnameseEngineFuzz"
+printf 'doc\n' >>"$G/docs/a.md"
+git -C "$G" commit -q -s -am "docs: signed change outside the engine"
+expect 0 "signed commits in every area pass" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "every commit checked" "2 commit(s) touching every path, all signed off"
+printf 'more\n' >>"$G/docs/a.md"
+git -C "$G" commit -q -am "docs: unsigned change outside the engine"
+expect 1 "an unsigned commit outside the engine fails (GPL-covered parts need the sign-off too)" \
+  "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "unsigned app commit named" "docs: unsigned change outside the engine"
+contains "names the decision" "ADR 0006"
+git -C "$G" commit -q --amend -s --no-edit
 printf 'y\n' >>"$G/Packages/VietnameseEngine/E.swift"
 git -C "$G" commit -q -am "fix: engine change" -m "Signed-off-by: Someone Else <else@example.org>"
 expect 1 "a sign-off by someone else fails" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
@@ -291,10 +313,10 @@ expect 1 "unknown revisions are rejected" "$S/check-dco.sh" --repo "$G" --base n
 mkdir -p "$G/Packages/VietnameseEngineFuzz"
 printf 'z\n' >"$G/Packages/VietnameseEngineFuzz/F.swift"
 git -C "$G" add -A && git -C "$G" commit -q -m "test: unsigned fuzz change"
-expect 1 "the MPL-2.0 fuzz package is checked by default" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+expect 1 "the MPL-2.0 fuzz package is checked" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
 contains "unsigned fuzz commit named" "test: unsigned fuzz change"
 expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
-  --path Packages/VietnameseEngine
+  --path Packages/VietnameseEngine --path docs
 
 echo "== notarize.sh never accepts a submission without its log (QA-R30 step 5)"
 N="$T/notary"
@@ -792,6 +814,7 @@ if [[ $no_macos -eq 0 ]]; then
   mkdir -p "$M/Config" "$M/packaging"
   cp "$REPO/Config/Signing.xcconfig" "$M/Config/"
   cp -R "$REPO/packaging/homebrew" "$M/packaging/"
+  cp "$REPO/LICENSE" "$REPO/THIRD_PARTY_NOTICES.md" "$M/"
   # publish-release inlines the release-notes stylesheet into each notes page (PLT-R906).
   mkdir -p "$M/site/static/assets"
   cp "$REPO/site/static/assets/release-notes.css" "$M/site/static/assets/"
@@ -817,6 +840,28 @@ EOF
   dmg="$M/dist/testapp-1.2.3/testapp-1.2.3.dmg"
   if [[ -f "$dmg" ]]; then ok "DMG created"; else ko "DMG created"; fi
   if hdiutil imageinfo "$dmg" >/dev/null 2>&1; then ok "DMG is a valid image"; else ko "DMG is a valid image"; fi
+  # GPL-3.0 section 4 (ADR 0006): the DMG carries the licence text and the third-party notices. A fake hdiutil
+  # records the staging folder instead of building a second image.
+  mkdir -p "$M/fakebin"
+  cat >"$M/fakebin/hdiutil" <<'EOF'
+#!/bin/sh
+[ "$1" = create ] || exit 0
+while [ $# -gt 0 ]; do
+  if [ "$1" = -srcfolder ]; then ls -A "$2" >"$FAKE_DMG_LIST"; cmp -s "$2/LICENSE.txt" "$FAKE_LICENSE" && echo same >>"$FAKE_DMG_LIST"; fi
+  shift
+done
+EOF
+  chmod +x "$M/fakebin/hdiutil"
+  expect 0 "make-dmg stages the licence files" env PATH="$M/fakebin:$PATH" FAKE_DMG_LIST="$M/staged" \
+    FAKE_LICENSE="$REPO/LICENSE" "$M/scripts/make-dmg.sh" "$app" --no-sign --out "$M/listed.dmg"
+  for staged in "Test App.app" Applications LICENSE.txt THIRD_PARTY_NOTICES.txt same; do
+    if grep -qx "$staged" "$M/staged" 2>/dev/null; then ok "DMG contains $staged"; else ko "DMG contains $staged"; fi
+  done
+  mv "$M/LICENSE" "$M/LICENSE.off"
+  expect 1 "make-dmg refuses to build without the licence" env PATH="$M/fakebin:$PATH" FAKE_DMG_LIST="$M/staged" \
+    FAKE_LICENSE="$REPO/LICENSE" "$M/scripts/make-dmg.sh" "$app" --no-sign --out "$M/listed.dmg"
+  contains "names the missing licence" "LICENSE is missing at the repository root"
+  mv "$M/LICENSE.off" "$M/LICENSE"
   codesign --force --sign - "$dmg" >/dev/null 2>&1
   ditto -c -k --sequesterRsrc --keepParent "$app" "$M/dist/testapp-1.2.3/testapp-1.2.3.zip"
   (cd "$M" && git init -q && git add -A)

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Site settings that are not brand values (repository URL, support addresses, Homebrew tap, sponsor link).
 // Values still containing a placeholder marker are reported so a release build can refuse to ship them.
+// `sponsorsUrl` is optional: empty (the default) means there is no sponsor page, so the donation page shows no
+// GitHub Sponsors card and nothing is left to fill in (PRD-R57, PRD-R59).
 // `banner` is the website notice of the rollback and absence runbooks (QA-R38 step 2, QA-R54): when enabled,
 // every page shows its text (vi or en) and an optional HTTPS link, usually the pinned issue.
-// `analytics` is the optional PostHog Cloud setup of lib/analytics.mjs: an empty key means no analytics at all.
+// `analytics` is the optional Umami setup of lib/analytics.mjs (Q7): missing or empty means no analytics at all; its
+// script host must be on a `site:` line of scripts/url-hosts.allow (`analyticsHosts`).
 import { parseAnalytics } from "./analytics.mjs";
 import { readJsonIfExists } from "./util.mjs";
 
@@ -11,11 +14,19 @@ const PLACEHOLDER_MARKERS = ["OWNER", ".invalid"];
 
 const DEFAULTS = Object.freeze({
   githubRepo: "https://github.com/OWNER/REPO",
-  sponsorsUrl: "https://github.com/sponsors/OWNER",
   homebrewTap: "OWNER/tap",
   supportEmail: "support@example.invalid",
   securityEmail: "security@example.invalid",
 });
+
+/** "" (no sponsor page) or an https URL. A placeholder marker in it is still reported for --strict. */
+function parseSponsorsUrl(raw) {
+  if (raw === undefined || raw === null) return "";
+  if (typeof raw !== "string") throw new Error("config.json: sponsorsUrl must be a string");
+  const url = raw.trim();
+  if (url !== "" && !/^https:\/\/[^\s"'<>]+$/.test(url)) throw new Error("config.json: sponsorsUrl must be empty or an https URL");
+  return url;
+}
 
 /** Plain text only (escaped when rendered) and an HTTPS link, so the notice can never add markup or scripts. */
 function parseBanner(raw) {
@@ -30,15 +41,17 @@ function parseBanner(raw) {
   return Object.freeze({ enabled: true, vi, en, link });
 }
 
-export async function loadConfig(configPath) {
+/** @param {object} options { analyticsHosts: hosts allowed for the analytics script (loadAnalyticsHosts) } */
+export async function loadConfig(configPath, options = {}) {
   const fromFile = (await readJsonIfExists(configPath)) ?? {};
   const values = {};
   for (const key of Object.keys(DEFAULTS)) {
     const candidate = fromFile[key];
     values[key] = typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : DEFAULTS[key];
   }
-  const placeholders = Object.entries(values)
+  const sponsorsUrl = parseSponsorsUrl(fromFile.sponsorsUrl);
+  const placeholders = Object.entries({ ...values, sponsorsUrl })
     .filter(([, value]) => PLACEHOLDER_MARKERS.some((marker) => value.includes(marker)))
     .map(([key]) => key);
-  return Object.freeze({ ...values, placeholders, banner: parseBanner(fromFile.banner), analytics: parseAnalytics(fromFile.analytics) });
+  return Object.freeze({ ...values, sponsorsUrl, placeholders, banner: parseBanner(fromFile.banner), analytics: parseAnalytics(fromFile.analytics, options.analyticsHosts ?? []) });
 }

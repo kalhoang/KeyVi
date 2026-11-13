@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# URL hosts allowed inside the shipped app (QA-R60, PLT-R906). Adding a host needs a decision record
-# and a /rieng-tu update in the same PR. One host per line; "*.example.org" allows subdomains.
+# URL hosts allowed inside the shipped app (QA-R60, PLT-R906), and on `site:` lines the hosts that only
+# the website may contact. Adding a host needs a decision record and a /rieng-tu update in the same PR.
+# One host per line; "*.example.org" allows subdomains.
 #
 # Not listed here because scripts/check-url-hosts.sh derives them from scripts/brand.env:
 #   - the site and appcast host (APP_SITE_HOST);
@@ -27,3 +28,9 @@ ns.adobe.com
 # verbatim (ShellCore/Settings/SparkleNotice.swift, ENG-R811-style acknowledgement of bsdiff and sais-lite).
 www.daemonology.net
 sites.google.com
+
+# Website only, never inside the app (scripts/check-url-hosts.sh fails if the app contains one).
+# site/lib/analytics.mjs accepts an analytics script URL only on these hosts and adds exactly that origin
+# to the website's CSP (script-src, connect-src). Umami, self-hosted on the Kalera Swarm (Pa, 2026-11-13,
+# Q7; ADR 0602 amendment; docs/runbooks/analytics.md).
+site: stats.kal.vn

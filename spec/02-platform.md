@@ -62,7 +62,7 @@
   - Any API newer than macOS 12.0 MUST be used only behind `if #available` with a macOS 12 fallback; the release build MUST import no symbol newer than 12.0 without a weak link (checked against the macOS 12.0 SDK, ADR 0315).
   - Apple no longer ships security updates for macOS 12 to 14 (VERIFY Apple's current support statement); the app still runs there and the website says which systems are tested (PLT-R107).
 - **PLT-R107** The supported test matrix is the latest point release of macOS 12, 15, 26 and 27, plus the current beta of the next major release from June each year. macOS 12 is smoke-tested in a virtual machine on the self-hosted runner (launch, permission onboarding, typing in TestHost, update; ADR 0315), Intel in CI through the x86_64 slice under Rosetta (PLT-R105) and on a real Intel Mac before each release when one is available (VERIFY). macOS 13 and 14 are supported but not separately tested: they fall between the tested floor and macOS 15, and GitHub no longer hosts runners for them.
-- **PLT-R108** Licence note: the engine package is permissive regardless of the app licence. The app licence (open decision for Pa) determines whether competitors may reuse `compat-rules.json`, the injection layer and the diagnostics flow, and what contributor terms apply. If Pa wants the rules database to be freely reusable while the app is copyleft, the rules file needs its own licence notice.
+- **PLT-R108** Licence note: the engine packages are MPL-2.0 (file-level copyleft, embeddable by any app; ENG-R109) regardless of the app licence. The app is GPL-3.0-or-later (decision of the product owner, 13/11/2026; `docs/decisions/0006-app-licence-and-pro-edition.md`): `compat-rules.json`, the injection layer and the diagnostics flow may be reused by others only under the GPL, so an open-source GPL-compatible project can reuse them and a proprietary one cannot. The rules database has no separate licence notice; it is covered by the root `LICENSE`. Making it freely reusable later needs a new decision and its own licence file (the inbound MIT grant of QA-R61 allows it for contributed rules).
 
 ## 2. Process architecture
 
@@ -821,10 +821,10 @@ A release is publishable only if: hosted CI green; nightly self-hosted green wit
 
 ## 14. Open questions for Pa
 
-All answered on 13/11/2026 except the app licence; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+All answered on 13/11/2026; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (the app licence in `docs/decisions/0006-app-licence-and-pro-edition.md`).
 
 1. Minimum macOS: answered, macOS 12.0 with Intel support (universal binary kept); see `docs/decisions/0315-minimum-macos-12.md`.
-2. App licence: not decided; files outside the engine keep `LicenseRef-App-Pending`.
+2. App licence: GPL-3.0-or-later for everything outside the engine packages, the `data/` pipeline and the reference model, which are MPL-2.0 (ADR 0006); consequences for the rules database and the injection layer in PLT-R108.
 3. Release signing: Developer ID signing and notarization happen on Pa's Mac (keys never leave it); CI keeps producing unsigned builds. The EdDSA key stays on Pa's Mac (PLT-R1103, QA-R32).
 4. Archive hosting: DMG and update archives only on `{{app-slug}}.kal.vn` (no GitHub Releases, so PLT-R906 needs no extra host).
 5. Self-hosted Mac runner: proposed as a tart macOS virtual machine on Pa's Mac (awaiting Pa's confirmation); Linux jobs stay on GitHub-hosted runners.
