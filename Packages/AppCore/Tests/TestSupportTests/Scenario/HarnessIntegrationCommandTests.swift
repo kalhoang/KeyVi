@@ -52,10 +52,30 @@ private let profileJSON = """
         #expect(options.intervalSeconds == 5 && options.allowHosts == ["a.example", "b.example"])
         #expect(options.profiles == "p" && !options.configureApp && options.baseline == "b.json")
         #expect(options.workloadKeystrokes == 50 && options.settleSeconds == 60)
-        for bad in [["egress", "--phase", "staging"], ["egress", "--minutes", "0"], ["bench", "--workload-keys", "x"]] {
+        for bad in [
+            ["egress", "--phase", "staging"], ["egress", "--minutes", "0"], ["bench", "--workload-keys", "x"],
+        ] {
             #expect(throws: HarnessUsageError.self) { try HarnessCommandLine.parse(bad) }
         }
         #expect(HarnessCommandLine.usage.contains("egress") && HarnessCommandLine.usage.contains("--no-configure"))
+    }
+
+    /// `--only testhost.*` selects the TestHost suite (scripts/run-integration.sh `tests`).
+    @Test func onlyAcceptsPrefixes() async throws {
+        let fileSystem = try makeCheckout(scenarios: [
+            "testhost.a.json": scenarioJSON(id: "testhost.a", target: HarnessTargets.testHostAlias),
+            "testhost.b.json": scenarioJSON(id: "testhost.b", target: HarnessTargets.testHostAlias),
+            "other.json": scenarioJSON(id: "other"),
+        ])
+        let (subject, console) = try harness(
+            ["run", "--dry-run", "--only", "testhost.*"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        #expect(await subject.execute() == .success)
+        #expect(console.output.first?.hasPrefix("compat-harness run --dry-run: 2 scenario(s)") == true)
+        #expect(Harness.matches("testhost.a", "testhost.a") && !Harness.matches("testhost.ab", "testhost.a"))
+        let (unknown, unknownConsole) = try harness(
+            ["run", "--dry-run", "--only", "nothing.*"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        #expect(await unknown.execute() == .failure)
+        #expect(unknownConsole.errors.first == "compat-harness: unknown scenario id(s) nothing.*")
     }
 
     @Test func egressIsLiveOnlyWithTheOptIn() throws {
@@ -71,7 +91,8 @@ private let profileJSON = """
             repository: URL(fileURLWithPath: "/r"),
             brandEnvironment: "APP_DISPLAY_NAME=\"Gõ Việt\"\nAPP_SLUG=\"goviet\"\nAPP_SITE_HOST=\"h.example\"\n")
         #expect(targets.storageFolderName == "goviet" && targets.siteHost == "h.example")
-        let ascii = HarnessTargets.resolve(repository: URL(fileURLWithPath: "/r"), brandEnvironment: "APP_DISPLAY_NAME=Plain\n")
+        let ascii = HarnessTargets.resolve(
+            repository: URL(fileURLWithPath: "/r"), brandEnvironment: "APP_DISPLAY_NAME=Plain\n")
         #expect(ascii.storageFolderName == "Plain")
         let rules = Data(
             #"{"secureInputHints":[{"bundleId":"com.example.Term","hintKey":"term.secureKeyboardEntry"},{"bundleId":"com.example.Other","hintKey":"other.hint"}]}"#
@@ -89,7 +110,8 @@ private let profileJSON = """
         ])
         try write(profileJSON, to: "/repo/compat/scenarios/profiles/canary.json", in: fileSystem)
         let live = RecordingLiveServices(clock: ManualClock())
-        let (subject, console) = try harness(["run", "--dry-run"], fileSystem: fileSystem, live: live, clock: ManualClock())
+        let (subject, console) = try harness(
+            ["run", "--dry-run"], fileSystem: fileSystem, live: live, clock: ManualClock())
         #expect(await subject.execute() == .success, "\(console.errors)")
         #expect(console.output.contains("    app: telex + canary"))
         #expect(console.output.contains { $0.hasPrefix("Privacy canary: after the run, scan") })
@@ -103,21 +125,24 @@ private let profileJSON = """
         try write(
             #"{"id":"bad","summary":"s","scenarios":["nope"],"ruleOverrides":[{"id":"user.x","summary":"s","match":{},"actionFromRule":"none"}]}"#,
             to: "/repo/compat/scenarios/profiles/bad.json", in: fileSystem)
-        let (subject, console) = try harness(["run", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        let (subject, console) = try harness(
+            ["run", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
         #expect(await subject.execute() == .failure)
         #expect(console.errors.contains("compat-harness: bad: no scenario nope"))
         #expect(console.errors.contains("compat-harness: bad: no shipped rule none"))
         #expect(console.errors.contains { $0.contains("h uses testHook, which compat/schema/scenario.schema.json") })
         // An invalid profile file stops the dry run before planning.
         try write("[]", to: "/repo/compat/scenarios/profiles/bad.json", in: fileSystem)
-        let (broken, brokenConsole) = try harness(["run", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        let (broken, brokenConsole) = try harness(
+            ["run", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
         #expect(await broken.execute() == .failure)
         #expect(brokenConsole.errors.first?.contains("not a JSON object") == true)
     }
 
     @Test func egressPlanNamesTheAllowedHosts() async throws {
         let fileSystem = try makeCheckout(scenarios: [:])
-        let (production, console) = try harness(["egress", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        let (production, console) = try harness(
+            ["egress", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
         #expect(await production.execute() == .success)
         #expect(console.output.contains("Allowed: loopback; hosts: updates.example.org"))
         let (local, localConsole) = try harness(
@@ -125,7 +150,8 @@ private let profileJSON = """
         #expect(await local.execute() == .success)
         #expect(localConsole.output.contains("Allowed: loopback; hosts: none (loopback only)"))
         try write("APP_BUNDLE_ID_DEV=\"a.b.dev\"\n", to: "/repo/scripts/brand.env", in: fileSystem)
-        let (missing, missingConsole) = try harness(["egress", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        let (missing, missingConsole) = try harness(
+            ["egress", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
         #expect(await missing.execute() == .failure)
         #expect(missingConsole.errors.first?.contains("no allowed host") == true)
     }
@@ -135,11 +161,18 @@ private let profileJSON = """
         try write(
             #"{"formatVersion":1,"benchmark":"platform","calibration":{"name":"c","nanoseconds":1},"metrics":{"C1.cpuPercent":{"value":0.3,"unit":"%","placeholder":true}}}"#,
             to: "/repo/perf/platform-baseline.json", in: fileSystem)
-        let (subject, console) = try harness(["bench", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
+        let (subject, console) = try harness(
+            ["bench", "--dry-run"], fileSystem: fileSystem, live: nil, clock: ManualClock())
         #expect(await subject.execute() == .success)
-        #expect(console.output.contains { $0.contains("C1.cpuPercent: gate 0.3 %, source harness, baseline 0.3 (placeholder)") })
+        #expect(
+            console.output.contains {
+                $0.contains("C1.cpuPercent: gate 0.3 %, source harness, baseline 0.3 (placeholder)")
+            })
         #expect(console.output.contains { $0.contains("T2.p99: gate 3.0 ms, source appHistogram, baseline none") })
-        #expect(console.output.contains { $0.hasPrefix("Gate: over the 8.1 gate, or more than 25 % above perf/platform-baseline.json") })
+        #expect(
+            console.output.contains {
+                $0.hasPrefix("Gate: over the 8.1 gate, or more than 25 % above perf/platform-baseline.json")
+            })
     }
 }
 
@@ -158,16 +191,19 @@ private let profileJSON = """
         try write(#"{"event":"kanaryzqx"}"#, to: "/library/Logs/Example App/app.jsonl", in: fileSystem)
         let clock = ManualClock()
         let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
-        let evidence = FakePrivacyEvidence(files: [URL(fileURLWithPath: "/library/Logs/Example App/app.jsonl")], log: "")
+        let evidence = FakePrivacyEvidence(
+            files: [URL(fileURLWithPath: "/library/Logs/Example App/app.jsonl")], log: "")
         let live = RecordingLiveServices(clock: clock, axText: "đi", evidence: evidence)
-        let (subject, console) = try harness(["run", "--output", "/out"], fileSystem: fileSystem, live: live, clock: clock, app: app)
+        let (subject, console) = try harness(
+            ["run", "--output", "/out"], fileSystem: fileSystem, live: live, clock: clock, app: app)
         #expect(await subject.execute() == .failure)
         #expect(console.output.contains("Integration hooks: answering"))
         #expect(console.output.contains { $0.hasPrefix("pass " + id) })
         #expect(console.output.contains { $0.contains("Privacy canary: 1 file(s)") && $0.hasSuffix("FAILED") })
         #expect(console.errors.contains("canary in /library/Logs/Example App/app.jsonl (utf8-nfc)"))
         let report = try JSONDecoder().decode(
-            ScenarioRunReport.self, from: fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20))
+            ScenarioRunReport.self,
+            from: fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20))
         #expect(report.privacy?.passed == false && report.passed == 1)
         #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/privacy-report.json")))
         // factory, then the canary profile, then the restore; each a quit and a launch after the first.
@@ -186,7 +222,10 @@ private let profileJSON = """
         let live = RecordingLiveServices(clock: clock, axText: "đi")
         let (subject, console) = try harness(["run"], fileSystem: fileSystem, live: live, clock: clock)
         #expect(await subject.execute() == .failure)
-        #expect(console.output.contains { $0.hasPrefix("fail a") && $0.contains("configure app: profile p copies unknown rule missing") })
+        #expect(
+            console.output.contains {
+                $0.hasPrefix("fail a") && $0.contains("configure app: profile p copies unknown rule missing")
+            })
     }
 
     /// `--no-configure` leaves the app alone; a testHook step without the hooks build needs a person.
@@ -196,7 +235,8 @@ private let profileJSON = """
         ])
         let clock = ManualClock()
         let live = RecordingLiveServices(clock: clock, axText: "đi")
-        let (subject, console) = try harness(["run", "--no-configure"], fileSystem: fileSystem, live: live, clock: clock)
+        let (subject, console) = try harness(
+            ["run", "--no-configure"], fileSystem: fileSystem, live: live, clock: clock)
         #expect(await subject.execute() == .success)
         #expect(console.output.contains { $0.hasPrefix("needsHuman a") && $0.contains("INTEGRATION_HOOKS test build") })
         #expect(live.control.events.all.isEmpty)
@@ -243,7 +283,10 @@ private let profileJSON = """
         #expect(stoppedConsole.errors.last == "compat-harness egress: the app under test is not running")
         live.control.setRunning(true)
         let leaking = RecordingLiveServices(
-            clock: clock, sampler: FakeConnectionSampler(samples: [[EgressEndpoint(address: "198.51.100.1", port: 80, transport: "TCP")]]))
+            clock: clock,
+            sampler: FakeConnectionSampler(samples: [
+                [EgressEndpoint(address: "198.51.100.1", port: 80, transport: "TCP")]
+            ]))
         leaking.control.setRunning(true)
         let (leak, leakConsole) = try harness(
             ["egress", "--minutes", "1", "--interval", "60"], fileSystem: fileSystem, live: leaking, clock: clock)
@@ -265,7 +308,10 @@ private let profileJSON = """
         let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
         let live = RecordingLiveServices(clock: clock, metrics: ScriptedMetricSource(values: ["C1.cpuPercent": [0.2]]))
         let (subject, console) = try harness(
-            ["bench", "--runs", "1", "--metrics", "T5.flushes,C1.cpuPercent", "--workload-keys", "10", "--output", "/out/b.json"],
+            [
+                "bench", "--runs", "1", "--metrics", "T5.flushes,C1.cpuPercent", "--workload-keys", "10", "--output",
+                "/out/b.json",
+            ],
             fileSystem: fileSystem, live: live, clock: clock, app: app)
         #expect(await subject.execute() == .failure)  // C1 0.2 is 100 % above the 0.1 baseline
         #expect(console.output.contains("T5.flushes 0.000, gate 0.000, baseline 0.000: ok"))
@@ -278,15 +324,19 @@ private let profileJSON = """
     /// Soak with the hooks: the counters reach the summary.
     @Test func soakRecordsTheAppCounters() async throws {
         let clock = ManualClock()
-        let fileSystem = try makeCheckout(scenarios: ["t.json": scenarioJSON(id: "t", target: HarnessTargets.testHostAlias)])
+        let fileSystem = try makeCheckout(scenarios: [
+            "t.json": scenarioJSON(id: "t", target: HarnessTargets.testHostAlias)
+        ])
         let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
-        let live = RecordingLiveServices(clock: clock, axText: "x", monitor: ScriptedSoakMonitor(footprints: [30], clock: clock))
+        let live = RecordingLiveServices(
+            clock: clock, axText: "x", monitor: ScriptedSoakMonitor(footprints: [30], clock: clock))
         let (subject, console) = try harness(
             ["soak", "--keystrokes", "32", "--chunk", "16", "--targets", "t", "--output", "/out/soak"],
             fileSystem: fileSystem, live: live, clock: clock, app: app)
         _ = await subject.execute()
         let summary = try JSONDecoder().decode(
-            SoakSummary.self, from: fileSystem.readData(at: URL(fileURLWithPath: "/out/soak/soak-summary.json"), maxBytes: 1 << 20))
+            SoakSummary.self,
+            from: fileSystem.readData(at: URL(fileURLWithPath: "/out/soak/soak-summary.json"), maxBytes: 1 << 20))
         #expect(summary.watchdogTrips == 0 && summary.flushes == 0 && summary.appRestarted == false)
         #expect(console.output.contains { $0.contains("0 watchdog trip(s)") })
     }

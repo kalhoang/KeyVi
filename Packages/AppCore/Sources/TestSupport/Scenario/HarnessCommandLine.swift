@@ -82,7 +82,7 @@ public enum HarnessCommandLine {
           --no-configure            leave the app's settings alone (default: write each scenario's configuration
                                     into the test build's settings and restart it; restored after the run)
 
-        run:      --output DIR | --report FILE, --profile normal|fast|burst, --only ID[,ID...],
+        run:      --output DIR | --report FILE, --profile normal|fast|burst, --only ID[,ID...] (PREFIX* allowed),
                   --rules FILE, --webdriver BUNDLE=URL (repeatable; other browsers use
                   http://127.0.0.1:9515), --terminal-capture FILE
         soak:     --keystrokes N (default 1000000), --targets ID[,ID...], --chunk N, --profile P, --output DIR,

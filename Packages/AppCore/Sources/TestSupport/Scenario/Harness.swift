@@ -57,13 +57,19 @@ public struct Harness: Sendable {
             return nil
         }
         guard !options.only.isEmpty else { return loaded }
-        let unknown = Set(options.only).subtracting(loaded.map(\.id))
+        let unknown = options.only.filter { pattern in !loaded.contains { Self.matches($0.id, pattern) } }
         guard unknown.isEmpty else {
             environment.console.emitError(
                 "compat-harness: unknown scenario id(s) " + unknown.sorted().joined(separator: ", "))
             return nil
         }
-        return loaded.filter { options.only.contains($0.id) }
+        return loaded.filter { scenario in options.only.contains { Self.matches(scenario.id, $0) } }
+    }
+
+    /// `--only` entries are scenario ids; one ending in `*` selects every id with that prefix (`testhost.*`, the
+    /// QA-R11 TestHost suite).
+    static func matches(_ id: String, _ pattern: String) -> Bool {
+        pattern.hasSuffix("*") ? id.hasPrefix(String(pattern.dropLast())) : id == pattern
     }
 
     func unresolved(_ scenarios: [Scenario], _ targets: HarnessTargets) -> [String] {
@@ -104,7 +110,7 @@ public struct Harness: Sendable {
             exit = coverage() == .success ? exit : .failure
         }
         let problems = planProblems(scenarios, profiles: profiles)
-        problems.forEach { environment.console.emitError("compat-harness: " + $0) }
+        for problem in problems { environment.console.emitError("compat-harness: " + problem) }
         if !problems.isEmpty { exit = .failure }
         let missing = unresolved(scenarios, targets)
         if !missing.isEmpty {
