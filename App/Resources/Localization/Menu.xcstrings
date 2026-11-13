@@ -1,0 +1,960 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "hotkey.right" : {
+      "comment" : "Right-side modifier. %@ is the modifier symbol.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ phải"
+          }
+        }
+      }
+    },
+    "hotkey.space" : {
+      "comment" : "Name of the Space key in a hotkey.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Space"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím cách"
+          }
+        }
+      }
+    },
+    "hotkey.unknownKey" : {
+      "comment" : "Key without a printable name. %d is the key code.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím %d"
+          }
+        }
+      }
+    },
+    "hud.capture.remaining" : {
+      "comment" : "Capture HUD countdown. %@ is m:ss.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ left"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Còn %@"
+          }
+        }
+      }
+    },
+    "hud.capture.stop" : {
+      "comment" : "Capture HUD button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dừng"
+          }
+        }
+      }
+    },
+    "hud.capture.stop.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the Stop button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops recording now. You review the trace before sending it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dừng ghi ngay. Bạn xem lại bản ghi trước khi gửi."
+          }
+        }
+      }
+    },
+    "hud.capture.stop.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the Stop button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop recording"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dừng ghi thao tác gõ"
+          }
+        }
+      }
+    },
+    "hud.capture.title" : {
+      "comment" : "Capture HUD title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording typing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang ghi thao tác gõ"
+          }
+        }
+      }
+    },
+    "hud.switch.english.announcement" : {
+      "comment" : "PRD-R66 VoiceOver announcement.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Anh"
+          }
+        }
+      }
+    },
+    "hud.switch.english.glyph" : {
+      "comment" : "Letter shown in the switch HUD.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E"
+          }
+        }
+      }
+    },
+    "hud.switch.vietnamese.announcement" : {
+      "comment" : "PRD-R66 VoiceOver announcement.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Việt"
+          }
+        }
+      }
+    },
+    "hud.switch.vietnamese.glyph" : {
+      "comment" : "Letter shown in the switch HUD.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "V"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "V"
+          }
+        }
+      }
+    },
+    "icon.capturing.accessibilityLabel" : {
+      "comment" : "PLT-R905 changed icon while a typing trace records.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording a typing trace"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang ghi thao tác gõ"
+          }
+        }
+      }
+    },
+    "icon.english.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English typing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang gõ tiếng Anh"
+          }
+        }
+      }
+    },
+    "icon.ignoredApp.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignored in this app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua ứng dụng này"
+          }
+        }
+      }
+    },
+    "icon.notWorking.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not working: permission needed"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa gõ được: cần cấp quyền"
+          }
+        }
+      }
+    },
+    "icon.notWorking.failOpen.accessibilityLabel" : {
+      "comment" : "PLT-R211: failed open for a reason other than permission.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not working: open the menu to see how to fix it"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa gõ được: mở menu để xem cách khắc phục"
+          }
+        }
+      }
+    },
+    "icon.paused.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused: another input source is active"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạm dừng: đang dùng bộ gõ khác"
+          }
+        }
+      }
+    },
+    "icon.paused.noTextFocus.accessibilityLabel" : {
+      "comment" : "PLT-R211: paused because no text field is focused.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused: no text field detected"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạm dừng: không thấy ô nhập chữ"
+          }
+        }
+      }
+    },
+    "icon.paused.other.accessibilityLabel" : {
+      "comment" : "PLT-R211: other pauses; the menu status line says why.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạm dừng"
+          }
+        }
+      }
+    },
+    "icon.secureInputEnglish.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure input active"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô bảo mật đang bật"
+          }
+        }
+      }
+    },
+    "icon.secureInputVietnamese.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure input active"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô bảo mật đang bật"
+          }
+        }
+      }
+    },
+    "icon.starting.accessibilityLabel" : {
+      "comment" : "PLT-R211: host is starting.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang khởi động"
+          }
+        }
+      }
+    },
+    "icon.vietnamese.accessibilityLabel" : {
+      "comment" : "PRD-R10.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese typing on"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang gõ tiếng Việt"
+          }
+        }
+      }
+    },
+    "menu.checkForUpdates" : {
+      "comment" : "PRD-R11 item 6.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra cập nhật..."
+          }
+        }
+      }
+    },
+    "menu.checkForUpdates.accessibilityHint" : {
+      "comment" : "VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks for a new version."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tìm bản mới."
+          }
+        }
+      }
+    },
+    "menu.donate" : {
+      "comment" : "PRD-R11 item 7. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support %@..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ủng hộ %@..."
+          }
+        }
+      }
+    },
+    "menu.donate.accessibilityHint" : {
+      "comment" : "VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens About & Support."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở phần Giới thiệu & Hỗ trợ."
+          }
+        }
+      }
+    },
+    "menu.macros" : {
+      "comment" : "PRD-R11 item 5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt..."
+          }
+        }
+      }
+    },
+    "menu.macros.accessibilityHint" : {
+      "comment" : "VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the macro list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở danh sách gõ tắt."
+          }
+        }
+      }
+    },
+    "menu.method.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the Telex/VNI items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses the typing method."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn kiểu gõ."
+          }
+        }
+      }
+    },
+    "menu.method.telex" : {
+      "comment" : "PRD-R11 item 3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex"
+          }
+        }
+      }
+    },
+    "menu.method.vni" : {
+      "comment" : "PRD-R11 item 3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VNI"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VNI"
+          }
+        }
+      }
+    },
+    "menu.mode.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the VI/EN items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses the typing mode."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn chế độ gõ."
+          }
+        }
+      }
+    },
+    "menu.mode.english" : {
+      "comment" : "PRD-R11 item 2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Anh"
+          }
+        }
+      }
+    },
+    "menu.mode.vietnamese" : {
+      "comment" : "PRD-R11 item 2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Việt"
+          }
+        }
+      }
+    },
+    "menu.perApp.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the per-app submenu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sets a rule for this app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt quy tắc riêng cho ứng dụng này."
+          }
+        }
+      }
+    },
+    "menu.perApp.report" : {
+      "comment" : "PRD-R11 item 4, last entry.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem with this app..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi với ứng dụng này..."
+          }
+        }
+      }
+    },
+    "menu.perApp.report.accessibilityHint" : {
+      "comment" : "VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a problem report for this app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở báo lỗi, điền sẵn ứng dụng này."
+          }
+        }
+      }
+    },
+    "menu.perApp.rule.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the rule items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies this rule every time the app is active."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Áp dụng quy tắc này mỗi khi bạn mở ứng dụng."
+          }
+        }
+      }
+    },
+    "menu.perApp.rule.alwaysEnglish" : {
+      "comment" : "PRD-R11 item 4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luôn tiếng Anh"
+          }
+        }
+      }
+    },
+    "menu.perApp.rule.alwaysVietnamese" : {
+      "comment" : "PRD-R11 item 4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luôn tiếng Việt"
+          }
+        }
+      }
+    },
+    "menu.perApp.rule.ignore" : {
+      "comment" : "PRD-R11 item 4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignore this app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua ứng dụng này"
+          }
+        }
+      }
+    },
+    "menu.perApp.rule.remember" : {
+      "comment" : "PRD-R11 item 4, default.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remember my choice"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhớ lựa chọn"
+          }
+        }
+      }
+    },
+    "menu.perApp.title" : {
+      "comment" : "PRD-R11 item 4 submenu. %@ is the frontmost app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Với %@"
+          }
+        }
+      }
+    },
+    "menu.quit" : {
+      "comment" : "PRD-R11 item 8 (Command+Q). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát %@"
+          }
+        }
+      }
+    },
+    "menu.quit.accessibilityHint" : {
+      "comment" : "VoiceOver hint. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quits %@. The keyboard keeps working normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát %@. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "menu.reportProblem" : {
+      "comment" : "PRD-R11 item 6.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi..."
+          }
+        }
+      }
+    },
+    "menu.reportProblem.accessibilityHint" : {
+      "comment" : "VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a problem report."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở báo lỗi."
+          }
+        }
+      }
+    },
+    "menu.settings" : {
+      "comment" : "PRD-R11 item 5 (Command+,).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt..."
+          }
+        }
+      }
+    },
+    "menu.settings.accessibilityHint" : {
+      "comment" : "VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the settings window."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ cài đặt."
+          }
+        }
+      }
+    },
+    "menu.status.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the status line item.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activate to fix it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bấm để khắc phục."
+          }
+        }
+      }
+    },
+    "statusItem.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the menu bar icon. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the %@ menu."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở menu của %@."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

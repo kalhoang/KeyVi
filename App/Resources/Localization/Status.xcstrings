@@ -1,0 +1,510 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "secureInputHint.browser.passwordField" : {
+      "comment" : "PLT-R397 browser hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browser: click outside the password field or switch tabs."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trình duyệt: bấm ra ngoài ô mật khẩu hoặc chuyển sang thẻ khác."
+          }
+        }
+      }
+    },
+    "secureInputHint.iterm2.secureKeyboardEntry" : {
+      "comment" : "PLT-R398C iTerm2 hint. VERIFY the setting name in the current iTerm2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iTerm2: turn off Secure Keyboard Entry in the iTerm2 menu, and turn off the option that turns it on at password prompts in iTerm2's settings."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iTerm2: tắt Secure Keyboard Entry trong menu iTerm2, và tắt tùy chọn tự bật khi thấy lời nhắc mật khẩu trong cài đặt của iTerm2."
+          }
+        }
+      }
+    },
+    "secureInputHint.terminal.secureKeyboardEntry" : {
+      "comment" : "PLT-R397 Terminal hint. The menu item is quoted by its English name, as on the website and in the support replies; VERIFY the name Terminal shows on a Vietnamese system.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal: turn off Secure Keyboard Entry in the Terminal menu."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal: tắt mục Secure Keyboard Entry trong menu Terminal."
+          }
+        }
+      }
+    },
+    "status.action.grantPermission" : {
+      "comment" : "PRD-R43 action.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grant permission..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cấp quyền..."
+          }
+        }
+      }
+    },
+    "status.action.learnMore" : {
+      "comment" : "PRD-R43 action.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn more"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tìm hiểu thêm"
+          }
+        }
+      }
+    },
+    "status.action.overrideTextFocus" : {
+      "comment" : "PLT-R540 one-click override. %@ is the frontmost app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep typing Vietnamese in %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vẫn gõ tiếng Việt trong %@"
+          }
+        }
+      }
+    },
+    "status.action.reopenApp" : {
+      "comment" : "ADR 0309. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở lại %@"
+          }
+        }
+      }
+    },
+    "status.action.reportProblem" : {
+      "comment" : "PRD-R43 action.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi..."
+          }
+        }
+      }
+    },
+    "status.action.secureInputHelp" : {
+      "comment" : "Help for secure input.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hướng dẫn..."
+          }
+        }
+      }
+    },
+    "status.action.secureInputHelp.unknownHolder" : {
+      "comment" : "PRD-R43 action, unknown holder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app could not be identified. Help..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không xác định được ứng dụng. Hướng dẫn..."
+          }
+        }
+      }
+    },
+    "status.action.showHolder" : {
+      "comment" : "PRD-R43 action. %@ is the holder app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện %@"
+          }
+        }
+      }
+    },
+    "status.builtInVietnamese" : {
+      "comment" : "Built-in Vietnamese source selected. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The macOS Vietnamese input source is selected, so %@ is paused. Choose the ABC or U.S. keyboard instead."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang dùng bộ gõ Tiếng Việt của macOS nên %@ tạm dừng. Hãy chọn bàn phím ABC hoặc U.S."
+          }
+        }
+      }
+    },
+    "status.failOpen.callbackStuck" : {
+      "comment" : "Fail-open, ADR 0309. %1$@ is the app name (used twice).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ stopped responding while handling a key and paused. Your keyboard keeps working normally. Reopen %1$@ to type Vietnamese again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ bị treo khi xử lý phím nên đã tạm dừng. Bàn phím vẫn gõ bình thường. Mở lại %1$@ để gõ tiếng Việt tiếp."
+          }
+        }
+      }
+    },
+    "status.failOpen.postingBroken" : {
+      "comment" : "Fail-open. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ cannot send the corrected text, so it is paused. Your keyboard keeps working normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ không gửi được chữ đã thêm dấu nên đang tạm dừng. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "status.failOpen.tapUnavailable" : {
+      "comment" : "Fail-open. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is not receiving keystrokes from macOS, so it is paused. Your keyboard keeps working normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ không nhận được phím gõ từ macOS nên đang tạm dừng. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "status.failOpen.watchdog" : {
+      "comment" : "Fail-open. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ took too long to handle keystrokes and paused so your keyboard does not slow down."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ xử lý phím quá chậm nên đã tạm dừng để bàn phím không bị chậm theo."
+          }
+        }
+      }
+    },
+    "status.hint.builtInFallback" : {
+      "comment" : "PLT-R206 honest fallback while permission is missing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you prefer not to grant it, you can use the Vietnamese input source built into macOS."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nếu chưa muốn cấp quyền, bạn có thể dùng bộ gõ Tiếng Việt có sẵn của macOS."
+          }
+        }
+      }
+    },
+    "status.knownLimitation.generic" : {
+      "comment" : "Known limitation without a note. %@ is the frontmost app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has a known limitation with input methods. See the Apps pane in Settings for details."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ có hạn chế đã biết với bộ gõ. Xem chi tiết trong phần Ứng dụng của Cài đặt."
+          }
+        }
+      }
+    },
+    "status.knownLimitation.note" : {
+      "comment" : "PRD-R43 known limitation: %@ is the one-line note from compat-matrix.json.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
+    },
+    "status.noPermission" : {
+      "comment" : "PRD-R43 permission missing. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No permission to receive keystrokes. %@ is paused so it does not affect your keyboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có quyền nhận phím gõ. %@ đang tạm dừng để không ảnh hưởng bàn phím."
+          }
+        }
+      }
+    },
+    "status.noTextFocus" : {
+      "comment" : "02-platform.md section 6: paused, no text field detected. %1$@ app name, %2$@ frontmost app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ is paused in %2$@ because no text field was detected."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ đang tạm dừng trong %2$@ vì không thấy ô nhập chữ."
+          }
+        }
+      }
+    },
+    "status.noTextFocus.unknownApp" : {
+      "comment" : "Same, frontmost app unknown. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is paused because no text field was detected."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đang tạm dừng vì không thấy ô nhập chữ."
+          }
+        }
+      }
+    },
+    "status.nonLatinSource" : {
+      "comment" : "PRD-R43 verbatim. %1$@ input source name, %2$@ app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The %1$@ keyboard is in use. %2$@ is paused."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang dùng bàn phím %1$@. %2$@ tạm dừng."
+          }
+        }
+      }
+    },
+    "status.secureInput.holder" : {
+      "comment" : "PRD-R43 secure input. %@ is the holder app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has turned on secure input, so every input method is paused. Usually a password field is still open."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đang bật chế độ nhập bảo mật, nên mọi bộ gõ đều tạm dừng. Thường do một ô mật khẩu còn mở."
+          }
+        }
+      }
+    },
+    "status.secureInput.staleHolder" : {
+      "comment" : "PLT-R396 holder is loginwindow or has exited.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure input is still on although no app needs it. Lock the screen and unlock it (Control + Command + Q), or log out and back in."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ nhập bảo mật vẫn bật dù không còn ứng dụng nào cần. Khóa màn hình rồi mở khóa (Control + Command + Q), hoặc đăng xuất rồi đăng nhập lại."
+          }
+        }
+      }
+    },
+    "status.secureInput.unknownHolder" : {
+      "comment" : "PRD-R43 secure input, holder unknown.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure input is on, so every input method is paused. Usually a password field is still open."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ nhập bảo mật đang bật, nên mọi bộ gõ đều tạm dừng. Thường do một ô mật khẩu còn mở."
+          }
+        }
+      }
+    },
+    "status.tapReenabled" : {
+      "comment" : "PRD-R43 verbatim.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS briefly stopped the input method and it is running again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bộ gõ vừa bị macOS tạm ngắt và đã chạy lại."
+          }
+        }
+      }
+    },
+    "status.userDisabled" : {
+      "comment" : "Paused by the user. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is turned off for now."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đang tạm tắt."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
