@@ -201,6 +201,7 @@ suite possible without a dedicated Mac and without touching Pa's Mac:
 
 ```sh
 scripts/vm/integration-dev.sh    # throwaway clone of {{app-slug}}-dev (6144 MB, 4 CPUs), deleted afterwards
+scripts/vm/integration-dev.sh --only testhost.web.textarea    # control run of chosen scenarios (IDs, PREFIX*)
 ```
 
 It copies the committed checkout (`git archive HEAD`) into the clone and runs
@@ -319,10 +320,22 @@ Each run is `scripts/vm/integration-dev.sh` in a throwaway clone of `{{app-slug}
 | `20261113T191620Z-integration` | `9be7e9e` | - | - | Did not start: `tart exec` right after boot found no guest agent yet; `integration-dev.sh` now waits for it (`VM_AGENT_TIMEOUT`, default 180 s) |
 | `20261113T192215Z-integration` | `e875936` | 35 | 5 | TestHost moves the page focus before the web view becomes first responder (web edit-mode transition passes); one transient `prepare: press failed with AXError -25204` on Reset fields (now retried) |
 | `20261113T194227Z-integration` | `bdb803c` | 34 | 6 | Last run of W6-B. The Reset fields retry held (`testhost.layout.abc` passes); `testhost.perWindowRule.mainWindow` and `testhost.web.editModeTransition` failed again after passing in earlier runs (intermittent, see below) |
+| `20261113T204207Z-integration` | `02613e3` | 1 | 0 | Control run, `--only testhost.web.textarea`: on a freshly launched TestHost the scenario passes |
+| `20261113T205703Z-integration` | `abbf586` | 35 | 5 | Trial: Reset fields reloaded `fields.html` every time. `testhost.web.textarea` still failed; `testhost.web.inlineAutocomplete` failed (`asia.example`) for the first time since run 3 |
+| `20261113T211740Z-integration` | `abbf586` | 1 | 2 | Control run, `--only testhost.web.inlineAutocomplete,testhost.web.input,testhost.web.textarea`: `web.input` passes, `web.textarea` fails right after it on a freshly loaded page; `web.inlineAutocomplete` as the first scenario gives `aá` |
+| `20261113T212628Z-integration` | `065e076` | 1 | 2 | The same control run with the reload reverted: `web.textarea` fails after `web.input` in the same way; `web.inlineAutocomplete` as the first scenario of a fresh TestHost found no `testhost.web.input` element at readback (a first-scenario effect, not seen in a full run) |
+| `20261113T213424Z-integration` | `065e076` | 35 | 5 | Final run of W6-B (harness: bounded focus refresh wait, no window title in focus reports). `testhost.web.inlineAutocomplete` passes again; `testhost.web.editModeTransition` failed (`Dd`, intermittent) |
 
-Result: from 5 of 40 to **35 of 40** (`20261113T185210Z-integration` and `20261113T192215Z-integration`); the last run,
-`20261113T194227Z-integration`, passed 34 because two timing-dependent scenarios failed again. Not all 40 are green
-yet: what is left is in the app's input pipeline (W6-A), not in the harness, TestHost or the VM.
+Result: from 5 of 40 to **35 of 40** (`20261113T185210Z-integration`, `20261113T192215Z-integration`,
+`20261113T205703Z-integration` and the final run `20261113T213424Z-integration` on `065e076`); one run passed 34
+because timing-dependent scenarios failed again. Not all 40 are green yet: what is left is in the app's input
+pipeline (W6-A), not in the harness, TestHost or the VM.
+
+Control runs (`scripts/vm/integration-dev.sh --only ...`) separated TestHost state from the app for
+`testhost.web.textarea`: alone on a fresh TestHost it passes; right after `testhost.web.input` it fails, with or without
+a fresh load of `fields.html` on Reset fields (the reload was tried and reverted, `065e076`). TestHost's state before
+`web.input` (after another web scenario) and before `web.textarea` (after `web.input`) is the same, and `web.input`
+passes, so the difference lies in what the app remembers from the previous field of the same page.
 
 Remaining failures and their next step:
 
@@ -331,8 +344,9 @@ Remaining failures and their next step:
 | `testhost.addressBar.telexStroke` | `dđ` for `đ` | Product, inline completion: after `d` TestHost's simulated address bar completes to `dd.example` with `d.example` selected (Chromium behaviour); on the second `d` the app's edit deletes only the selected completion and inserts `đ`, so the first `d` stays. The focus report shows the right field (`testhost.sim.addressBar`, rule `user.testhost.addressBar` -> `browser.chromium.addressBar`) | Owner of `InputHost`/`Injection` (W6-A): reproduce with a typing trace of this scenario in the dev VM and check how the `inlineCompletion` handling of `browser.chromium.addressBar` counts deletions when a completion is selected (one deletion clears the selection, the base letter needs another) |
 | `testhost.addressBar.telexTone` | `aá` for `á` (earlier runs `asia.example`) | Same field and the same missing deletion (`a` completes to `asia.example`; the tone edit clears the selection and appends `á`) | Same as the row above |
 | `testhost.privacyCanary.paste` | a space only, for `kanaryzqx ` | Product or VM: the user rule's `paste` strategy runs (user rules count as opted in, `FocusCore`), but nothing reaches TestHost's plain field, so the composed letters disappear and only the space passes. Either the pasteboard is restored before TestHost reads it on the synthetic Command+V (`restoreDelayMs` 400) or macOS 27's pasteboard privacy blocks a paste a synthetic key triggers | In the dev VM: run the scenario alone with `log stream --predicate 'subsystem == "com.apple.pasteboard"'` open; try a profile with a larger `restoreDelayMs`; owner of `Injection` (W6-A) |
-| `testhost.perWindowRule.mainWindow`, `testhost.web.editModeTransition` (intermittent: passed in runs 4, 5 and 7, failed in run 8) | first word after the focus change untransformed (`vieetj việt`, `Dd`) | Same cause as the `web.textarea` row below, but only sometimes: the app's T6 count did not grow within the harness's 2 s wait after Command+1 (back from the second window's pass-through field) or after the page's editor took focus, so the first keys met the previous field's rule | Same as the row below; the harness can only wait for the refresh, not cause it |
-| `testhost.web.textarea` | first word untransformed (`tieengs việt`) | Product, focus refresh for web content: after the focus moves to the page's textarea the app publishes no new focus snapshot within 2 s (the harness waits for its T6 count, the waits time out), so the first word is decided on the previous snapshot; the PLT-R382 idle revalidation on the first key catches up for the second word. `testhost.web.input` on the same page passes | Owner of `InputHost` (W6-A): check whether `FocusCore` receives `AXFocusedUIElementChanged` from WebKit when focus moves between elements of one `WKWebView` (typing trace, T6 counts in the hooks `state`) |
+| `testhost.perWindowRule.mainWindow`, `testhost.web.editModeTransition` (intermittent: passed in runs 4, 5 and 7 and in `20261113T205703Z`; `web.editModeTransition` failed in run 8 and in `20261113T213424Z`, `perWindowRule.mainWindow` in run 8) | first word after the focus change untransformed (`vieetj việt`, `Dd`) | Same cause as the `web.textarea` row below, but only sometimes: the app's T6 count did not grow within the harness's 2 s wait after Command+1 (back from the second window's pass-through field) or after the page's editor took focus, so the first keys met the previous field's rule | Same as the row below; the harness can only wait for the refresh, not cause it |
+| `testhost.web.textarea` | first word untransformed (`tieengs việt`) | Product, focus refresh for web content: after the focus moves from the page's input (previous scenario) to its textarea the app publishes no new focus snapshot within 2 s (the harness waits for its T6 count, the waits time out), so the first word is decided on the previous snapshot; the PLT-R382 idle revalidation on the first key catches up for the second word. Not TestHost: the scenario passes alone on a fresh TestHost and fails after `testhost.web.input` also on a freshly loaded page (control runs above) | Owner of `InputHost` (W6-A): reproduce with `scripts/vm/integration-dev.sh --only testhost.web.input,testhost.web.textarea` and a typing trace; check whether `FocusCore` receives `AXFocusedUIElementChanged` from WebKit, or treats the new element as the same field, when focus moves from one element of a `WKWebView` page to another after a blur (T6 counts in the hooks `state`) |
+| `testhost.web.inlineAutocomplete` (intermittent: failed in `20261113T205703Z`, passed in the runs before and after) | `asia.example` or `aá` for `á` | Same inline completion edit as the `addressBar` rows: when the page's simulated completion is selected at the time of the tone key, the edit is one deletion short | Same as the `addressBar` rows |
 
 None of these needs the Apple Development identity or Pa's Mac. The privacy scan has passed (no finding, no unreadable
 or vanished file) in every run since the second.

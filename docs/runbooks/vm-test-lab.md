@@ -153,8 +153,10 @@ The run folders stay under `/Volumes/Data/tart/runs/` on Pa's Mac.
 disabled, so `scripts/vm/grant-tcc.sh` grants TCC). The guest half enables the input sources the scenarios select
 (`scripts/vm/guest/enable-input-sources.swift`, in the guest only) and builds with `scripts/run-integration.sh build`
 and `INTEGRATION_CODE_SIGN_IDENTITY=-` (ad hoc, hardened runtime off), so the VM and the runner share one build
-step. How it works, the result of the first attempt and the manual
-grant for an image with SIP enabled: [integration-suite.md](integration-suite.md) section 10. The runner plan:
+step. `--only ID[,ID...]` (scenario IDs or `PREFIX*` patterns) runs only those TestHost scenarios, for a control
+run of one failure on a fresh TestHost (`scripts/vm/integration-dev.sh --only testhost.web.textarea`). How it works,
+the result of the first attempt and the manual grant for an image with SIP enabled:
+[integration-suite.md](integration-suite.md) section 10. The runner plan:
 [self-hosted-runner.md](self-hosted-runner.md) section 8.
 
 ## 8. Cleanup
