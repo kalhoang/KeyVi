@@ -90,6 +90,12 @@ struct CompiledRule: Sendable {
     var hasTitlePattern: Bool { title != nil }
     var hasURLPrefixes: Bool { urlPrefixes != nil }
 
+    /// PLT-R520: the score comes from `engines` alone (unscored fields such as versions may be present).
+    var scoresOnlyByEngine: Bool { specificity == Specificity.engine }
+
+    /// PLT-R520 exception: a rule that matches by `appCategories` and passes keys through (the games rule).
+    var isCategoryPassThrough: Bool { categories != nil && rule.action.strategy == .passThrough }
+
     /// Every present match field must match (all-of across fields, any-of within a field).
     func matches(_ context: MatchContext) -> Bool {
         matchesIdentity(context) && matchesVersions(context) && matchesAX(context) && matchesWeb(context)

@@ -3,6 +3,8 @@
 // The compiled form behind `RuleSet` (02-platform.md 5.5). Rules are kept in winning order: user overrides
 // first (PLT-R522), then higher specificity (PLT-R520), then the lexicographically smaller id (PLT-R521). The
 // first matching rule wins; the next matching rule of the same source and score is the runtime tie loser.
+// PLT-R520 exception (Q48): when the best candidate scores only by `engines` and a games rule (`appCategories`
+// with a `passThrough` action) of the same source also matches, the engine-only candidates drop out.
 
 import AppModel
 
@@ -46,17 +48,19 @@ struct CompiledRuleSet: Sendable {
         return DecisionBuilder.decision(winner: winner, tieLoser: tieLoser, defaults: defaults, engine: context.engine)
     }
 
+    /// The matching candidates of the best source (PLT-R522), in winning order. Resolution runs on the ax thread
+    /// on focus change only, never per keystroke (PLT-R523), so collecting them is cheap enough.
     private func winner(for context: MatchContext) -> (CompiledRule, RuleID?)? {
-        var winner: CompiledRule?
-        for candidate in ordered {
-            if let current = winner {
-                guard candidate.source == current.source, candidate.specificity == current.specificity else { break }
-                if candidate.matches(context) { return (current, candidate.rule.id) }
-            } else if candidate.matches(context) {
-                winner = candidate
-            }
-        }
-        return winner.map { ($0, nil) }
+        let candidates = ordered.filter { $0.matches(context) }
+        guard let top = candidates.first else { return nil }
+        let tier = candidates.filter { $0.source == top.source }
+        // PLT-R520 exception (decision of the product owner, 13/11/2026): a game built on JVM, Electron, CEF or
+        // Chromium passes keys through instead of getting its engine's strategy.
+        let gameWins = top.scoresOnlyByEngine && tier.contains(where: \.isCategoryPassThrough)
+        let eligible = gameWins ? tier.filter { !$0.scoresOnlyByEngine } : tier
+        guard let winner = eligible.first else { return nil }
+        let runnerUp = eligible.dropFirst().first
+        return (winner, runnerUp?.specificity == winner.specificity ? runnerUp?.rule.id : nil)
     }
 
     private static func winsOver(_ lhs: CompiledRule, _ rhs: CompiledRule) -> Bool {
