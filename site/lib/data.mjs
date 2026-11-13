@@ -2,32 +2,22 @@
 // Loads and normalises the data the site renders: releases (site/data/releases.json, written by
 // scripts/publish-release), the compatibility matrix (compat/matrix.json, QA-R17) and the changelog
 // (CHANGELOG.md). Input is treated as untrusted: unknown shapes are skipped with a warning, never fatal.
-// When a real file is absent the site falls back to site/fixtures/ (see docs/decisions/0601).
+// When a real file is absent the site falls back to site/fixtures/ (see docs/decisions/0601). The matrix
+// fallback (site/fixtures/matrix.json) is schema-valid sample data with every row notVerified.
 import { join } from "node:path";
 import { daysBetween, parseIsoDate } from "./dates.mjs";
 import { compareVersions, readJsonIfExists, readTextIfExists } from "./util.mjs";
 
 export const STALE_AFTER_DAYS = 120; // QA-R19
-export const STATUSES = ["works", "notes", "unverified", "limitation"]; // PRD-R35
+// compat/schema/matrix.schema.json is the source of truth for every matrix field name and value (PRD-R35,
+// QA-R17). Statuses, in legend order:
+export const STATUSES = ["works", "worksWithNotes", "notVerified", "knownLimitation"];
+export const CATEGORIES = ["browser", "office", "chat", "notes", "developer", "terminal", "design", "launcher",
+  "remote", "game", "system", "other"];
 
-const STATUS_ALIASES = new Map([
-  ["works", "works"], ["ok", "works"], ["pass", "works"], ["verified", "works"], ["good", "works"],
-  ["hoat dong tot", "works"],
-  ["notes", "notes"], ["works-with-notes", "notes"], ["workswithnotes", "notes"], ["works_with_notes", "notes"],
-  ["caveat", "notes"], ["hoat dong, co luu y", "notes"],
-  ["unverified", "unverified"], ["not-verified", "unverified"], ["notverified", "unverified"],
-  ["unknown", "unverified"], ["untested", "unverified"], ["chua kiem tra", "unverified"],
-  ["limitation", "limitation"], ["known-limitation", "limitation"], ["knownlimitation", "limitation"],
-  ["known_limitation", "limitation"], ["limited", "limitation"], ["fail", "limitation"],
-  ["han che da biet", "limitation"],
-]);
-
-function foldAscii(text) {
-  return String(text).normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
-}
-
+/** A status outside the schema enum shows as "notVerified": never claim more than the data says. */
 export function normalizeStatus(raw) {
-  return STATUS_ALIASES.get(foldAscii(raw ?? "")) ?? "unverified";
+  return STATUSES.includes(raw) ? raw : "notVerified";
 }
 
 function safeUrl(value) {
@@ -96,27 +86,43 @@ export async function loadReleases(dataDir, warn) {
   return summarizeReleases(releases);
 }
 
-export function normalizeMatrixEntry(raw, today) {
-  const name = String(raw?.displayName ?? raw?.name ?? raw?.app ?? "").trim();
-  if (name === "") return undefined;
-  const verifiedAt = typeof (raw?.lastVerified ?? raw?.verifiedAt ?? raw?.date) === "string"
-    ? String(raw.lastVerified ?? raw.verifiedAt ?? raw.date) : "";
+const text = (value) => (typeof value === "string" ? value.trim() : "");
+
+function schemaNote(value) {
+  // Schema: note is {vi, en}. Anything else is ignored rather than guessed.
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { vi: "", en: "" };
+  return localized(value);
+}
+
+/** Normalises one compat/matrix.json entry (field names of matrix.schema.json). */
+export function normalizeMatrixEntry(raw, today, warn = () => {}) {
+  const name = text(raw?.displayName);
+  if (name === "") {
+    warn("compat/matrix.json: skipped an entry without a displayName");
+    return undefined;
+  }
+  if (raw.status !== undefined && !STATUSES.includes(raw.status)) {
+    warn(`compat/matrix.json: ${name}: status ${JSON.stringify(raw.status)} is not in the schema; shown as notVerified`);
+  }
+  const verifiedAt = text(raw.lastVerified);
   const verifiedDate = parseIsoDate(verifiedAt);
   const stale = !verifiedDate || daysBetween(verifiedDate, today) > STALE_AFTER_DAYS;
-  const declared = normalizeStatus(raw?.status);
+  const declared = normalizeStatus(raw.status);
   return {
     name,
-    bundleId: String(raw?.bundleId ?? raw?.bundleID ?? "").trim(),
-    category: String(raw?.category ?? "other").trim().toLowerCase() || "other",
-    tier: Number.parseInt(raw?.tier, 10) || 0,
+    bundleId: text(raw.bundleId),
+    category: CATEGORIES.includes(raw.category) ? raw.category : "other",
+    tier: raw.tier === 1 || raw.tier === 2 ? raw.tier : 0,
+    ruleId: text(raw.ruleId),
     declaredStatus: declared,
     // QA-R19: entries not verified for 120 days display as "Chưa kiểm tra".
-    status: stale ? "unverified" : declared,
-    stale: stale && declared !== "unverified",
-    note: localized(raw?.note ?? raw?.notes),
+    status: stale ? "notVerified" : declared,
+    stale: stale && declared !== "notVerified",
+    note: schemaNote(raw.note),
     lastVerified: verifiedDate ? verifiedAt.slice(0, 10) : "",
-    appVersion: String(raw?.appVersion ?? "").trim(),
-    macOSVersion: String(raw?.macOSVersion ?? raw?.macosVersion ?? raw?.macOS ?? "").trim(),
+    appVersion: text(raw.appVersion),
+    macOS: text(raw.macOS),
+    issues: Array.isArray(raw.issues) ? raw.issues.filter((n) => Number.isInteger(n) && n > 0) : [],
   };
 }
 
@@ -124,9 +130,9 @@ export async function loadMatrix(matrixPath, fixturesDir, today, warn) {
   const real = await readJsonIfExists(matrixPath);
   const usingFixture = real === undefined;
   const raw = usingFixture ? await readJsonIfExists(join(fixturesDir, "matrix.json")) : real;
-  if (usingFixture) warn("compat/matrix.json not found: using the sample fixture (every row unverified)");
-  const entries = asList(raw, ["entries", "apps", "rows", "items"])
-    .map((entry) => normalizeMatrixEntry(entry, today))
+  if (usingFixture) warn("compat/matrix.json not found: using the sample fixture (every row not verified)");
+  const entries = asList(raw, ["entries"])
+    .map((entry) => normalizeMatrixEntry(entry, today, warn))
     .filter(Boolean)
     .sort((a, b) => (a.tier || 9) - (b.tier || 9) || a.name.localeCompare(b.name, "en"));
   return { entries, usingFixture };

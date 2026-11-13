@@ -141,9 +141,9 @@ tr[hidden], section[hidden] { display: none; }
 .status { white-space: nowrap; font-weight: 600; }
 .status::before { content: attr(data-icon); display: inline-block; width: 1.3em; text-align: center; margin-right: 0.15em; }
 .status-works { color: var(--ok); }
-.status-notes { color: var(--warn); }
-.status-unverified { color: var(--muted); }
-.status-limitation { color: var(--bad); }
+.status-worksWithNotes { color: var(--warn); }
+.status-notVerified { color: var(--muted); }
+.status-knownLimitation { color: var(--bad); }
 .legend { display: grid; gap: 0.5rem 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); padding: 0; list-style: none; }
 .legend li { margin: 0; }
 [data-matrix-filters] { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-bottom: 1.25rem; }

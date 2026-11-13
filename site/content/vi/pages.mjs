@@ -87,6 +87,7 @@ export const compat = {
   cols: { app: "Ứng dụng", status: "Trạng thái", notes: "Ghi chú", verified: "Kiểm tra lần cuối", macos: "macOS" },
   staleDetail: "Kết quả gần nhất ({{date}}) đã quá 120 ngày.",
   neverVerified: "Chưa từng kiểm tra",
+  issuesLabel: "Báo cáo liên quan:",
   reportHeading: "Báo cáo một ứng dụng",
   reportBody: "Ứng dụng của bạn chưa có trong danh sách, hoặc kết quả không đúng với máy của bạn? Hãy gửi báo cáo tương thích. Người duy trì sẽ xác nhận trước khi đổi trạng thái thành \"Hoạt động tốt\".",
   reportLink: "Gửi báo cáo tương thích",

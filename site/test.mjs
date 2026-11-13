@@ -8,8 +8,11 @@ import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
 import { build } from "./build.mjs";
 import { loadBrand } from "./lib/brand.mjs";
+import { CATEGORIES, STATUSES } from "./lib/data.mjs";
+import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile } from "./lib/routes.mjs";
 
 const SITE_DIR = dirname(fileURLToPath(import.meta.url));
@@ -226,17 +229,40 @@ try {
   await check("populated: matrix statuses, 120-day staleness (QA-R19), escaping, filters hook", () => {
     const m = read("tuong-thich", "index.html");
     for (const label of ["Hoạt động tốt", "Hoạt động, có lưu ý", "Chưa kiểm tra", "Hạn chế đã biết"]) assert.ok(m.includes(label), label);
-    assert.match(m, /iTerm2[\s\S]*?status-unverified[\s\S]*?quá 120 ngày/);
+    assert.match(m, /iTerm2[\s\S]*?status-notVerified[\s\S]*?quá 120 ngày/);
     assert.ok(!m.includes("<script>alert"), "matrix notes are escaped");
     assert.match(m, /data-matrix-filters/);
     assert.match(m, /<script src="\/assets\/matrix\.js" defer><\/script>/);
-    assert.ok(!/Mystery app[\s\S]{0,200}status-works/.test(m), "unknown status falls back to unverified");
+    assert.ok(!/Mystery app[\s\S]{0,200}status-works/.test(m), "unknown status falls back to notVerified");
     assert.match(read("en", "compatibility", "index.html"), /Works with notes/);
   });
 
-  await check("populated: changelog rendered from CHANGELOG.md", () => {
+  await check("populated: matrix uses the field names of compat/schema/matrix.schema.json", async () => {
+    const schema = JSON.parse(await readFile(join(ROOT_DIR, "compat", "schema", "matrix.schema.json"), "utf8"));
+    const entry = schema.$defs.entry.properties;
+    assert.deepEqual(STATUSES, entry.status.enum, "status values");
+    assert.deepEqual(CATEGORIES, entry.category.enum, "category values");
+    for (const field of ["displayName", "bundleId", "ruleId", "note", "tier", "lastVerified", "appVersion", "macOS", "issues"]) {
+      assert.ok(entry[field], `schema field ${field}`);
+    }
+    const m = read("tuong-thich", "index.html");
+    assert.match(m, /<tr data-status="worksWithNotes" data-rule-id="browser\.chromium\.addressBar">\s*<th scope="row">Chrome/);
+    assert.match(m, /Chrome[\s\S]*?<td>26\.1<\/td>/, "macOS column reads macOS");
+    assert.match(m, /status-knownLimitation[\s\S]*?<a href="https:\/\/github\.com\/[^"]+\/issues\/3" rel="noopener">#3<\/a>, <a href="[^"]+\/issues\/7"/);
+    assert.match(m, /data-category-group="other"[\s\S]*?Mystery app/, "unknown category falls back to other");
+    for (const lang of ["vi", "en"]) {
+      const ui = (await import(pathToFileURL(join(SITE_DIR, "content", lang, "ui.mjs")).href)).default;
+      assert.deepEqual(Object.keys(ui.status), STATUSES, `${lang} status labels`);
+      assert.deepEqual(Object.keys(ui.categories).sort(), [...CATEGORIES].sort(), `${lang} category labels`);
+    }
+  });
+
+  await check("populated: changelog rendered from CHANGELOG.md, release headings have id v<version>", () => {
     const c = read("nhat-ky-thay-doi", "index.html");
-    assert.match(c, /<h2 id="1-0-0-2026-12-01">/);
+    // ADR 0504: release-notes pages link /nhat-ky-thay-doi/#v<version> and /en/changelog/#v<version>.
+    assert.match(c, /<h2 id="v1\.0\.0">\[1\.0\.0\] - 2026-12-01<\/h2>/);
+    assert.match(c, /<h2 id="v0\.9\.0">/);
+    assert.match(read("en", "changelog", "index.html"), /<h2 id="v1\.0\.0">/);
     assert.match(c, /<strong>iTerm2<\/strong>/);
     assert.match(c, /href="\/ung-ho\/"/);
   });
@@ -270,6 +296,19 @@ try {
     assert.match(html, /hreflang="en" href="https:\/\/[^"]+\/en\/download\/"/);
     assert.match(html, /<a class="lang-switch" href="\/en\/download\/"/);
     assert.match(read("en", "download", "index.html"), /<a class="lang-switch" href="\/tai-ve\/"/);
+  });
+
+  await check("changelog heading ids: releases and betas get v<version>, other headings keep their slug", () => {
+    assert.equal(changelogHeadingId(2, "[1.2.0] - 2026-12-01"), "v1.2.0");
+    assert.equal(changelogHeadingId(2, "[1.3.0-beta.2] - 2026-12-05"), "v1.3.0-beta.2");
+    assert.equal(changelogHeadingId(2, "v2.0.0"), "v2.0.0");
+    assert.equal(changelogHeadingId(2, "[Unreleased]"), undefined);
+    assert.equal(changelogHeadingId(3, "[1.2.0] - 2026-12-01"), undefined);
+  });
+
+  await check("fallback: changelog fills {{AppName}} from brand.env", () => {
+    const en = fallbackPages.get(join(fallback, "en", "changelog", "index.html"));
+    assert.ok(!en.includes("{{AppName}}"));
   });
 
   await check("strict mode refuses to ship VERIFY markers and placeholder config", async () => {

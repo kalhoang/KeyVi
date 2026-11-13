@@ -35,12 +35,12 @@ export default {
   },
   status: {
     works: { label: "Works", help: "Verified on a recent version." },
-    notes: { label: "Works with notes", help: "Usable, with a short note." },
-    unverified: { label: "Not yet verified", help: "No result yet, or the last result is older than 120 days." },
-    limitation: { label: "Known limitation", help: "A known limit, with an explanation and a workaround." },
+    worksWithNotes: { label: "Works with notes", help: "Usable, with a short note." },
+    notVerified: { label: "Not yet verified", help: "No result yet, or the last result is older than 120 days." },
+    knownLimitation: { label: "Known limitation", help: "A known limit, with an explanation and a workaround." },
   },
   categories: {
-    browser: "Browsers", office: "Office", chat: "Chat", editor: "Editors and development",
+    browser: "Browsers", office: "Office", chat: "Chat", developer: "Editors and development",
     terminal: "Terminals", design: "Design", launcher: "Launchers", remote: "Remote desktop",
     system: "System", game: "Games", notes: "Note-taking", other: "Other",
   },

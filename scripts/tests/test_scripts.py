@@ -543,6 +543,35 @@ class CompatStaleTests(TempDirTestCase):
         self.assertEqual(py("compat-stale-report.py", *args, "--release").returncode, 1)
 
 
+class MatrixSchemaTests(TempDirTestCase):
+    """compat/schema/matrix.schema.json is the source of truth for the matrix (QA-R17, compat/SCRIPT.md 5)."""
+
+    SCHEMA = json.loads((REPO / "compat" / "schema" / "matrix.schema.json").read_text(encoding="utf-8"))
+
+    def test_script_example_and_site_sample_follow_the_schema(self):
+        script = (REPO / "compat" / "SCRIPT.md").read_text(encoding="utf-8")
+        section = script[script.index("## 5. Add or update a row"):script.index("## 6. Cadence")]
+        example = json.loads(section.split("```json\n", 1)[1].split("\n```", 1)[0])
+        self.assertEqual(jsonschema_lite.validate(example, self.SCHEMA), [])
+        sample = json.loads((REPO / "site" / "fixtures" / "matrix.json").read_text(encoding="utf-8"))
+        self.assertEqual(jsonschema_lite.validate(sample, self.SCHEMA), [])
+
+    def test_check_matrix(self):
+        entry = {"bundleId": "com.example.A", "displayName": "A", "category": "chat", "status": "notVerified",
+                 "issues": []}
+        good = self.write_json("good.json", {"schemaVersion": 1, "entries": [entry]})
+        self.assertEqual(py("check-matrix.py", "--matrix", str(good)).returncode, 0)
+        works = dict(entry, status="works")
+        bad = self.write_json("bad.json", {"schemaVersion": 1, "entries": [works, dict(entry, macOSVersion="27")]})
+        result = py("check-matrix.py", "--matrix", str(bad))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("missing required property 'lastVerified'", result.stderr)  # works needs the evidence
+        self.assertIn("unexpected property 'macOSVersion'", result.stderr)
+        self.assertIn("bundleId com.example.A already used", result.stderr)
+        self.assertEqual(py("check-matrix.py", "--matrix", str(self.tmp / "none.json")).returncode, 0)
+        self.assertEqual(py("check-matrix.py", "--matrix", str(self.tmp / "none.json"), "--require").returncode, 1)
+
+
 class DependencyAuditTests(TempDirTestCase):
     def test_unpinned_dependency_fails_offline(self):
         package = self.tmp / "Pkg"

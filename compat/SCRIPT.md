@@ -168,7 +168,7 @@ For each run record the following. This is the evidence that goes into `compat/m
 | Date of the run (UTC or local, say which) | Your clock |
 | App display name and bundle ID | `mdls` command above |
 | App version | `mdls` command above |
-| App category (browser, office, chat, editor, terminal, design, launcher, remote, game, other) | Your judgement |
+| App category (browser, office, chat, notes, developer, terminal, design, launcher, remote, game, system, other) | Your judgement |
 | macOS version and build | `sw_vers` |
 | {{AppName}} version and build, channel | Menu, About & Support |
 | Architecture (Apple silicon or Intel) | Apple menu, About This Mac |
@@ -193,7 +193,7 @@ The matrix columns (PLT section 13.3) come from the steps:
 | Burst typing | 7 |
 | Backspace re-entry across `, ` | 4 (and 5) |
 | Macro expansion | 9 |
-| Toggle hotkey | 8 |
+| Toggle hotkey | 8 (no cell of its own in the schema: a failure lowers the status and is explained in the note) |
 | Restore hotkey | Optional check A below; otherwise `n/a` |
 | Per-app memory | Optional check B below; otherwise `n/a` |
 
@@ -205,12 +205,12 @@ A failure on a Tier 1 app blocks a stable release (spec/04-quality-release.md se
 
 ## 4. Choosing the status
 
-| Result | Status shown to users (vi) | Note |
-|---|---|---|
-| All applicable steps pass | `Hoạt động tốt` | Verified on a recent version |
-| All pass but one needs a caveat | `Hoạt động, có lưu ý` | One user-facing line, for example "Trong ô địa chỉ, gợi ý tự động có thể bị tắt khi đang gõ dấu." |
-| Cannot be run, or older than 120 days | `Chưa kiểm tra` | After 120 days without verification an entry displays as this automatically (QA-R19) |
-| A step fails and no rule can fix it | `Hạn chế đã biết` | Plain explanation and workaround; VERIFY each limitation before publishing |
+| Result | `status` in `compat/matrix.json` | Shown to users (vi) | Note |
+|---|---|---|---|
+| All applicable steps pass | `works` | `Hoạt động tốt` | Verified on a recent version |
+| All pass but one needs a caveat | `worksWithNotes` | `Hoạt động, có lưu ý` | One user-facing line, for example "Trong ô địa chỉ, gợi ý tự động có thể bị tắt khi đang gõ dấu." |
+| Cannot be run, or older than 120 days | `notVerified` | `Chưa kiểm tra` | After 120 days without verification an entry displays as this automatically (QA-R19) |
+| A step fails and no rule can fix it | `knownLimitation` | `Hạn chế đã biết` | Plain explanation and workaround; VERIFY each limitation before publishing |
 
 ## 5. Add or update a row in `compat/matrix.json`
 
@@ -218,54 +218,63 @@ The file is the single source for the in-app Apps page and the website matrix (Q
 
 1. Run the 12 steps (sections 1 and 2).
 2. Open `compat/matrix.json`. Find the entry by bundle ID. If it exists, update it; if not, add a new entry.
-3. Fill the fields of QA-R17:
+3. Fill the fields of QA-R17. The names are those of `compat/schema/matrix.schema.json`:
 
-   | Field | Meaning |
-   |---|---|
-   | bundle ID | `CFBundleIdentifier` of the app |
-   | display name | Name users know |
-   | category | As in section 2 |
-   | tier | 1 or 2 per PRD-R39; other apps are untiered until added to a tier by decision |
-   | matched rule ID | The rule ID shown in Diagnostics (empty if the default applies) |
-   | status | One of the four values in section 4 |
-   | user-facing note | One plain sentence in Vietnamese (and English where the file has both) |
-   | last verified date | Date of the run, `YYYY-MM-DD` |
-   | app version | Of the tested app |
-   | macOS version | Of the test Mac |
-   | verifier | Handle or name |
-   | linked issues | Issue numbers for failures or limitations |
+   | Field | Meaning | Required |
+   |---|---|---|
+   | `bundleId` | `CFBundleIdentifier` of the app | always |
+   | `displayName` | Name users know | always |
+   | `category` | `browser`, `office`, `chat`, `notes`, `developer`, `terminal`, `design`, `launcher`, `remote`, `game`, `system` or `other` (section 2) | always |
+   | `tier` | `1` or `2` per PRD-R39; leave it out for untiered apps | no |
+   | `ruleId` | The rule ID shown in Diagnostics; leave it out when the default applies | no |
+   | `status` | `works`, `worksWithNotes`, `notVerified` or `knownLimitation` (section 4) | always |
+   | `note` | `{ "vi": "...", "en": "..." }`: one plain sentence in each language | with `worksWithNotes` and `knownLimitation` |
+   | `lastVerified` | Date of the run, `YYYY-MM-DD` | with `works` and `worksWithNotes` |
+   | `appVersion` | Version of the tested app | with `works` and `worksWithNotes` |
+   | `macOS` | macOS version of the test Mac, for example `27.1` | with `works` and `worksWithNotes` |
+   | `verifier` | Handle or name | with `works` and `worksWithNotes` |
+   | `issues` | Issue numbers (integers) for failures or limitations; `[]` when there are none | always |
+   | `checks` | Per-step cells, below | no |
 
-   Also fill the per-step cells (Telex basic, VNI basic, inline completion, burst typing, backspace re-entry across `, `, restore hotkey, per-app memory, macro expansion, notes) with `pass`, `fail` or `n/a`, each with the date and tester.
-4. Validate the file against the schema (the lint script or the site build does it; see `scripts/lint.sh`) and run `node site/build.mjs` to see the matrix page.
+   Fill `checks` with one cell per matrix column of section 3: `telexBasic`, `vniBasic`, `inlineCompletion`, `burstTyping`, `backspaceReentry`, `restoreHotkey`, `perAppMemory`, `macroExpansion`. Each cell is `{ "result": "pass" | "fail" | "n/a", "date": "YYYY-MM-DD", "tester": "..." }`. Toggle hotkey has no cell; record a failure of it in the status and the note.
+4. Validate the file against the schema: `scripts/lint.sh` runs `python3 -I scripts/check-matrix.py`, which you can also run alone. Then run `node site/build.mjs` to see the matrix page.
 5. A new per-app rule needs more than a data entry: add an integration test that reproduces the app's behaviour in `TestHost/` (QA-R21).
 6. Open a pull request. A community-provided row is marked unconfirmed until a maintainer confirms it (QA-R20).
 
-Illustrative entry (values are examples, not real results; field names follow the schema in `compat/schema/`):
+Illustrative file with one entry (values are examples, not real results; the field names are exactly those of the schema, and `scripts/tests/test_scripts.py` validates this example against it):
 
 ```json
 {
-  "bundleID": "com.example.Editor",
-  "displayName": "Example Editor",
-  "category": "editor",
-  "tier": 2,
-  "ruleID": null,
-  "status": "works",
-  "note": { "vi": "", "en": "" },
-  "lastVerified": "2026-11-13",
-  "appVersion": "1.0",
-  "macOSVersion": "15.1",
-  "verifier": "github-handle",
-  "issues": [],
-  "steps": {
-    "telexBasic": "pass",
-    "vniBasic": "pass",
-    "inlineCompletion": "n/a",
-    "burstTyping": "pass",
-    "backspaceReentry": "pass",
-    "restoreHotkey": "n/a",
-    "perAppMemory": "n/a",
-    "macroExpansion": "pass"
-  }
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "bundleId": "com.example.Editor",
+      "displayName": "Example Editor",
+      "category": "developer",
+      "tier": 2,
+      "ruleId": "editor.example.default",
+      "status": "worksWithNotes",
+      "note": {
+        "vi": "Gợi ý tự động có thể tắt trong lúc gõ dấu.",
+        "en": "Autocomplete may pause while a tone mark is typed."
+      },
+      "lastVerified": "2026-11-13",
+      "appVersion": "1.0",
+      "macOS": "27.1",
+      "verifier": "github-handle",
+      "issues": [],
+      "checks": {
+        "telexBasic": { "result": "pass", "date": "2026-11-13", "tester": "github-handle" },
+        "vniBasic": { "result": "pass", "date": "2026-11-13", "tester": "github-handle" },
+        "inlineCompletion": { "result": "n/a", "date": "2026-11-13", "tester": "github-handle" },
+        "burstTyping": { "result": "pass", "date": "2026-11-13", "tester": "github-handle" },
+        "backspaceReentry": { "result": "pass", "date": "2026-11-13", "tester": "github-handle" },
+        "restoreHotkey": { "result": "n/a", "date": "2026-11-13", "tester": "github-handle" },
+        "perAppMemory": { "result": "n/a", "date": "2026-11-13", "tester": "github-handle" },
+        "macroExpansion": { "result": "pass", "date": "2026-11-13", "tester": "github-handle" }
+      }
+    }
+  ]
 }
 ```
 

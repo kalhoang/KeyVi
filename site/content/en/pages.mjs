@@ -86,6 +86,7 @@ export const compat = {
   cols: { app: "App", status: "Status", notes: "Notes", verified: "Last verified", macos: "macOS" },
   staleDetail: "The last result ({{date}}) is older than 120 days.",
   neverVerified: "Never verified",
+  issuesLabel: "Related issues:",
   reportHeading: "Report an app",
   reportBody: "Is your app missing, or does the result not match what you see? Send a compatibility report. A maintainer confirms it before the status changes to \"Works\".",
   reportLink: "Send a compatibility report",

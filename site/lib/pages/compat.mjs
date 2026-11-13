@@ -5,10 +5,19 @@ import { STATUSES } from "../data.mjs";
 import { formatDate } from "../dates.mjs";
 import { esc } from "../util.mjs";
 
-const ICONS = { works: "✓", notes: "!", unverified: "?", limitation: "×" };
+// Keys are the status values of compat/schema/matrix.schema.json; the icon repeats the label's meaning so
+// the status is never conveyed by colour alone.
+const ICONS = { works: "✓", worksWithNotes: "!", notVerified: "?", knownLimitation: "×" };
 
 function categoryLabel(ui, key) {
   return ui.categories[key] ?? key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function issueLinks(kt, entry) {
+  if (entry.issues.length === 0) return "";
+  const base = `${kt.ctx.config.githubRepo.replace(/\/+$/, "")}/issues/`;
+  const links = entry.issues.map((n) => `<a href="${esc(base + n)}" rel="noopener">#${n}</a>`).join(", ");
+  return `<small>${esc(kt.c.compat.issuesLabel)} ${links}</small>`;
 }
 
 function noteCell(kt, entry) {
@@ -18,6 +27,7 @@ function noteCell(kt, entry) {
   if (note) parts.push(esc(note));
   if (entry.stale) parts.push(`<small>${esc(c.compat.staleDetail.replace("{{date}}", formatDate(lang, entry.lastVerified)))}</small>`);
   else if (!entry.lastVerified && !note) parts.push(`<small>${esc(c.compat.neverVerified)}</small>`);
+  parts.push(issueLinks(kt, entry));
   return parts.join("") || "-";
 }
 
@@ -28,12 +38,13 @@ function row(kt, entry) {
     ? `<time datetime="${esc(entry.lastVerified)}">${esc(formatDate(lang, entry.lastVerified))}</time>`
     : "-";
   const version = entry.appVersion ? `<small>${esc(entry.appVersion)}</small>` : "";
-  return `<tr data-status="${esc(entry.status)}">
+  const rule = entry.ruleId ? ` data-rule-id="${esc(entry.ruleId)}"` : "";
+  return `<tr data-status="${esc(entry.status)}"${rule}>
 <th scope="row">${esc(entry.name)}${version}</th>
 <td><span class="status status-${esc(entry.status)}" data-icon="${ICONS[entry.status]}">${esc(status.label)}</span></td>
 <td>${noteCell(kt, entry)}</td>
 <td>${verified}</td>
-<td>${esc(entry.macOSVersion || "-")}</td>
+<td>${esc(entry.macOS || "-")}</td>
 </tr>`;
 }
 
