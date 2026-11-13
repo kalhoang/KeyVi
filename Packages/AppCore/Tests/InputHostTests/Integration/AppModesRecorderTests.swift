@@ -4,8 +4,8 @@
 
 import AppModel
 import Foundation
+import RealtimeSupport
 import SettingsStore
-import Synchronization
 import TestSupport
 import Testing
 
@@ -20,7 +20,7 @@ import Testing
         let overlapped = Atomic<Bool>(false)
         let recorder = AppModesRecorder { document in
             if inFlight.wrappingAdd(1, ordering: .relaxed).newValue > 1 { overlapped.store(true, ordering: .relaxed) }
-            if document.apps.isEmpty { try? await Task.sleep(for: .milliseconds(30)) }
+            if document.apps.isEmpty { try? await Task.sleep(nanoseconds: 30_000_000) }
             delivered.withLock { $0.append(document.apps.count) }
             inFlight.wrappingSubtract(1, ordering: .relaxed)
         }

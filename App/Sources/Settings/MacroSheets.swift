@@ -9,7 +9,7 @@ import ShellCore
 import SwiftUI
 
 struct MacroEditorSheet: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @State private var draft = MacroDraft()
 
     var body: some View {
@@ -69,7 +69,7 @@ struct MacroEditorOptions: View {
 
 /// The blocking reason (after the user typed something), advice, and a save error from the engine check.
 struct MacroCheckLines: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let draft: MacroDraft
     let check: MacroDraftCheck
 
@@ -105,7 +105,7 @@ struct IssueLine: View {
 }
 
 struct MacroImportSheet: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer

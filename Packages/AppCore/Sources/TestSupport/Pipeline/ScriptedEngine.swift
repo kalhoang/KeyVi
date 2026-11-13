@@ -3,7 +3,7 @@
 // The scripted engine's rules and the engine event log the step and property suites inspect.
 
 public import InputHost
-internal import Synchronization
+internal import RealtimeSupport
 public import VietnameseEngine
 
 /// Tiny Telex-like composer. Rules: `aa` -> `â`; `s` puts an acute accent on the last vowel; `w` turns a final

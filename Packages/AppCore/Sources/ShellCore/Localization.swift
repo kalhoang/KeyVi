@@ -9,8 +9,9 @@
 // there, so switching language re-renders immediately and is independent of the macOS language.
 
 public import AppModel
+public import Combine
 public import Foundation
-public import Observation
+public import RealtimeSupport
 
 /// String tables (catalog file names). Owned per workstream (docs/architecture/workstreams.md).
 public enum StringTable: String, Sendable, CaseIterable {
@@ -79,8 +80,12 @@ public struct Localizer: Sendable {
     /// PRD-R65: an ISO calendar day (`YYYY-MM-DD`, as `compat-matrix.json` writes `lastVerified`) in the selected
     /// language, in the same long style as `formatDate`. Text that is not a valid day is returned unchanged.
     public func formatDay(iso day: String, timeZone: TimeZone = .current) -> String {
-        guard let match = day.wholeMatch(of: /(\d{4})-(\d{2})-(\d{2})/) else { return day }
-        let parts = DateComponents(year: Int(match.1), month: Int(match.2), day: Int(match.3))
+        // `YYYY-MM-DD` with ASCII digits, parsed by hand (Swift `Regex` needs macOS 13).
+        let fields = day.split(separator: "-", omittingEmptySubsequences: false)
+        guard fields.map(\.count) == [4, 2, 2],
+            fields.allSatisfy({ $0.allSatisfy { ("0"..."9").contains($0) } })
+        else { return day }
+        let parts = DateComponents(year: Int(fields[0]), month: Int(fields[1]), day: Int(fields[2]))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         // A day that does not exist (2026-02-30) rolls over in `date(from:)`; reading it back catches that.
@@ -96,9 +101,12 @@ public struct Localizer: Sendable {
     }
 
     /// Countdown of the typing-trace HUD (PLT-R905), `m:ss`.
-    public func formatCountdown(_ remaining: Duration) -> String {
-        let clamped = max(remaining, .zero)
-        return clamped.formatted(Duration.TimeFormatStyle(pattern: .minuteSecond).locale(locale))
+    /// Arithmetic instead of `Duration.TimeFormatStyle` (macOS 13); both interface languages write `m:ss` with
+    /// ASCII digits. Rounds to the nearest second, half to even, as that style did.
+    public func formatCountdown(_ remaining: TimeSpan) -> String {
+        let seconds = Int(max(remaining, .zero).inSeconds.rounded(.toNearestOrEven))
+        let secondsPart = seconds % 60
+        return "\(seconds / 60):\(secondsPart < 10 ? "0" : "")\(secondsPart)"
     }
 
     static func locale(for language: InterfaceLanguage) -> Locale {
@@ -124,11 +132,12 @@ public struct Localizer: Sendable {
 }
 
 /// Observable current language for SwiftUI views and AppKit controllers (menus rebuild on open).
+/// `ObservableObject` (not `@Observable`, which needs macOS 14; ADR 0315): SwiftUI views hold it as
+/// `@ObservedObject` or observe a model that forwards its `objectWillChange`; AppKit controllers use `afterChange`.
 @MainActor
-@Observable
-public final class InterfaceLanguageModel {
-    public private(set) var localizer: Localizer
-    @ObservationIgnored private let appBundle: Bundle
+public final class InterfaceLanguageModel: ObservableObject {
+    @Published public private(set) var localizer: Localizer
+    private let appBundle: Bundle
 
     public init(language: InterfaceLanguage, appBundle: Bundle) {
         self.appBundle = appBundle

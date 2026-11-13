@@ -67,9 +67,9 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R102 | SwiftPM targets and responsibilities | `Packages/AppCore/Package.swift`, ADR 0302 | D | skeleton (done) |  |
 | PLT-R103 | Engine package permissive, no AppKit/CG/Carbon | `Packages/VietnameseEngine` | L | engine track |  |
 | PLT-R104 | Sparkle only runtime dependency, exact pin, resolved file committed | `project.yml`, `Config/Package.resolved` | L | skeleton (done); W2-D |  |
-| PLT-R105 | Universal binary | `Config/Release.xcconfig` | R | skeleton (done); release track (`lipo` check) |  |
-| PLT-R106 | macOS 15 minimum, no API newer than 14 outside Synchronization | `Package.swift`, `project.yml` | L | all; CI track (availability lint) |  |
-| PLT-R107 | Test matrix macOS 15, 26, 27 plus next beta | self-hosted runner, `compat/matrix.json` | M, V | W2-E2; Pa | **Pa** |
+| PLT-R105 | Universal binary (arm64 + x86_64), Intel supported | `Config/Release.xcconfig`, `.github/workflows/ci.yml` job `macos-x86_64` (AppCore suite under Rosetta) | R, U, M | W4-A (ADR 0315); release track (`lipo` check) | **Pa** (Intel smoke test when hardware exists) |
+| PLT-R106 | macOS 12.0 minimum; newer APIs only behind `#available`; RealtimeSupport `Atomic`, `Mutex`, `TimeSpan` instead of `Synchronization` and `Duration` | `Package.swift` (AppCore, engine, fuzz), `project.yml`, `RealtimeSupport`, ADR 0315 | L, U | W4-A; every build fails on unguarded newer APIs; strong imports checked against the macOS 12.0 SDK (ADR 0315) |  |
+| PLT-R107 | Test matrix macOS 12, 15, 26, 27 plus next beta; macOS 12 smoke test in a tart VM | self-hosted runner, `compat/matrix.json`, ADR 0315 | M, V | W2-E2; W4-A (plan); Pa | **Pa** (approve the VM, run the smoke test) |
 | PLT-R108 | Licence note for rules/injection reuse | `docs/decisions/` (Pa) | D | Pa decision |  |
 | PLT-R201 | One process, no daemons, extensions or IMKit bundle | `App` target | I, R | W2-A; release track (bundle check) |  |
 | PLT-R202 | Logical components | ARCHITECTURE.md section 2 | D | skeleton (done) |  |

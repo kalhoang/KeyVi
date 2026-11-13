@@ -27,11 +27,11 @@ final class AppEnvironment {
     private(set) var updater: UpdaterController?
 
     let paths: StoragePaths
-    let utility: DispatchSerialQueue
+    let utility: DispatchQueue
     let keyValues = UserDefaultsKeyValueStore()
     let launchGuard: LaunchGuard
     let diagnostics: DiagnosticsWiring
-    let loginItem = SMAppServiceLoginItem()
+    let loginItem = SMAppServiceLoginItem(openLegacyLoginItems: AppEnvironment.openLegacyLoginItems)
     let settingsChanges = MainActorRelay<SettingsState>()
     /// System uptime at launch: keys pressed before it do not count for the relaunch policy (PLT-R1105).
     let launchUptime = ProcessInfo.processInfo.systemUptime
@@ -68,7 +68,7 @@ final class AppEnvironment {
         brand = Brand.from(bundle)
         language = InterfaceLanguageModel(language: DefaultSettings.v1.interfaceLanguage, appBundle: bundle)
         paths = StoragePaths(folder: brand.storageFolderName)
-        utility = DispatchSerialQueue(label: brand.slug + ".utility", qos: .utility)
+        utility = DispatchQueue(label: brand.slug + ".utility", qos: .utility)
         launchGuard = LaunchGuard(store: keyValues)
         diagnostics = DiagnosticsWiring(
             paths: paths, subsystem: brand.bundleIdentifier, utility: utility, defaults: .standard)
@@ -189,7 +189,14 @@ final class AppEnvironment {
         return (secondsSinceLastKey: idle, secureInputOn: IsSecureEventInputEnabled())
     }
 
-    private static func loadPaneTable() -> SystemPaneTable? {
+    /// macOS 12 (ADR 0315): no `SMAppService`, so the System Preferences button opens System Preferences >
+    /// Users & Groups, where the user adds the app to Login Items by hand.
+    nonisolated private static func openLegacyLoginItems() {
+        guard let url = loadPaneTable()?.deepLink(.loginItems, macOS: InputHostController.macOSVersion) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    nonisolated private static func loadPaneTable() -> SystemPaneTable? {
         guard let url = Bundle.main.url(forResource: "SystemPanes", withExtension: "json"),
             let data = try? Data(contentsOf: url)
         else { return nil }

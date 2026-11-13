@@ -11,7 +11,7 @@ import ShellCore
 import SwiftUI
 
 struct AppsPaneView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @State private var selection: BundleKey?
 
     var body: some View {
@@ -32,7 +32,7 @@ struct AppsPaneView: View {
 }
 
 struct AppsTable: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let rows: [AppsPaneRow]
     @Binding var selection: BundleKey?
 
@@ -55,21 +55,34 @@ struct AppsTable: View {
                 .width(min: 110, ideal: 120)
         }
         .settingsAccessibility(AppsControl.list, localizer)
-        .contextMenu(forSelectionType: BundleKey.self) { bundles in
-            if let bundle = bundles.first {
-                Button(action: { model.reportProblem(for: bundle) }) {
-                    Text(verbatim: localizer.string(AppsText.report))
+        .rowMenu(model: model, rows: rows, localizer: localizer)
+    }
+}
+
+extension View {
+    /// Row context menu and double-click to open the details, from macOS 13 (`contextMenu(forSelectionType:)`).
+    /// On macOS 12 the Actions column offers the same two commands (ADR 0315).
+    @ViewBuilder
+    fileprivate func rowMenu(model: SettingsWindowModel, rows: [AppsPaneRow], localizer: Localizer) -> some View {
+        if #available(macOS 13, *) {
+            contextMenu(forSelectionType: BundleKey.self) { bundles in
+                if let bundle = bundles.first {
+                    Button(action: { model.reportProblem(for: bundle) }) {
+                        Text(verbatim: localizer.string(AppsText.report))
+                    }
+                    .settingsAccessibility(AppsControl.rowReport, localizer)
                 }
-                .settingsAccessibility(AppsControl.rowReport, localizer)
+            } primaryAction: { bundles in
+                if let row = rows.first(where: { bundles.contains($0.bundle) }) { model.showDetail(row) }
             }
-        } primaryAction: { bundles in
-            if let row = rows.first(where: { bundles.contains($0.bundle) }) { model.showDetail(row) }
+        } else {
+            self
         }
     }
 }
 
 struct AppNameCell: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -83,7 +96,7 @@ struct AppNameCell: View {
 }
 
 struct RulePicker: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -118,7 +131,7 @@ struct StatusCell: View {
 }
 
 struct AppRowActions: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -143,7 +156,7 @@ struct AppRowActions: View {
 
 /// Details (PRD-R35, PRD-R36): status and note, web-app and in-app rows, compatibility mode under Advanced.
 struct AppDetailSheet: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @State private var advanced = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -216,7 +229,7 @@ struct ScopedRows: View {
 
 /// PRD-R36: automatic plus at most three plain choices, each explained in one sentence; paste asks first.
 struct CompatibilityChoices: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -259,7 +272,7 @@ struct CompatibilityChoiceLabel: View {
 
 /// PRD-R48, PLT-R462: the clipboard explanation before the paste mode is chosen for an app.
 struct PasteModeAlert: ViewModifier {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     func body(content: Content) -> some View {
         let localizer = model.localizer

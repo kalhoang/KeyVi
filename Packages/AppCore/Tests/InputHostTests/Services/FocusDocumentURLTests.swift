@@ -23,7 +23,7 @@ private func seededRules() throws -> CountingFocusResolver {
         .deletingLastPathComponent()  // AppCore
         .deletingLastPathComponent()  // Packages
         .deletingLastPathComponent()  // repository root
-    let document = try RulesLoader.decode(Data(contentsOf: root.appending(path: "compat/rules.json")))
+    let document = try RulesLoader.decode(Data(contentsOf: root.appendingPathComponent("compat/rules.json")))
     let rules = try RuleSet(document: document, overrides: [], optedIn: [])
     return CountingFocusResolver(rules, fingerprints: [F.chrome: .chromium])
 }

@@ -7,9 +7,10 @@
 internal import AppModel
 internal import ApplicationServices
 internal import Foundation
+internal import RealtimeSupport
 
 enum AXFieldCalls {
-    static func selectedRange(_ element: AXUIElement?, timeout: Duration) -> AXCallResult<Injection.TextRange> {
+    static func selectedRange(_ element: AXUIElement?, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         guard let element else { return .unavailable }
         prepare(element, timeout: timeout)
         var value: CFTypeRef?
@@ -19,7 +20,7 @@ enum AXFieldCalls {
         return .success(Injection.TextRange(location: range.location, length: range.length))
     }
 
-    static func text(_ element: AXUIElement?, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String>
+    static func text(_ element: AXUIElement?, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String>
     {
         guard let element else { return .unavailable }
         prepare(element, timeout: timeout)
@@ -33,7 +34,7 @@ enum AXFieldCalls {
         return .success(string)
     }
 
-    static func setSelectedRange(_ element: AXUIElement?, to range: Injection.TextRange, timeout: Duration)
+    static func setSelectedRange(_ element: AXUIElement?, to range: Injection.TextRange, timeout: TimeSpan)
         -> AXCallResult<Void>
     {
         guard let element else { return .unavailable }
@@ -43,7 +44,7 @@ enum AXFieldCalls {
         return result(AXUIElementSetAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, value))
     }
 
-    static func setSelectedText(_ element: AXUIElement?, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    static func setSelectedText(_ element: AXUIElement?, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         guard let element else { return .unavailable }
         prepare(element, timeout: timeout)
         return result(AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFString))
@@ -70,7 +71,7 @@ enum AXFieldCalls {
         error == .success ? .success(()) : map(error)
     }
 
-    private static func prepare(_ element: AXUIElement, timeout: Duration) {
+    private static func prepare(_ element: AXUIElement, timeout: TimeSpan) {
         AXUIElementSetMessagingTimeout(element, Float(Double(InjectionTiming.nanoseconds(timeout)) / 1e9))
     }
 

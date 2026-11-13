@@ -5,7 +5,7 @@
 
 internal import CoreFoundation
 internal import CoreGraphics
-internal import Synchronization
+internal import RealtimeSupport
 
 final class MachPortEventTapHandle: EventTapHandle, Sendable {
     /// CF objects without Sendable annotations. `CGEventTapEnable`, `CGEventTapIsEnabled`,

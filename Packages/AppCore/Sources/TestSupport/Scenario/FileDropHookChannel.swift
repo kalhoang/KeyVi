@@ -13,7 +13,6 @@ public import AppModel
 public import Diagnostics
 public import Foundation
 public import RealtimeSupport
-internal import Synchronization
 
 public final class FileDropHookChannel: AppHookClient, Sendable {
     /// Directory name below the app's Application Support folder (`~/Library/Application Support/<folder>/`).

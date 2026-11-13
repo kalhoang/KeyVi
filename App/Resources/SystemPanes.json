@@ -1,9 +1,81 @@
 {
   "schemaVersion": 1,
-  "_comment": "PLT-R704, PRD-R64. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint). Names are in the macOS language because UI copy quotes them as the user sees them in System Settings.",
+  "_comment": "PLT-R704, PRD-R64, ADR 0315. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint). Names are in the macOS language because UI copy quotes them as the user sees them in System Settings (macOS 13 and later) or System Preferences (macOS 12).",
   "entries": [
     {
-      "_verify": "macOS 15 and 26. VERIFY the Vietnamese names of Input Monitoring and Text Replacements, and that inputSources has no dedicated anchor (it opens Keyboard).",
+      "_verify": "macOS 12 Monterey has System Preferences, not System Settings (ADR 0315). Accessibility and Input Monitoring are on the Privacy tab of Security & Privacy, so privacySecurity names the pane and the tab (the copy reads \"System Preferences > Security & Privacy > Privacy > Accessibility\", PLT-R701); Text Replacements are the Text tab of Keyboard; Login Items are a tab of Users & Groups, and the users pane has no anchor for it. VERIFY every Vietnamese name and every deep link on a macOS 12 machine in each language.",
+      "macOS": {
+        "min": "12.0",
+        "max": "12.99"
+      },
+      "names": {
+        "en": {
+          "systemSettings": "System Preferences",
+          "privacySecurity": "Security & Privacy > Privacy",
+          "accessibility": "Accessibility",
+          "inputMonitoring": "Input Monitoring",
+          "keyboard": "Keyboard",
+          "textReplacements": "Text",
+          "usersGroups": "Users & Groups",
+          "loginItems": "Login Items"
+        },
+        "vi": {
+          "systemSettings": "Tùy chọn Hệ thống",
+          "privacySecurity": "Bảo mật & Quyền riêng tư > Quyền riêng tư",
+          "accessibility": "Trợ năng",
+          "inputMonitoring": "Giám sát đầu vào",
+          "keyboard": "Bàn phím",
+          "textReplacements": "Văn bản",
+          "usersGroups": "Người dùng & Nhóm",
+          "loginItems": "Mục đăng nhập"
+        }
+      },
+      "deepLinks": {
+        "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "inputMonitoring": "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+        "keyboard": "x-apple.systempreferences:com.apple.preference.keyboard",
+        "inputSources": "x-apple.systempreferences:com.apple.preference.keyboard?InputSources",
+        "loginItems": "x-apple.systempreferences:com.apple.preferences.users"
+      }
+    },
+    {
+      "_verify": "macOS 13 and 14: System Settings, Login Items under General (ADR 0315). VERIFY the Vietnamese names and every deep link on macOS 13 and 14 machines.",
+      "macOS": {
+        "min": "13.0",
+        "max": "14.99"
+      },
+      "names": {
+        "en": {
+          "systemSettings": "System Settings",
+          "privacySecurity": "Privacy & Security",
+          "accessibility": "Accessibility",
+          "inputMonitoring": "Input Monitoring",
+          "keyboard": "Keyboard",
+          "textReplacements": "Text Replacements",
+          "usersGroups": "General",
+          "loginItems": "Login Items"
+        },
+        "vi": {
+          "systemSettings": "Cài đặt hệ thống",
+          "privacySecurity": "Quyền riêng tư & Bảo mật",
+          "accessibility": "Trợ năng",
+          "inputMonitoring": "Giám sát đầu vào",
+          "keyboard": "Bàn phím",
+          "textReplacements": "Thay thế văn bản",
+          "usersGroups": "Cài đặt chung",
+          "loginItems": "Mục đăng nhập"
+        }
+      },
+      "deepLinks": {
+        "accessibility": "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        "inputMonitoring": "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+        "keyboard": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "inputSources": "x-apple.systempreferences:com.apple.Keyboard-Settings.extension",
+        "loginItems": "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
+      }
+    },
+    {
+      "_verify": "macOS 15 and 26. VERIFY the Vietnamese names of Input Monitoring and Text Replacements, and that inputSources has no dedicated anchor (it opens Keyboard). Login Items is \"Login Items & Extensions\" from macOS 15; VERIFY its Vietnamese name and that of General.",
       "macOS": {
         "min": "15.0",
         "max": "26.99"
@@ -15,7 +87,9 @@
           "accessibility": "Accessibility",
           "inputMonitoring": "Input Monitoring",
           "keyboard": "Keyboard",
-          "textReplacements": "Text Replacements"
+          "textReplacements": "Text Replacements",
+          "usersGroups": "General",
+          "loginItems": "Login Items & Extensions"
         },
         "vi": {
           "systemSettings": "Cài đặt hệ thống",
@@ -23,7 +97,9 @@
           "accessibility": "Trợ năng",
           "inputMonitoring": "Giám sát đầu vào",
           "keyboard": "Bàn phím",
-          "textReplacements": "Thay thế văn bản"
+          "textReplacements": "Thay thế văn bản",
+          "usersGroups": "Cài đặt chung",
+          "loginItems": "Mục đăng nhập & tiện ích mở rộng"
         }
       },
       "deepLinks": {
@@ -46,7 +122,9 @@
           "accessibility": "Device Control and Data Access",
           "inputMonitoring": "Input Monitoring",
           "keyboard": "Keyboard",
-          "textReplacements": "Text Replacements"
+          "textReplacements": "Text Replacements",
+          "usersGroups": "General",
+          "loginItems": "Login Items & Extensions"
         },
         "vi": {
           "systemSettings": "Cài đặt hệ thống",
@@ -54,7 +132,9 @@
           "accessibility": "Điều khiển thiết bị và truy cập dữ liệu",
           "inputMonitoring": "Giám sát đầu vào",
           "keyboard": "Bàn phím",
-          "textReplacements": "Thay thế văn bản"
+          "textReplacements": "Thay thế văn bản",
+          "usersGroups": "Cài đặt chung",
+          "loginItems": "Mục đăng nhập & tiện ích mở rộng"
         }
       },
       "deepLinks": {

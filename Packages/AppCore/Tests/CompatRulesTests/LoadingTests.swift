@@ -8,7 +8,7 @@ import Testing
 
 @Suite struct LoadingTests {
     private func temporaryFile(_ contents: String) throws -> URL {
-        let url = FileManager.default.temporaryDirectory.appending(path: "rules-" + UUID().uuidString + ".json")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("rules-" + UUID().uuidString + ".json")
         try Data(contents.utf8).write(to: url)
         return url
     }
@@ -44,7 +44,7 @@ import Testing
     @Test func semanticallyInvalidShippedFileUsesEmbeddedDefaults() throws {
         var document = try Build.seededDocument()
         document.rules[0].match = RuleMatch()  // global rule with a placeholder (PLT-R422)
-        let url = FileManager.default.temporaryDirectory.appending(path: "rules-" + UUID().uuidString + ".json")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("rules-" + UUID().uuidString + ".json")
         try JSONEncoder().encode(document).write(to: url)
         let result = RulesLoader.load(contentsOf: url)
         #expect(result.usedEmbeddedDefaults)

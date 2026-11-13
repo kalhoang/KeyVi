@@ -13,9 +13,9 @@ public import RealtimeSupport
 /// Runs log rotation and capture purge once at launch and then on their intervals, on the scheduler's queue.
 public struct DiagnosticsMaintenance: Sendable {
     /// PLT-R903 rotation and retention.
-    public static let rotationInterval: Duration = .seconds(6 * 3_600)
+    public static let rotationInterval: TimeSpan = .seconds(6 * 3_600)
     /// PLT-R905: captures older than 24 hours are deleted; checked hourly.
-    public static let purgeInterval: Duration = .seconds(3_600)
+    public static let purgeInterval: TimeSpan = .seconds(3_600)
 
     public let wallClock: any WallClock
     public let rotate: @Sendable () -> Void

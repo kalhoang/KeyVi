@@ -8,7 +8,8 @@ import PackageDescription
 // same executable replays the seed corpus and runs seeded mutations.
 let package = Package(
     name: "VietnameseEngineFuzz",
-    platforms: [.macOS(.v13)],
+    // PLT-R106: the app's macOS 12 floor (docs/decisions/0315-minimum-macos-12.md).
+    platforms: [.macOS(.v12)],
     dependencies: [.package(path: "../VietnameseEngine")],
     targets: [
         .target(

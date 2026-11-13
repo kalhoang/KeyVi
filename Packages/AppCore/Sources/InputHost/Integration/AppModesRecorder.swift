@@ -5,8 +5,8 @@
 // older document could overwrite a newer one on disk. The recorder hands them over one at a time, in emission
 // order, which `AppModeMemory.merged` also relies on (EmittedModeHistory.acknowledge). Workstream W2-A.
 
+internal import RealtimeSupport
 internal import SettingsStore
-internal import Synchronization
 
 /// Serial, in-order delivery of emitted documents to a sink (production: `SettingsStore.recordAppModes`).
 final class AppModesRecorder: Sendable {

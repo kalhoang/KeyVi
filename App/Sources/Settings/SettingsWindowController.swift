@@ -6,9 +6,9 @@
 
 import AppKit
 import AppModel
+import Combine
 import CompatRules
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 import SwiftUI
@@ -38,6 +38,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let minimumSize = NSSize(width: 640, height: 560)
 
     private let model: SettingsWindowModel
+    private var languageObservation: AnyCancellable?
 
     /// Forwarded to the model; set by the composition root after construction.
     weak var actions: (any SettingsActions)? {
@@ -49,19 +50,20 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     /// - Parameters:
     ///   - brand: app name, slug, version and site host (never hard-coded).
     ///   - matrix: the bundled `compat-matrix.json`; nil shows every app as not verified (PRD-R35).
+    ///   - panes: System Settings / System Preferences names of the running macOS (PRD-R64, ADR 0315).
     ///   - inputSources: enabled input sources for the layout binding (PLT-R373), read when the pane appears.
     ///   - layout: the current layout table, so the recorder names Command+Q / Command+W on any layout.
     init(
         store: SettingsStore, language: InterfaceLanguageModel, updater: any UpdaterControlling,
         loginItem: any LoginItemService, brand: Brand = .from(.main),
-        matrix: MatrixDocument? = SettingsResources.bundledMatrix(),
+        matrix: MatrixDocument? = SettingsResources.bundledMatrix(), panes: SystemPaneNames,
         inputSources: @escaping @MainActor () -> [InputSourceInfo] = { [] },
         layout: @escaping @MainActor () -> LayoutTable? = { nil },
         keyValues: any KeyValueStore = UserDefaultsKeyValueStore()
     ) {
         model = SettingsWindowModel(
             commands: SettingsCommands(store: store), language: language, updater: updater, loginItem: loginItem,
-            brand: brand, matrix: matrix, inputSources: inputSources, layout: layout,
+            brand: brand, matrix: matrix, panes: panes, inputSources: inputSources, layout: layout,
             disclosures: AdvancedDisclosureMemory(store: keyValues))
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -113,7 +115,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func present() {
         Task { await model.refresh() }
         showWindow(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
         window?.makeKeyAndOrderFront(nil)
     }
 
@@ -123,14 +125,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func observeLanguage() {
-        withObservationTracking {
-            _ = model.language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.refreshTitle()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
     }
 }
 

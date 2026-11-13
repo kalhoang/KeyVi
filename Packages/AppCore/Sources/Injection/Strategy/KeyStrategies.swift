@@ -11,7 +11,7 @@ protocol StrategyHost: AnyObject {
     /// The worker's long-lived preserver, so consecutive pastes coalesce (PLT-R461 step 6).
     var pasteboardPreserver: PasteboardPreserver { get }
     /// Command+V was posted: the worker restores the clipboard after `restoreDelay` (PLT-R461 steps 4-5).
-    func pasteCompleted(restoreDelay: Duration)
+    func pasteCompleted(restoreDelay: TimeSpan)
     /// PLT-R420: AX could not answer and the next completion option was used.
     func completionFallback()
 }

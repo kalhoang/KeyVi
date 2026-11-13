@@ -9,7 +9,6 @@ import Diagnostics
 import Foundation
 import RealtimeSupport
 import SettingsStore
-import Synchronization
 import TestSupport
 import Testing
 import VietnameseEngine

@@ -5,7 +5,7 @@
 
 import AppModel
 import Foundation
-import Synchronization
+import RealtimeSupport
 import Testing
 
 @testable import Diagnostics

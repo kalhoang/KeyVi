@@ -39,9 +39,45 @@ import Testing
         #expect(table.names(macOS: version("26.0"), systemLanguage: "") == fr)
     }
 
+    /// ADR 0315: macOS 12 has System Preferences, with its own pane names and URL anchors; 13 and 14 have
+    /// System Settings with Login Items under General.
+    @Test func macOS12NamesAndOpensSystemPreferences() throws {
+        let table = try Self.shipped()
+        let english = table.names(macOS: version("12.7.6"), systemLanguage: "en-US")
+        #expect(english.systemSettings == "System Preferences")
+        #expect(english.privacySecurity == "Security & Privacy > Privacy")
+        #expect(english.usersGroups == "Users & Groups")
+        #expect(english.loginItems == "Login Items")
+        #expect(table.names(macOS: version("12.0"), systemLanguage: "vi-VN").systemSettings == "Tùy chọn Hệ thống")
+        #expect(
+            table.deepLink(.keyboard, macOS: version("12.6"))?.absoluteString
+                == "x-apple.systempreferences:com.apple.preference.keyboard")
+        #expect(
+            table.deepLink(.loginItems, macOS: version("12.6"))?.absoluteString
+                == "x-apple.systempreferences:com.apple.preferences.users")
+        #expect(
+            table.deepLink(.accessibility, macOS: version("12.6"))?.absoluteString
+                == "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+    }
+
+    @Test func macOS13And14UseSystemSettings() throws {
+        let table = try Self.shipped()
+        for macOS in ["13.0", "14.7"] {
+            let names = table.names(macOS: version(macOS), systemLanguage: "en")
+            #expect(names.systemSettings == "System Settings")
+            #expect(names.privacySecurity == "Privacy & Security")
+            #expect(names.usersGroups == "General")
+            #expect(names.loginItems == "Login Items")
+            #expect(
+                table.deepLink(.loginItems, macOS: version(macOS))?.absoluteString
+                    == "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
+        }
+        #expect(table.names(macOS: version("15.0"), systemLanguage: "en").loginItems == "Login Items & Extensions")
+    }
+
     @Test func everyPaneHasADeepLinkOnEverySupportedVersion() throws {
         let table = try Self.shipped()
-        for macOS in ["15.0", "26.5", "27.0", "28.0"] {
+        for macOS in ["12.0", "12.7", "13.0", "14.6", "15.0", "26.5", "27.0", "28.0"] {
             for pane in SystemPane.allCases {
                 let link = try #require(table.deepLink(pane, macOS: version(macOS)), "\(pane) on \(macOS)")
                 #expect(link.scheme == "x-apple.systempreferences")
@@ -86,11 +122,11 @@ import Testing
         {"schemaVersion":1,"entries":[
           {"macOS":{"min":"15.0","max":"16.0"},
            "names":{"en":{"systemSettings":"S","privacySecurity":"P","accessibility":"Old","inputMonitoring":"I",
-                          "keyboard":"K","textReplacements":"T"}},
+                          "keyboard":"K","textReplacements":"T","usersGroups":"U","loginItems":"L"}},
            "deepLinks":{"accessibility":"x-apple.systempreferences:old"}},
           {"macOS":{"min":"18.0","max":"18.9"},
            "names":{"en":{"systemSettings":"S","privacySecurity":"P","accessibility":"New","inputMonitoring":"I",
-                          "keyboard":"K","textReplacements":"T"}},
+                          "keyboard":"K","textReplacements":"T","usersGroups":"U","loginItems":"L"}},
            "deepLinks":{}}
         ]}
         """

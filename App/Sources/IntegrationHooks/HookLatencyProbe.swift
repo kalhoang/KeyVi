@@ -12,12 +12,11 @@ import Diagnostics
 import InputHost
 import RealtimeSupport
 import ShellCore
-import Synchronization
 
 @MainActor
 final class HookLatencyProbe: NSObject, NSTextViewDelegate {
     /// Lets the cleared text view become first responder before the first key is posted.
-    static let focusDelay: Duration = .milliseconds(300)
+    static let focusDelay: TimeSpan = .milliseconds(300)
 
     private let host: InputHostController
     private let metrics: PlatformMetrics
@@ -53,10 +52,10 @@ final class HookLatencyProbe: NSObject, NSTextViewDelegate {
             window.close()
             self.driver = nil
         }
-        NSApp.activate()
+        NSApp.bringToFront()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(text)
-        try? await Task.sleep(for: Self.focusDelay)
+        try? await Task.sleep(nanoseconds: Self.focusDelay.unsignedNanoseconds)
         guard window.isKeyWindow, window.firstResponder === text else { return .interrupted }
         let session = LatencyProbeSession(driver: driver, metrics: metrics, wallClock: SystemWallClock())
         let result = await session.run(script: script, profiles: [profile], shouldContinue: { stop.shouldContinue })

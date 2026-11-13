@@ -26,7 +26,7 @@ public struct LatencyProbeSample: Sendable, Hashable {
 
 extension LatencyProbeResult.Profile {
     /// PLT-R810 spacing between keys: normal 120 ms, fast 40 ms, burst 5 ms.
-    public var keyInterval: Duration {
+    public var keyInterval: TimeSpan {
         switch self {
         case .normal: .milliseconds(120)
         case .fast: .milliseconds(40)
@@ -98,11 +98,7 @@ enum LatencyProbeMath {
         }
     }
 
-    static func microseconds(_ duration: Duration) -> UInt64 {
-        let components = duration.components
-        let total = components.seconds * 1_000_000 + components.attoseconds / 1_000_000_000_000
-        return total > 0 ? UInt64(total) : 0
-    }
+    static func microseconds(_ duration: TimeSpan) -> UInt64 { duration.unsignedNanoseconds / 1_000 }
 }
 
 extension LatencyProbeDriver {
@@ -110,7 +106,7 @@ extension LatencyProbeDriver {
     /// window. Returns the post instants of the keyDowns. Once `shouldContinue` returns false the loop ends at
     /// once: no further key is posted and there is no settle wait.
     func postAll(
-        _ keys: [KeyCode], every interval: Duration, shouldContinue: @Sendable () -> Bool = { true }
+        _ keys: [KeyCode], every interval: TimeSpan, shouldContinue: @Sendable () -> Bool = { true }
     ) -> [LatencyProbePostedKey] {
         let start = clock.now()
         let step = LatencyProbeMath.microseconds(interval)

@@ -43,11 +43,11 @@ enum GuidedTestCanary {
         .edit(trigger: "a", replaced: "a", insertion: "â"),
     ]
     /// Pause between two canary steps, so the field handles each one like typing.
-    static let stepInterval: Duration = .milliseconds(30)
+    static let stepInterval: TimeSpan = .milliseconds(30)
     /// Wait after the last step before reading back.
-    static let settle: Duration = .milliseconds(150)
+    static let settle: TimeSpan = .milliseconds(150)
     /// Bounded AX calls (PLT-R342).
-    static let axTimeout: Duration = .milliseconds(100)
+    static let axTimeout: TimeSpan = .milliseconds(100)
     /// PLT-R343: AX string reads are bounded to 64 UTF-16 units.
     static let maximumAXTextUnits = 64
 }
@@ -208,7 +208,7 @@ final class GuidedTestEnvironment: InjectionEnvironment {
     var fieldAccess: any FocusedFieldAccess { runner.fieldAccess }
     var pasteboard: any PasteboardAccess { UnavailablePasteboard() }
 
-    func pause(_ duration: Duration) {
+    func pause(_ duration: TimeSpan) {
         sleep(until: now.advanced(byMicroseconds: LatencyProbeMath.microseconds(duration)))
     }
 

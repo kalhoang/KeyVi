@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 import Foundation
-import Synchronization
 import Testing
 
 @testable import RealtimeSupport

@@ -54,14 +54,14 @@
 
 - **PLT-R103** `VietnameseEngine` MUST be a separately versioned package licensed MPL-2.0 (ENG-R109) and MUST NOT import AppKit, CoreGraphics, Carbon or ApplicationServices, so that it can be tested on Linux CI and reused.
 - **PLT-R104** The shipping binary MUST depend on Sparkle 2 only (no other third-party runtime code). Test-only dependencies are allowed. `Package.resolved` MUST be committed and Sparkle pinned to an exact version.
-- **PLT-R105** The app MUST ship as a Universal binary (arm64 + x86_64). Rationale: macOS 15 and 26 still run on Intel Macs.
-- **PLT-R106** Minimum deployment target: **macOS 15.0**. Rationale:
-  - At the time of writing Apple provides updates for macOS 27, 26 and 15 (VERIFY Apple's current support statement).
-  - GitHub-hosted macOS 14 runners were retired on 2 November 2026, so macOS 14 could only be tested on self-owned hardware.
-  - The Swift `Synchronization` module (`Mutex`, `Atomic`) requires macOS 15 and gives the hot path lock-free primitives without third-party code.
-  - Cost: Macs that stop at Sonoma (for example MacBook Air 2018 and 2019) are excluded. Open question for Pa (section 14).
-  - `03-product.md` PRD-R8 was aligned to macOS 15 during review; both files now agree and both keep the question open for Pa. Until Pa decides, implementers MUST avoid APIs newer than macOS 14 outside the `Synchronization` module, so that dropping back to 14 stays cheap.
-- **PLT-R107** The supported test matrix is the latest point release of macOS 15, 26 and 27, plus the current beta of the next major release from June each year.
+- **PLT-R105** The app MUST ship as a Universal binary (arm64 + x86_64). Rationale: macOS 12 to 26 run on Intel Macs, and Pa decided on 2026-11-13 to support Intel Macs for as long as the minimum macOS allows. CI runs the AppCore tests for the x86_64 slice under Rosetta on the Apple-silicon runner (docs/decisions/0315-minimum-macos-12.md).
+- **PLT-R106** Minimum deployment target: **macOS 12.0 Monterey** (Pa's decision of 2026-11-13: support macOS as old as possible, and Intel Macs; docs/decisions/0315-minimum-macos-12.md). Rationale:
+  - 12.0 is the oldest system the toolchain and the only dependency allow: Sparkle 2.10.1 declares `LSMinimumSystemVersion` 12.0 and the Xcode 27 macOS SDK has `MinimumDeploymentTarget` 12.0.
+  - It keeps Macs that stop at Monterey, Ventura or Sonoma (for example MacBook Air 2018 and 2019, MacBook Pro 2016 and 2017) instead of excluding them.
+  - Cost: the Swift `Synchronization` module (macOS 15), `Duration` and `Clock` (macOS 13), `@Observable` (macOS 14) and `SMAppService` (macOS 13) are not available. RealtimeSupport provides the replacements without third-party code (PLT-R104): `Atomic` and `UnsafeAtomic` on C11 atomic builtins with explicit memory orderings, `Mutex` on `os_unfair_lock`, and `TimeSpan` (signed nanoseconds) instead of `Duration`; models are `ObservableObject`; on macOS 12 the user adds the app to Login Items by hand (PRD-R8). Hot-path rules PLT-R304 and PLT-R305 are unchanged: no allocation after initialisation, no blocking lock on the tap thread, lock-free atomics where the tap reads.
+  - Any API newer than macOS 12.0 MUST be used only behind `if #available` with a macOS 12 fallback; the release build MUST import no symbol newer than 12.0 without a weak link (checked against the macOS 12.0 SDK, ADR 0315).
+  - Apple no longer ships security updates for macOS 12 to 14 (VERIFY Apple's current support statement); the app still runs there and the website says which systems are tested (PLT-R107).
+- **PLT-R107** The supported test matrix is the latest point release of macOS 12, 15, 26 and 27, plus the current beta of the next major release from June each year. macOS 12 is smoke-tested in a virtual machine on the self-hosted runner (launch, permission onboarding, typing in TestHost, update; ADR 0315), Intel in CI through the x86_64 slice under Rosetta (PLT-R105) and on a real Intel Mac before each release when one is available (VERIFY). macOS 13 and 14 are supported but not separately tested: they fall between the tested floor and macOS 15, and GitHub no longer hosts runners for them.
 - **PLT-R108** Licence note: the engine package is permissive regardless of the app licence. The app licence (open decision for Pa) determines whether competitors may reuse `compat-rules.json`, the injection layer and the diagnostics flow, and what contributor terms apply. If Pa wants the rules database to be freely reusable while the app is copyleft, the rules file needs its own licence notice.
 
 ## 2. Process architecture
@@ -602,10 +602,10 @@ Symptoms paraphrase user reports against the prior art. Approaches are the v1 pl
 
 ### 7.1 Required permissions
 
-- **PLT-R701** Accessibility is required: active keyboard tap, posting events, AX focus queries. Checks: `AXIsProcessTrusted()` and `CGPreflightPostEventAccess()`. Location: System Settings > Privacy & Security > Accessibility on macOS 15 and 26; renamed **"Device Control and Data Access"** on macOS 27, as stated in vendor support documents from Microsoft, Logitech and Synergy (September to October 2026). VERIFY the exact label, the system prompt text (reported as "would like to control this Mac and access your data") and the System Settings deep-link URL on a macOS 27.x machine.
-- **PLT-R702** Input Monitoring (unchanged name on macOS 27 per the same vendor documents) MUST be requested only if `CGPreflightListenEventAccess()` is false and the tap cannot be created or receives no key events. VERIFY on 15, 26 and 27 whether an Accessibility-trusted process can create an active keyboard tap without separate Input Monitoring consent. Rationale: every extra prompt costs trust.
+- **PLT-R701** Accessibility is required: active keyboard tap, posting events, AX focus queries. Checks: `AXIsProcessTrusted()` and `CGPreflightPostEventAccess()`. Location: System Preferences > Security & Privacy > Privacy > Accessibility on macOS 12; System Settings > Privacy & Security > Accessibility on macOS 13 to 26; renamed **"Device Control and Data Access"** on macOS 27, as stated in vendor support documents from Microsoft, Logitech and Synergy (September to October 2026). VERIFY the exact label, the system prompt text (reported as "would like to control this Mac and access your data") and the System Settings deep-link URL on a macOS 27.x machine.
+- **PLT-R702** Input Monitoring (unchanged name on macOS 27 per the same vendor documents) MUST be requested only if `CGPreflightListenEventAccess()` is false and the tap cannot be created or receives no key events. VERIFY on 12, 15, 26 and 27 whether an Accessibility-trusted process can create an active keyboard tap without separate Input Monitoring consent. Rationale: every extra prompt costs trust.
 - **PLT-R703** No other permissions: no Automation (Apple Events), Screen Recording, Full Disk Access, Contacts, Bluetooth, local network, or camera.
-- **PLT-R704** Pane names and deep links MUST come from an OS-version-keyed table in localized resources; UI code never hard-codes them.
+- **PLT-R704** Pane names and deep links MUST come from an OS-version-keyed table in localized resources; UI code never hard-codes them. The table covers System Preferences (macOS 12: other pane names, `com.apple.preference.*` anchors, Login Items under Users & Groups) and System Settings (macOS 13 and later).
 
 ### 7.2 Onboarding and app location
 
@@ -625,7 +625,7 @@ Symptoms paraphrase user reports against the prior art. Approaches are the v1 pl
 
 ### 7.5 Re-grant guidance
 
-- **PLT-R740** In `stale`, guidance MUST say: open the pane, remove {{AppName}} with the minus button, add it again; or press "Reset permission", which runs `tccutil reset Accessibility vn.kal.{{app-slug}}` and prompts again. User-initiated only, never automatic. `tccutil reset` scoped to one bundle ID works without administrator rights on macOS 15 and 26 (VERIFY on macOS 27: the service name may differ after the pane rename).
+- **PLT-R740** In `stale`, guidance MUST say: open the pane, remove {{AppName}} with the minus button, add it again; or press "Reset permission", which runs `tccutil reset Accessibility vn.kal.{{app-slug}}` and prompts again. User-initiated only, never automatic. `tccutil reset` scoped to one bundle ID works without administrator rights on macOS 15 and 26 (VERIFY on macOS 12 to 14 and on macOS 27: the service name may differ after the pane rename).
 - **PLT-R741** Guidance MUST NOT suggest `sudo tccutil reset Accessibility` without a bundle ID (it resets every app).
 
 ### 7.6 Signing and permission persistence
@@ -640,7 +640,7 @@ Symptoms paraphrase user reports against the prior art. Approaches are the v1 pl
 
 ### Acceptance criteria (section 7)
 
-- Fresh install on macOS 15, 26 and 27: one permission prompt path, typing works within 2 s of granting, no relaunch unless Input Monitoring is needed.
+- Fresh install on macOS 12, 15, 26 and 27: one permission prompt path, typing works within 2 s of granting, no relaunch unless Input Monitoring is needed.
 - Revoking Accessibility while typing: every subsequent key reaches the app untransformed; the menu shows `noPermission` within 2 s.
 - Updating through Sparkle preserves the grant on all three OS versions.
 - Running from the mounted DMG triggers the move offer, never a permission request.
@@ -784,7 +784,7 @@ This table is the single source for platform performance gates; `04-quality-rele
 
 ### 13.2 Self-hosted integration runner
 
-- A dedicated Mac (Apple silicon, macOS 27) plus a second one or a VM with macOS 15 when available. Permissions are granted once to the stable-signed test build. VERIFY whether GitHub-hosted runners allow TCC grants; if they do, part of this suite may move there.
+- A dedicated Mac (Apple silicon, macOS 27) plus a macOS 12 virtual machine on it (tart, ADR 0315) and a second Mac or VM with macOS 15 when available. Permissions are granted once to the stable-signed test build. VERIFY whether GitHub-hosted runners allow TCC grants; if they do, part of this suite may move there.
 - `CompatHarness` keyboard driver posts physical-like events with timing profiles normal (80 to 150 ms), fast (30 ms) and burst (5 ms).
 - Readback: AX for native apps; `safaridriver` and `chromedriver` for browser page fields; terminal capture (a shell writes stdin to a file) for terminals; human for the rest.
 - Minimum automated scenario set: TextEdit, Notes, Safari address bar and page textarea, Chrome address bar with seeded history and page textarea, Firefox URL bar, Terminal (zsh), iTerm2, Ghostty, VS Code editor, Spotlight, a password field (asserts no transformation), Telex and VNI, ABC, QWERTZ, AZERTY and Dvorak layouts, Japanese input source (asserts pause), secure input (asserts pause and holder, then that the first key after release is composed: PLT-R398B), iTerm2 with secure keyboard entry turned on and off (asserts the holder hint names iTerm2: PLT-R398C), tap timeout injection (test hook), permission revocation during typing (asserts fail-open).
@@ -801,7 +801,7 @@ Gates from section 8.1 enforced on every merge to the main branch (hosted subset
 
 ### 13.5 Install and update tests
 
-- Fresh install from the notarized DMG on macOS 15, 26 and 27: Gatekeeper passes without warnings; the move offer appears when launched from the DMG.
+- Fresh install from the notarized DMG on macOS 12, 15, 26 and 27 (and on an Intel Mac with macOS 26 or earlier when available): Gatekeeper passes without warnings; the move offer appears when launched from the DMG.
 - Update from the previous release through a local appcast: settings byte-identical apart from migrations; per-app memory intact; Accessibility trust intact; tap active within 2 s after relaunch; typing works without user action.
 - Beta to stable channel switch and back.
 - Rollback drill: pull an item, publish N+1 from N-1 source, confirm clients on N move to N+1.

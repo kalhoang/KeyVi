@@ -5,8 +5,8 @@
 
 import AppKit
 import AppModel
+import Combine
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 import SwiftUI
@@ -26,6 +26,8 @@ protocol OnboardingActions: AnyObject {
     func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
     func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
+    /// False on macOS 12, where the app cannot add itself to the login items (ADR 0315).
+    var canOpenAtLogin: Bool { get }
     /// PRD-R40 screen 6, PRD-R32: the user's macros, for the import preview's duplicates.
     func currentMacros() async -> [StoredMacro]
     /// The merged list after the user confirmed the preview.
@@ -41,6 +43,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     static let contentSize = NSSize(width: 640, height: 480)
 
     private let model: OnboardingModel
+    private var languageObservation: AnyCancellable?
 
     required init?(coder: NSCoder) { nil }
 
@@ -95,13 +98,6 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func observeLanguage() {
-        withObservationTracking {
-            _ = model.language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.refreshTitle()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
     }
 }

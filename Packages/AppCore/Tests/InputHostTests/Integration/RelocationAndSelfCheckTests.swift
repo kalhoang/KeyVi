@@ -5,8 +5,8 @@
 
 import AppModel
 import Foundation
+import RealtimeSupport
 import SettingsStore
-import Synchronization
 import TestSupport
 import Testing
 

@@ -20,6 +20,11 @@ public struct MonotonicInstant: Sendable, Hashable, Comparable, BitwiseCopyable 
     public func nanoseconds(since earlier: MonotonicInstant) -> UInt64 {
         nanoseconds >= earlier.nanoseconds ? nanoseconds - earlier.nanoseconds : 0
     }
+
+    /// Saturating difference as a span (zero when `earlier` is later).
+    public func duration(since earlier: MonotonicInstant) -> TimeSpan {
+        .nanoseconds(nanoseconds(since: earlier))
+    }
 }
 
 /// Monotonic clock for timestamps, deadlines and pacing. `sleep(until:)` is allowed only on the `inject`

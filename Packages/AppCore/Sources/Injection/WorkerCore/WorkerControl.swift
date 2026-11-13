@@ -5,11 +5,10 @@
 
 internal import Foundation
 internal import RealtimeSupport
-internal import Synchronization
 
 final class WorkerControl: Sendable {
     /// Bounded wait in `stop()` for the loop to exit (shutdown only, never on a hot path).
-    static let stopTimeout: Duration = .seconds(1)
+    static let stopTimeout: TimeSpan = .seconds(1)
     static let threadName = "inject"
 
     let signal: WorkerSignal

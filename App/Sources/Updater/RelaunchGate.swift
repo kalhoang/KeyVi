@@ -7,6 +7,7 @@
 // 2.10.1, taking over `updater(_:willInstallUpdateOnQuit:immediateInstallationBlock:)` stalls the whole update
 // cycle until the handler runs (no manual check, no scheduled check, no critical-update window), so holding the
 // handler while the keyboard is busy would freeze the updater for the rest of the session.
+import RealtimeSupport
 
 /// Keyboard state the rule reads, supplied by the composition root.
 struct KeyboardIdleState: Sendable, Hashable {
@@ -24,13 +25,13 @@ enum RelaunchGate {
         case installOnQuit
     }
 
-    static let requiredIdle: Duration = .seconds(60)
+    static let requiredIdle: TimeSpan = .seconds(60)
 
     /// The pure rule. A NaN or negative idle time counts as "a key was just pressed". Critical updates are always
     /// handed back, because Sparkle shows their window immediately only when it keeps the update (PRD-R54).
     static func decision(for state: KeyboardIdleState, isCritical: Bool) -> Decision {
         guard !isCritical, !state.secureInputOn else { return .installOnQuit }
         let idle = state.secondsSinceLastKey.isNaN ? 0 : max(state.secondsSinceLastKey, 0)
-        return idle >= Double(requiredIdle.components.seconds) ? .installNow : .installOnQuit
+        return idle >= requiredIdle.inSeconds ? .installNow : .installOnQuit
     }
 }

@@ -5,7 +5,6 @@
 import AppModel
 import Foundation
 import RealtimeSupport
-import Synchronization
 import TestSupport
 
 @testable import InputHost
@@ -35,8 +34,8 @@ extension InputSourceInfo {
 /// Forwards to a `ManualScheduler` and records every requested timer, so tests can check the PLT-R803 leeway.
 final class TimerRequestRecorder: TimerScheduler, Sendable {
     struct Request: Equatable {
-        var delay: Duration
-        var leeway: Duration
+        var delay: TimeSpan
+        var leeway: TimeSpan
         var repeating: Bool
     }
 
@@ -46,14 +45,14 @@ final class TimerRequestRecorder: TimerScheduler, Sendable {
 
     init(base: ManualScheduler) { self.base = base }
 
-    func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         storage.withLock { $0.append(Request(delay: delay, leeway: leeway, repeating: false)) }
         return base.schedule(after: delay, leeway: leeway, handler)
     }
 
-    func scheduleRepeating(every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func scheduleRepeating(every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         storage.withLock { $0.append(Request(delay: interval, leeway: leeway, repeating: true)) }

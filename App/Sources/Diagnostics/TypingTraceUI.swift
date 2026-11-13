@@ -6,9 +6,9 @@
 
 import AppKit
 import AppModel
+import Combine
 import Diagnostics
 import InputHost
-import Observation
 import ShellCore
 import SwiftUI
 
@@ -107,7 +107,7 @@ final class TypingTraceCoordinator {
         review = controller
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     static func failureKey(_ failure: TypingTraceSession.Failure) -> DiagnosticsText {
@@ -121,14 +121,13 @@ final class TypingTraceCoordinator {
 }
 
 @MainActor
-@Observable
-final class TypingTraceReviewModel {
+final class TypingTraceReviewModel: ObservableObject {
     let language: InterfaceLanguageModel
     let text: String
-    @ObservationIgnored let session: TypingTraceSession
-    @ObservationIgnored var window: () -> NSWindow? = { nil }
-    @ObservationIgnored var close: () -> Void = {}
-    var status: DiagnosticsText?
+    let session: TypingTraceSession
+    var window: () -> NSWindow? = { nil }
+    var close: () -> Void = {}
+    @Published var status: DiagnosticsText?
 
     init(language: InterfaceLanguageModel, text: String, session: TypingTraceSession) {
         self.language = language
@@ -190,7 +189,7 @@ final class TypingTraceReviewController: NSWindowController, NSWindowDelegate {
 }
 
 struct TypingTraceReviewView: View {
-    let model: TypingTraceReviewModel
+    @ObservedObject var model: TypingTraceReviewModel
 
     var body: some View {
         let localizer = model.language.localizer

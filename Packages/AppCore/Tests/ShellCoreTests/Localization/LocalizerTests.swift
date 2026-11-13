@@ -3,8 +3,8 @@
 // PRD-R63, PRD-R65, ADR 0310: lookup per selected language, independent of the process language.
 
 import AppModel
+import Combine
 import Foundation
-import Observation
 import Testing
 
 @testable import ShellCore
@@ -109,19 +109,16 @@ import Testing
         let app = try TemporaryAppBundle(catalogs: [.menu])
         let model = InterfaceLanguageModel(language: .english, appBundle: app.bundle)
         let changed = ChangeFlag()
-        withObservationTracking {
-            _ = model.localizer
-        } onChange: {
-            changed.set()
-        }
+        let observation = model.objectWillChange.sink { _ in changed.set() }
         model.select(.english)
         #expect(!changed.value)
         model.select(.vietnamese)
         #expect(changed.value)
+        observation.cancel()
     }
 }
 
-/// Observation `onChange` closures are `@Sendable`; a tiny lock-protected flag records the call.
+/// Records that a change notification arrived.
 final class ChangeFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var flag = false

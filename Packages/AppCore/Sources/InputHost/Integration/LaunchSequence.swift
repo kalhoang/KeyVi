@@ -120,7 +120,7 @@ public final class LaunchSequence {
 
     private func armSurvivalTimer() {
         let launchGuard = self.launchGuard
-        let delay = Duration.seconds(LaunchGuard.survivalSeconds)
+        let delay = TimeSpan.seconds(LaunchGuard.survivalSeconds)
         survivalTimer = scheduler.schedule(after: delay, leeway: delay / 10) { launchGuard.markSurvived() }
     }
 }

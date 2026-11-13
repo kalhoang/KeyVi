@@ -7,7 +7,7 @@ public import AppModel
 public import CompatRules
 public import Foundation
 public import InputHost
-internal import Synchronization
+internal import RealtimeSupport
 
 public final class FakeDecisionResolver: FocusDecisionResolving, Sendable {
     private let decisions: [BundleKey: ResolvedDecision]

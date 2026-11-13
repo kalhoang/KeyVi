@@ -65,6 +65,27 @@ private func expectNoAllocations(_ count: Int?, sourceLocation: SourceLocation =
         #expect((count ?? 0) >= 100)
     }
 
+    /// ADR 0315: RealtimeSupport's own atomics and mutex (macOS 12 replacements of `Synchronization`) allocate
+    /// only in `init`; every operation after it is allocation-free (PLT-R304).
+    @Test func atomicsAndMutexAllocateOnlyInInit() {
+        let counter = Atomic<Int>(0)
+        let flag = Atomic<Bool>(false)
+        let bound = Atomic<UInt64>(0)
+        let mutex = Mutex(0)
+        let count = allocations {
+            counter.wrappingAdd(1, ordering: .relaxed)
+            _ = counter.load(ordering: .acquiring)
+            _ = counter.exchange(3, ordering: .sequentiallyConsistent)
+            _ = flag.compareExchange(expected: false, desired: true, ordering: .acquiringAndReleasing)
+            flag.store(false, ordering: .releasing)
+            bound.max(7, ordering: .sequentiallyConsistent)
+            mutex.withLock { $0 &+= 1 }
+        }
+        expectNoAllocations(count)
+        #expect(mutex.withLock { $0 } == 10_001)
+        #expect(bound.load(ordering: .relaxed) == 7)
+    }
+
     @Test func snapshotReadPathAllocatesNothing() {
         let epoch = ReaderEpoch()
         let cell = SnapshotCell(

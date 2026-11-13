@@ -8,7 +8,6 @@ import AppModel
 import Diagnostics
 import Foundation
 import RealtimeSupport
-import Synchronization
 
 @testable import TestSupport
 

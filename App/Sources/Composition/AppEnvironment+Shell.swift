@@ -9,9 +9,9 @@ import AppModel
 import CompatRules
 import Diagnostics
 import InputHost
+import RealtimeSupport
 import SettingsStore
 import ShellCore
-import Synchronization
 
 /// Delivers values from any thread to one main-actor handler (the settings store calls back on the utility
 /// queue).
@@ -238,7 +238,7 @@ extension AppEnvironment: StatusMenuActions {
         let host = self.host
         let controller = SettingsWindowController(
             store: settingsStore, language: language, updater: updater, loginItem: loginItem, brand: brand,
-            inputSources: { host.enabledInputSources() }, layout: { host.currentLayoutTable() },
+            panes: paneNames(), inputSources: { host.enabledInputSources() }, layout: { host.currentLayoutTable() },
             keyValues: keyValues)
         controller.actions = self
         settingsWindow = controller

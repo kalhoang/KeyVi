@@ -14,8 +14,9 @@ let strict: [SwiftSetting] = [
 
 let package = Package(
     name: "AppCore",
-    // PLT-R106: macOS 15 (Synchronization module). No API newer than macOS 14 outside Synchronization.
-    platforms: [.macOS(.v15)],
+    // PLT-R106: macOS 12 Monterey (Pa's decision 2026-11-13, docs/decisions/0315-minimum-macos-12.md). Newer APIs
+    // only behind `#available`; RealtimeSupport provides the locks, atomics and time type used instead.
+    platforms: [.macOS(.v12)],
     products: [
         .library(name: "AppModel", targets: ["AppModel"]),
         .library(name: "RealtimeSupport", targets: ["RealtimeSupport"]),
@@ -35,12 +36,15 @@ let package = Package(
     targets: [
         // Shared vocabulary: value types, JSON value, file-system protocol. Foundation only.
         .target(name: "AppModel", swiftSettings: strict),
-        // Lock-free primitives for the hot path (PLT-R304, PLT-R388): snapshot cell, SPSC ring, signals, clock.
-        .target(name: "RealtimeSupport", swiftSettings: strict),
+        // C11-style atomic operations behind RealtimeSupport's `Atomic` (ADR 0315). Header-only inline functions.
+        .target(name: "CRealtimeSupport"),
+        // Lock-free primitives for the hot path (PLT-R304, PLT-R388): atomics, mutex, snapshot cell, SPSC ring,
+        // signals, clock and time spans.
+        .target(name: "RealtimeSupport", dependencies: ["CRealtimeSupport"], swiftSettings: strict),
         // Typed redacting logger, health events, histograms, reports, capture (PLT-R801, PLT-R9xx, PLT-R12xx).
         .target(name: "Diagnostics", dependencies: ["AppModel", "RealtimeSupport"], swiftSettings: strict),
         // Versioned settings documents, migrations, export/import, macro importers (PLT-R10xx, PRD-R32).
-        .target(name: "SettingsStore", dependencies: ["AppModel"], swiftSettings: strict),
+        .target(name: "SettingsStore", dependencies: ["AppModel", "RealtimeSupport"], swiftSettings: strict),
         // Rule schema, loader, validator, matcher, fingerprinting, linter (PLT-R5xx).
         .target(name: "CompatRules", dependencies: ["AppModel"], swiftSettings: strict),
         // Serial injection worker, strategies, pasteboard preservation (PLT-R311-R324, PLT-R4xx).
@@ -84,20 +88,25 @@ let package = Package(
         .testTarget(name: "RealtimeSupportTests", dependencies: ["RealtimeSupport"], swiftSettings: strict),
         .testTarget(
             name: "DiagnosticsTests",
-            dependencies: ["Diagnostics", "CompatRules", "TestSupport"],
+            dependencies: ["Diagnostics", "CompatRules", "RealtimeSupport", "TestSupport"],
             exclude: ["Fixtures"],  // golden files read through #filePath
             swiftSettings: strict
         ),
         .testTarget(
             name: "SettingsStoreTests",
             dependencies: [
-                "SettingsStore", "TestSupport", .product(name: "VietnameseEngine", package: "VietnameseEngine"),
+                "SettingsStore", "RealtimeSupport", "TestSupport",
+                .product(name: "VietnameseEngine", package: "VietnameseEngine"),
             ],
             swiftSettings: strict
         ),
         .testTarget(name: "CompatRulesTests", dependencies: ["CompatRules", "TestSupport"], swiftSettings: strict),
-        .testTarget(name: "InjectionTests", dependencies: ["Injection", "TestSupport"], swiftSettings: strict),
-        .testTarget(name: "InputHostTests", dependencies: ["InputHost", "TestSupport"], swiftSettings: strict),
+        .testTarget(
+            name: "InjectionTests", dependencies: ["Injection", "RealtimeSupport", "TestSupport"], swiftSettings: strict
+        ),
+        .testTarget(
+            name: "InputHostTests", dependencies: ["InputHost", "RealtimeSupport", "TestSupport"], swiftSettings: strict
+        ),
         .testTarget(
             name: "ShellCoreTests",
             dependencies: [
@@ -105,7 +114,7 @@ let package = Package(
             ],
             swiftSettings: strict
         ),
-        .testTarget(name: "TestSupportTests", dependencies: ["TestSupport"], swiftSettings: strict),
+        .testTarget(name: "TestSupportTests", dependencies: ["TestSupport", "RealtimeSupport"], swiftSettings: strict),
     ],
     swiftLanguageModes: [.v6]
 )

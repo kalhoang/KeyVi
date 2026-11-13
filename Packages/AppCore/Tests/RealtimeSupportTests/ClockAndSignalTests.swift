@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 import Dispatch
-import Synchronization
 import Testing
 
 @testable import RealtimeSupport
@@ -72,16 +71,16 @@ import Testing
 
 @Suite struct DurationConversionTests {
     @Test func convertsWithNanosecondPrecision() {
-        #expect(Duration.milliseconds(5).dispatchInterval == .nanoseconds(5_000_000))
-        #expect(Duration.nanoseconds(1).dispatchInterval == .nanoseconds(1))
-        #expect(Duration.seconds(2).dispatchInterval == .nanoseconds(2_000_000_000))
+        #expect(TimeSpan.milliseconds(5).dispatchInterval == .nanoseconds(5_000_000))
+        #expect(TimeSpan.nanoseconds(1).dispatchInterval == .nanoseconds(1))
+        #expect(TimeSpan.seconds(2).dispatchInterval == .nanoseconds(2_000_000_000))
     }
 
     @Test func negativeBecomesZeroAndHugeSaturates() {
-        #expect(Duration.milliseconds(-5).dispatchInterval == .nanoseconds(0))
-        #expect(Duration.nanoseconds(-1).dispatchInterval == .nanoseconds(0))
-        #expect(Duration.seconds(Int64.max).dispatchInterval == .nanoseconds(Int.max))
-        #expect(Duration.seconds(Int64.max / 1_000_000_000).dispatchInterval != .nanoseconds(Int.max))
+        #expect(TimeSpan.milliseconds(-5).dispatchInterval == .nanoseconds(0))
+        #expect(TimeSpan.nanoseconds(-1).dispatchInterval == .nanoseconds(0))
+        #expect(TimeSpan.seconds(Int64.max).dispatchInterval == .nanoseconds(Int.max))
+        #expect(TimeSpan.seconds(Int64.max / 1_000_000_000).dispatchInterval != .nanoseconds(Int.max))
     }
 
     @Test func repeatingIntervalHasAFloor() async {

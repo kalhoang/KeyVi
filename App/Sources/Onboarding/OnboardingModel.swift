@@ -5,42 +5,45 @@
 
 import AppKit
 import AppModel
+import Combine
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 
 @MainActor
-@Observable
-final class OnboardingModel {
-    private(set) var flow: OnboardingFlow
-    private(set) var inputs: OnboardingInputs
-    var method: TypingMethod
-    var practiceText = ""
-    var tryItText = "" {
+final class OnboardingModel: ObservableObject {
+    @Published private(set) var flow: OnboardingFlow
+    @Published private(set) var inputs: OnboardingInputs
+    @Published var method: TypingMethod
+    @Published var practiceText = ""
+    @Published var tryItText = "" {
         didSet { checklist?.textChanged(tryItText) }
     }
-    private(set) var checklist: TryItChecklist?
-    var openAtLogin = true  // D17, shown pre-checked
-    var showPermissionHelp = false
+    @Published private(set) var checklist: TryItChecklist?
+    @Published var openAtLogin = true  // D17, shown pre-checked
+    /// False on macOS 12 (ADR 0315): the done screen shows how to add the app to Login Items by hand.
+    let canOpenAtLogin: Bool
+    @Published var showPermissionHelp = false
     /// PRD-R40 screen 6, PRD-R32: the import preview or the reason a file was refused (PRD-R43), shown as a sheet.
-    var macroImport: OnboardingImport?
-    var confirmPermissionReset = false
+    @Published var macroImport: OnboardingImport?
+    @Published var confirmPermissionReset = false
     /// PLT-R740, PRD-R43: the last reset failed; the help sheet says so with the remove-and-add-again steps.
-    private(set) var permissionResetFailed = false
+    @Published private(set) var permissionResetFailed = false
 
     /// D11, shown on screen 4 and updated after an inline recording (PRD-R40).
-    private(set) var toggleHotkey: HotkeyBinding
+    @Published private(set) var toggleHotkey: HotkeyBinding
     /// PRD-R40 screen 4: the inline recorder, with the Settings window's capture lifecycle (ADR 0305).
-    @ObservationIgnored let hotkeyCapture: HotkeyCaptureController
+    let hotkeyCapture: HotkeyCaptureController
 
     let appName: String
     let panes: SystemPaneNames
     let language: InterfaceLanguageModel
-    @ObservationIgnored private weak var actions: (any OnboardingActions)?
-    @ObservationIgnored private let readInputs: @MainActor () -> OnboardingInputs
-    @ObservationIgnored private var currentMode: TypingMode
-    @ObservationIgnored var onFinish: (@MainActor () -> Void)?
+    private weak var actions: (any OnboardingActions)?
+    private let readInputs: @MainActor () -> OnboardingInputs
+    private var currentMode: TypingMode
+    var onFinish: (@MainActor () -> Void)?
+    /// Views observe this model; the language and the recorder it owns publish through it (ADR 0315).
+    private var relays: [AnyCancellable] = []
 
     init(
         flow: OnboardingFlow, language: InterfaceLanguageModel, actions: any OnboardingActions,
@@ -57,6 +60,7 @@ final class OnboardingModel {
         self.method = method
         currentMode = mode
         self.toggleHotkey = toggleHotkey
+        canOpenAtLogin = actions.canOpenAtLogin
         let relay = OnboardingCaptureRelay()
         hotkeyCapture = HotkeyCaptureController(
             monitor: LocalKeyMonitor(),
@@ -64,9 +68,16 @@ final class OnboardingModel {
             onFinished: { _, binding in relay.model?.saveToggleHotkey(binding) },
             readLayout: { relay.model?.actions?.currentLayout() })
         relay.model = self
+        relays = [relayChanges(of: language), relayChanges(of: hotkeyCapture)]
     }
 
     var localizer: Localizer { language.localizer }
+
+    /// PRD-R40 screen 8 on macOS 12: where to add the app to Login Items, with the macOS names (PRD-R64).
+    var openAtLoginManualText: String {
+        localizer.format(
+            OnboardingText.doneOpenAtLoginManual, appName, panes.systemSettings, panes.usersGroups, panes.loginItems)
+    }
 
     var permissionContent: PermissionScreenContent {
         PermissionScreenContent(
@@ -116,7 +127,7 @@ final class OnboardingModel {
         case .permission where !flow.permissionGranted: actions?.openPermissionPane()
         case .importFrom: chooseImportFile()
         case .done:
-            actions?.setOpenAtLogin(openAtLogin)
+            if canOpenAtLogin { actions?.setOpenAtLogin(openAtLogin) }
             actions?.complete()
             move { $0.next(inputs: $1) }
         default: move { $0.next(inputs: $1) }

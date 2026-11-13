@@ -35,7 +35,12 @@ final class TestHostApp: NSObject, NSApplicationDelegate {
             controller.open(pendingPage)
             self.pendingPage = nil
         }
-        NSApp.activate()
+        // `activate()` exists from macOS 14 only (ADR 0315: the floor is macOS 12).
+        if #available(macOS 14, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     /// `openURL` setup steps open a local page with this app; only `file:` .html pages are loaded.

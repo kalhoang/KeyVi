@@ -15,7 +15,7 @@
 // measured loops use `while`.
 
 internal import Darwin
-internal import Synchronization
+internal import RealtimeSupport
 
 public enum AllocationCounter {
     /// Allocations and frees seen on the measured thread outside paused spans; both are -1 when the hook is
@@ -46,8 +46,8 @@ public enum AllocationCounter {
 
     /// The hook variable viewed as an atomic word. Plain stores would let an optimising compiler drop the
     /// install as a dead store (malloc and free are known not to read it); atomic stores are kept.
-    private static var loggerSlot: UnsafeMutablePointer<Atomic<UInt>>? {
-        loggerSlotAddress.flatMap { UnsafeMutablePointer(bitPattern: $0) }
+    private static var loggerSlot: UnsafeAtomic<UInt>? {
+        loggerSlotAddress.flatMap { UnsafeMutablePointer<UInt64>(bitPattern: $0) }.map { UnsafeAtomic(at: $0) }
     }
 
     private static let hook: MallocLogger = { type, _, _, _, _, _ in
@@ -112,9 +112,9 @@ public enum AllocationCounter {
             deallocations.store(0, ordering: .sequentiallyConsistent)
             pauseDepth.store(0, ordering: .sequentiallyConsistent)
             countingThread.store(UInt(bitPattern: pthread_self()), ordering: .sequentiallyConsistent)
-            let previous = slot.pointee.exchange(unsafeBitCast(hook, to: UInt.self), ordering: .sequentiallyConsistent)
+            let previous = slot.exchange(unsafeBitCast(hook, to: UInt.self), ordering: .sequentiallyConsistent)
             body()
-            slot.pointee.store(previous, ordering: .sequentiallyConsistent)
+            slot.store(previous, ordering: .sequentiallyConsistent)
             countingThread.store(0, ordering: .sequentiallyConsistent)
             return Counts(
                 allocations: allocations.load(ordering: .sequentiallyConsistent),

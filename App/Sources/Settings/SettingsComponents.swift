@@ -110,7 +110,7 @@ struct PaneHeading: View {
 /// Store notices at the top of the window (PLT-R1006, PLT-R1007, PLT-R1009). Warnings carry a symbol, not only a
 /// colour (PRD-R67).
 struct NoticeBanner: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let notice: StoreNoticePresentation
 
     var body: some View {

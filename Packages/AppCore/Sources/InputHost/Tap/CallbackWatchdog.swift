@@ -4,14 +4,13 @@
 // (W1-F1, `enter`/`exit` on every callback) and the tap watchdog (W1-F2) use it (ADR 0313); W1-F2 owns it.
 
 public import RealtimeSupport
-internal import Synchronization
 
 /// `enter` writes the callback entry time, `exit` clears it; the utility-queue watchdog disables the tap if one
 /// callback runs longer than 250 ms. The first callback after 2 s without callbacks signals `activitySignal`
 /// so the watchdog arms its 250 ms check only while keys flow (PLT-R803, ADR 0309).
 public final class CallbackWatchdog: Sendable {
-    public static let callbackLimit: Duration = .milliseconds(250)
-    public static let idleAfter: Duration = .seconds(2)
+    public static let callbackLimit: TimeSpan = .milliseconds(250)
+    public static let idleAfter: TimeSpan = .seconds(2)
     private static let idleNanoseconds: UInt64 = 2_000_000_000
 
     private let enteredAt = Atomic<UInt64>(0)  // 0 = outside a callback

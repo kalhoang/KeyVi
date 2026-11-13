@@ -14,7 +14,6 @@ import Diagnostics
 import Foundation
 import Injection
 import RealtimeSupport
-import Synchronization
 import TestSupport
 import VietnameseEngine
 

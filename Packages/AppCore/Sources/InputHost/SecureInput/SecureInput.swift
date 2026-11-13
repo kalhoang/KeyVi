@@ -6,7 +6,6 @@
 public import AppModel
 public import Foundation
 public import RealtimeSupport
-import Synchronization
 
 /// Production (`SystemSecureInputProbe`): `IsSecureEventInputEnabled()` (Carbon); holder via
 /// `IORegistryEntryCreateCFProperty(IORegistryGetRootEntry(kIOMainPortDefault), "IOConsoleUsers", ...)`,
@@ -71,9 +70,9 @@ public protocol ProcessIdentityProvider: Sendable {
 /// the monitor (`pollNow`, `keyEvidence`); a snapshot produced meanwhile is published after it returns.
 /// Logic: `SecureInputMonitor+Polling.swift`.
 public final class SecureInputMonitor: Sendable {
-    public static let pollInterval: Duration = .seconds(2)
+    public static let pollInterval: TimeSpan = .seconds(2)
     /// PLT-R803: at least 10 % leeway on every timer.
-    public static let pollLeeway: Duration = .milliseconds(200)
+    public static let pollLeeway: TimeSpan = .milliseconds(200)
 
     let probe: any SecureInputProbe
     let processes: any ProcessIdentityProvider

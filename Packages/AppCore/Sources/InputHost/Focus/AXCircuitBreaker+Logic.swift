@@ -29,9 +29,5 @@ extension AXCircuitBreaker {
         }
     }
 
-    static func nanoseconds(_ duration: Duration) -> UInt64 {
-        let (seconds, attoseconds) = duration.components
-        return UInt64(clamping: max(0, seconds)) &* 1_000_000_000
-            &+ UInt64(clamping: max(0, attoseconds / 1_000_000_000))
-    }
+    static func nanoseconds(_ duration: TimeSpan) -> UInt64 { duration.unsignedNanoseconds }
 }

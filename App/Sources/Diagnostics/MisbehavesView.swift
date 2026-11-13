@@ -10,7 +10,7 @@ import ShellCore
 import SwiftUI
 
 struct MisbehavesView: View {
-    @Bindable var model: MisbehavesModel
+    @ObservedObject var model: MisbehavesModel
 
     var body: some View {
         let localizer = model.localizer
@@ -153,7 +153,7 @@ struct TargetSummary: View {
 
 /// Steps 4 and 5: the best method, the opt-in host-level page address and the suggestion JSON.
 struct FinishedStep: View {
-    @Bindable var model: MisbehavesModel
+    @ObservedObject var model: MisbehavesModel
     let localizer: Localizer
 
     var body: some View {

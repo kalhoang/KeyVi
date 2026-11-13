@@ -114,7 +114,7 @@ public struct AXCircuitBreaker: Sendable {
     var recentTimeouts: [Int32: [MonotonicInstant]] = [:]
     var openUntil: [Int32: MonotonicInstant] = [:]
 
-    public init(threshold: Int = 3, window: Duration = .seconds(10), cooldown: Duration = .seconds(60)) {
+    public init(threshold: Int = 3, window: TimeSpan = .seconds(10), cooldown: TimeSpan = .seconds(60)) {
         self.threshold = max(1, threshold)
         windowNanoseconds = Self.nanoseconds(window)
         cooldownNanoseconds = Self.nanoseconds(cooldown)

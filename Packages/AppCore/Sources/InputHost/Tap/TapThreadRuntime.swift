@@ -6,7 +6,7 @@
 internal import CoreFoundation
 internal import Dispatch
 internal import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 final class TapThreadRuntime: Sendable {
     /// Built on the tap thread and kept there: the handle and the object `userInfo` points at, which owns the
@@ -72,7 +72,7 @@ final class TapThreadRuntime: Sendable {
         }
     }
 
-    func waitUntilExited(timeout: Duration) -> Bool {
+    func waitUntilExited(timeout: TimeSpan) -> Bool {
         exited.wait(timeout: .now() + .nanoseconds(Int(clamping: timeout.nanoseconds))) == .success
     }
 

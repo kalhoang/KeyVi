@@ -6,63 +6,65 @@
 
 import AppKit
 import AppModel
+import Combine
 import CompatRules
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 
 @MainActor
-@Observable
-final class SettingsWindowModel {
-    private(set) var state = SettingsState()
-    private(set) var selectedPane: SettingsPaneKind = .general
-    private(set) var advancedExpanded: Set<SettingsPaneKind> = []
-    private(set) var loginItem: LoginItemPresentation
+final class SettingsWindowModel: ObservableObject {
+    @Published private(set) var state = SettingsState()
+    @Published private(set) var selectedPane: SettingsPaneKind = .general
+    @Published private(set) var advancedExpanded: Set<SettingsPaneKind> = []
+    @Published private(set) var loginItem: LoginItemPresentation
     /// Short confirmation or error line under the current pane ("Đã lưu ...").
-    var statusMessage: String?
+    @Published var statusMessage: String?
 
     // Sheets
-    var resetRequest: ResetRequest?
-    var exportSheet: ExportSheetState?
-    var importSummary: ImportSummary?
-    var importError: String?
-    var macroDraft: MacroDraft?
-    var macroDraftError: String?
-    var macroImport: MacroImportSession?
-    var macroImportError: String?
-    var macroToDelete: StoredMacro?
-    var appDetail: AppDetail?
-    var pendingPasteMode: BundleKey?
-    var showsLicences = false
+    @Published var resetRequest: ResetRequest?
+    @Published var exportSheet: ExportSheetState?
+    @Published var importSummary: ImportSummary?
+    @Published var importError: String?
+    @Published var macroDraft: MacroDraft?
+    @Published var macroDraftError: String?
+    @Published var macroImport: MacroImportSession?
+    @Published var macroImportError: String?
+    @Published var macroToDelete: StoredMacro?
+    @Published var appDetail: AppDetail?
+    @Published var pendingPasteMode: BundleKey?
+    @Published var showsLicences = false
     /// PRD-R53 note after switching from Beta back to Stable (the updater's `Updates` copy).
-    var channelNote = UpdateChannelNote()
+    @Published var channelNote = UpdateChannelNote()
 
     // Panes
-    var macroList = MacroListState(macros: [])
-    var practiceText = ""
-    var keepAsTypedDraft = ""
-    var keepVietnameseDraft = ""
-    var wordListError: [UserWordList: String] = [:]
+    @Published var macroList = MacroListState(macros: [])
+    @Published var wordListError: [UserWordList: String] = [:]
     /// Enabled input sources, read when the window is shown (not per render, PLT-R373).
-    private(set) var enabledInputSources: [InputSourceInfo] = []
+    @Published private(set) var enabledInputSources: [InputSourceInfo] = []
 
     let brand: Brand
     let language: InterfaceLanguageModel
     let matrix: MatrixDocument?
-    @ObservationIgnored let commands: SettingsCommands
-    @ObservationIgnored let updater: any UpdaterControlling
-    @ObservationIgnored let loginService: any LoginItemService
-    @ObservationIgnored let disclosures: AdvancedDisclosureMemory
-    @ObservationIgnored let readInputSources: @MainActor () -> [InputSourceInfo]
+    /// System Settings / System Preferences pane names of the running macOS (PRD-R64).
+    let panes: SystemPaneNames
+    let commands: SettingsCommands
+    let updater: any UpdaterControlling
+    let loginService: any LoginItemService
+    let disclosures: AdvancedDisclosureMemory
+    let readInputSources: @MainActor () -> [InputSourceInfo]
     /// Recorder capture lifecycle (ADR 0305): monitor and tap hotkey suspension end with the recording.
-    @ObservationIgnored let capture: HotkeyCaptureController
-    @ObservationIgnored weak var actions: (any SettingsActions)?
-    @ObservationIgnored let appIdentities = AppIdentityCache()
+    let capture: HotkeyCaptureController
+    weak var actions: (any SettingsActions)?
+    let appIdentities = AppIdentityCache()
+    /// Practice and word-list field text, observed only by those fields (not published through this model).
+    let drafts = SettingsTextDrafts()
+    /// Views observe this model; the language and the recorder it owns publish through it (ADR 0315).
+    private var relays: [AnyCancellable] = []
 
     init(
         commands: SettingsCommands, language: InterfaceLanguageModel, updater: any UpdaterControlling,
-        loginItem: any LoginItemService, brand: Brand, matrix: MatrixDocument?,
+        loginItem: any LoginItemService, brand: Brand, matrix: MatrixDocument?, panes: SystemPaneNames,
         inputSources: @escaping @MainActor () -> [InputSourceInfo], layout: @escaping @MainActor () -> LayoutTable?,
         disclosures: AdvancedDisclosureMemory
     ) {
@@ -72,6 +74,7 @@ final class SettingsWindowModel {
         loginService = loginItem
         self.brand = brand
         self.matrix = matrix
+        self.panes = panes
         readInputSources = inputSources
         self.disclosures = disclosures
         self.loginItem = LoginItemPresentation(status: loginItem.status)
@@ -82,6 +85,7 @@ final class SettingsWindowModel {
             setHotkeysSuspended: { relay.model?.actions?.setHotkeyRecorderActive($0) },
             onFinished: { relay.model?.saveRecorded($1, for: $0) }, readLayout: layout)
         relay.model = self
+        relays = [relayChanges(of: language), relayChanges(of: capture)]
         refreshSavedConflicts()
     }
 
@@ -147,15 +151,21 @@ final class SettingsWindowModel {
 
     func openLoginItemsSettings() { loginService.openSystemSettings() }
 
+    /// The note and the button of the login item row. On macOS 12 both name System Preferences from the pane
+    /// table in the macOS language (PRD-R64, ADR 0315).
+    var loginItemText: LoginItemRowText {
+        LoginItemRowText(localizer: localizer, appName: appName, panes: panes, presentation: loginItem)
+    }
+
     // MARK: - Word lists (ENG-R860)
 
     func addWord(to list: UserWordList) {
-        let draft = list == .keepAsTyped ? keepAsTypedDraft : keepVietnameseDraft
+        let draft = drafts[list]
         let current = Set(list.entries(in: settings))
         switch UserWordList.adding(draft, to: current) {
         case .added(let entries):
             wordListError[list] = nil
-            if list == .keepAsTyped { keepAsTypedDraft = "" } else { keepVietnameseDraft = "" }
+            drafts[list] = ""
             edit(list.edit(entries))
         case .invalid: wordListError[list] = localizer.string(SettingsText.listInvalid)
         case .duplicate: wordListError[list] = localizer.string(SettingsText.listDuplicate)

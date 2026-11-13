@@ -36,6 +36,62 @@ import VietnameseEngineData
         #expect(!failed.isOn && failed.note == .openAtLoginFailed && failed.offersSystemSettings)
         #expect(service.calls == ["register", "register", "unregister", "register"])
     }
+
+    /// ADR 0315: on macOS 12 the toggle is disabled and the note gives the manual steps, with a System
+    /// Preferences button; a refused register keeps that explanation rather than the generic failure.
+    @Test func macOS12ExplainsTheManualLoginItem() {
+        let legacy = LoginItemPresentation(status: .unavailable)
+        #expect(!legacy.isOn && !legacy.isAvailable)
+        #expect(legacy.note == .openAtLoginManual && legacy.offersSystemSettings)
+        #expect(LoginItemPresentation(status: .unavailable, failed: true) == legacy)
+        #expect(LoginItemPresentation(status: .enabled).isAvailable)
+        let service = FakeLoginItem()
+        service.setStatus(.unavailable)
+        service.failNextCall()
+        #expect(LoginItemControl.set(true, service: service) == legacy)
+    }
+
+    /// PRD-R64, ADR 0315: on macOS 12 the note and the button name System Preferences with the same words, both
+    /// taken from SystemPanes.json in the macOS language; the catalog never spells a pane name itself.
+    @Test func macOS12RowNamesThePaneOnlyFromTheTable_PRDR64() throws {
+        let l = try Localizers()
+        let table = try SystemPaneTableTests.shipped()
+        let viPanes = table.names(macOS: LooseVersion("12.7")!, systemLanguage: "vi-VN")
+        let legacy = LoginItemPresentation(status: .unavailable)
+        let row = LoginItemRowText(localizer: l.vi, appName: "Example", panes: viPanes, presentation: legacy)
+        #expect(
+            row.note
+                == "Trên macOS 12, Example không tự bật được tùy chọn này. Hãy mở Tùy chọn Hệ thống > Người dùng & Nhóm > "
+                + "Mục đăng nhập, bấm nút cộng (+) rồi chọn Example trong thư mục Ứng dụng.")
+        #expect(row.button == "Mở Tùy chọn Hệ thống")
+        // Pane names come only from the table: a renamed pane shows up in both the note and the button.
+        var renamed = viPanes
+        renamed.systemSettings = "Pane"
+        let renamedRow = LoginItemRowText(localizer: l.en, appName: "Example", panes: renamed, presentation: legacy)
+        #expect(renamedRow.button == "Open Pane")
+        #expect(renamedRow.note?.contains("Open Pane > Người dùng & Nhóm > Mục đăng nhập,") == true)
+        // The VoiceOver hint names no pane (the label is the button title, which names it from the table).
+        for localizer in [l.vi, l.en] {
+            let hint = localizer.accessibilityHint(SettingsControl.openSystemPreferences)
+            #expect(!hint.isEmpty && !hint.contains("%"))
+            for name in ["Tùy chọn", "System Preferences", "Mục đăng nhập", "Login Items"] {
+                #expect(!hint.contains(name), "hint names a pane: \(hint)")
+            }
+        }
+    }
+
+    @Test func macOS13RowKeepsTheSystemSettingsButton() throws {
+        let l = try Localizers()
+        let panes = try SystemPaneTableTests.shipped().names(macOS: LooseVersion("14.0")!, systemLanguage: "en")
+        let approval = LoginItemRowText(
+            localizer: l.en, appName: "Example", panes: panes,
+            presentation: LoginItemPresentation(status: .requiresApproval))
+        #expect(approval.note == "macOS is waiting for you to allow Example to open at login.")
+        #expect(approval.button == "Open System Settings")
+        let plain = LoginItemRowText(
+            localizer: l.en, appName: "Example", panes: panes, presentation: LoginItemPresentation(status: .enabled))
+        #expect(plain.note == nil && plain.button == nil)
+    }
 }
 
 @Suite struct WordListAndLayoutTests {

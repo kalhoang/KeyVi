@@ -4,8 +4,10 @@ internal import AppModel
 public import Foundation
 internal import ServiceManagement
 
-/// Launch at login (PLT-R205, D17). Production: `SMAppService.mainApp` `status`, `register()`,
-/// `unregister()`; `requiresApproval` opens System Settings > Login Items via `SMAppService.openSystemSettingsLoginItems()`.
+/// Launch at login (PLT-R205, D17). Production: `SMAppService.mainApp` `status`, `register()`, `unregister()`;
+/// `requiresApproval` opens System Settings > Login Items via `SMAppService.openSystemSettingsLoginItems()`.
+/// macOS 12 has no `SMAppService` (ADR 0315): the status is `unavailable`, the user adds the app by hand and
+/// `openSystemSettings()` opens System Preferences > Users & Groups.
 public protocol LoginItemService: Sendable {
     var status: LoginItemStatus { get }
     func register() throws
@@ -13,17 +15,60 @@ public protocol LoginItemService: Sendable {
     func openSystemSettings()
 }
 
-public enum LoginItemStatus: String, Sendable, Hashable { case enabled, notRegistered, requiresApproval, notFound }
+public enum LoginItemStatus: String, Sendable, Hashable {
+    case enabled, notRegistered, requiresApproval, notFound
+    /// macOS 12: the app cannot register itself; the user adds it in System Preferences (ADR 0315).
+    case unavailable
+}
 
-/// Thin wrapper; only `status(from:)` is unit tested because the other members change the user's login items
-/// (verified by Pa, traceability PLT-R205).
-public struct SMAppServiceLoginItem: LoginItemService {
+/// `register()` and `unregister()` on macOS 12, where the app cannot change its own login item.
+public struct LoginItemUnavailable: Error, Sendable, Hashable {
     public init() {}
-    public var status: LoginItemStatus { Self.status(from: SMAppService.mainApp.status) }
-    public func register() throws { try SMAppService.mainApp.register() }
-    public func unregister() throws { try SMAppService.mainApp.unregister() }
-    public func openSystemSettings() { SMAppService.openSystemSettingsLoginItems() }
+}
 
+/// Thin wrapper; `status(from:)` and the macOS 12 branch are unit tested because the other members change the
+/// user's login items (verified by Pa, traceability PLT-R205).
+public struct SMAppServiceLoginItem: LoginItemService {
+    private let usesService: Bool
+    private let openLegacyLoginItems: @Sendable () -> Void
+
+    /// - Parameter openLegacyLoginItems: macOS 12 only. Opens System Preferences > Users & Groups (the
+    ///   `loginItems` deep link of SystemPanes.json) so the user can add the app to Login Items.
+    public init(openLegacyLoginItems: @escaping @Sendable () -> Void = {}) {
+        self.init(usesService: Self.serviceExists, openLegacyLoginItems: openLegacyLoginItems)
+    }
+
+    /// `usesService: false` is the macOS 12 behaviour (tests run it on any system).
+    init(usesService: Bool, openLegacyLoginItems: @escaping @Sendable () -> Void) {
+        self.usesService = usesService
+        self.openLegacyLoginItems = openLegacyLoginItems
+    }
+
+    static var serviceExists: Bool {
+        if #available(macOS 13, *) { true } else { false }
+    }
+
+    public var status: LoginItemStatus {
+        if usesService, #available(macOS 13, *) { return Self.status(from: SMAppService.mainApp.status) }
+        return .unavailable
+    }
+
+    public func register() throws {
+        guard usesService, #available(macOS 13, *) else { throw LoginItemUnavailable() }
+        try SMAppService.mainApp.register()
+    }
+
+    public func unregister() throws {
+        guard usesService, #available(macOS 13, *) else { throw LoginItemUnavailable() }
+        try SMAppService.mainApp.unregister()
+    }
+
+    public func openSystemSettings() {
+        guard usesService, #available(macOS 13, *) else { return openLegacyLoginItems() }
+        SMAppService.openSystemSettingsLoginItems()
+    }
+
+    @available(macOS 13, *)
     static func status(from status: SMAppService.Status) -> LoginItemStatus {
         switch status {
         case .enabled: .enabled

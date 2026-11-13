@@ -16,7 +16,7 @@ extension AppEnvironment {
     func presentOnboarding(startAt screen: OnboardingScreen?) {
         if let onboarding {
             onboarding.showWindow(nil)
-            NSApp.activate()
+            NSApp.bringToFront()
             return
         }
         let inputs = onboardingInputs()
@@ -28,7 +28,7 @@ extension AppEnvironment {
         onboarding = controller
         host.setPermissionFastPolling(true)
         controller.showWindow(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     /// Read on presentation, on every screen change, on "Kiểm tra lại" (PRD-R40 screen 5) and when the
@@ -63,7 +63,8 @@ extension AppEnvironment {
         // SystemPanes.json ships in the bundle and is tested; this only guards a broken build.
         return SystemPaneNames(
             systemSettings: "System Settings", privacySecurity: "Privacy & Security", accessibility: "Accessibility",
-            inputMonitoring: "Input Monitoring", keyboard: "Keyboard", textReplacements: "Text Replacements")
+            inputMonitoring: "Input Monitoring", keyboard: "Keyboard", textReplacements: "Text Replacements",
+            usersGroups: "General", loginItems: "Login Items")
     }
 
     func openPane(_ pane: SystemPane) {
@@ -138,6 +139,9 @@ extension AppEnvironment: OnboardingActions {
     func setOpenAtLogin(_ enabled: Bool) {
         if enabled { try? loginItem.register() } else { try? loginItem.unregister() }
     }
+
+    /// False on macOS 12 (ADR 0315): the done screen explains how to add the app by hand instead.
+    var canOpenAtLogin: Bool { loginItem.status != .unavailable }
 
     /// PRD-R40 screen 6, PRD-R32: the import preview compares the file with these.
     func currentMacros() async -> [StoredMacro] { await settingsStore.state.macros }

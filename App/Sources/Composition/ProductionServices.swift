@@ -44,11 +44,11 @@ final class DiagnosticsWiring {
     let metrics = PlatformMetrics()
     let tapLog = TapLogRing()
     let redactionSalt: RedactionSalt
-    private let utility: DispatchSerialQueue
+    private let utility: DispatchQueue
     private let scheduler: DispatchTimerScheduler
     private var timers: [any ScheduledTimer] = []
 
-    init(paths: StoragePaths, subsystem: String, utility: DispatchSerialQueue, defaults: UserDefaults) {
+    init(paths: StoragePaths, subsystem: String, utility: DispatchQueue, defaults: UserDefaults) {
         self.utility = utility
         scheduler = DispatchTimerScheduler(queue: utility)
         let fileSystem = LocalFileSystem()
@@ -84,7 +84,7 @@ extension InputHostDependencies {
     /// The real platform services (contracts.md section 3). Only the running app uses them; tests use fakes.
     @MainActor
     static func production(
-        diagnostics: DiagnosticsWiring, keyValues: any KeyValueStore, utility: DispatchSerialQueue
+        diagnostics: DiagnosticsWiring, keyValues: any KeyValueStore, utility: DispatchQueue
     ) -> InputHostDependencies {
         InputHostDependencies(
             tapFactory: CGEventTapFactory(), poster: CGEventPoster(), fieldAccess: AXFocusedFieldAccess(),

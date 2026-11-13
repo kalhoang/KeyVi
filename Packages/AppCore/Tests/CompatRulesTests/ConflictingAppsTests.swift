@@ -26,7 +26,7 @@ private struct ConflictingAppsFile: Decodable {
     static let conflictScreenApps: Set<String> = ["XKey", "OpenKey", "EVKey", "Gõ Nhanh", "PHTV", "GoTiengViet"]
     static let minimumSourceLength = 10  // schema: source minLength
 
-    private static var registryURL: URL { RepoFiles.root.appending(path: "compat/conflicting-apps.json") }
+    private static var registryURL: URL { RepoFiles.root.appendingPathComponent("compat/conflicting-apps.json") }
 
     private func registry() throws -> ConflictingAppsFile {
         try JSONDecoder().decode(ConflictingAppsFile.self, from: RepoFiles.data(Self.registryURL))

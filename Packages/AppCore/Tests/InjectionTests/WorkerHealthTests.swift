@@ -115,22 +115,22 @@ private struct BreakingFieldAccess: FocusedFieldAccess {
     let base: any FocusedFieldAccess
     let box: FeedbackBox
 
-    func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<Injection.TextRange> {
+    func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         box.feedback?.markPostingBroken()
         return base.selectedRange(field, timeout: timeout)
     }
 
-    func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
+    func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         base.text(field, in: range, timeout: timeout)
     }
 
-    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
+    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan)
         -> AXCallResult<Void>
     {
         base.setSelectedRange(field, to: range, timeout: timeout)
     }
 
-    func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         base.setSelectedText(field, to: text, timeout: timeout)
     }
 }

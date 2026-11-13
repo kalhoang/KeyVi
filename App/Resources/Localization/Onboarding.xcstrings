@@ -620,13 +620,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens Input Monitoring in System Settings."
+            "value" : "Opens Input Monitoring in the macOS settings."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở mục Giám sát đầu vào trong Cài đặt hệ thống."
+            "value" : "Mở mục Giám sát đầu vào trong phần cài đặt của macOS."
           }
         }
       }
@@ -656,13 +656,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens Keyboard in System Settings."
+            "value" : "Opens Keyboard in the macOS settings."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở phần Bàn phím trong Cài đặt hệ thống."
+            "value" : "Mở phần Bàn phím trong phần cài đặt của macOS."
           }
         }
       }
@@ -692,13 +692,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens the right place in System Settings to turn on the permission."
+            "value" : "Opens the right place in the macOS settings to turn on the permission."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở đúng mục trong Cài đặt hệ thống để bạn bật quyền."
+            "value" : "Mở đúng mục trong phần cài đặt của macOS để bạn bật quyền."
           }
         }
       }
@@ -1023,6 +1023,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mở %@ khi đăng nhập"
+          }
+        }
+      }
+    },
+    "onboarding.done.openAtLoginManual" : {
+      "comment" : "PRD-R40 screen 8 on macOS 12 only (ADR 0315), in place of the open-at-login checkbox. %1$@ is the app name; %2$@, %3$@ and %4$@ are the System Preferences, Users & Groups and Login Items names in the macOS language (SystemPanes.json).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To open %1$@ when you log in, add it in %2$@ > %3$@ > %4$@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Để %1$@ tự mở khi bạn đăng nhập, hãy thêm ứng dụng trong %2$@ > %3$@ > %4$@."
           }
         }
       }

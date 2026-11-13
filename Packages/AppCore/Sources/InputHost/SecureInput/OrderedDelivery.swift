@@ -6,7 +6,7 @@
 // thread or from inside the callback itself) is delivered by that thread right after the current callback
 // returns. A callback may therefore call back into the monitor without deadlocking or nesting.
 
-import Synchronization
+import RealtimeSupport
 
 final class OrderedDelivery<Value: Sendable>: Sendable {
     private struct State {

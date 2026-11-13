@@ -9,7 +9,7 @@ public import CompatRules
 public import Foundation
 public import Injection
 public import InputHost
-import Synchronization
+import RealtimeSupport
 
 public final class FakeAXProvider: AXProvider, Sendable {
     private struct Observer {

@@ -7,6 +7,7 @@
 
 internal import AppModel
 internal import Foundation
+internal import RealtimeSupport
 
 /// Per-file bookkeeping of the store.
 struct FileStatus: Sendable {
@@ -25,13 +26,13 @@ struct FileStatus: Sendable {
 
 struct PendingWrite: Sendable {
     var token: UInt64
-    var delay: Duration
+    var delay: TimeSpan
     var timer: any DebounceTimer
 }
 
 enum WriteDelay {
-    static let standard = Duration.seconds(1)  // PLT-R1003
-    static let appModes = Duration.seconds(5)  // PLT-R392
+    static let standard = TimeSpan.seconds(1)  // PLT-R1003
+    static let appModes = TimeSpan.seconds(5)  // PLT-R392
 }
 
 extension SettingsStore {
@@ -49,7 +50,7 @@ extension SettingsStore {
     }
 
     /// A document changed in memory: publish now, write after `delay`.
-    func changed(_ file: SettingsFile, after delay: Duration) {
+    func changed(_ file: SettingsFile, after delay: TimeSpan) {
         updateStatus(file) { $0.dirty = true }
         scheduleWrite(file, after: delay)
         publish()
@@ -64,7 +65,7 @@ extension SettingsStore {
 
     /// Keeps an armed timer unless the new delay is shorter (an explicit rule change while a 5 s memory write
     /// is pending is written after 1 s).
-    private func scheduleWrite(_ file: SettingsFile, after delay: Duration) {
+    private func scheduleWrite(_ file: SettingsFile, after delay: TimeSpan) {
         guard canWrite(file) else { return }
         if let pending = status(file).pending, pending.delay <= delay { return }
         cancelPendingWrite(file)
@@ -85,7 +86,18 @@ extension SettingsStore {
     /// store's own serial queue orders the write after every call that was already queued.
     nonisolated func debounceTimerFired(file: SettingsFile, token: UInt64) {
         queue.async { [weak self] in
-            self?.assumeIsolated { store in store.debounceElapsed(file: file, token: token) }
+            self?.withQueueIsolation { store in store.debounceElapsed(file: file, token: token) }
+        }
+    }
+
+    /// `assumeIsolated` for a block already running on `queue`. Sound because the store's executor runs every
+    /// job on that serial queue, so no job of the store runs meanwhile. `assumeIsolated` itself cannot check a
+    /// custom executor before macOS 15 (ADR 0315); this checks the queue instead.
+    nonisolated func withQueueIsolation(_ body: (isolated SettingsStore) -> Void) {
+        dispatchPrecondition(condition: .onQueue(queue))
+        withoutActuallyEscaping(body) { isolatedBody in
+            let unchecked = unsafeBitCast(isolatedBody, to: ((SettingsStore) -> Void).self)
+            unchecked(self)
         }
     }
 

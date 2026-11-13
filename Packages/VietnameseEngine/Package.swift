@@ -10,8 +10,8 @@ let strict: [SwiftSetting] = [
 
 let package = Package(
     name: "VietnameseEngine",
-    // ENG-R1201: macOS 13 floor so the engine never constrains the app's own minimum.
-    platforms: [.macOS(.v13)],
+    // ENG-R1201, PLT-R106: the app's macOS 12 floor (docs/decisions/0315-minimum-macos-12.md).
+    platforms: [.macOS(.v12)],
     products: [
         .library(name: "VietnameseEngine", targets: ["VietnameseEngine"]),
         .library(name: "VietnameseEngineData", targets: ["VietnameseEngineData"]),

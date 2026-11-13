@@ -79,7 +79,12 @@ final class AlertUpdateFailurePresenter: UpdateFailurePresenting {
             if button.control == .close { control.keyEquivalent = Self.escapeKey }
         }
         // A menu-bar app (LSUIElement) is never active on its own; bring the alert in front of the user.
-        NSApp.activate()
+        // `activate()` exists from macOS 14 only (ADR 0315).
+        if #available(macOS 14, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
         return Self.choice(for: alert.runModal(), buttons: content.buttons)
     }
 

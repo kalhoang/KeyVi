@@ -34,7 +34,7 @@ public enum HotkeyResult: Sendable, Hashable {
 /// started. A restore binding is recognised only as a key or key combo (it must be a key the pipeline can
 /// consume, PRD-R18, PLT-R353); a modifier-only restore binding is ignored. Logic: `HotkeyRecognition.swift`.
 public struct HotkeyRecognizer: Sendable {
-    public static let maximumTapDuration: Duration = .milliseconds(500)
+    public static let maximumTapDuration: TimeSpan = .milliseconds(500)
     let toggle: HotkeyBinding
     let restore: HotkeyBinding?
     var toggleTap: HotkeyChordTracker?

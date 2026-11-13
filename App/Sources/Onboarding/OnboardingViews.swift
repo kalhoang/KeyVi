@@ -10,7 +10,7 @@ import ShellCore
 import SwiftUI
 
 struct OnboardingRootView: View {
-    @Bindable var model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,7 +51,7 @@ struct OnboardingRootView: View {
 }
 
 struct OnboardingFooter: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -83,7 +83,7 @@ struct ScreenTitle: View {
 }
 
 struct WelcomeScreen: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -99,7 +99,7 @@ struct WelcomeScreen: View {
 }
 
 struct PermissionScreen: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -129,7 +129,7 @@ struct PermissionScreen: View {
 
 /// "Đã cấp quyền" with a check mark, or the waiting line, plus the stale and Input Monitoring notices.
 struct PermissionStatusView: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     let content: PermissionScreenContent
 
     var body: some View {
@@ -155,7 +155,7 @@ struct PermissionStatusView: View {
 }
 
 struct InputMonitoringNotice: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     let notice: String
 
     var body: some View {
@@ -216,7 +216,7 @@ private struct IllustrationSwitch: View {
 }
 
 struct TypingMethodScreen: View {
-    @Bindable var model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -232,7 +232,7 @@ struct TypingMethodScreen: View {
 }
 
 struct MethodCard: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     let method: TypingMethod
     @FocusState private var focused: Bool
 
@@ -245,7 +245,7 @@ struct MethodCard: View {
         .buttonStyle(.plain)
         // PRD-R67: a plain-style card draws its own keyboard focus ring (MethodCardLabel), always visible.
         .focused($focused)
-        .focusEffectDisabled()
+        .systemFocusEffectDisabled()
         .onboardingAccessibility(method == .telex ? .methodTelex : .methodVNI, localizer)
         .accessibilityValue(Text(verbatim: selected ? localizer.string(OnboardingText.methodSelected) : ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -289,18 +289,16 @@ struct MethodCardLabel: View {
 
 /// Live practice field (PRD-R40 screens 3 and 7). Typed text stays in memory only (PLT-R901).
 struct PracticeField: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     @Binding var text: String
     let control: OnboardingControl
 
     var body: some View {
         let localizer = model.localizer
-        TextField(text: $text, axis: .vertical) {
-            Text(verbatim: localizer.string(OnboardingText.practicePlaceholder))
-        }
-        .textFieldStyle(.roundedBorder)
-        .lineLimit(3, reservesSpace: true)
-        .onboardingAccessibility(control, localizer)
+        TextField(growing: $text, placeholder: localizer.string(OnboardingText.practicePlaceholder))
+            .textFieldStyle(.roundedBorder)
+            .reservingLines(3)
+            .onboardingAccessibility(control, localizer)
     }
 }
 

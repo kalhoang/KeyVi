@@ -22,6 +22,9 @@ public enum SettingsText: String, LocalizationKey {
     case openAtLoginNotFound = "settings.general.openAtLogin.notFound"
     case openAtLoginFailed = "settings.general.openAtLogin.failed"
     case openSystemSettings = "settings.general.openAtLogin.openSystemSettings"
+    /// macOS 12 (ADR 0315). Arguments: app name, then the System Preferences, Users & Groups and Login Items names.
+    case openAtLoginManual = "settings.general.openAtLogin.manual"
+    case openSystemPreferences = "settings.general.openAtLogin.openSystemPreferences"
     case toggleHotkeyTitle = "settings.general.toggleHotkey.title"
     case toggleHotkeyExplanation = "settings.general.toggleHotkey.explanation"
     case rememberPerAppTitle = "settings.general.rememberPerApp.title"
@@ -163,6 +166,7 @@ public enum SettingsControl: String, AccessibleControl {
     case panePicker
     case openAtLogin
     case openSystemSettings
+    case openSystemPreferences  // macOS 12 (ADR 0315)
     case toggleHotkeyChange
     case toggleHotkeyCancel
     case toggleHotkeyDefault

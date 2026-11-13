@@ -5,7 +5,6 @@
 
 internal import AppModel
 public import RealtimeSupport
-internal import Synchronization
 
 public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case tapDisabledByTimeout = 1

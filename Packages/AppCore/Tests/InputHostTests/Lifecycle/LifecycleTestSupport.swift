@@ -35,11 +35,8 @@ struct LifecycleScript {
         lifecycle.handle(input, at: now)
     }
 
-    mutating func advance(by duration: Duration) {
-        let (seconds, attoseconds) = duration.components
-        now = MonotonicInstant(
-            nanoseconds: now.nanoseconds + UInt64(seconds) * 1_000_000_000
-                + UInt64(attoseconds / 1_000_000_000))
+    mutating func advance(by duration: TimeSpan) {
+        now = MonotonicInstant(nanoseconds: now.nanoseconds + duration.unsignedNanoseconds)
     }
 
     /// launch, permissions granted, tap created: the common starting point of most tables.

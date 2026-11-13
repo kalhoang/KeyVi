@@ -2,6 +2,7 @@
 //
 // Table tests of the input host lifecycle (02-platform.md 2.1, contracts.md 10.3). W1-F2.
 import AppModel
+import RealtimeSupport
 import Testing
 
 @testable import InputHost
@@ -63,7 +64,7 @@ import Testing
             script.send(.tapCreationFailed) == [
                 .publish(.failOpen(.tapUnavailable)), .resetComposition, .scheduleRetry(after: .seconds(1)),
             ])
-        var delays: [Duration] = [.seconds(1)]
+        var delays: [TimeSpan] = [.seconds(1)]
         for _ in 0..<4 {
             #expect(script.send(.retryTimerFired) == [.createTap])
             let effects = script.send(.tapCreationFailed)
@@ -252,7 +253,7 @@ import Testing
 
     @Test func noticeCountsUnexpectedDisablesToo_PLT_R331() {
         var script = LifecycleScript.running()
-        let gap = Duration.seconds(20)  // distinct disables, outside the coalescing window
+        let gap = TimeSpan.seconds(20)  // distinct disables, outside the coalescing window
         script.send(.tapDisabledBySystem(byTimeout: true))
         script.advance(by: gap)
         script.send(.watchdogTripped(.unexpectedlyDisabled))

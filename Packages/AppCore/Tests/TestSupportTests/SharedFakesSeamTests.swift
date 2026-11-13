@@ -8,7 +8,6 @@ import Foundation
 import Injection
 import InputHost
 import RealtimeSupport
-import Synchronization
 import Testing
 
 @testable import TestSupport

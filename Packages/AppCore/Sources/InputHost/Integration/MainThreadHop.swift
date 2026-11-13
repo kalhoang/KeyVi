@@ -5,7 +5,7 @@
 // order on demand, so no test waits for real time (ADR 0313). Workstream W2-A.
 
 internal import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 /// Runs main-actor work posted from any thread, in posting order.
 public protocol MainThreadHop: Sendable {

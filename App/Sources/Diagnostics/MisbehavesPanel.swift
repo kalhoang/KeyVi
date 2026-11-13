@@ -10,11 +10,11 @@
 
 import AppKit
 import AppModel
+import Combine
 import CompatRules
 import Diagnostics
 import Injection
 import InputHost
-import Observation
 import ShellCore
 import SwiftUI
 
@@ -59,23 +59,22 @@ final class MisbehavesPanelController: NSWindowController, NSWindowDelegate {
 }
 
 @MainActor
-@Observable
-final class MisbehavesModel {
+final class MisbehavesModel: ObservableObject {
     let language: InterfaceLanguageModel
-    @ObservationIgnored let services: DiagnosticsServices
-    @ObservationIgnored private let baseReport: @MainActor () -> DiagnosticsReport?
-    @ObservationIgnored private let fallbackBundle: BundleKey?
-    @ObservationIgnored private let continueToBugReport: @MainActor (BundleKey?, DiagnosticsReport.Symptom) -> Void
-    @ObservationIgnored private var task: Task<Void, Never>?
+    let services: DiagnosticsServices
+    private let baseReport: @MainActor () -> DiagnosticsReport?
+    private let fallbackBundle: BundleKey?
+    private let continueToBugReport: @MainActor (BundleKey?, DiagnosticsReport.Symptom) -> Void
+    private var task: Task<Void, Never>?
     /// Stop signal of the current guided test: set by Stop, by closing the panel and by an app switch; its focus
     /// check runs on the typing thread before every step (PLT-R1205 step 3, PLT-R387).
-    @ObservationIgnored private var stopSignal: ProbeStopSignal?
-    @ObservationIgnored private var activationObserver: NSObjectProtocol?
-    var flow: MisbehavesFlow?
-    private(set) var status: DiagnosticsText?
+    private var stopSignal: ProbeStopSignal?
+    private var activationObserver: NSObjectProtocol?
+    @Published var flow: MisbehavesFlow?
+    @Published private(set) var status: DiagnosticsText?
     /// Shown in the preview and used by "Copy report" and "Open GitHub issue" unchanged (PLT-R1204).
-    private(set) var report: DiagnosticsReport?
-    var previewExpanded = false
+    @Published private(set) var report: DiagnosticsReport?
+    @Published var previewExpanded = false
 
     init(
         language: InterfaceLanguageModel, services: DiagnosticsServices, fallbackBundle: BundleKey?,

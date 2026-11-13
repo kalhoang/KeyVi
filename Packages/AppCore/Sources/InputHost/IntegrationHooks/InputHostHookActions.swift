@@ -9,16 +9,17 @@
 internal import AppModel
 public import Diagnostics
 internal import Foundation
+public import RealtimeSupport
 
 /// A bounded wait for a state the main thread reaches after a hop (the permission monitor and the tap's notices
 /// both hop to main). Runs on the hooks' task, never on the tap or main thread; tests pass a `sleep` that drains
 /// their manual hop instead of sleeping.
 public struct HookConditionWait: Sendable {
-    public var timeout: Duration
-    public var step: Duration
-    public var sleep: @Sendable (Duration) async -> Void
+    public var timeout: TimeSpan
+    public var step: TimeSpan
+    public var sleep: @Sendable (TimeSpan) async -> Void
 
-    public init(timeout: Duration, step: Duration, sleep: @escaping @Sendable (Duration) async -> Void) {
+    public init(timeout: TimeSpan, step: TimeSpan, sleep: @escaping @Sendable (TimeSpan) async -> Void) {
         self.timeout = timeout
         self.step = step
         self.sleep = sleep
@@ -26,12 +27,12 @@ public struct HookConditionWait: Sendable {
 
     /// 2 s in 10 ms steps: the recovery takes one hop to main, far below that.
     public static let standard = HookConditionWait(timeout: .seconds(2), step: .milliseconds(10)) { step in
-        try? await Task.sleep(for: step)
+        try? await Task.sleep(nanoseconds: step.unsignedNanoseconds)
     }
 
     /// True as soon as `condition` holds on the main actor; false after `timeout`.
     public func until(_ condition: @escaping @MainActor @Sendable () -> Bool) async -> Bool {
-        var waited = Duration.zero
+        var waited = TimeSpan.zero
         while true {
             if await MainActor.run(body: condition) { return true }
             guard waited < timeout else { return false }

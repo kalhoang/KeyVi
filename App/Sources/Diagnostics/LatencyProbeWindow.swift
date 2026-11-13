@@ -6,9 +6,9 @@
 
 import AppKit
 import AppModel
+import Combine
 import Diagnostics
 import InputHost
-import Observation
 import RealtimeSupport
 import ShellCore
 import SwiftUI
@@ -59,8 +59,7 @@ final class LatencyProbeWindowController: NSWindowController, NSWindowDelegate {
 }
 
 @MainActor
-@Observable
-final class LatencyProbeModel {
+final class LatencyProbeModel: ObservableObject {
     enum Phase: Equatable {
         case idle
         case running(LatencyProbeResult.Profile)
@@ -71,13 +70,13 @@ final class LatencyProbeModel {
 
     let language: InterfaceLanguageModel
     let appName: String
-    @ObservationIgnored let services: LatencyProbeServices
+    let services: LatencyProbeServices
     /// Whether the probe window is key and its text view first responder (set by the window controller).
-    @ObservationIgnored var hasFocus: @MainActor () -> Bool = { false }
-    @ObservationIgnored private var stopSignal: ProbeStopSignal?
-    private(set) var phase: Phase = .idle
+    var hasFocus: @MainActor () -> Bool = { false }
+    private var stopSignal: ProbeStopSignal?
+    @Published private(set) var phase: Phase = .idle
     /// Bumped before each run so the text view clears its content.
-    private(set) var runID = 0
+    @Published private(set) var runID = 0
 
     init(language: InterfaceLanguageModel, services: LatencyProbeServices, appName: String) {
         self.language = language
@@ -101,7 +100,7 @@ final class LatencyProbeModel {
         phase = .running(.normal)
         Task { [weak self] in
             // Let the cleared text view become first responder before the first key is posted.
-            try? await Task.sleep(for: Self.focusDelay)
+            try? await Task.sleep(nanoseconds: Self.focusDelay.unsignedNanoseconds)
             guard let self else { return }
             if !self.hasFocus() { signal.stop() }
             let result = await self.session.run(
@@ -111,7 +110,7 @@ final class LatencyProbeModel {
         }
     }
 
-    static let focusDelay: Duration = .milliseconds(300)
+    static let focusDelay: TimeSpan = .milliseconds(300)
 
     private var session: LatencyProbeSession {
         LatencyProbeSession(driver: services.driver, metrics: services.metrics, wallClock: services.wallClock)
@@ -146,7 +145,7 @@ final class LatencyProbeModel {
 }
 
 struct LatencyProbeView: View {
-    let model: LatencyProbeModel
+    @ObservedObject var model: LatencyProbeModel
 
     var body: some View {
         let localizer = model.language.localizer

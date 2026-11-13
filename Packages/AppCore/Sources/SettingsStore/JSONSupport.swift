@@ -91,14 +91,17 @@ enum JSONSupport {
 /// Timestamps written into files and file names. All UTC, second precision, so a value survives a write and a
 /// read unchanged.
 enum StorageTimestamp {
+    /// UTC. `TimeZone.gmt` needs macOS 13 (PLT-R106: the floor is macOS 12).
+    private static let utc = TimeZone(secondsFromGMT: 0)!
+
     /// `2026-11-13T09:00:00Z` (rule override `createdAt`, export `exportedAt`).
     static func iso(_ date: Date) -> String {
-        date.formatted(Date.ISO8601FormatStyle(timeZone: .gmt))
+        date.formatted(Date.ISO8601FormatStyle(timeZone: utc))
     }
 
     static func date(iso string: String) -> Date? {
-        if let date = try? Date(string, strategy: Date.ISO8601FormatStyle(timeZone: .gmt)) { return date }
-        return try? Date(string, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: .gmt))
+        if let date = try? Date(string, strategy: Date.ISO8601FormatStyle(timeZone: utc)) { return date }
+        return try? Date(string, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: utc))
     }
 
     /// `20261113T090000Z`: sortable and safe in file names (backups, quarantined files).
@@ -116,5 +119,5 @@ enum StorageTimestamp {
     }
 
     private static let compactStyle = Date.ISO8601FormatStyle(
-        dateSeparator: .omitted, dateTimeSeparator: .standard, timeSeparator: .omitted, timeZone: .gmt)
+        dateSeparator: .omitted, dateTimeSeparator: .standard, timeSeparator: .omitted, timeZone: utc)
 }

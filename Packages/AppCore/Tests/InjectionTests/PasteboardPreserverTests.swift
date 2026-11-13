@@ -222,7 +222,7 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
     /// instead of blocking the inject thread (and with it every key the tap holds) until it answers. Until the
     /// abandoned read ends nothing else touches the pasteboard.
     @Test func aSlowLazyOwnerIsAbandonedAtTheDeadline() throws {
-        try withUniquePasteboard { name, pasteboard in
+        withUniquePasteboard { name, pasteboard in
             let provider = SlowProvider(delay: .milliseconds(1_500))
             pasteboard.clearContents()
             let item = NSPasteboardItem()
@@ -232,10 +232,10 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
             let access = NSPasteboardAccess(pasteboardName: name)
             var limits = PasteboardLimits()
             limits.readTimeout = .milliseconds(100)
-            let clock = ContinuousClock()
-            let started = clock.now
+            let clock = MachClock()
+            let started = clock.now()
             #expect(throws: PasteboardError.timedOut) { try access.snapshot(limits: limits) }
-            #expect(clock.now - started < .milliseconds(1_000), "the snapshot waited for the owner")
+            #expect(clock.now().duration(since: started) < .milliseconds(1_000), "the snapshot waited for the owner")
             #expect(throws: PasteboardError.writeFailed) { try access.writeTransient("t") }
             #expect(access.changeCount == PasteboardIO.unknownChangeCount)
             provider.waitUntilAnswered(timeout: .seconds(5))
@@ -263,22 +263,21 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
 
 /// A lazy data provider that answers after a delay (a slow or busy owner app).
 private final class SlowProvider: NSObject, NSPasteboardItemDataProvider, Sendable {
-    let delay: Duration
+    let delay: TimeSpan
     private let answered = DispatchSemaphore(value: 0)
 
-    init(delay: Duration) { self.delay = delay }
+    init(delay: TimeSpan) { self.delay = delay }
 
     func pasteboard(
         _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
     ) {
-        let (seconds, attoseconds) = delay.components
-        Thread.sleep(forTimeInterval: Double(seconds) + Double(attoseconds) / 1e18)
+        Thread.sleep(forTimeInterval: delay.inSeconds)
         item.setData(Data([0x4D, 0x4D]), forType: type)
         answered.signal()
     }
 
-    func waitUntilAnswered(timeout: Duration) {
-        _ = answered.wait(timeout: .now() + .milliseconds(Int(timeout.components.seconds * 1_000)))
+    func waitUntilAnswered(timeout: TimeSpan) {
+        _ = answered.wait(timeout: .now() + .milliseconds(Int(timeout.nanoseconds / 1_000_000)))
     }
 }
 

@@ -6,7 +6,7 @@
 
 internal import AppModel
 internal import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 internal import os
 
 final class LogFileStore: Sendable {

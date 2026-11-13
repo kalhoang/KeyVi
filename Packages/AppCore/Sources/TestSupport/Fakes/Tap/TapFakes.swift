@@ -6,7 +6,7 @@
 public import CoreFoundation
 public import CoreGraphics
 public import InputHost
-internal import Synchronization
+internal import RealtimeSupport
 
 /// Pure Swift tap handle. `install` adds a run-loop source that does nothing unless a test schedules a block
 /// with `performOnTapThread` (so the tap thread's run loop has a source and keeps running), and records

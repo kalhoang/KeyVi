@@ -83,7 +83,7 @@ public final class PasteboardPreserver {
     public func beginPaste(_ text: String) throws(PasteboardError) { try session.begin(text) }
 
     /// Steps 4-6, driven by the worker's deadlines.
-    public func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> RestoreResult {
+    public func restoreIfDue(now: MonotonicInstant, restoreDelay: TimeSpan) -> RestoreResult {
         session.restoreIfDue(now: now, restoreDelay: restoreDelay)
     }
 

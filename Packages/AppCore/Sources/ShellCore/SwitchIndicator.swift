@@ -9,8 +9,8 @@ public import RealtimeSupport
 @MainActor
 public final class SwitchIndicator {
     /// PRD-R12.
-    public static let displayDuration: Duration = .milliseconds(600)
-    static let leeway: Duration = .milliseconds(10)
+    public static let displayDuration: TimeSpan = .milliseconds(600)
+    static let leeway: TimeSpan = .milliseconds(10)
 
     public enum Change: Sendable, Hashable {
         case show(TypingMode)

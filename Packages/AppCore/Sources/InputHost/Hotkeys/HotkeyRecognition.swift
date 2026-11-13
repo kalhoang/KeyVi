@@ -104,10 +104,7 @@ struct HotkeyChordTracker: Sendable {
         if case .arming = phase { phase = .cancelled }
     }
 
-    static let maximumTapNanoseconds: UInt64 = {
-        let (seconds, attoseconds) = HotkeyRecognizer.maximumTapDuration.components
-        return UInt64(seconds) * 1_000_000_000 + UInt64(attoseconds / 1_000_000_000)
-    }()
+    static let maximumTapNanoseconds: UInt64 = HotkeyRecognizer.maximumTapDuration.unsignedNanoseconds
 }
 
 extension HotkeyRecognizer {

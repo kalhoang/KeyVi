@@ -97,6 +97,28 @@ import Testing
             content.instruction == "Open System Settings > Privacy & Security > Accessibility, then turn on Example.")
     }
 
+    /// PLT-R701, ADR 0315: on macOS 12 Accessibility sits on the Privacy tab of Security & Privacy, so the
+    /// instruction and the help step name that tab instead of skipping it.
+    @Test func macOS12InstructionNamesThePrivacyTab_PLTR701() throws {
+        let table = try SystemPaneTableTests.shipped()
+        let monterey = LooseVersion("12.7.6")!
+        let english = PermissionScreenContent(
+            localizer: en, appName: "Example", panes: table.names(macOS: monterey, systemLanguage: "en-US"),
+            status: Permissions.missing, permissionLost: false)
+        #expect(
+            english.instruction
+                == "Open System Preferences > Security & Privacy > Privacy > Accessibility, then turn on Example.")
+        #expect(english.openPaneButton == "Open System Preferences")
+        let viPanes12 = table.names(macOS: monterey, systemLanguage: "vi-VN")
+        let vietnamese = PermissionScreenContent(
+            localizer: vi, appName: "Example", panes: viPanes12, status: Permissions.missing, permissionLost: false)
+        #expect(
+            vietnamese.instruction
+                == "Mở Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng, rồi bật Example.")
+        let help = PermissionHelpContent(localizer: vi, appName: "Example", panes: viPanes12)
+        #expect(help.steps[0] == "Mở Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng.")
+    }
+
     @Test func englishInterfaceKeepsVietnamesePaneNamesOnAVietnameseSystem() {
         // PRD-R64: pane names follow the macOS language, copy follows the interface language.
         let content = PermissionScreenContent(

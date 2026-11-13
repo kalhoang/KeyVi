@@ -5,7 +5,6 @@
 // ADR 0309). W1-F2.
 import AppModel
 import RealtimeSupport
-import Synchronization
 import TestSupport
 import Testing
 

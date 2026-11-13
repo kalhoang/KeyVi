@@ -7,7 +7,7 @@
 public import AppModel
 public import CompatRules
 public import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 public final class ScriptedBundleInspector: BundleInspector, Sendable {
     /// What a bundle looks like from the outside: framework and helper names, files as paths relative to the

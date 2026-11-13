@@ -10,7 +10,7 @@ import ShellCore
 import SwiftUI
 
 struct GeneralPaneView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let settings = model.settings
@@ -49,32 +49,36 @@ struct GeneralPaneView: View {
     }
 }
 
-/// D17 through `SMAppService` (PLT-R205): the toggle reflects the service status.
+/// D17 through `SMAppService` (PLT-R205): the toggle reflects the service status. On macOS 12 there is no
+/// `SMAppService` (ADR 0315): the toggle is disabled and the note and button lead to System Preferences.
 struct OpenAtLoginRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
         let presentation = model.loginItem
+        let text = model.loginItemText
         SettingRow(localizer: localizer, item: .openAtLogin, arguments: [model.appName]) {
             VStack(alignment: .leading, spacing: 4) {
                 Toggle(isOn: Binding(get: { presentation.isOn }, set: { model.setOpenAtLogin($0) })) {
                     Text(verbatim: localizer.string(SettingItem.openAtLogin.title))
                 }
                 .settingsAccessibility(SettingsControl.openAtLogin, localizer)
-                if let note = presentation.note {
+                .disabled(!presentation.isAvailable)
+                if let note = text.note {
                     Label {
-                        Text(verbatim: localizer.format(note, model.appName))
+                        Text(verbatim: note)
                     } icon: {
                         Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
                     }
                     .font(.callout)
                 }
-                if presentation.offersSystemSettings {
-                    Button(action: model.openLoginItemsSettings) {
-                        Text(verbatim: localizer.string(SettingsText.openSystemSettings))
-                    }
-                    .settingsAccessibility(SettingsControl.openSystemSettings, localizer)
+                if let button = text.button {
+                    Button(action: model.openLoginItemsSettings) { Text(verbatim: button) }
+                        .settingsAccessibility(
+                            presentation.isAvailable
+                                ? SettingsControl.openSystemSettings : SettingsControl.openSystemPreferences,
+                            localizer, label: button)
                 }
             }
         }
@@ -82,7 +86,7 @@ struct OpenAtLoginRow: View {
 }
 
 struct InterfaceLanguageRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -104,7 +108,7 @@ struct InterfaceLanguageRow: View {
 
 /// PLT-R373: off by default; each ASCII-capable layout can be bound to VI or EN.
 struct LayoutBindingSection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -135,7 +139,7 @@ struct LayoutBindingSection: View {
 }
 
 struct LayoutAssignmentRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let binding: LayoutBindingModel
     let row: LayoutBindingModel.Row
 
@@ -162,7 +166,7 @@ struct LayoutAssignmentRow: View {
 
 /// D11 and D8 recorder (PRD-R15, PRD-R16, PRD-R18). While recording, the window's key events go to the recorder.
 struct HotkeyRecorderView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
     @FocusState private var focused: Bool
 
@@ -209,13 +213,13 @@ struct HotkeyRecorderView: View {
             RecorderStatusLine(model: model, role: role)
         }
         .onAppear { if recording { focused = true } }
-        .onChange(of: recording) { focused = true }
+        .onChange(of: recording) { _ in focused = true }
     }
 }
 
 /// "Dùng mặc định" for the toggle; "Dùng Escape" and "Không dùng" for the restore key (PRD-R18).
 struct RecorderShortcutButtons: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
 
     var body: some View {
@@ -238,7 +242,7 @@ struct RecorderShortcutButtons: View {
 
 /// Live keys, the rejection reason, or the PRD-R16 warning with its help link (a symbol, not only colour).
 struct RecorderStatusLine: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
 
     var body: some View {

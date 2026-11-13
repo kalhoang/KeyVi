@@ -170,7 +170,7 @@ enum OracleSettings {
         }
         let store = SettingsStore(
             location: location, fileSystem: fileSystem, wallClock: FixedWallClock(Date(timeIntervalSince1970: 0)),
-            writtenBy: "oracle", queue: DispatchSerialQueue(label: "oracle.settings"),
+            writtenBy: "oracle", queue: DispatchQueue(label: "oracle.settings"),
             launchGuard: LaunchGuard(store: InMemoryKeyValueStore()), onChange: { _ in })
         return await store.load()
     }

@@ -3,7 +3,6 @@
 // W1-A acceptance: 10 million concurrent publish/read iterations never observe a torn or freed value
 // (PLT-R388, docs/decisions/0303-snapshot-publication.md).
 
-import Synchronization
 import Testing
 
 @testable import RealtimeSupport
