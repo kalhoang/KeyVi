@@ -17,10 +17,10 @@ public final class ThreadConfined<Value>: @unchecked Sendable {
     @inline(__always)
     public func withValue<Result>(_ body: (inout Value) throws -> Result) rethrows -> Result {
         #if DEBUG
-            let current = UInt(bitPattern: pthread_self())
-            let (exchanged, original) = owner.compareExchange(
-                expected: 0, desired: current, ordering: .relaxed)
-            assert(exchanged || original == current, "ThreadConfined accessed from a second thread")
+        let current = UInt(bitPattern: pthread_self())
+        let (exchanged, original) = owner.compareExchange(
+            expected: 0, desired: current, ordering: .relaxed)
+        assert(exchanged || original == current, "ThreadConfined accessed from a second thread")
         #endif
         return try body(&value)
     }
@@ -46,7 +46,8 @@ public final class RunLoopThread: Sendable {
         self.qualityOfService = qualityOfService
     }
 
-    /// Starts the thread and returns once its run loop is ready.
+    /// Starts the thread and returns once its run loop is ready. Calling it again while the thread runs does
+    /// nothing, so a second thread can never share this object's state.
     public func start() {
         let thread = Thread { [self] in
             let runLoop = CFRunLoopGetCurrent()!
@@ -59,10 +60,17 @@ public final class RunLoopThread: Sendable {
             }
             ready.signal()
             CFRunLoopRun()
+            // Stopped: later `perform` and `addSource` calls become no-ops instead of targeting a dead loop.
+            state.withLock { $0 = State() }
         }
         thread.name = name
         thread.qualityOfService = qualityOfService
-        state.withLock { $0.thread = thread }
+        let alreadyStarted = state.withLock { state in
+            guard state.thread == nil else { return true }
+            state.thread = thread
+            return false
+        }
+        guard !alreadyStarted else { return }
         thread.start()
         ready.wait()
     }

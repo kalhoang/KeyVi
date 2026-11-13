@@ -88,6 +88,9 @@ public final class SnapshotCell<Value: Sendable>: Sendable {
         writer.withLock { reclaim(&$0) }
     }
 
+    /// Boxes retired but not yet freed (tests and the watchdog's bound check).
+    var retiredCount: Int { writer.withLock { $0.retired.count } }
+
     private func reclaim(_ state: inout WriterState) {
         let now = epoch.value
         state.retired.removeAll { entry in

@@ -48,10 +48,14 @@ public final class HealthEventLog: Sendable {
 
     private let capacity: Int
     private let ring = Mutex(Ring())
+    private let mirror: (any DiagnosticsLogging)?
 
-    public init(capacity: Int = 256) {
+    /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
+    /// level for events that lose or risk losing keys and notice level otherwise (PRD-R46, PLT-R1206).
+    public init(capacity: Int = 256, mirror: (any DiagnosticsLogging)? = nil) {
         precondition(capacity > 0)
         self.capacity = capacity
+        self.mirror = mirror
     }
 
     public func record(_ event: HealthEvent) {
@@ -63,6 +67,7 @@ public final class HealthEventLog: Sendable {
             }
             ring.next = (ring.next + 1) % capacity
         }
+        mirror?.log(.health(event), level: event.kind.logLevel)
     }
 
     /// Newest last, at most `limit` events.
