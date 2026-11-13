@@ -18,20 +18,6 @@ public enum AboutSupportContent {
     }
 }
 
-/// Mirrors D19 to D21 onto the updater as soon as the user changes them (the wrapper also applies the stored
-/// settings at launch, ADR 0304). Other edits are ignored.
-public enum UpdaterSettingsBridge {
-    @MainActor
-    public static func apply(_ edit: SettingsEdit, to updater: any UpdaterControlling) {
-        switch edit {
-        case .automaticallyCheckForUpdates(let value): updater.automaticallyChecksForUpdates = value
-        case .automaticallyInstallUpdates(let value): updater.automaticallyDownloadsUpdates = value
-        case .updateChannel(let channel): updater.channel = AboutSupportContent.selection(for: channel)
-        default: break
-        }
-    }
-}
-
 /// Licences and acknowledgements: the bundled data's notices (ENG-R811, SCOWL) from
 /// `VietnameseEngineData.Resources.bundledNotices()`, then Sparkle's licence.
 public struct Acknowledgements: Sendable, Hashable {

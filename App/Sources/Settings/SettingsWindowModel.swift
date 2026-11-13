@@ -118,9 +118,9 @@ final class SettingsWindowModel {
 
     // MARK: - Settings
 
-    /// PRD-R27: applies at once; D19 to D21 also reach the updater immediately.
+    /// PRD-R27: applies at once. D19 to D21 reach the updater through the store: every publish re-applies the
+    /// effective settings to it (`AppEnvironment.settingsChanged`), so each edit is written once.
     func edit(_ edit: SettingsEdit) {
-        UpdaterSettingsBridge.apply(edit, to: updater)
         if case .interfaceLanguage(let value) = edit { language.select(value) }
         Task { apply(await commands.apply(edit)) }
     }

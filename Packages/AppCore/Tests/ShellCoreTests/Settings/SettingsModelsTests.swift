@@ -167,18 +167,6 @@ import VietnameseEngineData
         #expect(AboutSupportContent.versionLine(brand: brand, localizer: l.vi) == "Phiên bản 0.1.0 (12)")
     }
 
-    @Test @MainActor func updateSettingsReachTheUpdater() {
-        let updater = FakeUpdater()
-        UpdaterSettingsBridge.apply(.automaticallyCheckForUpdates(false), to: updater)
-        UpdaterSettingsBridge.apply(.automaticallyInstallUpdates(false), to: updater)
-        UpdaterSettingsBridge.apply(.updateChannel(.beta), to: updater)
-        #expect(!updater.automaticallyChecksForUpdates && !updater.automaticallyDownloadsUpdates)
-        #expect(updater.channel == .beta)
-        UpdaterSettingsBridge.apply(.updateChannel(.stable), to: updater)
-        UpdaterSettingsBridge.apply(.typingMethod(.vni), to: updater)  // not an update setting
-        #expect(updater.channel == .stable && updater.checks == 0)
-    }
-
     @Test func acknowledgementsShowTheBundledNoticesAndSparkle_ENGR811() throws {
         let l = try Localizers()
         let notices = try Resources.bundledNotices()

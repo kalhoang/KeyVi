@@ -74,14 +74,3 @@ final class FakeLoginItem: LoginItemService, Sendable {
 
     func openSystemSettings() { state.withLock { $0.calls.append("openSystemSettings") } }
 }
-
-/// `UpdaterControlling` double.
-@MainActor
-final class FakeUpdater: UpdaterControlling {
-    var canCheckForUpdates = true
-    var automaticallyChecksForUpdates = true
-    var automaticallyDownloadsUpdates = true
-    var channel = UpdateChannelSelection.stable
-    private(set) var checks = 0
-    func checkForUpdates() { checks += 1 }
-}
