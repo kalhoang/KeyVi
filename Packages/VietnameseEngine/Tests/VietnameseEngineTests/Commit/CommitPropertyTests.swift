@@ -24,7 +24,7 @@ struct CommitPropertyTests {
         var generator = SeededGenerator(seed: 0xC0FFEE)
         let alphabet = Array("abdnovw.@,;1-!")
         var candidates = Set<String>()
-        while candidates.count < 4_000 {
+        while candidates.count < 8_000 {
             let length = Int.random(in: 1...5, using: &generator)
             candidates.insert(String((0..<length).map { _ in alphabet.randomElement(using: &generator) ?? "a" }))
         }
@@ -32,9 +32,9 @@ struct CommitPropertyTests {
         var entries: [MacroTable.Entry] = []
         for trigger in candidates.sorted(by: { ($0.count, $0) < ($1.count, $1) }) where entries.count < 1_000 {
             let characters = Array(trigger)
+            // ENG-R1103: punctuation or a digit after a shorter trigger shadows the longer one.
             let shadowed = (1..<characters.count).contains { length in
-                !characters[length].isLetter && !characters[length].isNumber
-                    && accepted.contains(String(characters[..<length]))
+                !characters[length].isLetter && accepted.contains(String(characters[..<length]))
             }
             guard !shadowed else { continue }
             accepted.insert(trigger)

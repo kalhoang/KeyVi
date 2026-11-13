@@ -1892,37 +1892,37 @@
       }
     },
     "macros.issue.shadowedBy" : {
-      "comment" : "PRD-R29, ENG-R1103. %1$@ is the longer shortcut, %2$@ the shorter one.",
+      "comment" : "PRD-R29, ENG-R1103 (a trailing digit counts like punctuation). %1$@ is the longer shortcut, %2$@ the shorter one.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%1$@\" is the macro \"%2$@\" plus punctuation, so \"%2$@\" always fires first and \"%1$@\" could never be used."
+            "value" : "\"%1$@\" is the macro \"%2$@\" plus punctuation or a digit, so \"%2$@\" always fires first and \"%1$@\" could never be used."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%1$@\" là gõ tắt \"%2$@\" thêm dấu câu, nên \"%2$@\" luôn chạy trước và \"%1$@\" không bao giờ dùng được."
+            "value" : "\"%1$@\" là gõ tắt \"%2$@\" thêm dấu câu hoặc chữ số, nên \"%2$@\" luôn chạy trước và \"%1$@\" không bao giờ dùng được."
           }
         }
       }
     },
     "macros.issue.shadows" : {
-      "comment" : "PRD-R29, ENG-R1103 seen from the shorter side. %1$@ is the shorter shortcut, %2$@ the longer one.",
+      "comment" : "PRD-R29, ENG-R1103 seen from the shorter side (a trailing digit counts like punctuation). %1$@ is the shorter shortcut, %2$@ the longer one.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The macro \"%2$@\" is \"%1$@\" plus punctuation, so with \"%1$@\" the macro \"%2$@\" could never be used."
+            "value" : "The macro \"%2$@\" is \"%1$@\" plus punctuation or a digit, so with \"%1$@\" the macro \"%2$@\" could never be used."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt \"%2$@\" là \"%1$@\" thêm dấu câu, nên nếu có \"%1$@\" thì \"%2$@\" sẽ không bao giờ dùng được."
+            "value" : "Gõ tắt \"%2$@\" là \"%1$@\" thêm dấu câu hoặc chữ số, nên nếu có \"%1$@\" thì \"%2$@\" sẽ không bao giờ dùng được."
           }
         }
       }
@@ -2103,24 +2103,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sắp xếp"
-          }
-        }
-      }
-    },
-    "macros.warning.telexDigit" : {
-      "comment" : "Non-blocking. %1$@ is the longer shortcut, %2$@ the shorter one.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In Telex a digit ends the word, so the macro \"%2$@\" fires as soon as you type the digit, before \"%1$@\" is complete."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Khi gõ Telex, chữ số kết thúc từ, nên gõ tắt \"%2$@\" chạy ngay khi bạn gõ chữ số, trước khi gõ xong \"%1$@\"."
           }
         }
       }

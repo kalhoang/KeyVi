@@ -4,7 +4,6 @@
 // reason; the engine's `MacroTable` stays authoritative and is run on the whole list before anything is saved,
 // so the editor never stores a table the engine would reject. Expansions are stored in NFC (ENG-R1101).
 
-public import AppModel
 public import Foundation
 public import SettingsStore
 internal import VietnameseEngine
@@ -35,17 +34,11 @@ public struct MacroDraft: Sendable, Hashable {
     }
 }
 
-/// Non-blocking advice shown under the shortcut field.
-public enum MacroWarning: Sendable, Hashable {
-    /// In Telex a digit is a word boundary, so `shorter` fires as soon as the digit after it is typed and `longer`
-    /// (`shorter` + digits...) can never be completed. In VNI digits are tone keys, so both work.
-    case telexDigitBoundary(longer: String, shorter: String)
-}
-
+/// A shortcut that is a shorter one plus a trailing digit is no longer advice but a blocking `shadowedBy` /
+/// `shadows` issue, for every typing method (ENG-R1103, decision of 13/11/2026), so the check has no warnings.
 public struct MacroDraftCheck: Sendable, Hashable {
     /// First blocking problem (PRD-R29), nil when the draft can be saved.
     public var issue: MacroRowIssue?
-    public var warnings: [MacroWarning]
     public var canSave: Bool { issue == nil }
 }
 
@@ -60,34 +53,11 @@ public enum MacroDraftValidator {
     public static func normalizedExpansion(_ text: String) -> String { text.precomposedStringWithCanonicalMapping }
 
     /// Checks `draft` against every other macro, enabled or not (enabling one later must stay valid).
-    public static func check(_ draft: MacroDraft, among macros: [StoredMacro], method: TypingMethod) -> MacroDraftCheck
-    {
+    public static func check(_ draft: MacroDraft, among macros: [StoredMacro]) -> MacroDraftCheck {
         let others = macros.filter { $0.id != draft.id }
         let issue = MacroValidator.issue(
             shortcut: draft.shortcut, expansion: normalizedExpansion(draft.expansion), others: others)
-        let warnings = method == .telex ? telexDigitWarnings(draft.shortcut, others: others.map(\.trigger)) : []
-        return MacroDraftCheck(issue: issue, warnings: warnings)
-    }
-
-    static func telexDigitWarnings(_ shortcut: String, others: [String]) -> [MacroWarning] {
-        guard !shortcut.isEmpty else { return [] }
-        var warnings: [MacroWarning] = []
-        for other in others where !other.isEmpty {
-            if continuesWithDigit(shortcut, after: other) {
-                warnings.append(.telexDigitBoundary(longer: shortcut, shorter: other))
-            } else if continuesWithDigit(other, after: shortcut) {
-                warnings.append(.telexDigitBoundary(longer: other, shorter: shortcut))
-            }
-        }
-        return warnings
-    }
-
-    /// `longer` starts with `shorter` (ignoring case, ENG-R1101) and the next character is an ASCII digit.
-    static func continuesWithDigit(_ longer: String, after shorter: String) -> Bool {
-        let long = Array(longer.lowercased().unicodeScalars)
-        let short = Array(shorter.lowercased().unicodeScalars)
-        guard long.count > short.count, Array(long.prefix(short.count)) == short else { return false }
-        return ("0"..."9").contains(long[short.count])
+        return MacroDraftCheck(issue: issue)
     }
 
     /// Runs the engine's own validation (ENG-R1101, ENG-R1103) on the list about to be saved.
@@ -168,12 +138,5 @@ public enum MacroIssueText {
         localizer.format(
             MacrosText.issueEntry, problem.trigger, text(problem.issue, shortcut: problem.trigger, localizer: localizer)
         )
-    }
-
-    public static func warningText(_ warning: MacroWarning, localizer: Localizer) -> String {
-        switch warning {
-        case .telexDigitBoundary(let longer, let shorter):
-            localizer.format(MacrosText.warningTelexDigit, longer, shorter)
-        }
     }
 }

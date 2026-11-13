@@ -200,7 +200,7 @@ Where the owner is another track, the row says so.
 |---|---|---|---|
 | ENG-R1101 | Trigger and expansion limits | `Macros/MacroTable+Validation.swift` | `MacroValidationTests` |
 | ENG-R1102 | Span since the last whitespace, 32 characters | `Macros/MacroSpan.swift` | `MacroExpansionTests.spanIncludesPunctuationAndDigits`, `spanOfMoreThan32CharactersIsNotLookedUp` |
-| ENG-R1103 | Expansion before L0, terminator delivered, casing, shadowed triggers rejected | `Engine/Reducer+Commit.swift` (`expandMacro`), `Macros/MacroCase.swift` | `MacroExpansionTests.examplesOfSection11`, `caseAdaptation`, `MacroValidationTests.shadowedByShorterTrigger`, `macros.tsv` |
+| ENG-R1103 | Expansion before L0, terminator delivered, casing, shadowed triggers rejected | `Engine/Reducer+Commit.swift` (`expandMacro`), `Macros/MacroCase.swift` | `MacroExpansionTests.examplesOfSection11`, `caseAdaptation`, `MacroValidationTests.shadowedByShorterTrigger`, `trailingDigitShadowsLikePunctuation_ENGR1103`, `macros.tsv` |
 | ENG-R1104 | Expansion is one literal history token; toggle brings the span back | `Engine/ActiveToken.swift` (macro tokens) | `MacroExpansionTests.expansionIsOneLiteralHistoryToken`, `toggleAfterBackspaceBringsTheSpanBack` |
 | ENG-R1105 | Hash lookup, 10,000 entries within budget | `Macros/MacroKey.swift` | `MacroValidationTests.tenThousandEntries`, `engine-benchmark` (10,000-entry table) |
 | ENG-R1106 | Macro contents never logged | no logging (REG-23); errors carry triggers only | `RequirementGapTests.validationErrorsCarryNoExpansion`, `StaticSourceTests.coreIsClean` |

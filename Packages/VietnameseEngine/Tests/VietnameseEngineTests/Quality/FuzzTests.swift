@@ -159,6 +159,14 @@ struct FuzzTests {
         }
     }
 
+    /// ENG-R1105: the benchmark measures a full 10,000-entry table (Benchmarks/EngineBenchmark/Workloads.swift).
+    @Test("The benchmark's random macro table has 10,000 valid triggers")
+    func benchmarkMacroTable() throws {
+        let entries = RandomMacroTable.entries(count: 10_000, seed: 0xBE7C_0001)
+        #expect(entries.count == 10_000)
+        #expect(try MacroTable(entries).entries.count == 10_000)
+    }
+
     @Test("The byte encoding covers the whole alphabet")
     func byteEncoding() {
         let events = FuzzAlphabet.events(forBytes: 0...255)

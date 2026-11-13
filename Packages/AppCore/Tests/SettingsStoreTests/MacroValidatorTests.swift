@@ -54,10 +54,23 @@ import Testing
         #expect(issue("vn.", others: ["vn"]) == .shadowedBy(shorter: "vn"))
         #expect(issue("VN!?", others: ["vn"]) == .shadowedBy(shorter: "vn"))
         #expect(issue("vn", others: ["vn."]) == .shadows(longer: "vn."))
-        // A letter or digit right after the shorter shortcut is a different word, not shadowing. Digits are left
-        // alone because they are boundaries in Telex but transform keys in VNI (method-dependent).
+        // A letter right after the shorter shortcut is a different word, not shadowing.
         #expect(issue("vnx", others: ["vn"]) == nil)
-        #expect(issue("vn1", others: ["vn"]) == nil)
+    }
+
+    /// ENG-R1103, PRD-R29 (decision of 13/11/2026): a trailing main-row digit counts like punctuation. In Telex the
+    /// digit is a boundary, so `k` fires at the `1` of `k1`; the editor rejects the pair with the same explanation.
+    @Test func shadowingRejectsATrailingDigitLikePunctuation_ENGR1103() {
+        #expect(issue("k1", others: ["k"]) == .shadowedBy(shorter: "k"))
+        #expect(issue("K", others: ["k1"]) == .shadows(longer: "k1"))
+        #expect(issue("vn1", others: ["VN"]) == .shadowedBy(shorter: "VN"))
+        #expect(issue("k12", others: ["k1"]) == .shadowedBy(shorter: "k1"))
+        #expect(issue("10", others: ["1"]) == .shadowedBy(shorter: "1"))
+        #expect(issue("k1x", others: ["k"]) == .shadowedBy(shorter: "k"))
+        #expect(MacroValidator.shadowedBy("k1", among: ["k", "zz"]) == .shadowedBy(shorter: "k"))
+        // A digit that does not follow a complete shortcut is fine.
+        #expect(issue("k1", others: ["kx", "1"]) == nil)
+        #expect(issue("1st", others: ["k1"]) == nil)
     }
 
     /// ENG-R1103: the punctuation key right after a complete trigger is a boundary at which that trigger already
@@ -77,8 +90,12 @@ import Testing
     @Test func punctuationClassification() {
         for scalar in "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".unicodeScalars {
             #expect(MacroValidator.isASCIIPunctuation(scalar))
+            #expect(MacroValidator.endsShorterShortcut(scalar))
         }
         for scalar in "aZ09 é".unicodeScalars { #expect(!MacroValidator.isASCIIPunctuation(scalar)) }
+        // ENG-R1103: main-row digits end a shorter shortcut like punctuation; letters and non-ASCII do not.
+        for scalar in "0123456789".unicodeScalars { #expect(MacroValidator.endsShorterShortcut(scalar)) }
+        for scalar in "aZ é".unicodeScalars { #expect(!MacroValidator.endsShorterShortcut(scalar)) }
     }
 
     /// The editor agrees with the engine contract `MacroTable.ValidationError` on every macro fixture row:
