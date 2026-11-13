@@ -457,7 +457,8 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 
 - **Owned paths:** `compat/scenarios/**`, `Packages/AppCore/Sources/CompatHarness/**`,
   `Packages/AppCore/Sources/TestSupport/Scenario/**`, `Packages/AppCore/Tests/TestSupportTests/**`,
-  `TestHost/**`, `perf/**`
+  `TestHost/**`, `perf/**`, `docs/runbooks/self-hosted-runner.md`, `docs/runbooks/integration-*.md`,
+  `docs/decisions/0502-*.md`
 - **Depends on:** W2-A, W2-E1, W1-D, W1-E, W1-F1, W1-F2; runs green only on the self-hosted runner.
 - **Scope:** PLT-R107, PLT-R204, PLT-R320, PLT-R341, PLT-R353, PLT-R361, PLT-R371, PLT-R387, PLT-R398B, PLT-R420, PLT-R421, PLT-R422, PLT-R504, PLT-R730, PLT-R821, PLT-R822, PLT-R901, PLT-R906, PLT-R1108, PRD-R1, PRD-R13, PRD-R19, PRD-R30, PRD-R44, PRD-R52, QA-R11, QA-R12, QA-R14, QA-R16, QA-R21, QA-R40
 - **Work:** QA-R11 integration scenarios against TestHost (200 common words in both methods, English restore,
@@ -471,6 +472,14 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
   - Baseline file format agreed with the CI track; the gate script fails on more than 25 % regression
     (PLT-R822).
   - Report lists exactly which scenarios Pa must run by hand and which need the runner.
+- **Delivered (2026-11-13):** QA-R11 scenarios against TestHost (the 200 words in both methods as golden files
+  checked against the engine, English restore, backspace across punctuation, fast typing, toggle, per-window rule,
+  macros, restore hotkey twice), privacy canary scenarios for every strategy, app profiles with per-scenario
+  configuration of the test build, the harness side of the integration hooks (`testHook` steps, state probe, app
+  histograms, latency probe, soak counters), `compat-harness egress`, the PLT-R822 gate and
+  `perf/platform-baseline.json` (placeholders). Runbook: `docs/runbooks/integration-suite.md`. Still open outside
+  W2-E2: the app-side hooks (INTEGRATION_HOOKS build), `testHook` in the scenario schema, and the
+  `scripts/run-integration.sh` changes listed in ADR 0502 ("Integration harness").
 
 ### W2-F Localisation completion and accessibility audit
 

@@ -1,10 +1,11 @@
 # 0502. Contracts for fuzzing, benchmarks, coverage and the integration harness
 
 - Status: accepted, 2026-11-13; amended 2026-11-13 after the engine and wave-1 merges (fuzz product,
-  nightly seed, engine benchmark gate, pipeline benchmark, harness environment); where each gate runs:
-  [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
-- Requirements: QA-R2, QA-R8, QA-R9, QA-R14, QA-R15, QA-R16, ENG-R1230, ENG-R1231, ENG-R1233, ENG section
-  13.6, PLT-R820 to PLT-R822
+  nightly seed, engine benchmark gate, pipeline benchmark, harness environment); amended 2026-11-13 by W2-E2
+  (platform baseline in `perf/`, M2 from the soak, integration hooks, app profiles, privacy canary, egress
+  command); where each gate runs: [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
+- Requirements: QA-R2, QA-R8, QA-R9, QA-R11, QA-R14, QA-R15, QA-R16, ENG-R1230, ENG-R1231, ENG-R1233, ENG
+  section 13.6, PLT-R820 to PLT-R822, PLT-R901, PLT-R906
 
 The CI scripts call code that other tracks write. These are the names and formats the scripts expect.
 
@@ -101,7 +102,8 @@ runner (`compat-harness bench`, below).
 - Baselines: the same format plus `referenceCalibration`, changed only in a `perf-baseline` PR (QA-R15),
   written with `scripts/bench-compare.sh --results <run files> --baseline <file> --update-baseline`.
   `Packages/AppCore/Benchmarks/pipeline-baseline.json` (pipeline; not committed yet, to be recorded from the
-  CI runs) and `Packages/AppCore/Benchmarks/platform-baseline.json` (platform).
+  CI runs) and `perf/platform-baseline.json` (platform; amended by W2-E2, it was
+  `Packages/AppCore/Benchmarks/platform-baseline.json`, see "Platform baseline" below).
 - `--run --package <dir> --product <name>` builds a product that writes this format with `--output FILE` and
   runs it 5 times; it refuses to run without `--product`.
 
@@ -155,8 +157,83 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
   step of `ci.yml` skipped until `compat/scenarios` exists; override with `COMPAT_HARNESS_DRY_RUN_ARGS`,
   which must keep `--dry-run`). Loads every scenario and prints the plan, posts no event.
 - `compat-harness soak --keystrokes 1000000 --output <dir>`
-- `compat-harness bench --runs 5 --output <file.json>`: `formatVersion` 1 (above), metric names `T1.p99`, `T2.p99`, ... from `02-platform.md` section 8.1, `budget` = the
-  "Gate" column, `calibrated: false`. Compared at 25 % (PLT-R822) against
-  `Packages/AppCore/Benchmarks/platform-baseline.json`.
-- TestHost integration tests run as `xcodebuild test -scheme TestHost` (override with
-  `INTEGRATION_SCHEME`).
+- `compat-harness bench --runs 5 --output <file.json>`: `formatVersion` 1 (above), metric names `T2.p99`,
+  `T3.p99`, `T4.p99`, `T5.flushes`, `T6.p95`, `C1.cpuPercent`, `C2.cpuPercent`, `M1.footprintMB` from
+  `02-platform.md` section 8.1, `budget` = the "Gate" column, `calibrated: false`. Compared at 25 % (PLT-R822)
+  against `perf/platform-baseline.json` (the harness itself and `scripts/bench-compare.sh`).
+- TestHost integration tests (QA-R11): `compat-harness run --scenarios compat/scenarios --only 'testhost.*'
+  --output <dir>` (amended by W2-E2). The TestHost scheme has no test action, so the earlier
+  `xcodebuild test -scheme TestHost` cannot run; the `tests` subcommand of `scripts/run-integration.sh` is to
+  switch to the harness command (requested from the CI track; `INTEGRATION_SCHEME` stays for a future UI-test
+  target).
+- `compat-harness egress --phase local|production --minutes 10 --output <file.json>`: the 13.7 egress test
+  (below). Live only with `COMPAT_HARNESS_LIVE=1`, like `run`, `soak` and `bench`.
+
+## App profiles and per-scenario configuration (W2-E2)
+
+- Every scenario runs on factory defaults plus its `method` plus, when one lists it, a profile from
+  `compat/scenarios/profiles/<id>.json` (schema `profile.schema.json` there): the `settings` object of
+  settings.json verbatim, macros, user rule overrides (`bundleIds` may name `local.testhost`; `actionFromRule`
+  copies a shipped rule's `action` for QA-R21 TestHost reproductions). The scenario schema is unchanged.
+- Before a scenario whose configuration differs from the previous one, the harness quits the test build (its quit
+  flushes its settings), backs up its four settings files once per run, writes the new ones (owner-only, the
+  original `onboarding` object kept), starts it and waits until its hooks report a state other than `starting`
+  (or 2 s without hooks). After the run it restores the backup. `--no-configure` turns this off.
+
+## Integration hooks (W2-E2)
+
+The harness reads app state and triggers test hooks through files, so the app needs no listening socket, XPC
+listener or distributed notification (PLT-R909). Only the test build that the self-hosted runner installs answers
+them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Release configuration never sets.
+
+- Directory: `~/Library/Application Support/<storage folder>/IntegrationHooks/` (0700). The harness writes
+  `request-<n>.json` atomically (0600); the app watches the directory with a vnode `DispatchSource` (no polling),
+  answers with `response-<n>.json` written atomically (temporary file and rename, 0600) and never deletes either
+  file; the harness polls every 50 ms (10 s timeout, 120 s for `latencyProbe`) and removes both.
+- Request: `{"formatVersion": 1, "sequence": <n>, "command": "<name>", "profile": "normal"}` (`profile` only for
+  `latencyProbe`). Commands: `state`; `resetMetrics` (zero every histogram and counter of `PlatformMetrics`);
+  `tapTimeout` (disable the event tap as macOS does after a callback timeout, then run the normal recovery, which
+  resets the engine, PLT-R330, QA-R11); `revokePermission` (the trust check reports Accessibility revoked until
+  `restorePermission`, so the fail-open path runs, PLT-R730); `restorePermission`; `latencyProbe` (run the built-in
+  latency probe, PLT-R810, with that profile); `checkForUpdates` (start an update check now, 13.7).
+- Response: `{"formatVersion": 1, "sequence": <n>, "ok": true|false, "error": "<code>", "state": {...},
+  "latencyProbe": {...}}`. `latencyProbe` is `LatencyProbeResult` (Diagnostics) as JSON. `state`:
+  `processIdentifier`, `state` (`noPermission`, `starting`, `ready`, `paused`, `failOpen`), `mode` (`vi`, `en`),
+  `pauseReason` (`PauseCode`), `failOpenReason` (`FailOpenReason`), `secureInputHolderBundleId`,
+  `firstKeyAfterSecureInputReleaseComposed` (PLT-R398B, nil before the first release), `tapRecoveries`,
+  `engineResetsAfterTapRecovery`, `metrics` (`MetricsSnapshot` as JSON). Metadata only: no text, titles or URLs
+  (PLT-R901). Error codes: `unknownCommand`, `unsupported`, `busy`.
+- Scenario side: the `testHook` setup step (`tapTimeout`, `revokePermission`, `restorePermission`, optionally
+  `@<n>` to fire after the first n keys) is in the Swift model; its addition to
+  `compat/schema/scenario.schema.json` (`"testHook"` in the `setup[].action` enum) is requested from the schema
+  owner. Until then no scenario file uses it (`ScenarioValidator.pendingSchemaActions`, checked by
+  `ScenarioFilesTests` and the dry run). A scenario that revoked the permission gets it restored afterwards.
+
+## Platform baseline and measurements (W2-E2)
+
+- `perf/platform-baseline.json` holds every self-hosted 8.1 metric: the eight `bench` metrics above and
+  `M2.growthMBPerHour` (`soak`). Until the runner measures, every value equals its gate and carries
+  `"placeholder": true` (and so does the document); `perf/README.md` defines each metric and the procedure.
+- `soak` writes `soak-summary.json` and, when growth was measured, `soak-metrics.json` (`formatVersion` 1,
+  benchmark `platform-soak`, metric `M2.growthMBPerHour`), compared with the same baseline at 25 %. The soak also
+  fails on a crash (process changed), a watchdog trip, or a flush in the normal profile (13.6), read through the
+  hooks.
+- T2, T3, T5, T6 come from the app's histograms after a TestHost workload typed under profile `bench-workload`;
+  T4 from the latency probe; C1 and M1 share one 10-minute window after a restart; C2 types 10 keys per second for
+  5 minutes. Without the hooks the app metrics are skipped with a warning.
+- The harness applies the gate itself (`RegressionGate`: over the gate, or more than 25 % above the baseline);
+  `scripts/run-integration.sh bench` repeats the baseline comparison with `bench-compare.sh`. Its default
+  `PLATFORM_BASELINE` is to change to `perf/platform-baseline.json` (requested from the CI track); until then the
+  runner's `.env` sets `PLATFORM_BASELINE=perf/platform-baseline.json`.
+
+## Privacy canary and egress (W2-E2)
+
+- `compat-harness run` scans after a run that included a `testhost.privacyCanary.*` scenario: every regular file
+  below the app's Application Support and Logs folders (not `Logs/<folder>/captures/`, PLT-R905), its preferences
+  plist, caches, HTTP storage and saved state, plus `log show --style ndjson --info --debug` of the app process
+  since the run started, for every canary token in UTF-8 (NFC and NFD), UTF-16 (both byte orders), upper case and
+  JSON `\uXXXX` escapes. Findings go to `results.json` (`privacy`) and `privacy-report.json` and fail the run.
+- `compat-harness egress` samples `lsof -nP -a -p <pid> -i -F pPn` of the running test build every `--interval`
+  seconds for `--minutes`; phase `local` allows loopback only, phase `production` loopback plus the current
+  addresses of `--allow-hosts` (default: `APP_SITE_HOST` of scripts/brand.env). It asks for a forced update check
+  through the hooks at the start. Report: `egress-<phase>.json`.
