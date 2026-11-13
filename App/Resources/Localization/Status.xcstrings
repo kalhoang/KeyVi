@@ -91,6 +91,24 @@
         }
       }
     },
+    "status.action.openSettings" : {
+      "comment" : "Action of the settings status lines: opens the Settings window, whose notice explains the problem and offers the fix.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Cài đặt..."
+          }
+        }
+      }
+    },
     "status.action.overrideTextFocus" : {
       "comment" : "PLT-R540 one-click override. %@ is the frontmost app.",
       "extractionState" : "manual",
@@ -501,6 +519,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chế độ nhập bảo mật đang bật, nên mọi bộ gõ đều tạm dừng. Thường do một ô mật khẩu còn mở."
+          }
+        }
+      }
+    },
+    "status.settings.corruptFileUsingDefaults" : {
+      "comment" : "PLT-R1006 status line: a settings file is damaged and has no backup, so defaults are used in memory and nothing is saved until the user confirms in Settings (PRD-R43: what happened, which component, one action). Arguments: file name, app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file %1$@ is damaged, so %2$@ is using the default settings and is not saving your changes."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp %1$@ bị hỏng nên %2$@ đang dùng cài đặt mặc định và chưa lưu thay đổi của bạn."
+          }
+        }
+      }
+    },
+    "status.settings.newerSchemaReadOnly" : {
+      "comment" : "PLT-R1007 status line: a settings file comes from a newer version and is never rewritten. Arguments: file name, app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file %1$@ comes from a newer version, so %2$@ does not save changes to it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp %1$@ đến từ phiên bản mới hơn nên %2$@ không lưu thay đổi vào tệp này."
+          }
+        }
+      }
+    },
+    "status.settings.writeFailed" : {
+      "comment" : "PLT-R1006 status line: a settings file could not be written. Arguments: file name, app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@ could not save the file %1$@. Your latest change may be lost when you quit."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@ không lưu được tệp %1$@. Thay đổi mới nhất có thể mất khi thoát."
           }
         }
       }

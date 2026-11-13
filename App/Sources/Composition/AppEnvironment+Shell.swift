@@ -119,7 +119,8 @@ extension AppEnvironment {
         return StatusLine.forState(
             state, holderHintKey: holderHint, appName: brand.displayName, frontmostApp: frontmostStatus(),
             tapRecentlyReenabled: recentlyReenabled,
-            onboardingCompleted: settings.user.onboarding.completedVersion != nil, safeMode: safeMode)
+            onboardingCompleted: settings.user.onboarding.completedVersion != nil, safeMode: safeMode,
+            storeNotices: settings.notices)
     }
 
     private func displayedMode() -> TypingMode {
@@ -195,6 +196,7 @@ extension AppEnvironment: StatusMenuActions {
         case .overrideTextFocus(let bundle): addTextFocusOverride(for: bundle)
         case .reopenApp: relaunchSelf()
         case .safeModeChoices: presentSafeMode()
+        case .openSettings: openSettings()
         case .none: break
         }
     }

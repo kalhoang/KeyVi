@@ -6,6 +6,7 @@
 internal import AppModel
 internal import CompatRules
 internal import Foundation
+internal import SettingsStore
 
 struct StatusLineBuilder {
     var appName: String
@@ -26,6 +27,21 @@ struct StatusLineBuilder {
     /// (reset, use the saved settings, report), so they stay reachable from the menu at any time.
     func safeModeLine() -> StatusLine {
         line(.safeMode, [appName], action: .safeModeChoices, label: .actionSafeModeChoices)
+    }
+
+    /// PLT-R1006, PLT-R1007: the user's changes are not being saved (corrupt file on defaults, a file from a
+    /// newer version, a failed write). The Settings window's notice explains it and offers the fix. A state
+    /// restored from a backup is saved, so it has no line.
+    func unsavedSettingsLine(_ notice: StoreNotice) -> StatusLine? {
+        let key: StatusText
+        let file: SettingsFile
+        switch notice {
+        case .corruptFileUsingDefaults(let damaged): (key, file) = (.settingsCorrupt, damaged)
+        case .newerSchemaReadOnly(let newer, _): (key, file) = (.settingsNewerSchema, newer)
+        case .writeFailed(let failed): (key, file) = (.settingsWriteFailed, failed)
+        case .recoveredFromBackup, .safeMode: return nil
+        }
+        return line(key, [file.rawValue, appName], action: .openSettings, label: .actionOpenSettings)
     }
 
     func tapReenabledLine() -> StatusLine {

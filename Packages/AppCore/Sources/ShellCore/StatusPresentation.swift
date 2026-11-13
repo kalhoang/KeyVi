@@ -7,6 +7,7 @@ public import AppModel
 public import CompatRules
 public import Diagnostics
 public import Foundation
+public import SettingsStore
 
 /// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table.
 public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
@@ -98,6 +99,9 @@ public struct StatusLine: Sendable, Hashable {
         case reopenApp
         /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use the saved settings, report).
         case safeModeChoices
+        /// Settings not being saved (PLT-R1006, PLT-R1007): the Settings window, whose notice explains it and
+        /// offers the fix.
+        case openSettings
     }
 
     public var key: String  // in the `Status` table
@@ -124,20 +128,23 @@ public struct StatusLine: Sendable, Hashable {
 
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
     /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
-    /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// (PLT-R1009) > settings not being saved (`storeNotices`, PLT-R1006, PLT-R1007) > tap re-enabled notice >
+    /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
     /// While a host-state line hides the safe-mode line, the report item still opens the safe-mode choices
     /// (`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)`).
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
     /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
         _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
-        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false
+        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false,
+        storeNotices: [StoreNotice] = []
     ) -> StatusLine? {
         let context = StatusLineBuilder(
             appName: appName, holderHintKey: holderHintKey, frontmostApp: frontmostApp,
             onboardingCompleted: onboardingCompleted)
         if let line = context.hostLine(for: state) { return line }
         if safeMode { return context.safeModeLine() }
+        if let line = storeNotices.lazy.compactMap(context.unsavedSettingsLine).first { return line }
         if tapRecentlyReenabled { return context.tapReenabledLine() }
         return context.knownLimitationLine()
     }
