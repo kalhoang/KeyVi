@@ -8,11 +8,13 @@ internal import Injection
 
 extension InputHostController {
     /// PLT-R1205 step 3: types the canary with each candidate strategy. The caller brackets every run with
-    /// `setDiagnosticsPassThrough(true)` and `(false)`; the key codes come from the current layout (PLT-R405).
+    /// `setDiagnosticsPassThrough(true)` and `(false)`. The key codes come from the layout current when each run
+    /// starts (PLT-R405), so a runner kept for the process lifetime follows input source changes (PLT-R373).
     public func makeGuidedTestRunner() -> GuidedTestRunner {
-        GuidedTestRunner(
+        let snapshots = channels.snapshots
+        return GuidedTestRunner(
             poster: dependencies.poster, fieldAccess: dependencies.fieldAccess, marker: channels.marker,
-            clock: tapClock, layout: channels.snapshots.inputSource.load().table)
+            clock: tapClock, currentLayout: { snapshots.inputSource.load().table })
     }
 
     /// PLT-R810: the latency probe's driver, timed on the clock the tap stamps events with.

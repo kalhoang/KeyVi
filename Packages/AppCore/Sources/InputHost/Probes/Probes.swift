@@ -172,7 +172,9 @@ public final class GuidedTestRunner: Sendable {
     let fieldAccess: any FocusedFieldAccess
     let marker: EventMarker
     let clock: any MonotonicClock
-    let keys: GuidedTestKeys
+    /// Read when a run or removal starts, so a runner kept for the process lifetime follows input source
+    /// changes (PLT-R405, PLT-R373).
+    let currentLayout: @Sendable () -> LayoutTable?
     let sequence = ProbeSequence()
 
     /// Current strategy first, then the PLT-R1205 list: `backspaceReplace` with `axSelection`, with
@@ -194,15 +196,24 @@ public final class GuidedTestRunner: Sendable {
     }
 
     /// `layout` supplies the key codes of the canary keys (PLT-R405); without it the US positions are used.
-    public init(
+    public convenience init(
         poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
         layout: LayoutTable?
+    ) {
+        self.init(poster: poster, fieldAccess: fieldAccess, marker: marker, clock: clock, currentLayout: { layout })
+    }
+
+    /// `currentLayout` is read at the start of every run and removal, so the canary's key codes match the layout
+    /// in use at that moment (PLT-R405); nil falls back to the US positions.
+    public init(
+        poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
+        currentLayout: @escaping @Sendable () -> LayoutTable?
     ) {
         self.poster = poster
         self.fieldAccess = fieldAccess
         self.marker = marker
         self.clock = clock
-        keys = GuidedTestKeys(layout: layout)
+        self.currentLayout = currentLayout
     }
 
     /// Types the canary "đá â" with `candidate`, reads it back through AX when possible and removes it again

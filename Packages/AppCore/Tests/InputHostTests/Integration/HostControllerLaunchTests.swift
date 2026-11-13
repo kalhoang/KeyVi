@@ -300,6 +300,48 @@ struct HostControllerLifecycleTests {
         #expect(rig.controller.state == .ready(.vietnamese))
     }
 
+    /// PLT-R405, PLT-R373: the Diagnostics window keeps one runner for the process lifetime, so the canary's key
+    /// codes come from the layout current when a run starts, not when the runner was made. After a switch from
+    /// ABC to AZERTY the `a` key moves; a stale table would type `q` and fail every readback.
+    @Test func guidedTestRunnerReadsTheLayoutAtRunTime_PLT_R405() async throws {
+        let french = InputSourceInfo(
+            id: try #require(InputSourceID(rawValue: "com.apple.keylayout.French")), kind: .asciiLayout,
+            localizedName: "French", languages: ["fr"], isBuiltInVietnamese: false)
+        let azerty = PipelineFixtures.azertyTable()
+        let builder = PerSourceLayoutBuilder(tables: [
+            HostRig.abc.id: PipelineFixtures.qwertyTable(), french.id: azerty,
+        ])
+        let rig = HostRig(
+            source: HostRig.abc,
+            layoutData: [
+                HostRig.abc.id: KeyboardLayoutData(source: HostRig.abc.id, uchr: Data()),
+                french.id: KeyboardLayoutData(source: french.id, uchr: Data()),
+            ], builder: builder)
+        await rig.start()
+        defer { rig.stop() }
+        let runner = rig.controller.makeGuidedTestRunner()
+        rig.inputSources.select(french)
+        rig.settle()
+        #expect(rig.controller.currentLayoutTable()?.keyCode(producing: "a") == azerty.keyCode(producing: "a"))
+        rig.echoLoop.layout.withLock { $0 = azerty }
+        let field = FieldHandle(pid: HostRig.editorPID, token: 1, element: nil)
+        let postedBefore = rig.poster.posted.count
+        rig.controller.setDiagnosticsPassThrough(true)
+        rig.settle()
+        let result = await runner.run(GuidedTestCandidate(plan: .default), field: field)
+        rig.controller.setDiagnosticsPassThrough(false)
+        rig.settle()
+        #expect(result == .passedByReadback)
+        let literalA = rig.poster.posted.dropFirst(postedBefore).compactMap { posted -> KeyCode? in
+            guard case .synthetic(let event, _) = posted, event.isKeyDown, event.unicode == InlineUTF16("a") else {
+                return nil
+            }
+            return event.keyCode
+        }
+        #expect(!literalA.isEmpty)
+        #expect(literalA.allSatisfy { $0 == azerty.keyCode(producing: "a") }, "the AZERTY `a` key, not QWERTY's")
+    }
+
     @Test func latencyProbeDriverIsCreatedForThisLaunch_PLT_R810() async {
         let rig = HostRig()
         await rig.start()
