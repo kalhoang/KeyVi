@@ -254,6 +254,12 @@ final class HostRig {
         }
     }
 
+    /// Waits until the per-app memory documents the ax thread emitted reached the settings store (PLT-R392).
+    func memoryRecorded() async {
+        settle()
+        for _ in 0..<1_000 where (controller.appModesRecorder?.pendingCount ?? 0) > 0 { await Task.yield() }
+    }
+
     func routeToCurrentTap() {
         let handles = tapFactory.handles
         guard let handle = handles.last, let userInfo = tapFactory.userInfoBitPatterns.last else { return }

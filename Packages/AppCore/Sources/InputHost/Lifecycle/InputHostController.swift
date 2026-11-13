@@ -162,6 +162,8 @@ public final class InputHostController {
     var conflictsReported = false
     var conflictsRescanned = false
     var learning = LearningTracker()
+    /// Hands the ax thread's memory documents to the settings store in order (PLT-R392).
+    var appModesRecorder: AppModesRecorder?
     var inactiveReasons: Set<SessionInactiveReason> = []
 
     public internal(set) var state: HostState = .starting

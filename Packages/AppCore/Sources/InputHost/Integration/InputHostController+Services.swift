@@ -51,9 +51,9 @@ extension InputHostController {
         axThread.start()
         let assembly = installRules(rules: rules, settings: settings)
         let effective = settings.effective
-        focusTracker.setMemoryObserver { [settingsStore] document in
-            Task { await settingsStore.recordAppModes(document) }
-        }
+        let recorder = AppModesRecorder(store: settingsStore)  // in emission order (PLT-R392)
+        appModesRecorder = recorder
+        focusTracker.setMemoryObserver { document in recorder.record(document) }
         focusTracker.update(settings: effective, appModes: settings.appModes)
         focusTracker.start(
             rules: assembly.ruleSet,
@@ -88,6 +88,7 @@ extension InputHostController {
         secureInputMonitor?.stop()
         inputSourceMonitor.stop()
         focusTracker.stop()
+        appModesRecorder?.finish()
         if runsWorkerThread { worker.stop() }
         channels.cancelSignals()
         refresh.connect(nil)

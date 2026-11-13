@@ -309,6 +309,7 @@ struct HostControllerLifecycleTests {
         await rig.start()
         defer { rig.stop() }
         rig.type("vieetj ")
+        await rig.memoryRecorded()
         let memoryBefore = await rig.store.store.state.appModes
         let resetsBefore = rig.controller.channels.feedback.compositionResetCount
         rig.controller.setDiagnosticsPassThrough(true)
@@ -331,6 +332,7 @@ struct HostControllerLifecycleTests {
         #expect(rig.field.text == "việt dduwowngf đi")
         #expect(!rig.events.contains { if case .modeChanged = $0 { true } else { false } })
         #expect(rig.controller.currentFocus().mode == .vietnamese, "the manual mode is unchanged")
+        await rig.memoryRecorded()
         #expect(await rig.store.store.state.appModes == memoryBefore, "nothing written to per-app memory")
     }
 
