@@ -151,19 +151,38 @@ in the file).
 - CI (`ci.yml`, job `macos-app`): after the universal Debug build, both slices are verified with
   `lipo -verify_arch` and `minos 12.0` with `otool -l`, and `LSMinimumSystemVersion` must be 12.0.
 
-### macOS 12 smoke test (pending Pa)
+### macOS 12 smoke test
 
-GitHub hosts no macOS 12 runner. The plan for the self-hosted runner (docs/runbooks/integration-suite.md
-machine), pending Pa's approval of the VM (open item "tart VM OK"):
+GitHub hosts no macOS 12 runner. Pa approved a tart VM lab on Pa's Mac on 2026-11-13 (answer S6/Q12); the lab is
+described in [docs/runbooks/vm-test-lab.md](../runbooks/vm-test-lab.md).
 
-1. Install `tart` (Cirrus Labs, Apple Virtualization framework; macOS 12 is the oldest guest it can run on
-   Apple silicon) and pull a Monterey image, for example `ghcr.io/cirruslabs/macos-monterey-base:latest`
-   (VERIFY the tag and pin it by digest).
-2. Per release candidate: copy the notarized DMG into the VM, install to `/Applications`, launch, grant
-   Accessibility, run the onboarding to the end, type the T1 smoke words in TestHost (Telex and VNI), open
-   Settings > General and check the Login Items note and button, check for updates against the beta appcast.
-3. Record the result in the release checklist. An Intel Mac (macOS 26 or earlier) repeats steps 2 and 3 when
-   one is available (VERIFY: no Intel hardware on hand today).
+1. tart 2.41.1 (Cirrus Labs, Apple Virtualization framework; macOS 12 is the oldest guest it runs on Apple
+   silicon) lives at `/Volumes/Data/tart/tart.app` with `TART_HOME=/Volumes/Data/tart/home`. The macOS 12 guest
+   is `keyvi-monterey` from `ghcr.io/cirruslabs/macos-monterey-vanilla:12.7.6`, pinned by digest
+   `sha256:4bc904cf8f2447dfa6e6fb9a5eb70eba14196dd0f4236d30fc92aff9c2391842` (macOS 12.7.6, 21H1320).
+2. `scripts/vm/smoke-macos12.sh` builds the universal Release app (ad-hoc signed, hardened runtime off for that
+   build only, see below) or takes `--app`, checks both slices and `minos 12.0` on the host, and in a throwaway
+   clone of the VM: verifies the signature, `lipo -archs` and `minos` per slice, installs Rosetta when missing,
+   installs the app into `/Applications`, launches the arm64 slice through LaunchServices and the x86_64 slice
+   with `arch -x86_64` under Rosetta, and requires each process to stay alive for 20 s with `Sparkle.framework`
+   mapped, no dyld or missing-symbol error and no crash report; it collects the unified log of the app's
+   subsystem and the crash reports, then quits the app and deletes the clone. The app never runs on the host.
+3. **Result, 2026-11-13: PASS** (run `20261113T144106Z-macos12`, commit `d9976fe`): arm64 natively and x86_64
+   under Rosetta each stayed up for 20 s on macOS 12.7.6; the app logged `lifecycle.launched` from its own
+   subsystem in both, asked `tccd` for Accessibility as expected, and wrote nothing to standard error and no
+   crash report. The deployment target, the RealtimeSupport primitives, the `TimeSpan` and observation
+   replacements and the weak imports therefore load and start on macOS 12 for both slices.
+4. Found on the way (first run, `20261113T142257Z-macos12`): with an **ad-hoc** signature and the hardened
+   runtime, dyld refused the embedded Sparkle framework under Rosetta (`mapped file has no Team ID and is not a
+   platform binary`): library validation needs a Team ID. The smoke build therefore turns the hardened runtime
+   off. This is no product defect: the Developer ID build signs the app and Sparkle with one Team ID and keeps
+   the hardened runtime (PLT-R750). Also, macOS 12's `open` has no `--arch` option.
+5. Still manual per release candidate (release checklist): run `scripts/vm/smoke-macos12.sh --app <the
+   notarized app>` (the hardened, Team ID signed build, which also covers library validation on macOS 12), then in
+   the VM window grant Accessibility, run the onboarding to the end, type the T1 smoke words in TestHost (Telex
+   and VNI), open Settings > General and check the Login Items note and button, and check for updates against
+   the beta appcast. An Intel Mac (macOS 26 or earlier) repeats these steps when one is available (VERIFY: no
+   Intel hardware on hand today); Rosetta covers the x86_64 slice meanwhile.
 
 ## Consequences
 

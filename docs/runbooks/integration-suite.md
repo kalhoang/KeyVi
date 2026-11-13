@@ -2,7 +2,7 @@
 
 Owner: the maintainer. Specification: QA-R10 to QA-R16, QA-R21, PLT-R821, PLT-R822, PLT-R901, PLT-R906,
 spec/02-platform.md sections 8.1, 9 and 13.2 to 13.7. Contracts: [ADR 0502](../decisions/0502-fuzz-benchmark-coverage-contracts.md).
-Machine setup: [self-hosted-runner.md](self-hosted-runner.md).
+Machine setup: [self-hosted-runner.md](self-hosted-runner.md). In the tart VM lab: section 10.
 
 The suite posts synthetic key events, launches apps, switches input sources and rewrites the test build's
 settings. It runs **only on the self-hosted runner**. On any other Mac, including Pa's, only `--dry-run` is allowed:
@@ -186,3 +186,89 @@ baseline in a pull request labelled `perf-baseline` with the reason (QA-R15), as
   section 5 before every release.
 - Until the runner exists: the interim checklist of
   [workstreams.md](../architecture/workstreams.md#interim-verification-before-the-self-hosted-runner-exists).
+
+## 10. Running the suite in the tart VM
+
+Since 2026-11-13 the VM lab ([vm-test-lab.md](vm-test-lab.md)) has `{{app-slug}}-dev`: macOS 27.2 with Xcode 27.2,
+the tart guest agent, passwordless `sudo` and **SIP disabled** in its Cirrus Labs image. That makes the TestHost
+suite possible without a dedicated Mac and without touching Pa's Mac:
+
+```sh
+scripts/vm/integration-dev.sh    # throwaway clone of {{app-slug}}-dev (6144 MB, 4 CPUs), deleted afterwards
+```
+
+It copies the committed checkout (`git archive HEAD`) into the clone and runs
+`scripts/vm/guest/integration-guest.sh` through `tart exec`, so everything runs in the logged-in GUI session of
+`admin`:
+
+1. turns text substitutions off (section 2 step 3); English is the first language of the image;
+2. installs XcodeGen with `scripts/install-xcodegen.sh` and generates the project;
+3. builds the `Integration` configuration (INTEGRATION_HOOKS) and TestHost like `scripts/run-integration.sh build`,
+   but **ad-hoc signed with the hardened runtime off**, because the VM has no Apple Development identity (an
+   ad-hoc signature has no Team ID, and library validation would refuse Sparkle), installs both into
+   `~/Applications` and checks the hooks marker;
+4. builds `compat-harness` (release);
+5. grants Accessibility, Input Monitoring and event posting with `sudo scripts/vm/grant-tcc.sh` to the test build,
+   TestHost, `compat-harness`, the tart guest agent (which starts the harness) and `sshd-keygen-wrapper` (for runs
+   started over SSH); each row carries the client's compiled code requirement;
+6. marks onboarding as finished in the test build's settings file (section 2 step 9);
+7. runs the plan check (`compat-harness run --dry-run`), then `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh
+   tests`, and copies `.build/integration/tests` back.
+
+The run folder is `/Volumes/Data/tart/runs/<timestamp>-integration/` (`integration.log`, `guest.log`,
+`integration-out/` with `summary.txt`, the build logs, `grant.log`, `tcc-rows.txt`, `dry-run.log`, `tests.log`
+and `results/`).
+
+### 10.1 First attempt, 2026-11-13
+
+Run `20261113T145511Z-integration` on commit `4553435`, about 17 minutes in all (build of the test build, TestHost
+and the harness about 10 minutes, suite about 5 minutes). The path works end to end: XcodeGen, the ad-hoc
+`Integration` build with the hooks marker, TestHost, `compat-harness`, 15 TCC rows written by `grant-tcc.sh`
+(5 clients by 3 services; `tcc-rows.txt` lists 34 allowed rows in all, the rest being the image's own grants for
+`sshd-keygen-wrapper`, the tart guest agent and `osascript`), the plan check, and a live run that
+posted events into TestHost. **5 of 40 TestHost scenarios passed** (`testhost.backspace.punctuation`,
+`testhost.native.telex`, `testhost.privacyCanary.backspaceReplace`, `testhost.privacyCanary.passThrough`,
+`testhost.secureInput.release`); the privacy scan found no canary (13 files, 3.6 MB of log). 35 failed:
+
+| Count | Reason in `results.json` | What it means |
+|---|---|---|
+| 9 | `configure app: not supported yet: quit of <dev bundle ID>` | The test build did not exit within 10 s of `NSRunningApplication.terminate()`. `LiveAppControl.quit()` reports that timeout as `LiveError.unsupported`, so the message is misleading. Needs a look at the app's termination path in the VM (a modal panel or prompt that blocks the quit Apple Event is the first suspect) and a clearer harness error |
+| 7, 2 | `integration hook 'state' timed out`, `'tapTimeout'` and `'revokePermission'` timed out | The hooks did not answer, most likely because the app was left half quit by the row above |
+| 12 | `observed state differs from expect` | The app's state after the keys differs from the scenario; with the configuration not applied (first row) these are expected to follow from it. Rerun once the quit works |
+| 4 | `input source not enabled` (French, German, Dvorak, Japanese Romaji) | Section 2 step 4 is not done in the image yet; enable them once in the base image (VM window, or a small TIS script in the VM) |
+| 1 | `no accessibility element with identifier testhost.secureInput.toggle` | The checkbox exists in `TestHost/Sources/TestHostLayout.swift`; not found at that moment, probably the same state problem. Recheck after the rows above |
+
+Also, the privacy report listed one unreadable file (`backups/app-modes.json.v1.<timestamp>.json` in the test
+build's folder), which by itself fails the run (section 4). Nothing in this list needs a signing identity from the
+host keychain: the VM builds and grants everything itself. What the VM lacks for a run identical to the runner's is
+only the Apple Development identity of `Config/Integration.xcconfig` (the script overrides it with ad-hoc
+signing) and the prerequisites of section 2 steps 4 and 5 (input sources, third-party apps, chromedriver, the
+loopback server), which the TestHost subset does not need except for the four input-source scenarios.
+
+### 10.2 Grants by hand, and why the signature must be stable
+
+In an image with SIP enabled (the macOS 12 image, or a future Xcode image) the TCC database is read-only and the
+grants are made once by hand, inside the VM, never on Pa's Mac:
+
+1. Stop the VM if it runs (`scripts/vm/lab.sh down <vm>`), then open its window:
+   `TART_HOME=/Volumes/Data/tart/home /Volumes/Data/tart/tart.app/Contents/MacOS/tart run <vm>` (it logs in as
+   `admin` by itself).
+2. In the VM: System Settings > Privacy & Security > Accessibility, then Input Monitoring: click +, add the test
+   build in `~/Applications`, `compat-harness` (Packages/AppCore/.build/release of the checkout in the VM) and the
+   process that starts it (the runner's `Runner.Worker`, or `/usr/libexec/sshd-keygen-wrapper` for SSH), and
+   switch each on. VERIFY the pane names on the installed macOS.
+3. Shut the VM down from its Apple menu. The grants are stored on the VM's disk, so every later clone of it has
+   them.
+
+TCC stores each grant together with the client's **code requirement**. An ad-hoc signed client's requirement is
+its `cdhash`, which changes with every build, so a rebuilt test build no longer matches the grant and the
+symptom is a green start and tests that type nothing (section 8). A client signed with a stable identity keeps
+its requirement across builds: with the Apple Development certificate of `Config/Signing.xcconfig` it is
+`identifier "<dev bundle ID>" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development:
+..." and certificate 1[field.1.2.840.113635.100.6.2.1] exists`, the same for every build signed with that
+certificate, so one grant lasts until the certificate is replaced (PLT-R751, self-hosted-runner.md section 4).
+For a VM there are two ways to get such a signature: import the Apple Development certificate into the VM's login
+keychain (Pa's decision; it is not a release secret), or create a self-signed code-signing certificate inside the
+VM and sign the test build and the harness with it (the requirement is anchored on that certificate; the hardened
+runtime must stay off, because a self-signed certificate has no Team ID). With SIP disabled none of this is
+needed: `grant-tcc.sh` simply grants the new cdhash after each build.
