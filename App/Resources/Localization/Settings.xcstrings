@@ -2870,13 +2870,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The restore key must be an ordinary key, with or without modifiers. Suggested: Escape."
+            "value" : "The restore key must be an ordinary key, with or without modifiers. The default is Escape."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím khôi phục phải là một phím thường, có thể kèm phím bổ trợ. Gợi ý: Escape."
+            "value" : "Phím khôi phục phải là một phím thường, có thể kèm phím bổ trợ. Mặc định là Escape."
           }
         }
       }

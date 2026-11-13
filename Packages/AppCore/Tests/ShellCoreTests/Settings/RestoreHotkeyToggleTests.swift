@@ -44,6 +44,11 @@ import Testing
         #expect(vi.contains("Mặc định là Escape") && vi.contains("Bấm thêm lần nữa") && vi.contains("tự tắt"))
         #expect(en.contains("default is Escape") && en.contains("again right away") && en.contains("off automatically"))
         #expect(!vi.contains("Gợi ý") && !en.contains("Suggested"))
+        // The rejection message in the same pane names the same default.
+        let rejectedVi = localizers.vi.string(SettingsText.hotkeyRejectedRestoreModifierTap)
+        let rejectedEn = localizers.en.string(SettingsText.hotkeyRejectedRestoreModifierTap)
+        #expect(rejectedVi.hasSuffix("Mặc định là Escape.") && !rejectedVi.contains("Gợi ý"))
+        #expect(rejectedEn.hasSuffix("The default is Escape.") && !rejectedEn.contains("Suggested"))
         #expect(localizers.vi.string(SettingsText.restoreHotkeySwitch) == "Dùng phím khôi phục")
         #expect(localizers.en.string(SettingsText.restoreHotkeySwitch) == "Use a restore key")
     }
