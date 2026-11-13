@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// System Settings pane names and deep links keyed by macOS version and the MACOS language (PLT-R704, PRD-R64),
-// loaded from the resource `SystemPanes.json`. UI copy is in the interface language; pane names quoted inside
-// it are in the system language so they match what the user sees in System Settings.
+// System Settings (macOS 13 and later) and System Preferences (macOS 12) pane names and deep links keyed by macOS
+// version and the MACOS language (PLT-R704, PRD-R64, ADR 0315), loaded from the resource `SystemPanes.json`. UI
+// copy is in the interface language; pane names quoted inside it are in the system language so they match what
+// the user sees on screen.
 //
 // SystemPanes.json shape:
 // { "schemaVersion": 1,
-//   "entries": [ { "macOS": {"min": "15.0", "max": "26.99"},
+//   "entries": [ { "macOS": {"min": "13.0", "max": "26.99"},
 //                  "names": { "vi": {"systemSettings": "Cài đặt hệ thống", "privacySecurity": "...",
 //                                    "accessibility": "Trợ năng", "inputMonitoring": "...", "keyboard": "...",
-//                                    "textReplacements": "..."},
+//                                    "textReplacements": "...", "usersGroups": "...", "loginItems": "..."},
 //                             "en": {...} },
 //                  "deepLinks": { "accessibility": "x-apple.systempreferences:...", ... } } ] }
 // Every entry is VERIFY on a real system in that language and version before release.
@@ -22,16 +23,20 @@ public enum SystemPane: String, Sendable, Hashable, CaseIterable {
 }
 
 public struct SystemPaneNames: Sendable, Hashable, Codable {
+    /// "System Settings" from macOS 13, "System Preferences" on macOS 12.
     public var systemSettings: String
     public var privacySecurity: String
     public var accessibility: String  // "Device Control and Data Access" on macOS 27 (PLT-R701)
     public var inputMonitoring: String
     public var keyboard: String
     public var textReplacements: String
+    /// The pane that holds Login Items: "Users & Groups" on macOS 12, "General" from macOS 13.
+    public var usersGroups: String
+    public var loginItems: String
 
     public init(
         systemSettings: String, privacySecurity: String, accessibility: String, inputMonitoring: String,
-        keyboard: String, textReplacements: String
+        keyboard: String, textReplacements: String, usersGroups: String, loginItems: String
     ) {
         self.systemSettings = systemSettings
         self.privacySecurity = privacySecurity
@@ -39,6 +44,8 @@ public struct SystemPaneNames: Sendable, Hashable, Codable {
         self.inputMonitoring = inputMonitoring
         self.keyboard = keyboard
         self.textReplacements = textReplacements
+        self.usersGroups = usersGroups
+        self.loginItems = loginItems
     }
 }
 

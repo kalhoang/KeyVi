@@ -620,13 +620,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens Input Monitoring in System Settings."
+            "value" : "Opens Input Monitoring in the macOS settings."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở mục Giám sát đầu vào trong Cài đặt hệ thống."
+            "value" : "Mở mục Giám sát đầu vào trong phần cài đặt của macOS."
           }
         }
       }
@@ -656,13 +656,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens Keyboard in System Settings."
+            "value" : "Opens Keyboard in the macOS settings."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở phần Bàn phím trong Cài đặt hệ thống."
+            "value" : "Mở phần Bàn phím trong phần cài đặt của macOS."
           }
         }
       }
@@ -692,13 +692,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens the right place in System Settings to turn on the permission."
+            "value" : "Opens the right place in the macOS settings to turn on the permission."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở đúng mục trong Cài đặt hệ thống để bạn bật quyền."
+            "value" : "Mở đúng mục trong phần cài đặt của macOS để bạn bật quyền."
           }
         }
       }

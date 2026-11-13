@@ -63,7 +63,8 @@ extension AppEnvironment {
         // SystemPanes.json ships in the bundle and is tested; this only guards a broken build.
         return SystemPaneNames(
             systemSettings: "System Settings", privacySecurity: "Privacy & Security", accessibility: "Accessibility",
-            inputMonitoring: "Input Monitoring", keyboard: "Keyboard", textReplacements: "Text Replacements")
+            inputMonitoring: "Input Monitoring", keyboard: "Keyboard", textReplacements: "Text Replacements",
+            usersGroups: "General", loginItems: "Login Items")
     }
 
     func openPane(_ pane: SystemPane) {
