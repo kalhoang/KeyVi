@@ -83,7 +83,7 @@ extension SettingsStore {
         } catch {
             // Without the backup the original must stay as it is (PLT-R1005); retried at the next launch.
             status.writeBlocked = true
-            addNotice(.writeFailed(file))
+            setWriteFailure(of: file, error: error)
         }
         files[file] = status
         return Codec.decode(migrated)

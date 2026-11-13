@@ -233,7 +233,7 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         harness.spy.fail(.writeAtomically, at: harness.url(.macros))
         await harness.store.replaceMacros([StoredMacro(trigger: "vn", expansion: "x")])
         await harness.advance(by: .seconds(1))
-        #expect(await harness.store.state.notices == [.writeFailed(.macros)])
+        #expect(await harness.store.state.notices == [.writeFailed(.macros, errno: EIO)])
         harness.spy.clearFailures()
         await harness.store.replaceMacros([StoredMacro(trigger: "vn", expansion: "y")])
         await harness.advance(by: .seconds(1))

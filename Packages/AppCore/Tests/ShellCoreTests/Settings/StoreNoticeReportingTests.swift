@@ -19,7 +19,7 @@ import Testing
         let safe = StoreNotice.safeMode(recentCrashes: 3)
         let current: [StoreNotice] = [
             safe, .recoveredFromBackup(.settings, backupDate: at), .corruptFileUsingDefaults(.appModes),
-            .newerSchemaReadOnly(.macros, schemaVersion: 4), .writeFailed(.ruleOverrides),
+            .newerSchemaReadOnly(.macros, schemaVersion: 4), .writeFailed(.ruleOverrides, errno: 28),
         ]
         let added = StoreNoticeReporting.added(previous: [safe], current: current)
         #expect(added == Array(current.dropFirst()))
@@ -27,7 +27,7 @@ import Testing
             added.map(StoreNoticeReporting.logEvent) == [
                 .recoveredFromBackup(file: .settings), .corruptFileQuarantined(file: .appModes),
                 .newerSchemaReadOnly(file: .macros, schemaVersion: 4),
-                .writeFailed(file: .ruleOverrides, errno: StoreNoticeReporting.unknownErrno),
+                .writeFailed(file: .ruleOverrides, errno: 28),
             ])
         #expect(
             added.map { StoreNoticeReporting.healthEvent($0, at: at)?.kind } == [
@@ -38,6 +38,19 @@ import Testing
         #expect(StoreNoticeReporting.logEvent(safe) == nil)
         #expect(StoreNoticeReporting.healthEvent(safe, at: at) == nil)
         #expect(StoreNoticeReporting.added(previous: current, current: current).isEmpty)
+    }
+
+    /// The log carries the errno of the failed write (PLT-R1202), not a placeholder: disk full and permission
+    /// denied read differently in a report.
+    @Test func writeFailureLogsTheRealErrno_PLTR1202() {
+        #expect(
+            StoreNoticeReporting.logEvent(.writeFailed(.macros, errno: 28)) == .writeFailed(file: .macros, errno: 28))
+        #expect(
+            StoreNoticeReporting.logEvent(.writeFailed(.settings, errno: 13))
+                == .writeFailed(file: .settings, errno: 13))
+        let changed = StoreNoticeReporting.added(
+            previous: [.writeFailed(.settings, errno: 28)], current: [.writeFailed(.settings, errno: 13)])
+        #expect(changed == [.writeFailed(.settings, errno: 13)], "a new errno is a new episode in the log")
     }
 
     func line(_ state: HostState = .ready(.vietnamese), notices: [StoreNotice], safeMode: Bool = false)
@@ -54,7 +67,7 @@ import Testing
         #expect(corrupt.arguments == ["app-modes.json", "Example"])
         #expect(corrupt.action == .openSettings)
         #expect(corrupt.actionLabelKey == StatusText.actionOpenSettings.rawValue)
-        let failed = try #require(line(notices: [.writeFailed(.settings)]))
+        let failed = try #require(line(notices: [.writeFailed(.settings, errno: 13)]))
         #expect(failed.key == StatusText.settingsWriteFailed.rawValue)
         #expect(failed.arguments == ["settings.json", "Example"])
         let newer = try #require(line(notices: [.newerSchemaReadOnly(.macros, schemaVersion: 4)]))
@@ -63,14 +76,16 @@ import Testing
         let recovered = line(notices: [.recoveredFromBackup(.settings, backupDate: at)])
         #expect(recovered?.key == StatusText.tapReenabled.rawValue)
         // Host state and safe mode lines come first.
-        #expect(line(.noPermission, notices: [.writeFailed(.settings)])?.key == StatusText.noPermission.rawValue)
-        #expect(line(notices: [.writeFailed(.settings)], safeMode: true)?.key == StatusText.safeMode.rawValue)
+        #expect(
+            line(.noPermission, notices: [.writeFailed(.settings, errno: 13)])?.key == StatusText.noPermission.rawValue)
+        #expect(
+            line(notices: [.writeFailed(.settings, errno: 13)], safeMode: true)?.key == StatusText.safeMode.rawValue)
     }
 
     @Test func everyStatusLineRendersInBothLanguages() throws {
         let app = try TemporaryAppBundle(catalogs: [.status])
         let notices: [StoreNotice] = [
-            .corruptFileUsingDefaults(.appModes), .writeFailed(.settings),
+            .corruptFileUsingDefaults(.appModes), .writeFailed(.settings, errno: 13),
             .newerSchemaReadOnly(.macros, schemaVersion: 4),
         ]
         for language in InterfaceLanguage.allCases {
@@ -91,7 +106,7 @@ extension StoreNotice {
     fileprivate var fileName: String {
         switch self {
         case .recoveredFromBackup(let file, _), .corruptFileUsingDefaults(let file), .newerSchemaReadOnly(let file, _),
-            .writeFailed(let file):
+            .writeFailed(let file, _):
             file.rawValue
         case .safeMode: ""
         }

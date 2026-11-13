@@ -38,7 +38,7 @@ struct StatusLineBuilder {
         switch notice {
         case .corruptFileUsingDefaults(let damaged): (key, file) = (.settingsCorrupt, damaged)
         case .newerSchemaReadOnly(let newer, _): (key, file) = (.settingsNewerSchema, newer)
-        case .writeFailed(let failed): (key, file) = (.settingsWriteFailed, failed)
+        case .writeFailed(let failed, _): (key, file) = (.settingsWriteFailed, failed)
         case .recoveredFromBackup, .safeMode: return nil
         }
         return line(key, [file.rawValue, appName], action: .openSettings, label: .actionOpenSettings)

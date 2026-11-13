@@ -189,7 +189,7 @@ import VietnameseEngineData
         let notices: [StoreNotice] = [
             .recoveredFromBackup(.settings, backupDate: date), .corruptFileUsingDefaults(.macros),
             .newerSchemaReadOnly(.appModes, schemaVersion: 3), .safeMode(recentCrashes: 3),
-            .writeFailed(.ruleOverrides),
+            .writeFailed(.ruleOverrides, errno: 28),
         ]
         let shown = StoreNoticePresentation.all(notices, appName: "App", localizer: l.vi)
         #expect(

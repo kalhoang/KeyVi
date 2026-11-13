@@ -48,7 +48,24 @@ public enum StoreNotice: Sendable, Hashable {
     case corruptFileUsingDefaults(SettingsFile)  // nothing overwritten until the user confirms
     case newerSchemaReadOnly(SettingsFile, schemaVersion: Int)
     case safeMode(recentCrashes: Int)
-    case writeFailed(SettingsFile)
+    /// `errno` is the POSIX code of the failed write, logged by the composition root (PLT-R1202); `noErrno` when
+    /// the failure carried none. At most one per file: a later failure replaces it, a successful write clears it.
+    case writeFailed(SettingsFile, errno: Int32)
+}
+
+extension StoreNotice {
+    /// The `errno` of a `writeFailed` whose error had no POSIX code (for example a serialisation failure).
+    public static let noErrno: Int32 = 0
+
+    /// The POSIX code behind a failed file operation (`FileSystemError`), `noErrno` for any other error.
+    static func errno(of error: any Error) -> Int32 {
+        switch error as? FileSystemError {
+        case .ioFailure(_, let code)?: code
+        case .notFound?: ENOENT
+        case .tooLarge?: EFBIG
+        case nil: noErrno
+        }
+    }
 }
 
 public enum ResetScope: Sendable, Hashable {
