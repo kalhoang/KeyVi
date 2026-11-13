@@ -24,16 +24,16 @@ struct LiveAppControl: AppUnderTestControl {
 
     func processIdentifier() -> Int32? { running?.processIdentifier }
 
-    /// Normal quit (the app flushes its settings, PLT-R1003), then waits until the process is gone.
+    /// Normal quit (the app flushes its settings, PLT-R1003), then waits until the process is gone. The process
+    /// itself is asked (`kill(pid, 0)`): the cached `NSRunningApplication.isTerminated` only changes when this
+    /// tool's main run loop turns, which made every quit look like a timeout (integration-suite.md section 10.1).
     func quit() async throws {
         guard let running else { return }
+        let pid = running.processIdentifier
         running.terminate()
-        var waited: UInt64 = 0
-        while !running.isTerminated {
-            guard waited < Self.quitTimeoutNanoseconds else { throw LiveError.unsupported("quit of " + app.rawValue) }
-            try await sleeper.sleep(nanoseconds: 100_000_000)
-            waited += 100_000_000
-        }
+        try await AppExitWait.wait(
+            bundle: app.rawValue, timeoutNanoseconds: Self.quitTimeoutNanoseconds, sleeper: sleeper,
+            isGone: { kill(pid, 0) != 0 && errno == ESRCH })
     }
 
     func launch() async throws {
