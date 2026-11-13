@@ -5,6 +5,7 @@
 // `onChange` hop arrives (PRD-R27: changes apply immediately).
 
 public import AppModel
+public import CompatRules
 public import Foundation
 public import SettingsStore
 
@@ -43,6 +44,14 @@ public struct SettingsCommands: Sendable {
     {
         let overrides = await store.state.ruleOverrides
         await perform(TypeHereAnyway.commands(for: bundle, strategy: strategy, overrides: overrides, at: date))
+        return await store.state
+    }
+
+    /// PLT-R1205 step 5, PLT-R540: "Use this for me now" stores the guided test's rule; a "this app" result keeps
+    /// the app's "type here anyway" in the same rule (`UseThisForMeNow`).
+    public func useGuidedTestResult(_ rule: Rule, at date: Date) async -> SettingsState {
+        let overrides = await store.state.ruleOverrides
+        await perform(UseThisForMeNow.commands(for: rule, overrides: overrides, at: date))
         return await store.state
     }
 

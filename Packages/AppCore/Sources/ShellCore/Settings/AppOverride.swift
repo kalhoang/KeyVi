@@ -5,12 +5,13 @@
 // Two of them for one app tie (same specificity, same source), only the smaller id applies because rule actions
 // are never merged (PLT-R520), and every focus change records a tie (PLT-R521). So each writer edits the app's
 // existing override instead of adding a second one:
-// - `user.compat.<bundle>`: the strategy and pacing are the compatibility mode the user chose, optionally with
-//   `requireTextFocus: never`;
+// - `user.compat.<bundle>`: the strategy and pacing are the compatibility mode the user chose or the guided test's
+//   "this app" result ("Use this for me now"), optionally with `requireTextFocus: never`;
 // - `user.textfocus.<bundle>`: only "type here anyway", with the strategy the app resolved to when it was chosen.
 // At most one of the two exists per app; the id says whether the strategy is a choice the Apps pane shows.
 
 public import AppModel
+public import CompatRules
 public import Foundation
 import InputHost
 public import SettingsStore
@@ -105,5 +106,26 @@ public enum TypeHereAnyway {
         let day = CompatibilityModeChoice.day(date, timeZone: timeZone)
         guard let rule = TextFocusOverride.rule(for: bundle, strategy: strategy, date: day) else { return [] }
         return [.add(StoredRuleOverride(createdAt: date, rule: rule))]
+    }
+}
+
+/// "Use this for me now" of the guided test (PLT-R1205 step 5, PLT-R540). A "this app" result takes the app's slot,
+/// `user.compat.<bundle>` (`GuidedTestRunner.suggestion`), so like a compatibility mode chosen in the Apps pane it
+/// keeps a "type here anyway" already in force (`requireTextFocus: never` in the same rule) and replaces
+/// `user.textfocus.<bundle>`, which would otherwise tie with it (PLT-R520, PLT-R521). A result for "only this kind
+/// of field" outranks the app's rule instead of tying with it and is stored as suggested.
+public enum UseThisForMeNow {
+    public static func commands(for rule: Rule, overrides: [StoredRuleOverride], at date: Date)
+        -> [CompatibilityModeCommand]
+    {
+        guard let stored = GuidedTestOverride.stored(rule, at: date) else { return [] }
+        guard let bundles = rule.match.bundleIds, bundles.count == 1, let bundle = bundles.first,
+            rule.id == PerAppOverrideSlot.compat.ruleID(for: bundle)
+        else { return [.add(stored)] }
+        let state = AppOverrideState(bundle: bundle, overrides: overrides)
+        let kept = state.typeAnyway ? AppOverrideState.withTypeAnyway(stored.rule) ?? stored.rule : stored.rule
+        var commands: [CompatibilityModeCommand] = [.add(StoredRuleOverride(createdAt: date, rule: kept))]
+        if state.hasTextFocusRule { commands.append(.remove(state.textFocusID)) }
+        return commands
     }
 }

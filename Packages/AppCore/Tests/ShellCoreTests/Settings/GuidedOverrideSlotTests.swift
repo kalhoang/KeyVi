@@ -193,3 +193,116 @@ import Testing
         #expect(AppsPaneModel.orderedBundles(appModes: state.appModes, overrides: state.ruleOverrides) == [app])
     }
 }
+
+/// "Use this for me now" keeps "type here anyway" (PLT-R540, PLT-R520, PLT-R521): an app-slot guided result
+/// replaces `user.compat.<bundle>` and would leave `user.textfocus.<bundle>` next to it, two bundle-only rules that
+/// tie (the smaller id wins and a health event is recorded on every focus change). Like the Apps pane, the result
+/// carries `requireTextFocus: never` and the text-focus rule is removed.
+@Suite struct UseThisForMeNowTests {
+    let app = BundleKey(rawValue: "com.example.Chat")!
+    let date = Date(timeIntervalSince1970: 1_794_528_000)  // 2026-11-13
+    static let axSelection = GuidedTestCandidate(
+        strategy: .backspaceReplace, inlineCompletion: .axSelection, interEventDelayUs: 0)
+
+    var blindContext: MatchContext {
+        MatchContext(bundle: app, appVersion: nil, macOS: LooseVersion("27.1")!, engine: .electron)
+    }
+
+    /// Resolution runs as for a native app: the shipped Electron rule already types without a text field, which
+    /// would hide whether "type here anyway" survived. The guided rules match the bundle only.
+    var nativeContext: MatchContext {
+        MatchContext(bundle: app, appVersion: nil, macOS: LooseVersion("27.1")!, engine: .native)
+    }
+
+    func guidedRule(_ context: MatchContext? = nil) -> Rule {
+        GuidedTestRunner.suggestion(
+            context: context ?? blindContext, best: Self.axSelection, appVersion: nil, macOS: "27.1",
+            date: "2026-11-13", includeURLPrefix: nil)
+    }
+
+    func loaded() async -> SettingsCommands {
+        let harness = SettingsStoreHarness()
+        _ = await harness.store.load()
+        return SettingsCommands(store: harness.store)
+    }
+
+    func resolve(_ state: SettingsState, _ context: MatchContext? = nil) throws -> ResolvedDecision {
+        let (rules, rejected) = RulesLoader.decodeOverrides(state.ruleOverrides.map(\.rule))
+        #expect(rejected.isEmpty)
+        let set = try RuleSet(document: EmbeddedRules.minimal, overrides: rules, optedIn: [])
+        return set.resolve(context ?? nativeContext)
+    }
+
+    @Test func theResultKeepsTypeHereAnywayAndReplacesItsRule() async throws {
+        let commands = await loaded()
+        _ = await commands.typeHereAnyway(for: app, strategy: .selectReplace, at: date)
+        var state = await commands.useGuidedTestResult(guidedRule(), at: date)
+        #expect(
+            state.ruleOverrides.map { $0.rule["id"]?.stringValue } == [
+                CompatibilityModeChoice.ruleID(for: app).rawValue
+            ])
+        var decision = try resolve(state)
+        #expect(decision.tieLoser == nil)
+        #expect(decision.requireTextFocus == .never)
+        #expect(decision.strategy == .backspaceReplace && decision.params.inlineCompletion == .axSelection)
+        // The pane still shows the result, and "Tự động" removes only the result: "type here anyway" stays.
+        #expect(
+            AppsPaneModel.rows(appModes: state.appModes, overrides: state.ruleOverrides, matrix: nil, today: date)
+                .first?.compatibilityMode == .guidedTest)
+        state = await commands.setCompatibility(.automatic, for: app, at: date)
+        decision = try resolve(state)
+        #expect(state.ruleOverrides.count == 1 && decision.requireTextFocus == .never)
+        #expect(decision.params.inlineCompletion != .axSelection)
+    }
+
+    /// "Type here anyway" folded into a compatibility mode is kept when the result replaces the mode.
+    @Test func theResultKeepsTypeHereAnywayOfTheModeItReplaces() async throws {
+        let commands = await loaded()
+        _ = await commands.setCompatibility(.pasteText, for: app, at: date)
+        _ = await commands.typeHereAnyway(for: app, strategy: .selectReplace, at: date)
+        let state = await commands.useGuidedTestResult(guidedRule(), at: date)
+        #expect(state.ruleOverrides.count == 1)
+        let decision = try resolve(state)
+        #expect(decision.tieLoser == nil && decision.requireTextFocus == .never)
+        #expect(decision.strategy == .backspaceReplace && decision.params.inlineCompletion == .axSelection)
+    }
+
+    @Test func withoutTypeHereAnywayTheResultIsStoredAsSuggested() async throws {
+        let commands = await loaded()
+        let rule = guidedRule()
+        let state = await commands.useGuidedTestResult(rule, at: date)
+        #expect(state.ruleOverrides == [try #require(GuidedTestOverride.stored(rule, at: date))])
+        #expect(try resolve(state).requireTextFocus != .never)
+    }
+
+    /// A result for "only this kind of field" outranks the app's rule instead of tying with it: the app's
+    /// "type here anyway" rule is left alone.
+    @Test func aFieldScopedResultLeavesTheAppsRuleAlone() async throws {
+        let commands = await loaded()
+        _ = await commands.typeHereAnyway(for: app, strategy: .selectReplace, at: date)
+        var field = blindContext
+        field.role = "AXTextArea"
+        let rule = guidedRule(field)
+        #expect(rule.id != CompatibilityModeChoice.ruleID(for: app))
+        let state = await commands.useGuidedTestResult(rule, at: date)
+        #expect(state.ruleOverrides.count == 2)
+        #expect(
+            state.ruleOverrides.contains { $0.rule["id"]?.stringValue == TextFocusOverride.ruleID(for: app).rawValue })
+        #expect(try resolve(state).requireTextFocus == .never, "other fields of the app keep typing anyway")
+    }
+
+    /// The pure decision: add before remove, so the app is never without its override in between.
+    @Test func theCommandsAddBeforeTheyRemove() throws {
+        let textFocus = try #require(TextFocusOverride.rule(for: app, strategy: .selectReplace, date: "2026-11-12"))
+        let overrides = [StoredRuleOverride(createdAt: date.addingTimeInterval(-60), rule: textFocus)]
+        let commands = UseThisForMeNow.commands(for: guidedRule(), overrides: overrides, at: date)
+        guard commands.count == 2, case .add(let stored) = commands[0] else {
+            Issue.record("expected add then remove, got \(commands)")
+            return
+        }
+        #expect(commands[1] == .remove(TextFocusOverride.ruleID(for: app)))
+        #expect(stored.createdAt == date)
+        #expect(stored.rule["action"]?["requireTextFocus"] == .string("never"))
+        #expect(stored.rule["id"] == .string(CompatibilityModeChoice.ruleID(for: app).rawValue))
+    }
+}
