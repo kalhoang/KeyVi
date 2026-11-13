@@ -61,6 +61,14 @@ package struct History: Sendable {
     /// spaces) cannot grow the history without bound (ENG-T30). Only the oldest entries are dropped.
     package static let entriesPerToken = 64
 
+    /// The entry bound for `tokenLimit` tokens (`tokenLimit x entriesPerToken`, at least one token). It
+    /// saturates at `Int.max`: a host may pass a huge `historyLimit` to mean "unlimited", and ENG-R1001
+    /// and ENG-T30 forbid a trap on the first commit.
+    package static func entryLimit(forTokens tokenLimit: Int) -> Int {
+        let (product, overflow) = max(1, tokenLimit).multipliedReportingOverflow(by: entriesPerToken)
+        return overflow ? .max : product
+    }
+
     private var storage: [HistoryEntry] = []
     private var head = 0
     package private(set) var tokenCount = 0
@@ -115,7 +123,7 @@ package struct History: Sendable {
 
     private mutating func trim(limit: Int) {
         let tokenLimit = max(1, limit)
-        let entryLimit = tokenLimit * Self.entriesPerToken
+        let entryLimit = Self.entryLimit(forTokens: tokenLimit)
         var droppedLast: HistoryEntry?
         while tokenCount > tokenLimit || storage.count - head > entryLimit {
             let entry = storage[head]

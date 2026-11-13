@@ -397,7 +397,7 @@ public struct InvariantChecker: Sendable {
         let state = session.state
         let limit = engine.configuration.historyLimit
         // ENG-T30, QA-R7 P3: memory beyond the active token is bounded by the history limit.
-        if state.history.tokenCount > limit || state.history.entries.count > limit * History.entriesPerToken {
+        if state.history.tokenCount > limit || state.history.entries.count > History.entryLimit(forTokens: limit) {
             throw violation("ENG-T30", "history holds \(state.history.entries.count) entries", index)
         }
         // ENG-R620.

@@ -183,7 +183,7 @@ Where the owner is another track, the row says so.
 
 | ID | Requirement | Code | Tests |
 |---|---|---|---|
-| ENG-R1001 | History keeps tokens and boundaries, limit 16 | `Engine/History.swift` | `HistoryTests.historyLimitComesFromTheConfiguration`, Fuzz (bound every event) |
+| ENG-R1001 | History keeps tokens and boundaries, limit 16 | `Engine/History.swift` | `HistoryTests.historyLimitComesFromTheConfiguration`, `HistoryTests.hugeHistoryLimitNeverTraps`, Fuzz (bound every event) |
 | ENG-R1002 | Backspace re-opens the previous word across boundaries | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries`, `RegressionTests.reg07`, `editing.tsv` |
 | ENG-R1003 | Backspace continues into the re-opened token | `Engine/Reducer+Backspace.swift` | `HistoryTests.backspaceContinuesIntoTheTokenAndPastItsStart` |
 | ENG-R1004 | Empty history: passThrough | `Engine/Reducer+Backspace.swift` | `HistoryTests.emptyHistoryBackspacePassesThrough` |
