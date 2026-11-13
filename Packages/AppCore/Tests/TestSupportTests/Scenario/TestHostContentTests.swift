@@ -102,6 +102,18 @@ private func testHostFieldIDs() throws -> [String] {
         #expect(script.contains("messageHandlers") && script.contains("data-testhost-echo"))
     }
 
+    /// PLT-R340: a focus change is a hard boundary, so the edit-mode cell must keep the keyboard focus from the
+    /// first key on. The earlier page moved it from a grid cell to a hidden editor after the first key; with the
+    /// host tracking that change, "D" + "d" could only give "Dd", and the scenario passed only when the host saw the
+    /// change late (testhost.web.editModeTransition, integration-suite.md section 10.5).
+    @Test func editModeCellKeepsTheFocusFromTheFirstKey() throws {
+        let transition = try read(pagesDirectory.appendingPathComponent("edit-mode-transition.html"))
+        #expect(matches(#"class="([^"]*\btesthost-edit-mode-cell\b[^"]*)""#, in: transition).count == 1)
+        #expect(matches(#"data-testhost-field="([^"]+)""#, in: transition) == ["testhost.web.input"])
+        #expect(!transition.contains(".focus("))
+        #expect(!transition.contains(" hidden"))
+    }
+
     @Test func scriptsAndStylesCarrySPDXHeaders() throws {
         for page in try files(in: pagesDirectory) where ["js", "css", "html"].contains(page.pathExtension) {
             let head = try read(page).split(separator: "\n").prefix(5).joined(separator: "\n")
