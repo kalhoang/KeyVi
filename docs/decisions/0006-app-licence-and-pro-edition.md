@@ -73,11 +73,12 @@ wants both a free, open app and the option of a paid Pro edition later, without 
      freely reusable, a `compat/LICENSE` with a permissive licence can be added by a new decision; the inbound
      MIT grant makes that possible for contributed rules too.
 6. **Supersedes 0401.** External pull requests are accepted in every area, under the terms above. The `dco`
-   job of `.github/workflows/ci.yml` must drop its `--path` arguments so that it checks every commit of a pull
-   request from a fork (`scripts/check-dco.sh` already defaults to every path); the maintainer's own branches
-   stay unchecked so the existing history is never rewritten (CLR-R12). The `ci.yml` edit lands with this
-   decision; until then the maintainer runs `scripts/check-dco.sh` without `--path` on every external pull
-   request before merging it, and `CONTRIBUTING.md` states the merge rule rather than the CI scope.
+   job of `.github/workflows/ci.yml` (`DCO sign-off on every commit (external pull requests)`) runs
+   `scripts/check-dco.sh` without `--path` arguments, so it checks every commit of a pull request from a fork
+   (the script defaults to every path); `scripts/tests/test_docs_and_workflows.py` fails if the step gains a
+   `--path` again. The maintainer's own branches stay unchecked so the existing history is never rewritten
+   (CLR-R12). `CONTRIBUTING.md` states the merge rule (a pull request with an unsigned commit is not merged)
+   rather than the CI scope.
 
 ## Consequences
 

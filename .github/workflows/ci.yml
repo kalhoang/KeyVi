@@ -102,9 +102,10 @@ jobs:
         run: python3 -I docs/architecture/tools/sync_contracts.py --check
 
   dco:
-    name: DCO sign-off on engine commits (external pull requests)
-    # ADR 0401: external contributions to the MPL-2.0 engine package need a Developer Certificate of Origin
-    # sign-off on every commit. External means the pull request comes from a fork.
+    name: DCO sign-off on every commit (external pull requests)
+    # ADR 0006 (decision 6, supersedes 0401): external contributions are accepted in every area and need a
+    # Developer Certificate of Origin sign-off on every commit. External means the pull request comes from a fork;
+    # the maintainer's own branches stay unchecked so the existing history is never rewritten (CLR-R12).
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name != github.repository
@@ -115,13 +116,11 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Every commit touching the MPL-2.0 engine packages is signed off
+      - name: DCO sign-off on every commit (external pull requests)
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          scripts/check-dco.sh --base "$BASE_SHA" --head "$HEAD_SHA" \
-            --path Packages/VietnameseEngine --path Packages/VietnameseEngineFuzz
+        run: scripts/check-dco.sh --base "$BASE_SHA" --head "$HEAD_SHA"
 
   macos-tests:
     name: macOS lint, tests and coverage

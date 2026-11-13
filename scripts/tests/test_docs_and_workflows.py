@@ -823,6 +823,14 @@ class LicenceTests(unittest.TestCase):
         self.assertIn("0006", status)
         self.assertIn("superseded", status)
 
+    def test_adr_0006_says_ci_checks_every_external_commit(self):
+        # Decision 6 is in force: the dco job of ci.yml checks every path, so no manual stopgap is left in the record.
+        decision = " ".join(self.ADR.read_text(encoding="utf-8").split("6. **Supersedes 0401.**", 1)[1]
+                            .split("\n## ", 1)[0].split())
+        self.assertIn("DCO sign-off on every commit (external pull requests)", decision)
+        self.assertNotIn("until then", decision)
+        self.assertNotIn("must drop", decision)
+
     def test_the_dco_check_covers_every_path_by_default(self):
         script = (REPO / "scripts" / "check-dco.sh").read_text(encoding="utf-8")
         self.assertNotIn("paths=(Packages/VietnameseEngine Packages/VietnameseEngineFuzz)", script)
@@ -909,6 +917,31 @@ class ScriptSuiteTests(unittest.TestCase):
         custom = {label for label in labels if not self.HOSTED.match(label)}
         self.assertGreaterEqual(custom, {"xcode-27", "tcc-granted"}, "the label scan found too little")
         self.assertEqual(sorted(custom - declared), [], "declare these labels in scripts/actionlint.yaml")
+
+    def test_the_default_actionlint_config_mirrors_the_ci_one(self):
+        # actionlint without -config-file reads .github/actionlint.yaml; ci.yml passes scripts/actionlint.yaml.
+        def labels(path: Path) -> list[str]:
+            text = path.read_text(encoding="utf-8")
+            return sorted(re.findall(r"^\s+- ([\w.-]+)$", text.split("self-hosted-runner:", 1)[1], re.M))
+
+        default = labels(REPO / ".github" / "actionlint.yaml")
+        self.assertEqual(default, labels(REPO / "scripts" / "actionlint.yaml"))
+        self.assertEqual(default, ["tcc-granted", "xcode-27"])
+
+    def test_the_ci_dco_step_checks_every_path(self):
+        # ADR 0006 decision 6: external pull requests are accepted in every area, so the DCO step checks every commit.
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        step = ci.split("scripts/check-dco.sh", 1)[1].split("\n      - ", 1)[0]
+        self.assertNotIn("--path", step)
+
+    def test_the_release_adr_names_the_dco_check_as_ci_runs_it(self):
+        # Branch protection (ADR 0503) requires the check by its job name, so a renamed job must be renamed there too.
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        name = re.search(r"^  dco:\n    name: (.+)$", ci, re.M).group(1)
+        self.assertEqual(name, "DCO sign-off on every commit (external pull requests)")
+        adr = " ".join((REPO / "docs" / "decisions" / "0503-release-pipeline.md").read_text(encoding="utf-8").split())
+        self.assertIn(f"`{name}`", adr)
+        self.assertNotIn("sign-off on engine commits", adr)
 
 
 if __name__ == "__main__":
