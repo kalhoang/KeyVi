@@ -11,9 +11,12 @@ Every latency of the result is divided by the factor, which expresses it on the 
 The check fails (exit status 1) when, after calibration:
 - p50, p99 or p99.9 exceeds the ENG-R1230 budget by more than the tolerance (20 %, ENG-R1233);
 - the re-measured worst case of the fuzz run exceeds 1 ms by more than the tolerance;
-- p50, p99 or p99.9 is more than the tolerance slower than the baseline (QA-R14). Sub-microsecond
-  percentiles are quantised by the clock (about 42 ns on Apple silicon), so a slowdown of at most
-  `--noise-floor` nanoseconds (default 100) is never a failure;
+- p50, p99 or p99.9 is more than the tolerance slower than the baseline (QA-R14). This comparison uses
+  `latencyStable`, the percentiles of each event's fastest time over the runs (the same events replay from
+  the same states, so the minimum keeps the engine's cost and drops preemption); tail percentiles of the
+  median run move with the machine's load, not with the code. Sub-microsecond percentiles are quantised by
+  the clock (about 42 ns on Apple silicon), so a slowdown of at most `--noise-floor` nanoseconds (default
+  100) is never a failure;
 - the bundled resources, when present, load in more than 50 ms or add more than 8 MB (ENG-R1231);
 - the result does not come from a release build.
 """
@@ -53,26 +56,28 @@ def main():
     if result.get("configuration") != "release":
         failures.append("the result is not from a release build")
 
-    print(f"{'metric':<8} {'result':>12} {'calibrated':>12} {'baseline':>12} {'budget':>12}")
+    stable_key = "latencyStable" if "latencyStable" in result and "latencyStable" in baseline else "latency"
+    print(f"{'metric':<8} {'result':>12} {'calibrated':>12} {'budget':>12} {'stable':>12} {'baseline':>12}")
     for key, label in (("p50", "p50"), ("p99", "p99"), ("p999", "p99.9")):
         value = result["latency"][key]
         calibrated = value / factor
-        reference = baseline["latency"][key]
-        print(f"{label:<8} {microseconds(value):>12} {microseconds(calibrated):>12} {microseconds(reference):>12} "
-              f"{microseconds(budget[key]):>12}")
+        stable = result[stable_key][key] / factor
+        reference = baseline[stable_key][key]
+        print(f"{label:<8} {microseconds(value):>12} {microseconds(calibrated):>12} {microseconds(budget[key]):>12} "
+              f"{microseconds(stable):>12} {microseconds(reference):>12}")
         if calibrated > budget[key] * tolerance:
             failures.append(f"{label} {microseconds(calibrated)} exceeds the budget {microseconds(budget[key])} "
                             f"by more than {round((tolerance - 1) * 100)} %")
         elif calibrated > budget[key]:
             print(f"warning: {label} is over the budget within the tolerance")
         allowed = max(reference * tolerance, reference + args.noise_floor)
-        if calibrated > allowed:
-            failures.append(f"{label} {microseconds(calibrated)} is more than {round((tolerance - 1) * 100)} % "
-                            f"slower than the baseline {microseconds(reference)}")
+        if stable > allowed:
+            failures.append(f"{label} {microseconds(stable)} is more than {round((tolerance - 1) * 100)} % "
+                            f"slower than the baseline {microseconds(reference)} ({stable_key})")
 
     worst = result["worstCase"]["maxRemeasuredNanoseconds"] / factor
     print(f"{'worst':<8} {microseconds(result['worstCase']['maxRemeasuredNanoseconds']):>12} {microseconds(worst):>12} "
-          f"{microseconds(baseline['worstCase']['maxRemeasuredNanoseconds']):>12} {microseconds(budget['max']):>12}")
+          f"{microseconds(budget['max']):>12}")
     if worst > budget["max"] * tolerance:
         failures.append(f"worst case {microseconds(worst)} exceeds {microseconds(budget['max'])}")
 

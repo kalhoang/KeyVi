@@ -30,6 +30,8 @@ struct BenchmarkReport: Codable {
     struct WorkloadFigures: Codable {
         var name: String
         var latency: Percentiles
+        /// Percentiles of the per-event minimum over the runs (see `latencyStable`).
+        var stable: Percentiles
     }
 
     struct WorstCase: Codable {
@@ -76,8 +78,13 @@ struct BenchmarkReport: Codable {
     /// The first `Engine.init` of the process, which builds the generated tables.
     var engineColdInitMilliseconds: Double
     var resources: ResourcesFigures
-    /// All typist and fuzz events of a run together; the median of each percentile over the runs.
+    /// All typist and fuzz events of a run together; the median of each percentile over the runs (QA-R14).
+    /// The budget gate reads this.
     var latency: Percentiles
+    /// Percentiles of each event's fastest time over the runs. Every run replays the same events from the
+    /// same states, so the minimum removes preemption and keeps the engine's own cost; the baseline gate
+    /// reads this, because tail percentiles of a shared machine move with its load, not with the code.
+    var latencyStable: Percentiles
     var workloads: [WorkloadFigures]
     var worstCase: WorstCase
     var longTokens: [LongToken]
@@ -140,11 +147,15 @@ struct EngineBenchmark {
 
         var combinedRuns: [Percentiles] = []
         var perWorkloadRuns: [[Percentiles]] = Array(repeating: [], count: workloads.count)
+        var minimums: [[Int64]] = workloads.map { Array(repeating: Int64.max, count: $0.events.count) }
         for _ in 0..<options.runs {
             var all: [Int64] = []
             for (index, workload) in workloads.enumerated() {
                 let samples = Timing.perEvent(workload, sink: &sink)
                 perWorkloadRuns[index].append(Percentiles(samples))
+                for (event, sample) in samples.enumerated() where sample < minimums[index][event] {
+                    minimums[index][event] = sample
+                }
                 all += samples
             }
             combinedRuns.append(Percentiles(all))
@@ -163,8 +174,12 @@ struct EngineBenchmark {
                 processors: ProcessInfo.processInfo.activeProcessorCount),
             runs: options.runs, clockOverheadNanoseconds: clockOverhead, referenceNanoseconds: reference,
             engineColdInitMilliseconds: coldInit, resources: resourcesFigures,
-            latency: Percentiles.median(combinedRuns),
-            workloads: zip(workloads, perWorkloadRuns).map { .init(name: $0.name, latency: Percentiles.median($1)) },
+            latency: Percentiles.median(combinedRuns), latencyStable: Percentiles(minimums.flatMap { $0 }),
+            workloads: workloads.indices.map { index in
+                .init(
+                    name: workloads[index].name, latency: Percentiles.median(perWorkloadRuns[index]),
+                    stable: Percentiles(minimums[index]))
+            },
             worstCase: worstCase, longTokens: longTokens)
         try write(report, to: options.output)
         printSummary(report)
@@ -290,6 +305,10 @@ struct EngineBenchmark {
         print(
             "[ENG-R1230] \(latency.events) events: p50 \(us(latency.p50)), p99 \(us(latency.p99)), "
                 + "p99.9 \(us(latency.p999)), max \(us(latency.max)) (budget 5 / 25 / 100 µs)")
+        let stable = report.latencyStable
+        print(
+            "[ENG-R1233] per-event minimum over the runs: p50 \(us(stable.p50)), p99 \(us(stable.p99)), "
+                + "p99.9 \(us(stable.p999)), max \(us(stable.max)) (baseline gate)")
         for workload in report.workloads {
             let figures = workload.latency
             print(

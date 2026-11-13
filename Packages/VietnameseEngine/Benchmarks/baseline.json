@@ -7,73 +7,80 @@
     "resourcesLoadMilliseconds" : 50,
     "resourcesResidentBytes" : 8388608
   },
-  "clockOverheadNanoseconds" : 0,
+  "clockOverheadNanoseconds" : 41,
   "configuration" : "release",
-  "date" : "2026-11-13T00:41:40Z",
-  "engineColdInitMilliseconds" : 12.408708,
+  "date" : "2026-11-13T01:34:44Z",
+  "engineColdInitMilliseconds" : 10.8295,
   "latency" : {
     "events" : 1601300,
-    "max" : 262000,
-    "p50" : 125,
-    "p99" : 792,
-    "p999" : 2125
+    "max" : 3019333,
+    "p50" : 167,
+    "p99" : 1500,
+    "p999" : 11750
+  },
+  "latencyStable" : {
+    "events" : 1601300,
+    "max" : 35750,
+    "p50" : 84,
+    "p99" : 750,
+    "p999" : 1667
   },
   "longTokens" : [
     {
-      "boundaryNanoseconds" : 792,
+      "boundaryNanoseconds" : 1875,
       "keys" : "m",
       "length" : 64,
-      "maxKeyNanoseconds" : 1625,
-      "toggleNanoseconds" : 167
+      "maxKeyNanoseconds" : 2209,
+      "toggleNanoseconds" : 417
     },
     {
       "boundaryNanoseconds" : 709,
       "keys" : "ddam",
       "length" : 64,
-      "maxKeyNanoseconds" : 334,
-      "toggleNanoseconds" : 333
-    },
-    {
-      "boundaryNanoseconds" : 1292,
-      "keys" : "m",
-      "length" : 256,
       "maxKeyNanoseconds" : 375,
-      "toggleNanoseconds" : 166
+      "toggleNanoseconds" : 458
     },
     {
       "boundaryNanoseconds" : 1250,
+      "keys" : "m",
+      "length" : 256,
+      "maxKeyNanoseconds" : 458,
+      "toggleNanoseconds" : 167
+    },
+    {
+      "boundaryNanoseconds" : 1209,
       "keys" : "ddam",
       "length" : 256,
-      "maxKeyNanoseconds" : 250,
-      "toggleNanoseconds" : 792
+      "maxKeyNanoseconds" : 209,
+      "toggleNanoseconds" : 791
     },
     {
-      "boundaryNanoseconds" : 12083,
+      "boundaryNanoseconds" : 32709,
       "keys" : "m",
       "length" : 4096,
-      "maxKeyNanoseconds" : 1667,
-      "toggleNanoseconds" : 417
+      "maxKeyNanoseconds" : 709,
+      "toggleNanoseconds" : 1209
     },
     {
-      "boundaryNanoseconds" : 13792,
+      "boundaryNanoseconds" : 11917,
       "keys" : "ddam",
       "length" : 4096,
-      "maxKeyNanoseconds" : 14666,
-      "toggleNanoseconds" : 9000
+      "maxKeyNanoseconds" : 375,
+      "toggleNanoseconds" : 28417
     },
     {
-      "boundaryNanoseconds" : 290875,
+      "boundaryNanoseconds" : 287000,
       "keys" : "m",
       "length" : 100000,
-      "maxKeyNanoseconds" : 18834,
-      "toggleNanoseconds" : 8250
+      "maxKeyNanoseconds" : 1199958,
+      "toggleNanoseconds" : 8458
     },
     {
-      "boundaryNanoseconds" : 287209,
+      "boundaryNanoseconds" : 284833,
       "keys" : "ddam",
       "length" : 100000,
-      "maxKeyNanoseconds" : 11250,
-      "toggleNanoseconds" : 213250
+      "maxKeyNanoseconds" : 33625,
+      "toggleNanoseconds" : 215583
     }
   ],
   "machine" : {
@@ -82,11 +89,11 @@
     "operatingSystem" : "Version 27.2 (Build 26B123)",
     "processors" : 10
   },
-  "referenceNanoseconds" : 10326875,
+  "referenceNanoseconds" : 15688042,
   "resources" : {
     "available" : false,
-    "coldLoadMilliseconds" : 0.011875,
-    "medianLoadMilliseconds" : 0.000583,
+    "coldLoadMilliseconds" : 0.020917,
+    "medianLoadMilliseconds" : 0.000709,
     "residentBytes" : 0
   },
   "runs" : 5,
@@ -95,50 +102,78 @@
     {
       "latency" : {
         "events" : 301001,
-        "max" : 52750,
-        "p50" : 167,
-        "p99" : 916,
-        "p999" : 1583
+        "max" : 2312375,
+        "p50" : 208,
+        "p99" : 1584,
+        "p999" : 11916
       },
-      "name" : "typists-telex"
+      "name" : "typists-telex",
+      "stable" : {
+        "events" : 301001,
+        "max" : 2875,
+        "p50" : 167,
+        "p99" : 792,
+        "p999" : 1458
+      }
     },
     {
       "latency" : {
         "events" : 300299,
-        "max" : 92625,
-        "p50" : 167,
-        "p99" : 875,
-        "p999" : 2042
+        "max" : 1311625,
+        "p50" : 208,
+        "p99" : 1500,
+        "p999" : 10833
       },
-      "name" : "typists-vni"
+      "name" : "typists-vni",
+      "stable" : {
+        "events" : 300299,
+        "max" : 4375,
+        "p50" : 166,
+        "p99" : 750,
+        "p999" : 1750
+      }
     },
     {
       "latency" : {
         "events" : 500000,
-        "max" : 44875,
-        "p50" : 84,
-        "p99" : 833,
-        "p999" : 4250
-      },
-      "name" : "fuzz-telex"
-    },
-    {
-      "latency" : {
-        "events" : 500000,
-        "max" : 69083,
+        "max" : 1727041,
         "p50" : 125,
-        "p99" : 709,
-        "p999" : 1666
+        "p99" : 1542,
+        "p999" : 12083
       },
-      "name" : "fuzz-vni"
+      "name" : "fuzz-telex",
+      "stable" : {
+        "events" : 500000,
+        "max" : 35375,
+        "p50" : 83,
+        "p99" : 833,
+        "p999" : 2375
+      }
+    },
+    {
+      "latency" : {
+        "events" : 500000,
+        "max" : 761000,
+        "p50" : 125,
+        "p99" : 1416,
+        "p999" : 10667
+      },
+      "name" : "fuzz-vni",
+      "stable" : {
+        "events" : 500000,
+        "max" : 35750,
+        "p50" : 83,
+        "p99" : 708,
+        "p999" : 1250
+      }
     }
   ],
   "worstCase" : {
     "events" : 10000000,
-    "eventsOverBudgetRaw" : 0,
+    "eventsOverBudgetRaw" : 22,
     "eventsOverBudgetRemeasured" : 0,
-    "maxRawNanoseconds" : 293417,
-    "maxRemeasuredNanoseconds" : 41750,
-    "slowestEvent" : "key % other; active token 4021 keys, display 4021 bytes, 5 history tokens"
+    "maxRawNanoseconds" : 9135750,
+    "maxRemeasuredNanoseconds" : 61208,
+    "slowestEvent" : "restore toggle; active token 3966 keys, display 3966 bytes, 0 history tokens"
   }
 }

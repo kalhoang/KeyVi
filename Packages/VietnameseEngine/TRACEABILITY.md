@@ -214,7 +214,7 @@ Where the owner is another track, the row says so.
 | ENG-R1211 | Configuration change means a new engine | `PublicAPI.swift` (`let configuration`) | `PublicAPITests.configurationIsFixed` |
 | ENG-R1212 | `Orthography.analyze` for diagnostics | `Orthography/Orthography.swift` | `OrthographyAnalyzeTests` |
 | ENG-R1220 | No logging or persistence of keys or text | whole core | `StaticSourceTests.coreIsClean`, `RegressionTests.reg23` |
-| ENG-R1230 | p50 5 µs, p99 25 µs, p99.9 100 µs, worst 1 ms | whole engine; `Engine/Reducer.swift` (`prepareSharedTables`) | `engine-benchmark` + `Benchmarks/compare.py` (M4: 0.125 / 0.79 / 2.1 µs, worst 42 µs), `EngineBenchmarkTests` |
+| ENG-R1230 | p50 5 µs, p99 25 µs, p99.9 100 µs, worst 1 ms | whole engine; `Engine/Reducer.swift` (`prepareSharedTables`) | `engine-benchmark` + `Benchmarks/compare.py` (M4: p50 0.125 µs, p99 under 1.5 µs, p99.9 under 12 µs, worst under 70 µs), `EngineBenchmarkTests` |
 | ENG-R1231 | `Resources.bundled` within 50 ms and 8 MB | data track | `engine-benchmark` measures it (data not delivered yet) |
 | ENG-R1232 | Work proportional to the token, not history or lexicon | `Engine/History.swift`, `Macros/MacroSpan.swift`, `PublicAPI.swift` (`WordSet`) | `LongTokenCostTests`, `engine-benchmark` long-token figures |
 | ENG-R1233 | CI fails above budget or 20 % over baseline after calibration | `Benchmarks/compare.py`, `Benchmarks/baseline.json`, `Scripts/benchmark.sh` | CI track runs `Scripts/benchmark.sh` |

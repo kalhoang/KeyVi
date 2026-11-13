@@ -82,8 +82,9 @@ Swift Testing, organised by area under `Tests/VietnameseEngineTests`:
 | `Quality` | the fuzz campaign (13.6), long tokens to 100,000 keys, keyboard layouts, the 8.8 targets with fixture data, the API contract (ENG-R1203, ENG-R450), the REG-23 source scan, documentation and traceability checks |
 | `Corpus` | data files: the QA-R4 categories (`README.txt` lists them), the spec fixtures, `prose-sample.txt`, `known-exceptions.txt` |
 
-Current figures (Apple M4): core line coverage 99.6 %; per event p50 0.125 µs, p99 0.79 µs, p99.9 2.1 µs,
-worst case 42 µs over 10,000,000 fuzz events (budget 5 / 25 / 100 µs and 1 ms).
+Current figures (Apple M4, shared and loaded): core line coverage 99.6 %; per event, median of 5 runs,
+p50 0.125 to 0.167 µs, p99 0.8 to 1.5 µs, p99.9 2.1 to 11.8 µs; per-event minimum p50 0.084 µs, p99 0.75 µs,
+p99.9 1.67 µs; worst case 42 to 68 µs over 10,000,000 fuzz events (budget 5 / 25 / 100 µs and 1 ms).
 
 ## Decisions
 
