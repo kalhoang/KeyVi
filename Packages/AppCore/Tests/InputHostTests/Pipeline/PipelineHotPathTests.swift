@@ -54,8 +54,8 @@ private func completeJobs(_ fixture: PipelineFixture) {
 @Suite("PipelineAllocationTests") struct PipelineAllocationTests {
     /// PLT-R304, PLT-R305: 10,000 steady-state events allocate and free nothing on the tap thread outside the
     /// engine call. The worker's share (popping and destroying jobs) is excluded like the engine's.
-    @Test func steadyStateAllocatesNothingOutsideTheEngine() {
-        guard AllocationCounter.isAvailable else { return }  // ASan/TSan replace malloc: nothing to observe
+    @Test(.enabled(if: AllocationCounter.isAvailable, "sanitizer runtimes replace malloc and never call the hook"))
+    func steadyStateAllocatesNothingOutsideTheEngine() {
         let fixture = PipelineFixture()
         let pipeline = KeyPipeline(
             context: fixture.context, factory: AllocationExcludingFactory(ScriptedEngineFactory()), clock: fixture.clock

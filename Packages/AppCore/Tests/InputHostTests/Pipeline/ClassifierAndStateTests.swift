@@ -243,3 +243,26 @@ import Testing
             ))
     }
 }
+
+@Suite struct TapSnapshotsTests {
+    /// ADR 0303: the watchdog's 5 s reclamation frees retired boxes of every cell; readers keep seeing the
+    /// latest value and the tap's borrowed read sees all five cells.
+    @Test func reclaimAllKeepsTheLatestValues() {
+        let fixture = PipelineFixture()
+        fixture.publish(settings: PipelineFixtures.settings(generation: 2))
+        fixture.publish(focus: PipelineFixtures.focus(generation: 3))
+        fixture.publish(inputSource: PipelineFixtures.inputSource(generation: 4))
+        fixture.publish(secureInput: SecureInputSnapshot(generation: 5, enabled: false, holder: nil))
+        fixture.publish(lifecycle: PipelineFixtures.lifecycle(generation: 6))
+        fixture.snapshots.reclaimAll()
+        fixture.snapshots.epoch.enter()
+        let generations = fixture.snapshots.readAll { settings, focus, inputSource, secureInput, lifecycle in
+            [
+                settings.generation, focus.generation.rawValue, inputSource.generation, secureInput.generation,
+                lifecycle.generation,
+            ]
+        }
+        fixture.snapshots.epoch.exit()
+        #expect(generations == [2, 3, 4, 5, 6])
+    }
+}

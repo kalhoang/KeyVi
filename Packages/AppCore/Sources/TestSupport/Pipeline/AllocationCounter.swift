@@ -30,9 +30,9 @@ public enum AllocationCounter {
             deallocationCount.store(0, ordering: .sequentiallyConsistent)
             pauseDepth.store(0, ordering: .sequentiallyConsistent)
             countedThread.store(UInt(bitPattern: pthread_self()), ordering: .sequentiallyConsistent)
-            slot.pointee = hook
+            install(hook, in: slot)
             body()
-            slot.pointee = nil
+            install(nil, in: slot)
             countedThread.store(0, ordering: .sequentiallyConsistent)
             return Counts(
                 allocations: allocationCount.load(ordering: .sequentiallyConsistent),
@@ -44,8 +44,16 @@ public enum AllocationCounter {
     public static var isAvailable: Bool {
         measure {
             let pointer = malloc(64)
+            probeSink.store(UInt(bitPattern: pointer), ordering: .relaxed)  // escapes: the optimiser keeps the call
             free(pointer)
         }.allocations > 0
+    }
+
+    /// Not optimised and never inlined: the optimiser treats malloc and free as not reading the slot, so an
+    /// inlined store before an inlined body would be removed as dead.
+    @_optimize(none) @inline(never)
+    private static func install(_ logger: Logger?, in slot: UnsafeMutablePointer<Logger?>) {
+        slot.pointee = logger
     }
 
     public static func pause() { pauseDepth.wrappingAdd(1, ordering: .sequentiallyConsistent) }
@@ -74,6 +82,7 @@ private let countedThread = Atomic<UInt>(0)
 private let pauseDepth = Atomic<Int>(0)
 private let allocationCount = Atomic<Int>(0)
 private let deallocationCount = Atomic<Int>(0)
+private let probeSink = Atomic<UInt>(0)
 
 /// Wraps a factory so every engine call runs with allocation counting paused: the PLT-R305 test measures the
 /// pipeline, not the engine (whose own budget is ENG-R1230).

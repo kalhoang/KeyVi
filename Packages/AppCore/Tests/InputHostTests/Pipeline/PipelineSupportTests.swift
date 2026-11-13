@@ -311,8 +311,8 @@ extension RandomEventGenerator {
 }
 
 @Suite struct AllocationCounterTests {
-    @Test func countsAllocationsOnTheMeasuredThreadOnly() {
-        guard AllocationCounter.isAvailable else { return }  // sanitizer runtimes replace malloc
+    @Test(.enabled(if: AllocationCounter.isAvailable, "sanitizer runtimes replace malloc and never call the hook"))
+    func countsAllocationsOnTheMeasuredThreadOnly() {
         let counts = AllocationCounter.measure {
             let array = [Int](repeating: 1, count: 64)
             #expect(array.count == 64)
