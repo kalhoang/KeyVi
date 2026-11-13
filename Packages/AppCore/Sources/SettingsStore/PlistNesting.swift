@@ -18,12 +18,20 @@ enum PlistNesting {
         return xmlDepth(bytes, limit: limit) != nil
     }
 
-    /// Maximum nesting of `<array>` / `<dict>` elements (self-closing ones excluded), or nil above `limit`.
+    /// Maximum nesting of `<array>` / `<dict>` elements (self-closing ones excluded), or nil above `limit` or
+    /// when a comment, processing instruction, CDATA section or declaration is not terminated. Those spans are
+    /// skipped whole, so a closing tag hidden inside one cannot mask real nesting. The scan is a cheap first
+    /// filter; CFPropertyList also refuses documents nested far beyond this limit.
     static func xmlDepth(_ bytes: [UInt8], limit: Int) -> Int? {
         var depth = 0
         var deepest = 0
         var index = 0
         while let open = bytes[index...].firstIndex(of: UInt8(ascii: "<")) {
+            if let special = specialSpanEnd(bytes, at: open) {
+                guard let end = special else { return nil }
+                index = end
+                continue
+            }
             guard let close = bytes[open...].firstIndex(of: UInt8(ascii: ">")) else { break }
             let tag = bytes[(open + 1)..<close]
             let closing = tag.first == UInt8(ascii: "/")
@@ -40,6 +48,38 @@ enum PlistNesting {
             index = close + 1
         }
         return deepest
+    }
+
+    /// For markup starting at `open` that is not an element tag: `.some(end)` with the index just past it, or
+    /// `.some(nil)` when it is not terminated. Nil for an ordinary tag.
+    private static func specialSpanEnd(_ bytes: [UInt8], at open: Int) -> Int?? {
+        let rest = bytes[open...]
+        for (start, terminator) in specialSpans where rest.starts(with: start) {
+            return end(of: terminator, in: bytes, from: open + start.count)
+        }
+        guard rest.starts(with: Array("<!".utf8)) else { return nil }
+        // A declaration such as `<!DOCTYPE ...>`; an internal subset `[...]` may contain `>`.
+        guard let close = rest.firstIndex(of: UInt8(ascii: ">")) else { return .some(nil) }
+        guard let bracket = rest.firstIndex(of: UInt8(ascii: "[")), bracket < close else { return close + 1 }
+        return end(of: Array("]".utf8), in: bytes, from: bracket + 1).flatMap { after in
+            bytes[after...].firstIndex(of: UInt8(ascii: ">")).map { $0 + 1 }
+        }
+    }
+
+    private static let specialSpans: [(start: [UInt8], terminator: [UInt8])] = [
+        (Array("<!--".utf8), Array("-->".utf8)),
+        (Array("<![CDATA[".utf8), Array("]]>".utf8)),
+        (Array("<?".utf8), Array("?>".utf8)),
+    ]
+
+    /// Index just past the first `terminator` at or after `start`, nil when there is none.
+    private static func end(of terminator: [UInt8], in bytes: [UInt8], from start: Int) -> Int? {
+        guard start <= bytes.count - terminator.count else { return nil }
+        for candidate in start...(bytes.count - terminator.count)
+        where bytes[candidate..<(candidate + terminator.count)].elementsEqual(terminator) {
+            return candidate + terminator.count
+        }
+        return nil
     }
 
     private static func isWhitespace(_ byte: UInt8) -> Bool {

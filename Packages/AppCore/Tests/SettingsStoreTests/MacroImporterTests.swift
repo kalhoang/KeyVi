@@ -154,6 +154,27 @@ import Testing
         #expect(PlistNesting.isWithinLimit(ok, limit: MacroPlistParser.maxNestingDepth))
     }
 
+    /// Closing tags hidden in comments, processing instructions or CDATA do not count, so they cannot hide
+    /// real nesting from the depth scan; unterminated spans are refused.
+    @Test func xmlDepthScanSkipsCommentsInstructionsAndCDATA() {
+        let limit = MacroPlistParser.maxNestingDepth
+        for hidden in ["<!--></array>-->", "<?x ></array>?>", "<![CDATA[</array>]]>"] {
+            let xml = "<plist>" + String(repeating: "<array>" + hidden, count: 300) + "</plist>"
+            #expect(!PlistNesting.isWithinLimit(Data(xml.utf8), limit: limit), "\(hidden)")
+        }
+        for unterminated in [
+            "<plist><array><!-- </array>", "<plist><?x", "<plist><![CDATA[x", "<plist><!DOCTYPE x [ <!-- ",
+        ] {
+            #expect(PlistNesting.xmlDepth(Array(unterminated.utf8), limit: limit) == nil, "\(unterminated)")
+        }
+        let annotated = #"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "PropertyList-1.0.dtd" [ <!ENTITY a "<dict>"> ]>
+            <plist version="1.0"><!-- <array><array> --><array><dict><key>k</key><string><![CDATA[<dict>]]></string></dict></array></plist>
+            """#
+        #expect(PlistNesting.xmlDepth(Array(annotated.utf8), limit: limit) == 2)
+    }
+
     @Test func malformedBinaryPlistsAreRefused() throws {
         var data = try MacroFixtures.binaryPlist([["shortcut": "vn", "phrase": "x"]])
         #expect(!PlistNesting.isWithinLimit(Data(data.prefix(20)), limit: 16))
