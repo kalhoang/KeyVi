@@ -470,30 +470,40 @@ mkdir -p "$R/site/data"
 printf '{"releases":[{"version":"0.1.0"}]}\n' >"$R/site/data/releases.json"
 expect 1 "rename refused after a release" "$R/scripts/rename-app.sh" "Other" other
 
-if [[ $no_macos -eq 0 ]]; then
-  echo "== run-integration.sh: live harness commands need the runner opt-in (ADR 0502)"
-  I="$T/ri"
-  mkdir -p "$I/bin"
-  # A fake swift records its arguments, so nothing is built and no event is ever posted.
-  cat >"$I/bin/swift" <<'EOF'
+echo "== run-integration.sh: live harness commands need the runner opt-in (ADR 0502)"
+I="$T/ri"
+mkdir -p "$I/bin"
+# Runs on every host, including the Linux CI job (--no-macos). A fake swift records its arguments, so nothing
+# is built and no event is ever posted.
+cat >"$I/bin/swift" <<'EOF'
 #!/bin/sh
 printf 'swift %s\n' "$*"
 EOF
-  chmod +x "$I/bin/swift"
-  expect 1 "compat stops before the build without COMPAT_HARNESS_LIVE" \
-    env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
-  contains "names the missing opt-in" "COMPAT_HARNESS_LIVE=1 is not set"
-  contains "points at the runner runbook" "self-hosted-runner.md"
-  if grep -Fq "swift " "$T/out"; then ko "nothing is built without the opt-in"; else ok "nothing is built without the opt-in"; fi
-  expect 1 "soak stops without COMPAT_HARNESS_LIVE=1 exactly" \
-    env COMPAT_HARNESS_LIVE=yes PATH="$I/bin:$PATH" "$S/run-integration.sh" soak --out "$I/out"
-  expect 0 "compat runs the harness by product name with the opt-in" \
-    env COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
-  contains "agreed command line" "compat-harness run --scenarios compat/scenarios --output $I/out/compat"
-  expect 0 "a dry run needs no opt-in" env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" \
-    COMPAT_HARNESS_RUN_ARGS="run --scenarios compat/scenarios --dry-run" "$S/run-integration.sh" compat --out "$I/out"
-  contains "dry-run arguments passed through" "compat-harness run --scenarios compat/scenarios --dry-run"
+chmod +x "$I/bin/swift"
+# A fake uname lets the Darwin check pass on the Linux CI runner; the opt-in gate needs no macOS tool.
+cat >"$I/bin/uname" <<'EOF'
+#!/bin/sh
+printf '%s\n' "${FAKE_UNAME:-Darwin}"
+EOF
+chmod +x "$I/bin/uname"
+expect 1 "integration layers refuse to run off macOS" \
+  env FAKE_UNAME=Linux COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
+contains "names the macOS requirement" "integration layers need macOS"
+expect 1 "compat stops before the build without COMPAT_HARNESS_LIVE" \
+  env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
+contains "names the missing opt-in" "COMPAT_HARNESS_LIVE=1 is not set"
+contains "points at the runner runbook" "self-hosted-runner.md"
+if grep -Fq "swift " "$T/out"; then ko "nothing is built without the opt-in"; else ok "nothing is built without the opt-in"; fi
+expect 1 "soak stops without COMPAT_HARNESS_LIVE=1 exactly" \
+  env COMPAT_HARNESS_LIVE=yes PATH="$I/bin:$PATH" "$S/run-integration.sh" soak --out "$I/out"
+expect 0 "compat runs the harness by product name with the opt-in" \
+  env COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
+contains "agreed command line" "compat-harness run --scenarios compat/scenarios --output $I/out/compat"
+expect 0 "a dry run needs no opt-in" env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" \
+  COMPAT_HARNESS_RUN_ARGS="run --scenarios compat/scenarios --dry-run" "$S/run-integration.sh" compat --out "$I/out"
+contains "dry-run arguments passed through" "compat-harness run --scenarios compat/scenarios --dry-run"
 
+if [[ $no_macos -eq 0 ]]; then
   echo "== macOS release tooling (ad-hoc signed fake app)"
   M="$T/mac"
   mkdir -p "$M"
