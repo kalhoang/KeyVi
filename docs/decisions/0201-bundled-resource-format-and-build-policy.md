@@ -65,7 +65,10 @@
   Tier A syllable (rule L8 restores them, so ENG-R870 needs them as `en` rows) and words with a digit typed in
   VNI; a word that a boundary splits into tokens is not a candidate. The candidate file gains the columns
   `method`, `attested` and `merge_as`, and `--merge` adds `en / proposed` for English words with an unattested
-  display and for tech-always words, `vi / unreviewed` otherwise.
+  display and for tech-always words, `vi / unreviewed` otherwise. The generated `en` rows go to a last block
+  (`# [generated en rows]`) and carry their reason as a token (`[generated:unattested]`,
+  `[generated:tech-always]`); `build`, and therefore `check`, fails when the reason no longer holds (the display
+  became attested, the word left the lexicon or the tech-always list).
 - **Decision 10 superseded**: `Package.swift` now makes `lexicon-builder` a dependency of
   `VietnameseEngineDataTests`; its logic is unit-tested in-process (`@testable import lexicon_builder`) and the
   CLI tests keep driving the executable, found through `Bundle(for:)`.

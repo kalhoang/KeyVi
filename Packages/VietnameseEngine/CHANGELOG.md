@@ -49,7 +49,12 @@ separately from the app (spec/04-quality-release.md QA-R27).
 - In-process unit tests of `lexicon-builder` (`VietnameseEngineDataTests` depends on it).
 - `lexicon-builder ambiguity-candidates` lists words whose display is a valid but unattested Tier A syllable
   and words with a digit typed in VNI, with `method`, `attested` and `merge_as` columns; `--merge` adds
-  `en / proposed` rows where rule L8 or the tech-always list restores the word.
+  `en / proposed` rows where rule L8 or the tech-always list restores the word, in a separate
+  `# [generated en rows]` block, with a `[generated:unattested]` or `[generated:tech-always]` token in the
+  note; `build` and `check` fail when that reason no longer holds.
+- `ProseCorpusCheck.run(style:)`: the ENG-T20 typists run in both tone styles; the gate accepts a 5.2
+  placement difference only when the typed token is the source spelled in the typist's own style.
+- `GeneratedCorpusGateTests.exclusionTotal` prints the ENG-R870 exclusions over all shards.
 - `Scripts/coverage.py` also reports the line coverage of the data target and `lexicon-builder`.
 
 ### Changed
@@ -58,10 +63,10 @@ separately from the app (spec/04-quality-release.md QA-R27).
   longer lands on the first keystroke (ENG-R1230).
 - Committing or toggling a long literal token costs a copy, not per-character work: a 100,000-key token
   commits in 0.3 ms instead of 5.7 ms (REG-02, ENG-R1232).
-- Bundled data rebuilt with the real engine and retuned for the 8.8 gates (docs/decisions/0202): 1,953
-  attested syllables, 622 ambiguity rows, eight commands and two Roman numerals moved to or added to the
-  tech-always list, one-letter lexicon entries other than `a` and `i` dropped (40,205 words), 51 ENG-T11
-  exceptions pending review.
+- Bundled data rebuilt with the real engine and retuned for the 8.8 gates (docs/decisions/0202): 1,954
+  attested syllables, 619 ambiguity rows, six commands moved to and the Roman numeral `xix` added to the
+  tech-always list, `a3` and `a5` removed from it (VNI `ạ`, `ả`), one-letter lexicon entries other than `a`
+  and `i` dropped (40,205 words), 53 ENG-T11 exceptions pending review.
 - `engine-benchmark` uses the bundled resources and replays the prose corpus with the three typists (ENG-T40);
   `Benchmarks/baseline.json` re-recorded for the new workloads.
 - The resource loader proves the uniqueness of byte-sorted lists without building a second set (ENG-R1231).
@@ -70,5 +75,8 @@ separately from the app (spec/04-quality-release.md QA-R27).
 
 - `Orthography` is `Sendable`, as ENG-R1203 requires of every public type.
 - `lexicon-builder` checked NFC with String `==`, which accepted decomposed text; it compares scalars now.
+- Review of the integration branch: `ĩ` (ầm ĩ) is attested and `ix` is no longer a tech-always word, so
+  Telex users can type it; VNI users can type `ạ` and `ả` again; `chown` and `ef` are code-only again
+  (`chơn`, `è` are Vietnamese).
 - `lexicon-builder ambiguity-candidates` listed `h2o` and `m4a` (a digit ends the token in Telex) with the
   displays `o` and `a`.
