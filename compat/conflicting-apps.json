@@ -1,0 +1,36 @@
+{
+  "$schema": "schema/conflicting-apps.schema.json",
+  "schemaVersion": 1,
+  "apps": [
+    {
+      "name": "GoTiengViet",
+      "bundleIds": ["com.trankynam.GoTiengViet"],
+      "note": "Seeded in commit d3852b3 (2026-11-13) without a recorded source; the product owner confirms it."
+    },
+    {
+      "name": "OpenKey",
+      "bundleIds": ["com.tuyenmai.openkey"],
+      "note": "Seeded in commit d3852b3 (2026-11-13) without a recorded source; the product owner confirms it."
+    },
+    {
+      "name": "EVKey",
+      "bundleIds": ["com.lamquangminh.evkey"],
+      "note": "Seeded in commit d3852b3 (2026-11-13) without a recorded source; the product owner confirms it."
+    },
+    {
+      "name": "XKey",
+      "bundleIds": [],
+      "note": "Bundle ID to be read by the product owner from the running app; contributors must not inspect it."
+    },
+    {
+      "name": "PHTV",
+      "bundleIds": [],
+      "note": "Bundle ID to be read by the product owner from the running app or public vendor documentation."
+    },
+    {
+      "name": "Gõ Nhanh",
+      "bundleIds": [],
+      "note": "Bundle ID to be read by the product owner from the running app or public vendor documentation."
+    }
+  ]
+}
