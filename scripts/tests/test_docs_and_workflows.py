@@ -4,6 +4,7 @@ Run: python3 -I scripts/tests/test_docs_and_workflows.py"""
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import plistlib
 import re
@@ -1550,6 +1551,35 @@ class CocCocTests(unittest.TestCase):
                 self.assertIn(needle, table_row)
         found = " ".join(self.ADR.split("## Found while applying the decisions", 1)[1].split("\n## ", 1)[0].split())
         self.assertNotIn("Cốc Cốc", found, "the identifier is confirmed now")
+
+
+class SecureInputSupportPageTests(unittest.TestCase):
+    """Decision 0005 Q38 and Q40 (PLT-R397): the support page's Secure Input list quotes the sentences the menu shows
+    (Status.xcstrings) for iTerm2 and for browsers, word for word, so the two cannot drift apart again."""
+
+    STATUS = json.loads((REPO / "App" / "Resources" / "Localization" / "Status.xcstrings").read_text(encoding="utf-8"))
+    # Site language, the label the site puts in bold, the catalog key and the label the catalog sentence starts with.
+    CASES = (
+        ("vi", "Trình duyệt", "secureInputHint.browser.passwordField", "Trình duyệt: "),
+        ("en", "Browsers", "secureInputHint.browser.passwordField", "Browser: "),
+        ("vi", "iTerm2", "secureInputHint.iterm2.secureKeyboardEntry", ""),
+        ("en", "iTerm2", "secureInputHint.iterm2.secureKeyboardEntry", ""),
+    )
+
+    def page_sentence(self, language: str, label: str) -> str:
+        page = (REPO / "site" / "content" / language / "support.mjs").read_text(encoding="utf-8")
+        prefix = f"<li><strong>{label}</strong>: "
+        lines = [line.strip() for line in page.splitlines() if line.strip().startswith(prefix)]
+        self.assertEqual(len(lines), 1, f"one {label} item on the {language} support page")
+        item = lines[0].removeprefix(prefix).removesuffix("</li>")
+        return html.unescape(re.sub(r"</?(em|strong)>", "", item))
+
+    def test_the_page_quotes_the_menu_sentences(self):
+        for language, label, key, catalog_label in self.CASES:
+            with self.subTest(language=language, label=label):
+                catalog = self.STATUS["strings"][key]["localizations"][language]["stringUnit"]["value"]
+                self.assertTrue(catalog.startswith(catalog_label))
+                self.assertEqual(self.page_sentence(language, label), catalog.removeprefix(catalog_label))
 
 
 class W7bCopyTests(unittest.TestCase):
