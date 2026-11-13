@@ -58,6 +58,29 @@ public struct ResolvedParams: Sendable, Hashable, Codable {
 
     public static let maximumDelayUs = 50_000
     public static let maximumUnicodeChunk = 20
+
+    /// The 5.4 `defaults.params` plus the section 4 defaults for keys the defaults block omits.
+    public static let defaults = ResolvedParams(
+        unicodeChunk: 1, interEventDelayUs: 0, postDeleteSettleUs: 0, firstEditDelayUs: 0, inlineCompletion: .none,
+        allowMultiCharEvents: false, allowSplit: false, longTextThreshold: 64, restoreDelayMs: 400,
+        verifyAfterEdit: false)
+
+    public init(
+        unicodeChunk: Int, interEventDelayUs: Int, postDeleteSettleUs: Int, firstEditDelayUs: Int,
+        inlineCompletion: InlineCompletionMode, allowMultiCharEvents: Bool, allowSplit: Bool, longTextThreshold: Int,
+        restoreDelayMs: Int, verifyAfterEdit: Bool
+    ) {
+        self.unicodeChunk = unicodeChunk
+        self.interEventDelayUs = interEventDelayUs
+        self.postDeleteSettleUs = postDeleteSettleUs
+        self.firstEditDelayUs = firstEditDelayUs
+        self.inlineCompletion = inlineCompletion
+        self.allowMultiCharEvents = allowMultiCharEvents
+        self.allowSplit = allowSplit
+        self.longTextThreshold = longTextThreshold
+        self.restoreDelayMs = restoreDelayMs
+        self.verifyAfterEdit = verifyAfterEdit
+    }
 }
 
 public struct ResolvedFeatures: Sendable, Hashable, Codable {
@@ -65,6 +88,16 @@ public struct ResolvedFeatures: Sendable, Hashable, Codable {
     public var macros: Bool
     public var englishRestore: Bool
     public var restoreHotkey: Bool
+
+    /// 5.4: all true except `autoCapitalize`.
+    public static let defaults = ResolvedFeatures(autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
+
+    public init(autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool) {
+        self.autoCapitalize = autoCapitalize
+        self.macros = macros
+        self.englishRestore = englishRestore
+        self.restoreHotkey = restoreHotkey
+    }
 }
 
 /// The "compatibility profile" of 03-product.md: winning rule's action applied over `defaults`.
@@ -89,8 +122,36 @@ public struct ResolvedDecision: Sendable, Hashable {
     public var matchedURL: Bool
     /// Set when two rules tied at runtime (PLT-R521); the caller records a health event.
     public var tieLoser: RuleID?
-    /// The winning rule as raw JSON, for the diagnostics report of the reported app (PLT-R541).
-    public var ruleJSON: JSONValue?
+    /// The winning user override, when `source == .user`. The diagnostics report never embeds it raw: ShellCore
+    /// projects it to the typed `DiagnosticsReport.ReportedOverride` (PLT-R541, PLT-R1203, ADR 0312).
+    public var userOverride: Rule?
+
+    public init(
+        rule: RuleID?, source: DecisionSource, specificity: Int, strategy: InjectionStrategy, params: ResolvedParams,
+        fallback: [InjectionStrategy], defaultMode: FirstSeenMode, requireTextFocus: RequireTextFocus,
+        verifyReentry: VerifyReentry, axEnable: AXEnableMode, overlay: Bool, requiresUserOptIn: Bool,
+        engineContext: EngineContextKind, features: ResolvedFeatures, matchedTitle: Bool = false,
+        matchedURL: Bool = false, tieLoser: RuleID? = nil, userOverride: Rule? = nil
+    ) {
+        self.rule = rule
+        self.source = source
+        self.specificity = specificity
+        self.strategy = strategy
+        self.params = params
+        self.fallback = fallback
+        self.defaultMode = defaultMode
+        self.requireTextFocus = requireTextFocus
+        self.verifyReentry = verifyReentry
+        self.axEnable = axEnable
+        self.overlay = overlay
+        self.requiresUserOptIn = requiresUserOptIn
+        self.engineContext = engineContext
+        self.features = features
+        self.matchedTitle = matchedTitle
+        self.matchedURL = matchedURL
+        self.tieLoser = tieLoser
+        self.userOverride = userOverride
+    }
 }
 
 /// Compiled, immutable rule set: shipped document plus user overrides plus opted-in IDs.

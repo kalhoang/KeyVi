@@ -22,7 +22,9 @@ no requirement missing, none duplicated.
 | E | Engine track's own tests (corpus, property, fuzz) |
 
 "Workstream" names the implementing workstream (W1-x, W2-x), "skeleton (done)" for what this design commit
-already delivers, or another track (engine, engine data, docs, CI and release, site). A **Pa** mark means the
+already delivers, or another track (engine, engine data, docs, CI and release, site). Revised 2026-11-13 after the
+design review: W1-F is split into W1-F1 (pipeline) and W1-F2 (tap, watchdogs, lifecycle state machine); W1-H
+moved to wave 2a as W2-E1; the former W2-E is W2-E2 (wave 2b). A **Pa** mark means the
 item can only be finished by Pa by hand on his Mac or with his accounts; nothing automated attempts it (no
 synthetic events, taps, permission or input-source changes, credentials).
 
@@ -41,7 +43,21 @@ synthetic events, taps, permission or input-source changes, credentials).
 | Diagnostics run by hand | PLT-R810, PLT-R905, PLT-R1201, PLT-R1204, PLT-R1205 | Latency probe, typing trace with HUD and review, guided test on a local inline-completion page |
 | Accounts and data | PRD-R59, QA-R12, QA-R23, QA-R25, PLT-R205, PRD-R9 | Donation account details and QR images; self-hosted runner; branch protection; login item and icon behaviour on his menu bar |
 | Provenance | CLR-R13 | Similarity review by someone allowed to read the other code bases |
+| Artwork | CLR-R7, PRD-R9, PRD-R10, PRD-R40, PRD-R59 | Approve or replace the placeholder status-icon glyphs (drawn in code, `App/Sources/Shell/StatusGlyph.swift`), the app icon (the asset catalog is empty), onboarding illustrations (placeholders marked VERIFY) and the donation QR images; record each asset's source |
+| Brand data | PRD-R47, PRD-R49, QA-R51, QA-R60, PLT-R903 | Fill `APP_SUPPORT_EMAIL` and `APP_REPOSITORY_URL` in `Config/Brand.xcconfig` (empty hides the email and GitHub buttons); choose the final name before the first public release (the rename appends the old folder to `APP_LEGACY_STORAGE_FOLDER_NAMES`, ADR 0307) |
+| Interim verification | every row listed under "Interim verification" below | Until the self-hosted runner exists: the 20-minute checklist in workstreams.md before each alpha build |
 
+
+
+## Interim verification (until the self-hosted runner exists)
+
+The rows below are verified by I (TestHost integration) or C (compatibility scenario), which need the
+self-hosted runner (open question 3/5 for Pa). Until it exists their verification is **M (interim)**: Pa runs
+the checklist in [workstreams.md](workstreams.md#interim-verification-before-the-self-hosted-runner-exists)
+before each alpha build, and hosted CI runs `compat-harness --dry-run` over every scenario. When the runner is
+online, W2-E2 turns them back into I/C and this section is deleted.
+
+PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, PLT-R320, PLT-R322, PLT-R323, PLT-R324, PLT-R330, PLT-R341, PLT-R353, PLT-R361, PLT-R371, PLT-R381, PLT-R386, PLT-R387, PLT-R398B, PLT-R410, PLT-R420, PLT-R421, PLT-R422, PLT-R530, PLT-R730, PLT-R802, PLT-R803, PLT-R821, PLT-R906, PLT-R1008, PLT-R1108, PRD-R13, PRD-R19, PRD-R22, PRD-R27, PRD-R30, PRD-R44, PRD-R52, QA-R10, QA-R11, QA-R12, QA-R16, QA-R21, QA-R40, QA-R42
 
 ## 02-platform.md (PLT-R)
 
@@ -53,96 +69,96 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R104 | Sparkle only runtime dependency, exact pin, resolved file committed | `project.yml`, `Config/Package.resolved` | L | skeleton (done); W2-D |  |
 | PLT-R105 | Universal binary | `Config/Release.xcconfig` | R | skeleton (done); release track (`lipo` check) |  |
 | PLT-R106 | macOS 15 minimum, no API newer than 14 outside Synchronization | `Package.swift`, `project.yml` | L | all; CI track (availability lint) |  |
-| PLT-R107 | Test matrix macOS 15, 26, 27 plus next beta | self-hosted runner, `compat/matrix.json` | M, V | W2-E; Pa | **Pa** |
+| PLT-R107 | Test matrix macOS 15, 26, 27 plus next beta | self-hosted runner, `compat/matrix.json` | M, V | W2-E2; Pa | **Pa** |
 | PLT-R108 | Licence note for rules/injection reuse | `docs/decisions/` (Pa) | D | Pa decision |  |
 | PLT-R201 | One process, no daemons, extensions or IMKit bundle | `App` target | I, R | W2-A; release track (bundle check) |  |
 | PLT-R202 | Logical components | ARCHITECTURE.md section 2 | D | skeleton (done) |  |
-| PLT-R203 | Thread map | `InputHost/Tap`, `Injection/Worker`, `InputHost/Focus`, `RealtimeSupport/Threads` | U, I | W1-F, W1-D, W1-E |  |
-| PLT-R204 | Nothing outlives the process | `InputHost/Tap` | I (kill -9 on runner) | W2-E |  |
+| PLT-R203 | Thread map | `InputHost/Tap`, `Injection/Worker`, `InputHost/Focus`, `RealtimeSupport/Threads` | U, I | W1-F2, W1-D, W1-E |  |
+| PLT-R204 | Nothing outlives the process | `InputHost/Tap` | I (kill -9 on runner) | W2-E2 |  |
 | PLT-R205 | Launch at login via SMAppService.mainApp | `ShellCore/Services.swift` `SMAppServiceLoginItem` | U, M | W1-G; W2-A (onboarding checkbox wiring); Pa | **Pa** |
 | PLT-R206 | No IMKit bundle in v1, honest fallback copy | `project.yml` (SpikeIMK not embedded), `Status` table | R, D | skeleton; W1-G |  |
-| PLT-R207 | Constraints for a future IMKit bundle | `SpikeIMK/**` | D | W1-H |  |
-| PLT-R208 | Single-transformer invariant | `InputHost/Pipeline` (built-in Vietnamese source pause) | P | W1-F |  |
-| PLT-R210 | Composition reset on pause/fail-open/focus transitions | `InputHost/Pipeline/KeyPipeline.swift` | P | W1-F |  |
+| PLT-R207 | Constraints for a future IMKit bundle | `SpikeIMK/**` | D | skeleton (done, `SpikeIMK` never taps or posts) |  |
+| PLT-R208 | Single-transformer invariant | `InputHost/Pipeline` (built-in Vietnamese source pause) | P | W1-F2 |  |
+| PLT-R210 | Composition reset on pause/fail-open/focus transitions | `InputHost/Pipeline/KeyPipeline.swift` | P | W1-F1, W1-F2 |  |
 | PLT-R211 | Menu and icon reflect state and pause reason | `ShellCore/StatusPresentation.swift`, `App/Sources/Shell` | U, M | W1-G; W2-F; Pa (VoiceOver) | **Pa** |
-| PLT-R301 | Session-level head-insert default tap, event mask | `InputHost/Tap/TapThread.swift` | U, I, V | W1-F; VERIFY (a) echo delivery (b) coexistence on hardware | **Pa** |
-| PLT-R302 | No second or listen-only tap | `InputHost/Tap` | L, U | W1-F |  |
-| PLT-R303 | Dedicated tap thread with only the tap source | `TapThread` | I (instrumented) | W1-F |  |
-| PLT-R304 | Allowed operations in the callback | `InputHost/Pipeline` | U, I (instrumented 30 min) | W1-F |  |
-| PLT-R305 | Forbidden operations in the callback | `InputHost/Pipeline`, `RealtimeSupport` | I (debug assertion layer), L | W1-F |  |
-| PLT-R306 | Callback watchdog 250 ms, fail-open, retry 2 s | `TapWatchdog`, `CallbackWatchdog`, ADR 0309 | U, I (test hook) | W1-F |  |
-| PLT-R307 | Engine contract | `InputHost/Engine/EngineBridge.swift`, ADR 0306 | U, E | W1-F; W2-A (catalog from bundled resources); engine track |  |
-| PLT-R310 | Decision pipeline steps 1-10 | `KeyPipeline` | P, U | W1-F |  |
-| PLT-R311 | FIFO worker, hold/replay while in flight | `KeyPipeline`, `Injection/Queue.swift`, `Worker.swift` | P | W1-F, W1-D; W2-A (combined suite) |  |
-| PLT-R312 | Event conservation invariant | `KeyPipeline`, `TestSupport/Pipeline` ledger, ADR 0308 | P (100,000 sequences) | W1-F; W2-A (combined suite with the real worker) |  |
-| PLT-R313 | Consumed keyDown implies consumed keyUp | `KeyPipeline`, `WorkerFeedback` | P | W1-F, W1-D |  |
+| PLT-R301 | Session-level head-insert default tap, event mask | `InputHost/Tap/TapThread.swift`, `TapEventMask.standard` (scroll on), ADR 0313 | U, I, V | W1-F2; VERIFY (a) echo delivery (b) coexistence on hardware | **Pa** |
+| PLT-R302 | No second or listen-only tap | `InputHost/Tap` | L, U | W1-F2 |  |
+| PLT-R303 | Dedicated tap thread with only the tap source | `TapThread` | I (instrumented) | W1-F2 |  |
+| PLT-R304 | Allowed operations in the callback | `InputHost/Pipeline` | U, I (instrumented 30 min) | W1-F1 |  |
+| PLT-R305 | Forbidden operations in the callback | `InputHost/Pipeline`, `RealtimeSupport` | I (debug assertion layer), L | W1-F1 |  |
+| PLT-R306 | Callback watchdog 250 ms, fail-open, retry 2 s | `TapWatchdog`, `CallbackWatchdog`, ADR 0309, ADR 0309 (recovery only after the callback returned) | U, I (test hook) | W1-F2 |  |
+| PLT-R307 | Engine contract | `InputHost/Engine/EngineBridge.swift`, ADR 0306 | U, E | W1-F1; W2-A (catalog from bundled resources); engine track |  |
+| PLT-R310 | Decision pipeline steps 1-10 | `KeyPipeline` | P, U | W1-F1 |  |
+| PLT-R311 | FIFO worker, hold/replay while in flight | `KeyPipeline`, `Injection/Queue.swift`, `Worker.swift`, ADR 0311 | P | W1-F1, W1-D; W2-A (combined suite) |  |
+| PLT-R312 | Event conservation invariant | `KeyPipeline`, `TestSupport/Pipeline` ledger, ADR 0308, ADR 0308, ADR 0311 | P (100,000 sequences) | W1-F1; W2-A (combined suite with the real worker) |  |
+| PLT-R313 | Consumed keyDown implies consumed keyUp | `KeyPipeline`, `WorkerFeedback` | P | W1-F1, W1-D |  |
 | PLT-R314 | Liveness ceiling 150 ms / 256 jobs, flush | `InjectionWorker` | P, U | W1-D; W2-A |  |
 | PLT-R315 | Worker never waits on main or tap | `InjectionWorker` | U, review | W1-D |  |
 | PLT-R316 | Focus-generation discard | `InjectionWorker`, `CurrentFocusGeneration` | P | W1-D; W2-A |  |
-| PLT-R317 | Clicks during a paced job are not held | `KeyPipeline` | P | W1-F |  |
-| PLT-R320 | privateState source, explicit flags, suppression 0 | `CGEventPoster` | I, V (default suppression on 15/26/27) | W1-D; W2-E | **Pa** |
-| PLT-R321 | Marker tag + sequence; physical events untouched | `EventMarker`, `KeyPipeline` | U, P | W1-D, W1-F |  |
+| PLT-R317 | Clicks during a paced job are not held | `KeyPipeline` | P | W1-F1 |  |
+| PLT-R320 | privateState source, explicit flags, suppression 0 | `CGEventPoster` | I, V (default suppression on 15/26/27) | W1-D; W2-E2 | **Pa** |
+| PLT-R321 | Marker tag + sequence; physical events untouched | `EventMarker`, `KeyPipeline` | U, P | W1-D, W1-F1 |  |
 | PLT-R322 | Post at kCGSessionEventTap | `CGEventPoster` | I | W1-D |  |
-| PLT-R323 | Echo liveness, posting broken after 3 misses | `EchoTracker`, `KeyPipeline` | U, I, V | W1-D, W1-F; VERIFY echo delivery | **Pa** |
+| PLT-R323 | Echo liveness, posting broken after 3 misses | `EchoTracker`, `KeyPipeline`, ADR 0311 | U, I, V | W1-D (skeleton seam), W1-F1; VERIFY echo delivery (else `InFlightPolicy.untilPosted`) | **Pa** |
 | PLT-R324 | Replays copy keycode, flags, autorepeat, keyboard type, Unicode | `KeyEventRecord`, `CGEventPoster.replay` | U, I | W1-D |  |
-| PLT-R330 | Tap disabled by system: re-enable, reset, replay, notice | `KeyPipeline`, `InputHostController` | P, I (test hook) | W1-F |  |
-| PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F |  |
-| PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F |  |
-| PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F, W1-E; Pa | **Pa** |
-| PLT-R340 | Hard boundaries list | `KeyPipeline` | P, U | W1-F |  |
-| PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F; W2-E |  |
+| PLT-R330 | Tap disabled by system: re-enable, reset, replay, notice | `KeyPipeline`, `InputHostController` | P, I (test hook) | W1-F2 |  |
+| PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
+| PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F2 |  |
+| PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
+| PLT-R340 | Hard boundaries list | `KeyPipeline` | P, U | W1-F1 |  |
+| PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F1; W2-E2 |  |
 | PLT-R342 | Re-entry verification with bounded AX read | `InjectionWorker` (`verifyBeforeApply`) | U | W1-D |  |
 | PLT-R343 | Bounded AX reads (64 characters) | `AXFocusedFieldAccess`, `SystemAXProvider` | U, L | W1-D, W1-E |  |
-| PLT-R350 | Shift/Caps via table; Command/Control/Option chords | `KeyClassifier` | U | W1-F |  |
-| PLT-R351 | Autorepeat handling | `KeyPipeline` | U, P | W1-F |  |
-| PLT-R352 | User backspace reported to engine | `KeyPipeline` | P | W1-F |  |
-| PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline` | U, I | W1-E, W1-F; W2-E |  |
-| PLT-R354 | Dead keys pass and reset | `UCKeyTranslateLayoutBuilder`, `KeyClassifier` | U | W1-E, W1-F |  |
-| PLT-R355 | Keypad digits are not VNI tone keys | `KeyClassifier` (`fromKeypad`), engine | U, E | W1-F; engine track |  |
-| PLT-R356 | Navigation keys never edit | `KeyPipeline` | P | W1-F |  |
+| PLT-R350 | Shift/Caps via table; Command/Control/Option chords | `KeyClassifier` | U | W1-F1 |  |
+| PLT-R351 | Autorepeat handling | `KeyPipeline` | U, P | W1-F1 |  |
+| PLT-R352 | User backspace reported to engine | `KeyPipeline` | P | W1-F1 |  |
+| PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline` | U, I | W1-E, W1-F1; W2-E2 |  |
+| PLT-R354 | Dead keys pass and reset | `UCKeyTranslateLayoutBuilder`, `KeyClassifier` | U | W1-E, W1-F1 |  |
+| PLT-R355 | Keypad digits are not VNI tone keys | `KeyClassifier` (`fromKeypad`), engine | U, E | W1-F1; engine track |  |
+| PLT-R356 | Navigation keys never edit | `KeyPipeline` | P | W1-F1 |  |
 | PLT-R360 | UCKeyTranslate tables per layout, 4 states | `InputSource/InputSources.swift`, `LayoutTable` | U (system layouts read by ID) | W1-E |  |
-| PLT-R361 | Layout-produced letters (QWERTZ, AZERTY, Dvorak) | `LayoutTable`, `KeyPipeline` | U, I | W1-E, W1-F; W2-E |  |
+| PLT-R361 | Layout-produced letters (QWERTZ, AZERTY, Dvorak) | `LayoutTable`, `KeyPipeline` | U, I | W1-E, W1-F1; W2-E2 |  |
 | PLT-R362 | Layout ID in diagnostics | `ReportAssembler` | U | W1-G |  |
-| PLT-R363 | Debug cross-check with event Unicode string | `KeyPipeline` (debug), `TapLogCode.layoutMismatch` | U, V | W1-F | **Pa** |
+| PLT-R363 | Debug cross-check with event Unicode string | `KeyPipeline` (debug), `TapLogCode.layoutMismatch` | U, V | W1-F1 | **Pa** |
 | PLT-R370 | Observe TIS selection change, publish snapshot | `InputSourceMonitor` | U | W1-E |  |
-| PLT-R371 | Pause for input methods and non-ASCII layouts | `InputSourceMonitor`, `HostStateResolver` | U, I (Japanese source on runner) | W1-E, W1-F; W2-E |  |
+| PLT-R371 | Pause for input methods and non-ASCII layouts | `InputSourceMonitor`, `HostStateResolver` | U, I (Japanese source on runner) | W1-E, W1-F1; W2-E2 |  |
 | PLT-R372 | Pause for a built-in Vietnamese source | `InputSourceMonitor` | U, M | W1-E; Pa | **Pa** |
 | PLT-R373 | Optional layout-to-mode binding | `InputSourceMonitor`, `LayoutModeBinding` | U | W1-E; W2-B (UI) |  |
 | PLT-R380 | AX thread observers on focused and overlay apps | `FocusTracker` | U (fake AX) | W1-E |  |
 | PLT-R381 | System-wide AX focus is authoritative | `FocusTracker` | U, C (Spotlight, Raycast) | W1-E; Pa | **Pa** |
-| PLT-R382 | Idle revalidation flag | `KeyPipeline`, `FocusTracker` | U | W1-F, W1-E |  |
+| PLT-R382 | Idle revalidation flag | `KeyPipeline`, `FocusTracker` | U | W1-F1, W1-E |  |
 | PLT-R383 | Focus snapshot contents | `InputHost/Snapshots/Snapshots.swift` | U | W1-E |  |
 | PLT-R384 | AX 100 ms timeout and circuit breaker | `AXCircuitBreaker`, `SystemAXProvider` | U | W1-E |  |
 | PLT-R385 | Never AXEnhancedUserInterface; AXManualAccessibility only by rule | `SystemAXProvider` | L, U, V | W1-E | **Pa** |
-| PLT-R386 | requireTextFocus gating | `HostDecisionMapper`, `HostStateResolver` | U, C (design apps) | W1-E, W1-F; Pa | **Pa** |
-| PLT-R387 | Secure fields always pass through | `FocusTracker`, `HostStateResolver` | U, I (password field) | W1-E, W1-F; W2-E |  |
+| PLT-R386 | requireTextFocus gating | `HostDecisionMapper`, `HostStateResolver` | U, C (design apps) | W1-E, W1-F1; Pa | **Pa** |
+| PLT-R387 | Secure fields always pass through | `FocusTracker`, `HostStateResolver` | U, I (password field) | W1-E, W1-F1; W2-E2 |  |
 | PLT-R388 | Snapshot via one atomic reference | `RealtimeSupport/SnapshotCell.swift`, ADR 0303 | U, TSan | skeleton (done); W1-A |  |
 | PLT-R390 | Per-app memory keyed by focus owner, precedence | `AppModeMemory` | U | W1-E |  |
-| PLT-R391 | Mode in effect before the next key | `FocusTracker`, `KeyPipeline` toggle sequence | P | W1-E, W1-F |  |
+| PLT-R391 | Mode in effect before the next key | `FocusTracker`, `KeyPipeline` toggle sequence | P | W1-E, W1-F1 |  |
 | PLT-R392 | LRU 1,000, writes debounced 5 s, bundle and mode only | `AppModeMemory`, `SettingsStore.recordAppModes` | U | W1-E, W1-B |  |
 | PLT-R393 | SHA-256 of executable path for bundle-less processes | `ProcessIdentityProvider`, `BundleKey.executable` | U | W1-E |  |
 | PLT-R395 | Poll IsSecureEventInputEnabled every 2 s and on menu open | `SecureInputMonitor` | U | W1-E |  |
 | PLT-R396 | Likely holder from IOConsoleUsers kCGSSessionSecureInputPID | `SystemSecureInputProbe` | U (parser), M | W1-E; Pa (iTerm2, browser) | **Pa** |
 | PLT-R397 | Paused(secureInput) with holder hint, no modals | `SecureInputMonitor`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R398 | Never call EnableSecureEventInput | all | L (grep) | W1-E |  |
-| PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F, W1-E |  |
-| PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline` | P, I, C | W1-F; W2-E; Pa (iTerm2) | **Pa** |
+| PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F1, W1-E |  |
+| PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline` | P, I, C | W1-F1; W2-E2; Pa (iTerm2) | **Pa** |
 | PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table | U, M, V | W1-C, W1-G; Pa | **Pa** |
-| PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | W1-H; Pa runs it | **Pa** |
+| PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | skeleton (done, runnable spike); Pa runs it | **Pa** |
 | PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring) |  |
 | PLT-R401 | EditJob contents | `Injection/Jobs.swift` | U | W1-D |  |
 | PLT-R402 | Minimal edits (common prefix trim) | `EditMinimizer` | U | W1-D |  |
 | PLT-R403 | NFC insertions, grapheme delete counts | `InjectionWorker` | U | W1-D |  |
 | PLT-R404 | One grapheme per event; chunk up to 20 units | `UnicodeChunker` | U | W1-D |  |
-| PLT-R405 | Unicode events use the triggering keycode | `JobKeyCodes`, `KeyPipeline`, strategies | U | W1-F, W1-D |  |
+| PLT-R405 | Unicode events use the triggering keycode | `JobKeyCodes`, `KeyPipeline`, strategies | U | W1-F1, W1-D |  |
 | PLT-R406 | No modifier flags except where required | strategies | U | W1-D |  |
 | PLT-R407 | Backspace key; forward delete banned | strategies, `RulesLinter` | U, L | W1-D, W1-C |  |
 | PLT-R408 | Timing parameters, caps, split | strategies, `ResolvedParams` | U | W1-D, W1-C |  |
 | PLT-R409 | Pacing on inject thread with absolute deadlines | `InjectionWorker`, `MachClock.sleep` | U | W1-D |  |
 | PLT-R410 | Verification modes echo/axReadback/human | `InjectionWorker` | U, I | W1-D; W2-C (human) |  |
-| PLT-R420 | Inline completion: axSelection | strategies | U, C | W1-D; W2-E |  |
-| PLT-R421 | Inline completion: placeholder | strategies | U, C | W1-D; W2-E |  |
-| PLT-R422 | Placeholder gate: 1,000-edit test, no broad rules | `RulesLinter`, compat scenario | L, C | W1-C; W2-E |  |
+| PLT-R420 | Inline completion: axSelection | strategies | U, C | W1-D; W2-E2 |  |
+| PLT-R421 | Inline completion: placeholder | strategies | U, C | W1-D; W2-E2 |  |
+| PLT-R422 | Placeholder gate: 1,000-edit test, no broad rules | `RulesLinter`, compat scenario | L, C | W1-C; W2-E2 |  |
 | PLT-R460 | paste only opt-in or long text | strategies, rules `requiresUserOptIn` | U | W1-D, W1-C |  |
 | PLT-R461 | Full clipboard preservation | `PasteboardPreserver`, `NSPasteboardAccess` | U (unique pasteboard) | W1-D |  |
 | PLT-R462 | Paste failure modes in UI; NSPasteboard threading VERIFY | `NSPasteboardAccess`, Apps pane copy | V, D | W1-D, W2-B | **Pa** |
@@ -150,7 +166,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R501 | No per-app branches; bundle-ID literal lint | all code; `ReverseDNSConstants.swift` allowlist | L | W1-C; CI track (`scripts/lint.sh`) |  |
 | PLT-R502 | No localized-string matching; titlePattern limits | `RulesLoader`, `RuleSet` | U | W1-C |  |
 | PLT-R503 | Schema-validated rules, embedded fallback | `RulesLoader`, `EmbeddedRules`, `compat/schema/rules.schema.json` | U, L | W1-C |  |
-| PLT-R504 | No remote rule fetching | `RulesLoader` | L (egress test) | W1-C; W2-E |  |
+| PLT-R504 | No remote rule fetching | `RulesLoader` | L (egress test) | W1-C; W2-E2 |  |
 | PLT-R505 | Provenance and test reference per shipped rule | `RulesLinter` | L | W1-C |  |
 | PLT-R506 | reviewBy within 12 months; release block after 30 days | `RulesLinter` | L | W1-C |  |
 | PLT-R510 | Engine fingerprinting | `EngineFingerprinter`, bundle inspector | U, V | W1-C, W1-E | **Pa** |
@@ -158,10 +174,10 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R521 | Identical signatures fail CI; runtime tie | `RulesLinter`, `RuleSet` | U, L | W1-C |  |
 | PLT-R522 | User overrides outrank shipped rules | `RuleSet` | U | W1-C |  |
 | PLT-R523 | Resolution on ax thread on focus change only | `FocusTracker` | U | W1-E |  |
-| PLT-R530 | Scenario file format | `TestSupport/Scenario`, `compat/schema/scenario.schema.json`, `compat/scenarios/` | U, C | W1-H |  |
+| PLT-R530 | Scenario file format | `TestSupport/Scenario`, `compat/schema/scenario.schema.json`, `compat/scenarios/` | U, C | W2-E1 |  |
 | PLT-R531 | Manual scenarios need fresh matrix rows | `RulesLinter`, `compat/matrix.json` | L, M | W1-C; Pa | **Pa** |
 | PLT-R540 | Override mechanism and scopes | `CompatibilityModeChoice`, `GuidedTestRunner`, rule import | U | W1-G, W2-B, W2-C |  |
-| PLT-R541 | rule-overrides.json listed, exported, in reports | `SettingsStore`, `ReportAssembler` | U | W1-B, W1-G |  |
+| PLT-R541 | rule-overrides.json listed, exported, in reports | `SettingsStore`, `ReportAssembler`, `ReportedOverride`, ADR 0312 | U | W1-B, W1-G |  |
 | PLT-R701 | Accessibility required; macOS 27 label VERIFY | `PermissionProbe`, `SystemPanes.json` | U, M, V | W1-E, W1-G; Pa | **Pa** |
 | PLT-R702 | Input Monitoring only if the OS demands it | `PermissionMonitor` | U, V | W1-E; Pa | **Pa** |
 | PLT-R703 | No other permissions | `App/Info.plist`, no entitlements | R, L | skeleton; release track |  |
@@ -171,8 +187,8 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R712 | Relaunch offer for Input Monitoring | `OnboardingWindowController` | M | W1-G; Pa | **Pa** |
 | PLT-R720 | Permission states and stale detection | `PermissionMonitor` | U | W1-E |  |
 | PLT-R721 | Polling cadence 2 s / 30 s / on events | `PermissionMonitor` | U | W1-E |  |
-| PLT-R730 | Fail-open within the same callback | `KeyPipeline`, `InputHostController`, `InjectionWorker` | P, I (revocation on runner), M | W1-F; W2-E; Pa | **Pa** |
-| PLT-R731 | Recreate tap when permission returns | `InputHostController` | U, M | W1-F; Pa | **Pa** |
+| PLT-R730 | Fail-open within the same callback | `KeyPipeline`, `InputHostController`, `InjectionWorker` | P, I (revocation on runner), M | W1-F1, W1-F2; W2-E2; Pa | **Pa** |
+| PLT-R731 | Recreate tap when permission returns | `InputHostController` | U, M | W1-F2; Pa | **Pa** |
 | PLT-R740 | Re-grant guidance, tccutil reset for own bundle | `PermissionResetting`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R741 | Never suggest sudo or bundle-less tccutil | `Status`/`Onboarding` copy | D | W1-G |  |
 | PLT-R750 | Developer ID signing, hardened runtime, notarized | `Config/Signing.xcconfig`, `Config/Release.xcconfig`, release scripts | R, M | release track; Pa (credentials) | **Pa** |
@@ -181,22 +197,22 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R760 | MDM / PPPC documentation | docs | D | docs track |  |
 | PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` | U | W1-A |  |
 | PLT-R802 | Signposts around callback, job, AX | `PlatformSignposts` | U, I | W1-A |  |
-| PLT-R803 | No steady-state timer faster than 2 s | `TapWatchdog`, monitors, ADR 0309 | U, I (wakeups) | W1-F, W1-E |  |
+| PLT-R803 | No steady-state timer faster than 2 s | `TapWatchdog`, monitors, ADR 0309 | U, I (wakeups) | W1-F2, W1-E |  |
 | PLT-R810 | Built-in latency probe | `LatencyProbeDriver`, `DiagnosticsWindowController` | U, M | W2-C; Pa runs it | **Pa** |
-| PLT-R820 | Hosted CI microbenchmarks with fakes | pipeline benchmark in `Tests/InputHostTests/Pipeline` | L | W1-F; CI track |  |
-| PLT-R821 | Self-hosted metrics T2-T6, C1, C2, M1, M2 | `compat-harness` | I | W2-E |  |
-| PLT-R822 | Regression gate and baselines | CI, baselines file | L | CI track; W2-E |  |
-| PLT-R901 | Data classes; content never in logs | Diagnostics, all modules | L (canary) | W1-A; W2-E |  |
+| PLT-R820 | Hosted CI microbenchmarks with fakes | pipeline benchmark in `Tests/InputHostTests/Pipeline` | L | W1-F1; CI track |  |
+| PLT-R821 | Self-hosted metrics T2-T6, C1, C2, M1, M2 | `compat-harness` | I | W2-E2 |  |
+| PLT-R822 | Regression gate and baselines | CI, baselines file | L | CI track; W2-E2 |  |
+| PLT-R901 | Data classes; content never in logs | Diagnostics, all modules | L (canary) | W1-A; W2-E2 |  |
 | PLT-R902 | Typed logging API; interpolation lint | `Diagnostics/LogEvent.swift`, `Redaction.swift` | U, L | W1-A; CI track (lint) |  |
-| PLT-R903 | Log location, permissions, rotation, retention | `DiagnosticsLogger`, `LogStorePolicy` | U | W1-A |  |
+| PLT-R903 | Log location, permissions, rotation, retention | `DiagnosticsLogger`, `LogStorePolicy` | U | W1-A; W1-B (legacy folder move, ADR 0307) |  |
 | PLT-R904 | No verbose/debug content mode | Diagnostics | D, L | W1-A |  |
 | PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController` | U, M | W1-A, W2-C; Pa | **Pa** |
-| PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle | L, I (13.7) | W2-D, W2-E; CI track |  |
+| PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle | L, I (13.7) | W2-D, W2-E2; CI track |  |
 | PLT-R907 | No translation feature in v1 | n/a | D | n/a |  |
 | PLT-R908 | Hardened runtime, no entitlements, not sandboxed | `project.yml`, `Config/Release.xcconfig` | R | skeleton; release track |  |
 | PLT-R909 | No unauthenticated IPC; URL scheme opens Settings only | `URLSchemeRouter`, `AppEnvironment.handle(url:)` | U | W1-G, W2-A |  |
 | PLT-R910 | Supply chain: resolved file, pins, SHA-256 | `Config/Package.resolved`, workflows | L | skeleton; CI track |  |
-| PLT-R911 | No retained engine state or raw keys | `KeyPipeline` | U, review | W1-F |  |
+| PLT-R911 | No retained engine state or raw keys | `KeyPipeline` | U, review | W1-F1 |  |
 | PLT-R912 | Settings import treated as untrusted | `SettingsStore.previewImport` | U (malformed and fuzzed files) | W1-B |  |
 | PLT-R913 | Reports include only the reported app memory | `ReportAssembler` | U | W1-G |  |
 | PLT-R1001 | Settings location and four files | `SettingsStore`, `StorageLocation`, `Brand` | U | W1-B |  |
@@ -206,7 +222,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R1005 | Pure chained migrations with backups and fixtures | `MigrationChain` | U (fixtures) | W1-B |  |
 | PLT-R1006 | Never wipe: quarantine, backup, notice | `SettingsStore` | U | W1-B |  |
 | PLT-R1007 | Newer schema read-only | `SettingsStore` | U | W1-B |  |
-| PLT-R1008 | Live application via snapshots | `InputHostController.apply` | U, I | W1-F, W2-A |  |
+| PLT-R1008 | Live application via snapshots | `InputHostController.apply` | U, I | W1-F1, W2-A |  |
 | PLT-R1009 | Crash-loop safe mode | `LaunchGuard`, `AppEnvironment` | U | W1-B, W2-A |  |
 | PLT-R1010 | Export and import | `SettingsStore` export/import, Settings UI | U, M | W1-B, W2-B |  |
 | PLT-R1011 | iCloud sync later, opt-in | n/a in v1 | D | n/a |  |
@@ -218,12 +234,12 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PLT-R1105 | Daily check, background download, install on quit, idle relaunch | `UpdaterController` | U, M | W2-D; Pa | **Pa** |
 | PLT-R1106 | Phased rollout, critical flag only for security | appcast scripts | R | release track |  |
 | PLT-R1107 | Rollback procedure | runbooks | M (drill) | docs/release tracks; Pa | **Pa** |
-| PLT-R1108 | Update tests before publication | self-hosted runner (13.5) | I, M | W2-E; Pa | **Pa** |
+| PLT-R1108 | Update tests before publication | self-hosted runner (13.5) | I, M | W2-E2; Pa | **Pa** |
 | PLT-R1109 | minimumSystemVersion and minimumAutoupdateVersion | appcast scripts | R | release track |  |
 | PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew` | R | release track |  |
 | PLT-R1201 | Diagnostics window contents and buttons | `DiagnosticsWindowController` | U (view model), M | W2-C; Pa | **Pa** |
 | PLT-R1202 | Environment report contents | `DiagnosticsReport`, `ReportAssembler` | U | W1-A, W1-G |  |
-| PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A |  |
+| PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |
 | PLT-R1204 | User sees exact report before copying | `BugReportController` | M | W2-C; Pa | **Pa** |
 | PLT-R1205 | "This app misbehaves" guided flow | `GuidedTestRunner`, diagnostics UI | U, M | W2-C; Pa | **Pa** |
 | PLT-R1206 | Metadata-only health events | `HealthEventLog` | U | W1-A |  |
@@ -233,8 +249,8 @@ synthetic events, taps, permission or input-source changes, credentials).
 
 | ID | Requirement (short) | Owner module / file | Verification | Workstream | Pa |
 |---|---|---|---|---|---|
-| PRD-R0 | Any failing P0 test blocks every release | release gate; P0 tests in pipeline suite and engine corpus | R, P, E | CI/release tracks; W1-F; engine track |  |
-| PRD-R1 | Tier 1 top jobs checked every release | `compat/matrix.json`, `compat/SCRIPT.md` | M | Pa; W2-E | **Pa** |
+| PRD-R0 | Any failing P0 test blocks every release | release gate; P0 tests in pipeline suite and engine corpus | R, P, E | CI/release tracks; W1-F1; engine track |  |
+| PRD-R1 | Tier 1 top jobs checked every release | `compat/matrix.json`, `compat/SCRIPT.md` | M | Pa; W2-E2 | **Pa** |
 | PRD-R2 | v1.0 scope | whole product | D | all |  |
 | PRD-R3 | v1.0 non-goals | whole product | D | all |  |
 | PRD-R4 | Stage transitions recorded as decisions | `docs/decisions/` | D | Pa |  |
@@ -246,13 +262,13 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PRD-R10 | Icon states with VoiceOver labels | `StatusPresentation`, `Menu` table, assets | U, M (VoiceOver) | W1-G; W2-F; Pa | **Pa** |
 | PRD-R11 | Menu layout | `MenuModel`, `StatusItemController` | U, M | W1-G |  |
 | PRD-R12 | Switch HUD 600 ms, non-activating, Reduce Motion | `SwitchHUDController` | U, M | W1-G; W2-F; Pa | **Pa** |
-| PRD-R13 | Menu opens within 100 ms and never blocks typing | `StatusItemController` | I, M | W1-G; W2-E |  |
+| PRD-R13 | Menu opens within 100 ms and never blocks typing | `StatusItemController` | I, M | W1-G; W2-E2 |  |
 | PRD-R14 | Toggle tap recogniser rules | `HotkeyRecognizer` | U | W1-E |  |
 | PRD-R15 | Recorder accepts listed chords in any press order | `HotkeyRecorder` | U | W1-E; W2-B (UI) |  |
 | PRD-R16 | Warn about macOS shortcuts, never refuse | `HotkeyRecorder.conflict`, Settings UI | U | W1-E, W2-B |  |
 | PRD-R17 | Globe/fn toggle only if reliable (VERIFY) | `HotkeyRecognizer` (deferred) | V | W1-E (deferred) | **Pa** |
 | PRD-R18 | Only two configurable hotkeys | `UserSettings`, `HotkeyRole` | U | W1-B, W1-E |  |
-| PRD-R19 | Remembered mode applies to the first key after activation | `FocusTracker`, `KeyPipeline` | P, I | W1-E, W1-F; W2-E |  |
+| PRD-R19 | Remembered mode applies to the first key after activation | `FocusTracker`, `KeyPipeline` | P, I | W1-E, W1-F1; W2-E2 |  |
 | PRD-R20 | Manual toggle updates memory | `AppModeMemory.recordToggle` | U | W1-E |  |
 | PRD-R21 | Rule precedence ignore > EN > VI > memory > default | `AppModeMemory.resolve` | U | W1-E |  |
 | PRD-R22 | Keyed by bundle; overlays have their own memory | `FocusTracker` | U, C (Spotlight over Terminal) | W1-E; Pa | **Pa** |
@@ -260,10 +276,10 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PRD-R24 | At most five panes, Advanced disclosure | Settings UI | M | W2-B |  |
 | PRD-R25 | One-line explanation per setting | `Settings` table | M, D | W2-B |  |
 | PRD-R26 | Reset per pane and global with confirmation and export offer | `SettingsStore.reset`, Settings UI | U, M | W1-B, W2-B |  |
-| PRD-R27 | Changes apply immediately without losing the word | `InputHostController.apply` | U, I | W1-F, W2-A |  |
+| PRD-R27 | Changes apply immediately without losing the word | `InputHostController.apply` | U, I | W1-F1, W2-A |  |
 | PRD-R28 | Settings is a normal window, frame remembered | `SettingsWindowController` | M | W2-B |  |
 | PRD-R29 | Macro shortcut and expansion rules | `MacroValidator`, engine `MacroTable` | U, E | W1-B; engine track |  |
-| PRD-R30 | Expansion triggers and case adaptation | engine (ENG-R1103), host macros feature | E, I | engine track; W2-E |  |
+| PRD-R30 | Expansion triggers and case adaptation | engine (ENG-R1103), host macros feature | E, I | engine track; W2-E2 |  |
 | PRD-R31 | Macro list features | Macros pane | M | W2-B |  |
 | PRD-R32 | Macro import formats with preview | `MacroImporter`, import sheet | U, M | W1-B, W2-B |  |
 | PRD-R33 | Macros never sent; count only in diagnostics | `DiagnosticsReport.SettingsSection.macroCount` | U | W1-A, W1-G |  |
@@ -277,7 +293,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PRD-R41 | Closing before permission: slashed icon, resume | `OnboardingFlow`, `StatusLine` | U, M | W1-G |  |
 | PRD-R42 | Not shown again; permission-lost variant | `OnboardingFlow` | U | W1-G |  |
 | PRD-R43 | Error states: what, which, one action | `StatusLine`, `Status` table | U, M | W1-G |  |
-| PRD-R44 | Fail open when permission missing or tap down | `KeyPipeline`, `InputHostController` | P, I | W1-F; W2-E |  |
+| PRD-R44 | Fail open when permission missing or tap down | `KeyPipeline`, `InputHostController` | P, I | W1-F2; W2-E2 |  |
 | PRD-R45 | Diagnostics allowed fields only | `DiagnosticsReport` | U | W1-A |  |
 | PRD-R46 | Content-free health log; trace the only content artefact | `HealthEventLog`, `CaptureController` | U | W1-A |  |
 | PRD-R47 | Bug report sheet | `BugReportComposer`, `BugReportController` | U, M | W1-G, W2-C |  |
@@ -285,7 +301,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PRD-R49 | Works without GitHub; practice field button | `BugReportController` | M | W2-C |  |
 | PRD-R50 | Sparkle standard driver configuration | `UpdaterController` | U, M | W2-D; Pa | **Pa** |
 | PRD-R51 | Release notes in interface language | appcast, release scripts | M | release track; W2-D |  |
-| PRD-R52 | After update: everything intact, nothing shown | `SettingsStore`, 13.5 update tests | I, M | W2-E; Pa | **Pa** |
+| PRD-R52 | After update: everything intact, nothing shown | `SettingsStore`, 13.5 update tests | I, M | W2-E2; Pa; W1-B (legacy folder move) | **Pa** |
 | PRD-R53 | Channel switch without downgrade | `UpdaterController`, About pane | U, M | W2-D, W2-B |  |
 | PRD-R54 | Critical updates shown immediately, dismissible | appcast | R | release track |  |
 | PRD-R55 | No Sparkle system profiling | `App/Info.plist` `SUEnableSystemProfiling` | L | skeleton (done) |  |
@@ -299,8 +315,8 @@ synthetic events, taps, permission or input-source changes, credentials).
 | PRD-R63 | Language change applies without restart | `Localizer`, `InterfaceLanguageModel`, ADR 0310 | U, M | W1-G |  |
 | PRD-R64 | Pane names match macOS language and version | `SystemPaneTable` | U, V | W1-G; Pa (Vietnamese system) | **Pa** |
 | PRD-R65 | Date, number, version formats follow the selected language | `Localizer` | U | W1-G |  |
-| PRD-R66 | VoiceOver labels and hints, HUD announcement | all UI | M (VoiceOver) | W2-F; Pa | **Pa** |
-| PRD-R67 | Keyboard navigation, contrast, Reduce Motion | all UI | M | W2-F; Pa | **Pa** |
+| PRD-R66 | VoiceOver labels and hints, HUD announcement | all UI | M (VoiceOver) | W1-G, W2-B, W2-C, W2-D (labels, hints, keyboard in their windows); W2-F (audit) | **Pa** |
+| PRD-R67 | Keyboard navigation, contrast, Reduce Motion | all UI | M | W1-G, W2-B, W2-C, W2-D (labels, hints, keyboard in their windows); W2-F (audit) | **Pa** |
 | PRD-R68 | VoiceOver with injected edits (VERIFY) | n/a (observation) | V, M | W2-F; Pa | **Pa** |
 | PRD-R69 | No silent reading of other apps' data | `MacroImporter` (user-chosen files only) | D, L | W1-B |  |
 | PRD-R70 | Tolerant importers | `MacroImporter` | U | W1-B |  |
@@ -325,18 +341,18 @@ synthetic events, taps, permission or input-source changes, credentials).
 | QA-R7 | Engine property tests P1-P7 | engine package | E | engine track |  |
 | QA-R8 | Fuzzing per PR and nightly | CI | E, L | engine track; CI track |  |
 | QA-R9 | Fuzz seed corpus stored and minimised | engine package | E | engine track |  |
-| QA-R10 | Test host app with listed fields | `TestHost/**` | I | W1-H |  |
-| QA-R11 | Integration tests through the real pipeline | `compat/scenarios/testhost.*`, `compat-harness` | I | W2-E |  |
-| QA-R12 | Integration tests on a self-hosted runner | self-hosted runner | I, M | W2-E; CI track; Pa (runner) | **Pa** |
+| QA-R10 | Test host app with listed fields | `TestHost/**` | I | W2-E1 |  |
+| QA-R11 | Integration tests through the real pipeline | `compat/scenarios/testhost.*`, `compat-harness` | I | W2-E2 |  |
+| QA-R12 | Integration tests on a self-hosted runner | self-hosted runner | I, M | W2-E2; CI track; Pa (runner) | **Pa** |
 | QA-R13 | Self-hosted runner only for main and tags | workflows | L | CI track |  |
-| QA-R14 | Performance gates and baselines | CI, pipeline benchmark | L | CI track; W1-F; W2-E |  |
+| QA-R14 | Performance gates and baselines | CI, pipeline benchmark | L | CI track; W1-F1; W2-E2 |  |
 | QA-R15 | perf-baseline label | process | D | CI track |  |
-| QA-R16 | Nightly 1,000,000-keystroke soak | `compat-harness` | I | W2-E |  |
+| QA-R16 | Nightly 1,000,000-keystroke soak | `compat-harness` | I | W2-E2 |  |
 | QA-R17 | Two compatibility files, matrix fields | `compat/rules.json`, `compat/matrix.json` | L | W1-C |  |
 | QA-R18 | Standard compatibility script | `compat/SCRIPT.md` | D | docs track |  |
 | QA-R19 | Verification cadence; 120-day expiry | `MatrixStatusResolver` | U | W1-C |  |
 | QA-R20 | Community verifications via issue form | issue forms | D | docs track |  |
-| QA-R21 | New profile needs a test-host reproduction | `TestHost`, `compat/scenarios` | C | W1-H, W2-E |  |
+| QA-R21 | New profile needs a test-host reproduction | `TestHost`, `compat/scenarios` | C | W2-E1, W2-E2 |  |
 | QA-R22 | Workflows | `.github/workflows` | L | CI track |  |
 | QA-R23 | Pinned Xcode, newest macOS tested | CI | L, M | CI track; Pa (self-hosted) | **Pa** |
 | QA-R24 | Supply-chain hygiene | `Config/Package.resolved`, workflows | L | skeleton; CI track |  |
@@ -355,7 +371,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 | QA-R37 | Same script updates appcast, site and changelog | release scripts | R | release track |  |
 | QA-R38 | Rollback steps | runbooks | M | docs track; Pa | **Pa** |
 | QA-R39 | Rehearsed rollback before public beta | runbooks | M | Pa | **Pa** |
-| QA-R40 | Upgrade test before every release | self-hosted runner or VM | I, M | W2-E; Pa | **Pa** |
+| QA-R40 | Upgrade test before every release | self-hosted runner or VM | I, M | W2-E2; Pa | **Pa** |
 | QA-R41 | Versioned migrations with backups and fixtures | `MigrationChain`, fixtures | U | W1-B |  |
 | QA-R42 | Self-check on first launch after update | `AppEnvironment`, `InputHostController` | U, I | W2-A |  |
 | QA-R43 | Issue forms | `.github/ISSUE_TEMPLATE` | D | docs track |  |

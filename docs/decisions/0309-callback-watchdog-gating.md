@@ -15,7 +15,17 @@
 - Separately, the tap-enabled check (`CGEventTapIsEnabled`, PLT-R331) runs every 5 s with leeway and on wake,
   session activation and permission change.
 - A trip disables the tap with `CGEventTapEnable(false)` from the utility queue (keys flow), records a
-  `watchdog` health event, enters `failOpen(watchdog)` and retries after 2 s.
+  `watchdog` health event and enters `failOpen(watchdog)`. Nothing else touches the tap thread: it may be stuck
+  inside the callback (an engine loop, a bug), and a stuck thread can neither re-enable nor stop its tap.
+- Recovery (amended 2026-11-13, design review finding 7): 2 s after the trip the watchdog checks
+  `CallbackWatchdog.isInsideCallback`. If the callback has returned, the lifecycle re-enables the same tap (or
+  stops and recreates it on a fresh `TapThread` only after the old thread's run loop exited, `TapControl.isRunning
+  == false`). If it has not returned, the host stays in `failOpen(callbackStuck)`: no second tap and no second
+  tap thread, because a new reader on the same `ReaderEpoch` and snapshot cells would break the single-reader
+  reclamation argument of [0303](0303-snapshot-publication.md) and PLT-R302. The status line says the app needs to
+  be reopened (`StatusLine.Action.reopenApp`); keys keep flowing because the tap is disabled.
+- `TapWatchdog` also calls `TapSnapshots.reclaimAll()` on its 5 s tick, so retired snapshot boxes are freed even
+  when no writer publishes.
 
 ## Consequences
 

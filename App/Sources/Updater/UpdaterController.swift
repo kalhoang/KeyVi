@@ -34,6 +34,8 @@ final class UpdaterController: NSObject, UpdaterControlling {
     func checkForUpdates() { unimplemented() }
 }
 
+/// Sparkle calls its delegate on the main thread, so the `nonisolated` requirements read main-actor state
+/// through `MainActor.assumeIsolated` (ADR 0313). Values crossing out of it must be Sendable.
 extension UpdaterController: SPUUpdaterDelegate {
     /// `["beta"]` only after the user opted in (PLT-R1101, PRD-R53).
     nonisolated func allowedChannels(for updater: SPUUpdater) -> Set<String> { unimplemented() }

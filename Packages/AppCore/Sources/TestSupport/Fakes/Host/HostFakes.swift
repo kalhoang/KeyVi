@@ -5,7 +5,6 @@ public import CompatRules
 public import Foundation
 public import InputHost
 public import Injection
-public import CoreGraphics
 
 public final class FakeAXProvider: AXProvider, Sendable {
     public init() { unimplemented() }
@@ -70,14 +69,6 @@ public final class FakeWorkspaceEvents: WorkspaceEvents {
     public func observe(_ handler: @escaping @MainActor @Sendable (WorkspaceEvent) -> Void) -> any ObservationToken {
         unimplemented()
     }
-}
-
-/// Never creates a real tap; records enable/disable and lets tests invoke the callback path directly.
-public final class FakeEventTapFactory: EventTapFactory, Sendable {
-    public init(failCreation: Bool = false) { unimplemented() }
-    public func makeTap(mask: TapEventMask, callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?)
-        -> CFMachPort?
-    { unimplemented() }
 }
 
 public final class FakeBundleInspector: BundleInspector, Sendable {

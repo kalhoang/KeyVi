@@ -30,3 +30,24 @@
   (PLT-R201).
 - Before the first public build Pa must generate the EdDSA key pair and fill `SPARKLE_PUBLIC_ED_KEY`
   (manual step, listed in docs/architecture/traceability.md).
+
+## Release notes language (amendment 2026-11-13, design review finding 15)
+
+Sparkle picks an appcast item's `sparkle:releaseNotesLink xml:lang` by the macOS language, not by the app's
+interface language (D18), so a Mac running in English with the app in Vietnamese would show English notes. To
+satisfy PRD-R51 regardless of locale, each release publishes ONE bilingual release-notes page (Vietnamese
+first, then English, each short, led by user-visible fixes by app name) and the appcast item links only that
+page, without `xml:lang` variants. Request to the release scripts track (`scripts/publish-release`, appcast
+generation): emit the single bilingual `releaseNotesLink`.
+
+## Runbook note: filling `SPARKLE_PUBLIC_ED_KEY`
+
+`SUPublicEDKey` in `App/Info.plist` is `$(SPARKLE_PUBLIC_ED_KEY)` from `Config/Sparkle.xcconfig`, empty in the
+skeleton. Before the first build that is given to anyone, Pa runs Sparkle's `generate_keys` (from the Sparkle
+2.10.1 distribution, `bin/generate_keys`) on his Mac. It stores the private key in the login Keychain and prints
+the public key; Pa pastes the public key as the value of `SPARKLE_PUBLIC_ED_KEY`, commits that one line, and
+keeps an offline backup of the private key (`generate_keys -x <file>`, then store the file offline). The private
+key never enters the repository, CI or any other tool session (QA-R32, QA-R33). The project docs track links this
+note from its release runbook; a Release build with an empty key must fail `scripts/verify-release.sh`
+(request to the release scripts track).
+

@@ -77,6 +77,9 @@ public enum MainNotice: Sendable {
     case secureInputResumedByKey(generation: UInt64)
     case tapDisabled(byTimeout: Bool)
     case learning(LearningSignal)  // ENG-R861, memory only
+    /// First echo miss of a run: the utility queue checks `CGPreflightPostEventAccess()` (ADR 0311).
+    case echoMissed
+    /// Three consecutive misses: the tap already failed open in this callback (PLT-R730).
     case postingBroken
     case keyboardTypeSeen(UInt32)
 }

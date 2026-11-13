@@ -24,8 +24,13 @@
   box) or when the counter has moved on since (the callback that might hold the box has ended). Both the
   exchange and the epoch operations are sequentially consistent, which gives the Dekker-style ordering this
   argument needs. Boxes are therefore always released on a writer thread, never on the tap.
-- Retired boxes are reclaimed on the next publish and by the utility watchdog; the list stays bounded because
-  the tap never stays inside a callback for long (PLT-R306 trips at 250 ms).
+- Retired boxes are reclaimed on the next publish and every 5 s by `TapWatchdog`, which calls
+  `TapSnapshots.reclaimAll()` (all five cells); the list stays bounded because the tap never stays inside a
+  callback for long (PLT-R306 trips at 250 ms).
+- Exactly one reader thread exists per `ReaderEpoch`. After a watchdog trip whose callback never returns, no
+  second tap thread is created on the same epoch or cells (a stuck odd counter would block reclamation and two
+  readers would break the argument above); the host stays in `failOpen(callbackStuck)` until the app is
+  reopened ([0309](0309-callback-watchdog-gating.md)).
 - Other readers (main, ax, utility) call `load()`, which takes the writer-side `Mutex` for O(1) work and
   returns a strong copy. The inject worker never reads snapshot cells: everything it needs travels inside the
   job, plus the `CurrentFocusGeneration` atomic.

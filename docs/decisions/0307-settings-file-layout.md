@@ -43,3 +43,24 @@
   `~/Library/Preferences/<bundle id>.plist`, `~/Library/Caches/<bundle id>/`, and Sparkle's
   `~/Library/Caches/<bundle id>/org.sparkle-project.Sparkle/` (PLT-R1012; exact paths owned by the release
   scripts track).
+
+## Amendment 2026-11-13: moving folders after a rename (design review finding 19)
+
+The product name is temporary and the folder is derived from it, so a rename before the public release would
+leave alpha testers (Pa and about ten people) without their settings and macros. Decision:
+
+- `Config/Brand.xcconfig` gains `APP_LEGACY_STORAGE_FOLDER_NAMES` (semicolon-separated, newest first), copied
+  into Info.plist as `AppLegacyStorageFolderNames` and read by `Brand.legacyStorageFolderNames`.
+  `scripts/rename-app.sh` (release scripts track) appends the old `Brand.folderName(displayName:slug:)` value
+  there on every rename (request recorded in the platform report).
+- At launch, before `SettingsStore.load`, `LegacyStorageMigrator.migrate` (SettingsStore, W1-B) renames
+  `<base>/<legacy>` to `<base>/<current>` for `~/Library/Application Support` and `~/Library/Logs` when the
+  current folder does not exist. It never merges or deletes; if both exist, the current one wins and a notice
+  is logged.
+- A rename also changes the bundle ID, which TCC treats as a new app: testers must grant Accessibility again
+  (onboarding shows screen 2), and the user defaults domain (launch guard, redaction salt, window frames) starts
+  empty, which is harmless. Whether Sparkle can update across a bundle-ID change is VERIFY before a rename
+  ships to testers; if not, testers reinstall from the DMG once.
+- Rejected alternative: use the slug as the folder name from day one. It deviates from PLT-R903 ("folder =
+  app name unless non-ASCII") for every user to solve a one-time alpha problem.
+

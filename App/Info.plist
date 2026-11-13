@@ -39,7 +39,11 @@
 	<key>AppSiteHost</key>
 	<string>$(APP_SITE_HOST)</string>
 	<key>AppSupportEmail</key>
-	<string></string>
+	<string>$(APP_SUPPORT_EMAIL)</string>
+	<key>AppRepositoryURL</key>
+	<string>$(APP_REPOSITORY_URL)</string>
+	<key>AppLegacyStorageFolderNames</key>
+	<string>$(APP_LEGACY_STORAGE_FOLDER_NAMES)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

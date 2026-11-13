@@ -24,15 +24,18 @@ public struct SyntheticKeyEvent: Sendable, Hashable, BitwiseCopyable {
     }
 }
 
+/// `CGEventPost` returns nothing: a revoked permission makes posts vanish silently, so the only reliable
+/// signal is echo loss (PLT-R323, ADR 0311). The poster reports only what it can see.
 public enum PostError: Error, Sendable, Hashable {
+    /// `CGEvent(keyboardEventSource:virtualKey:keyDown:)` returned nil.
     case eventCreationFailed
-    /// `CGPreflightPostEventAccess()` false: the worker reports posting broken (PLT-R730).
-    case notPermitted
 }
 
 /// Production: `CGEventSource(stateID: .privateState)` with `localEventsSuppressionInterval = 0` (PLT-R320),
 /// `CGEvent(keyboardEventSource:virtualKey:keyDown:)`, explicit `flags`, `keyboardSetUnicodeString`,
 /// `setIntegerValueField(.eventSourceUserData, value:)`, then `post(tap: .cgSessionEventTap)` (PLT-R322).
+/// It never calls `CGPreflightPostEventAccess()` per post; that check runs off the inject thread only after an
+/// echo miss (ADR 0311).
 public protocol EventPoster: Sendable {
     func post(_ event: SyntheticKeyEvent, userData: Int64) throws(PostError)
     /// Recreates a held physical event with all PLT-R324 fields and the marker.

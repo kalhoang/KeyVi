@@ -40,21 +40,16 @@ public struct PipelineContext: Sendable {
     }
 }
 
-/// Per-callback watchdog state (PLT-R306): `enteredAt` written at entry, cleared at exit; the utility watchdog
-/// disables the tap if one callback runs longer than 250 ms.
-public final class CallbackWatchdog: Sendable {
-    public static let callbackLimit: Duration = .milliseconds(250)
-    public init(activitySignal: WakeSignal) { unimplemented() }
-    @inline(__always) public func enter(at now: MonotonicInstant) { unimplemented() }
-    @inline(__always) public func exit() { unimplemented() }
-    /// Utility queue.
-    public func runningCallbackDuration(now: MonotonicInstant) -> UInt64? { unimplemented() }
-}
-
 /// Tap-thread pipeline. Generic over the engine factory and the clock, so production code
 /// (`KeyPipeline<VietnameseCompositionEngineFactory, MachClock>`) has no existential calls on the hot path and
 /// tests drive it with a scripted engine and a manual clock.
-public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: MonotonicClock> {
+///
+/// Created on the tap thread by `TapThread`'s handler factory and never shared (`TapEventHandler`, ADR 0313).
+/// At callback entry, after step 1, it calls `EchoTracker.settle(now:)`; `.postingBroken` or
+/// `WorkerFeedback.isPostingBroken` means fail open within this callback (PLT-R730). Holding while busy uses
+/// `JobQueue.inFlight`, which counts a job until its echo is seen (ADR 0311). A `scrollWheel` event only feeds
+/// `HotkeyRecognizer.handle(.scroll)` and passes (PLT-R301).
+public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: MonotonicClock>: TapEventHandler {
     public init(context: PipelineContext, factory: Factory, clock: Clock) { unimplemented() }
 
     /// The whole of PLT-R310 for one event. Brackets itself with `ReaderEpoch.enter()/exit()` and

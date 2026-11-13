@@ -5,6 +5,7 @@
 
 public import AppModel
 public import Foundation
+public import RealtimeSupport
 
 /// Production (`SystemSecureInputProbe`): `IsSecureEventInputEnabled()` (Carbon); holder via
 /// `IORegistryEntryCreateCFProperty(IORegistryGetRootEntry(kIOMainPortDefault), "IOConsoleUsers", ...)`,
@@ -56,15 +57,19 @@ public protocol ProcessIdentityProvider: Sendable {
     func runningApplications() -> [ProcessIdentity]
 }
 
-/// Utility queue: polls every 2 s with 10 % leeway and on demand (menu open), publishes a
-/// `SecureInputSnapshot` whose generation changes only on transitions, names the likely holder with the
-/// data-driven hint key (PLT-R396, PLT-R397).
+/// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a
+/// `SecureInputSnapshot` and names the likely holder with the data-driven hint key (PLT-R396, PLT-R397).
+///
+/// Episodes and generations: the generation changes on every OS transition, so the tap's "resumed by key"
+/// evidence (PLT-R398B) stays valid while the OS flag is stuck. `keyEvidence(generation:)` ENDS episode N: the
+/// next poll that still sees the OS flag on starts a new episode with a new generation even though no "off" was
+/// observed in between (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
 public final class SecureInputMonitor: Sendable {
     public static let pollInterval: Duration = .seconds(2)
 
     public init(
         probe: any SecureInputProbe, processes: any ProcessIdentityProvider,
-        hintKey: @escaping @Sendable (BundleKey) -> String?, queue: DispatchQueue,
+        hintKey: @escaping @Sendable (BundleKey) -> String?, scheduler: any TimerScheduler,
         publish: @escaping @Sendable (SecureInputSnapshot) -> Void
     ) { unimplemented() }
 
@@ -72,7 +77,7 @@ public final class SecureInputMonitor: Sendable {
     public func stop() { unimplemented() }
     /// Synchronous poll (menu open, PLT-R395).
     public func pollNow() -> SecureInputSnapshot { unimplemented() }
-    /// The tap processed a key while paused for secure input (PLT-R398B): keep the state "resumed" for this
-    /// generation and record the episode end.
+    /// The tap processed a key while paused for secure input (PLT-R398B): records the episode end; the state
+    /// stays "resumed" for this generation until the next poll (see the type comment).
     public func keyEvidence(generation: UInt64) { unimplemented() }
 }

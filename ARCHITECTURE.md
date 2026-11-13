@@ -57,15 +57,15 @@ synthetic events pass back through its tap, which gives a delivery confirmation 
 | Module | Owns | Must not |
 |---|---|---|
 | `AppModel` | Validated identifiers (`BundleKey`, `RuleID`, `InputSourceID`, `KeyCode`), enums whose raw values are JSON spellings, `HotkeyBinding`, `LooseVersion`, `JSONValue`, host-state vocabulary, `FileSystem` | Contain behaviour |
-| `RealtimeSupport` | `SnapshotCell` + `ReaderEpoch`, `SPSCRing`, `WakeSignal`, `WorkerSignal`, `MachClock`, `InlineUTF16`, `ThreadConfined`, `RunLoopThread` | Depend on anything app-specific |
+| `RealtimeSupport` | `SnapshotCell` + `ReaderEpoch`, `SPSCRing`, `WakeSignal`, `WorkerSignal`, `MachClock`, `TimerScheduler`, `AtomicUInt64Array`, `InlineUTF16`, `ThreadConfined`, `RunLoopThread` | Depend on anything app-specific |
 | `Diagnostics` | Typed redacting logger, health events, histograms, tap log ring, environment report and issue block, time-boxed capture, signposts | Accept free-form strings |
 | `SettingsStore` | Four JSON documents, unset-vs-set model, migrations, backups, corruption recovery, export/import, macro importers, crash-loop guard | Know about AppKit, rules or the engine |
 | `CompatRules` | Rule schema (5.4), loader with embedded fallback, matcher (5.5), engine fingerprinter, matrix model, linter | Contain bundle IDs in code (PLT-R501) |
 | `Injection` | Job model, FIFO queue, inject worker, strategies, inline completion, pasteboard preservation, CoreGraphics/AX/pasteboard services | Read rule JSON or snapshots |
-| `InputHost` | Tap thread and decision pipeline, engine bridge, snapshots, lifecycle state machine, hotkeys, layout tables, input sources, secure input, focus tracking on the ax thread, per-app memory, permissions, workspace events, probes | Branch on bundle IDs |
+| `InputHost` | Tap thread and decision pipeline, engine bridge, snapshots, lifecycle state machine (`HostLifecycle`, a pure value) and its owner `InputHostController`, hotkeys, layout tables, input sources, secure input, focus tracking on the ax thread, per-app memory, permissions, workspace events, probes | Branch on bundle IDs |
 | `ShellCore` | UI-free shell logic: `Brand`, `Localizer`, pane-name table, icon/menu/status models, onboarding flow, app-location check, report assembly, bug report URLs, Apps pane model, login item, updater protocol | Import AppKit or SwiftUI |
 | `App` | Views and controllers, composition root, Sparkle wrapper | Contain logic that ShellCore can hold |
-| `TestSupport` | Fakes for every platform service, simulated text field, deterministic pipeline harness, conservation ledger, seeded generators, scenario runner | Ship in the app |
+| `TestSupport` | Fakes for every platform service, simulated text field, window-server queue model, manual scheduler, deterministic pipeline harness, conservation ledger, seeded generators, scenario runner | Ship in the app |
 
 Why these targets and not exactly the PLT-R102 list: [0302](docs/decisions/0302-package-and-target-split.md).
 
@@ -85,7 +85,13 @@ Swift 6 strict concurrency: main-thread types are `@MainActor`; the settings sto
 executor is the utility `DispatchSerialQueue`; everything that crosses threads is `Sendable`. Swift cannot
 express "owned by this run-loop thread", so the tap and ax state lives in `ThreadConfined` (debug-checked) or
 in non-Sendable objects created on and touched only by their thread. Those two patterns are the only audited
-escape hatches.
+escape hatches. Concretely for the tap: `TapThread<Handler: TapEventHandler>` receives a `@Sendable` factory,
+calls it inside its own thread entry and keeps the resulting `KeyPipeline` (not Sendable on purpose) in that
+thread's state, reached from the C callback's `userInfo`; the pipeline never leaves the tap thread and no
+per-callback check runs ([0313](docs/decisions/0313-testability-seams.md)). Sparkle's delegate methods are
+`nonisolated` and use `MainActor.assumeIsolated` (Sparkle calls them on the main thread). Every periodic or
+delayed action off the hot path goes through an injected `TimerScheduler` and every service clock is
+`any MonotonicClock`, so tests drive them with `ManualScheduler`/`ManualClock`.
 
 ## 4. The life of one key press
 
@@ -98,9 +104,9 @@ Example: Telex user types `a` then `s` in a native text field; the engine answer
 
    | Step | What | Where |
    |---|---|---|
-   | 1 | `tapDisabledByTimeout` / `ByUserInput`: re-enable if permissions are still valid, reset, flush held events, log, count (PLT-R330) | `KeyPipeline`, `TapThread` |
-   | 2 | Marker check: an echo of our own event is recorded in `EchoTracker` and passed unchanged; a probe-tagged event is processed as physical with probe metrics (PLT-R321, PLT-R323, PLT-R810) | `EventMarker.classify` |
-   | 3 | Mouse down: hard boundary, pass, never held (PLT-R317) | pipeline |
+   | 1 | `tapDisabledByTimeout` / `ByUserInput`: re-enable if permissions are still valid, reset, flush held events, log, count (PLT-R330). Then `EchoTracker.settle(now:)`: settle jobs whose echo came back or timed out; three consecutive misses fail open in this callback (PLT-R323, PLT-R730) | `KeyPipeline`, `TapThread`, `EchoTracker` |
+   | 2 | Marker check: an echo of our own event settles its job in `EchoTracker` and is passed unchanged; a probe-tagged event is processed as physical with probe metrics (PLT-R321, PLT-R323, PLT-R810) | `EventMarker.classify` |
+   | 3 | Mouse down: hard boundary, pass, never held (PLT-R317). Scroll wheel (in the mask by default because PRD-R14 cancels the toggle tap on scroll): only `HotkeyRecognizer.handle(.scroll)`, then pass (PLT-R301) | pipeline |
    | 4 | Load the five snapshots: settings, focus, input source, secure input, lifecycle (one atomic load each) | `TapSnapshots` |
    | 5 | Hotkeys: toggle tap fires on release when nothing else happened within 500 ms; combos consume down and up; the restore binding asks the engine (PRD-R14-R18, PLT-R353) | `HotkeyRecognizer` |
    | 6 | `HostStateResolver`: paused, fail-open, EN mode or `passThrough` strategy means "pass" without feeding the engine; a key reaching the tap while paused for secure input resumes immediately (PLT-R398B) | pipeline |
@@ -112,10 +118,14 @@ Example: Telex user types `a` then `s` in a native text field; the engine answer
    keyUp table and pushes an `EditJob` (strategy and parameters from the focus snapshot, deleteCount 1,
    insertion "á", trigger keycode, focus generation, a copy of the trigger for conservation). The whole
    callback targets p50 15 µs, p99 60 µs (T1).
-2. **Hold while busy** (PLT-R311). Until that job's last event is posted (`JobQueue.inFlight > 0`), every
-   keyboard event the pipeline would pass is swallowed and queued as a `ReplayJob` (a bitwise copy of keycode,
-   flags, autorepeat, keyboard type and Unicode string, PLT-R324). A fast typist's next key therefore can
-   never land between the backspace and the "á".
+2. **Hold while busy** (PLT-R311). While the job is in flight (`JobQueue.inFlight > 0`), every keyboard event
+   the pipeline would pass is swallowed and queued as a `ReplayJob` (a bitwise copy of keycode, flags,
+   autorepeat, keyboard type and Unicode string, PLT-R324). "In flight" lasts until the tap sees the echo of
+   the job's last event (or 200 ms pass without it), not merely until the worker posted it: a physical key that
+   reached the WindowServer before the post is ahead of the synthetic events in the server's queue, reaches the
+   tap before their echo, and is held instead of overtaking them
+   ([0311](docs/decisions/0311-in-flight-until-echo.md)). A fast typist's next key therefore can never land
+   between the backspace and the "á".
 3. **Inject worker** pops the job (FIFO), checks the focus generation (stale edits are discarded and their
    triggers replayed, PLT-R316, [0308](docs/decisions/0308-conservation-on-abandoned-edits.md)), trims the
    common grapheme prefix (PLT-R402), applies inline-completion handling if the rule says so (PLT-R420-R422),
@@ -124,18 +134,27 @@ Example: Telex user types `a` then `s` in a native text field; the engine answer
    from a `privateState` `CGEventSource` with suppression interval 0, explicit flags, `kCGEventSourceUserData`
    = per-launch 40-bit random tag + sequence, posted at `kCGSessionEventTap` (PLT-R320-R322). Then the held
    events are replayed in order. Target: decide-to-posted p50 0.5 ms, p99 2 ms (T2).
-4. **Echo.** The synthetic events pass back through the tap, which marks their sequence as seen. If three
-   consecutive jobs see no echo within 200 ms, posting is assumed broken and the host fails open
-   (PLT-R323, PLT-R730).
+4. **Echo.** The synthetic events pass back through the tap. After posting a job's last event the worker
+   publishes an `EchoExpectation` (job, event sequence, time); the tap settles the job when the echo arrives,
+   which ends "in flight". If three consecutive jobs see no echo within 200 ms, the tap fails open in the same
+   callback and marks posting broken; the first miss asks the utility queue to check
+   `CGPreflightPostEventAccess()` (PLT-R323, PLT-R730). If PLT-R301 VERIFY (a) shows that echoes do not come
+   back, `JobQueue(policy: .untilPosted)` restores the literal reading and echo liveness is dropped as the spec
+   instructs.
 5. **Liveness.** If the oldest held event waits more than 150 ms (1 s during a macro) or more than 256 jobs
    queue up, the worker abandons unstarted edits (replaying their triggers), replays all held events in
    order, asks the tap to reset the composition and records a `flush` (PLT-R314).
 
-**Conservation invariant (PLT-R312).** Every physical keyboard event ends in exactly one of: passed unchanged;
-replayed once after all earlier jobs; consumed as an engine trigger whose effect an `EditJob` delivers (or,
-if that job is abandoned, replayed); consumed as the keyUp of such a trigger; consumed as a hotkey. Nothing is
-dropped or delivered twice. `ConservationLedger` (TestSupport) checks it over 100,000 random interleavings of
-keys, mouse downs, focus changes, tap-disabled events, secure-input toggles and permission changes (13.1).
+**Conservation invariant (PLT-R312).** While posting works, every physical keyboard event ends in exactly one
+of: passed unchanged; replayed once after all earlier jobs; consumed as an engine trigger whose effect an
+`EditJob` delivers (or, if that job is abandoned, replayed); consumed as the keyUp of such a trigger; consumed
+as a hotkey. Nothing is dropped or delivered twice. When posting breaks silently (permission revoked:
+`CGEventPost` reports nothing), events whose replay or edit falls into the detection window (at most three jobs
+times 200 ms) cannot be delivered, because a replay is also a post; they are lost on purpose rather than
+blocking the keyboard, counted in `lostWhilePostingBroken` and reported in one `postingBroken` health event
+([0308](docs/decisions/0308-conservation-on-abandoned-edits.md)). `ConservationLedger` (TestSupport) checks the
+invariant and the counted losses over 100,000 random interleavings of keys, mouse downs, focus changes,
+tap-disabled events, secure-input toggles, permission changes and window-server queue lag (13.1).
 
 **Boundaries.** Space and punctuation are soft boundaries handled inside the engine (history kept, PLT-R341).
 Hard boundaries (focus change, mouse down, navigation, Command/Control chords, Return/Tab after commit,
@@ -168,15 +187,21 @@ States: `noPermission`, `starting`, `ready(vi|en)`, `paused(reason)`, `failOpen(
   sessionInactive > userDisabled > secureInput > secureField > nonLatinInputSource > builtInVietnameseSource >
   passThroughRule > noTextFocus. The main thread runs the same function for the icon and menu (PRD-R10,
   PRD-R11), so what the user sees is what the tap does.
-- Lifecycle phases (`noPermission`, `starting`, `running`, `sessionInactive`, `failOpen`) are decided by
-  `InputHostController` and published as `LifecycleSnapshot`.
+- Lifecycle phases (`noPermission`, `starting`, `running`, `sessionInactive`, `failOpen`) are decided by the
+  pure state machine `HostLifecycle` (inputs: permission changes, tap created or failed, retry timer, watchdog
+  trips, posting broken, session events; outputs: effects) and published as `LifecycleSnapshot` by its owner
+  `InputHostController`, which performs the effects and owns the timers.
 - Every transition into or out of `paused`/`failOpen`, and every focus change, resets the composition
   (PLT-R210).
-- Fail-open (PLT-R730): the tap stops swallowing within the same callback (it reads
-  `WorkerFeedback.isPostingBroken` and the lifecycle phase at entry), the worker replays held events, the
-  composition resets, then the tap is disabled and removed. Recovery recreates it without relaunch
-  (PLT-R731). Tap creation failure retries with backoff 1, 2, 5, 10 s while permissions look granted
-  (PLT-R332).
+- Fail-open (PLT-R730): the tap stops swallowing within the same callback (it reads the echo result,
+  `WorkerFeedback.isPostingBroken` and the lifecycle phase at entry), the worker replays held events if posting
+  still works (otherwise counts them as lost), the composition resets, then the tap is disabled and removed.
+  Recovery recreates it without relaunch (PLT-R731). Tap creation failure retries with backoff 1, 2, 5, 10 s
+  while permissions look granted (PLT-R332).
+- Watchdog (PLT-R306, [0309](docs/decisions/0309-callback-watchdog-gating.md)): a callback over 250 ms disables
+  the tap and enters `failOpen(watchdog)`; recovery 2 s later happens only if the callback has returned. If it
+  never returns, the host stays in `failOpen(callbackStuck)` with a "reopen the app" status line and never
+  creates a second tap or tap thread.
 
 ## 6. Snapshot publication (PLT-R388)
 
@@ -262,8 +287,10 @@ before the next key is processed (PLT-R391).
   PLT-R398C).
 - Resume without delay (PLT-R398B): any regular keyDown that reaches the tap while paused proves secure input
   is no longer blocking; the tap leaves the pause for that snapshot generation, processes the key normally
-  (fresh composition) and notifies main. The generation changes only on OS transitions, so a stuck OS flag
-  cannot re-pause a working keyboard.
+  (fresh composition) and notifies main. The generation changes on OS transitions, so a stuck OS flag cannot
+  re-pause a working keyboard; and key evidence ends the episode, so the next poll that still sees the flag on
+  starts a new generation (on, off, key, on again inside one 2 s poll interval pauses again instead of showing
+  "ready" while the OS blocks keys).
 - The app never calls `EnableSecureEventInput` (PLT-R398). Spike S1 (`SpikeIMK`) measures whether an IMKit
   input source still receives keys in terminals under secure keyboard entry (PLT-R398D); Pa runs it by hand.
 
@@ -282,7 +309,8 @@ delete is never emitted by default or by shipped rules (PLT-R407).
 
 - Files in `~/Library/Application Support/<folder>/` (folder = display name if ASCII, else slug), directory
   0700, files 0600: `settings.json`, `app-modes.json`, `rule-overrides.json`, `macros.json`
-  ([0307](docs/decisions/0307-settings-file-layout.md)).
+  ([0307](docs/decisions/0307-settings-file-layout.md)). After a product rename, the first launch moves the
+  previous folders (names listed in `AppLegacyStorageFolderNames`) to the new name before loading.
 - Only explicit choices are stored; an absent key is "unset" and follows future defaults, a present key is a
   choice kept forever even if it equals today's default (PRD-R6, PLT-R1004). `DefaultSettings.v1` holds
   D1-D21.
@@ -312,8 +340,10 @@ delete is never emitted by default or by shipped rules (PLT-R407).
 - Histograms (log2 buckets of atomics) cover T1, T2/T3, echo, T5, T6 and per-bundle AX durations (PLT-R801);
   signposts wrap callbacks, jobs and AX calls (PLT-R802).
 - The environment report is structurally content-free: its type has no field that could hold content
-  (PLT-R1203). It renders as reviewed plain text, as JSON, and as the machine-parseable issue block with a
-  `diagnostics-format: 1` header line (QA-R44).
+  (PLT-R1203). The reported app's user override (PLT-R541) is a typed projection without `summary`, page URL
+  prefixes or title patterns ([0312](docs/decisions/0312-report-override-projection.md)). It renders as reviewed
+  plain text, as JSON, and as the machine-parseable issue block with a `diagnostics-format: 1` header line
+  (QA-R44).
 - The typing trace (PLT-R905) is the only artefact with characters: explicit start, 60 s default and 180 s
   maximum, menu icon and floating HUD with countdown, gaps during secure input, 0600 files excluded from
   backups, deleted after 24 hours or right after export.
@@ -337,6 +367,8 @@ Sparkle 2.10.1 pinned ([0304](docs/decisions/0304-sparkle-version-pin.md)): EdDS
 host, beta channel only after opt-in, daily checks, background download, install on quit, no automatic
 relaunch unless idle for 60 s with secure input off, no system profiling (PLT-R1101-R1106, PRD-R50-R55). The
 EdDSA private key stays on Pa's Mac; publication runs from `scripts/publish-release` (release scripts track).
+Each release links one bilingual release-notes page (Vietnamese first), because Sparkle chooses localized notes
+by the macOS language, not the app's interface language (PRD-R51).
 
 ## 15. Shell
 
@@ -357,7 +389,9 @@ at runtime through per-language `.lproj` lookup, independent of the macOS langua
 | 7 Upgrade | Sparkle local appcast on the self-hosted runner or a VM (13.5) | Yes |
 
 Layers 5-7 never run automatically on the maintainer's everyday Mac: posting synthetic events, creating taps and changing
-input sources there is forbidden. Those items are listed for Pa in the traceability matrix.
+input sources there is forbidden. Those items are listed for Pa in the traceability matrix. Until the
+self-hosted runner exists, layers 5-7 are covered by an interim plan (workstreams.md "Interim verification"):
+`compat-harness --dry-run` on hosted CI plus a short manual checklist Pa runs on his Mac.
 
 ## 17. Where to change what
 
@@ -365,7 +399,7 @@ input sources there is forbidden. Those items are listed for Pa in the traceabil
 |---|---|
 | How an app behaves | `compat/rules.json` plus a scenario in `compat/scenarios/` and a matrix row |
 | A default | `SettingsStore/UserSettings.swift` `DefaultSettings` (after 1.0: ADR + release note, PRD-R5) |
-| Copy | the owning String Catalog in `App/Resources/Localization/` |
+| Copy | the owning String Catalog in `App/Resources/Localization/` (`Localizable` holds common strings) |
 | System Settings pane names or deep links | `App/Resources/SystemPanes.json` |
 | The product name | `scripts/rename-app.sh` (updates `Config/Brand.xcconfig` and `scripts/brand.env`) |
 | The update feed or key | `Config/Sparkle.xcconfig` |

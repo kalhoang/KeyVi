@@ -107,7 +107,7 @@ public final class FocusTracker: Sendable {
     public init(
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
-        metrics: PlatformMetrics, health: HealthEventLog, clock: MachClock, macOSVersion: LooseVersion
+        metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion
     ) { unimplemented() }
 
     public func start(rules: any FocusDecisionResolving, memory: AppModeMemory) { unimplemented() }

@@ -5,6 +5,7 @@
 
 internal import AppModel
 public import RealtimeSupport
+internal import Synchronization
 
 public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case tapDisabledByTimeout = 1
@@ -34,13 +35,29 @@ public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {
     }
 }
 
-/// Single producer (tap), single consumer (utility drain).
+/// Single producer (tap), single consumer (utility drain). Implemented in the skeleton
+/// (docs/decisions/0313-testability-seams.md).
 public final class TapLogRing: Sendable {
-    public init(capacity: Int = 1024) { unimplemented() }
-    /// Tap thread. Drops the record (and counts the drop) when full.
-    public func push(_ record: TapLogRecord) { unimplemented() }
-    /// Utility queue.
-    public func drain(_ body: (TapLogRecord) -> Void) { unimplemented() }
-    public var droppedCount: UInt64 { unimplemented() }
-}
+    private let ring: SPSCRing<TapLogRecord>
+    private let dropped = Atomic<UInt64>(0)
 
+    /// `capacity` is rounded up to a power of two.
+    public init(capacity: Int = 1024) {
+        var size = 1
+        while size < max(1, capacity) { size <<= 1 }
+        ring = SPSCRing(capacity: size)
+    }
+
+    /// Tap thread. Drops the record (and counts the drop) when full.
+    @inline(__always)
+    public func push(_ record: TapLogRecord) {
+        if !ring.push(record) { dropped.wrappingAdd(1, ordering: .relaxed) }
+    }
+
+    /// Utility queue.
+    public func drain(_ body: (TapLogRecord) -> Void) {
+        while let record = ring.pop() { body(record) }
+    }
+
+    public var droppedCount: UInt64 { dropped.load(ordering: .relaxed) }
+}

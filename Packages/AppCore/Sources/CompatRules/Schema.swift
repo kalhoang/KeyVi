@@ -37,12 +37,31 @@ public struct RuleDefaults: Sendable, Hashable, Codable {
     public var defaultMode: FirstSeenMode
     public var requireTextFocus: RequireTextFocus
     public var verifyReentry: VerifyReentry
+
+    public init(
+        strategy: InjectionStrategy, params: StrategyParams, fallback: [InjectionStrategy],
+        defaultMode: FirstSeenMode, requireTextFocus: RequireTextFocus, verifyReentry: VerifyReentry
+    ) {
+        self.strategy = strategy
+        self.params = params
+        self.fallback = fallback
+        self.defaultMode = defaultMode
+        self.requireTextFocus = requireTextFocus
+        self.verifyReentry = verifyReentry
+    }
 }
 
 public struct SecureInputHint: Sendable, Hashable, Codable {
     public var bundleId: BundleKey
     /// String Catalog key suffix, for example `terminal.secureKeyboardEntry` (PLT-R397, PLT-R398C).
     public var hintKey: String
+
+    public init(
+        bundleId: BundleKey, hintKey: String
+    ) {
+        self.bundleId = bundleId
+        self.hintKey = hintKey
+    }
 }
 
 public struct Rule: Sendable, Hashable, Codable {
@@ -54,6 +73,18 @@ public struct Rule: Sendable, Hashable, Codable {
     public var provenance: RuleProvenance?
     /// Required for shipped rules (PLT-R505).
     public var test: RuleTest?
+
+    public init(
+        id: RuleID, summary: String, match: RuleMatch, action: RuleAction, provenance: RuleProvenance? = nil,
+        test: RuleTest? = nil
+    ) {
+        self.id = id
+        self.summary = summary
+        self.match = match
+        self.action = action
+        self.provenance = provenance
+        self.test = test
+    }
 }
 
 public struct RuleMatch: Sendable, Hashable, Codable {
@@ -67,6 +98,22 @@ public struct RuleMatch: Sendable, Hashable, Codable {
     public var web: WebMatch?
     /// Shipped rules only, only with `bundleIds`, at most 200 characters, compiled at load (PLT-R502).
     public var titlePattern: String?
+
+    public init(
+        bundleIds: [BundleKey]? = nil, bundleGroup: String? = nil, engines: [EngineFingerprint]? = nil,
+        appCategories: [String]? = nil, appVersion: VersionRange? = nil, macOS: VersionRange? = nil,
+        ax: AXMatch? = nil, web: WebMatch? = nil, titlePattern: String? = nil
+    ) {
+        self.bundleIds = bundleIds
+        self.bundleGroup = bundleGroup
+        self.engines = engines
+        self.appCategories = appCategories
+        self.appVersion = appVersion
+        self.macOS = macOS
+        self.ax = ax
+        self.web = web
+        self.titlePattern = titlePattern
+    }
 }
 
 /// Any-of within a field, all-of across fields.
@@ -77,11 +124,29 @@ public struct AXMatch: Sendable, Hashable, Codable {
     public var domClasses: [String]?
     public var ancestorRoles: [String]?
     public var editable: Bool?
+
+    public init(
+        roles: [String]? = nil, subroles: [String]? = nil, identifiers: [String]? = nil,
+        domClasses: [String]? = nil, ancestorRoles: [String]? = nil, editable: Bool? = nil
+    ) {
+        self.roles = roles
+        self.subroles = subroles
+        self.identifiers = identifiers
+        self.domClasses = domClasses
+        self.ancestorRoles = ancestorRoles
+        self.editable = editable
+    }
 }
 
 public struct WebMatch: Sendable, Hashable, Codable {
     /// Requires the AX document URL; evaluated in memory, never logged.
     public var urlPrefixes: [String]?
+
+    public init(
+        urlPrefixes: [String]? = nil
+    ) {
+        self.urlPrefixes = urlPrefixes
+    }
 }
 
 public struct RuleAction: Sendable, Hashable, Codable {
@@ -98,6 +163,25 @@ public struct RuleAction: Sendable, Hashable, Codable {
     public var requiresUserOptIn: Bool?
     public var engineContext: EngineContextKind?
     public var features: RuleFeatures?
+
+    public init(
+        strategy: InjectionStrategy, params: StrategyParams? = nil, fallback: [InjectionStrategy]? = nil,
+        defaultMode: FirstSeenMode? = nil, requireTextFocus: RequireTextFocus? = nil,
+        verifyReentry: VerifyReentry? = nil, axEnable: AXEnableMode? = nil, overlay: Bool? = nil,
+        requiresUserOptIn: Bool? = nil, engineContext: EngineContextKind? = nil, features: RuleFeatures? = nil
+    ) {
+        self.strategy = strategy
+        self.params = params
+        self.fallback = fallback
+        self.defaultMode = defaultMode
+        self.requireTextFocus = requireTextFocus
+        self.verifyReentry = verifyReentry
+        self.axEnable = axEnable
+        self.overlay = overlay
+        self.requiresUserOptIn = requiresUserOptIn
+        self.engineContext = engineContext
+        self.features = features
+    }
 }
 
 /// Keys from 02-platform.md section 4 plus the extra keys listed in 5.4 `action.params`.
@@ -138,6 +222,15 @@ public struct RuleFeatures: Sendable, Hashable, Codable {
     public var macros: Bool?
     public var englishRestore: Bool?
     public var restoreHotkey: Bool?
+
+    public init(
+        autoCapitalize: Bool? = nil, macros: Bool? = nil, englishRestore: Bool? = nil, restoreHotkey: Bool? = nil
+    ) {
+        self.autoCapitalize = autoCapitalize
+        self.macros = macros
+        self.englishRestore = englishRestore
+        self.restoreHotkey = restoreHotkey
+    }
 }
 
 /// Shipped rules use the 5.4 provenance; user overrides use the PLT-R1205 suggestion shape. Decoded by the
@@ -157,6 +250,18 @@ public struct Provenance: Sendable, Hashable, Codable {
     public var notes: String?
     public var addedIn: String
     public var reviewBy: String  // ISO date "YYYY-MM-DD"
+
+    public init(
+        reason: String, evidence: [Evidence], tested: [TestedEntry], notes: String? = nil, addedIn: String,
+        reviewBy: String
+    ) {
+        self.reason = reason
+        self.evidence = evidence
+        self.tested = tested
+        self.notes = notes
+        self.addedIn = addedIn
+        self.reviewBy = reviewBy
+    }
 }
 
 public struct UserProvenance: Sendable, Hashable, Codable {
@@ -164,11 +269,27 @@ public struct UserProvenance: Sendable, Hashable, Codable {
     public var appVersion: String?
     public var macOS: String?
     public var date: String
+
+    public init(
+        source: String, appVersion: String? = nil, macOS: String? = nil, date: String
+    ) {
+        self.source = source
+        self.appVersion = appVersion
+        self.macOS = macOS
+        self.date = date
+    }
 }
 
 public struct Evidence: Sendable, Hashable, Codable {
     public var type: String  // "scenario", "issue", "report"
     public var ref: String
+
+    public init(
+        type: String, ref: String
+    ) {
+        self.type = type
+        self.ref = ref
+    }
 }
 
 public struct TestedEntry: Sendable, Hashable, Codable {
@@ -178,6 +299,16 @@ public struct TestedEntry: Sendable, Hashable, Codable {
     public var macOS: String
     public var date: String
     public var result: Result
+
+    public init(
+        app: String, appVersion: String, macOS: String, date: String, result: Result
+    ) {
+        self.app = app
+        self.appVersion = appVersion
+        self.macOS = macOS
+        self.date = date
+        self.result = result
+    }
 }
 
 public struct RuleTest: Sendable, Hashable, Codable {
@@ -185,4 +316,11 @@ public struct RuleTest: Sendable, Hashable, Codable {
     /// Scenario ID (PLT-R530): `compat/scenarios/<scenario>.json` must exist.
     public var scenario: String
     public var automation: Automation
+
+    public init(
+        scenario: String, automation: Automation
+    ) {
+        self.scenario = scenario
+        self.automation = automation
+    }
 }

@@ -86,9 +86,123 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var source: DecisionSource
         public var specificity: Int
         public var strategy: InjectionStrategy
-        public var parameters: JSONValue
-        /// The user override for the reported app as rule JSON, so maintainers can promote it (PLT-R541).
-        public var userOverride: JSONValue?
+        /// Effective parameters after caps (every field set).
+        public var parameters: ReportedParameters
+        /// PLT-R1202 "override flag".
+        public var isUserOverride: Bool
+        /// The user override for the reported app, so maintainers can promote it (PLT-R541). A typed projection
+        /// of the override rule: no free text, no URL, no title pattern (PLT-R1203, docs/decisions/0312).
+        public var userOverride: ReportedOverride?
+    }
+
+    /// Strategy parameters as typed values (`StrategyParams` of the rules schema without its JSON form). In the
+    /// effective `parameters` every field is set; in a `ReportedOverride` only the fields the override sets.
+    public struct ReportedParameters: Sendable, Hashable, Codable {
+        public var unicodeChunk: Int?
+        public var interEventDelayUs: Int?
+        public var postDeleteSettleUs: Int?
+        public var firstEditDelayUs: Int?
+        public var inlineCompletion: InlineCompletionMode?
+        public var allowMultiCharEvents: Bool?
+        public var allowSplit: Bool?
+        public var longTextThreshold: Int?
+        public var restoreDelayMs: Int?
+        public var verifyAfterEdit: Bool?
+
+        public init(
+            unicodeChunk: Int? = nil, interEventDelayUs: Int? = nil, postDeleteSettleUs: Int? = nil,
+            firstEditDelayUs: Int? = nil, inlineCompletion: InlineCompletionMode? = nil,
+            allowMultiCharEvents: Bool? = nil, allowSplit: Bool? = nil, longTextThreshold: Int? = nil,
+            restoreDelayMs: Int? = nil, verifyAfterEdit: Bool? = nil
+        ) {
+            self.unicodeChunk = unicodeChunk
+            self.interEventDelayUs = interEventDelayUs
+            self.postDeleteSettleUs = postDeleteSettleUs
+            self.firstEditDelayUs = firstEditDelayUs
+            self.inlineCompletion = inlineCompletion
+            self.allowMultiCharEvents = allowMultiCharEvents
+            self.allowSplit = allowSplit
+            self.longTextThreshold = longTextThreshold
+            self.restoreDelayMs = restoreDelayMs
+            self.verifyAfterEdit = verifyAfterEdit
+        }
+    }
+
+    /// Typed projection of a user override rule (docs/decisions/0312-report-override-projection.md). Built by
+    /// ShellCore's `ReportAssembler.reportedOverride(from:)`. Rendered as rule JSON in the report so a
+    /// maintainer can paste it into `compat/rules.json` after adding provenance.
+    public struct ReportedOverride: Sendable, Hashable, Codable {
+        public var id: RuleID
+        public var match: ReportedMatch
+        public var strategy: InjectionStrategy
+        public var parameters: ReportedParameters?
+        public var fallback: [InjectionStrategy]?
+        public var requireTextFocus: RequireTextFocus?
+        public var verifyReentry: VerifyReentry?
+        public var engineContext: EngineContextKind?
+        /// Match fields present in the override but never reported because they can hold content
+        /// (`web.urlPrefixes`, `titlePattern`): names only, never values (PLT-R1203).
+        public var omittedMatchFields: [OmittedMatchField]
+
+        public init(
+            id: RuleID, match: ReportedMatch, strategy: InjectionStrategy, parameters: ReportedParameters?,
+            fallback: [InjectionStrategy]?, requireTextFocus: RequireTextFocus?, verifyReentry: VerifyReentry?,
+            engineContext: EngineContextKind?, omittedMatchFields: [OmittedMatchField]
+        ) {
+            self.id = id
+            self.match = match
+            self.strategy = strategy
+            self.parameters = parameters
+            self.fallback = fallback
+            self.requireTextFocus = requireTextFocus
+            self.verifyReentry = verifyReentry
+            self.engineContext = engineContext
+            self.omittedMatchFields = omittedMatchFields
+        }
+    }
+
+    /// Match fields that are metadata (PLT-R1202 lists bundle ID, role, subrole, identifier, DOM classes; app
+    /// categories, version ranges, engines and ancestor roles are metadata of the same kind).
+    public struct ReportedMatch: Sendable, Hashable, Codable {
+        public var bundleIds: [BundleKey]?
+        public var bundleGroup: String?
+        public var engines: [EngineFingerprint]?
+        public var appCategories: [String]?
+        public var appVersion: VersionRange?
+        public var macOS: VersionRange?
+        public var axRoles: [String]?
+        public var axSubroles: [String]?
+        public var axIdentifiers: [String]?
+        public var axDomClasses: [String]?
+        public var axAncestorRoles: [String]?
+        public var axEditable: Bool?
+
+        public init(
+            bundleIds: [BundleKey]? = nil, bundleGroup: String? = nil, engines: [EngineFingerprint]? = nil,
+            appCategories: [String]? = nil, appVersion: VersionRange? = nil, macOS: VersionRange? = nil,
+            axRoles: [String]? = nil, axSubroles: [String]? = nil, axIdentifiers: [String]? = nil,
+            axDomClasses: [String]? = nil, axAncestorRoles: [String]? = nil, axEditable: Bool? = nil
+        ) {
+            self.bundleIds = bundleIds
+            self.bundleGroup = bundleGroup
+            self.engines = engines
+            self.appCategories = appCategories
+            self.appVersion = appVersion
+            self.macOS = macOS
+            self.axRoles = axRoles
+            self.axSubroles = axSubroles
+            self.axIdentifiers = axIdentifiers
+            self.axDomClasses = axDomClasses
+            self.axAncestorRoles = axAncestorRoles
+            self.axEditable = axEditable
+        }
+    }
+
+    /// The two rule fields that can carry content (page addresses, window titles) and are therefore never
+    /// copied into a report.
+    public enum OmittedMatchField: String, Sendable, Hashable, Codable, CaseIterable {
+        case webURLPrefixes = "web.urlPrefixes"
+        case titlePattern
     }
 
     public struct SettingsSection: Sendable, Hashable, Codable {

@@ -8,3 +8,14 @@ APP_SLUG = kalkey
 APP_BUNDLE_ID_RELEASE = vn.kal.kalkey
 APP_BUNDLE_ID_DEV = vn.kal.kalkey.dev
 APP_SITE_HOST = kalkey.kal.vn
+
+// Added 2026-11-13 by the platform design (review findings on PRD-R47, QA-R51, QA-R60 and the temporary
+// name). The values above are unchanged. Empty means "not decided yet"; Pa fills them (VERIFY).
+// Support address for "Gửi qua email" (PRD-R47). Empty hides the email button.
+APP_SUPPORT_EMAIL =
+// Public GitHub repository for issue forms (PRD-R47) and the URL host allowlist (QA-R60). Write it as
+// https:/$()/github.com/<owner>/<repo> because `//` starts an xcconfig comment. Empty hides the GitHub button.
+APP_REPOSITORY_URL =
+// Storage folder names of earlier product names, newest first, separated by `;` (ADR 0307). scripts/rename-app.sh
+// appends the old folder name here so the first launch after a rename moves settings and logs.
+APP_LEGACY_STORAGE_FOLDER_NAMES =

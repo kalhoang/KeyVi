@@ -9,9 +9,11 @@
 
 ## Decision
 
-- String Catalogs, one per feature area (`Common`, `Menu`, `Status`, `Onboarding`, `Settings`, `Macros`,
-  `Apps`, `Diagnostics`, `Support`, `Updates`) in `App/Resources/Localization/`, source language `vi`, semantic
-  keys (`onboarding.welcome.title`). Each table has exactly one owning workstream.
+- String Catalogs, one per feature area (`Localizable` for common strings, `Menu`, `Status`, `Onboarding`,
+  `Settings`, `Macros`, `Apps`, `Diagnostics`, `Support`, `Updates`) in `App/Resources/Localization/`, source
+  language `vi`, semantic keys (`onboarding.welcome.title`). Each table has exactly one owning workstream. The
+  common table is named `Localizable` (renamed from `Common` on 2026-11-13) because it is the default table
+  that `localizedString(forKey:value:table: nil)` reads.
 - Lookup never uses the process's preferred languages. `Localizer` (ShellCore) opens the selected language's
   `.lproj` sub-bundle (`vi.lproj` / `en.lproj`, which Xcode compiles from the catalogs; verified in the
   skeleton build) and resolves keys there; formats go through `String(format:locale:arguments:)` so

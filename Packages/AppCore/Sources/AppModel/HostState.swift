@@ -55,6 +55,9 @@ public enum PauseReason: Sendable, Hashable {
 
 public enum FailOpenReason: String, Sendable, Hashable, Codable {
     case permissionRevoked, postingBroken, tapUnavailable, watchdog
+    /// The watchdog tripped and the stuck callback never returned: no second tap is created while the old
+    /// tap thread may still be inside a callback (ADR 0309). The status line suggests reopening the app.
+    case callbackStuck
 }
 
 public enum PauseCode: String, Sendable, Hashable, Codable {

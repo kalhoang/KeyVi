@@ -261,4 +261,13 @@ public struct TapSnapshots: Sendable {
         self.secureInput = secureInput
         self.lifecycle = lifecycle
     }
+
+    /// Frees retired boxes of all five cells (utility queue, every 5 s from `TapWatchdog`, ADR 0303).
+    public func reclaimAll() {
+        settings.reclaim()
+        focus.reclaim()
+        inputSource.reclaim()
+        secureInput.reclaim()
+        lifecycle.reclaim()
+    }
 }

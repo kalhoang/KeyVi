@@ -12,7 +12,7 @@ public import RealtimeSupport
 /// PLT-R810: posts physical-like key events tagged with the probe marker (processed by the pipeline as
 /// physical, excluded from user metrics) into the probe window's text view with the three timing profiles.
 public final class LatencyProbeDriver: Sendable {
-    public init(poster: any EventPoster, marker: EventMarker, clock: MachClock) { unimplemented() }
+    public init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) { unimplemented() }
     /// Types `keys` (key codes from the current layout) with `profile` spacing; the probe window reports
     /// text-change times through `textChanged(at:)`.
     public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [MonotonicInstant] { unimplemented() }
@@ -43,13 +43,17 @@ public enum GuidedTestCandidateResult: Sendable, Hashable {
 
 public final class GuidedTestRunner: Sendable {
     public static func candidates(isNativeApp: Bool) -> [GuidedTestCandidate] { unimplemented() }
-    public init(poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: MachClock) {
+    public init(
+        poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock
+    ) {
         unimplemented()
     }
     public func run(_ candidate: GuidedTestCandidate, field: FieldHandle?) async -> GuidedTestCandidateResult {
         unimplemented()
     }
-    /// Rule suggestion in the 5.4 schema (PLT-R1205 step 4); a URL prefix only if the user ticked it.
+    /// Rule suggestion in the 5.4 schema (PLT-R1205 step 4); a URL prefix only if the user ticked "include page
+    /// address" and edited it down to a host-level prefix. The suggestion is shown and copied on its own; the
+    /// diagnostics report never contains its URL (ADR 0312).
     public static func suggestion(
         context: MatchContext, best: GuidedTestCandidate, appVersion: String?, macOS: String, date: String,
         includeURLPrefix: String?

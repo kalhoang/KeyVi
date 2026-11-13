@@ -3,7 +3,8 @@
 // Permissions (PLT-R701-R741). Probes are cheap system calls made off the tap thread.
 
 public import AppModel
-public import Foundation
+internal import Foundation
+public import RealtimeSupport
 public import SettingsStore
 
 /// Production (`SystemPermissionProbe`): `AXIsProcessTrusted()`, `CGPreflightPostEventAccess()`,
@@ -41,11 +42,16 @@ public struct PermissionStatus: Sendable, Hashable {
     }
 }
 
-/// Utility queue: every 2 s while not ready, every 30 s while ready, immediately on wake, session activation
-/// and menu open (PLT-R721). Remembers the identity digest of the last grant (key-value store) for `stale`.
+/// Every 2 s while not ready, every 30 s while ready (timers from the injected scheduler, utility queue in
+/// production), immediately on wake, session activation and menu open (PLT-R721). Remembers the identity digest
+/// of the last grant (key-value store) for `stale`.
 public final class PermissionMonitor: Sendable {
+    public static let notReadyInterval: Duration = .seconds(2)
+    public static let readyInterval: Duration = .seconds(30)
+    public static let onboardingInterval: Duration = .seconds(1)
+
     public init(
-        probe: any PermissionProbe, store: any KeyValueStore, queue: DispatchQueue,
+        probe: any PermissionProbe, store: any KeyValueStore, scheduler: any TimerScheduler,
         onChange: @escaping @Sendable (PermissionStatus) -> Void
     ) { unimplemented() }
     public func start() { unimplemented() }

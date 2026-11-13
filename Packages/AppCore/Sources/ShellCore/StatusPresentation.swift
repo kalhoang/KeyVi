@@ -4,6 +4,7 @@
 // state, testable without AppKit.
 
 public import AppModel
+public import CompatRules
 public import Foundation
 
 /// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table.
@@ -32,6 +33,11 @@ public struct StatusLine: Sendable, Hashable {
     public enum Action: Sendable, Hashable {
         case grantPermission, resumeOnboarding, showHolderApp(pid: Int32), secureInputHelp, reportProblem,
             learnMore(URL), none
+        /// "paused: no text field detected" (02-platform.md section 6, custom text views): one click writes a
+        /// user override with `requireTextFocus: never` for this app (PLT-R540).
+        case overrideTextFocus(bundle: BundleKey)
+        /// `failOpen(callbackStuck)`: only reopening the app recovers (ADR 0309).
+        case reopenApp
     }
 
     public var key: String  // in the `Status` table
@@ -43,8 +49,35 @@ public struct StatusLine: Sendable, Hashable {
         self.action = action
     }
 
-    public static func forState(_ state: HostState, holderHintKey: String?, appName: String) -> StatusLine? {
+    /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
+    /// source, built-in Vietnamese source, no text focus with override action) > tap re-enabled notice >
+    /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    public static func forState(
+        _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
+        tapRecentlyReenabled: Bool
+    ) -> StatusLine? {
         unimplemented()
+    }
+}
+
+/// What the status line needs to know about the frontmost app (PRD-R43 "App in Known limitation list").
+public struct FrontmostAppStatus: Sendable, Hashable {
+    public var bundle: BundleKey
+    public var displayName: String
+    /// From `compat-matrix.json` through `MatrixStatusResolver.displayStatus`.
+    public var matrixStatus: MatrixStatus?
+    /// The matrix entry's one-line note in the interface language (data, not code).
+    public var limitationNote: String?
+    public var learnMore: URL?
+
+    public init(
+        bundle: BundleKey, displayName: String, matrixStatus: MatrixStatus?, limitationNote: String?, learnMore: URL?
+    ) {
+        self.bundle = bundle
+        self.displayName = displayName
+        self.matrixStatus = matrixStatus
+        self.limitationNote = limitationNote
+        self.learnMore = learnMore
     }
 }
 

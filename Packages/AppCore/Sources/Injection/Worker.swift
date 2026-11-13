@@ -54,16 +54,22 @@ public enum FlushReason: UInt8, Sendable, Hashable {
     case queueFull
 }
 
+/// The serial worker. It owns the marker event sequence: every posted event (edit, replay, probe) gets the
+/// next 23-bit sequence, and after a job's final event it calls `JobQueue.finished(_:expectation:)` with that
+/// sequence so the tap can settle the job on its echo (ADR 0311). Jobs that post nothing finish with `nil`.
+/// While `WorkerFeedback.isPostingBroken` is set it posts nothing: held events and triggers that cannot be
+/// delivered are counted in `PlatformMetrics.lostWhilePostingBroken` and one `postingBroken` health event
+/// with `.count(n)` (ADR 0308, ADR 0311); conservation (PLT-R312) is guaranteed only while posting works.
 public final class InjectionWorker: Sendable {
     public init(
-        queue: JobQueue, signal: WorkerSignal, feedback: WorkerFeedback, echo: EchoTracker, marker: EventMarker,
+        queue: JobQueue, signal: WorkerSignal, feedback: WorkerFeedback, marker: EventMarker,
         focusGeneration: CurrentFocusGeneration, services: InjectionServices,
         configuration: WorkerConfiguration = WorkerConfiguration()
     ) { unimplemented() }
 
     /// Spawns the `inject` thread (QoS user-interactive). The loop drains jobs, executes them FIFO, sleeps
-    /// only on its own signal with absolute deadlines (pacing, liveness, echo), and never waits on the main or
-    /// tap thread (PLT-R315).
+    /// only on its own signal with absolute deadlines (pacing, liveness), and never waits on the main or tap
+    /// thread (PLT-R315).
     public func start() { unimplemented() }
     public func stop() { unimplemented() }
 

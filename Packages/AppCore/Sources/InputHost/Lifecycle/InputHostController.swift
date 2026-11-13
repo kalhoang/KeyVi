@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Lifecycle owner of the input host (2.1). Main actor: it starts and stops threads, applies settings, runs the
-// state machine and tells the shell what to show. It never sits on the per-keystroke path.
+// Lifecycle owner of the input host (2.1). Main actor: it starts and stops threads, applies settings, drives
+// the pure `HostLifecycle` state machine and performs its effects, and tells the shell what to show. It never
+// sits on the per-keystroke path. Workstream W2-A (composition with the real services); the state machine
+// itself is W1-F2.
 
 public import AppModel
 public import CompatRules
@@ -26,7 +28,11 @@ public struct InputHostDependencies: Sendable {
     public var permissions: any PermissionProbe
     public var workspace: any WorkspaceEvents
     public var keyValueStore: any KeyValueStore
-    public var clock: MachClock
+    /// Services' clock (ADR 0313). The tap pipeline itself is `KeyPipeline<_, MachClock>` in production.
+    public var clock: any MonotonicClock
+    /// Timers of the monitors, the tap watchdog and the lifecycle backoff (production:
+    /// `DispatchTimerScheduler(queue: utilityQueue)`; tests: `ManualScheduler`).
+    public var scheduler: any TimerScheduler
     public var wallClock: any WallClock
     public var metrics: PlatformMetrics
     public var health: HealthEventLog
@@ -41,7 +47,8 @@ public struct InputHostDependencies: Sendable {
         pasteboard: any PasteboardAccess, ax: any AXProvider, processes: any ProcessIdentityProvider,
         bundleInspector: any BundleInspector, inputSources: any InputSourceProvider,
         layoutBuilder: any LayoutTableBuilding, secureInput: any SecureInputProbe, permissions: any PermissionProbe,
-        workspace: any WorkspaceEvents, keyValueStore: any KeyValueStore, clock: MachClock, wallClock: any WallClock,
+        workspace: any WorkspaceEvents, keyValueStore: any KeyValueStore, clock: any MonotonicClock,
+        scheduler: any TimerScheduler, wallClock: any WallClock,
         metrics: PlatformMetrics, health: HealthEventLog, logger: any DiagnosticsLogging, tapLog: TapLogRing,
         capture: CaptureController?, utilityQueue: DispatchSerialQueue
     ) {
@@ -59,6 +66,7 @@ public struct InputHostDependencies: Sendable {
         self.workspace = workspace
         self.keyValueStore = keyValueStore
         self.clock = clock
+        self.scheduler = scheduler
         self.wallClock = wallClock
         self.metrics = metrics
         self.health = health

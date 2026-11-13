@@ -27,3 +27,15 @@
 
 - The conservation ledger in TestSupport checks this exact rule set; the property suite (13.1) covers flush
   and discard paths with 100,000 random sequences.
+
+## Amendment 2026-11-13: when posting itself is broken (design review finding 5)
+
+Conservation holds only while posting works. `CGEventPost` reports nothing when permission is revoked, so the
+failure is detected by echo loss ([0311](0311-in-flight-until-echo.md)): up to three jobs times 200 ms.
+Triggers, held events and paired keyUps whose replay falls into that window cannot be delivered, because a
+replay is also a post. They are lost on purpose rather than blocking the keyboard (PLT-R314, PLT-R730): the
+worker posts nothing once `WorkerFeedback.isPostingBroken` is set, counts every undeliverable event in
+`PlatformMetrics.lostWhilePostingBroken` and records one `postingBroken` health event with `.count(n)`. The
+conservation ledger accepts `lostWhilePostingBroken` outcomes only after the poster switched to
+`.silentlyDropping`, and their number must equal the metric.
+
