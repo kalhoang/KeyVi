@@ -17,7 +17,7 @@ import Testing
         let result = RulesLoader.load(contentsOf: RepoFiles.rules)
         #expect(result.usedEmbeddedDefaults == false)
         #expect(result.error == nil)
-        #expect(result.document.rules.count == 21)
+        #expect(result.document.rules.count == 23)
         #expect(result.document.bundleGroups[ReservedGroup.terminals]?.count == 7)
     }
 

@@ -47,7 +47,7 @@ enum EmbeddedRuleset {
             action: RuleAction(strategy: .backspaceReplace, requireTextFocus: .never, axEnable: AXEnableMode.none)),
         Rule(
             id: ruleID("jvm.default"),
-            summary: "Java apps such as JetBrains IDEs: paced events, no AX gating, code context",
+            summary: "Other Java apps: paced events, no AX gating, code context (JetBrains IDEs: editor.jetbrains)",
             match: RuleMatch(engines: [.jvm]),
             action: RuleAction(
                 strategy: .backspaceReplace,
