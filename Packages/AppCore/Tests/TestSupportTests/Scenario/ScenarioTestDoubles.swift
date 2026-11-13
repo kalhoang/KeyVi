@@ -88,7 +88,13 @@ func makeCheckout(scenarios: [String: String], rules: String? = nil) throws -> I
     try fileSystem.createDirectory(
         at: root.appendingPathComponent("compat/scenarios"), permissions: .ownerOnlyDirectory)
     try fileSystem.createDirectory(at: root.appendingPathComponent("scripts"), permissions: .ownerOnlyDirectory)
-    let brand = "# test brand\nAPP_BUNDLE_ID_DEV=\"org.example.product.dev\"\n"
+    let brand = """
+        # test brand
+        APP_DISPLAY_NAME="Example App"
+        APP_BUNDLE_ID_DEV="org.example.product.dev"
+        APP_SITE_HOST="updates.example.org"
+
+        """
     try fileSystem.writeAtomically(
         Data(brand.utf8), to: root.appendingPathComponent("scripts/brand.env"), permissions: .ownerOnlyFile)
     for (name, body) in scenarios {

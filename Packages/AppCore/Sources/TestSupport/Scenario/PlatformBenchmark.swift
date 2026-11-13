@@ -13,8 +13,12 @@ public struct PlatformMetric: Sendable, Hashable {
     public enum Source: String, Sendable, Hashable {
         /// Measured from outside the app (CPU time, footprint, harness timing).
         case harness
-        /// Read from the app's own histograms (PLT-R801); needs an export the runner can read (W2-E2).
+        /// Read from the app's own histograms (PLT-R801) through the integration hooks after a measured workload.
         case appHistogram
+        /// The app's built-in latency probe (PLT-R810) through the integration hooks.
+        case latencyProbe
+        /// Measured by `compat-harness soak` (8 hours of typing), not by `bench`.
+        case soak
     }
 
     /// Metric name in the result file, `<8.1 ID>.<statistic>`.
@@ -26,8 +30,9 @@ public struct PlatformMetric: Sendable, Hashable {
     public var definition: String
 }
 
-/// The gated 8.1 metrics `bench` covers. T1 is a hosted pipeline benchmark (PLT-R820); M2 is gated by `soak`
-/// (8 hours of typing) and S1 by the launch test, so they are not part of this file.
+/// The gated 8.1 metrics of the self-hosted runner (PLT-R821). `bench` measures every metric except M2, which
+/// `soak` measures (8 hours of typing); T1 is the hosted pipeline benchmark (PLT-R820) and S1 the launch test.
+/// Definitions and procedures: perf/README.md.
 public enum PlatformGates {
     public static let metrics: [PlatformMetric] = [
         PlatformMetric(
@@ -37,8 +42,8 @@ public enum PlatformGates {
             name: "T3.p99", unit: "ms", gate: 15, source: .appHistogram,
             definition: "decide to posted with axSelection, including the AX read"),
         PlatformMetric(
-            name: "T4.p99", unit: "ms", gate: 10, source: .harness,
-            definition: "probe text-view update of an edit minus the pass-through baseline"),
+            name: "T4.p99", unit: "ms", gate: 10, source: .latencyProbe,
+            definition: "probe text-view update of an edit minus the pass-through baseline, normal profile"),
         PlatformMetric(
             name: "T5.flushes", unit: "count", gate: 0, source: .appHistogram,
             definition: "held-event flushes in the normal profile"),
@@ -55,6 +60,14 @@ public enum PlatformGates {
             name: "M1.footprintMB", unit: "MB", gate: 50, source: .harness,
             definition: "phys_footprint 10 minutes after launch, windows closed"),
     ]
+
+    /// M2 (8.1): least-squares footprint growth over the soak (QA-R16, 13.6).
+    public static let soakGrowth = PlatformMetric(
+        name: "M2.growthMBPerHour", unit: "MB/h", gate: SoakSummary.growthGateMegabytesPerHour, source: .soak,
+        definition: "footprint growth over 8 hours of synthetic typing (least-squares slope)")
+
+    /// Every gated self-hosted metric: the `bench` set plus M2. The baseline file covers all of them.
+    public static var all: [PlatformMetric] { metrics + [soakGrowth] }
 
     public static func metric(named name: String) -> PlatformMetric? { metrics.first { $0.name == name } }
 }
@@ -120,6 +133,23 @@ public protocol PlatformMetricSource: Sendable {
     /// One measurement of `metric` in its unit. Throws `PlatformMetricUnavailable` when this source has no way
     /// to measure the metric yet, any other error when a measurement it supports failed.
     func measure(_ metric: PlatformMetric) async throws -> Double
+    /// One run over several metrics. The default measures them one by one; a source that gets several metrics
+    /// from one workload (the app histograms) overrides it to run that workload once per run.
+    func measure(_ metrics: [PlatformMetric]) async -> [String: Result<Double, any Error>]
+}
+
+extension PlatformMetricSource {
+    public func measure(_ metrics: [PlatformMetric]) async -> [String: Result<Double, any Error>] {
+        var results: [String: Result<Double, any Error>] = [:]
+        for metric in metrics {
+            do {
+                results[metric.name] = .success(try await measure(metric))
+            } catch {
+                results[metric.name] = .failure(error)
+            }
+        }
+        return results
+    }
 }
 
 /// The source cannot measure this metric at all yet (for example an app histogram before the app exports it,
@@ -156,14 +186,14 @@ public struct PlatformBenchmarkRunner: Sendable {
         var skipped: [String: String] = [:]
         for _ in 0..<max(1, runs) {
             var values: [String: BenchmarkDocument.Metric] = [:]
-            for metric in metrics where unmeasured[metric.name] == nil && skipped[metric.name] == nil {
-                do {
-                    let value = try await source.measure(metric)
+            let pending = metrics.filter { unmeasured[$0.name] == nil && skipped[$0.name] == nil }
+            let results = await source.measure(pending)
+            for metric in pending {
+                switch results[metric.name] ?? .failure(PlatformMetricUnavailable(reason: "not measured")) {
+                case .success(let value):
                     values[metric.name] = .init(value: value, unit: metric.unit, budget: metric.gate, calibrated: false)
-                } catch let unavailable as PlatformMetricUnavailable {
-                    skipped[metric.name] = unavailable.reason
-                } catch {
-                    unmeasured[metric.name] = String(describing: error)
+                case .failure(let unavailable as PlatformMetricUnavailable): skipped[metric.name] = unavailable.reason
+                case .failure(let error): unmeasured[metric.name] = String(describing: error)
                 }
             }
             let calibration = BenchmarkDocument.Calibration(name: Self.calibrationName, nanoseconds: calibrate())

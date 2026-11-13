@@ -30,6 +30,7 @@ final class FakeSystemActions: SystemActions, Sendable {
     func startTerminalCapture(in bundle: BundleKey, script: URL, captureFile: URL) async throws {
         calls.append("capture in " + bundle.rawValue + " -> " + captureFile.lastPathComponent)
     }
+    func resetTestHostFields(in bundle: BundleKey) async throws { calls.append("reset fields in " + bundle.rawValue) }
 }
 
 /// Scripted WebDriver endpoint: answers by path suffix, records requests.
@@ -84,11 +85,17 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let metrics: (any PlatformMetricSource)?
     let probe: (any ScenarioStateProbe)?
     let transport: FakeTransport
+    let control = FakeAppControl()
+    let evidence: FakePrivacyEvidence
+    let sampler: FakeConnectionSampler
+    static let library = URL(fileURLWithPath: "/library", isDirectory: true)
 
     init(
         clock: ManualClock, axText: String = "", monitor: (any SoakMonitor)? = nil,
         metrics: (any PlatformMetricSource)? = nil, probe: (any ScenarioStateProbe)? = nil,
-        transport: FakeTransport = FakeTransport(responses: [:])
+        transport: FakeTransport = FakeTransport(responses: [:]),
+        evidence: FakePrivacyEvidence = FakePrivacyEvidence(files: [], log: ""),
+        sampler: FakeConnectionSampler = FakeConnectionSampler(samples: [])
     ) {
         sink = RecordingKeyEventSink(clock: clock)
         self.axText = axText
@@ -96,6 +103,28 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
         self.metrics = metrics
         self.probe = probe
         self.transport = transport
+        self.evidence = evidence
+        self.sampler = sampler
+    }
+
+    func libraryDirectory() -> URL {
+        calls.append("library")
+        return Self.library
+    }
+
+    func appControl(targets: HarnessTargets) throws -> any AppUnderTestControl {
+        calls.append("control")
+        return control
+    }
+
+    func privacyEvidence(targets: HarnessTargets, library: URL) throws -> any PrivacyEvidenceSource {
+        calls.append("evidence")
+        return evidence
+    }
+
+    func connectionSampler() -> any ConnectionSampler {
+        calls.append("sampler")
+        return sampler
     }
 
     func keyEventSink() throws -> any KeyEventSink {

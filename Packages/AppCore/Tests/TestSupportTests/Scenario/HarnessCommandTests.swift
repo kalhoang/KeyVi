@@ -298,11 +298,14 @@ private let rulesJSON = """
         #expect(live.sink.records.count == 18)  // 3 scenarios x 3 keys x down/up, recorded in memory only
         let host = "org.example.product.dev.testhost"
         // The run ends by releasing TestHost's secure-input holder (no stuck secure input for the next job).
+        // Every TestHost scenario starts from empty fields (prepare presses TestHost's Reset fields button).
         #expect(
             live.system.calls.all == [
-                "launch " + host, "secure false in " + host, "focus testhost.native.textField in " + host,
-                "secure false in " + host,
+                "reset fields in " + host, "launch " + host, "secure false in " + host,
+                "focus testhost.native.textField in " + host, "secure false in " + host,
             ])
+        // The app under test was started on factory defaults; its settings were put back after the run.
+        #expect(live.control.events.all == ["launch", "quit", "launch"])
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20)
         let report = try JSONDecoder().decode(ScenarioRunReport.self, from: data)
         #expect(report.passed == 1 && report.failed == 1 && report.needsHuman == 1 && report.profile == .burst)
@@ -355,7 +358,9 @@ private let rulesJSON = """
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/soak/soak-summary.json"), maxBytes: 1 << 20)
         let summary = try JSONDecoder().decode(SoakSummary.self, from: data)
         #expect(summary.keystrokes == 48 && summary.chunks == 3 && summary.failures.count == 3)
-        #expect(console.output.last?.contains("48 keystrokes, 3 failed chunk(s)") == true)
+        #expect(console.output.contains { $0.contains("48 keystrokes, 3 failed chunk(s)") })
+        #expect(console.output.contains { $0.hasPrefix("M2.growthMBPerHour 0.500, gate 5.000") })
+        #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/soak/soak-metrics.json")))
         #expect(live.sink.records.filter { $0.event.phase == .down }.count >= 48)
     }
 
@@ -403,7 +408,7 @@ private let rulesJSON = """
         #expect(median.metrics["M1.footprintMB"]?.value == 45)
         #expect(median.runs == 3)
         #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/b.json.runs/run-3.json")))
-        #expect(console.output.contains("M1.footprintMB 45.000 MB, gate 50.0: ok"))
+        #expect(console.output.contains("M1.footprintMB 45.000, gate 50.000, no baseline: ok"))
     }
 
     @Test func benchOverGateFailsAndUnmeasuredIsIncomplete() async throws {
@@ -431,7 +436,7 @@ private let rulesJSON = """
             fileSystem: try makeCheckout(scenarios: [:]), live: skipping)
         #expect(await skippingHarness.execute() == .success)
         #expect(
-            skippingConsole.errors == [
+            skippingConsole.errors.prefix(2) == [
                 "skipped: T2.p99 (needs the app export)", "skipped: T5.flushes (needs the app export)",
             ])
         let broken = RecordingLiveServices(clock: ManualClock(), metrics: nil)

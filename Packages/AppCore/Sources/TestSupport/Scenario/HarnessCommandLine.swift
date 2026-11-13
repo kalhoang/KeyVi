@@ -8,7 +8,7 @@ public import AppModel
 public import Foundation
 
 public struct HarnessOptions: Sendable, Hashable {
-    public enum Command: String, Sendable, Hashable { case run, soak, bench, coverage, help }
+    public enum Command: String, Sendable, Hashable { case run, soak, bench, egress, coverage, help }
 
     public var command: Command
     public var dryRun = false
@@ -34,6 +34,22 @@ public struct HarnessOptions: Sendable, Hashable {
     public var webDrivers: [BundleKey: URL] = [:]
     /// Endpoint for webdriver targets without a `--webdriver` entry (13.2; CI passes no `--webdriver`).
     public var webDriverFallback: URL? = WebDriverClients.defaultEndpoint
+    /// App profiles (AppProfiles.swift).
+    public var profiles = "compat/scenarios/" + AppProfileLoader.directoryName
+    /// Write each scenario's configuration into the app's settings and restart it (`--no-configure` turns it off).
+    public var configureApp = true
+    /// Regression baseline of `bench` and `soak` (default perf/platform-baseline.json when present).
+    public var baseline: String?
+    /// `bench`: keys of the measured workload for T2, T3, T5 and T6.
+    public var workloadKeystrokes = 600
+    /// `bench`: the M1 window after launch (8.1: 10 minutes); C1 is its last `--idle-seconds`.
+    public var settleSeconds = 600
+    /// `egress` (13.7).
+    public var phase = EgressPhase.production
+    public var minutes = 10
+    public var intervalSeconds = 1
+    /// `egress --phase production`: allowed hosts (default the site host of scripts/brand.env).
+    public var allowHosts: [String] = []
 
     public init(command: Command) { self.command = command }
 }
@@ -48,9 +64,10 @@ public enum HarnessCommandLine {
         Usage: compat-harness <command> [options]
 
         Commands:
-          run       run compatibility scenarios (self-hosted runner)
+          run       run compatibility scenarios (self-hosted runner); privacy canary check after canary scenarios
           soak      replay N keystrokes through the pipeline, check text, memory growth, stuck modifiers
           bench     measure the self-hosted 8.1 gates, median of --runs, ADR 0502 format version 1
+          egress    sample the app's network connections for N minutes (13.7)
           coverage  list rules in the rules file whose test.scenario has no scenario file
           help      show this help
 
@@ -61,13 +78,19 @@ public enum HarnessCommandLine {
           --testhost-bundle-id ID   TestHost bundle id (default APP_BUNDLE_ID_DEV.testhost from brand.env)
           --app-bundle-id ID        build under test (default APP_BUNDLE_ID_DEV from brand.env)
           --seed N                  timing and corpus seed
+          --profiles DIR            app profiles (default compat/scenarios/profiles)
+          --no-configure            leave the app's settings alone (default: write each scenario's configuration
+                                    into the test build's settings and restart it; restored after the run)
 
         run:      --output DIR | --report FILE, --profile normal|fast|burst, --only ID[,ID...],
                   --rules FILE, --webdriver BUNDLE=URL (repeatable; other browsers use
                   http://127.0.0.1:9515), --terminal-capture FILE
-        soak:     --keystrokes N (default 1000000), --targets ID[,ID...], --chunk N, --profile P, --output DIR
+        soak:     --keystrokes N (default 1000000), --targets ID[,ID...], --chunk N, --profile P, --output DIR,
+                  --baseline FILE
         bench:    --runs N (default 5), --output FILE, --metrics NAME[,NAME...], --idle-seconds N,
-                  --typing-seconds N
+                  --settle-seconds N, --typing-seconds N, --workload-keys N, --baseline FILE
+        egress:   --phase local|production, --minutes N (default 10), --interval N, --allow-hosts H[,H...],
+                  --output FILE
         coverage: --rules FILE (default compat/rules.json)
         """
 
@@ -82,6 +105,8 @@ public enum HarnessCommandLine {
         while let flag = rest.popFirst() {
             if flag == "--dry-run" {
                 options.dryRun = true
+            } else if flag == "--no-configure" {
+                options.configureApp = false
             } else if flag == "--help" || flag == "-h" {
                 options.command = .help
             } else {
@@ -124,6 +149,27 @@ public enum HarnessCommandLine {
         case "--app-bundle-id": options.appBundleID = try bundle(flag, value).rawValue
         case "--terminal-capture": options.terminalCapture = value
         case "--webdriver": try addWebDriver(value, to: &options)
+        default: try applyMore(flag, value, to: &options)
+        }
+    }
+
+    /// Options of the W2-E2 additions (profiles, baseline, egress, bench durations).
+    private static func applyMore(_ flag: String, _ value: String, to options: inout HarnessOptions)
+        throws(HarnessUsageError)
+    {
+        switch flag {
+        case "--profiles": options.profiles = value
+        case "--baseline": options.baseline = value
+        case "--workload-keys": options.workloadKeystrokes = try number(flag, value, minimum: 1)
+        case "--settle-seconds": options.settleSeconds = try number(flag, value, minimum: 1)
+        case "--minutes": options.minutes = try number(flag, value, minimum: 1)
+        case "--interval": options.intervalSeconds = try number(flag, value, minimum: 1)
+        case "--allow-hosts": options.allowHosts = list(value)
+        case "--phase":
+            guard let phase = EgressPhase(rawValue: value) else {
+                throw HarnessUsageError("--phase must be local or production")
+            }
+            options.phase = phase
         default: throw HarnessUsageError("unknown option '" + flag + "'")
         }
     }

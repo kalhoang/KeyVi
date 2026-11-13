@@ -10,7 +10,18 @@ internal import RealtimeSupport
 /// Performs one setup step (launch, open URL, seed history, focus a field, select an input source, toggle
 /// secure input, wait). Live: CompatHarness/Live/LiveSetup.swift.
 public protocol ScenarioSetupPerformer: Sendable {
+    /// Called once before the scenario's first step (TestHost: clear every field, so no scenario reads text a
+    /// previous one typed).
+    func prepare(_ scenario: Scenario) async throws
     func perform(_ step: Scenario.SetupStep, for scenario: Scenario) async throws
+    /// Called once after the scenario, also when it failed: undoes state the scenario changed on purpose (a
+    /// revoked permission). Best effort; never fails the scenario.
+    func finish(_ scenario: Scenario) async
+}
+
+extension ScenarioSetupPerformer {
+    public func prepare(_ scenario: Scenario) async throws {}
+    public func finish(_ scenario: Scenario) async {}
 }
 
 /// Does nothing: the scenario's preconditions are prepared by hand or by an outer script.
@@ -52,12 +63,21 @@ extension ScenarioRunner {
         let outcome: ScenarioResult.Outcome
         let reason: String?
         do {
-            for step in Self.steps(of: scenario) {
+            stage = "prepare"
+            try await setup.prepare(scenario)
+            let schedule = ScenarioSchedule(scenario)
+            for step in schedule.setup {
                 stage = "setup " + step.action.rawValue
                 try await setup.perform(step, for: scenario)
             }
-            stage = "typing"
-            try await driver.type(scenario.keys, profile: scenario.timing)
+            for segment in schedule.segments(of: scenario.keys) {
+                stage = "typing"
+                if !segment.keys.isEmpty { try await driver.type(Array(segment.keys), profile: scenario.timing) }
+                if let step = segment.then {
+                    stage = "setup " + step.action.rawValue
+                    try await setup.perform(step, for: scenario)
+                }
+            }
             if scenario.expect.text != nil {
                 stage = "readback " + scenario.readback.rawValue
                 observed = try await readback.currentText(of: scenario)
@@ -74,19 +94,11 @@ extension ScenarioRunner {
             outcome = .fail
             reason = stage + ": " + String(describing: error)
         }
+        await setup.finish(scenario)
         let elapsed = clock.now().nanoseconds &- start.nanoseconds
         return ScenarioResult(
             scenario: scenario.id, outcome: outcome, observedText: observed,
             durationSeconds: Double(elapsed) / 1_000_000_000, reason: reason)
-    }
-}
-
-extension ScenarioRunner {
-    /// Setup steps in execution order. A scenario's `layout` is selected first, so no scenario inherits the
-    /// keyboard layout or input source a previous one switched to (13.2 layout scenarios).
-    static func steps(of scenario: Scenario) -> [Scenario.SetupStep] {
-        let layout = scenario.layout.map { [Scenario.SetupStep(action: .selectInputSource, value: $0.rawValue)] } ?? []
-        return layout + scenario.setup
     }
 }
 

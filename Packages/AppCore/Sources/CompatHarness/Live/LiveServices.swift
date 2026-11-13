@@ -54,20 +54,46 @@ struct LiveServices: LiveHarnessServices {
 
     func lineReader() -> (any LineReader)? { isatty(STDIN_FILENO) == 1 ? TerminalLineReader() : nil }
 
-    /// W2-E2 adds the app-state probe (pause reason and secure-input holder from the app under test).
+    /// Nil: the harness reads the pause reason and secure-input holder through the app's integration hooks.
     func stateProbe(targets: HarnessTargets) -> (any ScenarioStateProbe)? { nil }
 
     func soakMonitor(targets: HarnessTargets) throws -> any SoakMonitor {
-        guard let app = targets.appUnderTestBundleID else { throw LiveError.appNotFound("app under test") }
-        return LiveSoakMonitor(app: app)
+        LiveSoakMonitor(app: try appUnderTest(targets))
     }
 
+    /// C1, C2 and M1 by ProcessMetricSource over proc_pid_rusage; C2 types into TestHost.
     func metricSource(options: HarnessOptions, targets: HarnessTargets) throws -> any PlatformMetricSource {
+        let app = try appUnderTest(targets)
+        let typing = C2Typing(
+            targets: targets, system: LiveSystemActions(targets: targets, sleeper: TaskSleeper()),
+            sink: try CGEventKeySink(), clock: clock, seed: options.seed)
+        return ProcessMetricSource(
+            sampling: LiveProcessSampling(app: app), control: LiveAppControl(app: app, sleeper: TaskSleeper()),
+            typing: { try await typing.type(seconds: $0) }, clock: clock, sleeper: TaskSleeper(),
+            durations: .init(
+                settleSeconds: options.settleSeconds, idleSeconds: options.idleSeconds,
+                typingSeconds: options.typingSeconds))
+    }
+
+    func libraryDirectory() -> URL {
+        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library", isDirectory: true)
+    }
+
+    func appControl(targets: HarnessTargets) throws -> any AppUnderTestControl {
+        LiveAppControl(app: try appUnderTest(targets), sleeper: TaskSleeper())
+    }
+
+    func privacyEvidence(targets: HarnessTargets, library: URL) throws -> any PrivacyEvidenceSource {
+        guard let folder = targets.storageFolderName else { throw LiveError.appNotFound("storage folder (brand.env)") }
+        return LivePrivacyEvidence(library: library, folder: folder, app: try appUnderTest(targets))
+    }
+
+    func connectionSampler() -> any ConnectionSampler { LiveConnectionSampler() }
+
+    private func appUnderTest(_ targets: HarnessTargets) throws -> BundleKey {
         guard let app = targets.appUnderTestBundleID else { throw LiveError.appNotFound("app under test") }
-        return LiveMetricSource(
-            app: app, targets: targets, sink: try CGEventKeySink(),
-            system: LiveSystemActions(targets: targets, sleeper: TaskSleeper()), sleeper: TaskSleeper(),
-            clock: clock, idleSeconds: options.idleSeconds, typingSeconds: options.typingSeconds, seed: options.seed)
+        return app
     }
 }
 
