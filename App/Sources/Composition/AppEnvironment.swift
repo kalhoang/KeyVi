@@ -143,6 +143,7 @@ final class AppEnvironment {
         host.apply(settings: state)
         language.select(state.effective.interfaceLanguage)
         statusItem?.setClickToToggle(state.effective.clickIconToToggle)
+        settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
         applyUpdaterSettings()
         updateIcon()
     }

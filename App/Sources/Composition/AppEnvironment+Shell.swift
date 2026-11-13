@@ -217,8 +217,12 @@ extension AppEnvironment: StatusMenuActions {
     func settingsController() -> SettingsWindowController? {
         if let settingsWindow { return settingsWindow }
         guard let updater else { return nil }
+        let host = self.host
         let controller = SettingsWindowController(
-            store: settingsStore, language: language, updater: updater, loginItem: loginItem)
+            store: settingsStore, language: language, updater: updater, loginItem: loginItem, brand: brand,
+            inputSources: { host.enabledInputSources() }, layout: { host.currentLayoutTable() },
+            keyValues: keyValues)
+        controller.actions = self
         settingsWindow = controller
         return controller
     }
