@@ -137,7 +137,7 @@ final class FocusCore {
     func revalidate(scanOverlays: Bool) {
         guard running else { return }
         if scanOverlays { syncObservers(scanOverlays: true) }
-        refresh(force: false)
+        refresh(force: false, idle: !scanOverlays)
     }
 
     func handleNotification(pid: Int32, kind: AXNotificationKind) {
@@ -147,10 +147,16 @@ final class FocusCore {
 
     /// Reads the system-wide focus and, when the context changed (or `force`), resolves once and publishes
     /// (PLT-R391, PLT-R523). Records T6 (`focusRefresh`).
-    func refresh(force: Bool) {
+    ///
+    /// `idle` is the PLT-R382 revalidation on the first key after a typing pause. When it learns nothing it
+    /// publishes nothing: a generation bump would reset the word in progress and make the worker discard edits
+    /// in flight (PLT-R316). An AX timeout for the current owner teaches nothing about the focus, so the snapshot
+    /// stays until the breaker opens (PLT-R384), which then publishes the `timedOut` context.
+    func refresh(force: Bool, idle: Bool = false) {
         guard running, let rules else { return }
         let started = services.clock.now()
         let reading = readFocus(rules: rules, at: started)
+        if idle, learnedNothing(from: reading, at: started) { return }
         let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false
         if !force, sameElement, current?.match == match { return }
@@ -158,6 +164,14 @@ final class FocusCore {
         recordSideEffects(of: decision, reading: reading)
         resolveAndPublish(reading: reading, match: match, decision: decision, sameElement: sameElement, at: started)
         services.metrics.focusRefresh.record(nanoseconds: services.clock.now().nanoseconds(since: started))
+    }
+
+    /// A timeout of the system-wide read (no pid), or of the current owner's element read while its breaker is
+    /// still closed.
+    private func learnedNothing(from reading: FocusReading, at instant: MonotonicInstant) -> Bool {
+        guard reading.availability == .timedOut, current != nil else { return false }
+        guard let pid = reading.pid else { return true }
+        return pid == current?.pid && !breaker.isOpen(pid: pid, at: instant)
     }
 
     private func resolveAndPublish(
@@ -193,11 +207,7 @@ final class FocusCore {
             mirror.update(decision: decision)
             return
         }
-        generation = generation.next
-        fieldToken &+= 1
-        snapshot.generation = generation
-        snapshot.changedAt = instant
-        snapshot.fieldHandle = reading.element.map { FieldHandle(pid: $0.pid, token: fieldToken, element: $0.element) }
+        stampNewGeneration(&snapshot, element: reading.element, sameElement: sameElement, at: instant)
         // The generation first: the worker discards edits built for an older one (PLT-R316).
         services.generation.store(generation)
         services.output.publish(snapshot)
@@ -205,6 +215,21 @@ final class FocusCore {
         current = FocusContext(
             pid: reading.pid, element: reading.element?.element, identity: reading.identity, match: match,
             decision: decision, resolution: resolution, snapshot: snapshot)
+    }
+
+    /// contracts.md 10.4: the token names the element. A republication for the same element (rule or settings
+    /// re-resolution, changed attributes) keeps it and the focus time, so the tap does not see a focus change;
+    /// every element change mints a new one (PLT-R340, PLT-R408).
+    private func stampNewGeneration(
+        _ snapshot: inout FocusSnapshot, element: AXFocusedElement?, sameElement: Bool, at instant: MonotonicInstant
+    ) {
+        generation = generation.next
+        snapshot.generation = generation
+        if !sameElement {
+            fieldToken &+= 1
+            snapshot.changedAt = instant
+        }
+        snapshot.fieldHandle = element.map { FieldHandle(pid: $0.pid, token: fieldToken, element: $0.element) }
     }
 
     /// PLT-R521 tie health event; PLT-R385 `AXManualAccessibility` only when the rule asks, recorded once per pid.

@@ -177,14 +177,16 @@ import Testing
     @Test func reentryEdgeCases() {
         let short = WorkerRig(field: SimulatedTextField(text: "ao"))
         let tooShort = short.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", verifyBeforeApply: true)
+            Fixture.job(
+                sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", kind: .reentry, verifyBeforeApply: true)
         }
         short.run()
         #expect(short.outcome(tooShort) == .passedThroughByFallback)
         let unreadable = WorkerRig(field: SimulatedTextField(text: "chao"))
         unreadable.fieldAccess.setBehaviour(.unavailable)
         let applied = unreadable.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", verifyBeforeApply: true)
+            Fixture.job(
+                sequence: $0, deleteCount: 1, replaced: "chao", insertion: "ó", kind: .reentry, verifyBeforeApply: true)
         }
         unreadable.run()
         #expect(unreadable.outcome(applied) == .executed)  // `whenReadable`

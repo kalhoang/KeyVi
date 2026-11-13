@@ -69,6 +69,8 @@ extension WorkerCore {
 
     /// PLT-R342: read at most 64 UTF-16 units before the caret and compare with the expected word. Unreadable
     /// fields apply the edit (`verifyReentry: whenReadable`); a mismatch drops the history and passes the key.
+    /// The flag decides, whatever the kind: the pipeline sets it for every edit of a word re-opened by Backspace,
+    /// macros and restores included. A restore that fails the check delivers nothing (it has no trigger).
     func reentryMatches(_ job: EditJob) -> Bool {
         guard job.verifyBeforeApply, let expected = job.replacedText, !expected.isEmpty, let field = job.field
         else { return true }

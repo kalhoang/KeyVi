@@ -110,7 +110,19 @@ extension FocusCore {
             macOS: services.macOSVersion, engine: reading.engine, appCategory: reading.identity?.appCategory,
             role: attributes?.role, subrole: attributes?.subrole, identifier: attributes?.identifier,
             domClasses: attributes?.domClasses ?? [], ancestorRoles: Array((attributes?.ancestorRoles ?? []).prefix(6)),
-            editable: attributes?.editable, documentURL: attributes?.documentURL,
+            editable: attributes?.editable, documentURL: attributes.flatMap(Self.webAreaURL),
             windowTitle: attributes?.windowTitle)
+    }
+
+    /// Role of the web content root in every engine's AX tree (Chromium, WebKit, Gecko).
+    static let webAreaRole = "AXWebArea"
+
+    /// 02-platform.md 5.5: the document URL "of the focused web area". It is kept only when the focused element
+    /// is the web area or lies inside one, so browser chrome such as the omnibox never carries the tab's URL
+    /// (that would tie the address-bar rules with URL rules such as Google Sheets, PLT-R521). The provider
+    /// reports the ancestors up to the web area even beyond the six used for matching.
+    static func webAreaURL(_ attributes: FocusAttributes) -> String? {
+        guard attributes.role == webAreaRole || attributes.ancestorRoles.contains(webAreaRole) else { return nil }
+        return attributes.documentURL
     }
 }

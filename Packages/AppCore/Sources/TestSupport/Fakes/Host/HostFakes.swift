@@ -22,6 +22,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
     private struct State {
         var focusedPID: Int32?
         var attributes: [Int32: FocusAttributes] = [:]
+        var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
         var unavailable: Set<Int32> = []
         var observers: [Observer] = []
@@ -35,11 +36,14 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     public init() {}
 
-    /// Sets the focused app/element; posts the given notification to observers.
-    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?) {
+    /// Sets the focused app/element; posts the given notification to observers. `element` names the focused
+    /// element within the app: the same number is the same `AXUIElement` (CFEqual), another number another one,
+    /// so tests can move focus between fields of one app or keep it on one field while its attributes change.
+    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?, element: UInt16 = 0) {
         state.withLock {
             $0.focusedPID = pid
             $0.attributes[pid] = attributes
+            $0.elements[pid] = element
         }
         if let notify { post(notify, from: pid) }
     }
@@ -76,15 +80,30 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func focusedApplication() -> AXCallResult<Int32?> { .success(state.withLock { $0.focusedPID }) }
 
     public func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?> {
-        let (timingOut, unavailable, hasElement) = state.withLock { state in
+        let (timingOut, unavailable, hasElement, element) = state.withLock { state in
             state.elementQueries[pid, default: 0] += 1
-            return (state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil)
+            return (
+                state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil,
+                state.elements[pid] ?? 0
+            )
         }
         if timingOut { return .timedOut }
         if unavailable { return .unavailable }
         guard hasElement else { return .success(nil) }
-        // An application element is a local reference: creating it sends no AX message.
-        return .success(AXFocusedElement(pid: pid, element: AXElementReference(AXUIElementCreateApplication(pid))))
+        return .success(AXFocusedElement(pid: pid, element: Self.elementReference(pid: pid, element: element)))
+    }
+
+    /// Fixture limits that keep every synthetic reference distinct and inside `Int32`.
+    static let maximumFakePID: Int32 = 99_999
+    static let maximumFakeElement: UInt16 = 20_000
+
+    /// An application element is a local reference: creating it sends no AX message. Element 0 is the app's
+    /// own reference; other elements use unused pids above 1,000,000, one per (pid, element) with the full pid.
+    static func elementReference(pid: Int32, element: UInt16) -> AXElementReference {
+        precondition((0...maximumFakePID).contains(pid), "fake pids stay below 100,000")
+        precondition(element <= maximumFakeElement, "fake element numbers stay at or below 20,000")
+        let reference = element == 0 ? pid : 1_000_000 + Int32(element) * (maximumFakePID + 1) + pid
+        return AXElementReference(AXUIElementCreateApplication(reference))
     }
 
     public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
@@ -405,6 +424,7 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
     public struct FakeBundle: Sendable, Hashable {
         public var frameworks: [String]
         public var helpers: [String]
+        /// Paths relative to the bundle, for example `Contents/MacOS/libxul.dylib`.
         public var files: [String]
         public var info: [String: JSONValue]
         public init(frameworks: [String], helpers: [String], files: [String], info: [String: JSONValue]) {
@@ -417,12 +437,23 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
 
     public func frameworkNames(in bundle: URL) -> [String] { bundles[bundle]?.frameworks ?? [] }
     public func helperAppNames(in bundle: URL) -> [String] { bundles[bundle]?.helpers ?? [] }
-    /// `files` holds paths relative to `Contents`; the depth is the number of path components.
-    public func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool {
-        bundles[bundle]?.files.contains { path in
+
+    /// Same contract as the production inspector (PLT-R510): `directory` is a folder inside a known bundle, and
+    /// a file matches when it lies at most `maxDepth` levels below it (1 = directly inside).
+    public func containsFile(named name: String, in directory: URL, maxDepth: Int) -> Bool {
+        let target = directory.standardizedFileURL.path
+        guard
+            let (bundleURL, bundle) = bundles.first(where: { url, _ in
+                let root = url.standardizedFileURL.path
+                return target == root || target.hasPrefix(root + "/")
+            })
+        else { return false }
+        let folder = target.dropFirst(bundleURL.standardizedFileURL.path.count).split(separator: "/")
+        return bundle.files.contains { path in
             let components = path.split(separator: "/")
-            return components.last.map(String.init) == name && components.count <= maxDepth
-        } ?? false
+            guard components.last.map(String.init) == name, components.starts(with: folder) else { return false }
+            return components.count - folder.count <= maxDepth
+        }
     }
 
     public func infoDictionary(of bundle: URL) -> [String: JSONValue]? { bundles[bundle]?.info }

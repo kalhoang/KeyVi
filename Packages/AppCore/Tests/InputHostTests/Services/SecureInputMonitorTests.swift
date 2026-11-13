@@ -59,7 +59,9 @@ struct SecureInputMonitorTests {
         #expect(SecureInputMonitor.pollLeeway >= SecureInputMonitor.pollInterval / 10)  // PLT-R803
     }
 
-    @Test func generationChangesOnlyOnTransitions() {
+    /// Snapshots.swift: "The generation changes on every OS transition"; a stuck flag without key evidence keeps
+    /// the episode and its generation.
+    @Test func generationChangesOnEveryOSTransitionAndNotWhileTheFlagIsStuck() {
         let harness = Harness()
         harness.monitor.start()
         #expect(harness.published.count == 0)  // still the initial state
@@ -158,6 +160,51 @@ struct SecureInputMonitorTests {
         #expect(harness.published.last?.enabled == true)
         harness.scheduler.advance(by: .seconds(2))
         #expect(harness.published.last?.generation == 2)  // no evidence for 2: the episode continues
+    }
+
+    /// PLT-R398B episodes: each key evidence ends the current episode, and each later poll that still sees the
+    /// flag starts the next one, so the tap pauses again for a new generation every time.
+    @Test func everyEpisodeEndedByKeyEvidenceIsFollowedByANewGenerationPLTR398B() {
+        let harness = Harness()
+        harness.probe.set(enabled: true, holderPID: terminalPID)
+        harness.monitor.start()
+        for episode: UInt64 in 1...4 {
+            #expect(harness.published.last?.generation == episode)
+            harness.monitor.keyEvidence(generation: episode)
+            harness.monitor.keyEvidence(generation: episode)  // repeated evidence for one episode changes nothing
+            harness.scheduler.advance(by: .seconds(2))
+        }
+        #expect(harness.published.values.map(\.generation) == [1, 2, 3, 4, 5])
+        #expect(harness.published.values.allSatisfy { $0.enabled })
+    }
+
+    /// Key evidence followed by a release is one transition (off), and the next raise is another (on).
+    @Test func evidenceThenReleaseIsOneTransition() {
+        let harness = Harness()
+        harness.probe.set(enabled: true, holderPID: terminalPID)
+        harness.monitor.start()
+        harness.monitor.keyEvidence(generation: 1)
+        harness.probe.set(enabled: false, holderPID: nil)
+        harness.scheduler.advance(by: .seconds(2))
+        #expect(harness.published.last == SecureInputSnapshot(generation: 2, enabled: false, holder: nil))
+        harness.monitor.keyEvidence(generation: 2)  // disabled: no episode to end
+        harness.scheduler.advance(by: .seconds(2))
+        #expect(harness.published.count == 2)
+        harness.probe.set(enabled: true, holderPID: terminalPID)
+        harness.scheduler.advance(by: .seconds(2))
+        #expect(harness.published.last?.generation == 3)
+    }
+
+    /// Evidence for an episode that already ended (the tap read an older snapshot) does not end the new one.
+    @Test func evidenceForAnEndedEpisodeDoesNotEndTheNextOne() {
+        let harness = Harness()
+        harness.probe.set(enabled: true, holderPID: terminalPID)
+        harness.monitor.start()
+        harness.monitor.keyEvidence(generation: 1)
+        harness.scheduler.advance(by: .seconds(2))  // episode 2
+        harness.monitor.keyEvidence(generation: 1)  // late evidence for episode 1
+        harness.scheduler.advance(by: .seconds(2))
+        #expect(harness.published.last?.generation == 2)
     }
 
     @Test func staleOrDisabledEvidenceIsIgnored() {

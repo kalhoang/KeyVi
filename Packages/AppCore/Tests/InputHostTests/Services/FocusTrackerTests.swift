@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // PLT-R380-R393, PLT-R523, PRD-R19-R22: focus tracking on a real ax RunLoopThread with fake AX, processes and
-// rules. Every test waits for the ax thread with `waitUntilIdle()`; time comes from a ManualClock.
+// rules (`FocusTrackerHarness.swift`). Every test waits for the ax thread with `waitUntilIdle()`; time comes from
+// a ManualClock.
 
 import AppModel
 import CompatRules
@@ -16,129 +17,41 @@ import Testing
 @testable import InputHost
 @testable import TestSupport
 
-private let terminalPID: Int32 = 100
-private let spotlightPID: Int32 = 200
-private let zaloPID: Int32 = 300
-private let codePID: Int32 = 400
-private let browserPID: Int32 = 500
-private let terminal = bundle("com.apple.Terminal")
-private let spotlight = bundle("com.apple.Spotlight")
-private let zalo = bundle("com.example.zalo")
-private let code = bundle("com.example.code")
-private let browser = bundle("com.example.browser")
+private let terminalPID = FocusFixtures.terminalPID
+private let spotlightPID = FocusFixtures.spotlightPID
+private let zaloPID = FocusFixtures.zaloPID
+private let codePID = FocusFixtures.codePID
+private let browserPID = FocusFixtures.browserPID
+private let terminal = FocusFixtures.terminal
+private let spotlight = FocusFixtures.spotlight
+private let zalo = FocusFixtures.zalo
+private let code = FocusFixtures.code
+private let browser = FocusFixtures.browser
+private typealias Harness = FocusHarness
+private typealias CountingResolver = CountingFocusResolver
 
 private func attributes(
     role: String? = "AXTextArea", subrole: String? = nil, identifier: String? = nil, title: String? = nil,
     url: String? = nil
 ) -> FocusAttributes {
-    FocusAttributes(
-        role: role, subrole: subrole, identifier: identifier, domClasses: [], editable: nil,
-        ancestorRoles: ["AXScrollArea", "AXGroup", "AXWindow", "AXApplication", "A5", "A6", "A7"], documentURL: url,
-        windowTitle: title)
+    // A URL only exists inside a web area (02-platform.md 5.5), so URL fixtures carry an `AXWebArea` ancestor.
+    let ancestors = url == nil ? FocusFixtures.nativeAncestors : ["AXGroup", "AXWebArea", "AXScrollArea", "AXWindow"]
+    return FocusFixtures.attributes(
+        role: role, subrole: subrole, identifier: identifier, title: title, url: url, ancestors: ancestors)
 }
 
 private func decision(
     _ rule: String?, strategy: InjectionStrategy = .backspaceReplace, axEnable: AXEnableMode = .none,
     tieLoser: String? = nil, defaultMode: FirstSeenMode = .inherit, engine: EngineFingerprint = .native
 ) -> ResolvedDecision {
-    var base = FakeDecisionResolver.defaultDecision(engine: engine)
-    base.rule = rule.map { RuleID(rawValue: $0)! }
-    base.source = rule == nil ? .default : .shipped
-    base.strategy = strategy
-    base.axEnable = axEnable
-    base.tieLoser = tieLoser.map { RuleID(rawValue: $0)! }
-    base.defaultMode = defaultMode
-    return base
+    FocusFixtures.decision(
+        rule, strategy: strategy, axEnable: axEnable, tieLoser: tieLoser, defaultMode: defaultMode, engine: engine)
 }
 
 private func resolver(
     _ decisions: [BundleKey: ResolvedDecision] = [:], overlays: Set<BundleKey> = [spotlight]
 ) -> FakeDecisionResolver {
-    FakeDecisionResolver(
-        decisions: decisions, fallback: decision(nil), overlayBundles: overlays, titlePatternBundles: [browser],
-        fingerprints: [code: .electron, browser: .chromium])
-}
-
-/// Counts fingerprint requests (PLT-R510 cache).
-private final class CountingResolver: FocusDecisionResolving {
-    let inner: FakeDecisionResolver
-    private let calls = Mutex<[BundleKey]>([])
-    init(_ inner: FakeDecisionResolver) { self.inner = inner }
-    func resolve(_ context: MatchContext) -> ResolvedDecision { inner.resolve(context) }
-    var overlayBundles: Set<BundleKey> { inner.overlayBundles }
-    var titlePatternBundles: Set<BundleKey> { inner.titlePatternBundles }
-    func fingerprint(bundleURL: URL, bundle: BundleKey) -> EngineFingerprint {
-        calls.withLock { $0.append(bundle) }
-        return inner.fingerprint(bundleURL: bundleURL, bundle: bundle)
-    }
-    var fingerprintCalls: [BundleKey] { calls.withLock { $0 } }
-}
-
-private final class Harness {
-    let thread = RunLoopThread(name: "test.focus.ax", qualityOfService: .userInitiated)
-    let ax = FakeAXProvider()
-    let processes = FakeProcessIdentityProvider(processes: [
-        FakeProcessIdentityProvider.process(pid: terminalPID, bundle: terminal.rawValue, name: "Terminal"),
-        FakeProcessIdentityProvider.process(pid: spotlightPID, bundle: spotlight.rawValue, name: "Spotlight"),
-        FakeProcessIdentityProvider.process(pid: zaloPID, bundle: zalo.rawValue, name: "Zalo"),
-        FakeProcessIdentityProvider.process(pid: codePID, bundle: code.rawValue, name: "Code"),
-        FakeProcessIdentityProvider.process(pid: browserPID, bundle: browser.rawValue, name: "Browser", build: "9"),
-    ])
-    let cell: SnapshotCell<FocusSnapshot>
-    let generation = CurrentFocusGeneration()
-    let inbox = SPSCRing<AXNotice>(capacity: 64)
-    let metrics = PlatformMetrics()
-    let health = HealthEventLog()
-    let clock = ManualClock()
-    let documents = Recorder<AppModesDocument>()
-    let tracker: FocusTracker
-
-    init() {
-        thread.start()
-        let initial = FocusSnapshot(
-            generation: .initial, app: nil, field: .unknown,
-            decision: HostDecisionMapper.map(decision(nil), engine: .native, optedIntoPaste: false), mode: .vietnamese,
-            modeSource: .globalMode, appliedToggleSequence: 0, fieldHandle: nil, changedAt: .zero, pause: nil)
-        cell = SnapshotCell(initial, epoch: ReaderEpoch())
-        tracker = FocusTracker(
-            thread: thread, ax: ax, processes: processes, output: cell, generation: generation, inbox: inbox,
-            metrics: metrics, health: health, clock: clock, macOSVersion: LooseVersion("27.2")!)
-        let documents = self.documents
-        tracker.setMemoryObserver { documents.append($0) }
-    }
-
-    func start(
-        _ rules: any FocusDecisionResolving = resolver(), memory apps: [AppModeEntry] = [],
-        global: TypingMode = .vietnamese
-    ) {
-        let memory = AppModeMemory(
-            document: AppModesDocument(globalMode: global, apps: apps), rememberPerApp: true, firstSeen: .inherit)
-        tracker.start(rules: rules, memory: memory)
-        sync()
-    }
-
-    func sync() { tracker.waitUntilIdle() }
-
-    /// Focus moves to an app that has no observer: NSWorkspace activation makes the owner revalidate (PLT-R381).
-    func activate(_ pid: Int32, _ focus: FocusAttributes = attributes()) {
-        ax.focus(pid: pid, attributes: focus, notify: nil)
-        tracker.revalidate()
-        sync()
-    }
-
-    func toggle(_ sequence: UInt64, _ bundle: BundleKey?, _ mode: TypingMode) {
-        _ = inbox.push(.modeToggled(sequence: sequence, bundle: bundle, mode: mode))
-        tracker.drainInbox()
-        sync()
-    }
-
-    var snapshot: FocusSnapshot { cell.load() }
-
-    func finish() {
-        tracker.stop()
-        sync()
-        thread.stop()
-    }
+    FocusFixtures.resolver(decisions, overlays: overlays)
 }
 
 @Suite("FocusTracker (PLT-R380-R393, PRD-R19-R22)", .serialized)

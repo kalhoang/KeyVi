@@ -27,8 +27,12 @@ public struct FocusAttributes: Sendable, Hashable {
     public var identifier: String?  // kAXIdentifierAttribute
     public var domClasses: [String]  // "AXDOMClassList" when exposed
     public var editable: Bool?
-    public var ancestorRoles: [String]  // up to 6 parents (5.2)
-    public var documentURL: String?  // transient
+    /// Nearest parent first: up to 6 (5.2), or up to the nearest `AXWebArea` when a document URL was requested
+    /// and the web area is further up. Matching uses the first 6.
+    public var ancestorRoles: [String]
+    /// Transient. The `AXURL` of the focused web area (5.5): only when the element is an `AXWebArea` or lies
+    /// inside one, never for browser chrome such as the omnibox. The tracker drops it otherwise.
+    public var documentURL: String?
     public var windowTitle: String?  // transient
     public init(
         role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?,
