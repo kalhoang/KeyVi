@@ -6,12 +6,19 @@
 // allocation sneaking into the tap side.
 
 import AppModel
+import Darwin
 import RealtimeSupport
 import Testing
 
 @testable import Injection
 
-@Suite(.serialized) struct QueueBenchmarkTests {
+/// Timing is meaningless under a sanitizer runtime (5-15x slower), so the suite skips itself there.
+private let sanitizerLoaded = ["__tsan_init", "__asan_init"].contains { (symbol: String) -> Bool in
+    dlsym(UnsafeMutableRawPointer(bitPattern: -2), symbol) != nil  // RTLD_DEFAULT
+}
+
+@Suite(.serialized, .enabled(if: !sanitizerLoaded, "timing is not meaningful under a sanitizer"))
+struct QueueBenchmarkTests {
     private static let iterations = 100_000
     /// Per operation, debug build.
     private static let bound: Duration = .microseconds(5)
@@ -26,7 +33,8 @@ import Testing
     @Test func pushPopFinishRoundTrip() {
         let queue = JobQueue(capacity: 512, signal: WorkerSignal(), policy: .untilPosted)
         let record = KeyEventRecord(
-            kind: .keyDown, keyCode: KeyCode(rawValue: 0), flags: 0, autorepeat: false, keyboardType: 40, unicode: .empty,
+            kind: .keyDown, keyCode: KeyCode(rawValue: 0), flags: 0, autorepeat: false, keyboardType: 40,
+            unicode: .empty,
             receivedAt: .zero, isProbe: false)
         let perOperation = measurePerOperation {
             for _ in 0..<Self.iterations {
@@ -53,7 +61,9 @@ import Testing
                 _ = queue.push(.boundary(BoundaryJob(sequence: sequence, reason: .focusChanged, generation: .initial)))
                 _ = queue.pop()
                 let eventSequence = UInt32(truncatingIfNeeded: index) & EventMarker.sequenceMask
-                queue.finished(sequence, expectation: EchoExpectation(job: sequence, finalEventSequence: eventSequence, postedAt: now))
+                queue.finished(
+                    sequence,
+                    expectation: EchoExpectation(job: sequence, finalEventSequence: eventSequence, postedAt: now))
                 _ = tracker.settle(now: now)
                 if case .echo(let echoed) = marker.classify(marker.userData(sequence: eventSequence, probe: false)) {
                     tracker.observed(echoed, at: now)
