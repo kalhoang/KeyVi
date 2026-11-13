@@ -19,9 +19,10 @@ import Testing
     static let exclamationAllowed: Set<String> = ["onboarding.done.title"]
 
     /// Informal, slang or regional words that standard, neutral Vietnamese UI copy avoids (PRD-R62, PRD-R40).
-    /// Compared as whole words, case-insensitively.
+    /// Compared as whole words, case-insensitively. "vô" is not listed: a whole-word check cannot tell the regional
+    /// "vô đây" from the standard "vô hiệu hóa" or "vô tình" (review W2-F); copy review catches the former.
     static let informalWords: Set<String> = [
-        "nha", "nhé", "nhá", "nghen", "hen", "nè", "vô", "hông", "hổng", "dzô", "ơi", "tui", "tớ", "mày", "tao",
+        "nha", "nhé", "nhá", "nghen", "hen", "nè", "hông", "hổng", "dzô", "ơi", "tui", "tớ", "mày", "tao",
         "oke", "okela", "vâng", "ạ", "xịn", "zô",
     ]
 
@@ -91,11 +92,20 @@ import Testing
                     #expect(!value.contains("!"), "\(location): PRD-R40 allows ! only on the final onboarding screen")
                 }
             }
-            let vi = entry.units["vi"]?.value ?? ""
-            let words = Set(vi.lowercased().split { !$0.isLetter }.map(String.init))
-            let informal = words.intersection(Self.informalWords)
+            let informal = Self.informalWords(in: entry.units["vi"]?.value ?? "")
             #expect(informal.isEmpty, "\(table.rawValue): \(entry.key) uses \(informal.sorted()) (PRD-R62)")
         }
+    }
+
+    @Test func informalWordCheckMatchesWholeWordsAndAcceptsStandardOnes() {
+        #expect(Self.informalWords(in: "Bấm vào đây nha.") == ["nha"])
+        #expect(Self.informalWords(in: "Gõ nhanh hơn").isEmpty, "a whole word, not a prefix")
+        #expect(Self.informalWords(in: "Vô hiệu hóa gõ tắt. Vô tình nhấn nhầm.").isEmpty)
+    }
+
+    /// The listed informal words that occur in `value`.
+    static func informalWords(in value: String) -> Set<String> {
+        Set(value.lowercased().split { !$0.isLetter }.map(String.init)).intersection(informalWords)
     }
 
     @Test func exclamationMarkIsOnlyOnTheFinalOnboardingScreen() throws {
@@ -115,15 +125,22 @@ import Testing
 
     @Test func everyTypedKeyIsUsedByTheApp() throws {
         // A typed case keeps its key "referenced"; this checks the case itself is used somewhere, so dead copy
-        // cannot survive behind an unused case. Keys built from another value (icon states) are used through it.
-        let used = try CatalogInventory.productionSources().reduce(into: Set<String>()) {
-            $0.formUnion(CatalogInventory.dottedIdentifiers(in: $1.text))
-        }
+        // cannot survive behind an unused case. Case names such as `cancel`, `settings` or `email` also name
+        // SwiftUI roles and other members, so a bare `.caseName` only counts in a file that names the enum or a
+        // declaration typed with it (`onboardingAccessibility(_: OnboardingControl, ...)`); anywhere else the use
+        // must be qualified (`EnumName.caseName`). Keys built from another value (icon states) are used through it.
+        let sources = try CatalogInventory.productionSources().map { SwiftCodeText.strip($0.text) }
+        let references = sources.map(CatalogInventory.MemberReferences.init(code:))
+        let typedKeys = try CatalogInventory.typedKeys()
+        let contexts = CatalogInventory.typedDeclarations(of: Set(typedKeys.map(\.enumName)), in: sources)
         var unused: [String] = []
-        for typed in try CatalogInventory.typedKeys() where !typed.caseName.isEmpty {
+        for typed in typedKeys where !typed.caseName.isEmpty {
             if Self.unusedTypedKeyAllowlist[typed.key] != nil { continue }
             if CatalogInventory.mirrorsIconState(typed) { continue }
-            if !used.contains(typed.caseName) { unused.append("\(typed.enumName).\(typed.caseName)") }
+            let context = contexts[typed.enumName, default: []].union([typed.enumName])
+            if !references.contains(where: { $0.uses(typed.caseName, of: typed.enumName, context: context) }) {
+                unused.append("\(typed.enumName).\(typed.caseName)")
+            }
         }
         #expect(Array(Set(unused)).sorted() == [])
     }
@@ -151,11 +168,43 @@ import Testing
         }
     }
 
-    @Test func dottedIdentifierScanFindsMemberReferencesOnly() {
-        let found = CatalogInventory.dottedIdentifiers(
-            in: "x(MenuText.quit, .back) // case skip = \"a.b\"\nfoo.`continue`")
-        #expect(found.isSuperset(of: ["quit", "back", "b"]))
-        #expect(!found.contains("skip") && !found.contains("MenuText") && !found.contains("x"))
+    @Test func memberReferenceScanFindsMemberReferencesOnly() {
+        let found = CatalogInventory.MemberReferences(
+            in: "x(MenuText.quit, .back) // .gone\ncase skip = \"a.b\"\nfoo.`continue`")
+        #expect(found.bare.isSuperset(of: ["quit", "back"]))
+        #expect(!found.bare.contains("skip") && !found.bare.contains("MenuText") && !found.bare.contains("x"))
+        #expect(!found.bare.contains("gone") && !found.bare.contains("b"), "comments and literals are not code")
+        #expect(found.qualified.contains("MenuText.quit") && !found.qualified.contains("MenuText.back"))
+        #expect(found.names.isSuperset(of: ["MenuText", "x", "foo"]))
+    }
+
+    @Test func bareCaseNamesCountOnlyWhereTheEnumIsNamed() {
+        // Review W2-F: `role: .cancel` in a file that never names `CommonText` must not keep `CommonText.cancel`.
+        func uses(_ source: String, _ context: Set<String> = ["CommonText"]) -> Bool {
+            CatalogInventory.MemberReferences(in: source).uses("cancel", of: "CommonText", context: context)
+        }
+        #expect(!uses("Button(role: .cancel) {}"))
+        #expect(uses("let s = text(CommonText.cancel)"))
+        #expect(!uses("let s = text(CommonText.cancelHint)"))
+        #expect(!uses("case cancel = \"common.cancel\" // CommonText"), "a raw value is not a use")
+        #expect(uses("func t(_ k: CommonText) {}\nt(.cancel)"))
+        #expect(uses("x.commonAccessibility(.cancel)", ["CommonText", "commonAccessibility"]))
+    }
+
+    @Test func declarationsTypedWithAnEnumAreItsContext() {
+        let code = SwiftCodeText.strip(
+            """
+            struct PracticeField: View {
+                let control: OnboardingControl
+            }
+            extension View {
+                func onboardingAccessibility(_ control: OnboardingControl, _ l: Localizer) -> some View { self }
+                func other(_ value: Int) -> some View { self }
+            }
+            """)
+        let contexts = CatalogInventory.typedDeclarations(of: ["OnboardingControl", "CommonText"], in: [code])
+        #expect(contexts["OnboardingControl"] == ["PracticeField", "onboardingAccessibility"])
+        #expect(contexts["CommonText", default: []].isEmpty)
     }
 
     @Test func uiSourcesHaveNoLiteralCopy() throws {
@@ -166,8 +215,26 @@ import Testing
             for (index, line) in lines.enumerated() {
                 let code = line.split(separator: "//", maxSplits: 1).first.map(String.init) ?? ""
                 #expect(code.firstMatch(of: literal) == nil, "\(path):\(index + 1) has literal copy")
+                #expect(!Self.hasVerbatimLiteralCopy(code), "\(path):\(index + 1) has literal copy in Text(verbatim:)")
             }
         }
+    }
+
+    /// True when a `Text(verbatim: "...")` literal on the line contains a word of its own (two letters or more
+    /// outside interpolations): `Text(verbatim: "Đóng")` is hard-coded copy, `"\(n). \(step)"` is formatting.
+    static func hasVerbatimLiteralCopy(_ line: String) -> Bool {
+        let interpolation = /\\\((?:[^()]|\([^()]*\))*\)/
+        let formatting = line.replacing(interpolation, with: "")
+        return formatting.contains(/Text\(verbatim:\s*"[^"]*\p{L}{2,}/)
+    }
+
+    @Test func verbatimLiteralScanFlagsWordsButNotFormatting() {
+        // Review W2-F: the codebase renders copy with `Text(verbatim:)`, so a literal there is the likely leak.
+        #expect(Self.hasVerbatimLiteralCopy(#"Text(verbatim: "Đóng")"#))
+        #expect(Self.hasVerbatimLiteralCopy(#"Text(verbatim: "\(count) phút")"#))
+        #expect(!Self.hasVerbatimLiteralCopy(#"Text(verbatim: "\(localizer.formatNumber(index + 1)). \(step)")"#))
+        #expect(!Self.hasVerbatimLiteralCopy(#"Text(verbatim: "V")"#))
+        #expect(!Self.hasVerbatimLiteralCopy("Text(verbatim: localizer.string(CommonText.close))"))
     }
 
     @Test func percentSignCheckAcceptsSpecifiersAndRejectsStrays() {
@@ -184,21 +251,79 @@ import Testing
 }
 
 extension CatalogInventory {
-    /// Identifiers written after a period (`.caseName`, `Type.caseName`), collected in one pass over the source.
-    static func dottedIdentifiers(in text: String) -> Set<String> {
-        var result: Set<String> = []
-        var current = ""
-        var afterPeriod = false
-        for character in text {
-            if afterPeriod, character.isLetter || character.isNumber || character == "_" {
-                current.append(character)
-                continue
-            }
-            if afterPeriod, !current.isEmpty { result.insert(current) }
-            current = ""
-            afterPeriod = character == "."
+    /// Member references in the code of one source file (comments and literals stripped, see `SwiftCodeText`),
+    /// collected in one pass: identifiers written after a period (`bare`), the same with the identifier written
+    /// before the period (`qualified`, `Type.member`), and every identifier (`names`).
+    struct MemberReferences {
+        var bare: Set<String> = []
+        var qualified: Set<String> = []
+        var names: Set<String> = []
+
+        init(in text: String) {
+            self.init(code: SwiftCodeText.strip(text))
         }
-        if afterPeriod, !current.isEmpty { result.insert(current) }
+
+        /// `code` is already stripped of comments and literals.
+        init(code: String) {
+            var current = ""
+            var previous = ""
+            var afterPeriod = false
+            for character in code + " " {
+                if character.isLetter || character.isNumber || character == "_" {
+                    current.append(character)
+                    continue
+                }
+                if !current.isEmpty {
+                    names.insert(current)
+                    if afterPeriod {
+                        bare.insert(current)
+                        if !previous.isEmpty { qualified.insert("\(previous).\(current)") }
+                    }
+                }
+                if character == "." {
+                    previous = current
+                    afterPeriod = true
+                } else {
+                    previous = ""
+                    afterPeriod = false
+                }
+                current = ""
+            }
+        }
+
+        /// A case is used when written as `EnumName.caseName`, or as `.caseName` in a file that names one of
+        /// `context` (the enum and the declarations typed with it).
+        func uses(_ caseName: String, of enumName: String, context: Set<String>) -> Bool {
+            qualified.contains("\(enumName).\(caseName)")
+                || (bare.contains(caseName) && !names.isDisjoint(with: context))
+        }
+    }
+
+    /// Per enum, the functions with a parameter of that type and the types with a stored property of that type:
+    /// a call such as `onboardingAccessibility(.closeHelp, ...)` or `PracticeField(control: .tryItField)` infers
+    /// the enum without naming it. `sources` are stripped code.
+    static func typedDeclarations(of enumNames: Set<String>, in sources: [String]) -> [String: Set<String>] {
+        var result: [String: Set<String>] = [:]
+        let function = /func\s+(\w+)\s*(?:<[^>]*>)?\(([^)]*)\)/
+        let typeDeclaration = /(?:struct|class|enum|actor)\s+(\w+)/
+        let storedProperty = /(?:let|var)\s+\w+\s*:\s*(\w+)\s*(?:\n|=|$)/
+        for code in sources {
+            for match in code.matches(of: function) {
+                let parameterTypes = match.output.2.split(separator: ",").compactMap { parameter in
+                    parameter.split(separator: ":").dropFirst().first?
+                        .split { !($0.isLetter || $0.isNumber || $0 == "_") }.first.map(String.init)
+                }
+                for name in enumNames.intersection(parameterTypes) {
+                    result[name, default: []].insert(String(match.output.1))
+                }
+            }
+            for match in code.matches(of: storedProperty) where enumNames.contains(String(match.output.1)) {
+                let before = code[..<match.range.lowerBound]
+                if let owner = before.matches(of: typeDeclaration).last {
+                    result[String(match.output.1), default: []].insert(String(owner.output.1))
+                }
+            }
+        }
         return result
     }
 

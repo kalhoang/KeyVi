@@ -4303,24 +4303,6 @@
         }
       }
     },
-    "settings.typing.practice.label" : {
-      "comment" : "PRD-R24 live practice field.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Practice field"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ô gõ thử"
-          }
-        }
-      }
-    },
     "settings.typing.practice.placeholder" : {
       "comment" : "Placeholder; PLT-R901 nothing is stored.",
       "extractionState" : "manual",
