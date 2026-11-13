@@ -74,9 +74,11 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
         for (file, data) in files.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
             try fileSystem.writeAtomically(data, to: location.url(for: file), permissions: .ownerOnlyFile)
         }
-        state.withLock { $0.current = configuration }
         try await control.launch()
         try await awaitReady()
+        // Only a configuration the app started with counts as applied: after a failed launch the next apply of the
+        // same configuration tries again.
+        state.withLock { $0.current = configuration }
     }
 
     public func restore() async throws {

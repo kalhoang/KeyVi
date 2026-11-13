@@ -267,6 +267,17 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         #expect(control.events.all.count == 6)
     }
 
+    /// A configuration whose start failed is not remembered: applying it again retries.
+    @Test func failedStartIsRetried() async throws {
+        let clock = ManualClock()
+        let control = FakeAppControl()
+        let starting = FakeHookClient(state: snapshot(.starting))
+        let subject = configurator(InMemoryFileSystem(), control: control, hooks: starting, clock: clock)
+        await #expect(throws: AppHookError.timeout(command: "state")) { try await subject.apply(.factory) }
+        await #expect(throws: AppHookError.timeout(command: "state")) { try await subject.apply(.factory) }
+        #expect(control.events.all == ["launch", "quit", "launch"])
+    }
+
     @Test func readinessUsesTheHooksAndFallsBackWhenTheyAreSilent() async throws {
         let clock = ManualClock()
         let origin = clock.now().nanoseconds
