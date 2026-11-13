@@ -44,7 +44,7 @@ func enable(_ identifier: String) -> Bool {
     }
     let status = TISEnableInputSource(source)
     let enabled = !sources(identifier, installed: false).isEmpty
-    print((enabled ? "enabled: " : "could not enable (status \(status)): ") + identifier)
+    print((enabled ? "enabled: " : "could not enable (status " + String(status) + "): ") + identifier)
     return enabled
 }
 
