@@ -13,7 +13,8 @@ export const support = {
     ["Why are there no quick consonant shortcuts (cc to ch, kk to kh)?", "Because they break ordinary words (<code>cc</code> becomes <code>ch</code>, <code>kkk</code> becomes <code>khk</code>). {{AppName}} leaves them out on purpose, even as an option."],
     ["Is the tone placed as <em>hòa</em> or <em>hoà</em>?", "The default is the traditional style (<em>hòa</em>, <em>thủy</em>, <em>khỏe</em>). The modern style (<em>hoà</em>, <em>thuỷ</em>, <em>khoẻ</em>) is one toggle away in Settings, Typing."],
     ["Are TCVN3, VNI-Windows or CP1258 supported?", "No. {{AppName}} outputs precomposed Unicode (NFC) only, which every current app reads."],
-    ["What is the Vietnamese/English toggle key, and can I change it?", "By default you tap and release <kbd>Control</kbd> + <kbd>Shift</kbd>. Change it in Settings, General. If you pick a combination macOS already uses (for example Command+Space), the app accepts it but warns you which macOS feature owns it."],
+    ["What is the Vietnamese/English toggle key, and can I change it?", "By default you tap and release <kbd>Control</kbd> + <kbd>Shift</kbd>. Change it in Settings, General. If you pick a combination macOS already uses (for example Command+Space), the app accepts it but warns you which macOS feature owns it. See <a href=\"#macos-shortcuts\">how to turn off that macOS shortcut</a>."],
+    ["Why does {{AppName}} pause when I pick a Japanese, Chinese or Korean keyboard?", "When you select an input source that does not use Latin letters (Japanese, Chinese, Korean and similar), {{AppName}} pauses on its own and dims its menu bar icon, so your keys go straight to that input method: typing <code>kore</code> in a Japanese input method does not turn into <code>kỏe</code>. Select the ABC or U.S. keyboard again and {{AppName}} types Vietnamese again. This is deliberate and not a setting."],
     ["Does {{AppName}} work in password fields?", "Password fields are always skipped and keys go straight to the app. This is deliberate and not a setting."],
     ["What about QWERTZ, AZERTY, Dvorak or Colemak keyboards?", "They work. {{AppName}} follows the keyboard layout macOS is using, with nothing to configure."],
     ["Does the app send what I type anywhere?", "No. See the <a href=\"{{hrefPrivacy}}\">Privacy</a> page for exactly what the app stores and sends."],
@@ -76,6 +77,23 @@ export const support = {
   <li>Report it with <em>Report a problem with this app...</em>: the report is pre-filled with the app, its version and the active rule.</li>
 </ol>`,
     },
+    shortcuts: {
+      id: "macos-shortcuts",
+      h: "The toggle key clashes with a macOS shortcut",
+      html: `
+<p>If you pick a combination macOS already uses, {{AppName}} still saves your choice and shows a warning that names the macOS feature using it. To keep the combination for {{AppName}} alone, turn that shortcut off or change it in macOS:</p>
+<ol class="steps">
+  <li>Open System Settings &gt; Keyboard and click <em>Keyboard Shortcuts...</em>. {{verifyHtml}} The item names on each macOS version.</li>
+  <li>Choose the group in the left column (see the list below), then untick the shortcut to turn it off, or double-click its key combination to assign another one.</li>
+</ol>
+<ul>
+  <li><kbd>Command</kbd> + <kbd>Space</kbd>: the <em>Spotlight</em> group, Show Spotlight search.</li>
+  <li><kbd>Control</kbd> + <kbd>Space</kbd> and <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>: the <em>Input Sources</em> group, select the previous input source and select the next source.</li>
+  <li><kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Space</kbd>: opens the Emoji &amp; Symbols viewer. This shortcut lives in each app's Edit menu, not in the groups above; you can assign another combination to that menu item in the <em>App Shortcuts</em> group. {{verifyHtml}} The menu item and group names on each macOS version.</li>
+  <li><kbd>Command</kbd> + <kbd>Tab</kbd> (switching apps), <kbd>Command</kbd> + <kbd>Q</kbd> (quitting apps) and <kbd>Command</kbd> + <kbd>W</kbd> (closing windows): macOS does not let you turn these off. Choose another combination for {{AppName}}.</li>
+</ul>
+<p>{{AppName}} does not read the macOS shortcut settings, so the warning in Settings stays after you have turned the shortcut off. You can ignore it then.</p>`,
+    },
   },
   reportHeading: "How to report a bug",
   reportIntro: "The quickest way is from inside the app: the {{AppName}} menu &gt; <em>Report a problem...</em>.",
@@ -105,22 +123,22 @@ export const support = {
   ],
   absence: "When Kal is away for more than a week, the website shows a notice with the expected return date.",
   migrateHeading: "Moving from another input method",
-  migrateLede: "Guides for moving your macro list (and some settings) from the input method you use now. {{AppName}} imports only from a file you export yourself, and only after you press import. The app never reads another app's data on its own.",
+  migrateLede: "Guides for moving your macro list from the input method you use now. Today {{AppName}} imports macros from a text file (tab-separated or CSV), from a macOS Text Replacements file and from its own export; it does not read other input methods' export files yet. {{AppName}} imports only a file you choose yourself, and only after you press import. The app never reads another app's data on its own.",
 };
 
 export const migrate = {
   title: "Moving from {{Other}} to {{AppName}}",
   indexNames: {
-    xkey: ["XKey", "Macros, typing method, tone style, excluded apps"],
-    openkey: ["OpenKey", "Macros"],
-    evkey: ["EVKey", "Macros"],
-    gonhanh: ["Gõ Nhanh", "Macros, per-app settings if exportable"],
-    phtv: ["PHTV", "Macros"],
+    xkey: ["XKey", "Macros, through the plain text template"],
+    openkey: ["OpenKey", "Macros, through the plain text template"],
+    evkey: ["EVKey", "Macros, through the plain text template"],
+    gonhanh: ["Gõ Nhanh", "Macros, through the plain text template"],
+    phtv: ["PHTV", "Macros, through the plain text template"],
     macos: ["Built-in macOS Vietnamese", "Text Replacements"],
     plaintext: ["Plain text or CSV file", "Macros, the common format for any source"],
   },
   back: "Back to Support",
-  stepsHeading: "Export from {{Other}}",
+  stepsHeading: "Get your macros out of {{Other}}",
   importHeading: "Import into {{AppName}}",
   importSteps: [
     "Open {{AppName}}, go to Settings &gt; Macros &gt; <em>Import from file...</em> (or choose <em>Choose file...</em> at the import step during setup).",
@@ -139,43 +157,43 @@ export const migrate = {
   verifyNote: "The steps above describe what you see in that app's own window and have not yet been checked against the latest version. If a label differs, follow the closest one and tell us so we can fix this page.",
   pages: {
     xkey: {
-      intro: "{{Other}} stores a macro list and a few settings. {{AppName}} can import: macros, typing method, tone style, the toggle key when it can be expressed, and excluded apps (as <em>Ignore</em> rules). Keys it does not recognise are skipped and listed in the summary.",
+      intro: "{{AppName}} cannot read {{Other}}'s export files yet. For now, bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, then choose your typing method, tone style and the apps to ignore again in {{AppName}}. Importing {{Other}}'s export files directly (macros and those settings) is planned, once the file format has been checked against a real export.",
       steps: [
-        "Open {{Other}}'s settings from its menu bar icon. {{verifyHtml}}",
-        "Find the macro section and its export button, and save the file to the Desktop. {{verifyHtml}} The section and button names.",
-        "If there is a general settings export, export one more file. {{verifyHtml}} Whether it exists, and the file format observed from a real export.",
-        "Cannot find an export button? Copy the macro list into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
+        "Open {{Other}}'s settings from its menu bar icon and find the macro list. {{verifyHtml}} The section name.",
+        "If {{Other}} can export the macro list, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} Whether there is an export button, and the file format.",
+        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
+        "Note the typing method, tone style and excluded apps you use in {{Other}}. Choose the typing method and tone style again in {{AppName}}'s Settings, Typing; for each app to exclude, use <em>Ignore this app</em> in the {{AppName}} menu.",
       ],
     },
     openkey: {
-      intro: "{{Other}} lets you export its macro list. {{AppName}} imports the macros.",
+      intro: "{{AppName}} cannot read {{Other}}'s export files yet. For now, bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>. Importing {{Other}}'s export files directly is planned, once the file format has been checked against a real export.",
       steps: [
-        "Open {{Other}}'s settings. {{verifyHtml}}",
-        "Find the macro section and its export button, and save the file to the Desktop. {{verifyHtml}} The section, button and file format observed from a real export.",
-        "If {{AppName}} cannot read the file, switch to the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
+        "Open the macro list in {{Other}}'s settings. {{verifyHtml}}",
+        "If there is an export button, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} The button name and file format.",
+        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
       ],
     },
     evkey: {
-      intro: "{{Other}} (the legacy Mac build or a rewrite) may keep macros only inside the app. If it cannot export a file, use the plain text path.",
+      intro: "{{Other}} (the legacy Mac build or a rewrite) may keep macros only inside the app, and {{AppName}} cannot read {{Other}}'s export files yet. Bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
       steps: [
         "Open the macro list in {{Other}}'s settings. {{verifyHtml}}",
-        "If there is an export button, save the file to the Desktop. {{verifyHtml}} Whether your build has an export button.",
-        "If there is no export button: copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
+        "If there is an export button, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} Whether your build has an export button.",
+        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
       ],
     },
     gonhanh: {
-      intro: "Whether {{Other}} can export data still needs to be checked. If you have an export file, {{AppName}} imports macros and, where expressible, per-app settings.",
+      intro: "Whether {{Other}} can export data still needs to be checked, and {{AppName}} cannot read {{Other}}'s export files yet. Bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, then set the mode for each app again from the {{AppName}} menu.",
       steps: [
-        "Open {{Other}}'s settings and look for an export or backup feature. {{verifyHtml}} Whether this feature exists.",
-        "If it exists, save the file to the Desktop. If not, use the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
+        "Open {{Other}}'s settings and find the macro list, or an export or backup feature. {{verifyHtml}} Whether this feature exists.",
+        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
       ],
     },
     phtv: {
-      intro: "{{AppName}} imports the macros from a {{Other}} export file.",
+      intro: "{{AppName}} cannot read {{Other}}'s export files yet. For now, bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>. Importing {{Other}}'s export files directly is planned, once the file format has been checked against a real export.",
       steps: [
-        "Open {{Other}}'s settings. {{verifyHtml}}",
-        "Find the macro section and its export button, and save to the Desktop. {{verifyHtml}} The section, button and file format.",
-        "No export button? Use the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
+        "Open the macro list in {{Other}}'s settings. {{verifyHtml}}",
+        "If there is an export button, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} The section, button and file format.",
+        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
       ],
     },
     macos: {
@@ -206,16 +224,19 @@ dc,được
 "cam on","Cảm ơn bạn rất nhiều, hẹn gặp lại"</code></pre>
 <p>UTF-8 encoding. Wrap text that contains commas in double quotes.</p>
 <h2 id="own-export">{{AppName}}'s own settings export</h2>
-<p>In Settings &gt; About &amp; Support you can export all settings to one JSON file, UTF-8, named like <code>{{slug}}-settings-YYYYMMDD.json</code>. The file has a <code>schemaVersion</code> field (an integer). When you import a file written by a newer version, {{AppName}} imports the fields it understands and lists the ones it skipped. When exporting you can untick macros and per-app modes, because macros may contain private text.</p>
+<p>In Settings &gt; About &amp; Support you can export all settings to one JSON file, UTF-8, named like <code>{{slug}}-settings-YYYYMMDD.json</code>. The <code>kind</code> field is always <code>settings-export</code>; <code>schemaVersion</code> (an integer) is the format version; <code>writtenBy</code> is the app version that wrote the file; <code>exportedAt</code> is the export time (ISO 8601, UTC). Then come <code>settings</code>, <code>appModes</code> (per-app modes), <code>ruleOverrides</code> (compatibility rules you set yourself) and <code>macros</code> (shortcut <code>trigger</code>, text <code>expansion</code>, case following <code>adaptCase</code>, on or off <code>enabled</code>). When exporting you can untick macros and per-app modes, because macros may contain private text; an unticked part is left out of the file. When you import a file written by a newer version, {{AppName}} imports the fields it understands and lists the ones it skipped.</p>
 <pre><code>{
+  "kind": "settings-export",
   "schemaVersion": 1,
-  "writtenBy": "(app version)",
+  "writtenBy": "0.1.0",
+  "exportedAt": "2026-11-13T09:00:00Z",
   "settings": { },
-  "appRules": [ ],
-  "appModes": [ ],
-  "macros": [ { "shortcut": "vn", "expansion": "Việt Nam" } ]
-}</code></pre>
-<p>{{verifyHtml}} The exact field names will be updated to match the first release; the snippet only illustrates the structure.</p>`,
+  "appModes": { },
+  "ruleOverrides": [ ],
+  "macros": [
+    { "id": "3F2504E0-4F89-11D3-9A0C-0305E82C3301", "trigger": "vn", "expansion": "Việt Nam", "adaptCase": true, "enabled": true }
+  ]
+}</code></pre>`,
     },
   },
 };

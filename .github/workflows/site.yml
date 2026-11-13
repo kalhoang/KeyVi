@@ -17,6 +17,12 @@ on:
       - "CHANGELOG.md"
       - "CHANGELOG.vi.md"
       - ".github/workflows/site.yml"
+      # site/test.mjs also checks the help anchors the app opens and the documented settings export format.
+      - "App/Resources/Localization/**"
+      - "Packages/AppCore/Sources/InputHost/Integration/ShellActions.swift"
+      - "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"
+      - "Packages/AppCore/Sources/SettingsStore/Documents.swift"
+      - "scripts/brand.env"
   pull_request:
     paths:
       - "site/**"
@@ -24,6 +30,12 @@ on:
       - "CHANGELOG.md"
       - "CHANGELOG.vi.md"
       - ".github/workflows/site.yml"
+      # site/test.mjs also checks the help anchors the app opens and the documented settings export format.
+      - "App/Resources/Localization/**"
+      - "Packages/AppCore/Sources/InputHost/Integration/ShellActions.swift"
+      - "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"
+      - "Packages/AppCore/Sources/SettingsStore/Documents.swift"
+      - "scripts/brand.env"
   workflow_dispatch:
 
 permissions:

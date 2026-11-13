@@ -32,14 +32,14 @@ export function macosRequirement(lang, minimum) {
 }
 
 /**
- * @param {object} options { rootDir, siteDir, dataDir?, today }
+ * @param {object} options { rootDir, siteDir, dataDir?, configPath?, today }
  */
 export async function createContext(options) {
   const { rootDir, siteDir, today } = options;
   const warnings = [];
   const warn = (message) => warnings.push(message);
   const brand = await loadBrand(join(rootDir, "scripts", "brand.env"));
-  const config = await loadConfig(join(siteDir, "config.json"));
+  const config = await loadConfig(options.configPath ?? join(siteDir, "config.json"));
   const fixturesDir = join(siteDir, "fixtures");
   const dataDir = options.dataDir ?? join(siteDir, "data");
   const matrixPath = options.dataDir ? join(options.dataDir, "matrix.json") : join(rootDir, "compat", "matrix.json");

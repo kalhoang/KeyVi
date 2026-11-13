@@ -5,6 +5,7 @@ export default {
   lang: "vi",
   siteTagline: "Bộ gõ tiếng Việt cho Mac",
   skipLink: "Chuyển đến nội dung",
+  notice: { label: "Thông báo", link: "Xem chi tiết" },
   navLabel: "Điều hướng chính",
   nav: { download: "Tải về", compat: "Tương thích", support: "Hỗ trợ", privacy: "Riêng tư", changelog: "Nhật ký thay đổi" },
   langSwitch: { text: "English", title: "Read this page in English", lang: "en" },

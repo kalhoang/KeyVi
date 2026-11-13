@@ -14,7 +14,8 @@ export const support = {
     ["Vì sao không có gõ tắt phụ âm nhanh (cc thành ch, kk thành kh)?", "Vì tính năng này làm sai cả những từ bình thường (<code>cc</code> thành <code>ch</code>, <code>kkk</code> thành <code>khk</code>). {{AppName}} cố ý không có, kể cả dạng tuỳ chọn."],
     ["Dấu thanh đặt kiểu <em>hòa</em> hay <em>hoà</em>?", "Mặc định là kiểu truyền thống (<em>hòa</em>, <em>thủy</em>, <em>khỏe</em>). Kiểu mới (<em>hoà</em>, <em>thuỷ</em>, <em>khoẻ</em>) chỉ cách một công tắc trong Cài đặt, mục Gõ phím."],
     ["Có hỗ trợ bảng mã TCVN3, VNI-Windows hay CP1258 không?", "Không. {{AppName}} chỉ xuất Unicode dựng sẵn (NFC), là định dạng mọi ứng dụng hiện nay đều đọc được."],
-    ["Phím chuyển Việt/Anh là gì, đổi được không?", "Mặc định là nhấn rồi thả <kbd>Control</kbd> + <kbd>Shift</kbd>. Bạn đổi trong Cài đặt, mục Chung. Nếu bạn chọn tổ hợp macOS đã dùng (ví dụ Command+Space), ứng dụng vẫn cho chọn nhưng cảnh báo bạn tính năng nào của macOS đang dùng nó."],
+    ["Phím chuyển Việt/Anh là gì, đổi được không?", "Mặc định là nhấn rồi thả <kbd>Control</kbd> + <kbd>Shift</kbd>. Bạn đổi trong Cài đặt, mục Chung. Nếu bạn chọn tổ hợp macOS đã dùng (ví dụ Command+Space), ứng dụng vẫn cho chọn nhưng cảnh báo bạn tính năng nào của macOS đang dùng nó. Xem <a href=\"#phim-tat-macos\">cách tắt phím tắt đó của macOS</a>."],
+    ["Vì sao {{AppName}} tạm dừng khi tôi chọn bàn phím tiếng Nhật, Trung hay Hàn?", "Khi bạn chọn một nguồn nhập không dùng chữ Latinh (tiếng Nhật, tiếng Trung, tiếng Hàn và các ngôn ngữ tương tự), {{AppName}} tự tạm dừng và làm mờ biểu tượng trên thanh menu, để phím đi thẳng tới bộ gõ đó: gõ <code>kore</code> trong bộ gõ tiếng Nhật không bị biến thành <code>kỏe</code>. Chọn lại bàn phím ABC hoặc U.S. là {{AppName}} gõ tiếng Việt tiếp. Đây là chủ ý và không phải cài đặt."],
     ["{{AppName}} có gõ được trong ô mật khẩu không?", "Ô mật khẩu luôn được bỏ qua, phím đi thẳng tới ứng dụng. Đây là chủ ý và không phải cài đặt."],
     ["Tôi dùng bàn phím QWERTZ, AZERTY, Dvorak hay Colemak thì sao?", "Dùng được. {{AppName}} theo bố cục bàn phím macOS bạn đang chọn, không cần cài đặt thêm."],
     ["Ứng dụng có gửi nội dung tôi gõ đi đâu không?", "Không. Xem trang <a href=\"{{hrefPrivacy}}\">Riêng tư</a> để biết chính xác ứng dụng lưu và gửi gì."],
@@ -77,6 +78,23 @@ export const support = {
   <li>Báo lỗi bằng <em>Báo lỗi với ứng dụng này...</em>: báo cáo tự điền sẵn ứng dụng, phiên bản và quy tắc đang áp dụng.</li>
 </ol>`,
     },
+    shortcuts: {
+      id: "phim-tat-macos",
+      h: "Phím chuyển trùng với phím tắt của macOS",
+      html: `
+<p>Nếu bạn chọn một tổ hợp phím mà macOS đang dùng, {{AppName}} vẫn lưu lựa chọn và hiện cảnh báo nêu tính năng của macOS dùng tổ hợp đó. Để tổ hợp chỉ dành cho {{AppName}}, hãy tắt hoặc đổi phím tắt đó trong macOS:</p>
+<ol class="steps">
+  <li>Mở Cài đặt hệ thống &gt; Bàn phím, bấm <em>Phím tắt bàn phím...</em>. {{verifyHtml}} Tên mục tiếng Việt trên từng phiên bản macOS.</li>
+  <li>Chọn nhóm ở cột bên trái (xem danh sách dưới đây), rồi bỏ chọn ô của phím tắt để tắt nó, hoặc bấm đúp vào tổ hợp phím để gán tổ hợp khác.</li>
+</ol>
+<ul>
+  <li><kbd>Command</kbd> + <kbd>Space</kbd>: nhóm <em>Spotlight</em>, mục hiện tìm kiếm Spotlight.</li>
+  <li><kbd>Control</kbd> + <kbd>Space</kbd> và <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>: nhóm <em>Nguồn nhập</em>, mục chọn nguồn nhập trước đó và mục chọn nguồn tiếp theo. {{verifyHtml}} Tên nhóm tiếng Việt.</li>
+  <li><kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Space</kbd>: mở bảng Emoji và ký hiệu. Phím tắt này nằm trong menu Sửa của từng ứng dụng, không có trong các nhóm trên; bạn có thể gán tổ hợp khác cho mục menu đó ở nhóm <em>Phím tắt ứng dụng</em>. {{verifyHtml}} Tên mục menu và nhóm trên từng phiên bản macOS.</li>
+  <li><kbd>Command</kbd> + <kbd>Tab</kbd> (chuyển ứng dụng), <kbd>Command</kbd> + <kbd>Q</kbd> (thoát ứng dụng) và <kbd>Command</kbd> + <kbd>W</kbd> (đóng cửa sổ): macOS không cho tắt các phím tắt này. Bạn nên chọn tổ hợp khác cho {{AppName}}.</li>
+</ul>
+<p>{{AppName}} không đọc cài đặt phím tắt của macOS, nên cảnh báo trong Cài đặt vẫn hiện sau khi bạn đã tắt phím tắt đó. Khi đó bạn có thể bỏ qua cảnh báo.</p>`,
+    },
   },
   reportHeading: "Cách báo lỗi",
   reportIntro: "Cách nhanh nhất là dùng ngay trong ứng dụng: menu {{AppName}} &gt; <em>Báo lỗi...</em>.",
@@ -106,22 +124,22 @@ export const support = {
   ],
   absence: "Khi Kal vắng mặt quá một tuần, trang web sẽ có thông báo kèm ngày dự kiến quay lại.",
   migrateHeading: "Chuyển từ bộ gõ khác",
-  migrateLede: "Hướng dẫn chuyển danh sách gõ tắt (và một số cài đặt) từ bộ gõ bạn đang dùng. {{AppName}} chỉ nhập từ tệp bạn tự xuất, và chỉ sau khi bạn bấm nhập. Ứng dụng không tự đọc dữ liệu của ứng dụng khác.",
+  migrateLede: "Hướng dẫn chuyển danh sách gõ tắt từ bộ gõ bạn đang dùng. Hiện {{AppName}} nhập gõ tắt từ tệp văn bản (phân tách bằng Tab hoặc CSV), từ tệp Thay thế văn bản của macOS và từ tệp xuất của chính nó; chưa đọc tệp xuất của bộ gõ khác. {{AppName}} chỉ nhập tệp bạn tự chọn, và chỉ sau khi bạn bấm nhập. Ứng dụng không tự đọc dữ liệu của ứng dụng khác.",
 };
 
 export const migrate = {
   title: "Chuyển từ {{Other}} sang {{AppName}}",
   indexNames: {
-    xkey: ["XKey", "Gõ tắt, kiểu gõ, kiểu đặt dấu, ứng dụng loại trừ"],
-    openkey: ["OpenKey", "Gõ tắt"],
-    evkey: ["EVKey", "Gõ tắt"],
-    gonhanh: ["Gõ Nhanh", "Gõ tắt, cài đặt theo ứng dụng nếu xuất được"],
-    phtv: ["PHTV", "Gõ tắt"],
+    xkey: ["XKey", "Gõ tắt, qua mẫu tệp văn bản"],
+    openkey: ["OpenKey", "Gõ tắt, qua mẫu tệp văn bản"],
+    evkey: ["EVKey", "Gõ tắt, qua mẫu tệp văn bản"],
+    gonhanh: ["Gõ Nhanh", "Gõ tắt, qua mẫu tệp văn bản"],
+    phtv: ["PHTV", "Gõ tắt, qua mẫu tệp văn bản"],
     macos: ["Bộ gõ Tiếng Việt có sẵn của macOS", "Thay thế văn bản (Text Replacements)"],
     plaintext: ["Tệp văn bản hoặc CSV", "Gõ tắt, định dạng chung cho mọi nguồn"],
   },
   back: "Quay lại phần Hỗ trợ",
-  stepsHeading: "Xuất dữ liệu từ {{Other}}",
+  stepsHeading: "Lấy danh sách gõ tắt từ {{Other}}",
   importHeading: "Nhập vào {{AppName}}",
   importSteps: [
     "Mở {{AppName}}, vào Cài đặt &gt; Gõ tắt &gt; <em>Nhập từ tệp...</em> (hoặc chọn <em>Chọn tệp...</em> ở bước nhập trong lúc làm quen).",
@@ -140,43 +158,43 @@ export const migrate = {
   verifyNote: "Các bước trên mô tả những gì bạn thấy trên màn hình của ứng dụng đó và chưa được kiểm tra trên bản mới nhất. Nếu tên mục khác, hãy làm theo mục gần nghĩa nhất và cho chúng tôi biết để sửa trang này.",
   pages: {
     xkey: {
-      intro: "{{Other}} lưu danh sách gõ tắt và vài cài đặt. {{AppName}} có thể nhập: gõ tắt, kiểu gõ, kiểu đặt dấu, phím chuyển nếu biểu diễn được, và ứng dụng loại trừ (thành quy tắc <em>Bỏ qua</em>). Khoá không nhận ra sẽ bị bỏ qua và được liệt kê trong bản tóm tắt.",
+      intro: "{{AppName}} chưa đọc được tệp xuất của {{Other}}. Hiện tại bạn mang danh sách gõ tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, rồi chọn lại kiểu gõ, kiểu đặt dấu và các ứng dụng cần bỏ qua trong {{AppName}}. Việc nhập thẳng tệp xuất của {{Other}} (gõ tắt và các cài đặt đó) đang được lên kế hoạch, sau khi định dạng tệp được kiểm tra từ một tệp xuất thật.",
       steps: [
-        "Mở cài đặt của {{Other}} từ biểu tượng trên thanh menu. {{verifyHtml}}",
-        "Tìm mục gõ tắt (macro) và nút xuất tệp, lưu tệp ra Desktop. {{verifyHtml}} Tên mục và nút.",
-        "Nếu có chức năng xuất cài đặt chung, xuất thêm một tệp. {{verifyHtml}} Có hay không, và định dạng tệp quan sát từ một tệp xuất thật.",
-        "Không tìm thấy nút xuất? Chép danh sách gõ tắt sang tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>.",
+        "Mở cài đặt của {{Other}} từ biểu tượng trên thanh menu và tìm danh sách gõ tắt (macro). {{verifyHtml}} Tên mục.",
+        "Nếu {{Other}} có nút xuất danh sách gõ tắt, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Có nút xuất hay không, và định dạng tệp.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
+        "Ghi lại kiểu gõ, kiểu đặt dấu và các ứng dụng bạn loại trừ trong {{Other}}. Chọn lại kiểu gõ và kiểu đặt dấu trong Cài đặt của {{AppName}}, mục Gõ phím; với mỗi ứng dụng cần loại trừ, dùng mục <em>Bỏ qua ứng dụng này</em> trong menu {{AppName}}.",
       ],
     },
     openkey: {
-      intro: "{{Other}} cho phép xuất danh sách gõ tắt. {{AppName}} nhập được phần gõ tắt.",
+      intro: "{{AppName}} chưa đọc được tệp xuất của {{Other}}. Hiện tại bạn mang danh sách gõ tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>. Việc nhập thẳng tệp xuất của {{Other}} đang được lên kế hoạch, sau khi định dạng tệp được kiểm tra từ một tệp xuất thật.",
       steps: [
-        "Mở cài đặt của {{Other}}. {{verifyHtml}}",
-        "Tìm mục gõ tắt và nút xuất tệp, lưu tệp ra Desktop. {{verifyHtml}} Tên mục, nút và định dạng tệp quan sát từ một tệp xuất thật.",
-        "Nếu {{AppName}} không đọc được tệp, chuyển sang <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>.",
+        "Mở danh sách gõ tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
+        "Nếu có nút xuất, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Tên nút và định dạng tệp.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
       ],
     },
     evkey: {
-      intro: "{{Other}} (bản cũ cho macOS hoặc bản viết lại) có thể chỉ giữ gõ tắt bên trong ứng dụng. Nếu không xuất được tệp, hãy dùng đường văn bản thuần.",
+      intro: "{{Other}} (bản cũ cho macOS hoặc bản viết lại) có thể chỉ giữ gõ tắt bên trong ứng dụng, và {{AppName}} chưa đọc được tệp xuất của {{Other}}. Bạn mang danh sách gõ tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>.",
       steps: [
         "Mở danh sách gõ tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
-        "Nếu có nút xuất, lưu tệp ra Desktop. {{verifyHtml}} Nút xuất có tồn tại trong bản của bạn hay không.",
-        "Nếu không có nút xuất: chép từng dòng (viết tắt, nội dung) sang tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>.",
+        "Nếu có nút xuất, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Nút xuất có tồn tại trong bản của bạn hay không.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
       ],
     },
     gonhanh: {
-      intro: "Khả năng xuất dữ liệu của {{Other}} cần được xác minh. Nếu có tệp xuất, {{AppName}} nhập gõ tắt và, khi biểu diễn được, cài đặt theo ứng dụng.",
+      intro: "Khả năng xuất dữ liệu của {{Other}} cần được xác minh, và {{AppName}} chưa đọc được tệp xuất của {{Other}}. Bạn mang danh sách gõ tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, rồi đặt lại chế độ cho từng ứng dụng trong menu {{AppName}}.",
       steps: [
-        "Mở cài đặt của {{Other}} và tìm chức năng xuất hoặc sao lưu. {{verifyHtml}} Chức năng này có tồn tại hay không.",
-        "Nếu có, lưu tệp ra Desktop. Nếu không, dùng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>.",
+        "Mở cài đặt của {{Other}} và tìm danh sách gõ tắt, hoặc chức năng xuất hay sao lưu. {{verifyHtml}} Chức năng này có tồn tại hay không.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
       ],
     },
     phtv: {
-      intro: "{{AppName}} nhập được phần gõ tắt từ tệp xuất của {{Other}}.",
+      intro: "{{AppName}} chưa đọc được tệp xuất của {{Other}}. Hiện tại bạn mang danh sách gõ tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>. Việc nhập thẳng tệp xuất của {{Other}} đang được lên kế hoạch, sau khi định dạng tệp được kiểm tra từ một tệp xuất thật.",
       steps: [
-        "Mở cài đặt của {{Other}}. {{verifyHtml}}",
-        "Tìm mục gõ tắt và nút xuất tệp, lưu ra Desktop. {{verifyHtml}} Tên mục, nút và định dạng tệp.",
-        "Không có nút xuất? Dùng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>.",
+        "Mở danh sách gõ tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
+        "Nếu có nút xuất, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Tên mục, nút và định dạng tệp.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
       ],
     },
     macos: {
@@ -207,16 +225,19 @@ dc,được
 "cam on","Cảm ơn bạn rất nhiều, hẹn gặp lại"</code></pre>
 <p>Mã hoá UTF-8. Đặt nội dung có dấu phẩy trong dấu ngoặc kép.</p>
 <h2 id="xuat-nhap-rieng">Tệp xuất cài đặt của chính {{AppName}}</h2>
-<p>Trong Cài đặt &gt; Giới thiệu &amp; Hỗ trợ bạn xuất toàn bộ cài đặt ra một tệp JSON, UTF-8, tên dạng <code>{{slug}}-settings-NĂMTHÁNGNGÀY.json</code>. Tệp có trường <code>schemaVersion</code> (số nguyên). Khi nhập tệp từ phiên bản mới hơn, {{AppName}} nhập các trường nó hiểu và liệt kê những trường bị bỏ qua. Khi xuất, bạn có thể bỏ chọn gõ tắt và chế độ theo ứng dụng, vì gõ tắt có thể chứa chữ riêng tư.</p>
+<p>Trong Cài đặt &gt; Giới thiệu &amp; Hỗ trợ bạn xuất toàn bộ cài đặt ra một tệp JSON, UTF-8, tên dạng <code>{{slug}}-settings-NĂMTHÁNGNGÀY.json</code>. Trường <code>kind</code> luôn là <code>settings-export</code>; <code>schemaVersion</code> (số nguyên) là phiên bản định dạng; <code>writtenBy</code> là phiên bản ứng dụng đã ghi tệp; <code>exportedAt</code> là thời điểm xuất (ISO 8601, giờ UTC). Tiếp theo là <code>settings</code> (cài đặt), <code>appModes</code> (chế độ theo ứng dụng), <code>ruleOverrides</code> (quy tắc tương thích bạn tự đặt) và <code>macros</code> (gõ tắt: viết tắt <code>trigger</code>, nội dung <code>expansion</code>, theo chữ hoa <code>adaptCase</code>, đang bật <code>enabled</code>). Khi xuất, bạn có thể bỏ chọn gõ tắt và chế độ theo ứng dụng, vì gõ tắt có thể chứa chữ riêng tư; phần đã bỏ chọn sẽ không có trong tệp. Khi nhập tệp từ phiên bản mới hơn, {{AppName}} nhập các trường nó hiểu và liệt kê những trường bị bỏ qua.</p>
 <pre><code>{
+  "kind": "settings-export",
   "schemaVersion": 1,
-  "writtenBy": "(phiên bản ứng dụng)",
+  "writtenBy": "0.1.0",
+  "exportedAt": "2026-11-13T09:00:00Z",
   "settings": { },
-  "appRules": [ ],
-  "appModes": [ ],
-  "macros": [ { "shortcut": "vn", "expansion": "Việt Nam" } ]
-}</code></pre>
-<p>{{verifyHtml}} Tên trường chính xác sẽ được cập nhật theo bản phát hành đầu tiên; đoạn trên chỉ minh hoạ cấu trúc.</p>`,
+  "appModes": { },
+  "ruleOverrides": [ ],
+  "macros": [
+    { "id": "3F2504E0-4F89-11D3-9A0C-0305E82C3301", "trigger": "vn", "expansion": "Việt Nam", "adaptCase": true, "enabled": true }
+  ]
+}</code></pre>`,
     },
   },
 };

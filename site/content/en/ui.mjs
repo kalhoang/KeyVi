@@ -3,6 +3,7 @@
 export default {
   lang: "en",
   siteTagline: "Vietnamese input for Mac",
+  notice: { label: "Notice", link: "Details" },
   skipLink: "Skip to content",
   navLabel: "Main navigation",
   nav: { download: "Download", compat: "Compatibility", support: "Support", privacy: "Privacy", changelog: "Changelog" },

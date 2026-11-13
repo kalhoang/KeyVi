@@ -327,6 +327,11 @@ class WorkflowCoverageTests(unittest.TestCase):
         self.assertIn("node site/build.mjs --strict", body)
         self.assertIn("vars.SITE_STRICT == 'true'", body)
         self.assertIn("vars.SITE_DEPLOY_TARGET != '' && vars.SITE_STRICT != 'false'", body)
+        text = (self.WORKFLOWS / "site.yml").read_text(encoding="utf-8")
+        for path in ("App/Resources/Localization/**", "Packages/AppCore/Sources/InputHost/Integration/ShellActions.swift",
+                     "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"):
+            with self.subTest(path=path):
+                self.assertEqual(text.count(f'- "{path}"'), 2, "push and pull_request paths")
 
     def test_nightly_thread_sanitizer_suppresses_only_the_settings_store_executor_report(self):
         """SettingsStore runs on a DispatchSerialQueue executor (PLT-R1003); TSan sees no ordering between its
