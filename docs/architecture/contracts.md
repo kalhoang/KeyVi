@@ -3758,12 +3758,19 @@ from absence (for example the restore hotkey, D8). Reset to default writes `.uns
   "schemaVersion": 1,
   "writtenBy": "0.1.0",
   "settings": { "typingMethod": "vni", "restoreHotkey": null },
-  "englishRestoreLists": { "keepAsTyped": ["tex"], "keepVietnamese": [] },
+  "englishRestoreLists": {
+    "keepAsTyped": ["tex"], "keepVietnamese": [],
+    "learnedWords": [{ "list": "keepAsTyped", "raw": "cos", "app": "com.example.Editor" }]
+  },
   "optedInRules": [],
   "onboarding": { "completedVersion": "0.1.0" },
   "futureKeyFromNewerBuild": { "kept": true }
 }
 ```
+
+`keepAsTyped` and `keepVietnamese` are the global entries (typed in Settings, or saved before per-app learning);
+`learnedWords` are the words learned from toggles, each applying only in its `app` (ENG-R862,
+[ADR 0320](../decisions/0320-per-app-learned-words.md)). An item without `app` is a global entry.
 
 ### 7.2 Per-app memory store (`app-modes.json`)
 
@@ -3795,7 +3802,8 @@ live copy (`AppModeMemory`, section 10) and sends documents to `recordAppModes`.
 | Text Replacements plist | `bplist00` or XML plist array | dictionaries with `shortcut`, `phrase` | The drag-out file from System Settings > Keyboard > Text Replacements (VERIFY on macOS 27) |
 
 All rows go through `MacroValidator` (1-32 printable ASCII without whitespace or Vietnamese letters, expansion
-up to 4,000 characters, no shortcut equal to another plus trailing punctuation). The preview counts new,
+up to 4,000 characters, no shortcut equal to another plus trailing punctuation or a trailing main-row digit,
+ENG-R1103). The preview counts new,
 duplicate and invalid rows; duplicates resolve with "keep mine" or "use imported" (PRD-R70). Importers for
 competitor export files (XKey, OpenKey, EVKey, Gõ Nhanh, PHTV, PRD-R69) are added only after their formats are
 observed from real exports, never from their source code (CLR-R1, CLR-R5); until then those users use the TSV
@@ -3863,6 +3871,9 @@ public struct UserSettings: Sendable, Hashable {
     /// settings, allowed on disk (PLT-R901 a).
     public var keepAsTyped: Set<String> = []
     public var keepVietnamese: Set<String> = []
+    /// ENG-R862: words learned from the user's toggles, each applying only in its app (`englishRestoreLists`
+    /// `learnedWords`). `keepAsTyped` and `keepVietnamese` above are the global entries.
+    public var learnedWords: Set<LearnedWord> = []
     /// Shipped rules with `requiresUserOptIn: true` that the user enabled (PLT-R460) ("optedInRules").
     public var optedInRules: Set<RuleID> = []
     /// "onboarding" object (PRD-R42).
@@ -3871,13 +3882,13 @@ public struct UserSettings: Sendable, Hashable {
     public init() {}
 
     /// Names of keys that are explicitly set, for the content-free diagnostics report: the JSON names of set
-    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `optedInRules` when
-    /// non-empty. Names only, never values (PLT-R901, PRD-R6).
+    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `learnedWords`, `optedInRules`
+    /// when non-empty. Names only, never values or apps (PLT-R901, PRD-R6, ADR 0314).
     public var explicitlySetKeys: [String] {
         let settings = SettingFields.all.filter { $0.isSet(self) }.map(\.key)
         let lists = [
             (SettingListKey.keepAsTyped, keepAsTyped.isEmpty), (SettingListKey.keepVietnamese, keepVietnamese.isEmpty),
-            (SettingListKey.optedInRules, optedInRules.isEmpty),
+            (SettingListKey.learnedWords, learnedWords.isEmpty), (SettingListKey.optedInRules, optedInRules.isEmpty),
         ]
         return settings + lists.filter { !$0.1 }.map(\.0)
     }
@@ -4141,6 +4152,11 @@ public struct MigrationChain: Sendable {
     }
 
     /// All migrations shipped by this build (empty while every file is at version 1).
+    ///
+    /// settings.json stays at version 1 for per-app learning (ENG-R862, ADR 0320): `englishRestoreLists` gains the
+    /// optional `learnedWords` array, which builds without it keep unread (PLT-R1002). No step is needed for the
+    /// files written before it: their `keepAsTyped` and `keepVietnamese` entries carry no app, so they are read as
+    /// global entries, and so is a `learnedWords` item without an app (`LearnedWordsCodec`).
     public static let shipped = MigrationChain([])
 }
 ```
@@ -4198,7 +4214,24 @@ public enum StoreNotice: Sendable, Hashable {
     case corruptFileUsingDefaults(SettingsFile)  // nothing overwritten until the user confirms
     case newerSchemaReadOnly(SettingsFile, schemaVersion: Int)
     case safeMode(recentCrashes: Int)
-    case writeFailed(SettingsFile)
+    /// `errno` is the POSIX code of the failed write, logged by the composition root (PLT-R1202); `noErrno` when
+    /// the failure carried none. At most one per file: a later failure replaces it, a successful write clears it.
+    case writeFailed(SettingsFile, errno: Int32)
+}
+
+extension StoreNotice {
+    /// The `errno` of a `writeFailed` whose error had no POSIX code (for example a serialisation failure).
+    public static let noErrno: Int32 = 0
+
+    /// The POSIX code behind a failed file operation (`FileSystemError`), `noErrno` for any other error.
+    static func errno(of error: any Error) -> Int32 {
+        switch error as? FileSystemError {
+        case .ioFailure(_, let code)?: code
+        case .notFound?: ENOENT
+        case .tooLarge?: EFBIG
+        case nil: noErrno
+        }
+    }
 }
 
 public enum ResetScope: Sendable, Hashable {
@@ -4598,6 +4631,7 @@ struct SettingsImporter {
         var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
         if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
         if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
+        if current.learnedWords != imported.learnedWords { keys.append(SettingListKey.learnedWords) }
         if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
         return keys
     }
@@ -4839,7 +4873,8 @@ public enum MacroImporter {
 /// `triggerTooLong` = `shortcutTooLong` (more than 32); `invalidTriggerCharacter` = `shortcutHasWhitespace` or
 /// `shortcutNotPrintableASCII` (only U+0021...U+007E are allowed); `expansionTooLong` = `expansionTooLong` (more
 /// than 4,000 characters, counted as `String.count`); `duplicateTrigger` = `duplicate(of:)`;
-/// `shadowedByShorterTrigger` = `shadowedBy(shorter:)` / `shadows(longer:)`. The editor is stricter in one place:
+/// `shadowedByShorterTrigger` = `shadowedBy(shorter:)` / `shadows(longer:)` (punctuation or a main-row digit after
+/// the shorter trigger, ENG-R1103). The editor is stricter in one place:
 /// an empty expansion is rejected (`emptyExpansion`, PRD-R43 example).
 public enum MacroValidator {
     public static let maxShortcutLength = 32
@@ -4880,17 +4915,22 @@ public enum MacroValidator {
         return shortcuts.first { isShadowed(key, by: Self.key($0)) }.map { .shadowedBy(shorter: $0) }
     }
 
-    /// `longer` starts with `shorter` followed by an ASCII punctuation character: that key is a boundary at which
-    /// the span equals `shorter`, so `shorter` expands there and `longer` can never fire, whatever comes after
-    /// the punctuation (PRD-R29, ENG-R1103, 01-engine.md section 9.2: `vn` shadows `vn.` and `vn.x`). Digits are
-    /// not treated as boundaries here: they are transform keys in VNI, so whether they end a span depends on
-    /// the typing method.
+    /// `longer` starts with `shorter` followed by an ASCII punctuation character or a main-row digit: that key is a
+    /// boundary at which the span equals `shorter`, so `shorter` expands there and `longer` can never fire,
+    /// whatever comes after it (PRD-R29, ENG-R1103, 01-engine.md section 9.2: `vn` shadows `vn.` and `vn.x`). A
+    /// digit is a boundary in Telex, so `k` shadows `k1`; the check does not depend on the typing method, exactly
+    /// like the engine's (decision of the product owner, 13/11/2026).
     static func isShadowed(_ longer: String, by shorter: String) -> Bool {
         let shorterScalars = shorter.unicodeScalars
         guard !shorterScalars.isEmpty, longer.unicodeScalars.count > shorterScalars.count, longer.hasPrefix(shorter),
             let next = longer.unicodeScalars.dropFirst(shorterScalars.count).first
         else { return false }
-        return isASCIIPunctuation(next)
+        return endsShorterShortcut(next)
+    }
+
+    /// Punctuation or a main-row digit: typed right after a complete shortcut, it fires that shortcut (ENG-R1103).
+    static func endsShorterShortcut(_ scalar: Unicode.Scalar) -> Bool {
+        isASCIIPunctuation(scalar) || ("0"..."9").contains(scalar)
     }
 
     /// Matching key: ASCII-lowercased shortcut (ENG-R1101 case-insensitive matching).
@@ -7548,13 +7588,23 @@ public enum EngineBridge {
         MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
-    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches user lists and macros.
+    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists and macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
+        try resources(
+            wordLists: UserWordLists(keepAsTyped: settings.keepAsTyped, keepVietnamese: settings.keepVietnamese),
+            macros: macros, bundledLoader: bundledLoader)
+    }
+
+    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862) and the
+    /// macros. The engine gets word sets only, never the app (ENG-R851).
+    public static func resources(
+        wordLists: UserWordLists, macros: MacroTable, bundledLoader: () throws -> Resources
+    ) rethrows -> Resources {
         var resources = try bundledLoader()
-        resources.userKeepRaw = WordSet(settings.keepAsTyped)
-        resources.userKeepVietnamese = WordSet(settings.keepVietnamese)
+        resources.userKeepRaw = WordSet(wordLists.keepAsTyped)
+        resources.userKeepVietnamese = WordSet(wordLists.keepVietnamese)
         resources.macros = macros
         return resources
     }
@@ -8825,19 +8875,23 @@ public enum HostEvent: Sendable {
     case tapInstabilityNotice
     case conflictsDetected([ConflictingInput])
     case permissionsChanged(PermissionStatus)
-    /// ENG-R861 learning signal seen twice: added to the user list (open decision 8, visible and removable in
-    /// Settings). The shell may mention it; it never logs the word.
+    /// ENG-R861 learning signal seen twice in the same app: added to that app's learned words (ENG-R862, visible,
+    /// removable and promotable to global in Settings). The shell may mention it; it never logs the word.
     case learningProposal(LearningProposal)
 }
 
+/// ENG-R862: a learning signal seen twice in one app, stored for that app only.
 public struct LearningProposal: Sendable, Hashable {
-    public enum List: Sendable, Hashable { case keepAsTyped, keepVietnamese }
+    public typealias List = RestoreList
     public var list: List
     public var rawKeys: String  // content: shown to the user in Settings, never logged
+    /// The app the signals came from; the learned word applies only there.
+    public var app: BundleKey
 
-    public init(list: List, rawKeys: String) {
+    public init(list: List, rawKeys: String, app: BundleKey) {
         self.list = list
         self.rawKeys = rawKeys
+        self.app = app
     }
 }
 

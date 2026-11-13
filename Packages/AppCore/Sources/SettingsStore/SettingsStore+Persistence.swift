@@ -125,7 +125,7 @@ extension SettingsStore {
         do {
             written = try storage.write(object, to: file)
         } catch {
-            return addNotice(.writeFailed(file))
+            return setWriteFailure(of: file, error: error)
         }
         // Best effort: the user's change is already saved; a failed backup only narrows what recovery can offer.
         try? storage.writeBackup(written, of: file, schemaVersion: file.currentSchemaVersion)
@@ -133,7 +133,7 @@ extension SettingsStore {
             $0.raw = object
             $0.dirty = false
         }
-        return removeNotice(.writeFailed(file))
+        return clearWriteFailure(of: file)
     }
 
     func encodedPayload(_ file: SettingsFile, over raw: [String: JSONValue]) -> [String: JSONValue] {
@@ -154,10 +154,22 @@ extension SettingsStore {
         return true
     }
 
+    /// Records a failed write of `file` with its errno, replacing an earlier failure of that file (one notice per
+    /// file). Returns true when the notices changed.
     @discardableResult
-    func removeNotice(_ notice: StoreNotice) -> Bool {
+    func setWriteFailure(of file: SettingsFile, error: any Error) -> Bool {
+        let notice = StoreNotice.writeFailed(file, errno: StoreNotice.errno(of: error))
+        guard !notices.contains(notice) else { return false }
+        clearWriteFailure(of: file)
+        notices.append(notice)
+        return true
+    }
+
+    /// Returns true when a write failure of `file` was removed.
+    @discardableResult
+    func clearWriteFailure(of file: SettingsFile) -> Bool {
         let before = notices.count
-        notices.removeAll { $0 == notice }
+        notices.removeAll { $0.isWriteFailure(of: file) }
         return notices.count != before
     }
 }
@@ -176,9 +188,14 @@ extension StoreNotice {
         switch self {
         case .recoveredFromBackup(let other, _), .corruptFileUsingDefaults(let other),
             .newerSchemaReadOnly(let other, _),
-            .writeFailed(let other):
+            .writeFailed(let other, _):
             other == file
         case .safeMode: false
         }
+    }
+
+    func isWriteFailure(of file: SettingsFile) -> Bool {
+        if case .writeFailed(let other, _) = self { return other == file }
+        return false
     }
 }

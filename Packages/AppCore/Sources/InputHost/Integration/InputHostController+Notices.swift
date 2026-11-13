@@ -57,10 +57,10 @@ extension InputHostController {
         }
     }
 
-    /// Open decision 8: the second identical signal adds the word to its list (visible and removable in
-    /// Settings). The word is content: it goes to the settings store only, never to a log.
+    /// ENG-R862: the second identical signal in the focused app adds the word for that app (visible, removable and
+    /// promotable in Settings). The word is content: it goes to the settings store only, never to a log.
     func noteLearning(_ signal: LearningSignal) {
-        guard let proposal = learning.note(signal) else { return }
+        guard let proposal = learning.note(signal, in: currentFocus().app?.bundle) else { return }
         let store = settingsStore
         Task { await store.updateSettings { proposal.apply(to: &$0) } }
         onEvent?(.learningProposal(proposal))
@@ -84,6 +84,7 @@ extension InputHostController {
         let key = FocusKey(bundle: focus.app?.bundle, rule: focus.decision.rule)
         if key != lastFocusKey {
             lastFocusKey = key
+            publishWordLists(for: key.bundle)  // ENG-R862: the focused app's learned words
             onEvent?(.focusChanged(bundle: key.bundle, rule: key.rule))
         }
         guard resolved != state else { return }

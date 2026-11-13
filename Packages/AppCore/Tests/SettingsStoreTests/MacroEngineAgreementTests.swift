@@ -13,8 +13,9 @@ import VietnameseEngine
 
 @testable import SettingsStore
 
-/// Trigger characters: letters in both cases, a digit (a tone key in VNI, not a boundary), punctuation of
-/// several kinds (all boundaries for the engine), plus characters both sides reject.
+/// Trigger characters: letters in both cases, a digit (a boundary in Telex, so it ends a shorter trigger like
+/// punctuation, ENG-R1103), punctuation of several kinds (all boundaries for the engine), plus characters both
+/// sides reject.
 private let triggerAlphabet: [Character] = ["a", "b", "A", "v", "n", "1", ".", ";", "@", "-", "[", "~", "!"]
 private let rejectedCharacters: [Character] = [" ", "đ", "\t", "é"]
 private let expansions = [
@@ -114,10 +115,13 @@ private func engineTable(_ macros: [StoredMacro]) throws -> MacroTable {
         #expect(engineOnly > 0)  // the empty-expansion case was exercised
     }
 
-    /// The documented shadowing cases, checked on both sides (ENG-R1103, 01-engine.md 9.2).
+    /// The documented shadowing cases, checked on both sides (ENG-R1103, 01-engine.md 9.2); a trailing digit counts
+    /// like punctuation (decision of 13/11/2026).
     @Test(arguments: [
-        ("vn", "vn.", false), ("vn", "vn.x", false), ("vn", "VN!?", false), ("@@", "@@x", true), ("vn", "vn1", true),
+        ("vn", "vn.", false), ("vn", "vn.x", false), ("vn", "VN!?", false), ("@@", "@@x", true), ("vn", "vn1", false),
         ("vn.", "vn.x", true), ("vn", "vnx", true), ("vn", "Vn", false), ("a", "a;b", false), ("1", "1.", false),
+        ("k", "k1", false), ("k1", "k12", false), ("k", "k1x", false), ("@", "@9", false), ("k1", "k1a", true),
+        ("1", "1a", true),
     ])
     func documentedPairs(shorter: String, longer: String, accepted: Bool) {
         let mine = StoredMacro(trigger: shorter, expansion: "x")

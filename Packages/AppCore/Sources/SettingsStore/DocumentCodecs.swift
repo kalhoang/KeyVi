@@ -8,8 +8,8 @@
 //   `skippedPaths`). One bad entry never discards its siblings.
 // - `encode` overlays the payload on the raw object it was read from, so unknown keys survive at every level
 //   (and so does a known key's value this build cannot read, while that setting is unset):
-//   top level, inside `settings`, `englishRestoreLists`, `onboarding`, and inside each app, override and macro
-//   entry (matched by bundle, rule id and macro id) (PLT-R1002).
+//   top level, inside `settings`, `englishRestoreLists`, `onboarding`, and inside each learned word, app, override
+//   and macro entry (matched by word, bundle, rule id and macro id) (PLT-R1002).
 // - Neither touches `schemaVersion` / `writtenBy`; the store stamps the envelope.
 
 internal import AppModel
@@ -56,6 +56,14 @@ enum SettingsCodec: DocumentCodec {
         let lists = object["englishRestoreLists"]?.objectValue ?? [:]
         user.keepAsTyped = lowercasedSet(lists[SettingListKey.keepAsTyped])
         user.keepVietnamese = lowercasedSet(lists[SettingListKey.keepVietnamese])
+        for item in arrayItems(lists[LearnedWordsCodec.key]) {
+            switch LearnedWordsCodec.item(from: item) {
+            case .learned(let word): user.learnedWords.insert(word)
+            case .global(.keepAsTyped, let raw): user.keepAsTyped.insert(raw)  // no app: global (ENG-R862)
+            case .global(.keepVietnamese, let raw): user.keepVietnamese.insert(raw)
+            case nil: continue
+            }
+        }
         user.optedInRules = Set(strings(object["optedInRules"]).compactMap(RuleID.init(rawValue:)))
         user.onboarding.completedVersion = object["onboarding"]?["completedVersion"]?.stringValue
         return user
@@ -79,6 +87,8 @@ enum SettingsCodec: DocumentCodec {
         var lists = raw["englishRestoreLists"]?.objectValue ?? [:]
         lists[SettingListKey.keepAsTyped] = sortedArray(user.keepAsTyped)
         lists[SettingListKey.keepVietnamese] = sortedArray(user.keepVietnamese)
+        lists[LearnedWordsCodec.key] = LearnedWordsCodec.encode(
+            user.learnedWords, over: arrayItems(raw["englishRestoreLists"]?[LearnedWordsCodec.key]))
         object["englishRestoreLists"] = .object(lists)
         object["optedInRules"] = sortedArray(user.optedInRules.map(\.rawValue))
 
@@ -94,6 +104,10 @@ enum SettingsCodec: DocumentCodec {
         for (key, value) in settings.sorted(by: { $0.key < $1.key }) {
             let readable = SettingFields.all.first { $0.key == key }?.decodes(value) ?? false
             if !readable { paths.append("settings." + key) }
+        }
+        let learned = object["englishRestoreLists"]?[LearnedWordsCodec.key]
+        for index in LearnedWordsCodec.unreadableIndexes(in: learned) {
+            paths.append("englishRestoreLists.\(LearnedWordsCodec.key)[\(index)]")
         }
         return paths
     }

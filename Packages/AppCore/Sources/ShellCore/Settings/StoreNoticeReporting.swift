@@ -11,9 +11,6 @@ public import Foundation
 public import SettingsStore
 
 public enum StoreNoticeReporting {
-    /// `StoreNotice.writeFailed` carries no errno; the log event's field is 0 for "not known".
-    public static let unknownErrno: Int32 = 0
-
     /// Notices of `current` that `previous` did not have, in order: each is logged and recorded once.
     public static func added(previous: [StoreNotice], current: [StoreNotice]) -> [StoreNotice] {
         current.filter { !previous.contains($0) }
@@ -25,7 +22,7 @@ public enum StoreNoticeReporting {
         case .recoveredFromBackup(let file, _): .recoveredFromBackup(file: file.code)
         case .corruptFileUsingDefaults(let file): .corruptFileQuarantined(file: file.code)
         case .newerSchemaReadOnly(let file, let version): .newerSchemaReadOnly(file: file.code, schemaVersion: version)
-        case .writeFailed(let file): .writeFailed(file: file.code, errno: unknownErrno)
+        case .writeFailed(let file, let code): .writeFailed(file: file.code, errno: code)  // PLT-R1202
         case .safeMode: nil
         }
     }

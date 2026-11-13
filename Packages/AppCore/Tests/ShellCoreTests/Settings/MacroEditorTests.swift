@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Macros pane (PRD-R29, PRD-R31): the editor rejects invalid shortcuts with the PRD-R29 reasons, stores
-// expansions in NFC (ENG-R1101), never saves a table the engine rejects (ENG-R1103), warns about Telex digit
-// boundaries, and the list supports search, sort, add, edit, duplicate, delete and enable or disable all.
+// expansions in NFC (ENG-R1101), never saves a table the engine rejects (ENG-R1103), refuses a trailing digit like
+// trailing punctuation, and the list supports search, sort, add, edit, duplicate, delete and enable or disable all.
 
 import AppModel
 import Foundation
@@ -35,13 +35,13 @@ import VietnameseEngine
             ("vn.x", "x", .shadowedBy(shorter: "vn")),
         ]
         for (shortcut, expansion, issue) in cases {
-            let result = state.save(MacroDraft(shortcut: shortcut, expansion: expansion), method: .telex)
+            let result = state.save(MacroDraft(shortcut: shortcut, expansion: expansion))
             #expect(result == .failure(.invalid(issue)), "\(shortcut)")
         }
         // The shorter side is refused too when the longer one exists.
         var withLonger = MacroListState(macros: [StoredMacro(trigger: "ad.", expansion: "address")])
         #expect(
-            withLonger.save(MacroDraft(shortcut: "ad", expansion: "x"), method: .vni)
+            withLonger.save(MacroDraft(shortcut: "ad", expansion: "x"))
                 == .failure(.invalid(.shadows(longer: "ad."))))
         #expect(state.macros == [vn, dc])  // nothing saved
     }
@@ -53,11 +53,11 @@ import VietnameseEngine
                 "dc, không phải đc"))
         #expect(
             MacroIssueText.text(.shadowedBy(shorter: "vn"), shortcut: "vn.", localizer: l.vi)
-                == "\"vn.\" là gõ tắt \"vn\" thêm dấu câu, nên \"vn\" luôn chạy trước và \"vn.\" không bao giờ dùng được."
+                == "\"vn.\" là gõ tắt \"vn\" thêm dấu câu hoặc chữ số, nên \"vn\" luôn chạy trước và \"vn.\" không bao giờ dùng được."
         )
         #expect(
             MacroIssueText.text(.shadows(longer: "ad."), shortcut: "ad", localizer: l.en)
-                == "The macro \"ad.\" is \"ad\" plus punctuation, so with \"ad\" the macro \"ad.\" could never be used."
+                == "The macro \"ad.\" is \"ad\" plus punctuation or a digit, so with \"ad\" the macro \"ad.\" could never be used."
         )
         let issues: [MacroRowIssue] = [
             .emptyShortcut, .emptyExpansion, .shortcutTooLong, .shortcutHasWhitespace, .expansionTooLong,
@@ -77,7 +77,7 @@ import VietnameseEngine
     @Test func expansionsAreStoredInNFC_ENGR1101() throws {
         var state = list()
         let decomposed = "Vie\u{0302}\u{0323}t"  // NFD "Việt"
-        let result = state.save(MacroDraft(shortcut: "vt", expansion: decomposed), method: .telex, newID: { fixedID })
+        let result = state.save(MacroDraft(shortcut: "vt", expansion: decomposed), newID: { fixedID })
         let saved = try result.get()
         #expect(saved.expansion == "Việt")
         #expect(saved.expansion.unicodeScalars.count == 4)
@@ -91,16 +91,16 @@ import VietnameseEngine
         #expect(draft.shortcut == "vn" && draft.id == vn.id)
         draft.expansion = "Việt Nam!"
         draft.adaptCase = false
-        let saved = try state.save(draft, method: .telex).get()
+        let saved = try state.save(draft).get()
         #expect(saved.id == vn.id && !saved.adaptCase)
         #expect(state.macros.map(\.expansion) == ["Việt Nam!", "được"])
         // Renaming onto another shortcut is a duplicate.
         draft.shortcut = "DC"
-        #expect(state.save(draft, method: .telex) == .failure(.invalid(.duplicate(of: "dc"))))
+        #expect(state.save(draft) == .failure(.invalid(.duplicate(of: "dc"))))
         // A vanished macro cannot be saved.
         state.delete(vn.id)
         draft.shortcut = "vn2"
-        #expect(state.save(draft, method: .telex) == .failure(.notFound))
+        #expect(state.save(draft) == .failure(.notFound))
         #expect(state.draft(for: vn.id) == nil)
     }
 
@@ -108,36 +108,53 @@ import VietnameseEngine
         var state = list()
         var copy = try #require(state.duplicateDraft(of: dc.id))
         #expect(copy.id == nil && copy.expansion == "được")
-        #expect(state.save(copy, method: .telex) == .failure(.invalid(.duplicate(of: "dc"))))
+        #expect(state.save(copy) == .failure(.invalid(.duplicate(of: "dc"))))
         copy.shortcut = "dk"
-        _ = try state.save(copy, method: .telex).get()
+        _ = try state.save(copy).get()
         #expect(state.macros.map(\.trigger) == ["vn", "dc", "dk"])
         #expect(state.duplicateDraft(of: UUID()) == nil)
     }
 
-    @Test func telexWarnsThatADigitEndsTheShorterShortcut() throws {
+    /// ENG-R1103, PRD-R29 (decision of 13/11/2026): a shortcut that is another one plus a trailing digit is refused
+    /// in both directions and for both typing methods, with the same explanation as trailing punctuation.
+    @Test func aTrailingDigitIsRefusedLikePunctuation_ENGR1103() throws {
         let macros = [StoredMacro(trigger: "k", expansion: "không")]
-        let longer = MacroDraftValidator.check(
-            MacroDraft(shortcut: "k1", expansion: "x"), among: macros, method: .telex)
-        #expect(longer.canSave)  // advice only: the engine accepts the pair
-        #expect(longer.warnings == [.telexDigitBoundary(longer: "k1", shorter: "k")])
+        let longer = MacroDraftValidator.check(MacroDraft(shortcut: "k1", expansion: "x"), among: macros)
+        #expect(longer.issue == .shadowedBy(shorter: "k"))
         let shorter = MacroDraftValidator.check(
-            MacroDraft(shortcut: "K", expansion: "x"), among: [StoredMacro(trigger: "k2", expansion: "y")],
-            method: .telex)
-        #expect(shorter.warnings == [.telexDigitBoundary(longer: "k2", shorter: "K")])
-        let vni = MacroDraftValidator.check(MacroDraft(shortcut: "k1", expansion: "x"), among: macros, method: .vni)
-        #expect(vni.warnings.isEmpty)  // digits are tone keys in VNI
-        #expect(
-            MacroDraftValidator.check(MacroDraft(shortcut: "ka", expansion: "x"), among: macros, method: .telex)
-                .warnings.isEmpty)
-        #expect(MacroDraftValidator.check(MacroDraft(), among: macros, method: .telex).warnings.isEmpty)
+            MacroDraft(shortcut: "K", expansion: "x"), among: [StoredMacro(trigger: "k2", expansion: "y")])
+        #expect(shorter.issue == .shadows(longer: "k2"))
+        #expect(MacroDraftValidator.check(MacroDraft(shortcut: "ka", expansion: "x"), among: macros).canSave)
+        var state = MacroListState(macros: macros)
+        #expect(state.save(MacroDraft(shortcut: "k1", expansion: "x")) == .failure(.invalid(.shadowedBy(shorter: "k"))))
+        #expect(state.macros == macros)
         let l = try Localizers()
         #expect(
-            MacroIssueText.warningText(.telexDigitBoundary(longer: "k1", shorter: "k"), localizer: l.vi)
-                .contains("gõ tắt \"k\" chạy ngay"))
-        var state = MacroListState(macros: macros)
-        _ = try state.save(MacroDraft(shortcut: "k1", expansion: "x"), method: .telex).get()
-        #expect(state.macros.count == 2)
+            MacroIssueText.text(.shadowedBy(shorter: "k"), shortcut: "k1", localizer: l.vi)
+                == "\"k1\" là gõ tắt \"k\" thêm dấu câu hoặc chữ số, nên \"k\" luôn chạy trước và \"k1\" không bao giờ dùng được."
+        )
+        #expect(
+            MacroIssueText.text(.shadows(longer: "k2"), shortcut: "K", localizer: l.en)
+                == "The macro \"k2\" is \"K\" plus punctuation or a digit, so with \"K\" the macro \"k2\" could never be used."
+        )
+    }
+
+    /// ENG-R1103, PLT-R1005 (ADR 0321): a `k` + `k1` pair saved by an earlier build still loads; both rows are
+    /// flagged, and a later save is refused with the row to fix named until one of the pair is deleted or renamed.
+    @Test func aPairSavedBeforeTheDigitRuleStillLoadsAndNamesTheRowToFix_ENGR1103() throws {
+        let k = StoredMacro(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000B1")!, trigger: "k", expansion: "a")
+        let k1 = StoredMacro(
+            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!, trigger: "k1", expansion: "b")
+        var state = MacroListState(macros: [k, k1, vn])
+        #expect(state.macros == [k, k1, vn])
+        #expect(state.rowIssues == [k.id: .shadows(longer: "k1"), k1.id: .shadowedBy(shorter: "k")])
+        let problem = MacroTableProblem(trigger: "k1", issue: .shadowedBy(shorter: "k"))
+        #expect(state.save(MacroDraft(shortcut: "btw", expansion: "x")) == .failure(.rejectedByEngine(problem)))
+        let l = try Localizers()
+        #expect(MacroIssueText.entryText(problem, localizer: l.en).contains("\"k1\""))
+        state.delete(k1.id)
+        #expect(state.rowIssues.isEmpty)
+        #expect(throws: Never.self) { try state.save(MacroDraft(shortcut: "btw", expansion: "x")).get() }
     }
 
     @Test func engineErrorsMapToRowReasons_ENGR1103() {
@@ -163,14 +180,15 @@ import VietnameseEngine
     }
 
     @Test func editorAndEngineAgreeOnEverySavedTable() {
-        // Whatever the editor accepts, the engine accepts (W1-B cross-track rule).
+        // Whatever the editor accepts, the engine accepts (W1-B cross-track rule). `vn1` and `k1` are refused: a
+        // trailing digit counts like punctuation (ENG-R1103).
         var state = MacroListState(macros: [])
         let shortcuts = ["vn", "vn1", "@@", "@@x", "ad", "a.d", "k", "k1", "btw", "ty", "x.y.z"]
         for shortcut in shortcuts {
-            _ = state.save(MacroDraft(shortcut: shortcut, expansion: "e"), method: .telex)
+            _ = state.save(MacroDraft(shortcut: shortcut, expansion: "e"))
         }
         #expect(MacroDraftValidator.engineProblem(in: state.macros) == nil)
-        #expect(state.macros.map(\.trigger) == shortcuts)
+        #expect(state.macros.map(\.trigger) == shortcuts.filter { $0 != "vn1" && $0 != "k1" })
     }
 
     @Test func searchSortAndBulkToggles_PRDR31() {

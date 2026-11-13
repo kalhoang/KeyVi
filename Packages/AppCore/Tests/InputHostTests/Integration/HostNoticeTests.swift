@@ -91,22 +91,6 @@ struct HostNoticeTests {
         #expect(modes.apps.contains { $0.bundle.rawValue == HostRig.editorBundle })
     }
 
-    @Test func theSecondIdenticalLearningSignalUpdatesTheList_ENG_R861() async {
-        let rig = HostRig()
-        await rig.start()
-        defer { rig.stop() }
-        rig.controller.handle(MainNotice.learning(.preferredRaw(raw: "qzxwk")))
-        #expect(!rig.events.contains { if case .learningProposal = $0 { true } else { false } })
-        rig.controller.handle(MainNotice.learning(.preferredRaw(raw: "qzxwk")))
-        #expect(
-            rig.events.contains {
-                if case .learningProposal(let proposal) = $0 { proposal.rawKeys == "qzxwk" } else { false }
-            })
-        for _ in 0..<20 where await rig.store.store.state.user.keepAsTyped.isEmpty { await Task.yield() }
-        #expect(await rig.store.store.state.user.keepAsTyped == ["qzxwk"])
-        #expect(!rig.logger.entries.contains { "\($0.event)".contains("qzxwk") }, "PLT-R901: content is never logged")
-    }
-
     @Test func conflictingInputAppsAreReportedOncePerLaunch_PLT_R399() async throws {
         let rig = HostRig()
         let rules = HostRig.shippedRules

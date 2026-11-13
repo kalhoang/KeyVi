@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Helpers behind menu and onboarding actions (PLT-R540, PRD-R32, PRD-R40, PLT-R711). Workstream W2-A.
+// Helpers behind menu actions (PLT-R540, PLT-R1205, PLT-R1105). Workstream W2-A.
 
 import AppModel
 import CompatRules
@@ -52,35 +52,6 @@ struct ShellActionsTests {
 
     @Test func provenanceDayIsUTC() {
         #expect(TextFocusOverride.day(Date(timeIntervalSince1970: 1_800_000_000)) == "2027-01-15")
-    }
-
-    @Test func onboardingImportKeepsTheUsersMacros_PRD_R32() throws {
-        let mine = StoredMacro(trigger: "vn", expansion: "Việt Nam")
-        let file = Data("vn\tViet Nam imported\nko\tkhông\n".utf8)
-        let merged = try #require(OnboardingMacroImport.merged(data: file, fileExtension: "txt", existing: [mine]))
-        #expect(merged.first == mine, "keep mine for duplicates")
-        #expect(merged.contains { $0.trigger == "ko" && $0.expansion == "không" })
-        #expect(OnboardingMacroImport.merged(data: Data([0xFF, 0x00]), fileExtension: "bin", existing: []) == nil)
-        let huge = Data(count: MacroImporter.maxFileBytes + 1)
-        #expect(OnboardingMacroImport.merged(data: huge, fileExtension: "txt", existing: []) == nil)
-    }
-
-    /// PLT-R912: a file over the cap is rejected without being loaded into memory.
-    @Test func importReadsAtMostTheCapFromDisk_PLT_R912() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "w2a-import-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let small = directory.appendingPathComponent("macros.txt")
-        try Data("vn\tViệt Nam\n".utf8).write(to: small)
-        #expect(OnboardingMacroImport.read(small) == Data("vn\tViệt Nam\n".utf8))
-        let exact = directory.appendingPathComponent("exact.txt")
-        try Data(count: MacroImporter.maxFileBytes).write(to: exact)
-        #expect(OnboardingMacroImport.read(exact)?.count == MacroImporter.maxFileBytes)
-        let large = directory.appendingPathComponent("large.txt")
-        try Data(count: MacroImporter.maxFileBytes + 1).write(to: large)
-        #expect(OnboardingMacroImport.read(large) == nil)
-        #expect(OnboardingMacroImport.read(directory.appendingPathComponent("missing.txt")) == nil)
     }
 
     @Test func supportLinksPointAtTheSiteSections() throws {

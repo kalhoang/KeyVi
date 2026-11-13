@@ -29,8 +29,8 @@ struct MacroValidationTests {
             Entry(trigger: String(repeating: "x", count: 32), expansion: "32"),
             Entry(trigger: "sig", expansion: String(repeating: "ạ", count: 4_000)),
             Entry(trigger: "nl", expansion: "dòng 1\ndòng 2"), Entry(trigger: "del", expansion: ""),
-            // Digits are token keys in VNI, so `k` does not shadow `k1x` (only punctuation does).
-            Entry(trigger: "k", expansion: "không"), Entry(trigger: "k1x", expansion: "?"),
+            // A digit inside a trigger is fine when what comes before it is no trigger (`k1`, `1st`).
+            Entry(trigger: "1st", expansion: "first"), Entry(trigger: "k2x", expansion: "?"),
             // A longer trigger that continues with a letter is reachable.
             Entry(trigger: "vnm", expansion: "Việt Nam!"),
         ])
@@ -69,6 +69,30 @@ struct MacroValidationTests {
                 == .shadowedByShorterTrigger(trigger: "@@", shorter: "@"))
     }
 
+    /// ENG-R1103, decision of the product owner of 13/11/2026 (docs/decisions/0005-pa-decisions-2026-11-13.md): a
+    /// trailing main-row digit counts like punctuation. In Telex the digit is a boundary, so `k` fires at the `1`
+    /// of `k1` and `k1` can never fire there; the check is the same for every typing method.
+    @Test func trailingDigitShadowsLikePunctuation_ENGR1103() {
+        #expect(
+            error([Entry(trigger: "k1", expansion: "khu 1"), Entry(trigger: "k", expansion: "không")])
+                == .shadowedByShorterTrigger(trigger: "k1", shorter: "k"))
+        #expect(
+            error([Entry(trigger: "K", expansion: "không"), Entry(trigger: "k1x", expansion: "?")])
+                == .shadowedByShorterTrigger(trigger: "k1x", shorter: "K"))
+        #expect(
+            error([Entry(trigger: "k1", expansion: "khu 1"), Entry(trigger: "k12", expansion: "khu 12")])
+                == .shadowedByShorterTrigger(trigger: "k12", shorter: "k1"))
+        #expect(
+            error([Entry(trigger: "1", expansion: "một"), Entry(trigger: "10", expansion: "mười")])
+                == .shadowedByShorterTrigger(trigger: "10", shorter: "1"))
+        #expect(
+            error([Entry(trigger: "@", expansion: "a"), Entry(trigger: "@9", expansion: "b")])
+                == .shadowedByShorterTrigger(trigger: "@9", shorter: "@"))
+        // A letter after the shorter trigger keeps the longer one reachable, digit or not elsewhere.
+        #expect(error([Entry(trigger: "k", expansion: "không"), Entry(trigger: "kx1", expansion: "?")]) == nil)
+        #expect(error([Entry(trigger: "k1", expansion: "khu 1"), Entry(trigger: "k1a", expansion: "?")]) == nil)
+    }
+
     @Test func firstProblemInEntryOrder() {
         let entries = [
             Entry(trigger: "ok", expansion: "x"), Entry(trigger: "a b", expansion: "x"),
@@ -78,13 +102,18 @@ struct MacroValidationTests {
     }
 
     @Test func tenThousandEntries() throws {
-        // ENG-R1105: hash lookup; a 10,000-entry table builds and matches like a small one.
+        // ENG-R1105: hash lookup; a 10,000-entry table builds and matches like a small one. The triggers have one
+        // width, so none is another plus a trailing digit (ENG-R1103).
         var entries: [Entry] = []
-        for index in 0..<10_000 { entries.append(Entry(trigger: "m\(index)", expansion: "macro \(index)")) }
+        for index in 0..<10_000 {
+            let digits = String(index)
+            let trigger = "m" + String(repeating: "0", count: 5 - digits.count) + digits
+            entries.append(Entry(trigger: trigger, expansion: "macro \(index)"))
+        }
         entries.append(Entry(trigger: "vn", expansion: "Việt Nam"))
         let table = try MacroTable(entries)
         let resources = SpecFixtures.commitResources(macros: table)
-        #expect(try Committing.text("vn m9999 ", resources: resources) == "Việt Nam macro 9999 ")
+        #expect(try Committing.text("vn m09999 ", resources: resources) == "Việt Nam macro 9999 ")
     }
 }
 

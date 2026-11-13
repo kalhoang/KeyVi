@@ -157,7 +157,22 @@ final class SettingsWindowModel: ObservableObject {
         LoginItemRowText(localizer: localizer, appName: appName, panes: panes, presentation: loginItem)
     }
 
-    // MARK: - Word lists (ENG-R860)
+    // MARK: - Word lists (ENG-R860, ENG-R862)
+
+    /// Global entries and the words learned per app, in display order.
+    func wordRows(_ list: UserWordList) -> [UserWordList.Row] { list.rows(in: state.user) }
+
+    var hasLearnedWords: Bool { !state.user.learnedWords.isEmpty }
+
+    /// ENG-R862: the name of the app a word was learned in, resolved now from its bundle identifier (installed app,
+    /// else the compatibility matrix, else the identifier); never stored.
+    func appName(for bundle: BundleKey) -> String {
+        appIdentities.name(for: bundle, matrixName: matrix?.appEntry(for: bundle)?.displayName)
+    }
+
+    func forgetLearnedWord(_ word: LearnedWord) { edit(.forgetLearnedWord(word)) }
+
+    func makeLearnedWordGlobal(_ word: LearnedWord) { edit(.makeLearnedWordGlobal(word)) }
 
     func addWord(to list: UserWordList) {
         let draft = drafts[list]

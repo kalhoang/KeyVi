@@ -82,7 +82,7 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         harness.spy.failAll(.writeAtomically)
         let state = await harness.store.load()
         #expect(state.user.typingMethod == .set(.vni))
-        #expect(state.notices == [.writeFailed(.settings)])
+        #expect(state.notices == [.writeFailed(.settings, errno: EIO)])
         harness.spy.clearFailures()
         await harness.store.updateSettings { $0.soundOnSwitch = .set(true) }
         await harness.store.flush()

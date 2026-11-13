@@ -42,7 +42,7 @@ public struct StoreNoticePresentation: Sendable, Hashable {
             message = localizer.format(SettingsText.noticeSafeMode, appName, crashes)
             actions = [.leaveSafeMode, .resetAll, .report]  // PLT-R1009 offers reset or report
             isWarning = true
-        case .writeFailed(let file):
+        case .writeFailed(let file, _):
             message = localizer.format(SettingsText.noticeWriteFailed, file.rawValue)
             actions = []
             isWarning = true

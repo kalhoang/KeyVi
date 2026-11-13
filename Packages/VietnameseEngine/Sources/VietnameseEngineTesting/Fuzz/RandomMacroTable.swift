@@ -21,7 +21,9 @@ public enum RandomMacroTable {
         var candidates: [String] = []
         var seen = Set<String>()
         let mixedAlphabet = wordAlphabet + punctuationAlphabet.prefix(3)
-        while candidates.count < count * 3 {
+        // Four candidates per entry: digits and punctuation after a shorter trigger both shadow (ENG-R1103), so
+        // three were not enough for the benchmark's 10,000 entries.
+        while candidates.count < count * 4 {
             let trigger: String
             if generator.chance(1, in: 3) {
                 // Punctuation-only triggers all have three characters: a shorter one would shadow every
@@ -42,7 +44,7 @@ public enum RandomMacroTable {
         for trigger in candidates where entries.count < count {
             let characters = Array(trigger.lowercased())
             let shadowed = (1..<max(1, characters.count)).contains { length in
-                isPunctuation(characters[length]) && accepted.contains(String(characters[..<length]))
+                endsShorterTrigger(characters[length]) && accepted.contains(String(characters[..<length]))
             }
             guard !shadowed else { continue }
             accepted.insert(String(characters))
@@ -59,9 +61,10 @@ public enum RandomMacroTable {
         try MacroTable(entries(count: count, seed: seed))
     }
 
-    private static func isPunctuation(_ character: Character) -> Bool {
+    /// Punctuation or a digit after a shorter trigger: the shorter one fires there (ENG-R1103).
+    private static func endsShorterTrigger(_ character: Character) -> Bool {
         guard let byte = character.asciiValue else { return false }
-        return byte > 0x20 && byte < 0x7F && !character.isLetter && !character.isNumber
+        return byte > 0x20 && byte < 0x7F && !character.isLetter
     }
 
     private static func expansion(index: Int, using generator: inout SeededGenerator) -> String {

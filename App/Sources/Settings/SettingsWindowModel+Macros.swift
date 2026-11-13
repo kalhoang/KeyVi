@@ -14,7 +14,7 @@ extension SettingsWindowModel {
     var macroIssues: [UUID: MacroRowIssue] { macroList.rowIssues }
 
     func draftCheck(_ draft: MacroDraft) -> MacroDraftCheck {
-        MacroDraftValidator.check(draft, among: macroList.macros, method: settings.typingMethod)
+        MacroDraftValidator.check(draft, among: macroList.macros)
     }
 
     func addMacro() {
@@ -35,7 +35,7 @@ extension SettingsWindowModel {
     /// Saves the sheet's draft; on failure the sheet stays open with the reason (row context for the engine).
     func saveMacroDraft(_ draft: MacroDraft) {
         var list = macroList
-        switch list.save(draft, method: settings.typingMethod) {
+        switch list.save(draft) {
         case .success:
             macroList = list
             macroDraft = nil

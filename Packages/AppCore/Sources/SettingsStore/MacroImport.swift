@@ -230,7 +230,8 @@ public enum MacroImporter {
 /// `triggerTooLong` = `shortcutTooLong` (more than 32); `invalidTriggerCharacter` = `shortcutHasWhitespace` or
 /// `shortcutNotPrintableASCII` (only U+0021...U+007E are allowed); `expansionTooLong` = `expansionTooLong` (more
 /// than 4,000 characters, counted as `String.count`); `duplicateTrigger` = `duplicate(of:)`;
-/// `shadowedByShorterTrigger` = `shadowedBy(shorter:)` / `shadows(longer:)`. The editor is stricter in one place:
+/// `shadowedByShorterTrigger` = `shadowedBy(shorter:)` / `shadows(longer:)` (punctuation or a main-row digit after
+/// the shorter trigger, ENG-R1103). The editor is stricter in one place:
 /// an empty expansion is rejected (`emptyExpansion`, PRD-R43 example).
 public enum MacroValidator {
     public static let maxShortcutLength = 32
@@ -271,17 +272,22 @@ public enum MacroValidator {
         return shortcuts.first { isShadowed(key, by: Self.key($0)) }.map { .shadowedBy(shorter: $0) }
     }
 
-    /// `longer` starts with `shorter` followed by an ASCII punctuation character: that key is a boundary at which
-    /// the span equals `shorter`, so `shorter` expands there and `longer` can never fire, whatever comes after
-    /// the punctuation (PRD-R29, ENG-R1103, 01-engine.md section 9.2: `vn` shadows `vn.` and `vn.x`). Digits are
-    /// not treated as boundaries here: they are transform keys in VNI, so whether they end a span depends on
-    /// the typing method.
+    /// `longer` starts with `shorter` followed by an ASCII punctuation character or a main-row digit: that key is a
+    /// boundary at which the span equals `shorter`, so `shorter` expands there and `longer` can never fire,
+    /// whatever comes after it (PRD-R29, ENG-R1103, 01-engine.md section 9.2: `vn` shadows `vn.` and `vn.x`). A
+    /// digit is a boundary in Telex, so `k` shadows `k1`; the check does not depend on the typing method, exactly
+    /// like the engine's (decision of the product owner, 13/11/2026).
     static func isShadowed(_ longer: String, by shorter: String) -> Bool {
         let shorterScalars = shorter.unicodeScalars
         guard !shorterScalars.isEmpty, longer.unicodeScalars.count > shorterScalars.count, longer.hasPrefix(shorter),
             let next = longer.unicodeScalars.dropFirst(shorterScalars.count).first
         else { return false }
-        return isASCIIPunctuation(next)
+        return endsShorterShortcut(next)
+    }
+
+    /// Punctuation or a main-row digit: typed right after a complete shortcut, it fires that shortcut (ENG-R1103).
+    static func endsShorterShortcut(_ scalar: Unicode.Scalar) -> Bool {
+        isASCIIPunctuation(scalar) || ("0"..."9").contains(scalar)
     }
 
     /// Matching key: ASCII-lowercased shortcut (ENG-R1101 case-insensitive matching).

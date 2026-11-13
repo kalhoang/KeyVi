@@ -67,7 +67,7 @@ struct MacroEditorOptions: View {
     }
 }
 
-/// The blocking reason (after the user typed something), advice, and a save error from the engine check.
+/// The blocking reason (after the user typed something) and a save error from the engine check.
 struct MacroCheckLines: View {
     @ObservedObject var model: SettingsWindowModel
     let draft: MacroDraft
@@ -80,9 +80,6 @@ struct MacroCheckLines: View {
                 IssueLine(
                     symbol: "exclamationmark.triangle",
                     text: MacroIssueText.text(issue, shortcut: draft.shortcut, localizer: localizer))
-            }
-            ForEach(check.warnings, id: \.self) { warning in
-                IssueLine(symbol: SettingsSymbol.info, text: MacroIssueText.warningText(warning, localizer: localizer))
             }
             if let error = model.macroDraftError { IssueLine(symbol: "exclamationmark.octagon", text: error) }
         }

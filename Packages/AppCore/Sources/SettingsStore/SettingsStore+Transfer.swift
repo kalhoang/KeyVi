@@ -50,6 +50,7 @@ extension SettingsStore {
             unset(.typing)
             user.keepAsTyped = []
             user.keepVietnamese = []
+            user.learnedWords = []  // ENG-R862: learned entries are shown and reset with the Typing pane lists
         case .apps:
             unset(.apps)
             user.optedInRules = []

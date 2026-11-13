@@ -68,6 +68,7 @@ public enum SettingNames {
         case "firstSeenAppMode": return localizer.string(SettingsText.nameFirstSeenAppMode)
         case "macrosInEnglishMode": return localizer.string(SettingsText.nameMacrosInEnglishMode)
         case "optedInRules": return localizer.string(SettingsText.nameOptedInRules)
+        case "learnedWords": return localizer.string(SettingsText.nameLearnedWords)
         default: return key
         }
     }

@@ -78,13 +78,23 @@ public enum EngineBridge {
         MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
-    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches user lists and macros.
+    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists and macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
+        try resources(
+            wordLists: UserWordLists(keepAsTyped: settings.keepAsTyped, keepVietnamese: settings.keepVietnamese),
+            macros: macros, bundledLoader: bundledLoader)
+    }
+
+    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862) and the
+    /// macros. The engine gets word sets only, never the app (ENG-R851).
+    public static func resources(
+        wordLists: UserWordLists, macros: MacroTable, bundledLoader: () throws -> Resources
+    ) rethrows -> Resources {
         var resources = try bundledLoader()
-        resources.userKeepRaw = WordSet(settings.keepAsTyped)
-        resources.userKeepVietnamese = WordSet(settings.keepVietnamese)
+        resources.userKeepRaw = WordSet(wordLists.keepAsTyped)
+        resources.userKeepVietnamese = WordSet(wordLists.keepVietnamese)
         resources.macros = macros
         return resources
     }

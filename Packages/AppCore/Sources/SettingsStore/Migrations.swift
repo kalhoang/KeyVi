@@ -45,5 +45,10 @@ public struct MigrationChain: Sendable {
     }
 
     /// All migrations shipped by this build (empty while every file is at version 1).
+    ///
+    /// settings.json stays at version 1 for per-app learning (ENG-R862, ADR 0320): `englishRestoreLists` gains the
+    /// optional `learnedWords` array, which builds without it keep unread (PLT-R1002). No step is needed for the
+    /// files written before it: their `keepAsTyped` and `keepVietnamese` entries carry no app, so they are read as
+    /// global entries, and so is a `learnedWords` item without an app (`LearnedWordsCodec`).
     public static let shipped = MigrationChain([])
 }

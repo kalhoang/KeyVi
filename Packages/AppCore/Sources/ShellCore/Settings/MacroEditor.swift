@@ -4,7 +4,6 @@
 // Pure value state; the window saves `macros` through `SettingsStore.replaceMacros` after each change. Macro
 // content is user data: never logged, never in diagnostics (PRD-R33).
 
-public import AppModel
 public import Foundation
 public import SettingsStore
 
@@ -78,10 +77,9 @@ public struct MacroListState: Sendable, Hashable {
     }
 
     /// Adds or replaces the draft's macro after validating it (PRD-R29) and the resulting table (engine).
-    public mutating func save(_ draft: MacroDraft, method: TypingMethod, newID: () -> UUID = UUID.init)
-        -> Result<StoredMacro, MacroSaveError>
+    public mutating func save(_ draft: MacroDraft, newID: () -> UUID = UUID.init) -> Result<StoredMacro, MacroSaveError>
     {
-        let check = MacroDraftValidator.check(draft, among: macros, method: method)
+        let check = MacroDraftValidator.check(draft, among: macros)
         if let issue = check.issue { return .failure(.invalid(issue)) }
         var next = macros
         let macro = StoredMacro(

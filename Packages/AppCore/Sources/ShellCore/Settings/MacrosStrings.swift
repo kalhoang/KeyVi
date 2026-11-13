@@ -55,7 +55,6 @@ public enum MacrosText: String, LocalizationKey {
     case issueMalformedLine = "macros.issue.malformedLine"
     case issueLine = "macros.issue.line"
     case issueEntry = "macros.issue.entry"
-    case warningTelexDigit = "macros.warning.telexDigit"
     case saveFailed = "macros.saveFailed"
     case importTitle = "macros.import.title"
     case importNew = "macros.import.new"

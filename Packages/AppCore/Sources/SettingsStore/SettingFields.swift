@@ -95,6 +95,7 @@ enum SettingFields {
 enum SettingListKey {
     static let keepAsTyped = "keepAsTyped"
     static let keepVietnamese = "keepVietnamese"
+    static let learnedWords = "learnedWords"  // ENG-R862, inside `englishRestoreLists`
     static let optedInRules = "optedInRules"
     static let onboarding = "onboarding"
 }
