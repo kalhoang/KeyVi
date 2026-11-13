@@ -1,0 +1,2669 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "bugReport.app.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses the app with the problem."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn ứng dụng gặp lỗi."
+          }
+        }
+      }
+    },
+    "bugReport.app.label" : {
+      "comment" : "PRD-R47 item 1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which app had the problem?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lỗi xảy ra ở ứng dụng nào?"
+          }
+        }
+      }
+    },
+    "bugReport.app.none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No specific app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thuộc ứng dụng nào"
+          }
+        }
+      }
+    },
+    "bugReport.description.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the example you want to include. Used only in the report you send yourself."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ ví dụ bạn muốn gửi kèm. Chỉ dùng trong báo lỗi bạn tự gửi."
+          }
+        }
+      }
+    },
+    "bugReport.description.hint" : {
+      "comment" : "PRD-R47 item 3 hint; argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type an example here yourself. %@ never sends what you typed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn tự gõ lại ví dụ ở đây. %@ không tự gửi những gì bạn đã gõ."
+          }
+        }
+      }
+    },
+    "bugReport.description.label" : {
+      "comment" : "PRD-R47 item 3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What did you type, and what did you expect?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn gõ gì và mong ra gì?"
+          }
+        }
+      }
+    },
+    "bugReport.email" : {
+      "comment" : "PRD-R47 item 5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send by email"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gửi qua email"
+          }
+        }
+      }
+    },
+    "bugReport.email.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a mail to support with the report file attached."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở thư gửi bộ phận hỗ trợ, kèm tệp báo cáo."
+          }
+        }
+      }
+    },
+    "bugReport.email.fallback" : {
+      "comment" : "Shown when the mailto fallback was used.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No mail app that can attach files was found. The draft opened without the file: choose Save file... and attach it yourself."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có ứng dụng thư gửi được tệp đính kèm. Thư đã mở không kèm tệp: hãy bấm Lưu tệp... rồi tự đính kèm."
+          }
+        }
+      }
+    },
+    "bugReport.email.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No mail app could be opened. Choose Save file... and send the file another way."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không mở được ứng dụng thư. Hãy bấm Lưu tệp... rồi gửi tệp bằng cách khác."
+          }
+        }
+      }
+    },
+    "bugReport.github" : {
+      "comment" : "PRD-R47 item 5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open GitHub"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở GitHub"
+          }
+        }
+      }
+    },
+    "bugReport.github.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the issue form on GitHub and puts the diagnostics on the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở mẫu báo lỗi trên GitHub và chép dữ liệu chẩn đoán vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "bugReport.github.pasteHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The diagnostics are on the clipboard. Paste them into the diagnostics field of the issue."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dữ liệu chẩn đoán đã nằm trong bộ nhớ tạm. Hãy dán vào ô dữ liệu chẩn đoán của báo lỗi."
+          }
+        }
+      }
+    },
+    "bugReport.openDiagnostics" : {
+      "comment" : "Opens the Diagnostics window (PLT-R1201).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Diagnostics"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ chẩn đoán"
+          }
+        }
+      }
+    },
+    "bugReport.openDiagnostics.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the Diagnostics window."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ chẩn đoán."
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.answer.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tells whether the problem happens in the practice field."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cho biết lỗi có xảy ra trong ô gõ thử không."
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.button" : {
+      "comment" : "PRD-R49; wording shared with the site and support replies.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try in the practice field"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thử trong ô gõ thử"
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.button.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a separate field to try the problem again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở một ô gõ riêng để thử lại lỗi."
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.label" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Does it also happen in the practice field?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trong ô gõ thử, lỗi có xảy ra không?"
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.no" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không"
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not tried"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa thử"
+          }
+        }
+      }
+    },
+    "bugReport.practiceField.yes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yes"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Có"
+          }
+        }
+      }
+    },
+    "bugReport.preview.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows or hides the exact data that will be sent."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện hoặc ẩn đúng dữ liệu sẽ gửi."
+          }
+        }
+      }
+    },
+    "bugReport.preview.disclosure" : {
+      "comment" : "PRD-R47 item 4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview the data that will be sent"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem trước dữ liệu sẽ gửi"
+          }
+        }
+      }
+    },
+    "bugReport.saveFailed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file could not be saved. Choose another folder."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không lưu được tệp. Hãy chọn thư mục khác."
+          }
+        }
+      }
+    },
+    "bugReport.saveFile" : {
+      "comment" : "PRD-R47 item 5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save file..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu tệp..."
+          }
+        }
+      }
+    },
+    "bugReport.saveFile.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves the report as a file on this Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu báo cáo thành tệp trên máy."
+          }
+        }
+      }
+    },
+    "bugReport.saved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report file saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã lưu tệp báo cáo."
+          }
+        }
+      }
+    },
+    "bugReport.symptom.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses the description closest to the problem."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn một mô tả gần nhất với lỗi."
+          }
+        }
+      }
+    },
+    "bugReport.symptom.label" : {
+      "comment" : "PRD-R47 item 2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What happened?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuyện gì xảy ra?"
+          }
+        }
+      }
+    },
+    "bugReport.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi"
+          }
+        }
+      }
+    },
+    "diagnostics.clipboardNotice" : {
+      "comment" : "PRD-R48, shown before any clipboard write; argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy report and Open GitHub put the diagnostics on the clipboard for you to paste. Apart from the paste compatibility mode you turn on yourself, this is the only time %@ writes to the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép báo cáo và Mở GitHub chép dữ liệu chẩn đoán vào bộ nhớ tạm để bạn dán. Ngoài chế độ tương thích dán do bạn tự bật, đây là lúc duy nhất %@ ghi vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "diagnostics.copied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report copied."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã sao chép báo cáo."
+          }
+        }
+      }
+    },
+    "diagnostics.copyReport" : {
+      "comment" : "PLT-R1201 button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy report"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép báo cáo"
+          }
+        }
+      }
+    },
+    "diagnostics.copyReport.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies the report shown into the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chép báo cáo đang hiện vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "diagnostics.latencyTest" : {
+      "comment" : "PLT-R1201 button (PLT-R810).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run typing latency test"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chạy kiểm tra độ trễ gõ"
+          }
+        }
+      }
+    },
+    "diagnostics.latencyTest.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a window that measures typing delay."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ đo độ trễ khi gõ."
+          }
+        }
+      }
+    },
+    "diagnostics.logsUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There is no logs folder yet."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có thư mục nhật ký."
+          }
+        }
+      }
+    },
+    "diagnostics.misbehaves" : {
+      "comment" : "PLT-R1201 button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app misbehaves..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng này gõ sai..."
+          }
+        }
+      }
+    },
+    "diagnostics.misbehaves.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the steps to find a typing method that works in the selected field."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở bước tìm cách gõ đúng cho ô đang chọn."
+          }
+        }
+      }
+    },
+    "diagnostics.openLogs" : {
+      "comment" : "PLT-R1201 button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open logs folder"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở thư mục nhật ký"
+          }
+        }
+      }
+    },
+    "diagnostics.openLogs.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the logs folder in Finder."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở thư mục nhật ký trong Finder."
+          }
+        }
+      }
+    },
+    "diagnostics.recordTrace" : {
+      "comment" : "PLT-R1201 button (D26).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record typing trace..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghi lại thao tác gõ..."
+          }
+        }
+      }
+    },
+    "diagnostics.recordTrace.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asks for confirmation, then records your typing for a short time."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hỏi xác nhận rồi ghi lại thao tác gõ trong thời gian ngắn."
+          }
+        }
+      }
+    },
+    "diagnostics.report.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The exact text that will be copied or saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung đúng như sẽ được sao chép hoặc lưu."
+          }
+        }
+      }
+    },
+    "diagnostics.report.heading" : {
+      "comment" : "Heading above the exact report text (PLT-R1204).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report contents"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung báo cáo"
+          }
+        }
+      }
+    },
+    "diagnostics.report.note" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is exactly what will be copied or saved. The report contains nothing you typed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đây đúng là nội dung sẽ được sao chép hoặc lưu. Báo cáo không chứa những gì bạn gõ."
+          }
+        }
+      }
+    },
+    "diagnostics.state.failOpen.callbackStuck" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped transforming keys. Quit and reopen the app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã ngừng biến đổi phím. Hãy thoát rồi mở lại ứng dụng."
+          }
+        }
+      }
+    },
+    "diagnostics.state.failOpen.permissionRevoked" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped transforming keys because a permission was revoked. The keyboard still types normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã ngừng biến đổi phím vì quyền bị thu hồi. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "diagnostics.state.failOpen.postingBroken" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped transforming keys because keys could not be sent. The keyboard still types normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã ngừng biến đổi phím vì không gửi được phím. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "diagnostics.state.failOpen.tapUnavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped transforming keys because the keyboard could not be monitored. The keyboard still types normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã ngừng biến đổi phím vì không theo dõi được bàn phím. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "diagnostics.state.failOpen.watchdog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped transforming keys after one step took too long. The keyboard still types normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã ngừng biến đổi phím sau một lần xử lý quá chậm. Bàn phím vẫn gõ bình thường."
+          }
+        }
+      }
+    },
+    "diagnostics.state.label" : {
+      "comment" : "Health state line; argument is the plain explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "State: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trạng thái: %@"
+          }
+        }
+      }
+    },
+    "diagnostics.state.noPermission" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility permission is missing; the keyboard types as usual."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có quyền Trợ năng, bàn phím đang gõ như bình thường."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.builtInVietnameseSource" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused because the built-in Vietnamese input source of macOS is selected."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng vì bộ gõ tiếng Việt có sẵn của macOS đang được chọn."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.noTextFocus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused because no text field is selected."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng vì chưa chọn ô nhập chữ."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.nonLatinInputSource" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused because the current input source is not a Latin keyboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng vì nguồn nhập hiện tại không phải bàn phím chữ Latinh."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.passThroughRule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused in this app by a rule."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng ở ứng dụng này theo quy tắc."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.secureField" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused in a password field."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng trong ô mật khẩu."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.secureInput" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused because an app turned on secure input."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng vì một ứng dụng đang bật chế độ nhập bảo mật."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.sessionInactive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused because the user session is not active."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng vì phiên người dùng không hoạt động."
+          }
+        }
+      }
+    },
+    "diagnostics.state.paused.userDisabled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused at your request."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng theo lựa chọn của bạn."
+          }
+        }
+      }
+    },
+    "diagnostics.state.readyEnglish" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Working normally, typing English."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang hoạt động bình thường, gõ tiếng Anh."
+          }
+        }
+      }
+    },
+    "diagnostics.state.readyVietnamese" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Working normally, typing Vietnamese."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang hoạt động bình thường, gõ tiếng Việt."
+          }
+        }
+      }
+    },
+    "diagnostics.state.starting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang khởi động."
+          }
+        }
+      }
+    },
+    "diagnostics.window.title" : {
+      "comment" : "Diagnostics window title (PLT-R1201).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chẩn đoán"
+          }
+        }
+      }
+    },
+    "misbehaves.applied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applied. The next keystroke uses this method."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã áp dụng. Lần gõ tiếp theo sẽ dùng cách này."
+          }
+        }
+      }
+    },
+    "misbehaves.ask" : {
+      "comment" : "PLT-R1205 step 3 human fallback.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Do you see “đá â” in the field?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn có thấy “đá â” trong ô không?"
+          }
+        }
+      }
+    },
+    "misbehaves.ask.no" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không"
+          }
+        }
+      }
+    },
+    "misbehaves.ask.no.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You do not see exactly “đá â”."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn không thấy đúng chữ “đá â”."
+          }
+        }
+      }
+    },
+    "misbehaves.ask.yes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yes"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Có"
+          }
+        }
+      }
+    },
+    "misbehaves.ask.yes.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You see exactly “đá â”."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn thấy đúng chữ “đá â”."
+          }
+        }
+      }
+    },
+    "misbehaves.confirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirms the field is empty and safe and starts the test."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xác nhận ô đang trống và an toàn rồi bắt đầu gõ thử."
+          }
+        }
+      }
+    },
+    "misbehaves.confirm.button" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The field is empty and safe, start"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô đang trống và an toàn, bắt đầu"
+          }
+        }
+      }
+    },
+    "misbehaves.confirm.text" : {
+      "comment" : "PLT-R1205 step 3 gate.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click the field with the problem and delete all its text. Only continue when typing there is harmless, for example not a field that sends a message or runs a command."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hãy bấm vào ô bị lỗi và xóa hết chữ trong ô. Chỉ tiếp tục khi gõ thử ở đó không gây hại, ví dụ không phải ô sẽ tự gửi tin nhắn hay chạy lệnh."
+          }
+        }
+      }
+    },
+    "misbehaves.copySuggestion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy rule"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép quy tắc"
+          }
+        }
+      }
+    },
+    "misbehaves.copySuggestion.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies the suggested rule into the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chép quy tắc đề xuất vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "misbehaves.detected.app" : {
+      "comment" : "PLT-R1205 step 2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng: %@"
+          }
+        }
+      }
+    },
+    "misbehaves.detected.field" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Field: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô nhập: %@"
+          }
+        }
+      }
+    },
+    "misbehaves.detected.rule" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rule: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quy tắc: %@"
+          }
+        }
+      }
+    },
+    "misbehaves.detected.strategy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing method: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cách gõ: %@"
+          }
+        }
+      }
+    },
+    "misbehaves.guided.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Types into the selected field automatically after you confirm."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ thử tự động vào ô đang chọn sau khi bạn xác nhận."
+          }
+        }
+      }
+    },
+    "misbehaves.guided.explain" : {
+      "comment" : "Argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ types a few letters into the selected field with each typing method, reads the result back and deletes it again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sẽ gõ thử vài chữ vào ô đang chọn bằng từng cách gõ, đọc lại kết quả rồi xóa đi."
+          }
+        }
+      }
+    },
+    "misbehaves.guided.offer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run a guided test..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thử tự động..."
+          }
+        }
+      }
+    },
+    "misbehaves.interrupted.cancelled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test was stopped."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã dừng thử."
+          }
+        }
+      }
+    },
+    "misbehaves.interrupted.fieldNotEmpty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The field still has text, so the test stopped. Delete it and try again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô vẫn còn chữ nên việc thử đã dừng. Hãy xóa hết rồi thử lại."
+          }
+        }
+      }
+    },
+    "misbehaves.interrupted.focusChanged" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selected field changed, so the test stopped."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô đang chọn đã đổi nên việc thử đã dừng."
+          }
+        }
+      }
+    },
+    "misbehaves.openGitHubIssue" : {
+      "comment" : "PLT-R1205 step 5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open GitHub issue"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở báo lỗi trên GitHub"
+          }
+        }
+      }
+    },
+    "misbehaves.openGitHubIssue.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the issue form on GitHub and puts the diagnostics on the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở mẫu báo lỗi trên GitHub và chép dữ liệu chẩn đoán vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "misbehaves.ownApp" : {
+      "comment" : "PLT-R1205 step 2; argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selected window belongs to %@. Click the field with the problem in the affected app before testing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cửa sổ đang chọn thuộc về %@. Hãy bấm vào ô bị lỗi trong ứng dụng cần kiểm tra trước khi thử."
+          }
+        }
+      }
+    },
+    "misbehaves.pageAddress.field" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page address"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Địa chỉ trang"
+          }
+        }
+      }
+    },
+    "misbehaves.pageAddress.field.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page address; only the host is used."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Địa chỉ trang; chỉ phần tên miền được dùng."
+          }
+        }
+      }
+    },
+    "misbehaves.pageAddress.include" : {
+      "comment" : "PLT-R1205 step 4; off by default.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include page address (host only)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kèm địa chỉ trang (chỉ phần tên miền)"
+          }
+        }
+      }
+    },
+    "misbehaves.pageAddress.include.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds the host of the page to the suggested rule."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm tên miền của trang vào quy tắc đề xuất."
+          }
+        }
+      }
+    },
+    "misbehaves.pageAddress.preview" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Will use: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sẽ dùng: %@"
+          }
+        }
+      }
+    },
+    "misbehaves.result.found" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A working typing method was found: %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã tìm được cách gõ phù hợp: %@."
+          }
+        }
+      }
+    },
+    "misbehaves.result.none" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None of the methods typed correctly. Send a report to get help."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không cách nào trong lần thử này gõ đúng. Hãy gửi báo lỗi để được giúp."
+          }
+        }
+      }
+    },
+    "misbehaves.result.notReproduced" : {
+      "comment" : "PLT-R1205 step 4: the current plan passed, nothing to change.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The current method typed correctly in this test, so the problem did not appear again. Send a report with a description to get help."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cách gõ hiện tại gõ đúng trong lần thử này nên lỗi chưa xuất hiện lại. Hãy gửi báo lỗi kèm mô tả để được giúp."
+          }
+        }
+      }
+    },
+    "misbehaves.stop" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop test"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dừng thử"
+          }
+        }
+      }
+    },
+    "misbehaves.stop.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the test at once."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dừng gõ thử ngay."
+          }
+        }
+      }
+    },
+    "misbehaves.suggestion.heading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggested rule"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quy tắc đề xuất"
+          }
+        }
+      }
+    },
+    "misbehaves.testing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trying method %1$ld of %2$ld: %3$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang thử cách %1$ld trên %2$ld: %3$@"
+          }
+        }
+      }
+    },
+    "misbehaves.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app misbehaves"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng này gõ sai"
+          }
+        }
+      }
+    },
+    "misbehaves.unknown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unknown"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "không rõ"
+          }
+        }
+      }
+    },
+    "misbehaves.useForMe" : {
+      "comment" : "PLT-R1205 step 5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this for me now"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng cách này cho tôi ngay"
+          }
+        }
+      }
+    },
+    "misbehaves.useForMe.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creates a rule for this app from the test result."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạo quy tắc riêng cho ứng dụng này từ kết quả thử."
+          }
+        }
+      }
+    },
+    "practiceField.field.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice field; its text is not saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô gõ thử; nội dung không được lưu."
+          }
+        }
+      }
+    },
+    "practiceField.instructions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the example again here to see whether the problem happens. Nothing you type here is saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ lại ví dụ ở đây để xem lỗi có xảy ra không. Những gì bạn gõ ở đây không được lưu."
+          }
+        }
+      }
+    },
+    "practiceField.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice field"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô gõ thử"
+          }
+        }
+      }
+    },
+    "probe.done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done. The results are in the diagnostics report."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã xong. Kết quả có trong báo cáo chẩn đoán."
+          }
+        }
+      }
+    },
+    "probe.field" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test typing field"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô gõ của bài kiểm tra"
+          }
+        }
+      }
+    },
+    "probe.field.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receives the test keys; do not type into it while the test runs."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô nhận phím của bài kiểm tra; đừng gõ vào khi đang chạy."
+          }
+        }
+      }
+    },
+    "probe.instructions" : {
+      "comment" : "PLT-R810; argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ types into the field below at three speeds: normal (120 ms), fast (40 ms) and burst (5 ms). Do not type or click until it is done. The results go into the diagnostics report."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sẽ tự gõ vào ô bên dưới với ba nhịp: bình thường (120 ms), nhanh (40 ms) và dồn dập (5 ms). Đừng gõ hay bấm chuột cho đến khi xong. Kết quả được đưa vào báo cáo chẩn đoán."
+          }
+        }
+      }
+    },
+    "probe.profile.burst" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "burst"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dồn dập"
+          }
+        }
+      }
+    },
+    "probe.profile.fast" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fast"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nhanh"
+          }
+        }
+      }
+    },
+    "probe.profile.normal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "normal"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bình thường"
+          }
+        }
+      }
+    },
+    "probe.result" : {
+      "comment" : "T2 and T4 percentiles (02-platform.md 8.1).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ speed: send p50 %2$ld µs, p99 %3$ld µs; display delta p50 %4$ld µs, p99 %5$ld µs (%6$ld samples)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhịp %1$@: gửi phím p50 %2$ld µs, p99 %3$ld µs; chênh lệch hiển thị p50 %4$ld µs, p99 %5$ld µs (%6$ld mẫu)"
+          }
+        }
+      }
+    },
+    "probe.running" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running the %@ speed..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang chạy nhịp %@..."
+          }
+        }
+      }
+    },
+    "probe.start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start test"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bắt đầu kiểm tra"
+          }
+        }
+      }
+    },
+    "probe.start.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Types into the test field at three speeds."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự gõ vào ô kiểm tra với ba nhịp."
+          }
+        }
+      }
+    },
+    "probe.stopped" : {
+      "comment" : "PLT-R810: the probe window lost focus.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test stopped because the test window was no longer selected. No result was kept."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra đã dừng vì cửa sổ kiểm tra không còn được chọn. Không có kết quả nào được lưu."
+          }
+        }
+      }
+    },
+    "probe.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing latency test"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra độ trễ gõ"
+          }
+        }
+      }
+    },
+    "probe.unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test cannot run with the current keyboard. Choose a Latin keyboard layout."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không chạy được kiểm tra với bàn phím hiện tại. Hãy chọn một bàn phím chữ Latinh."
+          }
+        }
+      }
+    },
+    "strategy.axReplace" : {
+      "comment" : "4.5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace through Accessibility"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thay qua Trợ năng"
+          }
+        }
+      }
+    },
+    "strategy.backspaceReplace" : {
+      "comment" : "Typing method name (02-platform.md 4.2).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backspace and retype"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa lùi rồi gõ lại"
+          }
+        }
+      }
+    },
+    "strategy.inlineCompletion.axSelection" : {
+      "comment" : "4.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "remove the suggestion first"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xóa gợi ý trước"
+          }
+        }
+      }
+    },
+    "strategy.inlineCompletion.axSelectionThenPlaceholder" : {
+      "comment" : "4.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "remove the suggestion or use a placeholder"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xóa gợi ý hoặc dùng ký tự giữ chỗ"
+          }
+        }
+      }
+    },
+    "strategy.inlineCompletion.placeholder" : {
+      "comment" : "4.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "use a placeholder character"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dùng ký tự giữ chỗ"
+          }
+        }
+      }
+    },
+    "strategy.passThrough" : {
+      "comment" : "4.7.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No transformation"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không biến đổi"
+          }
+        }
+      }
+    },
+    "strategy.paste" : {
+      "comment" : "4.6.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dán"
+          }
+        }
+      }
+    },
+    "strategy.selectReplace" : {
+      "comment" : "4.4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select and replace"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn rồi gõ đè"
+          }
+        }
+      }
+    },
+    "strategy.withHandling" : {
+      "comment" : "Method name, then the suggestion handling.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "strategy.withPacing" : {
+      "comment" : "Method description, then the pause between events in ms.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$ld ms apart"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, cách nhau %2$ld ms"
+          }
+        }
+      }
+    },
+    "trace.confirm.message" : {
+      "comment" : "PLT-R905 confirmation; arguments are the app name and the duration.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ records the keys you type, including letters, for %2$ld seconds. The menu bar icon changes and a countdown with a Stop button stays on screen while it records. Nothing is recorded while you enter a password. The trace stays on this Mac, is deleted after 24 hours or as soon as you export or discard it, and is never sent anywhere automatically."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sẽ ghi lại các phím bạn gõ, kể cả chữ, trong %2$ld giây. Biểu tượng trên thanh menu đổi và một bảng đếm ngược có nút Dừng hiện suốt lúc ghi. Không ghi gì khi đang nhập mật khẩu. Bản ghi chỉ nằm trên máy này, bị xóa sau 24 giờ hoặc ngay khi bạn xuất hay bỏ, và không bao giờ tự gửi đi."
+          }
+        }
+      }
+    },
+    "trace.confirm.start" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start recording"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bắt đầu ghi"
+          }
+        }
+      }
+    },
+    "trace.confirm.start.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts recording; press Stop on the countdown to end early."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bắt đầu ghi; bấm Dừng trên bảng đếm ngược để kết thúc sớm."
+          }
+        }
+      }
+    },
+    "trace.confirm.title" : {
+      "comment" : "D26.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record a typing trace for a bug report?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghi lại thao tác gõ để báo lỗi?"
+          }
+        }
+      }
+    },
+    "trace.duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording time"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thời gian ghi"
+          }
+        }
+      }
+    },
+    "trace.duration.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses how long to record, at most 180 seconds."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn thời gian ghi, tối đa 180 giây."
+          }
+        }
+      }
+    },
+    "trace.duration.seconds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%ld seconds"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%ld giây"
+          }
+        }
+      }
+    },
+    "trace.error.alreadyRecording" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Another trace is recording."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang ghi một bản khác."
+          }
+        }
+      }
+    },
+    "trace.error.invalidDuration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The recording time must be 1 to 180 seconds."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thời gian ghi phải từ 1 đến 180 giây."
+          }
+        }
+      }
+    },
+    "trace.error.storage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The trace could not be saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không lưu được bản ghi."
+          }
+        }
+      }
+    },
+    "trace.error.unknownSession" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The trace is gone: it is older than 24 hours or was deleted."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản ghi không còn nữa: đã quá 24 giờ hoặc đã bị xóa."
+          }
+        }
+      }
+    },
+    "trace.exported" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trace exported and deleted from this Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã xuất bản ghi và xóa bản trên máy."
+          }
+        }
+      }
+    },
+    "trace.review.discard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard trace"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ bản ghi"
+          }
+        }
+      }
+    },
+    "trace.review.discard.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deletes the trace at once."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa bản ghi ngay."
+          }
+        }
+      }
+    },
+    "trace.review.export" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export file..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất tệp..."
+          }
+        }
+      }
+    },
+    "trace.review.export.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves the trace as a file, then deletes it from this Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu bản ghi thành tệp rồi xóa bản trên máy."
+          }
+        }
+      }
+    },
+    "trace.review.note" : {
+      "comment" : "PLT-R905, PRD-R46.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is everything that was recorded. Review it before you export. The trace is deleted as soon as you export or discard it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đây là toàn bộ nội dung đã ghi. Hãy xem trước khi xuất. Bản ghi bị xóa ngay khi bạn xuất hoặc bỏ."
+          }
+        }
+      }
+    },
+    "trace.review.text.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything that was recorded."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toàn bộ nội dung đã ghi."
+          }
+        }
+      }
+    },
+    "trace.review.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review the typing trace"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem lại thao tác gõ"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

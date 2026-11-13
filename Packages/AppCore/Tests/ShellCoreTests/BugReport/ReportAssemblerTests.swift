@@ -88,7 +88,8 @@ import Testing
         #expect(settings.macroCount == 1)
         #expect(settings.restoreHotkeySet == false)
         #expect(settings.toggleHotkey == .defaultToggle)
-        #expect(settings.explicitlySetKeys == ["typingMethod", "interfaceLanguage"])
+        // Names from SettingsStore (`UserSettings.explicitlySetKeys`), list names without their entries.
+        #expect(settings.explicitlySetKeys == ["typingMethod", "interfaceLanguage", "keepAsTyped", "keepVietnamese"])
     }
 
     @Test func onlyTheReportedAppsMemoryEntryIsIncluded() throws {
