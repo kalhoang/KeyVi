@@ -145,6 +145,42 @@
         }
       }
     },
+    "onboarding.control.cancelResetPermission.accessibilityHint" : {
+      "comment" : "VoiceOver hint of Cancel in the permission reset confirmation (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leaves the permission list unchanged."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ nguyên danh sách quyền."
+          }
+        }
+      }
+    },
+    "onboarding.control.cancelResetPermission.accessibilityLabel" : {
+      "comment" : "VoiceOver label of Cancel in the permission reset confirmation (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
     "onboarding.control.changeToggleKey.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -285,6 +321,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "onboarding.control.confirmResetPermission.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the destructive button in the permission reset confirmation (PRD-R66, PLT-R740).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes this app's entry from the permission list, then macOS asks again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa mục của ứng dụng này khỏi danh sách quyền, sau đó macOS sẽ hỏi lại."
+          }
+        }
+      }
+    },
+    "onboarding.control.confirmResetPermission.accessibilityLabel" : {
+      "comment" : "VoiceOver label of the destructive button in the permission reset confirmation (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset the permission"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt lại quyền"
           }
         }
       }

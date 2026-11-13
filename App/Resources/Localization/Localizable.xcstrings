@@ -451,6 +451,24 @@
         }
       }
     },
+    "common.cancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint of a Cancel button in an alert or confirmation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without changing anything."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không thay đổi gì."
+          }
+        }
+      }
+    },
     "common.close" : {
       "comment" : "Closes a sheet.",
       "extractionState" : "manual",
@@ -465,6 +483,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "common.close.accessibilityHint" : {
+      "comment" : "VoiceOver hint of a Close button that dismisses a message.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes this message."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng thông báo này."
           }
         }
       }

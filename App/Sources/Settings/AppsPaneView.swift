@@ -135,7 +135,8 @@ struct AppRowActions: View {
             .buttonStyle(.borderless)
             .help(Text(verbatim: localizer.string(AppsText.report)))
             .settingsAccessibility(
-                AppsControl.rowReport, localizer, label: localizer.string(AppsText.report) + " " + name)
+                AppsControl.rowReport, localizer,
+                label: localizer.accessibilityLabel(AppsControl.rowReport) + ": " + name)
         }
     }
 }

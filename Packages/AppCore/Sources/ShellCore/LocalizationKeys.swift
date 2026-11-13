@@ -26,6 +26,9 @@ public enum CommonText: String, LocalizationKey {
     case skip = "common.skip"
     case cancel = "common.cancel"
     case close = "common.close"
+    /// VoiceOver hints of a plain Cancel or Close button in an AppKit alert (PRD-R66).
+    case cancelHint = "common.cancel.accessibilityHint"
+    case closeHint = "common.close.accessibilityHint"
     // Mail draft of the bug report (PRD-R47).
     case mailSubject = "bugReport.mail.subject"
     case mailSubjectNoApp = "bugReport.mail.subject.noApp"
@@ -95,7 +98,9 @@ public enum MenuText: String, LocalizationKey {
     case iconCapturing = "icon.capturing.accessibilityLabel"
     case iconStarting = "icon.starting.accessibilityLabel"
     case iconPausedNoTextFocus = "icon.paused.noTextFocus.accessibilityLabel"
-    case iconPausedOther = "icon.paused.other.accessibilityLabel"
+    case iconPausedUserDisabled = "icon.paused.userDisabled.accessibilityLabel"
+    case iconPausedSessionInactive = "icon.paused.sessionInactive.accessibilityLabel"
+    case iconPausedDiagnosticsTest = "icon.paused.diagnosticsTest.accessibilityLabel"
     case iconNotWorkingFailOpen = "icon.notWorking.failOpen.accessibilityLabel"
     case hotkeySpace = "hotkey.space"
     case hotkeyRight = "hotkey.right"
@@ -236,7 +241,8 @@ public enum OnboardingText: String, LocalizationKey {
 /// Every interactive control of the onboarding window, with its VoiceOver label and hint keys (PRD-R66).
 public enum OnboardingControl: String, Sendable, CaseIterable {
     case back, skip, primary, openPermissionPane, openInputMonitoringPane, relaunch, permissionHelp,
-        resetPermission, closeHelp, methodTelex, methodVNI, practiceField, changeToggleKey, conflictHelp,
+        resetPermission, confirmResetPermission, cancelResetPermission, closeHelp, methodTelex, methodVNI,
+        practiceField, changeToggleKey, conflictHelp,
         checkAgain, openKeyboardPane, chooseImportFile, importLater, tryItField, openAtLogin, moveConfirm,
         moveQuit
 

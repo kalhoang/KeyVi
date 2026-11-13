@@ -106,8 +106,7 @@ struct SwitchHUDView: View {
             .font(.system(size: 56, weight: .bold, design: .rounded))
             .foregroundStyle(.primary)
             .frame(width: HUDPanelFactory.switchSize.width, height: HUDPanelFactory.switchSize.height)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.separator))
+            .modifier(HUDBackground(cornerRadius: 20))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: label))
     }
@@ -138,8 +137,27 @@ struct CaptureHUDView: View {
         }
         .padding(.horizontal, 14)
         .frame(width: HUDPanelFactory.captureSize.width, height: HUDPanelFactory.captureSize.height)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.separator))
+        .modifier(HUDBackground(cornerRadius: 14))
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// HUD surface: the system material (which turns opaque with Reduce Transparency) with a hairline outline, and a
+/// solid label-colour outline under Increase Contrast so the panel edge stays visible on any background (PRD-R67).
+struct HUDBackground: ViewModifier {
+    let cornerRadius: CGFloat
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .background(.regularMaterial, in: shape)
+            .overlay {
+                if contrast == .increased {
+                    shape.strokeBorder(.primary, lineWidth: 2)
+                } else {
+                    shape.strokeBorder(.separator)
+                }
+            }
     }
 }

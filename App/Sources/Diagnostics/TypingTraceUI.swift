@@ -47,6 +47,7 @@ final class TypingTraceCoordinator {
         let startButton = alert.addButton(withTitle: localizer.string(DiagnosticsText.traceStart))
         startButton.setAccessibilityHelp(localizer.string(DiagnosticsControl.traceStart.hintKey))
         alert.addButton(withTitle: localizer.string(CommonText.cancel))
+            .setAccessibilityHelp(localizer.string(CommonText.cancelHint))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         record(seconds: Self.durations[max(0, picker.indexOfSelectedItem)])
     }
@@ -91,6 +92,7 @@ final class TypingTraceCoordinator {
         alert.messageText = language.localizer.string(DiagnosticsText.traceConfirmTitle)
         alert.informativeText = language.localizer.string(key)
         alert.addButton(withTitle: language.localizer.string(CommonText.close))
+            .setAccessibilityHelp(language.localizer.string(CommonText.closeHint))
         alert.runModal()
     }
 
