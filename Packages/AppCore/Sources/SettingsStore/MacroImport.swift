@@ -270,11 +270,17 @@ public enum MacroValidator {
         return shortcuts.first { isShadowed(key, by: Self.key($0)) }.map { .shadowedBy(shorter: $0) }
     }
 
-    /// `longer` is `shorter` followed by one or more ASCII punctuation characters: typing the punctuation after
-    /// `shorter` already expands it, so `longer` can never fire (PRD-R29, ENG-R1103: `vn` vs `vn.`).
+    /// `longer` starts with `shorter` followed by an ASCII punctuation character: that key is a boundary at which
+    /// the span equals `shorter`, so `shorter` expands there and `longer` can never fire, whatever comes after
+    /// the punctuation (PRD-R29, ENG-R1103, 01-engine.md section 9.2: `vn` shadows `vn.` and `vn.x`). Digits are
+    /// not treated as boundaries here: they are transform keys in VNI, so whether they end a span depends on
+    /// the typing method.
     static func isShadowed(_ longer: String, by shorter: String) -> Bool {
-        guard !shorter.isEmpty, longer.count > shorter.count, longer.hasPrefix(shorter) else { return false }
-        return longer.unicodeScalars.dropFirst(shorter.unicodeScalars.count).allSatisfy(isASCIIPunctuation)
+        let shorterScalars = shorter.unicodeScalars
+        guard !shorterScalars.isEmpty, longer.unicodeScalars.count > shorterScalars.count, longer.hasPrefix(shorter),
+            let next = longer.unicodeScalars.dropFirst(shorterScalars.count).first
+        else { return false }
+        return isASCIIPunctuation(next)
     }
 
     /// Matching key: ASCII-lowercased shortcut (ENG-R1101 case-insensitive matching).

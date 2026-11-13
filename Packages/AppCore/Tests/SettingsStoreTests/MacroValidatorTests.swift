@@ -54,10 +54,24 @@ import Testing
         #expect(issue("vn.", others: ["vn"]) == .shadowedBy(shorter: "vn"))
         #expect(issue("VN!?", others: ["vn"]) == .shadowedBy(shorter: "vn"))
         #expect(issue("vn", others: ["vn."]) == .shadows(longer: "vn."))
-        // A letter or digit after the shorter shortcut is a different word, not shadowing.
+        // A letter or digit right after the shorter shortcut is a different word, not shadowing. Digits are left
+        // alone because they are boundaries in Telex but transform keys in VNI (method-dependent).
         #expect(issue("vnx", others: ["vn"]) == nil)
         #expect(issue("vn1", others: ["vn"]) == nil)
-        #expect(issue("vn.x", others: ["vn"]) == nil)
+    }
+
+    /// ENG-R1103: the punctuation key right after a complete trigger is a boundary at which that trigger already
+    /// expands, so whatever follows it can never be typed as part of a longer trigger (`vn.x` behind `vn`).
+    @Test func shadowingRejectsAnyContinuationAfterABoundaryENGR1103() {
+        #expect(issue("vn.x", others: ["vn"]) == .shadowedBy(shorter: "vn"))
+        #expect(issue("@@.x", others: ["@@"]) == .shadowedBy(shorter: "@@"))
+        // A letter right after `@@` is not a boundary, so `@@x` is typed in one span and stays reachable.
+        #expect(issue("@@x", others: ["@@"]) == nil)
+        #expect(issue("Vn;1a", others: ["vn"]) == .shadowedBy(shorter: "vn"))
+        #expect(issue("vn", others: ["vn.x"]) == .shadows(longer: "vn.x"))
+        // The shorter trigger ends in punctuation and is followed by a letter: no boundary fires it early.
+        #expect(issue("vn.x", others: ["vn."]) == nil)
+        #expect(MacroValidator.shadowedBy("ab.c", among: ["ab", "zz"]) == .shadowedBy(shorter: "ab"))
     }
 
     @Test func punctuationClassification() {
