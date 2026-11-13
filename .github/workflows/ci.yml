@@ -156,7 +156,8 @@ jobs:
             --baseline .build/coverage-baseline/engine.json --summary-out .build/coverage/engine.json
       - name: Engine core target coverage, at least 95 % (QA-R2)
         # The gate of Packages/VietnameseEngine/Scripts/coverage.sh (Sources/VietnameseEngine only), read from
-        # the export the step above wrote, so the engine tests run once.
+        # the export the step above wrote, so the engine tests run once. Both steps use the default scratch path
+        # (.build); give them the same --scratch-path if one ever changes, or this reads a stale or missing file.
         run: python3 -I "$ENGINE/Scripts/coverage.py" "$(swift test --package-path "$ENGINE" --show-codecov-path)"
       - name: AppCore tests with coverage (at least 80 %, QA-R2)
         if: hashFiles('Packages/AppCore/Package.swift') != ''
