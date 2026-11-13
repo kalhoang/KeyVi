@@ -118,8 +118,8 @@ import Testing
     }
 
     @Test func macrosPaneResetBacksUpTheCurrentListBeforeDeletingIt_PRDR26_PLTR1006() async throws {
-        // The first write of the session backs up what was on disk; later edits are not backed up again. Deleting
-        // the list from the Macros pane must still leave the list as it was just before the reset recoverable.
+        // Every write backs up what it wrote (PLT-R1006); deleting the list from the Macros pane must still leave
+        // the list as it was just before the reset recoverable.
         let (harness, commands) = await loaded()
         _ = await commands.saveMacros([StoredMacro(trigger: "vn", expansion: "Việt Nam")])
         await harness.advance(by: .seconds(2))
@@ -127,7 +127,6 @@ import Testing
             StoredMacro(trigger: "vn", expansion: "Việt Nam"), StoredMacro(trigger: "dc", expansion: "được"),
         ])
         await harness.advance(by: .seconds(2))
-        #expect(macroBackups(harness).allSatisfy { !$0.contains("\"dc\"") })
 
         var request = ResetRequest(target: .pane(.macros))
         request.deleteMacros = true
