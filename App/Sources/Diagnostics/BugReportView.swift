@@ -6,25 +6,24 @@
 
 import AppKit
 import AppModel
+import Combine
 import Diagnostics
-import Observation
 import ShellCore
 import SwiftUI
 
 @MainActor
-@Observable
-final class BugReportModel {
+final class BugReportModel: ObservableObject {
     let language: InterfaceLanguageModel
-    @ObservationIgnored let services: DiagnosticsServices
-    @ObservationIgnored var openPracticeField: () -> Void = {}
-    @ObservationIgnored var window: () -> NSWindow? = { nil }
-    private(set) var sheet: BugReportSheet
-    private(set) var status: DiagnosticsText?
+    let services: DiagnosticsServices
+    var openPracticeField: () -> Void = {}
+    var window: () -> NSWindow? = { nil }
+    @Published private(set) var sheet: BugReportSheet
+    @Published private(set) var status: DiagnosticsText?
     /// The report shown in the preview and used by every path, regenerated only when a choice that it contains
     /// changes, so what the user saw is exactly what is copied, mailed or saved (PLT-R1204).
-    private(set) var report: DiagnosticsReport
+    @Published private(set) var report: DiagnosticsReport
     /// Bound to the host context of the moment the sheet opened (`DiagnosticsServices.reportSession`).
-    @ObservationIgnored private let build: DiagnosticsServices.ReportBuilder
+    private let build: DiagnosticsServices.ReportBuilder
 
     init(
         draft: BugReportDraft, apps: [BugReportAppChoice], build: @escaping DiagnosticsServices.ReportBuilder,
@@ -139,11 +138,11 @@ final class BugReportModel {
             })
     }
 
-    @ObservationIgnored var openDiagnostics: () -> Void = {}
+    var openDiagnostics: () -> Void = {}
 }
 
 struct BugReportView: View {
-    @Bindable var model: BugReportModel
+    @ObservedObject var model: BugReportModel
 
     var body: some View {
         let localizer = model.localizer

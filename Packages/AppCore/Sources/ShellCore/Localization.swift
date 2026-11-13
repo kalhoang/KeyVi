@@ -9,8 +9,8 @@
 // there, so switching language re-renders immediately and is independent of the macOS language.
 
 public import AppModel
+public import Combine
 public import Foundation
-public import Observation
 public import RealtimeSupport
 
 /// String tables (catalog file names). Owned per workstream (docs/architecture/workstreams.md).
@@ -128,11 +128,12 @@ public struct Localizer: Sendable {
 }
 
 /// Observable current language for SwiftUI views and AppKit controllers (menus rebuild on open).
+/// `ObservableObject` (not `@Observable`, which needs macOS 14; ADR 0315): SwiftUI views hold it as
+/// `@ObservedObject` or observe a model that forwards its `objectWillChange`; AppKit controllers use `afterChange`.
 @MainActor
-@Observable
-public final class InterfaceLanguageModel {
-    public private(set) var localizer: Localizer
-    @ObservationIgnored private let appBundle: Bundle
+public final class InterfaceLanguageModel: ObservableObject {
+    @Published public private(set) var localizer: Localizer
+    private let appBundle: Bundle
 
     public init(language: InterfaceLanguage, appBundle: Bundle) {
         self.appBundle = appBundle

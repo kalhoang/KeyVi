@@ -6,9 +6,9 @@
 
 import AppKit
 import AppModel
+import Combine
 import CompatRules
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 import SwiftUI
@@ -38,6 +38,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let minimumSize = NSSize(width: 640, height: 560)
 
     private let model: SettingsWindowModel
+    private var languageObservation: AnyCancellable?
 
     /// Forwarded to the model; set by the composition root after construction.
     weak var actions: (any SettingsActions)? {
@@ -123,14 +124,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func observeLanguage() {
-        withObservationTracking {
-            _ = model.language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.refreshTitle()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
     }
 }
 

@@ -9,7 +9,7 @@ import ShellCore
 import SwiftUI
 
 struct SwitchingScreen: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -26,7 +26,7 @@ struct SwitchingScreen: View {
 /// PRD-R40 screen 4 "Đổi phím chuyển opens the recorder inline": the current toggle key, the recorder with the
 /// Settings window's capture lifecycle (ADR 0305) and its status line (PRD-R15, PRD-R16).
 struct OnboardingHotkeyRecorder: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -79,7 +79,7 @@ struct OnboardingHotkeyRecorder: View {
 /// Shown only when another Vietnamese input method runs or the built-in source is enabled (PLT-R399). The app
 /// never quits or changes other apps; it explains and links to help.
 struct ConflictsScreen: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -96,7 +96,7 @@ struct ConflictsScreen: View {
 }
 
 struct ConflictRow: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     let conflict: ConflictingInput
 
     var body: some View {
@@ -121,7 +121,7 @@ struct ConflictRow: View {
 /// PRD-R40 screen 6, PRD-R69: offered only for a detected export file or app; reading happens after the user
 /// picks the file. The footer holds "Chọn tệp..." and "Để sau".
 struct ImportScreen: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -134,7 +134,7 @@ struct ImportScreen: View {
 }
 
 struct TryItScreen: View {
-    @Bindable var model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -149,7 +149,7 @@ struct TryItScreen: View {
 }
 
 struct ChecklistRow: View {
-    let model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
     let item: TryItChecklist.Item
 
     var body: some View {
@@ -183,7 +183,7 @@ struct ChecklistRow: View {
 
 /// PRD-R40 screen 8: no donation prompt, no newsletter, no rating request.
 struct DoneScreen: View {
-    @Bindable var model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -210,7 +210,7 @@ struct DoneScreen: View {
 /// "Không thấy <App> trong danh sách?": remove and re-add, or reset only this app's entry after confirmation
 /// (PLT-R740). Never mentions sudo or a reset of every app (PLT-R741).
 struct PermissionHelpSheet: View {
-    @Bindable var model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
@@ -257,7 +257,7 @@ struct PermissionHelpSheet: View {
 /// PRD-R40 screen 6 "Chọn tệp...": the Macros pane's preview before anything is merged (PRD-R32); a refused file
 /// shows its reason with "Chọn tệp khác" (PRD-R43 "Import file invalid") and the flow stays on screen 6.
 struct OnboardingImportSheet: View {
-    @Bindable var model: OnboardingModel
+    @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer

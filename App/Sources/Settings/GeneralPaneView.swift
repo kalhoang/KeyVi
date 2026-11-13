@@ -10,7 +10,7 @@ import ShellCore
 import SwiftUI
 
 struct GeneralPaneView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let settings = model.settings
@@ -49,9 +49,10 @@ struct GeneralPaneView: View {
     }
 }
 
-/// D17 through `SMAppService` (PLT-R205): the toggle reflects the service status.
+/// D17 through `SMAppService` (PLT-R205): the toggle reflects the service status. On macOS 12 there is no
+/// `SMAppService` (ADR 0315): the toggle is disabled and the note and button lead to System Preferences.
 struct OpenAtLoginRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -82,7 +83,7 @@ struct OpenAtLoginRow: View {
 }
 
 struct InterfaceLanguageRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -104,7 +105,7 @@ struct InterfaceLanguageRow: View {
 
 /// PLT-R373: off by default; each ASCII-capable layout can be bound to VI or EN.
 struct LayoutBindingSection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -135,7 +136,7 @@ struct LayoutBindingSection: View {
 }
 
 struct LayoutAssignmentRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let binding: LayoutBindingModel
     let row: LayoutBindingModel.Row
 
@@ -162,7 +163,7 @@ struct LayoutAssignmentRow: View {
 
 /// D11 and D8 recorder (PRD-R15, PRD-R16, PRD-R18). While recording, the window's key events go to the recorder.
 struct HotkeyRecorderView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
     @FocusState private var focused: Bool
 
@@ -215,7 +216,7 @@ struct HotkeyRecorderView: View {
 
 /// "Dùng mặc định" for the toggle; "Dùng Escape" and "Không dùng" for the restore key (PRD-R18).
 struct RecorderShortcutButtons: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
 
     var body: some View {
@@ -238,7 +239,7 @@ struct RecorderShortcutButtons: View {
 
 /// Live keys, the rejection reason, or the PRD-R16 warning with its help link (a symbol, not only colour).
 struct RecorderStatusLine: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
 
     var body: some View {

@@ -5,8 +5,8 @@
 
 import AppKit
 import AppModel
+import Combine
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 import SwiftUI
@@ -41,6 +41,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     static let contentSize = NSSize(width: 640, height: 480)
 
     private let model: OnboardingModel
+    private var languageObservation: AnyCancellable?
 
     required init?(coder: NSCoder) { nil }
 
@@ -95,13 +96,6 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func observeLanguage() {
-        withObservationTracking {
-            _ = model.language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.refreshTitle()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
     }
 }

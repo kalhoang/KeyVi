@@ -10,7 +10,7 @@ import ShellCore
 import SwiftUI
 
 struct ResetSheet: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -53,7 +53,7 @@ struct ResetSheet: View {
 }
 
 struct ExportSheet: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -90,7 +90,7 @@ struct ExportSheet: View {
 }
 
 struct ImportSheet: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -119,7 +119,7 @@ struct ImportSheet: View {
 }
 
 struct ImportSummaryView: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let summary: ImportSummary
 
     var body: some View {

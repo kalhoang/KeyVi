@@ -8,7 +8,7 @@ import ShellCore
 import SwiftUI
 
 struct SettingsRootView: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -58,7 +58,7 @@ struct SettingsRootView: View {
 
 /// Every sheet and alert of the window, driven by optional model state.
 struct SettingsSheets: ViewModifier {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     func body(content: Content) -> some View {
         content

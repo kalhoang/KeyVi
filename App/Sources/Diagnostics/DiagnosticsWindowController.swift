@@ -5,8 +5,8 @@
 
 import AppKit
 import AppModel
+import Combine
 import Diagnostics
-import Observation
 import ShellCore
 import SwiftUI
 
@@ -191,17 +191,16 @@ final class BugReportController: NSWindowController, NSWindowDelegate {
 /// Window titles follow a runtime language change (PRD-R63); SwiftUI content re-renders by itself.
 @MainActor
 enum WindowTitles {
+    /// Unique address for the window's associated observation (never dereferenced).
+    private static let observationKey = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+
     static func follow(
         _ language: InterfaceLanguageModel, window: NSWindow, title: @escaping @MainActor (Localizer) -> String
     ) {
         window.title = title(language.localizer)
-        withObservationTracking {
-            _ = language.localizer
-        } onChange: { [weak window] in
-            Task { @MainActor [weak window] in
-                guard let window else { return }
-                follow(language, window: window, title: title)
-            }
-        }
+        let observation = language.afterChange { [weak window] in window?.title = title(language.localizer) }
+        // The window owns its title observation, which ends when the window is deallocated (ADR 0315:
+        // `withObservationTracking` needs macOS 14).
+        objc_setAssociatedObject(window, observationKey, observation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
 }

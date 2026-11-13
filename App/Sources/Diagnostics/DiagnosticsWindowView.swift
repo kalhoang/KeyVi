@@ -7,20 +7,19 @@
 
 import AppKit
 import AppModel
+import Combine
 import Diagnostics
-import Observation
 import ShellCore
 import SwiftUI
 
 @MainActor
-@Observable
-final class DiagnosticsWindowModel {
+final class DiagnosticsWindowModel: ObservableObject {
     let language: InterfaceLanguageModel
-    @ObservationIgnored let services: DiagnosticsServices
-    @ObservationIgnored private let makeReport: @MainActor () -> DiagnosticsReport
-    @ObservationIgnored var perform: (DiagnosticsWindowAction) -> Void = { _ in }
-    private(set) var report: DiagnosticsReport?
-    private(set) var status: DiagnosticsText?
+    let services: DiagnosticsServices
+    private let makeReport: @MainActor () -> DiagnosticsReport
+    var perform: (DiagnosticsWindowAction) -> Void = { _ in }
+    @Published private(set) var report: DiagnosticsReport?
+    @Published private(set) var status: DiagnosticsText?
 
     init(
         language: InterfaceLanguageModel, services: DiagnosticsServices,
@@ -64,8 +63,8 @@ final class DiagnosticsWindowModel {
     /// The shown report in the interface language, the exact text "Copy report" writes and the histograms.
     var display: ReportDisplay? { report.map { ReportDisplay(report: $0, language: localizer.language) } }
 
-    var histogramsExpanded = false
-    var copyPreviewExpanded = false
+    @Published var histogramsExpanded = false
+    @Published var copyPreviewExpanded = false
 
     func copyReport() {
         ReportActions.copy(ReportPreviewFormat.copiedBlock.text(currentReport()))
@@ -92,7 +91,7 @@ final class DiagnosticsWindowModel {
 }
 
 struct DiagnosticsWindowView: View {
-    @Bindable var model: DiagnosticsWindowModel
+    @ObservedObject var model: DiagnosticsWindowModel
 
     var body: some View {
         let localizer = model.localizer

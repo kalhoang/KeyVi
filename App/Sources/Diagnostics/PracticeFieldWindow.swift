@@ -25,7 +25,7 @@ final class PracticeFieldWindowController: NSWindowController {
 }
 
 struct PracticeFieldView: View {
-    let language: InterfaceLanguageModel
+    @ObservedObject var language: InterfaceLanguageModel
     @State private var text = ""
     @FocusState private var focused: Bool
 

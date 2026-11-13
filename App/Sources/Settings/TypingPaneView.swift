@@ -9,7 +9,7 @@ import ShellCore
 import SwiftUI
 
 struct TypingPaneView: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -76,7 +76,7 @@ struct TypingPaneView: View {
 
 /// One ENG-R860 list: entries with a remove button each, and a field to add one.
 struct WordListView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let list: UserWordList
     @Binding var draft: String
 
@@ -117,7 +117,7 @@ struct WordListView: View {
 }
 
 struct WordEntryRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let list: UserWordList
     let word: String
 
@@ -138,7 +138,7 @@ struct WordEntryRow: View {
 }
 
 struct WordAddRow: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let list: UserWordList
     @Binding var draft: String
 

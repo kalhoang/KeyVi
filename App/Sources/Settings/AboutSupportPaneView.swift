@@ -12,7 +12,7 @@ import VietnameseEngine
 import VietnameseEngineData
 
 struct AboutSupportPaneView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         HStack(alignment: .top, spacing: 24) {
@@ -35,7 +35,7 @@ struct AboutSupportPaneView: View {
 }
 
 struct UpdatesSection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -72,7 +72,7 @@ struct UpdatesSection: View {
 }
 
 struct HelpSection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -97,7 +97,7 @@ struct HelpSection: View {
 
 /// PRD-R24 and PLT-R1010: export, import and the global reset (PRD-R26).
 struct SettingsFilesSection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -116,7 +116,7 @@ struct SettingsFilesSection: View {
 }
 
 struct PrivacySection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -135,7 +135,7 @@ struct PrivacySection: View {
 /// PRD-R59: thank-you line, VietQR with the account name in text, MoMo, GitHub Sponsors. Images are bundled, never
 /// fetched; all details are placeholders until Pa verifies them (VERIFY).
 struct DonationBlock: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let info = DonationInfo.placeholder
 
     var body: some View {
@@ -183,7 +183,7 @@ struct QRCodeImage: View {
 
 /// Licences and acknowledgements: the bundled data's notices (ENG-R811) and Sparkle's licence.
 struct LicencesSheet: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer

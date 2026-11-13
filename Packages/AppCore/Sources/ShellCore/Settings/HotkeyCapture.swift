@@ -6,8 +6,8 @@
 // the monitor and gives the hotkeys back exactly once, so a hidden recorder never swallows typing.
 
 public import AppModel
+public import Combine
 public import InputHost
-public import Observation
 
 /// Installs and removes the window's key-event monitor (`NSEvent` local monitor in the app, a fake in tests).
 @MainActor
@@ -16,18 +16,19 @@ public protocol RecorderKeyMonitoring: AnyObject {
     func remove()
 }
 
+/// `ObservableObject` (not `@Observable`, which needs macOS 14; ADR 0315): views observe it directly or through
+/// the model that owns it, which forwards `objectWillChange`.
 @MainActor
-@Observable
-public final class HotkeyCaptureController {
+public final class HotkeyCaptureController: ObservableObject {
     /// The session on screen: recording, or finished / rejected and kept for its status line.
-    public private(set) var session: HotkeyRecorderSession?
-    public private(set) var isCapturing = false
-    private var savedConflicts: [HotkeyRole: SystemShortcutConflict] = [:]
+    @Published public private(set) var session: HotkeyRecorderSession?
+    @Published public private(set) var isCapturing = false
+    @Published private var savedConflicts: [HotkeyRole: SystemShortcutConflict] = [:]
 
-    @ObservationIgnored private let monitor: any RecorderKeyMonitoring
-    @ObservationIgnored private let setHotkeysSuspended: @MainActor (Bool) -> Void
-    @ObservationIgnored private let onFinished: @MainActor (HotkeyRole, HotkeyBinding) -> Void
-    @ObservationIgnored private let readLayout: @MainActor () -> LayoutTable?
+    private let monitor: any RecorderKeyMonitoring
+    private let setHotkeysSuspended: @MainActor (Bool) -> Void
+    private let onFinished: @MainActor (HotkeyRole, HotkeyBinding) -> Void
+    private let readLayout: @MainActor () -> LayoutTable?
 
     /// - Parameters:
     ///   - setHotkeysSuspended: `InputHostController.setRecorderActive(_:)` through the composition root.

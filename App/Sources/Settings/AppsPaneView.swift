@@ -11,7 +11,7 @@ import ShellCore
 import SwiftUI
 
 struct AppsPaneView: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @State private var selection: BundleKey?
 
     var body: some View {
@@ -32,7 +32,7 @@ struct AppsPaneView: View {
 }
 
 struct AppsTable: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let rows: [AppsPaneRow]
     @Binding var selection: BundleKey?
 
@@ -69,7 +69,7 @@ struct AppsTable: View {
 }
 
 struct AppNameCell: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -83,7 +83,7 @@ struct AppNameCell: View {
 }
 
 struct RulePicker: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -118,7 +118,7 @@ struct StatusCell: View {
 }
 
 struct AppRowActions: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -143,7 +143,7 @@ struct AppRowActions: View {
 
 /// Details (PRD-R35, PRD-R36): status and note, web-app and in-app rows, compatibility mode under Advanced.
 struct AppDetailSheet: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @State private var advanced = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -216,7 +216,7 @@ struct ScopedRows: View {
 
 /// PRD-R36: automatic plus at most three plain choices, each explained in one sentence; paste asks first.
 struct CompatibilityChoices: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
@@ -259,7 +259,7 @@ struct CompatibilityChoiceLabel: View {
 
 /// PRD-R48, PLT-R462: the clipboard explanation before the paste mode is chosen for an app.
 struct PasteModeAlert: ViewModifier {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     func body(content: Content) -> some View {
         let localizer = model.localizer

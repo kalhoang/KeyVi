@@ -5,7 +5,7 @@
 
 import AppKit
 import AppModel
-import Observation
+import Combine
 import RealtimeSupport
 import ShellCore
 
@@ -34,6 +34,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var labelKey: String?
     private var appName: String?
     private var clickToToggle = false
+    private var languageObservation: AnyCancellable?
 
     /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
     init(
@@ -98,14 +99,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// PRD-R63: the status item's label follows a language change at once; the menu is rebuilt on next open.
     private func observeLanguage() {
-        withObservationTracking {
-            _ = language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.applyIcon()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = language.afterChange { [weak self] in self?.applyIcon() }
     }
 
     // MARK: - Actions (targets of the menu items built by StatusMenuBuilder)

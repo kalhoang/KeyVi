@@ -11,7 +11,7 @@ import ShellCore
 import SwiftUI
 
 struct MacrosPaneView: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @State private var selection: UUID?
 
     var body: some View {
@@ -37,7 +37,7 @@ struct MacrosPaneView: View {
 }
 
 struct MacrosToolbar: View {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -69,7 +69,7 @@ struct MacrosToolbar: View {
 
 /// PRD-R43: "Chưa có gõ tắt nào..." with "Thêm gõ tắt" and "Nhập từ tệp..." (the toolbar holds both buttons).
 struct MacrosEmptyState: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         Text(verbatim: model.localizer.string(MacrosText.empty))
@@ -79,7 +79,7 @@ struct MacrosEmptyState: View {
 }
 
 struct MacrosTable: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @Binding var selection: UUID?
 
     var body: some View {
@@ -132,7 +132,7 @@ struct MacroShortcutCell: View {
 }
 
 struct MacroRowMenu: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let id: UUID
 
     var body: some View {
@@ -150,7 +150,7 @@ struct MacroRowMenu: View {
 
 /// Selection actions (keyboard users select with the arrow keys, then Tab to these), bulk toggles, count, reset.
 struct MacrosFooter: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     @Binding var selection: UUID?
 
     var body: some View {
@@ -179,7 +179,7 @@ struct MacrosFooter: View {
 
 /// PRD-R31 delete with confirmation.
 struct MacroDeleteAlert: ViewModifier {
-    @Bindable var model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
 
     func body(content: Content) -> some View {
         let localizer = model.localizer
