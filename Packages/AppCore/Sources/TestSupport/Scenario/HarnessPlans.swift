@@ -34,7 +34,8 @@ enum HarnessPlans {
             "Total: \(scenarios.count) scenario(s), \(totalKeys) keystroke(s), typing time " + seconds(totalRange))
         lines.append(
             options.configureApp
-                ? "App settings: each scenario's configuration is written to the test build's settings, restored after"
+                ? "App settings: each scenario's configuration is written to the test build's settings, "
+                    + "restored after the run"
                 : "App settings: left alone (--no-configure)")
         let canaries = scenarios.filter { PrivacyCanary.isCanaryScenario($0.id) }.count
         if canaries > 0 {
