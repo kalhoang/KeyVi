@@ -85,6 +85,7 @@ extension KeyPipeline {
         let replaced = engine.activeDisplay
         let output = engine.handle(.restoreToggle)
         engineDirty = true
+        noteEngineCapture(output)
         guard case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty else { return nil }
         return apply(output, kind: .restore, replaced: replaced, key, focus: focus, inputSource: inputSource)
     }
@@ -101,6 +102,7 @@ extension KeyPipeline {
         }
         let output = engine.handle(input)
         engineDirty = true
+        noteEngineCapture(output)
         keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
         if let learning = output.learning { notifyMain(.learning(learning)) }  // ENG-R861, memory only

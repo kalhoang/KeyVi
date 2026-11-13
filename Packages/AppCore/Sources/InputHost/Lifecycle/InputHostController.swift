@@ -208,7 +208,8 @@ public final class InputHostController {
             ax: FocusChangeSignalingAXProvider(base: dependencies.ax, thread: axThread) { refresh.request() },
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
-            health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion)
+            health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
+            capture: dependencies.capture)
         worker = InjectionWorker(
             queue: channels.queue, signal: channels.workerSignal, feedback: channels.feedback,
             marker: channels.marker, focusGeneration: channels.focusGeneration,

@@ -36,7 +36,7 @@ public final class PipelineFixture {
         inputSource: InputSourceSnapshot = PipelineFixtures.inputSource(),
         secureInput: SecureInputSnapshot = .initial, lifecycle: LifecycleSnapshot = PipelineFixtures.lifecycle(),
         policy: InFlightPolicy = .untilEcho, queueCapacity: Int = 512, clock: ManualClock = ManualClock(),
-        log: EngineEventLog = EngineEventLog()
+        log: EngineEventLog = EngineEventLog(), capture: CaptureController? = nil
     ) {
         self.clock = clock
         self.log = log
@@ -53,7 +53,7 @@ public final class PipelineFixture {
         focusGeneration.store(focus.generation)
         context = PipelineContext(
             snapshots: snapshots, queue: queue, feedback: feedback, echo: echo, marker: marker, outbox: outbox,
-            metrics: metrics, tapLog: tapLog, capture: nil, watchdog: watchdog)
+            metrics: metrics, tapLog: tapLog, capture: capture, watchdog: watchdog)
         pipeline = Pipeline(context: context, factory: ScriptedEngineFactory(log: log), clock: clock)
     }
 

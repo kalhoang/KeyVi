@@ -62,6 +62,20 @@ extension KeyPipeline {
         reconcile(
             settings: settings, focus: focus, inputSource: inputSource, secureInput: secureInput, lifecycle: lifecycle)
         resumeSecureInputIfNeeded(event, secureInput: secureInput, generation: focus.generation, now: now)
+        capturingThisKey = captureAllowed(focus: focus, secureInput: secureInput)  // PLT-R905
+        let verdict = decideKeyboard(
+            event, now: now, probe: probe, focus: focus, inputSource: inputSource, secureInput: secureInput,
+            lifecycle: lifecycle)
+        if capturingThisKey { recordKeyCapture(event, table: inputSource.table, at: now) }
+        capturingThisKey = false
+        return verdict
+    }
+
+    /// Steps 6 to 10 once the snapshots are reconciled.
+    private func decideKeyboard(
+        _ event: RawKeyEvent, now: MonotonicInstant, probe: Bool, focus: FocusSnapshot,
+        inputSource: InputSourceSnapshot, secureInput: SecureInputSnapshot, lifecycle: LifecycleSnapshot
+    ) -> TapVerdict {
         let mode = HostStateResolution.effectiveMode(focus: focus, inputSource: inputSource, override: toggleOverride)
         let state = HostStateResolution.resolve(
             lifecycle: lifecycle, secureInput: secureInput, secureResumedGeneration: seen.secureResumedGeneration,
@@ -139,6 +153,7 @@ extension KeyPipeline {
     // MARK: Step 3
 
     func handlePointerDown(now: MonotonicInstant) {
+        recordPointerCapture(at: now)
         _ = hotkeys.handle(.pointerDown(at: now))
         keyState.lastPointerDownAt = now
         keyState.deadKeyPending = false  // PLT-R354: the click moved the caret

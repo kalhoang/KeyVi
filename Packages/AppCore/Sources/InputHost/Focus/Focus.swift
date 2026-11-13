@@ -139,12 +139,13 @@ public final class FocusTracker: Sendable {
     public init(
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
-        metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion
+        metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
+        capture: CaptureController? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
-            metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion)
+            metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 

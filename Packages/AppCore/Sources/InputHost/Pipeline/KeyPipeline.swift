@@ -74,6 +74,9 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
     var outcome: EventOutcome?
     /// The last job pushed was a `BoundaryJob` (consecutive boundaries need one job).
     var lastPushWasBoundary = false
+    /// PLT-R905: the key being processed goes into the typing trace, with its engine decision.
+    var capturingThisKey = false
+    var engineCapture: EngineCapture?
 
     public init(context: PipelineContext, factory: Factory, clock: Clock) {
         self.context = context

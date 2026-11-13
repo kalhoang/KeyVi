@@ -200,6 +200,32 @@ struct HostNoticeTests {
         _ = capture.stop()
     }
 
+    /// PLT-R905: a real trace holds the keys, the engine's decisions and focus snapshots, not only job lines.
+    @Test func typingTraceRecordsKeysEngineDecisionsAndFocus_PLT_R905() async throws {
+        let clock = ManualClock()
+        let capture = CaptureController(
+            directory: URL(fileURLWithPath: "/captures", isDirectory: true), fileSystem: InMemoryFileSystem(),
+            wallClock: FixedWallClock(), clock: clock, scheduler: ManualScheduler(clock: clock))
+        let rig = HostRig(capture: capture)
+        await rig.start()
+        defer { rig.stop() }
+        let info = try capture.start(duration: .seconds(60))
+        rig.ax.focus(
+            pid: HostRig.editorPID,
+            attributes: FocusAttributes(
+                role: "AXTextArea", subrole: nil, identifier: nil, domClasses: [], editable: true, ancestorRoles: [],
+                documentURL: nil, windowTitle: nil),
+            notify: .focusedElementChanged)
+        rig.settle()
+        rig.type("aa")
+        let trace = try capture.render(info.id, language: .english)
+        _ = capture.stop()
+        #expect(trace.contains("focus  \(HostRig.editorBundle)  AXTextArea"))
+        #expect(trace.contains("keyDown  0x00"))
+        #expect(trace.contains("consumedForEdit"))
+        #expect(trace.contains("engine  delete 1  insert \"â\""))
+    }
+
     @Test func keyboardTypeNoticeReachesTheInputSourceMonitor() async {
         let rig = HostRig()
         await rig.start()
