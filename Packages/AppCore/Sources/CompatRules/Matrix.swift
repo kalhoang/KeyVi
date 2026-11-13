@@ -9,6 +9,11 @@ public import Foundation
 public struct MatrixDocument: Sendable, Hashable, Codable {
     public var schemaVersion: Int
     public var entries: [MatrixEntry]
+
+    public init(schemaVersion: Int, entries: [MatrixEntry]) {
+        self.schemaVersion = schemaVersion
+        self.entries = entries
+    }
 }
 
 public struct MatrixEntry: Sendable, Hashable, Codable {
@@ -25,6 +30,26 @@ public struct MatrixEntry: Sendable, Hashable, Codable {
     public var verifier: String?
     public var issues: [Int]
     public var checks: MatrixChecks?
+
+    public init(
+        bundleId: BundleKey, displayName: String, category: String, tier: Int? = nil, ruleId: RuleID? = nil,
+        status: MatrixStatus, note: LocalizedNote? = nil, lastVerified: String? = nil, appVersion: String? = nil,
+        macOS: String? = nil, verifier: String? = nil, issues: [Int] = [], checks: MatrixChecks? = nil
+    ) {
+        self.bundleId = bundleId
+        self.displayName = displayName
+        self.category = category
+        self.tier = tier
+        self.ruleId = ruleId
+        self.status = status
+        self.note = note
+        self.lastVerified = lastVerified
+        self.appVersion = appVersion
+        self.macOS = macOS
+        self.verifier = verifier
+        self.issues = issues
+        self.checks = checks
+    }
 }
 
 /// User-facing values (PRD-R35).
@@ -35,6 +60,11 @@ public enum MatrixStatus: String, Sendable, Hashable, Codable, CaseIterable {
 public struct LocalizedNote: Sendable, Hashable, Codable {
     public var vi: String
     public var en: String
+
+    public init(vi: String, en: String) {
+        self.vi = vi
+        self.en = en
+    }
 }
 
 /// Columns of 13.3.
@@ -47,6 +77,21 @@ public struct MatrixChecks: Sendable, Hashable, Codable {
     public var restoreHotkey: MatrixCell?
     public var perAppMemory: MatrixCell?
     public var macroExpansion: MatrixCell?
+
+    public init(
+        telexBasic: MatrixCell? = nil, vniBasic: MatrixCell? = nil, inlineCompletion: MatrixCell? = nil,
+        burstTyping: MatrixCell? = nil, backspaceReentry: MatrixCell? = nil, restoreHotkey: MatrixCell? = nil,
+        perAppMemory: MatrixCell? = nil, macroExpansion: MatrixCell? = nil
+    ) {
+        self.telexBasic = telexBasic
+        self.vniBasic = vniBasic
+        self.inlineCompletion = inlineCompletion
+        self.burstTyping = burstTyping
+        self.backspaceReentry = backspaceReentry
+        self.restoreHotkey = restoreHotkey
+        self.perAppMemory = perAppMemory
+        self.macroExpansion = macroExpansion
+    }
 }
 
 public struct MatrixCell: Sendable, Hashable, Codable {
@@ -58,9 +103,17 @@ public struct MatrixCell: Sendable, Hashable, Codable {
     public var result: Result
     public var date: String
     public var tester: String
+
+    public init(result: Result, date: String, tester: String) {
+        self.result = result
+        self.date = date
+        self.tester = tester
+    }
 }
 
 public enum MatrixStatusResolver {
     /// Entries not verified for 120 days display as `notVerified` (QA-R19).
-    public static func displayStatus(_ entry: MatrixEntry, today: Date) -> MatrixStatus { unimplemented() }
+    public static func displayStatus(_ entry: MatrixEntry, today: Date) -> MatrixStatus {
+        MatrixFreshness.displayStatus(entry, today: today)
+    }
 }
