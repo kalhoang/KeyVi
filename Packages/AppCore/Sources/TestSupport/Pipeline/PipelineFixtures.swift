@@ -87,20 +87,22 @@ public enum PipelineFixtures {
     // MARK: Snapshots
 
     public static func settings(
-        generation: UInt64 = 1, toggle: HotkeyBinding = .defaultToggle, restore: HotkeyBinding? = nil
+        generation: UInt64 = 1, toggle: HotkeyBinding = .defaultToggle, restore: HotkeyBinding? = nil,
+        engineRevision: UInt64? = nil
     ) -> TapSettingsSnapshot {
         TapSettingsSnapshot(
-            generation: generation, engines: EngineCatalog(engines: [:]), toggleHotkey: toggle,
-            restoreHotkey: restore, macrosInEnglishMode: false, rememberPerApp: true)
+            generation: generation, engines: EngineCatalog(engines: [:], revision: engineRevision),
+            toggleHotkey: toggle, restoreHotkey: restore, macrosInEnglishMode: false, rememberPerApp: true)
     }
 
     public static func decision(
         strategy: InjectionStrategy = .backspaceReplace, variant: EngineVariant = .default,
-        requireTextFocus: RequireTextFocus = .never, restoreHotkeyEnabled: Bool = true
+        requireTextFocus: RequireTextFocus = .never, restoreHotkeyEnabled: Bool = true,
+        verifyReentry: VerifyReentry = .whenReadable
     ) -> HostDecision {
         HostDecision(
             plan: InjectionPlan(strategy: strategy, parameters: .defaults, fallback: [.passThrough]), variant: variant,
-            requireTextFocus: requireTextFocus, verifyReentry: .whenReadable,
+            requireTextFocus: requireTextFocus, verifyReentry: verifyReentry,
             restoreHotkeyEnabled: restoreHotkeyEnabled, rule: nil, source: .default, specificity: 0)
     }
 

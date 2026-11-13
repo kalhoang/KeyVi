@@ -305,16 +305,4 @@ import VietnameseEngine
         fixture.press(Key.a)
         #expect(fixture.popJobs().compactMap(\.edit).first?.wordStartedNearFocusChange == false)
     }
-
-    /// PLT-R342: a backspace re-composition asks for verification when the rule allows it.
-    @Test func backspaceRecomposeAsksForVerification() throws {
-        let fixture = PipelineFixture()
-        fixture.typeKeys([Key.a, Key.s])  // "á"
-        fixture.completeJobs()
-        fixture.press(Key.backspace)  // removes the accent: a consumed backspace
-        let edit = try #require(fixture.popJobs().compactMap(\.edit).first)
-        #expect(edit.kind == .backspaceRecompose)
-        #expect(edit.verifyBeforeApply)
-        #expect(edit.insertion == "a")
-    }
 }

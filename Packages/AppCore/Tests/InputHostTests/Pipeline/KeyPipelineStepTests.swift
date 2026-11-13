@@ -328,7 +328,7 @@ import VietnameseEngine
         fixture.typeKeys([Key.a, Key.a])  // "â"
         fixture.completeJobs()
         #expect(fixture.keyDown(Key.escape) == .swallow)
-        #expect(fixture.lastOutcome == .consumedForEdit)
+        #expect(fixture.lastOutcome == .consumedAsHotkey)  // a hotkey: never replayed (PLT-R353)
         let edit = try #require(fixture.popJobs().first?.edit)
         #expect(edit.kind == .restore)
         #expect(edit.insertion == "aa")

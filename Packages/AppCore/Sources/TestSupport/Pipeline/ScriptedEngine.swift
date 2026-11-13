@@ -10,11 +10,21 @@ public import VietnameseEngine
 /// `u` into `ư` or types `ư` alone; `x` marks the token as "English" so a boundary restores the raw keys with
 /// `thenPassThrough` (the P0-3 shape); backspace over an accented vowel removes the accent (a consumed
 /// backspace); `restoreToggle` types the raw keys back once and passes on the second press (ENG-R701, ENG-R702).
+/// A one-word history models ENG-R1002: Backspace over the separators after a committed word re-opens it.
 struct ScriptedComposer {
+    private struct Word {
+        var display: String
+        var raw: String
+        var english: Bool
+    }
+
     private(set) var display = ""
     private var raw = ""
     private var english = false
     private var restored = false
+    /// The last committed word and the separators typed after it.
+    private var previous: Word?
+    private var separatorsAfterPrevious = 0
 
     private static let acute: [Character: Character] = [
         "a": "á", "â": "ấ", "e": "é", "i": "í", "o": "ó", "u": "ú", "y": "ý", "ư": "ứ",
@@ -32,6 +42,7 @@ struct ScriptedComposer {
         case .restoreToggle: action = restoreToggle(secondPress: wasRestored)
         case .reset:
             clear()
+            previous = nil
             action = .passThrough
         }
         return EngineOutput(action: action, composingText: display)
@@ -59,17 +70,38 @@ struct ScriptedComposer {
 
     private mutating func commit() -> KeyAction {
         defer { clear() }
-        guard english, display != raw, !display.isEmpty else { return .passThrough }
+        guard !display.isEmpty else {
+            if previous != nil { separatorsAfterPrevious += 1 }
+            return .passThrough
+        }
+        let restores = english && display != raw
+        previous = Word(display: restores ? raw : display, raw: raw, english: english)
+        separatorsAfterPrevious = 1
+        guard restores else { return .passThrough }
         let edit = TextEdit(deleteCount: display.count, deleteUTF16Count: display.utf16.count, insert: raw)
         return .edit(edit, thenPassThrough: true)
     }
 
     private mutating func backspace() -> KeyAction {
-        guard let last = display.last else { return .passThrough }
+        guard let last = display.last else {
+            reopenPreviousIfReached()
+            return .passThrough
+        }
         if let base = Self.plain[last] { return replaceTail(count: 1, with: String(base)) }
         display.removeLast()
         if !raw.isEmpty { raw.removeLast() }
         return .passThrough
+    }
+
+    /// ENG-R1002: the Backspace removed a separator; removing the last one re-opens the committed word.
+    private mutating func reopenPreviousIfReached() {
+        guard let word = previous, separatorsAfterPrevious > 0 else { return }
+        separatorsAfterPrevious -= 1
+        guard separatorsAfterPrevious == 0 else { return }
+        display = word.display
+        raw = word.raw
+        english = word.english
+        previous = nil
     }
 
     private mutating func restoreToggle(secondPress: Bool) -> KeyAction {

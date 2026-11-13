@@ -70,7 +70,8 @@ extension KeyPipeline {
         let hotkey = feedHotkeys(event, now: now)
         if seen.postingBroken || !state.allowsSwallowing { return failOpenPass(event) }  // PLT-R730
         let hotkeysActive = !lifecycle.recorderActive  // PRD-R15: the recorder is capturing keys
-        if hotkeysActive && (hotkey == .toggleTap || hotkey == .toggleCombo) {
+        // PRD-R14: autorepeat never toggles, whatever the recogniser reports; the repeat is consumed below.
+        if hotkeysActive && !event.autorepeat && (hotkey == .toggleTap || hotkey == .toggleCombo) {
             toggleMode(from: mode, state: state, focus: focus)
             if hotkey == .toggleCombo { return consumeAsHotkey(event) }
         }
@@ -126,6 +127,7 @@ extension KeyPipeline {
     func handlePointerDown(now: MonotonicInstant) {
         _ = hotkeys.handle(.pointerDown(at: now))
         keyState.lastPointerDownAt = now
+        keyState.deadKeyPending = false  // PLT-R354: the click moved the caret
         let generation = context.snapshots.focus.read { $0.generation }
         hardBoundary(.pointerClicked, job: .mouseDown, generation: generation)
     }
@@ -187,7 +189,8 @@ extension KeyPipeline {
     /// PRD-R14, PRD-R20, contracts.md 10.4: flip at once, tag with a sequence, tell main and ax, reset.
     func toggleMode(from mode: TypingMode, state: HostState, focus: FocusSnapshot) {
         if case .paused(.passThroughRule) = state { return }  // PRD-R21: an ignored app's toggle does nothing
-        toggleSequence &+= 1
+        // Contracts.md 10.4: above anything the ax thread applied (a recreated tap starts from the snapshot).
+        toggleSequence = max(toggleSequence, focus.appliedToggleSequence) &+ 1
         let newMode = mode.toggled
         toggleOverride = ToggleOverride(
             sequence: toggleSequence, pid: focus.app?.pid ?? ToggleOverride.noProcess, mode: newMode)
@@ -218,8 +221,14 @@ extension KeyPipeline {
         if settings.generation != seen.settingsGeneration {
             seen.settingsGeneration = settings.generation
             hotkeys = Factory.Hotkeys(toggle: settings.toggleHotkey, restore: settings.restoreHotkey)
-            rebuild = true
-            change.note(.configurationChanged, job: .settingsChanged)
+            // PRD-R27, PLT-R340: only an engine-affecting change (a new or unknown catalog revision) is a
+            // boundary; hotkey and other settings changes keep the word being typed.
+            let revision = settings.engines.revision
+            if revision == nil || revision != seen.engineRevision {
+                rebuild = true
+                change.note(.configurationChanged, job: .settingsChanged)
+            }
+            seen.engineRevision = revision
         }
         reconcileFocus(focus, into: &change, rebuild: &rebuild)
         if inputSource.generation != seen.inputSourceGeneration {

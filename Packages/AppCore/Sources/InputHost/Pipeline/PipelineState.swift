@@ -107,7 +107,13 @@ struct FocusIdentity: Equatable {
             pause: focus.pause?.code)
     }
 
-    func sameOwner(as other: FocusIdentity) -> Bool { pid == other.pid && fieldToken == other.fieldToken }
+    /// Same app and the same element token. A token is the ax thread's element identity; without one (AX
+    /// unavailable or timed out) the element is unknown, so a new generation counts as a focus change
+    /// (PLT-R210, ENG-R1010: the host cannot vouch for the text before the caret).
+    func sameOwner(as other: FocusIdentity) -> Bool {
+        guard let fieldToken, let otherToken = other.fieldToken else { return false }
+        return pid == other.pid && fieldToken == otherToken
+    }
 }
 
 /// Generations and values the pipeline last reconciled against (PLT-R210, PLT-R340, PLT-R1008).
@@ -128,12 +134,18 @@ struct ObservedState {
     var missBaseline = 0
     /// Keycode producing "v" in the current layout (Command+V for `paste`, PLT-R461 step 3).
     var pasteKeyCode: KeyCode?
+    /// `EngineCatalog.revision` of the engine in use (nil: unknown, every settings generation rebuilds).
+    var engineRevision: UInt64?
 }
 
 /// Per-key bookkeeping that is not a snapshot generation.
 struct KeyState {
-    /// PLT-R354: a dead key was passed; the next keyDown passes untouched too.
+    /// PLT-R354: a dead key was passed; the next keyDown passes untouched too. Cleared only by that keyDown
+    /// or a pointer down, never by a reconciliation: the OS still combines the next key with the dead key.
     var deadKeyPending = false
+    /// PLT-R342, ENG-R1002: a Backspace re-opened the previous, committed word; edits of it are re-entries
+    /// until the word is committed again or a hard boundary drops the history.
+    var reopenedWord = false
     /// First key of the current word (PLT-R408 `wordStartedNearFocusChange`).
     var wordStartedAt: MonotonicInstant?
     var lastPointerDownAt: MonotonicInstant?

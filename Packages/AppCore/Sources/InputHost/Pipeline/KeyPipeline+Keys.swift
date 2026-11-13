@@ -16,8 +16,14 @@ extension KeyPipeline {
     ) -> TapVerdict {
         if event.autorepeat, consumedKeys.entry(event.keyCode) == .hotkey { return consumeAsHotkey(event) }
         consumedKeys.set(event.keyCode, .none)  // a new keyDown ends any stale pairing for this key
+        let afterDeadKey = keyState.deadKeyPending
+        keyState.deadKeyPending = false
         // Step 6: paused, EN mode or a passThrough strategy: do not feed the engine.
         guard case .ready(.vietnamese) = state, focus.decision.plan.strategy != .passThrough else {
+            return passOrHold(event, now: now, probe: probe)
+        }
+        if afterDeadKey {  // PLT-R354, before any hotkey use: the key after a dead key passes untouched
+            hardBoundary(.unknown, job: .navigation, generation: focus.generation)
             return passOrHold(event, now: now, probe: probe)
         }
         let key = KeyInputContext(event: event, now: now, probe: probe)
@@ -32,10 +38,6 @@ extension KeyPipeline {
         _ keyClass: KeyClass, _ key: KeyInputContext, focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> TapVerdict {
         let generation = focus.generation
-        if keyState.deadKeyPending {  // PLT-R354: the key after a dead key passes untouched
-            hardBoundary(.unknown, job: .navigation, generation: generation)
-            return passOrHold(key.event, now: key.now, probe: key.probe)
-        }
         switch keyClass {
         case .character(let character, let fromKeypad):
             if key.event.autorepeat {  // PLT-R351: untransformed, ends the composition
@@ -93,11 +95,26 @@ extension KeyPipeline {
         inputSource: InputSourceSnapshot
     ) -> TapVerdict {
         let replaced = engine.activeDisplay
-        if case .key = input, replaced.isEmpty { keyState.wordStartedAt = key.now }
+        if case .key = input, replaced.isEmpty {  // a new word (or a separator after a committed one)
+            keyState.wordStartedAt = key.now
+            keyState.reopenedWord = false
+        }
         let output = engine.handle(input)
         engineDirty = true
+        if case .backspace = input, replaced.isEmpty { noteReentry(output) }
         if let learning = output.learning { notifyMain(.learning(learning)) }  // ENG-R861, memory only
         return apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)
+    }
+
+    /// ENG-R1002: a Backspace with no active word that edits or leaves a word active walked back into the
+    /// committed history, so what follows edits text the engine did not see being typed (PLT-R342). The extra
+    /// display read happens only on this rare path.
+    private func noteReentry(_ output: EngineOutput) {
+        if case .edit = output.action {
+            keyState.reopenedWord = true
+        } else if !engine.activeDisplay.isEmpty {
+            keyState.reopenedWord = true
+        }
     }
 
     /// Steps 9 and 10 (ADR 0306 decision 4).
@@ -114,9 +131,12 @@ extension KeyPipeline {
             outcome = .consumedForEdit
             return .swallow
         }
+        if kind == .restore {
+            return applyRestore(edit, replaced: replaced, key, focus: focus, inputSource: inputSource)
+        }
         let record = Self.record(key.event, probe: key.probe)
         let job = makeEditJob(
-            edit, kind: output.decision == .macro ? .macro : kind, replaced: replaced,
+            edit, kind: editKind(kind, decision: output.decision), replaced: replaced,
             trigger: thenPassThrough ? nil : record, key, focus: focus, inputSource: inputSource)
         guard push(.edit(job)) else { return queueFull(now: key.now) }
         if thenPassThrough {
@@ -128,6 +148,25 @@ extension KeyPipeline {
         consumedKeys.set(key.event.keyCode, .job(job.sequence))  // PLT-R313
         outcome = .consumedForEdit
         return .swallow
+    }
+
+    /// Macros keep their kind; any other edit of a re-opened word is a re-entry (PLT-R342).
+    private func editKind(_ kind: EditKind, decision: CommitDecision?) -> EditKind {
+        if decision == .macro { return .macro }
+        return keyState.reopenedWord ? .reentry : kind
+    }
+
+    /// PLT-R353, ADR 0308: the restore key is a hotkey. Its edit carries no trigger, so an abandoned or
+    /// discarded restore replays nothing (an Escape would close Spotlight or a dialog), and its keyUp is
+    /// consumed whatever the job's outcome.
+    private func applyRestore(
+        _ edit: TextEdit, replaced: String, _ key: KeyInputContext, focus: FocusSnapshot,
+        inputSource: InputSourceSnapshot
+    ) -> TapVerdict {
+        let job = makeEditJob(
+            edit, kind: .restore, replaced: replaced, trigger: nil, key, focus: focus, inputSource: inputSource)
+        guard push(.edit(job)) else { return queueFull(now: key.now) }
+        return consumeAsHotkey(key.event)
     }
 
     private func makeEditJob(
@@ -145,7 +184,7 @@ extension KeyPipeline {
             insertion: edit.insert,
             keyCodes: JobKeyCodes(trigger: key.event.keyCode, firstCharacter: firstCharacter, paste: seen.pasteKeyCode),
             trigger: trigger,
-            verifyBeforeApply: kind == .backspaceRecompose && focus.decision.verifyReentry != .never,
+            verifyBeforeApply: keyState.reopenedWord && focus.decision.verifyReentry != .never,
             wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe)
     }
 
@@ -232,8 +271,8 @@ extension KeyPipeline {
     /// PLT-R340: reset the composition and, while jobs are in flight, mark the boundary in FIFO order.
     func hardBoundary(_ reason: ResetReason, job: BoundaryReason?, generation: FocusGeneration) {
         resetEngineIfDirty(reason)
-        keyState.deadKeyPending = false
         keyState.wordStartedAt = nil
+        keyState.reopenedWord = false
         guard let job, !lastPushWasBoundary, context.queue.inFlight > 0 else { return }
         let boundary = BoundaryJob(sequence: context.queue.nextSequence(), reason: job, generation: generation)
         if context.queue.push(.boundary(boundary)) { lastPushWasBoundary = true }

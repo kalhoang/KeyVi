@@ -61,6 +61,9 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
     var engineDirty = false
     var hotkeys: Factory.Hotkeys
     var seen: ObservedState
+    /// Sequence of the tap's last VI/EN toggle. Seeded from the focus snapshot and kept above every sequence
+    /// the ax thread applied, so a recreated tap's toggles still outrank stale snapshots (contracts.md 10.4,
+    /// PLT-R731).
     var toggleSequence: UInt64 = 0
     var toggleOverride: ToggleOverride?
     var keyState = KeyState()
@@ -74,17 +77,19 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
         self.clock = clock
         let snapshots = context.snapshots
         snapshots.epoch.enter()
-        (engine, hotkeys, seen) = snapshots.readAll { settings, focus, inputSource, secureInput, lifecycle in
+        (engine, hotkeys, seen, toggleSequence) = snapshots.readAll {
+            settings, focus, inputSource, secureInput, lifecycle in
             let observed = ObservedState(
                 settingsGeneration: settings.generation, focus: FocusIdentity(focus),
                 engineVariant: focus.decision.variant, inputSourceGeneration: inputSource.generation,
                 secureGeneration: secureInput.generation, lifecycleGeneration: lifecycle.generation,
                 resetCount: context.feedback.compositionResetCount, stateCode: nil, secureResumedGeneration: nil,
                 postingBroken: context.feedback.isPostingBroken,
-                pasteKeyCode: inputSource.table?.keyCode(producing: "v"))
+                pasteKeyCode: inputSource.table?.keyCode(producing: "v"), engineRevision: settings.engines.revision)
             return (
                 factory.makeEngine(for: focus.decision.variant, settings: settings),
-                Factory.Hotkeys(toggle: settings.toggleHotkey, restore: settings.restoreHotkey), observed
+                Factory.Hotkeys(toggle: settings.toggleHotkey, restore: settings.restoreHotkey), observed,
+                focus.appliedToggleSequence
             )
         }
         snapshots.epoch.exit()
