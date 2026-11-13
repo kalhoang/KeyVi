@@ -82,7 +82,9 @@ extension FakeEventPoster.Posted {
 
 /// AX field access backed by a `SimulatedTextField`; can time out, be unavailable or ignore writes on demand.
 public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
-    public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored }
+    /// `writesIgnored`: every write reports success and does nothing. `textWritesIgnored`: selection writes
+    /// apply, text writes report success and do nothing (4.5 "writes may silently do nothing").
+    public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored, textWritesIgnored }
 
     private let field: SimulatedTextField
     private let behaviourState: Mutex<Behaviour>
@@ -109,27 +111,30 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
         -> AXCallResult<Void>
     {
-        write { self.field.axSetSelectedRange(range) }
+        write(text: false) { self.field.axSetSelectedRange(range) }
     }
 
     public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
-        write { self.field.axSetSelectedText(text) }
+        write(text: true) { self.field.axSetSelectedText(text) }
     }
 
     private func read<Value: Sendable>(_ body: () -> Value) -> AXCallResult<Value> {
         calls.wrappingAdd(1, ordering: .relaxed)
         switch behaviour {
-        case .normal, .writesIgnored: return .success(body())
+        case .normal, .writesIgnored, .textWritesIgnored: return .success(body())
         case .timeout: return .timedOut
         case .unavailable: return .unavailable
         }
     }
 
-    private func write(_ body: () -> Void) -> AXCallResult<Void> {
+    private func write(text: Bool, _ body: () -> Void) -> AXCallResult<Void> {
         calls.wrappingAdd(1, ordering: .relaxed)
         switch behaviour {
         case .normal:
             body()
+            return .success(())
+        case .textWritesIgnored:
+            if !text { body() }
             return .success(())
         case .writesIgnored: return .success(())
         case .timeout: return .timedOut

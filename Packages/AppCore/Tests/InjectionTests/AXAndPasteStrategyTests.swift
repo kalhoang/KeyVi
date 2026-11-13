@@ -72,6 +72,17 @@ private func environment(
         #expect(outcome == .failedAfterPosting(.readbackMismatch))
     }
 
+    /// 4.5: the selection write applied, the text write did nothing; the composition must not stay selected.
+    @Test func ignoredTextWriteRestoresTheCaretBeforeReporting() {
+        let field = SimulatedTextField(text: "ab")
+        let outcome = executor.execute(
+            Fixture.job(deleteCount: 1, insertion: "x"),
+            in: environment(field: field, behaviour: .textWritesIgnored).0)
+        #expect(outcome == .failedBeforePosting(.readbackMismatch))
+        #expect(field.text == "ab")
+        #expect(field.selection == Injection.TextRange(location: 2, length: 0))
+    }
+
     @Test func failedTextWriteRestoresTheCaret() {
         let field = SimulatedTextField(text: "ab")
         let access = ScriptedFieldAccess(field: field, failTextWrite: true, failRestore: false)
