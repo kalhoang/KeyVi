@@ -99,7 +99,9 @@ enum AX {
         _ = AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, kCFBooleanTrue)
     }
 
-    /// Frontmost app and the system-wide focused element (role, subrole, identifier, window title), never a value.
+    /// Frontmost app and the system-wide focused element (role, subrole, identifier, its window's identifier), never
+    /// a value and never a window title: titles are content (ARCHITECTURE.md, PLT-R901), and the report is written
+    /// to the evidence directory whichever app the scenario targets.
     static func focusReport() -> [String] {
         let systemWide = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(systemWide, timeout)
@@ -123,7 +125,8 @@ enum AX {
         }
         if let window = attribute(element, kAXWindowAttribute), CFGetTypeID(window) == AXUIElementGetTypeID() {
             lines.append(
-                "focused window: " + (attribute(window as! AXUIElement, kAXTitleAttribute) as? String ?? "none"))
+                "focused window identifier: "
+                    + (attribute(window as! AXUIElement, kAXIdentifierAttribute) as? String ?? "none"))
         }
         var settable: DarwinBoolean = false
         AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
