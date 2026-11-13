@@ -26,7 +26,9 @@ struct OnboardingRootView: View {
         .frame(
             width: OnboardingWindowController.contentSize.width, height: OnboardingWindowController.contentSize.height
         )
-        .sheet(isPresented: $model.showPermissionHelp) { PermissionHelpSheet(model: model) }
+        // PRD-R67: with Reduce Motion on, no implicit SwiftUI animation runs anywhere in the window.
+        .respectsReduceMotion()
+        .sheet(isPresented: $model.showPermissionHelp) { PermissionHelpSheet(model: model).respectsReduceMotion() }
     }
 
     @ViewBuilder private var screen: some View {

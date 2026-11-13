@@ -193,6 +193,31 @@ import Testing
         }
     }
 
+    @Test func everyWindowRootAndSheetDisablesImplicitAnimationsUnderReduceMotion() throws {
+        // PRD-R67: implicit SwiftUI animations (insertions, layout changes) stop under Reduce Motion in every
+        // window and sheet, not only at the explicit call sites. HUD panels are AppKit-animated (checked above).
+        let sources = try CatalogInventory.uiSources()
+        let all = sources.map { $0.lines.joined(separator: "\n") }.joined(separator: "\n")
+        var roots: [String] = []
+        for (path, lines) in sources {
+            for (index, line) in lines.enumerated() where !Self.isComment(line) {
+                if line.contains(".sheet(") {
+                    #expect(line.contains(".respectsReduceMotion()"), "\(path):\(index + 1) sheet content animates")
+                }
+                if let match = line.firstMatch(of: /NSHostingController\(rootView: (\w+)\(/) {
+                    roots.append(String(match.output.1))
+                }
+            }
+        }
+        #expect(roots.count >= 8, "window roots found: \(roots)")
+        for root in roots {
+            let start = try #require(all.range(of: "struct \(root): View {"), "\(root) declaration")
+            let rest = all[start.upperBound...]
+            let body = rest.range(of: "\nstruct ").map { rest[..<$0.lowerBound] } ?? rest
+            #expect(body.contains(".respectsReduceMotion()"), "\(root) does not disable animations under Reduce Motion")
+        }
+    }
+
     @Test func noHueIsHardCoded() throws {
         // PRD-R67: state is shown with symbols, text and system semantic colours, never a fixed hue alone.
         let hue =
