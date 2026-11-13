@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// The W1-E fakes behave like the services they replace.
+
+import AppModel
+import CoreFoundation
+import Foundation
+import Testing
+
+@testable import InputHost
+@testable import TestSupport
+
+@Suite("Host fakes")
+struct HostFakesTests {
+    /// Two inert sources must not compare equal: a run loop removing one would remove the other.
+    @Test func fakeObservationSourcesAreDistinct() throws {
+        let ax = FakeAXProvider()
+        let first = try #require(ax.observe(pid: 1, notifications: [.focusedElementChanged]) { _ in })
+        let second = try #require(ax.observe(pid: 1, notifications: [.focusedElementChanged]) { _ in })
+        #expect(!CFEqual(first.runLoopSource, second.runLoopSource))
+        first.invalidate()
+        first.invalidate()
+        #expect(ax.observedNotifications[1] == [.focusedElementChanged])
+        second.invalidate()
+        #expect(ax.observedNotifications.isEmpty)
+    }
+
+    @Test func fakeAXFiltersTitleAndURLByRequest() throws {
+        let ax = FakeAXProvider()
+        let attributes = FocusAttributes(
+            role: "AXTextField", subrole: nil, identifier: nil, domClasses: [], editable: true, ancestorRoles: [],
+            documentURL: "https://example.test", windowTitle: "Title")
+        ax.focus(pid: 3, attributes: attributes, notify: nil)
+        guard case .success(let app?) = ax.focusedApplication(),
+            case .success(let element?) = ax.focusedElement(pid: app)
+        else {
+            Issue.record("no focus")
+            return
+        }
+        guard
+            case .success(let none) = ax.attributes(
+                of: element, request: .init(includeDocumentURL: false, includeWindowTitle: false))
+        else {
+            Issue.record("no attributes")
+            return
+        }
+        #expect(none.documentURL == nil && none.windowTitle == nil)
+        guard
+            case .success(let all) = ax.attributes(
+                of: element, request: .init(includeDocumentURL: true, includeWindowTitle: true))
+        else {
+            Issue.record("no attributes")
+            return
+        }
+        #expect(all.documentURL == "https://example.test" && all.windowTitle == "Title")
+        guard
+            case .unavailable = ax.attributes(
+                of: AXFocusedElement(pid: 9, element: element.element),
+                request: .init(includeDocumentURL: false, includeWindowTitle: false))
+        else {
+            Issue.record("expected unavailable")
+            return
+        }
+    }
+
+    @Test func fakePermissionProbeCountsRequests() {
+        let probe = FakePermissionProbe(trusted: false, post: false, listen: false)
+        probe.promptForAccessibility()
+        #expect(!probe.requestListenEventAccess())
+        #expect(!probe.requestPostEventAccess())
+        #expect(probe.accessibilityPromptCount == 1)
+        #expect(probe.listenRequestCount == 1)
+        #expect(probe.postRequestCount == 1)
+    }
+
+    @Test func fakeProcessesComeBackAfterAdd() {
+        let processes = FakeProcessIdentityProvider(processes: [])
+        let app = FakeProcessIdentityProvider.process(pid: 5, bundle: "com.example.app")
+        processes.add(app)
+        processes.terminate(pid: 5)
+        #expect(!processes.isAlive(5))
+        processes.add(app)
+        #expect(processes.isAlive(5))
+        #expect(processes.runningApplications() == [app])
+    }
+
+    @Test func fakeBundleInspectorHonoursDepth() {
+        let url = URL(fileURLWithPath: "/Applications/Sample.app")
+        let inspector = FakeBundleInspector(bundles: [
+            url: .init(frameworks: ["A.framework"], helpers: ["H.app"], files: ["Frameworks/x/libxul.dylib"], info: [:])
+        ])
+        #expect(inspector.frameworkNames(in: url) == ["A.framework"])
+        #expect(inspector.helperAppNames(in: url) == ["H.app"])
+        #expect(inspector.containsFile(named: "libxul.dylib", in: url, maxDepth: 3))
+        #expect(!inspector.containsFile(named: "libxul.dylib", in: url, maxDepth: 2))
+        #expect(inspector.infoDictionary(of: url) == [:])
+    }
+
+    @Test @MainActor func fakeInputSourceProviderObservers() {
+        let abc = InputSourceInfo.layout("com.apple.keylayout.ABC")
+        let provider = FakeInputSourceProvider(current: abc, layouts: [:])
+        var calls = 0
+        let token = provider.observeChanges { calls += 1 }
+        provider.select(abc)
+        token.cancel()
+        provider.notifyChange()
+        #expect(calls == 1)
+        #expect(provider.enabledSources().isEmpty)
+        #expect(provider.layoutData(for: abc.id) == nil)
+    }
+}
