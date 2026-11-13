@@ -74,7 +74,6 @@ final class AppEnvironment {
     }
 
     func start() {
-        diagnostics.startMaintenance()
         diagnostics.logger.log(.lifecycle(.launched(appIdentity)), level: .notice)
         let sequence = LaunchSequence(
             launchGuard: launchGuard, appVersion: bundleVersion, wallClock: SystemWallClock(),
@@ -121,6 +120,7 @@ final class AppEnvironment {
 
     private func launched(safeMode: Bool) {
         self.safeMode = safeMode
+        diagnostics.startMaintenance()
         if safeMode {
             diagnostics.logger.log(
                 .lifecycle(.safeModeEntered(recentCrashes: launchGuard.recentCrashes)), level: .error)

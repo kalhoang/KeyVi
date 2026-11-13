@@ -35,14 +35,9 @@ struct StoragePaths {
 }
 
 /// Logger, health log, capture, metrics and the redaction salt, with their maintenance timers (W1-A request).
+/// The cadence and the salt rules are `DiagnosticsMaintenance` and `RedactionSaltStore` (tested in AppCore).
 @MainActor
 final class DiagnosticsWiring {
-    static let saltDefaultsKey = "diagnostics.redactionSalt"
-    /// PLT-R903 rotation and retention.
-    static let maintenanceInterval: Duration = .seconds(6 * 3_600)
-    /// PLT-R905: captures older than 24 hours are deleted.
-    static let purgeInterval: Duration = .seconds(3_600)
-
     let logger: DiagnosticsLogger
     let health: HealthEventLog
     let capture: CaptureController
@@ -64,35 +59,18 @@ final class DiagnosticsWiring {
         capture = CaptureController(
             directory: paths.captures, fileSystem: fileSystem, wallClock: SystemWallClock(), clock: MachClock(),
             scheduler: scheduler)
-        redactionSalt = Self.persistedSalt(defaults)
+        redactionSalt = RedactionSaltStore.load(from: UserDefaultsSaltStorage(defaults: defaults))
     }
 
-    /// The salt that makes redacted values stable across reports of one installation (PLT-R1203).
-    static func persistedSalt(_ defaults: UserDefaults) -> RedactionSalt {
-        if let bytes = defaults.data(forKey: saltDefaultsKey), !bytes.isEmpty {
-            return RedactionSalt(bytes: Array(bytes))
-        }
-        let salt = RedactionSalt.random()
-        defaults.set(Data(salt.bytes), forKey: saltDefaultsKey)
-        return salt
-    }
-
-    /// Log rotation at launch and every 6 hours; capture purge at launch and hourly (utility queue).
+    /// Log rotation at launch and every 6 hours; capture purge at launch and hourly (utility queue). Started once
+    /// the launch sequence reached `.running`, so this file I/O never delays the host start (S1).
     func startMaintenance() {
+        guard timers.isEmpty else { return }
         let logger = self.logger
         let capture = self.capture
-        utility.async {
-            logger.maintain()
-            capture.purgeExpired(now: Date())
-        }
-        timers = [
-            scheduler.scheduleRepeating(every: Self.maintenanceInterval, leeway: Self.maintenanceInterval / 10) {
-                logger.maintain()
-            },
-            scheduler.scheduleRepeating(every: Self.purgeInterval, leeway: Self.purgeInterval / 10) {
-                capture.purgeExpired(now: Date())
-            },
-        ]
+        let maintenance = DiagnosticsMaintenance(
+            wallClock: SystemWallClock(), rotate: { logger.maintain() }, purge: { capture.purgeExpired(now: $0) })
+        timers = maintenance.start(on: scheduler)
     }
 
     /// Quit: write what is buffered (PRD-R46: events before a crash or quit stay explainable).
@@ -119,6 +97,14 @@ extension InputHostDependencies {
             logger: diagnostics.logger, tapLog: diagnostics.tapLog, capture: diagnostics.capture,
             utilityQueue: utility)
     }
+}
+
+/// The app's user defaults as the redaction salt's storage.
+struct UserDefaultsSaltStorage: SaltStorage, @unchecked Sendable {
+    // UserDefaults is documented as thread-safe; it is not marked Sendable.
+    let defaults: UserDefaults
+    func data(forKey key: String) -> Data? { defaults.data(forKey: key) }
+    func set(_ data: Data, forKey key: String) { defaults.set(data, forKey: key) }
 }
 
 /// FileManager-backed move (PLT-R710). Replaced and original copies go to the Trash, never deleted.
