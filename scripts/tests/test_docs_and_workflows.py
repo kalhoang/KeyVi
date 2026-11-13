@@ -1083,6 +1083,45 @@ class IntegratorDecisionTests(unittest.TestCase):
         self.assertIn('data-domains="${esc(siteHost)}"', tracker)
 
 
+class ChangelogTests(unittest.TestCase):
+    """CHANGELOG.md, Unreleased: the user-visible changes of wave 5 and the licence (QA-R66, QA-R67; ADR 0006,
+    ADR 0320, ADR 0321, decision 0005 Q14, Q43)."""
+
+    TEXT = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    def unreleased(self) -> str:
+        return self.TEXT.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+
+    def group(self, name: str) -> str:
+        return " ".join(self.unreleased().split(f"### {name}\n", 1)[1].split("\n### ", 1)[0].split())
+
+    def test_the_groups_follow_keep_a_changelog(self):
+        groups = re.findall(r"^### (.+)$", self.unreleased(), re.M)
+        order = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Known issues"]
+        self.assertEqual(groups, [name for name in order if name in groups], "groups out of order or unknown")
+        self.assertGreaterEqual(set(groups), {"Added", "Changed", "Fixed"})
+
+    def test_wave_5_entries(self):
+        expected = {
+            "Changed": ("only in the app where you taught it", "stay global", "Settings > Typing",
+                        "Escape restores the last word", "terminals, code editors, games and remote desktop apps",
+                        "trailing digit", "`k` and `k1`", "delete or rename one of the pair",
+                        "GPL-3.0-or-later", "LICENSE", "THIRD_PARTY_NOTICES"),
+            "Fixed": ("This app misbehaves", "keyboard"),
+        }
+        for group, needles in expected.items():
+            text = self.group(group)
+            for needle in needles:
+                with self.subTest(group=group, needle=needle):
+                    self.assertIn(needle, text)
+
+    def test_no_brand_name_or_dash_in_the_entries(self):
+        text = self.unreleased()
+        self.assertNotIn("KeyVi", text)
+        self.assertNotIn("\u2014", text)
+        self.assertNotIn("\u2013", text)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
