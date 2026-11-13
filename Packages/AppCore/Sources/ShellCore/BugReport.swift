@@ -225,6 +225,18 @@ public enum BugReportAction: String, Sendable, Hashable, CaseIterable {
     /// PRD-R49 "test in the practice field".
     case practiceField
     case openDiagnostics
+
+    /// The sheet control (label and VoiceOver hint keys) of this button (PRD-R66).
+    public var control: DiagnosticsControl {
+        switch self {
+        case .copyReport: .copyReport
+        case .github: .github
+        case .email: .email
+        case .saveFile: .saveFile
+        case .practiceField: .practiceButton
+        case .openDiagnostics: .openDiagnostics
+        }
+    }
 }
 
 /// PRD-R47-R49 sheet state without UI: the draft, the preview disclosure and the outputs of each path.

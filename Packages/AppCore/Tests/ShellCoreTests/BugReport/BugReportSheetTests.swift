@@ -138,6 +138,28 @@ enum SheetFixtures {
         #expect(!sheet.previewExpanded)  // no extra click to open the preview first
     }
 
+    @Test(arguments: [true, false], [true, false])
+    func copyReportLeadsTheSheetButtonsForEveryBrand(repository: Bool, email: Bool) {
+        // Section 12: the sheet's first button is "Copy report" whatever paths the brand enables, and the
+        // view's button for it carries the "Copy report" label and hint. Its on-screen placement outside the
+        // preview disclosure is checked by hand (no App test target).
+        let brand = SheetFixtures.brand(
+            repository: repository ? URL(string: "https://github.com/example/repo") : nil,
+            email: email ? "s@x.invalid" : nil)
+        let sheet = BugReportSheet(apps: [], preselected: nil, brand: brand)
+        #expect(sheet.actions.first == .copyReport)
+        #expect(sheet.actions.contains(.github) == repository && sheet.actions.contains(.email) == email)
+        #expect(BugReportAction.copyReport.control == .copyReport)
+        #expect(BugReportAction.copyReport.control.labelKey == .copyReport)
+        #expect(BugReportAction.copyReport.control.hintKey == .copyReportHint)
+    }
+
+    @Test func everySheetButtonHasItsOwnControl() {
+        let controls = BugReportAction.allCases.map(\.control)
+        #expect(Set(controls.map(\.rawValue)).count == controls.count)
+        #expect(BugReportAction.practiceField.control == .practiceButton)
+    }
+
     @Test func reportItemsOpenTheRightFlow() {
         let chat = SheetFixtures.chat.bundle
         #expect(

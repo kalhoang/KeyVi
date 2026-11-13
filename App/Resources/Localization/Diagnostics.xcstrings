@@ -1561,6 +1561,24 @@
         }
       }
     },
+    "misbehaves.ownApp" : {
+      "comment" : "PLT-R1205 step 2; argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selected window belongs to %@. Click the field with the problem in the affected app before testing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cửa sổ đang chọn thuộc về %@. Hãy bấm vào ô bị lỗi trong ứng dụng cần kiểm tra trước khi thử."
+          }
+        }
+      }
+    },
     "misbehaves.pageAddress.field" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1679,6 +1697,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Không cách nào trong lần thử này gõ đúng. Hãy gửi báo lỗi để được giúp."
+          }
+        }
+      }
+    },
+    "misbehaves.result.notReproduced" : {
+      "comment" : "PLT-R1205 step 4: the current plan passed, nothing to change.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The current method typed correctly in this test, so the problem did not appear again. Send a report with a description to get help."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cách gõ hiện tại gõ đúng trong lần thử này nên lỗi chưa xuất hiện lại. Hãy gửi báo lỗi kèm mô tả để được giúp."
           }
         }
       }
@@ -2061,6 +2097,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tự gõ vào ô kiểm tra với ba nhịp."
+          }
+        }
+      }
+    },
+    "probe.stopped" : {
+      "comment" : "PLT-R810: the probe window lost focus.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The test stopped because the test window was no longer selected. No result was kept."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra đã dừng vì cửa sổ kiểm tra không còn được chọn. Không có kết quả nào được lưu."
           }
         }
       }
