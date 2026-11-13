@@ -24,8 +24,12 @@ services:
     networks:
       - traefik_public
     read_only: true
-    tmpfs:
-      - /tmp
+    # Long syntax: `docker stack deploy` ignores the short `tmpfs:` key, and nginx needs a writable /tmp.
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 16777216
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
       interval: 30s

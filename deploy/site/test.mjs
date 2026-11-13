@@ -221,6 +221,7 @@ try {
     assert.ok(!server.some((d) => d.name === "add_header" || d.name === "location"), "headers and locations come only from the generated file");
     assert.deepEqual(value(http, "server_tokens"), ["off"]);
     assert.ok(!value(http, "charset_types").includes("application/rss+xml"), "the appcast keeps the Content-Type of _headers");
+    assert.ok(!value(http, "charset_types").includes("text/html"), "text/html is always in charset_types; listing it makes nginx warn about a duplicate MIME type");
     const format = http.find((d) => d.name === "log_format");
     assert.equal(format.args[0], "privacy");
     assert.deepEqual(value(http, "access_log"), ["/dev/stdout", "privacy"]);

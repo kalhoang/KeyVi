@@ -171,8 +171,16 @@ class StackTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("image: ghcr.io/owner/demo-site:prod", result.stdout)
         self.assertIn("Host(`site.example.org`)", result.stdout)
+        self.assertRegex(result.stdout, r"- type: tmpfs\n\s+target: /tmp")
         self.assertIn("traefik.http.routers.demo-site.entrypoints: websecure", result.stdout)
         self.assertNotIn("env", result.stdout.replace("environment", ""))
+
+    def test_tmp_is_a_tmpfs_mount_that_swarm_applies(self):
+        # `docker stack deploy` drops the short `tmpfs:` service key, so with read_only the container had no writable
+        # /tmp and nginx stopped at mkdir /tmp/client_temp (2026-11-13). The long volume syntax becomes a tmpfs mount.
+        self.assertNotRegex(self.VALUES, r"\n    tmpfs:\n")
+        self.assertRegex(self.VALUES, r"\n    volumes:\n      - type: tmpfs\n        target: /tmp\n")
+        self.assertIn("read_only: true", self.VALUES)
 
     def test_two_replicas_on_traefik_public_with_a_healthcheck_and_rolling_updates(self):
         self.assertRegex(self.TEXT, r"\n      replicas: 2\n")
