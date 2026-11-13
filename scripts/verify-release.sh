@@ -5,6 +5,9 @@
 #   - codesign --verify --deep --strict
 #   - signed by Developer ID Application for the team in Config/Signing.xcconfig, secure timestamp
 #   - hardened runtime flag present; entitlements empty (no get-task-allow, no exceptions)
+#   - every nested executable and code bundle (Sparkle's helpers and framework) also carries the Developer ID
+#     signature of the team, a secure timestamp, the hardened runtime flag and no entitlements: the notary
+#     service rejects ad-hoc nested code, and codesign --verify --deep --strict accepts it (PLT-R750, PLT-R908)
 #   - bundle ID equals APP_BUNDLE_ID_RELEASE; universal binary (arm64 + x86_64)
 #   - designated requirement equals the expected default requirement for bundle ID + team, and equals
 #     the previous release's requirement when given (a change makes macOS re-ask permissions)
@@ -114,9 +117,9 @@ check_runtime() {
   grep -Eq '^CodeDirectory .*flags=0x[0-9a-f]+\([^)]*runtime' <<<"$details"
 }
 
-check_entitlements() {
+entitlements_empty() { # entitlements_empty <code path>: prints the keys and fails when there are any
   local xml
-  xml="$(codesign --display --entitlements - --xml "$app" 2>/dev/null || true)"
+  xml="$(codesign --display --entitlements - --xml "$1" 2>/dev/null || true)"
   py -c '
 import plistlib, sys
 data = sys.stdin.buffer.read().strip()
@@ -126,6 +129,60 @@ entitlements = plistlib.loads(data)
 if entitlements:
     print("entitlements present: " + ", ".join(sorted(entitlements)), file=sys.stderr)
     sys.exit(1)' <<<"$xml"
+}
+
+check_entitlements() { entitlements_empty "$app"; }
+
+# Every Mach-O file and code bundle under Contents, except the main executable (its signature is the app's).
+nested_code() {
+  py - "$app" "$(info_value CFBundleExecutable || true)" <<'PY'
+import os
+import sys
+
+app, executable = sys.argv[1:]
+MACH_O = {bytes.fromhex(magic) for magic in ("feedface", "feedfacf", "cefaedfe", "cffaedfe", "cafebabe", "bebafeca")}
+BUNDLES = (".app", ".appex", ".bundle", ".framework", ".plugin", ".xpc")
+main = os.path.join(app, "Contents", "MacOS", executable) if executable else None
+for directory, subdirectories, files in os.walk(os.path.join(app, "Contents")):
+    for name in sorted(subdirectories):
+        path = os.path.join(directory, name)
+        if name.endswith(BUNDLES) and not os.path.islink(path):
+            print(path)
+    for name in sorted(files):
+        path = os.path.join(directory, name)
+        if path == main or os.path.islink(path) or not os.path.isfile(path):
+            continue
+        with open(path, "rb") as handle:
+            if handle.read(4) in MACH_O:
+                print(path)
+PY
+}
+
+nested_problem() { # nested_problem <code path>: prints why the nested code fails, nothing when it passes
+  local details
+  details="$(codesign --display --verbose=4 "$1" 2>&1 || true)"
+  if ! grep -q "^Authority=Developer ID Application: .*($APP_TEAM_ID)$" <<<"$details" \
+    || ! grep -q "^TeamIdentifier=$APP_TEAM_ID$" <<<"$details"; then
+    echo "not signed with Developer ID Application for team $APP_TEAM_ID"
+  elif ! grep -q '^Timestamp=' <<<"$details"; then
+    echo "no secure timestamp"
+  elif ! grep -Eq '^CodeDirectory .*flags=0x[0-9a-f]+\([^)]*runtime' <<<"$details"; then
+    echo "no hardened runtime flag"
+  elif ! entitlements_empty "$1" 2>/dev/null; then
+    echo "carries entitlements (PLT-R908 allows none)"
+  fi
+}
+
+check_nested_code() {
+  local item problem status=0
+  while IFS= read -r item; do
+    problem="$(nested_problem "$item")"
+    if [[ -n "$problem" ]]; then
+      log "  ${item#"$app"/}: $problem"
+      status=1
+    fi
+  done < <(nested_code)
+  return "$status"
 }
 
 check_bundle_id() { [[ "$(info_value CFBundleIdentifier)" == "$APP_BUNDLE_ID_RELEASE" ]]; }
@@ -191,6 +248,7 @@ check "codesign --verify --deep --strict" check_signature
 check "Developer ID identity, team $APP_TEAM_ID, secure timestamp" check_identity
 check "hardened runtime flag" check_runtime
 check "no entitlements" check_entitlements
+check "nested code signed with Developer ID (team, secure timestamp, hardened runtime, no entitlements)" check_nested_code
 check "bundle ID $APP_BUNDLE_ID_RELEASE" check_bundle_id
 check "Sparkle public EdDSA key (SUPublicEDKey)" check_sparkle_key
 check "universal binary (arm64 + x86_64)" check_universal

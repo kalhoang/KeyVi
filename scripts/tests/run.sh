@@ -749,6 +749,101 @@ EOF
   expect 0 "build-release dry run" bash -c "cd '$M' && touch project.yml && scripts/build-release.sh 1.2.3 1020399 --dry-run"
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
+  # PLT-R910, ADR 0301: the committed Package.resolved is the only source of package versions.
+  contains "package versions stay pinned in the release archive" "-disableAutomaticPackageResolution"
+  contains "dry run announces the nested re-sign" "remove Sparkle.framework XPCServices"
+
+  echo "== build-release.sh re-signs Sparkle's helpers inside out (PLT-R750, PLT-R908, PLT-R909)"
+  # Fake xcodegen, xcodebuild and codesign: the archive holds an app that embeds a Sparkle.framework laid out like
+  # the pinned 2.10.1 one; codesign records every signing call and answers --display with FAKE_AUTHORITY.
+  BR="$T/br"
+  mkdir -p "$BR/bin"
+  cat >"$BR/bin/xcodegen" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+  cat >"$BR/bin/xcodebuild" <<'EOF'
+#!/bin/sh
+case " $* " in *" archive "*) ;; *) echo "Xcode 27.2"; exit 0 ;; esac
+archive=""; version=""; build=""; prev=""
+for arg in "$@"; do
+  [ "$prev" = "-archivePath" ] && archive="$arg"
+  case "$arg" in MARKETING_VERSION=*) version="${arg#*=}" ;; CURRENT_PROJECT_VERSION=*) build="${arg#*=}" ;; esac
+  prev="$arg"
+done
+app="$archive/Products/Applications/Test App.app/Contents"
+fw="$app/Frameworks/Sparkle.framework"
+mkdir -p "$app/MacOS" "$fw/Versions/B/XPCServices/Installer.xpc/Contents/MacOS" \
+  "$fw/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS" "$fw/Versions/B/Updater.app/Contents/MacOS"
+printf 'binary\n' >"$app/MacOS/Test"
+printf 'binary\n' >"$fw/Versions/B/Sparkle"
+printf 'binary\n' >"$fw/Versions/B/Autoupdate"
+ln -s B "$fw/Versions/Current"
+ln -s Versions/Current/Sparkle "$fw/Sparkle"
+ln -s Versions/Current/Autoupdate "$fw/Autoupdate"
+ln -s Versions/Current/XPCServices "$fw/XPCServices"
+cat >"$app/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleShortVersionString</key><string>$version</string>
+<key>CFBundleVersion</key><string>$build</string>
+</dict></plist>
+PLIST
+EOF
+  cat >"$BR/bin/codesign" <<'EOF'
+#!/bin/sh
+case " $* " in
+  *" --display "*) printf 'Executable=x\nAuthority=%s\nAuthority=Developer ID Certification Authority\n' "$FAKE_AUTHORITY" >&2 ;;
+  *)
+    for last; do :; done
+    printf 'codesign %s\n' "$*" >>"$FAKE_CODESIGN_LOG"
+    printf '%s\n' "$last" >>"$FAKE_CODESIGN_LOG.targets" ;;
+esac
+EOF
+  chmod +x "$BR/bin/xcodegen" "$BR/bin/xcodebuild" "$BR/bin/codesign"
+  team="$(sed -n 's/^DEVELOPMENT_TEAM = //p' "$M/Config/Signing.xcconfig")"
+  authority="Developer ID Application: Test Person ($team)"
+  : >"$BR/codesign.log"
+  : >"$BR/codesign.log.targets"
+  expect 0 "signed release build" env PATH="$BR/bin:$PATH" FAKE_CODESIGN_LOG="$BR/codesign.log" \
+    FAKE_AUTHORITY="$authority" "$M/scripts/build-release.sh" 1.2.3 1020399 --keychain "$BR/ci.keychain" --out "$BR/out"
+  fw="$BR/out/Test App.app/Contents/Frameworks/Sparkle.framework"
+  if [[ ! -e "$fw/Versions/B/XPCServices" && ! -L "$fw/XPCServices" ]]; then
+    ok "unused XPC services removed from the shipped framework (PLT-R909)"
+  else
+    ko "unused XPC services removed from the shipped framework (PLT-R909)"
+  fi
+  if [[ -d "$BR/out/App.xcarchive/Products/Applications/Test App.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" ]]; then
+    ok "the archive itself is left as Xcode wrote it"
+  else
+    ko "the archive itself is left as Xcode wrote it"
+  fi
+  signed="$(sed "s#^$BR/out/##" "$BR/codesign.log.targets")"
+  expected_order="$(printf '%s\n' "Test App.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" \
+    "Test App.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" \
+    "Test App.app/Contents/Frameworks/Sparkle.framework" "Test App.app")"
+  if [[ "$signed" == "$expected_order" ]]; then
+    ok "helpers, then the framework, then the app are signed, in that order"
+  else
+    ko "helpers, then the framework, then the app are signed, in that order"; sed 's/^/     /' "$BR/codesign.log"
+  fi
+  if [[ "$(grep -c -F -- "--force --sign $authority --options runtime --timestamp --keychain $BR/ci.keychain" "$BR/codesign.log")" == 4 ]]; then
+    ok "every re-sign uses the app's Developer ID, hardened runtime, a secure timestamp and the CI keychain"
+  else
+    ko "every re-sign uses the app's Developer ID, hardened runtime, a secure timestamp and the CI keychain"
+    sed 's/^/     /' "$BR/codesign.log"
+  fi
+  if grep -q -- '--deep' "$BR/codesign.log"; then ko "no --deep (Sparkle documentation)"; else ok "no --deep (Sparkle documentation)"; fi
+  if grep -F -- "--preserve-metadata=identifier,entitlements,flags $BR/out/Test App.app" "$BR/codesign.log" >/dev/null; then
+    ok "the app keeps its identifier and flags when re-sealed"
+  else
+    ko "the app keeps its identifier and flags when re-sealed"
+  fi
+  expect 1 "a build Xcode did not sign with Developer ID is refused" env PATH="$BR/bin:$PATH" \
+    FAKE_CODESIGN_LOG="$BR/codesign.log" FAKE_AUTHORITY="Apple Development: Test Person (ABCDE12345)" \
+    "$M/scripts/build-release.sh" 1.2.3 1020399 --out "$BR/out2"
+  contains "names the expected identity" "not signed with Developer ID Application for team $team"
 
   echo "== notarize.sh credential choice (dry run, nothing is submitted)"
   expect 0 "notarize dry run with the default profile" env -u NOTARY_KEYCHAIN_PROFILE -u ASC_API_KEY_PATH \
@@ -790,7 +885,20 @@ EOF
   contains "missing previous requirement named" "previous designated requirement file not found"
   expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
   contains "public key present passes" "ok: Sparkle public EdDSA key (SUPublicEDKey)"
-  contains "a build without the hooks passes the hooks check" "ok: no integration hooks code (INTEGRATION_HOOKS)"
+  contains "an app without nested code passes the nested-code check" "ok: nested code signed with Developer ID"
+  # PLT-R750, PLT-R908: an ad-hoc helper inside the bundle (as Sparkle ships its helpers) must fail before
+  # notarisation; codesign --verify --deep --strict alone accepts it.
+  nested="$M/nested/$(basename "$app")"
+  mkdir -p "$M/nested"
+  cp -R "$app" "$nested"
+  cp /usr/bin/true "$nested/Contents/MacOS/helper"
+  codesign --force --sign - "$nested/Contents/MacOS/helper" >/dev/null 2>&1
+  codesign --force --sign - "$nested" >/dev/null 2>&1
+  expect 1 "verify-release fails on an ad-hoc nested executable" "$M/scripts/verify-release.sh" --app "$nested" \
+    --pre-notarization
+  contains "deep verification alone accepts it" "ok: codesign --verify --deep --strict"
+  contains "nested code check fails" "FAILED: nested code signed with Developer ID"
+  contains "names the nested file" "Contents/MacOS/helper: not signed with Developer ID"
   # W3-A, ADR 0502: an app built with the INTEGRATION_HOOKS condition carries the marker; a release must not.
   hooked="$M/hooked/$(basename "$app")"
   mkdir -p "$M/hooked"
