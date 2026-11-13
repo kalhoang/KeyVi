@@ -45,6 +45,8 @@ final class WorkerCore {
     var lastMacroFinishedAt: MonotonicInstant?
     /// Undeliverable events since the last `postingBroken` health event (ADR 0311).
     var unreportedLosses = 0
+    /// Edits discarded for a stale generation since the last `generationDiscard` health event (PLT-R316).
+    var unreportedDiscards = 0
     var restoreDelay: Duration?
     var pendingVerification: PendingVerification?
 
@@ -91,7 +93,10 @@ final class WorkerCore {
         }
         serviceDeadlines(idle: true)
         let idle = backlog.isEmpty && queue.queuedCount == 0
-        if idle { reportLosses() }
+        if idle {
+            reportLosses()
+            reportDiscards()
+        }
         return IdleState(isIdle: idle, deadline: nextDeadline())
     }
 
@@ -206,7 +211,10 @@ final class WorkerCore {
         do {
             try services.poster.replay(record, userData: marker.userData(sequence: sequence, probe: false))
         } catch {
+            // PLT-R312: a key that cannot be recreated is lost exactly like one posting cannot deliver: counted
+            // and reported with the `postingBroken` health event, never silent.
             services.logger.log(.note("replay event creation failed", category: .injection), level: .error)
+            countLoss()
             return false
         }
         notePosted(sequence)
@@ -233,6 +241,14 @@ final class WorkerCore {
         guard unreportedLosses > 0 else { return }
         recordHealth(.postingBroken, detail: .count(unreportedLosses))
         unreportedLosses = 0
+    }
+
+    /// One `generationDiscard` health event with the count once the backlog drained: a burst of stale edits at a
+    /// focus change must not evict older entries from the fixed-size health log (PLT-R801).
+    func reportDiscards() {
+        guard unreportedDiscards > 0 else { return }
+        recordHealth(.generationDiscard, detail: .count(unreportedDiscards))
+        unreportedDiscards = 0
     }
 
     func recordHealth(_ kind: HealthEvent.Kind, detail: HealthEvent.Detail? = nil) {

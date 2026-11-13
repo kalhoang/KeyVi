@@ -331,13 +331,15 @@ private func key(_ character: Character, at offsetMs: UInt64 = 0, keyboardType: 
         #expect(rig.poster.posted.isEmpty)
     }
 
-    @Test func eventCreationFailureIsLoggedNotLost() {
+    /// PLT-R312: a replay whose event cannot be created is logged, counted and reported, never silent.
+    @Test func eventCreationFailureIsLoggedAndCountedPLTR312() {
         let rig = WorkerRig()
         rig.poster.setMode(.failingCreation)
         rig.pushReplay(key("a"))
         rig.run()
         #expect(rig.logger.entries.count == 1)
-        #expect(rig.metrics.lostWhilePostingBroken.value == 0)
+        #expect(rig.metrics.lostWhilePostingBroken.value == 1)
+        #expect(rig.healthKinds() == [.postingBroken])
         #expect(rig.queue.inFlight == 0)
     }
 }

@@ -41,7 +41,7 @@ extension WorkerCore {
             // PLT-R316 + ADR 0308: an edit computed for another field is never applied; its key is replayed.
             replayTrigger(of: job)
             feedback.requestCompositionReset()
-            recordHealth(.generationDiscard)
+            unreportedDiscards += 1
             return .discardedForGeneration
         }
         let prepared = prepare(job)
@@ -89,7 +89,9 @@ extension WorkerCore {
             if strategy == .passThrough || feedback.isPostingBroken { return passThrough(job) }
             let next = index + 1 < chain.count ? chain[index + 1] : .passThrough
             let anchor = verificationAnchor(for: job, strategy: strategy)
-            switch executors[strategy, default: PassThroughExecutor()].execute(job, in: self) {
+            let outcome = executors[strategy, default: PassThroughExecutor()].execute(job, in: self)
+            if let broken = postingBrokenOutcome(job, outcome) { return broken }
+            switch outcome {
             case .completed:
                 scheduleVerification(of: job, strategy: strategy, anchor: anchor, fallback: next)
                 return index == 0 ? .executed : .executedWithFallback
@@ -102,6 +104,21 @@ extension WorkerCore {
             }
         }
         return passThrough(job)
+    }
+
+    /// ADR 0311: posting broke while the script was posting. That is the posting-broken path, not a fallback: the
+    /// undelivered edit (or its trigger, if nothing was posted) is a counted loss, no fallback event is recorded.
+    private func postingBrokenOutcome(_ job: EditJob, _ outcome: StrategyOutcome) -> JobOutcome? {
+        guard feedback.isPostingBroken else { return nil }
+        let postedSomething: Bool
+        switch outcome {
+        case .failedBeforePosting(.postingFailed): postedSomething = false
+        case .failedAfterPosting(.postingFailed): postedSomething = true
+        default: return nil
+        }
+        if postedSomething || job.trigger != nil { countLoss() }
+        feedback.requestCompositionReset()
+        return postedSomething ? .executedWithFallback : .abandoned
     }
 
     /// The key passes through instead of the edit: replay the trigger, reset the composition.
@@ -158,11 +175,11 @@ extension WorkerCore {
 
 extension FallbackReason {
     /// AX failures and readback mismatches mean "this field mishandles the strategy": use the fallback for the
-    /// rest of the focus session (4.5). Pasteboard state, posting and job length are per job.
+    /// rest of the focus session (4.5). Pasteboard state, posting, job length and history mismatches are per job.
     var degradesSession: Bool {
         switch self {
         case .axUnavailable, .axTimedOut, .axWriteFailed, .readbackMismatch: true
-        case .pasteboardUnsafe, .postingFailed, .jobTooLong: false
+        case .pasteboardUnsafe, .postingFailed, .jobTooLong, .historyMismatch: false
         }
     }
 }

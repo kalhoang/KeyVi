@@ -19,7 +19,9 @@ struct AXReplaceExecutor: StrategyExecutor {
         case let failure: return .failedBeforePosting(Self.reason(failure, write: false))
         }
         let start = selection.location - job.deleteUTF16Count
-        guard start >= 0 else { return .failedBeforePosting(.readbackMismatch) }
+        // Nothing was written and the field's AX works: a per-job failure that keeps `axReplace` for the field
+        // (4.5 reserves the session fallback for errors and mismatches after the write).
+        guard start >= 0 else { return .failedBeforePosting(.historyMismatch) }
         // A selected suggestion after the caret is replaced together with the composition, like typing does.
         let target = Injection.TextRange(location: start, length: job.deleteUTF16Count + selection.length)
         let selected = access.setSelectedRange(field, to: target, timeout: timeout)

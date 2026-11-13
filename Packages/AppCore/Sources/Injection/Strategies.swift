@@ -15,8 +15,11 @@ public enum StrategyOutcome: Sendable, Hashable {
     case failedAfterPosting(FallbackReason)
 }
 
+/// Why a strategy did not deliver the edit. `historyMismatch`: the field's caret is closer to the start than the
+/// composition the engine wants to replace (the history is out of sync with the field); a per-job condition.
 public enum FallbackReason: UInt8, Sendable, Hashable {
-    case axUnavailable, axTimedOut, axWriteFailed, readbackMismatch, pasteboardUnsafe, postingFailed, jobTooLong
+    case axUnavailable, axTimedOut, axWriteFailed, readbackMismatch, pasteboardUnsafe, postingFailed, jobTooLong,
+        historyMismatch
 }
 
 /// The inject-thread environment a strategy runs in. Implemented by the worker; faked in strategy tests.

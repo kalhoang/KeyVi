@@ -60,7 +60,7 @@ private func environment(
                 == .failedBeforePosting(.axUnavailable))
         #expect(
             executor.execute(Fixture.job(deleteCount: 3, insertion: "x"), in: environment(field: field).0)
-                == .failedBeforePosting(.readbackMismatch))
+                == .failedBeforePosting(.historyMismatch))
         #expect(field.text == "ab")
     }
 

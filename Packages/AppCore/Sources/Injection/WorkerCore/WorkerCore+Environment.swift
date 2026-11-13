@@ -48,7 +48,9 @@ extension WorkerCore: StrategyHost {
         self.restoreDelay = restoreDelay
     }
 
+    /// PLT-R420: counted every time, reported once per focus session (the 256-entry health log stays useful).
     func completionFallback() {
+        services.metrics.fallbackActivations.increment()
         if notes.shouldReport(.completionFallback) { recordHealth(.fallbackActivated) }
     }
 }
