@@ -117,6 +117,23 @@ import Testing
         #expect(harness.changes == [.automaticallyInstall(false)], "an adopted choice is reported once")
     }
 
+    @Test("PRD-R6, PLT-R1001: a settings publish during Sparkle's session adopts the window choice, never reverts it")
+    func storePublishAdoptsPendingSparkleChoice() throws {
+        let harness = UpdaterHarness()
+        harness.controller.start()
+        let stored = harness.controller.currentPreferences
+        harness.driver.simulateWindowCheckbox(automaticallyDownloads: false)
+        // Any SettingsStore publish (for example per-app memory) re-applies the unchanged stored preferences.
+        harness.controller.apply(stored)
+        #expect(!harness.driver.automaticallyDownloadsUpdates, "the user's choice in Sparkle's window stays")
+        #expect(!harness.controller.automaticallyDownloadsUpdates)
+        #expect(harness.changes == [.automaticallyInstall(false)], "and is persisted through the store")
+        harness.delegate.updater?(UpdaterFixtures.unstartedUpdater(), didFinishUpdateCycleFor: .updates, error: nil)
+        #expect(harness.changes == [.automaticallyInstall(false)], "reported once")
+        harness.controller.apply(stored.applying(.automaticallyInstall(false)))
+        #expect(harness.changes == [.automaticallyInstall(false)], "the store's echo is not a new choice")
+    }
+
     @Test("PRD-R6: a value Sparkle ignored is never adopted as a user choice, cycle after cycle")
     func ignoredSparkleWriteIsNotAdopted() throws {
         let harness = UpdaterHarness()

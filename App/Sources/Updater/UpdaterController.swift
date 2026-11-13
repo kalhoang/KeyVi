@@ -99,14 +99,14 @@ final class UpdaterController: NSObject, UpdaterControlling {
     }
 
     /// Applies D19-D21 from the settings store, at launch (before `start`) and after every settings change.
-    /// Idempotent, and never reported back through `onPreferenceChange`.
+    /// Idempotent, and the stored values are never reported back through `onPreferenceChange`. A value the user
+    /// moved in Sparkle's own update window since the last push is adopted first (reported once, so the store
+    /// keeps it) rather than overwritten by the store's older value: the store publishes on every change, also
+    /// while Sparkle's window is open (PLT-R1001, PRD-R6).
     func apply(_ next: UpdatePreferences) {
-        let previous = preferences
-        preferences = next
-        guard let driver else { return }
-        push(next, to: driver)
-        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
-        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
+        let moves = sparkleMoves().filter { next.applying($0) != next }
+        commit(moves.reduce(next) { $0.applying($1) })
+        for change in moves { onPreferenceChange?(change) }
     }
 
     var currentPreferences: UpdatePreferences { preferences }
@@ -140,8 +140,17 @@ final class UpdaterController: NSObject, UpdaterControlling {
     private func userChanged(_ change: UpdatePreferenceChange) {
         let next = preferences.applying(change)
         guard next != preferences else { return }
-        apply(next)
+        commit(next)
         onPreferenceChange?(change)
+    }
+
+    private func commit(_ next: UpdatePreferences) {
+        let previous = preferences
+        preferences = next
+        guard let driver else { return }
+        push(next, to: driver)
+        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
+        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
     }
 
     /// Writes only values that differ: setting `automaticallyChecksForUpdates` makes Sparkle reschedule its cycle.
@@ -159,16 +168,20 @@ final class UpdaterController: NSObject, UpdaterControlling {
     /// defaults. Adopting it at the end of a session keeps settings.json the single source (PLT-R1001). Only a
     /// value that moved since the last push counts: Sparkle silently ignores `automaticallyDownloadsUpdates` when
     /// the bundle disallows automatic updates, and that must never turn into an explicit D20 (PRD-R6).
-    private func adoptSparkleChoices() {
-        guard let driver, let baseline = sparkleBaseline else { return }
+    private func adoptSparkleChoices() { apply(preferences) }
+
+    /// The Sparkle values that moved since the last push, as preference changes.
+    private func sparkleMoves() -> [UpdatePreferenceChange] {
+        guard let driver, let baseline = sparkleBaseline else { return [] }
         let current = SparkleChoices(of: driver)
+        var moves: [UpdatePreferenceChange] = []
         if current.automaticallyCheck != baseline.automaticallyCheck {
-            userChanged(.automaticallyCheck(current.automaticallyCheck))
+            moves.append(.automaticallyCheck(current.automaticallyCheck))
         }
         if current.automaticallyDownload != baseline.automaticallyDownload {
-            userChanged(.automaticallyInstall(current.automaticallyDownload))
+            moves.append(.automaticallyInstall(current.automaticallyDownload))
         }
-        sparkleBaseline = SparkleChoices(of: driver)
+        return moves
     }
 
     /// PRD-R43 update-failed alert. The failure itself is logged by `updater(_:didAbortWithError:)`.
