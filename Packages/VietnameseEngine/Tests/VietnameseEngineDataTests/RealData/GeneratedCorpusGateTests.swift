@@ -66,4 +66,27 @@ struct GeneratedCorpusGateTests {
         print(
             "[ENG-R870] shard \(shard): \(cases) cases, excluded en rows: \(excluded.sorted().joined(separator: " "))")
     }
+
+    /// The total of the per-shard exclusions, so that docs/decisions/0202 copies the number instead of adding
+    /// up 24 lists. The shards assert that each excluded case is really restored; this test only counts.
+    @Test("ENG-R870: total of the excluded en rows over all shards")
+    func exclusionTotal() throws {
+        let resources = try RealData.resources()
+        var cases = 0
+        var variants: Set<String> = []
+        func count(_ generated: GeneratedCase) {
+            cases += 1
+            if resources.ambiguity[generated.keys.lowercased()] == .english { variants.insert(generated.keys) }
+        }
+        for shard in 0..<Self.shardCount {
+            GeneratedCorpus.forEachOrderCase(shard: shard, of: Self.shardCount, count)
+            GeneratedCorpus.forEachVariantCase(shard: shard, of: Self.shardCount, count)
+        }
+        let rawStrings = Set(variants.map { $0.lowercased() })
+        print(
+            "[ENG-R870] total: \(cases) cases; excluded \(variants.count) case variants of \(rawStrings.count) raw "
+                + "strings, all en rows")
+        #expect(cases > 0)
+        #expect(rawStrings.allSatisfy { resources.ambiguity[$0] == .english })
+    }
 }
