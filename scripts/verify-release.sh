@@ -55,6 +55,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$app" && -d "$app" ]] || { usage >&2; exit 2; }
+# QA-R30: the first release has no previous requirement; a wrong path must say so, not fail in a redirection.
+[[ -z "$previous_dr" || -f "$previous_dr" ]] \
+  || die "previous designated requirement file not found: $previous_dr (leave out --previous-dr for the first release)"
 require_cmd codesign lipo spctl xcrun
 load_brand
 load_team_id

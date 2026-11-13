@@ -86,14 +86,15 @@ version=X.Y.Z                                   # beta: X.Y.Z-beta.N
 build="$(scripts/build-number.sh "$version")"
 out="dist/$APP_SLUG-$version"
 app="$(scripts/build-release.sh "$version" "$build" | tail -n1)"   # universal, signed, build-info.json
-gh release download "v<previous version>" --pattern designated-requirement.txt --dir .build/previous   # skip for the first release
-scripts/verify-release.sh --app "$app" --pre-notarization --write-dr "$out/designated-requirement.txt" \
-  --previous-dr .build/previous/designated-requirement.txt      # leave out --previous-dr for the first release
+# Previous release's designated requirement; for the first release keep prev=() and skip the download.
+gh release download "v<previous version>" --pattern designated-requirement.txt --dir .build/previous
+prev=(--previous-dr .build/previous/designated-requirement.txt)  # first release: prev=()
+scripts/verify-release.sh --app "$app" --pre-notarization --write-dr "$out/designated-requirement.txt" "${prev[@]}"
 scripts/notarize.sh "$app" --log-dir "$out"                     # zip, submit, wait, staple the app
 dmg="$(scripts/make-dmg.sh "$app" --out "$out/$APP_SLUG-$version.dmg" | tail -n1)"
 scripts/notarize.sh "$dmg" --log-dir "$out"                     # submit, wait, staple the DMG
 ditto -c -k --sequesterRsrc --keepParent "$app" "$out/$APP_SLUG-$version.zip"   # Sparkle update archive
-scripts/verify-release.sh --app "$app" --dmg "$dmg" --previous-dr .build/previous/designated-requirement.txt
+scripts/verify-release.sh --app "$app" --dmg "$dmg" "${prev[@]}"
 (cd "$out" && shasum -a 256 "$APP_SLUG-$version.dmg" "$APP_SLUG-$version.zip" > SHA256SUMS)
 ```
 
@@ -118,7 +119,7 @@ Any settings loss or permission loss after an update blocks the release (PRD-R52
 ## 6. Verify the artefact
 
 ```sh
-scripts/verify-release.sh --app "$app" --dmg "$dmg" --previous-dr designated-requirement.txt   # previous release's asset
+scripts/verify-release.sh --app "$app" --dmg "$dmg" "${prev[@]}"   # prev as in section 4; prev=() for the first release
 ```
 
 `release.yml` runs it twice (before notarisation with `--pre-notarization`, and after stapling). It checks the signature, the Developer ID identity and timestamp, the hardened runtime, empty entitlements, the bundle ID, the universal binary, the designated requirement (expected and unchanged against the previous release), the Sparkle public key, the URL host allowlist and, after notarisation, `stapler validate` and `spctl --assess` for the app and the DMG. The manual equivalents, for a second look:

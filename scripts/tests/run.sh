@@ -526,6 +526,9 @@ EOF
 
   echo "== verify-release.sh: Sparkle public key gate (ADR 0304)"
   # The ad-hoc app fails the Developer ID checks anyway; only the key check's own result matters here.
+  expect 1 "verify-release with a missing previous requirement file" "$M/scripts/verify-release.sh" --app "$app" \
+    --pre-notarization --previous-dr "$T/no-such-dr.txt"
+  contains "missing previous requirement named" "previous designated requirement file not found"
   expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
   contains "public key present passes" "ok: Sparkle public EdDSA key (SUPublicEDKey)"
   /usr/libexec/PlistBuddy -c 'Set :SUPublicEDKey ""' "$app/Contents/Info.plist"
