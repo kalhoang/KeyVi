@@ -3158,13 +3158,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This file is larger than 5 MB."
+            "value" : "This file is larger than %@ MB."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này lớn hơn 5 MB."
+            "value" : "Tệp này lớn hơn %@ MB."
           }
         }
       }

@@ -7,6 +7,7 @@
 
 import AppModel
 import Foundation
+import SettingsStore
 import Testing
 
 @testable import ShellCore
@@ -103,8 +104,14 @@ import Testing
             l.vi.format(SupportText.donateBody, "{{AppName}}")
                 == "{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp."
         )
+        // PRD-R43 draft, whole sentence: the reason continues the sentence after "Dòng 12:" in lower case.
+        let row = MacroImportRow(line: 12, shortcut: "x", expansion: "", issue: .emptyExpansion)
         #expect(
-            l.vi.format(MacrosText.importInvalidFileLine, 12, "x").hasPrefix("Tệp này không đúng định dạng. Dòng 12"))
+            MacroImportRefusal.invalidFile(firstInvalid: row).message(l.vi)
+                == "Tệp này không đúng định dạng. Dòng 12: thiếu phần nội dung gõ tắt.")
+        #expect(
+            MacroImportRefusal.invalidFile(firstInvalid: row).message(l.en)
+                == "This file is not in the expected format. Line 12: the macro text is missing.")
         #expect(l.vi.string(MacrosText.issueEmptyExpansion) == "Thiếu phần nội dung gõ tắt.")
     }
 

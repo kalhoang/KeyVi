@@ -63,11 +63,12 @@ public struct MacroImportSession: Sendable, Hashable {
 extension MacroImportRefusal {
     public func message(_ localizer: Localizer) -> String {
         switch self {
-        case .tooLarge: return localizer.string(MacrosText.importTooLarge)
+        case .tooLarge:
+            return localizer.format(MacrosText.importTooLarge, SizeText.megabytes(MacroImporter.maxFileBytes, localizer))
         case .empty: return localizer.string(MacrosText.importEmpty)
         case .invalidFile(nil): return localizer.string(MacrosText.importInvalidFile)
         case .invalidFile(let row?):
-            let reason = row.issue.map { MacroIssueText.text($0, shortcut: row.shortcut, localizer: localizer) } ?? ""
+            let reason = MacroIssueText.lineReason(row, localizer: localizer) ?? ""
             return localizer.format(MacrosText.importInvalidFileLine, row.line, reason)
         }
     }

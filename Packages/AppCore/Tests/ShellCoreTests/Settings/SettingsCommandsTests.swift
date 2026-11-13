@@ -207,7 +207,7 @@ import Testing
             _ = try await commands.previewImport(Data(#"{"kind":"other"}"#.utf8))
         }
         let cases: [(SettingsImportError, String)] = [
-            (.tooLarge(limit: 5), "Tệp này lớn hơn 5 MB."),
+            (.tooLarge(limit: 5 * 1024 * 1024), "Tệp này lớn hơn 5 MB."),
             (.notJSON, "Tệp này không đúng định dạng."),
             (.tooDeeplyNested(limit: 64), "Tệp này không đúng định dạng."),
             (.notAnObject, "Tệp này không đúng định dạng."),
@@ -224,6 +224,27 @@ import Testing
         #expect(
             SettingsImportMessage.text(for: CocoaError(.fileReadNoPermission), appName: "App", l.vi)
                 == "Không đọc được tệp này.")
+    }
+
+    @Test func importLimitAndSchemaVersionMatchTheStore_PLTR912_PRDR72() async throws {
+        // The window reads at most ImportSummary.importByteLimit + 1 bytes and calls a file "from a newer version"
+        // above ImportSummary.currentSchemaVersion: both must follow SettingsStore, or the notice and cap drift.
+        let (_, commands) = await loaded()
+        let oversized = Data(repeating: 0x20, count: ImportSummary.importByteLimit + 1)
+        await #expect(throws: SettingsImportError.tooLarge(limit: ImportSummary.importByteLimit)) {
+            _ = try await commands.previewImport(oversized)
+        }
+        let atLimit = Data(repeating: 0x20, count: ImportSummary.importByteLimit)
+        await #expect(throws: SettingsImportError.notJSON) { _ = try await commands.previewImport(atLimit) }
+        let data = try await commands.export(ExportOptions(includeMacros: true, includeAppModes: true), now: date)
+        let object = try JSONDecoder().decode(JSONValue.self, from: data)
+        #expect(object["schemaVersion"] == .number(Double(ImportSummary.currentSchemaVersion)))
+        let preview = try await commands.previewImport(data)
+        #expect(!ImportSummary(preview: preview).isNewerSchema)
+        let l = try Localizers()
+        #expect(
+            SettingsImportMessage.text(for: .tooLarge(limit: ImportSummary.importByteLimit), appName: "App", l.en)
+                == "This file is larger than 5 MB.")
     }
 
     @Test func exportIsTheStoreExportWithTheChosenSections() async throws {

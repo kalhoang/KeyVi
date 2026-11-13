@@ -16,8 +16,12 @@ public struct ImportSummary: Sendable, Hashable {
         choices = ImportChoices()
     }
 
-    /// The export format this build writes (`SettingsExportFormat.schemaVersion`).
+    /// The export format this build writes. Mirrors SettingsStore's internal `SettingsExportFormat.schemaVersion`;
+    /// `SettingsCommandsTests.importLimitAndSchemaVersionMatchTheStore_PLTR912_PRDR72` ties the two together.
     public static let currentSchemaVersion = 1
+
+    /// PLT-R912 import cap. Mirrors SettingsStore's internal `SettingsExportFormat.maxImportBytes` (same test).
+    public static let importByteLimit = 5 * 1024 * 1024
 
     public var isNewerSchema: Bool { preview.schemaVersion > Self.currentSchemaVersion }
 
@@ -75,6 +79,13 @@ public enum SettingNames {
     }
 }
 
+/// Size limits in the copy, taken from the limit itself so the text follows a changed cap.
+enum SizeText {
+    static func megabytes(_ bytes: Int, _ localizer: Localizer) -> String {
+        localizer.formatNumber(max(1, bytes / (1024 * 1024)))
+    }
+}
+
 enum ListFormat {
     /// Locale-aware list ("a, b và c" / "a, b, and c").
     static func join(_ items: [String], _ localizer: Localizer) -> String {
@@ -86,7 +97,7 @@ enum ListFormat {
 public enum SettingsImportMessage {
     public static func text(for error: SettingsImportError, appName: String, _ localizer: Localizer) -> String {
         switch error {
-        case .tooLarge: localizer.string(SettingsText.importErrorTooLarge)
+        case .tooLarge(let limit): localizer.format(SettingsText.importErrorTooLarge, SizeText.megabytes(limit, localizer))
         case .tooDeeplyNested, .notJSON, .notAnObject: localizer.string(SettingsText.importErrorFormat)
         case .notASettingsExport: localizer.format(SettingsText.importErrorNotExport, appName)
         case .invalidSchemaVersion: localizer.string(SettingsText.importErrorVersion)

@@ -68,7 +68,7 @@ import VietnameseEngine
             #expect(!text.isEmpty && !text.hasPrefix("macros."), "\(issue)")
         }
         let row = MacroImportRow(line: 12, shortcut: "vn", expansion: "", issue: .emptyExpansion)
-        #expect(MacroIssueText.lineText(row, localizer: l.vi) == "Dòng 12: Thiếu phần nội dung gõ tắt.")
+        #expect(MacroIssueText.lineText(row, localizer: l.vi) == "Dòng 12: thiếu phần nội dung gõ tắt.")
         #expect(MacroIssueText.lineText(MacroImportRow(line: 1, shortcut: "a", expansion: "b"), localizer: l.vi) == "")
         let problem = MacroTableProblem(trigger: "vn.", issue: .shadowedBy(shorter: "vn"))
         #expect(MacroIssueText.entryText(problem, localizer: l.vi).hasPrefix("Gõ tắt \"vn.\": "))

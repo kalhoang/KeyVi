@@ -27,7 +27,7 @@ import Testing
         let l = try Localizers()
         #expect(
             session.invalidLines(l.vi) == [
-                "Dòng 3: Phím tắt không được có khoảng trắng.", "Dòng 5: Thiếu phần nội dung gõ tắt.",
+                "Dòng 3: phím tắt không được có khoảng trắng.", "Dòng 5: thiếu phần nội dung gõ tắt.",
             ])
         #expect(l.vi.format(MacrosText.importNew, session.newCount) == "Mới: 2")
     }
@@ -74,7 +74,7 @@ import Testing
             MacroImportRefusal.invalidFile(
                 firstInvalid: MacroImportRow(line: 12, shortcut: "x", expansion: "", issue: .emptyExpansion)
             )
-            .message(l.vi) == "Tệp này không đúng định dạng. Dòng 12: Thiếu phần nội dung gõ tắt.")
+            .message(l.vi) == "Tệp này không đúng định dạng. Dòng 12: thiếu phần nội dung gõ tắt.")  // PRD-R43 verbatim
         let garbage = Data([0xFF, 0xFE, 0x00, 0x01])
         let unreadable = MacroImportSession.open(garbage, fileExtension: "json", existing: [])
         #expect(unreadable == .failure(.invalidFile(firstInvalid: nil)))
@@ -82,6 +82,7 @@ import Testing
             MacroImportRefusal.invalidFile(firstInvalid: nil).message(l.en)
                 == "This file is not in the expected format.")
         #expect(MacroImportRefusal.tooLarge.message(l.vi) == "Tệp này lớn hơn 5 MB.")
+        #expect(MacroImportRefusal.tooLarge.message(l.en) == "This file is larger than 5 MB.")
         #expect(MacroImportRefusal.empty.message(l.vi) == "Tệp này không có gõ tắt nào.")
     }
 

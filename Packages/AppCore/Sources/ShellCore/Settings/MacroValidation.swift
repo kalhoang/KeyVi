@@ -146,9 +146,21 @@ public enum MacroIssueText {
 
     /// "Dòng 12: thiếu phần nội dung gõ tắt." for an imported row (PRD-R43).
     public static func lineText(_ row: MacroImportRow, localizer: Localizer) -> String {
-        guard let issue = row.issue else { return "" }
-        return localizer.format(
-            MacrosText.issueLine, row.line, text(issue, shortcut: row.shortcut, localizer: localizer))
+        guard let reason = lineReason(row, localizer: localizer) else { return "" }
+        return localizer.format(MacrosText.issueLine, row.line, reason)
+    }
+
+    /// The reason of an imported row as it continues a sentence after "Dòng 12:" (PRD-R43 draft: lower case).
+    static func lineReason(_ row: MacroImportRow, localizer: Localizer) -> String? {
+        row.issue.map { continuation(text($0, shortcut: row.shortcut, localizer: localizer), locale: localizer.locale) }
+    }
+
+    /// Lower-cases a leading capital that only starts the sentence ("Thiếu" -> "thiếu"); keeps acronyms ("ASCII").
+    static func continuation(_ sentence: String, locale: Locale) -> String {
+        guard let first = sentence.first, first.isUppercase else { return sentence }
+        let rest = sentence.dropFirst()
+        if let second = rest.first, second.isUppercase { return sentence }
+        return String(first).lowercased(with: locale) + rest
     }
 
     /// "Gõ tắt "x": ..." for a problem in the saved list.
