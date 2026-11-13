@@ -84,15 +84,23 @@ struct HostFakesTests {
         #expect(processes.runningApplications() == [app])
     }
 
-    @Test func fakeBundleInspectorHonoursDepth() {
+    /// Same contract as the production inspector: the folder to search, depth counted from it (PLT-R510).
+    @Test func fakeBundleInspectorSearchesTheGivenFolderWithinTheDepth() {
         let url = URL(fileURLWithPath: "/Applications/Sample.app")
         let inspector = FakeBundleInspector(bundles: [
-            url: .init(frameworks: ["A.framework"], helpers: ["H.app"], files: ["Frameworks/x/libxul.dylib"], info: [:])
+            url: .init(
+                frameworks: ["A.framework"], helpers: ["H.app"], files: ["Contents/Frameworks/x/libxul.dylib"],
+                info: [:])
         ])
+        let frameworks = url.appendingPathComponent("Contents/Frameworks")
         #expect(inspector.frameworkNames(in: url) == ["A.framework"])
         #expect(inspector.helperAppNames(in: url) == ["H.app"])
-        #expect(inspector.containsFile(named: "libxul.dylib", in: url, maxDepth: 3))
-        #expect(!inspector.containsFile(named: "libxul.dylib", in: url, maxDepth: 2))
+        #expect(inspector.containsFile(named: "libxul.dylib", in: frameworks, maxDepth: 2))
+        #expect(!inspector.containsFile(named: "libxul.dylib", in: frameworks, maxDepth: 1))
+        #expect(
+            !inspector.containsFile(
+                named: "libxul.dylib", in: url.appendingPathComponent("Contents/MacOS"), maxDepth: 6))
+        #expect(!inspector.containsFile(named: "libxul.dylib", in: URL(fileURLWithPath: "/Other.app"), maxDepth: 6))
         #expect(inspector.infoDictionary(of: url) == [:])
     }
 

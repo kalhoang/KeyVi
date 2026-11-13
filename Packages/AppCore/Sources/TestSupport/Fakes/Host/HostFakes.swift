@@ -405,6 +405,7 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
     public struct FakeBundle: Sendable, Hashable {
         public var frameworks: [String]
         public var helpers: [String]
+        /// Paths relative to the bundle, for example `Contents/MacOS/libxul.dylib`.
         public var files: [String]
         public var info: [String: JSONValue]
         public init(frameworks: [String], helpers: [String], files: [String], info: [String: JSONValue]) {
@@ -417,12 +418,23 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
 
     public func frameworkNames(in bundle: URL) -> [String] { bundles[bundle]?.frameworks ?? [] }
     public func helperAppNames(in bundle: URL) -> [String] { bundles[bundle]?.helpers ?? [] }
-    /// `files` holds paths relative to `Contents`; the depth is the number of path components.
-    public func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool {
-        bundles[bundle]?.files.contains { path in
+
+    /// Same contract as the production inspector (PLT-R510): `directory` is a folder inside a known bundle, and
+    /// a file matches when it lies at most `maxDepth` levels below it (1 = directly inside).
+    public func containsFile(named name: String, in directory: URL, maxDepth: Int) -> Bool {
+        let target = directory.standardizedFileURL.path
+        guard
+            let (bundleURL, bundle) = bundles.first(where: { url, _ in
+                let root = url.standardizedFileURL.path
+                return target == root || target.hasPrefix(root + "/")
+            })
+        else { return false }
+        let folder = target.dropFirst(bundleURL.standardizedFileURL.path.count).split(separator: "/")
+        return bundle.files.contains { path in
             let components = path.split(separator: "/")
-            return components.last.map(String.init) == name && components.count <= maxDepth
-        } ?? false
+            guard components.last.map(String.init) == name, components.starts(with: folder) else { return false }
+            return components.count - folder.count <= maxDepth
+        }
     }
 
     public func infoDictionary(of bundle: URL) -> [String: JSONValue]? { bundles[bundle]?.info }
