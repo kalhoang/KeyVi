@@ -7,8 +7,8 @@ import AppKit
 import AppModel
 import InputHost
 import Observation
+import SettingsStore
 import ShellCore
-import UniformTypeIdentifiers
 
 @MainActor
 @Observable
@@ -23,6 +23,8 @@ final class OnboardingModel {
     private(set) var checklist: TryItChecklist?
     var openAtLogin = true  // D17, shown pre-checked
     var showPermissionHelp = false
+    /// PRD-R40 screen 6, PRD-R32: the import preview or the reason a file was refused (PRD-R43), shown as a sheet.
+    var macroImport: OnboardingImport?
     var confirmPermissionReset = false
 
     let appName: String
@@ -172,18 +174,33 @@ final class OnboardingModel {
         }
     }
 
-    /// PRD-R40 screen 6 / PRD-R69: a file only from the user's explicit choice.
-    private func chooseImportFile() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.json, .plainText, .commaSeparatedText, .propertyList]
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url else { return }
-            MainActor.assumeIsolated {
-                self?.actions?.importMacros(from: url)
-                self?.move { $0.next(inputs: $1) }
-            }
+    /// PRD-R40 screen 6 / PRD-R69: a file only from the user's explicit choice. The Macros pane's preview comes
+    /// first (PRD-R32); a refused file is explained and the flow stays here (PRD-R43 "Import file invalid").
+    func chooseImportFile() {
+        FilePanels.open(types: FilePanels.macroTypes) { [weak self] url in
+            Task { await self?.openImportFile(url) }
         }
     }
+
+    private func openImportFile(_ url: URL) async {
+        let data = await FilePanels.readOffMain(url, maxBytes: MacroImporter.maxFileBytes)
+        let existing = await actions?.currentMacros() ?? []
+        macroImport = OnboardingImport.opening(
+            data, fileExtension: url.pathExtension, existing: existing, localizer: localizer)
+    }
+
+    /// "Nhập": merges with the duplicate choice, then moves on; a failed merge keeps the sheet with its reason.
+    func confirmImport() async {
+        guard var step = macroImport else { return }
+        let existing = await actions?.currentMacros() ?? []
+        let merged = step.confirm(existing: existing, localizer: localizer)
+        macroImport = step
+        guard let merged, step.advancesFlow else { return }
+        actions?.saveImportedMacros(merged)
+        macroImport = nil
+        move { $0.next(inputs: $1) }
+    }
+
+    /// "Hủy": nothing is imported and the flow stays on screen 6 ("Để sau" moves on).
+    func cancelImport() { macroImport = nil }
 }

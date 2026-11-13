@@ -7,6 +7,7 @@ import AppKit
 import AppModel
 import InputHost
 import Observation
+import SettingsStore
 import ShellCore
 import SwiftUI
 
@@ -21,7 +22,10 @@ protocol OnboardingActions: AnyObject {
     func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
     func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
-    func importMacros(from url: URL)
+    /// PRD-R40 screen 6, PRD-R32: the user's macros, for the import preview's duplicates.
+    func currentMacros() async -> [StoredMacro]
+    /// The merged list after the user confirmed the preview.
+    func saveImportedMacros(_ macros: [StoredMacro])
     func complete()
     /// The window closed; `completed == false` means before the last screen (PRD-R41: the status line then offers
     /// to resume at screen 2, and fast permission polling stops).

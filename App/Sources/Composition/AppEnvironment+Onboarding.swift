@@ -123,18 +123,13 @@ extension AppEnvironment: OnboardingActions {
         if enabled { try? loginItem.register() } else { try? loginItem.unregister() }
     }
 
-    /// PRD-R40 screen 6, PRD-R32: macros from the chosen file, the user's own macros kept for duplicates.
-    func importMacros(from url: URL) {
-        guard let data = OnboardingMacroImport.read(url) else { return }
-        let store = settingsStore
-        let fileExtension = url.pathExtension
-        Task {
-            let existing = await store.state.macros
-            guard
-                let merged = OnboardingMacroImport.merged(data: data, fileExtension: fileExtension, existing: existing)
-            else { return }
-            await store.replaceMacros(merged)
-        }
+    /// PRD-R40 screen 6, PRD-R32: the import preview compares the file with these.
+    func currentMacros() async -> [StoredMacro] { await settingsStore.state.macros }
+
+    /// The list the user confirmed in the preview (duplicates resolved as chosen, ENG-R1101 NFC).
+    func saveImportedMacros(_ macros: [StoredMacro]) {
+        let commands = SettingsCommands(store: settingsStore)
+        Task { _ = await commands.saveMacros(macros) }
     }
 
     func complete() {

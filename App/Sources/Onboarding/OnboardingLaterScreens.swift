@@ -4,6 +4,7 @@
 
 import AppModel
 import InputHost
+import SettingsStore
 import ShellCore
 import SwiftUI
 
@@ -193,5 +194,52 @@ struct PermissionHelpSheet: View {
         } message: {
             Text(verbatim: help.confirmBody)
         }
+    }
+}
+
+/// PRD-R40 screen 6 "Chọn tệp...": the Macros pane's preview before anything is merged (PRD-R32); a refused file
+/// shows its reason with "Chọn tệp khác" (PRD-R43 "Import file invalid") and the flow stays on screen 6.
+struct OnboardingImportSheet: View {
+    @Bindable var model: OnboardingModel
+
+    var body: some View {
+        let localizer = model.localizer
+        VStack(alignment: .leading, spacing: 10) {
+            ScreenTitle(text: localizer.string(MacrosText.importTitle))
+            if let error = model.macroImport?.error {
+                Label {
+                    Text(verbatim: error).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                }
+            }
+            if let session = model.macroImport?.session {
+                MacroImportPreviewView(session: session, resolution: resolution, localizer: localizer)
+            }
+            HStack {
+                Button(action: model.chooseImportFile) {
+                    Text(verbatim: localizer.string(MacrosText.importChooseOther))
+                }
+                .settingsAccessibility(MacrosControl.importChooseOther, localizer)
+                Spacer()
+                Button(action: model.cancelImport) { Text(verbatim: localizer.string(MacrosText.importCancel)) }
+                    .keyboardShortcut(.cancelAction)
+                    .settingsAccessibility(MacrosControl.importCancel, localizer)
+                Button(action: { Task { await model.confirmImport() } }) {
+                    Text(verbatim: localizer.string(MacrosText.importConfirm))
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(model.macroImport?.session == nil)
+                .settingsAccessibility(MacrosControl.importConfirm, localizer)
+            }
+        }
+        .padding(20)
+        .frame(width: 480)
+    }
+
+    private var resolution: Binding<MacroDuplicateResolution> {
+        Binding(
+            get: { model.macroImport?.session?.resolution ?? .keepMine },
+            set: { model.macroImport?.session?.resolution = $0 })
     }
 }
