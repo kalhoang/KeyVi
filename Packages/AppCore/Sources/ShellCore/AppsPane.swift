@@ -31,7 +31,6 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
 
     /// PLT-R408: 5 ms between synthetic events.
     static let slowerPacingMicroseconds = 5_000
-    static let ruleIDPrefix = "user.compat."
 
     /// Rule JSON for `rule-overrides.json` (02-platform.md 5.4 shape, `id` prefixed `user.`), or nil for
     /// `.automatic`, which means "remove this app's compatibility override". `date` is `YYYY-MM-DD`.
@@ -62,19 +61,13 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
     }
 
     /// One compatibility override per app: `user.compat.<bundle>` with characters outside the rule ID alphabet
-    /// replaced (`sha256:` keys become `sha256-`).
-    public static func ruleID(for bundle: BundleKey) -> RuleID {
-        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
-        let cleaned = String(bundle.rawValue.map { allowed.contains($0) ? $0 : "-" })
-        let segments = cleaned.split(separator: ".", omittingEmptySubsequences: true).joined(separator: ".")
-        let candidate = String((ruleIDPrefix + segments).prefix(128))
-        let trimmed = candidate.hasSuffix(".") ? String(candidate.dropLast()) : candidate
-        return RuleID(rawValue: trimmed) ?? RuleID(rawValue: "user.compat.app")!
-    }
+    /// replaced (`sha256:` keys become `sha256-`), the slot the guided test's "this app" result shares
+    /// (`PerAppOverrideSlot.compat`, PLT-R540).
+    public static func ruleID(for bundle: BundleKey) -> RuleID { PerAppOverrideSlot.compat.ruleID(for: bundle) }
 
     /// Reads the choice back from a stored override (the inverse of `overrideRule`).
     init?(overrideRule rule: JSONValue) {
-        guard let id = rule["id"]?.stringValue, id.hasPrefix(Self.ruleIDPrefix),
+        guard let id = rule["id"]?.stringValue, id.hasPrefix(PerAppOverrideSlot.compat.prefix),
             let strategy = rule["action"]?["strategy"]?.stringValue
         else { return nil }
         switch InjectionStrategy(rawValue: strategy) {

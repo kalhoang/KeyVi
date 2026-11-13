@@ -12,16 +12,8 @@ public import SettingsStore
 /// The status line's "paused: no text field detected" action writes one user override for the app with
 /// `requireTextFocus: never` and the strategy the app resolves to today, so nothing else changes (PLT-R540).
 public enum TextFocusOverride {
-    static let ruleIDPrefix = "user.textfocus."
-
-    public static func ruleID(for bundle: BundleKey) -> RuleID {
-        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
-        let cleaned = String(bundle.rawValue.map { allowed.contains($0) ? $0 : "-" })
-        let segments = cleaned.split(separator: ".", omittingEmptySubsequences: true).joined(separator: ".")
-        let candidate = String((ruleIDPrefix + segments).prefix(128))
-        let trimmed = candidate.hasSuffix(".") ? String(candidate.dropLast()) : candidate
-        return RuleID(rawValue: trimmed) ?? RuleID(rawValue: "user.textfocus.app")!
-    }
+    /// `user.textfocus.<bundle>` (`PerAppOverrideSlot.textFocus`, the same algorithm as the Apps pane's slot).
+    public static func ruleID(for bundle: BundleKey) -> RuleID { PerAppOverrideSlot.textFocus.ruleID(for: bundle) }
 
     /// `rule-overrides.json` entry (02-platform.md 5.4, user-suggestion provenance). `date` is `YYYY-MM-DD`.
     public static func rule(for bundle: BundleKey, strategy: InjectionStrategy, date: String) -> JSONValue? {
