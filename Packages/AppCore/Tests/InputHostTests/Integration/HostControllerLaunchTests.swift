@@ -106,6 +106,53 @@ struct HostControllerLifecycleTests {
         #expect(rig.liveHandles.count == 1, "PLT-R302: never two taps")
     }
 
+    /// PLT-R332, W1-F2 single retry timer: a fire whose hop to main runs after the retry was rescheduled is stale;
+    /// it neither retries nor drops the newer timer.
+    @Test func aStaleRetryFireKeepsTheRescheduledTimer_PLT_R332() async {
+        let rig = HostRig()
+        rig.tapFactory.setFailCreation(true)
+        await rig.start()
+        defer { rig.stop() }
+        #expect(rig.lifecyclePhase == .failOpen(.tapUnavailable))
+        rig.scheduler.advance(by: .seconds(1))  // fires; the hop to main is still queued
+        rig.controller.scheduleRetry(after: .seconds(5))
+        rig.settle()
+        #expect(rig.tapFactory.requestedMasks.count == 1, "the stale fire does not retry")
+        #expect(rig.controller.retryTimer != nil, "the newer timer is kept")
+        rig.tapFactory.setFailCreation(false)
+        rig.scheduler.advance(by: .seconds(5))
+        rig.settle()
+        #expect(rig.tapFactory.requestedMasks.count == 2)
+        #expect(rig.lifecyclePhase == .running)
+    }
+
+    /// ADR 0309, PLT-R302: a removed tap thread that has not left its run loop blocks the next tap; creation
+    /// fails open and the backoff retry creates the tap once the old thread is gone.
+    @Test func aTapThreadThatHasNotExitedBlocksTheNextTapUntilTheRetry_PLT_R302() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        rig.exitGate.isHeld = true
+        rig.permissions.set(trusted: false, post: false, listen: false)
+        _ = rig.controller.refreshPermissions()
+        rig.settle()
+        #expect(rig.liveHandles.isEmpty)
+        rig.permissions.set(trusted: true, post: true, listen: true)
+        _ = rig.controller.refreshPermissions()
+        rig.settle()
+        #expect(rig.lifecyclePhase == .failOpen(.tapUnavailable))
+        #expect(rig.tapFactory.handles.count == 1, "no second tap while the first thread may still run")
+        rig.scheduler.advance(by: .seconds(1))
+        rig.settle()
+        #expect(rig.tapFactory.handles.count == 1, "still held: the retry fails open again")
+        rig.exitGate.isHeld = false
+        rig.scheduler.advance(by: .seconds(2))
+        rig.settle()
+        #expect(rig.lifecyclePhase == .running)
+        #expect(rig.tapFactory.handles.count == 2)
+        #expect(rig.liveHandles.count == 1, "PLT-R302: never two taps")
+    }
+
     @Test func postingBrokenRetriesAfterThirtySecondsWithAFreshEchoTracker_PLT_R323() async throws {
         let rig = HostRig()
         await rig.start()

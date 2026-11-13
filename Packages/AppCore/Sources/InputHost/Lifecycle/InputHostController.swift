@@ -133,6 +133,8 @@ public final class InputHostController {
     var workspaceToken: (any ObservationToken)?
     var drainTimer: (any ScheduledTimer)?
     var retryTimer: (any ScheduledTimer)?
+    /// Bumped on every schedule and cancel; a fire whose hop to main carries an older value is stale.
+    var retryGeneration: UInt64 = 0
 
     var lifecycle = HostLifecycle()
     var lifecycleGeneration: UInt64 = 0

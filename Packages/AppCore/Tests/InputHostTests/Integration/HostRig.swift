@@ -97,6 +97,36 @@ enum PipelineHarnessEvents {
     }
 }
 
+/// Lets a test pretend that a removed tap thread has not left its run loop yet (ADR 0309).
+final class TapExitGate: Sendable {
+    private let held = Mutex(false)
+    var isHeld: Bool {
+        get { held.withLock { $0 } }
+        set { held.withLock { $0 = newValue } }
+    }
+}
+
+/// The production tap thread whose `waitUntilExited` answers false while the gate is held.
+final class GatedTapThread: TapControlStarting {
+    let base: any TapControlStarting
+    let gate: TapExitGate
+
+    init(base: any TapControlStarting, gate: TapExitGate) {
+        self.base = base
+        self.gate = gate
+    }
+
+    func start() -> Bool { base.start() }
+    func waitUntilExited(timeout: Duration) -> Bool {
+        let exited = base.waitUntilExited(timeout: timeout)
+        return exited && !gate.isHeld
+    }
+    func setEnabled(_ enabled: Bool) { base.setEnabled(enabled) }
+    var isEnabled: Bool { base.isEnabled }
+    var isRunning: Bool { base.isRunning || gate.isHeld }
+    func stop() { base.stop() }
+}
+
 @MainActor
 final class HostRig {
     static let editorPID: Int32 = 4_242
@@ -118,6 +148,7 @@ final class HostRig {
     let permissions: FakePermissionProbe
     let workspace = FakeWorkspaceEvents()
     let keyValues = InMemoryKeyValueStore()
+    let exitGate = TapExitGate()
     let wallClock = FixedWallClock()
     let metrics = PlatformMetrics()
     let logger = RecordingLogger()
@@ -159,11 +190,16 @@ final class HostRig {
             logger: logger, tapLog: tapLog, capture: capture, utilityQueue: utility)
         controller = InputHostController(
             dependencies: dependencies, settingsStore: store.store, hop: hop,
-            makeTapThread: TapSession.productionThreadMaker(factory: tapFactory), tapClock: MachClock(),
+            makeTapThread: Self.gatedThreadMaker(TapSession.productionThreadMaker(factory: tapFactory), exitGate),
+            tapClock: MachClock(),
             loadBundled: realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources,
             macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false)
         controller.onEvent = { [weak self] in self?.events.append($0) }
         focusEditor()
+    }
+
+    private static func gatedThreadMaker(_ base: @escaping TapThreadMaker, _ gate: TapExitGate) -> TapThreadMaker {
+        { context in GatedTapThread(base: base(context), gate: gate) }
     }
 
     /// The editor's text field has focus (a native, editable AXTextField).

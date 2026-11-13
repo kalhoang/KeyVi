@@ -114,18 +114,23 @@ extension InputHostController {
 
     /// One timer for both retry kinds (tapUnavailable backoff and postingBroken backoff); the lifecycle
     /// guarantees at most one is pending (W1-F2 request). PLT-R803: at least 10 % leeway.
+    /// The timer fires on the scheduler's queue; if the retry was cancelled or rescheduled before the hop to
+    /// main runs, the fire is stale and must not clear (and so cancel) the newer timer.
     func scheduleRetry(after delay: Duration) {
-        retryTimer?.cancel()
+        cancelRetry()
+        let token = retryGeneration
         let hop = self.hop
         retryTimer = dependencies.scheduler.schedule(after: delay, leeway: delay / 10) { [weak self] in
             hop.hop {
-                self?.retryTimer = nil
-                self?.feed(.retryTimerFired)
+                guard let self, self.retryGeneration == token else { return }
+                self.retryTimer = nil
+                self.feed(.retryTimerFired)
             }
         }
     }
 
     func cancelRetry() {
+        retryGeneration &+= 1
         retryTimer?.cancel()
         retryTimer = nil
     }
