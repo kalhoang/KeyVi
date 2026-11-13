@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// "This app misbehaves" panel (PLT-R1205): a non-activating panel, so the problem field keeps keyboard focus
-// while the guided test types into it. The flow logic is ShellCore/InputHost's `MisbehavesFlow`; this file
-// drives `GuidedTestRunner` with the host in pass-through and renders the steps.
+// "This app misbehaves" panel (PLT-R1205). The flow logic is InputHost's `MisbehavesFlow`; this file drives
+// `GuidedTestRunner` with the host in pass-through and renders the steps.
 //
-// Known limitation (PRD-R66): because the panel never becomes key, Tab and Full Keyboard Access cannot reach its
-// buttons; VoiceOver users operate them through the VoiceOver cursor. Making the panel key would take focus
-// from the field under test, which the guided test must type into. Verified by hand (needsManualTestByPa).
+// Keyboard focus (PLT-R1205 step 6, decision Q43): a non-activating panel whose key status follows ShellCore's
+// `MisbehavesPanelFocus`. It becomes key while the user describes the symptom and during the final offers, so Tab
+// and Full Keyboard Access reach its controls (PRD-R67), without activating this app. During the guided test it
+// cannot become key and hands keyboard focus back to the problem field before each candidate, because the runner
+// types into that field. The real focus behaviour is checked by hand (needsManualTestByPa).
 
 import AppKit
 import AppModel
@@ -18,9 +19,23 @@ import InputHost
 import ShellCore
 import SwiftUI
 
+/// Applies the panel's keyboard focus policy with AppKit (PLT-R1205 step 6).
 @MainActor
-final class MisbehavesPanelController: NSWindowController, NSWindowDelegate {
+protocol MisbehavesFocusDriving: AnyObject {
+    func apply(_ focus: MisbehavesPanelFocus, action: MisbehavesFocusAction?)
+}
+
+/// A panel whose key status follows the flow's phase (`MisbehavesPanelFocus.panelCanBecomeKey`).
+final class MisbehavesPanel: NSPanel {
+    var acceptsKey = true
+
+    override var canBecomeKey: Bool { acceptsKey }
+}
+
+@MainActor
+final class MisbehavesPanelController: NSWindowController, NSWindowDelegate, MisbehavesFocusDriving {
     private let model: MisbehavesModel
+    private let panel: MisbehavesPanel
 
     required init?(coder: NSCoder) { nil }
 
@@ -34,26 +49,50 @@ final class MisbehavesPanelController: NSWindowController, NSWindowDelegate {
         model = MisbehavesModel(
             language: language, services: services, fallbackBundle: bundle, report: report,
             openBugReport: openBugReport)
-        let panel = NSPanel(
+        let panel = MisbehavesPanel(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 460),
             styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel], backing: .buffered,
             defer: false)
-        panel.becomesKeyOnlyIfNeeded = true
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.contentViewController = NSHostingController(rootView: MisbehavesView(model: model))
         panel.center()
+        self.panel = panel
         super.init(window: panel)
         panel.delegate = self
         WindowTitles.follow(language, window: panel) { $0.string(DiagnosticsText.misbehavesTitle) }
     }
 
+    /// The model read the focus snapshot of the problem field when it was created; from now on the panel follows
+    /// the focus policy, which takes keyboard focus for the symptom (PLT-R1205 steps 2 and 6).
     func present() {
-        window?.orderFrontRegardless()
+        panel.orderFrontRegardless()
+        model.focusDriver = self
+    }
+
+    func apply(_ focus: MisbehavesPanelFocus, action: MisbehavesFocusAction?) {
+        panel.acceptsKey = focus.panelCanBecomeKey
+        panel.becomesKeyOnlyIfNeeded = focus.panelBecomesKeyOnlyIfNeeded
+        switch action {
+        case .takeFocus?: panel.makeKeyAndOrderFront(nil)
+        case .returnFocusToProblemField?: returnFocusToProblemField()
+        case nil: break
+        }
+    }
+
+    /// A non-activating panel never activates this app, so the app the user was typing in stays active while the
+    /// panel is key. Ordering the key panel out hands keyboard focus back to that app's key window, whose focused
+    /// element is the problem field; ordering it in again, now unable to become key, keeps it on screen. Nothing
+    /// happens while the panel is not key, so a focus change the user made is never undone.
+    private func returnFocusToProblemField() {
+        guard panel.isKeyWindow else { return }
+        panel.orderOut(nil)
+        panel.orderFrontRegardless()
     }
 
     func windowWillClose(_ notification: Notification) {
+        model.focusDriver = nil  // a closing panel takes no focus
         model.stop()
     }
 }
@@ -65,12 +104,27 @@ final class MisbehavesModel: ObservableObject {
     private let baseReport: @MainActor () -> DiagnosticsReport?
     private let fallbackBundle: BundleKey?
     private let continueToBugReport: @MainActor (BundleKey?, DiagnosticsReport.Symptom) -> Void
-    private var task: Task<Void, Never>?
+    /// The typing task (candidates or the removal of an answered candidate's test text). While it runs the focus
+    /// stays in the problem field: a step reached meanwhile (finished, stopped) moves the focus only once the
+    /// runner has returned, so no test key can reach the panel (PLT-R1205 step 6).
+    private var task: Task<Void, Never>? {
+        didSet { syncFocus() }
+    }
     /// Stop signal of the current guided test: set by Stop, by closing the panel and by an app switch; its focus
     /// check runs on the typing thread before every step (PLT-R1205 step 3, PLT-R387).
     private var stopSignal: ProbeStopSignal?
     private var activationObserver: NSObjectProtocol?
-    @Published var flow: MisbehavesFlow?
+    /// Bound to the host context read while the problem field had the focus (PLT-R1202): the panel takes the
+    /// focus in steps 2 and 5, and a live read would then describe this app's own panel.
+    private var reportBuilder: DiagnosticsServices.ReportBuilder?
+    private var focusTracker = MisbehavesFocusTracker()
+    /// Applies PLT-R1205 step 6; set by the panel once it is on screen, cleared when it closes.
+    weak var focusDriver: (any MisbehavesFocusDriving)? {
+        didSet { syncFocus() }
+    }
+    @Published var flow: MisbehavesFlow? {
+        didSet { syncFocus() }
+    }
     @Published private(set) var status: DiagnosticsText?
     /// Shown in the preview and used by "Copy report" and "Open GitHub issue" unchanged (PLT-R1204).
     @Published private(set) var report: DiagnosticsReport?
@@ -87,6 +141,7 @@ final class MisbehavesModel: ObservableObject {
         continueToBugReport = openBugReport
         baseReport = report
         flow = services.currentFocus.map { MisbehavesFlow(target: MisbehavesTarget(focus: $0())) }
+        reportBuilder = services.reportSession?()
         refreshReport()
     }
 
@@ -111,13 +166,13 @@ final class MisbehavesModel: ObservableObject {
     }
 
     /// Re-reads the live focus, so a user who clicked into the problem field after opening the panel sees that
-    /// field as the target.
+    /// field as the target. While the panel holds the focus the live focus is this app, and the target stays.
     func requestGuidedTest() {
         if let focus = services.currentFocus?(), !isThisApp(focus.app) {
             var next = MisbehavesFlow(target: MisbehavesTarget(focus: focus))
             next.symptom = flow?.symptom
             flow = next
-            refreshReport()
+            rebindReport()
         }
         flow?.requestGuidedTest()
     }
@@ -133,6 +188,7 @@ final class MisbehavesModel: ObservableObject {
         next.requestGuidedTest()
         next.confirmFieldIsEmptyAndSafe()
         flow = next
+        rebindReport()
         guard let guided = services.guidedTest, let pid = next.target.app?.pid else { return }
         stopSignal = ProbeStopSignal(
             stillFocused: GuidedTestFocus.check(ax: guided.focusAX, pid: pid, field: next.target.fieldHandle))
@@ -140,9 +196,10 @@ final class MisbehavesModel: ObservableObject {
         runPending()
     }
 
+    /// The removal task is set before the flow moves on, so a final step reached by this answer takes the focus
+    /// only after the test text is gone; the task body runs once this method returns.
     func answer(seesCanary: Bool) {
-        guard let candidate = flow?.questionCandidate, let stop = stopSignal else { return }
-        flow?.answer(seesCanary: seesCanary)
+        guard task == nil, let candidate = flow?.questionCandidate, let stop = stopSignal else { return }
         task = Task { [weak self] in
             await self?.withPassThrough { runner, field in
                 _ = await runner.removeTestText(candidate, field: field, stop: stop)
@@ -150,6 +207,23 @@ final class MisbehavesModel: ObservableObject {
             self?.task = nil
             self?.runPending()
         }
+        flow?.answer(seesCanary: seesCanary)
+        returnFocusToProblemField()
+    }
+
+    /// PLT-R1205 step 6: the focus policy follows the flow's step once the panel is on screen.
+    private func syncFocus() {
+        guard let focusDriver, task == nil else { return }
+        let action = focusTracker.update(step: flow?.step)
+        guard let phase = focusTracker.phase else { return }
+        focusDriver.apply(phase, action: action)
+    }
+
+    /// PLT-R1205 step 6: before each candidate and before the test text is removed, the runner's field holds the
+    /// keyboard focus.
+    private func returnFocusToProblemField() {
+        guard let focusDriver, let phase = focusTracker.phase else { return }
+        focusDriver.apply(phase, action: MisbehavesPanelFocus.actionBeforeEachCandidate)
     }
 
     /// Stops typing at once: the runner reads the signal before every event. The task clears itself when the
@@ -193,6 +267,7 @@ final class MisbehavesModel: ObservableObject {
         guard task == nil, let stop = stopSignal, flow?.pendingCandidate != nil else { return }
         task = Task { [weak self] in
             while let self, !Task.isCancelled, !stop.isStopped, let pending = self.flow?.pendingCandidate {
+                self.returnFocusToProblemField()
                 guard self.focusUnchanged() else {
                     self.focusMoved()
                     break
@@ -272,7 +347,17 @@ final class MisbehavesModel: ObservableObject {
             reproducesInPracticeField: nil)
     }
 
+    /// The target changed while the problem field had the focus: the report describes the new target.
+    private func rebindReport() {
+        if let session = services.reportSession { reportBuilder = session() }
+        refreshReport()
+    }
+
     private func refreshReport() {
+        if let build = reportBuilder {
+            report = build(draft)
+            return
+        }
         if let build = services.reportForDraft {
             report = build(draft)
             return
