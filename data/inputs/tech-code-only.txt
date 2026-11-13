@@ -23,6 +23,7 @@ cat
 cd
 chgrp
 chmod
+chown
 clang
 clear
 cmake
@@ -215,6 +216,7 @@ alh
 ax
 cvf
 czf
+ef
 fsl
 fssl
 ivh

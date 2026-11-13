@@ -383,9 +383,9 @@ uhd
 wifi6
 
 # Paper sizes, chemistry, health and finance abbreviations
-a3
+# a3 and a5 are not listed: in VNI they type the everyday syllables ạ (the particle) and ả (cô ả), which
+# rule L11 would restore everywhere (review of docs/decisions/0202). a4 types ã, not a word.
 a4
-a5
 atm
 b5
 cccd
@@ -405,20 +405,19 @@ qrcode
 rna
 sms
 
-# Moved from tech-code-only.txt (docs/decisions/0202): commands and flags whose Telex typing gives no common
-# Vietnamese syllable (aux -> ãu, auxf -> àu, ef -> è, tox -> tõ, chown -> chơn; diff, otool and passwd escape to
-# dif, otol, paswd). As code-only words they are not English (spec 8.1), so rules L4 and L7 kept the Vietnamese
-# or escaped form outside the code context (ENG-R871 failures); here they stay as typed everywhere.
+# Moved from tech-code-only.txt (docs/decisions/0202): commands and flags whose Telex typing gives no
+# Vietnamese syllable (aux -> ãu, auxf -> àu, tox -> tõ; diff, otool and passwd escape to dif, otol, paswd). As
+# code-only words they are not English (spec 8.1), so rules L4 and L7 kept the Vietnamese or escaped form outside
+# the code context (ENG-R871 failures); here they stay as typed everywhere. chown (chơn: Chơn Thành, chơn chất)
+# and ef (è: è cổ) stay code-only because their displays are Vietnamese; they are ENG-T11 entries instead.
 aux
 auxf
-chown
 diff
-ef
 otool
 passwd
 tox
 
-# Roman numerals whose Telex typing composes a syllable no one types alone (IX -> Ĩ, XIX -> XĨ). Legal texts and
-# dates use them constantly (Chương IX, thế kỷ XIX); found by the ENG-T20 prose run (docs/decisions/0202).
-ix
+# Roman numerals whose Telex typing composes a syllable no one types alone (XIX -> XĨ). Legal texts and dates
+# use them (thế kỷ XIX); found by the ENG-T20 prose run (docs/decisions/0202). IX is not listed: it types ĩ (ầm
+# ĩ), an everyday syllable, so IX in Telex is an open issue for Pa instead.
 xix

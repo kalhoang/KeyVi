@@ -6,9 +6,7 @@
 6g
 7z
 8k
-a3
 a4
-a5
 aab
 aac
 acer
@@ -41,7 +39,6 @@ canva
 cccd
 centos
 chatgpt
-chown
 chromeos
 cli
 cloudflare
@@ -75,7 +72,6 @@ dpi
 dropbox
 dvi
 dylib
-ef
 epub
 exe
 exynos
@@ -151,7 +147,6 @@ ipv4
 ipv6
 iso
 itunes
-ix
 javascript
 jira
 jpeg

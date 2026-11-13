@@ -25,10 +25,12 @@ struct ProseCorpusGateTests {
         ProseCorpusCheck.typists.flatMap { order in [ToneStyle.traditional, .modern].map { (method, order, $0) } }
     }
 
-    /// Differences that the data cannot remove (docs/decisions/0202, open issue for Pa): rule L10 restores
-    /// a collision typed right after an English word of the source, which makes the run English (ENG-R823):
-    /// `trên Internet. Cơ chế` commits `Cow` for the Telex typists, whose keys for `Cơ` are `Cow`.
-    static let knownEngineDifferences: Set<String> = ["Cơ -> Cow"]
+    /// Differences that the data cannot remove (docs/decisions/0202, open issues for Pa), Telex only:
+    /// - rule L10 restores a collision typed right after an English word of the source, which makes the run
+    ///   English (ENG-R823): `trên Internet. Cơ chế` commits `Cow` for the typists whose keys for `Cơ` are `Cow`;
+    /// - the Roman numeral `IX` composes `Ĩ`, the everyday syllable of `ầm ĩ`, which is attested so that Telex
+    ///   users can type it (ENG-R821 never damages Vietnamese by default); no other key order types `ĩ`.
+    static let knownEngineDifferences: Set<String> = ["Cơ -> Cow", "IX -> Ĩ"]
 
     @Test("ENG-R873: three typists, both methods, both tone styles", arguments: cases)
     func typist(_ method: CorpusMethod, _ order: CorpusOrder, _ style: ToneStyle) throws {
@@ -52,7 +54,7 @@ struct ProseCorpusGateTests {
         #expect(unknown.isEmpty, "\(method) \(order) not attributable to an en row:\n\(RealData.listing(unknown))")
         let known = unexplained.filter { Self.knownEngineDifferences.contains(Self.key($0)) }
         if method == .telex {
-            withKnownIssue("ENG-R873: L10 after an English word of the source (docs/decisions/0202)") {
+            withKnownIssue("ENG-R873: L10 after an English word, IX types ĩ (docs/decisions/0202)") {
                 #expect(known.isEmpty, "\(RealData.listing(known))")
             }
         } else {

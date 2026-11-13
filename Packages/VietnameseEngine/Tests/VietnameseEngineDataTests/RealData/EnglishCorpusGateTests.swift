@@ -50,7 +50,7 @@ struct EnglishCorpusGateTests {
         #expect(report.changedShareInVietnameseContext <= 0.03)
         // 100 % of the changed words are rows decided vi (proposed, reviewed or unreviewed, ENG-R821) whose
         // display is an attested Tier A syllable (ENG-R820). The ENG-T11 exceptions of the same corpus are
-        // the only other changes: rules L4 and L6 decide them before the context or the table is read, so
+        // the only other changes: rules L4, L6 and L7 decide them before the context or the table is read, so
         // each must change exactly as in the English run (docs/decisions/0202).
         let englishRun = Dictionary(
             report.changedInEnglishRun.map { ($0.word, $0.committed) }, uniquingKeysWith: { first, _ in first })
@@ -64,6 +64,6 @@ struct EnglishCorpusGateTests {
         let candidates = Set(report.unexplainedVietnameseChanges(resources: resources).map(\.word))
         let unexplained = rest.filter { candidates.contains($0.word) }
         #expect(unexplained.isEmpty, "not an ambiguity candidate:\n\(RealData.listing(unexplained))")
-        print("[ENG-R872] \(rest.count) vi rows, \(documented.count) known exceptions (rules L4, L6)")
+        print("[ENG-R872] \(rest.count) vi rows, \(documented.count) known exceptions (rules L4, L6, L7)")
     }
 }

@@ -19,6 +19,7 @@ cat
 cd
 chgrp
 chmod
+chown
 clang
 clear
 cmake
@@ -40,6 +41,7 @@ dnf
 docker
 du
 echo
+ef
 egrep
 emacs
 env
