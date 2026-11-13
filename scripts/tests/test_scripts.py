@@ -530,9 +530,9 @@ class BenchCompareTests(TempDirTestCase):
                                       "calibration": {"name": "ref", "nanoseconds": calibration},
                                       "metrics": metrics})
 
-    def compare(self, baseline, *results):
+    def compare(self, baseline, *results, extra=()):
         args = ["bash", str(SCRIPTS / "bench-compare.sh"), "--baseline", str(baseline),
-                "--output", str(self.tmp / "median.json")]
+                "--output", str(self.tmp / "median.json"), *extra]
         for item in results:
             args += ["--results", str(item)]
         return run(*args)
@@ -563,6 +563,39 @@ class BenchCompareTests(TempDirTestCase):
         runs = [self.result("a.json", 1000, 1000, 5000), self.result("b.json", 1000, 9000, 5000),
                 self.result("c.json", 1000, 1050, 5000)]
         self.assertEqual(self.compare(baseline, *runs).returncode, 0)
+
+    def pipeline_run(self, name, t1_p99, calibration=1000):
+        # PLT-R820 pipeline benchmark: platform metrics are not calibrated, T1.p99 has the 100 us gate.
+        return self.write_json(name, {"formatVersion": 1, "benchmark": "pipeline",
+                                      "calibration": {"name": "reference-loop", "nanoseconds": calibration},
+                                      "metrics": {"T1.p99": {"value": t1_p99, "unit": "ns", "budget": 100000,
+                                                             "calibrated": False}}})
+
+    def test_summary_names_the_benchmark(self):
+        baseline = self.pipeline_run("baseline.json", 40000)
+        result = self.compare(baseline, *[self.pipeline_run(f"r{i}.json", 41000) for i in range(3)])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("### Pipeline benchmark (median of 3 runs)", result.stdout)
+        self.assertNotIn("Engine benchmark", result.stdout)
+
+    def test_pipeline_gate_at_25_percent_plt_r822(self):
+        baseline = self.pipeline_run("baseline.json", 40000)
+        args = ["--threshold", "25"]
+        ok = self.compare(baseline, *[self.pipeline_run(f"a{i}.json", 49000) for i in range(5)], extra=args)
+        self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)  # +22.5 %, uncalibrated
+        slow = self.compare(baseline, *[self.pipeline_run(f"b{i}.json", 51000) for i in range(5)], extra=args)
+        self.assertEqual(slow.returncode, 1)
+        self.assertIn("REGRESSION", slow.stdout)
+
+    def test_without_a_baseline_the_budget_still_gates(self):
+        missing = self.tmp / "no-baseline.json"
+        within = self.compare(missing, self.pipeline_run("w.json", 120000), extra=["--threshold", "25"])
+        self.assertEqual(within.returncode, 0, within.stdout + within.stderr)
+        self.assertIn("baseline not found", within.stderr)
+        over = self.compare(missing, self.pipeline_run("o.json", 130000), extra=["--threshold", "25"])
+        self.assertEqual(over.returncode, 1)
+        self.assertIn("OVER BUDGET", over.stdout)
+        self.assertIn("exceeds the scaled budget", over.stderr)
 
     def test_update_baseline(self):
         baseline = self.tmp / "Benchmarks" / "baseline.json"
@@ -781,6 +814,19 @@ class WorkflowCoverageTests(unittest.TestCase):
             'python3 -I "$ENGINE/Scripts/coverage.py" "$(swift test --package-path "$ENGINE" --show-codecov-path)"',
             'scripts/coverage.sh --package "$APPCORE" --min 80',
             'swift run --package-path "$APPCORE" compat-lint')
+
+    def test_benchmarks_run_on_a_fixed_runner_class_and_keep_their_json(self):
+        body = self.job("ci.yml", "benchmarks")
+        self.assertIn("runs-on: xcode-27", body)
+        self.assert_runs(
+            "ci.yml", "benchmarks",
+            '"$ENGINE/Scripts/benchmark.sh" "$PWD/.build/bench/engine.json"',
+            'PIPELINE_BENCH_OUTPUT="$PWD/.build/bench/pipeline/run-$run.json"',
+            'swift test --package-path "$APPCORE" -c release --filter PipelineBenchmark',
+            "--threshold 25",
+            "--baseline Packages/AppCore/Benchmarks/pipeline-baseline.json",
+            "path: .build/bench/")
+        self.assertNotIn("bench-compare.sh --output", self.job("ci.yml", "macos-tests"))
 
     def test_nightly_fuzzes_each_method_for_thirty_minutes(self):
         body = self.job("nightly.yml", "fuzz")

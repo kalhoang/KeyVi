@@ -334,6 +334,11 @@ expect 0 "bench skips without product" "$S/bench-compare.sh" --package "$T/nopkg
 expect 1 "bench --require fails without product" "$S/bench-compare.sh" --package "$T/nopkg" --require --output "$T/bench.json"
 expect 0 "fuzz skips without package" "$S/fuzz.sh" --package "$T/nopkg" --out "$T/fuzz"
 expect 1 "fuzz --require fails without package" "$S/fuzz.sh" --package "$T/nopkg" --require --out "$T/fuzz"
+mkdir -p "$T/benchpkg"
+printf '// fake package\n' >"$T/benchpkg/Package.swift"
+expect 2 "bench --run needs a formatVersion 1 product" "$S/bench-compare.sh" --package "$T/benchpkg" --output "$T/bench.json"
+contains "points the engine at its own gate" "Packages/VietnameseEngine/Scripts/benchmark.sh"
+expect 2 "bench needs a baseline without a package" "$S/bench-compare.sh" --results "$T/bench.json" --output "$T/b2.json"
 
 echo "== fuzz.sh builds engine-fuzz for libFuzzer and pins the method (ADR 0502)"
 F="$T/fz"
