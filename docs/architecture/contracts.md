@@ -9918,7 +9918,9 @@ public struct SystemPaneTable: Sendable {
 
 public import AppModel
 public import CompatRules
+public import Diagnostics
 public import Foundation
+public import SettingsStore
 
 /// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table.
 public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
@@ -9951,6 +9953,13 @@ public enum StatusPresentation {
         case .paused(let reason):
             return pausedIcon(reason, mode: mode)
         }
+    }
+
+    /// The `capturing` input of `iconState`: true while a trace session runs, including the gaps in which secure
+    /// input or a secure field stops the recording (`isRecording` is false then and stays the tap's record gate).
+    /// PLT-R905: "changed menu-bar icon for the whole duration".
+    public static func isCapturing(_ capture: CaptureController, now: Date) -> Bool {
+        capture.remaining(now: now) != nil
     }
 
     private static func pausedIcon(_ reason: PauseReason, mode: TypingMode) -> StatusIconState {
@@ -10003,6 +10012,9 @@ public struct StatusLine: Sendable, Hashable {
         case reopenApp
         /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use the saved settings, report).
         case safeModeChoices
+        /// Settings not being saved (PLT-R1006, PLT-R1007): the Settings window, whose notice explains it and
+        /// offers the fix.
+        case openSettings
     }
 
     public var key: String  // in the `Status` table
@@ -10029,20 +10041,23 @@ public struct StatusLine: Sendable, Hashable {
 
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
     /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
-    /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// (PLT-R1009) > settings not being saved (`storeNotices`, PLT-R1006, PLT-R1007) > tap re-enabled notice >
+    /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
     /// While a host-state line hides the safe-mode line, the report item still opens the safe-mode choices
     /// (`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)`).
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
     /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
         _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
-        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false
+        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false,
+        storeNotices: [StoreNotice] = []
     ) -> StatusLine? {
         let context = StatusLineBuilder(
             appName: appName, holderHintKey: holderHintKey, frontmostApp: frontmostApp,
             onboardingCompleted: onboardingCompleted)
         if let line = context.hostLine(for: state) { return line }
         if safeMode { return context.safeModeLine() }
+        if let line = storeNotices.lazy.compactMap(context.unsavedSettingsLine).first { return line }
         if tapRecentlyReenabled { return context.tapReenabledLine() }
         return context.knownLimitationLine()
     }
@@ -10066,6 +10081,30 @@ public struct FrontmostAppStatus: Sendable, Hashable {
         self.matrixStatus = matrixStatus
         self.limitationNote = limitationNote
         self.learnMore = learnMore
+    }
+
+    /// PRD-R43 "App in Known limitation list", PRD-R35: the matrix row that stands for the whole app, after the
+    /// 120-day rule (QA-R19); its note in the interface language; "Tìm hiểu thêm" opens the site's compatibility
+    /// page, which lists the app with its note (the matrix has no per-entry link).
+    public init(
+        bundle: BundleKey, displayName: String, matrix: MatrixDocument?, today: Date, language: InterfaceLanguage,
+        siteURL: URL
+    ) {
+        let entry = matrix?.appEntry(for: bundle)
+        self.init(
+            bundle: bundle, displayName: displayName,
+            matrixStatus: entry.map { MatrixStatusResolver.displayStatus($0, today: today) },
+            limitationNote: entry?.note.map { language == .vietnamese ? $0.vi : $0.en },
+            learnMore: entry == nil ? nil : CompatibilityPage.url(siteURL: siteURL, language: language))
+    }
+}
+
+/// The site's compatibility matrix page; the paths are those of site/lib/routes.mjs (`compat`), the host comes
+/// from the brand.
+public enum CompatibilityPage {
+    public static func url(siteURL: URL, language: InterfaceLanguage) -> URL {
+        let path = language == .vietnamese ? "tuong-thich/" : "en/compatibility/"
+        return URL(string: path, relativeTo: siteURL)?.absoluteURL ?? siteURL
     }
 }
 
@@ -10351,14 +10390,16 @@ public enum ReportAssembler {
         now: Date
     ) -> DiagnosticsReport {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
-        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
+        // PLT-R541, ADR 0312: for the focused app the override that decided, so `rule.id` and
+        // `rule.userOverride` agree when the app has several; else the app's newest stored override.
         let decisionOverride = host.focus.app?.bundle == reportedApp ? host.decision?.userOverride : nil
+        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
         return DiagnosticsReport(
             generatedAt: now, app: identity, system: system, hostState: host.state.code,
             keyboard: ReportSections.keyboard(host), permissions: ReportSections.permissions(host),
             tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
             focus: ReportSections.focus(host),
-            rule: ReportSections.rule(host.decision, userOverride: storedOverride ?? decisionOverride),
+            rule: ReportSections.rule(host.decision, userOverride: decisionOverride ?? storedOverride),
             settings: ReportSections.settings(settings),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
@@ -10659,12 +10700,24 @@ public enum DiagnosticsNavigation {
         case sheet(BugReportAction)
     }
 
-    /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
-    /// the misbehaves flow for that app (the user focused the problem field first). In safe mode both open the
-    /// safe-mode choices, whose "Report a Problem..." button continues to the report (PLT-R1009).
+    /// Where a report request comes from.
+    public enum Origin: Sendable, Hashable {
+        /// The status menu: PRD-R11 items 4 and 6 and the status line's "Báo lỗi...".
+        case menu
+        /// The Settings window: an Apps pane row or detail sheet (PRD-R37), About & Support, a store notice.
+        case settings
+    }
+
+    /// From the menu, "Báo lỗi..." opens the bug report sheet with the last frontmost app and "Báo lỗi với ứng
+    /// dụng này..." opens the misbehaves flow for that app (the user focused the problem field first, PLT-R1205
+    /// step 1; its panel continues to the sheet). In safe mode both open the safe-mode choices, whose "Report a
+    /// Problem..." button continues to the report (PLT-R1009). From Settings the sheet opens pre-filled with the
+    /// app (PRD-R37); Settings shows the safe-mode choices in its own notice.
     public static func destination(
-        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false
+        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false,
+        origin: Origin = .menu
     ) -> DiagnosticsDestination {
+        guard origin == .menu else { return .bugReport(preselected: bundle ?? lastFrontmost) }
         if safeMode { return .safeModeChoices }
         if let bundle { return .misbehaves(bundle) }
         return .bugReport(preselected: lastFrontmost)
@@ -11090,22 +11143,7 @@ public struct AppDetail: Sendable, Hashable {
     }
 }
 
-/// What choosing a compatibility mode does to `rule-overrides.json` (PLT-R540).
-public enum CompatibilityModeCommand: Sendable, Hashable {
-    case add(StoredRuleOverride)
-    case remove(RuleID)
-}
-
 extension CompatibilityModeChoice {
-    /// `.automatic` removes this app's override; the others write `user.compat.<bundle>` dated today.
-    public func command(for bundle: BundleKey, at date: Date, timeZone: TimeZone = .current) -> CompatibilityModeCommand
-    {
-        guard let rule = overrideRule(for: bundle, date: Self.day(date, timeZone: timeZone)) else {
-            return .remove(Self.ruleID(for: bundle))
-        }
-        return .add(StoredRuleOverride(createdAt: date, rule: rule))
-    }
-
     /// `YYYY-MM-DD` in the user's calendar day.
     static func day(_ date: Date, timeZone: TimeZone) -> String {
         var calendar = Calendar(identifier: .gregorian)
@@ -11337,6 +11375,8 @@ final class AppEnvironment {
     /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
     var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
+    /// The bundled compatibility matrix, read the first time the menu opens (PRD-R43 known-limitation line).
+    lazy var matrix: MatrixDocument? = SettingsResources.bundledMatrix()
     #if INTEGRATION_HOOKS
     /// The self-hosted runner's test build only: answers the integration hooks (ADR 0502).
     let integrationHooks: IntegrationHooksApp
@@ -11437,6 +11477,7 @@ final class AppEnvironment {
 
     /// Every settings change: the host (engines, rules, focus), the language, the shell and the updater.
     func settingsChanged(_ state: SettingsState) {
+        reportNewNotices(state.notices)
         settings = state
         safeMode = state.safeMode  // PLT-R1009: the store decides; leaving safe mode reloads the files
         host.apply(settings: state)
@@ -11445,6 +11486,19 @@ final class AppEnvironment {
         settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
         applyUpdaterSettings()
         updateIcon()
+    }
+
+    /// PLT-R1006, PLT-R1007, PLT-R1202: each new store notice is logged (contracts.md `LogEvent.SettingsEvent`)
+    /// and recorded as a health event, so the log and the report show the episode even if Settings never opens.
+    /// Compared with `settings.notices`, which still holds the previous state.
+    func reportNewNotices(_ notices: [StoreNotice]) {
+        let now = Date()
+        for notice in StoreNoticeReporting.added(previous: settings.notices, current: notices) {
+            if let event = StoreNoticeReporting.logEvent(notice) {
+                diagnostics.logger.log(.settings(event), level: StoreNoticeReporting.logLevel(notice))
+            }
+            if let health = StoreNoticeReporting.healthEvent(notice, at: now) { diagnostics.health.record(health) }
+        }
     }
 
     /// D19-D21 from the store reach Sparkle through `apply`, which never reports back (setting the controller's
@@ -11521,6 +11575,7 @@ extension AppEnvironment: LaunchSteps {
 
     func loadSettings() async -> SettingsState {
         let state = await settingsStore.load()
+        reportNewNotices(state.notices)
         settings = state
         language.select(state.effective.interfaceLanguage)
         return state
@@ -11810,6 +11865,7 @@ import AppKit
 import AppModel
 import InputHost
 import Observation
+import SettingsStore
 import ShellCore
 import SwiftUI
 
@@ -11817,14 +11873,21 @@ import SwiftUI
 protocol OnboardingActions: AnyObject {
     func openPermissionPane()  // deep link from SystemPanes.json (PLT-R704)
     func openInputMonitoringPane()  // PLT-R702, only when macOS demands Input Monitoring
-    func resetPermission()  // PLT-R740, after confirmation
+    func resetPermission() -> PermissionReset.Outcome  // PLT-R740, after confirmation
     func relaunch()  // PLT-R712
     func setTypingMethod(_ method: TypingMethod)
-    func openHotkeyRecorder()  // PRD-R40 screen 4 "Đổi phím chuyển"
+    /// PRD-R40 screen 4 "Đổi phím chuyển", recorded inline: the tap's hotkeys are suspended while the recorder
+    /// captures keys (ADR 0305), the recorded binding is saved as the toggle key (D11, PRD-R6 explicit).
+    func setHotkeyRecorderActive(_ active: Bool)
+    func saveToggleHotkey(_ binding: HotkeyBinding)
+    func currentLayout() -> LayoutTable?
     func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
     func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
-    func importMacros(from url: URL)
+    /// PRD-R40 screen 6, PRD-R32: the user's macros, for the import preview's duplicates.
+    func currentMacros() async -> [StoredMacro]
+    /// The merged list after the user confirmed the preview.
+    func saveImportedMacros(_ macros: [StoredMacro])
     func complete()
     /// The window closed; `completed == false` means before the last screen (PRD-R41: the status line then offers
     /// to resume at screen 2, and fast permission polling stops).
@@ -11845,11 +11908,11 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     init(
         flow: OnboardingFlow, language: InterfaceLanguageModel, actions: any OnboardingActions,
         inputs: @escaping @MainActor () -> OnboardingInputs, appName: String, panes: SystemPaneNames,
-        method: TypingMethod = .telex, mode: TypingMode = .vietnamese
+        method: TypingMethod = .telex, mode: TypingMode = .vietnamese, toggleHotkey: HotkeyBinding = .defaultToggle
     ) {
         model = OnboardingModel(
             flow: flow, language: language, actions: actions, inputs: inputs, appName: appName, panes: panes,
-            method: method, mode: mode)
+            method: method, mode: mode, toggleHotkey: toggleHotkey)
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.contentSize), styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
@@ -11877,6 +11940,11 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         model.windowClosed()
+    }
+
+    /// ADR 0305: another window or app took the keyboard, so the recorder stops taking key events.
+    func windowDidResignKey(_ notification: Notification) {
+        model.interruptHotkeyRecording()
     }
 
     /// PRD-R63: the window title follows a language change; SwiftUI content re-renders by itself.
@@ -11921,8 +11989,9 @@ typealias SettingsPane = SettingsPaneKind
 /// What the Settings window asks the composition root to do; implemented by AppEnvironment.
 @MainActor
 protocol SettingsActions: AnyObject {
-    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37).
-    func reportProblem(for bundle: BundleKey?)
+    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37): the bug report
+    /// sheet, pre-filled with `bundle` when given.
+    func reportProblemFromSettings(for bundle: BundleKey?)
     /// "Chẩn đoán..." (D26 entry, W2-C's diagnostics window).
     func openDiagnostics()
     /// PRD-R40: onboarding can be reopened from About & Support.
@@ -11986,9 +12055,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         present()
     }
 
-    /// Onboarding's "Đổi phím chuyển" (PRD-R40 screen 4, `OnboardingActions.openHotkeyRecorder()`): opens the
-    /// General pane with the toggle recorder already recording and focused. `role: .restoreLastWord` opens the
-    /// Typing pane's restore recorder instead.
+    /// Opens the General pane with the toggle recorder already recording and focused. `role: .restoreLastWord`
+    /// opens the Typing pane's restore recorder instead. Onboarding screen 4 records inline (PRD-R40).
     func showHotkeyRecorder(role: HotkeyRole = .toggleMode) {
         model.select(role == .toggleMode ? .general : .typing)
         if role == .restoreLastWord { model.setAdvancedExpanded(true, for: .typing) }
@@ -12110,13 +12178,14 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     /// "Báo lỗi..." (PRD-R11 item 6, PRD-R47): the sheet with the Apps pane's apps and the last frontmost app
     /// chosen: `preselected` (the focused app when the menu item was chosen), or the most recent other app when that
     /// is this app or unknown. The host context is read now, before the sheet takes the focus.
-    func openBugReport(preselected: BundleKey?) {
+    /// `symptom` is the one chosen in the misbehaves panel when the sheet continues from it (PRD-R49).
+    func openBugReport(preselected: BundleKey?, symptom: DiagnosticsReport.Symptom = .other) {
         let apps = services.recentApps()
         let choice = RecentReportApps.preselection(
             focused: preselected, recent: apps, excluding: services.resolvedBrand.bundleIdentifier,
             name: services.appName)
         let draft = BugReportDraft(
-            app: choice?.bundle, appName: choice?.name, symptom: .other, userDescription: "",
+            app: choice?.bundle, appName: choice?.name, symptom: symptom, userDescription: "",
             reproducesInPracticeField: nil)
         let build = reportBuilder()
         bugReport?.close()
@@ -12145,7 +12214,8 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     func startMisbehavesFlow(for bundle: BundleKey?) {
         let controller = MisbehavesPanelController(
             language: language, services: services, bundle: bundle,
-            report: { [weak self] in self?.model.currentReport() })
+            report: { [weak self] in self?.model.currentReport() },
+            openBugReport: { [weak self] app, symptom in self?.openBugReport(preselected: app, symptom: symptom) })
         misbehaves = controller
         controller.present()
     }
