@@ -146,6 +146,17 @@ struct BundleInspectorTests {
         #expect(inspector.infoDictionary(of: missing) == nil)
     }
 
+    /// Outside any bundle the folder itself is the boundary: a plain folder is searched, a link is not followed.
+    @Test func aFolderOutsideABundleIsItsOwnBoundary() throws {
+        let sample = try TemporaryBundle()
+        defer { sample.remove() }
+        let link = sample.root.appendingPathComponent("Linked")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: sample.outside)
+        let inspector = FileSystemBundleInspector()
+        #expect(inspector.containsFile(named: "libjvm.dylib", in: sample.outside, maxDepth: 4))
+        #expect(!inspector.containsFile(named: "libjvm.dylib", in: link, maxDepth: 4))
+    }
+
     /// The bundle boundary is the folder that holds `Contents`; without one the folder itself is the boundary.
     @Test func bundleBoundary() {
         let jbr = URL(fileURLWithPath: "/Applications/Sample.app/Contents/jbr")
