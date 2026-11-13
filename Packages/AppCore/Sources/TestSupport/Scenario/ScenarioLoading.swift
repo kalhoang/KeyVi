@@ -6,6 +6,7 @@
 // checked by `ScenarioValidator`.
 
 public import AppModel
+internal import Diagnostics
 public import Foundation
 
 public struct ScenarioLoadError: Error, Sendable, Hashable, CustomStringConvertible {

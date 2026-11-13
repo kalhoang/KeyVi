@@ -6,17 +6,18 @@
 // with `response-<sequence>.json` and never touches the request. The harness polls for the answer, then removes
 // both files. Sequence numbers start at a random base per channel, and a response file already present for a new
 // number is removed before the request is written, so an answer left behind by a killed harness process is never
-// taken for the current run's (PLT-R821). Owner-only permissions (0700 directory, 0600 files) keep other users out. Runner only in practice;
-// tests run it over InMemoryFileSystem with ManualClock.
+// taken for the current run's (PLT-R821). Owner-only permissions (0700 directory, 0600 files) keep other users
+// out. Runner only in practice; tests run it over InMemoryFileSystem with ManualClock.
 
 public import AppModel
+public import Diagnostics
 public import Foundation
 public import RealtimeSupport
 internal import Synchronization
 
 public final class FileDropHookChannel: AppHookClient, Sendable {
     /// Directory name below the app's Application Support folder (`~/Library/Application Support/<folder>/`).
-    public static let directoryName = "IntegrationHooks"
+    public static let directoryName = IntegrationHookFiles.directoryName
     public static let defaultTimeoutNanoseconds: UInt64 = 10_000_000_000
     /// The latency probe types for several seconds per profile.
     public static let latencyProbeTimeoutNanoseconds: UInt64 = 120_000_000_000
@@ -67,11 +68,11 @@ public final class FileDropHookChannel: AppHookClient, Sendable {
     }
 
     public func requestURL(_ sequence: UInt64) -> URL {
-        directory.appendingPathComponent("request-" + String(sequence) + ".json")
+        directory.appendingPathComponent(IntegrationHookFiles.requestName(sequence))
     }
 
     public func responseURL(_ sequence: UInt64) -> URL {
-        directory.appendingPathComponent("response-" + String(sequence) + ".json")
+        directory.appendingPathComponent(IntegrationHookFiles.responseName(sequence))
     }
 
     public func send(_ command: AppHookCommand) async throws -> AppHookResponse {

@@ -8,6 +8,7 @@
 // the 13.6 duration. The live monitor (proc_pid_rusage, CGEventSource flags, hooks) runs on the runner.
 
 internal import Foundation
+public import Diagnostics
 public import RealtimeSupport
 
 /// Telex words with unambiguous output (no tone-placement variants such as "hoà"/"hòa"), every one a valid

@@ -5,6 +5,8 @@
 // first n entries of `keys`, so a hook can land in the middle of a word. Execution splits the key script at those
 // points (ScenarioExecution.swift).
 
+public import Diagnostics
+
 public struct ScenarioHookStep: Sendable, Hashable {
     public var hook: AppTestHook
     /// Key-script entries typed before the hook fires; nil fires in setup order.
