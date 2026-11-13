@@ -23,8 +23,8 @@ produces. The live run on the self-hosted runner is described step by step in
 Every scenario runs on factory defaults, its `method` (Telex or VNI) and, when a profile in `profiles/` lists it,
 that profile: settings (the `settings` object of settings.json), macros and user rule overrides
 (`profiles/profile.schema.json`). Before a scenario whose configuration differs from the previous one, the harness
-quits the test build, writes its four settings files (backed up once, restored after the run, onboarding state
-kept), starts it again and waits until it is ready. `--no-configure` turns this off.
+quits the test build, writes its four settings files (backed up once, restored after the run even when it stops on
+an error, onboarding state kept), starts it again and waits until it is ready. `--no-configure` turns this off.
 
 | Profile | Scenarios | What it sets |
 |---|---|---|

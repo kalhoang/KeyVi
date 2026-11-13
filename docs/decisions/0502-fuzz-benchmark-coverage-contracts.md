@@ -178,7 +178,9 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
 - Before a scenario whose configuration differs from the previous one, the harness quits the test build (its quit
   flushes its settings), backs up its four settings files once per run, writes the new ones (owner-only, the
   original `onboarding` object kept), starts it and waits until its hooks report a state other than `starting`
-  (or 2 s without hooks). After the run it restores the backup. `--no-configure` turns this off.
+  (or 2 s without hooks; after the first timeout the harness stops asking, so a build without hooks waits 2 s per
+  switch, not 12 s). After the run it restores the backup, also when the run stops on an error or the factory
+  configuration fails. `--no-configure` turns this off.
 
 ## Integration hooks (W2-E2)
 
@@ -189,7 +191,11 @@ them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Re
 - Directory: `~/Library/Application Support/<storage folder>/IntegrationHooks/` (0700). The harness writes
   `request-<n>.json` atomically (0600); the app watches the directory with a vnode `DispatchSource` (no polling),
   answers with `response-<n>.json` written atomically (temporary file and rename, 0600) and never deletes either
-  file; the harness polls every 50 ms (10 s timeout, 120 s for `latencyProbe`) and removes both.
+  file; the harness polls every 50 ms (10 s timeout, 120 s for `latencyProbe`) and removes both. Sequence numbers
+  start at a random multiple of 2^20 per harness process, the harness removes a `response-<n>.json` already present
+  before it writes `request-<n>.json`, and it clears leftover `request-*` and `response-*` files when a run starts,
+  so an answer written after a killed run is never taken for the current one (PLT-R821). The app must answer by
+  the number in the request, not assume numbers start at 1.
 - Request: `{"formatVersion": 1, "sequence": <n>, "command": "<name>", "profile": "normal"}` (`profile` only for
   `latencyProbe`). Commands: `state`; `resetMetrics` (zero every histogram and counter of `PlatformMetrics`);
   `tapTimeout` (disable the event tap as macOS does after a callback timeout, then run the normal recovery, which

@@ -67,7 +67,8 @@ These steps change system settings, so they are Pa's to do on the runner machine
    1. applies the scenario's configuration when it differs from the previous one: quits the test build, writes its
       four settings files (factory defaults, the scenario's method, its profile from `compat/scenarios/profiles/`),
       starts it and waits until it is ready; the original files are backed up once in
-      `<output>/app-settings-backup/` and restored after the run;
+      `<output>/app-settings-backup/` and restored after the run, also when the run stops on an error (only a
+      killed harness process skips the restore, see section 8);
    2. presses TestHost's Reset fields button, then runs the setup steps, types the keys at the scenario's timing
       profile, reads the field back through AX and asks the app for its state;
    3. after the last scenario, scans the app's files and unified log for the canary tokens (section 4).
@@ -176,7 +177,7 @@ baseline in a pull request labelled `perf-baseline` with the reason (QA-R15), as
 | `no accessibility element with identifier Secure Keyboard Entry` | The runner user's language is not English, or the terminal renamed the item |
 | `input source not enabled: <id>` | Enable the input source for the runner user (section 2 step 4) |
 | Privacy finding | A real leak (PLT-R901): file a P0 against the module that wrote the file or log line; never weaken the scan |
-| Settings of the test build look wrong after a crashed run | Copy the files from `<output>/app-settings-backup/` back while the app is not running |
+| Settings of the test build look wrong after a killed run (job timeout, `kill`) | The harness restores them on every error it sees, but a killed process cannot: copy the files from `<output>/app-settings-backup/` back while the app is not running, before the next run backs up the wrong ones |
 
 ## 9. What stays with Pa
 
