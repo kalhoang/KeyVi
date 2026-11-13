@@ -182,7 +182,7 @@ extension AppEnvironment: LaunchSteps {
             },
             reportFailure: { [weak self] _ in
                 guard let self else { return }
-                CompositionAlerts.moveFailed(appName: brand.displayName, strings: strings)
+                CompositionAlerts.moveFailed(appName: brand.displayName, localizer: language.localizer)
             }, relocator: relocator, bundleURL: bundleURL)
         return await gate.resolve()
         #endif

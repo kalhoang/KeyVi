@@ -32,10 +32,6 @@ extension AppEnvironment {
     /// PLT-R395, PLT-R721: checks run when the menu opens, at most this often.
     static let menuRefreshInterval: TimeInterval = 0.25
 
-    var strings: CompositionStrings {
-        CompositionStrings(language: language.localizer.language, appBundle: .main)
-    }
-
     // MARK: Host events
 
     func hostEvent(_ event: HostEvent) {
@@ -80,8 +76,7 @@ extension AppEnvironment {
 
     private func warnAboutConflicts(_ conflicts: [ConflictingInput]) {
         let choice = CompositionAlerts.conflicts(
-            conflicts, appName: brand.displayName, keyboardPane: paneNames().keyboard, localizer: language.localizer,
-            strings: strings)
+            conflicts, appName: brand.displayName, keyboardPane: paneNames().keyboard, localizer: language.localizer)
         switch choice {
         case .help: openSupport(.conflicts)
         case .openKeyboard: openPane(.keyboard)
@@ -252,7 +247,7 @@ extension AppEnvironment: StatusMenuActions {
 
     func presentSafeMode() {
         let store = settingsStore
-        switch CompositionAlerts.safeMode(appName: brand.displayName, strings: strings) {
+        switch CompositionAlerts.safeMode(appName: brand.displayName, localizer: language.localizer) {
         case .reset:
             Task {
                 await store.reset(.all(includeMacros: false))  // PRD-R26: macros only with their own checkbox
