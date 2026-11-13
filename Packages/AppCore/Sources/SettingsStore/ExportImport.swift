@@ -26,7 +26,18 @@ public struct ExportOptions: Sendable, Hashable {
         self.includeAppModes = includeAppModes
     }
 
-    public static func fileName(slug: String, date: Date) -> String { unimplemented() }
+    /// `<slug>-settings-YYYYMMDD.json`, dated in the user's time zone.
+    public static func fileName(slug: String, date: Date) -> String {
+        fileName(slug: slug, date: date, timeZone: .current)
+    }
+
+    static func fileName(slug: String, date: Date, timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        let day = String(format: "%04d%02d%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+        return "\(slug)-settings-\(day).json"
+    }
 }
 
 public struct ImportPreview: Sendable, Hashable {
@@ -45,14 +56,157 @@ public struct ImportChoices: Sendable, Hashable {
     public var applySettings: Bool
     public var applyAppModes: Bool
     public var applyRuleOverrides: Bool
+    /// Off = the macros in the file are ignored (the preview still lists them).
+    public var applyMacros: Bool
     public var macroDuplicates: MacroDuplicateResolution
     public init(
         applySettings: Bool = true, applyAppModes: Bool = true, applyRuleOverrides: Bool = true,
-        macroDuplicates: MacroDuplicateResolution = .keepMine
+        applyMacros: Bool = true, macroDuplicates: MacroDuplicateResolution = .keepMine
     ) {
         self.applySettings = applySettings
         self.applyAppModes = applyAppModes
         self.applyRuleOverrides = applyRuleOverrides
+        self.applyMacros = applyMacros
         self.macroDuplicates = macroDuplicates
+    }
+}
+
+/// Why an import file was refused (PLT-R912). Each case is a reason the import sheet can explain (PRD-R43).
+public enum SettingsImportError: Error, Sendable, Hashable {
+    case tooLarge(limit: Int)
+    case tooDeeplyNested(limit: Int)
+    case notJSON
+    case notAnObject
+    /// Valid JSON, but not this app's settings export (`kind` is not `settings-export`).
+    case notASettingsExport
+    case invalidSchemaVersion
+    /// A section has the wrong JSON type (`settings` and `appModes` must be objects, the others arrays).
+    case invalidSection(String)
+    /// An older export this build cannot migrate.
+    case migrationFailed(fromVersion: Int)
+    /// Crash-loop safe mode touches no files (PLT-R1009); leave safe mode first.
+    case unavailableInSafeMode
+}
+
+enum SettingsExportFormat {
+    static let kind = "settings-export"
+    static let schemaVersion = 1
+    static let maxImportBytes = 5 * 1024 * 1024
+    static let headerKeys: Set<String> = ["kind", "schemaVersion", "writtenBy", "exportedAt"]
+    static let settings = "settings", appModes = "appModes", ruleOverrides = "ruleOverrides", macros = "macros"
+    static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros]
+}
+
+/// The store's documents as an import is previewed against them.
+struct ImportBaseline: Sendable {
+    var user: UserSettings
+    var macros: [StoredMacro]
+}
+
+/// Validates an untrusted export (5 MB cap, bounded nesting, schema checks, no evaluation of content) and builds
+/// the preview (PLT-R912, PLT-R1010). Older exports are migrated section by section; content of a newer schema
+/// is read for known fields and everything else is listed in `skippedFields`.
+struct SettingsImporter {
+    let migrations: MigrationChain
+
+    func preview(_ data: Data, baseline: ImportBaseline) throws(SettingsImportError) -> ImportPreview {
+        let root = try parseRoot(data)
+        guard let version = root[EnvelopeKey.schemaVersion]?.intValue, version >= 0 else {
+            throw .invalidSchemaVersion
+        }
+        var skipped = root.keys.filter {
+            !SettingsExportFormat.headerKeys.contains($0) && !SettingsExportFormat.sectionKeys.contains($0)
+        }.sorted()
+        var content: [String: JSONValue] = [:]
+        var preview = ImportPreview(
+            schemaVersion: version, changedSettingKeys: [], appEntries: 0, ruleOverrides: 0, macros: nil,
+            skippedFields: [], content: .null)
+
+        if let section = try objectSection(root, SettingsExportFormat.settings) {
+            let object = try migrated(section, file: .settings, from: version)
+            let user = SettingsCodec.decode(object)
+            skipped += SettingsCodec.skippedPaths(in: object).map { "settings." + $0 }
+            preview.changedSettingKeys = Self.changedKeys(from: baseline.user, to: user)
+            content[SettingsExportFormat.settings] = .object(SettingsCodec.encode(user, over: [:]))
+        }
+        if let section = try objectSection(root, SettingsExportFormat.appModes) {
+            let object = try migrated(section, file: .appModes, from: version)
+            let document = AppModesCodec.decode(object)
+            skipped += AppModesCodec.skippedPaths(in: object).map { "appModes." + $0 }
+            preview.appEntries = document.apps.count
+            content[SettingsExportFormat.appModes] = .object(AppModesCodec.encode(document, over: [:]))
+        }
+        if let items = try arraySection(root, SettingsExportFormat.ruleOverrides) {
+            let object = try migrated(["overrides": .array(items)], file: .ruleOverrides, from: version)
+            let overrides = RuleOverridesCodec.decode(object)
+            skipped += RuleOverridesCodec.skippedPaths(in: object).map { "ruleOverrides." + $0 }
+            preview.ruleOverrides = overrides.count
+            content[SettingsExportFormat.ruleOverrides] = .array(RuleOverridesCodec.encodeList(overrides, over: []))
+        }
+        if let items = try arraySection(root, SettingsExportFormat.macros) {
+            let object = try migrated(["macros": .array(items)], file: .macros, from: version)
+            let rows = MacroJSONParser.rows(fromItems: arrayItems(object["macros"]))
+            preview.macros = MacroImporter.preview(rows, existing: baseline.macros)
+        }
+        preview.skippedFields = skipped
+        preview.content = .object(content)
+        return preview
+    }
+
+    private func parseRoot(_ data: Data) throws(SettingsImportError) -> [String: JSONValue] {
+        guard data.count <= SettingsExportFormat.maxImportBytes else {
+            throw .tooLarge(limit: SettingsExportFormat.maxImportBytes)
+        }
+        let root: [String: JSONValue]
+        do {
+            root = try JSONSupport.parseObject(data)
+        } catch {
+            switch error {
+            case .tooDeeplyNested(let limit): throw .tooDeeplyNested(limit: limit)
+            case .notAnObject: throw .notAnObject
+            case .empty, .invalidJSON: throw .notJSON
+            }
+        }
+        guard root["kind"]?.stringValue == SettingsExportFormat.kind else { throw .notASettingsExport }
+        return root
+    }
+
+    private func objectSection(_ root: [String: JSONValue], _ key: String) throws(SettingsImportError)
+        -> [String: JSONValue]?
+    {
+        guard let value = root[key] else { return nil }
+        guard case .object(let object) = value else { throw .invalidSection(key) }
+        return object
+    }
+
+    private func arraySection(_ root: [String: JSONValue], _ key: String) throws(SettingsImportError) -> [JSONValue]? {
+        guard let value = root[key] else { return nil }
+        guard case .array(let items) = value else { throw .invalidSection(key) }
+        return items
+    }
+
+    /// A section of an older export goes through the same migrations as the file it belongs to.
+    private func migrated(_ payload: [String: JSONValue], file: SettingsFile, from version: Int)
+        throws(SettingsImportError) -> [String: JSONValue]
+    {
+        guard version < file.currentSchemaVersion else { return payload }
+        var object = payload
+        object[EnvelopeKey.schemaVersion] = .number(Double(version))
+        do {
+            object = try migrations.migrate(object, file: file, from: version, to: file.currentSchemaVersion)
+        } catch {
+            throw .migrationFailed(fromVersion: version)
+        }
+        for key in EnvelopeKey.all { object.removeValue(forKey: key) }
+        return object
+    }
+
+    /// Setting keys whose value would change; onboarding is machine state and never imported.
+    static func changedKeys(from current: UserSettings, to imported: UserSettings) -> [String] {
+        var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
+        if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
+        if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
+        if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
+        return keys
     }
 }

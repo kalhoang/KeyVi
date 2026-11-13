@@ -39,8 +39,17 @@ public struct UserSettings: Sendable, Hashable {
 
     public init() {}
 
-    /// Names of keys that are explicitly set, for the content-free diagnostics report.
-    public var explicitlySetKeys: [String] { unimplemented() }
+    /// Names of keys that are explicitly set, for the content-free diagnostics report: the JSON names of set
+    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `optedInRules` when
+    /// non-empty. Names only, never values (PLT-R901, PRD-R6).
+    public var explicitlySetKeys: [String] {
+        let settings = SettingFields.all.filter { $0.isSet(self) }.map(\.key)
+        let lists = [
+            (SettingListKey.keepAsTyped, keepAsTyped.isEmpty), (SettingListKey.keepVietnamese, keepVietnamese.isEmpty),
+            (SettingListKey.optedInRules, optedInRules.isEmpty),
+        ]
+        return settings + lists.filter { !$0.1 }.map(\.0)
+    }
 }
 
 /// D17 (open at login) is deliberately absent: `SMAppService.mainApp` status is the source of truth.
