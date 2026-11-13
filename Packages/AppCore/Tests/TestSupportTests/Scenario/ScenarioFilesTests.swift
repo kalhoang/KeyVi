@@ -100,7 +100,8 @@ private func scenarioFiles() throws -> [URL] {
     /// last longer than one poll interval with leeway, or the app never saw a release and reports nil (W3-A).
     @Test func secureInputEpisodesOutlastOnePoll() throws {
         let interval = SecureInputMonitor.pollInterval + SecureInputMonitor.pollLeeway
-        let minimum = Int(interval.components.seconds) * 1_000 + Int(interval.components.attoseconds / 1_000_000_000_000_000)
+        let minimum =
+            Int(interval.components.seconds) * 1_000 + Int(interval.components.attoseconds / 1_000_000_000_000_000)
         var checked = 0
         for scenario in try ScenarioRunner.load(directory: scenariosDirectory)
         where scenario.expect.firstKeyAfterReleaseComposed != nil {

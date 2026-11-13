@@ -1791,7 +1791,9 @@ public final class Log2Histogram: Sendable {
     public func snapshot() -> HistogramSnapshot {
         HistogramSnapshot(
             buckets: buckets.snapshot(),
-            subBuckets: subBuckets.map { SubBucketSnapshot(segments: LatencySubBuckets.segments, counts: $0.snapshot()) }
+            subBuckets: subBuckets.map {
+                SubBucketSnapshot(segments: LatencySubBuckets.segments, counts: $0.snapshot())
+            }
         )
     }
 }

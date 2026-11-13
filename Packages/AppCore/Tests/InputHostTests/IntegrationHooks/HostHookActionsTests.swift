@@ -46,7 +46,8 @@ struct HostHookActionsTests {
             }
             let event = RawKeyEvent(
                 kind: .keyDown, keyCode: code, flags: flags, autorepeat: false,
-                keyboardType: PipelineFixtures.keyboardType, unicode: .empty, userData: 0, receivedAt: MachClock().now())
+                keyboardType: PipelineFixtures.keyboardType, unicode: .empty, userData: 0, receivedAt: MachClock().now()
+            )
             rig.field.apply(PipelineHarnessEvents.record(event), layout: rig.layout)
         }
     }

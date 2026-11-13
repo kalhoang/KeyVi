@@ -10,8 +10,8 @@ import Foundation
 import Injection
 import RealtimeSupport
 import TestSupport
-import VietnameseEngine
 import Testing
+import VietnameseEngine
 
 @testable import InputHost
 

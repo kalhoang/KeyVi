@@ -274,7 +274,10 @@ private struct Rig {
         rig.files.add(base + 7, .failure(.unreadable(errno: EIO)))
         await rig.server.scan()
         let codes = try (1...7).map { try rig.files.response(base + UInt64($0))?.errorCode }
-        #expect(codes == [.unknownCommand, .unsupported, .unsupported, .unsupported, .unsupported, .unsupported, .unsupported])
+        #expect(
+            codes == [
+                .unknownCommand, .unsupported, .unsupported, .unsupported, .unsupported, .unsupported, .unsupported,
+            ])
         let mismatched = try #require(try rig.files.response(base + 3))
         #expect(mismatched.sequence == base + 3, "the answer carries the file's number")
         #expect(rig.actions.calls.isEmpty)
