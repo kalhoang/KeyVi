@@ -35,7 +35,11 @@ only=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) [ $# -ge 2 ] || usage; out="$2"; shift 2 ;;
-    --only) [ $# -ge 2 ] && valid_only "$2" || usage; only="$2"; shift 2 ;;
+    --only)
+      if [ $# -lt 2 ] || ! valid_only "$2"; then usage; fi
+      only="$2"
+      shift 2
+      ;;
     *) usage ;;
   esac
 done
