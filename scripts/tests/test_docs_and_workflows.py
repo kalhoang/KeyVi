@@ -136,6 +136,19 @@ class NoticesTests(unittest.TestCase):
         self.assertEqual(missing, [], "list these bundled data files in THIRD_PARTY_NOTICES.md section 3")
 
 
+    def test_acknowledgements_claim_matches_the_app(self):
+        # ENG-R811: the SCOWL notice must reach users. Until App code shows NOTICES.txt the notices may not say so.
+        sources = (REPO / "App" / "Sources").rglob("*.swift")
+        shown = any("bundledNotices()" in path.read_text(encoding="utf-8") for path in sources)
+        data = " ".join(self.section(3).split())
+        self.assertNotIn("which the app shows in its acknowledgements", data)
+        if shown:
+            self.assertNotIn("not yet implemented", data, "App code shows NOTICES.txt now; update section 3")
+        else:
+            self.assertIn("VERIFY", data)
+            self.assertIn("not yet implemented", data)
+            self.assertIn("ships only as a `VietnameseEngineData` resource", data)
+
 class WorkflowCoverageTests(unittest.TestCase):
     """The CI gates the engine, data and platform tracks rely on stay in the workflows (QA-R2, QA-R5, QA-R8,
     QA-R14, ENG-R810, ENG-R1201, PLT-R822; docs/decisions/0506-ci-coverage-after-the-engine-merge.md)."""
