@@ -150,7 +150,10 @@ The run folders stay under `/Volumes/Data/tart/runs/` on Pa's Mac.
 ## 7. Integration suite in `{{app-slug}}-dev`
 
 `scripts/vm/integration-dev.sh` runs the QA-R11 TestHost suite in a throwaway clone of `{{app-slug}}-dev` (SIP
-disabled, so `scripts/vm/grant-tcc.sh` grants TCC). How it works, the result of the first attempt and the manual
+disabled, so `scripts/vm/grant-tcc.sh` grants TCC). The guest half enables the input sources the scenarios select
+(`scripts/vm/guest/enable-input-sources.swift`, in the guest only) and builds with `scripts/run-integration.sh build`
+and `INTEGRATION_CODE_SIGN_IDENTITY=-` (ad hoc, hardened runtime off), so the VM and the runner share one build
+step. How it works, the result of the first attempt and the manual
 grant for an image with SIP enabled: [integration-suite.md](integration-suite.md) section 10. The runner plan:
 [self-hosted-runner.md](self-hosted-runner.md) section 8.
 
@@ -177,3 +180,5 @@ grant for an image with SIP enabled: [integration-suite.md](integration-suite.md
 | `tart exec failed` | The image has no tart guest agent (vanilla images): use `lab.sh ssh` |
 | x86_64 slice: `mapped file has no Team ID and is not a platform binary` | An ad-hoc signed build with the hardened runtime: build with `ENABLE_HARDENED_RUNTIME=NO` (the default of the smoke build) or sign with a Team ID |
 | A VM stays `running` after a killed script | `lab.sh down <vm>`; it falls back to `tart stop` and then kills `tart run` |
+| `is the Tart Guest Agent running?` right after boot | The guest agent starts in the user session after SSH: `integration-dev.sh` waits up to `VM_AGENT_TIMEOUT` (180 s) for it |
+| `ssh` and `tart exec` hang after a long run | The 6 GB guest is swapping (it was Spotlight indexing the checkout until the guest script turned indexing off): `tart stop <vm>` (with `TART_HOME` set) still works |
