@@ -14,8 +14,6 @@ import SwiftUI
 
 @MainActor
 final class TypingTraceCoordinator {
-    static let durations = [60, 120, 180]  // seconds, PLT-R905 default and maximum
-
     private let language: InterfaceLanguageModel
     private let services: TypingTraceServices
     private let appName: String
@@ -29,27 +27,23 @@ final class TypingTraceCoordinator {
         self.appName = appName
     }
 
-    /// Explicit action only, after the confirmation (PLT-R905).
+    /// Explicit action only, after the confirmation (PLT-R905). The message states the duration chosen in the
+    /// picker and follows every change of it, and the trace records exactly that duration.
     func confirmAndStart(over window: NSWindow?) {
         if case .recording = session?.state { return }
         let localizer = language.localizer
-        let picker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 160, height: 26), pullsDown: false)
-        for seconds in Self.durations {
-            picker.addItem(withTitle: localizer.format(DiagnosticsText.traceSeconds, seconds))
-        }
-        picker.setAccessibilityLabel(localizer.string(DiagnosticsControl.traceDuration.labelKey))
-        picker.setAccessibilityHelp(localizer.string(DiagnosticsControl.traceDuration.hintKey))
         let alert = NSAlert()
+        let choice = TraceDurationChoice(
+            confirmation: TypingTraceConfirmation(appName: appName), localizer: localizer, alert: alert)
         alert.messageText = localizer.string(DiagnosticsText.traceConfirmTitle)
-        alert.informativeText = localizer.format(
-            DiagnosticsText.traceConfirmMessage, appName, Self.durations[0])
-        alert.accessoryView = picker
+        alert.informativeText = choice.confirmation.message(localizer)
+        alert.accessoryView = choice.picker
         let startButton = alert.addButton(withTitle: localizer.string(DiagnosticsText.traceStart))
         startButton.setAccessibilityHelp(localizer.string(DiagnosticsControl.traceStart.hintKey))
         alert.addButton(withTitle: localizer.string(CommonText.cancel))
             .setAccessibilityHelp(localizer.string(CommonText.cancelHint))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        record(seconds: Self.durations[max(0, picker.indexOfSelectedItem)])
+        record(seconds: choice.chosenSeconds())
     }
 
     private func record(seconds: Int) {
@@ -117,6 +111,44 @@ final class TypingTraceCoordinator {
         case .unknownSession: .traceUnknownSession
         case .storage: .traceStorage
         }
+    }
+}
+
+/// The duration picker of the trace confirmation: keeps `TypingTraceConfirmation` in step with the selection
+/// and rewrites the alert's message, so the confirmation never states a duration other than the chosen one.
+@MainActor
+private final class TraceDurationChoice: NSObject {
+    let picker: NSPopUpButton
+    private(set) var confirmation: TypingTraceConfirmation
+    private let localizer: Localizer
+    private weak var alert: NSAlert?
+
+    init(confirmation: TypingTraceConfirmation, localizer: Localizer, alert: NSAlert) {
+        self.confirmation = confirmation
+        self.localizer = localizer
+        self.alert = alert
+        picker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 160, height: 26), pullsDown: false)
+        picker.addItems(withTitles: confirmation.durationTitles(localizer))
+        picker.selectItem(at: confirmation.selectedIndex)
+        picker.setAccessibilityLabel(localizer.string(DiagnosticsControl.traceDuration.labelKey))
+        picker.setAccessibilityHelp(localizer.string(DiagnosticsControl.traceDuration.hintKey))
+        super.init()
+        picker.target = self
+        picker.action = #selector(pickerChanged(_:))
+    }
+
+    @objc func pickerChanged(_ sender: NSPopUpButton) {
+        confirmation.select(index: sender.indexOfSelectedItem)
+        let message = confirmation.message(localizer)
+        guard let alert, alert.informativeText != message else { return }
+        alert.informativeText = message
+        alert.layout()
+    }
+
+    /// The duration on screen when the user confirms.
+    func chosenSeconds() -> Int {
+        confirmation.select(index: picker.indexOfSelectedItem)
+        return confirmation.selectedSeconds
     }
 }
 
