@@ -57,8 +57,10 @@ struct ScenarioSchedule: Sendable, Hashable {
             }
         }
         self.setup = setup
-        self.deferred = deferred.enumerated().sorted { ($0.element.afterKeys, $0.offset) < ($1.element.afterKeys, $1.offset) }
-            .map(\.element)
+        self.deferred = deferred.enumerated().sorted {
+            ($0.element.afterKeys, $0.offset) < ($1.element.afterKeys, $1.offset)
+        }
+        .map(\.element)
     }
 
     /// The key script cut at the deferred hooks: (keys to type, step to perform after them, nil for the tail).

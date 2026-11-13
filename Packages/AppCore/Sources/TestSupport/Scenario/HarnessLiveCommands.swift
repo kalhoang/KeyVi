@@ -76,7 +76,8 @@ extension Harness {
         let targets = targets
         do {
             let session = try await openSession(live, targets: targets)
-            let evidence = scenarios.contains { PrivacyCanary.isCanaryScenario($0.id) }
+            let evidence =
+                scenarios.contains { PrivacyCanary.isCanaryScenario($0.id) }
                 ? try live.privacyEvidence(targets: targets, library: session.library) : nil
             let services = try scenarioServices(live, targets: targets, hooks: session.hooks)
             var results: [ScenarioResult] = []

@@ -81,7 +81,9 @@ public struct ProcessMetricSource: PlatformMetricSource {
             }
         }
         if names.contains("C2.cpuPercent") {
-            results["C2.cpuPercent"] = await Result { try await self.cpuPercent { try await typing(durations.typingSeconds) } }
+            results["C2.cpuPercent"] = await Result {
+                try await self.cpuPercent { try await typing(durations.typingSeconds) }
+            }
         }
         for metric in metrics where results[metric.name] == nil {
             results[metric.name] = .failure(PlatformMetricUnavailable(reason: "not a process metric"))

@@ -103,7 +103,9 @@ extension Harness {
                 processIdentifier: pid, phase: options.phase, allowedHosts: egressHosts,
                 samples: options.minutes * 60 / options.intervalSeconds,
                 intervalNanoseconds: UInt64(options.intervalSeconds) * 1_000_000_000)
-            try write(try Self.json(report), to: options.output ?? ".build/integration/egress-" + options.phase.rawValue + ".json")
+            try write(
+                try Self.json(report),
+                to: options.output ?? ".build/integration/egress-" + options.phase.rawValue + ".json")
             for connection in report.connections where !connection.allowed {
                 environment.console.emitError(
                     "not allowed: " + connection.endpoint.address + ":" + String(connection.endpoint.port))
@@ -127,7 +129,8 @@ extension Harness {
         do {
             _ = try await channel.accepted(.checkForUpdates)
         } catch {
-            environment.console.emitError("forced update check not sent (" + String(describing: error) + "); click Check for Updates now")
+            environment.console.emitError(
+                "forced update check not sent (" + String(describing: error) + "); click Check for Updates now")
         }
     }
 }

@@ -78,7 +78,9 @@ struct LiveSystemActions: SystemActions {
 
     /// Presses TestHost's "Reset fields" button through AX when TestHost runs (a fresh launch has empty fields).
     func resetTestHostFields(in bundle: BundleKey) async throws {
-        guard NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first != nil else { return }
+        guard NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first != nil else {
+            return
+        }
         let button = try AX.element(TestHostControls.resetFields, in: bundle)
         let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
         guard result == .success else { throw LiveError.axFailure("press", result.rawValue) }

@@ -15,7 +15,9 @@ import Testing
 private func document(_ values: [String: Double], placeholder: Bool? = nil) -> BenchmarkDocument {
     BenchmarkDocument(
         formatVersion: 1, benchmark: "platform", runs: 1, calibration: .init(name: "c", nanoseconds: 1),
-        metrics: values.mapValues { .init(value: $0, unit: "u", budget: nil, calibrated: false, placeholder: placeholder) })
+        metrics: values.mapValues {
+            .init(value: $0, unit: "u", budget: nil, calibrated: false, placeholder: placeholder)
+        })
 }
 
 private func gate(_ name: String, _ value: Double) -> PlatformMetric {
@@ -33,17 +35,20 @@ private func gate(_ name: String, _ value: Double) -> PlatformMetric {
         #expect(Set(baseline.metrics.keys) == Set(PlatformGates.all.map(\.name)))
         for metric in PlatformGates.all {
             let stored = try #require(baseline.metrics[metric.name])
-            #expect(stored.budget == metric.gate && stored.value == metric.gate && stored.unit == metric.unit, "\(metric.name)")
+            #expect(
+                stored.budget == metric.gate && stored.value == metric.gate && stored.unit == metric.unit,
+                "\(metric.name)")
             #expect(stored.calibrated == false && stored.placeholder == true, "\(metric.name)")
         }
     }
 
     @Test func gateTableMatchesTheSpec() {
         let gates = Dictionary(uniqueKeysWithValues: PlatformGates.all.map { ($0.name, $0.gate) })
-        #expect(gates == [
-            "T2.p99": 3, "T3.p99": 15, "T4.p99": 10, "T5.flushes": 0, "T6.p95": 60, "C1.cpuPercent": 0.3,
-            "C2.cpuPercent": 3, "M1.footprintMB": 50, "M2.growthMBPerHour": 5,
-        ])
+        #expect(
+            gates == [
+                "T2.p99": 3, "T3.p99": 15, "T4.p99": 10, "T5.flushes": 0, "T6.p95": 60, "C1.cpuPercent": 0.3,
+                "C2.cpuPercent": 3, "M1.footprintMB": 50, "M2.growthMBPerHour": 5,
+            ])
         #expect(PlatformGates.metric(named: "M2.growthMBPerHour") == nil)  // soak measures M2, bench does not
         #expect(PlatformGates.soakGrowth.source == .soak)
     }
@@ -58,17 +63,21 @@ private func gate(_ name: String, _ value: Double) -> PlatformMetric {
         #expect(verdicts.map(\.outcome) == [.ok, .regression, .overGate, .ok, .noBaseline, .ok])
         #expect(verdicts.map(\.failed) == [false, true, true, false, false, false])
         // A zero baseline has no relative change; one flush fails through its zero gate.
-        #expect(RegressionGate.evaluate(document(["d": 1]), gates: [gate("d", 0)], baseline: baseline).first?.outcome == .overGate)
+        #expect(
+            RegressionGate.evaluate(document(["d": 1]), gates: [gate("d", 0)], baseline: baseline).first?.outcome
+                == .overGate)
         #expect(RegressionGate.evaluate(result, gates: [gate("missing", 1)], baseline: nil).isEmpty)
     }
 
     @Test func describesPlaceholdersAndOutcomes() {
         let verdicts = RegressionGate.evaluate(
-            document(["a": 2, "b": 6]), gates: [gate("a", 3), gate("b", 5)], baseline: document(["a": 3], placeholder: true))
+            document(["a": 2, "b": 6]), gates: [gate("a", 3), gate("b", 5)],
+            baseline: document(["a": 3], placeholder: true))
         #expect(verdicts[0].baselineIsPlaceholder)
         #expect(RegressionGate.describe(verdicts[0]) == "a 2.000, gate 3.000, baseline 3.000 (placeholder): ok")
         #expect(RegressionGate.describe(verdicts[1]) == "b 6.000, gate 5.000, no baseline: OVER GATE")
-        let regression = RegressionGate.evaluate(document(["a": 2]), gates: [gate("a", 3)], baseline: document(["a": 1]))
+        let regression = RegressionGate.evaluate(
+            document(["a": 2]), gates: [gate("a", 3)], baseline: document(["a": 1]))
         #expect(RegressionGate.describe(regression[0]).hasSuffix("REGRESSION (more than 25 % above the baseline)"))
     }
 }
@@ -108,8 +117,11 @@ private func gate(_ name: String, _ value: Double) -> PlatformMetric {
         state.metrics = metrics
         let probe = LatencyProbeResult(
             ranAt: Date(timeIntervalSince1970: 0),
-            results: [.init(profile: .normal, decideToPostedP50Microseconds: 1, decideToPostedP99Microseconds: 2,
-                            endToEndDeltaP50Microseconds: 3, endToEndDeltaP99Microseconds: 4_500, samples: 9)])
+            results: [
+                .init(
+                    profile: .normal, decideToPostedP50Microseconds: 1, decideToPostedP99Microseconds: 2,
+                    endToEndDeltaP50Microseconds: 3, endToEndDeltaP99Microseconds: 4_500, samples: 9)
+            ])
         let hooks = FakeHookClient(state: state, latency: probe)
         let workloads = Recorder<Int>()
         let source = AppMetricSource(
@@ -138,7 +150,9 @@ private func gate(_ name: String, _ value: Double) -> PlatformMetric {
         let failing = AppMetricSource(
             hooks: FakeHookClient { _ in throw AppHookError.timeout(command: "x") }, workload: {},
             processSampling: ScriptedMetricSource(values: [:]))
-        let results = await failing.measure([PlatformGates.metric(named: "T2.p99")!, PlatformGates.metric(named: "T4.p99")!])
+        let results = await failing.measure([
+            PlatformGates.metric(named: "T2.p99")!, PlatformGates.metric(named: "T4.p99")!,
+        ])
         #expect(results.values.allSatisfy { if case .failure = $0 { true } else { false } })
         let noNormal = AppMetricSource(
             hooks: FakeHookClient(state: snapshot(), latency: LatencyProbeResult(ranAt: Date(), results: [])),
@@ -221,7 +235,8 @@ private func gate(_ name: String, _ value: Double) -> PlatformMetric {
             keystrokes: 1, chunks: 1, failures: [], samples: [], growthMegabytesPerHour: 1.5, stuckModifierFlags: 0,
             passed: true)
         let document = try #require(summary.metricsDocument())
-        #expect(document.metrics["M2.growthMBPerHour"]?.value == 1.5 && document.metrics["M2.growthMBPerHour"]?.budget == 5)
+        #expect(
+            document.metrics["M2.growthMBPerHour"]?.value == 1.5 && document.metrics["M2.growthMBPerHour"]?.budget == 5)
         var unmeasured = summary
         unmeasured.growthMegabytesPerHour = nil
         #expect(unmeasured.metricsDocument() == nil)

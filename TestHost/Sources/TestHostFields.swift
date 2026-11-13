@@ -31,7 +31,6 @@ enum TestHostField: String, CaseIterable {
 /// TestHost scenario, TestHostControls.resetFields).
 let resetFieldsIdentifier = "testhost.resetFields"
 
-
 @MainActor
 final class TestHostWindowController: NSWindowController {
     private var access: [TestHostField: (get: () -> String, reset: () -> Void)] = [:]
@@ -134,7 +133,9 @@ final class TestHostWindowController: NSWindowController {
     }
 
     /// Clears every field of this window, native and web.
-    func resetAll() { access.values.forEach { $0.reset() } }
+    func resetAll() {
+        for field in access.values { field.reset() }
+    }
 
     /// Brings this window forward and focuses a native field (Window menu, Command+1 and Command+3).
     func focus(_ field: TestHostField) {

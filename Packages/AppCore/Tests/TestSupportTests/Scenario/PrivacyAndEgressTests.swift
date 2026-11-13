@@ -36,12 +36,16 @@ import VietnameseEngine
             ("nfd.txt", Data("kẩnyzqx".decomposedStringWithCanonicalMapping.utf8)),
         ]
         for (name, data) in files {
-            try fileSystem.writeAtomically(data, to: directory.appendingPathComponent(name), permissions: .ownerOnlyFile)
+            try fileSystem.writeAtomically(
+                data, to: directory.appendingPathComponent(name), permissions: .ownerOnlyFile)
         }
         let urls = files.map { directory.appendingPathComponent($0.0) } + [directory.appendingPathComponent("missing")]
         let report = PrivacyScanner().scan(files: urls, fileSystem: fileSystem, log: "typed kanaryzqx here")
         #expect(report.scannedFiles == 4 && report.unreadable == ["/app/missing"] && !report.passed)
-        #expect(Set(report.findings.map(\.location)) == ["/app/log.jsonl", "/app/prefs.plist", "/app/nfd.txt", "unified log"])
+        #expect(
+            Set(report.findings.map(\.location)) == [
+                "/app/log.jsonl", "/app/prefs.plist", "/app/nfd.txt", "unified log",
+            ])
         #expect(report.findings.first { $0.location == "/app/prefs.plist" }?.encoding == "utf16be-nfc-upper")
         let clean = PrivacyScanner().scan(files: [urls[0]], fileSystem: fileSystem, log: "nothing")
         #expect(clean.passed && clean.findings.isEmpty && clean.scannedLogBytes == 7)
@@ -76,7 +80,9 @@ import VietnameseEngine
     @Test func canaryScenariosCoverEveryStrategy() throws {
         let scenarios = try ScenarioRunner.load(directory: repositoryRoot.appendingPathComponent("compat/scenarios"))
             .filter { PrivacyCanary.isCanaryScenario($0.id) }
-        #expect(Set(scenarios.map { String($0.id.dropFirst(PrivacyCanary.scenarioPrefix.count)) }) == Set(InjectionStrategy.allCases.map(\.rawValue)))
+        #expect(
+            Set(scenarios.map { String($0.id.dropFirst(PrivacyCanary.scenarioPrefix.count)) })
+                == Set(InjectionStrategy.allCases.map(\.rawValue)))
         let canaryKeys = PrivacyCanary.canaries.map { $0.keys.map(String.init) }
         for scenario in scenarios {
             #expect(canaryKeys.contains { keys in scenario.keys.starts(with: keys) }, "\(scenario.id)")
@@ -131,7 +137,9 @@ import VietnameseEngine
 
     /// Local phase: only loopback; a sample that fails ends the run with what was seen.
     @Test func localAllowsLoopbackOnlyAndStopsWhenTheProcessIsGone() async {
-        let sampler = FakeConnectionSampler(samples: [[EgressEndpoint(address: "127.0.0.1", port: 8000, transport: "TCP")]])
+        let sampler = FakeConnectionSampler(samples: [
+            [EgressEndpoint(address: "127.0.0.1", port: 8000, transport: "TCP")]
+        ])
         let report = await EgressMonitor(sampler: sampler, sleeper: RecordingSleeper()).run(
             processIdentifier: 1, phase: .local, allowedHosts: ["ignored"], samples: 5, intervalNanoseconds: 1)
         #expect(report.samples == 1 && report.passed && report.allowedHosts.isEmpty)

@@ -72,8 +72,7 @@ public struct AppSettingsDocuments: Sendable {
 
     /// The four documents. `onboarding` is the `onboarding` object of the settings file found on the machine,
     /// kept so the app does not show onboarding again (PRD-R42).
-    public func documents(for configuration: AppConfiguration, onboarding: JSONValue?) throws -> [SettingsFile: Data]
-    {
+    public func documents(for configuration: AppConfiguration, onboarding: JSONValue?) throws -> [SettingsFile: Data] {
         let profile = configuration.profile
         var settings = profile?.settings ?? [:]
         settings["typingMethod"] = .string(configuration.method.rawValue)
@@ -94,7 +93,8 @@ public struct AppSettingsDocuments: Sendable {
             .settings: Self.encode(settingsDocument),
             .macros: Self.encode(envelope(["macros": .array(macros)])),
             .ruleOverrides: Self.encode(envelope(["overrides": .array(overrides)])),
-            .appModes: Self.encode(envelope(["globalMode": .string(TypingMode.vietnamese.rawValue), "apps": .array([])])),
+            .appModes: Self.encode(
+                envelope(["globalMode": .string(TypingMode.vietnamese.rawValue), "apps": .array([])])),
         ]
     }
 

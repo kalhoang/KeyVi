@@ -107,7 +107,9 @@ public struct EgressMonitor: Sendable {
         var seen: [EgressEndpoint: EgressReport.Connection] = [:]
         var taken = 0
         for index in 0..<max(1, samples) {
-            guard let endpoints = try? await sampler.remoteEndpoints(processIdentifier: processIdentifier) else { break }
+            guard let endpoints = try? await sampler.remoteEndpoints(processIdentifier: processIdentifier) else {
+                break
+            }
             taken += 1
             let allowed = phase == .production ? await addresses(allowedHosts) : []
             for endpoint in endpoints where seen[endpoint] == nil {

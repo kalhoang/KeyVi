@@ -67,7 +67,8 @@ final class FakeHookApp: Sendable {
             } else if request.command == "latencyProbe" {
                 answer.latencyProbe = latency
             }
-            try? fileSystem.writeAtomically(try! JSONEncoder().encode(answer), to: response, permissions: .ownerOnlyFile)
+            try? fileSystem.writeAtomically(
+                try! JSONEncoder().encode(answer), to: response, permissions: .ownerOnlyFile)
         }
     }
 }

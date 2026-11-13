@@ -36,7 +36,9 @@ public enum PrivacyCanary {
     /// case, and the JSON `\uXXXX` escape of non-ASCII characters.
     public static func patterns(for token: String) -> [(encoding: String, bytes: Data)] {
         var patterns: [(String, Data)] = []
-        let forms = [("nfc", token.precomposedStringWithCanonicalMapping), ("nfd", token.decomposedStringWithCanonicalMapping)]
+        let forms = [
+            ("nfc", token.precomposedStringWithCanonicalMapping), ("nfd", token.decomposedStringWithCanonicalMapping),
+        ]
         for (form, text) in forms {
             for (suffix, variant) in [("", text), ("-upper", text.uppercased())] {
                 patterns.append(("utf8-" + form + suffix, Data(variant.utf8)))

@@ -40,10 +40,19 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         (profileJSON("p", extra: #","extra":1"#), "unknown key extra"),
         (profileJSON("q"), "file name must be q.json"),
         (#"{"id":"p","scenarios":[]}"#, "summary is required"),
-        (profileJSON("p", extra: #","settings":{"typingMethod":"vni"}"#), "settings.typingMethod comes from the scenario's method"),
+        (
+            profileJSON("p", extra: #","settings":{"typingMethod":"vni"}"#),
+            "settings.typingMethod comes from the scenario's method"
+        ),
         (profileJSON("p", extra: #","macros":[{"trigger":""}]"#), "macros[0] needs trigger and expansion"),
-        (profileJSON("p", extra: #","ruleOverrides":[{"id":"x","summary":"s","match":{},"action":{}}]"#), "ruleOverrides[0].id must start with user."),
-        (profileJSON("p", extra: #","ruleOverrides":[{"id":"user.x","summary":"s","match":{}}]"#), "ruleOverrides[0] needs exactly one of action, actionFromRule"),
+        (
+            profileJSON("p", extra: #","ruleOverrides":[{"id":"x","summary":"s","match":{},"action":{}}]"#),
+            "ruleOverrides[0].id must start with user."
+        ),
+        (
+            profileJSON("p", extra: #","ruleOverrides":[{"id":"user.x","summary":"s","match":{}}]"#),
+            "ruleOverrides[0] needs exactly one of action, actionFromRule"
+        ),
         (#"{"id":"p","summary":"s","scenarios":"a"}"#, "scenarios must be an array of strings"),
         ("[]", "not a JSON object"),
     ])
@@ -62,7 +71,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         try fileSystem.createDirectory(at: directory, permissions: .ownerOnlyDirectory)
         for id in ["one", "two"] {
             try fileSystem.writeAtomically(
-                Data(profileJSON(id).utf8), to: directory.appendingPathComponent(id + ".json"), permissions: .ownerOnlyFile)
+                Data(profileJSON(id).utf8), to: directory.appendingPathComponent(id + ".json"),
+                permissions: .ownerOnlyFile)
         }
         #expect(throws: AppProfileError(file: "two.json", problems: ["scenario a is also in profile one"])) {
             try AppProfileLoader.load(directory: directory, fileSystem: fileSystem)
@@ -87,10 +97,13 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
             #expect(violations.isEmpty, "\(file.lastPathComponent): \(violations)")
         }
         let profiles = try repositoryProfiles()
-        let scenarioIDs = Set(try ScenarioRunner.load(directory: repositoryRoot.appendingPathComponent("compat/scenarios")).map(\.id))
+        let scenarioIDs = Set(
+            try ScenarioRunner.load(directory: repositoryRoot.appendingPathComponent("compat/scenarios")).map(\.id))
         let rules = try RuleScenarioCoverage.ruleScenarios(
             rulesData: Data(contentsOf: repositoryRoot.appendingPathComponent("compat/rules.json")))
-        #expect(AppProfileLoader.problems(profiles, scenarioIDs: scenarioIDs, shippedRuleIDs: Set(rules.map(\.rule))).isEmpty)
+        #expect(
+            AppProfileLoader.problems(profiles, scenarioIDs: scenarioIDs, shippedRuleIDs: Set(rules.map(\.rule)))
+                .isEmpty)
         #expect(profiles.profile(named: BenchWorkload.profileID)?.scenarios.isEmpty == true)
     }
 
@@ -100,7 +113,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         let targets = try repositoryTargets()
         for profile in try repositoryProfiles() {
             for method in [Scenario.Method.telex, .vni] {
-                let state = try await OracleSettings.load(AppConfiguration(method: method, profile: profile), targets: targets)
+                let state = try await OracleSettings.load(
+                    AppConfiguration(method: method, profile: profile), targets: targets)
                 #expect(state.effective.typingMethod.rawValue == method.rawValue)
                 #expect(Set(profile.settings.keys).isSubset(of: Set(state.user.explicitlySetKeys)), "\(profile.id)")
                 #expect(state.macros.map(\.trigger) == profile.macros.map(\.trigger), "\(profile.id)")
@@ -119,7 +133,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
     @Test func overridesResolveForTheirTestHostFields() throws {
         let targets = try repositoryTargets()
         let rulesData = try Data(contentsOf: repositoryRoot.appendingPathComponent("compat/rules.json"))
-        let documents = AppSettingsDocuments(targets: targets, shippedActions: AppSettingsDocuments.shippedActions(rulesData: rulesData))
+        let documents = AppSettingsDocuments(
+            targets: targets, shippedActions: AppSettingsDocuments.shippedActions(rulesData: rulesData))
         let shipped = try RulesLoader.decode(rulesData)
         let testHost = try #require(targets.testHostBundleID)
         let expected: [String: [String: InjectionStrategy]] = [
@@ -160,15 +175,19 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
             Data(
                 #"{"id":"p","summary":"s","scenarios":[],"ruleOverrides":[{"id":"user.a","summary":"s","match":{"bundleIds":["local.testhost","com.example.Other"]},"actionFromRule":"r"}]}"#
                     .utf8), fileName: "p.json")
-        let documents = AppSettingsDocuments(targets: targets, shippedActions: ["r": .object(["strategy": .string("paste")])])
+        let documents = AppSettingsDocuments(
+            targets: targets, shippedActions: ["r": .object(["strategy": .string("paste")])])
         let rule = try documents.rule(profile.ruleOverrides[0], profile: "p")
-        #expect(rule["match"]?["bundleIds"] == .array([.string("org.example.product.dev.testhost"), .string("com.example.Other")]))
+        #expect(
+            rule["match"]?["bundleIds"]
+                == .array([.string("org.example.product.dev.testhost"), .string("com.example.Other")]))
         #expect(rule["action"]?["strategy"]?.stringValue == "paste")
         #expect(throws: AppConfigurationError.unknownShippedRule(profile: "p", rule: "r")) {
             try AppSettingsDocuments(targets: targets, shippedActions: [:]).rule(profile.ruleOverrides[0], profile: "p")
         }
         let unresolved = AppSettingsDocuments(
-            targets: HarnessTargets(testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/p")),
+            targets: HarnessTargets(
+                testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/p")),
             shippedActions: ["r": .object([:])])
         #expect(throws: AppConfigurationError.unresolvedTestHost(profile: "p")) {
             try unresolved.rule(profile.ruleOverrides[0], profile: "p")
@@ -183,7 +202,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
             id: "p", summary: "s", scenarios: [], settings: [:],
             macros: [.init(trigger: "vn", expansion: "Việt Nam", adaptCase: true)], ruleOverrides: [])
         let files = try documents.documents(
-            for: AppConfiguration(method: .vni, profile: profile), onboarding: .object(["completedVersion": .string("1.0")]))
+            for: AppConfiguration(method: .vni, profile: profile),
+            onboarding: .object(["completedVersion": .string("1.0")]))
         let settings = try JSONDecoder().decode(JSONValue.self, from: try #require(files[.settings]))
         #expect(settings["settings"]?["typingMethod"]?.stringValue == "vni")
         #expect(settings["onboarding"]?["completedVersion"]?.stringValue == "1.0")
@@ -209,7 +229,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         SettingsFileAppConfigurator(
             location: location, backupDirectory: backup, fileSystem: fileSystem, control: control,
             documents: AppSettingsDocuments(
-                targets: HarnessTargets(testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/p")),
+                targets: HarnessTargets(
+                    testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/p")),
                 shippedActions: [:]),
             hooks: hooks, clock: clock, sleeper: ClockSleeper(clock: clock))
     }
@@ -217,7 +238,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
     @Test func applyBacksUpOnceWritesAndRestartsThenRestorePutsEverythingBack() async throws {
         let fileSystem = InMemoryFileSystem()
         try fileSystem.createDirectory(at: location.directory, permissions: .ownerOnlyDirectory)
-        let original = Data(#"{"schemaVersion":1,"settings":{"typingMethod":"telex"},"onboarding":{"completedVersion":"0.1"}}"#.utf8)
+        let original = Data(
+            #"{"schemaVersion":1,"settings":{"typingMethod":"telex"},"onboarding":{"completedVersion":"0.1"}}"#.utf8)
         try fileSystem.writeAtomically(original, to: location.url(for: .settings), permissions: .ownerOnlyFile)
         let control = FakeAppControl()
         control.setRunning(true)
@@ -228,7 +250,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         try await subject.apply(AppConfiguration(method: .vni))  // unchanged: nothing happens
         #expect(control.events.all == ["quit", "launch"])
         #expect(clock.now().nanoseconds - start == SettingsFileAppConfigurator.settleNanoseconds)
-        let written = try JSONDecoder().decode(JSONValue.self, from: fileSystem.readData(at: location.url(for: .settings), maxBytes: 1 << 20))
+        let written = try JSONDecoder().decode(
+            JSONValue.self, from: fileSystem.readData(at: location.url(for: .settings), maxBytes: 1 << 20))
         #expect(written["settings"]?["typingMethod"]?.stringValue == "vni")
         #expect(written["onboarding"]?["completedVersion"]?.stringValue == "0.1")
         for file in SettingsFile.allCases {
@@ -253,7 +276,8 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         try await configurator(InMemoryFileSystem(), control: control, hooks: ready, clock: clock).apply(.factory)
         #expect(ready.commands.all == ["state"] && clock.now().nanoseconds == origin)
         await #expect(throws: AppHookError.timeout(command: "state")) {
-            try await configurator(InMemoryFileSystem(), control: control, hooks: starting, clock: clock).apply(.factory)
+            try await configurator(InMemoryFileSystem(), control: control, hooks: starting, clock: clock).apply(
+                .factory)
         }
         let silent = FakeHookClient { _ in throw AppHookError.timeout(command: "state") }
         let start = clock.now().nanoseconds

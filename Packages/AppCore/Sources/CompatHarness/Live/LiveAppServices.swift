@@ -62,7 +62,8 @@ struct LivePrivacyEvidence: PrivacyEvidenceSource {
             library.appendingPathComponent("Preferences/" + app.rawValue + ".plist"),
             library.appendingPathComponent("Caches/" + app.rawValue, isDirectory: true),
             library.appendingPathComponent("HTTPStorages/" + app.rawValue, isDirectory: true),
-            library.appendingPathComponent("Saved Application State/" + app.rawValue + ".savedState", isDirectory: true),
+            library.appendingPathComponent(
+                "Saved Application State/" + app.rawValue + ".savedState", isDirectory: true),
         ]
         let captures = logs.appendingPathComponent("captures", isDirectory: true).standardizedFileURL.path + "/"
         return roots.flatMap(Self.regularFiles).filter { !$0.standardizedFileURL.path.hasPrefix(captures) }
@@ -78,8 +79,10 @@ struct LivePrivacyEvidence: PrivacyEvidenceSource {
         let predicate = "process == \"" + executable.replacingOccurrences(of: "\"", with: "") + "\""
         return try ProcessRunner.output(
             "/usr/bin/log",
-            ["show", "--style", "ndjson", "--info", "--debug", "--start", formatter.string(from: start),
-             "--predicate", predicate])
+            [
+                "show", "--style", "ndjson", "--info", "--debug", "--start", formatter.string(from: start),
+                "--predicate", predicate,
+            ])
     }
 
     static func regularFiles(_ root: URL) -> [URL] {
@@ -100,7 +103,8 @@ struct LiveConnectionSampler: ConnectionSampler {
         guard kill(processIdentifier, 0) == 0 else { throw LiveError.appNotRunning(String(processIdentifier)) }
         // lsof exits 1 when the process has no internet socket: that is an empty sample, not an error.
         let output = try ProcessRunner.output(
-            "/usr/sbin/lsof", ["-nP", "-a", "-p", String(processIdentifier), "-i", "-F", "pPn"], allowedStatuses: [0, 1])
+            "/usr/sbin/lsof", ["-nP", "-a", "-p", String(processIdentifier), "-i", "-F", "pPn"],
+            allowedStatuses: [0, 1])
         return LsofOutput.remoteEndpoints(output)
     }
 
@@ -115,10 +119,12 @@ struct LiveConnectionSampler: ConnectionSampler {
         for entry in sequence(first: first, next: { $0.pointee.ai_next }) {
             var buffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
             if getnameinfo(
-                entry.pointee.ai_addr, entry.pointee.ai_addrlen, &buffer, socklen_t(buffer.count), nil, 0, NI_NUMERICHOST)
+                entry.pointee.ai_addr, entry.pointee.ai_addrlen, &buffer, socklen_t(buffer.count), nil, 0,
+                NI_NUMERICHOST)
                 == 0
             {
-                addresses.insert(String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self))
+                addresses.insert(
+                    String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self))
             }
         }
         return addresses

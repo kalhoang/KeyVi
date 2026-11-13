@@ -148,10 +148,12 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
 
     static func scenario(_ method: Scenario.Method, words: [String]) -> Scenario {
         let keys = words.enumerated().flatMap { index, word in
-            (index == 0 ? [] : ["space"]) + ((method == .telex ? VietnameseKeys.telex(word) : VietnameseKeys.vni(word)) ?? [])
+            (index == 0 ? [] : ["space"])
+                + ((method == .telex ? VietnameseKeys.telex(word) : VietnameseKeys.vni(word)) ?? [])
         }
         return Scenario(
-            id: "testhost.commonWords." + method.rawValue, targetBundleId: BundleKey(rawValue: HarnessTargets.testHostAlias)!,
+            id: "testhost.commonWords." + method.rawValue,
+            targetBundleId: BundleKey(rawValue: HarnessTargets.testHostAlias)!,
             setup: [
                 .init(action: .launch), .init(action: .setSecureInput, value: "off"),
                 .init(action: .focusField, value: "testhost.native.textView"),

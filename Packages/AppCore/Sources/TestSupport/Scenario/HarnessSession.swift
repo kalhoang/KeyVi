@@ -76,7 +76,8 @@ extension Harness {
     var outputDirectory: String {
         switch options.command {
         case .run, .soak: options.output ?? ".build/integration"
-        default: options.output.map { URL(fileURLWithPath: $0).deletingLastPathComponent().path } ?? ".build/integration"
+        default:
+            options.output.map { URL(fileURLWithPath: $0).deletingLastPathComponent().path } ?? ".build/integration"
         }
     }
 
@@ -85,7 +86,8 @@ extension Harness {
         do {
             try await session.configurator?.restore()
         } catch {
-            environment.console.emitError("compat-harness: restoring the app's settings failed: " + String(describing: error))
+            environment.console.emitError(
+                "compat-harness: restoring the app's settings failed: " + String(describing: error))
         }
     }
 }

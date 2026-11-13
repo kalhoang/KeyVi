@@ -123,7 +123,8 @@ enum HarnessPlans {
             let stored = baseline?.metrics[metric.name]
             lines.append(
                 "  " + metric.name + ": gate \(metric.gate) " + metric.unit + ", source " + metric.source.rawValue
-                    + ", baseline " + (stored.map { String($0.value) + ($0.placeholder == true ? " (placeholder)" : "") }
+                    + ", baseline "
+                    + (stored.map { String($0.value) + ($0.placeholder == true ? " (placeholder)" : "") }
                         ?? "none") + ", " + metric.definition)
         }
         lines.append(

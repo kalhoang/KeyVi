@@ -86,13 +86,18 @@ public enum AppProfileLoader {
         if summary.isEmpty { problems.append("summary is required") }
         let scenarios = strings(object["scenarios"], "scenarios", &problems)
         let settings = object["settings"]?.objectValue ?? [:]
-        if object["settings"] != nil, object["settings"]?.objectValue == nil { problems.append("settings must be an object") }
-        problems += settings.keys.filter(reservedSettings.contains).sorted().map { "settings." + $0 + " comes from the scenario's method" }
+        if object["settings"] != nil, object["settings"]?.objectValue == nil {
+            problems.append("settings must be an object")
+        }
+        problems += settings.keys.filter(reservedSettings.contains).sorted().map {
+            "settings." + $0 + " comes from the scenario's method"
+        }
         let macros = macroList(object["macros"], &problems)
         let overrides = overrideList(object["ruleOverrides"], &problems)
         guard problems.isEmpty else { throw AppProfileError(file: fileName, problems: problems) }
         return AppProfile(
-            id: id, summary: summary, scenarios: scenarios, settings: settings, macros: macros, ruleOverrides: overrides)
+            id: id, summary: summary, scenarios: scenarios, settings: settings, macros: macros, ruleOverrides: overrides
+        )
     }
 
     /// Problems a profile set has against the scenario files: unknown scenario ids, unknown shipped rules.
@@ -150,7 +155,9 @@ public enum AppProfileLoader {
             }
             problems += unknown(object, overrideKeys, path: path + ".")
             let source = object.removeValue(forKey: "actionFromRule")?.stringValue
-            if (source == nil) == (object["action"] == nil) { problems.append(path + " needs exactly one of action, actionFromRule") }
+            if (source == nil) == (object["action"] == nil) {
+                problems.append(path + " needs exactly one of action, actionFromRule")
+            }
             guard let id = object["id"]?.stringValue, id.hasPrefix("user."), ScenarioValidator.isValidID(id) else {
                 problems.append(path + ".id must start with user.")
                 return nil

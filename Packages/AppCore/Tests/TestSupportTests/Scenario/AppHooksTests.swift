@@ -33,8 +33,11 @@ private func channel(
         #expect(try text(.state) == #"{"command":"state","formatVersion":1,"sequence":7}"#)
         #expect(try text(.trigger(.tapTimeout)) == #"{"command":"tapTimeout","formatVersion":1,"sequence":7}"#)
         #expect(
-            try text(.latencyProbe(.normal)) == #"{"command":"latencyProbe","formatVersion":1,"profile":"normal","sequence":7}"#)
-        #expect(AppHookCommand.resetMetrics.name == "resetMetrics" && AppHookCommand.checkForUpdates.name == "checkForUpdates")
+            try text(.latencyProbe(.normal))
+                == #"{"command":"latencyProbe","formatVersion":1,"profile":"normal","sequence":7}"#)
+        #expect(
+            AppHookCommand.resetMetrics.name == "resetMetrics"
+                && AppHookCommand.checkForUpdates.name == "checkForUpdates")
         #expect(AppTestHook.allCases.map(\.rawValue) == ["tapTimeout", "revokePermission", "restorePermission"])
     }
 
@@ -133,7 +136,8 @@ private func channel(
             ])
         app.setLatency(result)
         #expect(try await channel(app: app, clock: clock, fileSystem: fileSystem).latencyProbe(.normal) == result)
-        #expect(FileDropHookChannel.directory(applicationSupport: URL(fileURLWithPath: "/s")).path == "/s/IntegrationHooks")
+        #expect(
+            FileDropHookChannel.directory(applicationSupport: URL(fileURLWithPath: "/s")).path == "/s/IntegrationHooks")
     }
 }
 
@@ -144,14 +148,18 @@ private func channel(
         paused.secureInputHolderBundleId = bundle("com.example.Terminal")
         paused.firstKeyAfterSecureInputReleaseComposed = false
         let observation = try await HookStateProbe(hooks: FakeHookClient(state: paused)).observe(after: makeScenario())
-        #expect(observation == ScenarioObservation(paused: true, holderBundleId: bundle("com.example.Terminal"), firstKeyAfterReleaseComposed: false))
+        #expect(
+            observation
+                == ScenarioObservation(
+                    paused: true, holderBundleId: bundle("com.example.Terminal"), firstKeyAfterReleaseComposed: false))
         // The holder only counts while paused for secure input.
         var japanese = snapshot(.paused)
         japanese.pauseReason = .nonLatinInputSource
         japanese.secureInputHolderBundleId = bundle("com.example.Terminal")
         let other = try await HookStateProbe(hooks: FakeHookClient(state: japanese)).observe(after: makeScenario())
         #expect(other.paused == true && other.holderBundleId == nil)
-        let ready = try await HookStateProbe(hooks: FakeHookClient(state: snapshot(.ready))).observe(after: makeScenario())
+        let ready = try await HookStateProbe(hooks: FakeHookClient(state: snapshot(.ready))).observe(
+            after: makeScenario())
         #expect(ready.paused == false)
     }
 }
@@ -171,8 +179,11 @@ private func channel(
             makeScenario(setup: [.init(action: .testHook, value: value)], keys: ["a", "b", "c"])
         }
         #expect(ScenarioValidator.problems(in: scenario("tapTimeout@3")).isEmpty)
-        #expect(ScenarioValidator.problems(in: scenario("tapTimeout@4")) == ["setup[0] testHook @4 is past the end of keys"])
-        #expect(ScenarioValidator.problems(in: scenario("nope")).first?.contains("testHook value must be one of") == true)
+        #expect(
+            ScenarioValidator.problems(in: scenario("tapTimeout@4")) == ["setup[0] testHook @4 is past the end of keys"]
+        )
+        #expect(
+            ScenarioValidator.problems(in: scenario("nope")).first?.contains("testHook value must be one of") == true)
     }
 
     /// Deferred hooks cut the key script; the layout comes first; a hook without `@` stays in setup order.
