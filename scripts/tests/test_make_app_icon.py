@@ -135,6 +135,23 @@ class MenuBarGlyphTests(unittest.TestCase):
                 # Solid and dimmed letters (Vietnamese and English) are told apart by lightness alone.
                 self.assertGreaterEqual(contrast(palette.ink, blend(palette.ink, float(mark.off_opacity), background)), 3.0)
 
+    def test_letters_reach_3_to_1_on_every_menu_bar_in_every_variant(self):
+        # PRD-R67: the KV mark itself (solid, Pa's off opacity and the faint paused / not-working letters) stays at
+        # 3:1 or more in the normal palettes too, against pure white or black and a typical opaque menu bar sample.
+        # Pa's grey off dot is excluded on purpose: colour is only an extra cue there (the letters carry the state).
+        mark = icons.load_mark()
+        bars = {"light": ("#FFFFFF", "#ECECEC"), "light-hc": ("#FFFFFF", "#ECECEC"),
+                "dark": ("#000000", "#1E1E1E"), "dark-hc": ("#000000", "#1E1E1E")}
+        for variant, backgrounds in bars.items():
+            palette = mark.palettes[variant]
+            for background in backgrounds:
+                for opacity in (1.0, float(mark.off_opacity), float(palette.faint)):
+                    with self.subTest(variant=variant, background=background, opacity=opacity):
+                        dimmed = blend(palette.ink, opacity, background)
+                        self.assertGreaterEqual(contrast(dimmed, background), 3.0)
+                with self.subTest(variant=variant, background=background, badge="recording"):
+                    self.assertGreaterEqual(contrast(palette.alert, background), 3.0)
+
 
 def png_pixels(path: Path) -> tuple[int, int, list[bytes]]:
     """Decodes an 8-bit, non-interlaced RGBA PNG into rows of bytes (enough for the icon checks)."""

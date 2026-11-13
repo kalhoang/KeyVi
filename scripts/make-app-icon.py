@@ -57,13 +57,15 @@ class Palette:
     on_dot: str  # emerald dot of the on state
     off_dot: str  # gray dot of the off state
     alert: str  # centre of the recording badge
-    faint: str = "0.4"  # letter opacity of the paused and not-working glyphs
+    # Letter opacity of the paused and not-working glyphs: 0.5 keeps the KV mark at 3:1 or more on a light
+    # menu bar (3.45:1 on white, 3.30:1 on #ECECEC) as PRD-R67 requires; the badge tells them apart from English.
+    faint: str = "0.5"
 
 
 # Increase Contrast: pure ink and dots with at least 3:1 against the menu bar (WCAG AA for graphics, PRD-R67).
 HIGH_CONTRAST = {
-    "light-hc": Palette(ink="#000000", on_dot="#007A55", off_dot="#4B5563", alert="#B3001B", faint="0.5"),
-    "dark-hc": Palette(ink="#FFFFFF", on_dot="#3DDC97", off_dot="#B4BAC4", alert="#FF8A8A", faint="0.5"),
+    "light-hc": Palette(ink="#000000", on_dot="#007A55", off_dot="#4B5563", alert="#B3001B"),
+    "dark-hc": Palette(ink="#FFFFFF", on_dot="#3DDC97", off_dot="#B4BAC4", alert="#FF8A8A"),
 }
 ALERT = {"light": "#D93036", "dark": "#FF6369"}
 
