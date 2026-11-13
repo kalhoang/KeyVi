@@ -29,6 +29,17 @@ struct HostControllerLaunchTests {
         #expect(rig.events.contains { if case .stateChanged(.ready) = $0 { true } else { false } })
     }
 
+    @Test func settingsBeforeStartAreOnlyRecorded() async {
+        let rig = HostRig()
+        defer { rig.stop() }
+        var user = UserSettings()
+        user.typingMethod = .set(.vni)
+        rig.controller.apply(settings: SettingsState(user: user))
+        rig.utility.sync {}
+        #expect(rig.controller.channels.snapshots.settings.load().generation == 0, "nothing published before start")
+        #expect(rig.tapFactory.handles.isEmpty)
+    }
+
     @Test func telexWordThroughTheWholeHost() async {
         let rig = HostRig()
         await rig.start()

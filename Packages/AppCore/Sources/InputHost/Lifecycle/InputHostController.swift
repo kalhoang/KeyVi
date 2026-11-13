@@ -246,9 +246,11 @@ public final class InputHostController {
     }
 
     /// Rebuilds engines and snapshots (utility queue) and re-resolves focus (ax) (PLT-R1008, PRD-R27).
+    /// Before `start` it only records the state; `start` publishes it.
     public func apply(settings: SettingsState) {
         guard !stopped else { return }
         self.settings = settings
+        guard started else { return }
         applySettings(settings)
     }
 

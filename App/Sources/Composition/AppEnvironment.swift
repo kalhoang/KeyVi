@@ -44,6 +44,7 @@ final class AppEnvironment {
     var selfCheckPending = false
     /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
     var tapReenabledUntil: Date?
+    var lastMenuRefresh: Date?
 
     /// Launch order (S1 target 300 ms to tap active): LaunchGuard -> AppLocationCheck (move offer before any
     /// permission request, PLT-R710) -> LegacyStorageMigrator -> SettingsStore.load ->

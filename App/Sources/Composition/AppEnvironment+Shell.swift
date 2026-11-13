@@ -29,6 +29,8 @@ final class MainActorRelay<Value: Sendable>: Sendable {
 extension AppEnvironment {
     /// PRD-R43: how long the "tap re-enabled" line stays after an instability notice.
     static let tapNoticeDuration: TimeInterval = 600
+    /// PLT-R395, PLT-R721: checks run when the menu opens, at most this often.
+    static let menuRefreshInterval: TimeInterval = 0.25
 
     var strings: CompositionStrings {
         CompositionStrings(language: language.localizer.language, appBundle: .main)
@@ -87,8 +89,7 @@ extension AppEnvironment {
     /// PRD-R13: rebuilt when the menu opens; secure input and permissions are checked at that moment
     /// (PLT-R395, PLT-R721).
     func menuModel() -> MenuModel {
-        _ = host.refreshSecureInput()
-        _ = host.refreshPermissions()
+        refreshForMenu()
         let effective = settings.effective
         let localizer = language.localizer
         return MenuModel(
@@ -97,6 +98,16 @@ extension AppEnvironment {
                 for: effective.toggleHotkey, localizer: localizer),
             method: effective.typingMethod, frontmostApp: frontmostMenu(), appName: brand.displayName,
             updateCheckEnabled: updater?.canCheckForUpdates ?? false)
+    }
+
+    /// The status item also asks for the model when it only needs the app name for the icon's label, so the
+    /// checks are skipped within `menuRefreshInterval` of the previous ones.
+    private func refreshForMenu() {
+        let now = Date()
+        if let last = lastMenuRefresh, now.timeIntervalSince(last) < Self.menuRefreshInterval { return }
+        lastMenuRefresh = now
+        _ = host.refreshSecureInput()
+        _ = host.refreshPermissions()
     }
 
     private func statusLine() -> StatusLine? {
