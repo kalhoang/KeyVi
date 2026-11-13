@@ -105,6 +105,11 @@ struct PasteExecutor: StrategyExecutor {
 
     func execute(_ job: EditJob, in environment: any InjectionEnvironment) -> StrategyOutcome {
         guard let pasteKey = job.keyCodes.paste else { return .failedBeforePosting(.pasteboardUnsafe) }
+        var script = KeyScript()
+        script.append(SyntheticKeys.backspace, phase: .delete, count: job.deleteCount)
+        script.append(SyntheticKeys.paste(keyCode: pasteKey), phase: .insert)
+        // PLT-R461 step 1: never touch the clipboard for a job that cannot run (PLT-R408 cap).
+        if ScriptRunner.exceedsCap(script, job: job, limits: limits) { return .failedBeforePosting(.jobTooLong) }
         let host = environment as? any StrategyHost
         let preserver = host?.pasteboardPreserver ?? PasteboardPreserver(pasteboard: environment.pasteboard)
         do {
@@ -112,9 +117,6 @@ struct PasteExecutor: StrategyExecutor {
         } catch {
             return .failedBeforePosting(.pasteboardUnsafe)
         }
-        var script = KeyScript()
-        script.append(SyntheticKeys.backspace, phase: .delete, count: job.deleteCount)
-        script.append(SyntheticKeys.paste(keyCode: pasteKey), phase: .insert)
         let outcome = ScriptRunner.run(script, job: job, limits: limits, in: environment)
         let restoreDelay = Duration.milliseconds(max(0, job.plan.parameters.restoreDelayMs))
         switch outcome {

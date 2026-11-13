@@ -186,6 +186,18 @@ private final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
         #expect(pasteboard.transientWriteCount == 0)
     }
 
+    /// PLT-R408, PLT-R461 step 1: a paste too long for its pacing fails before the clipboard is touched.
+    @Test func tooLongPasteFailsBeforeTouchingTheClipboardPLTR408() {
+        let pasteboard = FakePasteboard(items: original)
+        let (env, poster) = environment(field: SimulatedTextField(text: "uuuu"), pasteboard: pasteboard)
+        var job = pasteJob(deleteCount: 4)
+        job.plan.parameters.interEventDelayUs = 50_000
+        #expect(executor.execute(job, in: env) == .failedBeforePosting(.jobTooLong))
+        #expect(pasteboard.transientWriteCount == 0)
+        #expect(poster.posted.isEmpty)
+        #expect(pasteboard.items == original)
+    }
+
     @Test func postingFailureRestoresImmediately() {
         let pasteboard = FakePasteboard(items: original)
         let (env, poster) = environment(field: SimulatedTextField(text: "u"), pasteboard: pasteboard)

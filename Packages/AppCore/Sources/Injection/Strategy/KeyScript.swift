@@ -167,17 +167,21 @@ enum ScriptRunner {
     static func run(_ script: KeyScript, job: EditJob, limits: StrategyLimits, in environment: any InjectionEnvironment)
         -> StrategyOutcome
     {
+        if exceedsCap(script, job: job, limits: limits) { return .failedBeforePosting(.jobTooLong) }
         let pacing = Pacing(job)
         let cap = limits.capNanoseconds(for: job.kind)
         let allowSplit = job.plan.parameters.allowSplit
-        if !allowSplit, script.estimatedNanoseconds(pacing: pacing) > cap {
-            return .failedBeforePosting(.jobTooLong)
-        }
         switch post(script, pacing: pacing, splitBudget: allowSplit ? cap : nil, in: environment) {
         case .completed(let sequence): return .completed(lastEventSequence: sequence)
         case .failed(let posted):
             return posted ? .failedAfterPosting(.postingFailed) : .failedBeforePosting(.postingFailed)
         }
+    }
+
+    /// PLT-R408: the script cannot be posted within its cap and the rule does not allow splitting it.
+    static func exceedsCap(_ script: KeyScript, job: EditJob, limits: StrategyLimits) -> Bool {
+        !job.plan.parameters.allowSplit
+            && script.estimatedNanoseconds(pacing: Pacing(job)) > limits.capNanoseconds(for: job.kind)
     }
 
     static func post(
