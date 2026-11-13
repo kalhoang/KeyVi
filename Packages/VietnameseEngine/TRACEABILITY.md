@@ -231,7 +231,7 @@ Where the owner is another track, the row says so.
 | ENG-T03 | Titlecase, uppercase, explicit `uwow` variants | same | `GeneratedCorpusCompositionTests.variantCases` |
 | ENG-T04 | 100 % of the 237,824 O1-O4 cases and 31,676 variants | same | `GeneratedCorpusTests.caseCounts` (prints counts) |
 | ENG-T10 | English lexicon in both contexts | `VietnameseEngineTesting/Corpora/CorpusTargets.swift` (`EnglishCorpusCheck`) | `EnglishCorpusGateTests` (bundled data), `CorpusTargetTests.englishCorpus` (fixtures) |
-| ENG-T11 | `known-exceptions.txt` | `Corpus/known-exceptions.txt` (51 entries pending Pa's review) | `EnglishCorpusGateTests` (every English-run change listed, no stale entry), `CorpusTargetTests.englishCorpus` |
+| ENG-T11 | `known-exceptions.txt` | `Corpus/known-exceptions.txt` (53 entries: 50 L4, 1 L6, 2 L7; accepted as known issues on 13/11/2026, docs/decisions/0005) | `EnglishCorpusGateTests` (every English-run change listed, no stale entry), `CorpusTargetTests.englishCorpus` |
 | ENG-T12 | Spot list unchanged | `VietnameseEngineTesting/Fixtures/SpotList.swift` | `SpotListTests` (13.9 fixtures), `SpotListGateTests` (bundled data) |
 | ENG-T20 | Prose corpus, three typists | `ProseCorpusCheck`; corpus `data/corpus/prose-vi.txt` (`lexicon-builder prose-corpus`) | `ProseCorpusGateTests`, `LexiconBuilderTests.proseCorpusHasAtLeast200000SyllablesAndIsReproducible`, `CorpusTargetTests.prose` |
 | ENG-T30 | No crash, bounded memory | `InvariantChecker` | `FuzzTests.randomStreams`, `longTokens`, `Packages/VietnameseEngineFuzz` |
