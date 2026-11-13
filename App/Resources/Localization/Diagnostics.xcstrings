@@ -79,7 +79,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type an example here yourself. %@ never sends what you typed."
+            "value" : "Type the example again here yourself. %@ does not send what you typed on its own."
           }
         },
         "vi" : {

@@ -1412,13 +1412,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use macros"
+            "value" : "Macros"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật gõ tắt"
+            "value" : "Gõ tắt (macro)"
           }
         }
       }
@@ -1448,13 +1448,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The file could not be saved. Try another folder."
+            "value" : "The file could not be saved. Choose another folder."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp. Bạn thử chọn thư mục khác."
+            "value" : "Không lưu được tệp. Hãy chọn thư mục khác."
           }
         }
       }

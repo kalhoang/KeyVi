@@ -280,7 +280,7 @@ import Testing
         let l = try Localizers()
         #expect(SettingNames.name(forKey: "typingMethod", l.vi) == "Kiểu gõ")
         #expect(SettingNames.name(forKey: "firstSeenAppMode", l.vi) == "Chế độ cho ứng dụng mới")
-        #expect(SettingNames.name(forKey: "macrosInEnglishMode", l.en) == "Macros in English mode")
+        #expect(SettingNames.name(forKey: "macrosInEnglishMode", l.en) == "Expand macros in English mode")
         #expect(SettingNames.name(forKey: "optedInRules", l.en) == "Compatibility rules you turned on")
         #expect(SettingNames.name(forKey: "somethingNew", l.vi) == "somethingNew")
         #expect(ListFormat.join(["a", "b", "c"], l.en) == "a, b, and c")

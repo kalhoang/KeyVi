@@ -26,10 +26,6 @@ public enum CommonText: String, LocalizationKey {
     case skip = "common.skip"
     case cancel = "common.cancel"
     case close = "common.close"
-    /// Development skeleton (`BootstrapStatusItem`), removed from the launch path by W2-A.
-    case skeletonQuit = "menu.quit"
-    case skeletonAccessibilityLabel = "skeleton.statusItem.accessibilityLabel"
-    case skeletonStatusLine = "skeleton.statusLine"
     // Mail draft of the bug report (PRD-R47).
     case mailSubject = "bugReport.mail.subject"
     case mailSubjectNoApp = "bugReport.mail.subject.noApp"

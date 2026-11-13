@@ -51,7 +51,7 @@ struct AppsTable: View {
                 StatusCell(localizer: localizer, status: row.status)
             }
             .width(min: 120, ideal: 150)
-            TableColumn("") { row in AppRowActions(model: model, row: row) }
+            TableColumn(localizer.string(AppsText.columnActions)) { row in AppRowActions(model: model, row: row) }
                 .width(min: 110, ideal: 120)
         }
         .settingsAccessibility(AppsControl.list, localizer)
@@ -159,7 +159,8 @@ struct AppDetailSheet: View {
                     Text(verbatim: note).fixedSize(horizontal: false, vertical: true)
                 }
                 if let day = detail.lastVerified {
-                    Text(verbatim: localizer.format(AppsText.detailLastVerified, day)).font(.callout)
+                    Text(verbatim: localizer.format(AppsText.detailLastVerified, localizer.formatDay(iso: day)))
+                        .font(.callout)
                 }
                 ScopedRows(localizer: localizer, detail: detail)
                 DisclosureGroup(isExpanded: $advanced) {
