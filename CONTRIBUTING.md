@@ -1,4 +1,4 @@
-# Contributing to {{AppName}}
+# Contributing to KeyVi
 
 Thank you for helping. This project has one maintainer, so the rules below are deliberately short and mechanical. Everything here is binding for every contribution, whatever tools were used to write it.
 
@@ -14,7 +14,7 @@ By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Security 
 
 ## 2. Clean-room rule and attestation (QA-R62, CLR-R14)
 
-{{AppName}} is an independent implementation. You MUST NOT read, open, fetch, search or quote the source code of any other Vietnamese input method while writing a change. This includes XKey, OpenKey, Unikey (and ibus-unikey, fcitx-unikey), PHTV, Vikey, LibreKey, EVKey, GoTiengViet, Gõ Nhanh, vi-rs, bamboo-core, VietTelex and any fork, and includes GitHub web views, raw URLs, code-search results and snippets quoted in blog posts or AI answers.
+KeyVi is an independent implementation. You MUST NOT read, open, fetch, search or quote the source code of any other Vietnamese input method while writing a change. This includes XKey, OpenKey, Unikey (and ibus-unikey, fcitx-unikey), PHTV, Vikey, LibreKey, EVKey, GoTiengViet, Gõ Nhanh, vi-rs, bamboo-core, VietTelex and any fork, and includes GitHub web views, raw URLs, code-search results and snippets quoted in blog posts or AI answers.
 
 Allowed sources: this repository's `spec/`, Apple documentation, the Unicode standard, public descriptions of Vietnamese orthography and of the Telex and VNI conventions, and general Swift and macOS knowledge. Behavioural facts about other products that come from public bug reports, release notes or observing a running app are fine; their code is not (CLR-R5).
 
@@ -132,7 +132,7 @@ Rules that code review will check (details in [CLAUDE.md](CLAUDE.md)):
 - Never log, print or persist typed content (PLT-R901, ENG-R1220). Use the typed logging API.
 - No new network endpoint without a decision record and an update to the privacy page in the same PR (QA-R60).
 - The event tap callback does no I/O, Accessibility calls, blocking locks, sleeps or steady-state allocations (PLT-R304, PLT-R305).
-- Never hard-code the product name, slug, bundle ID or site host; they come from `Config/Brand.xcconfig` and `scripts/brand.env`.
+- Never hard-code the product name, slug, bundle ID or site host in code; they come from `Config/Brand.xcconfig` and `scripts/brand.env`. In documentation, `docs/` uses the brand placeholders, while the front-door files that GitHub shows as they are (this file, the READMEs, SECURITY.md and the others listed in `scripts/check-docs.py`) write the literal values; `scripts/check-docs.py brand` checks both and `scripts/rename-app.sh` rewrites the literal values on a rename ([ADR 0400](docs/decisions/0400-documentation-decisions.md) decision 1).
 
 ## 7. Dependencies and settings
 

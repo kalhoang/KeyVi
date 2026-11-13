@@ -1,10 +1,10 @@
-# {{AppName}}
+# KeyVi
 
 [English](README.md)
 
-{{AppName}} là bộ gõ tiếng Việt cho macOS do Kal tự viết từ đầu. Đây là ứng dụng nằm trên thanh menu, gõ tiếng Việt (Telex hoặc VNI) trong mọi ứng dụng, tự khôi phục từ tiếng Anh, và nói rõ cho bạn biết khi có điều gì đó không hoạt động được.
+KeyVi là bộ gõ tiếng Việt cho macOS do Kal tự viết từ đầu. Đây là ứng dụng nằm trên thanh menu, gõ tiếng Việt (Telex hoặc VNI) trong mọi ứng dụng, tự khôi phục từ tiếng Anh, và nói rõ cho bạn biết khi có điều gì đó không hoạt động được.
 
-> **Về tên:** "{{AppName}}" là tên hiển thị khai báo trong [`Config/Brand.xcconfig`](Config/Brand.xcconfig) và [`scripts/brand.env`](scripts/brand.env). Tên sản phẩm hiện là tên tạm, chưa được chọn. Xem [docs/decisions/0400-documentation-decisions.md](docs/decisions/0400-documentation-decisions.md).
+> **Về tên:** tên sản phẩm và các định danh đi kèm (slug, bundle ID, địa chỉ website) lấy từ [`Config/Brand.xcconfig`](Config/Brand.xcconfig) và [`scripts/brand.env`](scripts/brand.env).
 
 ## Tình trạng
 
@@ -37,17 +37,17 @@ Cả hai cách dưới đây chỉ là chỗ giữ chỗ cho đến khi có bả
 
 | Cách cài | Lệnh hoặc liên kết |
 |---|---|
-| DMG đã công chứng (notarized) | Tải tại `https://{{app-slug}}.kal.vn/tai-ve` (chưa có) |
-| Homebrew tap | `brew install --cask OWNER/tap/{{app-slug}}` (chủ tài khoản tap: VERIFY) |
+| DMG đã công chứng (notarized) | Tải tại `https://keyvi.kal.vn/tai-ve` (chưa có) |
+| Homebrew tap | `brew install --cask OWNER/tap/keyvi` (chủ tài khoản tap: VERIFY) |
 
-Yêu cầu: macOS 15 Sequoia trở lên, máy chip Apple hoặc Intel (bản universal). Những máy chỉ lên được tới macOS 14 chưa được hỗ trợ (PRD-R8; mức tối thiểu này đang chờ người phát triển xác nhận).
+Yêu cầu: macOS 12 Monterey trở lên, máy chip Apple hoặc Intel (bản universal) (PRD-R8, [ADR 0315](docs/decisions/0315-minimum-macos-12.md)).
 
 Hãy kéo ứng dụng vào thư mục `/Applications` trước lần mở đầu tiên. Ứng dụng sẽ đề nghị tự chuyển vào đó và không xin quyền khi đang chạy từ ổ DMG hoặc một vị trí tạm.
 
 ## Quyền riêng tư
 
 - Nội dung bạn gõ không bao giờ rời khỏi máy và không bao giờ được ghi xuống đĩa. Ngoại lệ duy nhất là bản ghi thao tác gõ để báo lỗi do chính bạn bấm bắt đầu: từ 60 đến 180 giây, có đồng hồ đếm ngược hiện rõ, bạn xem lại trước khi chia sẻ, tự xóa sau 24 giờ và không bao giờ tự động gửi đi.
-- Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật (appcast và gói cập nhật trên `{{app-slug}}.kal.vn`).
+- Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật (appcast và gói cập nhật trên `keyvi.kal.vn`).
 - Không có telemetry, không phân tích sử dụng, không dịch vụ báo cáo sự cố, không cấu hình từ xa.
 - Dữ liệu chẩn đoán không chứa ký tự đã gõ, từ đã gõ, nội dung gõ tắt, nội dung bộ nhớ tạm hay tiêu đề cửa sổ.
 
@@ -87,10 +87,10 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 
 ## Giấy phép và nguồn gốc mã
 
-- {{AppName}} là phần mềm tự do theo Giấy phép Công cộng GNU (GNU GPL), phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn: [LICENSE](LICENSE). Bản quyền (c) 2026 thuộc các tác giả của {{AppName}}.
+- KeyVi là phần mềm tự do theo Giấy phép Công cộng GNU (GNU GPL), phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn: [LICENSE](LICENSE). Bản quyền (c) 2026 thuộc các tác giả của KeyVi.
 - Các gói engine tiếng Việt và quy trình tạo danh sách từ dùng giấy phép MPL-2.0 để dự án khác có thể nhúng vào: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
 - Mọi đóng góp cần dòng ký xác nhận (Developer Certificate of Origin); đóng góp vào phần dùng GPL đồng thời được cấp cho dự án theo giấy phép MIT, không cần ký CLA ([CONTRIBUTING.md](CONTRIBUTING.md) mục 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
-- {{AppName}} là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- KeyVi là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Liên kết
 
@@ -99,5 +99,5 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 - Báo cáo lỗ hổng bảo mật: [SECURITY.md](SECURITY.md)
 - Quy tắc ứng xử: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Nhật ký thay đổi: [CHANGELOG.md](CHANGELOG.md)
-- Website: `https://{{app-slug}}.kal.vn`
+- Website: `https://keyvi.kal.vn`
 - Hỗ trợ: GitHub Issues cho lỗi và tương thích, GitHub Discussions cho câu hỏi

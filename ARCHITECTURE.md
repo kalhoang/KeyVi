@@ -9,8 +9,7 @@ key press becomes text in another app, and where per-app behaviour, settings, di
 [docs/architecture/workstreams.md](docs/architecture/workstreams.md). Decisions are recorded in
 `docs/decisions/03xx-*.md`.
 
-The product name is temporary. Code reads it from the bundle (`Brand`, ShellCore); this document says "the
-app".
+Code reads the product name from the bundle (`Brand`, ShellCore); this document says "the app".
 
 ## 1. Shape of the system
 
@@ -207,7 +206,8 @@ States: `noPermission`, `starting`, `ready(vi|en)`, `paused(reason)`, `failOpen(
 ## 6. Snapshot publication (PLT-R388)
 
 Writers publish immutable values; the tap reads each with one atomic load. Implementation in Swift 6 with the
-`Synchronization` module on macOS 15 ([0303](docs/decisions/0303-snapshot-publication.md)):
+`Atomic` and `Mutex` of `RealtimeSupport`, which mirror the `Synchronization` module (macOS 15 only) on the macOS 12
+floor ([0303](docs/decisions/0303-snapshot-publication.md), [0315](docs/decisions/0315-minimum-macos-12.md)):
 
 ```swift
 // RealtimeSupport/SnapshotCell.swift (abridged)

@@ -1,10 +1,10 @@
-# {{AppName}}
+# KeyVi
 
 [Tiếng Việt](README.vi.md)
 
-{{AppName}} is a Vietnamese input method for macOS, written from scratch by Kal. It is a menu-bar app that types Vietnamese (Telex or VNI) in any app, restores English words automatically, and tells you plainly when something cannot work.
+KeyVi is a Vietnamese input method for macOS, written from scratch by Kal. It is a menu-bar app that types Vietnamese (Telex or VNI) in any app, restores English words automatically, and tells you plainly when something cannot work.
 
-> **Name:** "{{AppName}}" stands for the display name defined in [`Config/Brand.xcconfig`](Config/Brand.xcconfig) and [`scripts/brand.env`](scripts/brand.env). The product name is temporary and has not been chosen yet. See [docs/decisions/0400-documentation-decisions.md](docs/decisions/0400-documentation-decisions.md).
+> **Name:** the product name and its identifiers (slug, bundle IDs, website host) come from [`Config/Brand.xcconfig`](Config/Brand.xcconfig) and [`scripts/brand.env`](scripts/brand.env).
 
 ## Status
 
@@ -37,17 +37,17 @@ Both options are placeholders until the first public build exists.
 
 | Method | Command or link |
 |---|---|
-| Notarized DMG | Download from `https://{{app-slug}}.kal.vn/tai-ve` (not available yet) |
-| Homebrew tap | `brew install --cask OWNER/tap/{{app-slug}}` (tap owner: VERIFY) |
+| Notarized DMG | Download from `https://keyvi.kal.vn/tai-ve` (not available yet) |
+| Homebrew tap | `brew install --cask OWNER/tap/keyvi` (tap owner: VERIFY) |
 
-Requirements: macOS 15 Sequoia or later, Apple silicon or Intel (universal binary). Macs that stop at macOS 14 are not supported (PRD-R8; the minimum is pending confirmation by the maintainer).
+Requirements: macOS 12 Monterey or later, Apple silicon or Intel (universal binary) (PRD-R8, [ADR 0315](docs/decisions/0315-minimum-macos-12.md)).
 
 Move the app to `/Applications` before the first launch. The app offers to move itself and never asks for permission while it runs from the DMG or another temporary location.
 
 ## Privacy
 
 - Typed content never leaves your Mac and is never written to disk. The only exception is a typing trace for a bug report that you start by hand: 60 to 180 seconds, visible countdown, reviewed by you before sharing, deleted after 24 hours, never sent automatically.
-- The only automatic network traffic is the update check (the appcast and update archives on `{{app-slug}}.kal.vn`).
+- The only automatic network traffic is the update check (the appcast and update archives on `keyvi.kal.vn`).
 - No telemetry, no analytics, no crash-reporting service, no remote configuration.
 - Diagnostics contain no typed characters, words, macro contents, clipboard contents or window titles.
 
@@ -100,10 +100,10 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 
 ## Licence and provenance
 
-- {{AppName}} is free software under the GNU General Public License, version 3 or (at your option) any later version: [LICENSE](LICENSE). Copyright (c) 2026 the {{AppName}} authors.
+- KeyVi is free software under the GNU General Public License, version 3 or (at your option) any later version: [LICENSE](LICENSE). Copyright (c) 2026 the KeyVi authors.
 - The Vietnamese engine packages and the word-list pipeline are MPL-2.0-licensed, so other projects can embed them: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
 - Contributions are signed off (Developer Certificate of Origin); contributions to GPL-covered parts are also licensed to the project under MIT, with no CLA ([CONTRIBUTING.md](CONTRIBUTING.md) section 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
-- {{AppName}} is an independent implementation written under clean-room rules: [spec/05-clean-room.md](spec/05-clean-room.md). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- KeyVi is an independent implementation written under clean-room rules: [spec/05-clean-room.md](spec/05-clean-room.md). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Links
 
@@ -112,5 +112,5 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 - Security reports: [SECURITY.md](SECURITY.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
-- Website: `https://{{app-slug}}.kal.vn`
+- Website: `https://keyvi.kal.vn`
 - Support: GitHub Issues for bugs and compatibility, GitHub Discussions for questions

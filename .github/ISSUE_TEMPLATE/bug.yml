@@ -52,7 +52,7 @@ body:
     id: diagnostics
     attributes:
       label: Diagnostics block (Khối chẩn đoán)
-      description: In the app, choose Báo lỗi... > Mở GitHub; the block is copied to your clipboard. Paste it here exactly as it is, with its fence lines. The block starts with the header line `<slug>-diagnostics v1` (the app's short name, then the format version). You can preview it first with "Xem trước dữ liệu sẽ gửi". If you cannot open the app, write "not available".
+      description: In the app, choose Báo lỗi... > Mở GitHub; the block is copied to your clipboard. Paste it here exactly as it is, with its fence lines. The block starts with the header line `keyvi-diagnostics v1` (the app's short name, then the format version). You can preview it first with "Xem trước dữ liệu sẽ gửi". If you cannot open the app, write "not available".
       placeholder: Paste the diagnostics block here
     validations:
       required: true
