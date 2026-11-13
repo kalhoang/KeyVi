@@ -41,7 +41,7 @@ struct ValidityTests {
         "nghãi", "nghô", "nghai", "ngha",
         // ENG-R310 to ENG-R313.
         "ci", "ky" + "a", "ge", "gha", "nge", "ngi", "cuân", "kuy", "ghoa", "giy", "giuy", "iêu", "tyêm", "qa", "quu",
-        // ENG-R316: open ươ is never valid committed text.
+        // ENG-R317: open ươ is never valid committed text.
         "thươ", "hươ", "ươ",
         // ENG-R320: stop codas take only sắc and nặng.
         "càc", "cảp", "hõt", "tẽt",

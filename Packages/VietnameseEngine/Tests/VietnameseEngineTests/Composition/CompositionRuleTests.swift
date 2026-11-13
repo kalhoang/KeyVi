@@ -80,7 +80,7 @@ struct HornCompositionTests {
     }
 
     @Test func commitFormOfAnOpenPair() throws {
-        // ENG-R532, for section 8 to call.
+        // ENG-R532, ENG-R317: the commit form section 8 writes.
         func committed(_ keys: String) throws -> String {
             let token = try #require(try Typing.driver(keys).state.active)
             return token.composition.committedText(style: .traditional)

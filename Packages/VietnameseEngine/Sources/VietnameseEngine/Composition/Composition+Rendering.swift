@@ -9,7 +9,7 @@ extension Composition {
         render(style: style, committed: false)
     }
 
-    /// ENG-R532: the text a commit writes for the composed form. An open `ươ` (no coda, no ending) is
+    /// ENG-R532, ENG-R317: the text a commit writes for the composed form. An open `ươ` (no coda, no ending) is
     /// written `uơ` with the tone on `ơ` (`thưở` -> `thuở`, `hươ` -> `huơ`). Literal tokens keep their
     /// display: their vowel group is never open because the literal tail follows it. The commit (8.1)
     /// calls this when it keeps the composed form.

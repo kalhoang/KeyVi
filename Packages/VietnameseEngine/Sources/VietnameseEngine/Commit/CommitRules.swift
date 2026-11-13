@@ -93,9 +93,8 @@ package struct CommitPolicy: Sendable {
         // L2: the user lists (8.7); keep-as-typed is listed first and wins if a word is in both.
         if resources.userKeepRaw.contains(r) { return .restored(.userList) }
         if resources.userKeepVietnamese.contains(r) { return .kept(.userList) }
-        // L3: abbreviations (`đc`, `ĐL`, `ĐHQG`). Reading: L3 does not apply to a token in which an
-        // escape was used, so L4 decides it; otherwise `www` would commit as `ww`, which ENG-T12
-        // forbids (docs/decisions/0103-engine-commit-history-macros.md).
+        // L3: abbreviations (`đc`, `ĐL`, `ĐHQG`). ENG-R801: L3 never keeps a token in which an escape was
+        // used; L4 decides it, so `www` (displayed `ww`) commits as `www` (ENG-T12).
         if !inputs.facts.hasVowel, !inputs.escapeUsed { return .kept(.abbreviation) }
         return decideAutomatic(inputs, rawLowercased: r, runIsEnglish: runIsEnglish)
     }

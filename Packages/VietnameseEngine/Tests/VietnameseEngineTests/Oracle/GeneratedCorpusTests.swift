@@ -15,12 +15,13 @@ struct GeneratedCorpusTests {
 
     @Test func caseCounts() {
         let counts = GeneratedCorpus.counts()
-        print("[ENG-T04] O1-O4 cases: \(counts.orders) (spec 237,916 includes 92 duplicate cases of the giu spelling)")
+        print("[ENG-T04] O1-O4 cases: \(counts.orders) (spec 237,824)")
         print(
             "[ENG-T04] ENG-T03 variant cases: \(counts.variants) (Titlecase and all caps per toned syllable, uwow per toned ươ syllable)"
         )
         // 15,406 toned syllables, of which 2,169 level: 4 x (3 x 2,169 + 4 x 13,237).
         #expect(counts.orders == 237_824)
+        // The reference model's 237,916 counts the 92 cases of the `giu` duplicate (spec 3.15).
         #expect(counts.orders + 92 == 237_916)
         #expect(counts.variants == 2 * 15_406 + 864)
     }
