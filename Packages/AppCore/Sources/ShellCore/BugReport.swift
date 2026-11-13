@@ -205,3 +205,146 @@ public enum SystemInfoReader {
         return value
     }
 }
+
+/// An app the user can pick in the sheet (PRD-R47 item 1): recent apps, the last frontmost one first.
+public struct BugReportAppChoice: Sendable, Hashable {
+    public var bundle: BundleKey
+    public var name: String
+
+    public init(bundle: BundleKey, name: String) {
+        self.bundle = bundle
+        self.name = name
+    }
+}
+
+/// Buttons of the bug report sheet, in display order.
+public enum BugReportAction: String, Sendable, Hashable, CaseIterable {
+    /// Visible without opening the preview, so "Copy report" is the third click from the menu (section 12).
+    case copyReport
+    case github, email, saveFile
+    /// PRD-R49 "test in the practice field".
+    case practiceField
+    case openDiagnostics
+}
+
+/// PRD-R47-R49 sheet state without UI: the draft, the preview disclosure and the outputs of each path.
+public struct BugReportSheet: Sendable, Hashable {
+    public var apps: [BugReportAppChoice]
+    public private(set) var draft: BugReportDraft
+    public var previewExpanded = false
+    public let paths: [BugReportPath]
+
+    /// `preselected` is the last frontmost app (PRD-R47 item 1); it is added to `apps` when missing.
+    public init(apps: [BugReportAppChoice], preselected: BugReportAppChoice?, brand: Brand) {
+        var list = apps
+        if let preselected, !list.contains(where: { $0.bundle == preselected.bundle }) {
+            list.insert(preselected, at: 0)
+        }
+        self.apps = list
+        paths = BugReportComposer.availablePaths(brand: brand)
+        draft = BugReportDraft(
+            app: preselected?.bundle, appName: preselected?.name, symptom: .other, userDescription: "",
+            reproducesInPracticeField: nil)
+    }
+
+    public var actions: [BugReportAction] {
+        BugReportAction.allCases.filter { action in
+            switch action {
+            case .github: paths.contains(.github)
+            case .email: paths.contains(.email)
+            case .copyReport, .saveFile, .practiceField, .openDiagnostics: true
+            }
+        }
+    }
+
+    public mutating func selectApp(_ bundle: BundleKey?) {
+        let choice = bundle.flatMap { key in apps.first { $0.bundle == key } }
+        draft.app = choice?.bundle
+        draft.appName = choice?.name
+    }
+
+    public mutating func select(_ symptom: DiagnosticsReport.Symptom) { draft.symptom = symptom }
+    public mutating func setDescription(_ text: String) { draft.userDescription = text }
+    public mutating func setReproducesInPracticeField(_ value: Bool?) { draft.reproducesInPracticeField = value }
+
+    /// The report for this draft: the user's choices without the free text, and nothing about an app other
+    /// than the selected one (PLT-R913, PLT-R541). Pass the report built for the draft when the App can rebuild
+    /// it; otherwise sections of a previously reported app are dropped here.
+    public func report(from base: DiagnosticsReport) -> DiagnosticsReport {
+        var report = base
+        report.userReport = ReportSections.userReport(draft)
+        if report.reportedAppMode?.bundle != draft.app { report.reportedAppMode = nil }
+        if let override = report.rule?.userOverride, !Self.matches(override, draft.app) {
+            report.rule?.userOverride = nil
+        }
+        return report
+    }
+
+    private static func matches(_ override: DiagnosticsReport.ReportedOverride, _ app: BundleKey?) -> Bool {
+        guard let app else { return false }
+        return override.match.bundleIds?.contains(app) == true
+    }
+
+    /// PLT-R1204: the exact text shown in the preview is the plain-text rendering.
+    public func preview(_ report: DiagnosticsReport, language: InterfaceLanguage) -> String {
+        DiagnosticsRenderer.plainText(report, language: language)
+    }
+
+    /// The block written to the clipboard by "Copy report" and "Mở GitHub" (QA-R44), after the notice (PRD-R48).
+    public func clipboardText(_ report: DiagnosticsReport) -> String { DiagnosticsRenderer.issueBlock(report) }
+
+    /// The JSON file for "Gửi qua email" and "Lưu tệp..." (PRD-R47).
+    public func attachment(_ report: DiagnosticsReport) throws -> Data { try DiagnosticsRenderer.json(report) }
+
+    public func attachmentFileName(slug: String, report: DiagnosticsReport) -> String {
+        BugReportComposer.attachmentFileName(slug: slug, date: report.generatedAt)
+    }
+
+    public func githubURL(repository: URL, report: DiagnosticsReport) -> URL {
+        BugReportComposer.githubIssueURL(repository: repository, draft: draft, report: report)
+    }
+
+    public func mail(report: DiagnosticsReport, brand: Brand, localizer: Localizer) -> MailDraft? {
+        BugReportComposer.mail(draft: draft, report: report, brand: brand, localizer: localizer)
+    }
+}
+
+/// Buttons of the Diagnostics window (PLT-R1201), in display order.
+public enum DiagnosticsWindowAction: String, Sendable, Hashable, CaseIterable {
+    case copyReport, misbehaves, recordTrace, latencyTest, openLogs
+}
+
+/// What the report menu items open (PRD-R11 items 4 and 6, PLT-R1205 step 1).
+public enum DiagnosticsDestination: Sendable, Hashable {
+    case bugReport(preselected: BundleKey?)
+    case misbehaves(BundleKey)
+}
+
+/// Navigation from the menu to the report (02-platform.md section 12: a first-time user produces a report in
+/// at most 3 clicks from the menu).
+public enum DiagnosticsNavigation {
+    public enum Click: Sendable, Hashable {
+        case statusItem
+        case menu(MenuEntry)
+        case sheet(BugReportAction)
+    }
+
+    /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
+    /// the misbehaves flow for that app (the user focused the problem field first).
+    public static func destination(reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?)
+        -> DiagnosticsDestination
+    {
+        if let bundle { return .misbehaves(bundle) }
+        return .bugReport(preselected: lastFrontmost)
+    }
+
+    /// The shortest click path from the closed menu to "Copy report": open the menu, choose "Báo lỗi...", press
+    /// "Copy report" in the sheet. Nil when the menu or the sheet do not offer the step.
+    public static func pathToCopyReport(menu: MenuModel, sheet: BugReportSheet) -> [Click]? {
+        guard menu.entries.contains(.reportProblem), sheet.actions.contains(.copyReport) else { return nil }
+        guard case .bugReport = destination(reportProblemFor: nil, lastFrontmost: menu.frontmostApp?.bundle) else {
+            return nil
+        }
+        return [.statusItem, .menu(.reportProblem), .sheet(.copyReport)]
+    }
+}
