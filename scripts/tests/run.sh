@@ -1070,12 +1070,16 @@ EOF
   cp -R "$app" "$nested"
   cp /usr/bin/true "$nested/Contents/MacOS/helper"
   codesign --force --sign - "$nested/Contents/MacOS/helper" >/dev/null 2>&1
+  # A data-only bundle (like a SwiftPM resource bundle) holds no code: the app's seal covers it as resources.
+  mkdir -p "$nested/Contents/Resources/Data.bundle/Contents/Resources"
+  printf 'data\n' >"$nested/Contents/Resources/Data.bundle/Contents/Resources/words.txt"
   codesign --force --sign - "$nested" >/dev/null 2>&1
   expect 1 "verify-release fails on an ad-hoc nested executable" "$M/scripts/verify-release.sh" --app "$nested" \
     --pre-notarization
   contains "deep verification alone accepts it" "ok: codesign --verify --deep --strict"
   contains "nested code check fails" "FAILED: nested code signed with Developer ID"
   contains "names the nested file" "Contents/MacOS/helper: not signed with Developer ID"
+  if grep -q 'Data.bundle' "$T/out"; then ko "a data-only bundle is not nested code"; else ok "a data-only bundle is not nested code"; fi
   # W3-A, ADR 0502: an app built with the INTEGRATION_HOOKS condition carries the marker; a release must not.
   hooked="$M/hooked/$(basename "$app")"
   mkdir -p "$M/hooked"

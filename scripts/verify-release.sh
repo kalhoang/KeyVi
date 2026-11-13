@@ -135,7 +135,8 @@ if entitlements:
 
 check_entitlements() { entitlements_empty "$app"; }
 
-# Every Mach-O file and code bundle under Contents, except the main executable (its signature is the app's).
+# Every Mach-O file under Contents except the main executable (its signature is the app's), and every bundle
+# that contains one. Data-only bundles (SwiftPM resource bundles) hold no code; the app's seal covers them.
 nested_code() {
   py - "$app" "$(info_value CFBundleExecutable || true)" <<'PY'
 import os
@@ -145,18 +146,24 @@ app, executable = sys.argv[1:]
 MACH_O = {bytes.fromhex(magic) for magic in ("feedface", "feedfacf", "cefaedfe", "cffaedfe", "cafebabe", "bebafeca")}
 BUNDLES = (".app", ".appex", ".bundle", ".framework", ".plugin", ".xpc")
 main = os.path.join(app, "Contents", "MacOS", executable) if executable else None
+bundles, binaries = [], []
 for directory, subdirectories, files in os.walk(os.path.join(app, "Contents")):
     for name in sorted(subdirectories):
         path = os.path.join(directory, name)
         if name.endswith(BUNDLES) and not os.path.islink(path):
-            print(path)
+            bundles.append(path)
     for name in sorted(files):
         path = os.path.join(directory, name)
         if path == main or os.path.islink(path) or not os.path.isfile(path):
             continue
         with open(path, "rb") as handle:
             if handle.read(4) in MACH_O:
-                print(path)
+                binaries.append(path)
+for path in bundles:
+    if any(binary.startswith(path + os.sep) for binary in binaries):
+        print(path)
+for path in binaries:
+    print(path)
 PY
 }
 
