@@ -19,8 +19,8 @@ public struct ChangedWord: Sendable, Hashable, CustomStringConvertible {
 /// 99.5 % unchanged, every failure a known exception) and (b) after a Vietnamese seed token (ENG-R872: at
 /// most 3 % changed, every change an ambiguity candidate of ENG-R820 whose row, if any, is `vi`).
 ///
-/// The words come from the data track's lexicon and tech lists; the tests run it with the 13.9 fixtures
-/// until those exist.
+/// `VietnameseEngineDataTests` runs it over the bundled lexicon and tech lists (`EnglishCorpusGateTests`);
+/// the engine tests run it with the 13.9 fixtures.
 public struct EnglishCorpusReport: Sendable {
     /// Number of words checked.
     public let words: Int

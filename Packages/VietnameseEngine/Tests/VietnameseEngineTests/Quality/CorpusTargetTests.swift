@@ -3,9 +3,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// The measurable targets of spec 8.8 that do not need the bundled data, run with the 13.9 fixtures until
-/// the data track delivers the English lexicon (ENG-T10) and the prose corpus (ENG-T20); the harnesses are
-/// in VietnameseEngineTesting (`EnglishCorpusCheck`, `ProseCorpusCheck`).
+/// The measurable targets of spec 8.8 with the 13.9 fixtures and the prose sample. The same harnesses
+/// (`EnglishCorpusCheck`, `ProseCorpusCheck` in VietnameseEngineTesting) run on the bundled lexicon and the
+/// prose corpus in `VietnameseEngineDataTests/RealData` (docs/decisions/0202).
 @Suite("Measurable targets (8.8) with fixture data")
 struct CorpusTargetTests {
     static var englishWords: [String] {
