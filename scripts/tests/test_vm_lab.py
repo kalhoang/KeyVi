@@ -598,9 +598,29 @@ class SmokeArgumentTests(LabTestCase):
         self.lab("down", DEV)
 
 
+FAKE_GIT = r"""#!/bin/bash
+# Fake git for integration-dev.sh: the real checkout is never read, so a run does not depend on the size of the
+# repository or the speed of its disk (63 s instead of 5 s at a host load of 18 on 2026-11-13).
+printf 'git %s\n' "$*" >>"$FAKE_DIR/calls.log"
+case " $* " in
+  *" status "*) exit 0 ;;
+  *" rev-parse "*) echo 1234abc ;;
+  *" archive "*) printf 'fake checkout archive\n' ;;
+  *) echo "fake git: unsupported $*" >&2; exit 64 ;;
+esac
+"""
+
+
 class IntegrationDevArgumentTests(LabTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        write_exe(self.bin / "git", FAKE_GIT)
+
     def integration(self, *args: str, **env: str) -> subprocess.CompletedProcess:
         return self.script(INTEGRATION, *args, **env)
+
+    def git_calls(self, verb: str) -> list[str]:
+        return [c for c in self.calls() if c.startswith("git ") and f" {verb} " in f"{c} "]
 
     def test_help_and_usage_errors(self):
         self.assertEqual(self.integration("--help").returncode, 0)
@@ -632,6 +652,7 @@ class IntegrationDevArgumentTests(LabTestCase):
         self.assertFalse(any("integration-guest.sh" in call for call in self.tart_calls("exec")))
         self.assertIn(f"clone {DEV} {DEV}-suite", "\n".join(self.calls()))
         self.assertIn(f"set {DEV}-suite --memory 6144 --cpu 4", "\n".join(self.tart_calls("set")))
+        self.assertEqual(len(self.git_calls("archive")), 1)  # the committed checkout was copied before the failure
         self.assertFalse((self.fake / "vms" / f"{DEV}-suite").exists())
         self.assertTrue((self.fake / "vms" / DEV).exists())
         self.assertEqual(self.running(), set())
