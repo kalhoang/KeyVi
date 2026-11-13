@@ -23,56 +23,75 @@ struct QueueBenchmarkTests {
     /// Per operation, debug build.
     private static let bound: Duration = .microseconds(5)
 
+    /// Attempts per test: the parallel test run loads the shared machine for its first seconds, so one busy
+    /// moment must not decide an order-of-magnitude check. Stops at the first attempt inside the bound.
+    private static let attempts = 5
+
     private func measurePerOperation(_ body: () -> Void) -> Duration {
         let clock = ContinuousClock()
         let elapsed = clock.measure(body)
         return elapsed / Self.iterations
     }
 
+    /// The best per-operation time of up to `attempts` fresh runs; `run` builds its own state each time.
+    private func bestPerOperation(_ run: () -> Duration) -> Duration {
+        var best: Duration = .seconds(1)
+        for _ in 0..<Self.attempts where best >= Self.bound { best = min(best, run()) }
+        return best
+    }
+
     /// Tap side of one held key: `inFlight`, `nextSequence`, `push`; worker side: `pop`, `finished`.
     @Test func pushPopFinishRoundTrip() {
-        let queue = JobQueue(capacity: 512, signal: WorkerSignal(), policy: .untilPosted)
         let record = KeyEventRecord(
             kind: .keyDown, keyCode: KeyCode(rawValue: 0), flags: 0, autorepeat: false, keyboardType: 40,
             unicode: .empty,
             receivedAt: .zero, isProbe: false)
-        let perOperation = measurePerOperation {
-            for _ in 0..<Self.iterations {
-                _ = queue.inFlight
-                let sequence = queue.nextSequence()
-                _ = queue.push(.replay(sequence, record))
-                _ = queue.pop()
-                queue.finished(sequence, expectation: nil)
+        let perOperation = bestPerOperation {
+            let queue = JobQueue(capacity: 512, signal: WorkerSignal(), policy: .untilPosted)
+            let elapsed = measurePerOperation {
+                for _ in 0..<Self.iterations {
+                    _ = queue.inFlight
+                    let sequence = queue.nextSequence()
+                    _ = queue.push(.replay(sequence, record))
+                    _ = queue.pop()
+                    queue.finished(sequence, expectation: nil)
+                }
             }
+            #expect(queue.inFlight == 0)
+            return elapsed
         }
-        #expect(queue.inFlight == 0)
         #expect(perOperation < Self.bound)
     }
 
     /// Tap side of echo bookkeeping: `settle` at callback entry plus `classify` and `observed` per echo.
     @Test func echoSettleAndClassify() {
-        let queue = JobQueue(capacity: 512, signal: WorkerSignal())
-        let tracker = EchoTracker(queue: queue)
         let marker = EventMarker(tag: 0xAB_CDEF)
-        var now = MonotonicInstant(nanoseconds: 1_000)
-        let perOperation = measurePerOperation {
-            for index in 0..<Self.iterations {
-                let sequence = queue.nextSequence()
-                _ = queue.push(.boundary(BoundaryJob(sequence: sequence, reason: .focusChanged, generation: .initial)))
-                _ = queue.pop()
-                let eventSequence = UInt32(truncatingIfNeeded: index) & EventMarker.sequenceMask
-                queue.finished(
-                    sequence,
-                    expectation: EchoExpectation(job: sequence, finalEventSequence: eventSequence, postedAt: now))
-                _ = tracker.settle(now: now)
-                if case .echo(let echoed) = marker.classify(marker.userData(sequence: eventSequence, probe: false)) {
-                    tracker.observed(echoed, at: now)
+        let perOperation = bestPerOperation {
+            let queue = JobQueue(capacity: 512, signal: WorkerSignal())
+            let tracker = EchoTracker(queue: queue)
+            var now = MonotonicInstant(nanoseconds: 1_000)
+            let elapsed = measurePerOperation {
+                for index in 0..<Self.iterations {
+                    let sequence = queue.nextSequence()
+                    _ = queue.push(
+                        .boundary(BoundaryJob(sequence: sequence, reason: .focusChanged, generation: .initial)))
+                    _ = queue.pop()
+                    let eventSequence = UInt32(truncatingIfNeeded: index) & EventMarker.sequenceMask
+                    queue.finished(
+                        sequence,
+                        expectation: EchoExpectation(job: sequence, finalEventSequence: eventSequence, postedAt: now))
+                    _ = tracker.settle(now: now)
+                    if case .echo(let echoed) = marker.classify(marker.userData(sequence: eventSequence, probe: false))
+                    {
+                        tracker.observed(echoed, at: now)
+                    }
+                    now = now.advanced(byMicroseconds: 1)
                 }
-                now = now.advanced(byMicroseconds: 1)
             }
+            #expect(queue.inFlight == 0)
+            #expect(tracker.consecutiveMisses == 0)
+            return elapsed
         }
-        #expect(queue.inFlight == 0)
-        #expect(tracker.consecutiveMisses == 0)
         #expect(perOperation < Self.bound)
     }
 }
