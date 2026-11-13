@@ -31,8 +31,18 @@ public enum AllocationCounter {
         return dlsym(defaultHandle, "malloc_logger").map { UInt(bitPattern: $0) }
     }()
 
-    private static var loggerSlot: UnsafeMutablePointer<MallocLogger?>? {
+    /// The hook variable viewed as an atomic word. Plain stores would let an optimising compiler drop the
+    /// install as a dead store (malloc and free are known not to read it); atomic stores are kept.
+    private static var loggerSlot: UnsafeMutablePointer<Atomic<UInt>>? {
         loggerSlotAddress.flatMap { UnsafeMutablePointer(bitPattern: $0) }
+    }
+
+    private static let hook: MallocLogger = { type, _, _, _, _, _ in
+        guard type & AllocationCounter.allocateFlag != 0 else { return }
+        let current = UInt(bitPattern: pthread_self())
+        if current == AllocationCounter.countingThread.load(ordering: .relaxed) {
+            AllocationCounter.allocations.wrappingAdd(1, ordering: .relaxed)
+        }
     }
 
     /// True when a sanitizer runtime that replaces malloc is loaded.
@@ -45,9 +55,18 @@ public enum AllocationCounter {
     /// allocation is seen (positive control). Also absorbs first-use costs of the hook.
     public static let isAvailable: Bool = {
         guard loggerSlot != nil, !isSanitizerActive else { return false }
-        _ = rawCount { free(malloc(16)) }
-        return rawCount { free(malloc(16)) } >= 1
+        _ = rawCount(probeAllocation)
+        return rawCount(probeAllocation) >= 1
     }()
+
+    /// Receives the probe pointer so an optimising compiler cannot delete the malloc/free pair.
+    private static let probeSink = Atomic<UInt>(0)
+
+    private static func probeAllocation() {
+        let pointer = malloc(16)
+        probeSink.store(UInt(bitPattern: pointer), ordering: .relaxed)
+        free(pointer)
+    }
 
     /// Number of allocations made by the calling thread while `body` runs, or nil when counting is not
     /// available. Measurements are serialized process-wide; other threads are not counted.
@@ -60,18 +79,11 @@ public enum AllocationCounter {
         measurement.withLock { runs in
             runs += 1
             guard let slot = loggerSlot else { return 0 }
-            let previous = slot.pointee
             allocations.store(0, ordering: .sequentiallyConsistent)
             countingThread.store(UInt(bitPattern: pthread_self()), ordering: .sequentiallyConsistent)
-            slot.pointee = { type, _, _, _, _, _ in
-                guard type & AllocationCounter.allocateFlag != 0 else { return }
-                let current = UInt(bitPattern: pthread_self())
-                if current == AllocationCounter.countingThread.load(ordering: .relaxed) {
-                    AllocationCounter.allocations.wrappingAdd(1, ordering: .relaxed)
-                }
-            }
+            let previous = slot.pointee.exchange(unsafeBitCast(hook, to: UInt.self), ordering: .sequentiallyConsistent)
             body()
-            slot.pointee = previous
+            slot.pointee.store(previous, ordering: .sequentiallyConsistent)
             countingThread.store(0, ordering: .sequentiallyConsistent)
             return allocations.load(ordering: .sequentiallyConsistent)
         }
