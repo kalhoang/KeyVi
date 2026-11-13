@@ -62,13 +62,14 @@ public protocol ProcessIdentityProvider: Sendable {
 /// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a
 /// `SecureInputSnapshot` and names the likely holder with the data-driven hint key (PLT-R396, PLT-R397).
 ///
-/// Episodes and generations: the generation changes on every OS transition, so the tap's "resumed by key"
-/// evidence (PLT-R398B) stays valid while the OS flag is stuck. `keyEvidence(generation:)` ENDS episode N: the
-/// next poll that still sees the OS flag on starts a new episode with a new generation even though no "off" was
-/// observed in between (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
+/// Episodes and generations (PLT-R398B): the generation changes on every OS transition. `keyEvidence(generation:)`
+/// ENDS episode N: the tap stays resumed for generation N until the next poll, and the next poll that still sees
+/// the OS flag on starts a new episode with a new generation even though no "off" was observed in between
+/// (on -> off -> key -> on inside one poll interval must pause again, not stay resumed).
 ///
-/// Polls are serialised; `publish` runs inside that serialisation (so snapshots are published in poll order)
-/// and must not call back into the monitor synchronously. Logic: `SecureInputMonitor+Polling.swift`.
+/// Snapshots are published in poll order, one at a time, outside the poll lock: `publish` may call back into
+/// the monitor (`pollNow`, `keyEvidence`); a snapshot produced meanwhile is published after it returns.
+/// Logic: `SecureInputMonitor+Polling.swift`.
 public final class SecureInputMonitor: Sendable {
     public static let pollInterval: Duration = .seconds(2)
     /// PLT-R803: at least 10 % leeway on every timer.
@@ -78,7 +79,7 @@ public final class SecureInputMonitor: Sendable {
     let processes: any ProcessIdentityProvider
     let hintKey: @Sendable (BundleKey) -> String?
     let scheduler: any TimerScheduler
-    let publish: @Sendable (SecureInputSnapshot) -> Void
+    let delivery: OrderedDelivery<SecureInputSnapshot>
     let state = Mutex(SecureInputMonitorState())
 
     public init(
@@ -90,7 +91,7 @@ public final class SecureInputMonitor: Sendable {
         self.processes = processes
         self.hintKey = hintKey
         self.scheduler = scheduler
-        self.publish = publish
+        self.delivery = OrderedDelivery(publish)
     }
 
     public func start() { beginPolling() }

@@ -159,4 +159,31 @@ struct PermissionMonitorTests {
         let stored = store.integer(forKey: PermissionMonitor.lastGrantedDigestKey)
         #expect(stored == HostServicesHashing.stableHash52("fake-signing-identity"))
     }
+
+    /// A lifecycle reaction may call `checkNow()` from `onChange` (PLT-R721): delivery happens outside the check
+    /// lock, in check order, never nested.
+    @Test(.timeLimit(.minutes(1))) func onChangeMayCallBackIntoTheMonitor() {
+        let probe = FakePermissionProbe(trusted: true, post: true, listen: true)
+        let changes = Recorder<PermissionStatus>()
+        let nested = Recorder<PermissionStatus>()
+        let nesting = NestingProbe()
+        let binding = LateBinding<PermissionMonitor>()
+        let monitor = PermissionMonitor(
+            probe: probe, store: InMemoryKeyValueStore(), scheduler: ManualScheduler(clock: ManualClock())
+        ) { status in
+            nesting.run {
+                changes.append(status)
+                guard status.health == .ready, let monitor = binding.value else { return }
+                probe.set(trusted: false, post: true, listen: true)
+                nested.append(monitor.checkNow())
+                monitor.setTapUnavailable(true)
+            }
+        }
+        binding.value = monitor
+        monitor.start()
+        #expect(changes.values.map(\.health) == [.ready, .stale])
+        #expect(nested.values.map(\.health) == [.stale])
+        #expect(nesting.deepest == 1)
+        monitor.stop()
+    }
 }

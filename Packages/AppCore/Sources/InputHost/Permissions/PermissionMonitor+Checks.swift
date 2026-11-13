@@ -38,12 +38,13 @@ extension PermissionMonitor {
     }
 
     func check() -> PermissionStatus {
-        state.withLock { state in
+        defer { delivery.drain() }
+        return state.withLock { state in
             let status = evaluate(&state)
             let changed = state.last != status
             state.last = status
             if state.started { reschedule(&state) }
-            if changed { onChange(status) }
+            if changed { delivery.enqueue(status) }  // under the lock: the queue order is the check order
             return status
         }
     }

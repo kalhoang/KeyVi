@@ -47,9 +47,9 @@ public struct PermissionStatus: Sendable, Hashable {
 /// production), immediately on wake, session activation and menu open (PLT-R721). Remembers the identity digest
 /// of the last grant (key-value store) for `stale`.
 ///
-/// `onChange` runs for the first check after `start()` and then whenever the status changes, serialised with
-/// the checks (so in check order); it must not call back into the monitor synchronously. Logic:
-/// `PermissionMonitor+Checks.swift`.
+/// `onChange` runs for the first check after `start()` and then whenever the status changes, in check order,
+/// one at a time and outside the check lock: it may call back into the monitor (`checkNow`, `setTapUnavailable`);
+/// a status produced meanwhile is delivered after it returns. Logic: `PermissionMonitor+Checks.swift`.
 public final class PermissionMonitor: Sendable {
     public static let notReadyInterval: Duration = .seconds(2)
     public static let readyInterval: Duration = .seconds(30)
@@ -62,7 +62,7 @@ public final class PermissionMonitor: Sendable {
     let probe: any PermissionProbe
     let store: any KeyValueStore
     let scheduler: any TimerScheduler
-    let onChange: @Sendable (PermissionStatus) -> Void
+    let delivery: OrderedDelivery<PermissionStatus>
     let state = Mutex(PermissionMonitorState())
 
     public init(
@@ -72,7 +72,7 @@ public final class PermissionMonitor: Sendable {
         self.probe = probe
         self.store = store
         self.scheduler = scheduler
-        self.onChange = onChange
+        self.delivery = OrderedDelivery(onChange)
     }
 
     public func start() { beginChecks() }

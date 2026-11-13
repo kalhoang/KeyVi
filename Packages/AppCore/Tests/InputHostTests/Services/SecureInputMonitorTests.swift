@@ -192,4 +192,35 @@ struct SecureInputMonitorTests {
         #expect(snapshot.holder?.kind == .loginWindow)
         #expect(harness.published.count == 2)
     }
+
+    /// PLT-R395 menu-open poll from a reaction to a published snapshot: delivery happens outside the poll lock,
+    /// in poll order, never nested.
+    @Test(.timeLimit(.minutes(1))) func publishMayCallBackIntoTheMonitor() {
+        let probe = FakeSecureInputProbe()
+        let clock = ManualClock()
+        let published = Recorder<SecureInputSnapshot>()
+        let nesting = NestingProbe()
+        let binding = LateBinding<SecureInputMonitor>()
+        let nested = Recorder<SecureInputSnapshot>()
+        probe.set(enabled: true, holderPID: terminalPID)
+        let monitor = SecureInputMonitor(
+            probe: probe, processes: FakeProcessIdentityProvider(processes: []), hintKey: { _ in nil },
+            scheduler: ManualScheduler(clock: clock),
+            publish: { snapshot in
+                nesting.run {
+                    published.append(snapshot)
+                    guard snapshot.enabled, let monitor = binding.value else { return }
+                    monitor.keyEvidence(generation: snapshot.generation)
+                    probe.set(enabled: false, holderPID: nil)
+                    nested.append(monitor.pollNow())
+                }
+            })
+        binding.value = monitor
+        let first = monitor.pollNow()
+        #expect(first.enabled)
+        #expect(published.values.map(\.enabled) == [true, false])
+        #expect(published.values.map(\.generation) == [first.generation, first.generation + 1])
+        #expect(nested.values == [published.values[1]])
+        #expect(nesting.deepest == 1)
+    }
 }

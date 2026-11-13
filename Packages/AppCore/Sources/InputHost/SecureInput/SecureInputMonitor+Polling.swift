@@ -49,7 +49,8 @@ extension SecureInputMonitor {
     /// One poll. The generation changes on every OS transition, and also when the OS flag is still on after
     /// the tap ended the episode with key evidence: on -> off -> key -> on inside one interval pauses again.
     func poll() -> SecureInputSnapshot {
-        state.withLock { state in
+        defer { delivery.drain() }
+        return state.withLock { state in
             let enabled = probe.isSecureEventInputEnabled()
             var generation = state.snapshot.generation
             if enabled != state.snapshot.enabled || (enabled && state.evidenceGeneration == generation) {
@@ -60,7 +61,7 @@ extension SecureInputMonitor {
                 generation: generation, enabled: enabled, holder: enabled ? likelyHolder() : nil)
             if next != state.snapshot {
                 state.snapshot = next
-                publish(next)
+                delivery.enqueue(next)  // under the lock: the queue order is the poll order
             }
             return next
         }
