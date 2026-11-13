@@ -112,6 +112,39 @@ struct FuzzTests {
         }
     }
 
+    /// ENG-R906: the random streams of every Telex combination with bracket keys send bracket keys with
+    /// Caps Lock on, so the replay and restore checks of `randomStreams` see that state on every pull
+    /// request; no other combination and no other key carries Caps Lock.
+    @Test("The bracket combinations of the random streams send Caps Lock bracket keys (ENG-R906)")
+    func capsLockBracketKeysInStreams() {
+        var bracketCombinations = 0
+        for (index, combination) in Self.combinations.enumerated() {
+            var bracketKeys = false
+            if case .telex(let options) = combination.configuration.inputMethod { bracketKeys = options.bracketKeys }
+            let seed = 0x0136_0000 &+ UInt64(index) &+ FuzzEnvironment.seedOffset
+            var source = FuzzEventSource(
+                seed: seed, configuration: combination.configuration, triggers: FuzzEnvironment.macros.triggers)
+            var capsLockBrackets = 0
+            var capsLockOthers = 0
+            for event in source.events(20_000) {
+                guard case .key(let input) = event, input.capsLock else { continue }
+                if input.character == "[" || input.character == "]" {
+                    capsLockBrackets += 1
+                } else {
+                    capsLockOthers += 1
+                }
+            }
+            #expect(capsLockOthers == 0, "\(combination)")
+            if bracketKeys {
+                bracketCombinations += 1
+                #expect(capsLockBrackets > 0, "\(combination)")
+            } else {
+                #expect(capsLockBrackets == 0, "\(combination)")
+            }
+        }
+        #expect(bracketCombinations == 32)
+    }
+
     @Test("The random macro table has 1,000 triggers, punctuation-only ones included, NFC expansions")
     func macroTable() {
         let entries = RandomMacroTable.entries(count: 1_000, seed: 0x5EED_00AC_0001)
