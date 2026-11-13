@@ -421,6 +421,37 @@ try {
     assert.equal(plain(read("ho-tro", "index.html")), hint.vi.stringUnit.value);
   });
 
+  await check("populated: the FAQ names every app family where Escape restore is off (compat/rules.json, D8)", async () => {
+    const rules = JSON.parse(await readFile(join(ROOT_DIR, "compat", "rules.json"), "utf8"));
+    const off = rules.rules.filter((rule) => rule.action?.features?.restoreHotkey === false).map((rule) => rule.id).sort();
+    // Every rule that turns Escape restore off, with the names the FAQ gives it: app families, never bundle IDs.
+    const both = (...names) => ({ en: names, vi: names });
+    const families = {
+      "terminal.default": { en: ["terminals", "Terminal", "iTerm2"], vi: ["Terminal", "iTerm2"] },
+      "editor.vscode.integratedTerminal": { en: ["the terminal inside code editors"], vi: ["cửa sổ dòng lệnh trong trình soạn mã"] },
+      "editor.vscodeFamily": both("Visual Studio Code", "VSCodium", "Cursor"),
+      "editor.jetbrains": both("JetBrains", "Android Studio"),
+      "editor.nativeCodeEditors": both("Xcode", "Nova", "BBEdit"),
+      "editor.customTextViews": both("Sublime Text", "Zed", "Emacs", "MacVim"),
+      "remote.passThrough": { en: ["remote desktop and virtual machine apps"], vi: ["ứng dụng điều khiển máy từ xa và máy ảo"] },
+      "remote.chromeRemoteDesktop.web": both("Chrome Remote Desktop"),
+      "games.passThrough": { en: ["games"], vi: ["trò chơi"] },
+      "launcher.spotlight": both("Spotlight"),
+      "launcher.overlayPanels": both("Raycast", "Alfred"),
+    };
+    assert.deepEqual(off, Object.keys(families).sort(), "a rule turns Escape restore off or on again: update the FAQ entry and this map");
+    const entry = (html) => {
+      const found = html.split("<details>").find((chunk) => /<summary>[^]*?Escape[^]*?<\/summary>/.test(chunk));
+      assert.ok(found, "no FAQ entry about Escape");
+      return found.split("</details>")[0];
+    };
+    for (const [lang, html] of [["en", read("en", "support", "index.html")], ["vi", read("ho-tro", "index.html")]]) {
+      const text = entry(html);
+      for (const [id, names] of Object.entries(families)) for (const name of names[lang]) assert.ok(text.includes(name), `${lang}: ${id} needs "${name}"`);
+      assert.doesNotMatch(text, /\b(?:com|org|dev|net|tv|io)\.[A-Za-z0-9-]+\.[A-Za-z]/, `${lang}: no bundle IDs`);
+    }
+  });
+
   await check("populated: support page has permission (macOS 27 naming), Secure Input, targets", () => {
     const s = read("ho-tro", "index.html");
     assert.match(s, /Điều khiển thiết bị và truy cập dữ liệu/);
