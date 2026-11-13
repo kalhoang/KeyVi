@@ -45,7 +45,7 @@ import Testing
         let table = try Self.shipped()
         let english = table.names(macOS: version("12.7.6"), systemLanguage: "en-US")
         #expect(english.systemSettings == "System Preferences")
-        #expect(english.privacySecurity == "Security & Privacy")
+        #expect(english.privacySecurity == "Security & Privacy > Privacy")
         #expect(english.usersGroups == "Users & Groups")
         #expect(english.loginItems == "Login Items")
         #expect(table.names(macOS: version("12.0"), systemLanguage: "vi-VN").systemSettings == "Tùy chọn Hệ thống")

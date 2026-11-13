@@ -3,7 +3,7 @@
   "_comment": "PLT-R704, PRD-R64, ADR 0315. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint). Names are in the macOS language because UI copy quotes them as the user sees them in System Settings (macOS 13 and later) or System Preferences (macOS 12).",
   "entries": [
     {
-      "_verify": "macOS 12 Monterey has System Preferences, not System Settings (ADR 0315). Accessibility and Input Monitoring are on the Privacy tab of Security & Privacy; Text Replacements are the Text tab of Keyboard; Login Items are a tab of Users & Groups, and the users pane has no anchor for it. VERIFY every Vietnamese name and every deep link on a macOS 12 machine in each language.",
+      "_verify": "macOS 12 Monterey has System Preferences, not System Settings (ADR 0315). Accessibility and Input Monitoring are on the Privacy tab of Security & Privacy, so privacySecurity names the pane and the tab (the copy reads \"System Preferences > Security & Privacy > Privacy > Accessibility\", PLT-R701); Text Replacements are the Text tab of Keyboard; Login Items are a tab of Users & Groups, and the users pane has no anchor for it. VERIFY every Vietnamese name and every deep link on a macOS 12 machine in each language.",
       "macOS": {
         "min": "12.0",
         "max": "12.99"
@@ -11,7 +11,7 @@
       "names": {
         "en": {
           "systemSettings": "System Preferences",
-          "privacySecurity": "Security & Privacy",
+          "privacySecurity": "Security & Privacy > Privacy",
           "accessibility": "Accessibility",
           "inputMonitoring": "Input Monitoring",
           "keyboard": "Keyboard",
@@ -21,7 +21,7 @@
         },
         "vi": {
           "systemSettings": "Tùy chọn Hệ thống",
-          "privacySecurity": "Bảo mật & Quyền riêng tư",
+          "privacySecurity": "Bảo mật & Quyền riêng tư > Quyền riêng tư",
           "accessibility": "Trợ năng",
           "inputMonitoring": "Giám sát đầu vào",
           "keyboard": "Bàn phím",
