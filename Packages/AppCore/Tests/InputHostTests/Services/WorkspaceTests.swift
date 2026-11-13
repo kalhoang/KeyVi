@@ -19,7 +19,7 @@ struct WorkspaceTests {
         let events = NSWorkspaceEvents(workspaceCenter: workspace, distributedCenter: distributed)
         var received: [WorkspaceEvent] = []
         let token = events.observe { received.append($0) }
-        let application = NSWorkspace.shared.runningApplications.first { $0.processIdentifier > 0 } ?? .current
+        let application = NSRunningApplication.current  // this process only: other apps are never inspected
         workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
         workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
         workspace.post(name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
