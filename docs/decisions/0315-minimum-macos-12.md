@@ -86,7 +86,10 @@ re-render those on a change). A model that owns another observable object (the i
 hotkey recorder) re-publishes its changes with `relayChanges(of:)`, which keeps the `@Observable` behaviour
 of nested reads. AppKit controllers that used `withObservationTracking` use `afterChange`, which runs on the
 next main-queue turn after `objectWillChange`, when the new value is in place. Window titles keep their
-observation as an associated object of the window.
+observation as an associated object of the window. `ObservableObject` publishes whole-object changes, so text
+the user types in Settings (the practice field and the two word-list add fields) lives in a separate
+`SettingsTextDrafts` object observed only by those fields; a keystroke re-renders the field, not every pane
+that observes the window model.
 
 ### AppKit and SwiftUI fallbacks
 
@@ -110,20 +113,24 @@ observation as an associated object of the window.
 throw `LoginItemUnavailable`, and `openSystemSettings()` opens the macOS 12 `loginItems` deep link (System
 Preferences > Users & Groups). The General pane disables the toggle and shows
 `settings.general.openAtLogin.manual` ("Trên macOS 12, ... Hãy mở <System Preferences> > <Users & Groups> >
-<Login Items>, bấm nút cộng (+) rồi chọn ... trong thư mục Ứng dụng.") with a "Mở Tùy chọn hệ thống" button;
+<Login Items>, bấm nút cộng (+) rồi chọn ... trong thư mục Ứng dụng.") with a "Mở <System Preferences>" button;
 onboarding's last screen shows `onboarding.done.openAtLoginManual` instead of the checkbox. Pane names in that
 copy come from SystemPanes.json in the macOS language (PRD-R64). Nothing fails silently.
 
 ### System Preferences on macOS 12 (PLT-R704, PRD-R64)
 
-`SystemPanes.json` has four entries: 12.x (System Preferences: "Security & Privacy", Keyboard's "Text" tab,
+`SystemPanes.json` has four entries: 12.x (System Preferences: "Security & Privacy > Privacy", Keyboard's "Text" tab,
 "Users & Groups" > "Login Items", anchors `com.apple.preference.security?Privacy_Accessibility`,
 `...?Privacy_ListenEvent`, `com.apple.preference.keyboard`, `com.apple.preference.keyboard?InputSources`,
 `com.apple.preferences.users`), 13.0 to 14.99 (System Settings, Login Items under General), 15.0 to 26.99
 and 27 or later (Login Items & Extensions). `SystemPaneNames` gained `usersGroups` and `loginItems`. The three
 onboarding VoiceOver hints that named "System Settings" now say "the macOS settings", because the button
-titles already name the right app from the table. Every Vietnamese name and every macOS 12 to 14 deep link is
-VERIFY on a real system (the `_verify` notes in the file).
+titles already name the right app from the table. On macOS 12 the 12.x `privacySecurity` value carries the
+Privacy tab too, so the permission instruction reads "System Preferences > Security & Privacy > Privacy >
+Accessibility" (PLT-R701). The General pane's macOS 12 login item button takes the System Preferences name from
+the table as a format argument ("Mở %@"), so it matches the note above it, and its VoiceOver hint names no
+pane. Every Vietnamese name and every macOS 12 to 14 deep link is VERIFY on a real system (the `_verify` notes
+in the file).
 
 ### Verification
 
