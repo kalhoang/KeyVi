@@ -5,6 +5,7 @@
 
 public import AppModel
 public import CompatRules
+public import Diagnostics
 public import Foundation
 
 /// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table.
@@ -38,6 +39,13 @@ public enum StatusPresentation {
         case .paused(let reason):
             return pausedIcon(reason, mode: mode)
         }
+    }
+
+    /// The `capturing` input of `iconState`: true while a trace session runs, including the gaps in which secure
+    /// input or a secure field stops the recording (`isRecording` is false then and stays the tap's record gate).
+    /// PLT-R905: "changed menu-bar icon for the whole duration".
+    public static func isCapturing(_ capture: CaptureController, now: Date) -> Bool {
+        capture.remaining(now: now) != nil
     }
 
     private static func pausedIcon(_ reason: PauseReason, mode: TypingMode) -> StatusIconState {

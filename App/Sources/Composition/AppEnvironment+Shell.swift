@@ -71,7 +71,7 @@ extension AppEnvironment {
         let mode: TypingMode = if case .ready(let ready) = state { ready } else { focus.mode }
         let icon = StatusPresentation.iconState(
             state: state, mode: mode, ignored: frontmostRule(focus) == .ignore,
-            capturing: diagnostics.capture.isRecording)
+            capturing: StatusPresentation.isCapturing(diagnostics.capture, now: Date()))
         statusItem.show(icon, accessibilityLabelKey: StatusPresentation.accessibilityLabelKey(icon: icon, state: state))
     }
 
