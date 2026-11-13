@@ -210,6 +210,7 @@ struct HostControllerLifecycleTests {
         rig.controller.feed(.watchdogTripped(.callbackOverLimit(microseconds: 300_000)))
         #expect(rig.lifecyclePhase == .failOpen(.watchdog))
         #expect(handle.isEnabled == false)
+        #expect(rig.metrics.watchdogTrips.value == 1, "the soak gate counts trips (8.1 M2)")
         rig.controller.feed(.callbackExited)
         #expect(rig.lifecyclePhase == .running)
         #expect(handle.isEnabled)

@@ -141,6 +141,8 @@ extension InputHostController {
     // MARK: Health
 
     func recordHealth(_ code: HealthEventKindCode) {
+        // PLT-R306: the soak gate (8.1 M2, "zero watchdog trips") and the issue block read this counter.
+        if code == .watchdogTrip { dependencies.metrics.watchdogTrips.increment() }
         guard let kind = HealthEvent.Kind(rawValue: code.rawValue) else { return }
         var detail: HealthEvent.Detail?
         if case .failOpen(let reason) = lifecycle.phase { detail = .failOpen(reason) }
