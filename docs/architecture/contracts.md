@@ -1363,52 +1363,15 @@ characters. `Log2Histogram`, `AtomicCounter`, `PlatformMetrics`, `PerBundleHisto
 
 ### 6.1 The issue block (QA-R44)
 
-`DiagnosticsRenderer.issueBlock` produces exactly this shape. The fence info string is `diagnostics`; the first
-line inside is the format header; then one `key: value` per line, ASCII keys, values without newlines, lists
-comma-separated. The labeller (CI track) reads `focus.bundle` -> `app:<bundle>`, the major of `macos.version`
--> `macos:<major>`, `arch` -> `arch:arm64|x86_64`, `method` -> `method:telex|vni`. Keys in
-`DiagnosticsBlockKey` never change within a format version; new keys may be added; a breaking change bumps the
-version.
-
-````text
-```diagnostics
-diagnostics-format: 1
-app.version: 0.1.0
-app.build: 12
-app.channel: beta
-macos.version: 27.1
-macos.build: 26B123
-arch: arm64
-model: Mac15,6
-ui.language: vi
-method: telex
-tone: traditional
-englishRestore: true
-host.state: readyVietnamese
-permissions.accessibility: granted
-permissions.postEvent: granted
-permissions.listenEvent: granted
-tap.enabled: true
-tap.timeouts24h: 0
-secureInput.enabled: false
-secureInput.holder: none
-keyboard.layout: com.apple.keylayout.ABC
-keyboard.sourceKind: asciiLayout
-focus.bundle: com.example.Editor
-focus.appVersion: 3.2.1
-focus.engine: electron
-focus.role: AXTextArea
-focus.subrole: none
-rule.id: none
-rule.source: default
-rule.strategy: backspaceReplace
-latency.t1.p99Microseconds: 41
-latency.t2.p99Microseconds: 1350
-health.last24h: flush=1,tapTimeout=0,echoLoss=0
-conflicts: none
-macros.count: 12
-```
-````
+`DiagnosticsRenderer.issueBlock` produces the block defined by
+[ADR 0501](../decisions/0501-diagnostics-block-format.md), which is the contract with the issue forms and
+`scripts/parse-diagnostics.py`. It is a fenced block (info string `text`); the first line inside is the header
+`<slug>-diagnostics v1` with the slug read from the bundle; then one `key: value` per line, ASCII keys, values
+without newlines, lists comma-separated, at most 200 lines. The labeller reads `report.bundleId` (else
+`focus.bundleId`) -> `app:<bundle>`, the major of `macos.version` -> `macos:<major>`, `hw.arch` ->
+`arch:arm64|x86_64`, `input.method` -> `method:telex|vni`. Keys in `DiagnosticsBlockKey` never change within a
+format version; new keys may be added; a breaking change bumps the version. The full key list and an example
+are in ADR 0501.
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Identity.swift -->
 ```swift
@@ -2226,51 +2189,58 @@ public enum DiagnosticsRenderer {
         unimplemented()
     }
 
-    /// QA-R44 block, parsed by the issue labeller (CI track). Exact shape:
+    /// QA-R44 block, parsed by the issue labeller (`scripts/parse-diagnostics.py`). The format is fixed by
+    /// ADR 0501 (`docs/decisions/0501-diagnostics-block-format.md`). Exact shape:
     ///
-    ///     ```diagnostics
-    ///     diagnostics-format: 1
+    ///     ```text
+    ///     <slug>-diagnostics v1
+    ///     report.bundleId: com.example.App
     ///     app.version: 0.1.0
     ///     app.build: 12
     ///     app.channel: beta
     ///     macos.version: 27.1
     ///     macos.build: 26B123
-    ///     arch: arm64
-    ///     method: telex
-    ///     focus.bundle: com.example.App
-    ///     ...one `key: value` per line, keys from `DiagnosticsBlockKey`...
+    ///     hw.arch: arm64
+    ///     input.method: telex
+    ///     focus.bundleId: com.example.App
+    ///     ...one `key: value` per line, keys from `DiagnosticsBlockKey` plus any ADR 0501 key...
     ///     ```
     ///
-    /// Values never contain newlines; lists are comma-separated. Keys are ASCII, lower camel case, dotted.
+    /// `<slug>` is `report.app.slug` (read from the bundle, never hard-coded). Values never contain newlines;
+    /// lists are comma-separated. Keys match `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. At most 200 lines.
     public static func issueBlock(_ report: DiagnosticsReport) -> String { unimplemented() }
 
     /// Inverse of `issueBlock` for tests and for the labeller contract: `nil` when no block or an unknown
-    /// format version is found.
+    /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
     public static func parseIssueBlock(_ text: String) -> [String: String]? { unimplemented() }
 
     /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47).
     public static func json(_ report: DiagnosticsReport) throws -> Data { unimplemented() }
 }
 
-/// Keys of the issue block that the labeller relies on (QA-R44 labels `app:<bundle>`, `macos:<major>`,
-/// `arch:...`, `method:...`). Other keys may be added within a format version; these may not change.
+/// Keys of the issue block (ADR 0501). The labeller relies on `report.bundleId` / `focus.bundleId`,
+/// `macos.version`, `hw.arch` and `input.method` (QA-R44 labels `app:<bundle>`, `macos:<major>`, `arch:...`,
+/// `method:...`). Keys may be added within format v1; none of these may change or be removed.
 public enum DiagnosticsBlockKey: String, Sendable, CaseIterable {
-    case formatVersion = "diagnostics-format"
+    case reportBundle = "report.bundleId"
+    case reportAppVersion = "report.appVersion"
+    case reportSymptom = "report.symptom"
     case appVersion = "app.version"
     case appBuild = "app.build"
     case appChannel = "app.channel"
     case macOSVersion = "macos.version"
     case macOSBuild = "macos.build"
-    case architecture = "arch"
-    case method = "method"
-    case focusBundle = "focus.bundle"
+    case architecture = "hw.arch"
+    case model = "hw.model"
+    case method = "input.method"
+    case layout = "input.layout"
+    case focusBundle = "focus.bundleId"
     case focusAppVersion = "focus.appVersion"
     case focusEngine = "focus.engine"
     case rule = "rule.id"
     case strategy = "rule.strategy"
+    case secureInput = "secureInput.active"
     case hostState = "host.state"
-    case secureInput = "secureInput.enabled"
-    case layout = "keyboard.layout"
 }
 ```
 <!-- /include -->

@@ -342,7 +342,7 @@ delete is never emitted by default or by shipped rules (PLT-R407).
 - The environment report is structurally content-free: its type has no field that could hold content
   (PLT-R1203). The reported app's user override (PLT-R541) is a typed projection without `summary`, page URL
   prefixes or title patterns ([0312](docs/decisions/0312-report-override-projection.md)). It renders as reviewed
-  plain text, as JSON, and as the machine-parseable issue block with a `diagnostics-format: 1` header line
+  plain text, as JSON, and as the machine-parseable issue block with a `<slug>-diagnostics v1` header line (ADR 0501)
   (QA-R44).
 - The typing trace (PLT-R905) is the only artefact with characters: explicit start, 60 s default and 180 s
   maximum, menu icon and floating HUD with countdown, gaps during secure input, 0600 files excluded from
