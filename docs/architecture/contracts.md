@@ -5888,6 +5888,7 @@ public protocol PasteboardAccess: Sendable {
 // job's events were posted reaches the tap before their echo, so it is held instead of overtaking them.
 
 public import AppModel
+public import Diagnostics
 public import RealtimeSupport
 internal import Synchronization
 
@@ -6047,20 +6048,31 @@ public final class EchoTracker: @unchecked Sendable {
     public let timeout: Duration
     public let missesForBroken: Int
     private let queue: JobQueue
+    /// PLT-R801 echo round trip (`PlatformMetrics.echoRoundTrip`); atomic increments only.
+    private let roundTrip: Log2Histogram?
     private let pending: UnsafeMutablePointer<EchoExpectation>
     private let pendingCapacity: Int
     // Tap-thread state.
     private var head = 0
     private var count = 0
     private var highestEcho: UInt32 = 0
+    /// When the echo that raised `highestEcho` arrived: the round trip of a job ends no later than that.
+    private var highestEchoAt = MonotonicInstant.zero
     private var hasSeenEcho = false
     private var misses = 0
     private let missesMirror = Atomic<Int>(0)
+    /// One past the latest instant (monotonic nanoseconds) up to which unechoed expectations were lost while the
+    /// tap was disabled (0: none). Written by the tap or the lifecycle owner, read by the tap at settlement.
+    private let forgivenBound = Atomic<UInt64>(0)
 
-    public init(queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3) {
+    public init(
+        queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3,
+        roundTrip: Log2Histogram? = nil
+    ) {
         self.queue = queue
         self.timeout = timeout
         self.missesForBroken = missesForBroken
+        self.roundTrip = roundTrip
         pendingCapacity = queue.capacity
         pending = .allocate(capacity: queue.capacity)
     }
@@ -6078,12 +6090,17 @@ public final class EchoTracker: @unchecked Sendable {
         let timeoutNanoseconds =
             UInt64(timeout.components.seconds) * 1_000_000_000
             + UInt64(timeout.components.attoseconds / 1_000_000_000)
+        let forgiven = forgivenBound.load(ordering: .sequentiallyConsistent)
         while count > 0 {
             let front = pending[head]
             if hasSeenEcho && Self.isAtOrBefore(front.finalEventSequence, highestEcho) {
                 misses = 0
+                roundTrip?.record(nanoseconds: highestEchoAt.nanoseconds(since: front.postedAt))
             } else if now.nanoseconds(since: front.postedAt) > timeoutNanoseconds {
-                misses += 1
+                // A miss, unless it was posted before the tap was re-enabled (PLT-R330, PLT-R306): its echo
+                // bypassed the disabled tap and never comes, which says nothing about posting. Either way it
+                // settles only at the timeout, so keys stay held behind it as before (PLT-R311, ADR 0311).
+                if front.postedAt.nanoseconds >= forgiven { misses += 1 }
             } else {
                 break
             }
@@ -6100,9 +6117,22 @@ public final class EchoTracker: @unchecked Sendable {
     /// or before it. Echoes arrive in posting order, and one that arrives before its expectation was drained is
     /// matched by the watermark when the expectation shows up.
     public func observed(_ sequence: UInt32, at now: MonotonicInstant) {
-        if !hasSeenEcho || Self.isAtOrBefore(highestEcho, sequence) { highestEcho = sequence }
+        if !hasSeenEcho || Self.isAtOrBefore(highestEcho, sequence) {
+            highestEcho = sequence
+            highestEchoAt = now
+        }
         hasSeenEcho = true
         _ = settle(now: now)
+    }
+
+    /// Any thread: the tap was disabled (a tap-disabled event, a watchdog trip) and is being re-enabled.
+    /// Synthetic events posted while it was disabled, or queued behind a stuck callback and released by the
+    /// disable, never pass through it, so their echoes never arrive. An expectation posted at or before `instant`
+    /// whose echo times out does not count as a miss (PLT-R330, PLT-R306, PLT-R323: only a run of misses on an
+    /// enabled tap means posting is broken). One atomic max; the bound never moves backwards.
+    public func forgiveLostEchoes(postedAtOrBefore instant: MonotonicInstant) {
+        let bound = instant.nanoseconds == .max ? UInt64.max : instant.nanoseconds + 1
+        forgivenBound.max(bound, ordering: .sequentiallyConsistent)
     }
 
     /// Any thread (diagnostics).
@@ -6163,11 +6193,13 @@ public struct InjectionServices: Sendable {
     public var health: HealthEventLog
     public var logger: any DiagnosticsLogging
     public var capture: CaptureController?
+    /// PLT-R802: intervals around each job and each AX call (nil: none, as in most tests).
+    public var signposts: PlatformSignposts?
 
     public init(
         poster: any EventPoster, fieldAccess: any FocusedFieldAccess, pasteboard: any PasteboardAccess,
         clock: any MonotonicClock, metrics: PlatformMetrics, health: HealthEventLog,
-        logger: any DiagnosticsLogging, capture: CaptureController?
+        logger: any DiagnosticsLogging, capture: CaptureController?, signposts: PlatformSignposts? = nil
     ) {
         self.poster = poster
         self.fieldAccess = fieldAccess
@@ -6177,6 +6209,7 @@ public struct InjectionServices: Sendable {
         self.health = health
         self.logger = logger
         self.capture = capture
+        self.signposts = signposts
     }
 }
 
@@ -7144,11 +7177,13 @@ public struct PipelineContext: Sendable {
     /// Since-launch observations for the integration hooks (tap recoveries, first key after a secure-input
     /// release). The controller passes its own; other callers get a private one.
     public var counters: HostCounters
+    /// PLT-R802: a `tapCallback` interval around every callback (one flag check when nothing records).
+    public var signposts: PlatformSignposts?
 
     public init(
         snapshots: TapSnapshots, queue: JobQueue, feedback: WorkerFeedback, echo: EchoTracker, marker: EventMarker,
         outbox: TapOutbox, metrics: PlatformMetrics, tapLog: TapLogRing, capture: CaptureController?,
-        watchdog: CallbackWatchdog, counters: HostCounters = HostCounters()
+        watchdog: CallbackWatchdog, counters: HostCounters = HostCounters(), signposts: PlatformSignposts? = nil
     ) {
         self.snapshots = snapshots
         self.queue = queue
@@ -7161,6 +7196,7 @@ public struct PipelineContext: Sendable {
         self.capture = capture
         self.watchdog = watchdog
         self.counters = counters
+        self.signposts = signposts
     }
 }
 
@@ -7194,6 +7230,9 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
     var outcome: EventOutcome?
     /// The last job pushed was a `BoundaryJob` (consecutive boundaries need one job).
     var lastPushWasBoundary = false
+    /// PLT-R905: the key being processed goes into the typing trace, with its engine decision.
+    var capturingThisKey = false
+    var engineCapture: EngineCapture?
 
     public init(context: PipelineContext, factory: Factory, clock: Clock) {
         self.context = context
@@ -7222,6 +7261,7 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
     /// The whole of PLT-R310 for one event. Brackets itself with `ReaderEpoch.enter()/exit()` and
     /// `CallbackWatchdog.enter/exit`.
     public func handle(_ event: RawKeyEvent) -> TapVerdict {
+        let signpost = context.signposts?.begin(.tapCallback)  // PLT-R802
         let epoch = context.snapshots.epoch
         epoch.enter()
         let start = clock.now()
@@ -7231,6 +7271,7 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
         if !isProbe { context.metrics.callbackDuration.record(nanoseconds: clock.now().nanoseconds(since: start)) }
         context.watchdog.exit()
         epoch.exit()
+        if let signpost { context.signposts?.end(.tapCallback, signpost) }
         return verdict
     }
 
@@ -8201,6 +8242,9 @@ public struct InputHostDependencies: Sendable {
     public var capture: CaptureController?
     /// Serial utility queue shared with SettingsStore and Diagnostics (PLT-R203).
     public var utilityQueue: DispatchSerialQueue
+    /// PLT-R802 intervals for the tap callback, injection jobs and AX calls. When nil, the production
+    /// controller creates them with the bundle identifier as subsystem.
+    public var signposts: PlatformSignposts?
 
     public init(
         tapFactory: any EventTapFactory, poster: any EventPoster, fieldAccess: any FocusedFieldAccess,
@@ -8210,7 +8254,7 @@ public struct InputHostDependencies: Sendable {
         workspace: any WorkspaceEvents, keyValueStore: any KeyValueStore, clock: any MonotonicClock,
         scheduler: any TimerScheduler, wallClock: any WallClock,
         metrics: PlatformMetrics, health: HealthEventLog, logger: any DiagnosticsLogging, tapLog: TapLogRing,
-        capture: CaptureController?, utilityQueue: DispatchSerialQueue
+        capture: CaptureController?, utilityQueue: DispatchSerialQueue, signposts: PlatformSignposts? = nil
     ) {
         self.tapFactory = tapFactory
         self.poster = poster
@@ -8234,6 +8278,7 @@ public struct InputHostDependencies: Sendable {
         self.tapLog = tapLog
         self.capture = capture
         self.utilityQueue = utilityQueue
+        self.signposts = signposts
     }
 }
 
@@ -8321,6 +8366,8 @@ public final class InputHostController {
     var conflictsReported = false
     var conflictsRescanned = false
     var learning = LearningTracker()
+    /// Hands the ax thread's memory documents to the settings store in order (PLT-R392).
+    var appModesRecorder: AppModesRecorder?
     var inactiveReasons: Set<SessionInactiveReason> = []
 
     public internal(set) var state: HostState = .starting
@@ -8330,18 +8377,22 @@ public final class InputHostController {
     /// Production wiring: the real tap thread and pipeline, the main dispatch queue for hops, the uptime clock
     /// for everything that shares a base with the tap's event timestamps.
     public convenience init(dependencies: InputHostDependencies, settingsStore: SettingsStore) {
+        var dependencies = dependencies
+        if dependencies.signposts == nil {  // PLT-R802: in all builds; the subsystem comes from the bundle
+            dependencies.signposts = Bundle.main.bundleIdentifier.map { PlatformSignposts(subsystem: $0) }
+        }
         self.init(
             dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
             loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
-            runsWorkerThread: true)
+            runsWorkerThread: true, mainSignalQueue: .main)
     }
 
     init(
         dependencies: InputHostDependencies, settingsStore: SettingsStore, hop: any MainThreadHop,
         makeTapThread: @escaping TapThreadMaker, tapClock: any MonotonicClock,
         loadBundled: @escaping TapSettingsPublisher.BundledResourcesLoader, macOSVersion: LooseVersion,
-        runsWorkerThread: Bool
+        runsWorkerThread: Bool, mainSignalQueue: DispatchQueue? = nil
     ) {
         self.runsWorkerThread = runsWorkerThread
         self.dependencies = dependencies
@@ -8353,7 +8404,11 @@ public final class InputHostController {
         let initial = InitialSnapshots.make(
             source: dependencies.inputSources.currentSource(), settings: Self.placeholderSettings,
             globalMode: .vietnamese)
-        channels = HostChannels(initial: initial, marker: .random(), signalQueue: dependencies.utilityQueue)
+        // ADR 0303: tap -> main wakes on the main queue in production; tests keep the utility queue (nil), where
+        // `ManualMainHop` collects the drains.
+        channels = HostChannels(
+            initial: initial, marker: .random(), signalQueue: dependencies.utilityQueue,
+            mainSignalQueue: mainSignalQueue ?? dependencies.utilityQueue)
         axThread = RunLoopThread(name: "ax", qualityOfService: .userInitiated)
         let refresh = self.refresh
         focusTracker = FocusTracker(
@@ -8361,14 +8416,15 @@ public final class InputHostController {
             ax: FocusChangeSignalingAXProvider(base: dependencies.ax, thread: axThread) { refresh.request() },
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
-            health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion)
+            health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
+            capture: dependencies.capture, signposts: dependencies.signposts)
         worker = InjectionWorker(
             queue: channels.queue, signal: channels.workerSignal, feedback: channels.feedback,
             marker: channels.marker, focusGeneration: channels.focusGeneration,
             services: InjectionServices(
                 poster: dependencies.poster, fieldAccess: dependencies.fieldAccess, pasteboard: dependencies.pasteboard,
                 clock: tapClock, metrics: dependencies.metrics, health: dependencies.health,
-                logger: dependencies.logger, capture: dependencies.capture))
+                logger: dependencies.logger, capture: dependencies.capture, signposts: dependencies.signposts))
         settingsPublisher = TapSettingsPublisher(
             cell: channels.snapshots.settings, logger: dependencies.logger, loadBundled: loadBundled)
         tapLogDrainer = TapLogDrainer(
@@ -8966,12 +9022,14 @@ public final class FocusTracker: Sendable {
     public init(
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
-        metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion
+        metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
+        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
-            metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion)
+            metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture,
+            signposts: signposts)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 
@@ -13477,7 +13535,9 @@ extension FakeEventPoster.Posted {
 
 /// AX field access backed by a `SimulatedTextField`; can time out, be unavailable or ignore writes on demand.
 public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
-    public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored }
+    /// `writesIgnored`: every write reports success and does nothing. `textWritesIgnored`: selection writes
+    /// apply, text writes report success and do nothing (4.5 "writes may silently do nothing").
+    public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored, textWritesIgnored }
 
     private let field: SimulatedTextField
     private let behaviourState: Mutex<Behaviour>
@@ -13504,27 +13564,30 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
         -> AXCallResult<Void>
     {
-        write { self.field.axSetSelectedRange(range) }
+        write(text: false) { self.field.axSetSelectedRange(range) }
     }
 
     public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
-        write { self.field.axSetSelectedText(text) }
+        write(text: true) { self.field.axSetSelectedText(text) }
     }
 
     private func read<Value: Sendable>(_ body: () -> Value) -> AXCallResult<Value> {
         calls.wrappingAdd(1, ordering: .relaxed)
         switch behaviour {
-        case .normal, .writesIgnored: return .success(body())
+        case .normal, .writesIgnored, .textWritesIgnored: return .success(body())
         case .timeout: return .timedOut
         case .unavailable: return .unavailable
         }
     }
 
-    private func write(_ body: () -> Void) -> AXCallResult<Void> {
+    private func write(text: Bool, _ body: () -> Void) -> AXCallResult<Void> {
         calls.wrappingAdd(1, ordering: .relaxed)
         switch behaviour {
         case .normal:
             body()
+            return .success(())
+        case .textWritesIgnored:
+            if !text { body() }
             return .success(())
         case .writesIgnored: return .success(())
         case .timeout: return .timedOut

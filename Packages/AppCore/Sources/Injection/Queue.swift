@@ -219,9 +219,9 @@ public final class EchoTracker: @unchecked Sendable {
                 misses = 0
                 roundTrip?.record(nanoseconds: highestEchoAt.nanoseconds(since: front.postedAt))
             } else if now.nanoseconds(since: front.postedAt) > timeoutNanoseconds {
-                // PLT-R330, PLT-R306: posted before the tap was re-enabled, so its echo bypassed the disabled
-                // tap and never comes; not a posting failure. It still settles only at the timeout, so keys stay
-                // held behind it exactly as long as before (PLT-R311, ADR 0311).
+                // A miss, unless it was posted before the tap was re-enabled (PLT-R330, PLT-R306): its echo
+                // bypassed the disabled tap and never comes, which says nothing about posting. Either way it
+                // settles only at the timeout, so keys stay held behind it as before (PLT-R311, ADR 0311).
                 if front.postedAt.nanoseconds >= forgiven { misses += 1 }
             } else {
                 break
