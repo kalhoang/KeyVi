@@ -48,6 +48,8 @@ final class AppEnvironment {
     /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
     var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
+    /// The bundled compatibility matrix, read the first time the menu opens (PRD-R43 known-limitation line).
+    lazy var matrix: MatrixDocument? = SettingsResources.bundledMatrix()
     #if INTEGRATION_HOOKS
     /// The self-hosted runner's test build only: answers the integration hooks (ADR 0502).
     let integrationHooks: IntegrationHooksApp
@@ -148,6 +150,7 @@ final class AppEnvironment {
 
     /// Every settings change: the host (engines, rules, focus), the language, the shell and the updater.
     func settingsChanged(_ state: SettingsState) {
+        reportNewNotices(state.notices)
         settings = state
         safeMode = state.safeMode  // PLT-R1009: the store decides; leaving safe mode reloads the files
         host.apply(settings: state)
@@ -156,6 +159,19 @@ final class AppEnvironment {
         settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
         applyUpdaterSettings()
         updateIcon()
+    }
+
+    /// PLT-R1006, PLT-R1007, PLT-R1202: each new store notice is logged (contracts.md `LogEvent.SettingsEvent`)
+    /// and recorded as a health event, so the log and the report show the episode even if Settings never opens.
+    /// Compared with `settings.notices`, which still holds the previous state.
+    func reportNewNotices(_ notices: [StoreNotice]) {
+        let now = Date()
+        for notice in StoreNoticeReporting.added(previous: settings.notices, current: notices) {
+            if let event = StoreNoticeReporting.logEvent(notice) {
+                diagnostics.logger.log(.settings(event), level: StoreNoticeReporting.logLevel(notice))
+            }
+            if let health = StoreNoticeReporting.healthEvent(notice, at: now) { diagnostics.health.record(health) }
+        }
     }
 
     /// D19-D21 from the store reach Sparkle through `apply`, which never reports back (setting the controller's
@@ -232,6 +248,7 @@ extension AppEnvironment: LaunchSteps {
 
     func loadSettings() async -> SettingsState {
         let state = await settingsStore.load()
+        reportNewNotices(state.notices)
         settings = state
         language.select(state.effective.interfaceLanguage)
         return state

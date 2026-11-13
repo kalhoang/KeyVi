@@ -7,6 +7,7 @@ import AppKit
 import AppModel
 import InputHost
 import Observation
+import SettingsStore
 import ShellCore
 import SwiftUI
 
@@ -14,14 +15,21 @@ import SwiftUI
 protocol OnboardingActions: AnyObject {
     func openPermissionPane()  // deep link from SystemPanes.json (PLT-R704)
     func openInputMonitoringPane()  // PLT-R702, only when macOS demands Input Monitoring
-    func resetPermission()  // PLT-R740, after confirmation
+    func resetPermission() -> PermissionReset.Outcome  // PLT-R740, after confirmation
     func relaunch()  // PLT-R712
     func setTypingMethod(_ method: TypingMethod)
-    func openHotkeyRecorder()  // PRD-R40 screen 4 "Đổi phím chuyển"
+    /// PRD-R40 screen 4 "Đổi phím chuyển", recorded inline: the tap's hotkeys are suspended while the recorder
+    /// captures keys (ADR 0305), the recorded binding is saved as the toggle key (D11, PRD-R6 explicit).
+    func setHotkeyRecorderActive(_ active: Bool)
+    func saveToggleHotkey(_ binding: HotkeyBinding)
+    func currentLayout() -> LayoutTable?
     func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
     func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
-    func importMacros(from url: URL)
+    /// PRD-R40 screen 6, PRD-R32: the user's macros, for the import preview's duplicates.
+    func currentMacros() async -> [StoredMacro]
+    /// The merged list after the user confirmed the preview.
+    func saveImportedMacros(_ macros: [StoredMacro])
     func complete()
     /// The window closed; `completed == false` means before the last screen (PRD-R41: the status line then offers
     /// to resume at screen 2, and fast permission polling stops).
@@ -42,11 +50,11 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     init(
         flow: OnboardingFlow, language: InterfaceLanguageModel, actions: any OnboardingActions,
         inputs: @escaping @MainActor () -> OnboardingInputs, appName: String, panes: SystemPaneNames,
-        method: TypingMethod = .telex, mode: TypingMode = .vietnamese
+        method: TypingMethod = .telex, mode: TypingMode = .vietnamese, toggleHotkey: HotkeyBinding = .defaultToggle
     ) {
         model = OnboardingModel(
             flow: flow, language: language, actions: actions, inputs: inputs, appName: appName, panes: panes,
-            method: method, mode: mode)
+            method: method, mode: mode, toggleHotkey: toggleHotkey)
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.contentSize), styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
@@ -74,6 +82,11 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         model.windowClosed()
+    }
+
+    /// ADR 0305: another window or app took the keyboard, so the recorder stops taking key events.
+    func windowDidResignKey(_ notification: Notification) {
+        model.interruptHotkeyRecording()
     }
 
     /// PRD-R63: the window title follows a language change; SwiftUI content re-renders by itself.

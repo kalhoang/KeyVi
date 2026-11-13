@@ -209,6 +209,30 @@ import Testing
         #expect(report.tap.lastReenableReason == nil)
     }
 
+    /// PLT-R541, ADR 0312: with several overrides for the focused app, the block names the one that decided, not
+    /// the newest stored one, so `rule.id` and `rule.userOverride` agree.
+    @Test func decidingOverrideWinsOverANewerStoredOneForTheFocusedApp() throws {
+        var guided = ReportFixtures.canaryOverride
+        guided.id = RuleID(rawValue: "user.guided.com.example.Chat")!
+        var compat = ReportFixtures.canaryOverride
+        compat.match = RuleMatch(bundleIds: [ReportFixtures.reported])
+        let newer = StoredRuleOverride(
+            createdAt: ReportFixtures.now, rule: ReportFixtures.ruleJSON(compat, provenance: false))
+        let older = StoredRuleOverride(
+            createdAt: ReportFixtures.now.addingTimeInterval(-86_400),
+            rule: ReportFixtures.ruleJSON(guided, provenance: false))
+        var decision = ReportFixtures.decision(userOverride: guided)
+        decision.rule = guided.id
+        let report = ReportAssembler.report(
+            identity: ReportFixtures.identity, system: ReportFixtures.system,
+            host: ReportFixtures.host(decision: decision),
+            settings: ReportFixtures.settings(overrides: [newer, older]), metrics: ReportFixtures.metrics,
+            health: [], probe: nil, draft: ReportFixtures.draft, now: ReportFixtures.now)
+        let section = try #require(report.rule)
+        #expect(section.rule == guided.id)
+        #expect(section.userOverride?.id == guided.id)
+    }
+
     @Test func noDecisionMeansNoRuleSection() {
         let report = ReportFixtures.report(host: ReportFixtures.host(decision: nil))
         #expect(report.rule == nil)

@@ -5,6 +5,7 @@
 
 import AppKit
 import AppModel
+import Diagnostics
 import InputHost
 import SettingsStore
 import ShellCore
@@ -23,7 +24,7 @@ extension AppEnvironment {
         let controller = OnboardingWindowController(
             flow: flow, language: language, actions: self, inputs: { [unowned self] in onboardingInputs() },
             appName: brand.displayName, panes: paneNames(), method: settings.effective.typingMethod,
-            mode: host.currentFocus().mode)
+            mode: host.currentFocus().mode, toggleHotkey: settings.effective.toggleHotkey)
         onboarding = controller
         host.setPermissionFastPolling(true)
         controller.showWindow(nil)
@@ -99,19 +100,34 @@ extension AppEnvironment: OnboardingActions {
         openPane(.inputMonitoring)
     }
 
-    /// PLT-R740: after the user confirmed in the sheet; never automatic, never without the own bundle ID.
-    func resetPermission() {
-        try? TCCPermissionResetter(ownBundleIdentifier: brand.bundleIdentifier)
-            .resetAccessibility(bundleIdentifier: brand.bundleIdentifier)
+    /// PLT-R740: after the user confirmed in the sheet; never automatic, never without the own bundle ID. After a
+    /// reset macOS is asked to prompt again, which adds the app back to the list; a failure is logged and the
+    /// sheet says so (PRD-R43).
+    func resetPermission() -> PermissionReset.Outcome {
+        let outcome = PermissionReset.run(
+            TCCPermissionResetter(ownBundleIdentifier: brand.bundleIdentifier),
+            bundleIdentifier: brand.bundleIdentifier)
+        switch outcome {
+        case .reset: SystemPermissionProbe().promptForAccessibility()
+        case .failed:
+            diagnostics.logger.log(
+                .note("Accessibility permission reset failed", category: .permissions), level: .error)
+        }
         _ = host.refreshPermissions()
+        return outcome
     }
 
     func relaunch() { relaunchSelf() }
 
     func setTypingMethod(_ method: TypingMethod) { setMethod(method) }
 
-    /// PRD-R40 screen 4 "Đổi phím chuyển": the Hotkeys recorder in Settings, already recording and focused.
-    func openHotkeyRecorder() { settingsController()?.showHotkeyRecorder(role: .toggleMode) }
+    /// PRD-R40 screen 4 "Đổi phím chuyển", recorded inline: an explicit D11 choice (PRD-R6).
+    func saveToggleHotkey(_ binding: HotkeyBinding) {
+        let commands = SettingsCommands(store: settingsStore)
+        Task { _ = await commands.apply(.toggleHotkey(binding)) }
+    }
+
+    func currentLayout() -> LayoutTable? { host.currentLayoutTable() }
 
     /// PRD-R40 screen 5: a help page; the app never quits or changes the other app.
     func openConflictHelp(_ conflict: ConflictingInput) { openSupport(.conflicts) }
@@ -123,18 +139,13 @@ extension AppEnvironment: OnboardingActions {
         if enabled { try? loginItem.register() } else { try? loginItem.unregister() }
     }
 
-    /// PRD-R40 screen 6, PRD-R32: macros from the chosen file, the user's own macros kept for duplicates.
-    func importMacros(from url: URL) {
-        guard let data = OnboardingMacroImport.read(url) else { return }
-        let store = settingsStore
-        let fileExtension = url.pathExtension
-        Task {
-            let existing = await store.state.macros
-            guard
-                let merged = OnboardingMacroImport.merged(data: data, fileExtension: fileExtension, existing: existing)
-            else { return }
-            await store.replaceMacros(merged)
-        }
+    /// PRD-R40 screen 6, PRD-R32: the import preview compares the file with these.
+    func currentMacros() async -> [StoredMacro] { await settingsStore.state.macros }
+
+    /// The list the user confirmed in the preview (duplicates resolved as chosen, ENG-R1101 NFC).
+    func saveImportedMacros(_ macros: [StoredMacro]) {
+        let commands = SettingsCommands(store: settingsStore)
+        Task { _ = await commands.saveMacros(macros) }
     }
 
     func complete() {
@@ -153,7 +164,7 @@ extension AppEnvironment: OnboardingActions {
 
 /// What the Settings window asks of the composition root (W2-B).
 extension AppEnvironment: SettingsActions {
-    // `reportProblem(for:)` is shared with the status menu (StatusMenuActions).
+    // `reportProblemFromSettings(for:)` is next to the menu's `reportProblem(for:)` (AppEnvironment+Shell).
 
     func openDiagnostics() { diagnosticsController().showReport() }
 

@@ -240,6 +240,43 @@ import Testing
             try #require(line(.paused(.secureField), app: frontmost)).key == StatusText.knownLimitationNote.rawValue)
     }
 
+    /// PRD-R43 "App in Known limitation list": the composition root's frontmost status comes from the bundled
+    /// matrix (the whole-app row after the 120-day rule), the note in the interface language and the site's
+    /// compatibility page as "Tìm hiểu thêm".
+    @Test func frontmostStatusComesFromTheMatrix_PRDR43() throws {
+        let editor = BundleKey(rawValue: "com.example.Editor")!
+        let today = Date(timeIntervalSince1970: 1_794_528_000)  // 2026-11-13
+        let matrix = MatrixDocument(
+            schemaVersion: 1,
+            entries: [
+                MatrixEntry(
+                    bundleId: editor, displayName: "Editor", category: "editors", status: .knownLimitation,
+                    note: LocalizedNote(vi: "Editor: không gõ được trong ô tìm kiếm.", en: "Editor: no search field."),
+                    lastVerified: "2026-11-01")
+            ])
+        let site = URL(string: "https://example.invalid/")!
+        let vi = FrontmostAppStatus(
+            bundle: editor, displayName: "Editor", matrix: matrix, today: today, language: .vietnamese, siteURL: site)
+        let limitation = try #require(line(.ready(.vietnamese), app: vi))
+        #expect(limitation.key == StatusText.knownLimitationNote.rawValue)
+        #expect(limitation.arguments == ["Editor: không gõ được trong ô tìm kiếm."])
+        #expect(limitation.action == .learnMore(URL(string: "https://example.invalid/tuong-thich/")!))
+        #expect(limitation.actionLabelKey == StatusText.actionLearnMore.rawValue)
+        let en = FrontmostAppStatus(
+            bundle: editor, displayName: "Editor", matrix: matrix, today: today, language: .english, siteURL: site)
+        #expect(en.limitationNote == "Editor: no search field.")
+        #expect(en.learnMore == URL(string: "https://example.invalid/en/compatibility/")!)
+        // Not in the matrix, or verified more than 120 days ago (QA-R19): no limitation line.
+        let other = FrontmostAppStatus(
+            bundle: BundleKey(rawValue: "com.example.Other")!, displayName: "Other", matrix: matrix, today: today,
+            language: .vietnamese, siteURL: site)
+        #expect(line(.ready(.vietnamese), app: other) == nil)
+        let stale = FrontmostAppStatus(
+            bundle: editor, displayName: "Editor", matrix: matrix, today: today.addingTimeInterval(200 * 86_400),
+            language: .vietnamese, siteURL: site)
+        #expect(line(.ready(.vietnamese), app: stale) == nil)
+    }
+
     @Test func knownLimitationWithoutNoteOrLinkStillNamesTheApp() throws {
         var app = frontmost
         app.limitationNote = nil

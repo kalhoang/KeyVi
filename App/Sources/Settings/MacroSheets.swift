@@ -112,7 +112,9 @@ struct MacroImportSheet: View {
         VStack(alignment: .leading, spacing: 10) {
             PaneHeading(text: localizer.string(MacrosText.importTitle))
             if let error = model.macroImportError { IssueLine(symbol: "exclamationmark.triangle", text: error) }
-            if let session = model.macroImport { MacroImportPreviewView(model: model, session: session) }
+            if let session = model.macroImport {
+                MacroImportPreviewView(session: session, resolution: resolution, localizer: localizer)
+            }
             HStack {
                 Button(action: model.chooseMacroFile) { Text(verbatim: localizer.string(MacrosText.importChooseOther)) }
                     .settingsAccessibility(MacrosControl.importChooseOther, localizer)
@@ -134,14 +136,22 @@ struct MacroImportSheet: View {
         model.macroImport = nil
         model.macroImportError = nil
     }
+
+    private var resolution: Binding<MacroDuplicateResolution> {
+        Binding(
+            get: { model.macroImport?.resolution ?? .keepMine },
+            set: { model.macroImport?.resolution = $0 })
+    }
 }
 
+/// PRD-R32 preview: counts of new, duplicate and invalid rows, the invalid lines with their reason (PRD-R70) and
+/// the duplicate choice. Shared by the Macros pane and onboarding screen 6.
 struct MacroImportPreviewView: View {
-    @Bindable var model: SettingsWindowModel
     let session: MacroImportSession
+    let resolution: Binding<MacroDuplicateResolution>
+    let localizer: Localizer
 
     var body: some View {
-        let localizer = model.localizer
         VStack(alignment: .leading, spacing: 6) {
             Text(verbatim: localizer.format(MacrosText.importNew, session.newCount))
             Text(verbatim: localizer.format(MacrosText.importDuplicates, session.duplicateCount))
@@ -167,11 +177,5 @@ struct MacroImportPreviewView: View {
                 .settingsAccessibility(MacrosControl.importDuplicateChoice, localizer)
             }
         }
-    }
-
-    private var resolution: Binding<MacroDuplicateResolution> {
-        Binding(
-            get: { model.macroImport?.resolution ?? .keepMine },
-            set: { model.macroImport?.resolution = $0 })
     }
 }

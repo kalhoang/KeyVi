@@ -71,7 +71,7 @@ extension AppEnvironment {
         let mode: TypingMode = if case .ready(let ready) = state { ready } else { focus.mode }
         let icon = StatusPresentation.iconState(
             state: state, mode: mode, ignored: frontmostRule(focus) == .ignore,
-            capturing: diagnostics.capture.isRecording)
+            capturing: StatusPresentation.isCapturing(diagnostics.capture, now: Date()))
         statusItem.show(icon, accessibilityLabelKey: StatusPresentation.accessibilityLabelKey(icon: icon, state: state))
     }
 
@@ -119,7 +119,8 @@ extension AppEnvironment {
         return StatusLine.forState(
             state, holderHintKey: holderHint, appName: brand.displayName, frontmostApp: frontmostStatus(),
             tapRecentlyReenabled: recentlyReenabled,
-            onboardingCompleted: settings.user.onboarding.completedVersion != nil, safeMode: safeMode)
+            onboardingCompleted: settings.user.onboarding.completedVersion != nil, safeMode: safeMode,
+            storeNotices: settings.notices)
     }
 
     private func displayedMode() -> TypingMode {
@@ -134,11 +135,12 @@ extension AppEnvironment {
             bundle: app.bundle, displayName: displayName(of: app), rule: frontmostRule(focus) ?? .remember)
     }
 
+    /// PRD-R43 "App in Known limitation list": the frontmost app's matrix row.
     private func frontmostStatus() -> FrontmostAppStatus? {
         guard let app = host.currentFocus().app else { return nil }
         return FrontmostAppStatus(
-            bundle: app.bundle, displayName: displayName(of: app), matrixStatus: nil, limitationNote: nil,
-            learnMore: nil)
+            bundle: app.bundle, displayName: displayName(of: app), matrix: matrix, today: Date(),
+            language: language.localizer.language, siteURL: brand.siteURL)
     }
 
     func frontmostRule(_ focus: FocusSnapshot) -> PerAppRule? {
@@ -164,14 +166,21 @@ extension AppEnvironment: StatusMenuActions {
         Task { await settingsStore.setAppRule(rule, for: bundle) }
     }
 
-    /// The report flow. "Báo lỗi..." opens the bug report sheet with the last frontmost app (PRD-R47; the sheet
-    /// falls back to the most recent other app while one of this app's windows has the focus); "Báo lỗi với ứng
-    /// dụng này..." opens the misbehaves flow for that app (PLT-R1205). In safe mode the report items lead to the
-    /// safe-mode choices first, so reset and exit stay reachable from the menu even while a host-state line hides
-    /// the safe-mode line (PLT-R1009).
-    func reportProblem(for bundle: BundleKey?) {
+    /// The menu's report flow. "Báo lỗi..." opens the bug report sheet with the last frontmost app (PRD-R47; the
+    /// sheet falls back to the most recent other app while one of this app's windows has the focus); "Báo lỗi với
+    /// ứng dụng này..." opens the misbehaves flow for that app (PLT-R1205), which continues to the sheet. In safe
+    /// mode the report items lead to the safe-mode choices first, so reset and exit stay reachable from the menu
+    /// even while a host-state line hides the safe-mode line (PLT-R1009).
+    func reportProblem(for bundle: BundleKey?) { openReport(for: bundle, origin: .menu) }
+
+    /// Settings' report items: the bug report sheet, pre-filled with the Apps pane's app (PRD-R37).
+    func reportProblemFromSettings(for bundle: BundleKey?) { openReport(for: bundle, origin: .settings) }
+
+    private func openReport(for bundle: BundleKey?, origin: DiagnosticsNavigation.Origin) {
         let focused = host.currentFocus().app?.bundle
-        switch DiagnosticsNavigation.destination(reportProblemFor: bundle, lastFrontmost: focused, safeMode: safeMode) {
+        switch DiagnosticsNavigation.destination(
+            reportProblemFor: bundle, lastFrontmost: focused, safeMode: safeMode, origin: origin)
+        {
         case .safeModeChoices: presentSafeMode()
         case .misbehaves(let app): diagnosticsController().startMisbehavesFlow(for: app)
         case .bugReport(let preselected): diagnosticsController().openBugReport(preselected: preselected)
@@ -194,17 +203,17 @@ extension AppEnvironment: StatusMenuActions {
         case .overrideTextFocus(let bundle): addTextFocusOverride(for: bundle)
         case .reopenApp: relaunchSelf()
         case .safeModeChoices: presentSafeMode()
+        case .openSettings: openSettings()
         case .none: break
         }
     }
 
-    /// PLT-R540: one click writes a user override with `requireTextFocus: never` for this app; it applies on the
-    /// next keystroke.
+    /// PLT-R540: one click adds `requireTextFocus: never` to this app's one user override (a compatibility mode
+    /// chosen in the Apps pane is kept, PLT-R520); it applies on the next keystroke.
     private func addTextFocusOverride(for bundle: BundleKey) {
         let strategy = host.currentFocus().decision.plan.strategy
-        guard let rule = TextFocusOverride.rule(for: bundle, strategy: strategy, date: TextFocusOverride.day(Date()))
-        else { return }
-        Task { await settingsStore.addRuleOverride(StoredRuleOverride(createdAt: Date(), rule: rule)) }
+        let commands = SettingsCommands(store: settingsStore)
+        Task { _ = await commands.typeHereAnyway(for: bundle, strategy: strategy, at: Date()) }
     }
 
     func openSupport(_ topic: SupportLinks.Topic) {

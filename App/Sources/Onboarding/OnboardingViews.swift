@@ -29,6 +29,11 @@ struct OnboardingRootView: View {
         // PRD-R67: with Reduce Motion on, no implicit SwiftUI animation runs anywhere in the window.
         .respectsReduceMotion()
         .sheet(isPresented: $model.showPermissionHelp) { PermissionHelpSheet(model: model).respectsReduceMotion() }
+        .sheet(isPresented: importPresented) { OnboardingImportSheet(model: model).respectsReduceMotion() }
+    }
+
+    private var importPresented: Binding<Bool> {
+        Binding(get: { model.macroImport != nil }, set: { if !$0 { model.cancelImport() } })
     }
 
     @ViewBuilder private var screen: some View {

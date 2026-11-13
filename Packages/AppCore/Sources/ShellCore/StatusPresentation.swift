@@ -5,7 +5,9 @@
 
 public import AppModel
 public import CompatRules
+public import Diagnostics
 public import Foundation
+public import SettingsStore
 
 /// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table.
 public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
@@ -38,6 +40,13 @@ public enum StatusPresentation {
         case .paused(let reason):
             return pausedIcon(reason, mode: mode)
         }
+    }
+
+    /// The `capturing` input of `iconState`: true while a trace session runs, including the gaps in which secure
+    /// input or a secure field stops the recording (`isRecording` is false then and stays the tap's record gate).
+    /// PLT-R905: "changed menu-bar icon for the whole duration".
+    public static func isCapturing(_ capture: CaptureController, now: Date) -> Bool {
+        capture.remaining(now: now) != nil
     }
 
     private static func pausedIcon(_ reason: PauseReason, mode: TypingMode) -> StatusIconState {
@@ -90,6 +99,9 @@ public struct StatusLine: Sendable, Hashable {
         case reopenApp
         /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use the saved settings, report).
         case safeModeChoices
+        /// Settings not being saved (PLT-R1006, PLT-R1007): the Settings window, whose notice explains it and
+        /// offers the fix.
+        case openSettings
     }
 
     public var key: String  // in the `Status` table
@@ -116,20 +128,23 @@ public struct StatusLine: Sendable, Hashable {
 
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
     /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
-    /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// (PLT-R1009) > settings not being saved (`storeNotices`, PLT-R1006, PLT-R1007) > tap re-enabled notice >
+    /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
     /// While a host-state line hides the safe-mode line, the report item still opens the safe-mode choices
     /// (`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)`).
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
     /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
         _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
-        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false
+        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false,
+        storeNotices: [StoreNotice] = []
     ) -> StatusLine? {
         let context = StatusLineBuilder(
             appName: appName, holderHintKey: holderHintKey, frontmostApp: frontmostApp,
             onboardingCompleted: onboardingCompleted)
         if let line = context.hostLine(for: state) { return line }
         if safeMode { return context.safeModeLine() }
+        if let line = storeNotices.lazy.compactMap(context.unsavedSettingsLine).first { return line }
         if tapRecentlyReenabled { return context.tapReenabledLine() }
         return context.knownLimitationLine()
     }
@@ -153,6 +168,30 @@ public struct FrontmostAppStatus: Sendable, Hashable {
         self.matrixStatus = matrixStatus
         self.limitationNote = limitationNote
         self.learnMore = learnMore
+    }
+
+    /// PRD-R43 "App in Known limitation list", PRD-R35: the matrix row that stands for the whole app, after the
+    /// 120-day rule (QA-R19); its note in the interface language; "Tìm hiểu thêm" opens the site's compatibility
+    /// page, which lists the app with its note (the matrix has no per-entry link).
+    public init(
+        bundle: BundleKey, displayName: String, matrix: MatrixDocument?, today: Date, language: InterfaceLanguage,
+        siteURL: URL
+    ) {
+        let entry = matrix?.appEntry(for: bundle)
+        self.init(
+            bundle: bundle, displayName: displayName,
+            matrixStatus: entry.map { MatrixStatusResolver.displayStatus($0, today: today) },
+            limitationNote: entry?.note.map { language == .vietnamese ? $0.vi : $0.en },
+            learnMore: entry == nil ? nil : CompatibilityPage.url(siteURL: siteURL, language: language))
+    }
+}
+
+/// The site's compatibility matrix page; the paths are those of site/lib/routes.mjs (`compat`), the host comes
+/// from the brand.
+public enum CompatibilityPage {
+    public static func url(siteURL: URL, language: InterfaceLanguage) -> URL {
+        let path = language == .vietnamese ? "tuong-thich/" : "en/compatibility/"
+        return URL(string: path, relativeTo: siteURL)?.absoluteURL ?? siteURL
     }
 }
 

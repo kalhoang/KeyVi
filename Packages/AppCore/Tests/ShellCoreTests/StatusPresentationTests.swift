@@ -3,7 +3,9 @@
 // PRD-R10, PLT-R211, PLT-R905: state-to-icon table over every HostState.
 
 import AppModel
+import Diagnostics
 import Foundation
+import TestSupport
 import Testing
 
 @testable import ShellCore
@@ -114,5 +116,30 @@ enum AllHostStates {
             let properties = try #require(json["properties"] as? [String: Any])
             #expect(properties["template-rendering-intent"] as? String == "template", "\(name) must be a template")
         }
+    }
+}
+
+/// PLT-R905: the changed icon stays for the whole trace session, also while secure input pauses the recording.
+@Suite struct CaptureIconTests {
+    @Test func iconStaysCapturingAcrossASecureInputGap_PLTR905() throws {
+        let wallClock = FixedWallClock(Date(timeIntervalSince1970: 1_794_528_000))
+        let clock = ManualClock()
+        let capture = CaptureController(
+            directory: URL(fileURLWithPath: "/logs/captures"),
+            fileSystem: InMemoryFileSystem(now: { wallClock.now() }), wallClock: wallClock, clock: clock,
+            scheduler: ManualScheduler(clock: clock))
+        #expect(!StatusPresentation.isCapturing(capture, now: wallClock.now()))
+        _ = try capture.start(duration: .seconds(60))
+        capture.beginGap(.secureField)
+        #expect(!capture.isRecording)  // the tap records nothing during the gap
+        let capturing = StatusPresentation.isCapturing(capture, now: wallClock.now())
+        #expect(capturing)
+        let icon = StatusPresentation.iconState(
+            state: .paused(.secureField), mode: .vietnamese, ignored: false, capturing: capturing)
+        #expect(icon == .capturing)
+        capture.endGap()
+        #expect(StatusPresentation.isCapturing(capture, now: wallClock.now()))
+        _ = capture.stop()
+        #expect(!StatusPresentation.isCapturing(capture, now: wallClock.now()))
     }
 }

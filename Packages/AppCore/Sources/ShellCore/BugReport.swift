@@ -40,14 +40,16 @@ public enum ReportAssembler {
         now: Date
     ) -> DiagnosticsReport {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
-        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
+        // PLT-R541, ADR 0312: for the focused app the override that decided, so `rule.id` and
+        // `rule.userOverride` agree when the app has several; else the app's newest stored override.
         let decisionOverride = host.focus.app?.bundle == reportedApp ? host.decision?.userOverride : nil
+        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
         return DiagnosticsReport(
             generatedAt: now, app: identity, system: system, hostState: host.state.code,
             keyboard: ReportSections.keyboard(host), permissions: ReportSections.permissions(host),
             tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
             focus: ReportSections.focus(host),
-            rule: ReportSections.rule(host.decision, userOverride: storedOverride ?? decisionOverride),
+            rule: ReportSections.rule(host.decision, userOverride: decisionOverride ?? storedOverride),
             settings: ReportSections.settings(settings),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
@@ -348,12 +350,24 @@ public enum DiagnosticsNavigation {
         case sheet(BugReportAction)
     }
 
-    /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
-    /// the misbehaves flow for that app (the user focused the problem field first). In safe mode both open the
-    /// safe-mode choices, whose "Report a Problem..." button continues to the report (PLT-R1009).
+    /// Where a report request comes from.
+    public enum Origin: Sendable, Hashable {
+        /// The status menu: PRD-R11 items 4 and 6 and the status line's "Báo lỗi...".
+        case menu
+        /// The Settings window: an Apps pane row or detail sheet (PRD-R37), About & Support, a store notice.
+        case settings
+    }
+
+    /// From the menu, "Báo lỗi..." opens the bug report sheet with the last frontmost app and "Báo lỗi với ứng
+    /// dụng này..." opens the misbehaves flow for that app (the user focused the problem field first, PLT-R1205
+    /// step 1; its panel continues to the sheet). In safe mode both open the safe-mode choices, whose "Report a
+    /// Problem..." button continues to the report (PLT-R1009). From Settings the sheet opens pre-filled with the
+    /// app (PRD-R37); Settings shows the safe-mode choices in its own notice.
     public static func destination(
-        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false
+        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false,
+        origin: Origin = .menu
     ) -> DiagnosticsDestination {
+        guard origin == .menu else { return .bugReport(preselected: bundle ?? lastFrontmost) }
         if safeMode { return .safeModeChoices }
         if let bundle { return .misbehaves(bundle) }
         return .bugReport(preselected: lastFrontmost)

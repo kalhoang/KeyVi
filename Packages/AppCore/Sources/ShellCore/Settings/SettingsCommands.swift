@@ -27,15 +27,32 @@ public struct SettingsCommands: Sendable {
         return await store.state
     }
 
-    /// PLT-R540: writes or removes this app's compatibility override.
+    /// PLT-R540: writes or removes this app's compatibility mode, keeping its "type here anyway".
     public func setCompatibility(_ choice: CompatibilityModeChoice, for bundle: BundleKey, at date: Date)
         async -> SettingsState
     {
-        switch choice.command(for: bundle, at: date) {
-        case .add(let stored): await store.addRuleOverride(stored)
-        case .remove(let id): await store.removeRuleOverride(id: id)
-        }
+        let overrides = await store.state.ruleOverrides
+        await perform(choice.commands(for: bundle, overrides: overrides, at: date))
         return await store.state
+    }
+
+    /// PLT-R540: the status line's "type here anyway" for this app, in the app's one user override. `strategy`
+    /// is the strategy the app resolves to now; it is kept when no compatibility mode is chosen.
+    public func typeHereAnyway(for bundle: BundleKey, strategy: InjectionStrategy, at date: Date) async
+        -> SettingsState
+    {
+        let overrides = await store.state.ruleOverrides
+        await perform(TypeHereAnyway.commands(for: bundle, strategy: strategy, overrides: overrides, at: date))
+        return await store.state
+    }
+
+    private func perform(_ commands: [CompatibilityModeCommand]) async {
+        for command in commands {
+            switch command {
+            case .add(let stored): await store.addRuleOverride(stored)
+            case .remove(let id): await store.removeRuleOverride(id: id)
+            }
+        }
     }
 
     /// PRD-R26, after the user confirmed (and was offered an export). The store backs up every file it rewrites

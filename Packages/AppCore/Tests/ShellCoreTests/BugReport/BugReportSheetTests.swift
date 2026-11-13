@@ -180,6 +180,31 @@ enum SheetFixtures {
         #expect(DiagnosticsNavigation.destination(reportProblemFor: chat, lastFrontmost: nil) == .misbehaves(chat))
     }
 
+    /// PRD-R37: an Apps pane row's "Báo lỗi với ứng dụng này..." opens the bug report sheet pre-filled with the
+    /// app (email, save, free text and preview stay reachable, PRD-R47, PRD-R49), not the misbehaves panel, whose
+    /// entry point is the menu item for the focused problem field (PLT-R1205 step 1). Settings shows the
+    /// safe-mode choices itself, so its report items open the sheet in safe mode too.
+    @Test func settingsReportItemsOpenTheBugReportSheet_PRDR37() {
+        let chat = SheetFixtures.chat.bundle
+        for safeMode in [false, true] {
+            #expect(
+                DiagnosticsNavigation.destination(
+                    reportProblemFor: chat, lastFrontmost: nil, safeMode: safeMode, origin: .settings)
+                    == .bugReport(preselected: chat))
+            #expect(
+                DiagnosticsNavigation.destination(
+                    reportProblemFor: nil, lastFrontmost: chat, safeMode: safeMode, origin: .settings)
+                    == .bugReport(preselected: chat))
+        }
+    }
+
+    /// PRD-R49: the misbehaves panel continues to the full bug report sheet, so the menu path is not limited to
+    /// copying a block when no repository is configured.
+    @Test func misbehavesPanelCanContinueToTheBugReportSheet_PRDR49() {
+        #expect(DiagnosticsControl.fullReport.labelKey == .fullReport)
+        #expect(DiagnosticsControl.fullReport.hintKey == .fullReportHint)
+    }
+
     /// PLT-R1009: in safe mode both report items lead to the safe-mode choices first (reset, use saved settings,
     /// report, later), so reset and exit never depend on which status line is showing.
     @Test func safeModeReportItemsOpenTheSafeModeChoices_PLTR1009() {

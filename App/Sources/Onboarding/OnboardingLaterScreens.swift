@@ -4,6 +4,7 @@
 
 import AppModel
 import InputHost
+import SettingsStore
 import ShellCore
 import SwiftUI
 
@@ -17,11 +18,61 @@ struct SwitchingScreen: View {
             Text(verbatim: localizer.string(OnboardingText.switchingBody))
             Text(verbatim: localizer.format(OnboardingText.switchingPerApp, model.appName))
             Text(verbatim: localizer.string(OnboardingText.switchingEnglishWords))
-            let change = localizer.string(OnboardingText.switchingChangeKey)
-            Button(action: model.openHotkeyRecorder) { Text(verbatim: change) }
-                .buttonStyle(.link)
-                .onboardingAccessibility(.changeToggleKey, localizer, label: change)
+            OnboardingHotkeyRecorder(model: model)
         }
+    }
+}
+
+/// PRD-R40 screen 4 "Đổi phím chuyển opens the recorder inline": the current toggle key, the recorder with the
+/// Settings window's capture lifecycle (ADR 0305) and its status line (PRD-R15, PRD-R16).
+struct OnboardingHotkeyRecorder: View {
+    let model: OnboardingModel
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let localizer = model.localizer
+        let recording = model.isRecordingHotkey
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(verbatim: localizer.string(SettingsText.toggleHotkeyTitle))
+                Text(
+                    verbatim: recording
+                        ? localizer.string(SettingsText.hotkeyRecording)
+                        : HotkeyRecorderText.display(model.toggleHotkey, localizer: localizer)
+                )
+                .font(.body.monospaced())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5).strokeBorder(
+                        recording ? Color.accentColor : .secondary, lineWidth: recording ? 2 : 1))
+                if recording {
+                    Button(action: model.cancelHotkeyRecording) {
+                        Text(verbatim: localizer.string(SettingsText.hotkeyCancel))
+                    }
+                    .focused($focused)
+                    .settingsAccessibility(SettingsControl.toggleHotkeyCancel, localizer)
+                } else {
+                    let change = localizer.string(OnboardingText.switchingChangeKey)
+                    Button(action: model.startHotkeyRecording) { Text(verbatim: change) }
+                        .focused($focused)
+                        .onboardingAccessibility(.changeToggleKey, localizer, label: change)
+                }
+                Button(action: model.useDefaultToggleHotkey) {
+                    Text(verbatim: localizer.string(SettingsText.hotkeyUseDefault))
+                }
+                .settingsAccessibility(SettingsControl.toggleHotkeyDefault, localizer)
+            }
+            if let status = model.hotkeyStatus {
+                Label {
+                    Text(verbatim: status).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "keyboard").accessibilityHidden(true)
+                }
+                .font(.callout)
+            }
+        }
+        .onChange(of: recording) { focused = true }
     }
 }
 
@@ -179,6 +230,13 @@ struct PermissionHelpSheet: View {
                     .keyboardShortcut(.cancelAction)
                     .onboardingAccessibility(.closeHelp, localizer, label: close)
             }
+            if model.permissionResetFailed {
+                Label {
+                    Text(verbatim: help.resetFailed).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                }
+            }
             Divider()
             Text(verbatim: help.fallback).font(.footnote).foregroundStyle(.secondary)  // PLT-R206
         }
@@ -193,5 +251,52 @@ struct PermissionHelpSheet: View {
         } message: {
             Text(verbatim: help.confirmBody)
         }
+    }
+}
+
+/// PRD-R40 screen 6 "Chọn tệp...": the Macros pane's preview before anything is merged (PRD-R32); a refused file
+/// shows its reason with "Chọn tệp khác" (PRD-R43 "Import file invalid") and the flow stays on screen 6.
+struct OnboardingImportSheet: View {
+    @Bindable var model: OnboardingModel
+
+    var body: some View {
+        let localizer = model.localizer
+        VStack(alignment: .leading, spacing: 10) {
+            ScreenTitle(text: localizer.string(MacrosText.importTitle))
+            if let error = model.macroImport?.error {
+                Label {
+                    Text(verbatim: error).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                }
+            }
+            if let session = model.macroImport?.session {
+                MacroImportPreviewView(session: session, resolution: resolution, localizer: localizer)
+            }
+            HStack {
+                Button(action: model.chooseImportFile) {
+                    Text(verbatim: localizer.string(MacrosText.importChooseOther))
+                }
+                .settingsAccessibility(MacrosControl.importChooseOther, localizer)
+                Spacer()
+                Button(action: model.cancelImport) { Text(verbatim: localizer.string(MacrosText.importCancel)) }
+                    .keyboardShortcut(.cancelAction)
+                    .settingsAccessibility(MacrosControl.importCancel, localizer)
+                Button(action: { Task { await model.confirmImport() } }) {
+                    Text(verbatim: localizer.string(MacrosText.importConfirm))
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(model.macroImport?.session == nil)
+                .settingsAccessibility(MacrosControl.importConfirm, localizer)
+            }
+        }
+        .padding(20)
+        .frame(width: 480)
+    }
+
+    private var resolution: Binding<MacroDuplicateResolution> {
+        Binding(
+            get: { model.macroImport?.session?.resolution ?? .keepMine },
+            set: { model.macroImport?.session?.resolution = $0 })
     }
 }

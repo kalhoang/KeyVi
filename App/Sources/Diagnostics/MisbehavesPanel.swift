@@ -28,9 +28,12 @@ final class MisbehavesPanelController: NSWindowController, NSWindowDelegate {
     /// this app's own windows (opened from the Diagnostics window).
     init(
         language: InterfaceLanguageModel, services: DiagnosticsServices, bundle: BundleKey?,
-        report: @escaping @MainActor () -> DiagnosticsReport?
+        report: @escaping @MainActor () -> DiagnosticsReport?,
+        openBugReport: @escaping @MainActor (BundleKey?, DiagnosticsReport.Symptom) -> Void
     ) {
-        model = MisbehavesModel(language: language, services: services, fallbackBundle: bundle, report: report)
+        model = MisbehavesModel(
+            language: language, services: services, fallbackBundle: bundle, report: report,
+            openBugReport: openBugReport)
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 460),
             styleMask: [.titled, .closable, .resizable, .utilityWindow, .nonactivatingPanel], backing: .buffered,
@@ -62,6 +65,7 @@ final class MisbehavesModel {
     @ObservationIgnored let services: DiagnosticsServices
     @ObservationIgnored private let baseReport: @MainActor () -> DiagnosticsReport?
     @ObservationIgnored private let fallbackBundle: BundleKey?
+    @ObservationIgnored private let continueToBugReport: @MainActor (BundleKey?, DiagnosticsReport.Symptom) -> Void
     @ObservationIgnored private var task: Task<Void, Never>?
     /// Stop signal of the current guided test: set by Stop, by closing the panel and by an app switch; its focus
     /// check runs on the typing thread before every step (PLT-R1205 step 3, PLT-R387).
@@ -75,11 +79,13 @@ final class MisbehavesModel {
 
     init(
         language: InterfaceLanguageModel, services: DiagnosticsServices, fallbackBundle: BundleKey?,
-        report: @escaping @MainActor () -> DiagnosticsReport?
+        report: @escaping @MainActor () -> DiagnosticsReport?,
+        openBugReport: @escaping @MainActor (BundleKey?, DiagnosticsReport.Symptom) -> Void
     ) {
         self.language = language
         self.services = services
         self.fallbackBundle = fallbackBundle
+        continueToBugReport = openBugReport
         baseReport = report
         flow = services.currentFocus.map { MisbehavesFlow(target: MisbehavesTarget(focus: $0())) }
         refreshReport()
@@ -250,6 +256,12 @@ final class MisbehavesModel {
             status = .copied
         case .openGitHubIssue: openGitHubIssue()
         }
+    }
+
+    /// PRD-R47, PRD-R49: the bug report sheet, pre-filled with the reported app and the chosen symptom, for the
+    /// paths this panel does not offer (email, save to a file, free text, preview).
+    func openFullReport() {
+        continueToBugReport(reportedBundle, flow?.symptom ?? .other)
     }
 
     /// The app the report names: the detected app, or the menu's app while the focus is in this app.

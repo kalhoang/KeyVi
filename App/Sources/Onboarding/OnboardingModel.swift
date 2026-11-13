@@ -7,8 +7,8 @@ import AppKit
 import AppModel
 import InputHost
 import Observation
+import SettingsStore
 import ShellCore
-import UniformTypeIdentifiers
 
 @MainActor
 @Observable
@@ -23,7 +23,16 @@ final class OnboardingModel {
     private(set) var checklist: TryItChecklist?
     var openAtLogin = true  // D17, shown pre-checked
     var showPermissionHelp = false
+    /// PRD-R40 screen 6, PRD-R32: the import preview or the reason a file was refused (PRD-R43), shown as a sheet.
+    var macroImport: OnboardingImport?
     var confirmPermissionReset = false
+    /// PLT-R740, PRD-R43: the last reset failed; the help sheet says so with the remove-and-add-again steps.
+    private(set) var permissionResetFailed = false
+
+    /// D11, shown on screen 4 and updated after an inline recording (PRD-R40).
+    private(set) var toggleHotkey: HotkeyBinding
+    /// PRD-R40 screen 4: the inline recorder, with the Settings window's capture lifecycle (ADR 0305).
+    @ObservationIgnored let hotkeyCapture: HotkeyCaptureController
 
     let appName: String
     let panes: SystemPaneNames
@@ -36,7 +45,7 @@ final class OnboardingModel {
     init(
         flow: OnboardingFlow, language: InterfaceLanguageModel, actions: any OnboardingActions,
         inputs: @escaping @MainActor () -> OnboardingInputs, appName: String, panes: SystemPaneNames,
-        method: TypingMethod, mode: TypingMode
+        method: TypingMethod, mode: TypingMode, toggleHotkey: HotkeyBinding
     ) {
         self.flow = flow
         self.language = language
@@ -47,6 +56,14 @@ final class OnboardingModel {
         self.panes = panes
         self.method = method
         currentMode = mode
+        self.toggleHotkey = toggleHotkey
+        let relay = OnboardingCaptureRelay()
+        hotkeyCapture = HotkeyCaptureController(
+            monitor: LocalKeyMonitor(),
+            setHotkeysSuspended: { relay.model?.actions?.setHotkeyRecorderActive($0) },
+            onFinished: { _, binding in relay.model?.saveToggleHotkey(binding) },
+            readLayout: { relay.model?.actions?.currentLayout() })
+        relay.model = self
     }
 
     var localizer: Localizer { language.localizer }
@@ -118,14 +135,36 @@ final class OnboardingModel {
 
     func openInputMonitoringPane() { actions?.openInputMonitoringPane() }
     func relaunch() { actions?.relaunch() }
-    func openHotkeyRecorder() { actions?.openHotkeyRecorder() }
+    /// PRD-R40 screen 4 "Đổi phím chuyển": records inline in this window.
+    func startHotkeyRecording() { hotkeyCapture.start(.toggleMode) }
+    func cancelHotkeyRecording() { hotkeyCapture.cancel() }
+    func interruptHotkeyRecording() { hotkeyCapture.interrupt() }
+    var isRecordingHotkey: Bool { hotkeyCapture.recordingRole == .toggleMode }
+
+    /// Live keys, a rejection reason or the PRD-R16 conflict warning under the recorder.
+    var hotkeyStatus: String? {
+        hotkeyCapture.session.flatMap {
+            HotkeyRecorderText.status($0.state, role: .toggleMode, appName: appName, localizer: localizer)
+        }
+    }
+
+    /// "Dùng mặc định" (Control + Shift, D11).
+    func useDefaultToggleHotkey() {
+        hotkeyCapture.cancel()
+        saveToggleHotkey(.defaultToggle)
+    }
+
+    private func saveToggleHotkey(_ binding: HotkeyBinding) {
+        toggleHotkey = binding
+        actions?.saveToggleHotkey(binding)
+    }
     func openConflictHelp(_ conflict: ConflictingInput) { actions?.openConflictHelp(conflict) }
     func openKeyboardPane() { actions?.openKeyboardPane() }
 
     /// PLT-R740: runs only after the user confirmed in the sheet.
     func resetPermission() {
         confirmPermissionReset = false
-        actions?.resetPermission()
+        permissionResetFailed = actions?.resetPermission() == .failed
     }
 
     /// "Kiểm tra lại" on the conflicts screen: moves on once nothing conflicts any more.
@@ -144,6 +183,7 @@ final class OnboardingModel {
 
     /// PRD-R41: closing before the end leaves the slashed icon and a "resume" status line (App side).
     func windowClosed() {
+        hotkeyCapture.cancel()
         actions?.onboardingClosed(completed: flow.isFinished)
     }
 
@@ -155,6 +195,7 @@ final class OnboardingModel {
     // MARK: - Private
 
     private func move(_ transition: (inout OnboardingFlow, OnboardingInputs) -> Void) {
+        hotkeyCapture.cancel()  // a recorder off screen never keeps the tap's hotkeys suspended (ADR 0305)
         inputs = readInputs()
         transition(&flow, inputs)
         enteredScreen()
@@ -172,18 +213,39 @@ final class OnboardingModel {
         }
     }
 
-    /// PRD-R40 screen 6 / PRD-R69: a file only from the user's explicit choice.
-    private func chooseImportFile() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.json, .plainText, .commaSeparatedText, .propertyList]
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url else { return }
-            MainActor.assumeIsolated {
-                self?.actions?.importMacros(from: url)
-                self?.move { $0.next(inputs: $1) }
-            }
+    /// PRD-R40 screen 6 / PRD-R69: a file only from the user's explicit choice. The Macros pane's preview comes
+    /// first (PRD-R32); a refused file is explained and the flow stays here (PRD-R43 "Import file invalid").
+    func chooseImportFile() {
+        FilePanels.open(types: FilePanels.macroTypes) { [weak self] url in
+            Task { await self?.openImportFile(url) }
         }
     }
+
+    private func openImportFile(_ url: URL) async {
+        let data = await FilePanels.readOffMain(url, maxBytes: MacroImporter.maxFileBytes)
+        let existing = await actions?.currentMacros() ?? []
+        macroImport = OnboardingImport.opening(
+            data, fileExtension: url.pathExtension, existing: existing, localizer: localizer)
+    }
+
+    /// "Nhập": merges with the duplicate choice, then moves on; a failed merge keeps the sheet with its reason.
+    func confirmImport() async {
+        guard var step = macroImport else { return }
+        let existing = await actions?.currentMacros() ?? []
+        let merged = step.confirm(existing: existing, localizer: localizer)
+        macroImport = step
+        guard let merged, step.advancesFlow else { return }
+        actions?.saveImportedMacros(merged)
+        macroImport = nil
+        move { $0.next(inputs: $1) }
+    }
+
+    /// "Hủy": nothing is imported and the flow stays on screen 6 ("Để sau" moves on).
+    func cancelImport() { macroImport = nil }
+}
+
+/// Lets the capture controller's closures reach the model without a retain cycle.
+@MainActor
+private final class OnboardingCaptureRelay {
+    weak var model: OnboardingModel?
 }

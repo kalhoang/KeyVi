@@ -74,3 +74,47 @@ extension MacroImportRefusal {
         }
     }
 }
+
+/// Onboarding screen 6 "Chọn tệp..." (PRD-R40, PRD-R32, PRD-R43 "Import file invalid"): the same session as the
+/// Macros pane, so the onboarding import also shows the counts of new, duplicate and invalid rows, the duplicate
+/// choice and the invalid lines before anything is merged. A refused file shows its reason with "Chọn tệp
+/// khác"; the flow leaves screen 6 only after a confirmed import (or "Để sau").
+public struct OnboardingImport: Sendable, Hashable {
+    /// The preview; its `resolution` is the user's duplicate choice.
+    public var session: MacroImportSession?
+    /// Why the file was refused or the merge failed, in the interface language.
+    public private(set) var error: String?
+    /// The import was confirmed and merged: the flow moves on.
+    public private(set) var advancesFlow = false
+
+    public init() {}
+
+    /// `data` is nil when the file could not be read.
+    public static func opening(_ data: Data?, fileExtension: String?, existing: [StoredMacro], localizer: Localizer)
+        -> OnboardingImport
+    {
+        var step = OnboardingImport()
+        guard let data else {
+            step.error = localizer.string(MacrosText.importUnreadable)
+            return step
+        }
+        switch MacroImportSession.open(data, fileExtension: fileExtension, existing: existing) {
+        case .success(let session): step.session = session
+        case .failure(let refusal): step.error = refusal.message(localizer)
+        }
+        return step
+    }
+
+    /// The list to save after "Nhập"; nil keeps the sheet open with the reason.
+    public mutating func confirm(existing: [StoredMacro], localizer: Localizer) -> [StoredMacro]? {
+        guard let session else { return nil }
+        switch session.merged(into: existing) {
+        case .success(let merged):
+            advancesFlow = true
+            return merged
+        case .failure(let problem):
+            error = localizer.format(MacrosText.saveFailed, MacroIssueText.entryText(problem, localizer: localizer))
+            return nil
+        }
+    }
+}

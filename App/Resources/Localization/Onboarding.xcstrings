@@ -1711,6 +1711,24 @@
         }
       }
     },
+    "onboarding.permissionHelp.resetFailed" : {
+      "comment" : "PLT-R740, PRD-R43: shown in the permission help sheet when the reset command fails. Argument: app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The permission of %@ could not be reset. Follow the steps above to remove the app from the list and add it again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không đặt lại được quyền của %@. Hãy làm theo các bước ở trên để xóa ứng dụng khỏi danh sách rồi thêm lại."
+          }
+        }
+      }
+    },
     "onboarding.permissionHelp.resetIntro" : {
       "comment" : "PLT-R740. %@ is the app name.",
       "extractionState" : "manual",
