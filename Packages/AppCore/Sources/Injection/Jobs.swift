@@ -154,7 +154,8 @@ public struct EditJob: Sendable {
     /// discard) the worker replays it, so the conservation invariant still holds (PLT-R312). Nil when the
     /// original key is already queued as a replay (`thenPassThrough`).
     public var trigger: KeyEventRecord?
-    /// Re-entry into a committed word: verify before applying when the rule allows (PLT-R342).
+    /// Re-entry into a committed word: verify before applying when the rule allows (PLT-R342). Honoured only for
+    /// `kind == .reentry`; the worker ignores it on every other kind.
     public var verifyBeforeApply: Bool
     /// The word began within 300 ms of a focus change or click (`firstEditDelayUs`, PLT-R408).
     public var wordStartedNearFocusChange: Bool
