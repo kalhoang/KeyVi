@@ -322,9 +322,9 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PRD-R70 | Tolerant importers | `MacroImporter` | U | W1-B |  |
 | PRD-R71 | Website migration pages | `site/` | D | site track |  |
 | PRD-R72 | Own export format | `SettingsStore` export | U | W1-B |  |
-| PRD-R73 | Website pages | `site/` | D | site track |  |
-| PRD-R74 | No trackers on the website | `site/` | D | site track; Pa decision |  |
-| PRD-R75 | Appcast host over HTTPS on a Pa-controlled domain | site hosting, `Config/Sparkle.xcconfig` | R | release track |  |
+| PRD-R73 | Website pages | `site/`, served by the `deploy/site` container (ADR 0602) | D, U (`node site/test.mjs`) | site track |  |
+| PRD-R74 | No trackers on the website | `site/`; optional cookieless PostHog only when `site/config.json` sets a key (Pa, 2026-11-13, Q7; ADR 0602), never in the app or on release-notes pages | U (`node site/test.mjs`: no third-party origin without a key, only the PostHog hosts with one) | site track; Pa decision |  |
+| PRD-R75 | Appcast host over HTTPS on a Pa-controlled domain | `deploy/site` on the Kalera Docker Swarm behind Traefik and Cloudflare (ADR 0602, [site deploy](../runbooks/site-deploy.md)), `Config/Sparkle.xcconfig` | R, U (`node deploy/site/test.mjs`), M (first deploy) | release track; Pa | **Pa** |
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |
 | PRD-R77 | No in-app survey, rating prompt or usage counter | all UI | D | all UI workstreams |  |
 
