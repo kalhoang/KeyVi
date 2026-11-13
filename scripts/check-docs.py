@@ -35,8 +35,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # root-level Markdown file, the pull request template, the issue forms and the compatibility script that README.md,
 # CONTRIBUTING.md and the compatibility form link to. `*` never crosses a `/`.
 FRONT_DOOR = ("*.md", ".github/*.md", ".github/ISSUE_TEMPLATE/*", "compat/SCRIPT.md")
-# Not in the front door yet: CHANGELOG.md still says {{AppName}} (the site build fills it in for its changelog page).
-FRONT_DOOR_PENDING = frozenset({"CHANGELOG.md"})
 PLACEHOLDER = re.compile(r"(?<!\$)\{\{\s*[A-Za-z][\w-]*\s*\}\}")
 INLINE_LINK = re.compile(r"!?\[(?:[^\[\]]|\[[^\]]*\])*\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)")
 # Footnote definitions ("[^1]: text") are not link definitions; their text is no target.
@@ -65,7 +63,7 @@ def in_docs(rel: str, include_decisions: bool) -> bool:
 
 def in_front_door(rel: str) -> bool:
     parts = rel.split("/")
-    return rel not in FRONT_DOOR_PENDING and any(
+    return any(
         len(parts) == len(pattern.split("/"))
         and all(fnmatch.fnmatchcase(part, glob) for part, glob in zip(parts, pattern.split("/")))
         for pattern in FRONT_DOOR)

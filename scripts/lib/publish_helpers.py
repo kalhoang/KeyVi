@@ -129,7 +129,8 @@ def cmd_appcast_insert(args) -> int:
 
 
 def fill_brand(value: str, app_name: str) -> str:
-    """Release notes come from CHANGELOG sections, which may say {{AppName}} (the file is brand-neutral)."""
+    """Release notes come from CHANGELOG sections; a section may still say {{AppName}} (the file writes the literal name
+    since 2026-11-14, ADR 0400 decision 1 amendment)."""
     return value.replace("{{AppName}}", app_name) if app_name else value
 
 

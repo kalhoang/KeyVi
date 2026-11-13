@@ -70,7 +70,7 @@ name, or the slug when the display name contains non-ASCII characters (`APP_STOR
   `CONTRIBUTING.md`, and `site/test.mjs` does the same for the site sources (amended 2026-11-13; this bullet
   first allowed literals there).
 - Amended again 2026-11-13, when the name became final (ADR 0400 decision 1 amendment): the front door
-  (every root-level Markdown file except `CHANGELOG.md` for now, `.github/pull_request_template.md`,
+  (every root-level Markdown file, `CHANGELOG.md` included since 2026-11-14, `.github/pull_request_template.md`,
   `.github/ISSUE_TEMPLATE/*` and `compat/SCRIPT.md`; `FRONT_DOOR` in `scripts/check-docs.py`) is shown by GitHub or the DMG exactly
   as it is, so it writes the literal display name, slug and site host instead, and `scripts/check-docs.py
   brand` fails on any `{{...}}` placeholder there. The literal rule above now covers `docs/` only. The script

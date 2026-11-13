@@ -283,6 +283,8 @@ class FrontDoorBrandTests(unittest.TestCase):
             ".github/ISSUE_TEMPLATE/bug.yml": ("name: Bug report for {{AppName}}\n", "{{AppName}}"),
             # Linked from README.md, CONTRIBUTING.md and the compatibility form; GitHub shows it as it is.
             "compat/SCRIPT.md": ("| {{AppName}} version and build, channel |\n", "{{AppName}}"),
+            # GitHub shows it as it is; the site build and the appcast notes take it verbatim (2026-11-14).
+            "CHANGELOG.md": ("All notable changes to {{AppName}}.\n", "{{AppName}}"),
         }
         for rel, (text, _) in cases.items():
             self.write(self.root, rel, text)
@@ -295,7 +297,7 @@ class FrontDoorBrandTests(unittest.TestCase):
     def test_front_door_files_accept_the_literal_values(self):
         for rel in ("README.md", "README.vi.md", "CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md",
                     "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "CLAUDE.md", ".github/pull_request_template.md",
-                    ".github/ISSUE_TEMPLATE/bug.yml", "compat/SCRIPT.md"):
+                    ".github/ISSUE_TEMPLATE/bug.yml", "compat/SCRIPT.md", "CHANGELOG.md"):
             self.write(self.root, rel, self.LITERAL)
         self.write(self.root, "docs/runbooks/a.md", "Install {{AppName}} from https://{{app-slug}}.kal.vn.\n")
         result = self.brand(self.root)
@@ -1311,9 +1313,12 @@ class ChangelogTests(unittest.TestCase):
             with self.subTest(place=name):
                 self.assertIn(needle, " ".join(text.split()))
 
-    def test_no_brand_name_or_dash_in_the_entries(self):
+    def test_no_placeholder_or_dash_in_the_entries(self):
+        """CHANGELOG.md is part of the front door since 2026-11-14 (ADR 0400 decision 1 amendment): GitHub shows it as
+        it is, so it writes the display name of scripts/brand.env instead of {{AppName}}."""
         text = self.unreleased()
-        self.assertNotIn("KeyVi", text)
+        self.assertNotRegex(text, r"\{\{\s*[A-Za-z][\w-]*\s*\}\}")
+        self.assertIn(FrontDoorBrandTests.repo_brand()["APP_DISPLAY_NAME"], text)
         self.assertNotIn("\u2014", text)
         self.assertNotIn("\u2013", text)
 
