@@ -2,6 +2,8 @@
 //
 // Settings persistence (PLT-R10xx). An actor whose executor is the utility serial queue, so all reads,
 // migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue").
+// Loading lives in SettingsStore+Load.swift, writing in SettingsStore+Persistence.swift, reset and import in
+// SettingsStore+Transfer.swift.
 
 public import AppModel
 public import Dispatch
@@ -20,6 +22,23 @@ public struct SettingsState: Sendable, Hashable {
     /// Crash-loop safe mode: defaults in memory, files untouched (PLT-R1009).
     public var safeMode: Bool
     public var notices: [StoreNotice]
+
+    /// `effective` is derived from `user` over `DefaultSettings.v1`. For consumers' tests and previews.
+    public init(
+        generation: UInt64 = 0, user: UserSettings = UserSettings(), appModes: AppModesDocument = AppModesDocument(),
+        ruleOverrides: [StoredRuleOverride] = [], macros: [StoredMacro] = [], readOnlyFiles: Set<SettingsFile> = [],
+        safeMode: Bool = false, notices: [StoreNotice] = []
+    ) {
+        self.generation = generation
+        self.user = user
+        self.effective = user.resolved()
+        self.appModes = appModes
+        self.ruleOverrides = ruleOverrides
+        self.macros = macros
+        self.readOnlyFiles = readOnlyFiles
+        self.safeMode = safeMode
+        self.notices = notices
+    }
 }
 
 /// User-visible notices (PLT-R1006, PLT-R1007, PLT-R1009), rendered by ShellCore.
@@ -37,13 +56,32 @@ public enum ResetScope: Sendable, Hashable {
 }
 
 public actor SettingsStore {
-    private let queue: DispatchSerialQueue
+    let queue: DispatchSerialQueue
+    let storage: DocumentStorage
+    let writtenBy: String
+    let migrations: MigrationChain
+    let launchGuard: LaunchGuard
+    let scheduler: any DebounceScheduler
+    let onChange: @Sendable (SettingsState) -> Void
+
+    var user = UserSettings()
+    var appModes = AppModesDocument()
+    var ruleOverrides: [StoredRuleOverride] = []
+    var macros: [StoredMacro] = []
+    var files: [SettingsFile: FileStatus] = [:]
+    var notices: [StoreNotice] = []
+    var safeMode = false
+    /// Nothing is written before the first `load()`: an early write would replace files not read yet.
+    var loaded = false
+    var generation: UInt64 = 0
+    var nextTimerToken: UInt64 = 0
 
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     /// - Parameters:
     ///   - queue: the utility serial queue (QoS utility).
     ///   - writtenBy: app version recorded in every file (PLT-R1002).
+    ///   - scheduler: debounce timers; nil = `DispatchDebounceScheduler` on `queue`. Tests pass a manual one.
     ///   - onChange: called on `queue` after each change; InputHost publishes snapshots from it, ShellCore
     ///     hops to the main actor.
     public init(
@@ -54,48 +92,126 @@ public actor SettingsStore {
         queue: DispatchSerialQueue,
         migrations: MigrationChain = .shipped,
         launchGuard: LaunchGuard,
+        scheduler: (any DebounceScheduler)? = nil,
         onChange: @escaping @Sendable (SettingsState) -> Void
     ) {
         self.queue = queue
-        unimplemented()
+        self.storage = DocumentStorage(location: location, fileSystem: fileSystem, wallClock: wallClock)
+        self.writtenBy = writtenBy
+        self.migrations = migrations
+        self.launchGuard = launchGuard
+        self.scheduler = scheduler ?? DispatchDebounceScheduler(queue: queue)
+        self.onChange = onChange
     }
 
     /// Loads all four files: migrate (with backups), recover from corruption (PLT-R1006), detect newer
     /// schema (PLT-R1007), honour safe mode (PLT-R1009).
-    public func load() -> SettingsState { unimplemented() }
+    public func load() -> SettingsState {
+        performLoad()
+        return state
+    }
 
-    public var state: SettingsState { unimplemented() }
+    public var state: SettingsState {
+        SettingsState(
+            generation: generation, user: user, appModes: appModes, ruleOverrides: ruleOverrides, macros: macros,
+            readOnlyFiles: Set(files.filter { $0.value.readOnly }.keys), safeMode: safeMode, notices: notices)
+    }
 
     /// Applies an explicit change (debounced write, 1 s).
-    public func updateSettings(_ change: @Sendable (inout UserSettings) -> Void) { unimplemented() }
+    public func updateSettings(_ change: @Sendable (inout UserSettings) -> Void) {
+        var next = user
+        change(&next)
+        guard next != user else { return }
+        user = next
+        changed(.settings, after: WriteDelay.standard)
+    }
 
     /// Per-app explicit rule from the menu or the Apps pane (PRD-R21). `nil` clears it.
-    public func setAppRule(_ rule: PerAppRule?, for bundle: BundleKey) { unimplemented() }
+    public func setAppRule(_ rule: PerAppRule?, for bundle: BundleKey) {
+        let next = appModes.settingRule(rule, for: bundle)
+        guard next != appModes else { return }
+        appModes = next
+        changed(.appModes, after: WriteDelay.standard)
+    }
 
     /// Remembered modes and global mode from InputHost's memory; written with a 5 s debounce (PLT-R392).
-    public func recordAppModes(_ document: AppModesDocument) { unimplemented() }
+    /// Explicit rules stay as set through `setAppRule`, so a copy that left the ax thread before a rule change
+    /// can never revert that rule.
+    public func recordAppModes(_ document: AppModesDocument) {
+        let next = appModes.recordingMemory(from: document)
+        guard next != appModes else { return }
+        appModes = next
+        changed(.appModes, after: WriteDelay.appModes)
+    }
 
-    public func addRuleOverride(_ override: StoredRuleOverride) { unimplemented() }
-    public func removeRuleOverride(id: RuleID) { unimplemented() }
-    public func replaceMacros(_ macros: [StoredMacro]) { unimplemented() }
+    /// Adds or replaces (same `user.` rule id) an override. A rule without a valid `user.` id is ignored; the
+    /// date is kept to the second so it reads back unchanged (PLT-R541 "set by you on <date>").
+    public func addRuleOverride(_ override: StoredRuleOverride) {
+        guard let id = override.ruleID else { return }
+        let stored = StoredRuleOverride(createdAt: StorageTimestamp.wholeSeconds(override.createdAt), rule: override.rule)
+        var next = ruleOverrides
+        if let index = next.firstIndex(where: { $0.ruleID == id }) { next[index] = stored } else { next.append(stored) }
+        guard next != ruleOverrides else { return }
+        ruleOverrides = next
+        changed(.ruleOverrides, after: WriteDelay.standard)
+    }
+
+    public func removeRuleOverride(id: RuleID) {
+        let next = ruleOverrides.filter { $0.ruleID != id }
+        guard next != ruleOverrides else { return }
+        ruleOverrides = next
+        changed(.ruleOverrides, after: WriteDelay.standard)
+    }
+
+    /// The editor validates entries (`MacroValidator`); the store keeps them as given.
+    public func replaceMacros(_ macros: [StoredMacro]) {
+        guard macros != self.macros else { return }
+        self.macros = macros
+        changed(.macros, after: WriteDelay.standard)
+    }
 
     /// PRD-R26. The caller offers an export first.
-    public func reset(_ scope: ResetScope) { unimplemented() }
+    public func reset(_ scope: ResetScope) { performReset(scope) }
 
-    /// User confirmed using defaults after a corrupt file without backup (PLT-R1006).
-    public func confirmDefaults(for file: SettingsFile) { unimplemented() }
+    /// User confirmed using defaults after a corrupt file without backup (PLT-R1006). Also confirms a state
+    /// recovered from a backup. Writes the in-memory state of that file, including changes made meanwhile.
+    public func confirmDefaults(for file: SettingsFile) {
+        guard status(file).awaitingConfirmation else { return }
+        updateStatus(file) {
+            $0.awaitingConfirmation = false
+            $0.dirty = true
+        }
+        notices.removeAll { $0.isRecovery(of: file) }
+        writeNow(file)
+        publish()
+    }
 
     /// Leaves safe mode and resets the launch guard.
-    public func exitSafeMode() { unimplemented() }
+    public func exitSafeMode() {
+        launchGuard.reset()
+        guard safeMode else { return }
+        performLoad()
+    }
 
     /// Writes pending changes immediately (quit, update install).
-    public func flush() { unimplemented() }
+    public func flush() {
+        var noticesChanged = false
+        for file in SettingsFile.allCases {
+            cancelPendingWrite(file)
+            noticesChanged = writeNow(file) || noticesChanged
+        }
+        if noticesChanged { publish() }
+    }
 
     // MARK: Export and import (PLT-R1010, PRD-R72)
 
-    public func export(_ options: ExportOptions, now: Date) throws -> Data { unimplemented() }
+    public func export(_ options: ExportOptions, now: Date) throws -> Data { try exportData(options, now: now) }
     /// Validates untrusted data (5 MB cap, schema, no evaluation, PLT-R912) and builds a preview.
-    public func previewImport(_ data: Data) throws -> ImportPreview { unimplemented() }
+    public func previewImport(_ data: Data) throws -> ImportPreview {
+        try SettingsImporter(migrations: migrations).preview(data, baseline: ImportBaseline(user: user, macros: macros))
+    }
     /// Backs up current files, applies, migrates older schemas, lists skipped fields of newer schemas.
-    public func applyImport(_ preview: ImportPreview, choices: ImportChoices) throws { unimplemented() }
+    public func applyImport(_ preview: ImportPreview, choices: ImportChoices) throws {
+        try performImport(preview, choices: choices)
+    }
 }
