@@ -18,6 +18,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     private let services: DiagnosticsServices
     private let model: DiagnosticsWindowModel
     private var misbehaves: MisbehavesPanelController?
+    private var bugReport: BugReportController?
     private var trace: TypingTraceCoordinator?
     private var probe: LatencyProbeWindowController?
 
@@ -46,13 +47,46 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
         WindowTitles.follow(language, window: window) { $0.string(DiagnosticsText.windowTitle) }
     }
 
-    /// Opens the window with a freshly generated report (the text shown is the text copied, PLT-R1204).
-    func showReport() {
-        model.refresh()
+    /// Opens the window with a freshly generated report (the text shown is the text copied, PLT-R1204). The
+    /// report is built before this app activates, so the focus section names the field the user was in. `build`
+    /// replaces the live report, for example with the bug report sheet's report of the same moment.
+    func showReport(using build: (@MainActor () -> DiagnosticsReport)? = nil) {
+        model.refresh(using: build)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
+
+    /// "Báo lỗi..." (PRD-R11 item 6, PRD-R47): the sheet with the Apps pane's apps and the last frontmost app
+    /// chosen: `preselected` (the focused app when the menu item was chosen), or the most recent other app when that
+    /// is this app or unknown. The host context is read now, before the sheet takes the focus.
+    func openBugReport(preselected: BundleKey?) {
+        let apps = services.recentApps()
+        let choice = RecentReportApps.preselection(
+            focused: preselected, recent: apps, excluding: services.resolvedBrand.bundleIdentifier,
+            name: services.appName)
+        let draft = BugReportDraft(
+            app: choice?.bundle, appName: choice?.name, symptom: .other, userDescription: "",
+            reproducesInPracticeField: nil)
+        let build = reportBuilder()
+        bugReport?.close()
+        let controller = BugReportController(
+            draft: draft, apps: apps, build: build, language: language, services: services)
+        controller.openDiagnostics = { [weak self] in self?.showReport(using: { build(nil) }) }
+        bugReport = controller
+        controller.present()
+    }
+
+    /// The composition root's builder bound to the context of this moment; without it, the window's live report
+    /// of this moment, which the sheet projects onto the draft (`BugReportSheet.report(from:)`).
+    private func reportBuilder() -> DiagnosticsServices.ReportBuilder {
+        if let session = services.reportSession { return session() }
+        let base = model.freshReport()
+        return { _ in base }
+    }
+
+    /// The app the window's report flows name while this window has the focus (PRD-R47 item 1).
+    func lastFrontmostApp() -> BundleKey? { services.lastFrontmost(recent: services.recentApps())?.bundle }
 
     /// PLT-R1205 step 1: the user focused the problem field, then chose the menu item. The panel does not take
     /// focus away from that field; it reads the live focus snapshot, which belongs to `bundle` (the menu's
@@ -91,7 +125,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     private func perform(_ action: DiagnosticsWindowAction) {
         switch action {
         case .copyReport: model.copyReport()
-        case .misbehaves: startMisbehavesFlow(for: services.currentFocus?().app?.bundle)
+        case .misbehaves: startMisbehavesFlow(for: lastFrontmostApp())
         case .recordTrace: startTypingTrace()
         case .latencyTest: runLatencyProbe()
         case .openLogs: model.openLogs()
@@ -109,13 +143,14 @@ final class BugReportController: NSWindowController, NSWindowDelegate {
 
     required init?(coder: NSCoder) { nil }
 
-    /// Shows the exact redacted text before anything is copied or saved (PLT-R1204, PRD-R48).
+    /// Shows the exact redacted text before anything is copied or saved (PLT-R1204, PRD-R48). `apps` fill the
+    /// picker (PRD-R47 item 1); `build` makes the report for each change of the draft.
     init(
-        draft: BugReportDraft, report: DiagnosticsReport, language: InterfaceLanguageModel,
-        services: DiagnosticsServices = DiagnosticsServices()
+        draft: BugReportDraft, apps: [BugReportAppChoice], build: @escaping DiagnosticsServices.ReportBuilder,
+        language: InterfaceLanguageModel, services: DiagnosticsServices = DiagnosticsServices()
     ) {
         self.language = language
-        model = BugReportModel(draft: draft, report: report, language: language, services: services)
+        model = BugReportModel(draft: draft, apps: apps, build: build, language: language, services: services)
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.contentSize), styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: false)

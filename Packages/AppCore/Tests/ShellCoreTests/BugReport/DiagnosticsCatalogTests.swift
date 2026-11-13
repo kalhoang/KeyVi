@@ -7,6 +7,7 @@
 import AppModel
 import Diagnostics
 import Foundation
+import InputHost
 import Testing
 
 @testable import ShellCore
@@ -77,6 +78,85 @@ import Testing
         #expect(en.string(DiagnosticsText.recordTrace) == "Record typing trace...")
         #expect(en.string(DiagnosticsText.latencyTest) == "Run typing latency test")
         #expect(en.string(DiagnosticsText.openLogs) == "Open logs folder")
+    }
+}
+
+@Suite struct ClipboardNoticeTests {
+    static let languages: [InterfaceLanguage] = [.vietnamese, .english]
+
+    /// PRD-R48: each surface says, before any clipboard write, which of its buttons write to the clipboard. The
+    /// notice names exactly the buttons on screen with their visible titles: a hidden button (no repository, no
+    /// support address, no suggestion yet) is never named, and a renamed button cannot leave the notice behind.
+    @Test(arguments: languages)
+    func noticesNameExactlyTheVisibleButtonsThatWriteTheClipboard(_ language: InterfaceLanguage) throws {
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let localizer = Localizer(language: language, appBundle: app.bundle)
+        let full = BugReportSheet(apps: [], preselected: nil, brand: SheetFixtures.brand())
+        let bare = BugReportSheet(apps: [], preselected: nil, brand: SheetFixtures.brand(repository: nil, email: nil))
+        #expect(full.clipboardControls == [.copyReport, .github])
+        #expect(bare.clipboardControls == [.copyReport])
+        #expect(DiagnosticsCopy.windowClipboardControls == [.copyReport])
+        let allOffers = MisbehavesOffer.allCases
+        #expect(DiagnosticsCopy.clipboardControls(allOffers) == [.copySuggestion, .copyReport, .openGitHubIssue])
+        #expect(DiagnosticsCopy.clipboardControls([.copyReport]) == [.copyReport])
+        let surfaces: [[DiagnosticsControl]] = [
+            full.clipboardControls, bare.clipboardControls, DiagnosticsCopy.windowClipboardControls,
+            DiagnosticsCopy.clipboardControls(allOffers), DiagnosticsCopy.clipboardControls([.copyReport]),
+        ]
+        let writers: [DiagnosticsControl] = [.copyReport, .github, .copySuggestion, .openGitHubIssue]
+        for buttons in surfaces {
+            let text = DiagnosticsCopy.clipboardNotice(buttons: buttons, appName: "Example", localizer)
+            #expect(text.contains("Example"), "\(buttons): the notice names the app")
+            for button in writers {
+                let title = localizer.string(button.labelKey)
+                let named = text.contains(title)
+                // "Open GitHub" is a prefix of "Open GitHub issue"; the longer title is checked on its own.
+                if button == .github, buttons.contains(.openGitHubIssue) { continue }
+                #expect(named == buttons.contains(button), "\(buttons): \(title) named \(named)")
+            }
+        }
+        // The sheet's clipboard buttons are the ones whose output the copied-block preview shows.
+        #expect(ReportPreviewFormat.copiedBlock.paths.map(\.control) == [.copyReport, .github])
+    }
+
+    @Test func buttonListsJoinTheVisibleTitlesInTheInterfaceLanguage() throws {
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let en = Localizer(language: .english, appBundle: app.bundle)
+        let vi = Localizer(language: .vietnamese, appBundle: app.bundle)
+        #expect(DiagnosticsCopy.buttonList([], joinedBy: .and, en) == "")
+        #expect(DiagnosticsCopy.buttonList([.copyReport], joinedBy: .and, en) == "Copy report")
+        #expect(
+            DiagnosticsCopy.buttonList([.copyReport, .github], joinedBy: .and, en) == "Copy report and Open GitHub")
+        #expect(
+            DiagnosticsCopy.buttonList([.copySuggestion, .copyReport, .openGitHubIssue], joinedBy: .or, en)
+                == "Copy rule, Copy report or Open GitHub issue")
+        #expect(DiagnosticsCopy.buttonList([.email, .saveFile], joinedBy: .and, vi) == "Gửi qua email và Lưu tệp...")
+        #expect(
+            DiagnosticsCopy.buttonList([.copySuggestion, .copyReport, .openGitHubIssue], joinedBy: .or, vi)
+                == "Sao chép quy tắc, Sao chép báo cáo hoặc Mở báo lỗi trên GitHub")
+        #expect(
+            DiagnosticsCopy.clipboardNotice(buttons: [.copyReport], appName: "Example", en)
+                == "When you click Copy report, Example puts the data on the clipboard for you to paste. Apart from "
+                + "the paste compatibility mode you turn on yourself, this is the only time Example writes to the "
+                + "clipboard.")
+    }
+
+    /// PRD-R47 item 4, PLT-R1204: the preview segments name the sheet buttons whose output they show, only the
+    /// ones the sheet offers.
+    @Test func previewTitlesNameOnlyTheOfferedButtons() throws {
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let en = Localizer(language: .english, appBundle: app.bundle)
+        let full = BugReportSheet(apps: [], preselected: nil, brand: SheetFixtures.brand())
+        let bare = BugReportSheet(apps: [], preselected: nil, brand: SheetFixtures.brand(repository: nil, email: nil))
+        #expect(full.previewTitle(.copiedBlock, en) == "Copy report and Open GitHub")
+        #expect(full.previewTitle(.attachedFile, en) == "Send by email and Save file...")
+        #expect(bare.previewTitle(.copiedBlock, en) == "Copy report")
+        #expect(bare.previewTitle(.attachedFile, en) == "Save file...")
+        let vi = Localizer(language: .vietnamese, appBundle: app.bundle)
+        for format in ReportPreviewFormat.allCases {
+            #expect(!bare.previewTitle(format, vi).contains("GitHub"))
+            #expect(!bare.previewTitle(format, vi).contains(vi.string(DiagnosticsText.email)))
+        }
     }
 }
 

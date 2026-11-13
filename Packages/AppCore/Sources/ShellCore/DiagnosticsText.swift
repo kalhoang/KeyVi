@@ -41,7 +41,24 @@ public enum DiagnosticsText: String, LocalizationKey {
     case openLogs = "diagnostics.openLogs"
     case copied = "diagnostics.copied"
     case clipboardNotice = "diagnostics.clipboardNotice"
+    case buttonsAnd = "diagnostics.buttons.and"
+    case buttonsOr = "diagnostics.buttons.or"
+    case buttonsSeries = "diagnostics.buttons.series"
+    case informationHeading = "diagnostics.information.heading"
+    case copyPreviewDisclosure = "diagnostics.copyPreview.disclosure"
     case logsUnavailable = "diagnostics.logsUnavailable"
+    case latencyHeading = "diagnostics.latency.heading"
+    case latencyT1 = "diagnostics.latency.t1"
+    case latencyT2 = "diagnostics.latency.t2"
+    case latencyT3 = "diagnostics.latency.t3"
+    case latencyEcho = "diagnostics.latency.echo"
+    case latencyT5 = "diagnostics.latency.t5"
+    case latencyT6 = "diagnostics.latency.t6"
+    case latencySamples = "diagnostics.latency.samples"
+    case latencyEmpty = "diagnostics.latency.empty"
+    case latencyUpTo = "diagnostics.latency.upTo"
+    case latencyBin = "diagnostics.latency.bin"
+    case latencyHistogramsHint = "diagnostics.latency.accessibilityHint"
     case sheetTitle = "bugReport.title"
     case appLabel = "bugReport.app.label"
     case appNone = "bugReport.app.none"
@@ -49,6 +66,7 @@ public enum DiagnosticsText: String, LocalizationKey {
     case descriptionLabel = "bugReport.description.label"
     case descriptionNote = "bugReport.description.hint"
     case previewDisclosure = "bugReport.preview.disclosure"
+    case previewFormat = "bugReport.preview.format"
     case practiceButton = "bugReport.practiceField.button"
     case practiceLabel = "bugReport.practiceField.label"
     case practiceYes = "bugReport.practiceField.yes"
@@ -137,10 +155,13 @@ public enum DiagnosticsText: String, LocalizationKey {
     case latencyTestHint = "diagnostics.latencyTest.accessibilityHint"
     case openLogsHint = "diagnostics.openLogs.accessibilityHint"
     case reportTextHint = "diagnostics.report.accessibilityHint"
+    case informationHint = "diagnostics.information.accessibilityHint"
+    case copyPreviewHint = "diagnostics.copyPreview.accessibilityHint"
     case appPickerHint = "bugReport.app.accessibilityHint"
     case symptomHint = "bugReport.symptom.accessibilityHint"
     case descriptionHint = "bugReport.description.accessibilityHint"
     case previewDisclosureHint = "bugReport.preview.accessibilityHint"
+    case previewFormatHint = "bugReport.preview.format.accessibilityHint"
     case practiceButtonHint = "bugReport.practiceField.button.accessibilityHint"
     case practiceAnswerHint = "bugReport.practiceField.answer.accessibilityHint"
     case githubHint = "bugReport.github.accessibilityHint"
@@ -169,11 +190,12 @@ public enum DiagnosticsText: String, LocalizationKey {
 
 /// Every control of the Diagnostics windows with its VoiceOver label and hint keys (PRD-R66, PRD-R67).
 public enum DiagnosticsControl: String, Sendable, CaseIterable {
-    case copyReport, misbehaves, recordTrace, latencyTest, openLogs, reportText, appPicker, symptom, description,
-        previewDisclosure, practiceButton, practiceAnswer, github, email, saveFile, openDiagnostics, practiceField,
-        guidedOffer, confirmField, answerYes, answerNo, stopTest, includePageAddress, pageAddressField, useForMe,
-        copySuggestion, openGitHubIssue, traceDuration, traceStart, traceText, traceExport, traceDiscard, probeStart,
-        probeField
+    case copyReport, misbehaves, recordTrace, latencyTest, openLogs, reportInformation, copyPreview, reportText,
+        latencyHistograms, appPicker,
+        symptom, description, previewDisclosure, previewFormat, practiceButton, practiceAnswer, github, email,
+        saveFile, openDiagnostics, practiceField, guidedOffer, confirmField, answerYes, answerNo, stopTest,
+        includePageAddress, pageAddressField, useForMe, copySuggestion, openGitHubIssue, traceDuration, traceStart,
+        traceText, traceExport, traceDiscard, probeStart, probeField
 
     /// The visible title doubles as the label, so VoiceOver reads what sighted users see.
     public var labelKey: DiagnosticsText {
@@ -183,11 +205,15 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         case .recordTrace: .recordTrace
         case .latencyTest: .latencyTest
         case .openLogs: .openLogs
+        case .reportInformation: .informationHeading
+        case .copyPreview: .copyPreviewDisclosure
         case .reportText: .reportHeading
+        case .latencyHistograms: .latencyHeading
         case .appPicker: .appLabel
         case .symptom: .symptomLabel
         case .description: .descriptionLabel
         case .previewDisclosure: .previewDisclosure
+        case .previewFormat: .previewFormat
         case .practiceButton: .practiceButton
         case .practiceAnswer: .practiceLabel
         case .github: .github
@@ -222,11 +248,15 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         case .recordTrace: .recordTraceHint
         case .latencyTest: .latencyTestHint
         case .openLogs: .openLogsHint
+        case .reportInformation: .informationHint
+        case .copyPreview: .copyPreviewHint
         case .reportText: .reportTextHint
+        case .latencyHistograms: .latencyHistogramsHint
         case .appPicker: .appPickerHint
         case .symptom: .symptomHint
         case .description: .descriptionHint
         case .previewDisclosure: .previewDisclosureHint
+        case .previewFormat: .previewFormatHint
         case .practiceButton: .practiceButtonHint
         case .practiceAnswer: .practiceAnswerHint
         case .github: .githubHint

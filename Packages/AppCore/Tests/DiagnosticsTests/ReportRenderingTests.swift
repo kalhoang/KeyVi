@@ -21,6 +21,44 @@ import Testing
         #expect(text.contains("  T1: p50 33 µs, p99 33 µs (100 mẫu)"))
     }
 
+    /// PLT-R1201: the Diagnostics window shows this text, so every item the window must show is a labelled line
+    /// in the interface language: permission states, secure input with the likely holder, the focused app and
+    /// field (bundle ID, version, engine, role, subrole, identifier), the matched rule with strategy, parameters
+    /// and source, latency and recent health events.
+    @Test(arguments: [InterfaceLanguage.vietnamese, .english])
+    func everyDiagnosticsWindowItemIsALabelledLine(_ language: InterfaceLanguage) throws {
+        var report = DiagnosticsFixtures.representativeReport()
+        let holder = BundleKey(rawValue: "com.example.Passwords")!
+        report.secureInput = .init(enabled: true, likelyHolder: holder, holderKind: .application)
+        report.focus?.subrole = "AXSearchField"
+        report.focus?.identifier = "search"
+        let text = DiagnosticsRenderer.plainText(report, language: language)
+        let labels = ReportLabels.labels(for: language)
+        let sections = [
+            labels.permissions, labels.secureInput, labels.focus, labels.rule, labels.latency, labels.events,
+        ]
+        for section in sections { #expect(text.contains("\n[" + section + "]\n"), "section \(section)") }
+        let focus = try #require(report.focus)
+        let rule = try #require(report.rule)
+        let lines: [(String, String)] = [
+            (labels.accessibility, report.permissions.accessibility.rawValue),
+            (labels.postEvent, report.permissions.postEvent.rawValue),
+            (labels.inputMonitoring, report.permissions.listenEvent.rawValue),
+            (labels.likelyHolder, holder.rawValue), (labels.holderKind, "application"),
+            (labels.app, focus.bundle.rawValue), (labels.version, focus.appVersion ?? ""),
+            (labels.engine, focus.engine.rawValue), (labels.role, focus.role ?? ""),
+            (labels.subrole, focus.subrole ?? ""), (labels.identifier, focus.identifier ?? ""),
+            (labels.strategy, rule.strategy.rawValue), (labels.source, rule.source.rawValue),
+            (labels.parameters, ReportJSON.compact(rule.parameters)),
+        ]
+        for (label, value) in lines {
+            #expect(!value.isEmpty, "\(label) has a value in the fixture")
+            #expect(text.contains("\n  " + label + ": " + value + "\n"), "\(label): \(value)")
+        }
+        for event in report.healthEvents { #expect(text.contains("  " + event.summaryLine + "\n")) }
+        if language == .vietnamese { #expect(!text.contains("[Permissions]")) }
+    }
+
     @Test func englishReportUsesEnglishLabels() {
         let text = DiagnosticsRenderer.plainText(DiagnosticsFixtures.representativeReport(), language: .english)
         #expect(text.hasPrefix("Diagnostics report\n"))

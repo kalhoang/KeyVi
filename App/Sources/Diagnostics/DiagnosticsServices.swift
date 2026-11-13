@@ -15,11 +15,21 @@ import ShellCore
 /// Services of the Diagnostics windows. Every member is optional: a missing service hides its feature.
 @MainActor
 struct DiagnosticsServices {
+    /// Builds the report of one report flow for the user's current choices (PLT-R1202).
+    typealias ReportBuilder = @MainActor (BugReportDraft?) -> DiagnosticsReport
+
     var brand: Brand?
-    /// The report for a bug report draft (W2-A: `ReportAssembler.report` with the host's current context).
+    /// The report for a bug report draft with the host's live context (`ReportAssembler.report`). Used by the
+    /// non-activating misbehaves panel, where the live focus stays in the problem field.
     var reportForDraft: ((BugReportDraft?) -> DiagnosticsReport)?
-    /// Recent apps for the sheet's picker, the last frontmost first (PRD-R47 item 1).
+    /// A builder bound to the host context read when it is called: the bug report sheet calls it once when it
+    /// opens, so a choice made later in the sheet (whose window then has the focus) still describes the field
+    /// the user was typing in.
+    var reportSession: (() -> ReportBuilder)?
+    /// The apps of the Apps pane for the sheet's picker, most recent first (PRD-R47 item 1, `RecentReportApps`).
     var recentApps: () -> [BugReportAppChoice] = { [] }
+    /// Display name of an installed app; nil falls back to the bundle ID.
+    var appName: (BundleKey) -> String? = { _ in nil }
     /// Focus snapshot of the field the user wants to test (PLT-R1205 step 1).
     var currentFocus: (() -> FocusSnapshot)?
     var guidedTest: GuidedTestServices?
@@ -32,13 +42,16 @@ struct DiagnosticsServices {
 
     init(
         brand: Brand? = nil, reportForDraft: ((BugReportDraft?) -> DiagnosticsReport)? = nil,
-        recentApps: @escaping () -> [BugReportAppChoice] = { [] }, currentFocus: (() -> FocusSnapshot)? = nil,
+        reportSession: (() -> ReportBuilder)? = nil, recentApps: @escaping () -> [BugReportAppChoice] = { [] },
+        appName: @escaping (BundleKey) -> String? = { _ in nil }, currentFocus: (() -> FocusSnapshot)? = nil,
         guidedTest: GuidedTestServices? = nil, trace: TypingTraceServices? = nil, latency: LatencyProbeServices? = nil,
         logsFolder: URL? = nil, applyOverride: ((Rule) -> Void)? = nil
     ) {
         self.brand = brand
         self.reportForDraft = reportForDraft
+        self.reportSession = reportSession
         self.recentApps = recentApps
+        self.appName = appName
         self.currentFocus = currentFocus
         self.guidedTest = guidedTest
         self.trace = trace
@@ -49,6 +62,14 @@ struct DiagnosticsServices {
 
     /// The bundle's brand when the composition root did not pass one.
     var resolvedBrand: Brand { brand ?? Brand.from(.main) }
+
+    /// "The last frontmost app" (PRD-R47 item 1): the focused app, or the most recent other app of `recent` while
+    /// one of this app's windows has the focus.
+    func lastFrontmost(recent: [BugReportAppChoice]) -> BugReportAppChoice? {
+        RecentReportApps.preselection(
+            focused: currentFocus?().app?.bundle, recent: recent, excluding: resolvedBrand.bundleIdentifier,
+            name: appName)
+    }
 }
 
 /// PLT-R1205 step 3. The composition root provides this only when the host has a diagnostics pass-through;

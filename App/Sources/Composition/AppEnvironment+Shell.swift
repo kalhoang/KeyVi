@@ -36,9 +36,10 @@ extension AppEnvironment {
 
     func hostEvent(_ event: HostEvent) {
         switch event {
-        case .stateChanged:
+        case .stateChanged(let state):
             updateIcon()
             evaluateSelfCheck()
+            noteSecureInputEpisode(state)
         case .modeChanged(let mode, let manual, _):
             updateIcon()
             // PRD-R12, D14: only manual switches, only with the indicator on.
@@ -163,12 +164,17 @@ extension AppEnvironment: StatusMenuActions {
         Task { await settingsStore.setAppRule(rule, for: bundle) }
     }
 
-    /// The report flow. In safe mode the report items lead to the safe-mode choices first, so reset and exit stay
-    /// reachable from the menu even while a host-state line hides the safe-mode line (PLT-R1009).
+    /// The report flow. "Báo lỗi..." opens the bug report sheet with the last frontmost app (PRD-R47; the sheet
+    /// falls back to the most recent other app while one of this app's windows has the focus); "Báo lỗi với ứng
+    /// dụng này..." opens the misbehaves flow for that app (PLT-R1205). In safe mode the report items lead to the
+    /// safe-mode choices first, so reset and exit stay reachable from the menu even while a host-state line hides
+    /// the safe-mode line (PLT-R1009).
     func reportProblem(for bundle: BundleKey?) {
-        switch DiagnosticsNavigation.destination(reportProblemFor: bundle, lastFrontmost: nil, safeMode: safeMode) {
+        let focused = host.currentFocus().app?.bundle
+        switch DiagnosticsNavigation.destination(reportProblemFor: bundle, lastFrontmost: focused, safeMode: safeMode) {
         case .safeModeChoices: presentSafeMode()
-        case .misbehaves, .bugReport: diagnosticsController().startMisbehavesFlow(for: bundle)
+        case .misbehaves(let app): diagnosticsController().startMisbehavesFlow(for: app)
+        case .bugReport(let preselected): diagnosticsController().openBugReport(preselected: preselected)
         }
     }
 
@@ -183,7 +189,7 @@ extension AppEnvironment: StatusMenuActions {
         case .resumeOnboarding: presentOnboarding(startAt: .permission)  // PRD-R41: resume at screen 2
         case .showHolderApp(let pid): NSRunningApplication(processIdentifier: pid)?.activate()
         case .secureInputHelp: openSupport(.secureInput)
-        case .reportProblem: reportProblem(for: host.currentFocus().app?.bundle)
+        case .reportProblem: reportProblem(for: nil)  // the line's "Báo lỗi..." is the menu's (PRD-R43)
         case .learnMore(let url): NSWorkspace.shared.open(url)
         case .overrideTextFocus(let bundle): addTextFocusOverride(for: bundle)
         case .reopenApp: relaunchSelf()
@@ -238,16 +244,6 @@ extension AppEnvironment: StatusMenuActions {
         return controller
     }
 
-    /// PLT-R1202: metadata only, assembled by ShellCore from the live host; conflicts are rescanned so the report
-    /// does not show an app the user has quit since launch. The draft adds only the user's choices (PRD-R47).
-    func diagnosticsReport(draft: BugReportDraft? = nil) -> DiagnosticsReport {
-        host.rescanConflicts()
-        return ReportAssembler.report(
-            identity: appIdentity, system: SystemInfoReader.current(uiLanguage: language.localizer.language),
-            host: host.reportContext(), settings: settings, metrics: diagnostics.metrics.snapshot(),
-            health: diagnostics.health.recent(limit: 50), probe: latencyProbeResult, draft: draft, now: Date())
-    }
-
     // MARK: Safe mode (PLT-R1009)
 
     func presentSafeMode() {
@@ -263,7 +259,7 @@ extension AppEnvironment: StatusMenuActions {
             Task { await store.exitSafeMode() }
             safeMode = false
         case .report:
-            diagnosticsController().startMisbehavesFlow(for: nil)
+            diagnosticsController().openBugReport(preselected: host.currentFocus().app?.bundle)
         case .later:
             break
         }

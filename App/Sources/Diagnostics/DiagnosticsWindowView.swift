@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Diagnostics window content (PLT-R1201): the health state in plain words, the exact report text (which holds
-// permissions, secure input, focus, rule, latency and recent health events, PLT-R1202) and the five buttons.
+// Diagnostics window content (PLT-R1201): the health state in plain words, the report in the interface language
+// (permission states, secure input with the likely holder, focused app and field, matched rule with strategy,
+// parameters and source, latency percentiles and recent health events, PLT-R1202, PRD-R62), the latency
+// histograms, the exact text that "Copy report" copies right above the buttons (PLT-R1204) and the five buttons.
 
 import AppKit
 import AppModel
@@ -43,10 +45,14 @@ final class DiagnosticsWindowModel {
         }
     }
 
-    func refresh() {
-        report = makeReport()
+    /// `build` replaces the live report (the bug report sheet's report of the same moment).
+    func refresh(using build: (@MainActor () -> DiagnosticsReport)? = nil) {
+        report = build?() ?? makeReport()
         status = nil
     }
+
+    /// A new live report, without changing what the window shows.
+    func freshReport() -> DiagnosticsReport { makeReport() }
 
     func currentReport() -> DiagnosticsReport {
         if let report { return report }
@@ -55,13 +61,14 @@ final class DiagnosticsWindowModel {
         return fresh
     }
 
-    /// The exact text that "Copy report" writes as the issue block (PLT-R1204: shown before copying).
-    var reportText: String {
-        report.map { DiagnosticsRenderer.plainText($0, language: localizer.language) } ?? ""
-    }
+    /// The shown report in the interface language, the exact text "Copy report" writes and the histograms.
+    var display: ReportDisplay? { report.map { ReportDisplay(report: $0, language: localizer.language) } }
+
+    var histogramsExpanded = false
+    var copyPreviewExpanded = false
 
     func copyReport() {
-        ReportActions.copy(DiagnosticsRenderer.issueBlock(currentReport()))
+        ReportActions.copy(ReportPreviewFormat.copiedBlock.text(currentReport()))
         status = .copied
     }
 
@@ -85,7 +92,7 @@ final class DiagnosticsWindowModel {
 }
 
 struct DiagnosticsWindowView: View {
-    let model: DiagnosticsWindowModel
+    @Bindable var model: DiagnosticsWindowModel
 
     var body: some View {
         let localizer = model.localizer
@@ -95,11 +102,31 @@ struct DiagnosticsWindowView: View {
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
             }
-            Text(verbatim: localizer.string(DiagnosticsText.reportNote))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            ReportTextView(text: model.reportText, control: .reportText, localizer: localizer)
-            Text(verbatim: localizer.format(DiagnosticsText.clipboardNotice, model.services.resolvedBrand.displayName))
+            let display = model.display
+            ReportTextView(text: display?.information ?? "", control: .reportInformation, localizer: localizer)
+            DisclosureGroup(isExpanded: $model.histogramsExpanded) {
+                ScrollView {
+                    LatencyHistogramsView(histograms: display?.histograms ?? [], localizer: localizer)
+                        .padding(.vertical, 4)
+                }
+                .frame(minHeight: 120, maxHeight: 240)
+            } label: {
+                Text(verbatim: localizer.string(DiagnosticsText.latencyHeading))
+            }
+            .diagnosticsControl(.latencyHistograms, localizer)
+            DisclosureGroup(isExpanded: $model.copyPreviewExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: localizer.string(DiagnosticsText.reportNote))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    ReportTextView(text: display?.copyPreview ?? "", control: .reportText, localizer: localizer)
+                        .frame(minHeight: 120, maxHeight: 220)
+                }
+            } label: {
+                Text(verbatim: localizer.string(DiagnosticsText.copyPreviewDisclosure))
+            }
+            .diagnosticsControl(.copyPreview, localizer)
+            Text(verbatim: clipboardNotice(localizer))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -113,6 +140,13 @@ struct DiagnosticsWindowView: View {
         .padding(20)
         .frame(minWidth: 520, minHeight: 440)
         .respectsReduceMotion()
+    }
+
+    /// PRD-R48: names the window's only clipboard button.
+    private func clipboardNotice(_ localizer: Localizer) -> String {
+        DiagnosticsCopy.clipboardNotice(
+            buttons: DiagnosticsCopy.windowClipboardControls, appName: model.services.resolvedBrand.displayName,
+            localizer)
     }
 
     private func actionRow(_ localizer: Localizer) -> some View {
@@ -171,4 +205,56 @@ struct ReduceMotionTransactions: ViewModifier {
 
 extension View {
     func respectsReduceMotion() -> some View { modifier(ReduceMotionTransactions()) }
+}
+
+/// PLT-R1201 latency histograms: per metric its name, sample count and one bar per bucket with the bucket's upper
+/// bound and count in text, so nothing relies on bar length or colour alone (PRD-R67).
+struct LatencyHistogramsView: View {
+    static let barWidth: CGFloat = 180
+    let histograms: [LatencyHistogram]
+    let localizer: Localizer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(histograms) { histogram in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(verbatim: localizer.string(histogram.metric.title)).font(.subheadline)
+                        Spacer()
+                        Text(verbatim: samples(histogram.samples)).font(.caption).foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isHeader)
+                    if histogram.bins.isEmpty {
+                        Text(verbatim: localizer.string(DiagnosticsText.latencyEmpty))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(Array(histogram.bins.enumerated()), id: \.offset) { _, bin in row(bin) }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func row(_ bin: LatencyHistogram.Bin) -> some View {
+        let bound = LatencyHistograms.label(nanoseconds: bin.upperBoundNanoseconds, locale: localizer.locale)
+        let count = localizer.formatNumber(Int(clamping: bin.count))
+        return HStack(spacing: 6) {
+            Text(verbatim: localizer.format(DiagnosticsText.latencyUpTo, bound))
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 84, alignment: .trailing)
+            Rectangle()
+                .fill(Color.accentColor)
+                .frame(width: max(bin.count > 0 ? 2 : 0, Self.barWidth * bin.fraction), height: 8)
+                .frame(width: Self.barWidth, alignment: .leading)
+            Text(verbatim: count).font(.system(.caption, design: .monospaced))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: localizer.format(DiagnosticsText.latencyBin, bound, count)))
+    }
+
+    private func samples(_ count: UInt64) -> String {
+        localizer.format(DiagnosticsText.latencySamples, localizer.formatNumber(Int(clamping: count)))
+    }
 }

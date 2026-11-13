@@ -23,37 +23,45 @@ final class BugReportModel {
     /// The report shown in the preview and used by every path, regenerated only when a choice that it contains
     /// changes, so what the user saw is exactly what is copied, mailed or saved (PLT-R1204).
     private(set) var report: DiagnosticsReport
-    @ObservationIgnored private let base: DiagnosticsReport
+    /// Bound to the host context of the moment the sheet opened (`DiagnosticsServices.reportSession`).
+    @ObservationIgnored private let build: DiagnosticsServices.ReportBuilder
 
     init(
-        draft: BugReportDraft, report: DiagnosticsReport, language: InterfaceLanguageModel,
-        services: DiagnosticsServices
+        draft: BugReportDraft, apps: [BugReportAppChoice], build: @escaping DiagnosticsServices.ReportBuilder,
+        language: InterfaceLanguageModel, services: DiagnosticsServices
     ) {
         self.language = language
         self.services = services
-        base = report
+        self.build = build
         let preselected = draft.app.map { BugReportAppChoice(bundle: $0, name: draft.appName ?? $0.rawValue) }
-        var sheet = BugReportSheet(apps: services.recentApps(), preselected: preselected, brand: services.resolvedBrand)
+        var sheet = BugReportSheet(apps: apps, preselected: preselected, brand: services.resolvedBrand)
         sheet.select(draft.symptom)
         sheet.setDescription(draft.userDescription)
         sheet.setReproducesInPracticeField(draft.reproducesInPracticeField)
         self.sheet = sheet
-        self.report = sheet.report(from: services.reportForDraft?(sheet.draft) ?? report)
+        report = sheet.report(from: build(sheet.draft))
     }
 
     var localizer: Localizer { language.localizer }
     var brand: Brand { services.resolvedBrand }
 
-    /// Rebuilt by the host when it can, else projected from the first report (PLT-R913).
+    /// The reported app's memory entry and override follow the picker (PLT-R913); the focus stays the one of
+    /// the moment the sheet opened.
     private func refreshReport() {
-        report = sheet.report(from: services.reportForDraft?(sheet.draft) ?? base)
+        report = sheet.report(from: build(sheet.draft))
     }
 
-    var previewText: String { sheet.preview(report, language: localizer.language) }
+    /// Exactly what the buttons of the chosen format write (PLT-R1204, PRD-R47 item 4).
+    var previewText: String { sheet.preview(report) }
 
     var previewExpanded: Bool {
         get { sheet.previewExpanded }
         set { sheet.previewExpanded = newValue }
+    }
+
+    var previewFormat: ReportPreviewFormat {
+        get { sheet.previewFormat }
+        set { sheet.previewFormat = newValue }
     }
 
     var description: String {
@@ -148,13 +156,24 @@ struct BugReportView: View {
                 descriptionField(localizer)
                 practiceField(localizer)
                 DisclosureGroup(isExpanded: $model.previewExpanded) {
-                    ReportTextView(text: model.previewText, control: .reportText, localizer: localizer)
-                        .frame(minHeight: 180)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Picker(selection: $model.previewFormat) {
+                            ForEach(ReportPreviewFormat.allCases, id: \.self) { format in
+                                Text(verbatim: model.sheet.previewTitle(format, localizer)).tag(format)
+                            }
+                        } label: {
+                            Text(verbatim: localizer.string(DiagnosticsText.previewFormat))
+                        }
+                        .pickerStyle(.segmented)
+                        .diagnosticsControl(.previewFormat, localizer)
+                        ReportTextView(text: model.previewText, control: .reportText, localizer: localizer)
+                            .frame(minHeight: 180)
+                    }
                 } label: {
                     Text(verbatim: localizer.string(DiagnosticsText.previewDisclosure))
                 }
                 .diagnosticsControl(.previewDisclosure, localizer)
-                Text(verbatim: localizer.format(DiagnosticsText.clipboardNotice, model.brand.displayName))
+                Text(verbatim: model.sheet.clipboardNotice(appName: model.brand.displayName, localizer))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

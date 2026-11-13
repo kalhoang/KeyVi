@@ -75,6 +75,29 @@ import Testing
         #expect(tap.lastReenableReason == .tapDisabledByUserInput)
     }
 
+    /// PLT-R1202: the 24-hour tap counters count every event the app still holds (the in-memory ring and the
+    /// earlier sessions' log), not only the 50 the report lists. Many later events must not hide a timeout.
+    @Test func tapCountersSeeTimeoutsBehindMoreThan50LaterEvents() {
+        let now = ReportFixtures.now
+        let log = HealthEventLog()
+        log.record(HealthEvent(kind: .tapTimeout, at: now.addingTimeInterval(-7_200)))
+        for index in 0..<60 {
+            log.record(HealthEvent(kind: .echoLoss, at: now.addingTimeInterval(Double(index - 3_600))))
+        }
+        let earlier =
+            [HealthEvent(kind: .tapTimeout, at: now.addingTimeInterval(-36_000))]
+            + (0..<60).map { HealthEvent(kind: .flush, at: now.addingTimeInterval(Double($0 - 30_000))) }
+        let health = log.reportSource { limit in Array(earlier.suffix(limit)) }
+        let report = ReportAssembler.report(
+            identity: ReportFixtures.identity, system: ReportFixtures.system, host: ReportFixtures.host(),
+            settings: ReportFixtures.settings(overrides: []), metrics: ReportFixtures.metrics, health: health,
+            probe: nil, draft: nil, now: now)
+        #expect(report.tap.timeoutsLast24Hours == 2)
+        #expect(report.tap.lastReenableReason == .tapTimeout)
+        #expect(report.healthEvents.count == 50)
+        #expect(report.healthEvents.allSatisfy { $0.kind == .echoLoss })
+    }
+
     @Test func healthEventsAreTheLast50() {
         let events = ReportFixtures.report().healthEvents
         #expect(events.count == 50)

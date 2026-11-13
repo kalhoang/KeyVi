@@ -244,6 +244,9 @@ public struct BugReportSheet: Sendable, Hashable {
     public var apps: [BugReportAppChoice]
     public private(set) var draft: BugReportDraft
     public var previewExpanded = false
+    /// Which output the preview shows (PLT-R1204); the copied block first, because "Copy report" is the
+    /// shortest path (section 12).
+    public var previewFormat: ReportPreviewFormat = .copiedBlock
     public let paths: [BugReportPath]
 
     /// `preselected` is the last frontmost app (PRD-R47 item 1); it is added to `apps` when missing.
@@ -297,13 +300,14 @@ public struct BugReportSheet: Sendable, Hashable {
         return override.match.bundleIds?.contains(app) == true
     }
 
-    /// PLT-R1204: the exact text shown in the preview is the plain-text rendering.
-    public func preview(_ report: DiagnosticsReport, language: InterfaceLanguage) -> String {
-        DiagnosticsRenderer.plainText(report, language: language)
-    }
+    /// PLT-R1204, PRD-R47 item 4: the preview shows exactly what the paths of `format` write.
+    public func preview(_ report: DiagnosticsReport, format: ReportPreviewFormat) -> String { format.text(report) }
+
+    /// The preview in the chosen `previewFormat`.
+    public func preview(_ report: DiagnosticsReport) -> String { preview(report, format: previewFormat) }
 
     /// The block written to the clipboard by "Copy report" and "Mở GitHub" (QA-R44), after the notice (PRD-R48).
-    public func clipboardText(_ report: DiagnosticsReport) -> String { DiagnosticsRenderer.issueBlock(report) }
+    public func clipboardText(_ report: DiagnosticsReport) -> String { ReportPreviewFormat.copiedBlock.text(report) }
 
     /// The JSON file for "Gửi qua email" and "Lưu tệp..." (PRD-R47).
     public func attachment(_ report: DiagnosticsReport) throws -> Data { try DiagnosticsRenderer.json(report) }

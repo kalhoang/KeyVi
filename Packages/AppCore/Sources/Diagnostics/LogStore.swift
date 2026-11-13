@@ -2,6 +2,7 @@
 
 public import AppModel
 public import Foundation
+internal import Synchronization
 
 /// PLT-R903: `~/Library/Logs/<folder>/`, dir 0700, files 0600, JSON lines, 5 files of 1 MB, 14 days.
 public struct LogStorePolicy: Sendable, Hashable {
@@ -51,12 +52,34 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
     private let clock: any WallClock
     private let mirror: UnifiedLogMirror
     private let queue: DispatchQueue
+    /// When this logger was created, the start of this session's records.
+    public let sessionStart: Date
+    private let earlierHealth = Mutex<[HealthEvent]?>(nil)
 
     public init(policy: LogStorePolicy, fileSystem: any FileSystem, clock: any WallClock, subsystem: String) {
         files = LogFileStore(policy: policy, fileSystem: fileSystem)
         self.clock = clock
         mirror = UnifiedLogMirror(subsystem: subsystem)
         queue = DispatchQueue(label: subsystem + ".diagnostics-log", qos: .utility)
+        sessionStart = clock.now()
+    }
+
+    /// Health events of earlier sessions from the log files, newest last, at most `limit` (PRD-R46): a crash or
+    /// a tap timeout from before this launch still reaches the next report. The files are read once, on the
+    /// logger's queue after the records logged so far are written (ahead of time by `maintain()`, or on the
+    /// first call); later calls return the same events. Waits for the queue: never call it on the tap thread or
+    /// from inside a logging call.
+    public func earlierSessionHealthEvents(limit: Int) -> [HealthEvent] {
+        let events = earlierHealth.withLock { $0 } ?? queue.sync { loadEarlierHealth() }
+        return Array(events.suffix(max(0, limit)))
+    }
+
+    /// Runs on `queue` only, which serialises the single read; the mutex is never held while waiting for it.
+    private func loadEarlierHealth() -> [HealthEvent] {
+        if let cached = earlierHealth.withLock({ $0 }) { return cached }
+        let read = files.healthEvents(before: sessionStart, limit: HealthEventLog.defaultCapacity)
+        earlierHealth.withLock { $0 = read }
+        return read
     }
 
     /// Never blocks: the timestamp is taken here, rendering and writing happen on the logger's serial
@@ -70,10 +93,14 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
         }
     }
 
-    /// Rotation and 14-day retention; scheduled by the utility queue at launch and every 6 hours.
+    /// Rotation and 14-day retention; scheduled by the utility queue at launch and every 6 hours. The first pass
+    /// also reads the earlier sessions' health events, so the first report does not wait for the files.
     public func maintain() {
         let now = clock.now()
-        queue.async { [files] in files.maintain(now: now) }
+        queue.async { [self] in
+            files.maintain(now: now)
+            _ = loadEarlierHealth()
+        }
     }
 
     /// Waits until every record logged before this call is written. For shutdown and tests; never call it on
