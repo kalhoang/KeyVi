@@ -58,6 +58,7 @@ until a `macos-27` label is GA. When `macos-27` becomes GA, move to it and keep 
 ## Consequences
 
 - Preview images have no SLA; a queue or image problem blocks macOS CI until the fallback is applied.
-- `scripts/actionlint.yaml` declares `xcode-27` (and the self-hosted `tcc-granted`) as known labels.
+- `scripts/actionlint.yaml` declares `xcode-27` (and the self-hosted `tcc-granted`) as known labels;
+  `.github/actionlint.yaml` mirrors it for a plain `actionlint` run and editor integrations.
 - QA-R12 VERIFY (TCC grants on hosted runners) is not resolved here: integration tests stay on the
   self-hosted runner (`integration.yml`).

@@ -52,9 +52,9 @@
 - Tag ruleset: only Pa may create or delete `v*` tags.
 - Branch protection on `main` (QA-R25): required checks from `ci.yml` (`Engine on Linux`, `Scripts and
   workflows`, `Architecture contracts in sync`, `macOS lint, tests and coverage`, `macOS universal Debug
-  build (unsigned)`, which since the final review also runs UpdaterTests, and `DCO sign-off on engine commits
+  build (unsigned)`, which since the final review also runs UpdaterTests, and `DCO sign-off on every commit
   (external pull requests)`, which reports "skipped", and therefore passes, on pull requests that do not come
-  from a fork; ADR 0401), plus `Corpus and baseline changes carry their label (QA-R6, QA-R15)` from
+  from a fork; ADR 0006 decision 6), plus `Corpus and baseline changes carry their label (QA-R6, QA-R15)` from
   `.github/workflows/pr-labels.yml` (a workflow of its own, so a label change re-runs only that check), linear
   history, signed commits, no force push.
 - Self-hosted runner (QA-R13): register the integration Mac with labels `self-hosted, macOS, ARM64,

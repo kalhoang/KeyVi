@@ -56,7 +56,7 @@ Search the repository with `grep -rn VERIFY` to find them all. Each row names th
 | 12 | Script environment variable names (notary profile, publish inputs) | `docs/runbooks/release.md`, `notarization-setup.md` | Confirm after the CI track writes `scripts/*`; update the runbooks |
 | 13 | Website banner mechanism, deploy command and CDN purge | `docs/runbooks/rollback.md`, `appcast-pull.md` | Confirm with the site track; write the exact commands |
 | 14 | Sparkle behaviours: key rotation, key-change acceptance, `generate_keys` and `sign_update` options | `docs/runbooks/key-rotation.md` | Test with the pinned Sparkle version; record confirmed commands |
-| 15 | iTerm2 automatic secure keyboard entry setting name and location | `docs/support/replies.md` (PLT-R398C) | Check the current iTerm2 release |
+| 15 | iTerm2 automatic secure keyboard entry setting name and location | `docs/support/replies.md` (PLT-R398C) | Decided (Q38): no setting name is quoted; the replies name the menu item iTerm2 > Secure Keyboard Entry and the pending password prompt |
 | 16 | Vietnamese names of System Settings panes per macOS version | `README.vi.md`, `docs/support/replies.md` | Check on a Vietnamese-language system for macOS 15, 26 and 27 (PRD-R64) |
 | 17 | In-app labels used in replies (`Ổn định`, `Beta`, the practice-field button, `Đặt lại quyền`, `Kênh cập nhật`) | `docs/support/replies.md` | Compare with the String Catalog; some come from the spec, some are proposals |
 | 18 | Known-limitation texts | `docs/support/replies.md`, `compat/SCRIPT.md` | Verify each limitation before publishing (PRD-R35) |
@@ -80,15 +80,32 @@ Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
   validates its example against the schema.
 - **8** and **9** (S8, Q8): the donation block shows the bank VietQR code, the bank name and the account number,
   never the holder name; no MoMo; no public sponsor list for now.
-- **15** (Q38): the support page uses one sentence for iTerm2: Secure Keyboard Entry is on; turn off the menu
-  item, or finish or cancel the password prompt iTerm2 is waiting for. No setting name is quoted. The app's
-  secure-input hint (`App/Resources/Localization/Status.xcstrings`, key
-  `secureInputHint.iterm2.secureKeyboardEntry`, which `compat/rules.json` names through its `hintKey`) follows
-  with the same sentence in the App workstream; until then it still carries the older two-part text.
+- **15** (Q38): the support page and the app use the same sentence for iTerm2: Secure Keyboard Entry is on; turn
+  off the menu item iTerm2 > Secure Keyboard Entry, or finish or cancel the password prompt iTerm2 is waiting for.
+  No setting name is quoted. The app's text is the secure-input hint in
+  `App/Resources/Localization/Status.xcstrings` (key `secureInputHint.iterm2.secureKeyboardEntry`, which
+  `compat/rules.json` names through its `hintKey`); the page is `site/content/{vi,en}/support.mjs`, and
+  `site/test.mjs` fails if the two differ. The support replies (`docs/support/replies.md`) give the same advice.
 - **19**: `Packages/VietnameseEngineFuzz/LICENSE` exists (MPL-2.0, like the engine; ADR 0006).
 - **26**: [0006](0006-app-licence-and-pro-edition.md) decides the app licence and the contributor terms.
 - **24** is narrowed: the word-list rows of `THIRD_PARTY_NOTICES.md` section 3 point at `data/NOTICES.md`,
   which the data track fills; the asset and site rows remain open.
+
+Decided by the integrator under Pa's delegation (2026-11-13, after wave 5):
+
+- **Notices in the DMG.** The DMG ships the full `THIRD_PARTY_NOTICES.md` as `THIRD_PARTY_NOTICES.txt`, next to
+  `LICENSE.txt` (`scripts/make-dmg.sh`; GPL-3.0 section 4, [0006](0006-app-licence-and-pro-edition.md)), not an
+  excerpt, so every conveyed copy carries every notice.
+- **Website analytics.** The site's `analytics` block in `site/config.json` stays filled (self-hosted Umami, Q7):
+  the preview is served with `noindex`, and the tracker tag's `data-domains` attribute limits counting to the site
+  host, so the preview and local builds opened under another host count nothing.
+- **Integration runner in the VM.** The virtual machine integration runner uses ad-hoc signing and makes a fresh
+  TCC grant after each build (an ad-hoc signature changes with every build, so the grant is tied to that build);
+  the Apple Development identity stays in the host keychain and is never copied into the VM (Q9: signing keys never
+  leave Pa's Mac). The scripts belong to the integration workstream (`scripts/run-integration.sh`, `scripts/vm/`).
+- **Q38 Vietnamese sentence.** The iTerm2 hint uses `hủy` (traditional tone placement, as the rest of the UI) and
+  keeps two sentences: "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục iTerm2 > Secure Keyboard Entry, hoặc
+  nhập xong (hay hủy) lời nhắc mật khẩu đang chờ."
 
 ## Consequences
 

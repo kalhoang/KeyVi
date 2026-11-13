@@ -823,6 +823,14 @@ class LicenceTests(unittest.TestCase):
         self.assertIn("0006", status)
         self.assertIn("superseded", status)
 
+    def test_adr_0006_says_ci_checks_every_external_commit(self):
+        # Decision 6 is in force: the dco job of ci.yml checks every path, so no manual stopgap is left in the record.
+        decision = " ".join(self.ADR.read_text(encoding="utf-8").split("6. **Supersedes 0401.**", 1)[1]
+                            .split("\n## ", 1)[0].split())
+        self.assertIn("DCO sign-off on every commit (external pull requests)", decision)
+        self.assertNotIn("until then", decision)
+        self.assertNotIn("must drop", decision)
+
     def test_the_dco_check_covers_every_path_by_default(self):
         script = (REPO / "scripts" / "check-dco.sh").read_text(encoding="utf-8")
         self.assertNotIn("paths=(Packages/VietnameseEngine Packages/VietnameseEngineFuzz)", script)
@@ -880,6 +888,284 @@ class SpecFollowUpTests(unittest.TestCase):
         self.assertNotIn("`Mở Cài đặt hệ thống`", button)
 
 
+class TraceabilityTests(unittest.TestCase):
+    """docs/architecture/traceability.md cites only tests that exist, and the wave 5 rows name their evidence
+    (decision 0005: Q14, Q16, Q38, Q43, Q48, ENG-R906, ENG-R1103; ADR 0315)."""
+
+    TEXT = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+
+    @classmethod
+    def row(cls, identifier: str) -> str:
+        return next(line for line in cls.TEXT.splitlines() if line.startswith(f"| {identifier} |"))
+
+    def test_every_cited_test_exists_in_the_tree(self):
+        listed = run("git", "-C", str(REPO), "ls-files", "*.swift", check=True).stdout.split()
+        names: set[str] = set()
+        for relative in listed:
+            path = REPO / relative
+            names.add(path.stem)
+            names |= set(re.findall(r"\b(?:struct|class|enum|extension)\s+([A-Z]\w*Tests)\b",
+                                    path.read_text(encoding="utf-8", errors="replace")))
+        cited = set(re.findall(r"`([A-Z][A-Za-z0-9]*Tests)(?:\.swift)?`", self.TEXT))
+        self.assertGreaterEqual(len(cited), 15, "the scan found too few cited tests")
+        self.assertEqual(sorted(cited - names), [], "traceability.md cites tests that do not exist")
+
+    def test_wave_5_rows_name_their_evidence(self):
+        expected = {
+            "PLT-R1205": ("MisbehavesPanelFocus", "MisbehavesFocusTracker", "MisbehavesRetarget", "`MisbehavesPanel`",
+                          "MisbehavesFocusTests"),
+            "PLT-R905": ("`TypingTraceConfirmation`", "TypingTraceConfirmationTests"),
+            "PLT-R398C": ("SecureInputHintCopyTests",),
+            "PLT-R107": ("scripts/vm/smoke-macos12.sh", "macOS 12.7.6 smoke test PASS 2026-11-13",
+                         "arm64 + x86_64 under Rosetta", "ADR 0315"),
+            "PLT-R520": ("GamesPrecedenceTests",),
+            "PLT-R353": ("RestoreHotkeyExclusionTests", "RestoreHotkeyDefaultTests"),
+            "PRD-R18": ("RestoreHotkeyDefaultTests",),
+            "ENG-R906": ("KeyPipelineCapsLockTests",),
+            "ENG-R862": ("PerAppLearningTests", "ADR 0320"),
+            "ENG-R1103": ("MacroEditorTests", "MacroEngineAgreementTests", "ADR 0321"),
+        }
+        for identifier, needles in expected.items():
+            row = self.row(identifier)
+            for needle in needles:
+                with self.subTest(identifier=identifier, needle=needle):
+                    self.assertIn(needle, row)
+
+
+class AccessibilityAuditDocTests(unittest.TestCase):
+    """docs/runbooks/accessibility-audit.md follows the wave 5 fixes: the misbehaves panel takes keyboard focus
+    outside the guided test (PLT-R1205 step 6, Q43) and the typing trace confirmation states the chosen duration
+    (PLT-R905), so neither is an open finding any more."""
+
+    TEXT = (REPO / "docs" / "runbooks" / "accessibility-audit.md").read_text(encoding="utf-8")
+
+    def test_the_misbehaves_step_checks_keyboard_focus_per_step(self):
+        section = " ".join(self.TEXT.split("### 3.8 ", 1)[1].split("\n### ", 1)[0].split())
+        step = section.split(" 3. ", 1)[1].split(" 4. ", 1)[0]
+        for needle in ("PLT-R1205 step 6", "takes keyboard focus when it opens and in its final step",
+                       "Full Keyboard Access", "symptom chips", "cannot become key",
+                       "the problem field keeps the focus", "Do you see 'đá â'?", "VoiceOver"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, step)
+        self.assertNotIn("non-activating on purpose", step)
+
+    def test_the_wave_5_fixes_are_no_longer_open_findings(self):
+        findings = self.TEXT.split("## 9. Findings for other owners", 1)[1]
+        open_items = [line for line in findings.splitlines() if line.startswith("- ")]
+        for line in open_items:
+            with self.subTest(line=line):
+                self.assertNotIn("Typing trace confirmation", line)
+                self.assertNotIn("not reachable by keyboard focus", line)
+
+    def test_the_browser_secure_input_hints_are_not_an_open_finding(self):
+        """Q40 (decision 0005) added the browser rows to `secureInputHints`; only Cốc Cốc waits for Pa."""
+        findings = self.TEXT.split("## 9. Findings for other owners", 1)[1]
+        open_items = [line for line in findings.splitlines() if line.startswith("- ")]
+        for line in open_items:
+            with self.subTest(line=line):
+                self.assertNotIn("Browser rows for", line)
+        flat = " ".join(findings.split())
+        self.assertIn("Q40", flat)
+        rules = json.loads((REPO / "compat" / "rules.json").read_text(encoding="utf-8"))
+        browsers = [hint for hint in rules["secureInputHints"] if hint["hintKey"] == "browser.passwordField"]
+        self.assertEqual(len(browsers), 6, "update section 9 when the browser rows change")
+        for name in ("Safari", "Google Chrome", "Microsoft Edge", "Firefox", "Arc", "Brave"):
+            with self.subTest(browser=name):
+                self.assertIn(name, flat)
+
+
+class Wave5StatusTests(unittest.TestCase):
+    """Wave 5 implemented the decisions that the spec and decision 0005 marked as later work (Q14, Q16, Q43, Q48,
+    ENG-R906, ENG-R1103), so no record still says "later wave" for them."""
+
+    SPEC = REPO / "spec"
+    ADR_0005 = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+
+    @staticmethod
+    def flat(text: str) -> str:
+        return " ".join(text.split())
+
+    def test_the_spec_no_longer_defers_any_decision_to_a_later_wave(self):
+        for path in sorted(self.SPEC.glob("*.md")):
+            with self.subTest(path=path.name):
+                self.assertNotIn("later wave", self.flat(path.read_text(encoding="utf-8")))
+
+    def test_eng_r862_cites_the_per_app_learning_decision(self):
+        engine = (self.SPEC / "01-engine.md").read_text(encoding="utf-8")
+        row = next(line for line in engine.splitlines() if line.startswith("- **ENG-R862**"))
+        self.assertIn("docs/decisions/0320-per-app-learned-words.md", row)
+        self.assertTrue((REPO / "docs" / "decisions" / "0320-per-app-learned-words.md").is_file())
+
+    def test_decision_0005_marks_the_wave_5_items_implemented(self):
+        rows = {
+            "| Q14 |": "Q14", "| Q16 |": "Q16", "| Q43 |": "Q43", "| Q48 |": "Q48",
+            "| Telex bracket keys and case |": "ENG-R906", "| Macro digit shadowing |": "ENG-R1103",
+        }
+        lines = self.ADR_0005.splitlines()
+        for prefix, label in rows.items():
+            row = next(line for line in lines if line.startswith(prefix))
+            with self.subTest(item=label):
+                self.assertIn("implemented (wave 5, W5-", row)
+                self.assertNotIn("implementation wave 5", row)
+                self.assertNotIn("Implementation: wave 5", row)
+        later = self.flat(self.ADR_0005.split("## Implemented later", 1)[1].split("\n## ", 1)[0])
+        for item in ("Q14", "Q16", "Q43", "Q48", "ENG-R906", "ENG-R1103"):
+            with self.subTest(section="Implemented later", item=item):
+                self.assertIn(item, later)
+        self.assertIn("Implemented in wave 5", later)
+        consequences = self.flat(self.ADR_0005.split("## Consequences", 1)[1])
+        self.assertNotIn("until the wave lands", consequences)
+        self.assertIn("implemented in wave 5", consequences)
+
+    def test_decision_0103_notes_that_digits_now_count(self):
+        adr = (REPO / "docs" / "decisions" / "0103-engine-commit-history-macros.md").read_text(encoding="utf-8")
+        row = next(line for line in adr.splitlines() if line.startswith("| Shadowed triggers (ENG-R1103) |"))
+        decision = row.split("|")[2]
+        self.assertIn("since decision 0005", decision)
+        self.assertIn("0321", decision)
+        self.assertIn("trailing main-row digit", decision)
+        self.assertNotIn("digits do not count", decision)
+        self.assertIn("superseded", row)
+
+
+class ITerm2SentenceTests(unittest.TestCase):
+    """Q38 and ADR 0400 item 15: the app (Status.xcstrings), the support page and the support replies give the same
+    iTerm2 advice: turn off the menu item iTerm2 > Secure Keyboard Entry, or finish or cancel the pending password
+    prompt. No setting name is quoted and nothing is left to VERIFY (PLT-R398C)."""
+
+    REPLIES = (REPO / "docs" / "support" / "replies.md").read_text(encoding="utf-8")
+    ADR_0400 = (REPO / "docs" / "decisions" / "0400-documentation-decisions.md").read_text(encoding="utf-8")
+
+    def reply_step(self, language: str) -> str:
+        section = self.REPLIES.split(f"### {language}\n")
+        steps = [line for part in section[1:] for line in part.split("\n### ", 1)[0].splitlines()
+                 if "**iTerm2:**" in line]
+        self.assertTrue(steps, f"no iTerm2 step in the {language} replies")
+        return steps[0]
+
+    def test_the_replies_name_the_menu_item_and_the_pending_prompt(self):
+        cases = {
+            "Vietnamese": ("iTerm2 > Secure Keyboard Entry", "hủy", "lời nhắc mật khẩu đang chờ"),
+            "English": ("iTerm2 > Secure Keyboard Entry", "finish or cancel", "password prompt it is waiting for"),
+        }
+        for language, needles in cases.items():
+            step = self.reply_step(language)
+            for needle in needles:
+                with self.subTest(language=language, needle=needle):
+                    self.assertIn(needle, step)
+            with self.subTest(language=language, check="no VERIFY"):
+                self.assertNotIn("VERIFY", step)
+                self.assertNotIn("automatic option", step)
+
+    def test_decision_0400_item_15_says_the_page_and_the_app_agree(self):
+        closed = " ".join(self.ADR_0400.split("- **15** (Q38):", 1)[1].split("\n- **", 1)[0].split())
+        self.assertIn("the support page and the app use the same sentence", closed)
+        self.assertNotIn("until then", closed)
+        row = next(line for line in self.ADR_0400.splitlines() if line.startswith("| 15 |"))
+        self.assertIn("Decided (Q38)", row)
+
+    def test_decision_0005_q38_no_longer_requests_the_copy(self):
+        adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+        row = next(line for line in adr.splitlines() if line.startswith("| Q38 |"))
+        self.assertNotIn("requested from their owners", row)
+        self.assertIn("SecureInputHintCopyTests", row)
+        self.assertIn("site/content/vi/support.mjs", row)
+
+
+class IntegratorDecisionTests(unittest.TestCase):
+    """Decisions the integrator took under Pa's delegation after wave 5, recorded in ADR 0400."""
+
+    ADR_0400 = (REPO / "docs" / "decisions" / "0400-documentation-decisions.md").read_text(encoding="utf-8")
+
+    def section(self) -> str:
+        marker = "Decided by the integrator under Pa's delegation"
+        self.assertIn(marker, self.ADR_0400)
+        return " ".join(self.ADR_0400.split(marker, 1)[1].split("\n## ", 1)[0].split())
+
+    def test_the_four_delegated_decisions_are_recorded(self):
+        text = self.section()
+        for needle in ("THIRD_PARTY_NOTICES.txt", "full", "analytics", "noindex", "data-domains", "ad-hoc",
+                       "TCC grant", "Apple Development", "Q9", "hủy", "two sentences"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+
+    def test_the_dmg_decision_matches_make_dmg(self):
+        script = (REPO / "scripts" / "make-dmg.sh").read_text(encoding="utf-8")
+        self.assertIn("THIRD_PARTY_NOTICES.md", script)
+        self.assertIn("THIRD_PARTY_NOTICES.txt", script)
+
+    def test_the_analytics_decision_matches_the_site(self):
+        config = json.loads((REPO / "site" / "config.json").read_text(encoding="utf-8"))
+        self.assertTrue(config["analytics"].get("websiteId"), "the analytics block stays filled")
+        tracker = (REPO / "site" / "lib" / "analytics.mjs").read_text(encoding="utf-8")
+        self.assertIn('data-domains="${esc(siteHost)}"', tracker)
+
+
+class ChangelogTests(unittest.TestCase):
+    """CHANGELOG.md, Unreleased: the user-visible changes of wave 5 and the licence (QA-R66, QA-R67; ADR 0006,
+    ADR 0320, ADR 0321, decision 0005 Q14, Q43)."""
+
+    TEXT = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    def unreleased(self) -> str:
+        return self.TEXT.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+
+    def group(self, name: str) -> str:
+        return " ".join(self.unreleased().split(f"### {name}\n", 1)[1].split("\n### ", 1)[0].split())
+
+    def test_the_groups_follow_keep_a_changelog(self):
+        groups = re.findall(r"^### (.+)$", self.unreleased(), re.M)
+        order = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Known issues"]
+        self.assertEqual(groups, [name for name in order if name in groups], "groups out of order or unknown")
+        self.assertGreaterEqual(set(groups), {"Added", "Changed", "Fixed"})
+
+    def test_wave_5_entries(self):
+        expected = {
+            "Changed": ("only in the app where you taught it", "stay global", "Settings > Typing",
+                        "Escape restores the last word", "terminals, code editors, games and remote desktop apps",
+                        "launchers such as Spotlight, Raycast and Alfred",
+                        "trailing digit", "`k` and `k1`", "delete or rename one of the pair",
+                        "GPL-3.0-or-later", "LICENSE", "THIRD_PARTY_NOTICES"),
+            "Fixed": ("This app misbehaves", "keyboard"),
+        }
+        for group, needles in expected.items():
+            text = self.group(group)
+            for needle in needles:
+                with self.subTest(group=group, needle=needle):
+                    self.assertIn(needle, text)
+
+    def test_the_escape_exclusions_name_the_same_families_everywhere(self):
+        """D8, PLT-R353, decision 0005 Q14, the traceability row and the changelog name the launchers too: compat
+        rules `launcher.spotlight` and `launcher.overlayPanels` set `features.restoreHotkey: false` (QA-R66)."""
+        rules = json.loads((REPO / "compat" / "rules.json").read_text(encoding="utf-8"))
+        off = {
+            rule["id"] for rule in rules["rules"]
+            if rule.get("action", {}).get("features", {}).get("restoreHotkey") is False
+        }
+        self.assertGreaterEqual(off, {"launcher.spotlight", "launcher.overlayPanels"})
+        needle = "launchers such as Spotlight, Raycast and Alfred"
+        product = (REPO / "spec" / "03-product.md").read_text(encoding="utf-8")
+        platform = (REPO / "spec" / "02-platform.md").read_text(encoding="utf-8")
+        adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+        matrix = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+        places = {
+            "D8": next(line for line in product.splitlines() if line.startswith("| D8 |")),
+            "PLT-R353": next(line for line in platform.splitlines() if line.startswith("- **PLT-R353**")),
+            "Q14": next(line for line in adr.splitlines() if line.startswith("| Q14 |")),
+            "traceability": next(line for line in matrix.splitlines() if line.startswith("| PLT-R353 |")),
+            "changelog": self.group("Changed"),
+        }
+        for name, text in places.items():
+            with self.subTest(place=name):
+                self.assertIn(needle, " ".join(text.split()))
+
+    def test_no_brand_name_or_dash_in_the_entries(self):
+        text = self.unreleased()
+        self.assertNotIn("KeyVi", text)
+        self.assertNotIn("\u2014", text)
+        self.assertNotIn("\u2013", text)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
@@ -909,6 +1195,31 @@ class ScriptSuiteTests(unittest.TestCase):
         custom = {label for label in labels if not self.HOSTED.match(label)}
         self.assertGreaterEqual(custom, {"xcode-27", "tcc-granted"}, "the label scan found too little")
         self.assertEqual(sorted(custom - declared), [], "declare these labels in scripts/actionlint.yaml")
+
+    def test_the_default_actionlint_config_mirrors_the_ci_one(self):
+        # actionlint without -config-file reads .github/actionlint.yaml; ci.yml passes scripts/actionlint.yaml.
+        def labels(path: Path) -> list[str]:
+            text = path.read_text(encoding="utf-8")
+            return sorted(re.findall(r"^\s+- ([\w.-]+)$", text.split("self-hosted-runner:", 1)[1], re.M))
+
+        default = labels(REPO / ".github" / "actionlint.yaml")
+        self.assertEqual(default, labels(REPO / "scripts" / "actionlint.yaml"))
+        self.assertEqual(default, ["tcc-granted", "xcode-27"])
+
+    def test_the_ci_dco_step_checks_every_path(self):
+        # ADR 0006 decision 6: external pull requests are accepted in every area, so the DCO step checks every commit.
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        step = ci.split("scripts/check-dco.sh", 1)[1].split("\n      - ", 1)[0]
+        self.assertNotIn("--path", step)
+
+    def test_the_release_adr_names_the_dco_check_as_ci_runs_it(self):
+        # Branch protection (ADR 0503) requires the check by its job name, so a renamed job must be renamed there too.
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        name = re.search(r"^  dco:\n    name: (.+)$", ci, re.M).group(1)
+        self.assertEqual(name, "DCO sign-off on every commit (external pull requests)")
+        adr = " ".join((REPO / "docs" / "decisions" / "0503-release-pipeline.md").read_text(encoding="utf-8").split())
+        self.assertIn(f"`{name}`", adr)
+        self.assertNotIn("sign-off on engine commits", adr)
 
 
 if __name__ == "__main__":

@@ -90,7 +90,7 @@ Facts for the maintainer: while any app holds secure input, macOS stops deliveri
 
 1. Bấm biểu tượng {{AppName}} trên thanh menu. Nếu có biểu tượng khóa, dòng trạng thái sẽ nêu ứng dụng nhiều khả năng đang giữ chế độ này (tên này không phải lúc nào cũng chính xác).
 2. **Terminal:** trong menu Terminal, tắt mục **Secure Keyboard Entry**.
-3. **iTerm2:** trong menu iTerm2, tắt mục **Secure Keyboard Entry**. Lưu ý iTerm2 còn tự bật mục này khi nó cho rằng đang có dòng nhập mật khẩu (ví dụ sau lệnh `sudo` hoặc `ssh`). Hãy hoàn tất hoặc hủy dòng nhập đó (Return hoặc Control+C), chế độ bảo mật sẽ tự tắt và {{AppName}} gõ lại được ngay ở phím tiếp theo. Tên chính xác và vị trí của tùy chọn tự động này trong bản iTerm2 hiện tại: VERIFY trước khi gửi.
+3. **iTerm2:** tắt mục **iTerm2 > Secure Keyboard Entry**, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ. iTerm2 còn tự bật chế độ này khi nó cho rằng đang có lời nhắc mật khẩu (ví dụ sau lệnh `sudo` hoặc `ssh`): nhập xong rồi nhấn Return, hoặc nhấn Control+C để hủy; chế độ bảo mật sẽ tự tắt và {{AppName}} gõ lại được ngay ở phím tiếp theo.
 4. **Trình duyệt hoặc trình quản lý mật khẩu:** bấm ra ngoài ô mật khẩu, hoặc chuyển sang thẻ khác.
 5. Nếu không xác định được ứng dụng nào đang giữ, hoặc menu chỉ ra `loginwindow`: khóa màn hình rồi mở khóa (Control+Command+Q), hoặc đăng xuất rồi đăng nhập lại.
 
@@ -102,7 +102,7 @@ This is not an input method bug: when an app turns on **Secure Input**, macOS bl
 
 1. Click the {{AppName}} icon in the menu bar. If it shows a lock badge, the status line names the app that most likely holds secure input (the name is not always accurate).
 2. **Terminal:** in the Terminal menu, turn off **Secure Keyboard Entry**.
-3. **iTerm2:** in the iTerm2 menu, turn off **Secure Keyboard Entry**. Note that iTerm2 also turns it on by itself when it believes a password prompt is showing (for example after `sudo` or `ssh`). Finish or cancel that prompt (Return or Control+C); secure input then releases and {{AppName}} types again from the very next key. The exact name and location of the automatic option in the current iTerm2 release: VERIFY before sending.
+3. **iTerm2:** turn off **iTerm2 > Secure Keyboard Entry**, or finish or cancel the password prompt it is waiting for. iTerm2 also turns secure input on by itself while it believes a password prompt is showing (for example after `sudo` or `ssh`): finish the prompt with Return or cancel it with Control+C; secure input then releases and {{AppName}} types again from the very next key.
 4. **Browser or password manager:** click outside the password field, or switch tabs.
 5. If the holder cannot be identified, or the menu points to `loginwindow`: lock and unlock the screen (Control+Command+Q), or log out and in.
 

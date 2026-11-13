@@ -179,9 +179,11 @@ confirmation, app details, licences, macro delete alert, paste-mode alert.
      copies the report (default button).
   2. Bug report: VoiceOver reads the app picker, each chip with its selected state, the description field and its
      hint, the preview disclosure and each button.
-  3. "Ứng dụng này gõ sai..." panel: it is non-activating on purpose (the problem field keeps the focus during the
-     guided test), so keyboard focus does not move to it. With VoiceOver, reach it through the window chooser
-     (VO+F2 twice) and check that its buttons and the progress text are read. Record whether this is workable.
+  3. "Ứng dụng này gõ sai..." panel (PLT-R1205 step 6): it takes keyboard focus when it opens and in its final
+     step, so Tab and Full Keyboard Access reach the symptom chips, the preview disclosure and the offers; during
+     the guided test (the empty-field confirmation, the progress and the "Do you see 'đá â'?" question) it cannot
+     become key and the problem field keeps the focus. Check with Full Keyboard Access and with VoiceOver that each
+     step's controls are reached and read.
   4. Latency test and practice field windows: the field labels and hints are read; the probe results are read as
      text.
 
@@ -312,10 +314,12 @@ and a single announcement of the final word.
 
 ## 9. Findings for other owners
 
-Filed in the W2-F report as cross-track requests; listed here so the manual pass knows about them.
+Filed in the W2-F report as cross-track requests; listed here so the manual pass knows about them. Fixed in
+wave 5 and removed from this list: the typing trace confirmation now states the chosen duration
+(`TypingTraceConfirmationTests`), and the misbehaves panel takes keyboard focus outside the guided test
+(`MisbehavesFocusTests`, section 3.8 step 3).
 
-- Typing trace confirmation: the message always states the first duration even when another duration is chosen
-  in the picker (owner W3-B).
-- The non-activating "Ứng dụng này gõ sai..." panel is not reachable by keyboard focus (section 3.8 step 3;
-  owner W3-B decides after Pa's check).
-- Browser rows for `secureInputHints` in `compat/rules.json` (owner W1-C).
+The browser rows for `secureInputHints` in `compat/rules.json` were added under Q40 (decision 0005): Safari,
+Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
+
+- Cốc Cốc's `secureInputHints` row waits for its bundle identifier with its exact case (Q40, owner Pa).

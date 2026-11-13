@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# actionlint configuration at the default location, so a plain `actionlint` run in the repository root and editor
+# integrations know the custom runner labels. ci.yml passes scripts/actionlint.yaml explicitly; keep the two label
+# lists identical (scripts/tests/test_docs_and_workflows.py, ScriptSuiteTests).
+#   xcode-27     GitHub-hosted Xcode 27 image (public preview label, verified 2026-11-13, ADR 0500)
+#   tcc-granted  label of the self-hosted integration Mac with permissions granted (QA-R12)
+self-hosted-runner:
+  labels:
+    - xcode-27
+    - tcc-granted
