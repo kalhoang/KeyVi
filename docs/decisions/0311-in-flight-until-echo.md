@@ -1,7 +1,9 @@
 # 0311. "In flight" ends at the echo, not at the post
 
-- Status: accepted, 2026-11-13 (revises the hold rule of ARCHITECTURE.md section 4 and contracts.md 9)
-- Requirements: PLT-R311, PLT-R312, PLT-R314, PLT-R323, PLT-R730, PLT-R301 VERIFY (a)
+- Status: accepted, 2026-11-13 (revises the hold rule of ARCHITECTURE.md section 4 and contracts.md 9);
+  amended 2026-11-13 after wave 1: recovery from posting broken (see the amendment at the end)
+- Requirements: PLT-R311, PLT-R312, PLT-R314, PLT-R323, PLT-R330, PLT-R331, PLT-R332, PLT-R730,
+  PLT-R301 VERIFY (a)
 - Context: PLT-R311 says that while `inFlight > 0` ("jobs pushed but final event not yet posted") every
   keyboard event the pipeline would pass is held. Its rationale: "a later physical key must never reach the app
   between the backspaces and the insertion of an earlier edit; users reported garbled words when typing fast".
@@ -61,3 +63,32 @@ ceiling as the upper bound.
   stalled keyboard is not".
 - `PostError.notPermitted` is removed: the poster cannot observe it. `FakeEventPoster` gained
   `.silentlyDropping`, which models the real failure.
+
+## Amendment 2026-11-13: recovery from posting broken (wave 1)
+
+Context: the first version of `HostLifecycle` recreated the tap only on a permission transition from not
+granted to granted. Echo loss and OS policy (PLT-R323) can break posting while every permission still reads
+`ready`, so the permission monitor never reports a change and a host in `failOpen(postingBroken)` would stay
+fail-open until the user relaunched the app.
+
+Decision:
+
+1. `.postingBroken` performs the PLT-R730 teardown in order (publish `failOpen(postingBroken)`, flush, reset the
+   composition, remove the tap), then records `.recordHealth(.postingBroken)` and returns
+   `.scheduleRetry(after: delay)`.
+2. `.retryTimerFired` in that phase returns `[.createTap]` while the phase stays `failOpen(postingBroken)`, so
+   the menu does not flicker during the attempt. Success moves to `running`; a failed creation moves to
+   `failOpen(tapUnavailable)` with the PLT-R332 backoff (1, 2, 5, 10 s). A permission loss moves to
+   `failOpen(permissionRevoked)` and cancels the retry; permission back then recreates the tap (PLT-R731).
+3. The delay is `HostLifecycle.postingBrokenBackoff`: 30 s, doubling (60 s, 120 s, 240 s) to a cap of 300 s
+   (5 minutes). A new break within the previous delay plus `HostLifecycle.postingBrokenStableInterval` (600 s)
+   of the previous break moves one step up; otherwise the backoff restarts at 30 s. In words: retry with a 30 s
+   backoff doubling to a 5-minute cap, restarted after 10 minutes of stable posting. A posting path that stays
+   broken therefore costs at most one tap creation every 5 minutes, never a create-and-break loop.
+4. `HostLifecycle.disableCoalescingWindow` (1 s) belongs to the same review: the OS disable event and the
+   watchdog's `CGEventTapIsEnabled` check can both report one disable. Each report still runs the re-enable
+   procedure (PLT-R330), but reports closer than 1 s count once toward the instability notice (PLT-R331).
+
+The constants are public on `HostLifecycle` (`Packages/AppCore/Sources/InputHost/Lifecycle/HostLifecycle.swift`)
+and pinned by `Tests/InputHostTests/Lifecycle/HostLifecycleRecoveryTests.swift`; contracts.md 10.3 describes
+the same behaviour.
