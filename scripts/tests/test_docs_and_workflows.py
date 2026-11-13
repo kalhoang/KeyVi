@@ -307,6 +307,27 @@ class WorkflowCoverageTests(unittest.TestCase):
         self.assertNotIn("COMPAT_HARNESS_BENCH_RUNS", self.job("integration.yml", "nightly"))
         self.assertIn("scripts/run-integration.sh soak --out .build/integration", self.job("integration.yml", "nightly"))
 
+    BUDGET = re.compile(r"# Budget in minutes \([^)]*\): ((?:[a-z]+ \d+ \+ )*[a-z]+ \d+) = (\d+)\.")
+
+    def test_integration_jobs_fit_their_step_budget(self):
+        """W3-A review: each self-hosted job states its step budget, the terms add up, and the timeout leaves at
+        least 10 % on top, so the nightly five-run bench (QA-R14) is never killed by the job timeout."""
+        for job_id in ("integration", "nightly"):
+            body = self.job("integration.yml", job_id)
+            with self.subTest(job=job_id):
+                budget = self.BUDGET.search(body)
+                self.assertIsNotNone(budget, "budget comment missing")
+                terms = [int(term.split()[1]) for term in budget.group(1).split(" + ")]
+                self.assertEqual(sum(terms), int(budget.group(2)))
+                timeout = int(re.search(r"^\s*timeout-minutes: (\d+)$", body, re.M).group(1))
+                self.assertGreaterEqual(timeout, int(budget.group(2)) * 1.1)
+        nightly = self.job("integration.yml", "nightly")
+        self.assertIn("soak 498", nightly)  # docs/runbooks/integration-suite.md: about 8.3 hours
+        self.assertLess(
+            nightly.index("scripts/run-integration.sh bench --out .build/integration"),
+            nightly.index("scripts/run-integration.sh soak --out .build/integration"),
+            "the bench runs before the soak, so an overrunning soak never loses it")
+
 
 class IntegrationHooksBuildTests(unittest.TestCase):
     """The INTEGRATION_HOOKS code exists only in the runner's test build (ADR 0502, "Integration hooks"): one

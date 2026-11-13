@@ -607,7 +607,27 @@ cat >"$I/bin/ditto" <<'EOF'
 #!/bin/sh
 cp -R "$1" "$2"
 EOF
-chmod +x "$I/bin/xcodegen" "$I/bin/xcodebuild" "$I/bin/ditto"
+# Fake process table: $FAKE_PROCESS_FILE holds the executable path of one running process (absent: none). pgrep
+# matches its pattern against that path; pkill -TERM ends it unless FAKE_IGNORES_TERM is set, pkill -KILL unless
+# FAKE_UNKILLABLE is set.
+cat >"$I/bin/pgrep" <<'EOF'
+#!/bin/sh
+for last; do :; done
+[ -f "${FAKE_PROCESS_FILE:-/nonexistent}" ] && grep -Eq -- "$last" "$FAKE_PROCESS_FILE"
+EOF
+cat >"$I/bin/pkill" <<'EOF'
+#!/bin/sh
+printf 'pkill %s\n' "$*"
+for last; do :; done
+{ [ -f "${FAKE_PROCESS_FILE:-/nonexistent}" ] && grep -Eq -- "$last" "$FAKE_PROCESS_FILE"; } || exit 1
+case "$1" in
+  -TERM) [ -n "${FAKE_IGNORES_TERM:-}" ] && exit 0 ;;
+  -KILL) [ -n "${FAKE_UNKILLABLE:-}" ] && exit 0 ;;
+esac
+[ -d "${FAKE_INSTALLED_APP:-/nonexistent}" ] && printf 'ended while the old copy was installed\n'
+rm -f "$FAKE_PROCESS_FILE"
+EOF
+chmod +x "$I/bin/xcodegen" "$I/bin/xcodebuild" "$I/bin/ditto" "$I/bin/pgrep" "$I/bin/pkill"
 marker="$(sed -n 's/^HOOKS_MARKER="\(.*\)"$/\1/p' "$S/run-integration.sh")"
 display_name="$(. "$S/brand.env" && printf '%s' "$APP_DISPLAY_NAME")"
 expect 1 "build needs the opt-in" env -u COMPAT_HARNESS_LIVE FAKE_BRAND_ENV="$S/brand.env" PATH="$I/bin:$PATH" \
@@ -619,12 +639,39 @@ expect 0 "build installs the hooks test build and TestHost" env COMPAT_HARNESS_L
 contains "the app uses the Integration configuration" "-scheme App -configuration Integration -derivedDataPath $I/dd"
 if [[ -e "$I/out/DerivedData" || -e "$I/out/Build" ]]; then ko "derived data stays out of the uploaded output"; else ok "derived data stays out of the uploaded output"; fi
 contains "TestHost is built too" "-scheme TestHost -configuration Debug"
+contains "package targets build for the active architecture only" \
+  "-disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build"
+if grep -Fq "pkill" "$T/out"; then ko "nothing is terminated when no copy runs"; else ok "nothing is terminated when no copy runs"; fi
 contains "package versions stay pinned (PLT-R910)" "-disableAutomaticPackageResolution"
 if [[ -x "$I/apps/$display_name.app/Contents/MacOS/$display_name" && -d "$I/apps/TestHost.app" ]]; then
   ok "both apps installed at the fixed path"
 else
   ko "both apps installed at the fixed path"
 fi
+build_with_running() { # build_with_running <expected exit> <name> <running executable> [VAR=value...]
+  local want="$1" name="$2" running="$3"
+  shift 3
+  printf '%s\n' "$running" >"$I/running"
+  expect "$want" "$name" env COMPAT_HARNESS_LIVE=1 FAKE_BRAND_ENV="$S/brand.env" FAKE_BINARY_TEXT="$marker" \
+    FAKE_PROCESS_FILE="$I/running" INTEGRATION_QUIT_TIMEOUT=1 "$@" PATH="$I/bin:$PATH" INTEGRATION_APP_DIR="$I/apps" \
+    INTEGRATION_DERIVED_DATA="$I/dd" "$S/run-integration.sh" build --out "$I/out"
+}
+build_with_running 0 "build ends the copy still running from the installed path" \
+  "$I/apps/$display_name.app/Contents/MacOS/$display_name" FAKE_INSTALLED_APP="$I/apps/$display_name.app"
+contains "SIGTERM by a pattern anchored on the path" "pkill -TERM -f -- ^"
+contains "metacharacters of the installed path escaped" "/apps/$display_name\.app/Contents/MacOS/"
+contains "ended before the replacement" "ended while the old copy was installed"
+if [[ -f "$I/running" ]]; then ko "the stale copy is gone"; else ok "the stale copy is gone"; fi
+build_with_running 0 "a copy that ignores SIGTERM is killed after the wait" \
+  "$I/apps/TestHost.app/Contents/MacOS/TestHost" FAKE_IGNORES_TERM=1
+contains "SIGKILL after the bounded wait" "pkill -KILL -f -- ^"
+contains "SIGKILL for the TestHost path" "/apps/TestHost\.app/Contents/MacOS/"
+build_with_running 1 "build stops when the stale copy survives" \
+  "$I/apps/$display_name.app/Contents/MacOS/$display_name" FAKE_IGNORES_TERM=1 FAKE_UNKILLABLE=1
+contains "names the surviving copy" "is still running"
+build_with_running 0 "a process elsewhere is left alone" "/Applications/$display_name.app/Contents/MacOS/$display_name"
+if grep -Fq "pkill" "$T/out"; then ko "only the installed path is matched"; else ok "only the installed path is matched"; fi
+rm -f "$I/running"
 expect 1 "build refuses a test build without the hooks" env COMPAT_HARNESS_LIVE=1 FAKE_BRAND_ENV="$S/brand.env" \
   PATH="$I/bin:$PATH" INTEGRATION_APP_DIR="$I/apps" INTEGRATION_DERIVED_DATA="$I/dd" \
   "$S/run-integration.sh" build --out "$I/out"

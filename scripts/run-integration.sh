@@ -96,6 +96,32 @@ harness() {
   swift run --package-path Packages/AppCore -c release compat-harness "${args[@]}"
 }
 
+# A copy left running by an earlier job, a killed harness or a manual session keeps the old bundle mapped, and the
+# harness could attach to it instead of the new build. Terminate the copy running from this path before replacing
+# it: SIGTERM, a bounded wait, then SIGKILL. A signal, not an Apple Event quit: sending Apple Events would need an
+# Automation grant on the runner and could stall on its consent prompt. Only a process whose executable lives under
+# the installed path is touched.
+quit_installed_app() {
+  local app="$1" pattern waited=0
+  local limit="${INTEGRATION_QUIT_TIMEOUT:-10}"
+  # pgrep -f takes an extended regular expression: escape the path's metacharacters (the dots in ".app").
+  pattern="^$(printf '%s' "$app/Contents/MacOS/" | sed 's/[][\\.^$*+?(){}|]/\\&/g')"
+  pgrep -f -- "$pattern" >/dev/null 2>&1 || return 0
+  info "terminating the running copy of $app"
+  pkill -TERM -f -- "$pattern" || true
+  while pgrep -f -- "$pattern" >/dev/null 2>&1; do
+    if (( waited >= limit * 5 )); then
+      warn "$app did not exit within ${limit}s: killing it"
+      pkill -KILL -f -- "$pattern" || true
+      sleep 1
+      break
+    fi
+    sleep 0.2
+    waited=$((waited + 1))
+  done
+  ! pgrep -f -- "$pattern" >/dev/null 2>&1 || die "a copy of $app is still running; quit it and run build again"
+}
+
 # Replaces the installed copy at the same path (the TCC grant follows the signature and bundle ID, not the files).
 install_app() {
   local source="$1" destination="$2"
@@ -110,7 +136,7 @@ install_app() {
 
 build_test_apps() {
   require_live_opt_in
-  require_cmd xcodebuild ditto
+  require_cmd xcodebuild ditto pgrep pkill
   load_brand
   local xcodegen_bin derived apps app
   xcodegen_bin="$(scripts/install-xcodegen.sh --prefer-system)"
@@ -118,12 +144,16 @@ build_test_apps() {
   # Outside the output directory: the workflows upload that one as the run's artefact.
   derived="${INTEGRATION_DERIVED_DATA:-$REPO_ROOT/.build/integration-build}"
   # Integration = INTEGRATION_HOOKS + dev bundle ID + Apple Development identity (Config/Integration.xcconfig).
+  # ONLY_ACTIVE_ARCH on the command line: unlike the xcconfig line, it also reaches the SwiftPM package targets,
+  # which would otherwise compile for arm64 and x86_64.
   xcodebuild -project App.xcodeproj -scheme App -configuration Integration -derivedDataPath "$derived" \
-    -disableAutomaticPackageResolution build
+    -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build
   xcodebuild -project App.xcodeproj -scheme TestHost -configuration Debug -derivedDataPath "$derived" \
-    -disableAutomaticPackageResolution build
+    -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build
   apps="${INTEGRATION_APP_DIR:-$HOME/Applications}"
   app="$apps/$APP_DISPLAY_NAME.app"
+  quit_installed_app "$app"
+  quit_installed_app "$apps/TestHost.app"
   install_app "$derived/Build/Products/Integration/$APP_DISPLAY_NAME.app" "$app"
   install_app "$derived/Build/Products/Debug/TestHost.app" "$apps/TestHost.app"
   # A test build without the hooks would leave testHook steps and T2 to T6 unanswered (runbook section 8).
