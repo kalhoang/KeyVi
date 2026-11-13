@@ -133,7 +133,8 @@ final class HostRig {
     init(
         layout: LayoutTable = PipelineFixtures.qwertyTable(), source: InputSourceInfo = HostRig.abc,
         layoutData: [InputSourceID: KeyboardLayoutData]? = nil, builder: (any LayoutTableBuilding)? = nil,
-        permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false
+        permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
+        capture: CaptureController? = nil
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -155,7 +156,7 @@ final class HostRig {
             inputSources: inputSources, layoutBuilder: builder ?? FixedLayoutBuilder(table: layout),
             secureInput: secureInput, permissions: permissions, workspace: workspace, keyValueStore: keyValues,
             clock: clock, scheduler: scheduler, wallClock: wallClock, metrics: metrics, health: health,
-            logger: logger, tapLog: tapLog, capture: nil, utilityQueue: utility)
+            logger: logger, tapLog: tapLog, capture: capture, utilityQueue: utility)
         controller = InputHostController(
             dependencies: dependencies, settingsStore: store.store, hop: hop,
             makeTapThread: TapSession.productionThreadMaker(factory: tapFactory), tapClock: MachClock(),
@@ -204,11 +205,11 @@ final class HostRig {
 
     nonisolated static let emptyResources: TapSettingsPublisher.BundledResourcesLoader = { .empty }
 
-    static var shippedRules: RulesLoadResult {
+    nonisolated static var shippedRules: RulesLoadResult {
         RulesLoader.load(contentsOf: repositoryRoot.appendingPathComponent("compat/rules.json"))
     }
 
-    static var repositoryRoot: URL {
+    nonisolated static var repositoryRoot: URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent()

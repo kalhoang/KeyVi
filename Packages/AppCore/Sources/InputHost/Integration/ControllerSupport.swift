@@ -51,20 +51,20 @@ struct FocusKey: Hashable {
 extension InputHostController {
     /// The tap is never created before `start` published the real settings; until then the cell holds this
     /// placeholder (one neutral engine, empty lists).
-    static var placeholderSettings: TapSettingsSnapshot {
+    nonisolated static var placeholderSettings: TapSettingsSnapshot {
         TapSettingsSnapshot(
             generation: 0, engines: EngineCatalog(engines: [:]), toggleHotkey: .defaultToggle, restoreHotkey: nil,
             macrosInEnglishMode: false, rememberPerApp: true)
     }
 
-    static var runningMacOSVersion: LooseVersion {
+    nonisolated static var runningMacOSVersion: LooseVersion {
         let version = ProcessInfo.processInfo.operatingSystemVersion
         return LooseVersion("\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)")
             ?? LooseVersion("15.0")!
     }
 
     /// Before the first check (nothing is claimed granted).
-    static let unknownPermissions = PermissionStatus(
+    nonisolated static let unknownPermissions = PermissionStatus(
         accessibility: .unknown, postEvent: .unknown, listenEvent: .unknown, listenEventRequired: false,
         health: .noPermission)
 }
