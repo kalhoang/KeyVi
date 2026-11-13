@@ -2,7 +2,7 @@
 //
 // "Giới thiệu & Hỗ trợ / About & Support" (PRD-R24): version and channel, update controls (D19-D21, PRD-R53),
 // diagnostics (D26), report a problem, export, import and reset, privacy summary, licences and acknowledgements
-// (ENG-R811, Sparkle), and the donation block (PRD-R57-R59, bundled placeholder QR images marked VERIFY).
+// (ENG-R811, Sparkle), and the donation block (PRD-R57 to PRD-R59, the bundled bank VietQR code of Pa's decision S8).
 
 import AppKit
 import AppModel
@@ -132,11 +132,12 @@ struct PrivacySection: View {
     }
 }
 
-/// PRD-R59: thank-you line, VietQR with the account name in text, MoMo, GitHub Sponsors. Images are bundled, never
-/// fetched; all details are placeholders until Pa verifies them (VERIFY).
+/// PRD-R59 and Pa's decision S8: thank-you line, the bank VietQR code with the bank name and the account number in
+/// text (never the holder's name: the payer's bank app shows it after the scan), and GitHub Sponsors once Pa has a
+/// sponsor page. The image is bundled, never fetched; no donation prompt appears anywhere else (PRD-R58).
 struct DonationBlock: View {
     let model: SettingsWindowModel
-    let info = DonationInfo.placeholder
+    let info = DonationInfo.standard
 
     var body: some View {
         let localizer = model.localizer
@@ -145,15 +146,19 @@ struct DonationBlock: View {
             Text(verbatim: localizer.format(SupportText.donateBody, model.appName))
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .top, spacing: 10) {
-                QRCodeImage(
-                    name: info.vietQRImageName, caption: localizer.string(SupportText.donateVietQR),
-                    label: localizer.string(SupportText.donateVietQRImage))
-                QRCodeImage(
-                    name: info.momoQRImageName, caption: localizer.string(SupportText.donateMoMo),
-                    label: localizer.string(SupportText.donateMoMoImage))
+            QRCodeImage(
+                name: info.vietQRImageName, caption: localizer.string(SupportText.donateVietQR),
+                label: localizer.string(SupportText.donateVietQRImage))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: info.bankLine(localizer))
+                Text(verbatim: info.accountNumberLine(localizer))
             }
-            Text(verbatim: info.accountLine(localizer)).font(.callout).textSelection(.enabled)
+            .font(.callout)
+            .textSelection(.enabled)
+            Text(verbatim: localizer.string(SupportText.donateScanHint))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if let url = info.githubSponsorsURL {
                 Link(destination: url) { Text(verbatim: localizer.string(SupportText.donateSponsors)) }
                     .settingsAccessibility(SupportControl.sponsorsLink, localizer)
@@ -164,6 +169,7 @@ struct DonationBlock: View {
     }
 }
 
+/// The QR code is a 1024 px image scaled down smoothly, so its modules stay even at any display scale.
 struct QRCodeImage: View {
     let name: String
     let caption: String
@@ -173,11 +179,12 @@ struct QRCodeImage: View {
         VStack(spacing: 4) {
             Image(name)
                 .resizable()
-                .interpolation(.none)
-                .frame(width: 96, height: 96)
+                .interpolation(.high)
+                .frame(width: 168, height: 168)
                 .accessibilityLabel(Text(verbatim: label))
             Text(verbatim: caption).font(.caption)
         }
+        .frame(maxWidth: .infinity)
     }
 }
 

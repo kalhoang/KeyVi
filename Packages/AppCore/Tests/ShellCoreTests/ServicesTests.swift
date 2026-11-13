@@ -38,9 +38,11 @@ import Testing
         #expect(SMAppServiceLoginItem.status(from: .notFound) == .notFound)
     }
 
-    @Test func donationPlaceholderIsMarkedForVerification() {
-        // PRD-R59: details are placeholders until Pa verifies them; QR images are bundled assets.
-        #expect(DonationInfo.placeholder.bankAccountName == "VERIFY")
-        #expect(DonationInfo.placeholder.githubSponsorsURL == nil)
+    @Test func donationDetailsArePasBankAccount_PRDR59() {
+        // Pa's decision S8: LioBank, account 688688678, VietQR only; no sponsor page yet.
+        #expect(DonationInfo.standard.bankName == "LioBank")
+        #expect(DonationInfo.standard.accountNumber == "688688678")
+        #expect(DonationInfo.standard.vietQRImageName == "DonationVietQR")
+        #expect(DonationInfo.standard.githubSponsorsURL == nil)
     }
 }

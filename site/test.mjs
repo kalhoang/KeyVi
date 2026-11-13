@@ -300,13 +300,40 @@ try {
     assert.match(c, /href="\/ung-ho\/"/);
   });
 
-  await check("populated: donate block per PRD-R59 (QR placeholders, VERIFY, sponsors)", () => {
-    const d = read("ung-ho", "index.html");
-    assert.match(d, /miễn phí và sẽ luôn miễn phí\. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp\./);
-    assert.match(d, /vietqr\.svg/);
-    assert.match(d, /momo\.svg/);
-    assert.match(d, /class="verify"/);
-    assert.match(d, /sponsors/i);
+  await check("populated: donate block per PRD-R59 and S8 (bank VietQR only, bank and account number, no holder name)", async () => {
+    for (const [lang, path, bankLabel, accountLabel] of [["vi", ["ung-ho", "index.html"], "Ngân hàng", "Số tài khoản"], ["en", ["en", "donate", "index.html"], "Bank", "Account number"]]) {
+      const d = read(...path);
+      if (lang === "vi") assert.match(d, /miễn phí và sẽ luôn miễn phí\. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp\./);
+      assert.match(d, /<img src="\/assets\/qr\/vietqr\.png" width="240" height="240" alt="[^"]+">/, `${lang}: bundled VietQR image`);
+      assert.ok(d.includes(`<dt>${bankLabel}</dt><dd>LioBank</dd>`), `${lang}: bank name`);
+      assert.ok(d.includes(`<dt>${accountLabel}</dt><dd>688688678</dd>`), `${lang}: account number`);
+      assert.ok(!/momo/i.test(d), `${lang}: no MoMo (S8)`);
+      assert.ok(!/Tên tài khoản|Chủ tài khoản|Account name|account holder/i.test(d), `${lang}: the holder's name is never shown (S8)`);
+      assert.ok(!d.includes('class="verify"'), `${lang}: real details, nothing left to verify`);
+      assert.ok(!d.includes("donate-sponsors"), `${lang}: no sponsor card while sponsorsUrl is a placeholder`);
+    }
+    assert.ok(existsSync(join(populated, "assets", "qr", "vietqr.png")), "QR image shipped");
+    assert.ok(!existsSync(join(populated, "assets", "qr", "momo.svg")), "MoMo image removed");
+    // A real sponsor page in site/config.json brings the GitHub Sponsors card back (PRD-R57).
+    const configPath = join(tmp, "sponsors-config.json");
+    const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
+    await writeFile(configPath, JSON.stringify({ ...base, sponsorsUrl: "https://github.com/sponsors/example" }));
+    const out = join(tmp, "sponsors");
+    await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
+    const sponsored = await readFile(join(out, "ung-ho", "index.html"), "utf8");
+    assert.match(sponsored, /id="donate-sponsors"[\s\S]*href="https:\/\/github\.com\/sponsors\/example"/);
+  });
+
+  await check("populated: favicon, touch icon and header logo come from the app icon (CLR-R7)", async () => {
+    for (const file of ["favicon.svg", "favicon.ico", "apple-touch-icon.png", "assets/brand/app-icon-64.png", "assets/brand/app-icon-128.png"]) {
+      assert.ok(existsSync(join(populated, file)), `${file} shipped`);
+    }
+    const favicon = await readFile(join(populated, "favicon.svg"), "utf8");
+    assert.match(favicon, /Source: derived from Pa's own artwork/);
+    assert.match(read("index.html"), /<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml">/);
+    const css = await readFile(join(populated, "assets", "style.css"), "utf8");
+    assert.match(css, /\.brand::before\s*\{[^}]*url\("\/assets\/brand\/app-icon-64\.png"\)/, "header logo");
+    for (const [, src] of css.matchAll(/url\("([^"]+)"\)/g)) assert.ok(existsSync(join(populated, src)), `${src} exists`);
   });
 
   await check("populated: favicon, touch icon and header logo come from the app icon (CLR-R7)", async () => {

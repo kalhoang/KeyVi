@@ -192,18 +192,33 @@ import VietnameseEngineData
         #expect(lines(text[fence.upperBound..<end.lowerBound]) == lines(SparkleNotice.text))
     }
 
-    @Test func donationBlockUsesBundledPlaceholders_PRDR59() throws {
+    @Test func donationBlockShowsTheBankAndTheAccountNumberOnly_PRDR59() throws {
         let l = try Localizers()
-        let info = DonationInfo.placeholder
-        #expect(info.accountLine(l.vi) == "Chủ tài khoản: VERIFY")
+        let info = DonationInfo.standard
+        #expect(info.bankLine(l.vi) == "Ngân hàng: LioBank")
+        #expect(info.accountNumberLine(l.vi) == "Số tài khoản: 688688678")
+        #expect(info.bankLine(l.en) == "Bank: LioBank")
+        #expect(info.accountNumberLine(l.en) == "Account number: 688688678")
         #expect(!info.showsSponsors)
         var sponsored = info
         sponsored.githubSponsorsURL = URL(string: "https://github.com/sponsors/example")
         #expect(sponsored.showsSponsors)
-        // The QR images are bundled assets (never fetched): both names exist in Donation.xcassets.
-        for name in [info.vietQRImageName, info.momoQRImageName] {
-            let path = RepoPaths.url("App/Resources/Donation.xcassets/\(name).imageset/Contents.json").path
-            #expect(FileManager.default.fileExists(atPath: path), "\(name)")
+        // S8: the VietQR code is the only bundled donation image (no MoMo), never fetched.
+        let catalog = RepoPaths.url("App/Resources/Donation.xcassets")
+        let sets = try FileManager.default.contentsOfDirectory(atPath: catalog.path)
+            .filter { $0.hasSuffix(".imageset") }
+        #expect(sets == ["\(info.vietQRImageName).imageset"])
+    }
+
+    @Test func donationCopyNeverNamesTheAccountHolderOrMoMo_PRDR59() throws {
+        // S8: the holder's name is not shown anywhere; the payer's bank app shows it after the scan.
+        let catalog = try Catalog(table: .support)
+        for (key, entry) in catalog.entries where key.hasPrefix("support.donate") {
+            for value in entry.values.values {
+                for forbidden in ["MoMo", "Chủ tài khoản", "Tên tài khoản", "holder", "Account name"] {
+                    #expect(!value.contains(forbidden), "\(key) mentions \(forbidden)")
+                }
+            }
         }
     }
 }
