@@ -66,7 +66,8 @@ final class TestHostApp: NSObject, NSApplicationDelegate {
     @objc func focusAddressBar(_ sender: Any?) { windowController?.focus(.addressBarWithCompletion) }
 }
 
-/// Main menu: Quit and the Window menu's focus shortcuts. Titles are fixed English fixture text.
+/// Main menu: Quit, the standard Edit menu and the Window menu's focus shortcuts. Titles are fixed English fixture
+/// text.
 @MainActor
 enum TestHostMenu {
     static func make(target: TestHostApp) -> NSMenu {
@@ -84,11 +85,25 @@ enum TestHostMenu {
             item.target = target
             windowMenu.addItem(item)
         }
-        for menu in [appMenu, windowMenu] {
+        for menu in [appMenu, editMenu(), windowMenu] {
             let holder = NSMenuItem()
             holder.submenu = menu
             main.addItem(holder)
         }
         return main
+    }
+
+    /// The standard Edit menu, sent to the first responder like in every real app. AppKit turns Command+V into
+    /// `paste:` only through this key equivalent, so without it the `paste` strategy's synthetic Command+V (PLT-R461
+    /// step 3) reached no field (`testhost.privacyCanary.paste`, integration-suite.md section 10.5).
+    static func editMenu() -> NSMenu {
+        let menu = NSMenu(title: "Edit")
+        for (title, action, key) in [
+            ("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"),
+            ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a"),
+        ] {
+            menu.addItem(NSMenuItem(title: title, action: action, keyEquivalent: key))
+        }
+        return menu
     }
 }

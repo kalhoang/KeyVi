@@ -204,6 +204,20 @@ private func testHostFieldIDs() throws -> [String] {
         }
     }
 
+    /// PLT-R461 step 3: the `paste` strategy posts Command+V, which AppKit turns into `paste:` only through a menu
+    /// key equivalent. Without an Edit menu TestHost ignored it and `testhost.privacyCanary.paste` lost every
+    /// composed letter in the VM (integration-suite.md section 10.5); real apps all have the standard Edit menu.
+    @Test func editMenuHasTheStandardKeyEquivalents() throws {
+        let app = try read(sourcesDirectory.appendingPathComponent("TestHostApp.swift"))
+        for (selector, key) in [
+            ("NSText.cut(_:)", "x"), ("NSText.copy(_:)", "c"), ("NSText.paste(_:)", "v"),
+            ("NSText.selectAll(_:)", "a"),
+        ] {
+            #expect(app.contains(#"#selector("# + selector + #"), ""# + key + #"")"#), "\(selector)")
+        }
+        #expect(app.contains(#"NSMenu(title: "Edit")"#))
+    }
+
     @Test func pageHandlerNeverBecomesTheDefaultHTMLViewer() throws {
         let plist = try read(repositoryRoot.appendingPathComponent("TestHost/Info.plist"))
         #expect(plist.contains("<key>LSHandlerRank</key>\n\t\t\t<string>None</string>"))
