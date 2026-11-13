@@ -8,7 +8,9 @@
 import AppKit
 import WebKit
 
-/// Read-only native field showing a DOM value. Becoming first responder forwards focus to the page.
+/// Read-only native field showing a DOM value. Becoming first responder, or an AX focus request (the runner's
+/// `focusField`), forwards focus to the page. The AX path is explicit: in the first VM runs the request left the
+/// previously focused native field first responder, and the web scenarios typed into it.
 final class MirrorTextField: NSTextField {
     var onFocusRequest: (@MainActor @Sendable () -> Void)?
 
@@ -16,6 +18,11 @@ final class MirrorTextField: NSTextField {
         let accepted = super.becomeFirstResponder()
         if accepted, let onFocusRequest { DispatchQueue.main.async(execute: onFocusRequest) }
         return accepted
+    }
+
+    override func setAccessibilityFocused(_ accessibilityFocused: Bool) {
+        super.setAccessibilityFocused(accessibilityFocused)
+        if accessibilityFocused, let onFocusRequest { DispatchQueue.main.async(execute: onFocusRequest) }
     }
 }
 
@@ -31,6 +38,8 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
     let webView: WKWebView
     let picker = NSPopUpButton()
     private(set) var mirrors: [TestHostField: MirrorTextField] = [:]
+    /// A focus request that arrived while a page was loading; applied once it finished.
+    private var pendingFocus: TestHostField?
 
     override init() {
         let configuration = WKWebViewConfiguration()
@@ -89,6 +98,13 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
         loadPage(named: Self.pages[max(0, sender.indexOfSelectedItem)])
     }
 
+    /// Reset fields: back to `fields.html` when an earlier scenario opened another page, so scenarios without an
+    /// `openURL` step (web input, textarea, contenteditable) always find their elements.
+    func resetPage() {
+        guard webView.url?.lastPathComponent != Self.pages[0] else { return }
+        loadPage(named: Self.pages[0])
+    }
+
     /// Blocks every navigation away from local files (13.2: pages carry no network references).
     func webView(
         _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
@@ -116,7 +132,17 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
 
     func focusElement(_ field: TestHostField) {
         webView.window?.makeFirstResponder(webView)
+        guard !webView.isLoading else {
+            pendingFocus = field
+            return
+        }
         webView.evaluateJavaScript("window.TestHost && window.TestHost.focus(" + Self.quoted(field.rawValue) + ")")
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        guard let field = pendingFocus else { return }
+        pendingFocus = nil
+        focusElement(field)
     }
 
     /// Field identifiers are fixed ASCII; quoting keeps the script well-formed anyway.

@@ -72,8 +72,10 @@ final class TestHostSecondWindowController: NSWindowController {
 
     func text(of field: TestHostField) -> String { access[field]?.get() ?? "" }
 
+    /// Clears every field and leaves none focused (see `TestHostWindowController.resetFields`).
     func resetAll() {
         for field in access.values { field.reset() }
+        window?.makeFirstResponder(nil)
     }
 
     /// Brings this window forward and focuses `field` (Window menu, Command+2).
