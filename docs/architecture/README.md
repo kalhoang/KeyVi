@@ -45,6 +45,7 @@ The `--check` form runs in CI (`ci.yml`, job "Architecture contracts in sync"). 
 | [0311](../decisions/0311-in-flight-until-echo.md) | "In flight" ends at the echo, not at the post. |
 | [0312](../decisions/0312-report-override-projection.md) | User overrides in the diagnostics report are a typed projection. |
 | [0313](../decisions/0313-testability-seams.md) | Testability seams provided by the skeleton. |
+| [0314](../decisions/0314-report-lists-user-word-lists-by-name.md) | The diagnostics report names the user word lists, never their entries. |
 
 Other decision ranges: `00xx` project defaults, `04xx` documentation and contribution policy, `05xx` CI,
 release and lint contracts, `06xx` website. All are in [docs/decisions/](../decisions/).
