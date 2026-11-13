@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.secureInput.pause",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "on"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textField"
+    }
+  ],
+  "keys": [
+    "d",
+    "u",
+    "y",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "duyeetj",
+    "paused": true,
+    "holderBundleId": "local.testhost"
+  },
+  "readback": "ax"
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "design.shortcutHeavy",
+  "targetBundleId": "com.seriflabs.affinitydesigner2",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "20000"
+    }
+  ],
+  "keys": [
+    "d",
+    "d"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "paused": true
+  },
+  "readback": "human"
+}

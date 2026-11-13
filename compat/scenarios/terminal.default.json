@@ -1,0 +1,30 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "terminal.default",
+  "targetBundleId": "com.apple.Terminal",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "1500"
+    }
+  ],
+  "keys": [
+    "m",
+    "u",
+    "o",
+    "o",
+    "n",
+    "s",
+    "return"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "muốn"
+  },
+  "readback": "terminalCapture"
+}

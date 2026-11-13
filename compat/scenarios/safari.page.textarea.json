@@ -1,0 +1,38 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "safari.page.textarea",
+  "targetBundleId": "com.apple.Safari",
+  "setup": [
+    {
+      "action": "openURL",
+      "value": "{pages}/fields.html#focus=web-textarea"
+    },
+    {
+      "action": "wait",
+      "value": "1500"
+    }
+  ],
+  "keys": [
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng việt"
+  },
+  "readback": "ax"
+}

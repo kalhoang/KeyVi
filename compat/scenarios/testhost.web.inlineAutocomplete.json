@@ -1,0 +1,37 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.web.inlineAutocomplete",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "openURL",
+      "value": "{pages}/inline-autocomplete.html"
+    },
+    {
+      "action": "wait",
+      "value": "1000"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.web.input"
+    }
+  ],
+  "keys": [
+    "a",
+    "s"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "á"
+  },
+  "readback": "ax"
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.native.burst",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textField"
+    }
+  ],
+  "keys": [
+    "n",
+    "g",
+    "u",
+    "y",
+    "e",
+    "e",
+    "n",
+    "x",
+    "space",
+    "n",
+    "g",
+    "u",
+    "y",
+    "e",
+    "e",
+    "n",
+    "x",
+    "space",
+    "n",
+    "g",
+    "u",
+    "y",
+    "e",
+    "e",
+    "n",
+    "x"
+  ],
+  "timing": "burst",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "nguyễn nguyễn nguyễn"
+  },
+  "readback": "ax"
+}

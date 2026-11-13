@@ -1,0 +1,40 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "terminal.iterm2.secureKeyboardEntryOff",
+  "targetBundleId": "com.googlecode.iterm2",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "on"
+    },
+    {
+      "action": "wait",
+      "value": "500"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    }
+  ],
+  "keys": [
+    "d",
+    "u",
+    "y",
+    "e",
+    "e",
+    "t",
+    "j",
+    "return"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "duyệt",
+    "firstKeyAfterReleaseComposed": true
+  },
+  "readback": "terminalCapture"
+}
