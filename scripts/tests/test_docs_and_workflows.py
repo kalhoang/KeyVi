@@ -4,6 +4,7 @@ Run: python3 -I scripts/tests/test_docs_and_workflows.py"""
 from __future__ import annotations
 
 import json
+import plistlib
 import re
 import sys
 import unittest
@@ -13,7 +14,7 @@ sys.dont_write_bytecode = True  # keep scripts/tests free of __pycache__
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import swift_source  # noqa: E402
-from support import REPO, py  # noqa: E402
+from support import REPO, py, run  # noqa: E402
 
 
 class Adr0501Tests(unittest.TestCase):
@@ -422,6 +423,187 @@ class WorkflowCoverageTests(unittest.TestCase):
             nightly.index("scripts/run-integration.sh bench --out .build/integration"),
             nightly.index("scripts/run-integration.sh soak --out .build/integration"),
             "the bench runs before the soak, so an overrunning soak never loses it")
+
+
+IMAGE_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".icns", ".heic", ".tif", ".tiff"}
+
+
+def tracked_images() -> list[Path]:
+    listed = run("git", "-C", str(REPO), "ls-files", check=True).stdout.splitlines()
+    return [REPO / rel for rel in listed if Path(rel).suffix.lower() in IMAGE_SUFFIXES]
+
+
+def asset_key(path: Path) -> str:
+    """The name an asset is recorded under: the image set name inside an asset catalog, else the repo path."""
+    image_set = next((part for part in path.parts if part.endswith(".imageset")), None)
+    return image_set.removesuffix(".imageset") if image_set else path.relative_to(REPO).as_posix()
+
+
+class AssetRecordTests(unittest.TestCase):
+    """Every tracked image, in any asset catalog or on the website, has a source record (CLR-R7, spec/05 section 5
+    acceptance: THIRD_PARTY_NOTICES lists every asset with its licence)."""
+
+    NOTICES = (REPO / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    PROVENANCE = (REPO / "docs" / "provenance" / "README.md").read_text(encoding="utf-8")
+
+    @classmethod
+    def assets_section(cls) -> str:
+        return cls.NOTICES.split("\n## 4. ", 1)[1].split("\n## ", 1)[0]
+
+    @classmethod
+    def provenance_section(cls) -> str:
+        return cls.PROVENANCE.split("\n## 7. ", 1)[1].split("\n## ", 1)[0]
+
+    def test_every_tracked_image_is_recorded_in_both_files(self):
+        images = tracked_images()
+        self.assertGreaterEqual(len(images), 13, "the image scan found too little; did git ls-files fail?")
+        for key in sorted({asset_key(path) for path in images}):
+            with self.subTest(asset=key):
+                self.assertIn(f"`{key}`", self.assets_section(), "record it in THIRD_PARTY_NOTICES.md section 4")
+                self.assertIn(f"`{key}`", self.provenance_section(), "record it in docs/provenance section 7")
+
+    def test_placeholder_images_are_recorded_as_placeholders(self):
+        placeholders = sorted({asset_key(p) for p in tracked_images() if "placeholder" in self.header(p).lower()
+                               or p.stem == "placeholder"})
+        self.assertGreaterEqual(len(placeholders), 4)
+        entries = self.assets_section().split("\n### ")[1:]  # one subsection per asset group
+        for key in placeholders:
+            with self.subTest(asset=key):
+                records = [entry for entry in entries if f"`{key}`" in entry]
+                self.assertTrue(records and all("placeholder" in entry.lower() for entry in records),
+                                f"THIRD_PARTY_NOTICES.md section 4 must call {key} a placeholder")
+        self.assertNotIn("generated from the maintainer's own accounts", self.assets_section(),
+                         "the bundled donation images are placeholders, not account QR codes")
+
+    # Website SVGs that the artwork workstream (W4-B) replaces in parallel: the favicon derived from the logo and the
+    # donation QR images. Their source comments arrive with that change; empty this set once it is merged.
+    PENDING_SOURCE_COMMENT = frozenset({"site/static/favicon.svg", "site/static/assets/qr/vietqr.svg",
+                                        "site/static/assets/qr/momo.svg"})
+
+    def test_every_svg_carries_a_source_comment(self):
+        for path in (p for p in tracked_images() if p.suffix.lower() == ".svg"):
+            if path.relative_to(REPO).as_posix() in self.PENDING_SOURCE_COMMENT:
+                continue
+            with self.subTest(svg=path.relative_to(REPO).as_posix()):
+                header = self.header(path)
+                self.assertIn("Source:", header, "add a source comment (CLR-R7)")
+                self.assertIn("CLR-R7", header)
+
+    @staticmethod
+    def header(path: Path) -> str:
+        return path.read_text(encoding="utf-8", errors="replace")[:600] if path.suffix.lower() == ".svg" else ""
+
+
+class RunbookReleaseBranchTests(unittest.TestCase):
+    """Runbook commands only create release branches that release.yml accepts, and quote build numbers that
+    scripts/build-number.sh prints (QA-R25, QA-R26, QA-R38, QA-R39)."""
+
+    RUNBOOKS = sorted((REPO / "docs" / "runbooks").glob("*.md"))
+
+    @classmethod
+    def accepted_branch(cls) -> re.Pattern:
+        workflow = (REPO / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        pattern = re.search(r"grep -Eq '(\^ \*origin/\(main\|release/[^']+)'", workflow)
+        assert pattern, "release.yml no longer checks the tagged commit's branch with grep -Eq"
+        return re.compile(pattern.group(1))
+
+    def test_every_release_branch_in_the_runbooks_passes_the_release_gate(self):
+        accepted = self.accepted_branch()
+        found = 0
+        for runbook in self.RUNBOOKS:
+            for branch in re.findall(r"(?<![\w./-])(release/[0-9][^\s`'\")]*)", runbook.read_text(encoding="utf-8")):
+                found += 1
+                with self.subTest(runbook=runbook.name, branch=branch):
+                    self.assertRegex(f"  origin/{branch}", accepted,
+                                     "release.yml only accepts tags on origin/main or origin/release/x.y")
+        self.assertGreater(found, 0, "no concrete release branch found; the rollback example should name one")
+
+    def test_quoted_build_numbers_match_the_script(self):
+        quoted = []
+        for runbook in self.RUNBOOKS:
+            quoted += re.findall(r"`scripts/build-number\.sh (v?[0-9][^`]*)` prints `(\d+)`",
+                                 runbook.read_text(encoding="utf-8"))
+        self.assertGreater(len(quoted), 0)
+        for version, number in quoted:
+            with self.subTest(version=version):
+                result = run("bash", str(REPO / "scripts" / "build-number.sh"), version)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), number)
+
+    def test_rollback_never_chooses_the_build_number_by_hand(self):
+        rollback = (REPO / "docs" / "runbooks" / "rollback.md").read_text(encoding="utf-8")
+        self.assertNotRegex(rollback, r"CFBundleVersion\s*=\s*highest")
+        self.assertIn("scripts/build-number.sh", rollback)
+
+
+class ManagedMacsDocTests(unittest.TestCase):
+    """IT administrator documentation lists the PPPC services with the code requirement and the macOS 27 note
+    (PLT-R760)."""
+
+    DOC = REPO / "docs" / "support" / "managed-macs.md"
+    BUNDLE_ID = "vn.kal.{{app-slug}}"
+    TEAM_ID = "TEAM_ID"  # the placeholder the doc uses; valid inside the XML example as written
+
+    @classmethod
+    def requirement(cls) -> str:
+        """The default designated requirement that scripts/verify-release.sh enforces (PLT-R750)."""
+        verify = (REPO / "scripts" / "verify-release.sh").read_text(encoding="utf-8")
+        template = re.search(r"printf '(identifier \"%s\" and anchor apple generic[^']*)\\n'", verify)
+        assert template, "verify-release.sh no longer prints the expected designated requirement"
+        return template.group(1).replace("%s", cls.BUNDLE_ID, 1).replace("%s", cls.TEAM_ID, 1)
+
+    def test_doc_names_the_three_services_the_requirement_and_the_macos_27_note(self):
+        text = self.DOC.read_text(encoding="utf-8")
+        for needle in ("`Accessibility`", "`PostEvent`", "`ListenEvent`", "com.apple.TCC.configuration-profile-policy",
+                       "Device Control and Data Access", "Declarative Device Management",
+                       "com.apple.configuration.app.settings", "APP_BUNDLE_ID_RELEASE", "designated-requirement.txt",
+                       "VERIFY", self.requirement()):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+
+    def test_example_profile_is_a_valid_plist_for_exactly_those_services(self):
+        text = self.DOC.read_text(encoding="utf-8")
+        example = text.split("```xml\n", 1)[1].split("\n```", 1)[0]
+        profile = plistlib.loads(example.encode("utf-8"))
+        payload = profile["PayloadContent"][0]
+        self.assertEqual(payload["PayloadType"], "com.apple.TCC.configuration-profile-policy")
+        services = payload["Services"]
+        self.assertEqual(set(services), {"Accessibility", "PostEvent", "ListenEvent"})
+        expected = self.requirement()
+        for name, entries in services.items():
+            with self.subTest(service=name):
+                self.assertEqual(len(entries), 1)
+                entry = entries[0]
+                self.assertEqual(entry["Identifier"], self.BUNDLE_ID)
+                self.assertEqual(entry["IdentifierType"], "bundleID")
+                self.assertEqual(entry["CodeRequirement"], expected)
+                self.assertFalse("Allowed" in entry and "Authorization" in entry, "use one of the two keys")
+        # Apple's PPPC reference: a profile cannot grant ListenEvent, it can only deny it or let a standard user
+        # approve it.
+        self.assertEqual(services["ListenEvent"][0]["Authorization"], "AllowStandardUserToSetSystemService")
+
+    def test_traceability_points_plt_r760_at_the_doc(self):
+        traceability = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+        row = next(line for line in traceability.splitlines() if line.startswith("| PLT-R760 |"))
+        self.assertIn("docs/support/managed-macs.md", row)
+
+
+class EngineApiDocsTests(unittest.TestCase):
+    """The engine API documentation (DocC) has a documented command and a nightly artifact (QA-R66)."""
+
+    COMMAND = "xcodebuild docbuild -scheme VietnameseEngine"
+
+    def test_contributing_documents_the_docc_command(self):
+        contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
+        commands = contributing.split("\n## 4. ", 1)[1].split("\n## ", 1)[0]
+        self.assertIn(self.COMMAND, commands)
+        self.assertIn("VietnameseEngine.doccarchive", commands)
+
+    def test_traceability_names_the_docc_decision(self):
+        traceability = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+        row = next(line for line in traceability.splitlines() if line.startswith("| QA-R66 |"))
+        self.assertIn("DocC", row)
+        self.assertTrue((REPO / "docs" / "decisions" / "0402-engine-api-docs.md").is_file())
 
 
 class IntegrationHooksBuildTests(unittest.TestCase):
