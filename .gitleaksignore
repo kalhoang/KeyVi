@@ -1,0 +1,2 @@
+# The Sparkle EdDSA key in this file is the PUBLIC verification key (SUPublicEDKey, shipped in every build, PLT-R1102); it is not a secret.
+9087c7bb1adc8c22294cee1e8d69d66233041669:Config/Sparkle.xcconfig:generic-api-key:11
