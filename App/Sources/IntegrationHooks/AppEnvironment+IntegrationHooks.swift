@@ -12,7 +12,7 @@ extension AppEnvironment {
     func startIntegrationHooks() {
         integrationHooks.start(
             host: host, metrics: diagnostics.metrics, applicationSupport: paths.applicationSupport,
-            language: language,
+            language: language, logger: diagnostics.logger,
             method: { [weak self] in self?.settings.effective.typingMethod ?? DefaultSettings.v1.typingMethod },
             updateCheck: { [weak self] in
                 guard let updater = self?.updater else { return false }

@@ -49,26 +49,37 @@ public actor IntegrationHookServer {
     private let files: any IntegrationHookFileAccess
     private let watcher: any DirectoryChangeWatching
     private let actions: any IntegrationHookActions
+    private let logger: (any DiagnosticsLogging)?
     private var running: UInt64?
     private var handled: [UInt64] = []
+    /// Answers whose write failed, written again by the next scan instead of running the command twice.
+    private var unwritten: [UInt64: Data] = [:]
     private var started = false
 
     public init(
-        files: any IntegrationHookFileAccess, watcher: any DirectoryChangeWatching, actions: any IntegrationHookActions
+        files: any IntegrationHookFileAccess, watcher: any DirectoryChangeWatching, actions: any IntegrationHookActions,
+        logger: (any DiagnosticsLogging)? = nil
     ) {
         self.files = files
         self.watcher = watcher
         self.actions = actions
+        self.logger = logger
     }
 
     /// Prepares the directory (0700, refusing a link or another user's directory), starts the watcher and scans
-    /// once. Throws when the directory cannot be used; the build then simply does not answer.
+    /// once. Throws when the directory cannot be used; the build then does not answer, and the log names the
+    /// reason (runbook section 8).
     public func start() async throws(HookDirectoryError) {
         guard !started else { return }
-        try files.prepare()
-        try watcher.start { [weak self] change in
-            guard let self else { return }
-            Task { await self.changed(change) }
+        do {
+            try files.prepare()
+            try watcher.start { [weak self] change in
+                guard let self else { return }
+                Task { await self.changed(change) }
+            }
+        } catch {
+            logger?.log(.note(error.logMessage, category: .diagnostics), level: .error)
+            throw error
         }
         started = true
         await scan()
@@ -95,6 +106,10 @@ public actor IntegrationHookServer {
     /// One pass over the directory: answers every request that has no answer yet, in sequence order.
     public func scan() async {
         for sequence in files.requestSequences() where running != sequence && !handled.contains(sequence) {
+            if let data = unwritten[sequence] {
+                write(data, sequence: sequence)
+                continue
+            }
             if files.responseExists(sequence) {
                 remember(sequence)
                 continue
@@ -155,15 +170,44 @@ public actor IntegrationHookServer {
     }
 
     private func answer(_ response: AppHookResponse) {
-        remember(response.sequence)
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
-        guard let data = try? encoder.encode(response) else { return }
-        try? files.writeResponse(data, sequence: response.sequence)
+        guard let data = try? encoder.encode(response) else { return remember(response.sequence) }
+        write(data, sequence: response.sequence)
+    }
+
+    /// The sequence counts as handled only once its answer is on disk; a failed write is kept for the next scan.
+    private func write(_ data: Data, sequence: UInt64) {
+        do {
+            try files.writeResponse(data, sequence: sequence)
+            unwritten[sequence] = nil
+            remember(sequence)
+        } catch {
+            if unwritten[sequence] == nil {
+                logger?.log(
+                    .note("integration hooks: a response could not be written", category: .diagnostics), level: .error)
+            }
+            if unwritten.count < Self.rememberedSequences { unwritten[sequence] = data }
+        }
     }
 
     private func remember(_ sequence: UInt64) {
         handled.append(sequence)
         if handled.count > Self.rememberedSequences { handled.removeFirst(handled.count - Self.rememberedSequences) }
+    }
+}
+
+extension HookDirectoryError {
+    /// A fixed message per reason (PLT-R902: no path, no content).
+    var logMessage: StaticString {
+        switch self {
+        case .symbolicLink: "integration hooks disabled: the directory is a symbolic link"
+        case .notDirectory: "integration hooks disabled: the path is not a directory"
+        case .foreignOwner: "integration hooks disabled: the directory belongs to another user"
+        case .io(let code) where code == EACCES || code == EPERM:
+            "integration hooks disabled: permission denied on the directory"
+        case .io(ENOSPC): "integration hooks disabled: disk full"
+        case .io: "integration hooks disabled: I/O error on the directory"
+        }
     }
 }

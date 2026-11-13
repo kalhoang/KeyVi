@@ -38,7 +38,8 @@ final class IntegrationHooksApp {
     /// while the updater is not running yet.
     func start(
         host: InputHostController, metrics: PlatformMetrics, applicationSupport: URL, language: InterfaceLanguageModel,
-        method: @escaping @MainActor () -> TypingMethod, updateCheck: @escaping @MainActor @Sendable () -> Bool
+        logger: any DiagnosticsLogging, method: @escaping @MainActor () -> TypingMethod,
+        updateCheck: @escaping @MainActor @Sendable () -> Bool
     ) {
         guard server == nil else { return }
         let probe = HookLatencyProbe(host: host, metrics: metrics, language: language, method: method)
@@ -50,8 +51,9 @@ final class IntegrationHooksApp {
         let queue = DispatchQueue(label: IntegrationHooksBuild.marker, qos: .utility)
         let server = IntegrationHookServer(
             files: PosixHookDirectory(directory: directory),
-            watcher: VnodeDirectoryWatcher(directory: directory, queue: queue), actions: actions)
+            watcher: VnodeDirectoryWatcher(directory: directory, queue: queue), actions: actions, logger: logger)
         self.server = server
+        // An unusable directory leaves the build silent; the server has logged the reason code (runbook section 8).
         Task { try? await server.start() }
     }
 

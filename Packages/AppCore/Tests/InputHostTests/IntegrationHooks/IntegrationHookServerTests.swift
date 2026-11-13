@@ -21,6 +21,7 @@ final class FakeHookFiles: IntegrationHookFileAccess, Sendable {
         var writes: [UInt64] = []
         var prepared = 0
         var prepareError: HookDirectoryError?
+        var failingWrites = 0
     }
 
     private let state = Mutex(State())
@@ -43,6 +44,8 @@ final class FakeHookFiles: IntegrationHookFileAccess, Sendable {
     }
 
     func failPrepare(_ error: HookDirectoryError?) { state.withLock { $0.prepareError = error } }
+    /// The next `count` response writes fail (disk full, the directory replaced between the scan and the write).
+    func failWrites(_ count: Int) { state.withLock { $0.failingWrites = count } }
 
     var preparedCount: Int { state.withLock { $0.prepared } }
     var writes: [UInt64] { state.withLock { $0.writes } }
@@ -72,10 +75,16 @@ final class FakeHookFiles: IntegrationHookFileAccess, Sendable {
     func responseExists(_ sequence: UInt64) -> Bool { state.withLock { $0.responses[sequence] != nil } }
 
     func writeResponse(_ data: Data, sequence: UInt64) throws(HookDirectoryError) {
-        state.withLock {
-            $0.responses[sequence] = data
-            $0.writes.append(sequence)
+        let failed = state.withLock { state -> Bool in
+            guard state.failingWrites == 0 else {
+                state.failingWrites -= 1
+                return true
+            }
+            state.responses[sequence] = data
+            state.writes.append(sequence)
+            return false
         }
+        if failed { throw .io(errno: ENOSPC) }
     }
 }
 
@@ -177,9 +186,18 @@ private struct Rig {
     let files = FakeHookFiles()
     let watcher = ManualDirectoryWatcher()
     let actions = ScriptedHookActions(snapshot: readyState)
+    let logger = RecordingLogger()
     let server: IntegrationHookServer
 
-    init() { server = IntegrationHookServer(files: files, watcher: watcher, actions: actions) }
+    init() { server = IntegrationHookServer(files: files, watcher: watcher, actions: actions, logger: logger) }
+
+    /// The fixed messages the server logged, at error level, in the diagnostics category (PLT-R902: no content).
+    var notes: [String] {
+        logger.entries.compactMap { entry in
+            guard case .note(let message, .diagnostics) = entry.event, entry.level == .error else { return nil }
+            return message.description
+        }
+    }
 }
 
 @Suite struct IntegrationHookServerTests {
@@ -335,6 +353,40 @@ private struct Rig {
         rig.files.addRequest(base + 1, .state)
         await #expect(throws: HookDirectoryError.symbolicLink) { try await rig.server.start() }
         #expect(rig.watcher.startCount == 0 && rig.files.writes.isEmpty)
+    }
+
+    /// Runbook section 8: an unusable directory is named in the log (a reason code, never a path), so a silent
+    /// test build is not mistaken for one built without the hooks.
+    @Test func anUnusableDirectoryIsLoggedWithItsReason() async {
+        let reasons: [(HookDirectoryError, String)] = [
+            (.symbolicLink, "symbolic link"), (.notDirectory, "not a directory"), (.foreignOwner, "another user"),
+            (.io(errno: EACCES), "permission denied"), (.io(errno: ENOSPC), "disk full"),
+            (.io(errno: EIO), "I/O error"),
+        ]
+        for (error, reason) in reasons {
+            let rig = Rig()
+            rig.files.failPrepare(error)
+            await #expect(throws: error) { try await rig.server.start() }
+            #expect(rig.notes.count == 1)
+            #expect(rig.notes.first?.contains(reason) == true, "\(error)")
+        }
+    }
+
+    /// A response that could not be written is written again by the next scan, without running the command a
+    /// second time (a repeated tapTimeout would count a second recovery).
+    @Test func aFailedWriteIsRetriedWithoutRunningTheCommandAgain() async throws {
+        let rig = Rig()
+        try await rig.server.start()
+        rig.files.failWrites(1)
+        rig.files.addRequest(base + 1, .trigger(.tapTimeout))
+        await rig.server.scan()
+        #expect(try rig.files.response(base + 1) == nil)
+        #expect(rig.notes.count == 1)
+        await rig.server.scan()
+        #expect(try rig.files.response(base + 1)?.ok == true)
+        #expect(rig.actions.calls == ["tapTimeout"])
+        await rig.server.scan()
+        #expect(rig.files.writes == [base + 1])
     }
 
     @Test func remembersABoundedNumberOfAnswers() async throws {
