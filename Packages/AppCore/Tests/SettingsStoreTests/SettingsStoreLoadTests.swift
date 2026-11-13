@@ -99,7 +99,8 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
 @Suite struct SettingsStoreRecoveryTests {
     private let truncated = #"{"schemaVersion": 1, "settings": {"typingMethod": "vn"#
 
-    /// PLT-R1006 with a backup: quarantine, newest valid backup loaded, notice, no write before confirmation.
+    /// PLT-R1006 with a backup: quarantine, newest valid backup loaded and written back at once (the corrupt
+    /// file is safe under its new name), notice until confirmed, and every later change persists.
     @Test func truncatedFileRecoversFromTheNewestValidBackup() async throws {
         let harness = SettingsStoreHarness()
         harness.seed(.settings, #"{"schemaVersion":1,"writtenBy":"0.1.0","settings":{"typingMethod":"vni"}}"#)
@@ -114,6 +115,7 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
             Data("garbage".utf8), to: URL(fileURLWithPath: "/Settings/backups/settings.json.v1.20990101T000000Z.json"),
             permissions: .ownerOnlyFile)
         harness.seed(.settings, truncated)
+        let corruptBytes = harness.data(.settings)
 
         harness.wallClock.advance(by: 60)
         let next = SettingsStoreHarness(reusing: harness)
@@ -125,21 +127,63 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
             return
         }
         #expect(date == harness.wallClock.now().addingTimeInterval(-120))
-        #expect(next.paths.contains { $0.hasPrefix("settings.json.corrupt-") })
-        #expect(next.data(.settings) == nil)
+        let quarantined = try #require(next.paths.first { $0.hasPrefix("settings.json.corrupt-") })
+        #expect(next.memory.nodes["/Settings/" + quarantined]?.data == corruptBytes)
+        #expect(next.object(.settings)?["settings"]?["typingMethod"] == .string("vni"))
 
-        next.spy.resetCalls()
         await next.store.updateSettings { $0.soundOnSwitch = .set(false) }
-        await next.advance(by: .seconds(5))
-        await next.store.flush()
-        #expect(next.spy.mutatingCalls.isEmpty)
+        await next.advance(by: .seconds(1))
+        #expect(next.object(.settings)?["settings"]?["soundOnSwitch"] == .bool(false))
+        #expect(await next.store.state.notices == state.notices)
 
+        // The notice is informational: confirming clears it without another write.
+        next.spy.resetCalls()
         await next.store.confirmDefaults(for: .settings)
-        let confirmed = await next.store.state
-        #expect(confirmed.notices.isEmpty)
-        let written = try #require(next.object(.settings))
-        #expect(written["settings"]?["typingMethod"] == .string("vni"))
-        #expect(written["settings"]?["soundOnSwitch"] == .bool(false))
+        #expect(await next.store.state.notices.isEmpty)
+        #expect(next.spy.mutatingCalls.isEmpty)
+        let relaunch = SettingsStoreHarness(reusing: next)
+        let again = await relaunch.store.load()
+        #expect(again.notices.isEmpty && again.user.soundOnSwitch == .set(false))
+    }
+
+    /// PLT-R1006 "never wipe": when the corrupt file cannot be renamed, nothing writes over it, not even after
+    /// the user confirms or resets.
+    @Test func aFailedQuarantineBlocksEveryWriteOverTheCorruptFile() async throws {
+        let harness = SettingsStoreHarness()
+        harness.seed(.settings, truncated)
+        let corruptBytes = harness.data(.settings)
+        harness.spy.fail(.moveItem, at: harness.url(.settings))
+        let state = await harness.store.load()
+        #expect(state.notices == [.corruptFileUsingDefaults(.settings)])
+        await harness.store.updateSettings { $0.soundOnSwitch = .set(true) }
+        await harness.store.confirmDefaults(for: .settings)
+        await harness.store.reset(.general)
+        await harness.store.flush()
+        #expect(harness.data(.settings) == corruptBytes)
+        #expect(!harness.paths.contains { $0.hasPrefix("settings.json.corrupt-") })
+
+        // A later launch that manages the rename recovers normally.
+        harness.spy.clearFailures()
+        let relaunch = SettingsStoreHarness(reusing: harness)
+        #expect(await relaunch.store.load().notices == [.corruptFileUsingDefaults(.settings)])
+        #expect(relaunch.paths.contains { $0.hasPrefix("settings.json.corrupt-") })
+    }
+
+    /// A failed rename with a usable backup: the backup is used in memory, but the file stays untouched.
+    @Test func aFailedQuarantineWithABackupStillWritesNothing() async throws {
+        let harness = SettingsStoreHarness()
+        let storage = DocumentStorage(
+            location: harness.location, fileSystem: harness.memory, wallClock: harness.wallClock)
+        try storage.writeBackup(
+            Data(#"{"schemaVersion":1,"settings":{"typingMethod":"vni"}}"#.utf8), of: .settings, schemaVersion: 1)
+        harness.seed(.settings, truncated)
+        let corruptBytes = harness.data(.settings)
+        harness.spy.fail(.moveItem, at: harness.url(.settings))
+        let state = await harness.store.load()
+        #expect(state.user.typingMethod == .set(.vni))
+        await harness.store.updateSettings { $0.soundOnSwitch = .set(true) }
+        await harness.store.flush()
+        #expect(harness.data(.settings) == corruptBytes)
     }
 
     /// PLT-R1006 without a backup: defaults in memory, nothing written, notice; again at the next launch.
@@ -254,6 +298,30 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         // Known keys are reset; the unknown key of a newer build survives the rewrite (PLT-R1002).
         #expect(harness.object(.settings)?["settings"] == .object(["futureSettingFromNewerBuild": .string("kept")]))
         #expect(!harness.launchGuard.isSafeModeActive)
+    }
+
+    /// PLT-R1009: erasing everything from safe mode does not read the documents first (their content may be
+    /// what crashes): each file is read once, for its backup, and then replaced by defaults.
+    @Test func fullResetFromSafeModeSkipsTheReload() async throws {
+        let setup = SettingsStoreHarness()
+        seedRelease(SchemaFixtures.v1, in: setup)
+        crashLoop(setup)
+        let harness = SettingsStoreHarness(reusing: setup)
+        _ = harness.launchGuard.beginLaunch(now: 1_800_000_010)
+        _ = await harness.store.load()
+        await harness.store.reset(.all(includeMacros: true))
+        let state = await harness.store.state
+        #expect(!state.safeMode && state.notices.isEmpty)
+        #expect(state.user == UserSettings() && state.macros.isEmpty)
+        #expect(!harness.launchGuard.isSafeModeActive)
+        for file in SettingsFile.allCases {
+            let reads = harness.spy.calls.filter { $0.operation == .readData && $0.path == harness.url(file).path }
+            #expect(reads.count == 1, "\(file)")
+            #expect(harness.paths.contains { $0.hasPrefix("backups/\(file.rawValue).v1.") }, "\(file)")
+            #expect(harness.object(file)?["schemaVersion"] == .number(1))
+        }
+        #expect(harness.object(.macros)?["macros"] == .array([]))
+        #expect(harness.object(.settings)?["settings"] == .object([:]))
     }
 
     @Test func exitSafeModeOutsideSafeModeOnlyResetsTheGuard() async {

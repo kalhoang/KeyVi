@@ -12,11 +12,12 @@ extension SettingsStore {
     // MARK: Reset
 
     func performReset(_ scope: ResetScope) {
-        // Reset is what the safe-mode notice offers; macros the user keeps must come from disk, so leave
-        // safe mode (reading the files again) first.
+        // Reset is what the safe-mode notice offers. Whatever the user keeps (macros, other panes) must come
+        // from disk, so leave safe mode by reading the files again; erasing everything needs nothing from them,
+        // so that path skips the reload whose content may be what crashed (PLT-R1009).
         if safeMode {
             launchGuard.reset()
-            performLoad()
+            if case .all(includeMacros: true) = scope { leaveSafeModeWithoutReading() } else { performLoad() }
         }
         let affected = scope.files
         prepareExplicitRewrite(affected)
@@ -25,12 +26,21 @@ extension SettingsStore {
         publish()
     }
 
+    /// Empty documents in memory, every file writable. Onboarding state is not known without reading the file,
+    /// so a full reset from safe mode behaves like a fresh install (each file is still backed up first).
+    private func leaveSafeModeWithoutReading() {
+        safeMode = false
+        notices = []
+        files = [:]
+    }
+
     private func applyReset(_ scope: ResetScope) {
         switch scope {
         case .all(let includeMacros):
             let onboarding = user.onboarding  // not a preference: resetting must not replay onboarding
             user = UserSettings()
             user.onboarding = onboarding
+            forgetRawValues(of: SettingFields.all)
             appModes = AppModesDocument(globalMode: appModes.globalMode)
             ruleOverrides = []
             if includeMacros { macros = [] }
@@ -49,22 +59,49 @@ extension SettingsStore {
     }
 
     private func unset(_ group: SettingGroup) {
-        for field in SettingFields.all where field.group == group { field.unset(&user) }
+        let fields = SettingFields.all.filter { $0.group == group }
+        for field in fields { field.unset(&user) }
+        forgetRawValues(of: fields)
     }
 
-    /// Backs up what is on disk now and lifts every write block of the files about to be replaced.
+    /// The writer keeps a value this build cannot read while its field is unset (PRD-R6); a reset is the user
+    /// explicitly dropping it, so it leaves the raw overlay too.
+    private func forgetRawValues(of fields: [SettingField]) {
+        updateStatus(.settings) { status in
+            guard var settings = status.raw["settings"]?.objectValue else { return }
+            for field in fields { settings.removeValue(forKey: field.key) }
+            status.raw["settings"] = .object(settings)
+        }
+    }
+
+    /// Backs up what is on disk now and lifts the write blocks of the files about to be replaced. A corrupt file
+    /// is quarantined instead of backed up; if it still cannot be renamed it stays blocked (PLT-R1006).
     func prepareExplicitRewrite(_ affected: Set<SettingsFile>) {
         for file in SettingsFile.allCases where affected.contains(file) {
-            if !safeMode { _ = try? storage.backUpCurrent(file) }
+            let secured = secureCurrent(file)
             updateStatus(file) {
                 $0.readOnly = false
                 $0.awaitingConfirmation = false
-                $0.writeBlocked = false
+                $0.writeBlocked = !secured
                 $0.backedUpThisSession = true
                 $0.dirty = true
             }
             cancelPendingWrite(file)
-            notices.removeAll { $0.concerns(file) }
+            if secured { notices.removeAll { $0.concerns(file) } }
+        }
+    }
+
+    /// Keeps the current on-disk content recoverable before an explicit rewrite. A failed rotation backup does
+    /// not stop the user's action (as for ordinary writes); only an unrenamable corrupt file does.
+    private func secureCurrent(_ file: SettingsFile) -> Bool {
+        switch storage.read(file) {
+        case .missing:
+            return true
+        case .corrupt:
+            return storage.quarantine(file)
+        case .document(_, let version, let data):
+            try? storage.writeBackup(data, of: file, schemaVersion: version)
+            return true
         }
     }
 

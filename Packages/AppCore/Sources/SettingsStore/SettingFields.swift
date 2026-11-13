@@ -26,6 +26,12 @@ struct SettingField: Sendable {
     /// keys nested inside a value (for example inside a hotkey object) survive (PLT-R1002).
     let rawMatches: @Sendable (JSONValue, UserSettings) -> Bool
     let unset: @Sendable (inout UserSettings) -> Void
+
+    /// True when this build can read `json` as a value of this setting.
+    func decodes(_ json: JSONValue) -> Bool {
+        var probe = UserSettings()
+        return decode(json, &probe)
+    }
 }
 
 enum SettingFields {

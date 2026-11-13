@@ -174,10 +174,18 @@ public actor SettingsStore {
     /// PRD-R26. The caller offers an export first.
     public func reset(_ scope: ResetScope) { performReset(scope) }
 
-    /// User confirmed using defaults after a corrupt file without backup (PLT-R1006). Also confirms a state
-    /// recovered from a backup. Writes the in-memory state of that file, including changes made meanwhile.
+    /// User confirmed using defaults after a corrupt file without backup (PLT-R1006): writes the in-memory state
+    /// of that file, including changes made meanwhile. For a state recovered from a backup (already written at
+    /// load) it only dismisses the notice.
     public func confirmDefaults(for file: SettingsFile) {
-        guard status(file).awaitingConfirmation else { return }
+        guard status(file).awaitingConfirmation else {
+            // A recovered backup is already saved: confirming only dismisses the notice.
+            if notices.contains(where: { $0.isRecovery(of: file) }) {
+                notices.removeAll { $0.isRecovery(of: file) }
+                publish()
+            }
+            return
+        }
         updateStatus(file) {
             $0.awaitingConfirmation = false
             $0.dirty = true

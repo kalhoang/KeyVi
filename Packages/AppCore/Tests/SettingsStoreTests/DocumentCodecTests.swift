@@ -81,7 +81,20 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
             SettingsCodec.skippedPaths(in: raw) == [
                 "extra", "settings.englishRestore", "settings.newThing", "settings.typingMethod",
             ])
-        #expect(SettingsCodec.encode(user, over: raw)["settings"]?["typingMethod"] == nil)
+        // PRD-R6, PLT-R1002: a value a newer build wrote (for example a new enum case) stays verbatim while the
+        // field is unset here, so a downgrade does not lose the user's choice.
+        let encoded = SettingsCodec.encode(user, over: raw)["settings"]
+        #expect(encoded?["typingMethod"] == .string("dvorak"))
+        #expect(encoded?["englishRestore"] == .string("yes"))
+        #expect(encoded?["newThing"] == .number(1))
+        var chosen = user
+        chosen.typingMethod = .set(.telex)
+        #expect(SettingsCodec.encode(chosen, over: raw)["settings"]?["typingMethod"] == .string("telex"))
+    }
+
+    @Test func aDecodableValueIsRemovedWhenTheFieldIsUnset() throws {
+        let raw = try object(#"{"settings":{"typingMethod":"vni"}}"#)
+        #expect(SettingsCodec.encode(UserSettings(), over: raw)["settings"]?["typingMethod"] == nil)
     }
 
     @Test func listsAreLowercasedAndRuleIDsValidated() throws {

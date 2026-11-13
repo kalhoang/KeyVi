@@ -4,8 +4,10 @@
 // - missing, no quarantined copy: defaults (first launch);
 // - missing but a `.corrupt-*` copy exists: an earlier launch found it corrupt and the user never confirmed, so
 //   recovery runs again (otherwise the notice would vanish and defaults would silently stick);
-// - corrupt: quarantined as `.corrupt-<timestamp>`, the newest usable backup is loaded, else defaults; either way
-//   nothing is written until `confirmDefaults(for:)`;
+// - corrupt: quarantined as `.corrupt-<timestamp>`, then the newest usable backup is loaded and written back at
+//   once (the broken file is safe under its new name, so later changes persist; the notice stays until
+//   `confirmDefaults(for:)` or the next launch), else defaults in memory with nothing written until the user
+//   confirms. When the rename fails, nothing ever writes over the file in this launch;
 // - newer schema: known fields used read-only, never rewritten;
 // - older schema: original copied to backups first, migrated, then written once.
 
@@ -50,10 +52,9 @@ extension SettingsStore {
                 files[file] = FileStatus()
                 return Codec.empty
             }
-            return recover(codec)
+            return recover(codec, quarantined: true)
         case .corrupt:
-            storage.quarantine(file)
-            return recover(codec)
+            return recover(codec, quarantined: storage.quarantine(file))
         case .document(let object, let version, let data):
             return open(codec, object: object, version: version, data: data)
         }
@@ -74,8 +75,7 @@ extension SettingsStore {
             return Codec.decode(object)
         }
         guard let migrated = try? migrations.migrate(object, file: file, from: version, to: current) else {
-            storage.quarantine(file)
-            return recover(codec)
+            return recover(codec, quarantined: storage.quarantine(file))
         }
         var status = FileStatus(raw: migrated, dirty: true, backedUpThisSession: true)
         do {
@@ -89,18 +89,22 @@ extension SettingsStore {
         return Codec.decode(migrated)
     }
 
-    private func recover<Codec: DocumentCodec>(_ codec: Codec.Type) -> Codec.Payload {
+    /// `quarantined` is false when the corrupt file could not be renamed: it is then still the only copy and
+    /// nothing may write over it (PLT-R1006 "never wipe").
+    private func recover<Codec: DocumentCodec>(_ codec: Codec.Type, quarantined: Bool) -> Codec.Payload {
         let file = Codec.file
         let migrations = self.migrations
         let backup = storage.newestUsableBackup(of: file) { object, version in
             try? migrations.migrate(object, file: file, from: version, to: file.currentSchemaVersion)
         }
         guard let backup else {
-            files[file] = FileStatus(awaitingConfirmation: true)
+            files[file] = FileStatus(awaitingConfirmation: true, writeBlocked: !quarantined)
             addNotice(.corruptFileUsingDefaults(file))
             return Codec.empty
         }
-        files[file] = FileStatus(raw: backup.object, awaitingConfirmation: true)
+        // PLT-R1006 asks for confirmation only before defaults replace the user's data; a restored backup is the
+        // user's data, so it is written back now (the backup itself is already on disk).
+        files[file] = FileStatus(raw: backup.object, writeBlocked: !quarantined, dirty: true, backedUpThisSession: true)
         addNotice(.recoveredFromBackup(file, backupDate: backup.date))
         return Codec.decode(backup.object)
     }

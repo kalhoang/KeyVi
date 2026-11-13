@@ -6,7 +6,8 @@
 // - `decode` is tolerant: an absent key is unset (PRD-R6), JSON `null` on an optional setting is "explicitly
 //   none", and a known key whose value this build cannot read is treated as absent (and listed by
 //   `skippedPaths`). One bad entry never discards its siblings.
-// - `encode` overlays the payload on the raw object it was read from, so unknown keys survive at every level:
+// - `encode` overlays the payload on the raw object it was read from, so unknown keys survive at every level
+//   (and so does a known key's value this build cannot read, while that setting is unset):
 //   top level, inside `settings`, `englishRestoreLists`, `onboarding`, and inside each app, override and macro
 //   entry (matched by bundle, rule id and macro id) (PLT-R1002).
 // - Neither touches `schemaVersion` / `writtenBy`; the store stamps the envelope.
@@ -65,7 +66,9 @@ enum SettingsCodec: DocumentCodec {
         var settings = raw["settings"]?.objectValue ?? [:]
         for field in SettingFields.all {
             guard let value = field.encode(user) else {
-                settings.removeValue(forKey: field.key)
+                // Unset here, but a value this build cannot read (a newer build's enum case, PRD-R6) is the
+                // user's choice and stays verbatim; a reset drops it from `raw` before encoding.
+                if let old = settings[field.key], field.decodes(old) { settings.removeValue(forKey: field.key) }
                 continue
             }
             if let old = settings[field.key], field.rawMatches(old, user) { continue }
@@ -88,13 +91,9 @@ enum SettingsCodec: DocumentCodec {
     static func skippedPaths(in object: [String: JSONValue]) -> [String] {
         var paths = unknownTopLevelPaths(in: object)
         let settings = object["settings"]?.objectValue ?? [:]
-        var probe = UserSettings()
         for (key, value) in settings.sorted(by: { $0.key < $1.key }) {
-            guard let field = SettingFields.all.first(where: { $0.key == key }) else {
-                paths.append("settings." + key)
-                continue
-            }
-            if !field.decode(value, &probe) { paths.append("settings." + key) }
+            let readable = SettingFields.all.first { $0.key == key }?.decodes(value) ?? false
+            if !readable { paths.append("settings." + key) }
         }
         return paths
     }

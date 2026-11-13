@@ -14,9 +14,10 @@ struct FileStatus: Sendable {
     var raw: [String: JSONValue] = [:]
     /// Newer schema on disk: used for known fields, never rewritten automatically (PLT-R1007).
     var readOnly = false
-    /// Corrupt file: nothing is written until the user confirms (PLT-R1006).
+    /// Corrupt file without a usable backup: defaults are not written until the user confirms (PLT-R1006).
     var awaitingConfirmation = false
-    /// The pre-migration backup failed: the original stays untouched this launch (PLT-R1005).
+    /// The original must stay untouched this launch: its pre-migration backup failed (PLT-R1005), or it is
+    /// corrupt and could not be renamed (PLT-R1006).
     var writeBlocked = false
     var dirty = false
     /// The file as found at launch was copied to backups before the first rewrite of this session.

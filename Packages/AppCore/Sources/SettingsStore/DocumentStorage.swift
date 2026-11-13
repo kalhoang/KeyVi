@@ -2,8 +2,8 @@
 //
 // File operations of the settings folder (PLT-R1001, PLT-R1005, PLT-R1006): reading and classifying a document,
 // atomic writes (0600 in a 0700 folder), quarantining a corrupt file as `<file>.corrupt-<timestamp>`, and the
-// backups `backups/<file>.v<N>.<timestamp>.json` with the newest five kept per file. Used only from the
-// `SettingsStore` actor (utility queue); holds no state of its own.
+// backups `backups/<file>.v<N>.<timestamp>.json` with the newest five kept per file and schema version. Used only
+// from the `SettingsStore` actor (utility queue); holds no state of its own.
 
 internal import AppModel
 internal import Foundation
@@ -81,7 +81,7 @@ struct DocumentStorage: Sendable {
 
     // MARK: Backups (PLT-R1005)
 
-    /// Copies `data` (a document at `schemaVersion`) into the backups folder and prunes to the newest five.
+    /// Copies `data` (a document at `schemaVersion`) into the backups folder and prunes (newest five per version).
     func writeBackup(_ data: Data, of file: SettingsFile, schemaVersion: Int) throws {
         try ensureDirectory(location.directory)
         try ensureDirectory(location.backupsDirectory)
@@ -124,8 +124,11 @@ struct DocumentStorage: Sendable {
         return nil
     }
 
+    /// Keeps the newest five per schema version: the rotation backups of the current schema written by every
+    /// session must not push out the pre-migration copies `<file>.v<N>` that a rollback needs (PLT-R1005).
     private func pruneBackups(of file: SettingsFile) {
-        for stale in backups(of: file).dropFirst(Self.backupsKept) {
+        let byVersion = Dictionary(grouping: backups(of: file), by: \.schemaVersion)
+        for stale in byVersion.values.flatMap({ $0.dropFirst(Self.backupsKept) }) {
             try? fileSystem.removeItem(at: stale.url)
         }
     }

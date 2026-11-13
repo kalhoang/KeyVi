@@ -188,6 +188,24 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         #expect(dates.first == harness.wallClock.now())
     }
 
+    /// PLT-R1005: rotation backups of the current schema never push out the pre-migration copies of an older
+    /// one (the newest five are kept per schema version).
+    @Test func rotationBackupsDoNotPrunePreMigrationBackups() async throws {
+        var harness = SettingsStoreHarness(migrations: TestMigrations.chain)
+        harness.seed(.settings, SchemaFixtures.v0Settings)
+        _ = await harness.store.load()
+        #expect(harness.paths.filter { $0.hasPrefix("backups/settings.json.v0.") }.count == 1)
+        for launch in 0..<7 {
+            harness.wallClock.advance(by: 3_600)
+            harness = SettingsStoreHarness(reusing: harness, migrations: TestMigrations.chain)
+            _ = await harness.store.load()
+            await harness.store.updateSettings { $0.soundOnSwitch = .set(launch % 2 == 0) }
+            await harness.store.flush()
+        }
+        #expect(harness.paths.filter { $0.hasPrefix("backups/settings.json.v0.") }.count == 1)
+        #expect(harness.paths.filter { $0.hasPrefix("backups/settings.json.v1.") }.count == 5)
+    }
+
     @Test func sameSecondBackupsGetDistinctNames() throws {
         let harness = SettingsStoreHarness()
         let storage = DocumentStorage(
@@ -302,6 +320,30 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         #expect(state.macros.isEmpty)
         #expect(harness.object(.macros)?["macros"] == .array([]))
         #expect(harness.paths.contains { $0.hasPrefix("backups/macros.json.v1.") })
+    }
+
+    /// PRD-R6: a value from a newer build of the same schema survives ordinary writes; resetting its pane is
+    /// the user's explicit choice and removes it, while other panes' values stay.
+    @Test func undecodableValuesSurviveWritesUntilTheirPaneIsReset() async throws {
+        let harness = SettingsStoreHarness()
+        harness.seed(
+            .settings,
+            #"{"schemaVersion":1,"settings":{"typingMethod":"dvorak","updateChannel":"nightly","soundOnSwitch":"loud"}}"#
+        )
+        _ = await harness.store.load()
+        await harness.store.updateSettings { $0.clickIconToToggle = .set(true) }
+        await harness.store.flush()
+        var settings = harness.object(.settings)?["settings"]
+        #expect(settings?["typingMethod"] == .string("dvorak"))
+        #expect(settings?["updateChannel"] == .string("nightly"))
+        await harness.store.reset(.typing)
+        settings = harness.object(.settings)?["settings"]
+        #expect(settings?["typingMethod"] == nil)
+        #expect(settings?["updateChannel"] == .string("nightly"))
+        #expect(settings?["soundOnSwitch"] == .string("loud"))
+        await harness.store.reset(.all(includeMacros: false))
+        settings = harness.object(.settings)?["settings"]
+        #expect(settings?["updateChannel"] == nil && settings?["soundOnSwitch"] == nil)
     }
 
     @Test func resetReplacesAReadOnlyFileAfterBackingItUp() async throws {
