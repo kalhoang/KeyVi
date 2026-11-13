@@ -69,8 +69,9 @@ private enum PropertyRun {
 }
 
 @Suite("PipelinePropertyTests") struct PipelinePropertyTests {
-    /// PLT-R311, PLT-R312, PLT-R313, PLT-R321, PLT-R730, PLT-R210 over random interleavings of keys, mouse
-    /// downs, scrolls, focus changes, tap-disabled events, secure-input toggles and permission changes.
+    /// PLT-R311, PLT-R312, PLT-R313, PLT-R321, PLT-R730, PLT-R210 over random interleavings of keys, Command
+    /// and Option chords, the restore binding, mouse downs, scrolls, focus, settings and input-source changes,
+    /// tap-disabled events, secure-input toggles and permission changes.
     @Test(arguments: [SimulatedWindowServer.Mode.immediate, .lagging])
     func conservationOrderingAndPairingProperty(server: SimulatedWindowServer.Mode) {
         let summary = PropertyRun.run(server: server, salt: server == .immediate ? 1 : 2)
@@ -81,8 +82,8 @@ private enum PropertyRun {
     /// Every path the invariants talk about was taken at least once.
     private func expectNotVacuous(_ summary: PropertyRun.Summary) {
         let stats = summary.statistics
-        // The default toggle is a modifier tap, so `consumedAsHotkey` (combos) is covered by the step tests.
-        for outcome in [EventOutcome.passed, .held, .consumedForEdit, .consumedPairedKeyUp] {
+        // `consumedAsHotkey` comes from the restore binding (Escape in every other settings generation).
+        for outcome in [EventOutcome.passed, .held, .consumedForEdit, .consumedPairedKeyUp, .consumedAsHotkey] {
             #expect(stats.outcomes[outcome, default: 0] > 0, "no \(outcome) outcome")
         }
         #expect(stats.editsDelivered > 0 && stats.replaysDelivered > 0 && stats.echoesSeen > 0)
@@ -98,6 +99,9 @@ private enum PropertyRun {
         let summary = PropertyRun.run(server: server, postingBreaks: true, salt: server == .immediate ? 3 : 4)
         #expect(summary.failures.isEmpty, "\(summary.runsWithViolations) failing sequences: \(summary.failures)")
         #expect(summary.runsWithLosses > 0, "the suite never exercised a loss after posting broke")
+        // The losses must come with the echo-loss detection (three misses, PLT-R323) failing open in the same
+        // callback, not only with the reference consumer counting drops.
+        #expect(summary.statistics.postingBrokenNotices > 0, "echo-loss detection never marked posting broken")
     }
 
     /// Self-check of ADR 0311: with "in flight until posted" a key queued at the WindowServer before the post

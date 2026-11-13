@@ -56,6 +56,26 @@ import VietnameseEngine
         #expect(engine.activeDisplay.isEmpty)
     }
 
+    /// ENG-R1002 model: Backspace over the separators after a committed word re-opens it (restored form for an
+    /// English token); a reset drops the history.
+    @Test func backspaceOverTheSeparatorsReopensTheCommittedWord() throws {
+        var engine = ScriptedEngine()
+        for character: Character in ["a", "s", " ", " "] { _ = engine.handle(.key(KeyInput(character))) }
+        #expect(engine.handle(.backspace).action == .passThrough)
+        #expect(engine.activeDisplay.isEmpty)  // one separator left
+        #expect(engine.handle(.backspace).action == .passThrough)
+        #expect(engine.activeDisplay == "á")
+        let undo = try #require(edit(engine.handle(.backspace)))
+        #expect(undo.0.insert == "a")
+        for character: Character in [" ", "a", "x", "s", ","] { _ = engine.handle(.key(KeyInput(character))) }
+        _ = engine.handle(.backspace)
+        #expect(engine.activeDisplay == "axs")  // re-opened as restored
+        _ = engine.handle(.key(KeyInput(" ")))
+        _ = engine.handle(.reset(.cursorMoved))
+        _ = engine.handle(.backspace)
+        #expect(engine.activeDisplay.isEmpty)
+    }
+
     @Test func restoreToggleOnceThenPass() throws {
         var engine = ScriptedEngine()
         #expect(engine.handle(.restoreToggle).action == .passThrough)
@@ -193,7 +213,10 @@ import VietnameseEngine
         var kinds = Set<String>()
         for step in steps {
             switch step {
-            case .key(let event): kinds.insert("key.\(event.kind)")
+            case .key(let event):
+                kinds.insert("key.\(event.kind)")
+                if event.kind == .keyDown && event.flags & 0x0010_0000 != 0 { kinds.insert("chord.command") }
+                if event.kind == .keyDown && event.flags & 0x0008_0000 != 0 { kinds.insert("chord.option") }
             case .focusChange: kinds.insert("focus")
             case .secureInput: kinds.insert("secure")
             case .permission: kinds.insert("permission")
@@ -201,11 +224,14 @@ import VietnameseEngine
             case .workerRuns: kinds.insert("worker")
             case .tapDrains: kinds.insert("drain")
             case .postingWorks: kinds.insert("posting")
+            case .settingsChange: kinds.insert("settings")
+            case .inputSourceChange: kinds.insert("inputSource")
             }
         }
         let expected: Set<String> = [
             "key.keyDown", "key.keyUp", "key.flagsChanged", "key.leftMouseDown", "key.scrollWheel",
-            "key.tapDisabledByTimeout", "focus", "secure", "permission", "advance", "worker", "drain", "posting",
+            "key.tapDisabledByTimeout", "key.tapDisabledByUserInput", "focus", "secure", "permission", "advance",
+            "worker", "drain", "posting", "settings", "inputSource", "chord.command", "chord.option",
         ]
         #expect(expected.isSubset(of: kinds))
         var plain = RandomEventGenerator(seed: 7)
@@ -238,6 +264,8 @@ extension RandomEventGenerator {
         ledger.physical(3, up(), outcome: .consumedPairedKeyUp)
         ledger.physical(4, up(Key.d), outcome: .passed)
         ledger.passedThrough(4)
+        ledger.physical(5, down(Key.escape), outcome: .consumedAsHotkey)  // a restore carries its edit
+        ledger.editDelivered(forEvent: 5)
         ledger.lostMetric(0)
         #expect(ledger.violations().isEmpty)
     }

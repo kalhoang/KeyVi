@@ -109,7 +109,9 @@ struct LedgerState {
             return event.passes + event.edits == 0 && event.replays + event.lost <= 1
                 ? nil : "paired keyUp delivered \(delivered) times"
         case .consumedAsHotkey?:
-            return delivered + event.edits + event.lost == 0 ? nil : "hotkey delivered \(delivered) times"
+            // Never delivered itself; the restore binding (PLT-R353) may carry its edit, which can be lost too.
+            return delivered == 0 && event.edits + event.lost <= 1
+                ? nil : "hotkey delivered \(delivered) times, edits \(event.edits), lost \(event.lost)"
         }
     }
 

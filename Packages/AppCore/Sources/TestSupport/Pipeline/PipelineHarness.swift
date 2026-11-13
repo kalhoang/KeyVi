@@ -36,6 +36,8 @@ public struct HarnessStatistics: Sendable, Hashable {
     public var toggles = 0
     public var secureResumes = 0
     public var failOpenEvents = 0
+    /// `MainNotice.postingBroken` sent: the echo-loss detection fired (PLT-R323, PLT-R730).
+    public var postingBrokenNotices = 0
 
     public init() {}
 
@@ -48,6 +50,7 @@ public struct HarnessStatistics: Sendable, Hashable {
         toggles += other.toggles
         secureResumes += other.secureResumes
         failOpenEvents += other.failOpenEvents
+        postingBrokenNotices += other.postingBrokenNotices
     }
 }
 
@@ -66,6 +69,8 @@ final class HarnessCore {
     private var nextIndex = 0
     private var indexByTime: [UInt64: Int] = [:]
     private var focusGeneration: UInt64 = 1
+    private var settingsGeneration: UInt64 = 1
+    private var inputSourceGeneration: UInt64 = 1
     private var secureGeneration: UInt64 = 0
     private var lifecycleGeneration: UInt64 = 1
     private var permissionGranted = true
@@ -86,8 +91,8 @@ final class HarnessCore {
         let inbox = self.inbox
         poster = FakeEventPoster(sink: { inbox.append($0) })
         fixture = PipelineFixture(
-            inputSource: PipelineFixtures.inputSource(table: layout), policy: policy, clock: clock,
-            log: EngineEventLog(keepsEntries: false))
+            settings: Self.settings(generation: 1), inputSource: PipelineFixtures.inputSource(table: layout),
+            policy: policy, clock: clock, log: EngineEventLog(keepsEntries: false))
         consumer = ReferenceJobConsumer(
             queue: fixture.queue, feedback: fixture.feedback, marker: fixture.marker, poster: poster,
             focusGeneration: fixture.focusGeneration, metrics: fixture.metrics, clock: clock,
@@ -126,7 +131,25 @@ final class HarnessCore {
             }
         case .tapDrains(let maxEvents): deliver(server.drain(maxEvents: maxEvents))
         case .postingWorks(let works): setPosting(works)
+        case .settingsChange: publishSettingsChange()
+        case .inputSourceChange:
+            inputSourceGeneration += 1
+            fixture.publish(inputSource: PipelineFixtures.inputSource(generation: inputSourceGeneration, table: layout))
+            engineLog.mark()
         }
+    }
+
+    /// Escape is the restore binding (PLT-R353) in every other generation; the engine revision changes in every
+    /// third, so most settings changes keep the word (PRD-R27) and some build a fresh engine.
+    static func settings(generation: UInt64) -> TapSettingsSnapshot {
+        PipelineFixtures.settings(
+            generation: generation, restore: generation % 2 == 1 ? .key(KeyCode(rawValue: 0x35)) : nil,
+            engineRevision: generation / 3)
+    }
+
+    private func publishSettingsChange() {
+        settingsGeneration += 1
+        fixture.publish(settings: Self.settings(generation: settingsGeneration))
     }
 
     // MARK: Host steps
@@ -274,6 +297,7 @@ final class HarnessCore {
             switch notice {
             case .modeToggled: statistics.toggles += 1
             case .secureInputResumedByKey: statistics.secureResumes += 1
+            case .postingBroken: statistics.postingBrokenNotices += 1
             default: break
             }
             mainNotices.append(notice)

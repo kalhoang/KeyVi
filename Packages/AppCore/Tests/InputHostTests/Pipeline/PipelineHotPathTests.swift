@@ -43,17 +43,24 @@ private enum TypingStream {
 }
 
 /// The worker's side for the hot-path tests: pops every job and finishes it at once (nothing to echo).
-private func completeJobs(_ fixture: PipelineFixture) {
+/// Returns how many boundary jobs it saw.
+@discardableResult
+private func completeJobs(_ fixture: PipelineFixture) -> Int {
+    var boundaries = 0
     while let job = fixture.queue.pop() {
         let sequence = PipelineFixture.sequence(of: job)
         if case .edit = job { fixture.feedback.record(.executed, for: sequence) }
+        if case .boundary = job { boundaries += 1 }
         fixture.queue.finished(sequence, expectation: nil)
     }
+    return boundaries
 }
 
 @Suite("PipelineAllocationTests") struct PipelineAllocationTests {
     /// PLT-R304, PLT-R305: 10,000 steady-state events allocate and free nothing on the tap thread outside the
-    /// engine call. The worker's share (popping and destroying jobs) is excluded like the engine's.
+    /// engine call. The worker's share (popping and destroying jobs) is excluded like the engine's. The worker
+    /// lags (jobs finish only every third event), so the PLT-R311 paths are measured too: holds (replay jobs),
+    /// paired keyUps and boundary jobs pushed while jobs are in flight.
     @Test(.enabled(if: AllocationCounter.isAvailable, "sanitizer runtimes replace malloc and never call the hook"))
     func steadyStateAllocatesNothingOutsideTheEngine() {
         let fixture = PipelineFixture()
@@ -62,12 +69,22 @@ private func completeJobs(_ fixture: PipelineFixture) {
         )
         let stream = TypingStream.events()
         var edits = 0
+        var held = 0
+        var pairedKeyUps = 0
+        var boundaries = 0
         func step(_ index: Int) {
-            if pipeline.handle(stream[index % stream.count]) == .swallow, pipeline.lastOutcome == .consumedForEdit {
-                edits += 1
+            let verdict = pipeline.handle(stream[index % stream.count])
+            if verdict == .swallow {
+                switch pipeline.lastOutcome {
+                case .consumedForEdit?: edits += 1
+                case .held?: held += 1
+                case .consumedPairedKeyUp?: pairedKeyUps += 1
+                default: break
+                }
             }
+            guard index % 3 == 2 else { return }
             AllocationCounter.pause()
-            completeJobs(fixture)
+            boundaries += completeJobs(fixture)
             AllocationCounter.resume()
         }
         for index in 0..<(stream.count * 4) { step(index) }  // warm-up: metadata, lazy globals
@@ -81,7 +98,8 @@ private func completeJobs(_ fixture: PipelineFixture) {
         }
         #expect(counts.allocations == 0, "the tap path allocated \(counts.allocations) times")
         #expect(counts.deallocations == 0, "the tap path freed \(counts.deallocations) times")
-        #expect(edits > 1_000)  // the stream really produced edit jobs
+        #expect(edits > 500)  // the stream really produced edit jobs
+        #expect(held > 0 && pairedKeyUps > 0 && boundaries > 0)  // and the PLT-R311 jobs behind them
     }
 }
 

@@ -61,12 +61,16 @@ struct GeneratorCore {
     private mutating func next() -> [RandomEventGenerator.Step] {
         let roll = random.below(100)
         switch roll {
-        case 0..<40: return [.key(keyEvent())]
+        case 0..<37: return [.key(keyEvent())]
+        case 37..<39: return chord()
+        case 39..<40: return [random.chance(50) ? .settingsChange : .inputSourceChange]
         case 40..<44: return modifierChange()
         case 44..<46: return controlShiftTap()
         case 46..<49: return [.key(Self.event(.leftMouseDown, keyCode: 0, flags: 0))]
         case 49..<51: return [.key(Self.event(.scrollWheel, keyCode: 0, flags: 0))]
-        case 51..<52: return [.key(Self.event(.tapDisabledByTimeout, keyCode: 0, flags: 0))]
+        case 51..<52:
+            let kind: RawKeyEvent.Kind = random.chance(50) ? .tapDisabledByTimeout : .tapDisabledByUserInput
+            return [.key(Self.event(kind, keyCode: 0, flags: 0))]
         case 52..<56: return [.focusChange]
         case 56..<58:
             secureOn.toggle()
@@ -121,6 +125,21 @@ struct GeneratorCore {
         }
         control.toggle()
         return [.key(Self.event(.flagsChanged, keyCode: 0x3B, flags: flags))]
+    }
+
+    /// A Command or Option chord (PLT-R350): the modifier goes down, a pool key is pressed and released with
+    /// it, the modifier goes up.
+    private mutating func chord() -> [RandomEventGenerator.Step] {
+        let command = random.chance(50)
+        let modifierKey: UInt16 = command ? 0x37 : 0x3A
+        let chordFlags = flags | (command ? 0x0010_0000 : 0x0008_0000)
+        let code = Self.keyPool[random.below(Self.keyPool.count)]
+        return [
+            .key(Self.event(.flagsChanged, keyCode: modifierKey, flags: chordFlags)),
+            .key(Self.event(.keyDown, keyCode: code, flags: chordFlags)),
+            .key(Self.event(.keyUp, keyCode: code, flags: chordFlags)),
+            .key(Self.event(.flagsChanged, keyCode: modifierKey, flags: flags)),
+        ]
     }
 
     /// Press Control, press Shift, release both: the default toggle (PRD-R14), sometimes cancelled by a key.

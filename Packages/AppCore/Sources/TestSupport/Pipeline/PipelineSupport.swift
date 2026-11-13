@@ -122,8 +122,8 @@ public final class SimulatedWindowServer {
     public var count: Int { queue.count - head }
 }
 
-/// Seeded random interleavings of keys, mouse downs, focus changes, tap-disabled events, secure-input
-/// toggles and permission changes (section 3 acceptance: 100,000 sequences). Rules in `GeneratorCore`.
+/// Seeded random interleavings of keys, chords, mouse downs, focus, settings and input-source changes,
+/// tap-disabled events, secure-input toggles and permission changes (section 3 acceptance: 100,000 sequences). Rules in `GeneratorCore`.
 public struct RandomEventGenerator: Sendable {
     public enum Step: Sendable, Hashable {
         case key(RawKeyEvent)
@@ -136,6 +136,10 @@ public struct RandomEventGenerator: Sendable {
         case tapDrains(maxEvents: Int)
         /// The poster starts or stops dropping silently (permission revoked mid-sequence, ADR 0311).
         case postingWorks(Bool)
+        /// A new settings generation (PLT-R1008): the restore binding and the engine revision vary.
+        case settingsChange
+        /// A new input-source generation with the same layout (PLT-R340).
+        case inputSourceChange
     }
 
     private var core: GeneratorCore
