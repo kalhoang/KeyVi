@@ -22,8 +22,10 @@ swift test --filter "StatusAccessibilityTests|AccessibilitySourceAuditTests|Shel
 |---|---|---|
 | The catalog files are exactly the eleven `StringTable` cases | `CatalogAuditTests.catalogFilesAreExactlyTheStringTables` | PRD-R62, ADR 0310 |
 | Every key has a translated vi and en value, same format arguments, no padding, no stray `%`, extraction state `manual` | `CatalogAuditTests.everyEntryIsCompleteTranslatedAndConsistent` | PRD-R62 |
-| No brand literal (read from `Config/Brand.xcconfig`), no unfilled `{{...}}`, no em or en dash, no `...` as one character, no `sudo`, no `!` except the final onboarding screen, no slang or regional words in Vietnamese | `CatalogAuditTests.valuesFollowTheWritingRules` | CLAUDE.md, PRD-R40, PRD-R62, PLT-R741 |
-| Every key the code refers to exists, no key is orphaned, every typed key is used by the app, no literal key lookups, no literal copy in any window | `CatalogAuditTests` (remaining tests) | PRD-R62 |
+| No brand literal (read from `Config/Brand.xcconfig`), no unfilled `{{...}}`, no em or en dash, no `...` as one character, no `sudo`, no `!` except the final onboarding screen, none of the listed slang or regional words in Vietnamese (whole words; words that are also standard, such as "vô" in "vô hiệu hóa", are left to the copy review) | `CatalogAuditTests.valuesFollowTheWritingRules` | CLAUDE.md, PRD-R40, PRD-R62, PLT-R741 |
+| Every key the code refers to exists, no key is orphaned, no literal key lookups | `CatalogAuditTests` (remaining tests) | PRD-R62 |
+| Every typed key is used by the app: written `EnumName.caseName`, or `.caseName` in a file that names the enum or a declaration typed with it (comments and string literals are ignored). Limit: a file that names the enum and also uses an unrelated `.caseName` (for example `role: .cancel` next to a `CommonText` lookup) still counts as a use | `CatalogAuditTests.everyTypedKeyIsUsedByTheApp` | PRD-R62 |
+| No literal copy in any window: `Text("...")`, `Button("...")` and similar, `.help("...")`, alert titles, and a `Text(verbatim: "...")` literal with a word outside its interpolations | `CatalogAuditTests.uiSourcesHaveNoLiteralCopy` | PRD-R62 |
 | Every secure-input hint in `compat/rules.json` has copy, and copy without a rule is listed | `CatalogAuditTests.secureInputHintsOfTheRulesHaveCopyAndCopyHasARule` | PLT-R397 |
 | Every Vietnamese draft of `spec/03-product.md` is verbatim (and the English labels the spec gives) | `SpecDraftCopyTests` | PRD-R10, R11, R24, R25, R34 to R37, R40, R42, R43, R47, R59, section 4 |
 | Counts are grouped per language, matrix days and app dates follow the interface language, versions keep their digits, every table switches language at run time | `LocaleFormattingTests`, `LocalizerTests` | PRD-R63, PRD-R65 |
@@ -31,12 +33,13 @@ swift test --filter "StatusAccessibilityTests|AccessibilitySourceAuditTests|Shel
 | Every menu entry has a hint; the switch HUD announces "Tiếng Việt" / "Tiếng Anh"; it shows only for manual toggles | `StatusAccessibilityTests` | PRD-R12, PRD-R66 |
 | Window titles are distinct in each language | `StatusAccessibilityTests.windowTitlesAreDistinctInEachLanguage` | PRD-R66 |
 | Every SwiftUI control in every UI folder has a label and a hint; every AppKit alert button a hint | `AccessibilitySourceAuditTests` | PRD-R66 |
-| Every file that animates checks Reduce Motion; every window root and sheet disables implicit animations under Reduce Motion | `AccessibilitySourceAuditTests` | PRD-R12, PRD-R67 |
+| Each animation call site checks Reduce Motion inside its own function or computed property (the deliberate exceptions are listed in the test with their requirement, see section 4); every window root and sheet disables implicit animations under Reduce Motion | `AccessibilitySourceAuditTests` | PRD-R12, PRD-R67 |
 | No hard-coded hue; plain-style buttons draw their own focus ring; every titled window follows a language change | `AccessibilitySourceAuditTests` | PRD-R63, PRD-R67 |
 | System pane names per macOS version and macOS language, English fallback, deep links | `SystemPaneTableTests` | PRD-R64, PLT-R704 |
 
-The source checks are heuristics on purpose (they read the Swift files). A false alarm means the code should be
-written the plain way the check expects, not that the check should be loosened.
+The source checks are heuristics on purpose (they read the Swift files). A false alarm in code means the code should
+be written the plain way the check expects, not that the check should be loosened. A false alarm in copy is
+different: if a standard word trips the word list, the list is wrong and loses that word; the copy stays.
 
 ## 2. Before you start the manual checks
 
@@ -204,8 +207,8 @@ Safe mode (four choices), move failed, conflict warning, update failed.
 | Call site | Without Reduce Motion | With Reduce Motion |
 |---|---|---|
 | `Shell/HUDPanels.swift` `present` | 0.15 s fade in | appears at once |
-| `Shell/HUDPanels.swift` `dismiss` | 0.15 s fade off | 0.15 s plain fade off (PRD-R12) |
-| `Onboarding/OnboardingViews.swift` permission illustration | 0.9 s loop | still "on" switch; rebuilt when the setting changes |
+| `Shell/HUDPanels.swift` `dismiss` | 0.15 s fade off | 0.15 s plain fade off (PRD-R12; the only allowlisted unguarded site) |
+| `Onboarding/OnboardingViews.swift` permission illustration | 0.9 s loop | still "on" switch (the switch reads Reduce Motion itself); rebuilt when the setting changes |
 | `Settings/SettingsComponents.swift` Advanced disclosure | system disclosure animation | no animation (transaction) |
 | `Settings/AppsPaneView.swift` app details Advanced disclosure | system disclosure animation | no animation (transaction) |
 | Settings, onboarding and Diagnostics window roots and every sheet | implicit SwiftUI animations | disabled (`respectsReduceMotion()`) |
@@ -263,8 +266,9 @@ Changed:
 Added (accessibility only): `icon.paused.userDisabled`, `icon.paused.sessionInactive` and
 `icon.paused.diagnosticsTest` labels; `apps.column.actions.accessibilityLabel`; `common.cancel.accessibilityHint`,
 `common.close.accessibilityHint`; label and hint of `onboarding.control.confirmResetPermission` and
-`cancelResetPermission`. Removed: the unused skeleton keys, the duplicate `menu.quit` in `Localizable`, and
-`icon.paused.other.accessibilityLabel`.
+`cancelResetPermission`. Removed: the unused skeleton keys, the duplicate `menu.quit` in `Localizable`,
+`icon.paused.other.accessibilityLabel`, and `settings.typing.practice.label` (never shown; the practice field is
+named by `settings.control.practiceField.accessibilityLabel`, which has the same text).
 
 Kept after review (named in the task): `status.safeMode`, `status.action.safeModeChoices`,
 `diagnostics.state.paused.diagnosticsTest`, `safeMode.later.hint` (vi), and the onboarding and Settings strings
