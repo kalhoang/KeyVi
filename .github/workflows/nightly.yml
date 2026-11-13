@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "23 18 * * *" # 01:23 in Vietnam (UTC+7)
   workflow_dispatch:
+    inputs:
+      fuzz-seed:
+        description: ENGINE_FUZZ_SEED for the property run (digits; empty means today's UTC date, YYYYMMDD)
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -95,10 +100,29 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Property tests (release build)
+      - name: Seed of this run (QA-R8)
+        # A new seed every night explores new streams; the summary shows how to replay a failing night.
+        id: seed
+        env:
+          REQUESTED_SEED: ${{ inputs.fuzz-seed }}
+        run: |
+          seed="${REQUESTED_SEED:-}"
+          [[ -n "$seed" ]] || seed="$(date -u +%Y%m%d)"
+          if [[ ! "$seed" =~ ^[0-9]{1,18}$ ]]; then
+            echo "::error::fuzz-seed must be 1 to 18 digits"
+            exit 1
+          fi
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Fuzz campaign seed"
+            echo "ENGINE_FUZZ_SEED=$seed. Replay: \`ENGINE_FUZZ_EVENTS=100000000 ENGINE_FUZZ_SEED=$seed swift test --package-path Packages/VietnameseEngine -c release --filter FuzzTests\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fuzz campaign and property tests, 100,000,000 events (release build)
         env:
           ENGINE_FUZZ_EVENTS: "100000000"
-          # Test-name filter for the property and fuzz-invariant suites (contract: ADR 0502).
+          ENGINE_FUZZ_SEED: ${{ steps.seed.outputs.seed }}
+          # Test-name filter for the property and fuzz-invariant suites (contract: ADR 0502). FuzzTests, the
+          # suite that reads ENGINE_FUZZ_EVENTS and ENGINE_FUZZ_SEED, matches "Fuzz".
           ENGINE_PROPERTY_FILTER: "Property|Fuzz|Invariant"
         run: swift test --package-path "$ENGINE" -c release --filter "$ENGINE_PROPERTY_FILTER"
 

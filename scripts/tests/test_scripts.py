@@ -781,6 +781,14 @@ class WorkflowCoverageTests(unittest.TestCase):
         self.assertIn('--seconds 1800 --sanitizers fuzzer,address,undefined', body)
         self.assertIn('--method "$METHOD" --out ".build/fuzz-out" --require', body)
 
+    def test_nightly_campaign_runs_100_million_events_with_a_date_seed(self):
+        body = self.job("nightly.yml", "property")
+        self.assertIn('ENGINE_FUZZ_EVENTS: "100000000"', body)
+        self.assertIn("ENGINE_FUZZ_SEED: ${{ steps.seed.outputs.seed }}", body)
+        self.assertIn('seed="$(date -u +%Y%m%d)"', body)
+        self.assertIn('swift test --package-path "$ENGINE" -c release --filter "$ENGINE_PROPERTY_FILTER"', body)
+        self.assertRegex(body, r'ENGINE_PROPERTY_FILTER: "[^"]*Fuzz[^"]*"')  # selects FuzzTests
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
