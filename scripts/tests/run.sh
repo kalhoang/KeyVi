@@ -814,6 +814,7 @@ if [[ $no_macos -eq 0 ]]; then
   mkdir -p "$M/Config" "$M/packaging"
   cp "$REPO/Config/Signing.xcconfig" "$M/Config/"
   cp -R "$REPO/packaging/homebrew" "$M/packaging/"
+  cp "$REPO/LICENSE" "$REPO/THIRD_PARTY_NOTICES.md" "$M/"
   # publish-release inlines the release-notes stylesheet into each notes page (PLT-R906).
   mkdir -p "$M/site/static/assets"
   cp "$REPO/site/static/assets/release-notes.css" "$M/site/static/assets/"
@@ -839,6 +840,28 @@ EOF
   dmg="$M/dist/testapp-1.2.3/testapp-1.2.3.dmg"
   if [[ -f "$dmg" ]]; then ok "DMG created"; else ko "DMG created"; fi
   if hdiutil imageinfo "$dmg" >/dev/null 2>&1; then ok "DMG is a valid image"; else ko "DMG is a valid image"; fi
+  # GPL-3.0 section 4 (ADR 0006): the DMG carries the licence text and the third-party notices. A fake hdiutil
+  # records the staging folder instead of building a second image.
+  mkdir -p "$M/fakebin"
+  cat >"$M/fakebin/hdiutil" <<'EOF'
+#!/bin/sh
+[ "$1" = create ] || exit 0
+while [ $# -gt 0 ]; do
+  if [ "$1" = -srcfolder ]; then ls -A "$2" >"$FAKE_DMG_LIST"; cmp -s "$2/LICENSE.txt" "$FAKE_LICENSE" && echo same >>"$FAKE_DMG_LIST"; fi
+  shift
+done
+EOF
+  chmod +x "$M/fakebin/hdiutil"
+  expect 0 "make-dmg stages the licence files" env PATH="$M/fakebin:$PATH" FAKE_DMG_LIST="$M/staged" \
+    FAKE_LICENSE="$REPO/LICENSE" "$M/scripts/make-dmg.sh" "$app" --no-sign --out "$M/listed.dmg"
+  for staged in "Test App.app" Applications LICENSE.txt THIRD_PARTY_NOTICES.txt same; do
+    if grep -qx "$staged" "$M/staged" 2>/dev/null; then ok "DMG contains $staged"; else ko "DMG contains $staged"; fi
+  done
+  mv "$M/LICENSE" "$M/LICENSE.off"
+  expect 1 "make-dmg refuses to build without the licence" env PATH="$M/fakebin:$PATH" FAKE_DMG_LIST="$M/staged" \
+    FAKE_LICENSE="$REPO/LICENSE" "$M/scripts/make-dmg.sh" "$app" --no-sign --out "$M/listed.dmg"
+  contains "names the missing licence" "LICENSE is missing at the repository root"
+  mv "$M/LICENSE.off" "$M/LICENSE"
   codesign --force --sign - "$dmg" >/dev/null 2>&1
   ditto -c -k --sequesterRsrc --keepParent "$app" "$M/dist/testapp-1.2.3/testapp-1.2.3.zip"
   (cd "$M" && git init -q && git add -A)

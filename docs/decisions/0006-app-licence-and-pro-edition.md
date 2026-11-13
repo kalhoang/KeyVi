@@ -86,7 +86,13 @@ wants both a free, open app and the option of a paid Pro edition later, without 
   `scripts/tests/test_docs_and_workflows.py` (`LicenceTests`) fails if the old identifier returns.
 - `scripts/rename-app.sh` never rewrites the root `LICENSE`, so the GPL text stays byte-exact after a rename;
   the `LICENSE` files of the engine parts name the product and follow a rename.
-- The app's About & Support pane and the website may name the licences; no UI text has to change for this
-  decision.
+- Every conveyed copy carries the licence (GPL-3.0 section 4): `scripts/make-dmg.sh` puts `LICENSE.txt` (the root
+  `LICENSE`) and `THIRD_PARTY_NOTICES.txt` next to the app in the DMG and refuses to build without them
+  (`scripts/tests/run.sh` checks the staging folder).
+- The app shows its own licence as an Appropriate Legal Notice (GPL-3.0 section 0): the Licences panel of About &
+  Support (`Giấy phép và ghi công`) gains a row `{{AppName}}: GPL-3.0-or-later` that opens the bundled licence
+  text, and the root `LICENSE` is copied into the app bundle as a resource. That row, its English translation and
+  the resource belong to the App workstream (`App/`, `project.yml`); until they land the DMG files and the website
+  carry the notice.
 - A future Pro edition needs its own decision record for the payment path, the key format and the module
   boundary before any Pro code is written.

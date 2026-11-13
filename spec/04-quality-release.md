@@ -157,7 +157,7 @@ QA-R30 The release process MUST, in order (CI runs the tests and the unsigned bu
 1. Re-run the full `ci.yml` suite on the tagged commit and require the latest `integration.yml` run on that commit to be green. A release pipeline without a test gate is how a predecessor shipped an auto-update that left users unable to type.
 2. Build a universal Release archive with hardened runtime, no `get-task-allow`, no unnecessary entitlements, signed with Pa's Developer ID Application certificate.
 3. Verify signature (`codesign --verify --deep --strict`) and that the designated requirement matches the previous release's (bundle ID `vn.kal.{{app-slug}}` and Team ID unchanged). A changed designated requirement makes macOS re-ask permissions, so it is a hard failure.
-4. Create the DMG (app plus Applications link, background, signed).
+4. Create the DMG (app plus Applications link, the licence text and the third-party notices, background, signed).
 5. Notarise with `notarytool` using an App Store Connect API key (not an app-specific password), wait for the result, fail on any issue in the log.
 6. Staple the ticket to the app and the DMG; validate with `stapler validate` and `spctl --assess`.
 7. Produce SHA-256 checksums (and a build provenance attestation for the steps that run in GitHub Actions).
