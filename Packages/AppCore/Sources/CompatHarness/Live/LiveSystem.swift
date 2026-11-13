@@ -47,7 +47,7 @@ struct LiveSystemActions: SystemActions {
 
     func focusField(identifier: String, in bundle: BundleKey) async throws {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first?.activate()
-        try AX.set(try AX.element(identifier, in: bundle), kAXFocusedAttribute, kCFBooleanTrue)
+        try AX.set(try await AX.element(identifier, in: bundle, sleeper: sleeper), kAXFocusedAttribute, kCFBooleanTrue)
     }
 
     func selectInputSource(_ source: InputSourceID) async throws {
@@ -69,7 +69,7 @@ struct LiveSystemActions: SystemActions {
                 reason: "switch secure keyboard entry " + (enabled ? "on" : "off") + " in " + bundle.rawValue
                     + " by hand")
         }
-        let toggle = try AX.element(TestHostControls.secureInputToggle, in: bundle)
+        let toggle = try await AX.element(TestHostControls.secureInputToggle, in: bundle, sleeper: sleeper)
         let isOn = (AX.attribute(toggle, kAXValueAttribute) as? NSNumber)?.boolValue ?? false
         guard isOn != enabled else { return }
         let result = AXUIElementPerformAction(toggle, kAXPressAction as CFString)
@@ -81,7 +81,7 @@ struct LiveSystemActions: SystemActions {
         guard NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first != nil else {
             return
         }
-        let button = try AX.element(TestHostControls.resetFields, in: bundle)
+        let button = try await AX.element(TestHostControls.resetFields, in: bundle, sleeper: sleeper)
         let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
         guard result == .success else { throw LiveError.axFailure("press", result.rawValue) }
     }

@@ -36,6 +36,7 @@ final class CGEventKeySink: KeyEventSink, @unchecked Sendable {
 enum AX {
     static let timeout: Float = 1
     static let maximumDepth = 24
+    static let elementWaitNanoseconds: UInt64 = 5_000_000_000
 
     static func application(_ bundle: BundleKey) throws -> AXUIElement {
         guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first else {
@@ -72,6 +73,19 @@ enum AX {
         guard let focused = attribute(app, kAXFocusedUIElementAttribute), CFGetTypeID(focused) == AXUIElementGetTypeID()
         else { throw LiveError.elementNotFound("focused element") }
         return focused as! AXUIElement  // type ID checked on the line above
+    }
+
+    /// Lookup by identifier, retried for up to `elementWaitNanoseconds` while the app starts or builds its window:
+    /// `launch` returns once the process runs, before its controls exist (the first VM run failed `setSecureInput`
+    /// right after TestHost's launch, integration-suite.md section 10).
+    static func element(_ identifier: String, in bundle: BundleKey, sleeper: any HarnessSleeper) async throws
+        -> AXUIElement
+    {
+        let found = try await HarnessPolling.firstValue(timeoutNanoseconds: elementWaitNanoseconds, sleeper: sleeper) {
+            try? element(identifier, in: bundle)
+        }
+        guard let found else { throw LiveError.elementNotFound(identifier) }
+        return found
     }
 
     static func set(_ element: AXUIElement, _ name: String, _ value: CFTypeRef) throws {
