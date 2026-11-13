@@ -131,6 +131,7 @@ final class AppEnvironment {
     /// Every settings change: the host (engines, rules, focus), the language, the shell and the updater.
     func settingsChanged(_ state: SettingsState) {
         settings = state
+        safeMode = state.safeMode  // PLT-R1009: the store decides; leaving safe mode reloads the files
         host.apply(settings: state)
         language.select(state.effective.interfaceLanguage)
         statusItem?.setClickToToggle(state.effective.clickIconToToggle)
