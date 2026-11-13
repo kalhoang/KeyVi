@@ -11,12 +11,12 @@
     { "bundleId": "com.apple.TextEdit", "displayName": "TextEdit", "category": "notes", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.apple.iWork.Pages", "displayName": "Pages", "category": "office", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.microsoft.Word", "displayName": "Microsoft Word", "category": "office", "tier": 1, "ruleId": "office.microsoft.documents", "status": "notVerified", "issues": [] },
-    { "bundleId": "com.microsoft.Excel", "displayName": "Microsoft Excel", "category": "office", "tier": 1, "ruleId": "office.excel.cellEditor", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.microsoft.Excel", "displayName": "Microsoft Excel", "category": "office", "tier": 1, "ruleId": "office.excel.cellEditor", "status": "notVerified", "note": { "vi": "Khi Excel gợi ý tự động trong ô, phần chữ được gợi ý có thể còn lại sau khi bạn gõ dấu (ví dụ ra DĐức thay vì Đức). Nếu gặp, hãy xóa phần chữ thừa.", "en": "When Excel suggests an entry in a cell, the suggested text can stay after you type a tone mark (for example DĐức instead of Đức). Delete the extra text if this happens." }, "issues": [] },
     { "bundleId": "com.microsoft.Powerpoint", "displayName": "Microsoft PowerPoint", "category": "office", "tier": 1, "ruleId": "office.microsoft.documents", "status": "notVerified", "issues": [] },
     { "bundleId": "com.microsoft.Outlook", "displayName": "Microsoft Outlook", "category": "office", "tier": 1, "ruleId": "office.microsoft.documents", "status": "notVerified", "issues": [] },
     { "bundleId": "com.google.Chrome", "displayName": "Google Docs (Chrome)", "scope": "webApp", "category": "office", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.apple.Safari", "displayName": "Google Docs (Safari)", "scope": "webApp", "category": "office", "tier": 1, "status": "notVerified", "issues": [] },
-    { "bundleId": "com.google.Chrome", "displayName": "Google Sheets (Chrome)", "scope": "webApp", "category": "office", "tier": 1, "ruleId": "web.googleSheets.cellEditor", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.google.Chrome", "displayName": "Google Sheets (Chrome)", "scope": "webApp", "category": "office", "tier": 1, "ruleId": "web.googleSheets.cellEditor", "status": "notVerified", "note": { "vi": "Khi cột có gợi ý tự động, phần chữ được gợi ý có thể còn lại trong ô sau khi bạn gõ dấu (ví dụ ra DĐức thay vì Đức). Nếu gặp, hãy xóa phần chữ thừa.", "en": "When the column offers autocomplete, the suggested text can stay in the cell after you type a tone mark (for example DĐức instead of Đức). Delete the extra text if this happens." }, "issues": [] },
     { "bundleId": "com.apple.Safari", "displayName": "Google Sheets (Safari)", "scope": "webApp", "category": "office", "tier": 1, "ruleId": "web.googleSheets.cellEditor.webkit", "status": "notVerified", "issues": [] },
     { "bundleId": "com.vng.zalo", "displayName": "Zalo", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.facebook.archon", "displayName": "Messenger", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
@@ -60,6 +60,7 @@
     { "bundleId": "com.microsoft.VSCode", "displayName": "VS Code integrated terminal", "scope": "inApp", "category": "developer", "ruleId": "editor.vscode.integratedTerminal", "status": "notVerified", "issues": [] },
     { "bundleId": "com.sublimetext.4", "displayName": "Sublime Text", "category": "developer", "ruleId": "editor.customTextViews", "status": "notVerified", "issues": [] },
     { "bundleId": "org.gnu.Emacs", "displayName": "Emacs", "category": "developer", "ruleId": "editor.customTextViews", "status": "notVerified", "issues": [] },
-    { "bundleId": "org.vim.MacVim", "displayName": "MacVim", "category": "developer", "ruleId": "editor.customTextViews", "status": "notVerified", "issues": [] }
+    { "bundleId": "org.vim.MacVim", "displayName": "MacVim", "category": "developer", "ruleId": "editor.customTextViews", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.brave.Browser", "displayName": "Brave", "category": "browser", "ruleId": "browser.chromium.addressBar", "status": "notVerified", "issues": [] }
   ]
 }

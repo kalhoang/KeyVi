@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.0",
+  "rulesetVersion": "2026.11.1",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -20,7 +20,13 @@
   "conflictingInputApps": ["com.trankynam.GoTiengViet", "com.tuyenmai.openkey", "com.lamquangminh.evkey"],
   "secureInputHints": [
     { "bundleId": "com.apple.Terminal", "hintKey": "terminal.secureKeyboardEntry" },
-    { "bundleId": "com.googlecode.iterm2", "hintKey": "iterm2.secureKeyboardEntry" }
+    { "bundleId": "com.googlecode.iterm2", "hintKey": "iterm2.secureKeyboardEntry" },
+    { "bundleId": "com.apple.Safari", "hintKey": "browser.passwordField" },
+    { "bundleId": "com.google.Chrome", "hintKey": "browser.passwordField" },
+    { "bundleId": "com.microsoft.edgemac", "hintKey": "browser.passwordField" },
+    { "bundleId": "org.mozilla.firefox", "hintKey": "browser.passwordField" },
+    { "bundleId": "company.thebrowser.Browser", "hintKey": "browser.passwordField" },
+    { "bundleId": "com.brave.Browser", "hintKey": "browser.passwordField" }
   ],
   "rules": [
     {
@@ -86,13 +92,13 @@
       "match": { "engines": ["chromium"], "web": { "urlPrefixes": ["https://docs.google.com/spreadsheets/"] } },
       "action": {
         "strategy": "backspaceReplace",
-        "params": { "inlineCompletion": "placeholder", "firstEditDelayUs": 8000 }
+        "params": { "inlineCompletion": "axSelection", "firstEditDelayUs": 8000 }
       },
       "provenance": {
         "reason": "Column autocomplete selects the suggested remainder ('D'+'d' gives 'DĐức'); first letter lost when the cell enters edit mode.",
         "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
         "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. Placeholder requires the 1,000-edit test (PLT-R422). The tested entry is a placeholder until the scenario passes.",
+        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. axSelection only (decision of 2026-11-13, docs/decisions/0005-pa-decisions-2026-11-13.md): the zero-width placeholder returns only with an automated 1,000-edit test (PLT-R422); until then a suggestion that AX cannot read may stay in the cell (matrix note). The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -157,13 +163,13 @@
       "match": { "bundleIds": ["com.microsoft.Excel"], "ax": { "roles": ["AXTextArea", "AXTextField"] } },
       "action": {
         "strategy": "backspaceReplace",
-        "params": { "inlineCompletion": "axSelectionThenPlaceholder" }
+        "params": { "inlineCompletion": "axSelection" }
       },
       "provenance": {
         "reason": "AutoComplete selects the suggested remainder in the cell editor ('D'+'d' gave 'DĐức'), and cell content was erased in public reports.",
         "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
         "tested": [{ "app": "Microsoft Excel", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY the cell editor's AX role. The sheet-tab rename editor needs its own rule (selectReplace or axReplace per test). Placeholder requires the 1,000-edit test (PLT-R422). The tested entry is a placeholder until the scenario passes.",
+        "notes": "VERIFY the cell editor's AX role. The sheet-tab rename editor needs its own rule (selectReplace or axReplace per test). axSelection only (decision of 2026-11-13, docs/decisions/0005-pa-decisions-2026-11-13.md): the zero-width placeholder returns only with an automated 1,000-edit test (PLT-R422); until then a suggestion that AX cannot read may stay in the cell (matrix note). The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
