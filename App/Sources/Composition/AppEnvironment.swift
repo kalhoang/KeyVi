@@ -168,10 +168,13 @@ extension AppEnvironment: LaunchSteps {
         #else
         let bundleURL = Bundle.main.bundleURL
         let launchGuard = self.launchGuard
+        let files = FileManagerRelocationFiles()
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
         let relocator = AppRelocator(
-            files: FileManagerRelocationFiles(),
-            relauncher: WorkspaceRelauncher(beforeLaunch: { launchGuard.markSurvived() }),
-            applicationsDirectory: URL(fileURLWithPath: "/Applications", isDirectory: true))
+            files: files, relauncher: WorkspaceRelauncher(beforeLaunch: { launchGuard.markSurvived() }),
+            applicationsDirectory: AppRelocator.applicationsDirectory(
+                system: URL(fileURLWithPath: "/Applications", isDirectory: true),
+                user: home.appendingPathComponent("Applications", isDirectory: true), files: files))
         let gate = LocationGate<AppLocationCheck.Reason>(
             verdict: { Self.locationVerdict(bundleURL) },
             offer: { [language, brand] reason in

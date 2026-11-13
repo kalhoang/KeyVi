@@ -18,6 +18,10 @@ public protocol RelocationFileOperations: Sendable {
     /// Clears the download quarantine on the copied bundle, so the copy is not translocated again (the user
     /// confirmed the move; the app already passed Gatekeeper). VERIFY on current macOS.
     func clearQuarantine(at url: URL) throws
+    /// True when the directory exists and this account may create items in it.
+    func isWritableDirectory(_ url: URL) -> Bool
+    /// Creates one directory (mode 0755); the parent exists.
+    func createDirectory(at url: URL) throws
 }
 
 /// Launches the copy and ends this process. Production: `NSWorkspace.openApplication` then terminate.
@@ -48,6 +52,12 @@ public struct AppRelocator {
         self.applicationsDirectory = applicationsDirectory
     }
 
+    /// PLT-R710 accepts /Applications and ~/Applications. A standard (non-admin) account cannot write to
+    /// /Applications, so the move would fail there; the user's own folder is the fallback.
+    public static func applicationsDirectory(system: URL, user: URL, files: any RelocationFileOperations) -> URL {
+        files.isWritableDirectory(system) ? system : user
+    }
+
     public func destination(for bundleURL: URL) -> URL {
         applicationsDirectory.appendingPathComponent(bundleURL.lastPathComponent, isDirectory: true)
     }
@@ -56,6 +66,9 @@ public struct AppRelocator {
     /// launched and the original is untouched.
     public func relocate(_ bundleURL: URL) async -> Result<URL, RelocationError> {
         let target = destination(for: bundleURL)
+        if !files.itemExists(at: applicationsDirectory) {
+            do { try files.createDirectory(at: applicationsDirectory) } catch { return .failure(.copyFailed) }
+        }
         if files.itemExists(at: target) {
             do { try files.moveToTrash(target) } catch { return .failure(.replaceFailed) }
         }

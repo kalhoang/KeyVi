@@ -137,6 +137,17 @@ struct FileManagerRelocationFiles: RelocationFileOperations {
             && FileManager.default.isDeletableFile(atPath: url.path)
     }
 
+    func isWritableDirectory(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+            && FileManager.default.isWritableFile(atPath: url.path)
+    }
+
+    func createDirectory(at url: URL) throws {
+        try FileManager.default.createDirectory(
+            at: url, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o755])
+    }
+
     func clearQuarantine(at url: URL) throws {
         var values = URLResourceValues()
         values.quarantineProperties = nil

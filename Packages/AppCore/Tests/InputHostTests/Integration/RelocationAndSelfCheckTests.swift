@@ -18,6 +18,7 @@ final class FakeRelocationFiles: RelocationFileOperations {
         case copy(URL, URL)
         case trash(URL)
         case clearQuarantine(URL)
+        case createDirectory(URL)
     }
 
     static let translocated = URL(
@@ -25,15 +26,24 @@ final class FakeRelocationFiles: RelocationFileOperations {
     static let downloads = URL(fileURLWithPath: "/Users/someone/Downloads/Example.app", isDirectory: true)
     static let applications = URL(fileURLWithPath: "/Applications", isDirectory: true)
     static let destination = applications.appendingPathComponent("Example.app", isDirectory: true)
+    static let userApplications = URL(fileURLWithPath: "/Users/someone/Applications", isDirectory: true)
 
     private let state: Mutex<(existing: Set<URL>, operations: [Operation])>
     let failCopy: Bool
     let failTrash: Bool
+    let failCreate: Bool
+    let writable: Set<URL>
 
-    init(existing: Set<URL>, failCopy: Bool = false, failTrash: Bool = false) {
-        state = Mutex((existing, []))
+    /// `existing` always includes /Applications; `writable`: the directories this account may write to.
+    init(
+        existing: Set<URL>, writable: Set<URL> = [applications], failCopy: Bool = false, failTrash: Bool = false,
+        failCreate: Bool = false
+    ) {
+        state = Mutex((existing.union([Self.applications]), []))
+        self.writable = writable
         self.failCopy = failCopy
         self.failTrash = failTrash
+        self.failCreate = failCreate
     }
 
     var operations: [Operation] { state.withLock { $0.operations } }
@@ -59,6 +69,16 @@ final class FakeRelocationFiles: RelocationFileOperations {
     }
 
     func isRemovable(_ url: URL) -> Bool { !url.path.contains("AppTranslocation") }
+
+    func isWritableDirectory(_ url: URL) -> Bool { itemExists(at: url) && writable.contains(url) }
+
+    func createDirectory(at url: URL) throws {
+        if failCreate { throw Failure() }
+        state.withLock {
+            $0.existing.insert(url)
+            $0.operations.append(.createDirectory(url))
+        }
+    }
 
     func clearQuarantine(at url: URL) throws { state.withLock { $0.operations.append(.clearQuarantine(url)) } }
 
@@ -124,6 +144,40 @@ struct AppRelocationTests {
         let launch = await FakeRelocationFiles.relocator(files, relauncher).relocate(FakeRelocationFiles.downloads)
         #expect(launch == .failure(.launchFailed))
         #expect(files.itemExists(at: FakeRelocationFiles.downloads), "the original stays when the copy did not start")
+    }
+
+    /// PLT-R710 accepts ~/Applications too: a standard account cannot write /Applications.
+    @Test func aStandardAccountMovesIntoItsOwnApplicationsFolder_PLT_R710() async {
+        let admin = FakeRelocationFiles(existing: [])
+        #expect(
+            AppRelocator.applicationsDirectory(
+                system: FakeRelocationFiles.applications, user: FakeRelocationFiles.userApplications, files: admin)
+                == FakeRelocationFiles.applications)
+
+        let standard = FakeRelocationFiles(existing: [], writable: [])
+        let directory = AppRelocator.applicationsDirectory(
+            system: FakeRelocationFiles.applications, user: FakeRelocationFiles.userApplications, files: standard)
+        #expect(directory == FakeRelocationFiles.userApplications)
+        let relauncher = FakeRelauncher()
+        let relocator = AppRelocator(files: standard, relauncher: relauncher, applicationsDirectory: directory)
+        let target = FakeRelocationFiles.userApplications.appendingPathComponent("Example.app", isDirectory: true)
+        let result = await relocator.relocate(FakeRelocationFiles.translocated)
+        #expect(result == .success(target))
+        #expect(
+            standard.operations == [
+                .createDirectory(FakeRelocationFiles.userApplications), .copy(FakeRelocationFiles.translocated, target),
+                .clearQuarantine(target),
+            ], "the missing folder is created first")
+        #expect(relauncher.launched == [target])
+    }
+
+    @Test func aFolderThatCannotBeCreatedFailsTheMove_PLT_R710() async {
+        let files = FakeRelocationFiles(existing: [], writable: [], failCreate: true)
+        let relauncher = FakeRelauncher()
+        let relocator = AppRelocator(
+            files: files, relauncher: relauncher, applicationsDirectory: FakeRelocationFiles.userApplications)
+        #expect(await relocator.relocate(FakeRelocationFiles.downloads) == .failure(.copyFailed))
+        #expect(relauncher.launched.isEmpty)
     }
 
     @Test func theGateProceedsDeclinesOrReportsAFailedMove() async {
