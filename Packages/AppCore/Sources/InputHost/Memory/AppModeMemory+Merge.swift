@@ -68,4 +68,13 @@ struct EmittedModeHistory {
     }
 
     func contains(_ document: AppModesDocument) -> Bool { states.contains(AppModeMemory.ModeState(document)) }
+
+    /// The store published `document`. InputHost hands its documents to the store in emission order
+    /// (`AppModesRecorder`) and the store publishes after each, so once it returned emission i it never returns an
+    /// older one again unless the document was changed outside (reset, import). Forgetting the older states keeps
+    /// such a change from passing for an echo, in particular a reset to the empty launch state (PRD-R26).
+    mutating func acknowledge(_ document: AppModesDocument) {
+        guard let index = states.firstIndex(of: AppModeMemory.ModeState(document)), index > 0 else { return }
+        states.removeFirst(index)
+    }
 }

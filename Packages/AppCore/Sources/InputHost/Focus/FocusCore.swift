@@ -123,6 +123,7 @@ final class FocusCore {
 
     func update(settings: EffectiveSettings, appModes: AppModesDocument) {
         self.settings = settings
+        emittedHistory.acknowledge(appModes)
         memory = AppModeMemory.merged(
             current: memory, incoming: appModes, recentlyEmitted: emittedHistory,
             rememberPerApp: settings.rememberPerApp, firstSeen: settings.firstSeenAppMode)
