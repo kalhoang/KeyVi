@@ -92,7 +92,8 @@ struct RegressionTests {
 
     @Test("REG-09 tone and modifier keys after the coda")
     func reg09() throws {
-        for (keys, word) in [("caanf", "cần"), ("hopwj", "hợp"), ("mootj", "một"), ("phucws", "phức"), ("tucj", "tục")] {
+        for (keys, word) in [("caanf", "cần"), ("hopwj", "hợp"), ("mootj", "một"), ("phucws", "phức"), ("tucj", "tục")]
+        {
             #expect(try text(keys + " ") == word + " ", "\(keys)")
         }
         #expect(try text("vie6t5 ", vni) == "việt ")
@@ -203,26 +204,12 @@ struct RegressionTests {
 
     @Test("REG-23 no logging or I/O in the core")
     func reg23() throws {
-        // Static check over the core target's sources (ENG-R128, ENG-R1220, ENG-R1201).
-        let core = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().appendingPathComponent("Sources/VietnameseEngine")
-        let forbidden = [
-            "print(", "debugPrint(", "dump(", "NSLog", "os_log", "Logger(", "FileManager", "FileHandle", "fopen",
-            "fwrite", "open(", "URLSession", "import ",
-        ]
-        let files = try #require(FileManager.default.enumerator(atPath: core.path)).compactMap { $0 as? String }
-            .filter { $0.hasSuffix(".swift") }
-        #expect(files.count > 10)
-        for file in files {
-            let source = try String(contentsOf: core.appendingPathComponent(file), encoding: .utf8)
-            let code = source.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
-            for line in code {
-                for symbol in forbidden where line.contains(symbol) {
-                    Issue.record("\(file): \(symbol) in \(line)")
-                }
-            }
-            #expect(!source.contains("static var"), "\(file): static mutable state (ENG-R1202)")
+        // Static check over the core target's sources (ENG-R128, ENG-R1220, ENG-R1201, ENG-R1202): imports,
+        // logging, I/O, clocks, randomness, environment and mutable global state (StaticSourceTests).
+        let sources = try CoreSourceScanner.coreSources()
+        #expect(sources.count > 10)
+        for (name, text) in sources {
+            for finding in CoreSourceScanner.scan(text, file: name) { Issue.record("\(finding)") }
         }
     }
 
