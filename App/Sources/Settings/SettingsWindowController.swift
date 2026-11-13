@@ -55,14 +55,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(
         store: SettingsStore, language: InterfaceLanguageModel, updater: any UpdaterControlling,
         loginItem: any LoginItemService, brand: Brand = .from(.main),
-        matrix: MatrixDocument? = SettingsResources.bundledMatrix(),
+        matrix: MatrixDocument? = SettingsResources.bundledMatrix(), panes: SystemPaneNames,
         inputSources: @escaping @MainActor () -> [InputSourceInfo] = { [] },
         layout: @escaping @MainActor () -> LayoutTable? = { nil },
         keyValues: any KeyValueStore = UserDefaultsKeyValueStore()
     ) {
         model = SettingsWindowModel(
             commands: SettingsCommands(store: store), language: language, updater: updater, loginItem: loginItem,
-            brand: brand, matrix: matrix, inputSources: inputSources, layout: layout,
+            brand: brand, matrix: matrix, panes: panes, inputSources: inputSources, layout: layout,
             disclosures: AdvancedDisclosureMemory(store: keyValues))
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),

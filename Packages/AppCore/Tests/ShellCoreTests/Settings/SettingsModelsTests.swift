@@ -36,6 +36,20 @@ import VietnameseEngineData
         #expect(!failed.isOn && failed.note == .openAtLoginFailed && failed.offersSystemSettings)
         #expect(service.calls == ["register", "register", "unregister", "register"])
     }
+
+    /// ADR 0315: on macOS 12 the toggle is disabled and the note gives the manual steps, with a System
+    /// Preferences button; a refused register keeps that explanation rather than the generic failure.
+    @Test func macOS12ExplainsTheManualLoginItem() {
+        let legacy = LoginItemPresentation(status: .unavailable)
+        #expect(!legacy.isOn && !legacy.isAvailable)
+        #expect(legacy.note == .openAtLoginManual && legacy.offersSystemSettings)
+        #expect(LoginItemPresentation(status: .unavailable, failed: true) == legacy)
+        #expect(LoginItemPresentation(status: .enabled).isAvailable)
+        let service = FakeLoginItem()
+        service.setStatus(.unavailable)
+        service.failNextCall()
+        #expect(LoginItemControl.set(true, service: service) == legacy)
+    }
 }
 
 @Suite struct WordListAndLayoutTests {

@@ -233,6 +233,8 @@ public enum OnboardingText: String, LocalizationKey {
     case doneTitle = "onboarding.done.title"
     case doneBody = "onboarding.done.body"
     case doneOpenAtLogin = "onboarding.done.openAtLogin"
+    /// macOS 12 (ADR 0315). Arguments: app name, then the System Preferences, Users & Groups and Login Items names.
+    case doneOpenAtLoginManual = "onboarding.done.openAtLoginManual"
     case doneStart = "onboarding.done.start"
     case doneArrow = "onboarding.done.arrow"
     case moveTitle = "onboarding.move.title"

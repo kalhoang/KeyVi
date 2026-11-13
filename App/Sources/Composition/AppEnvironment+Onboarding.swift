@@ -140,6 +140,9 @@ extension AppEnvironment: OnboardingActions {
         if enabled { try? loginItem.register() } else { try? loginItem.unregister() }
     }
 
+    /// False on macOS 12 (ADR 0315): the done screen explains how to add the app by hand instead.
+    var canOpenAtLogin: Bool { loginItem.status != .unavailable }
+
     /// PRD-R40 screen 6, PRD-R32: the import preview compares the file with these.
     func currentMacros() async -> [StoredMacro] { await settingsStore.state.macros }
 

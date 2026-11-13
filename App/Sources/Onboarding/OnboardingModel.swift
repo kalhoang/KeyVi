@@ -21,6 +21,8 @@ final class OnboardingModel: ObservableObject {
     }
     @Published private(set) var checklist: TryItChecklist?
     @Published var openAtLogin = true  // D17, shown pre-checked
+    /// False on macOS 12 (ADR 0315): the done screen shows how to add the app to Login Items by hand.
+    let canOpenAtLogin: Bool
     @Published var showPermissionHelp = false
     /// PRD-R40 screen 6, PRD-R32: the import preview or the reason a file was refused (PRD-R43), shown as a sheet.
     @Published var macroImport: OnboardingImport?
@@ -58,6 +60,7 @@ final class OnboardingModel: ObservableObject {
         self.method = method
         currentMode = mode
         self.toggleHotkey = toggleHotkey
+        canOpenAtLogin = actions.canOpenAtLogin
         let relay = OnboardingCaptureRelay()
         hotkeyCapture = HotkeyCaptureController(
             monitor: LocalKeyMonitor(),
@@ -69,6 +72,12 @@ final class OnboardingModel: ObservableObject {
     }
 
     var localizer: Localizer { language.localizer }
+
+    /// PRD-R40 screen 8 on macOS 12: where to add the app to Login Items, with the macOS names (PRD-R64).
+    var openAtLoginManualText: String {
+        localizer.format(
+            OnboardingText.doneOpenAtLoginManual, appName, panes.systemSettings, panes.usersGroups, panes.loginItems)
+    }
 
     var permissionContent: PermissionScreenContent {
         PermissionScreenContent(
@@ -118,7 +127,7 @@ final class OnboardingModel: ObservableObject {
         case .permission where !flow.permissionGranted: actions?.openPermissionPane()
         case .importFrom: chooseImportFile()
         case .done:
-            actions?.setOpenAtLogin(openAtLogin)
+            if canOpenAtLogin { actions?.setOpenAtLogin(openAtLogin) }
             actions?.complete()
             move { $0.next(inputs: $1) }
         default: move { $0.next(inputs: $1) }

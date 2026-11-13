@@ -238,7 +238,7 @@ extension AppEnvironment: StatusMenuActions {
         let host = self.host
         let controller = SettingsWindowController(
             store: settingsStore, language: language, updater: updater, loginItem: loginItem, brand: brand,
-            inputSources: { host.enabledInputSources() }, layout: { host.currentLayoutTable() },
+            panes: paneNames(), inputSources: { host.enabledInputSources() }, layout: { host.currentLayoutTable() },
             keyValues: keyValues)
         controller.actions = self
         settingsWindow = controller

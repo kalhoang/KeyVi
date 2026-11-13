@@ -5,7 +5,7 @@
 
 import AppModel
 import Foundation
-import Synchronization
+import RealtimeSupport
 
 @testable import ShellCore
 
@@ -49,6 +49,7 @@ final class FakeLoginItem: LoginItemService, Sendable {
     var calls: [String] { state.withLock { $0.calls } }
     func failNextCall() { state.withLock { $0.failNext = true } }
     func setStatusAfterRegister(_ status: LoginItemStatus) { state.withLock { $0.statusAfterRegister = status } }
+    func setStatus(_ status: LoginItemStatus) { state.withLock { $0.status = status } }
 
     func register() throws {
         try state.withLock { state in

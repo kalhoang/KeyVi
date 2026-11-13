@@ -197,12 +197,17 @@ struct DoneScreen: View {
                     .accessibilityLabel(Text(verbatim: localizer.string(OnboardingText.doneArrow)))
             }
             Text(verbatim: localizer.format(OnboardingText.doneBody, model.appName)).font(.title3)
-            Toggle(isOn: $model.openAtLogin) {
-                Text(verbatim: localizer.format(OnboardingText.doneOpenAtLogin, model.appName))
+            if model.canOpenAtLogin {
+                Toggle(isOn: $model.openAtLogin) {
+                    Text(verbatim: localizer.format(OnboardingText.doneOpenAtLogin, model.appName))
+                }
+                .toggleStyle(.checkbox)
+                .onboardingAccessibility(
+                    .openAtLogin, localizer, label: localizer.format(OnboardingText.doneOpenAtLogin, model.appName))
+            } else {
+                // macOS 12 (ADR 0315): no SMAppService, so the steps replace the checkbox.
+                Text(verbatim: model.openAtLoginManualText).fixedSize(horizontal: false, vertical: true)
             }
-            .toggleStyle(.checkbox)
-            .onboardingAccessibility(
-                .openAtLogin, localizer, label: localizer.format(OnboardingText.doneOpenAtLogin, model.appName))
         }
     }
 }

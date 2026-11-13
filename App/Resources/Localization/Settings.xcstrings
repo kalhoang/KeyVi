@@ -1099,6 +1099,42 @@
         }
       }
     },
+    "settings.control.openSystemPreferences.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66), macOS 12 only (ADR 0315).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens System Preferences, where you can add the app to Login Items."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Tùy chọn hệ thống để bạn thêm ứng dụng vào Mục đăng nhập."
+          }
+        }
+      }
+    },
+    "settings.control.openSystemPreferences.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66), macOS 12 only (ADR 0315).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Preferences"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Tùy chọn hệ thống"
+          }
+        }
+      }
+    },
     "settings.control.openSystemSettings.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -2287,6 +2323,24 @@
         }
       }
     },
+    "settings.general.openAtLogin.manual" : {
+      "comment" : "macOS 12 only (ADR 0315): the app cannot add itself to the login items there. %1$@ is the app name; %2$@, %3$@ and %4$@ are the System Preferences, Users & Groups and Login Items names in the macOS language (SystemPanes.json).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On macOS 12, %1$@ cannot turn this on by itself. Open %2$@ > %3$@ > %4$@, click the plus (+) button and choose %1$@ in the Applications folder."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trên macOS 12, %1$@ không tự bật được tùy chọn này. Hãy mở %2$@ > %3$@ > %4$@, bấm nút cộng (+) rồi chọn %1$@ trong thư mục Ứng dụng."
+          }
+        }
+      }
+    },
     "settings.general.openAtLogin.notFound" : {
       "comment" : "Login item not found. %@ is the app name.",
       "extractionState" : "manual",
@@ -2301,6 +2355,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS chưa nhận ra %@ để mở khi đăng nhập. Hãy chắc rằng ứng dụng nằm trong thư mục Ứng dụng."
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.openSystemPreferences" : {
+      "comment" : "Button, macOS 12 only (ADR 0315): System Preferences is the macOS 12 name of System Settings.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Preferences"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Tùy chọn hệ thống"
           }
         }
       }

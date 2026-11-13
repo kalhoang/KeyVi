@@ -4,6 +4,7 @@
 
 import AppModel
 import Foundation
+import RealtimeSupport
 import ServiceManagement
 import Testing
 
@@ -36,6 +37,23 @@ import Testing
         #expect(SMAppServiceLoginItem.status(from: .notRegistered) == .notRegistered)
         #expect(SMAppServiceLoginItem.status(from: .requiresApproval) == .requiresApproval)
         #expect(SMAppServiceLoginItem.status(from: .notFound) == .notFound)
+    }
+
+    /// ADR 0315, PLT-R205: macOS 12 has no `SMAppService`. The service says so instead of failing silently, and
+    /// "Mở Tùy chọn hệ thống" opens the Users & Groups pane where the user adds the app by hand.
+    @Test func withoutServiceManagementTheItemIsUnavailable() {
+        let opened = Atomic<Int>(0)
+        let item = SMAppServiceLoginItem(usesService: false) { opened.wrappingAdd(1, ordering: .relaxed) }
+        #expect(item.status == .unavailable)
+        #expect(throws: LoginItemUnavailable.self) { try item.register() }
+        #expect(throws: LoginItemUnavailable.self) { try item.unregister() }
+        item.openSystemSettings()
+        #expect(opened.load(ordering: .relaxed) == 1)
+    }
+
+    @Test func serviceManagementExistsOnTheTestSystem() {
+        // The tests run on macOS 13 or later, where the production initialiser uses SMAppService.
+        #expect(SMAppServiceLoginItem.serviceExists)
     }
 
     @Test func donationPlaceholderIsMarkedForVerification() {

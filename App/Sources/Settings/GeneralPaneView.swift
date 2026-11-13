@@ -63,9 +63,10 @@ struct OpenAtLoginRow: View {
                     Text(verbatim: localizer.string(SettingItem.openAtLogin.title))
                 }
                 .settingsAccessibility(SettingsControl.openAtLogin, localizer)
+                .disabled(!presentation.isAvailable)
                 if let note = presentation.note {
                     Label {
-                        Text(verbatim: localizer.format(note, model.appName))
+                        Text(verbatim: model.loginItemNote(note))
                     } icon: {
                         Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
                     }
@@ -73,9 +74,16 @@ struct OpenAtLoginRow: View {
                 }
                 if presentation.offersSystemSettings {
                     Button(action: model.openLoginItemsSettings) {
-                        Text(verbatim: localizer.string(SettingsText.openSystemSettings))
+                        Text(
+                            verbatim: localizer.string(
+                                presentation.isAvailable
+                                    ? SettingsText.openSystemSettings : SettingsText.openSystemPreferences
+                            ))
                     }
-                    .settingsAccessibility(SettingsControl.openSystemSettings, localizer)
+                    .settingsAccessibility(
+                        presentation.isAvailable
+                            ? SettingsControl.openSystemSettings : SettingsControl.openSystemPreferences,
+                        localizer)
                 }
             }
         }

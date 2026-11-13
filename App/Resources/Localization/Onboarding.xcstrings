@@ -1027,6 +1027,24 @@
         }
       }
     },
+    "onboarding.done.openAtLoginManual" : {
+      "comment" : "PRD-R40 screen 8 on macOS 12 only (ADR 0315), in place of the open-at-login checkbox. %1$@ is the app name; %2$@, %3$@ and %4$@ are the System Preferences, Users & Groups and Login Items names in the macOS language (SystemPanes.json).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To open %1$@ when you log in, add it in %2$@ > %3$@ > %4$@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Để %1$@ tự mở khi bạn đăng nhập, hãy thêm ứng dụng trong %2$@ > %3$@ > %4$@."
+          }
+        }
+      }
+    },
     "onboarding.done.start" : {
       "comment" : "PRD-R40 screen 8 button.",
       "extractionState" : "manual",

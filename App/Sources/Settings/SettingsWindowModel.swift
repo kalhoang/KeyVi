@@ -49,6 +49,8 @@ final class SettingsWindowModel: ObservableObject {
     let brand: Brand
     let language: InterfaceLanguageModel
     let matrix: MatrixDocument?
+    /// System Settings / System Preferences pane names of the running macOS (PRD-R64).
+    let panes: SystemPaneNames
     let commands: SettingsCommands
     let updater: any UpdaterControlling
     let loginService: any LoginItemService
@@ -63,7 +65,7 @@ final class SettingsWindowModel: ObservableObject {
 
     init(
         commands: SettingsCommands, language: InterfaceLanguageModel, updater: any UpdaterControlling,
-        loginItem: any LoginItemService, brand: Brand, matrix: MatrixDocument?,
+        loginItem: any LoginItemService, brand: Brand, matrix: MatrixDocument?, panes: SystemPaneNames,
         inputSources: @escaping @MainActor () -> [InputSourceInfo], layout: @escaping @MainActor () -> LayoutTable?,
         disclosures: AdvancedDisclosureMemory
     ) {
@@ -73,6 +75,7 @@ final class SettingsWindowModel: ObservableObject {
         loginService = loginItem
         self.brand = brand
         self.matrix = matrix
+        self.panes = panes
         readInputSources = inputSources
         self.disclosures = disclosures
         self.loginItem = LoginItemPresentation(status: loginItem.status)
@@ -148,6 +151,13 @@ final class SettingsWindowModel: ObservableObject {
     }
 
     func openLoginItemsSettings() { loginService.openSystemSettings() }
+
+    /// The line under the toggle. On macOS 12 it names the System Preferences panes in the macOS language
+    /// (PRD-R64, ADR 0315); every other note takes the app name only.
+    func loginItemNote(_ note: SettingsText) -> String {
+        guard note == .openAtLoginManual else { return localizer.format(note, appName) }
+        return localizer.format(note, appName, panes.systemSettings, panes.usersGroups, panes.loginItems)
+    }
 
     // MARK: - Word lists (ENG-R860)
 

@@ -26,6 +26,8 @@ protocol OnboardingActions: AnyObject {
     func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
     func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
+    /// False on macOS 12, where the app cannot add itself to the login items (ADR 0315).
+    var canOpenAtLogin: Bool { get }
     /// PRD-R40 screen 6, PRD-R32: the user's macros, for the import preview's duplicates.
     func currentMacros() async -> [StoredMacro]
     /// The merged list after the user confirmed the preview.

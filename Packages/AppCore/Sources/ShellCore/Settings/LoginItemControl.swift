@@ -1,20 +1,25 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // "Mở khi đăng nhập" (D17, PLT-R205). `SMAppService` is the source of truth, so the toggle reflects the service
-// status, never a stored preference.
+// status, never a stored preference. macOS 12 has no `SMAppService`: the toggle is disabled and the note tells the
+// user how to add the app in System Preferences (ADR 0315).
 
 /// What the General pane shows for the login item.
 public struct LoginItemPresentation: Sendable, Hashable {
     /// The toggle is on when the item is registered, including while macOS still waits for approval.
     public var isOn: Bool
+    /// False on macOS 12 (`unavailable`): the toggle is disabled and the note gives the manual steps.
+    public var isAvailable: Bool
     /// Extra line under the toggle.
     public var note: SettingsText?
-    /// "Mở Cài đặt hệ thống" next to the note.
+    /// "Mở Cài đặt hệ thống" next to the note ("Mở Tùy chọn hệ thống" when `isAvailable` is false, macOS 12).
     public var offersSystemSettings: Bool
 
     public init(status: LoginItemStatus, failed: Bool = false) {
+        let legacy = status == .unavailable
         isOn = status == .enabled || status == .requiresApproval
-        if failed {
+        isAvailable = !legacy
+        if failed, !legacy {
             note = .openAtLoginFailed
             offersSystemSettings = true
             return
@@ -29,6 +34,9 @@ public struct LoginItemPresentation: Sendable, Hashable {
         case .notFound:
             note = .openAtLoginNotFound
             offersSystemSettings = false
+        case .unavailable:
+            note = .openAtLoginManual
+            offersSystemSettings = true
         }
     }
 }
