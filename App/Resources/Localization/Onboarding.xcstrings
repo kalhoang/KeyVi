@@ -2156,7 +2156,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cài đặt %@"
+            "value" : "Thiết lập %@"
           }
         }
       }

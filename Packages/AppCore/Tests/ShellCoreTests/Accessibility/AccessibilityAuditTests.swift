@@ -88,6 +88,25 @@ import Testing
         }
     }
 
+    @Test func windowTitlesAreDistinctInEachLanguage() throws {
+        // VoiceOver's window chooser and Mission Control list windows by title; two windows with the same title
+        // cannot be told apart (PRD-R66).
+        let app = try TemporaryAppBundle(catalogs: [.onboarding, .settings, .diagnostics])
+        for language in InterfaceLanguage.allCases {
+            let localizer = Localizer(language: language, appBundle: app.bundle)
+            let windows: [DiagnosticsText] = [
+                .windowTitle, .sheetTitle, .probeTitle, .practiceTitle, .traceReviewTitle, .misbehavesTitle,
+            ]
+            let titles =
+                [
+                    localizer.format(OnboardingText.windowTitle, "App"),
+                    localizer.format(SettingsText.windowTitle, "App"),
+                ]
+                + windows.map { localizer.string($0) }
+            #expect(Set(titles).count == titles.count, "\(language): \(titles)")
+        }
+    }
+
     @Test func switchHUDAnnouncesTheModeInWords() {
         // PRD-R66: "Tiếng Việt" / "Tiếng Anh", not only the drawn V or E (PRD-R12).
         #expect(vi.string(MenuText.hudVietnameseAnnouncement) == "Tiếng Việt")
