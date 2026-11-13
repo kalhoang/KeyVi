@@ -136,7 +136,8 @@ extension KeyPipeline {
     ) -> EditJob {
         // PLT-R405: restores and macros type with the keycode producing their first character, if any.
         let firstCharacter =
-            kind == .restore || kind == .macro ? edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) } : nil
+            kind == .restore || kind == .macro
+            ? edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) } : nil
         return EditJob(
             sequence: context.queue.nextSequence(), generation: focus.generation, plan: focus.decision.plan,
             field: focus.fieldHandle, kind: kind, deleteCount: edit.deleteCount,
@@ -173,7 +174,8 @@ extension KeyPipeline {
             case .abandoned?, .discardedForGeneration?, .passedThroughByFallback?:
                 return passOrHold(event, now: now, probe: probe)  // its keyDown was replayed
             case nil:  // still queued: the worker drops it if the job executes, replays it otherwise
-                let paired = InjectionJob.pairedKeyUp(context.queue.nextSequence(), Self.record(event, probe: probe), forJob: job)
+                let paired = InjectionJob.pairedKeyUp(
+                    context.queue.nextSequence(), Self.record(event, probe: probe), forJob: job)
                 guard push(paired) else { return queueFull(now: now) }
                 outcome = .consumedPairedKeyUp
                 return .swallow
@@ -258,14 +260,14 @@ extension KeyPipeline {
             notifyMain(.keyboardTypeSeen(event.keyboardType))
         }
         #if DEBUG
-            if case .character(let character, _) = keyClass,
-                !KeyClassification.layoutAgrees(with: event, character: character)
-            {
-                // Keycode plus the input-source generation only (the drain maps it to the layout ID).
-                let record = TapLogRecord(
-                    code: .layoutMismatch, at: now, a: UInt64(event.keyCode.rawValue), b: inputSource.generation)
-                context.tapLog.push(record)
-            }
+        if case .character(let character, _) = keyClass,
+            !KeyClassification.layoutAgrees(with: event, character: character)
+        {
+            // Keycode plus the input-source generation only (the drain maps it to the layout ID).
+            let record = TapLogRecord(
+                code: .layoutMismatch, at: now, a: UInt64(event.keyCode.rawValue), b: inputSource.generation)
+            context.tapLog.push(record)
+        }
         #endif
     }
 
@@ -294,7 +296,8 @@ struct KeyInputContext {
 /// Reset and boundary-job reasons for a host-state transition (PLT-R210). No collections: transitions run on
 /// the tap thread too.
 enum BoundaryReasons {
-    static func transition(from old: HostStateCode, to new: HostStateCode) -> (reset: ResetReason, job: BoundaryReason) {
+    static func transition(from old: HostStateCode, to new: HostStateCode) -> (reset: ResetReason, job: BoundaryReason)
+    {
         func either(_ test: (HostStateCode) -> Bool) -> Bool { test(old) || test(new) }
         if either({ $0 == .paused(.secureInput) || $0 == .paused(.secureField) }) {
             return (.secureInputChanged, .secureInputChanged)

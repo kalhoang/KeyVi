@@ -42,7 +42,8 @@ enum EngineSettingsMapping {
         variant.macros && settings.macrosEnabled
     }
 
-    static func resources(_ resources: Resources, for variant: EngineVariant, settings: EffectiveSettings) -> Resources {
+    static func resources(_ resources: Resources, for variant: EngineVariant, settings: EffectiveSettings) -> Resources
+    {
         guard !includesMacros(variant, settings: settings) else { return resources }
         var withoutMacros = resources
         withoutMacros.macros = .empty
