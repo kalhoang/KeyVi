@@ -98,6 +98,7 @@ extension Harness {
             var scenario = targets.resolvingExpectation(of: original)
             if let profile = options.profile { scenario.timing = profile }
             let result = await run(scenario, services: services, session: session)
+            await live.scenarioEnded(result)
             environment.console.emit(
                 result.outcome.rawValue + " " + scenario.id
                     + String(format: " (%.1f s)", result.durationSeconds)

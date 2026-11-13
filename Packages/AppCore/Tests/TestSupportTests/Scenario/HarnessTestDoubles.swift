@@ -123,6 +123,11 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
         return Self.library
     }
 
+    /// Every scenario result handed to `scenarioEnded`, in order.
+    let endedScenarios = Recorder<ScenarioResult>()
+
+    func scenarioEnded(_ result: ScenarioResult) async { endedScenarios.append(result) }
+
     func appControl(targets: HarnessTargets) throws -> any AppUnderTestControl {
         calls.append("control")
         return control

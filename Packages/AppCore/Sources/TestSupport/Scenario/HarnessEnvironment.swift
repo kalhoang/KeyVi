@@ -35,6 +35,13 @@ public protocol LiveHarnessServices: Sendable {
     /// Files and unified log of the app under test; the log covers the time since this call (privacy canary).
     func privacyEvidence(targets: HarnessTargets, library: URL) throws -> any PrivacyEvidenceSource
     func connectionSampler() -> any ConnectionSampler
+    /// Called after every scenario of `run` with its result, for evidence the live services may keep (a screenshot
+    /// of a failed scenario in the VM lab). The default does nothing.
+    func scenarioEnded(_ result: ScenarioResult) async
+}
+
+extension LiveHarnessServices {
+    public func scenarioEnded(_ result: ScenarioResult) async {}
 }
 
 public struct HarnessEnvironment: Sendable {

@@ -114,7 +114,10 @@ step "plan check: compat-harness run --dry-run"
 "$harness" run --dry-run >"$out/dry-run.log" 2>&1 || stop "the plan check failed (dry-run.log)"
 
 step "TestHost suite: scripts/run-integration.sh tests"
-COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh tests >"$out/tests.log" 2>&1
+# COMPAT_HARNESS_EVIDENCE_DIR: the harness keeps a screenshot of every failed scenario (VM lab only; the screen
+# shows fixture text the harness typed).
+mkdir -p "$out/evidence"
+COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_EVIDENCE_DIR="$out/evidence" scripts/run-integration.sh tests >"$out/tests.log" 2>&1
 rc=$?
 cp -R .build/integration/tests "$out/results" 2>/dev/null
 note "run-integration.sh tests exit $rc"

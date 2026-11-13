@@ -293,9 +293,12 @@ private let rulesJSON = """
         #expect(await harness.execute() == .failure)  // b expects other text
         #expect(console.output.contains { $0.hasPrefix("pass a") })
         // b never shows its text: it is read again for the settle time before it fails.
-        #expect(console.output.contains("fail b (2.0 s): observed state differs from expect"))
+        #expect(console.output.contains("fail b (2.0 s): observed state differs from expect (text)"))
         #expect(console.output.contains { $0.hasPrefix("needsHuman h") })
         #expect(console.output.last == "compat-harness run: 1 passed, 1 failed, 1 need a person")
+        // Each result reaches the live services, which keep evidence of failures in the VM lab.
+        #expect(live.endedScenarios.all.map(\.scenario) == ["a", "b", "h"])
+        #expect(live.endedScenarios.all.map(\.outcome) == [.pass, .fail, .needsHuman])
         #expect(live.sink.records.count == 18)  // 3 scenarios x 3 keys x down/up, recorded in memory only
         let host = "org.example.product.dev.testhost"
         // The run ends by releasing TestHost's secure-input holder (no stuck secure input for the next job).
@@ -313,7 +316,7 @@ private let rulesJSON = """
         #expect(report.results.map(\.scenario) == ["a", "b", "h"])
         #expect(
             report.results.map(\.reason) == [
-                nil, "observed state differs from expect", "needs a person: no tester attached",
+                nil, "observed state differs from expect (text)", "needs a person: no tester attached",
             ])
     }
 
