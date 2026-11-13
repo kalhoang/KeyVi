@@ -170,7 +170,7 @@ final class HostRig {
     let logger = RecordingLogger()
     let health: HealthEventLog
     let tapLog = TapLogRing()
-    let utility = DispatchSerialQueue(label: "test.host.utility", qos: .utility)
+    let utility = DispatchQueue(label: "test.host.utility", qos: .utility)
     let hop = ManualMainHop()
     let store: SettingsStoreHarness
     let controller: InputHostController

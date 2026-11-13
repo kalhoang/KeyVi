@@ -179,7 +179,7 @@ public struct SettingsStoreHarness: Sendable {
         let recorder = recorder
         store = SettingsStore(
             location: location, fileSystem: spy, wallClock: wallClock, writtenBy: writtenBy,
-            queue: DispatchSerialQueue(label: "settings-store-tests", qos: .utility), migrations: migrations,
+            queue: DispatchQueue(label: "settings-store-tests", qos: .utility), migrations: migrations,
             launchGuard: launchGuard, scheduler: TimerDebounceScheduler(scheduler),
             onChange: { recorder.record($0) })
     }

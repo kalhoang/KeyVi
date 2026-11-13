@@ -86,7 +86,18 @@ extension SettingsStore {
     /// store's own serial queue orders the write after every call that was already queued.
     nonisolated func debounceTimerFired(file: SettingsFile, token: UInt64) {
         queue.async { [weak self] in
-            self?.assumeIsolated { store in store.debounceElapsed(file: file, token: token) }
+            self?.withQueueIsolation { store in store.debounceElapsed(file: file, token: token) }
+        }
+    }
+
+    /// `assumeIsolated` for a block already running on `queue`. Sound because the store's executor runs every
+    /// job on that serial queue, so no job of the store runs meanwhile. `assumeIsolated` itself cannot check a
+    /// custom executor before macOS 15 (ADR 0315); this checks the queue instead.
+    nonisolated func withQueueIsolation(_ body: (isolated SettingsStore) -> Void) {
+        dispatchPrecondition(condition: .onQueue(queue))
+        withoutActuallyEscaping(body) { isolatedBody in
+            let unchecked = unsafeBitCast(isolatedBody, to: ((SettingsStore) -> Void).self)
+            unchecked(self)
         }
     }
 

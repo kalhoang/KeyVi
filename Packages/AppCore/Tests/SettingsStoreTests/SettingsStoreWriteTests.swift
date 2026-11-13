@@ -429,7 +429,7 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
     }
 
     @Test func productionInitUsesTheDispatchScheduler() async {
-        let queue = DispatchSerialQueue(label: "settings-default-scheduler")
+        let queue = DispatchQueue(label: "settings-default-scheduler")
         let store = SettingsStore(
             location: StorageLocation(directory: URL(fileURLWithPath: "/Settings")), fileSystem: InMemoryFileSystem(),
             wallClock: FixedWallClock(), writtenBy: "0.1.0", queue: queue,

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Settings persistence (PLT-R10xx). An actor whose executor is the utility serial queue, so all reads,
-// migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue").
+// migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue"). The
+// executor is `QueueExecutor` (ADR 0315: `DispatchSerialQueue` is an executor only from macOS 14).
 // Loading lives in SettingsStore+Load.swift, writing in SettingsStore+Persistence.swift, reset and import in
 // SettingsStore+Transfer.swift.
 
@@ -59,7 +60,9 @@ public enum ResetScope: Sendable, Hashable {
 }
 
 public actor SettingsStore {
-    let queue: DispatchSerialQueue
+    /// Serial queue the store's jobs run on.
+    let queue: DispatchQueue
+    let executor: QueueExecutor
     let storage: DocumentStorage
     let writtenBy: String
     let migrations: MigrationChain
@@ -79,10 +82,10 @@ public actor SettingsStore {
     var generation: UInt64 = 0
     var nextTimerToken: UInt64 = 0
 
-    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
+    public nonisolated var unownedExecutor: UnownedSerialExecutor { executor.asUnownedSerialExecutor() }
 
     /// - Parameters:
-    ///   - queue: the utility serial queue (QoS utility).
+    ///   - queue: the utility serial queue (QoS utility); must be serial.
     ///   - writtenBy: app version recorded in every file (PLT-R1002).
     ///   - scheduler: debounce timers; nil = `DispatchDebounceScheduler` on `queue`. Tests pass a manual one.
     ///   - onChange: called on `queue` after each change; InputHost publishes snapshots from it, ShellCore
@@ -92,13 +95,14 @@ public actor SettingsStore {
         fileSystem: any FileSystem,
         wallClock: any WallClock,
         writtenBy: String,
-        queue: DispatchSerialQueue,
+        queue: DispatchQueue,
         migrations: MigrationChain = .shipped,
         launchGuard: LaunchGuard,
         scheduler: (any DebounceScheduler)? = nil,
         onChange: @escaping @Sendable (SettingsState) -> Void
     ) {
         self.queue = queue
+        self.executor = QueueExecutor(queue: queue)
         self.storage = DocumentStorage(location: location, fileSystem: fileSystem, wallClock: wallClock)
         self.writtenBy = writtenBy
         self.migrations = migrations

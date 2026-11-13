@@ -239,7 +239,7 @@ struct HostNoticeTests {
     /// ADR 0303, PLT-R330 (1): the tap -> main wake does not wait behind utility work (settings rebuilds, file
     /// writes, the conflict scan); production targets the main queue.
     @Test func tapNoticesDoNotWaitBehindUtilityWork() async throws {
-        let rig = HostRig(mainSignalQueue: DispatchSerialQueue(label: "test.host.main-signal"))
+        let rig = HostRig(mainSignalQueue: DispatchQueue(label: "test.host.main-signal"))
         await rig.start()
         defer { rig.stop() }
         let release = DispatchSemaphore(value: 0)

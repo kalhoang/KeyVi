@@ -41,7 +41,7 @@ public struct InputHostDependencies: Sendable {
     public var tapLog: TapLogRing
     public var capture: CaptureController?
     /// Serial utility queue shared with SettingsStore and Diagnostics (PLT-R203).
-    public var utilityQueue: DispatchSerialQueue
+    public var utilityQueue: DispatchQueue
     /// PLT-R802 intervals for the tap callback, injection jobs and AX calls. When nil, the production
     /// controller creates them with the bundle identifier as subsystem.
     public var signposts: PlatformSignposts?
@@ -54,7 +54,7 @@ public struct InputHostDependencies: Sendable {
         workspace: any WorkspaceEvents, keyValueStore: any KeyValueStore, clock: any MonotonicClock,
         scheduler: any TimerScheduler, wallClock: any WallClock,
         metrics: PlatformMetrics, health: HealthEventLog, logger: any DiagnosticsLogging, tapLog: TapLogRing,
-        capture: CaptureController?, utilityQueue: DispatchSerialQueue, signposts: PlatformSignposts? = nil
+        capture: CaptureController?, utilityQueue: DispatchQueue, signposts: PlatformSignposts? = nil
     ) {
         self.tapFactory = tapFactory
         self.poster = poster
