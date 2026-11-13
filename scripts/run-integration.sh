@@ -2,17 +2,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Platform integration layers on the self-hosted macOS runner (QA-R10 to QA-R16, PLT-R821,
-# section 13.2). The runner has Accessibility (and, if needed, Input Monitoring) granted to the
-# stable Apple Development signing identity of the test build, so builds here are signed normally
-# by default: an ad-hoc signature changes with every build and would lose the grants. Only a machine
-# that grants again after every build (the tart VM, docs/runbooks/integration-suite.md section 10)
-# sets INTEGRATION_CODE_SIGN_IDENTITY=- for an ad-hoc test build.
+# section 13.2). The runner is the tart VM (docs/runbooks/self-hosted-runner.md section 8, ADR 0400): it sets
+# INTEGRATION_CODE_SIGN_IDENTITY=- for an ad-hoc test build and grants that build Accessibility and Input
+# Monitoring again after every build (scripts/vm/grant-tcc.sh), because an ad-hoc signature changes with every
+# build and TCC ties a grant to it. The Apple Development identity stays in the keychain of Pa's Mac and is never
+# copied into the VM (Q9). Unset, the variable keeps the Apple Development identity of
+# Config/Integration.xcconfig, whose grant survives every rebuild: that fits only a physical Mac runner, which was
+# not chosen (self-hosted-runner.md section 4).
 #
 # Subcommands:
-#   build   the test build: xcodegen configuration Integration (INTEGRATION_HOOKS, dev bundle ID, Apple
-#           Development identity, ADR 0502 "Integration hooks") and TestHost, built in $INTEGRATION_DERIVED_DATA
-#           (default .build/integration-build) and installed into $INTEGRATION_APP_DIR (default ~/Applications)
-#           at the same path every time; INTEGRATION_CODE_SIGN_IDENTITY=- signs the test build ad hoc instead
+#   build   the test build: xcodegen configuration Integration (INTEGRATION_HOOKS, dev bundle ID, ADR 0502
+#           "Integration hooks") and TestHost, built in $INTEGRATION_DERIVED_DATA (default
+#           .build/integration-build) and installed into $INTEGRATION_APP_DIR (default ~/Applications) at the same
+#           path every time; signed ad hoc with INTEGRATION_CODE_SIGN_IDENTITY=- (the VM runner), otherwise with
+#           the Apple Development identity of Config/Integration.xcconfig
 #   tests   QA-R11 TestHost suite and privacy canary: compat-harness run --only 'testhost.*' (ADR 0502)
 #   compat  compat-harness scenarios (compat/scenarios), results in the output directory
 #   soak    nightly soak: 1,000,000 keystrokes through the pipeline (QA-R16); M2 compared with the baseline
@@ -30,9 +33,10 @@
 #                          needs no opt-in.
 #   chromedriver           webdriver scenarios without a --webdriver BUNDLE=URL entry read back through the
 #                          chromedriver default endpoint http://127.0.0.1:9515; start it before compat and soak.
-#   INTEGRATION_CODE_SIGN_IDENTITY=-  build: ad-hoc test build with the hardened runtime off, for a machine without
-#                          the Apple Development identity whose grants are renewed after every build (the VM's
-#                          scripts/vm/grant-tcc.sh). Unset: the identity of Config/Integration.xcconfig.
+#   INTEGRATION_CODE_SIGN_IDENTITY=-  build: ad-hoc test build with the hardened runtime off. Set on the VM runner,
+#                          which has no Apple Development identity (it stays on Pa's Mac, ADR 0400) and renews the
+#                          grants after every build (scripts/vm/grant-tcc.sh). Unset: the identity of
+#                          Config/Integration.xcconfig (a physical Mac runner, not chosen).
 set -euo pipefail
 
 usage() {
@@ -41,8 +45,9 @@ Usage: scripts/run-integration.sh build|tests|compat|soak|bench [--out DIR]
 
   --out DIR   output directory for result bundles and reports (default .build/integration)
   -h, --help  show this help
-Requires a Mac with permissions granted to the test build's signing identity (QA-R12) and
-COMPAT_HARNESS_LIVE=1 from the runner's .env file (docs/runbooks/self-hosted-runner.md section 3.1).
+Requires the runner's grants for the test build (QA-R12; the VM runner renews them after every ad-hoc build,
+INTEGRATION_CODE_SIGN_IDENTITY=-) and COMPAT_HARNESS_LIVE=1 from the runner's .env file
+(docs/runbooks/self-hosted-runner.md sections 3.1 and 8).
 compat and soak also need chromedriver on http://127.0.0.1:9515.
 EOF
 }
@@ -139,9 +144,11 @@ install_app() {
   info "installed $destination"
 }
 
-# Signing of the test build. Ad hoc only on request: an ad-hoc signature has no Team ID, so the hardened runtime's
-# library validation would refuse the embedded Sparkle framework (vm-test-lab.md section 6.1), and its TCC grants
-# follow the cdhash of each build.
+# Signing of the test build. The VM runner asks for ad hoc (INTEGRATION_CODE_SIGN_IDENTITY=-, ADR 0400): it has no
+# Apple Development identity, which stays in the keychain of Pa's Mac (Q9), and it grants every new build again,
+# because TCC ties an ad-hoc grant to the cdhash of that build. Ad hoc also turns the hardened runtime off: an ad-hoc
+# signature has no Team ID, so library validation would refuse the embedded Sparkle framework (vm-test-lab.md
+# section 6.1). Unset, the build is signed with the Apple Development identity (a physical Mac runner, not chosen).
 SIGN_OVERRIDES=()
 select_signing() {
   case "${INTEGRATION_CODE_SIGN_IDENTITY:-}" in

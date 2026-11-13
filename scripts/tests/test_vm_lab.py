@@ -919,6 +919,36 @@ class IntegrationGuestTests(unittest.TestCase):
         self.assertEqual(set(sed.stdout.split()), layouts)
 
 
+class VmRunnerSigningDocsTests(unittest.TestCase):
+    """ADR 0400 (decided under Pa's delegation, 2026-11-13): the VM integration runner signs the test build ad hoc
+    and grants every new build again; the Apple Development identity stays in the keychain of Pa's Mac and is never
+    copied into the VM (Q9). The script and the two runbooks say the same."""
+
+    RUNBOOKS = REPO / "docs" / "runbooks"
+
+    def test_run_integration_names_the_ad_hoc_vm_runner(self):
+        header = (SCRIPTS / "run-integration.sh").read_text(encoding="utf-8").split("set -euo pipefail")[0]
+        self.assertIn("INTEGRATION_CODE_SIGN_IDENTITY=- for an ad-hoc test build", header)
+        self.assertIn("ADR 0400", header)
+        self.assertIn("never\n# copied into the VM (Q9)", header)
+
+    def test_the_runbooks_keep_the_identity_out_of_the_vm(self):
+        suite = (self.RUNBOOKS / "integration-suite.md").read_text(encoding="utf-8")
+        runner = (self.RUNBOOKS / "self-hosted-runner.md").read_text(encoding="utf-8")
+        for name, text in (("integration-suite.md", suite), ("self-hosted-runner.md", runner)):
+            with self.subTest(runbook=name):
+                flat = " ".join(text.split())
+                self.assertIn("ADR 0400", flat)
+                self.assertNotIn("Apple Development identity in the runner's keychain", flat)
+                self.assertNotIn("import the Apple Development certificate into the VM", flat)
+                self.assertNotIn("that stays Pa's option", flat)
+        self.assertIn("never copied into the VM", " ".join(runner.split()))
+        self.assertIn("never imported into a VM", " ".join(suite.split()))
+        # The registered VM runner gets the ad-hoc override from its .env, next to the live opt-in.
+        self.assertIn("`COMPAT_HARNESS_LIVE=1` and `INTEGRATION_CODE_SIGN_IDENTITY=-` into `~/actions-runner/.env`",
+                      " ".join(runner.split()))
+
+
 class RunShTests(unittest.TestCase):
     def test_the_suite_loop_runs_this_file(self):
         text = (SCRIPTS / "tests" / "run.sh").read_text(encoding="utf-8")

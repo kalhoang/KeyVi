@@ -14,7 +14,7 @@ anything.
 | Item | Who | When | Command (from the checkout root) | Needs |
 |---|---|---|---|---|
 | Plan check of every scenario, profile and rule | Hosted CI, any Mac | Every PR | `swift run --package-path Packages/AppCore compat-harness run --dry-run` (also `soak`, `bench`, `egress --dry-run`) | Nothing |
-| Test build with the integration hooks, and TestHost | Runner | Before every runner job | `scripts/run-integration.sh build` (configuration `Integration`, section 2 step 6) | Apple Development identity in the runner's keychain |
+| Test build with the integration hooks, and TestHost | Runner | Before every runner job | `scripts/run-integration.sh build` (configuration `Integration`, section 2 step 6) VM runner: `INTEGRATION_CODE_SIGN_IDENTITY=-` (ad hoc) and a fresh grant after every build (ADR 0400) |
 | Scenario expectations against the real engine | Hosted CI, any Mac | Every PR | `swift test` in `Packages/AppCore` (`ScenarioOracleTests`, `ScenarioFilesTests`) | Nothing |
 | QA-R11 TestHost suite and privacy canary | Runner | Every merge to `main`, nightly | `scripts/run-integration.sh tests` = `compat-harness run --only 'testhost.*' --output .build/integration/tests` | Test build, TestHost, grants (section 2) |
 | Compatibility scenarios (13.2 minimum set, every rule's scenario) | Runner | Every merge to `main` | `compat-harness run --scenarios compat/scenarios --output .build/integration/compat` | Third-party apps, chromedriver, loopback server |
@@ -55,23 +55,30 @@ These steps change system settings, so they are Pa's to do on the runner machine
 6. Build and install the test build once: `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh build` from the
    runner's checkout. It builds the xcodegen configuration `Integration` (`Config/Integration.xcconfig`: the
    `INTEGRATION_HOOKS` compilation condition, release-like code generation, `APP_BUNDLE_ID_DEV` of
-   `scripts/brand.env`, the Apple Development identity) and installs it into `~/Applications/` (or
-   `$INTEGRATION_APP_DIR`), always to the same path, so the grants of step 8 survive every rebuild. A copy still
+   `scripts/brand.env`, the Apple Development identity unless the ad-hoc override below is set) and installs it into
+   `~/Applications/` (or `$INTEGRATION_APP_DIR`), always to the same path. A copy still
    running from that path (an earlier job, a killed harness, a manual session) is terminated first (SIGTERM, then
    SIGKILL after `$INTEGRATION_QUIT_TIMEOUT` seconds, default 10). It passes `ONLY_ACTIVE_ARCH=YES` on the command
    line so the package targets build for the runner's architecture only. It refuses a build that does not answer the
    hooks (ADR 0502, "Integration hooks"). The workflows run the same step before every
-   job, so the runner always tests the commit it checked out. A machine without the Apple Development identity
-   whose grants are renewed after every build (the tart VM, section 10) sets `INTEGRATION_CODE_SIGN_IDENTITY=-`:
-   the test build is then signed ad hoc with the hardened runtime off (an ad-hoc signature has no Team ID, so
-   library validation would refuse Sparkle); any other value stops before the build. By hand, the build alone is
+   job, so the runner always tests the commit it checked out. The runner is the tart VM
+   ([self-hosted-runner.md](self-hosted-runner.md) section 8; by hand, section 10): it has no Apple Development
+   identity, which stays in the keychain of Pa's Mac and is never copied into the VM (ADR 0400, Q9), so it sets
+   `INTEGRATION_CODE_SIGN_IDENTITY=-` and grants every new build again (step 8). The test build is then signed ad
+   hoc with the hardened runtime off (an ad-hoc signature has no Team ID, so library validation would refuse
+   Sparkle); any other value stops before the build. Left unset, the build is signed with the Apple Development
+   identity of `Config/Integration.xcconfig` and one grant survives every rebuild: that fits only a physical Mac
+   runner, which was not chosen and would need its own signing decision (Q9). By hand, the build alone is
    `xcodebuild -project App.xcodeproj -scheme App -configuration Integration build` after `xcodegen generate`.
    Never ship this build: `scripts/verify-release.sh` fails any app that contains the hooks.
 7. The same `build` step builds TestHost (Debug, ad hoc) into the same folder. It needs no permission.
 8. Grant Accessibility (and Input Monitoring if macOS asks) to the test build, and Accessibility to the harness
    binary `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads
    fields and presses menu items. VERIFY which process macOS holds responsible when the runner service starts the
-   harness: if the grant does not take, grant the runner's `Runner.Worker` as well.
+   harness: if the grant does not take, grant the runner's `Runner.Worker` as well. On the VM runner this is
+   `sudo scripts/vm/grant-tcc.sh --bundle ... --binary ...` after **every** build (its image has SIP disabled, and the
+   grant of an ad-hoc build is tied to that build's cdhash); on a physical Mac it is done once by hand
+   ([self-hosted-runner.md](self-hosted-runner.md) section 4).
 9. Start the test build once by hand and finish its onboarding, so it never shows onboarding during a run (the
    harness keeps the onboarding state when it rewrites the settings).
 10. Run the plan check on the runner: `compat-harness run --dry-run`. It must print every scenario, an `app:` line
@@ -250,11 +257,12 @@ posted events into TestHost. **5 of 40 TestHost scenarios passed** (`testhost.ba
 | 1 | `no accessibility element with identifier testhost.secureInput.toggle` | The checkbox exists in `TestHost/Sources/TestHostLayout.swift`; not found at that moment, probably the same state problem. Recheck after the rows above |
 
 Also, the privacy report listed one unreadable file (`backups/app-modes.json.v1.<timestamp>.json` in the test
-build's folder), which by itself fails the run (section 4). Nothing in this list needs a signing identity from the
-host keychain: the VM builds and grants everything itself. What the VM lacks for a run identical to the runner's is
-only the Apple Development identity of `Config/Integration.xcconfig` (the script overrides it with ad-hoc
-signing) and the prerequisites of section 2 steps 4 and 5 (input sources, third-party apps, chromedriver, the
-loopback server), which the TestHost subset does not need except for the four input-source scenarios.
+build's folder), which by itself fails the run (section 4). Nothing in this list needs a signing identity: the VM
+builds the test build ad hoc and grants it itself, as the VM runner does by decision (ADR 0400: the Apple
+Development identity stays in the keychain of Pa's Mac and is never copied into the VM, Q9). What the VM lacks for
+a full runner job is only the prerequisites of section 2 steps 4 and 5 (input sources, third-party apps,
+chromedriver, the loopback server), which the TestHost subset does not need except for the four input-source
+scenarios.
 
 ### 10.2 Grants by hand, and why the signature must be stable
 
@@ -278,11 +286,11 @@ its requirement across builds: with the Apple Development certificate of `Config
 `identifier "<dev bundle ID>" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development:
 ..." and certificate 1[field.1.2.840.113635.100.6.2.1] exists`, the same for every build signed with that
 certificate, so one grant lasts until the certificate is replaced (PLT-R751, self-hosted-runner.md section 4).
-For a VM there are two ways to get such a signature: import the Apple Development certificate into the VM's login
-keychain (Pa's decision; it is not a release secret), or create a self-signed code-signing certificate inside the
-VM and sign the test build and the harness with it (the requirement is anchored on that certificate; the hardened
-runtime must stay off, because a self-signed certificate has no Team ID). With SIP disabled none of this is
-needed: `grant-tcc.sh` simply grants the new cdhash after each build.
+That identity stays in the keychain of Pa's Mac and is never imported into a VM (ADR 0400, Q9). A VM image with
+SIP enabled that needs a stable signature can use a self-signed code-signing certificate created inside the VM to
+sign the test build and the harness (the requirement is anchored on that certificate; the hardened runtime must
+stay off, because a self-signed certificate has no Team ID). With SIP disabled none of this is needed:
+`grant-tcc.sh` simply grants the new cdhash after each build.
 
 ### 10.3 Triage of the first attempt (W6-B, 2026-11-13)
 
