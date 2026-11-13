@@ -132,18 +132,29 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
         }
     }
 
-    /// The first 200 tokens the engine keeps as typed in both methods (alone and followed by a space).
-    static func commonWords(telex: SettingsState, vni: SettingsState) throws -> [String] {
-        var chosen: [String] = []
-        for word in try frequencyList() where chosen.count < count {
+    struct Selection {
+        /// The first 200 tokens both key scripts can spell.
+        var words: [String] = []
+        /// Tokens among them that the engine does not give back as typed in both methods: an engine regression
+        /// QA-R11 must expose, never a reason to move on to the next token.
+        var mangled: [String] = []
+    }
+
+    /// The first 200 tokens both key scripts can spell (the only legitimate skips are tokens with digits or
+    /// punctuation, which `VietnameseKeys` cannot encode), and those the engine does not keep as typed in both
+    /// methods (alone and followed by a space).
+    static func commonWords(telex: SettingsState, vni: SettingsState) throws -> Selection {
+        var selection = Selection()
+        for word in try frequencyList() where selection.words.count < count {
             guard let telexKeys = VietnameseKeys.telex(word), let vniKeys = VietnameseKeys.vni(word) else { continue }
+            selection.words.append(word)
             var telexOracle = try ScenarioTextOracle(settings: telex, focused: "f")
             telexOracle.type(telexKeys + ["space"])
             var vniOracle = try ScenarioTextOracle(settings: vni, focused: "f")
             vniOracle.type(vniKeys + ["space"])
-            if telexOracle.text == word + " " && vniOracle.text == word + " " { chosen.append(word) }
+            if telexOracle.text != word + " " || vniOracle.text != word + " " { selection.mangled.append(word) }
         }
-        return chosen
+        return selection
     }
 
     static func scenario(_ method: Scenario.Method, words: [String]) -> Scenario {
@@ -166,8 +177,10 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
         let targets = try repositoryTargets()
         let telex = try await OracleSettings.load(AppConfiguration(method: .telex), targets: targets)
         let vni = try await OracleSettings.load(AppConfiguration(method: .vni), targets: targets)
-        let words = try Self.commonWords(telex: telex, vni: vni)
+        let selection = try Self.commonWords(telex: telex, vni: vni)
+        let words = selection.words
         #expect(words.count == Self.count)
+        #expect(selection.mangled.isEmpty, "the engine changes common words: \(selection.mangled)")
         for method in [Scenario.Method.telex, .vni] {
             let expected = Self.scenario(method, words: words)
             let file = scenariosDirectory.appendingPathComponent(expected.id + ".json")
@@ -175,7 +188,9 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
                 try Data(ScenarioDocument.render(expected).utf8).write(to: file)
             }
             let committed = try ScenarioLoader().load(file: file)
-            #expect(committed == expected, "\(expected.id): rerun with UPDATE_SCENARIO_GOLDENS=1")
+            #expect(
+                committed == expected,
+                "\(expected.id): rerun with UPDATE_SCENARIO_GOLDENS=1 (changed by the engine: \(selection.mangled))")
             // The whole sentence, not only each word alone (an English run, L10, could restore later words).
             var oracle = try ScenarioTextOracle(settings: method == .telex ? telex : vni, focused: "f")
             oracle.type(committed.keys)
