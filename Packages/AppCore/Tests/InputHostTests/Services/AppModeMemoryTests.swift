@@ -189,8 +189,10 @@ struct AppModeMemoryTests {
         var live = memory([AppModeEntry(bundle: terminal, mode: .vietnamese)])
         let emitted = live.document()
         live.recordToggle(bundle: terminal, mode: .english)  // newer than what the store has
+        // FocusCore records the post-toggle document too, as it emits it before the store echoes the old one.
         let merged = AppModeMemory.merged(
-            current: live, incoming: emitted, lastEmitted: emitted, rememberPerApp: true, firstSeen: .inherit)
+            current: live, incoming: emitted, recentlyEmitted: history(emitted, live.document()),
+            rememberPerApp: true, firstSeen: .inherit)
         #expect(merged.resolve(bundle: terminal, ruleDefault: .inherit).mode == .english)
     }
 
@@ -203,7 +205,7 @@ struct AppModeMemoryTests {
             AppModeEntry(bundle: zalo, rule: .ignore),
         ]
         let merged = AppModeMemory.merged(
-            current: live, incoming: incoming, lastEmitted: emitted, rememberPerApp: true, firstSeen: .inherit)
+            current: live, incoming: incoming, recentlyEmitted: history(emitted), rememberPerApp: true, firstSeen: .inherit)
         #expect(merged.resolve(bundle: terminal, ruleDefault: .inherit).source == .alwaysVietnamese)
         #expect(merged.resolve(bundle: zalo, ruleDefault: .inherit).ignored)
         #expect(!merged.resolve(bundle: code, ruleDefault: .inherit).ignored)  // rule removed in the Apps pane
@@ -214,11 +216,38 @@ struct AppModeMemoryTests {
         let live = memory([AppModeEntry(bundle: terminal, mode: .english)])
         let imported = AppModesDocument(globalMode: .english, apps: [AppModeEntry(bundle: zalo, mode: .english)])
         let merged = AppModeMemory.merged(
-            current: live, incoming: imported, lastEmitted: live.document(), rememberPerApp: false, firstSeen: .vi)
+            current: live, incoming: imported, recentlyEmitted: history(live.document()), rememberPerApp: false, firstSeen: .vi)
         #expect(merged.document() == imported)
         #expect(merged.rememberPerApp == false)
         let first = AppModeMemory.merged(
-            current: live, incoming: imported, lastEmitted: nil, rememberPerApp: true, firstSeen: .inherit)
+            current: live, incoming: imported, recentlyEmitted: EmittedModeHistory(), rememberPerApp: true, firstSeen: .inherit)
         #expect(first.document() == imported)
     }
+
+    @Test func historyKeepsTheLastSixteenDistinctModeStates() {
+        var history = EmittedModeHistory()
+        let documents = (0..<20).map { index in
+            AppModesDocument(
+                globalMode: index.isMultiple(of: 2) ? .english : .vietnamese,
+                apps: [AppModeEntry(bundle: bundle("com.example.app\(index)"), mode: .english)])
+        }
+        for document in documents {
+            history.record(document)
+            history.record(document)  // consecutive duplicates are stored once
+        }
+        #expect(history.states.count == EmittedModeHistory.capacity)
+        #expect(!history.contains(documents[3]))
+        #expect(history.contains(documents[4]))
+        #expect(history.contains(documents[19]))
+        // Rules and order are not part of the mode state.
+        var reordered = documents[19]
+        reordered.apps.append(AppModeEntry(bundle: zalo, rule: .ignore))
+        #expect(history.contains(reordered))
+    }
+}
+
+private func history(_ documents: AppModesDocument...) -> EmittedModeHistory {
+    var history = EmittedModeHistory()
+    for document in documents { history.record(document) }
+    return history
 }

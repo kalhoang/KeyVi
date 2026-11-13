@@ -421,6 +421,43 @@ struct FocusTrackerTests {
         #expect(harness.snapshot.decision.plan.strategy == .passThrough)
     }
 
+    /// PRD-R20, contracts.md 10.4: SettingsStore republishes `appModes` on every settings change and debounces
+    /// `recordAppModes`, so it can hand back any document emitted before the latest toggle. Such an echo must
+    /// not roll the toggle back.
+    @Test func anOlderEchoFromTheStoreDoesNotRollBackAToggle() throws {
+        let harness = Harness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: attributes(), notify: nil)
+        harness.start()
+        let preToggle = try #require(harness.documents.last)
+        harness.toggle(1, terminal, .english)
+        let middle = try #require(harness.documents.last)
+        harness.toggle(2, terminal, .vietnamese)
+        harness.toggle(3, terminal, .english)
+        for echo in [preToggle, middle] {
+            harness.tracker.update(settings: DefaultSettings.v1, appModes: echo)
+            harness.sync()
+            #expect(harness.snapshot.mode == .english)
+            #expect(harness.documents.last?.globalMode == .english)
+            #expect(harness.documents.last?.apps.first == AppModeEntry(bundle: terminal, mode: .english))
+        }
+    }
+
+    /// An import or reset (a document this memory never emitted) replaces the remembered modes.
+    @Test func anImportedDocumentReplacesTheRememberedModes() {
+        let harness = Harness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: attributes(), notify: nil)
+        harness.start()
+        harness.toggle(1, terminal, .english)
+        let imported = AppModesDocument(globalMode: .vietnamese, apps: [AppModeEntry(bundle: zalo, mode: .english)])
+        harness.tracker.update(settings: DefaultSettings.v1, appModes: imported)
+        harness.sync()
+        harness.activate(zaloPID)
+        #expect(harness.snapshot.mode == .english)
+        #expect(harness.snapshot.modeSource == .remembered)
+    }
+
     @Test func pasteOptInComesFromSettingsOrAUserOverride() {
         let harness = Harness()
         defer { harness.finish() }

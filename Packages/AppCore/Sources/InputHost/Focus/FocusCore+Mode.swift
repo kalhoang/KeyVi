@@ -78,6 +78,7 @@ extension FocusCore {
         let document = memory.document()
         guard document != lastEmittedDocument else { return }
         lastEmittedDocument = document
+        emittedHistory.record(document)
         memoryObserver?(document)
     }
 }

@@ -84,6 +84,7 @@ final class FocusCore {
     var generation = FocusGeneration.initial
     var fieldToken: UInt64 = 0
     var lastEmittedDocument: AppModesDocument?
+    var emittedHistory = EmittedModeHistory()
     var manualAccessibilityPIDs: Set<Int32> = []
     var running = false
 
@@ -96,7 +97,9 @@ final class FocusCore {
         self.sink = sink
         self.rules = rules
         self.memory = memory
-        lastEmittedDocument = memory.document()
+        let document = memory.document()
+        lastEmittedDocument = document
+        emittedHistory.record(document)
         running = true
         syncObservers(scanOverlays: true)
         refresh(force: true)
@@ -121,7 +124,7 @@ final class FocusCore {
     func update(settings: EffectiveSettings, appModes: AppModesDocument) {
         self.settings = settings
         memory = AppModeMemory.merged(
-            current: memory, incoming: appModes, lastEmitted: lastEmittedDocument,
+            current: memory, incoming: appModes, recentlyEmitted: emittedHistory,
             rememberPerApp: settings.rememberPerApp, firstSeen: settings.firstSeenAppMode)
         emitMemoryIfChanged()
         guard running else { return }
