@@ -4,7 +4,9 @@
 // `request-<sequence>.json` atomically into the hooks directory of the app under test; the INTEGRATION_HOOKS test
 // build watches that directory (a vnode DispatchSource, no polling and no listening socket, PLT-R909), answers
 // with `response-<sequence>.json` and never touches the request. The harness polls for the answer, then removes
-// both files. Owner-only permissions (0700 directory, 0600 files) keep other users out. Runner only in practice;
+// both files. Sequence numbers start at a random base per channel, and a response file already present for a new
+// number is removed before the request is written, so an answer left behind by a killed harness process is never
+// taken for the current run's (PLT-R821). Owner-only permissions (0700 directory, 0600 files) keep other users out. Runner only in practice;
 // tests run it over InMemoryFileSystem with ManualClock.
 
 public import AppModel
@@ -26,17 +28,37 @@ public final class FileDropHookChannel: AppHookClient, Sendable {
     private let clock: any MonotonicClock
     private let sleeper: any HarnessSleeper
     private let timeout: UInt64
-    private let sequence = Mutex<UInt64>(0)
+    private let sequence: Mutex<UInt64>
 
+    /// `firstSequence` is the number before the first request's; tests pass a fixed one.
     public init(
         directory: URL, fileSystem: any FileSystem, clock: any MonotonicClock, sleeper: any HarnessSleeper,
-        timeoutNanoseconds: UInt64 = FileDropHookChannel.defaultTimeoutNanoseconds
+        timeoutNanoseconds: UInt64 = FileDropHookChannel.defaultTimeoutNanoseconds,
+        firstSequence: UInt64 = FileDropHookChannel.randomSequenceBase()
     ) {
         self.directory = directory
         self.fileSystem = fileSystem
         self.clock = clock
         self.sleeper = sleeper
         self.timeout = timeoutNanoseconds
+        self.sequence = Mutex(firstSequence)
+    }
+
+    /// A random multiple of 2^20 (at least 2^20, below 2^52): a channel sends far fewer than 2^20 requests, so two
+    /// channels' numbers do not overlap unless their bases are equal (one chance in 2^32).
+    public static func randomSequenceBase() -> UInt64 {
+        UInt64.random(in: 1...UInt64(UInt32.max)) << 20
+    }
+
+    /// Removes every `request-*` and `response-*` file left in the hooks directory (an earlier run that was killed);
+    /// other files and a missing directory are left alone.
+    public func removeStaleFiles() {
+        guard let files = try? fileSystem.contentsOfDirectory(at: directory) else { return }
+        for file in files {
+            let name = file.lastPathComponent
+            guard name.hasPrefix("request-") || name.hasPrefix("response-") else { continue }
+            try? fileSystem.removeItem(at: file)
+        }
     }
 
     /// `<application support>/<folder>/IntegrationHooks`.
@@ -58,6 +80,7 @@ public final class FileDropHookChannel: AppHookClient, Sendable {
             return value
         }
         try fileSystem.createDirectory(at: directory, permissions: .ownerOnlyDirectory)
+        if fileSystem.fileExists(at: responseURL(number)) { try fileSystem.removeItem(at: responseURL(number)) }
         let request = try JSONEncoder().encode(AppHookRequest(sequence: number, command: command))
         try fileSystem.writeAtomically(request, to: requestURL(number), permissions: .ownerOnlyFile)
         defer {

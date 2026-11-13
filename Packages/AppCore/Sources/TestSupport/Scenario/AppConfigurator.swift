@@ -38,6 +38,9 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
     private struct State {
         var backedUp: Set<SettingsFile>? = nil
         var current: AppConfiguration? = nil
+        /// Set when the hooks timed out once: the app is not the INTEGRATION_HOOKS build, so asking again would
+        /// only add the channel's timeout to every switch.
+        var hooksSilent = false
     }
 
     private let location: StorageLocation
@@ -93,7 +96,7 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
                 try fileSystem.removeItem(at: target)
             }
         }
-        state.withLock { $0 = State() }
+        state.withLock { $0 = State(hooksSilent: $0.hooksSilent) }
         try await control.launch()
         try await awaitReady()
     }
@@ -121,9 +124,9 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
     }
 
     /// With hooks: until the app reports a state other than `starting`. Without hooks, or when the app does not
-    /// answer at all (not the INTEGRATION_HOOKS build): a fixed settle time.
+    /// answer at all (not the INTEGRATION_HOOKS build, remembered after the first timeout): a fixed settle time.
     private func awaitReady() async throws {
-        guard let hooks else {
+        guard let hooks, !state.withLock({ $0.hooksSilent }) else {
             try await sleeper.sleep(nanoseconds: Self.settleNanoseconds)
             return
         }
@@ -132,6 +135,7 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
             do {
                 if try await hooks.state().state != .starting { return }
             } catch AppHookError.timeout {
+                state.withLock { $0.hooksSilent = true }
                 try await sleeper.sleep(nanoseconds: Self.settleNanoseconds)
                 return
             } catch {

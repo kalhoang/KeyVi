@@ -15,11 +15,28 @@ import Testing
 private let hooksDirectory = URL(fileURLWithPath: "/support/App/IntegrationHooks")
 
 private func channel(
-    app: FakeHookApp?, clock: ManualClock, fileSystem: InMemoryFileSystem, timeout: UInt64 = 1_000_000_000
+    app: FakeHookApp?, clock: ManualClock, fileSystem: InMemoryFileSystem, timeout: UInt64 = 1_000_000_000,
+    sleeper: (any HarnessSleeper)? = nil
 ) -> FileDropHookChannel {
     FileDropHookChannel(
         directory: hooksDirectory, fileSystem: fileSystem, clock: clock,
-        sleeper: RespondingSleeper(app: app, clock: clock), timeoutNanoseconds: timeout)
+        sleeper: sleeper ?? RespondingSleeper(app: app, clock: clock), timeoutNanoseconds: timeout, firstSequence: 0)
+}
+
+/// An app that answers every pending request with something that is not a response document.
+private struct MalformedAnswerSleeper: HarnessSleeper {
+    let fileSystem: InMemoryFileSystem
+    let clock: ManualClock
+
+    func sleep(nanoseconds: UInt64) async throws {
+        for file in (try? fileSystem.contentsOfDirectory(at: hooksDirectory)) ?? []
+        where file.lastPathComponent.hasPrefix("request-") {
+            let response = hooksDirectory.appendingPathComponent(
+                file.lastPathComponent.replacingOccurrences(of: "request-", with: "response-"))
+            try fileSystem.writeAtomically(Data("{}".utf8), to: response, permissions: .ownerOnlyFile)
+        }
+        clock.advance(byMicroseconds: nanoseconds / 1_000)
+    }
 }
 
 @Suite struct AppHookWireFormatTests {
@@ -75,6 +92,50 @@ private func channel(
         #expect(hooks.requestURL(2).lastPathComponent == "request-2.json")
     }
 
+    /// A response left behind by an earlier harness process (killed before its cleanup, PLT-R821) is never taken
+    /// as the answer to a new request with the same number.
+    @Test func staleResponseIsNotTheAnswer() async throws {
+        let clock = ManualClock()
+        let fileSystem = InMemoryFileSystem()
+        let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory, state: snapshot(.ready, pid: 7))
+        let hooks = channel(app: app, clock: clock, fileSystem: fileSystem)
+        try fileSystem.createDirectory(at: hooksDirectory, permissions: .ownerOnlyDirectory)
+        let stale = AppHookResponse(sequence: 1, state: snapshot(.paused, pid: 3))
+        try fileSystem.writeAtomically(
+            try JSONEncoder().encode(stale), to: hooks.responseURL(1), permissions: .ownerOnlyFile)
+        let state = try await hooks.state()
+        #expect(state.state == .ready && state.processIdentifier == 7)
+        #expect(app.commands.all == ["state"])
+    }
+
+    /// `removeStaleFiles` clears earlier requests and answers, nothing else; a missing directory is fine.
+    @Test func staleFilesAreRemoved() throws {
+        let fileSystem = InMemoryFileSystem()
+        let hooks = channel(app: nil, clock: ManualClock(), fileSystem: fileSystem)
+        hooks.removeStaleFiles()
+        try fileSystem.createDirectory(at: hooksDirectory, permissions: .ownerOnlyDirectory)
+        for name in ["request-4.json", "response-4.json", "response-9.json", "notes.txt"] {
+            try fileSystem.writeAtomically(
+                Data("{}".utf8), to: hooksDirectory.appendingPathComponent(name), permissions: .ownerOnlyFile)
+        }
+        hooks.removeStaleFiles()
+        #expect(try fileSystem.contentsOfDirectory(at: hooksDirectory).map(\.lastPathComponent) == ["notes.txt"])
+    }
+
+    /// Each channel starts its numbers at a random base, so two harness processes never share a number.
+    @Test func sequenceNumbersStartAtARandomBase() async throws {
+        let bases = (0..<8).map { _ in FileDropHookChannel.randomSequenceBase() }
+        #expect(Set(bases).count == bases.count)
+        #expect(bases.allSatisfy { $0 >= 1 << 20 && $0 % (1 << 20) == 0 })
+        let clock = ManualClock()
+        let fileSystem = InMemoryFileSystem()
+        let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
+        let hooks = FileDropHookChannel(
+            directory: hooksDirectory, fileSystem: fileSystem, clock: clock,
+            sleeper: RespondingSleeper(app: app, clock: clock))
+        #expect(try await hooks.state().state == .ready)
+    }
+
     @Test func silenceTimesOutAndLeavesNothingBehind() async throws {
         let clock = ManualClock()
         let fileSystem = InMemoryFileSystem()
@@ -110,10 +171,10 @@ private func channel(
         await #expect(throws: AppHookError.missingPayload(command: "latencyProbe")) {
             _ = try await hooks.latencyProbe(.fast)
         }
-        // An answer for another sequence number, or not JSON, is malformed.
-        let broken = channel(app: nil, clock: clock, fileSystem: fileSystem)
-        try fileSystem.createDirectory(at: hooksDirectory, permissions: .ownerOnlyDirectory)
-        try fileSystem.writeAtomically(Data("{}".utf8), to: broken.responseURL(1), permissions: .ownerOnlyFile)
+        // An answer that is not a response document is malformed.
+        let broken = channel(
+            app: nil, clock: clock, fileSystem: fileSystem,
+            sleeper: MalformedAnswerSleeper(fileSystem: fileSystem, clock: clock))
         await #expect(throws: AppHookError.malformedResponse(command: "state")) { _ = try await broken.state() }
         for error in [
             AppHookError.rejected(command: "a", code: "b"), .malformedResponse(command: "a"),

@@ -295,4 +295,18 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         try await configurator(InMemoryFileSystem(), control: control, hooks: silent, clock: clock).apply(.factory)
         #expect(clock.now().nanoseconds - start == SettingsFileAppConfigurator.settleNanoseconds)
     }
+
+    /// Hooks that timed out once are not asked again (each ask costs the channel's 10 s timeout): later switches
+    /// and the restore wait only the settle time.
+    @Test func silentHooksAreAskedOnce() async throws {
+        let clock = ManualClock()
+        let silent = FakeHookClient { _ in throw AppHookError.timeout(command: "state") }
+        let subject = configurator(InMemoryFileSystem(), control: FakeAppControl(), hooks: silent, clock: clock)
+        try await subject.apply(.factory)
+        let start = clock.now().nanoseconds
+        try await subject.apply(AppConfiguration(method: .vni))
+        #expect(clock.now().nanoseconds - start == SettingsFileAppConfigurator.settleNanoseconds)
+        try await subject.restore()
+        #expect(silent.commands.all == ["state"])
+    }
 }
