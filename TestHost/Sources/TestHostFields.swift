@@ -2,7 +2,8 @@
 //
 // QA-R10 contract: each field exposes its current text to the runner through AX (`AXValue` of the element
 // with this accessibility identifier). Web fields mirror their DOM value into a hidden native field through a
-// WKScriptMessageHandler so AX readback works the same way. Workstream W1-H.
+// WKScriptMessageHandler so AX readback works the same way. Workstream W2-E1 (was W1-H).
+// The window title and labels are fixed English test-fixture text, not product copy.
 
 import AppKit
 
@@ -22,9 +23,44 @@ enum TestHostField: String, CaseIterable {
 
 @MainActor
 final class TestHostWindowController: NSWindowController {
-    required init?(coder: NSCoder) { fatalError("not used") }
+    private var fields: [TestHostField: NSTextField] = [:]
 
-    init() { fatalError("W1-H") }
-    func reset(_ field: TestHostField) { fatalError("W1-H") }
-    func text(of field: TestHostField) -> String { fatalError("W1-H") }
+    required init?(coder: NSCoder) { nil }
+
+    init() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 160), styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered, defer: false)
+        window.title = "TestHost"
+        window.center()
+        super.init(window: window)
+
+        let label = NSTextField(labelWithString: "Native text field")
+        let field = NSTextField(string: "")
+        field.placeholderString = "Type here"
+        field.setAccessibilityIdentifier(TestHostField.nativeTextField.rawValue)
+        fields[.nativeTextField] = field
+
+        let stack = NSStackView(views: [label, field])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        let content = NSView()
+        content.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: content.topAnchor),
+            field.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
+        ])
+        window.contentView = content
+        window.initialFirstResponder = field
+    }
+
+    /// Clears a field before a scenario step. Fields the skeleton does not build yet are ignored.
+    func reset(_ field: TestHostField) { fields[field]?.stringValue = "" }
+
+    /// Current text, as the runner would read it through AX. Empty for fields not built yet.
+    func text(of field: TestHostField) -> String { fields[field]?.stringValue ?? "" }
 }

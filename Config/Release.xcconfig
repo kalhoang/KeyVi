@@ -7,6 +7,8 @@
 APP_BUNDLE_ID = $(APP_BUNDLE_ID_RELEASE)
 CODE_SIGN_IDENTITY = $(CODE_SIGN_IDENTITY_RELEASE)
 OTHER_CODE_SIGN_FLAGS = --timestamp
+// PLT-R908: no entitlements at all, so Xcode must not inject `get-task-allow` (Debug keeps it for debugging).
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO
 // PLT-R105: universal binary.
 ARCHS = $(ARCHS_STANDARD)
 ONLY_ACTIVE_ARCH = NO

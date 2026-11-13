@@ -25,6 +25,12 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>CFBundleDisplayName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>TISInputSourceID</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>tsInputMethodIconFileKey</key>
+	<string>SpikeIMK.tiff</string>
 	<key>InputMethodConnectionName</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)_Connection</string>
 	<key>InputMethodServerControllerClass</key>

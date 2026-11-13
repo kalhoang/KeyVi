@@ -88,7 +88,8 @@ targets:
             fi
           done
 
-  # QA-R10 test host app for platform integration tests. Never shipped.
+  # QA-R10 test host app for platform integration tests. Never shipped. Ad-hoc signed: it needs no
+  # permissions and no stable signing identity (the app under test is the one that holds TCC grants).
   TestHost:
     type: application
     platform: macOS
@@ -100,14 +101,20 @@ targets:
         PRODUCT_NAME: TestHost
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID_DEV).testhost
         INFOPLIST_FILE: TestHost/Info.plist
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
 
-  # PLT-R398D spike S1: minimal InputMethodKit input method. Built and installed only by Pa
-  # (SpikeIMK/README.md). Never shipped and never creates an event tap (PLT-R207).
+  # PLT-R398D spike S1: minimal InputMethodKit input method (an .app bundle with the IMK Info.plist keys; the
+  # bundle ID contains ".inputmethod." as macOS expects). Built and installed only by Pa (SpikeIMK/README.md),
+  # signed with the Debug identity (Apple Development). Never shipped and never creates an event tap (PLT-R207).
   SpikeIMK:
     type: application
     platform: macOS
     sources:
       - path: SpikeIMK/Sources
+      - path: SpikeIMK/Resources
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: SpikeIMK
