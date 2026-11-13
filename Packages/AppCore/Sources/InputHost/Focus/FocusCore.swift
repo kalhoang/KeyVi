@@ -67,6 +67,8 @@ final class FocusCore {
         var macOSVersion: LooseVersion
         /// PLT-R905 typing trace: focus snapshots (roles and bundle IDs) while a capture runs.
         var capture: CaptureController?
+        /// PLT-R802: an `axCall` interval around every focus-tracking AX call.
+        var signposts: PlatformSignposts?
     }
 
     let services: Services

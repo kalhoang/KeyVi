@@ -74,7 +74,7 @@ extension InputHostController {
             snapshots: channels.snapshots, queue: channels.queue, feedback: channels.feedback, echo: echo,
             marker: channels.marker, outbox: channels.outbox, metrics: dependencies.metrics,
             tapLog: dependencies.tapLog, capture: dependencies.capture, watchdog: channels.callbackWatchdog,
-            counters: counters)
+            counters: counters, signposts: dependencies.signposts)
         let thread = makeTapThread(context)
         let watchdog = makeWatchdog(for: thread)
         let candidate = TapSession(thread: thread, echo: echo, watchdog: watchdog)

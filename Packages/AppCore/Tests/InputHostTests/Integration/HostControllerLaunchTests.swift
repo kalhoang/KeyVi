@@ -269,6 +269,16 @@ struct HostControllerLifecycleTests {
         #expect(handle.isEnabled, "PLT-R330 step 1 ran without waiting for the 5 s tick")
     }
 
+    /// PLT-R802: the controller hands its signposts to every tap callback context (and to the worker and the
+    /// focus tracker, built from the same dependencies).
+    @Test func signpostsReachTheTapCallback_PLT_R802() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let context = try #require(rig.contexts.last)
+        #expect(context.signposts != nil)
+    }
+
     @Test func sleepLockAndUserSwitchPauseUntilEveryReasonCleared_PLT_R333() async {
         let rig = HostRig()
         await rig.start()

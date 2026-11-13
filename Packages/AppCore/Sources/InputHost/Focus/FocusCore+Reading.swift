@@ -84,6 +84,8 @@ extension FocusCore {
 
     /// AX call duration per bundle (PLT-R801).
     private func timed<Result>(_ bundle: BundleKey?, _ call: () -> Result) -> Result {
+        let signpost = services.signposts?.begin(.axCall)  // PLT-R802
+        defer { if let signpost { services.signposts?.end(.axCall, signpost) } }
         let start = services.clock.now()
         let result = call()
         if let bundle {

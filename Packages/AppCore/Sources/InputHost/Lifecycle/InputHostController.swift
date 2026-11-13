@@ -42,6 +42,9 @@ public struct InputHostDependencies: Sendable {
     public var capture: CaptureController?
     /// Serial utility queue shared with SettingsStore and Diagnostics (PLT-R203).
     public var utilityQueue: DispatchSerialQueue
+    /// PLT-R802 intervals for the tap callback, injection jobs and AX calls. When nil, the production
+    /// controller creates them with the bundle identifier as subsystem.
+    public var signposts: PlatformSignposts?
 
     public init(
         tapFactory: any EventTapFactory, poster: any EventPoster, fieldAccess: any FocusedFieldAccess,
@@ -51,7 +54,7 @@ public struct InputHostDependencies: Sendable {
         workspace: any WorkspaceEvents, keyValueStore: any KeyValueStore, clock: any MonotonicClock,
         scheduler: any TimerScheduler, wallClock: any WallClock,
         metrics: PlatformMetrics, health: HealthEventLog, logger: any DiagnosticsLogging, tapLog: TapLogRing,
-        capture: CaptureController?, utilityQueue: DispatchSerialQueue
+        capture: CaptureController?, utilityQueue: DispatchSerialQueue, signposts: PlatformSignposts? = nil
     ) {
         self.tapFactory = tapFactory
         self.poster = poster
@@ -75,6 +78,7 @@ public struct InputHostDependencies: Sendable {
         self.tapLog = tapLog
         self.capture = capture
         self.utilityQueue = utilityQueue
+        self.signposts = signposts
     }
 }
 
@@ -173,6 +177,10 @@ public final class InputHostController {
     /// Production wiring: the real tap thread and pipeline, the main dispatch queue for hops, the uptime clock
     /// for everything that shares a base with the tap's event timestamps.
     public convenience init(dependencies: InputHostDependencies, settingsStore: SettingsStore) {
+        var dependencies = dependencies
+        if dependencies.signposts == nil {  // PLT-R802: in all builds; the subsystem comes from the bundle
+            dependencies.signposts = Bundle.main.bundleIdentifier.map { PlatformSignposts(subsystem: $0) }
+        }
         self.init(
             dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
@@ -209,14 +217,14 @@ public final class InputHostController {
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
             health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
-            capture: dependencies.capture)
+            capture: dependencies.capture, signposts: dependencies.signposts)
         worker = InjectionWorker(
             queue: channels.queue, signal: channels.workerSignal, feedback: channels.feedback,
             marker: channels.marker, focusGeneration: channels.focusGeneration,
             services: InjectionServices(
                 poster: dependencies.poster, fieldAccess: dependencies.fieldAccess, pasteboard: dependencies.pasteboard,
                 clock: tapClock, metrics: dependencies.metrics, health: dependencies.health,
-                logger: dependencies.logger, capture: dependencies.capture))
+                logger: dependencies.logger, capture: dependencies.capture, signposts: dependencies.signposts))
         settingsPublisher = TapSettingsPublisher(
             cell: channels.snapshots.settings, logger: dependencies.logger, loadBundled: loadBundled)
         tapLogDrainer = TapLogDrainer(
