@@ -58,7 +58,8 @@ root, *files = sys.argv[1:]
 
 TEST_PATH = re.compile(r"(^|/)(Tests|[A-Za-z]+Tests|Fixtures|fixtures)/|(^|/)\.build[^/]*/")
 CLI_PATH = re.compile(r"(^|/)Sources/(lexicon-builder|[A-Za-z-]*[Bb]enchmark[A-Za-z-]*|CompatHarness|"
-                      r"[A-Za-z-]*[Ff]uzz[A-Za-z-]*)/|^Packages/VietnameseEngineFuzz/")
+                      r"[A-Za-z-]*[Ff]uzz[A-Za-z-]*)/|^Packages/VietnameseEngineFuzz/|"
+                      r"^Packages/[A-Za-z]+/Benchmarks/[A-Za-z-]*[Bb]enchmark[A-Za-z-]*/")
 DIAGNOSTICS_PATH = re.compile(r"^Packages/AppCore/Sources/Diagnostics/")
 MARKER = re.compile(r"lint:allow-log-interpolation\s+\S+")
 

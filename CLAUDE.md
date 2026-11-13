@@ -46,7 +46,7 @@ UI strings take the app name as a format argument. `scripts/rename-app.sh` must 
 
 ## Engineering rules
 - Swift 6 language mode, complete strict concurrency. No global or static mutable state in the engine (ENG-R1202).
-- Every source file starts with an SPDX header: engine package `MPL-2.0`; everything else `LicenseRef-App-Pending`
+- Every source file starts with an SPDX header: engine packages and the `data/` pipeline `MPL-2.0`; everything else `LicenseRef-App-Pending`
   (app licence is an open decision for Pa).
 - No per-app branches in code: bundle IDs live only in `compat/rules.json`, test fixtures and the
   conflicting-apps list (PLT-R501).

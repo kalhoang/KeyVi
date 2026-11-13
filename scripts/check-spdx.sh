@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: LicenseRef-App-Pending
 #
 # CLR-R11: every source file carries an SPDX licence header within its first 5 lines.
-#   - Engine packages (Packages/VietnameseEngine/, Packages/VietnameseEngineFuzz/): MPL-2.0
+#   - Engine packages (Packages/VietnameseEngine/, Packages/VietnameseEngineFuzz/) and the data pipeline
+#     that builds their bundled resources (data/, ENG-R810): MPL-2.0
 #   - Everything else: LicenseRef-App-Pending (the app licence is an open decision for Pa)
 # Source files: *.swift, *.sh, *.bash, *.py, *.mjs, *.js, *.ts, *.css, *.rb, *.template,
 # *.xcconfig, workflow YAML under .github/, and extensionless executables under scripts/ with a
@@ -54,7 +55,7 @@ SOURCE_EXT = re.compile(r"\.(swift|sh|bash|py|mjs|cjs|js|ts|css|rb|template|xcco
 WORKFLOW = re.compile(r"^\.github/.*\.ya?ml$")
 EXCLUDED = re.compile(r"^(spec/|dist/|site/dist/)|(^|/)(\.build[^/]*|node_modules|DerivedData)/|"
                       r"\.xcodeproj/|(^|/)__pycache__/")
-MIT_PATH = re.compile(r"^Packages/VietnameseEngine(Fuzz)?/")
+MIT_PATH = re.compile(r"^(Packages/VietnameseEngine(Fuzz)?|data)/")
 HEADER = re.compile(r"SPDX-License-Identifier:\s*([A-Za-z0-9.+-]+)")
 
 
