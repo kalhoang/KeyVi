@@ -88,6 +88,8 @@ enum UpdateChannelPolicy {
     }
 
     /// PRD-R53: leaving Beta never downgrades (Sparkle only offers newer builds), and the pane says so.
+    /// Consumer: the About & Support pane (W2-B, App/Sources/Settings) calls this after a channel change and shows
+    /// `localizer.format(key, appName)` as a one-line note. Not dead code while that pane is being built.
     static func notice(switchingFrom old: UpdateChannelSelection, to new: UpdateChannelSelection) -> UpdatesText? {
         old == .beta && new == .stable ? .stableNoDowngrade : nil
     }
