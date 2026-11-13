@@ -59,8 +59,8 @@ export const download = {
   reqHeading: "Yêu cầu hệ thống",
   reqMacos: "{{macosRequirement}}",
   reqArch: "Máy Mac dùng chip Apple silicon hoặc Intel (một bản chạy cho cả hai). macOS 27 chỉ chạy trên Apple silicon.",
-  reqExcluded: "Máy Mac chỉ lên được tới macOS Sonoma (ví dụ MacBook Air 2018 và 2019, một số máy 2017) chưa được hỗ trợ.",
-  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 15 và 26, <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}} Tên mục trong macOS tiếng Việt cần được xác minh trên từng phiên bản.",
+  reqExcluded: "Máy Mac không cài được macOS 12 Monterey chưa được hỗ trợ. macOS 13 và 14 vẫn được hỗ trợ nhưng không được kiểm thử riêng.",
+  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}} Tên mục trong macOS tiếng Việt cần được xác minh trên từng phiên bản.",
   reqNoOthers: "{{AppName}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
   trustHeading: "Chữ ký và công chứng",
   trustBody: "Mỗi bản DMG được ký bằng chứng chỉ Developer ID của Kal, được Apple công chứng (notarize) và đính kèm vé công chứng (staple), nên macOS mở được mà không cảnh báo. Cập nhật tự động dùng Sparkle 2 và được ký EdDSA; ứng dụng từ chối bản cập nhật sai chữ ký.",
@@ -126,7 +126,7 @@ export const privacy = {
   <li>Không telemetry, không dịch vụ phân tích, không SDK báo cáo sự cố, không cấu hình hay quy tắc tải từ xa.</li>
   <li>Không có cửa sổ web tải nội dung từ xa. Ghi chú phát hành hiện mà không tải tài nguyên ngoài.</li>
   <li>Ô mật khẩu và chế độ nhập bảo mật của macOS luôn được bỏ qua. Đây không phải là cài đặt.</li>
-  <li>Chỉ cần một quyền: Trợ năng (macOS 15 và 26) hoặc Điều khiển thiết bị và truy cập dữ liệu (macOS 27). Nếu macOS đòi thêm, ứng dụng nói rõ lý do. Không có quyền Ghi màn hình, Automation hay Toàn quyền truy cập ổ đĩa.</li>
+  <li>Chỉ cần một quyền: Trợ năng (macOS 12 tới 26) hoặc Điều khiển thiết bị và truy cập dữ liệu (macOS 27). Nếu macOS đòi thêm, ứng dụng nói rõ lý do. Không có quyền Ghi màn hình, Automation hay Toàn quyền truy cập ổ đĩa.</li>
   <li>Khi thiếu quyền, bàn phím của bạn vẫn gõ bình thường (ứng dụng nhả phím ra, không giữ lại).</li>
 </ul>
 

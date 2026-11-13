@@ -12,8 +12,8 @@ import { verifyBadge } from "./layout.mjs";
 import { LANGS, ROUTES, routePath } from "./routes.mjs";
 import { esc, interp } from "./util.mjs";
 
-export const DEFAULT_MIN_MACOS = "15"; // PRD-R8, pending Pa's confirmation (ADR 0001 #6)
-const MACOS_NAMES = new Map([["15", "Sequoia"]]);
+export const DEFAULT_MIN_MACOS = "12"; // PRD-R8, PLT-R106: macOS 12 Monterey with Intel (Pa, Q6; ADR 0315)
+const MACOS_NAMES = new Map([["12", "Monterey"], ["13", "Ventura"], ["14", "Sonoma"], ["15", "Sequoia"]]);
 
 function pascal(id) {
   return id.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join("");

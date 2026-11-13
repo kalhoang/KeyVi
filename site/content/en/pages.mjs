@@ -58,8 +58,8 @@ export const download = {
   reqHeading: "System requirements",
   reqMacos: "{{macosRequirement}}",
   reqArch: "A Mac with Apple silicon or Intel (one build runs on both). macOS 27 runs on Apple silicon only.",
-  reqExcluded: "Macs that stop at macOS Sonoma (for example the 2018 and 2019 MacBook Air and some 2017 models) are not supported.",
-  reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 15 and 26, <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
+  reqExcluded: "Macs that cannot run macOS 12 Monterey are not supported. macOS 13 and 14 are supported but not tested separately.",
+  reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
   reqNoOthers: "{{AppName}} asks for no other permission (no Screen Recording, no Full Disk Access).",
   trustHeading: "Signature and notarization",
   trustBody: "Every DMG is signed with Kal's Developer ID certificate, notarized by Apple and stapled with the notarization ticket, so macOS opens it without a warning. Automatic updates use Sparkle 2 and are signed with EdDSA; the app rejects an update with a wrong signature.",
@@ -125,7 +125,7 @@ export const privacy = {
   <li>No telemetry, no analytics service, no crash-reporting SDK, no remotely loaded configuration or rules.</li>
   <li>No web view that loads remote content. Release notes are shown without loading external resources.</li>
   <li>Password fields and the macOS secure input mode are always skipped. This is not a setting.</li>
-  <li>One permission is needed: Accessibility (macOS 15 and 26) or Device Control and Data Access (macOS 27). If macOS asks for more, the app says why. There is no Screen Recording, Automation or Full Disk Access.</li>
+  <li>One permission is needed: Accessibility (macOS 12 to 26) or Device Control and Data Access (macOS 27). If macOS asks for more, the app says why. There is no Screen Recording, Automation or Full Disk Access.</li>
   <li>When permission is missing, your keyboard keeps typing normally (the app lets keys through and holds nothing back).</li>
 </ul>
 

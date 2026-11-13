@@ -62,6 +62,7 @@ export function renderDonate(ctx, lang) {
   const { c, f, p, ui } = kt;
   const m = c.donate;
   const account = `<dl class="facts"><dt>${esc(m.vietqr.bankLabel)}</dt><dd>${esc(m.vietqr.bankValue)}</dd><dt>${esc(m.vietqr.accountLabel)}</dt><dd>${esc(m.vietqr.accountValue)}</dd></dl>`;
+  // An empty sponsorsUrl means no sponsor page exists; a placeholder value is never linked either.
   const sponsorsUrl = ctx.config.placeholders.includes("sponsorsUrl") ? "" : ctx.config.sponsorsUrl;
   const sponsors = sponsorsUrl
     ? `

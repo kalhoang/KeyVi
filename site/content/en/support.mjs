@@ -18,7 +18,7 @@ export const support = {
     ["Does {{AppName}} work in password fields?", "Password fields are always skipped and keys go straight to the app. This is deliberate and not a setting."],
     ["What about QWERTZ, AZERTY, Dvorak or Colemak keyboards?", "They work. {{AppName}} follows the keyboard layout macOS is using, with nothing to configure."],
     ["Does the app send what I type anywhere?", "No. See the <a href=\"{{hrefPrivacy}}\">Privacy</a> page for exactly what the app stores and sends."],
-    ["My Mac runs macOS 14 or older.", "{{AppName}} requires macOS 15 Sequoia or later. {{verifyHtml}} This minimum may change; see the <a href=\"{{hrefDownload}}\">Download</a> page for the current figure."],
+    ["My Mac runs macOS 11 or older.", "{{AppName}} requires macOS 12 Monterey or later, on Apple silicon or Intel. See the <a href=\"{{hrefDownload}}\">Download</a> page for the current figure."],
     ["How do I uninstall?", "Quit {{AppName}} and drag the app to the Trash. To remove the data as well, see the last section of the <a href=\"{{hrefPrivacy}}#delete\">Privacy</a> page."],
   ],
   fixHeading: "Troubleshooting by symptom",
@@ -29,7 +29,8 @@ export const support = {
       html: `
 <p>{{AppName}} needs permission to receive your keystrokes. The pane name depends on your macOS version:</p>
 <ul>
-  <li>macOS 15 and 26: System Settings &gt; Privacy &amp; Security &gt; <strong>Accessibility</strong>.</li>
+  <li>macOS 12: System Preferences &gt; Security &amp; Privacy &gt; Privacy &gt; <strong>Accessibility</strong> (click the lock to make changes).</li>
+  <li>macOS 13 to 26: System Settings &gt; Privacy &amp; Security &gt; <strong>Accessibility</strong>.</li>
   <li>macOS 27: System Settings &gt; Privacy &amp; Security &gt; <strong>Device Control and Data Access</strong> (previously Accessibility). {{verifyHtml}}</li>
 </ul>
 <ol class="steps">
@@ -48,7 +49,7 @@ export const support = {
 <p>The {{AppName}} menu names the app that is likely holding it (a best guess that is sometimes wrong):</p>
 <ul>
   <li><strong>Terminal</strong>: turn off <em>Secure Keyboard Entry</em> in the Terminal menu.</li>
-  <li><strong>iTerm2</strong>: besides the <em>Secure Keyboard Entry</em> menu item, iTerm2 turns the mode on by itself when it thinks a password prompt is showing. Turn off the menu item and look at iTerm2's password detection setting. {{verifyHtml}} The setting name and location in the current iTerm2, and whether the detection fires in command-line apps that turn off echo.</li>
+  <li><strong>iTerm2</strong>: iTerm2 has Secure Keyboard Entry turned on. Turn off <em>iTerm2 &gt; Secure Keyboard Entry</em>, or finish or cancel the password prompt it is waiting for.</li>
   <li><strong>Browsers</strong>: click outside the password field or switch tabs.</li>
   <li><strong>Password managers</strong> and other apps: close their password entry window.</li>
   <li>Unknown app, or the menu points at <code>loginwindow</code>: lock the screen and unlock it (<kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Q</kbd>), or log out and back in.</li>

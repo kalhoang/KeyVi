@@ -359,10 +359,21 @@ try {
       assert.ok(!/momo/i.test(d), `${lang}: no MoMo (S8)`);
       assert.ok(!/Tên tài khoản|Chủ tài khoản|Account name|account holder/i.test(d), `${lang}: the holder's name is never shown (S8)`);
       assert.ok(!d.includes('class="verify"'), `${lang}: real details, nothing left to verify`);
-      assert.ok(!d.includes("donate-sponsors"), `${lang}: no sponsor card while sponsorsUrl is a placeholder`);
+      assert.ok(!d.includes("donate-sponsors"), `${lang}: no sponsor card while there is no sponsor page`);
     }
     assert.ok(existsSync(join(populated, "assets", "qr", "vietqr.png")), "QR image shipped");
     assert.ok(!existsSync(join(populated, "assets", "qr", "momo.svg")), "MoMo image removed");
+    // An empty sponsorsUrl means no sponsor page: no card, no placeholder, nothing for --strict to refuse (PRD-R59).
+    assert.equal(shipped.sponsorsUrl, "", "no GitHub Sponsors page exists yet");
+    const emptyConfig = join(tmp, "sponsors-empty.json");
+    await writeFile(emptyConfig, JSON.stringify({ ...shipped, sponsorsUrl: "" }));
+    const emptyOut = join(tmp, "sponsors-empty");
+    const summary = await build({ outDir: emptyOut, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath: emptyConfig });
+    assert.ok(!summary.placeholders.includes("sponsorsUrl"), "an empty sponsorsUrl is not a placeholder");
+    for (const page of ["ung-ho/index.html", "en/donate/index.html"]) {
+      const html = await readFile(join(emptyOut, page), "utf8");
+      assert.ok(!html.includes("donate-sponsors") && !/github\.com\/sponsors/.test(html), `${page}: no sponsor card`);
+    }
     // A real sponsor page in site/config.json brings the GitHub Sponsors card back (PRD-R57).
     const configPath = join(tmp, "sponsors-config.json");
     const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
@@ -371,6 +382,12 @@ try {
     await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
     const sponsored = await readFile(join(out, "ung-ho", "index.html"), "utf8");
     assert.match(sponsored, /id="donate-sponsors"[\s\S]*href="https:\/\/github\.com\/sponsors\/example"/);
+    for (const bad of ["javascript:alert(1)", "http://github.com/sponsors/x", 42]) {
+      await writeFile(configPath, JSON.stringify({ ...base, sponsorsUrl: bad }));
+      await assert.rejects(() => build({ outDir: join(tmp, "sponsors-bad"), today: "2026-11-13", configPath }), /sponsorsUrl/, String(bad));
+    }
+    await writeFile(configPath, JSON.stringify({ ...base, sponsorsUrl: "https://github.com/sponsors/OWNER" }));
+    assert.ok((await build({ outDir: join(tmp, "sponsors-placeholder"), today: "2026-11-13", configPath })).placeholders.includes("sponsorsUrl"), "a placeholder is still reported for --strict");
   });
 
   await check("populated: favicon, touch icon and header logo come from the app icon (CLR-R7)", async () => {
@@ -390,6 +407,12 @@ try {
     for (const id of ["luu-tren-may", "gui-di", "chan-doan", "ban-ghi", "trang-web", "xoa-du-lieu"]) assert.ok(p.includes(`id="${id}"`), id);
     assert.match(p, /Phân tích truy cập: không có/);
     assert.match(read("en", "privacy", "index.html"), /Visitor analytics: none/);
+  });
+
+  await check("populated: the iTerm2 Secure Input line is the one sentence of Q38 (no VERIFY left)", () => {
+    const line = (html) => html.match(/<li><strong>iTerm2<\/strong>: ([\s\S]*?)<\/li>/)[1];
+    assert.equal(line(read("en", "support", "index.html")), "iTerm2 has Secure Keyboard Entry turned on. Turn off <em>iTerm2 &gt; Secure Keyboard Entry</em>, or finish or cancel the password prompt it is waiting for.");
+    assert.equal(line(read("ho-tro", "index.html")), "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay huỷ) lời nhắc mật khẩu đang chờ.");
   });
 
   await check("populated: support page has permission (macOS 27 naming), Secure Input, targets", () => {
@@ -483,6 +506,21 @@ try {
     assert.equal(changelogHeadingId(2, "v2.0.0"), "v2.0.0");
     assert.equal(changelogHeadingId(2, "[Unreleased]"), undefined);
     assert.equal(changelogHeadingId(3, "[1.2.0] - 2026-12-01"), undefined);
+  });
+
+  await check("fallback: pages state the macOS 12 Monterey floor and its permission path (Q6, ADR 0315, PRD-R40)", () => {
+    const page = (...p) => fallbackPages.get(join(fallback, ...p));
+    assert.match(page("tai-ve", "index.html"), /macOS 12 Monterey trở lên/);
+    assert.match(page("en", "download", "index.html"), /macOS 12 Monterey or later/);
+    for (const html of fallbackPages.values()) assert.ok(!/Sonoma|macOS 15 Sequoia/.test(html), "no stale macOS 15 floor");
+    const vi = page("ho-tro", "index.html");
+    const en = page("en", "support", "index.html");
+    assert.ok(vi.includes("Tùy chọn Hệ thống &gt; Bảo mật &amp; Quyền riêng tư &gt; Quyền riêng tư &gt; <strong>Trợ năng</strong>"), "vi macOS 12 path");
+    assert.ok(en.includes("System Preferences &gt; Security &amp; Privacy &gt; Privacy &gt; <strong>Accessibility</strong>"), "en macOS 12 path");
+    assert.match(vi, /macOS 12 Monterey trở lên/);
+    assert.match(en, /macOS 12 Monterey or later/);
+    assert.match(page("rieng-tu", "index.html"), /Trợ năng \(macOS 12 tới 26\)/);
+    assert.match(page("en", "privacy", "index.html"), /Accessibility \(macOS 12 to 26\)/);
   });
 
   await check("fallback: changelog fills {{AppName}} from brand.env", () => {
