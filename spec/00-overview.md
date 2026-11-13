@@ -10,7 +10,7 @@
 | Code base | Written from scratch under clean-room rules (05-clean-room.md). No code from XKey, OpenKey, Unikey or other input methods. |
 | Brand | Personal project "by Kal", home `{{app-slug}}.kal.vn`, signed with Pa's individual Developer ID. Not a Kalera company product. |
 | Distribution | Notarized DMG, Homebrew cask, Sparkle 2 updates signed with EdDSA. No Mac App Store. |
-| Funding | Free and open source. Donations via VietQR/MoMo and GitHub Sponsors. Polar.sh is not used for donations (its policy forbids them). |
+| Funding | Free and open source. Donations via a bank VietQR code only (no MoMo for now, decided later the same day). Polar.sh is not used for donations (its policy forbids them). |
 | P0 | The three daily annoyances in 03-product.md section 3.0 (blocked typing in iTerm2, slang `dz` / `hẹo`, English restore only on Space) are release blockers. |
 | Slang | `z` and `dz` are accepted slang onsets; `f`, `j`, `w` are not (they would make English words compose). |
 | Memory store | The implementation uses a new, empty memory project (05-clean-room.md CLR-R8). |
@@ -21,7 +21,7 @@
 - **Platform:** one menu-bar process, no IMKit bundle in v1. Event tap at session level on its own thread; the callback only decides and enqueues; a serial injection queue keeps key order. Data-driven per-app compatibility rules instead of hard-coded hacks. Fail-open when permission is revoked. Pauses only for real secure input or password fields, and says which app holds secure input.
 - **Product:** few settings with right defaults (03-product.md section 4), Control+Shift to switch by default, per-app Vietnamese/English memory, honest diagnostics with one-click redacted bug reports, non-nagging donations, Vietnamese UI first.
 - **Quality:** generated corpus of about 238,000 cases, fuzzing with long tokens, per-app automated scenarios, latency gates, an issue policy that closes only after the reporter confirms.
-- **Minimum macOS:** 15 (pending Pa's confirmation, see section 5).
+- **Minimum macOS:** 12.0 with Intel support (Pa, 13/11/2026; `docs/decisions/0315-minimum-macos-12.md`).
 
 ## 3. Reading order
 
@@ -39,37 +39,33 @@ Implementers read 05 first, then 03 section 3.0, then the file for the part they
 
 ## 4. Name
 
-The name is not chosen yet. Every file uses `{{AppName}}` (display name) and `{{app-slug}}` (ASCII slug: bundle ID `vn.kal.{{app-slug}}`, cask `{{app-slug}}`, site `{{app-slug}}.kal.vn`). A naming study (30 candidates, collision and availability checks, scored by a judge) recommended **Xuôi** (`xuoi`, "Gõ đâu cũng xuôi"), with runner-ups Nhịp (`nhip`), Lục Bát (`lucbat`), Suối (`suoi`) and Lướt (`luot`). Once Pa decides, replace the placeholders in one pass, for example:
-
-```sh
-grep -rl '{{AppName}}\|{{app-slug}}' spec | xargs sed -i '' -e 's/{{AppName}}/Xuôi/g' -e 's/{{app-slug}}/xuoi/g'
-```
+Every file uses `{{AppName}}` (display name) and `{{app-slug}}` (ASCII slug: bundle ID `vn.kal.{{app-slug}}`, cask `{{app-slug}}`, site `{{app-slug}}.kal.vn`). The product owner chose the name on 13/11/2026 (`docs/decisions/0005-pa-decisions-2026-11-13.md`). The name lives only in `Config/Brand.xcconfig` and `scripts/brand.env` (renamed with `scripts/rename-app.sh`), so this spec keeps the placeholders and a later rename needs no spec change.
 
 ## 5. Open decisions for Pa (consolidated)
 
-Each item lists where it is discussed. The spec's proposed default applies until Pa decides.
+All answered on 13/11/2026 except the app licence. The full list of answers, with the place that implements each one (or the later wave that will), is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
 
-| # | Decision | Proposed default | Where |
+| # | Decision | Answer (Pa, 13/11/2026) | Where |
 |---|---|---|---|
-| 1 | Product name | Xuôi (`xuoi`) | section 4 |
-| 2 | App licence (affects contribution rules and any future paid edition) | Open | 03 s.18, 02 s.14, 04 s.10 |
+| 1 | Product name | Chosen; kept only in the brand files | section 4 |
+| 2 | App licence (affects contribution rules and any future paid edition) | Not decided; `LicenseRef-App-Pending` stays | 03 s.18, 02 s.14, 04 s.10 |
 | 3 | Engine licence: MIT or Apache-2.0 | MPL-2.0 | ENG Q1 |
-| 4 | Default tone placement | Traditional (`hòa`, `thủy`) | ENG Q2, 03 D2 |
-| 5 | Restore-last-word hotkey | Unset (auto restore does the work) | ENG Q4, 03 D8 |
-| 6 | Minimum macOS | 15 (14 would need own test hardware) | 03 PRD-R8, 02 s.14 |
+| 4 | Default tone placement | Traditional (`hòa`, `thủy`), with the setting | ENG Q2, 03 D2 |
+| 5 | Restore-last-word hotkey | Escape by default, with an on/off setting and exclusions through compatibility rules | ENG Q4, 03 D8, PLT-R353 |
+| 6 | Minimum macOS | 12.0, Intel kept | 03 PRD-R8, 02 s.14 |
 | 7 | Macro triggers limited to printable ASCII, no Vietnamese letters | Yes | ENG Q6, 03 PRD-R29 |
-| 8 | Learn from the user's restore toggles automatically | After two identical signals, visible and removable | ENG Q5 |
-| 9 | Attested-syllable source (tie-breaker data only) | Vietnamese legal texts plus Pa's review | ENG Q7 |
-| 10 | Review of the English/Vietnamese ambiguity table (top 300 rows) | Unreviewed rows default to Vietnamese | ENG Q3 |
+| 8 | Learn from the user's restore toggles automatically | Yes, after two identical signals, stored per app | ENG Q5, ENG-R862 |
+| 9 | Attested-syllable source (tie-breaker data only) | Vietnamese legal texts plus reviewed additions | ENG Q7 |
+| 10 | Review of the English/Vietnamese ambiguity table (top 300 rows) | Later; unreviewed rows behave as Vietnamese | ENG Q3 |
 | 11 | Terminals default mode | Inherit (Vietnamese allowed in TUIs) | 02 s.14 |
-| 12 | Chromium/Electron accessibility enabling via rules | Off unless a rule needs it | 02 s.14 |
-| 13 | Zero-width placeholder for Google Sheets / Excel autocomplete | Only under the PLT-R422 test gate | 02 s.14 |
-| 14 | Signing and notarization in protected CI vs only on Pa's Mac | EdDSA key on Pa's Mac either way | 02 s.14, 04 QA-R31 |
-| 15 | Archive hosting: `{{app-slug}}.kal.vn` only, or GitHub Releases too | Open | 02 s.14 |
-| 16 | Self-hosted Mac runner for compatibility automation | Open | 02 s.14 |
-| 17 | IMKit edition later (zero-permission, or terminal mode if spike S1 succeeds) | Decide after spike S1 | 02 PLT-R207, PLT-R398D |
-| 18 | Website analytics | None, or cookieless aggregate | 03 PRD-R74 |
-| 19 | Donation account details, public sponsor list | Open | 03 PRD-R59, PRD-R61 |
+| 12 | Chromium/Electron accessibility enabling via rules | Off unless a rule proves no side effect (`axEnable: manual`) | 02 s.14 |
+| 13 | Zero-width placeholder for Google Sheets / Excel autocomplete | Only under the PLT-R422 gate; both rules use `axSelection` until it exists | 02 s.14 |
+| 14 | Signing and notarization in protected CI vs only on Pa's Mac | On Pa's Mac; CI builds stay unsigned | 02 s.14, 04 QA-R31 |
+| 15 | Archive hosting | `{{app-slug}}.kal.vn` only | 02 s.14, PLT-R906 |
+| 16 | Self-hosted Mac runner for compatibility automation | Proposed: a tart macOS virtual machine on Pa's Mac (awaiting Pa) | 02 s.14, 04 QA-R12 |
+| 17 | IMKit edition later | Decide after spike S1 | 02 PLT-R207, PLT-R398D |
+| 18 | Website analytics | PostHog Cloud, cookieless | 03 PRD-R74 |
+| 19 | Donation account details, public sponsor list | Bank VietQR, bank name and account number shown, no holder name; no sponsor list for now | 03 PRD-R59, PRD-R61 |
 
 ## 6. Suggested first steps for the implementation repository
 

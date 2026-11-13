@@ -51,7 +51,7 @@ QA-R4 The corpus MUST be data files (one case per line: method, options, keystro
 | `proper-nouns` | Names and place names including ethnic-minority and loan forms: Buôn Ma Thuột, Krông Pắc, Đắk Lắk, Ea Kar, Pleiku, Kon Tum, Mù Cang Chải | Public gazetteers (record licence per CLR-R6) |
 | `english` | English words and tech terms that MUST restore unchanged: text, user, case, wifi, USB, with, this, year, your, our, their, early, traffic, current, issue, google, github, iphone, macOS | Permissive word list (CLR-R6) plus a hand list of tech words |
 | `collisions` | Strings that are both valid Vietnamese and English (`ma`, `me`, `to`, `an`, `hai`) with the expected policy outcome | Hand curated |
-| `editing` | Backspace sequences, editing after `, ` `. ` double space and newline (previous word edit context must be recoverable), tone changes on a finished word, removing marks (`z` / `0`) | Hand curated |
+| `editing` | Backspace sequences, editing after `, ` `. ` and double space (previous word edit context must be recoverable), Return and Tab (they clear the history, so Backspace does not reopen the previous word: `01-engine.md` ENG-R912), tone changes on a finished word, removing marks (`z` / `0`) | Hand curated |
 | `crash-regressions` | Every sequence that ever crashed any Vietnamese engine publicly: Telex `quz`, `QUZ`, `qqz`, `qutz`, `Quzhou`; VNI `qu0`, `qut0`; tokens of 33, 64, 256 and 4,096 keystrokes with and without marks; long runs of a single key; alternating tone keys | Public bug reports |
 | `restore-exact` | Restore must reproduce typed keys exactly: VNI digits stay digits (`ba6c3` restores to `ba6c3`), doubled letters stay doubled (`traffic`, `current`), case preserved | Hand curated |
 | `layouts` | Same cases keyed through QWERTZ, AZERTY, Dvorak and Colemak character mappings | Generated |
@@ -84,7 +84,7 @@ QA-R10 The repository MUST contain a test host app with: a native text field, a 
 
 QA-R11 Integration tests post synthetic key events through the real pipeline (as `02-platform.md` defines) into the test host and assert the final text, for at least: the 200 most common Vietnamese words in both methods, English restore samples, backspace across punctuation, fast typing at 15 keys per second, toggle hotkey, per-app rule switching between two host windows, macro expansion with a letters-only and a punctuation shortcut (`vn`, `@@`), restore hotkey consumed once and passed through on the second press, Secure Input on and off, tap disable and recovery (engine state MUST be reset after recovery), permission revoked mid-session (MUST fail open).
 
-QA-R12 Integration tests run on a self-hosted macOS runner (a Mac under Pa's control with permissions pre-granted to the test build's stable signing identity) on every merge to `main` and before every release. VERIFY whether GitHub-hosted macOS runners can grant Accessibility/Input Monitoring to a test binary (TCC database edits are possible on some images); if yes, also run a subset per PR.
+QA-R12 Integration tests run on a self-hosted macOS runner (a Mac under Pa's control with permissions pre-granted to the test build's stable signing identity; proposed on 13/11/2026: a tart macOS virtual machine on Pa's Mac, awaiting Pa's confirmation, while Linux jobs stay on GitHub-hosted runners) on every merge to `main` and before every release. VERIFY whether GitHub-hosted macOS runners can grant Accessibility/Input Monitoring to a test binary (TCC database edits are possible on some images); if yes, also run a subset per PR.
 
 QA-R13 The self-hosted runner MUST only run workflows from `main` and release tags of this repository (never pull requests from forks), because it holds granted permissions.
 
@@ -107,7 +107,7 @@ QA-R17 Compatibility data is two versioned files in the repository, both owned b
 
 QA-R18 A standard compatibility script (`compat/SCRIPT.md`) defines 12 steps that take under 3 minutes per app: type a Vietnamese paragraph with all tones in Telex; same in VNI; type `text user wifi USB`; edit a word after `, `; delete and retype the first character of a line; type in the first character of an empty field; type at 15 keys per second; use the toggle hotkey; expand a macro; check that autocomplete (if any) is not duplicated; check undo (Command+Z) restores sensible text; confirm no stray invisible characters (paste result into a hex viewer).
 
-QA-R19 Cadence: Tier 1 verified on every stable release candidate; Tier 2 every minor release; all entries re-verified after each macOS major and point release that touches input (first beta and GM). Entries not verified for 120 days automatically display as `Chưa kiểm tra` on the website and in the next app build.
+QA-R19 Cadence: Tier 1 re-verified for every stable release candidate, and every Tier 1 row at most 90 days old at release time (`02-platform.md` PLT-R531, the release gate); Tier 2 every minor release; all entries re-verified after each macOS major and point release that touches input (first beta and GM). Entries not verified for 120 days automatically display as `Chưa kiểm tra` on the website and in the next app build.
 
 QA-R20 Community verifications are accepted through the `Compatibility report` issue form and recorded with the reporter's handle; a maintainer confirms before status becomes `Hoạt động tốt`.
 
@@ -153,19 +153,19 @@ QA-R29 Cadence target: beta whenever there are user-visible fixes (typically wee
 
 ### 3.3 Build, sign, notarise, staple
 
-QA-R30 The release workflow MUST, in order:
+QA-R30 The release process MUST, in order (CI runs the tests and the unsigned build; signing, notarisation and publication run on Pa's Mac, decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md):
 1. Re-run the full `ci.yml` suite on the tagged commit and require the latest `integration.yml` run on that commit to be green. A release pipeline without a test gate is how a predecessor shipped an auto-update that left users unable to type.
 2. Build a universal Release archive with hardened runtime, no `get-task-allow`, no unnecessary entitlements, signed with Pa's Developer ID Application certificate.
 3. Verify signature (`codesign --verify --deep --strict`) and that the designated requirement matches the previous release's (bundle ID `vn.kal.{{app-slug}}` and Team ID unchanged). A changed designated requirement makes macOS re-ask permissions, so it is a hard failure.
 4. Create the DMG (app plus Applications link, background, signed).
 5. Notarise with `notarytool` using an App Store Connect API key (not an app-specific password), wait for the result, fail on any issue in the log.
 6. Staple the ticket to the app and the DMG; validate with `stapler validate` and `spctl --assess`.
-7. Produce SHA-256 checksums and a build provenance attestation (GitHub artifact attestations).
-8. Upload the notarised DMG and update archive as a draft GitHub Release.
+7. Produce SHA-256 checksums (and a build provenance attestation for the steps that run in GitHub Actions).
+8. Upload the notarised DMG and update archive to `{{app-slug}}.kal.vn`, the only host for archives (`02-platform.md` PLT-R906).
 
-QA-R31 Signing material lives only in the GitHub `release` environment, which requires manual approval by Pa for each run and is restricted to tags on protected branches. Certificates are imported into a temporary keychain that is deleted at the end of the job.
+QA-R31 Signing material stays on Pa's Mac (decision of the product owner, 13/11/2026): Developer ID signing and notarisation run there, and CI builds stay unsigned. If signing ever moves to CI, the material lives only in the GitHub `release` environment, which requires manual approval by Pa for each run and is restricted to tags on protected branches, and certificates are imported into a temporary keychain that is deleted at the end of the job.
 
-QA-R32 The Sparkle EdDSA private key MUST NOT be stored in CI. The final step (signing the update archive with Sparkle's `sign_update` and publishing the appcast entry) runs on Pa's Mac with the key in the login Keychain, via a documented script `scripts/publish-release`. Rationale: a compromised GitHub account or workflow then cannot push a malicious auto-update. The private key has an offline encrypted backup in two places. Open question for Pa: accept this manual step or move signing into the protected environment.
+QA-R32 The Sparkle EdDSA private key MUST NOT be stored in CI. The final step (signing the update archive with Sparkle's `sign_update` and publishing the appcast entry) runs on Pa's Mac with the key in the login Keychain, via a documented script `scripts/publish-release`. Rationale: a compromised GitHub account or workflow then cannot push a malicious auto-update. The private key has an offline encrypted backup in two places. The product owner accepted this manual step on 13/11/2026.
 
 QA-R33 The EdDSA public key and feed URL are fixed in the app from the first public build. Key rotation requires a release signed with the old key that ships the new key, documented in a runbook.
 
@@ -249,7 +249,7 @@ QA-R50 Metrics reviewed monthly from the GitHub API with a small script committe
 
 ## 5. Support loop for a one-person maintainer
 
-QA-R51 Channels: GitHub Issues (bugs, compatibility), GitHub Discussions (questions, ideas), support email for users without GitHub (address on the website; VERIFY address). No support by private message on social networks; the website says so politely and links to the channels.
+QA-R51 Channels: GitHub Issues (bugs, compatibility), GitHub Discussions (questions, ideas), support email for users without GitHub (one project mailbox on `kal.vn` for support, security and conduct, decided on 13/11/2026; the address lives in the brand files, `APP_SUPPORT_EMAIL`). No support by private message on social networks; the website says so politely and links to the channels.
 
 QA-R52 Response targets (published on `/ho-tro`; business days, best effort, stated honestly as targets):
 
@@ -270,7 +270,7 @@ QA-R55 Every support conversation that reveals a confusing UI or missing doc bec
 
 ## 6. Security disclosure
 
-QA-R56 `SECURITY.md` MUST describe: supported versions (latest stable and latest beta), how to report privately (GitHub private vulnerability reporting enabled on the repository, plus a security email address on `kal.vn`; VERIFY address), what to include, and the response process.
+QA-R56 `SECURITY.md` MUST describe: supported versions (latest stable and latest beta), how to report privately (GitHub private vulnerability reporting enabled on the repository, plus the project mailbox on `kal.vn`, `APP_SUPPORT_EMAIL` in the brand files), what to include, and the response process.
 
 QA-R57 Process: acknowledge within 72 hours; triage severity within 7 days; fix target 30 days for high or critical, 90 days for others; coordinated disclosure with credit to the reporter unless they decline; publish a GitHub Security Advisory (with a CVE through GitHub when warranted); ship as a critical update (QA-R34).
 
@@ -334,8 +334,10 @@ QA-R67 Docs are part of the definition of done: a PR that changes user-visible b
 
 ## 10. Open questions for Pa
 
-1. App licence, which decides DCO-only versus CLA (QA-R61).
-2. Sparkle signing on Pa's Mac (proposed) versus inside the protected CI environment (QA-R32).
-3. A dedicated self-hosted Mac for integration tests (QA-R12): which machine, always on?
-4. Support and security email addresses (QA-R51, QA-R56).
-5. Homebrew tap owner account (personal `kal-vn` or the existing `kalera-labs`).
+All answered on 13/11/2026 except the app licence; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+
+1. App licence, which decides DCO-only versus CLA (QA-R61): not decided; files outside the engine keep `LicenseRef-App-Pending`.
+2. Sparkle signing: on Pa's Mac (QA-R32), together with Developer ID signing and notarisation (QA-R31).
+3. Self-hosted Mac for integration tests (QA-R12): a tart macOS virtual machine on Pa's Mac is proposed, awaiting Pa's confirmation.
+4. Support and security email addresses (QA-R51, QA-R56): one project mailbox on `kal.vn` (`APP_SUPPORT_EMAIL`).
+5. Repository and Homebrew tap owner account: Pa's personal GitHub account; the repository starts private.

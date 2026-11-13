@@ -11,5 +11,6 @@ Known gaps (update the model from the spec before relying on it):
 
 1. It predates two review additions: rhyme `êc` after `gi` (`giếc`, ENG-R305) and open `y` after `th` (`Thy`, ENG-R314).
 2. It predates the product owner's P0 additions: the `dz` onset (01-engine.md 3.3, ENG-R316), worked examples W249-W253 and boundary rows B053-B064.
+3. It counts the spelling `giu` twice: once as onset `g` + rhyme `iu` and once as onset `gi` + rhyme `u`. The normative parse of 01-engine.md 3.13 reads `giu` only as `gi` + `u` (ENG-R305, ENG-R306), so every count derived from the model is one pair, six toned syllables and 92 O1 to O4 cases too high. The first version of 3.15 and ENG-T04 quoted such counts (3,368 Tier A pairs, 15,412 toned syllables, 6,209 Tier B pairs, 237,916 cases); they now quote the corrected counts (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md; analysis in docs/decisions/0100-engine-syllable-counts.md).
 
-The Swift engine's test suite is the authority; this model only exists to generate and cross-check test data. Licence: same as the engine package.
+The Swift engine's test suite is the authority; this model only exists to generate and cross-check test data. Licence: MPL-2.0, the same as the engine package (each script carries an SPDX header).
