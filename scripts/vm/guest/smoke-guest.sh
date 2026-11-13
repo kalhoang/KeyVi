@@ -13,6 +13,14 @@
 # Writes everything under --out and summary.txt; exits 0 when every check passes.
 set -u
 
+# Refuse to run anywhere but inside a virtual machine, before parsing arguments and before any side effect: this
+# script replaces the app in /Applications, installs Rosetta with sudo and launches the built app (QA-R13 keeps
+# all of that off a real Mac). grant-tcc.sh carries the same guard.
+[ "$(sysctl -n kern.hv_vmm_present 2>/dev/null || echo 0)" = 1 ] || {
+  echo "refusing: not inside a virtual machine" >&2
+  exit 3
+}
+
 usage() {
   echo "usage: smoke-guest.sh --app PATH --subsystem ID --out DIR [--alive SECONDS]" >&2
   exit 2

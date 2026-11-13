@@ -11,8 +11,17 @@
 # and library validation would refuse Sparkle). Its TCC grant is therefore tied to the cdhash and is renewed by
 # this script after every build.
 #
-# Usage: integration-guest.sh --out DIR   (from the checkout root). Exit 0 when the suite passed.
+# Usage: integration-guest.sh --out DIR   (from the checkout root, inside the VM only; it exits 3 on a real Mac).
+# Exit 0 when the suite passed.
 set -uo pipefail
+
+# Refuse to run anywhere but inside a virtual machine, before parsing arguments and before any side effect: this
+# script replaces apps, changes global settings, uses sudo and launches the built app (QA-R13 keeps all of that
+# off a real Mac). grant-tcc.sh carries the same guard.
+[ "$(sysctl -n kern.hv_vmm_present 2>/dev/null || echo 0)" = 1 ] || {
+  echo "refusing: not inside a virtual machine" >&2
+  exit 3
+}
 
 out=""
 while [ $# -gt 0 ]; do
@@ -37,6 +46,9 @@ stop() {
 apps="$HOME/Applications"
 app="$apps/$APP_DISPLAY_NAME.app"
 derived="/tmp/integration-dd"
+# The marker string only the INTEGRATION_HOOKS code carries; kept equal to HOOKS_MARKER of scripts/run-integration.sh
+# by scripts/tests/test_vm_lab.py (ADR 0502).
+HOOKS_MARKER="INTEGRATION_HOOKS test build: file-drop integration hooks"
 
 step "system"
 {
@@ -75,7 +87,7 @@ pkill -x TestHost 2>/dev/null
 rm -rf "$app" "$apps/TestHost.app"
 ditto "$derived/Build/Products/Integration/$APP_DISPLAY_NAME.app" "$app" || stop "install of the test build failed"
 ditto "$derived/Build/Products/Debug/TestHost.app" "$apps/TestHost.app" || stop "install of TestHost failed"
-LC_ALL=C grep -a -F -q -- "INTEGRATION_HOOKS test build: file-drop integration hooks" "$app/Contents/MacOS/$APP_DISPLAY_NAME" ||
+LC_ALL=C grep -a -F -q -- "$HOOKS_MARKER" "$app/Contents/MacOS/$APP_DISPLAY_NAME" ||
   stop "the installed test build has no integration hooks"
 note "installed $app and $apps/TestHost.app"
 

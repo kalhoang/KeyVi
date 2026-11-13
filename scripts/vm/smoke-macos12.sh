@@ -148,15 +148,27 @@ fi
 app="$(cd "$(dirname "$app")" && pwd)/$(basename "$app")"
 say "app: $app ($app_id)"
 
-# --- Host-side slice check (fails fast, before any VM boots) --------------------------------------------------
+# --- Host-side slice and minos check (fails fast, before any VM boots) ----------------------------------------
+minos_at_most_12_0() { # minos_at_most_12_0 <major.minor[.patch]>: true when the version is 12.0 or older
+  local major="${1%%.*}" rest minor
+  rest="${1#*.}"
+  minor="${rest%%.*}"
+  [[ "$1" == *.* ]] || minor=0
+  [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]] || return 1
+  ((major < 12 || (major == 12 && minor == 0)))
+}
 host_ok=1
 if ! perl "$HERE/macho-info.pl" "$app/Contents/MacOS/$app_exec" >"$run_dir/host-macho.txt" 2>&1; then
   record "FAIL host slices: $(head -n 1 "$run_dir/host-macho.txt")"
   host_ok=0
 else
   for arch in arm64 x86_64; do
-    if ! grep -q "^$arch minos " "$run_dir/host-macho.txt"; then
+    minos="$(sed -n "s/^$arch minos \([^ ]*\) .*/\1/p" "$run_dir/host-macho.txt" | head -n 1)"
+    if [[ -z "$minos" ]]; then
       record "FAIL host slices: $arch missing"
+      host_ok=0
+    elif ! minos_at_most_12_0 "$minos"; then
+      record "FAIL host minos: $arch needs macOS $minos, newer than 12.0 (PLT-R106)"
       host_ok=0
     fi
   done

@@ -14,7 +14,8 @@
 # Usage (inside the VM): sudo scripts/vm/grant-tcc.sh [--dry-run] [--service NAME]... \
 #                          [--bundle PATH.app]... [--binary PATH]...
 #   --bundle PATH.app   client identified by its bundle ID (client_type 0), for the app under test and TestHost
-#   --binary PATH       client identified by its absolute path (client_type 1), for compat-harness, the process
+#   --binary PATH       client identified by its absolute path with symlinks resolved, as tccd sees it
+#                       (client_type 1), for compat-harness, the process
 #                       that starts it (sshd-keygen-wrapper for SSH, the tart guest agent for `tart exec`) or
 #                       the runner's Runner.Worker
 #   --service NAME      grant only these services (repeatable; default: the three above)
@@ -85,6 +86,14 @@ hex_csreq() { # hex_csreq <code path>: the designated requirement, compiled, as 
   rm -f "$blob"
 }
 
+resolve_path() { # resolve_path <path>: the absolute path with every symlink resolved
+  if [[ -x /bin/realpath ]]; then
+    /bin/realpath "$1"
+  else # macOS 12 and earlier ship no realpath(1)
+    perl -MCwd=realpath -e 'my $p = realpath(shift); defined $p or exit 1; print "$p\n"' "$1"
+  fi
+}
+
 sql_quote() { printf "'%s'" "${1//\'/\'\'}"; }
 
 statements=""
@@ -99,6 +108,9 @@ for entry in "${clients[@]}"; do
     [[ -n "$identifier" ]] || fail 2 "no CFBundleIdentifier in $path"
   else
     [[ -f "$path" && -x "$path" ]] || fail 2 "not an executable file: $path"
+    # tccd keys path clients by the resolved executable path, so a row for a symlink (for example
+    # /opt/homebrew/bin/tart-guest-agent, a link into the Cellar) would never match the running process.
+    path="$(resolve_path "$path")" || fail 1 "cannot resolve the path of $path"
     identifier="$path"
   fi
   csreq_hex="$(hex_csreq "$path")"

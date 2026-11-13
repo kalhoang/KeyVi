@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -42,6 +43,7 @@ SMOKE = SCRIPTS / "vm" / "smoke-macos12.sh"
 GRANT = SCRIPTS / "vm" / "grant-tcc.sh"
 MACHO = SCRIPTS / "vm" / "macho-info.pl"
 GUEST = SCRIPTS / "vm" / "guest" / "smoke-guest.sh"
+INTEGRATION_GUEST = SCRIPTS / "vm" / "guest" / "integration-guest.sh"
 INTEGRATION = SCRIPTS / "vm" / "integration-dev.sh"
 
 FAKE_TART = r"""#!/bin/bash
@@ -333,6 +335,43 @@ class UpDownTests(LabTestCase):
         self.assertEqual(self.running(), {MONTEREY})
         self.lab("down", MONTEREY)
 
+    def test_with_hands_its_standard_input_to_the_host_command(self):
+        """self-hosted-runner.md section 8.3 feeds the runner token on stdin: booting the VM must not consume it,
+        and it must reach no tart or ssh command line."""
+        merged = dict(self.env)
+        result = subprocess.run(["bash", str(LAB), "with", MONTEREY, "--", "sh", "-c", 'read -r t; echo "got=$t"'],
+                                input="token-on-stdin\n", capture_output=True, text=True, env=merged, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("got=token-on-stdin", result.stdout)
+        self.assertNotIn("token-on-stdin", "\n".join(self.calls()))
+        self.assertEqual(self.running(), set())
+
+    def test_with_stops_the_vm_on_ctrl_c_and_on_sigterm(self):
+        """Ctrl-C (SIGINT to the process group) and SIGTERM must still run the EXIT trap that stops the VM."""
+        for sig, code in ((signal.SIGINT, 130), (signal.SIGTERM, 143)):
+            with self.subTest(signal=sig.name):
+                started = self.tmp / f"started-{sig.name}"
+                process = subprocess.Popen(
+                    ["bash", str(LAB), "with", MONTEREY, "--", "sh", "-c", 'touch "$1"; exec sleep 60', "sh",
+                     str(started)],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, stdin=subprocess.DEVNULL,
+                    env=self.env, start_new_session=True)
+                try:
+                    deadline = time.monotonic() + 20
+                    while not started.exists():
+                        self.assertIsNone(process.poll(), "lab.sh with exited before the host command ran")
+                        self.assertLess(time.monotonic(), deadline, "the host command never started")
+                        time.sleep(0.1)
+                    self.assertEqual(self.running(), {MONTEREY})
+                    os.killpg(process.pid, sig)
+                    _, stderr = process.communicate(timeout=30)
+                finally:
+                    if process.poll() is None:
+                        os.killpg(process.pid, signal.SIGKILL)
+                        process.wait()
+                self.assertEqual(process.returncode, code, stderr)
+                self.assertEqual(self.running(), set())
+
 
 class GuestAccessTests(LabTestCase):
     def test_ssh_push_pull_and_exec_need_a_running_vm(self):
@@ -517,6 +556,22 @@ class SmokeArgumentTests(LabTestCase):
         self.assertEqual([c for c in self.tart_calls("run") if f"{MONTEREY}-smoke" not in c], [])
         self.assertTrue((self.tmp / "run" / "summary.txt").exists())
 
+    @unittest.skipUnless(sys.platform == "darwin" and shutil.which("clang"), "needs clang and plutil on macOS")
+    def test_a_minos_newer_than_12_0_fails_on_the_host_before_any_vm_starts(self):
+        """ADR 0315 step 2 and vm-test-lab.md: the host checks both slices AND their minos 12.0 (PLT-R106)."""
+        source = self.tmp / "main.c"
+        source.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+        binary = self.tmp / "fat13"
+        subprocess.run(["clang", "-arch", "arm64", "-arch", "x86_64", "-mmacosx-version-min=13.0", "-o",
+                        str(binary), str(source)], check=True, capture_output=True)
+        result = self.smoke("--app", str(self.fake_app(binary)), "--output", str(self.tmp / "run"))
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 1, output)
+        self.assertIn("FAIL host minos: arm64 needs macOS 13.0", output)
+        self.assertIn("FAIL host minos: x86_64 needs macOS 13.0", output)
+        self.assertEqual(self.tart_calls("run"), [])
+        self.assertEqual(self.tart_calls("clone"), [])
+
     @unittest.skipUnless(sys.platform == "darwin", "reads Info.plist with plutil")
     def test_a_foreign_vm_with_the_clone_name_is_never_replaced(self):
         (self.fake / "vms" / f"{MONTEREY}-smoke").touch()
@@ -650,10 +705,22 @@ class GrantTccTests(unittest.TestCase):
         self.assertEqual(len(rows), 6, rows)
         services = {row[0] for row in rows}
         self.assertEqual(services, {"kTCCServiceAccessibility", "kTCCServiceListenEvent", "kTCCServicePostEvent"})
-        self.assertEqual({(row[1], row[2]) for row in rows}, {("test.example.fake", 0), (str(self.tool), 1)})
+        self.assertEqual({(row[1], row[2]) for row in rows},
+                         {("test.example.fake", 0), (str(self.tool.resolve()), 1)})
         self.assertTrue(all(row[3] == 2 and row[4] and row[4] > 0 for row in rows), rows)
         log = self.tmp / "calls.log"
         self.assertFalse(log.exists() and "tccd" in log.read_text(), "tccd is restarted only for the real database")
+
+    def test_a_symlinked_binary_is_granted_under_its_resolved_path(self):
+        """tccd keys path clients by the resolved executable path (the dev image lists the guest agent under
+        /opt/homebrew/Cellar/..., not the /opt/homebrew/bin symlink), so a row for the link would be dead."""
+        link_dir = self.tmp / "links"
+        link_dir.mkdir()
+        link = link_dir / "harness-link"
+        link.symlink_to(self.tool)
+        result = self.grant("--service", "kTCCServiceListenEvent", "--binary", str(link))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([(row[1], row[2]) for row in self.rows()], [(str(self.tool.resolve()), 1)])
 
     def test_dry_run_prints_the_sql_and_writes_nothing(self):
         result = self.grant("--dry-run", "--service", "kTCCServiceAccessibility", "--binary", str(self.tool))
@@ -686,6 +753,65 @@ class GuestScriptTests(unittest.TestCase):
         self.assertIn('pgrep -n -x "$exec_name"', text)
         self.assertNotIn("pgrep -n -f", text)
         self.assertNotIn("pkill -f", text)
+
+
+class GuestVmGuardTests(unittest.TestCase):
+    """Both guest scripts change global settings, replace apps, use sudo and post events: they must refuse to run
+    anywhere but inside a VM (kern.hv_vmm_present = 1), before argument parsing and before any side effect.
+    The scripts are run without arguments only, so even a missing guard could do no more than print the usage."""
+
+    TOOLS = ("defaults", "open", "ditto", "pkill", "sudo", "softwareupdate", "launchctl", "xcodebuild", "xcodegen",
+             "arch", "lipo", "log", "tccutil", "killall", "rm", "cp", "mkdir")
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.bin = self.tmp / "bin"
+        self.bin.mkdir()
+        self.log = self.tmp / "calls.log"
+        write_exe(self.bin / "sysctl", '#!/bin/sh\n[ "$*" = "-n kern.hv_vmm_present" ] || exit 1\necho "$FAKE_VMM"\n')
+        for tool in self.TOOLS:
+            write_exe(self.bin / tool, f'#!/bin/sh\necho "{tool} $*" >>"{self.log}"\n')
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def run_guest(self, script: Path, vmm: str) -> subprocess.CompletedProcess:
+        env = {"PATH": f"{self.bin}:/usr/bin:/bin:/usr/sbin:/sbin", "HOME": str(self.tmp), "FAKE_VMM": vmm,
+               "LC_ALL": "C"}
+        return subprocess.run(["bash", str(script)], capture_output=True, text=True, env=env, cwd=self.tmp,
+                              stdin=subprocess.DEVNULL, timeout=30)
+
+    def test_the_guest_scripts_refuse_to_run_outside_a_virtual_machine(self):
+        for script in (GUEST, INTEGRATION_GUEST):
+            for vmm in ("0", ""):
+                with self.subTest(script=script.name, vmm=vmm):
+                    result = self.run_guest(script, vmm)
+                    self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+                    self.assertIn("refusing: not inside a virtual machine", result.stderr)
+                    self.assertFalse(self.log.exists() and self.log.read_text(encoding="utf-8"),
+                                     "no tool may run before the guard")
+
+    def test_inside_a_virtual_machine_the_guard_lets_the_script_reach_its_usage_check(self):
+        for script in (GUEST, INTEGRATION_GUEST):
+            with self.subTest(script=script.name):
+                result = self.run_guest(script, "1")
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("usage:", result.stderr)
+
+
+class IntegrationGuestTests(unittest.TestCase):
+    MARKER_LINE = re.compile(r'^HOOKS_MARKER="(.+)"$', re.M)
+
+    def test_the_guest_checks_the_same_hooks_marker_as_run_integration(self):
+        """ADR 0502: one marker string; the guest copy must follow scripts/run-integration.sh."""
+        guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        reference = (SCRIPTS / "run-integration.sh").read_text(encoding="utf-8")
+        marker = self.MARKER_LINE.search(guest)
+        self.assertIsNotNone(marker, "integration-guest.sh must define HOOKS_MARKER on its own line")
+        self.assertEqual(marker.group(1), self.MARKER_LINE.search(reference).group(1))
+        self.assertIn('"$HOOKS_MARKER"', guest)
+        self.assertEqual(guest.count(marker.group(1)), 1, "the marker literal appears once")
 
 
 class RunShTests(unittest.TestCase):
