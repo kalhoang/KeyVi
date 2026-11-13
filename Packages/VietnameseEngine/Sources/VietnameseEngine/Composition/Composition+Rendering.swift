@@ -3,8 +3,8 @@
 extension Composition {
     /// The display of the token (6.1): the letters normalised for display (ENG-R530, ENG-R531) with the
     /// tone placed by 5.1 / 5.2 on the current letters (ENG-R501), each letter in the case of its key
-    /// (ENG-R901), then the literal tail exactly as typed (ENG-R420). Precomposed letters only
-    /// (ENG-R102).
+    /// (ENG-R901; bracket letters by ENG-R906), then the literal tail exactly as typed (ENG-R420).
+    /// Precomposed letters only (ENG-R102).
     package func display(style: ToneStyle) -> String {
         render(style: style, committed: false)
     }
@@ -25,14 +25,16 @@ extension Composition {
             tone == .level ? nil : TonePlacement.toneOffset(in: displayLetters, parse: parse, style: style)
         let openPairToWrite =
             committed && literalStart == nil && HornNormalisation.isOpenHornPair(displayLetters, parse: parse)
+        let bracketsInAllCaps = bracketLettersFollowAllCaps
         var text = ""
         let tailCount = literalStart.map { raw.count - $0 } ?? 0
         text.reserveCapacity(letters.count * 3 + tailCount)
         for offset in 0..<letters.count {
             var letter = displayLetters[offset]
             if openPairToWrite, offset == parse.vowelStart { letter = .u }
-            let scalar = LetterTable.scalar(
-                letter, tone: offset == toneOffset ? tone : .level, uppercase: letters[offset].isUppercase)
+            let composed = letters[offset]
+            let uppercase = composed.isUppercase || (bracketsInAllCaps && composed.flags.contains(.bracket))
+            let scalar = LetterTable.scalar(letter, tone: offset == toneOffset ? tone : .level, uppercase: uppercase)
             text.unicodeScalars.append(scalar)
         }
         if let literalStart {
@@ -40,6 +42,23 @@ extension Composition {
             text += String(decoding: raw[literalStart...], as: UTF8.self)
         }
         return text
+    }
+
+    /// ENG-R906: the token has bracket letters and is an all-caps word, meaning at least two other letters
+    /// were produced by keys with a case and all of them are uppercase. Stops at the first lowercase letter.
+    var bracketLettersFollowAllCaps: Bool {
+        var hasBracketLetter = false
+        var uppercaseLetters = 0
+        for letter in letters {
+            if letter.flags.contains(.bracket) {
+                hasBracketLetter = true
+            } else if letter.isUppercase {
+                uppercaseLetters += 1
+            } else {
+                return false
+            }
+        }
+        return hasBracketLetter && uppercaseLetters >= 2
     }
 
     /// The raw keys as a string (restore reproduces them exactly, ENG-R705).
@@ -68,8 +87,12 @@ extension Composition {
         }
         var kept: [UInt8] = []
         kept.reserveCapacity(raw.count)
-        for (index, key) in raw.enumerated() where !removed.contains(index) { kept.append(key) }
-        self = Composition(replaying: kept, rules: rules)
+        var keptCapsLock = KeySet()  // ENG-R906: the Caps Lock state moves with each kept key
+        for (index, key) in raw.enumerated() where !removed.contains(index) {
+            if capsLockKeys.contains(index) { keptCapsLock.formUnion(KeySet(index: kept.count)) }
+            kept.append(key)
+        }
+        self = Composition(replaying: kept, capsLockKeys: keptCapsLock, rules: rules)
     }
 
     /// Removes the last raw key and recomputes. Dropping a key of a literal tail after the key that
@@ -82,6 +105,6 @@ extension Composition {
             popLastRawKey()
             return
         }
-        self = Composition(replaying: raw.dropLast(), rules: rules)
+        self = Composition(replaying: raw.dropLast(), capsLockKeys: capsLockKeys, rules: rules)
     }
 }

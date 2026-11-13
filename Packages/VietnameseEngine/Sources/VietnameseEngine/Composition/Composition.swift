@@ -4,11 +4,12 @@
 /// them by the rules of section 4.
 ///
 /// ENG-R601: the derived state is a fold of `append` over the raw keys, so it is a pure function of
-/// (raw keys, configuration). Appending a key applies one more step of the same fold; every other
-/// change (Backspace, ENG-R710) rebuilds the state by replaying the remaining keys
-/// (`init(replaying:rules:)`). The only shortcut, dropping the last key of a literal tail, gives the
-/// state that replay gives by construction; `CompositionPropertyTests` checks the equality on random
-/// event streams after every event (ENG-T33).
+/// (raw keys, configuration). The Caps Lock state of the bracket keys (ENG-R906) is part of that input:
+/// it is kept next to the raw keys (`capsLockKeys`) because a bracket key's byte has no case. Appending a
+/// key applies one more step of the same fold; every other change (Backspace, ENG-R710) rebuilds the
+/// state by replaying the remaining keys (`init(replaying:capsLockKeys:rules:)`). The only shortcut,
+/// dropping the last key of a literal tail, gives the state that replay gives by construction;
+/// `CompositionPropertyTests` checks the equality on random event streams after every event (ENG-T33).
 package struct Composition: Sendable, Hashable {
     /// ENG-R641: once a composing token holds this many raw keys, the next key enters literal mode.
     /// This bounds replay and keeps every composing key index below 64 (`KeySet`).
@@ -28,12 +29,19 @@ package struct Composition: Sendable, Hashable {
     /// Raw index of the key that started literal mode; nil while composing (4.5).
     package internal(set) var literalStart: Int?
     package internal(set) var camelCase = CamelCaseTracker()
+    /// ENG-R906: raw indices of the bracket keys typed with Caps Lock on while composing. Literal keys
+    /// never become letters, so they are not recorded.
+    package internal(set) var capsLockKeys = KeySet()
 
     package init() {}
 
-    /// Replays `keys` from an empty token (ENG-R601).
-    package init<S: Sequence>(replaying keys: S, rules: ComposerRules) where S.Element == UInt8 {
-        for key in keys { append(key, rules: rules) }
+    /// Replays `keys` from an empty token (ENG-R601); `capsLockKeys` holds the offsets in `keys` of the
+    /// keys typed with Caps Lock on (ENG-R906).
+    package init<S: Sequence>(replaying keys: S, capsLockKeys: KeySet = KeySet(), rules: ComposerRules)
+    where S.Element == UInt8 {
+        for (offset, key) in keys.enumerated() {
+            append(key, capsLock: capsLockKeys.contains(offset), rules: rules)
+        }
     }
 
     package var isLiteral: Bool { literalStart != nil }
@@ -43,8 +51,9 @@ package struct Composition: Sendable, Hashable {
 
     // MARK: - One key (4.3)
 
-    /// Applies one key by the order of interpretation of 4.3.
-    package mutating func append(_ key: UInt8, rules: ComposerRules) {
+    /// Applies one key by the order of interpretation of 4.3. `capsLock` is the key's Caps Lock state,
+    /// which only bracket keys use (ENG-R906).
+    package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) {
         let index = raw.count
         raw.append(key)
         // Step 1: literal mode appends verbatim.
@@ -57,6 +66,7 @@ package struct Composition: Sendable, Hashable {
             enterLiteral(at: index)
             return
         }
+        if capsLock, ASCII.isBracket(key) { capsLockKeys.formUnion(KeySet(index: index)) }
         // Step 2: the key's transform role, unless its kind was escaped (ENG-R441).
         let role = rules.role(of: key)
         if let kind = role.escapeKind, !escapedKinds.contains(kind),

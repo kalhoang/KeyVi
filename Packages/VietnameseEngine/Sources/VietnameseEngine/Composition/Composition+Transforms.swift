@@ -157,9 +157,14 @@ extension Composition {
 
     /// ENG-R104 and 4.8: a bracket key appends `ơ` (`[`) or `ư` (`]`) if viable. Doubling escapes: when
     /// the letter cannot be appended and the token holds a letter made by the same key, those letters
-    /// are removed and the key itself is appended (`[[` -> `[`). Otherwise the key is a literal.
+    /// are removed and the key itself is appended (`[[` -> `[`). Otherwise the key is a literal. The key
+    /// has no case: the letter is uppercase if Caps Lock was on for it (ENG-R906; the all-caps word case is
+    /// decided at render time, because later letters change it).
     mutating func applyBracket(_ letter: Letter, key: UInt8, at index: Int) -> Bool {
-        if appendProduced(letter, uppercase: nil, flags: .bracket, at: index) { return true }
+        if appendProduced(letter, uppercase: nil, flags: .bracket, at: index) {
+            if capsLockKeys.contains(index) { letters[letters.count - 1].isUppercase = true }
+            return true
+        }
         let madeBySameKey: (ComposedLetter) -> Bool = { $0.flags.contains(.bracket) && $0.letter == letter }
         guard letters.contains(where: madeBySameKey) else { return false }
         letters.removeAll(where: madeBySameKey)

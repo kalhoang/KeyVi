@@ -121,7 +121,9 @@ public struct FuzzEventSource: Sendable {
         default: break
         }
         if generator.chance(1, in: 4) { text = " " + text }
-        pending = text.map(key) + [boundary()]
+        pending = []
+        for character in text { pending.append(key(character)) }
+        pending.append(boundary())
         if generator.chance(1, in: 6) { pending += [.backspace, .backspace, .restoreToggle] }
     }
 
@@ -158,5 +160,10 @@ public struct FuzzEventSource: Sendable {
         }
     }
 
-    private func key(_ character: Character) -> EngineEvent { .key(KeyInput(character)) }
+    /// A key event. With the bracket option, a bracket key carries Caps Lock one time in four, so the
+    /// replay checks cover that state (ENG-R906); other keys draw nothing, which keeps their streams.
+    private mutating func key(_ character: Character) -> EngineEvent {
+        guard bracketKeys, character == "[" || character == "]" else { return .key(KeyInput(character)) }
+        return .key(KeyInput(character, capsLock: generator.chance(1, in: 4)))
+    }
 }

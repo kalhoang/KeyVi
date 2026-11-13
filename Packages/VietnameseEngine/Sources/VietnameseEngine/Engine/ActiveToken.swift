@@ -94,15 +94,15 @@ package struct ActiveToken: Sendable, Hashable {
 
     /// A key of the token (4.3). Literal, restored and macro tokens append the key verbatim
     /// (`passThrough`); composing tokens recompute the display and return the minimal edit (ENG-R610,
-    /// ENG-R611).
-    package mutating func append(_ key: UInt8, rules: ComposerRules) -> KeyAction {
+    /// ENG-R611). `capsLock` is the key's Caps Lock state (ENG-R906).
+    package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> KeyAction {
         if macroKeys != nil {
             macroKeys?.append(key)
             display.unicodeScalars.append(Unicode.Scalar(key))
             return .passThrough
         }
         let appendsVerbatim = showsRawKeys || composition.isLiteral
-        composition.append(key, rules: rules)
+        composition.append(key, capsLock: capsLock, rules: rules)
         if appendsVerbatim {
             display.unicodeScalars.append(Unicode.Scalar(key))
             return .passThrough

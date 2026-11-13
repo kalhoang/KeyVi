@@ -175,6 +175,10 @@ package enum ASCII {
     @inline(__always)
     package static func isLetter(_ byte: UInt8) -> Bool { isUppercaseLetter(byte) || isLowercaseLetter(byte) }
 
+    /// `[` or `]`, the Telex bracket keys (ENG-R104).
+    @inline(__always)
+    package static func isBracket(_ byte: UInt8) -> Bool { byte == leftBracket || byte == rightBracket }
+
     @inline(__always)
     package static func isDigit(_ byte: UInt8) -> Bool { byte >= 48 && byte <= 57 }
 
