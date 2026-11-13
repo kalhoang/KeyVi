@@ -74,6 +74,16 @@ import Testing
         ) {
             $0.params.inlineCompletion == .placeholder && $0.params.firstEditDelayUs == 8_000 && $0.matchedURL
         },
+        // 02-platform.md 5.5: documentURL is the URL "of the focused web area", so the host leaves it nil while
+        // the omnibox has focus on a Sheets tab; the address-bar rule then wins with no tie (PLT-R521).
+        .init(
+            label: "Chrome omnibox on a Google Sheets tab",
+            context: Build.context(
+                bundle: "com.google.Chrome", engine: .chromium, role: "AXTextField", ancestorRoles: ["AXToolbar"]),
+            rule: "browser.chromium.addressBar"
+        ) {
+            $0.params.inlineCompletion == .axSelectionThenPlaceholder && !$0.matchedURL
+        },
         .init(
             label: "Google Sheets in Safari",
             context: Build.context(
