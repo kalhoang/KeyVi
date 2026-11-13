@@ -321,13 +321,19 @@ class WorkflowCoverageTests(unittest.TestCase):
         self.assertIn('scripts/check-pr-labels.sh --base "$BASE_SHA" --head "$HEAD_SHA" --labels "$LABELS"', body)
 
     def test_site_workflow_runs_the_site_tests_and_a_strict_build_for_deployment(self):
-        """ADR 0601, PRD-R74: links, anchors, language attributes and the privacy rules are tested on every
-        change; a deployed build refuses VERIFY markers and placeholder values (--strict)."""
+        """ADR 0601, ADR 0602, PRD-R74: links, anchors, language attributes and the privacy rules are tested on
+        every change; the deployed image (site-image.yml, branch prod) refuses VERIFY markers and placeholder values
+        unless SITE_STRICT is false, and a non-strict image is a noindex preview."""
         body = self.job("site.yml", "build")
         self.assertLess(body.index("run: node site/test.mjs"), body.index("node site/build.mjs"))
         self.assertIn("node site/build.mjs --strict", body)
-        self.assertIn("vars.SITE_STRICT == 'true'", body)
-        self.assertIn("vars.SITE_DEPLOY_TARGET != '' && vars.SITE_STRICT != 'false'", body)
+        self.assertIn("STRICT: ${{ vars.SITE_STRICT == 'true' }}", body)
+        image = self.job("site-image.yml", "image")
+        self.assertIn("SITE_STRICT: ${{ vars.SITE_STRICT == 'false' && 'false' || 'true' }}", image)
+        self.assertIn('--build-arg SITE_STRICT="$SITE_STRICT"', image)
+        dockerfile = (REPO / "deploy" / "site" / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("ARG SITE_STRICT=true", dockerfile)
+        self.assertIn("ARG SITE_NOINDEX=auto", dockerfile)
         text = (self.WORKFLOWS / "site.yml").read_text(encoding="utf-8")
         for path in ("App/Resources/Localization/**", "Packages/AppCore/Sources/InputHost/Integration/ShellActions.swift",
                      "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"):

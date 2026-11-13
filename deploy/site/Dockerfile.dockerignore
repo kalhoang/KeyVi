@@ -1,0 +1,11 @@
+# Build context of deploy/site/Dockerfile (BuildKit reads <Dockerfile>.dockerignore next to the Dockerfile): only the
+# inputs of node deploy/site/build.mjs and the nginx configuration, never the rest of the repository (ADR 0602).
+*
+!scripts/brand.env
+!compat/matrix.json
+!CHANGELOG.md
+!CHANGELOG.vi.md
+!site/
+site/dist/
+site/node_modules/
+!deploy/site/

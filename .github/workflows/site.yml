@@ -3,9 +3,8 @@
 # compat/matrix.json, changelog from CHANGELOG.md, download data from site/data/releases.json and the
 # Sparkle feed site/static/appcast.xml (one stable URL, PLT-R1101).
 #
-# Deployment is a placeholder until Pa chooses the hosting (spec/02-platform.md section 14, PRD-R75:
-# HTTPS on a domain Pa controls). It runs only when the repository variable SITE_DEPLOY_TARGET is
-# set, inside the `site` environment. See the deploy job below for the options to fill in.
+# This workflow tests and builds; it never deploys. The website runs as a container on the Kalera Docker Swarm,
+# built and redeployed by site-image.yml from the branch `prod` only (ADR 0602, docs/runbooks/site-deploy.md).
 name: Site
 
 on:
@@ -23,6 +22,7 @@ on:
       - "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"
       - "Packages/AppCore/Sources/SettingsStore/Documents.swift"
       - "scripts/brand.env"
+      - "deploy/site/**"
   pull_request:
     paths:
       - "site/**"
@@ -36,6 +36,7 @@ on:
       - "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"
       - "Packages/AppCore/Sources/SettingsStore/Documents.swift"
       - "scripts/brand.env"
+      - "deploy/site/**"
   workflow_dispatch:
 
 permissions:
@@ -59,14 +60,13 @@ jobs:
           node-version: "22"
       - name: Site tests (pages, links and anchors, lang attributes, PRD-R74 privacy rules, appcast, sitemap)
         run: node site/test.mjs
+      - name: Container tests (nginx headers equal static/_headers, image build script, live header check)
+        run: node deploy/site/test.mjs
       - name: Build (node site/build.mjs -> site/dist)
-        # ADR 0601: a build that is deployed is strict, so VERIFY markers and placeholder config values never go
-        # public. SITE_STRICT=true makes every build strict; SITE_STRICT=false allows a non-strict deployment
-        # (a preview before the first public release).
+        # ADR 0601: the deployed image is strict unless SITE_STRICT=false (site-image.yml). Here SITE_STRICT=true
+        # makes every build strict, so VERIFY markers show up on pull requests before they block a deploy.
         env:
-          STRICT: >-
-            ${{ vars.SITE_STRICT == 'true' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
-            vars.SITE_DEPLOY_TARGET != '' && vars.SITE_STRICT != 'false') }}
+          STRICT: ${{ vars.SITE_STRICT == 'true' }}
         run: |
           if [[ "$STRICT" == true ]]; then node site/build.mjs --strict; else node site/build.mjs; fi
       - name: Appcast is well-formed XML
@@ -79,31 +79,3 @@ jobs:
           name: site-dist
           path: site/dist
           retention-days: 14
-
-  deploy:
-    name: Deploy site (placeholder)
-    needs: build
-    if: >-
-      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
-      vars.SITE_DEPLOY_TARGET != ''
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    environment: site
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: site-dist
-          path: site-dist
-      - name: Deploy
-        env:
-          TARGET: ${{ vars.SITE_DEPLOY_TARGET }}
-        run: |
-          # PLACEHOLDER: Pa has not chosen the hosting yet. Fill in exactly one branch, add the
-          # needed secrets to the `site` environment, and record the choice in a decision record.
-          #   github-pages : add actions/configure-pages, actions/upload-pages-artifact and
-          #                  actions/deploy-pages (pinned by SHA) with pages: write and id-token: write
-          #   cloudflare   : wrangler pages deploy site-dist --project-name <name> (API token secret)
-          #   rsync        : rsync over SSH to the server behind the site host (deploy key secret)
-          # The appcast must stay at https://<site host>/appcast.xml and be served over HTTPS (PRD-R75).
-          echo "::error::Site deployment target '$TARGET' is not implemented yet (placeholder)."
-          exit 1
