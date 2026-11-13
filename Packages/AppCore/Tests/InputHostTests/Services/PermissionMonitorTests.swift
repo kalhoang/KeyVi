@@ -13,6 +13,7 @@ import Testing
 private struct Harness {
     let clock = ManualClock()
     let scheduler: ManualScheduler
+    let timers: TimerRequestRecorder
     let probe: FakePermissionProbe
     let store: InMemoryKeyValueStore
     let changes = Recorder<PermissionStatus>()
@@ -20,10 +21,11 @@ private struct Harness {
 
     init(trusted: Bool = true, post: Bool = true, listen: Bool = true, store: InMemoryKeyValueStore = .init()) {
         scheduler = ManualScheduler(clock: clock)
+        timers = TimerRequestRecorder(base: scheduler)
         probe = FakePermissionProbe(trusted: trusted, post: post, listen: listen)
         self.store = store
         let changes = self.changes
-        monitor = PermissionMonitor(probe: probe, store: store, scheduler: scheduler) { changes.append($0) }
+        monitor = PermissionMonitor(probe: probe, store: store, scheduler: timers) { changes.append($0) }
     }
 }
 
@@ -55,7 +57,9 @@ struct PermissionMonitorTests {
         harness.monitor.start()
         harness.monitor.setFastPolling(true)
         #expect(harness.scheduler.repeatingIntervals == [.seconds(1)])
-        harness.scheduler.advance(by: .seconds(299))
+        // PLT-R803 leeway of 10 % on a deadline that must not pass 5 minutes (PLT-R711): due at 270 s, 30 s leeway.
+        #expect(harness.timers.requests.filter { !$0.repeating } == [.init(delay: .seconds(270), leeway: .seconds(30), repeating: false)])
+        harness.scheduler.advance(by: .seconds(269))
         #expect(harness.scheduler.repeatingIntervals == [.seconds(1)])
         harness.scheduler.advance(by: .seconds(2))
         #expect(harness.scheduler.repeatingIntervals == [.seconds(2)])  // PLT-R711 limit reached
@@ -70,7 +74,21 @@ struct PermissionMonitorTests {
             harness.monitor.start()
             harness.scheduler.advance(by: .seconds(120))
             #expect(harness.scheduler.repeatingIntervals.allSatisfy { $0 >= .seconds(2) })
+            harness.monitor.setFastPolling(true)
+            // PLT-R803: every timer, onboarding included, asks for at least 10 % leeway.
+            #expect(harness.timers.requests.allSatisfy { $0.leeway * 10 >= $0.delay })
         }
+    }
+
+    @Test func inputMonitoringNeedIsNeverReportedAsStalePLTR702() {
+        let store = InMemoryKeyValueStore()
+        let first = Harness(listen: false, store: store)
+        #expect(first.monitor.checkNow().health == .ready)  // grant recorded for this identity
+        first.monitor.setTapUnavailable(true)
+        #expect(first.changes.last?.health == .noPermission)
+        #expect(first.changes.last?.listenEventRequired == true)
+        first.probe.set(trusted: false, post: true, listen: false)
+        #expect(first.monitor.checkNow().health == .stale)  // the Accessibility grant itself failed
     }
 
     @Test func staleWhenTheSameIdentityLosesItsGrant() {
@@ -100,7 +118,8 @@ struct PermissionMonitorTests {
         harness.monitor.setTapUnavailable(true)
         let status = harness.changes.last
         #expect(status?.listenEventRequired == true)
-        #expect(status?.health != .ready)
+        // PLT-R712, not PLT-R740: the Accessibility grant works, so this is not `stale`.
+        #expect(status?.health == .noPermission)
         harness.monitor.setTapUnavailable(true)
         harness.probe.set(trusted: false, post: true, listen: false)
         #expect(harness.monitor.checkNow().listenEventRequired == false)  // Accessibility first

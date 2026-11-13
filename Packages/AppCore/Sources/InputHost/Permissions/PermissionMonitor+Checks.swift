@@ -55,7 +55,9 @@ extension PermissionMonitor {
             state.fastPollingDeadline?.cancel()
             state.fastPollingDeadline = nil
             if enabled {
-                state.fastPollingDeadline = scheduler.schedule(after: Self.onboardingLimit, leeway: .seconds(1)) {
+                // PLT-R711 "maximum 5 minutes" with the PLT-R803 10 % leeway: due at 270 s, fires by 300 s.
+                let leeway = Self.onboardingLimit / 10
+                state.fastPollingDeadline = scheduler.schedule(after: Self.onboardingLimit - leeway, leeway: leeway) {
                     [weak self] in self?.updateFastPolling(false)
                 }
             }
@@ -71,8 +73,10 @@ extension PermissionMonitor {
         if changed { _ = check() }
     }
 
-    /// PLT-R720: `ready` needs Accessibility, posting and (only when the tap needs it) listening. Not ready after
-    /// a grant recorded for this exact signing identity is `stale` (typically after a macOS update).
+    /// PLT-R720: `ready` needs Accessibility, posting and (only when the tap needs it) listening. `stale` means
+    /// the Accessibility grant recorded for this exact signing identity fails now (typically after a macOS
+    /// update; PLT-R740 guidance). A missing Input Monitoring consent with a working Accessibility grant is
+    /// `noPermission` plus `listenEventRequired` (PLT-R702, PLT-R712), never `stale`.
     private func evaluate(_ state: inout PermissionMonitorState) -> PermissionStatus {
         let accessibility = probe.isAccessibilityTrusted()
         let post = probe.canPostEvents()
@@ -87,7 +91,7 @@ extension PermissionMonitor {
             if let identity, store.integer(forKey: Self.lastGrantedDigestKey) != identity {
                 store.set(identity, forKey: Self.lastGrantedDigestKey)
             }
-        } else if let identity, store.integer(forKey: Self.lastGrantedDigestKey) == identity {
+        } else if !accessibility || !post, let identity, store.integer(forKey: Self.lastGrantedDigestKey) == identity {
             health = .stale
         } else {
             health = .noPermission
