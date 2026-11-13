@@ -15,6 +15,10 @@ public struct AppsPaneRow: Sendable, Hashable, Identifiable {
     public var status: MatrixStatus  // after the 120-day rule (QA-R19)
     public var note: LocalizedNote?
     public var compatibilityMode: CompatibilityModeChoice
+    /// Name from the matrix row, for apps that are not installed (the App prefers the installed app's name).
+    public var matrixDisplayName: String?
+    /// When the user chose `compatibilityMode` ("set by you on <date>", PLT-R541); nil for automatic.
+    public var compatibilitySetOn: Date?
 }
 
 /// PRD-R36: "Chế độ tương thích" under Advanced, at most three plain choices plus automatic. Choosing one writes
@@ -84,7 +88,8 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
 
 public enum AppsPaneModel {
     /// Most recent first: apps typed in (memory order) plus apps with explicit rules (PRD-R34), then apps that
-    /// only have a compatibility override.
+    /// only have a compatibility override. The status is the matrix row that stands for the whole app
+    /// (`MatrixDocument.appEntry(for:)`) after the 120-day rule; web-app and in-app rows are for the detail view.
     public static func rows(
         appModes: AppModesDocument, overrides: [StoredRuleOverride], matrix: MatrixDocument?, today: Date
     ) -> [AppsPaneRow] {
@@ -96,26 +101,149 @@ public enum AppsPaneModel {
         return bundles.compactMap { bundle in
             guard seen.insert(bundle).inserted else { return nil }
             let entry = entries[bundle]
-            let matrixEntry = matrix?.entries.first { $0.bundleId == bundle }
+            let matrixEntry = matrix?.appEntry(for: bundle)
             return AppsPaneRow(
                 bundle: bundle, rule: entry?.rule ?? .remember, rememberedMode: entry?.mode,
                 status: matrixEntry.map { MatrixStatusResolver.displayStatus($0, today: today) } ?? .notVerified,
-                note: matrixEntry?.note, compatibilityMode: modes[bundle] ?? .automatic)
+                note: matrixEntry?.note, compatibilityMode: modes[bundle]?.choice ?? .automatic,
+                matrixDisplayName: matrixEntry?.displayName, compatibilitySetOn: modes[bundle]?.createdAt)
         }
     }
 
     /// Newest compatibility override per app.
-    private static func compatibilityModes(_ overrides: [StoredRuleOverride]) -> [BundleKey: CompatibilityModeChoice] {
-        var modes: [BundleKey: CompatibilityModeChoice] = [:]
+    private static func compatibilityModes(_ overrides: [StoredRuleOverride])
+        -> [BundleKey: (choice: CompatibilityModeChoice, createdAt: Date)]
+    {
+        var modes: [BundleKey: (choice: CompatibilityModeChoice, createdAt: Date)] = [:]
         for stored in overrides.sorted(by: { $0.createdAt > $1.createdAt }) {
             guard let choice = CompatibilityModeChoice(overrideRule: stored.rule),
                 case .array(let ids)? = stored.rule["match"]?["bundleIds"]
             else { continue }
             for case .string(let raw) in ids {
                 guard let bundle = BundleKey(rawValue: raw), modes[bundle] == nil else { continue }
-                modes[bundle] = choice
+                modes[bundle] = (choice, stored.createdAt)
             }
         }
         return modes
+    }
+}
+
+/// The app detail sheet (PRD-R35, PRD-R36): status and note of the app row, the web-app and in-app rows of the
+/// matrix, and the compatibility mode under Advanced.
+public struct AppDetail: Sendable, Hashable {
+    public let row: AppsPaneRow
+    /// `MatrixDocument.scopedEntries(for:)` with their display status, only shown here.
+    public let scoped: [ScopedStatus]
+    /// ISO date of the app row's last verification, if any.
+    public let lastVerified: String?
+
+    public struct ScopedStatus: Sendable, Hashable {
+        public var entry: MatrixEntry
+        public var status: MatrixStatus
+    }
+
+    public init(row: AppsPaneRow, matrix: MatrixDocument?, today: Date) {
+        self.row = row
+        scoped = (matrix?.scopedEntries(for: row.bundle) ?? []).map {
+            ScopedStatus(entry: $0, status: MatrixStatusResolver.displayStatus($0, today: today))
+        }
+        lastVerified = matrix?.appEntry(for: row.bundle)?.lastVerified
+    }
+}
+
+/// What choosing a compatibility mode does to `rule-overrides.json` (PLT-R540).
+public enum CompatibilityModeCommand: Sendable, Hashable {
+    case add(StoredRuleOverride)
+    case remove(RuleID)
+}
+
+extension CompatibilityModeChoice {
+    /// `.automatic` removes this app's override; the others write `user.compat.<bundle>` dated today.
+    public func command(for bundle: BundleKey, at date: Date, timeZone: TimeZone = .current) -> CompatibilityModeCommand
+    {
+        guard let rule = overrideRule(for: bundle, date: Self.day(date, timeZone: timeZone)) else {
+            return .remove(Self.ruleID(for: bundle))
+        }
+        return .add(StoredRuleOverride(createdAt: date, rule: rule))
+    }
+
+    /// `YYYY-MM-DD` in the user's calendar day.
+    static func day(_ date: Date, timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// PRD-R48, PLT-R462: the paste mode is chosen only after the clipboard explanation.
+    public var needsClipboardExplanation: Bool { self == .pasteText }
+
+    public var title: AppsText {
+        switch self {
+        case .automatic: .compatAutomatic
+        case .typeSlower: .compatTypeSlower
+        case .selectThenType: .compatSelectThenType
+        case .pasteText: .compatPasteText
+        }
+    }
+
+    /// PRD-R36: one sentence per choice.
+    public var explanation: AppsText {
+        switch self {
+        case .automatic: .compatAutomaticExplanation
+        case .typeSlower: .compatTypeSlowerExplanation
+        case .selectThenType: .compatSelectThenTypeExplanation
+        case .pasteText: .compatPasteTextExplanation
+        }
+    }
+}
+
+extension PerAppRule {
+    /// PRD-R34 column labels.
+    public var appsTitle: AppsText {
+        switch self {
+        case .remember: .ruleRemember
+        case .alwaysEnglish: .ruleAlwaysEnglish
+        case .alwaysVietnamese: .ruleAlwaysVietnamese
+        case .ignore: .ruleIgnore
+        }
+    }
+}
+
+extension MatrixStatus {
+    /// PRD-R35 labels.
+    public var appsTitle: AppsText {
+        switch self {
+        case .works: .statusWorks
+        case .worksWithNotes: .statusWorksWithNotes
+        case .notVerified: .statusNotVerified
+        case .knownLimitation: .statusKnownLimitation
+        }
+    }
+
+    /// SF Symbol shown with the label, so the status never relies on colour alone (PRD-R67).
+    public var symbolName: String {
+        switch self {
+        case .works: "checkmark.circle"
+        case .worksWithNotes: SettingsSymbol.info
+        case .notVerified: "questionmark.circle"
+        case .knownLimitation: "exclamationmark.triangle"
+        }
+    }
+}
+
+extension AppsPaneRow {
+    /// Remembered mode column (PRD-R34).
+    public var rememberedModeTitle: AppsText {
+        switch rememberedMode {
+        case .vietnamese: .modeVietnamese
+        case .english: .modeEnglish
+        case nil: .modeNone
+        }
+    }
+
+    /// The matrix note in the interface language (PRD-R35).
+    public func noteText(_ language: InterfaceLanguage) -> String? {
+        note.map { language == .vietnamese ? $0.vi : $0.en }
     }
 }

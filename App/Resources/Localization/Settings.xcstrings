@@ -1,0 +1,4506 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "settings.advanced" : {
+      "comment" : "PRD-R24 disclosure at the bottom of a pane.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced options"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tùy chọn nâng cao"
+          }
+        }
+      }
+    },
+    "settings.control.advancedDisclosure.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows or hides options that are rarely needed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện hoặc ẩn các tùy chọn ít dùng."
+          }
+        }
+      }
+    },
+    "settings.control.advancedDisclosure.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced options"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tùy chọn nâng cao"
+          }
+        }
+      }
+    },
+    "settings.control.bracketKeys.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns typing [ and ] for ơ and ư on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc gõ [ và ] ra ơ và ư."
+          }
+        }
+      }
+    },
+    "settings.control.bracketKeys.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: bracket keys produce ơ, ư"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: phím [ ] thành ơ ư"
+          }
+        }
+      }
+    },
+    "settings.control.clickIconToToggle.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns switching by clicking the menu bar icon on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc chuyển bằng cách bấm biểu tượng trên thanh menu."
+          }
+        }
+      }
+    },
+    "settings.control.clickIconToToggle.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click menu bar icon to toggle"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bấm biểu tượng để chuyển Việt/Anh"
+          }
+        }
+      }
+    },
+    "settings.control.englishRestore.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns automatic English restore on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc tự khôi phục từ tiếng Anh."
+          }
+        }
+      }
+    },
+    "settings.control.englishRestore.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic English restore"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự khôi phục từ tiếng Anh"
+          }
+        }
+      }
+    },
+    "settings.control.exportCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without exporting."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không xuất."
+          }
+        }
+      }
+    },
+    "settings.control.exportCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel the export"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy xuất"
+          }
+        }
+      }
+    },
+    "settings.control.exportIncludeAppModes.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts per-app rules and remembered choices in the exported file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa quy tắc và lựa chọn đã nhớ theo ứng dụng vào tệp xuất."
+          }
+        }
+      }
+    },
+    "settings.control.exportIncludeAppModes.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include per-app rules"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gồm quy tắc theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.control.exportIncludeMacros.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts your macro list in the exported file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa danh sách gõ tắt vào tệp xuất."
+          }
+        }
+      }
+    },
+    "settings.control.exportIncludeMacros.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gồm gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.control.exportSave.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses where to save the settings file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn nơi lưu tệp cài đặt."
+          }
+        }
+      }
+    },
+    "settings.control.exportSave.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save the export"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu tệp xuất"
+          }
+        }
+      }
+    },
+    "settings.control.hotkeyConflictHelp.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the guide in your browser."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang hướng dẫn trong trình duyệt."
+          }
+        }
+      }
+    },
+    "settings.control.hotkeyConflictHelp.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show how to turn off the macOS shortcut"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem hướng dẫn tắt phím tắt của macOS"
+          }
+        }
+      }
+    },
+    "settings.control.importApplyAppModes.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select to import this part."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn để nhập phần này."
+          }
+        }
+      }
+    },
+    "settings.control.importApplyAppModes.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import per-app rules"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập quy tắc theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.control.importApplyMacros.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select to import this part."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn để nhập phần này."
+          }
+        }
+      }
+    },
+    "settings.control.importApplyMacros.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.control.importApplyRuleOverrides.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select to import this part."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn để nhập phần này."
+          }
+        }
+      }
+    },
+    "settings.control.importApplyRuleOverrides.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import compatibility modes"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập chế độ tương thích"
+          }
+        }
+      }
+    },
+    "settings.control.importApplySettings.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select to import this part."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn để nhập phần này."
+          }
+        }
+      }
+    },
+    "settings.control.importApplySettings.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập cài đặt"
+          }
+        }
+      }
+    },
+    "settings.control.importCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without importing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không nhập."
+          }
+        }
+      }
+    },
+    "settings.control.importCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel the import"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy nhập"
+          }
+        }
+      }
+    },
+    "settings.control.importChooseOther.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses a different settings file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn một tệp cài đặt khác."
+          }
+        }
+      }
+    },
+    "settings.control.importChooseOther.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose another file"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tệp khác"
+          }
+        }
+      }
+    },
+    "settings.control.importConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backs up your current settings, then applies the file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao lưu cài đặt hiện tại rồi áp dụng tệp."
+          }
+        }
+      }
+    },
+    "settings.control.importConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import the settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập cài đặt"
+          }
+        }
+      }
+    },
+    "settings.control.importDuplicates.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses whether to keep yours or use the imported ones."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn giữ bản của bạn hoặc dùng bản nhập vào."
+          }
+        }
+      }
+    },
+    "settings.control.importDuplicates.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How to handle duplicate macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cách xử lý gõ tắt bị trùng"
+          }
+        }
+      }
+    },
+    "settings.control.interfaceLanguage.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses the language of the menu and windows."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn ngôn ngữ cho menu và các cửa sổ."
+          }
+        }
+      }
+    },
+    "settings.control.interfaceLanguage.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interface language"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ngôn ngữ giao diện"
+          }
+        }
+      }
+    },
+    "settings.control.keepAsTypedAdd.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds the word you entered to the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm từ vừa nhập vào danh sách."
+          }
+        }
+      }
+    },
+    "settings.control.keepAsTypedAdd.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to the keep-as-typed list"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm vào danh sách giữ nguyên như đã gõ"
+          }
+        }
+      }
+    },
+    "settings.control.keepAsTypedField.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the keys of the word, then press Add."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập các phím của từ, rồi bấm Thêm."
+          }
+        }
+      }
+    },
+    "settings.control.keepAsTypedField.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New word to keep as typed"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ mới cho danh sách giữ nguyên như đã gõ"
+          }
+        }
+      }
+    },
+    "settings.control.keepVietnameseAdd.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds the word you entered to the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm từ vừa nhập vào danh sách."
+          }
+        }
+      }
+    },
+    "settings.control.keepVietnameseAdd.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to the keep-as-Vietnamese list"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm vào danh sách giữ là tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.control.keepVietnameseField.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the keys of the word, then press Add."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập các phím của từ, rồi bấm Thêm."
+          }
+        }
+      }
+    },
+    "settings.control.keepVietnameseField.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New word to keep as Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ mới cho danh sách giữ là tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.control.layoutBindingAssignment.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses Vietnamese, English or no mode for this keyboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tiếng Việt, tiếng Anh hoặc không gắn cho bàn phím này."
+          }
+        }
+      }
+    },
+    "settings.control.layoutBindingAssignment.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode for this keyboard"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ cho bàn phím này"
+          }
+        }
+      }
+    },
+    "settings.control.layoutBindingEnabled.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns choosing VI/EN by the active macOS keyboard on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc chọn Việt/Anh theo bàn phím macOS đang dùng."
+          }
+        }
+      }
+    },
+    "settings.control.layoutBindingEnabled.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose VI/EN by macOS keyboard"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn Việt/Anh theo bàn phím macOS"
+          }
+        }
+      }
+    },
+    "settings.control.noticeDismiss.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hides this notice."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ẩn thông báo này."
+          }
+        }
+      }
+    },
+    "settings.control.noticeDismiss.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã hiểu"
+          }
+        }
+      }
+    },
+    "settings.control.noticeLeaveSafeMode.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reads your settings again and runs normally."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đọc lại cài đặt của bạn và chạy như bình thường."
+          }
+        }
+      }
+    },
+    "settings.control.noticeLeaveSafeMode.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave safe mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát chế độ an toàn"
+          }
+        }
+      }
+    },
+    "settings.control.noticeReport.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the bug report window."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ báo lỗi."
+          }
+        }
+      }
+    },
+    "settings.control.noticeReport.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi"
+          }
+        }
+      }
+    },
+    "settings.control.noticeReset.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the restore-defaults confirmation."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở hộp xác nhận khôi phục mặc định."
+          }
+        }
+      }
+    },
+    "settings.control.noticeReset.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore defaults"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định"
+          }
+        }
+      }
+    },
+    "settings.control.noticeUseDefaults.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves the default settings in place of the damaged file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu cài đặt mặc định thay cho tệp bị hỏng."
+          }
+        }
+      }
+    },
+    "settings.control.noticeUseDefaults.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use defaults"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng mặc định"
+          }
+        }
+      }
+    },
+    "settings.control.openAtLogin.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns opening at login on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc tự mở khi bạn đăng nhập."
+          }
+        }
+      }
+    },
+    "settings.control.openAtLogin.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open at login"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở khi đăng nhập"
+          }
+        }
+      }
+    },
+    "settings.control.openSystemSettings.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens System Settings to allow opening at login."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Cài đặt hệ thống để cho phép mở khi đăng nhập."
+          }
+        }
+      }
+    },
+    "settings.control.openSystemSettings.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Cài đặt hệ thống"
+          }
+        }
+      }
+    },
+    "settings.control.panePicker.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses which settings pane to show."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn mục cài đặt để hiện."
+          }
+        }
+      }
+    },
+    "settings.control.panePicker.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings pane"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mục cài đặt"
+          }
+        }
+      }
+    },
+    "settings.control.practiceField.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type here to try the settings. Nothing is saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ thử để xem kết quả. Nội dung không được lưu."
+          }
+        }
+      }
+    },
+    "settings.control.practiceField.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice field"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô gõ thử"
+          }
+        }
+      }
+    },
+    "settings.control.rememberPerApp.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns remembering VI/EN for each app on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc nhớ Việt/Anh cho từng ứng dụng."
+          }
+        }
+      }
+    },
+    "settings.control.rememberPerApp.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remember VI/EN per app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhớ Việt/Anh theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.control.resetCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without changing anything."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không thay đổi gì."
+          }
+        }
+      }
+    },
+    "settings.control.resetCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel the reset"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy khôi phục"
+          }
+        }
+      }
+    },
+    "settings.control.resetConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts the choices back to their defaults."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa các lựa chọn về mặc định."
+          }
+        }
+      }
+    },
+    "settings.control.resetConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore defaults"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định"
+          }
+        }
+      }
+    },
+    "settings.control.resetExportFirst.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves your current settings to a file before the reset."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu cài đặt hiện tại ra tệp trước khi khôi phục."
+          }
+        }
+      }
+    },
+    "settings.control.resetExportFirst.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export settings first"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất cài đặt trước"
+          }
+        }
+      }
+    },
+    "settings.control.resetIncludeMacros.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select to delete your macros as part of the reset."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn để xóa luôn gõ tắt khi khôi phục."
+          }
+        }
+      }
+    },
+    "settings.control.resetIncludeMacros.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Also delete my macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa cả danh sách gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.control.resetPane.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a confirmation. You can export your settings first."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở hộp xác nhận. Bạn có thể xuất cài đặt trước."
+          }
+        }
+      }
+    },
+    "settings.control.resetPane.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore defaults for this pane"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định cho mục này"
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keeps the current restore hotkey."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ phím khôi phục hiện tại."
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel recording the restore hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy ghi phím khôi phục"
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyChange.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts recording a new key for restoring the last word."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bắt đầu ghi phím mới cho việc khôi phục từ vừa gõ."
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyChange.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the restore-last-word hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi phím khôi phục từ vừa gõ"
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyClear.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes the restore-last-word key."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ phím khôi phục từ vừa gõ."
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyClear.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No restore hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không dùng phím khôi phục"
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyEscape.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sets the restore-last-word key to Escape."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt phím khôi phục từ vừa gõ là Escape."
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeyEscape.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Escape as the restore hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng Escape làm phím khôi phục"
+          }
+        }
+      }
+    },
+    "settings.control.soundOnSwitch.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns the switch sound on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt âm thanh khi chuyển Việt/Anh."
+          }
+        }
+      }
+    },
+    "settings.control.soundOnSwitch.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound on switch"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Âm thanh khi chuyển"
+          }
+        }
+      }
+    },
+    "settings.control.standaloneW.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns typing w for ư on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc gõ w ra ư."
+          }
+        }
+      }
+    },
+    "settings.control.standaloneW.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: lone w becomes ư"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: w đứng riêng thành ư"
+          }
+        }
+      }
+    },
+    "settings.control.switchIndicator.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns the V or E indicator on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt chữ V hoặc E hiện ra khi bạn chuyển."
+          }
+        }
+      }
+    },
+    "settings.control.switchIndicator.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show switch indicator"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện thông báo nhỏ khi chuyển"
+          }
+        }
+      }
+    },
+    "settings.control.toggleHotkeyCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keeps the current toggle hotkey."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ phím chuyển hiện tại."
+          }
+        }
+      }
+    },
+    "settings.control.toggleHotkeyCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel recording the toggle hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy ghi phím chuyển"
+          }
+        }
+      }
+    },
+    "settings.control.toggleHotkeyChange.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts recording a new shortcut. Press and release the keys you want to use."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bắt đầu ghi tổ hợp phím mới. Nhấn rồi thả các phím bạn muốn dùng."
+          }
+        }
+      }
+    },
+    "settings.control.toggleHotkeyChange.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the VI/EN toggle hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi phím chuyển Việt/Anh"
+          }
+        }
+      }
+    },
+    "settings.control.toggleHotkeyDefault.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sets the toggle back to pressing and releasing Control+Shift."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt lại phím chuyển thành nhấn rồi thả Control + Shift."
+          }
+        }
+      }
+    },
+    "settings.control.toggleHotkeyDefault.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the default toggle hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng phím chuyển mặc định"
+          }
+        }
+      }
+    },
+    "settings.control.tonePlacement.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses traditional or modern tone placement."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn kiểu đặt dấu truyền thống hoặc kiểu mới."
+          }
+        }
+      }
+    },
+    "settings.control.tonePlacement.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tone placement"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểu đặt dấu"
+          }
+        }
+      }
+    },
+    "settings.control.typingMethod.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses Telex or VNI."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn Telex hoặc VNI."
+          }
+        }
+      }
+    },
+    "settings.control.typingMethod.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing method"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểu gõ"
+          }
+        }
+      }
+    },
+    "settings.control.wordRemove.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes this word from the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa từ này khỏi danh sách."
+          }
+        }
+      }
+    },
+    "settings.control.wordRemove.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the word from the list"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa từ khỏi danh sách"
+          }
+        }
+      }
+    },
+    "settings.export.body" : {
+      "comment" : "PLT-R1010.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file contains your settings and the compatibility modes you set. Choose what else to include:"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp gồm cài đặt và các chế độ tương thích bạn đã đặt. Chọn thêm phần muốn đưa vào:"
+          }
+        }
+      }
+    },
+    "settings.export.cancel" : {
+      "comment" : "Closes without exporting.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "settings.export.done" : {
+      "comment" : "%@ is the file name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã lưu %@."
+          }
+        }
+      }
+    },
+    "settings.export.failed" : {
+      "comment" : "Write failed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file could not be saved. Try another folder."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không lưu được tệp. Bạn thử chọn thư mục khác."
+          }
+        }
+      }
+    },
+    "settings.export.includeAppModes" : {
+      "comment" : "Checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per-app rules and remembered choices"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quy tắc và lựa chọn theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.export.includeMacros" : {
+      "comment" : "Checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.export.macrosNote" : {
+      "comment" : "PLT-R1010 note.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros may contain private text."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt có thể chứa chữ riêng tư."
+          }
+        }
+      }
+    },
+    "settings.export.save" : {
+      "comment" : "Opens the save panel.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu..."
+          }
+        }
+      }
+    },
+    "settings.export.title" : {
+      "comment" : "Export sheet title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất cài đặt"
+          }
+        }
+      }
+    },
+    "settings.general.clickIcon.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click the menu bar icon to switch; right-click it to open the menu."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bấm biểu tượng trên thanh menu để chuyển; bấm chuột phải để mở menu."
+          }
+        }
+      }
+    },
+    "settings.general.clickIcon.title" : {
+      "comment" : "D16.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click menu bar icon to toggle"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bấm biểu tượng để chuyển Việt/Anh"
+          }
+        }
+      }
+    },
+    "settings.general.interfaceLanguage.explanation" : {
+      "comment" : "PRD-R25, PRD-R63.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes right away, without restarting the app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi ngay, không cần mở lại ứng dụng."
+          }
+        }
+      }
+    },
+    "settings.general.interfaceLanguage.title" : {
+      "comment" : "D18.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interface language"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ngôn ngữ giao diện"
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.empty" : {
+      "comment" : "No ASCII-capable layout enabled.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Latin keyboard layouts are enabled in macOS."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS chưa bật bàn phím chữ Latin nào."
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.english" : {
+      "comment" : "Layout bound to EN.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Anh"
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.explanation" : {
+      "comment" : "PRD-R25, PLT-R373.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example, ABC types Vietnamese and U.S. types English, and you switch with the Globe key or Control+Space."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ví dụ: bàn phím ABC gõ tiếng Việt, U.S. gõ tiếng Anh, rồi chuyển bằng phím Globe hoặc Control + Space."
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.incomplete" : {
+      "comment" : "Binding needs one VI and one EN layout.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Assign at least one keyboard to Vietnamese and one to English."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn ít nhất một bàn phím cho tiếng Việt và một cho tiếng Anh."
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.none" : {
+      "comment" : "Layout not bound to a mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not assigned"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không gắn"
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.title" : {
+      "comment" : "PLT-R373.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose VI/EN by macOS keyboard"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn Việt/Anh theo bàn phím macOS"
+          }
+        }
+      }
+    },
+    "settings.general.layoutBinding.vietnamese" : {
+      "comment" : "Layout bound to VI.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.explanation" : {
+      "comment" : "PRD-R25. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ starts when you log in, so Vietnamese typing is always ready."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tự chạy khi bạn đăng nhập, để lúc nào cũng gõ được tiếng Việt."
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.failed" : {
+      "comment" : "register() or unregister() failed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not change open at login. Try again, or turn it on in System Settings."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không đổi được tùy chọn mở khi đăng nhập. Bạn thử lại, hoặc bật trong Cài đặt hệ thống."
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.notFound" : {
+      "comment" : "Login item not found. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS cannot find %@ to open at login. Make sure the app is in the Applications folder."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS chưa nhận ra %@ để mở khi đăng nhập. Hãy chắc rằng ứng dụng nằm trong thư mục Ứng dụng."
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.openSystemSettings" : {
+      "comment" : "Button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở Cài đặt hệ thống"
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.requiresApproval" : {
+      "comment" : "Login item awaits approval. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS is waiting for you to allow %@ to open at login."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS đang chờ bạn cho phép %@ mở khi đăng nhập."
+          }
+        }
+      }
+    },
+    "settings.general.openAtLogin.title" : {
+      "comment" : "D17.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open at login"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở khi đăng nhập"
+          }
+        }
+      }
+    },
+    "settings.general.rememberPerApp.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example, Terminal stays English and Zalo stays Vietnamese without switching by hand."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ví dụ: Terminal luôn tiếng Anh, Zalo luôn tiếng Việt, không cần chuyển tay."
+          }
+        }
+      }
+    },
+    "settings.general.rememberPerApp.title" : {
+      "comment" : "D12.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remember VI/EN per app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhớ Việt/Anh theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.general.soundOnSwitch.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plays a short sound each time you switch between Vietnamese and English."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phát một tiếng nhỏ mỗi khi bạn chuyển Việt/Anh."
+          }
+        }
+      }
+    },
+    "settings.general.soundOnSwitch.title" : {
+      "comment" : "D15.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound on switch"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Âm thanh khi chuyển"
+          }
+        }
+      }
+    },
+    "settings.general.switchIndicator.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Briefly shows V or E on screen when you switch by hand."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện chữ V hoặc E giữa màn hình trong chốc lát khi bạn tự chuyển."
+          }
+        }
+      }
+    },
+    "settings.general.switchIndicator.title" : {
+      "comment" : "D14.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show switch indicator"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện thông báo nhỏ khi chuyển"
+          }
+        }
+      }
+    },
+    "settings.general.toggleHotkey.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press and release to switch between Vietnamese and English. Default: press and release Control+Shift."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhấn rồi thả để chuyển giữa tiếng Việt và tiếng Anh. Mặc định: nhấn rồi thả Control + Shift."
+          }
+        }
+      }
+    },
+    "settings.general.toggleHotkey.title" : {
+      "comment" : "D11.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VI/EN toggle hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím chuyển Việt/Anh"
+          }
+        }
+      }
+    },
+    "settings.hotkey.cancel" : {
+      "comment" : "Stops recording.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "settings.hotkey.change" : {
+      "comment" : "Starts the recorder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi phím..."
+          }
+        }
+      }
+    },
+    "settings.hotkey.clear" : {
+      "comment" : "Restore key: none (D8).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không dùng"
+          }
+        }
+      }
+    },
+    "settings.hotkey.conflict" : {
+      "comment" : "PRD-R16 inline warning. %1$@ is the macOS feature, %2$@ the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS already uses this shortcut for %1$@. %2$@ keeps your choice; see the guide to turn off that macOS shortcut."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS đang dùng tổ hợp này cho %1$@. %2$@ vẫn lưu lựa chọn của bạn; xem hướng dẫn để tắt phím tắt đó của macOS."
+          }
+        }
+      }
+    },
+    "settings.hotkey.conflict.help" : {
+      "comment" : "PRD-R16 help link.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Guide"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem hướng dẫn"
+          }
+        }
+      }
+    },
+    "settings.hotkey.conflict.helpPath" : {
+      "comment" : "Path of the help page on the site (host comes from Brand). Not shown. VERIFY the anchor exists on the site.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "/en/support/#macos-shortcuts"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "/ho-tro/#phim-tat-macos"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.appSwitcher" : {
+      "comment" : "macOS feature (Command+Tab).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "switching apps"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "chuyển ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.characterViewer" : {
+      "comment" : "macOS feature (Control+Command+Space). VERIFY name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the Emoji & Symbols viewer"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bảng Emoji và ký hiệu"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.closeWindow" : {
+      "comment" : "macOS feature (Command+W).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "closing windows"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "đóng cửa sổ"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.nextSource" : {
+      "comment" : "macOS feature (Control+Option+Space). VERIFY name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "selecting the next input source"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "chọn nguồn nhập tiếp theo"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.previousSource" : {
+      "comment" : "macOS feature (Control+Space). VERIFY name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "selecting the previous input source"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "chọn nguồn nhập trước đó"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.quitApp" : {
+      "comment" : "macOS feature (Command+Q).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quitting apps"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "thoát ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.hotkey.feature.spotlight" : {
+      "comment" : "macOS feature (Command+Space).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotlight"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotlight"
+          }
+        }
+      }
+    },
+    "settings.hotkey.notSet" : {
+      "comment" : "Restore key unset.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not set"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa đặt"
+          }
+        }
+      }
+    },
+    "settings.hotkey.recording" : {
+      "comment" : "Shown while recording.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press the new shortcut, then release it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhấn tổ hợp phím mới, rồi thả ra."
+          }
+        }
+      }
+    },
+    "settings.hotkey.rejected.keyWithoutModifier" : {
+      "comment" : "PRD-R15.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The toggle shortcut needs at least one modifier (Control, Option, Shift or Command)."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím chuyển cần ít nhất một phím bổ trợ (Control, Option, Shift hoặc Command) đi kèm."
+          }
+        }
+      }
+    },
+    "settings.hotkey.rejected.modifierTap" : {
+      "comment" : "PRD-R15 list of modifier-only taps.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only these work on their own: Control+Shift, Command+Shift, Option+Shift, Control+Option, or the right Command or right Option key alone."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ dùng được các cặp phím: Control + Shift, Command + Shift, Option + Shift, Control + Option, hoặc riêng phím Command phải hay Option phải."
+          }
+        }
+      }
+    },
+    "settings.hotkey.rejected.restoreModifierTap" : {
+      "comment" : "PRD-R18.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The restore key must be an ordinary key, with or without modifiers. Suggested: Escape."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím khôi phục phải là một phím thường, có thể kèm phím bổ trợ. Gợi ý: Escape."
+          }
+        }
+      }
+    },
+    "settings.hotkey.useDefault" : {
+      "comment" : "Toggle back to D11.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Default"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng mặc định"
+          }
+        }
+      }
+    },
+    "settings.hotkey.useEscape" : {
+      "comment" : "PRD-R18 suggestion for the restore key.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Escape"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng Escape"
+          }
+        }
+      }
+    },
+    "settings.import.appEntries" : {
+      "comment" : "%d is a count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps with rules or remembered choices: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng có quy tắc hoặc lựa chọn đã nhớ: %d"
+          }
+        }
+      }
+    },
+    "settings.import.apply.appModes" : {
+      "comment" : "Checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import per-app rules and remembered choices"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập quy tắc và lựa chọn theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.import.apply.macros" : {
+      "comment" : "Checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.import.apply.ruleOverrides" : {
+      "comment" : "Checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import compatibility modes"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập chế độ tương thích"
+          }
+        }
+      }
+    },
+    "settings.import.apply.settings" : {
+      "comment" : "Checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập cài đặt"
+          }
+        }
+      }
+    },
+    "settings.import.backupNote" : {
+      "comment" : "PLT-R1010.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your current settings are backed up before the import."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt hiện tại được sao lưu trước khi nhập."
+          }
+        }
+      }
+    },
+    "settings.import.cancel" : {
+      "comment" : "Closes without importing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "settings.import.chooseOther" : {
+      "comment" : "PRD-R43 action.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Another File"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tệp khác"
+          }
+        }
+      }
+    },
+    "settings.import.confirm" : {
+      "comment" : "Applies the import.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập"
+          }
+        }
+      }
+    },
+    "settings.import.done" : {
+      "comment" : "Import finished.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings imported."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã nhập cài đặt."
+          }
+        }
+      }
+    },
+    "settings.import.duplicates" : {
+      "comment" : "PRD-R32 duplicate choice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When a shortcut already exists:"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khi trùng phím tắt:"
+          }
+        }
+      }
+    },
+    "settings.import.error.format" : {
+      "comment" : "PRD-R43.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is not in the expected format."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này không đúng định dạng."
+          }
+        }
+      }
+    },
+    "settings.import.error.migration" : {
+      "comment" : "%d is the older format version.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file in older format %d could not be converted."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không chuyển đổi được tệp từ định dạng cũ %d."
+          }
+        }
+      }
+    },
+    "settings.import.error.notExport" : {
+      "comment" : "%@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is not a settings export from %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này không phải tệp cài đặt xuất từ %@."
+          }
+        }
+      }
+    },
+    "settings.import.error.safeMode" : {
+      "comment" : "PLT-R1009. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is running in safe mode. Leave safe mode, then import again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đang chạy ở chế độ an toàn. Hãy thoát chế độ an toàn rồi nhập lại."
+          }
+        }
+      }
+    },
+    "settings.import.error.section" : {
+      "comment" : "%@ is the section name in the file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The \"%@\" section of the file is not in the expected format."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phần \"%@\" trong tệp không đúng định dạng."
+          }
+        }
+      }
+    },
+    "settings.import.error.tooLarge" : {
+      "comment" : "PLT-R912 5 MB cap.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is larger than %@ MB."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này lớn hơn %@ MB."
+          }
+        }
+      }
+    },
+    "settings.import.error.unreadable" : {
+      "comment" : "File could not be read.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file could not be read."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không đọc được tệp này."
+          }
+        }
+      }
+    },
+    "settings.import.error.version" : {
+      "comment" : "Missing schemaVersion.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file has a missing or invalid format version."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này thiếu số phiên bản định dạng, hoặc số đó không hợp lệ."
+          }
+        }
+      }
+    },
+    "settings.import.keepMine" : {
+      "comment" : "PRD-R32.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep mine"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ bản của bạn"
+          }
+        }
+      }
+    },
+    "settings.import.macros" : {
+      "comment" : "Counts of new, duplicate and invalid macros.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros: %1$d new, %2$d duplicates, %3$d invalid"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt: %1$d mới, %2$d trùng, %3$d không hợp lệ"
+          }
+        }
+      }
+    },
+    "settings.import.newerSchema" : {
+      "comment" : "PLT-R1010.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file comes from a newer version. Only the parts this version understands are imported."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp được tạo bởi phiên bản mới hơn. Chỉ những phần phiên bản này hiểu được sẽ được nhập."
+          }
+        }
+      }
+    },
+    "settings.import.noSettingsChanged" : {
+      "comment" : "PLT-R1010 summary.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No settings will change."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có cài đặt nào thay đổi."
+          }
+        }
+      }
+    },
+    "settings.import.ruleOverrides" : {
+      "comment" : "%d is a count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibility modes: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ tương thích: %d"
+          }
+        }
+      }
+    },
+    "settings.import.settingsChanged" : {
+      "comment" : "PLT-R1010 summary. %@ is a list of setting names.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings that will change: %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt sẽ đổi: %@."
+          }
+        }
+      }
+    },
+    "settings.import.skipped" : {
+      "comment" : "PLT-R1010 skipped fields. %@ is a list of field names.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skipped because this version does not understand them: %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua vì phiên bản này chưa hiểu: %@."
+          }
+        }
+      }
+    },
+    "settings.import.title" : {
+      "comment" : "Import sheet title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập cài đặt"
+          }
+        }
+      }
+    },
+    "settings.import.useImported" : {
+      "comment" : "PRD-R32.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use imported"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng bản nhập vào"
+          }
+        }
+      }
+    },
+    "settings.language.english" : {
+      "comment" : "Language name, shown in that language.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        }
+      }
+    },
+    "settings.language.vietnamese" : {
+      "comment" : "Language name, shown in that language.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Việt"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.name.firstSeenAppMode" : {
+      "comment" : "D13 name (no control in v1).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode for apps seen for the first time"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ cho ứng dụng mới"
+          }
+        }
+      }
+    },
+    "settings.name.macrosInEnglishMode" : {
+      "comment" : "D10 name (hidden, ADR 0306).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros in English mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt khi ở chế độ tiếng Anh"
+          }
+        }
+      }
+    },
+    "settings.name.optedInRules" : {
+      "comment" : "PLT-R460 opted-in rules.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibility rules you turned on"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quy tắc tương thích bạn đã bật"
+          }
+        }
+      }
+    },
+    "settings.notice.corruptFileUsingDefaults" : {
+      "comment" : "Needs confirmation; nothing is written before it. %1$@ is the file name, %2$@ the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file %1$@ is damaged and has no backup. %2$@ is using defaults and has not overwritten the old file. Click \"Use Defaults\" to save the current settings."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp %1$@ bị hỏng và không có bản sao lưu. %2$@ đang dùng mặc định và chưa ghi đè tệp cũ. Bấm \"Dùng mặc định\" để lưu cài đặt hiện tại."
+          }
+        }
+      }
+    },
+    "settings.notice.dismiss" : {
+      "comment" : "Dismisses an informational notice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã hiểu"
+          }
+        }
+      }
+    },
+    "settings.notice.leaveSafeMode" : {
+      "comment" : "PLT-R1009.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave Safe Mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát chế độ an toàn"
+          }
+        }
+      }
+    },
+    "settings.notice.newerSchemaReadOnly" : {
+      "comment" : "%1$@ is the file name, %2$d the format version, %3$@ the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file %1$@ comes from a newer version (format %2$d). %3$@ uses only what it understands and does not write to this file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp %1$@ được tạo bởi phiên bản mới hơn (định dạng %2$d). %3$@ chỉ dùng những phần hiểu được và không ghi vào tệp này."
+          }
+        }
+      }
+    },
+    "settings.notice.recoveredFromBackup" : {
+      "comment" : "Informational: the recovered state is already saved. %1$@ is the file name, %2$@ the backup date.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file %1$@ was damaged, so it was restored from the backup of %2$@. Your settings are saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp %1$@ bị hỏng nên đã được khôi phục từ bản sao lưu ngày %2$@. Cài đặt của bạn đã được lưu lại."
+          }
+        }
+      }
+    },
+    "settings.notice.report" : {
+      "comment" : "PLT-R1009 offer to report.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a Problem..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi..."
+          }
+        }
+      }
+    },
+    "settings.notice.reset" : {
+      "comment" : "PLT-R1009 offer to reset.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Defaults..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định..."
+          }
+        }
+      }
+    },
+    "settings.notice.safeMode" : {
+      "comment" : "%1$@ is the app name, %2$d the number of crashes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ crashed %2$d times right after opening, so it is running in safe mode with default settings. Your files are unchanged."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ gặp sự cố %2$d lần ngay sau khi mở, nên đang chạy ở chế độ an toàn với cài đặt mặc định. Các tệp của bạn không bị thay đổi."
+          }
+        }
+      }
+    },
+    "settings.notice.useDefaults" : {
+      "comment" : "PLT-R1006 confirmation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Defaults"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng mặc định"
+          }
+        }
+      }
+    },
+    "settings.notice.writeFailed" : {
+      "comment" : "%@ is the file name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file %@ could not be saved. Your latest change may be lost when you quit. Check the free disk space and try again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không lưu được tệp %@. Thay đổi mới nhất có thể mất khi thoát. Bạn kiểm tra dung lượng ổ đĩa rồi thử lại."
+          }
+        }
+      }
+    },
+    "settings.pane.aboutSupport" : {
+      "comment" : "PRD-R24 pane name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About & Support"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giới thiệu & Hỗ trợ"
+          }
+        }
+      }
+    },
+    "settings.pane.apps" : {
+      "comment" : "PRD-R24 pane name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.pane.general" : {
+      "comment" : "PRD-R24 pane name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chung"
+          }
+        }
+      }
+    },
+    "settings.pane.macros" : {
+      "comment" : "PRD-R24 pane name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.pane.typing" : {
+      "comment" : "PRD-R24 pane name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ phím"
+          }
+        }
+      }
+    },
+    "settings.reset.body.all" : {
+      "comment" : "PRD-R26: macros only with the checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All settings, per-app rules and remembered choices go back to their defaults. Your macro list is kept unless you choose to delete it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định. Danh sách gõ tắt được giữ, trừ khi bạn chọn xóa."
+          }
+        }
+      }
+    },
+    "settings.reset.body.apps" : {
+      "comment" : "PRD-R26.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All per-app rules, remembered choices and compatibility modes you set are removed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mọi quy tắc theo ứng dụng, lựa chọn đã nhớ và chế độ tương thích bạn đặt sẽ được xóa."
+          }
+        }
+      }
+    },
+    "settings.reset.body.general" : {
+      "comment" : "PRD-R26.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The choices in this pane go back to their defaults. Other panes stay as they are."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các lựa chọn trong mục này trở về mặc định. Các mục khác giữ nguyên."
+          }
+        }
+      }
+    },
+    "settings.reset.body.macros" : {
+      "comment" : "PRD-R26: macros only with the checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The macros switch goes back to its default. Your macro list is kept unless you choose to delete it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Công tắc gõ tắt trở về mặc định. Danh sách gõ tắt được giữ, trừ khi bạn chọn xóa."
+          }
+        }
+      }
+    },
+    "settings.reset.body.typing" : {
+      "comment" : "PRD-R26.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The choices in this pane go back to their defaults and your two word lists are cleared. Other panes stay as they are."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các lựa chọn trong mục này trở về mặc định và hai danh sách từ của bạn được xóa. Các mục khác giữ nguyên."
+          }
+        }
+      }
+    },
+    "settings.reset.cancel" : {
+      "comment" : "Closes without resetting.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "settings.reset.confirm" : {
+      "comment" : "Confirms the reset.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục"
+          }
+        }
+      }
+    },
+    "settings.reset.exportFirst" : {
+      "comment" : "PRD-R26 export offer button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Settings First..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất cài đặt trước..."
+          }
+        }
+      }
+    },
+    "settings.reset.exportOffer" : {
+      "comment" : "PRD-R26 export offer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export your current settings to a file first, so you can get them back later."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn nên xuất cài đặt hiện tại ra tệp trước, để có thể lấy lại sau."
+          }
+        }
+      }
+    },
+    "settings.reset.exported" : {
+      "comment" : "%@ is the file name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exported to %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã xuất ra %@."
+          }
+        }
+      }
+    },
+    "settings.reset.includeMacros" : {
+      "comment" : "PRD-R26 separate checkbox.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Also delete my macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa cả danh sách gõ tắt"
+          }
+        }
+      }
+    },
+    "settings.reset.paneButton" : {
+      "comment" : "PRD-R26 per-pane reset button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Defaults..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định..."
+          }
+        }
+      }
+    },
+    "settings.reset.title.all" : {
+      "comment" : "Global reset confirmation title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore all settings to their defaults?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục toàn bộ cài đặt về mặc định?"
+          }
+        }
+      }
+    },
+    "settings.reset.title.pane" : {
+      "comment" : "Confirmation title. %@ is the pane name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore defaults for %@?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định cho mục %@?"
+          }
+        }
+      }
+    },
+    "settings.typing.brackets.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off by default because it can break code and Markdown that use [ and ]."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tắt sẵn vì dễ làm hỏng mã và Markdown khi gõ [ hoặc ]."
+          }
+        }
+      }
+    },
+    "settings.typing.brackets.title" : {
+      "comment" : "D6.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: bracket keys produce ơ, ư"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: phím [ ] thành ơ ư"
+          }
+        }
+      }
+    },
+    "settings.typing.englishRestore.explanation" : {
+      "comment" : "PRD-R25 example.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example, typing text stays text and does not become tẽt."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ví dụ: gõ text vẫn ra text, không thành tẽt."
+          }
+        }
+      }
+    },
+    "settings.typing.englishRestore.title" : {
+      "comment" : "D4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic English restore"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự khôi phục từ tiếng Anh"
+          }
+        }
+      }
+    },
+    "settings.typing.keepAsTyped.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These words always stay exactly as typed, without marks."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Những từ này luôn giữ đúng các phím bạn gõ, không thêm dấu."
+          }
+        }
+      }
+    },
+    "settings.typing.keepAsTyped.title" : {
+      "comment" : "ENG-R860 list (site wording).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep as typed"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ nguyên như đã gõ"
+          }
+        }
+      }
+    },
+    "settings.typing.keepVietnamese.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These words always stay Vietnamese and are never restored to English."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Những từ này luôn giữ dạng tiếng Việt, không bị khôi phục thành tiếng Anh."
+          }
+        }
+      }
+    },
+    "settings.typing.keepVietnamese.title" : {
+      "comment" : "ENG-R860 list (site wording).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep as Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ là tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.typing.list.add" : {
+      "comment" : "Adds the entry.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm"
+          }
+        }
+      }
+    },
+    "settings.typing.list.duplicate" : {
+      "comment" : "Entry already listed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This word is already in the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ này đã có trong danh sách."
+          }
+        }
+      }
+    },
+    "settings.typing.list.empty" : {
+      "comment" : "Empty word list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words yet."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có từ nào."
+          }
+        }
+      }
+    },
+    "settings.typing.list.invalid" : {
+      "comment" : "Invalid list entry.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use unaccented letters, digits and punctuation only, without spaces, up to 32 characters."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ dùng chữ cái, chữ số và dấu câu không dấu, không có khoảng trắng, tối đa 32 ký tự."
+          }
+        }
+      }
+    },
+    "settings.typing.list.placeholder" : {
+      "comment" : "Entry field of a word list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys as typed, for example: text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các phím đã gõ, ví dụ: text"
+          }
+        }
+      }
+    },
+    "settings.typing.list.remove" : {
+      "comment" : "Removes one entry. %@ is the entry.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove \"%@\""
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa \"%@\""
+          }
+        }
+      }
+    },
+    "settings.typing.method.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: tieengs Vieetj gives tiếng Việt. VNI: tie61ng Vie65t gives tiếng Việt."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: gõ tieengs Vieetj ra tiếng Việt. VNI: gõ tie61ng Vie65t ra tiếng Việt."
+          }
+        }
+      }
+    },
+    "settings.typing.method.telex" : {
+      "comment" : "Method name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex"
+          }
+        }
+      }
+    },
+    "settings.typing.method.title" : {
+      "comment" : "D1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing method"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểu gõ"
+          }
+        }
+      }
+    },
+    "settings.typing.method.vni" : {
+      "comment" : "Method name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VNI"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VNI"
+          }
+        }
+      }
+    },
+    "settings.typing.practice.label" : {
+      "comment" : "PRD-R24 live practice field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice field"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô gõ thử"
+          }
+        }
+      }
+    },
+    "settings.typing.practice.placeholder" : {
+      "comment" : "Placeholder; PLT-R901 nothing is stored.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try typing here. Nothing is saved."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ thử ở đây. Nội dung không được lưu."
+          }
+        }
+      }
+    },
+    "settings.typing.restoreHotkey.explanation" : {
+      "comment" : "PRD-R18, PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brings the last word back to the keys you typed. Suggested: Escape. Pressing it again right away passes the key through as usual."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa từ vừa gõ về đúng các phím bạn đã gõ. Gợi ý: Escape. Bấm thêm lần nữa ngay sau đó thì phím được gửi đi như bình thường."
+          }
+        }
+      }
+    },
+    "settings.typing.restoreHotkey.title" : {
+      "comment" : "D8.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore-last-word hotkey"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím khôi phục từ vừa gõ"
+          }
+        }
+      }
+    },
+    "settings.typing.standaloneW.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing w gives ư. English words with w are still restored."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ w ra ư. Từ tiếng Anh có w vẫn được khôi phục như cũ."
+          }
+        }
+      }
+    },
+    "settings.typing.standaloneW.title" : {
+      "comment" : "D5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: lone w becomes ư"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telex: w đứng riêng thành ư"
+          }
+        }
+      }
+    },
+    "settings.typing.tone.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traditional: hòa, thủy, khỏe. Modern: hoà, thuỷ, khoẻ."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Truyền thống: hòa, thủy, khỏe. Kiểu mới: hoà, thuỷ, khoẻ."
+          }
+        }
+      }
+    },
+    "settings.typing.tone.modern" : {
+      "comment" : "PRD-R24 shows hòa and hoà side by side.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hoà (modern)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hoà (kiểu mới)"
+          }
+        }
+      }
+    },
+    "settings.typing.tone.title" : {
+      "comment" : "D2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tone placement"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểu đặt dấu"
+          }
+        }
+      }
+    },
+    "settings.typing.tone.traditional" : {
+      "comment" : "PRD-R24 shows hòa and hoà side by side.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hòa (traditional)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hòa (truyền thống)"
+          }
+        }
+      }
+    },
+    "settings.window.title" : {
+      "comment" : "Settings window title. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt %@"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,2130 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "macros.add" : {
+      "comment" : "PRD-R43 action (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.column.enabled" : {
+      "comment" : "Column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật"
+          }
+        }
+      }
+    },
+    "macros.column.expansion" : {
+      "comment" : "Column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung"
+          }
+        }
+      }
+    },
+    "macros.column.shortcut" : {
+      "comment" : "Column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcut"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím tắt"
+          }
+        }
+      }
+    },
+    "macros.control.add.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a form to add a new macro."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở ô để thêm gõ tắt mới."
+          }
+        }
+      }
+    },
+    "macros.control.add.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.deleteCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without deleting."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không xóa."
+          }
+        }
+      }
+    },
+    "macros.control.deleteCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep the macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.deleteConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deletes this macro."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa gõ tắt này."
+          }
+        }
+      }
+    },
+    "macros.control.deleteConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.disableAll.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns off every macro in the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tắt mọi gõ tắt trong danh sách."
+          }
+        }
+      }
+    },
+    "macros.control.disableAll.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable all macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tắt tất cả gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.editorAdaptCase.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns capitalising the text like the typed shortcut on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc viết hoa nội dung theo cách bạn gõ phím tắt."
+          }
+        }
+      }
+    },
+    "macros.control.editorAdaptCase.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Match the shortcut's capitals"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi chữ hoa theo phím tắt"
+          }
+        }
+      }
+    },
+    "macros.control.editorCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without saving."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không lưu."
+          }
+        }
+      }
+    },
+    "macros.control.editorCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel editing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy sửa gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.editorEnabled.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns this macro on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt gõ tắt này."
+          }
+        }
+      }
+    },
+    "macros.control.editorEnabled.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật gõ tắt này"
+          }
+        }
+      }
+    },
+    "macros.control.editorExpansion.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the text that replaces the shortcut. Line breaks are allowed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập nội dung sẽ thay cho phím tắt. Có thể xuống dòng."
+          }
+        }
+      }
+    },
+    "macros.control.editorExpansion.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macro text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.editorSave.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves when the shortcut and text are valid."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu nếu phím tắt và nội dung hợp lệ."
+          }
+        }
+      }
+    },
+    "macros.control.editorSave.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.editorShortcut.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter 1 to 32 characters without accents or spaces."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập 1 đến 32 ký tự không dấu, không khoảng trắng."
+          }
+        }
+      }
+    },
+    "macros.control.editorShortcut.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcut"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím tắt"
+          }
+        }
+      }
+    },
+    "macros.control.enableAll.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns on every macro in the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật mọi gõ tắt trong danh sách."
+          }
+        }
+      }
+    },
+    "macros.control.enableAll.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable all macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật tất cả gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.enabled.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns all macros on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt mọi gõ tắt."
+          }
+        }
+      }
+    },
+    "macros.control.enabled.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.exportFile.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves your macro list to a JSON file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu danh sách gõ tắt ra một tệp JSON."
+          }
+        }
+      }
+    },
+    "macros.control.exportFile.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export macros to a file"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất gõ tắt ra tệp"
+          }
+        }
+      }
+    },
+    "macros.control.importCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without importing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không nhập."
+          }
+        }
+      }
+    },
+    "macros.control.importCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel the import"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy nhập"
+          }
+        }
+      }
+    },
+    "macros.control.importChooseOther.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses a different macro file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn một tệp gõ tắt khác."
+          }
+        }
+      }
+    },
+    "macros.control.importChooseOther.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose another file"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tệp khác"
+          }
+        }
+      }
+    },
+    "macros.control.importConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds the new macros and handles duplicates as you chose."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm gõ tắt mới và xử lý gõ tắt trùng theo lựa chọn của bạn."
+          }
+        }
+      }
+    },
+    "macros.control.importConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.importDuplicateChoice.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses whether to keep yours or use the imported ones."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn giữ bản của bạn hoặc dùng bản nhập vào."
+          }
+        }
+      }
+    },
+    "macros.control.importDuplicateChoice.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How to handle duplicate macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cách xử lý gõ tắt bị trùng"
+          }
+        }
+      }
+    },
+    "macros.control.importFile.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses a JSON, text, CSV or macOS Text Replacements file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tệp JSON, văn bản, CSV hoặc tệp Thay thế văn bản của macOS."
+          }
+        }
+      }
+    },
+    "macros.control.importFile.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import macros from a file"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập gõ tắt từ tệp"
+          }
+        }
+      }
+    },
+    "macros.control.list.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the arrow keys to select a macro."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng phím mũi tên để chọn một gõ tắt."
+          }
+        }
+      }
+    },
+    "macros.control.list.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macro list"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danh sách gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.resetPane.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a confirmation. Your macro list is kept unless you choose to delete it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở hộp xác nhận. Danh sách gõ tắt được giữ nếu bạn không chọn xóa."
+          }
+        }
+      }
+    },
+    "macros.control.resetPane.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore defaults for Macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định cho mục Gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.rowDelete.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asks for confirmation, then deletes this macro."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hỏi xác nhận rồi xóa gõ tắt này."
+          }
+        }
+      }
+    },
+    "macros.control.rowDelete.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.rowDuplicate.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Makes a copy to edit into a new macro."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạo bản sao để sửa thành gõ tắt mới."
+          }
+        }
+      }
+    },
+    "macros.control.rowDuplicate.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicate macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhân bản gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.rowEdit.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens this macro for editing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở ô sửa gõ tắt này."
+          }
+        }
+      }
+    },
+    "macros.control.rowEdit.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sửa gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.rowEnabled.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns this macro on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt gõ tắt này."
+          }
+        }
+      }
+    },
+    "macros.control.rowEnabled.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật gõ tắt này"
+          }
+        }
+      }
+    },
+    "macros.control.search.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filters the list by shortcut or text."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lọc danh sách theo phím tắt hoặc nội dung."
+          }
+        }
+      }
+    },
+    "macros.control.search.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tìm gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.control.sort.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses how the list is sorted."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn cách sắp xếp danh sách."
+          }
+        }
+      }
+    },
+    "macros.control.sort.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sắp xếp gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.count" : {
+      "comment" : "%d is the number of macros.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Số gõ tắt: %d"
+          }
+        }
+      }
+    },
+    "macros.delete" : {
+      "comment" : "PRD-R31.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa"
+          }
+        }
+      }
+    },
+    "macros.delete.cancel" : {
+      "comment" : "Keeps the macro.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "macros.delete.confirm" : {
+      "comment" : "Confirms deletion.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa"
+          }
+        }
+      }
+    },
+    "macros.delete.title" : {
+      "comment" : "%@ is the shortcut.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete the macro \"%@\"?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa gõ tắt \"%@\"?"
+          }
+        }
+      }
+    },
+    "macros.disableAll" : {
+      "comment" : "PRD-R31.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable All"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tắt tất cả"
+          }
+        }
+      }
+    },
+    "macros.duplicate" : {
+      "comment" : "PRD-R31.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicate"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhân bản"
+          }
+        }
+      }
+    },
+    "macros.edit" : {
+      "comment" : "PRD-R31.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sửa..."
+          }
+        }
+      }
+    },
+    "macros.editor.adaptCase" : {
+      "comment" : "PRD-R30.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Match the shortcut's capitals"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi chữ hoa theo phím tắt"
+          }
+        }
+      }
+    },
+    "macros.editor.adaptCase.help" : {
+      "comment" : "PRD-R30.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vn gives Việt Nam, Vn gives Việt Nam, VN gives VIỆT NAM."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vn ra Việt Nam, Vn ra Việt Nam, VN ra VIỆT NAM."
+          }
+        }
+      }
+    },
+    "macros.editor.cancel" : {
+      "comment" : "Closes without saving.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "macros.editor.enabled" : {
+      "comment" : "PRD-R31.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use this macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật gõ tắt này"
+          }
+        }
+      }
+    },
+    "macros.editor.expansion" : {
+      "comment" : "Field label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung"
+          }
+        }
+      }
+    },
+    "macros.editor.expansion.help" : {
+      "comment" : "PRD-R29.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to 4,000 characters; line breaks are allowed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tối đa 4.000 ký tự, có thể xuống dòng."
+          }
+        }
+      }
+    },
+    "macros.editor.save" : {
+      "comment" : "Saves the macro.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu"
+          }
+        }
+      }
+    },
+    "macros.editor.shortcut" : {
+      "comment" : "Field label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcut"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím tắt"
+          }
+        }
+      }
+    },
+    "macros.editor.shortcut.help" : {
+      "comment" : "PRD-R29 rule, said by the editor.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 to 32 characters without accents or spaces. Use the keys you type: dc, not đc."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 đến 32 ký tự không dấu, không khoảng trắng. Gõ theo phím: dc, không phải đc."
+          }
+        }
+      }
+    },
+    "macros.editor.title.add" : {
+      "comment" : "Editor sheet title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.editor.title.edit" : {
+      "comment" : "Editor sheet title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Macro"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sửa gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.empty" : {
+      "comment" : "PRD-R43 empty state (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No macros yet. For example, type \"vn\" to get \"Việt Nam\"."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có gõ tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\"."
+          }
+        }
+      }
+    },
+    "macros.enableAll" : {
+      "comment" : "PRD-R31.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable All"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật tất cả"
+          }
+        }
+      }
+    },
+    "macros.enabled.explanation" : {
+      "comment" : "PRD-R25, PRD-R30.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type a shortcut, then a space or punctuation, to get the full text. For example, vn gives Việt Nam."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ phím tắt rồi dấu cách hoặc dấu câu để ra cả cụm. Ví dụ: vn ra Việt Nam."
+          }
+        }
+      }
+    },
+    "macros.enabled.title" : {
+      "comment" : "D9.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.export" : {
+      "comment" : "PRD-R2 macro export.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export to File..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất ra tệp..."
+          }
+        }
+      }
+    },
+    "macros.export.failed" : {
+      "comment" : "Write failed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file could not be saved. Try another folder."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không lưu được tệp. Bạn thử chọn thư mục khác."
+          }
+        }
+      }
+    },
+    "macros.import" : {
+      "comment" : "PRD-R43 action (verbatim, also on the site).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from File..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập từ tệp..."
+          }
+        }
+      }
+    },
+    "macros.import.cancel" : {
+      "comment" : "Closes without importing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "macros.import.chooseOther" : {
+      "comment" : "PRD-R43 action (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Another File"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tệp khác"
+          }
+        }
+      }
+    },
+    "macros.import.confirm" : {
+      "comment" : "Applies the import.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập"
+          }
+        }
+      }
+    },
+    "macros.import.done" : {
+      "comment" : "Import finished.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macros imported."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã nhập gõ tắt."
+          }
+        }
+      }
+    },
+    "macros.import.duplicateChoice" : {
+      "comment" : "PRD-R32 choice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For duplicates:"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Với gõ tắt bị trùng:"
+          }
+        }
+      }
+    },
+    "macros.import.duplicates" : {
+      "comment" : "PRD-R32 count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Already in your list: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trùng với gõ tắt đã có: %d"
+          }
+        }
+      }
+    },
+    "macros.import.empty" : {
+      "comment" : "No rows.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file contains no macros."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này không có gõ tắt nào."
+          }
+        }
+      }
+    },
+    "macros.import.invalid" : {
+      "comment" : "PRD-R32 count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid, will be skipped: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không hợp lệ, sẽ bỏ qua: %d"
+          }
+        }
+      }
+    },
+    "macros.import.invalidFile" : {
+      "comment" : "PRD-R43 (verbatim prefix).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is not in the expected format."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này không đúng định dạng."
+          }
+        }
+      }
+    },
+    "macros.import.invalidFileLine" : {
+      "comment" : "PRD-R43 example. %1$d is the line, %2$@ the reason.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is not in the expected format. Line %1$d: %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này không đúng định dạng. Dòng %1$d: %2$@"
+          }
+        }
+      }
+    },
+    "macros.import.keepMine" : {
+      "comment" : "PRD-R32.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep mine"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ bản của bạn"
+          }
+        }
+      }
+    },
+    "macros.import.new" : {
+      "comment" : "PRD-R32 count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mới: %d"
+          }
+        }
+      }
+    },
+    "macros.import.title" : {
+      "comment" : "PRD-R32 preview title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.import.tooLarge" : {
+      "comment" : "5 MB cap.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file is larger than %@ MB."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp này lớn hơn %@ MB."
+          }
+        }
+      }
+    },
+    "macros.import.unreadable" : {
+      "comment" : "File could not be read.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file could not be read."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không đọc được tệp này."
+          }
+        }
+      }
+    },
+    "macros.import.useImported" : {
+      "comment" : "PRD-R32.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use imported"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng bản nhập vào"
+          }
+        }
+      }
+    },
+    "macros.issue.duplicate" : {
+      "comment" : "ENG-R1101 case-insensitive. %@ is the existing shortcut.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The macro \"%@\" already exists (capitals are ignored)."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã có gõ tắt \"%@\" (không phân biệt chữ hoa)."
+          }
+        }
+      }
+    },
+    "macros.issue.emptyExpansion" : {
+      "comment" : "PRD-R43 wording.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The macro text is missing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thiếu phần nội dung gõ tắt."
+          }
+        }
+      }
+    },
+    "macros.issue.emptyShortcut" : {
+      "comment" : "PRD-R29.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a shortcut."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn chưa nhập phím tắt."
+          }
+        }
+      }
+    },
+    "macros.issue.entry" : {
+      "comment" : "Row context. %1$@ is the shortcut, %2$@ the reason.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macro \"%1$@\": %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt \"%1$@\": %2$@"
+          }
+        }
+      }
+    },
+    "macros.issue.expansionTooLong" : {
+      "comment" : "PRD-R29.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The text is longer than 4,000 characters."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung dài hơn 4.000 ký tự."
+          }
+        }
+      }
+    },
+    "macros.issue.line" : {
+      "comment" : "Row context. %1$d is the line, %2$@ the reason.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Line %1$d: %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dòng %1$d: %2$@"
+          }
+        }
+      }
+    },
+    "macros.issue.malformedLine" : {
+      "comment" : "PRD-R70.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This line is not in the expected format."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dòng này không đúng định dạng."
+          }
+        }
+      }
+    },
+    "macros.issue.shadowedBy" : {
+      "comment" : "PRD-R29, ENG-R1103. %1$@ is the longer shortcut, %2$@ the shorter one.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"%1$@\" is the macro \"%2$@\" plus punctuation, so \"%2$@\" always fires first and \"%1$@\" could never be used."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"%1$@\" là gõ tắt \"%2$@\" thêm dấu câu, nên \"%2$@\" luôn chạy trước và \"%1$@\" không bao giờ dùng được."
+          }
+        }
+      }
+    },
+    "macros.issue.shadows" : {
+      "comment" : "PRD-R29, ENG-R1103 seen from the shorter side. %1$@ is the shorter shortcut, %2$@ the longer one.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The macro \"%2$@\" is \"%1$@\" plus punctuation, so with \"%1$@\" the macro \"%2$@\" could never be used."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tắt \"%2$@\" là \"%1$@\" thêm dấu câu, nên nếu có \"%1$@\" thì \"%2$@\" sẽ không bao giờ dùng được."
+          }
+        }
+      }
+    },
+    "macros.issue.shortcutNotASCII" : {
+      "comment" : "PRD-R29: the editor says why.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A shortcut uses only unaccented letters, digits and punctuation, because it matches the keys you type (dc, not đc)."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím tắt chỉ gồm chữ không dấu, chữ số và dấu câu, vì gõ tắt so theo phím bạn gõ (dc, không phải đc)."
+          }
+        }
+      }
+    },
+    "macros.issue.shortcutTooLong" : {
+      "comment" : "PRD-R29.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The shortcut is longer than 32 characters."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím tắt dài hơn 32 ký tự."
+          }
+        }
+      }
+    },
+    "macros.issue.shortcutWhitespace" : {
+      "comment" : "PRD-R29.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The shortcut cannot contain spaces."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím tắt không được có khoảng trắng."
+          }
+        }
+      }
+    },
+    "macros.saveFailed" : {
+      "comment" : "The engine rejected the table. %@ is the reason with its row.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The macro list could not be saved. %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không lưu được danh sách gõ tắt. %@"
+          }
+        }
+      }
+    },
+    "macros.search.noResults" : {
+      "comment" : "%@ is the search text.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No macros match \"%@\"."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không có gõ tắt nào khớp với \"%@\"."
+          }
+        }
+      }
+    },
+    "macros.search.placeholder" : {
+      "comment" : "PRD-R31 search field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search macros"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tìm gõ tắt"
+          }
+        }
+      }
+    },
+    "macros.sort.expansion" : {
+      "comment" : "Sort option.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theo nội dung"
+          }
+        }
+      }
+    },
+    "macros.sort.orderAdded" : {
+      "comment" : "Sort option.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Order added"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theo thứ tự thêm"
+          }
+        }
+      }
+    },
+    "macros.sort.shortcut" : {
+      "comment" : "Sort option.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By shortcut"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theo phím tắt"
+          }
+        }
+      }
+    },
+    "macros.sort.title" : {
+      "comment" : "PRD-R31 sort menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sắp xếp"
+          }
+        }
+      }
+    },
+    "macros.warning.telexDigit" : {
+      "comment" : "Non-blocking. %1$@ is the longer shortcut, %2$@ the shorter one.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Telex a digit ends the word, so the macro \"%2$@\" fires as soon as you type the digit, before \"%1$@\" is complete."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khi gõ Telex, chữ số kết thúc từ, nên gõ tắt \"%2$@\" chạy ngay khi bạn gõ chữ số, trước khi gõ xong \"%1$@\"."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

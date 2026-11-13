@@ -1,0 +1,1122 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "apps.column.app" : {
+      "comment" : "PRD-R34 column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng"
+          }
+        }
+      }
+    },
+    "apps.column.remembered" : {
+      "comment" : "PRD-R34 column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remembered"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang nhớ"
+          }
+        }
+      }
+    },
+    "apps.column.rule" : {
+      "comment" : "PRD-R34 column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rule"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quy tắc"
+          }
+        }
+      }
+    },
+    "apps.column.status" : {
+      "comment" : "PRD-R34 column.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibility"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tương thích"
+          }
+        }
+      }
+    },
+    "apps.compat.automatic" : {
+      "comment" : "PLT-R540 reset to automatic.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động"
+          }
+        }
+      }
+    },
+    "apps.compat.automatic.explanation" : {
+      "comment" : "PRD-R36 one sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uses the method chosen for this app automatically."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng cách gõ được chọn sẵn cho ứng dụng này."
+          }
+        }
+      }
+    },
+    "apps.compat.explanation" : {
+      "comment" : "PRD-R36.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change this only if typing goes wrong in this app. Your choice is attached to your next report for this app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ đổi khi chữ gõ trong ứng dụng này bị sai. Lựa chọn của bạn được gửi kèm lần báo lỗi tiếp theo cho ứng dụng này."
+          }
+        }
+      }
+    },
+    "apps.compat.pasteText" : {
+      "comment" : "PRD-R36 choice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dán chữ"
+          }
+        }
+      }
+    },
+    "apps.compat.pasteText.explanation" : {
+      "comment" : "PRD-R36 one sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pastes the corrected text through the clipboard, then puts your clipboard content back."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dán chữ đã sửa qua bộ nhớ tạm, rồi trả lại nội dung cũ của bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "apps.compat.selectThenType" : {
+      "comment" : "PRD-R36 choice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select, then type over"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn rồi gõ đè"
+          }
+        }
+      }
+    },
+    "apps.compat.selectThenType.explanation" : {
+      "comment" : "PRD-R36 one sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selects the letters to change and types over them instead of deleting one by one."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn phần chữ cần sửa rồi gõ đè lên, thay vì xóa từng ký tự."
+          }
+        }
+      }
+    },
+    "apps.compat.setOn" : {
+      "comment" : "PLT-R541. %@ is a date.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set by you on %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn đặt ngày %@"
+          }
+        }
+      }
+    },
+    "apps.compat.title" : {
+      "comment" : "PRD-R36 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibility mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ tương thích"
+          }
+        }
+      }
+    },
+    "apps.compat.typeSlower" : {
+      "comment" : "PRD-R36 choice.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type more slowly"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ chậm hơn"
+          }
+        }
+      }
+    },
+    "apps.compat.typeSlower.explanation" : {
+      "comment" : "PRD-R36 one sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sends keys a little more slowly so the app can keep up."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gửi phím chậm hơn một chút để ứng dụng kịp nhận từng phím."
+          }
+        }
+      }
+    },
+    "apps.control.detailAdvanced.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows or hides the compatibility mode."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện hoặc ẩn chế độ tương thích."
+          }
+        }
+      }
+    },
+    "apps.control.detailAdvanced.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Advanced options"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tùy chọn nâng cao"
+          }
+        }
+      }
+    },
+    "apps.control.detailClose.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes the details."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng bảng chi tiết."
+          }
+        }
+      }
+    },
+    "apps.control.detailClose.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close details"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng chi tiết"
+          }
+        }
+      }
+    },
+    "apps.control.detailCompatibility.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses how text is sent to this app. Change it only if typing goes wrong."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn cách gửi chữ cho ứng dụng này. Chỉ đổi khi gõ bị sai."
+          }
+        }
+      }
+    },
+    "apps.control.detailCompatibility.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibility mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ tương thích"
+          }
+        }
+      }
+    },
+    "apps.control.detailReport.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the bug report with this app filled in."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ báo lỗi, điền sẵn ứng dụng này."
+          }
+        }
+      }
+    },
+    "apps.control.detailReport.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem with this app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi với ứng dụng này"
+          }
+        }
+      }
+    },
+    "apps.control.list.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the arrow keys to select an app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng phím mũi tên để chọn một ứng dụng."
+          }
+        }
+      }
+    },
+    "apps.control.list.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App list"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danh sách ứng dụng"
+          }
+        }
+      }
+    },
+    "apps.control.pasteCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keeps the previous mode."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giữ chế độ trước đó."
+          }
+        }
+      }
+    },
+    "apps.control.pasteCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel paste mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy chế độ dán"
+          }
+        }
+      }
+    },
+    "apps.control.pasteConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allows the clipboard to be used when typing in this app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cho phép dùng bộ nhớ tạm khi gõ trong ứng dụng này."
+          }
+        }
+      }
+    },
+    "apps.control.pasteConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use paste mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng chế độ dán"
+          }
+        }
+      }
+    },
+    "apps.control.resetPane.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a confirmation. Rules and compatibility modes are removed."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở hộp xác nhận. Quy tắc và chế độ tương thích sẽ bị xóa."
+          }
+        }
+      }
+    },
+    "apps.control.resetPane.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore defaults for Apps"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định cho mục Ứng dụng"
+          }
+        }
+      }
+    },
+    "apps.control.rowDetails.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens this app's compatibility status and compatibility mode."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở tình trạng tương thích và chế độ tương thích của ứng dụng này."
+          }
+        }
+      }
+    },
+    "apps.control.rowDetails.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App details"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chi tiết ứng dụng"
+          }
+        }
+      }
+    },
+    "apps.control.rowReport.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the bug report with this app filled in."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ báo lỗi, điền sẵn ứng dụng này."
+          }
+        }
+      }
+    },
+    "apps.control.rowReport.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem with this app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi với ứng dụng này"
+          }
+        }
+      }
+    },
+    "apps.control.rowRule.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses remember, always English, always Vietnamese or ignore."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn nhớ lựa chọn, luôn tiếng Anh, luôn tiếng Việt hoặc bỏ qua."
+          }
+        }
+      }
+    },
+    "apps.control.rowRule.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rule for the app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quy tắc cho ứng dụng"
+          }
+        }
+      }
+    },
+    "apps.detail.bundle" : {
+      "comment" : "%@ is the bundle identifier.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bundle ID: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mã ứng dụng: %@"
+          }
+        }
+      }
+    },
+    "apps.detail.close" : {
+      "comment" : "Closes the sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "apps.detail.lastVerified" : {
+      "comment" : "%@ is a date.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last verified: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra lần cuối: %@"
+          }
+        }
+      }
+    },
+    "apps.detail.scoped.title" : {
+      "comment" : "Matrix rows for web apps or tools inside the app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inside this app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bên trong ứng dụng này"
+          }
+        }
+      }
+    },
+    "apps.details" : {
+      "comment" : "Opens the detail sheet (PRD-R36).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chi tiết..."
+          }
+        }
+      }
+    },
+    "apps.empty" : {
+      "comment" : "PRD-R43 empty state (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps you type in will appear here so you can set a rule for each."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các ứng dụng bạn gõ sẽ hiện ở đây để bạn đặt quy tắc riêng."
+          }
+        }
+      }
+    },
+    "apps.explanation" : {
+      "comment" : "PRD-R25 pane line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how typing works in each app. A rule you pick always wins over the remembered choice."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt cách gõ riêng cho từng ứng dụng. Quy tắc bạn chọn luôn được ưu tiên hơn lựa chọn đã nhớ."
+          }
+        }
+      }
+    },
+    "apps.mode.english" : {
+      "comment" : "Remembered mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Anh"
+          }
+        }
+      }
+    },
+    "apps.mode.none" : {
+      "comment" : "No remembered mode yet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not yet"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa nhớ"
+          }
+        }
+      }
+    },
+    "apps.mode.vietnamese" : {
+      "comment" : "Remembered mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếng Việt"
+          }
+        }
+      }
+    },
+    "apps.paste.body" : {
+      "comment" : "PLT-R461, PLT-R462 failure modes. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In this mode, %@ puts the text on the clipboard, pastes it into the app, then restores what was there. Possible problems: the app reads the clipboard after it was restored and pastes the old content; a remote desktop client has clipboard sync turned off; the app blocks Command+V sent by software."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ở chế độ này, %@ ghi chữ vào bộ nhớ tạm, dán vào ứng dụng, rồi khôi phục nội dung cũ. Có thể gặp: ứng dụng đọc bộ nhớ tạm sau khi đã khôi phục nên dán nội dung cũ; ứng dụng điều khiển máy từ xa đã tắt đồng bộ bộ nhớ tạm; ứng dụng chặn Command + V do phần mềm gửi."
+          }
+        }
+      }
+    },
+    "apps.paste.cancel" : {
+      "comment" : "Keeps the previous mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "apps.paste.confirm" : {
+      "comment" : "Opts in for this app (PLT-R460).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use Paste Mode"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng chế độ dán"
+          }
+        }
+      }
+    },
+    "apps.paste.title" : {
+      "comment" : "PRD-R48 explanation before the clipboard is used.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the clipboard for this app?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng bộ nhớ tạm cho ứng dụng này?"
+          }
+        }
+      }
+    },
+    "apps.report" : {
+      "comment" : "PRD-R37 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a Problem with This App..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi với ứng dụng này..."
+          }
+        }
+      }
+    },
+    "apps.rule.alwaysEnglish" : {
+      "comment" : "PRD-R34 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luôn tiếng Anh"
+          }
+        }
+      }
+    },
+    "apps.rule.alwaysVietnamese" : {
+      "comment" : "PRD-R34 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Always Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luôn tiếng Việt"
+          }
+        }
+      }
+    },
+    "apps.rule.ignore" : {
+      "comment" : "PRD-R34 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignore"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua"
+          }
+        }
+      }
+    },
+    "apps.rule.remember" : {
+      "comment" : "PRD-R34 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remember choice"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhớ lựa chọn"
+          }
+        }
+      }
+    },
+    "apps.scope.inApp" : {
+      "comment" : "MatrixScope.inApp.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tool inside the app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Công cụ bên trong"
+          }
+        }
+      }
+    },
+    "apps.scope.webApp" : {
+      "comment" : "MatrixScope.webApp.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng web"
+          }
+        }
+      }
+    },
+    "apps.status.knownLimitation" : {
+      "comment" : "PRD-R35 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Known limitation"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hạn chế đã biết"
+          }
+        }
+      }
+    },
+    "apps.status.notVerified" : {
+      "comment" : "PRD-R35 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not yet verified"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa kiểm tra"
+          }
+        }
+      }
+    },
+    "apps.status.works" : {
+      "comment" : "PRD-R35 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Works"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoạt động tốt"
+          }
+        }
+      }
+    },
+    "apps.status.worksWithNotes" : {
+      "comment" : "PRD-R35 (verbatim).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Works with notes"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoạt động, có lưu ý"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

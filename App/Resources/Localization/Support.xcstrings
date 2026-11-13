@@ -1,0 +1,1140 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "support.autoCheck.explanation" : {
+      "comment" : "PRD-R25, PLT-R906.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks once a day. Only the list of updates is downloaded; nothing about you is sent."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra mỗi ngày một lần. Chỉ tải danh sách bản cập nhật, không gửi thông tin gì về bạn."
+          }
+        }
+      }
+    },
+    "support.autoCheck.title" : {
+      "comment" : "D19.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates automatically"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động kiểm tra cập nhật"
+          }
+        }
+      }
+    },
+    "support.autoInstall.explanation" : {
+      "comment" : "PRD-R25, PRD-R50.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installs when you quit or restart, never while you are typing."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài khi bạn thoát hoặc khởi động lại máy, không bao giờ giữa lúc đang gõ."
+          }
+        }
+      }
+    },
+    "support.autoInstall.title" : {
+      "comment" : "D20.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install updates automatically"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động cài cập nhật"
+          }
+        }
+      }
+    },
+    "support.channel.beta" : {
+      "comment" : "Channel (site wording).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beta"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beta"
+          }
+        }
+      }
+    },
+    "support.channel.explanation" : {
+      "comment" : "PRD-R25.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beta builds get features and fixes earlier but may still have bugs."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản beta có tính năng và bản sửa lỗi sớm hơn nhưng có thể còn lỗi."
+          }
+        }
+      }
+    },
+    "support.channel.noDowngrade" : {
+      "comment" : "PRD-R53: says that it does not downgrade.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switching back to Stable does not downgrade: you get the next stable release once it is newer than the version you run."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuyển về Ổn định không tự hạ phiên bản: bạn sẽ nhận bản ổn định kế tiếp khi nó mới hơn bản đang dùng."
+          }
+        }
+      }
+    },
+    "support.channel.stable" : {
+      "comment" : "Channel (site wording).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stable"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ổn định"
+          }
+        }
+      }
+    },
+    "support.channel.title" : {
+      "comment" : "D21 (site and support wording).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update channel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kênh cập nhật"
+          }
+        }
+      }
+    },
+    "support.checkNow" : {
+      "comment" : "Same wording as the menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra cập nhật..."
+          }
+        }
+      }
+    },
+    "support.control.autoCheck.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns the daily update check on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc kiểm tra cập nhật mỗi ngày."
+          }
+        }
+      }
+    },
+    "support.control.autoCheck.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates automatically"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động kiểm tra cập nhật"
+          }
+        }
+      }
+    },
+    "support.control.autoInstall.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns installing on quit or restart on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc tự cài khi thoát hoặc khởi động lại."
+          }
+        }
+      }
+    },
+    "support.control.autoInstall.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Install updates automatically"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động cài cập nhật"
+          }
+        }
+      }
+    },
+    "support.control.channel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses Stable or Beta."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn Ổn định hoặc Beta."
+          }
+        }
+      }
+    },
+    "support.control.channel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update channel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kênh cập nhật"
+          }
+        }
+      }
+    },
+    "support.control.checkNow.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checks for a new version now."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra bản mới ngay bây giờ."
+          }
+        }
+      }
+    },
+    "support.control.checkNow.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểm tra cập nhật"
+          }
+        }
+      }
+    },
+    "support.control.diagnostics.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the diagnostics window."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ chẩn đoán."
+          }
+        }
+      }
+    },
+    "support.control.diagnostics.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chẩn đoán"
+          }
+        }
+      }
+    },
+    "support.control.exportSettings.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves your settings to a file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu cài đặt ra một tệp."
+          }
+        }
+      }
+    },
+    "support.control.exportSettings.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất cài đặt"
+          }
+        }
+      }
+    },
+    "support.control.importSettings.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses a settings file and previews the changes."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn một tệp cài đặt và xem trước thay đổi."
+          }
+        }
+      }
+    },
+    "support.control.importSettings.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập cài đặt"
+          }
+        }
+      }
+    },
+    "support.control.licences.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the licences of the bundled software and data."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở giấy phép của phần mềm và dữ liệu đi kèm."
+          }
+        }
+      }
+    },
+    "support.control.licences.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licences and acknowledgements"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giấy phép và ghi công"
+          }
+        }
+      }
+    },
+    "support.control.licencesClose.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes the licences."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng bảng giấy phép."
+          }
+        }
+      }
+    },
+    "support.control.licencesClose.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close licences"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng giấy phép"
+          }
+        }
+      }
+    },
+    "support.control.reopenOnboarding.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the welcome steps from the beginning."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở lại các bước làm quen từ đầu."
+          }
+        }
+      }
+    },
+    "support.control.reopenOnboarding.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the welcome guide again"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem lại hướng dẫn làm quen"
+          }
+        }
+      }
+    },
+    "support.control.reportProblem.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the bug report window."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ báo lỗi."
+          }
+        }
+      }
+    },
+    "support.control.reportProblem.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a problem"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi"
+          }
+        }
+      }
+    },
+    "support.control.resetAll.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a confirmation. You can export your settings first."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở hộp xác nhận. Bạn có thể xuất cài đặt trước."
+          }
+        }
+      }
+    },
+    "support.control.resetAll.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore all settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục toàn bộ cài đặt"
+          }
+        }
+      }
+    },
+    "support.control.sponsorsLink.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the GitHub sponsor page in your browser."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang ủng hộ trên GitHub trong trình duyệt."
+          }
+        }
+      }
+    },
+    "support.control.sponsorsLink.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        }
+      }
+    },
+    "support.diagnostics" : {
+      "comment" : "D26 entry.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chẩn đoán..."
+          }
+        }
+      }
+    },
+    "support.diagnostics.explanation" : {
+      "comment" : "PRD-R25, D26.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "See how the input method is doing, or record a short typing trace for a bug report."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem tình trạng bộ gõ, hoặc ghi lại thao tác gõ trong chốc lát để gửi kèm báo lỗi."
+          }
+        }
+      }
+    },
+    "support.donate.accountName" : {
+      "comment" : "PRD-R59 account name in text. %@ is the name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account holder: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chủ tài khoản: %@"
+          }
+        }
+      }
+    },
+    "support.donate.body" : {
+      "comment" : "PRD-R59 (verbatim). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is free and always will be. If you find it useful, you can support it so Kal has more time to keep building."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp."
+          }
+        }
+      }
+    },
+    "support.donate.momo" : {
+      "comment" : "PRD-R59.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MoMo"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MoMo"
+          }
+        }
+      }
+    },
+    "support.donate.momo.image" : {
+      "comment" : "VoiceOver label of the QR image.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MoMo QR code for a donation"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mã QR MoMo để ủng hộ"
+          }
+        }
+      }
+    },
+    "support.donate.sponsors" : {
+      "comment" : "PRD-R59.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        }
+      }
+    },
+    "support.donate.title" : {
+      "comment" : "PRD-R57 block title. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ủng hộ %@"
+          }
+        }
+      }
+    },
+    "support.donate.vietQR" : {
+      "comment" : "PRD-R59.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VietQR (Napas)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VietQR (Napas)"
+          }
+        }
+      }
+    },
+    "support.donate.vietQR.image" : {
+      "comment" : "VoiceOver label of the QR image.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VietQR code for a donation transfer"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mã QR VietQR để chuyển khoản ủng hộ"
+          }
+        }
+      }
+    },
+    "support.exportSettings" : {
+      "comment" : "PLT-R1010.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Settings..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xuất cài đặt..."
+          }
+        }
+      }
+    },
+    "support.help.title" : {
+      "comment" : "Section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hỗ trợ"
+          }
+        }
+      }
+    },
+    "support.importSettings" : {
+      "comment" : "PLT-R1010.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import Settings..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập cài đặt..."
+          }
+        }
+      }
+    },
+    "support.licences" : {
+      "comment" : "Opens licences and acknowledgements.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licences and Acknowledgements..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giấy phép và ghi công..."
+          }
+        }
+      }
+    },
+    "support.licences.close" : {
+      "comment" : "Closes the sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        }
+      }
+    },
+    "support.licences.data" : {
+      "comment" : "ENG-R811 section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bundled word lists"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dữ liệu từ ngữ đi kèm"
+          }
+        }
+      }
+    },
+    "support.licences.sparkle" : {
+      "comment" : "Sparkle notice section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparkle (app updates)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparkle (cập nhật ứng dụng)"
+          }
+        }
+      }
+    },
+    "support.licences.title" : {
+      "comment" : "Sheet title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licences and Acknowledgements"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giấy phép và ghi công"
+          }
+        }
+      }
+    },
+    "support.licences.unavailable" : {
+      "comment" : "Notices file missing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The notices of the bundled data could not be read."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không đọc được phần ghi công của dữ liệu đi kèm."
+          }
+        }
+      }
+    },
+    "support.privacy.body" : {
+      "comment" : "Privacy summary (principle 4, PLT-R906). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ never sends what you type anywhere and does not store it. The only network connection is the update check."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ không gửi nội dung bạn gõ đi đâu cả và không lưu lại những gì bạn gõ. Kết nối mạng duy nhất là kiểm tra cập nhật."
+          }
+        }
+      }
+    },
+    "support.privacy.title" : {
+      "comment" : "Section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quyền riêng tư"
+          }
+        }
+      }
+    },
+    "support.reopenOnboarding" : {
+      "comment" : "PRD-R40: onboarding can be reopened here.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the Welcome Guide Again"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem lại hướng dẫn làm quen"
+          }
+        }
+      }
+    },
+    "support.reportProblem" : {
+      "comment" : "PRD-R24, same wording as the menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report a Problem..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi..."
+          }
+        }
+      }
+    },
+    "support.resetAll" : {
+      "comment" : "PRD-R26 global reset.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore Defaults..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục mặc định..."
+          }
+        }
+      }
+    },
+    "support.settings.title" : {
+      "comment" : "Section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cài đặt"
+          }
+        }
+      }
+    },
+    "support.updates.title" : {
+      "comment" : "Section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Updates"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cập nhật"
+          }
+        }
+      }
+    },
+    "support.version" : {
+      "comment" : "%1$@ is the version, %2$@ the build.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phiên bản %1$@ (%2$@)"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

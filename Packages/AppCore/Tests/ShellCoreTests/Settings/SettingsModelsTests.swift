@@ -1,0 +1,220 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Smaller Settings models: login item (D17, PLT-R205), word lists (ENG-R860), layout binding (PLT-R373), reset
+// requests (PRD-R26), store notices (PLT-R1006, PLT-R1007, PLT-R1009), About & Support (PRD-R53, PRD-R59,
+// ENG-R811) and the updater bridge (D19 to D21).
+
+import AppModel
+import Foundation
+import InputHost
+import SettingsStore
+import Testing
+import VietnameseEngine
+import VietnameseEngineData
+
+@testable import ShellCore
+
+@Suite struct LoginItemControlTests {
+    @Test func presentationFollowsTheServiceStatus() {
+        #expect(LoginItemPresentation(status: .enabled) == LoginItemPresentation(status: .enabled, failed: false))
+        #expect(LoginItemPresentation(status: .enabled).isOn && LoginItemPresentation(status: .enabled).note == nil)
+        let approval = LoginItemPresentation(status: .requiresApproval)
+        #expect(approval.isOn && approval.note == .openAtLoginApproval && approval.offersSystemSettings)
+        let missing = LoginItemPresentation(status: .notFound)
+        #expect(!missing.isOn && missing.note == .openAtLoginNotFound && !missing.offersSystemSettings)
+        #expect(!LoginItemPresentation(status: .notRegistered).isOn)
+    }
+
+    @Test func togglingRegistersAndExplainsFailures() {
+        let service = FakeLoginItem()
+        #expect(LoginItemControl.set(true, service: service).isOn)
+        service.setStatusAfterRegister(.requiresApproval)
+        #expect(LoginItemControl.set(true, service: service).note == .openAtLoginApproval)
+        #expect(!LoginItemControl.set(false, service: service).isOn)
+        service.failNextCall()
+        let failed = LoginItemControl.set(true, service: service)
+        #expect(!failed.isOn && failed.note == .openAtLoginFailed && failed.offersSystemSettings)
+        #expect(service.calls == ["register", "register", "unregister", "register"])
+    }
+}
+
+@Suite struct WordListAndLayoutTests {
+    @Test func entriesAreLowercasedRawKeys_ENGR860() {
+        #expect(UserWordList.normalized("  Text ") == "text")
+        #expect(UserWordList.normalized("a b") == nil)
+        #expect(UserWordList.normalized("đc") == nil)
+        #expect(UserWordList.normalized("") == nil)
+        #expect(UserWordList.normalized(String(repeating: "a", count: 33)) == nil)
+        #expect(UserWordList.adding("Wifi", to: ["text"]) == .added(["text", "wifi"]))
+        #expect(UserWordList.adding("TEXT", to: ["text"]) == .duplicate)
+        #expect(UserWordList.adding("x y", to: []) == .invalid)
+        var settings = UserSettings()
+        settings.keepAsTyped = ["user", "text"]
+        settings.keepVietnamese = ["hoaf"]
+        #expect(UserWordList.keepAsTyped.entries(in: settings.resolved()) == ["text", "user"])
+        #expect(UserWordList.keepVietnamese.entries(in: settings.resolved()) == ["hoaf"])
+        #expect(UserWordList.keepAsTyped.edit(["a"]) == .keepAsTyped(["a"]))
+        #expect(UserWordList.keepVietnamese.edit(["a"]) == .keepVietnamese(["a"]))
+    }
+
+    @Test func onlyLatinLayoutsCanBeBoundAndEachToOneMode_PLTR373() {
+        let abc = InputSourceID(rawValue: "com.example.keylayout.ABC")!
+        let us = InputSourceID(rawValue: "com.example.keylayout.US")!
+        let kotoeri = InputSourceID(rawValue: "com.example.inputmethod.Japanese")!
+        let sources = [
+            InputSourceInfo(
+                id: abc, kind: .asciiLayout, localizedName: "ABC", languages: ["en"], isBuiltInVietnamese: false),
+            InputSourceInfo(
+                id: us, kind: .asciiLayout, localizedName: "U.S.", languages: ["en"], isBuiltInVietnamese: false),
+            InputSourceInfo(
+                id: abc, kind: .asciiLayout, localizedName: "ABC", languages: ["en"], isBuiltInVietnamese: false),
+            InputSourceInfo(
+                id: kotoeri, kind: .inputMethod, localizedName: "Japanese", languages: ["ja"],
+                isBuiltInVietnamese: false),
+        ]
+        var model = LayoutBindingModel(
+            binding: LayoutModeBinding(enabled: false, vietnamese: [abc]), enabledSources: sources)
+        #expect(model.rows.map(\.name) == ["ABC", "U.S."])
+        #expect(model.rows.map(\.assignment) == [.vietnamese, .none])
+        #expect(!model.isComplete)
+        let enabled = model.settingEnabled(true)
+        #expect(enabled.enabled && enabled.vietnamese == [abc])
+        let both = model.assigning(.english, to: us)
+        #expect(both.english == [us])
+        model = LayoutBindingModel(binding: both, enabledSources: sources)
+        #expect(model.isComplete)
+        let moved = model.assigning(.english, to: abc)
+        #expect(moved.vietnamese.isEmpty && moved.english == [us, abc])
+        let cleared = model.assigning(.none, to: us)
+        #expect(cleared.english.isEmpty)
+        #expect(
+            LayoutBindingModel.Assignment.allCases.map(\.title) == [
+                .layoutBindingNone, .layoutBindingVietnamese, .layoutBindingEnglish,
+            ])
+        #expect(
+            LayoutBindingModel(binding: both, enabledSources: sources).rows.map(\.assignment) == [
+                .vietnamese, .english,
+            ])
+    }
+}
+
+@Suite struct ResetRequestTests {
+    @Test func everyResetOffersExportAndOnlyMacroResetsOfferDeletion_PRDR26() throws {
+        let l = try Localizers()
+        for target in [ResetTarget.all] + PaneReset.allCases.map(ResetTarget.pane) {
+            let request = ResetRequest(target: target)
+            #expect(request.offersExportFirst)
+            #expect(!request.deleteMacros)  // unticked by default
+            #expect(!request.title(l.vi).isEmpty && l.vi.string(request.body) != request.body.rawValue)
+        }
+        #expect(
+            ResetRequest(target: .all).offersMacroDeletion && ResetRequest(target: .pane(.macros)).offersMacroDeletion)
+        #expect(!ResetRequest(target: .pane(.typing)).offersMacroDeletion)
+        #expect(ResetRequest(target: .pane(.typing)).title(l.vi) == "Khôi phục mặc định cho mục Gõ phím?")
+        #expect(ResetRequest(target: .all).title(l.en) == "Restore all settings to their defaults?")
+        var typing = ResetRequest(target: .pane(.typing))
+        typing.deleteMacros = true  // ignored where the checkbox is not offered
+        #expect(typing.plan == ResetPlan(storeScope: .typing, unsetsMacroSwitches: false, deletesMacroList: false))
+        #expect(ResetRequest(target: .all).plan.storeScope == .all(includeMacros: false))
+        #expect(PaneReset.allCases.map(\.pane) == [.general, .typing, .apps, .macros])
+        #expect(SettingsPaneKind.allCases.map(\.paneReset) == [.general, .typing, .apps, .macros, nil])
+    }
+}
+
+@Suite struct StoreNoticePresentationTests {
+    @Test func recoveryIsInformationalAndCorruptionNeedsConfirmation() throws {
+        let l = try Localizers()
+        let date = Date(timeIntervalSince1970: 1_794_528_000)
+        let notices: [StoreNotice] = [
+            .recoveredFromBackup(.settings, backupDate: date), .corruptFileUsingDefaults(.macros),
+            .newerSchemaReadOnly(.appModes, schemaVersion: 3), .safeMode(recentCrashes: 3),
+            .writeFailed(.ruleOverrides),
+        ]
+        let shown = StoreNoticePresentation.all(notices, appName: "App", localizer: l.vi)
+        #expect(
+            shown.map(\.actions) == [
+                [.dismiss(.settings)], [.useDefaults(.macros)], [], [.leaveSafeMode, .resetAll, .report], [],
+            ])
+        #expect(shown.map(\.isWarning) == [false, true, false, true, true])
+        #expect(shown[0].message.contains("settings.json") && shown[0].message.contains(l.vi.formatDate(date)))
+        #expect(shown[2].message.contains("3") && shown[3].message.hasPrefix("App gặp sự cố 3 lần"))
+        let actions: [StoreNoticePresentation.Action] = [
+            .dismiss(.settings), .useDefaults(.settings), .leaveSafeMode, .report, .resetAll,
+        ]
+        #expect(
+            actions.map(\.title) == [
+                .noticeDismiss, .noticeUseDefaults, .noticeLeaveSafeMode, .noticeReport, .noticeReset,
+            ])
+        #expect(
+            actions.map(\.control) == [
+                .noticeDismiss, .noticeUseDefaults, .noticeLeaveSafeMode, .noticeReport, .noticeReset,
+            ])
+    }
+}
+
+@Suite struct AboutSupportTests {
+    let brand = Brand(
+        displayName: "App", slug: "app", siteHost: "example.invalid", bundleIdentifier: "com.example.app",
+        version: "0.1.0", build: "12", supportEmail: nil)
+
+    @Test func versionAndChannelNote_PRDR53() throws {
+        let l = try Localizers()
+        #expect(AboutSupportContent.versionLine(brand: brand, localizer: l.vi) == "Phiên bản 0.1.0 (12)")
+        #expect(AboutSupportContent.channelNote(from: .beta, to: .stable) == .channelNoDowngrade)
+        #expect(AboutSupportContent.channelNote(from: .stable, to: .beta) == nil)
+        #expect(AboutSupportContent.channelNote(from: .stable, to: .stable) == nil)
+        #expect(l.vi.string(SupportText.channelNoDowngrade).contains("không tự hạ phiên bản"))
+    }
+
+    @Test @MainActor func updateSettingsReachTheUpdater() {
+        let updater = FakeUpdater()
+        UpdaterSettingsBridge.apply(.automaticallyCheckForUpdates(false), to: updater)
+        UpdaterSettingsBridge.apply(.automaticallyInstallUpdates(false), to: updater)
+        UpdaterSettingsBridge.apply(.updateChannel(.beta), to: updater)
+        #expect(!updater.automaticallyChecksForUpdates && !updater.automaticallyDownloadsUpdates)
+        #expect(updater.channel == .beta)
+        UpdaterSettingsBridge.apply(.updateChannel(.stable), to: updater)
+        UpdaterSettingsBridge.apply(.typingMethod(.vni), to: updater)  // not an update setting
+        #expect(updater.channel == .stable && updater.checks == 0)
+    }
+
+    @Test func acknowledgementsShowTheBundledNoticesAndSparkle_ENGR811() throws {
+        let l = try Localizers()
+        let notices = try Resources.bundledNotices()
+        let shown = Acknowledgements(dataNotices: Resources.bundledNotices, localizer: l.vi)
+        #expect(shown.sections.map(\.title) == [.licencesData, .licencesSparkle])
+        #expect(shown.sections[0].text == notices)
+        #expect(notices.contains("SCOWL"))
+        #expect(shown.sections[1].text.contains("Andy Matuschak"))
+        #expect(shown.sections.map(\.id) == [.licencesData, .licencesSparkle])
+        struct Missing: Error {}
+        let fallback = Acknowledgements(dataNotices: { throw Missing() }, localizer: l.vi)
+        #expect(fallback.sections[0].text == l.vi.string(SupportText.licencesUnavailable))
+    }
+
+    @Test func sparkleNoticeMatchesThirdPartyNotices() throws {
+        let text = try String(contentsOf: RepoPaths.url("THIRD_PARTY_NOTICES.md"), encoding: .utf8)
+        let section = try #require(text.range(of: "### Sparkle \(SparkleNotice.version)"))
+        let fence = try #require(text.range(of: "```text\n", range: section.upperBound..<text.endIndex))
+        let end = try #require(text.range(of: "\n```", range: fence.upperBound..<text.endIndex))
+        func lines(_ value: some StringProtocol) -> [String] {
+            value.components(separatedBy: "\n").map { String($0.reversed().drop { $0 == " " }.reversed()) }
+        }
+        #expect(lines(text[fence.upperBound..<end.lowerBound]) == lines(SparkleNotice.text))
+    }
+
+    @Test func donationBlockUsesBundledPlaceholders_PRDR59() throws {
+        let l = try Localizers()
+        let info = DonationInfo.placeholder
+        #expect(info.accountLine(l.vi) == "Chủ tài khoản: VERIFY")
+        #expect(!info.showsSponsors)
+        var sponsored = info
+        sponsored.githubSponsorsURL = URL(string: "https://github.com/sponsors/example")
+        #expect(sponsored.showsSponsors)
+        // The QR images are bundled assets (never fetched): both names exist in Donation.xcassets.
+        for name in [info.vietQRImageName, info.momoQRImageName] {
+            let path = RepoPaths.url("App/Resources/Donation.xcassets/\(name).imageset/Contents.json").path
+            #expect(FileManager.default.fileExists(atPath: path), "\(name)")
+        }
+    }
+}
