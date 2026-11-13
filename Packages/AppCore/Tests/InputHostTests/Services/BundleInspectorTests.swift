@@ -174,7 +174,8 @@ struct BundleInspectorTests {
         #expect(FileSystemBundleInspector.bundleBoundary(of: above)?.path == "/Users/x/Contents/Apps/Foo.app")
         let framework = URL(fileURLWithPath: "/Library/Contents/Frameworks/Bar.framework/Contents/lib")
         #expect(
-            FileSystemBundleInspector.bundleBoundary(of: framework)?.path == "/Library/Contents/Frameworks/Bar.framework")
+            FileSystemBundleInspector.bundleBoundary(of: framework)?.path
+                == "/Library/Contents/Frameworks/Bar.framework")
         let plain = URL(fileURLWithPath: "/Users/x/Plain/Contents/jbr")
         #expect(FileSystemBundleInspector.bundleBoundary(of: plain)?.path == "/Users/x/Plain")
     }
