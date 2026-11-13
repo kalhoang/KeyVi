@@ -80,6 +80,21 @@ English corpus with `Tests/VietnameseEngineTests/Corpus/known-exceptions.txt`, E
 `data/fetch.sh`, `import legal`, `build`, `prose-corpus`. Only legal normative or administrative documents
 (Law on Intellectual Property, Article 15(2)); never other Vietnamese text.
 
+## Decisions of the product owner (13/11/2026)
+
+Recorded in `docs/decisions/0005-pa-decisions-2026-11-13.md` (Q25 to Q34); the inputs carry the same notes.
+
+| Topic | Decision | Where in the data |
+|---|---|---|
+| VNI `co2` | Vietnamese: it types `cò` (con cò, cò kè). Whoever needs CO2 types the escape `co22`. | removed from `inputs/tech-always.txt` (comment next to `a3`/`a5`) and its generated `en` row from `inputs/ambiguity.tsv`; `cò` was already attested |
+| `chơn` | Attested (tay chơn, chơn chất, Chơn Thành). Behaviour is unchanged: Telex `chown` is a code-only word, not English, so rule L7 already kept `chơn` outside the code context; it stays an ENG-T11 entry. | `inputs/attested-additions.txt` |
+| VNI `a3`, `a5`, `a4` | Kept: `a3` types `ả`, `a5` types `ạ`, `a4` stays as typed. | `inputs/tech-always.txt` |
+| Generated `en` rows | Accepted: rows that restate rule L8 or the tech-always list count as `en` rows for ENG-R870 (spec 8.8 amended). | `inputs/ambiguity.tsv`, block `# [generated en rows]` |
+| L4 escapes that leave English words (53 ENG-T11 entries) | Accepted as a known issue. | `known-exceptions.txt` of the engine tests |
+| SCOWL size level | Keep level 35. | `inputs/english/` |
+| Attested sources | Keep the legal texts plus reviewed additions. | `inputs/legal/`, `inputs/attested-additions.txt` |
+| Review of the word lists | Later; unreviewed rows behave as `vi` (ENG-R821). Short English words missing from level 35 (`max`) need no change: Telex `max` gives `mã`, the reading the ENG-R821 row wants. | `inputs/ambiguity.tsv`, `derived/ambiguity-candidates.tsv` |
+
 ## Resource format 1
 
 - Word lists: UTF-8, LF, one entry per line, final newline, no blank lines or comments, unique, sorted by
