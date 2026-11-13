@@ -68,7 +68,8 @@ public struct FileSystemBundleInspector: BundleInspector {
     enum Visit { case `continue`, skipDescendants, stop }
 
     /// Depth-first over real folders only: every entry of a listing is counted before any child folder is
-    /// entered, so the entry limit cuts the walk at the same point whatever order the file system lists in.
+    /// entered. The entry limit bounds the number of entries listed whatever order the file system lists in; a
+    /// result near the limit can still depend on that order, because child folders are entered last-in first-out.
     /// Entries at depth `maxDepth` are visited but not entered; links to folders are visited, never entered.
     private func walk(_ root: URL, maxDepth: Int, _ body: (URL) -> Visit) {
         guard maxDepth > 0 else { return }
@@ -115,10 +116,18 @@ public struct FileSystemBundleInspector: BundleInspector {
         return resolved.path == limit || resolved.path.hasPrefix(limit + "/") ? resolved : nil
     }
 
-    /// The outermost bundle around `url`: the folder that holds the first `Contents` component.
+    static let bundleExtensions: Set<String> = ["app", "framework", "xpc", "appex", "plugin", "bundle"]
+
+    /// The outermost bundle around `url`: the folder holding the first `Contents` component whose parent has a
+    /// bundle extension, so a `Contents` folder above the bundle does not widen the boundary (PLT-R384). Only
+    /// when no such component exists does the first `Contents` decide.
     static func bundleBoundary(of url: URL) -> URL? {
         let components = url.standardizedFileURL.pathComponents
-        guard let index = components.firstIndex(of: "Contents"), index >= 2 else { return nil }
+        let candidates = components.indices.filter { components[$0] == "Contents" && $0 >= 2 }
+        let isBundle = { (index: Int) in
+            bundleExtensions.contains((components[index - 1] as NSString).pathExtension.lowercased())
+        }
+        guard let index = candidates.first(where: isBundle) ?? candidates.first else { return nil }
         return URL(fileURLWithPath: NSString.path(withComponents: Array(components[..<index])), isDirectory: true)
     }
 

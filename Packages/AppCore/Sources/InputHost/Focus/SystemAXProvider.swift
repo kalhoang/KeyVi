@@ -14,6 +14,9 @@ public final class SystemAXProvider: AXProvider {
     public static let maximumAncestors = 6
     /// How far up the web area is looked for when a document URL is requested (browser engines only). Web
     /// content nests deeper than the six ancestors used for matching; the walk also stops at the window.
+    /// VERIFY (PLT-R521, T6 p95 <= 30 ms): 16 is an estimate. Measure the depth from the focused element to the
+    /// AXWebArea for the Google Sheets and Google Docs cell and text editors in Chrome, Safari and Firefox, and
+    /// record it in compat/matrix.json. An editor deeper than this loses every `web.urlPrefixes` rule.
     public static let maximumWebAreaDepth = 16
 
     private let systemWide: AXElementReference

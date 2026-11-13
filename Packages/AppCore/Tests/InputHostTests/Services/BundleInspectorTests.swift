@@ -166,4 +166,32 @@ struct BundleInspectorTests {
         #expect(FileSystemBundleInspector.bundleBoundary(of: URL(fileURLWithPath: "/tmp/plain")) == nil)
         #expect(FileSystemBundleInspector.bundleBoundary(of: URL(fileURLWithPath: "/Contents/jbr")) == nil)
     }
+
+    /// PLT-R384: a `Contents` folder above the bundle does not widen the boundary; the first `Contents` held by a
+    /// folder with a bundle extension wins, and a plain `Contents` counts only when no bundle qualifies.
+    @Test func aContentsFolderAboveTheBundleDoesNotWidenTheBoundaryPLTR384() {
+        let above = URL(fileURLWithPath: "/Users/x/Contents/Apps/Foo.app/Contents/jbr")
+        #expect(FileSystemBundleInspector.bundleBoundary(of: above)?.path == "/Users/x/Contents/Apps/Foo.app")
+        let framework = URL(fileURLWithPath: "/Library/Contents/Frameworks/Bar.framework/Contents/lib")
+        #expect(
+            FileSystemBundleInspector.bundleBoundary(of: framework)?.path == "/Library/Contents/Frameworks/Bar.framework")
+        let plain = URL(fileURLWithPath: "/Users/x/Plain/Contents/jbr")
+        #expect(FileSystemBundleInspector.bundleBoundary(of: plain)?.path == "/Users/x/Plain")
+    }
+
+    /// The same rule on disk: a link from the bundle to a sibling folder under an outer `Contents` folder is not
+    /// followed.
+    @Test func aLinkToAFolderBesideTheBundleUnderAnOuterContentsFolderIsNotFollowed() throws {
+        let manager = FileManager.default
+        let root = manager.temporaryDirectory.appendingPathComponent("w2g-outer-\(UUID().uuidString)")
+        defer { try? manager.removeItem(at: root) }
+        let outer = root.appendingPathComponent("Contents")
+        let bundleContents = outer.appendingPathComponent("Apps/Foo.app/Contents")
+        let sibling = outer.appendingPathComponent("Shared")
+        try TemporaryBundle.touch(sibling.appendingPathComponent("Home/lib/server/libjvm.dylib"))
+        try manager.createDirectory(at: bundleContents, withIntermediateDirectories: true)
+        let link = bundleContents.appendingPathComponent("jbr")
+        try manager.createSymbolicLink(at: link, withDestinationURL: sibling)
+        #expect(!FileSystemBundleInspector().containsFile(named: "libjvm.dylib", in: link, maxDepth: 6))
+    }
 }
