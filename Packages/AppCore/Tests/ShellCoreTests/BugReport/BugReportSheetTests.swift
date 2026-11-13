@@ -82,7 +82,9 @@ enum SheetFixtures {
                     symptom: .lag, reportedApp: SheetFixtures.chat.bundle, reproducesInPracticeField: nil))
         #expect(report.reportedAppMode?.bundle == SheetFixtures.chat.bundle)
         #expect(report.rule?.userOverride != nil)
-        for text in [sheet.preview(report, language: .vietnamese), sheet.clipboardText(report)] {
+        for text in ReportPreviewFormat.allCases.map({ sheet.preview(report, format: $0) }) + [
+            sheet.clipboardText(report)
+        ] {
             #expect(!text.contains(Canary.typed))
         }
         let json = String(decoding: try sheet.attachment(report), as: UTF8.self)
@@ -104,10 +106,20 @@ enum SheetFixtures {
     }
 
     @Test func previewIsTheExactCopiedAndSavedText() throws {
-        // PLT-R1204
-        let sheet = BugReportSheet(apps: [], preselected: SheetFixtures.chat, brand: SheetFixtures.brand())
+        // PLT-R1204, PRD-R47 item 4: each format shows byte for byte what its paths write.
+        var sheet = BugReportSheet(apps: [], preselected: SheetFixtures.chat, brand: SheetFixtures.brand())
+        #expect(sheet.previewFormat == .copiedBlock)
+        #expect(ReportPreviewFormat.allCases == [.copiedBlock, .attachedFile])
         let report = sheet.report(from: ReportFixtures.report())
-        #expect(sheet.preview(report, language: .english) == DiagnosticsRenderer.plainText(report, language: .english))
+        let json = String(decoding: try sheet.attachment(report), as: UTF8.self)
+        #expect(sheet.preview(report, format: .copiedBlock) == sheet.clipboardText(report))
+        #expect(sheet.preview(report, format: .attachedFile) == json)
+        #expect(sheet.preview(report) == sheet.clipboardText(report))
+        sheet.previewFormat = .attachedFile
+        #expect(sheet.preview(report) == json)
+        #expect(ReportPreviewFormat.copiedBlock.text(report) == sheet.clipboardText(report))
+        #expect(ReportPreviewFormat.copiedBlock.paths == [.copyReport, .github])
+        #expect(ReportPreviewFormat.attachedFile.paths == [.email, .saveFile])
         #expect(sheet.clipboardText(report) == DiagnosticsRenderer.issueBlock(report))
         let decoded = try JSONDecoder.reportDecoder.decode(DiagnosticsReport.self, from: sheet.attachment(report))
         #expect(decoded == report)

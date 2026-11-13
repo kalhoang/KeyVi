@@ -426,6 +426,78 @@
         }
       }
     },
+    "bugReport.preview.format" : {
+      "comment" : "Label of the preview format picker (PLT-R1204).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the contents of"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem nội dung của"
+          }
+        }
+      }
+    },
+    "bugReport.preview.format.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chooses which buttons' exact output the preview shows."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn nút để xem đúng nội dung nút đó sẽ gửi."
+          }
+        }
+      }
+    },
+    "bugReport.preview.format.copied" : {
+      "comment" : "Preview segment: the block that Copy report and Open GitHub put on the clipboard (PLT-R1204).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy report and Open GitHub"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép báo cáo và Mở GitHub"
+          }
+        }
+      }
+    },
+    "bugReport.preview.format.file" : {
+      "comment" : "Preview segment: the JSON file that Send by email attaches and Save file saves (PLT-R1204).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send by email and Save file..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gửi qua email và Lưu tệp..."
+          }
+        }
+      }
+    },
     "bugReport.saveFailed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -616,6 +688,222 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chép báo cáo đang hiện vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "diagnostics.latency.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows or hides the latency histograms."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện hoặc ẩn biểu đồ độ trễ."
+          }
+        }
+      }
+    },
+    "diagnostics.latency.bin" : {
+      "comment" : "VoiceOver label of one bar: upper bound and formatted number of samples.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to %1$@: %2$@ samples"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tối đa %1$@: %2$@ mẫu"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.echo" : {
+      "comment" : "Echo round trip of 02-platform.md 8.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Round trip of the keys sent"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thời gian phím đã gửi quay về"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.empty" : {
+      "comment" : "A histogram without samples.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No samples yet."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có mẫu nào."
+          }
+        }
+      }
+    },
+    "diagnostics.latency.heading" : {
+      "comment" : "Heading of the latency histograms (PLT-R1201).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latency histograms"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biểu đồ độ trễ"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.samples" : {
+      "comment" : "Number of samples of one histogram; the argument is a formatted number.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ samples"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ mẫu"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.t1" : {
+      "comment" : "Metric T1 of 02-platform.md 8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T1: time to handle each key"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T1: thời gian xử lý mỗi phím"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.t2" : {
+      "comment" : "Metric T2 of 02-platform.md 8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T2: from receiving a key to sending the text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T2: từ lúc nhận phím đến lúc gửi xong chữ"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.t3" : {
+      "comment" : "Metric T3 of 02-platform.md 8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T3: like T2, with an Accessibility read"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T3: như T2, có đọc dữ liệu trợ năng"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.t5" : {
+      "comment" : "Metric T5 of 02-platform.md 8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T5: time a held key waits"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T5: thời gian một phím phải chờ"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.t6" : {
+      "comment" : "Metric T6 of 02-platform.md 8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T6: time to refresh the focused field"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "T6: thời gian cập nhật ô đang nhập"
+          }
+        }
+      }
+    },
+    "diagnostics.latency.upTo" : {
+      "comment" : "Bar label: the upper bound of a bucket, for example 16 µs.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "≤ %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "≤ %@"
           }
         }
       }
@@ -1278,6 +1566,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bạn thấy đúng chữ “đá â”."
+          }
+        }
+      }
+    },
+    "misbehaves.clipboardNotice" : {
+      "comment" : "PRD-R48 notice in the misbehaves panel, shown before any clipboard write; the argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy report, Copy rule and Open GitHub issue put the data on the clipboard for you to paste. Apart from the paste compatibility mode you turn on yourself, this is the only time %@ writes to the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép báo cáo, Sao chép quy tắc và Mở báo lỗi trên GitHub chép dữ liệu vào bộ nhớ tạm để bạn dán. Ngoài chế độ tương thích dán do bạn tự bật, đây là lúc duy nhất %@ ghi vào bộ nhớ tạm."
           }
         }
       }
