@@ -15,7 +15,7 @@ export const home = {
   typedCaption: "Từ tiếng Anh được giữ nguyên, bạn không cần chuyển chế độ.",
   demoPlaceholder: "Video 20 giây đang được chuẩn bị",
   demoCaption: "Gõ Telex, tự khôi phục từ tiếng Anh, chuyển chế độ theo từng ứng dụng.",
-  demoAlt: "Video minh hoạ 20 giây về cách gõ tiếng Việt với {{AppName}}",
+  demoAlt: "Video minh họa 20 giây về cách gõ tiếng Việt với {{AppName}}",
   downloadBtn: "Tải {{AppName}} {{version}}",
   downloadSub: "{{requirement}}",
   noReleaseBtn: "Chưa có bản phát hành",
@@ -25,7 +25,7 @@ export const home = {
   proofHeading: "Ba điều bạn có thể kiểm chứng",
   proof: [
     { h: "Không thu thập dữ liệu", p: "Không telemetry, không SDK phân tích, không \"dữ liệu sử dụng ẩn danh\". Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật.", link: "{{hrefPrivacy}}", linkText: "Xem chi tiết về riêng tư" },
-    { h: "Miễn phí", p: "{{AppName}} miễn phí và sẽ luôn miễn phí. Không có tính năng nào bị khoá, không có nhắc nhở ủng hộ trong ứng dụng." },
+    { h: "Miễn phí", p: "{{AppName}} miễn phí và sẽ luôn miễn phí. Không có tính năng nào bị khóa, không có nhắc nhở ủng hộ trong ứng dụng." },
     { h: "Bộ máy gõ mã nguồn mở", p: "Phần xử lý tiếng Việt là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng. Phần còn lại của ứng dụng cũng là mã nguồn mở, giấy phép GPL-3.0-or-later.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
   ],
   whyHeading: "Những điều bạn sẽ thấy khác",
@@ -103,7 +103,7 @@ export const changelog = {
 export const donate = {
   h1: "Ủng hộ {{AppName}}",
   thanks: "{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.",
-  promise: "Ủng hộ chỉ là tấm lòng. Không có tính năng nào bị khoá, và ứng dụng không bao giờ hiện lời nhắc ủng hộ.",
+  promise: "Ủng hộ chỉ là tấm lòng. Không có tính năng nào bị khóa, và ứng dụng không bao giờ hiện lời nhắc ủng hộ.",
   // Pa's decision S8: a bank VietQR code only; the bank name and the account number are shown, never the holder's name.
   vietqr: { h: "VietQR (Napas)", alt: "Mã QR VietQR để chuyển khoản ủng hộ tới tài khoản LioBank 688688678", bankLabel: "Ngân hàng", bankValue: "LioBank", accountLabel: "Số tài khoản", accountValue: "688688678", how: "Mở ứng dụng ngân hàng và chọn quét mã QR. Ứng dụng sẽ hiện tên người nhận để bạn kiểm tra trước khi xác nhận." },
   sponsors: { h: "GitHub Sponsors", body: "Nếu bạn dùng GitHub, có thể ủng hộ định kỳ hoặc một lần.", link: "Mở trang GitHub Sponsors" },
@@ -136,11 +136,11 @@ export const privacy = {
 <tbody>
 <tr><th scope="row">Cài đặt, quy tắc theo ứng dụng, chế độ Việt/Anh theo ứng dụng, gõ tắt</th><td><code>~/Library/Application Support/{{AppName}}/</code></td><td>Chỉ lưu những lựa chọn bạn tự đặt. Thư mục chỉ mình bạn đọc được. Gõ tắt là nội dung do bạn viết, có thể chứa chữ riêng tư.</td></tr>
 <tr><th scope="row">Bản sao lưu cài đặt</th><td><code>~/Library/Application Support/{{AppName}}/backups/</code></td><td>Giữ 5 bản gần nhất để khôi phục khi tệp bị hỏng.</td></tr>
-<tr><th scope="row">Nhật ký sức khoẻ ứng dụng</th><td><code>~/Library/Logs/{{AppName}}/</code></td><td>Chỉ có sự kiện không chứa nội dung (loại phím, mã kết quả, thời gian). Tối đa 5 tệp, mỗi tệp 1 MB, giữ 14 ngày.</td></tr>
-<tr><th scope="row">Bản ghi thao tác gõ (chỉ khi bạn bấm bắt đầu)</th><td><code>~/Library/Logs/{{AppName}}/captures/</code></td><td>Xem mục bên dưới. Tự xoá sau 24 giờ, không nằm trong bản sao lưu Time Machine.</td></tr>
+<tr><th scope="row">Nhật ký sức khỏe ứng dụng</th><td><code>~/Library/Logs/{{AppName}}/</code></td><td>Chỉ có sự kiện không chứa nội dung (loại phím, mã kết quả, thời gian). Tối đa 5 tệp, mỗi tệp 1 MB, giữ 14 ngày.</td></tr>
+<tr><th scope="row">Bản ghi thao tác gõ (chỉ khi bạn bấm bắt đầu)</th><td><code>~/Library/Logs/{{AppName}}/captures/</code></td><td>Xem mục bên dưới. Tự xóa sau 24 giờ, không nằm trong bản sao lưu Time Machine.</td></tr>
 <tr><th scope="row">Trạng thái cập nhật (Sparkle)</th><td><code>~/Library/Preferences/{{bundleId}}.plist</code> và <code>~/Library/Caches/{{bundleId}}/</code></td><td>Do hệ thống quản lý theo mặc định.</td></tr>
 </tbody></table></div>
-<p>Mọi tệp ghi bằng cách ghi an toàn (ghi tệp tạm rồi đổi tên) để cập nhật hay mất điện không làm hỏng cài đặt. Đường dẫn đầy đủ để xoá nằm ở mục "Xoá dữ liệu" bên dưới.</p>
+<p>Mọi tệp ghi bằng cách ghi an toàn (ghi tệp tạm rồi đổi tên) để cập nhật hay mất điện không làm hỏng cài đặt. Đường dẫn đầy đủ để xóa nằm ở mục "Xóa dữ liệu" bên dưới.</p>
 
 <h2 id="gui-di">Ứng dụng gửi gì đi</h2>
 <p>Chỉ một thứ: <strong>kiểm tra cập nhật</strong>, mỗi 24 giờ (bạn tắt được trong Cài đặt).</p>
@@ -159,8 +159,8 @@ export const privacy = {
   <li>Phiên bản macOS, loại máy (Apple silicon hoặc Intel), bố cục bàn phím, các nguồn nhập đang bật (chỉ mã định danh).</li>
   <li>Trạng thái các quyền, trạng thái Secure Input và ứng dụng có thể đang giữ nó.</li>
   <li>Ứng dụng đang gõ (mã định danh và phiên bản), quy tắc tương thích đang áp dụng.</li>
-  <li>Cài đặt không chứa nội dung (kiểu gõ, các công tắc), thống kê thời gian xử lý, 50 sự kiện sức khoẻ gần nhất, các bộ gõ khác đang chạy.</li>
-  <li>Loại phím gần đây (chữ cái, chữ số, xoá lùi, phím bổ trợ), không bao giờ là giá trị phím.</li>
+  <li>Cài đặt không chứa nội dung (kiểu gõ, các công tắc), thống kê thời gian xử lý, 50 sự kiện sức khỏe gần nhất, các bộ gõ khác đang chạy.</li>
+  <li>Loại phím gần đây (chữ cái, chữ số, xóa lùi, phím bổ trợ), không bao giờ là giá trị phím.</li>
 </ul>
 <h3>Không bao giờ có trong báo cáo</h3>
 <ul>
@@ -170,13 +170,13 @@ export const privacy = {
   <li>Danh sách chế độ theo ứng dụng của bạn, trừ mục của đúng ứng dụng bạn đang báo lỗi.</li>
 </ul>
 
-<h2 id="ban-ghi">Bản ghi thao tác gõ (tuỳ chọn, do bạn bắt đầu)</h2>
+<h2 id="ban-ghi">Bản ghi thao tác gõ (tùy chọn, do bạn bắt đầu)</h2>
 <p>Đây là trường hợp duy nhất chữ bạn gõ chạm tới ổ đĩa, và bạn thấy rõ lúc nó diễn ra. Nó giúp tái hiện lỗi khó mà báo cáo thường không đủ.</p>
 <ul>
   <li>Chỉ bắt đầu khi bạn chủ động bấm trong cửa sổ Chẩn đoán và xác nhận.</li>
   <li>Mặc định 60 giây, tối đa 180 giây, rồi tự dừng. Suốt thời gian đó có biểu tượng thanh menu khác và một bảng đếm ngược kèm nút Dừng.</li>
   <li>Không ghi gì khi macOS đang ở chế độ nhập bảo mật hoặc khi ô mật khẩu đang được chọn.</li>
-  <li>Lưu cục bộ, không nằm trong sao lưu, tự xoá sau 24 giờ hoặc ngay khi bạn xuất hay huỷ. Bạn xem được bản đọc được trước khi chia sẻ. Không bao giờ tự tải lên.</li>
+  <li>Lưu cục bộ, không nằm trong sao lưu, tự xóa sau 24 giờ hoặc ngay khi bạn xuất hay hủy. Bạn xem được bản đọc được trước khi chia sẻ. Không bao giờ tự tải lên.</li>
 </ul>
 
 <h2 id="clipboard">Bảng nhớ tạm (clipboard)</h2>
@@ -197,8 +197,8 @@ export const privacy = {
 <h2 id="ung-ho">Ủng hộ</h2>
 <p>Ứng dụng không lưu hay gửi thông tin người ủng hộ. Việc chuyển tiền diễn ra giữa bạn và ngân hàng của bạn hoặc GitHub, theo chính sách riêng của họ.</p>
 
-<h2 id="xoa-du-lieu">Xoá dữ liệu</h2>
-<p>Thoát {{AppName}}, kéo ứng dụng vào Thùng rác, rồi xoá các thư mục trong bảng ở trên. Nếu cài bằng Homebrew, một lệnh làm hết:</p>
+<h2 id="xoa-du-lieu">Xóa dữ liệu</h2>
+<p>Thoát {{AppName}}, kéo ứng dụng vào Thùng rác, rồi xóa các thư mục trong bảng ở trên. Nếu cài bằng Homebrew, một lệnh làm hết:</p>
 <pre><code>brew uninstall --cask --zap {{slug}}</code></pre>
 `,
 };
