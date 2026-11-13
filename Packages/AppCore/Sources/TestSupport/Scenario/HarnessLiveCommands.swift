@@ -123,9 +123,16 @@ extension Harness {
             let plan = SoakPlan.make(
                 keystrokes: options.keystrokes, targets: timed, seed: options.seed,
                 chunkKeystrokes: options.chunkKeystrokes)
+            let system = services.system
             let soak = SoakRunner(
                 targets: timed, runner: runner(services, seed: options.seed),
-                monitor: try live.soakMonitor(targets: resolved), clock: environment.clock)
+                monitor: try live.soakMonitor(targets: resolved), clock: environment.clock,
+                activate: { target in
+                    guard let bundle = resolved.resolve(target.targetBundleId) else {
+                        throw HarnessSetupError.unresolvedTarget(target.targetBundleId.rawValue)
+                    }
+                    try await system.launch(bundle)
+                })
             let summary = await soak.run(plan)
             try write(try Self.json(summary), to: (options.output ?? ".build/integration/soak") + "/soak-summary.json")
             environment.console.emit(

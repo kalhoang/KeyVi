@@ -359,6 +359,26 @@ private let rulesJSON = """
         #expect(live.sink.records.filter { $0.event.phase == .down }.count >= 48)
     }
 
+    /// 13.6: one capture window per soak, not one per chunk; later chunks only bring the terminal to the front.
+    @Test func soakStartsTheTerminalCaptureOnce() async throws {
+        let clock = ManualClock()
+        let live = RecordingLiveServices(clock: clock, monitor: ScriptedSoakMonitor(footprints: [30], clock: clock))
+        let fileSystem = try makeCheckout(scenarios: [
+            "term.json": scenarioJSON(
+                id: "term", target: "com.example.Terminal", readback: "terminalCapture",
+                setup: #"[{"action":"launch"},{"action":"wait","value":"1500"}]"#)
+        ])
+        let (harness, _) = try harness(
+            ["soak", "--keystrokes", "48", "--chunk", "16", "--targets", "term", "--output", "/out/soak"],
+            fileSystem: fileSystem, live: live, clock: clock)
+        _ = await harness.execute()
+        #expect(
+            live.system.calls.all == [
+                "capture in com.example.Terminal -> terminal-capture.txt", "launch com.example.Terminal",
+                "launch com.example.Terminal",
+            ])
+    }
+
     @Test func soakWithoutAMonitorFails() async throws {
         let live = RecordingLiveServices(clock: ManualClock())
         let fileSystem = try makeCheckout(scenarios: ["t.json": scenarioJSON(id: "t")])

@@ -117,6 +117,55 @@ import Testing
         #expect(!summary.passed)
     }
 
+    /// 13.6, QA-R16: setup runs once per target. Later chunks only bring the app to the front and refocus the
+    /// field, so a 1,000,000-keystroke soak neither relaunches apps nor opens hundreds of terminal windows.
+    @Test func setupRunsOncePerTargetAndLaterChunksOnlyReactivate() async {
+        let clock = ManualClock()
+        var editor = makeScenario(
+            id: "editor",
+            setup: [
+                .init(action: .launch), .init(action: .wait, value: "1500"), .init(action: .focusField, value: "f"),
+            ])
+        editor.layout = InputSourceID(rawValue: "com.apple.keylayout.ABC")
+        let terminal = makeScenario(id: "terminal", setup: [.init(action: .launch)], readback: .terminalCapture)
+        let setup = FakeSetup()
+        let runner = ScenarioRunner(
+            driver: FakeDriver(), readback: EchoReadback(), setup: setup, probe: nil, clock: clock)
+        let activated = Recorder<String>()
+        let plan = SoakPlan.make(keystrokes: 16 * 6, targets: [editor, terminal], seed: 1, chunkKeystrokes: 16)
+        let summary = await SoakRunner(
+            targets: [editor, terminal], runner: runner, monitor: nil, clock: clock,
+            activate: { activated.append($0.id) }
+        )
+        .run(plan)
+        #expect(summary.chunks == 6 && summary.failures.isEmpty)
+        #expect(
+            setup.steps.all.map(\.action) == [
+                .selectInputSource, .launch, .wait, .focusField,  // editor, first chunk
+                .launch,  // terminal, first chunk: the only capture start
+                .selectInputSource, .focusField,  // editor again: layout and field, no launch, no wait
+                .selectInputSource, .focusField,  // editor a third time; terminal needs nothing
+            ])
+        #expect(activated.all == ["editor", "terminal", "editor", "terminal"])
+    }
+
+    @Test func failedReactivationFailsTheChunkWithoutTyping() async {
+        let clock = ManualClock()
+        let target = makeScenario(id: "t")
+        let driver = FakeDriver()
+        let runner = ScenarioRunner(
+            driver: driver, readback: EchoReadback(), setup: FakeSetup(), probe: nil, clock: clock)
+        let plan = SoakPlan.make(keystrokes: 32, targets: [target], seed: 1, chunkKeystrokes: 16)
+        let summary = await SoakRunner(
+            targets: [target], runner: runner, monitor: nil, clock: clock,
+            activate: { _ in throw TestFailure.injected }
+        )
+        .run(plan)
+        #expect(driver.typed.all.count == 1)
+        #expect(summary.failures == [.init(chunk: 1, scenario: "t", outcome: .fail, reason: "activate: injected")])
+        #expect(!summary.passed)
+    }
+
     @Test func growthNeedsTwoDistinctTimes() {
         #expect(SoakSummary.growth([]) == nil)
         #expect(

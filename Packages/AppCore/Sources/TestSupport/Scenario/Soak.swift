@@ -89,6 +89,7 @@ public struct SoakSummary: Sendable, Hashable, Codable {
         public var chunk: Int
         public var scenario: String
         public var outcome: ScenarioResult.Outcome
+        public var reason: String?
     }
 
     public struct Sample: Sendable, Hashable, Codable {
@@ -126,34 +127,39 @@ public struct SoakSummary: Sendable, Hashable, Codable {
 }
 
 public struct SoakRunner: Sendable {
+    /// Brings a target that an earlier chunk already prepared back to the front (live: `SystemActions.launch`,
+    /// which only activates a running app).
+    public typealias Activation = @Sendable (_ target: Scenario) async throws -> Void
+
     private let targets: [Scenario]
     private let runner: ScenarioRunner
     private let monitor: (any SoakMonitor)?
     private let clock: any MonotonicClock
     private let sampleEveryChunks: Int
+    private let activate: Activation?
 
     public init(
         targets: [Scenario], runner: ScenarioRunner, monitor: (any SoakMonitor)?, clock: any MonotonicClock,
-        sampleEveryChunks: Int = 10
+        sampleEveryChunks: Int = 10, activate: Activation? = nil
     ) {
         self.targets = targets
         self.runner = runner
         self.monitor = monitor
         self.clock = clock
         self.sampleEveryChunks = max(1, sampleEveryChunks)
+        self.activate = activate
     }
 
     public func run(_ plan: SoakPlan) async -> SoakSummary {
         let start = clock.now().nanoseconds
         var failures: [SoakSummary.Failure] = []
         var samples: [SoakSummary.Sample] = []
+        var prepared = Set<Int>()
         for (index, chunk) in plan.chunks.enumerated() {
-            var scenario = targets[chunk.target]
-            scenario.keys = chunk.keys
-            scenario.expect = Scenario.Expectation(text: chunk.expectedText)
-            let result = await runner.run(scenario)
+            let result = await run(chunk, firstVisit: prepared.insert(chunk.target).inserted)
             if result.outcome != .pass {
-                failures.append(.init(chunk: index, scenario: scenario.id, outcome: result.outcome))
+                failures.append(
+                    .init(chunk: index, scenario: result.scenario, outcome: result.outcome, reason: result.reason))
             }
             if index % sampleEveryChunks == 0 || index == plan.chunks.count - 1,
                 let megabytes = try? await monitor?.footprintMegabytes()
@@ -168,5 +174,24 @@ public struct SoakRunner: Sendable {
         return SoakSummary(
             keystrokes: plan.keystrokes, chunks: plan.chunks.count, failures: failures, samples: samples,
             growthMegabytesPerHour: growth, stuckModifierFlags: stuck, passed: passed)
+    }
+
+    /// 13.6: the first chunk of a target runs its full setup (launch, page, capture shell, waits). Later chunks
+    /// keep only the layout and `focusField` steps, after `activate` brought the app back to the front, so a long
+    /// soak neither relaunches apps, reloads pages nor opens a terminal window per chunk.
+    private func run(_ chunk: SoakChunk, firstVisit: Bool) async -> ScenarioResult {
+        var scenario = targets[chunk.target]
+        scenario.keys = chunk.keys
+        scenario.expect = Scenario.Expectation(text: chunk.expectedText)
+        guard !firstVisit else { return await runner.run(scenario) }
+        scenario.setup = scenario.setup.filter { $0.action == .focusField }
+        do {
+            try await activate?(scenario)
+        } catch {
+            return ScenarioResult(
+                scenario: scenario.id, outcome: .fail, observedText: nil, durationSeconds: 0,
+                reason: "activate: " + String(describing: error))
+        }
+        return await runner.run(scenario)
     }
 }
