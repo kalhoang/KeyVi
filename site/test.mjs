@@ -68,6 +68,8 @@ export function assertWellFormedXml(text, label) {
 }
 
 const attrs = (html, name) => [...html.matchAll(new RegExp(`\\s${name}="([^"]*)"`, "g"))].map((m) => m[1]);
+// Pages written by scripts/publish-release (ADR 0304): one bilingual page per release, opened by Sparkle.
+const isReleaseNotesPage = (relPath) => relPath.startsWith("release-notes/");
 
 function resolveInternal(dist, fromFile, href) {
   const [rawPath, fragment = ""] = href.split("#");
@@ -167,7 +169,12 @@ async function checkSite(label, dist) {
     const allowed = new Set(["ung-ho/index.html", "en/donate/index.html"]);
     for (const [file, html] of pages) {
       if (allowed.has(rel(file))) continue;
-      const links = attrs(html, "href").filter((h) => /^(\/ung-ho\/|\/en\/donate\/)/.test(h));
+      const links = attrs(html, "href").filter((h) => /^(\/ung-ho\/|\/en\/donate\/|https:\/\/[^/]+\/(ung-ho|en\/donate)\/)/.test(h));
+      if (isReleaseNotesPage(rel(file))) {
+        // Shown in the in-app update window, where PRD-R57 forbids the donation line.
+        assert.equal(links.length, 0, `${rel(file)}: donation link on a release-notes page`);
+        continue;
+      }
       const ok = rel(file).includes("changelog") || rel(file).includes("nhat-ky") || links.length === 1; // footer link, plus the release-notes line
       assert.ok(ok, `${rel(file)}: unexpected donation links`);
       assert.ok(!/<[^>]+class="[^"]*popup|modal|banner/.test(html), `${rel(file)}: popup-like element`);
@@ -271,7 +278,10 @@ try {
 
   await check("brand name is never hard-coded in site sources (CLAUDE.md)", async () => {
     const brand = await loadBrand(join(ROOT_DIR, "scripts", "brand.env"));
-    const files = (await walk(SITE_DIR)).filter((f) => !f.includes(`${SITE_DIR}/dist`) && /\.(mjs|js|css|json|xml|svg|md|txt)$/.test(f) && !f.endsWith("_headers"));
+    // Release records written by scripts/publish-release name the product on purpose; they are data, not
+    // sources, and a rename is refused once they exist (PLT-R750).
+    const published = [join(SITE_DIR, "data") + "/", join(SITE_DIR, "static", "appcast.xml"), join(SITE_DIR, "static", "release-notes") + "/"];
+    const files = (await walk(SITE_DIR)).filter((f) => !f.includes(`${SITE_DIR}/dist`) && /\.(mjs|js|css|json|xml|svg|md|txt)$/.test(f) && !f.endsWith("_headers") && !published.some((p) => f.startsWith(p)));
     const offenders = [];
     for (const file of files) {
       const text = await readFile(file, "utf8");

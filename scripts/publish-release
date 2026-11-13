@@ -11,15 +11,18 @@
 #   2. EdDSA-sign the update archive with Sparkle's sign_update (from the resolved SwiftPM artifacts
 #      or a pinned, checksum-verified download).
 #   3. Insert the appcast item (site/static/appcast.xml): sparkle:version, shortVersionString,
-#      minimumSystemVersion, edSignature, length, release-notes links vi/en, channel for betas,
-#      phasedRolloutInterval for stable (QA-R34, QA-R35).
-#   4. Add the release to site/data/releases.json (download page, QA-R37).
+#      minimumSystemVersion, edSignature, length, ONE release-notes link without xml:lang variants
+#      (ADR 0304 amendment), channel for betas, phasedRolloutInterval for stable (QA-R34, QA-R35).
+#   4. Write the bilingual release-notes page site/static/release-notes/<version>/index.html
+#      (Vietnamese first, then English, PRD-R51) and add the release to site/data/releases.json
+#      (download page, QA-R37).
 #   5. Render the Homebrew cask from packaging/homebrew/Casks/cask.rb.template (stable only,
 #      QA-R36) into dist/homebrew/ and, with --tap-dir, into Pa's tap checkout.
 #   6. Optionally (--github-release) publish the draft GitHub Release and point URLs at its assets.
 #
-# Default is a dry run: everything is written inside a temporary copy and printed; nothing in the
-# repository, the tap or on GitHub changes. Use --apply to write for real.
+# Every output is first written into a temporary copy. The default dry run prints it and deletes it;
+# --apply copies the outputs into the repository only after every step succeeded, so a failure never
+# leaves a half-updated appcast, page or releases.json.
 set -euo pipefail
 
 SPARKLE_VERSION="2.10.1"
@@ -129,15 +132,13 @@ mode="DRY RUN"
 [[ $apply -eq 1 ]] && mode="APPLY"
 info "$mode: publishing $APP_DISPLAY_NAME $version ($channel)"
 
-# Output root: the repository with --apply, a temporary copy of the touched files otherwise.
-if [[ $apply -eq 1 ]]; then
-  out_root="$REPO_ROOT"
-else
-  out_root="$work/repo"
-  mkdir -p "$out_root/site/static" "$out_root/site/data"
-  [[ -f site/static/appcast.xml ]] && cp site/static/appcast.xml "$out_root/site/static/"
-  [[ -f site/data/releases.json ]] && cp site/data/releases.json "$out_root/site/data/"
-fi
+# Staging root: a temporary copy of the files this script changes (installed by --apply at the end).
+out_root="$work/repo"
+mkdir -p "$out_root/site/static" "$out_root/site/data"
+[[ -f site/static/appcast.xml ]] && cp site/static/appcast.xml "$out_root/site/static/"
+[[ -f site/data/releases.json ]] && cp site/data/releases.json "$out_root/site/data/"
+notes_page_rel="site/static/release-notes/$version/index.html"
+[[ ! -e "$REPO_ROOT/$notes_page_rel" ]] || die "$notes_page_rel exists: $version has been published"
 
 gh_repo_args=()
 if [[ $from_github -eq 1 || $github_release -eq 1 || $skip_attestation -eq 0 ]]; then
@@ -180,6 +181,9 @@ bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
 short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
 min_system="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")"
+ed_public_key="$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$plist" 2>/dev/null || true)"
+# ADR 0304: an app without its EdDSA public key could never verify a later update.
+[[ "$ed_public_key" =~ ^[A-Za-z0-9+/]{43}=$ ]] || die "SUPublicEDKey is empty or malformed in $archive (SPARKLE_PUBLIC_ED_KEY)"
 [[ "$bundle_id" == "$APP_BUNDLE_ID_RELEASE" ]] || die "bundle ID $bundle_id != $APP_BUNDLE_ID_RELEASE"
 [[ "$short_version" == "$version" ]] || die "archive version $short_version != $version"
 [[ "$build" =~ ^[0-9]+$ ]] || die "CFBundleVersion is not an integer: $build"
@@ -255,8 +259,9 @@ asset_base="${asset_base%/}"
 archive_url="$asset_base/$base_name.zip"
 dmg_url="$asset_base/$base_name.dmg"
 anchor="v$version"
-notes_url_vi="$site_url/nhat-ky-thay-doi/#$anchor"
-notes_url_en="$site_url/en/changelog/#$anchor"
+changelog_url_vi="$site_url/nhat-ky-thay-doi/#$anchor"
+changelog_url_en="$site_url/en/changelog/#$anchor"
+notes_url="$site_url/release-notes/$version/"
 
 notes_for() {
   local file="$1" changelog="$2"
@@ -269,7 +274,11 @@ notes_for() {
 notes_vi="$(notes_for "$notes_vi_file" CHANGELOG.vi.md)"
 notes_en="$(notes_for "$notes_en_file" CHANGELOG.md)"
 [[ -n "$notes_en" ]] || warn "no English notes for $version (CHANGELOG.md)"
-[[ -n "$notes_vi" ]] || warn "no Vietnamese notes for $version (CHANGELOG.vi.md); using the English notes"
+if [[ -z "$notes_vi" ]]; then
+  # PRD-R51: the update window shows the notes in the interface language, so a release needs both.
+  [[ $apply -eq 0 ]] || die "no Vietnamese notes for $version: add a CHANGELOG.vi.md section or pass --notes-vi"
+  warn "no Vietnamese notes for $version (CHANGELOG.vi.md); the dry run uses the English notes"
+fi
 notes_vi="${notes_vi:-$notes_en}"
 today="$(date -u +%Y-%m-%d)"
 
@@ -277,8 +286,7 @@ today="$(date -u +%Y-%m-%d)"
 appcast_args=(
   --appcast "$out_root/site/static/appcast.xml" --app-name "$APP_DISPLAY_NAME" --site-url "$site_url/"
   --version "$version" --build "$build" --minimum-system-version "$min_system" --channel "$channel"
-  --url "$archive_url" --length "$archive_len" --signature "$ed_signature"
-  --notes-url-vi "$notes_url_vi" --notes-url-en "$notes_url_en"
+  --url "$archive_url" --length "$archive_len" --signature "$ed_signature" --notes-url "$notes_url"
 )
 if [[ $phasing -eq 1 ]]; then
   appcast_args+=(--phased-interval "$PHASED_ROLLOUT_SECONDS")
@@ -290,11 +298,15 @@ fi
 
 info "appcast item"
 py scripts/lib/publish_helpers.py appcast-insert "${appcast_args[@]}"
+info "release-notes page ($notes_url)"
+py scripts/lib/publish_helpers.py release-notes-page --out "$out_root/$notes_page_rel" \
+  --app-name "$APP_DISPLAY_NAME" --version "$version" --notes-vi "$notes_vi" --notes-en "$notes_en" \
+  --changelog-url-vi "$changelog_url_vi" --changelog-url-en "$changelog_url_en"
 info "releases.json entry"
 py scripts/lib/publish_helpers.py releases-add --file "$out_root/site/data/releases.json" \
   --version "$version" --build "$build" --channel "$channel" --date "$today" --dmg-url "$dmg_url" \
   --sha256 "$dmg_sha" --size "$dmg_len" --minimum-system-version "$min_system" \
-  --notes-vi "$notes_vi" --notes-en "$notes_en"
+  --notes-vi "$notes_vi" --notes-en "$notes_en" --app-name "$APP_DISPLAY_NAME"
 
 # --- 5. Homebrew cask (stable only) ------------------------------------------------------------
 if [[ "$channel" == "stable" ]]; then
@@ -305,22 +317,35 @@ if [[ "$channel" == "stable" ]]; then
     --out "$cask_out" --slug "$APP_SLUG" --app-name "$APP_DISPLAY_NAME" --version "$version" \
     --sha256 "$dmg_sha" --url "$dmg_url" --site-host "$APP_SITE_HOST" \
     --desc "Vietnamese input method (Telex and VNI)"
-  if [[ -n "$tap_dir" ]]; then
-    [[ -d "$tap_dir/.git" ]] || die "--tap-dir is not a git checkout: $tap_dir"
-    if [[ $apply -eq 1 ]]; then
-      mkdir -p "$tap_dir/Casks"
-      cp "$cask_out" "$tap_dir/Casks/$APP_SLUG.rb"
-      if [[ $tap_commit -eq 1 ]]; then
-        git -C "$tap_dir" add "Casks/$APP_SLUG.rb"
-        git -C "$tap_dir" commit -m "chore: update $APP_SLUG to $version"
-        info "tap commit created; push it with: git -C '$tap_dir' push"
-      fi
-    else
-      info "dry run: would copy the cask to $tap_dir/Casks/$APP_SLUG.rb"
-    fi
-  fi
+  [[ -z "$tap_dir" || -d "$tap_dir/.git" ]] || die "--tap-dir is not a git checkout: $tap_dir"
 else
   info "beta release: Homebrew cask unchanged (the cask follows the stable channel)"
+fi
+
+# --- Install the staged outputs (only now, after every step above succeeded) -------------------
+install_staged() {
+  local rel
+  for rel in "$@"; do
+    [[ -f "$out_root/$rel" ]] || continue
+    mkdir -p "$(dirname "$REPO_ROOT/$rel")"
+    cp "$out_root/$rel" "$REPO_ROOT/$rel"
+    info "wrote $rel"
+  done
+}
+if [[ $apply -eq 1 ]]; then
+  install_staged site/static/appcast.xml site/data/releases.json "$notes_page_rel" \
+    "dist/homebrew/Casks/$APP_SLUG.rb"
+  if [[ "$channel" == "stable" && -n "$tap_dir" ]]; then
+    mkdir -p "$tap_dir/Casks"
+    cp "$out_root/dist/homebrew/Casks/$APP_SLUG.rb" "$tap_dir/Casks/$APP_SLUG.rb"
+    if [[ $tap_commit -eq 1 ]]; then
+      git -C "$tap_dir" add "Casks/$APP_SLUG.rb"
+      git -C "$tap_dir" commit -m "chore: update $APP_SLUG to $version"
+      info "tap commit created; push it with: git -C '$tap_dir' push"
+    fi
+  fi
+elif [[ "$channel" == "stable" && -n "$tap_dir" ]]; then
+  info "dry run: would copy the cask to $tap_dir/Casks/$APP_SLUG.rb"
 fi
 
 # --- 6. GitHub release -------------------------------------------------------------------------
@@ -340,7 +365,7 @@ if [[ $apply -eq 1 ]]; then
   cat >&2 <<EOF
 
 Done. Next steps:
-  1. Review and commit: git add site/static/appcast.xml site/data/releases.json && git commit
+  1. Review and commit: git add site/static/appcast.xml site/data/releases.json $notes_page_rel && git commit
   2. Upload $base_name.zip and $base_name.dmg to $asset_base/ (unless --github-release)
   3. Deploy the site (site.yml) so the appcast, download page and changelog agree (QA-R37)
   4. Push the tap commit if one was created

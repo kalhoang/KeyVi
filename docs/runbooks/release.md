@@ -19,6 +19,7 @@ Do these once; the sections linked from each line explain how.
 - [ ] Developer ID Application certificate in the login keychain ([certificate renewal](certificate-renewal.md)).
 - [ ] `notarytool` credentials (App Store Connect API key) ([notarization setup](notarization-setup.md)).
 - [ ] Sparkle EdDSA key in the login keychain, with two offline encrypted backups (QA-R32, [key rotation](key-rotation.md)). The public key (`SUPublicEDKey`) and the feed URL are fixed in the app from the first public build (QA-R33).
+- [ ] `SPARKLE_PUBLIC_ED_KEY` filled in `Config/Sparkle.xcconfig` with the public key printed by `generate_keys`, as described in the [EdDSA key note of ADR 0304](../decisions/0304-sparkle-version-pin.md#runbook-note-filling-sparkle_public_ed_key). `scripts/verify-release.sh` and `scripts/publish-release` refuse a build whose `SUPublicEDKey` is empty.
 - [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
 - [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
 - [ ] Homebrew tap repository exists (template: `packaging/homebrew/Casks/cask.rb.template`).
@@ -50,7 +51,7 @@ All must be true on the commit you will tag. Record the evidence (links) in the 
 ## 3. Prepare the release commit
 
 1. Move the `Unreleased` entries of `CHANGELOG.md` under `## [X.Y.Z] - YYYY-MM-DD`; leave an empty `Unreleased` section.
-2. Write the release notes in both languages. Five lines maximum visible, led by user-visible fixes listed by app name, with a link to the changelog page (PRD-R51). For stable releases add the single plain donation line at the bottom of the website release notes, never in the in-app update window (PRD-R57).
+2. Write the release notes in both languages: the English section in `CHANGELOG.md` and the Vietnamese section, same heading, in `CHANGELOG.vi.md`. Five lines maximum visible, led by user-visible fixes listed by app name (PRD-R51); `scripts/publish-release` adds the link to the changelog page and warns above five lines. Do not write a donation line into the notes: the release-notes page is shown in the in-app update window, and the website changelog page already ends with the single plain donation line (PRD-R57).
 3. Set the version and build number as the build script and project settings document (the `App` target reads them; `scripts/build-release.sh <version> <build>` takes them as arguments).
 4. Merge through a pull request into `main` (branch protection: required checks, linear history, signed commits, no force-push; QA-R25). Patch releases of an older minor come from a `release/x.y` branch.
 
@@ -142,12 +143,13 @@ The Sparkle EdDSA private key is never in CI (QA-R32, PLT-R1103). The final step
 
    The script, in one pass (QA-R32, QA-R34, QA-R36, QA-R37):
    - signs the update archive with Sparkle's `sign_update` (EdDSA);
-   - adds the appcast item to `site/static/appcast.xml` with `sparkle:version` (build integer), `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`, the EdDSA signature and length, release notes links in both languages, and `sparkle:channel="beta"` for betas. Stable releases use phased rollout (`sparkle:phasedRolloutInterval`, for example 24 hours per group; a P0 hotfix may skip it). `sparkle:criticalUpdate` only for security or data-loss fixes (PRD-R54);
+   - adds the appcast item to `site/static/appcast.xml` with `sparkle:version` (build integer), `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`, the EdDSA signature and length, one link to the bilingual release-notes page (no `xml:lang` variants, because Sparkle would pick them by the macOS language instead of the app's language; [ADR 0304](../decisions/0304-sparkle-version-pin.md#release-notes-language-amendment-2026-11-13-design-review-finding-15)), and `sparkle:channel="beta"` for betas. Stable releases use phased rollout (`sparkle:phasedRolloutInterval`, for example 24 hours per group; a P0 hotfix may skip it). `sparkle:criticalUpdate` only for security or data-loss fixes (PRD-R54);
+   - writes the release-notes page `site/static/release-notes/X.Y.Z/index.html` (Vietnamese first, then English, each with a link to the changelog page; no donation line because the update window shows it, PRD-R57). It needs Vietnamese notes: a `## [X.Y.Z]` section in `CHANGELOG.vi.md`, or `--notes-vi FILE`;
    - writes `site/data/releases.json` (version, build, channel, date, DMG URL, SHA-256, minimum system version, notes in Vietnamese and English), which feeds the download page and changelog;
    - bumps the Homebrew cask in the tap (`auto_updates true`, `depends_on macos: ">= :sequoia"`, `zap` paths per PLT-R1012). Betas do not change the cask.
 
    The appcast, the website and the cask are updated by this one script so they never disagree.
-4. Review `git diff` in the repository (appcast, releases.json), commit and push through a pull request to `main` (`site.yml` builds and deploys the website and appcast when `site/` changes).
+4. Review `git diff` in the repository (appcast, release-notes page, releases.json), commit and push through a pull request to `main` (`site.yml` builds and deploys the website and appcast when `site/` changes).
 5. Un-draft the GitHub Release (mark betas as pre-release).
 
 The appcast URL is one stable address, `https://{{app-slug}}.kal.vn/appcast.xml`. It never moves (PRD-R73, PRD-R75).

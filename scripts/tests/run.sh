@@ -324,6 +324,7 @@ if [[ $no_macos -eq 0 ]]; then
 <key>CFBundleShortVersionString</key><string>1.2.3</string>
 <key>CFBundleVersion</key><string>1020399</string>
 <key>LSMinimumSystemVersion</key><string>15.0</string>
+<key>SUPublicEDKey</key><string>pfIShU4dEXqPd5ObYNfDBiQWcXozk7estwzTnF9BamQ=</string>
 </dict></plist>
 EOF
   printf '#!/bin/sh\nexit 0\n' >"$app/Contents/MacOS/Test"
@@ -339,12 +340,18 @@ EOF
   expect 0 "publish-release dry run" "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper
   contains "appcast item printed" "<sparkle:shortVersionString>1.2.3</sparkle:shortVersionString>"
   contains "phased rollout for stable" "<sparkle:phasedRolloutInterval>86400</sparkle:phasedRolloutInterval>"
-  contains "release notes vi link" "https://testapp.example.vn/nhat-ky-thay-doi/#v1.2.3"
+  # ADR 0304 amendment: one bilingual release-notes page, linked once, without xml:lang variants.
+  contains "single release-notes link" \
+    "<sparkle:releaseNotesLink>https://testapp.example.vn/release-notes/1.2.3/</sparkle:releaseNotesLink>"
+  if grep -q 'xml:lang' "$T/out"; then ko "no xml:lang variants in the appcast item"; else ok "no xml:lang variants in the appcast item"; fi
+  contains "notes page links the Vietnamese changelog" 'href="https://testapp.example.vn/nhat-ky-thay-doi/#v1.2.3"'
+  contains "notes page links the English changelog" 'href="https://testapp.example.vn/en/changelog/#v1.2.3"'
+  contains "notes page carries the release notes" "<li>First public test</li>"
   contains "releases.json entry printed" "\"dmgUrl\": \"https://testapp.example.vn/download/testapp-1.2.3.dmg\""
   contains "cask rendered" "cask \"testapp\" do"
   # shellcheck disable=SC2088 # literal text in the rendered cask, not a path to expand
   contains "zap uses the folder rule" "~/Library/Application Support/Test App"
-  if [[ ! -e "$M/site/static/appcast.xml" && ! -e "$M/site/data/releases.json" ]]; then
+  if [[ ! -e "$M/site/static/appcast.xml" && ! -e "$M/site/data/releases.json" && ! -e "$M/site/static/release-notes" ]]; then
     ok "dry run leaves the repository untouched"
   else
     ko "dry run wrote into the repository"
@@ -354,6 +361,21 @@ EOF
   expect 0 "build-release dry run" bash -c "cd '$M' && touch project.yml && scripts/build-release.sh 1.2.3 1020399 --dry-run"
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
+
+  echo "== verify-release.sh: Sparkle public key gate (ADR 0304)"
+  # The ad-hoc app fails the Developer ID checks anyway; only the key check's own result matters here.
+  expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
+  contains "public key present passes" "ok: Sparkle public EdDSA key (SUPublicEDKey)"
+  /usr/libexec/PlistBuddy -c 'Set :SUPublicEDKey ""' "$app/Contents/Info.plist"
+  codesign --force --sign - "$app" >/dev/null 2>&1
+  expect 1 "verify-release fails without SUPublicEDKey" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
+  contains "empty public key reported" "FAILED: Sparkle public EdDSA key (SUPublicEDKey)"
+  contains "points at the runbook note" "Runbook note: filling SPARKLE_PUBLIC_ED_KEY"
+  rm -f "$M/dist/testapp-1.2.3/testapp-1.2.3.zip"
+  ditto -c -k --sequesterRsrc --keepParent "$app" "$M/dist/testapp-1.2.3/testapp-1.2.3.zip"
+  expect 1 "publish-release refuses an archive without SUPublicEDKey" \
+    "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper
+  contains "publish names the missing key" "SUPublicEDKey is empty or malformed"
 fi
 
 echo
