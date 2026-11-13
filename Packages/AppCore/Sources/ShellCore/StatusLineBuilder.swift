@@ -22,6 +22,12 @@ struct StatusLineBuilder {
         }
     }
 
+    /// PLT-R1009: the app runs on defaults in memory after a crash loop. The action opens the safe-mode choices
+    /// (reset, use the saved settings, report), so they stay reachable from the menu at any time.
+    func safeModeLine() -> StatusLine {
+        line(.safeMode, [appName], action: .safeModeChoices, label: .actionSafeModeChoices)
+    }
+
     func tapReenabledLine() -> StatusLine {
         line(.tapReenabled, [], action: .reportProblem, label: .actionReportProblem)
     }

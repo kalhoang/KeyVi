@@ -83,6 +83,8 @@ public struct StatusLine: Sendable, Hashable {
         case overrideTextFocus(bundle: BundleKey)
         /// `failOpen(callbackStuck)`: only reopening the app recovers (ADR 0309).
         case reopenApp
+        /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use the saved settings, report).
+        case safeModeChoices
     }
 
     public var key: String  // in the `Status` table
@@ -108,18 +110,19 @@ public struct StatusLine: Sendable, Hashable {
     }
 
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
-    /// source, built-in Vietnamese source, no text focus with override action) > tap re-enabled notice >
-    /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
+    /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
-    /// (PRD-R41).
+    /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
         _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
-        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true
+        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false
     ) -> StatusLine? {
         let context = StatusLineBuilder(
             appName: appName, holderHintKey: holderHintKey, frontmostApp: frontmostApp,
             onboardingCompleted: onboardingCompleted)
         if let line = context.hostLine(for: state) { return line }
+        if safeMode { return context.safeModeLine() }
         if tapRecentlyReenabled { return context.tapReenabledLine() }
         return context.knownLimitationLine()
     }

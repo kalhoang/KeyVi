@@ -224,13 +224,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Continues in safe mode. You can come back to this choice from Report a Problem in the menu."
+            "value" : "Continues in safe mode. You can come back to this choice from the status line in the menu."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tiếp tục ở chế độ an toàn. Bạn có thể quay lại lựa chọn này từ mục Báo lỗi trong menu."
+            "value" : "Tiếp tục ở chế độ an toàn. Bạn có thể quay lại lựa chọn này từ dòng trạng thái trong menu."
           }
         }
       }

@@ -118,7 +118,7 @@ extension AppEnvironment {
         return StatusLine.forState(
             state, holderHintKey: holderHint, appName: brand.displayName, frontmostApp: frontmostStatus(),
             tapRecentlyReenabled: recentlyReenabled,
-            onboardingCompleted: settings.user.onboarding.completedVersion != nil)
+            onboardingCompleted: settings.user.onboarding.completedVersion != nil, safeMode: safeMode)
     }
 
     private func displayedMode() -> TypingMode {
@@ -163,13 +163,9 @@ extension AppEnvironment: StatusMenuActions {
         Task { await settingsStore.setAppRule(rule, for: bundle) }
     }
 
-    /// In safe mode the report item leads to the safe-mode choices first, so reset and exit stay reachable from
-    /// the menu (PLT-R1009, W1-B request).
+    /// The report flow. In safe mode the status line's own action offers reset and exit (PLT-R1009), so the
+    /// report item never has to stand in for them.
     func reportProblem(for bundle: BundleKey?) {
-        if safeMode {
-            presentSafeMode()
-            return
-        }
         diagnosticsController().startMisbehavesFlow(for: bundle)
     }
 
@@ -188,6 +184,7 @@ extension AppEnvironment: StatusMenuActions {
         case .learnMore(let url): NSWorkspace.shared.open(url)
         case .overrideTextFocus(let bundle): addTextFocusOverride(for: bundle)
         case .reopenApp: relaunchSelf()
+        case .safeModeChoices: presentSafeMode()
         case .none: break
         }
     }
