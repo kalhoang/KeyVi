@@ -4,13 +4,15 @@
 # Platform integration layers on the self-hosted macOS runner (QA-R10 to QA-R16, PLT-R821,
 # section 13.2). The runner has Accessibility (and, if needed, Input Monitoring) granted to the
 # stable Apple Development signing identity of the test build, so builds here are signed normally
-# (never ad hoc: a changing signature would lose the grants).
+# by default: an ad-hoc signature changes with every build and would lose the grants. Only a machine
+# that grants again after every build (the tart VM, docs/runbooks/integration-suite.md section 10)
+# sets INTEGRATION_CODE_SIGN_IDENTITY=- for an ad-hoc test build.
 #
 # Subcommands:
 #   build   the test build: xcodegen configuration Integration (INTEGRATION_HOOKS, dev bundle ID, Apple
 #           Development identity, ADR 0502 "Integration hooks") and TestHost, built in $INTEGRATION_DERIVED_DATA
 #           (default .build/integration-build) and installed into $INTEGRATION_APP_DIR (default ~/Applications)
-#           at the same path every time
+#           at the same path every time; INTEGRATION_CODE_SIGN_IDENTITY=- signs the test build ad hoc instead
 #   tests   QA-R11 TestHost suite and privacy canary: compat-harness run --only 'testhost.*' (ADR 0502)
 #   compat  compat-harness scenarios (compat/scenarios), results in the output directory
 #   soak    nightly soak: 1,000,000 keystrokes through the pipeline (QA-R16); M2 compared with the baseline
@@ -28,6 +30,9 @@
 #                          needs no opt-in.
 #   chromedriver           webdriver scenarios without a --webdriver BUNDLE=URL entry read back through the
 #                          chromedriver default endpoint http://127.0.0.1:9515; start it before compat and soak.
+#   INTEGRATION_CODE_SIGN_IDENTITY=-  build: ad-hoc test build with the hardened runtime off, for a machine without
+#                          the Apple Development identity whose grants are renewed after every build (the VM's
+#                          scripts/vm/grant-tcc.sh). Unset: the identity of Config/Integration.xcconfig.
 set -euo pipefail
 
 usage() {
@@ -134,8 +139,28 @@ install_app() {
   info "installed $destination"
 }
 
+# Signing of the test build. Ad hoc only on request: an ad-hoc signature has no Team ID, so the hardened runtime's
+# library validation would refuse the embedded Sparkle framework (vm-test-lab.md section 6.1), and its TCC grants
+# follow the cdhash of each build.
+SIGN_OVERRIDES=()
+select_signing() {
+  case "${INTEGRATION_CODE_SIGN_IDENTITY:-}" in
+    "") SIGN_OVERRIDES=() ;;
+    -)
+      SIGN_OVERRIDES=(CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= OTHER_CODE_SIGN_FLAGS=
+        ENABLE_HARDENED_RUNTIME=NO)
+      info "the test build is signed ad hoc with the hardened runtime off (INTEGRATION_CODE_SIGN_IDENTITY=-)"
+      ;;
+    *)
+      die "INTEGRATION_CODE_SIGN_IDENTITY accepts only - (ad hoc); leave it unset for the Apple Development" \
+        "identity of Config/Integration.xcconfig"
+      ;;
+  esac
+}
+
 build_test_apps() {
   require_live_opt_in
+  select_signing
   require_cmd xcodebuild ditto pgrep pkill
   load_brand
   local xcodegen_bin derived apps app
@@ -147,7 +172,7 @@ build_test_apps() {
   # ONLY_ACTIVE_ARCH on the command line: unlike the xcconfig line, it also reaches the SwiftPM package targets,
   # which would otherwise compile for arm64 and x86_64.
   xcodebuild -project App.xcodeproj -scheme App -configuration Integration -derivedDataPath "$derived" \
-    -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build
+    -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES ${SIGN_OVERRIDES[@]+"${SIGN_OVERRIDES[@]}"} build
   xcodebuild -project App.xcodeproj -scheme TestHost -configuration Debug -derivedDataPath "$derived" \
     -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build
   apps="${INTEGRATION_APP_DIR:-$HOME/Applications}"
