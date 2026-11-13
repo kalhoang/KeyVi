@@ -154,12 +154,19 @@ jobs:
           scripts/coverage.sh --package "$ENGINE" --min 95 \
             --exclude '^Sources/(lexicon-builder|engine-benchmark|VietnameseEngineTesting)/' \
             --baseline .build/coverage-baseline/engine.json --summary-out .build/coverage/engine.json
+      - name: Engine core target coverage, at least 95 % (QA-R2)
+        # The gate of Packages/VietnameseEngine/Scripts/coverage.sh (Sources/VietnameseEngine only), read from
+        # the export the step above wrote, so the engine tests run once.
+        run: python3 -I "$ENGINE/Scripts/coverage.py" "$(swift test --package-path "$ENGINE" --show-codecov-path)"
       - name: AppCore tests with coverage (at least 80 %, QA-R2)
         if: hashFiles('Packages/AppCore/Package.swift') != ''
         run: |
           scripts/coverage.sh --package "$APPCORE" --min 80 \
             --exclude '^Sources/(CompatHarness|TestSupport)/' \
             --baseline .build/coverage-baseline/appcore.json --summary-out .build/coverage/appcore.json
+      - name: Compatibility rules and matrix lint (compat-lint, PLT-R505, PLT-R506, PLT-R521, PLT-R531)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: swift run --package-path "$APPCORE" compat-lint
       - name: Compatibility scenarios, plan only (compat-harness --dry-run, no events posted)
         # Skipped until compat/scenarios exists (W2-E1); the script also skips while the product is missing.
         if: hashFiles('compat/scenarios/**') != ''

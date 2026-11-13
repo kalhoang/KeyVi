@@ -774,6 +774,14 @@ class WorkflowCoverageTests(unittest.TestCase):
             "(cd data && shasum -a 256 -c inputs/MANIFEST.sha256)",
             'swift run --package-path "$ENGINE" lexicon-builder check')
 
+    def test_coverage_gates_and_compat_lint(self):
+        self.assert_runs(
+            "ci.yml", "macos-tests",
+            'scripts/coverage.sh --package "$ENGINE" --min 95',
+            'python3 -I "$ENGINE/Scripts/coverage.py" "$(swift test --package-path "$ENGINE" --show-codecov-path)"',
+            'scripts/coverage.sh --package "$APPCORE" --min 80',
+            'swift run --package-path "$APPCORE" compat-lint')
+
     def test_nightly_fuzzes_each_method_for_thirty_minutes(self):
         body = self.job("nightly.yml", "fuzz")
         self.assertIn("image: swift:6.4.2-noble@sha256:", body)
