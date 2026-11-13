@@ -1,0 +1,439 @@
+{
+  "$schema": "./schema/rules.schema.json",
+  "schemaVersion": 1,
+  "rulesetVersion": "2026.11.0",
+  "defaults": {
+    "strategy": "backspaceReplace",
+    "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
+    "fallback": ["passThrough"],
+    "defaultMode": "inherit",
+    "requireTextFocus": "byEngine",
+    "verifyReentry": "whenReadable"
+  },
+  "bundleGroups": {
+    "terminals": [
+      "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty", "dev.warp.Warp-Stable",
+      "com.github.wez.wezterm", "net.kovidgoyal.kitty", "org.alacritty"
+    ],
+    "webkitBrowsers": ["com.apple.Safari", "com.apple.SafariTechnologyPreview"]
+  },
+  "conflictingInputApps": ["com.trankynam.GoTiengViet", "com.tuyenmai.openkey", "com.lamquangminh.evkey"],
+  "secureInputHints": [
+    { "bundleId": "com.apple.Terminal", "hintKey": "terminal.secureKeyboardEntry" },
+    { "bundleId": "com.googlecode.iterm2", "hintKey": "iterm2.secureKeyboardEntry" }
+  ],
+  "rules": [
+    {
+      "id": "browser.chromium.addressBar",
+      "summary": "Chromium-family address and command bars with inline autocomplete",
+      "match": { "engines": ["chromium"], "ax": { "roles": ["AXTextField"], "ancestorRoles": ["AXToolbar"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelectionThenPlaceholder" },
+        "features": { "autoCapitalize": false }
+      },
+      "provenance": {
+        "reason": "Selected inline suggestion absorbs the first backspace: 'a'+'s' gives 'aá', 'd'+'d' gives 'dđ'.",
+        "evidence": [{ "type": "scenario", "ref": "compat/inline-completion-local-page" }],
+        "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY that the omnibox is exposed to AX without enabling renderer accessibility; VERIFY Arc and Dia command bar roles. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-11-01"
+      },
+      "test": { "scenario": "browser.chromium.addressBar", "automation": "automated" }
+    },
+    {
+      "id": "browser.webkit.addressBar",
+      "summary": "Safari address bar with inline autocomplete (WebKit exposes the selection through AX)",
+      "match": { "engines": ["webkitBrowser"], "ax": { "roles": ["AXTextField"], "ancestorRoles": ["AXToolbar"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelection" },
+        "features": { "autoCapitalize": false }
+      },
+      "provenance": {
+        "reason": "The suggested remainder is selected after the caret and absorbs a backspace: VNI 'ca6u' gave 'caấu'.",
+        "evidence": [{ "type": "scenario", "ref": "compat/inline-completion-local-page" }],
+        "tested": [{ "app": "Safari", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY the address field role and toolbar ancestor in Safari and Safari Technology Preview; VERIFY the 15 ms AXSelectedTextRange timeout. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-11-01"
+      },
+      "test": { "scenario": "browser.webkit.addressBar", "automation": "automated" }
+    },
+    {
+      "id": "browser.gecko.urlBar",
+      "summary": "Firefox URL bar with inline autocomplete",
+      "match": { "engines": ["gecko"], "ax": { "roles": ["AXTextField", "AXComboBox"], "ancestorRoles": ["AXToolbar"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelectionThenPlaceholder" },
+        "features": { "autoCapitalize": false }
+      },
+      "provenance": {
+        "reason": "The URL bar selects the suggested remainder after the caret, so 'Có' gave 'Coó'.",
+        "evidence": [{ "type": "scenario", "ref": "compat/inline-completion-local-page" }],
+        "tested": [{ "app": "Firefox", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY Gecko AX availability without an assistive client and the URL bar role. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "browser.gecko.urlBar", "automation": "automated" }
+    },
+    {
+      "id": "web.googleSheets.cellEditor",
+      "summary": "Google Sheets cell autocomplete in Chromium browsers",
+      "match": { "engines": ["chromium"], "web": { "urlPrefixes": ["https://docs.google.com/spreadsheets/"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "placeholder", "firstEditDelayUs": 8000 }
+      },
+      "provenance": {
+        "reason": "Column autocomplete selects the suggested remainder ('D'+'d' gives 'DĐức'); first letter lost when the cell enters edit mode.",
+        "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
+        "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. Placeholder requires the 1,000-edit test (PLT-R422). The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "web.googleSheets.cellEditor", "automation": "manual" }
+    },
+    {
+      "id": "web.googleSheets.cellEditor.webkit",
+      "summary": "Google Sheets cell autocomplete and edit-mode transition in Safari",
+      "match": { "engines": ["webkitBrowser"], "web": { "urlPrefixes": ["https://docs.google.com/spreadsheets/"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelection", "firstEditDelayUs": 8000 }
+      },
+      "provenance": {
+        "reason": "In Safari the first letter was lost while the cell was not yet in edit mode, and column autocomplete selected the suggested remainder.",
+        "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
+        "tested": [{ "app": "Safari", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Requires AX document URL. VERIFY firstEditDelayUs and that WebKit exposes the cell editor selection. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "web.googleSheets.cellEditor.webkit", "automation": "manual" }
+    },
+    {
+      "id": "web.telegram.composer",
+      "summary": "Telegram Web message composer: select the letters and type over them",
+      "match": { "web": { "urlPrefixes": ["https://web.telegram.org/"] } },
+      "action": { "strategy": "selectReplace" },
+      "provenance": {
+        "reason": "Telegram Web dropped the first Vietnamese letter of a message with backspace replacement; select-then-type avoided it in public reports.",
+        "evidence": [{ "type": "scenario", "ref": "compat/contenteditable-composer" }],
+        "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Requires AX document URL. VERIFY in Chrome and Safari, and that Shift+Left selects inside the composer. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "web.telegram.composer", "automation": "manual" }
+    },
+    {
+      "id": "remote.chromeRemoteDesktop.web",
+      "summary": "Chrome Remote Desktop web client forwards key codes, not text",
+      "match": { "web": { "urlPrefixes": ["https://remotedesktop.google.com/"] } },
+      "action": {
+        "strategy": "passThrough",
+        "defaultMode": "en",
+        "fallback": [],
+        "features": { "macros": false, "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "The web client sends key codes to the remote machine, so injected text arrives as wrong letters or not at all.",
+        "evidence": [{ "type": "scenario", "ref": "compat/remote-clients" }],
+        "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Requires AX document URL. VERIFY the access URL prefix; advise typing Vietnamese with the remote machine's own input method. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "remote.chromeRemoteDesktop.web", "automation": "manual" }
+    },
+    {
+      "id": "office.excel.cellEditor",
+      "summary": "Excel cell editor with AutoComplete",
+      "match": { "bundleIds": ["com.microsoft.Excel"], "ax": { "roles": ["AXTextArea", "AXTextField"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelectionThenPlaceholder" }
+      },
+      "provenance": {
+        "reason": "AutoComplete selects the suggested remainder in the cell editor ('D'+'d' gave 'DĐức'), and cell content was erased in public reports.",
+        "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
+        "tested": [{ "app": "Microsoft Excel", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY the cell editor's AX role. The sheet-tab rename editor needs its own rule (selectReplace or axReplace per test). Placeholder requires the 1,000-edit test (PLT-R422). The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "office.excel.cellEditor", "automation": "manual" }
+    },
+    {
+      "id": "office.microsoft.documents",
+      "summary": "Microsoft Office: backspace-only replacement with re-entry verification",
+      "match": {
+        "bundleIds": ["com.microsoft.Word", "com.microsoft.Powerpoint", "com.microsoft.Outlook", "com.microsoft.Excel"]
+      },
+      "action": {
+        "strategy": "backspaceReplace",
+        "fallback": ["passThrough"],
+        "requireTextFocus": "whenKnown",
+        "verifyReentry": "whenReadable"
+      },
+      "provenance": {
+        "reason": "Outlook deleted the character after the caret and AutoCorrect rewrote words in public reports; edits stay backspace-only and re-entry is verified before a previous word is edited.",
+        "evidence": [{ "type": "scenario", "ref": "compat/office-documents" }],
+        "tested": [{ "app": "Microsoft Word", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "The values equal the defaults for native apps on purpose and are pinned so a change of defaults cannot silently affect Office. VERIFY Office AX exposure and Word AutoComplete. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "office.microsoft.documents", "automation": "manual" }
+    },
+    {
+      "id": "office.libreoffice.pacing",
+      "summary": "LibreOffice: paced synthetic events so they are not reordered",
+      "match": { "bundleIds": ["org.libreoffice.script"] },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "interEventDelayUs": 1000, "postDeleteSettleUs": 2000 }
+      },
+      "provenance": {
+        "reason": "LibreOffice processes synthetic events asynchronously and reordered them: 'Nguyễn' gave 'Ngễuyn'.",
+        "evidence": [{ "type": "scenario", "ref": "compat/office-documents" }],
+        "tested": [{ "app": "LibreOffice", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Initial pacing values are hypotheses. VERIFY in Writer and Calc. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "office.libreoffice.pacing", "automation": "manual" }
+    },
+    {
+      "id": "electron.default",
+      "summary": "Electron apps: default strategy, never enable accessibility, no text-focus gating",
+      "match": { "engines": ["electron"] },
+      "action": { "strategy": "backspaceReplace", "requireTextFocus": "never", "axEnable": "none" },
+      "provenance": {
+        "reason": "Electron web editors handle synthetic keys, but AX is unreliable until enabled and enabling it can switch VS Code into screen-reader mode.",
+        "evidence": [{ "type": "scenario", "ref": "compat/electron-editors" }],
+        "tested": [{ "app": "Slack", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "The values equal the engine defaults on purpose and are pinned. VERIFY the AXManualAccessibility side effects before any per-panel rule enables AX. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "electron.default", "automation": "manual" }
+    },
+    {
+      "id": "editor.vscodeFamily",
+      "summary": "VS Code and Cursor editors: engine code context",
+      "match": { "bundleIds": ["com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92"] },
+      "action": { "strategy": "backspaceReplace", "engineContext": "code" },
+      "provenance": {
+        "reason": "Code editors need the engine's code context so words such as 'tar' or 'less' are restored instead of transformed.",
+        "evidence": [{ "type": "scenario", "ref": "compat/electron-editors" }],
+        "tested": [{ "app": "Visual Studio Code", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY Cursor's bundle ID; VERIFY burst typing in the editor. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "editor.vscodeFamily", "automation": "automated" }
+    },
+    {
+      "id": "editor.vscode.integratedTerminal",
+      "summary": "VS Code and Cursor integrated terminal: terminal pacing and code context",
+      "match": {
+        "bundleIds": ["com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92"],
+        "ax": { "domClasses": ["xterm-helper-textarea"] }
+      },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
+        "engineContext": "code",
+        "features": { "autoCapitalize": false, "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "The integrated terminal feeds keys to a shell like a terminal emulator, and users asked for terminal behaviour there instead of the editor's.",
+        "evidence": [{ "type": "scenario", "ref": "compat/terminal-tui" }],
+        "tested": [{ "app": "Visual Studio Code", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY that the terminal's helper textarea class is exposed through AX without enabling AXManualAccessibility; otherwise this rule never matches and the editor rule applies. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "editor.vscode.integratedTerminal", "automation": "manual" }
+    },
+    {
+      "id": "terminal.default",
+      "summary": "Terminal emulators: one key per read for TUIs, no auto-capitalisation",
+      "match": { "bundleGroup": "terminals" },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
+        "requireTextFocus": "never",
+        "engineContext": "code",
+        "features": { "autoCapitalize": false, "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "TUIs (Claude Code, Kiro CLI) lost or appended letters when backspaces and UTF-8 arrived in one read.",
+        "evidence": [{ "type": "scenario", "ref": "compat/terminal-tui" }],
+        "tested": [{ "app": "Terminal", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Initial pacing values are hypotheses. VERIFY with an Ink-based TUI, zsh-autosuggestions, tmux over ssh. Warp reports caret 0, so no AX gating. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "terminal.default", "automation": "automated" }
+    },
+    {
+      "id": "jvm.default",
+      "summary": "Java apps such as JetBrains IDEs: paced events, no AX gating, code context",
+      "match": { "engines": ["jvm"] },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "interEventDelayUs": 1000, "postDeleteSettleUs": 2000 },
+        "requireTextFocus": "never",
+        "engineContext": "code"
+      },
+      "provenance": {
+        "reason": "JetBrains IDEs duplicated vowels with unpaced events, and slow Java AX froze the prior art's main thread.",
+        "evidence": [{ "type": "scenario", "ref": "compat/jetbrains-editor" }],
+        "tested": [{ "app": "IntelliJ IDEA", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Pacing values are hypotheses. VERIFY in the editor and the integrated terminal; the AX circuit breaker (PLT-R384) bounds slow AX. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "jvm.default", "automation": "manual" }
+    },
+    {
+      "id": "editor.customTextViews",
+      "summary": "Editors with custom text views: no text-focus gating",
+      "match": { "bundleIds": ["com.sublimetext.4", "org.gnu.Emacs", "org.vim.MacVim"] },
+      "action": { "strategy": "backspaceReplace", "requireTextFocus": "never" },
+      "provenance": {
+        "reason": "Custom text views may not expose an editable AX role, so whenKnown gating could pause typing in a working editor.",
+        "evidence": [{ "type": "scenario", "ref": "compat/custom-text-views" }],
+        "tested": [{ "app": "Sublime Text", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "A risk of this design rather than a reported symptom. VERIFY each editor's AX role; the menu offers a one-click override when typing pauses. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "editor.customTextViews", "automation": "manual" }
+    },
+    {
+      "id": "design.shortcutHeavy",
+      "summary": "Design and video apps where letters are tool shortcuts",
+      "match": {
+        "bundleIds": [
+          "com.adobe.illustrator", "com.adobe.Photoshop", "com.adobe.InDesign", "com.seriflabs.affinitydesigner2",
+          "com.seriflabs.affinityphoto2", "com.seriflabs.affinitypublisher2", "com.bohemiancoding.sketch3",
+          "com.figma.Desktop", "com.blackmagic-design.DaVinciResolve"
+        ]
+      },
+      "action": { "strategy": "backspaceReplace", "defaultMode": "en", "requireTextFocus": "whenKnown" },
+      "provenance": {
+        "reason": "Telex double letters produced a backspace that deleted the selected shape when no text field had focus.",
+        "evidence": [{ "type": "scenario", "ref": "compat/design-shortcuts" }],
+        "tested": [{ "app": "Affinity Designer 2", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY which apps expose an editable AX role while editing a text frame (consider requireTextFocus=always there); VERIFY the bundle ID of the unified Affinity app. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "design.shortcutHeavy", "automation": "manual" }
+    },
+    {
+      "id": "remote.passThrough",
+      "summary": "Remote desktop, VM and iPhone Mirroring clients forward keycodes, not text",
+      "match": {
+        "bundleIds": [
+          "com.microsoft.rdc.macos", "com.apple.ScreenSharing", "com.apple.ScreenContinuity",
+          "com.parallels.desktop.console", "com.vmware.fusion", "com.utmapp.UTM", "com.philandro.anydesk",
+          "com.teamviewer.TeamViewer"
+        ]
+      },
+      "action": {
+        "strategy": "passThrough",
+        "defaultMode": "en",
+        "fallback": [],
+        "features": { "macros": false, "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "Clients translate keycodes; injected text arrives as wrong letters ('a' for everything) or nothing.",
+        "evidence": [{ "type": "scenario", "ref": "compat/remote-clients" }],
+        "tested": [{ "app": "Screen Sharing", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY bundle IDs (iPhone Mirroring, Windows App). Users may opt into the 'paste' strategy per app. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-11-01"
+      },
+      "test": { "scenario": "remote.passThrough", "automation": "manual" }
+    },
+    {
+      "id": "games.passThrough",
+      "summary": "Games read key codes for controls: pass keys through, start in English",
+      "match": {
+        "appCategories": [
+          "public.app-category.games", "public.app-category.action-games", "public.app-category.adventure-games",
+          "public.app-category.arcade-games", "public.app-category.board-games", "public.app-category.card-games",
+          "public.app-category.casino-games", "public.app-category.dice-games", "public.app-category.educational-games",
+          "public.app-category.family-games", "public.app-category.kids-games", "public.app-category.music-games",
+          "public.app-category.puzzle-games", "public.app-category.racing-games",
+          "public.app-category.role-playing-games", "public.app-category.simulation-games",
+          "public.app-category.sports-games", "public.app-category.strategy-games", "public.app-category.trivia-games"
+        ]
+      },
+      "action": {
+        "strategy": "passThrough",
+        "defaultMode": "en",
+        "fallback": [],
+        "features": { "macros": false, "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "Games read key codes for their controls; transforming letters added input lag and changed controls.",
+        "evidence": [{ "type": "scenario", "ref": "compat/full-screen-game" }],
+        "tested": [{ "app": "Chess", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Word games are left out on purpose because they may need Vietnamese text. VERIFY with a keyboard-driven full-screen game. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "games.passThrough", "automation": "manual" }
+    },
+    {
+      "id": "launcher.spotlight",
+      "summary": "Spotlight: overlay panel with inline completion; Escape keeps closing it",
+      "match": { "bundleIds": ["com.apple.Spotlight"] },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelection" },
+        "overlay": true,
+        "features": { "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "Spotlight is a non-activating panel with inline completion: 'books' gave 'boôooks' and 'cố' gave 'coố'.",
+        "evidence": [{ "type": "scenario", "ref": "compat/launchers" }],
+        "tested": [{ "app": "Spotlight", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY on macOS 26 and 27, including the redesigned Spotlight field. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "launcher.spotlight", "automation": "automated" }
+    },
+    {
+      "id": "launcher.overlayPanels",
+      "summary": "Raycast and Alfred: overlay panels with their own focus and memory",
+      "match": { "bundleIds": ["com.raycast.macos", "com.runningwithcrayons.Alfred"] },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelection" },
+        "overlay": true,
+        "features": { "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "The panels take keyboard focus without becoming frontmost, so the remembered mode was ignored, and their search fields complete inline.",
+        "evidence": [{ "type": "scenario", "ref": "compat/launchers" }],
+        "tested": [{ "app": "Raycast", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "VERIFY the bundle IDs (Alfred 5 and later) and whether either field shows a selected inline suggestion. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "launcher.overlayPanels", "automation": "manual" }
+    }
+  ]
+}
