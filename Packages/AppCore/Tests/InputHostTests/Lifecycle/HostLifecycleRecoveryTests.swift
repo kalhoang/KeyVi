@@ -56,6 +56,98 @@ import Testing
     }
 }
 
+/// PLT-R323, PLT-R730, PLT-R731: failOpen(postingBroken) retries the tap on a bounded backoff while permissions
+/// still look granted (echo loss and OS policy do not change the permission status), and recreates it at once
+/// when permission returns after a real revocation.
+@Suite struct HostLifecyclePostingBrokenRecoveryTests {
+    @Test func postingBrokenSchedulesABoundedRetryAfterTheOrderedTeardown_PLT_R730() {
+        var script = LifecycleScript.running()
+        #expect(
+            script.send(.postingBroken) == [
+                .publish(.failOpen(.postingBroken)), .requestFlush(.failOpen), .resetComposition, .removeTap,
+                .recordHealth(.postingBroken), .scheduleRetry(after: .seconds(30)),
+            ])
+    }
+
+    @Test func retryRecreatesTheTapWithoutLeavingFailOpenUntilItExists() {
+        var script = LifecycleScript.running()
+        script.send(.postingBroken)
+        script.advance(by: .seconds(30))
+        #expect(script.send(.retryTimerFired) == [.createTap])
+        #expect(script.phase == .failOpen(.postingBroken), "no menu flicker during the attempt")
+        #expect(script.send(.retryTimerFired) == [], "creation already in progress")
+        #expect(script.send(.tapCreated) == [.resetComposition, .publish(.running)])
+    }
+
+    @Test func repeatedBreaksDoubleTheDelayUpToFiveMinutes() {
+        var script = LifecycleScript.running()
+        var delays: [Duration] = []
+        for _ in 0..<6 {
+            for case .scheduleRetry(let delay) in script.send(.postingBroken) { delays.append(delay) }
+            script.advance(by: delays.last ?? .zero)
+            script.send(.retryTimerFired)
+            script.send(.tapCreated)
+            script.advance(by: .seconds(5))  // the recreated tap breaks again soon
+        }
+        #expect(delays == [30, 60, 120, 240, 300, 300].map { Duration.seconds($0) })
+    }
+
+    @Test func aTapThatKeepsPostingResetsTheBackoff() {
+        var script = LifecycleScript.running()
+        script.send(.postingBroken)
+        script.advance(by: .seconds(30))
+        script.send(.retryTimerFired)
+        script.send(.tapCreated)
+        script.advance(by: .seconds(5))
+        #expect(script.send(.postingBroken).last == .scheduleRetry(after: .seconds(60)))
+        script.advance(by: .seconds(60))
+        script.send(.retryTimerFired)
+        script.send(.tapCreated)
+        script.advance(by: HostLifecycle.postingBrokenStableInterval)
+        #expect(script.send(.postingBroken).last == .scheduleRetry(after: .seconds(30)))
+    }
+
+    @Test func revocationWhileWaitingCancelsTheRetryAndAGrantRecreatesAtOnce_PLT_R731() {
+        var script = LifecycleScript.running()
+        script.send(.postingBroken)
+        #expect(
+            script.send(.permissionsChanged(.denied)) == [
+                .cancelRetry, .publish(.failOpen(.permissionRevoked)), .resetComposition,
+                .recordHealth(.permissionTransition),
+            ])
+        #expect(script.send(.retryTimerFired) == [], "a timer that fired after cancelRetry is stale")
+        #expect(
+            script.send(.permissionsChanged(.granted)) == [
+                .publish(.starting), .resetComposition, .createTap, .recordHealth(.permissionTransition),
+            ])
+    }
+
+    @Test func unchangedGrantWhileWaitingKeepsTheTimer() {
+        var script = LifecycleScript.running()
+        script.send(.postingBroken)
+        #expect(script.send(.permissionsChanged(.grantedListenRequired)) == [])
+        #expect(script.send(.retryTimerFired) == [.createTap])
+    }
+
+    @Test func failedRecreationFallsBackToTheTapUnavailableBackoff_PLT_R332() {
+        var script = LifecycleScript.running()
+        script.send(.postingBroken)
+        script.send(.retryTimerFired)
+        #expect(
+            script.send(.tapCreationFailed) == [
+                .publish(.failOpen(.tapUnavailable)), .resetComposition, .scheduleRetry(after: .seconds(1)),
+            ])
+    }
+
+    @Test func recreationWhileTheSessionIsInactiveStaysInactive_PLT_R333() {
+        var script = LifecycleScript.running()
+        script.send(.postingBroken)
+        script.send(.sessionActive(false))
+        script.send(.retryTimerFired)
+        #expect(script.send(.tapCreated) == [.publish(.sessionInactive), .resetComposition])
+    }
+}
+
 /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
 /// report the same disable; each report runs the full procedure, but the instability notice counts it once.
 @Suite struct HostLifecycleDisableCoalescingTests {

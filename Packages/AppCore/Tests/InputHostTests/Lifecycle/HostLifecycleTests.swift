@@ -142,11 +142,12 @@ import Testing
         #expect(
             script.send(.postingBroken) == [
                 .publish(.failOpen(.postingBroken)), .requestFlush(.failOpen), .resetComposition, .removeTap,
-                .recordHealth(.postingBroken),
+                .recordHealth(.postingBroken), .scheduleRetry(after: .seconds(30)),
             ])
         #expect(
             script.send(.permissionsChanged(.denied)) == [
-                .publish(.failOpen(.permissionRevoked)), .resetComposition, .recordHealth(.permissionTransition),
+                .cancelRetry, .publish(.failOpen(.permissionRevoked)), .resetComposition,
+                .recordHealth(.permissionTransition),
             ])
         #expect(
             script.send(.permissionsChanged(.granted)) == [
@@ -155,12 +156,12 @@ import Testing
         #expect(script.send(.tapCreated) == [.publish(.running)])
     }
 
-    @Test func postingBrokenWhilePermissionStillLooksGrantedWaitsForItToReturn() {
+    @Test func postingBrokenWhilePermissionStillLooksGrantedRetriesOnlyOnItsTimer_PLT_R323() {
         var script = LifecycleScript.running()
         script.send(.postingBroken)
-        #expect(script.send(.permissionsChanged(.grantedListenRequired)) == [])
-        #expect(script.send(.retryTimerFired) == [])
+        #expect(script.send(.permissionsChanged(.grantedListenRequired)) == [], "no immediate create/break loop")
         #expect(script.phase == .failOpen(.postingBroken))
+        #expect(script.send(.retryTimerFired) == [.createTap])
     }
 
     @Test func secondPostingBrokenIsIgnored() {

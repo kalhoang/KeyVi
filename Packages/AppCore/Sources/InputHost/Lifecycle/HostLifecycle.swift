@@ -70,6 +70,14 @@ public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
     /// report one disable; reports closer than this count once toward the notice (both still run the procedure).
     public static let disableCoalescingWindow: Duration = .seconds(1)
+    /// PLT-R323, PLT-R730: echo loss and OS policy leave the permission status `ready`, so failOpen(postingBroken)
+    /// retries the tap on this backoff while permissions look granted. A break soon after a recreation moves to
+    /// the next step (cap 5 minutes), so a posting path that stays broken cannot cause a create/break loop.
+    public static let postingBrokenBackoff: [Duration] = [
+        .seconds(30), .seconds(60), .seconds(120), .seconds(240), .seconds(300),
+    ]
+    /// A recreated tap that posts for longer than the previous delay plus this interval resets the backoff.
+    public static let postingBrokenStableInterval: Duration = .seconds(600)
 
     /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
     private enum TapPresence: Sendable, Hashable { case none, creating, alive }
@@ -88,6 +96,9 @@ public struct HostLifecycle: Sendable, Hashable {
     /// Nanosecond instants of the latest system disables, at most `instabilityThreshold + 1`.
     private var recentDisables: [UInt64] = []
     private var lastNoticeAt: UInt64?
+    /// Index into `postingBrokenBackoff` used by the latest postingBroken, and when it happened.
+    private var postingBrokenAttempt = 0
+    private var lastPostingBrokenAt: UInt64?
 
     public init() {}
 
@@ -109,7 +120,7 @@ public struct HostLifecycle: Sendable, Hashable {
         case .retryTimerFired: return retryFired()
         case .watchdogTripped(let trip): return watchdogTripped(trip, at: now)
         case .callbackExited: return callbackExited()
-        case .postingBroken: return postingBroken()
+        case .postingBroken: return postingBroken(at: now)
         case .tapDisabledBySystem(let byTimeout):
             return systemDisabled(reason: byTimeout ? .tapTimeout : .tapDisabledByUserInput, at: now)
         case .launched, .permissionsChanged, .sessionActive, .userDisabled: return []
@@ -135,18 +146,16 @@ public struct HostLifecycle: Sendable, Hashable {
         let previous = permissionsGranted
         permissionsGranted = granted
         guard launched else { return [] }
-        var effects = granted ? permissionGranted(previous: previous) : permissionLost()
+        var effects = granted ? permissionGranted() : permissionLost()
         if let previous, previous != granted { effects.append(.recordHealth(.permissionTransition)) }
         return effects
     }
 
-    /// PLT-R731: permission back recreates the tap without a relaunch.
-    private mutating func permissionGranted(previous: Bool?) -> [LifecycleEffect] {
+    /// PLT-R731: permission back recreates the tap without a relaunch. A failOpen(postingBroken) host keeps its
+    /// own retry timer: a real revocation already moved it to failOpen(permissionRevoked).
+    private mutating func permissionGranted() -> [LifecycleEffect] {
         switch (tap, phase) {
         case (.none, .noPermission), (.none, .starting), (.none, .failOpen(.permissionRevoked)):
-            return beginCreation()
-        // Posting broke while permissions still looked granted: wait until they really return.
-        case (.none, .failOpen(.postingBroken)) where previous == false:
             return beginCreation()
         case (.creating, .noPermission):
             // Lost and back while a creation is in flight: its result decides (PLT-R211, PLT-R332).
@@ -197,8 +206,9 @@ public struct HostLifecycle: Sendable, Hashable {
     private mutating func retryFired() -> [LifecycleEffect] {
         guard retryPending else { return [] }
         retryPending = false
-        guard phase == .failOpen(.tapUnavailable), permissionsGranted == true, tap == .none else { return [] }
-        // The phase stays failOpen(tapUnavailable) during the attempt, so the menu does not flicker.
+        let retryPhase = phase == .failOpen(.tapUnavailable) || phase == .failOpen(.postingBroken)
+        guard retryPhase, permissionsGranted == true, tap == .none else { return [] }
+        // The phase stays fail-open during the attempt, so the menu does not flicker.
         tap = .creating
         return [.createTap]
     }
@@ -229,10 +239,13 @@ public struct HostLifecycle: Sendable, Hashable {
         return [.reenableTap] + move(to: sessionActive ? .running : .sessionInactive) + [.recordHealth(.tapReenabled)]
     }
 
-    /// PLT-R730: posting no longer works.
-    private mutating func postingBroken() -> [LifecycleEffect] {
+    /// PLT-R730: posting no longer works. PLT-R323: echo loss or OS policy can leave permissions `ready`, and the
+    /// monitor then never reports a change, so the tap is retried on the bounded `postingBrokenBackoff`.
+    private mutating func postingBroken(at now: MonotonicInstant) -> [LifecycleEffect] {
         guard tapIsInstalled else { return [] }
-        return failOpenRemovingTap(.postingBroken) + [.recordHealth(.postingBroken)]
+        let delay = notePostingBroken(at: now)
+        retryPending = true
+        return failOpenRemovingTap(.postingBroken) + [.recordHealth(.postingBroken), .scheduleRetry(after: delay)]
     }
 
     /// PLT-R330: re-enable (permissions are valid while a tap is installed: a revocation already removed it),
@@ -340,5 +353,18 @@ public struct HostLifecycle: Sendable, Hashable {
         }
         lastNoticeAt = now.nanoseconds
         return true
+    }
+
+    /// PLT-R323: the retry delay for this postingBroken. A break within the previous delay plus
+    /// `postingBrokenStableInterval` of the previous break moves one step up the backoff; otherwise it restarts.
+    private mutating func notePostingBroken(at now: MonotonicInstant) -> Duration {
+        let backoff = Self.postingBrokenBackoff
+        if let last = lastPostingBrokenAt {
+            let horizon = backoff[postingBrokenAttempt].nanoseconds + Self.postingBrokenStableInterval.nanoseconds
+            let soon = now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < horizon
+            postingBrokenAttempt = soon ? min(postingBrokenAttempt + 1, backoff.count - 1) : 0
+        }
+        lastPostingBrokenAt = now.nanoseconds
+        return backoff[postingBrokenAttempt]
     }
 }

@@ -119,15 +119,21 @@ private let randomInputs: [LifecycleInput] = [
             #expect(!effects.contains(.removeTap) && !effects.contains(.reenableTap), "stuck thread untouched")
         }
         if effects.contains(where: { if case .scheduleRetry = $0 { true } else { false } }) {
-            #expect(after == .failOpen(.tapUnavailable) && model.permissionsGranted, "PLT-R332")
+            let retryPhase = after == .failOpen(.tapUnavailable) || after == .failOpen(.postingBroken)
+            #expect(retryPhase && model.permissionsGranted, "PLT-R332, PLT-R323: retry only while granted")
         }
     }
 
-    /// PLT-R211: `noPermission` is published only while permissions do not look granted.
+    /// PLT-R211: `noPermission` is published only while permissions do not look granted. PLT-R731, PLT-R332:
+    /// with permissions granted and nothing pending (no creation, no retry timer, no possibly stuck callback) the
+    /// host holds a tap, so no input sequence strands it fail-open until relaunch.
     private func checkTruthfulAndLive(_ phase: LifecycleSnapshot.Phase, model: ControllerModel) {
         if phase == .noPermission {
             #expect(!model.permissionsGranted, "noPermission published while permission is granted")
         }
+        guard model.permissionsGranted, !model.creationInFlight, !model.retryScheduled, !model.callbackMayBeStuck
+        else { return }
+        #expect(phase == .running || phase == .sessionInactive, "stranded in \(phase) with nothing pending")
     }
 
     /// PRD-R44: the host only transforms (or pauses with a tap installed) while a tap exists, permissions look
