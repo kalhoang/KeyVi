@@ -11,6 +11,7 @@ import CompatRules
 import Diagnostics
 import Injection
 import InputHost
+import RealtimeSupport
 import Testing
 
 @testable import ShellCore
@@ -96,6 +97,31 @@ import Testing
         actions.append(tracker.update(step: flow.step))
         #expect(flow.step == .finished)
         #expect(actions == [.takeFocus, nil, .returnFocusToProblemField, nil, nil, nil, .takeFocus])
+    }
+
+    // PLT-R1205 steps 2 and 3: "Run a guided test..." is pressed in the key panel, so the live focus names this
+    // app; the confirm step's target is read again once the focus is back in the problem field.
+    @Test(arguments: [MisbehavesFlow.Step.describe, .confirmField])
+    func theTargetFollowsTheLiveFocusBeforeTheTestStarts(step: MisbehavesFlow.Step) {
+        #expect(MisbehavesRetarget.takesLiveFocus(step: step, liveFocusIsThisApp: false))
+        #expect(!MisbehavesRetarget.takesLiveFocus(step: step, liveFocusIsThisApp: true), "never this app's panel")
+    }
+
+    static let keepsTarget: [MisbehavesFlow.Step?] = [
+        nil, .testing(0), .askHuman(1), .finished, .interrupted(.cancelled), .interrupted(.focusChanged),
+    ]
+
+    @Test(arguments: keepsTarget)
+    func theTargetIsKeptWithoutAFlowAndOnceTheTestHasStarted(step: MisbehavesFlow.Step?) {
+        #expect(!MisbehavesRetarget.takesLiveFocus(step: step, liveFocusIsThisApp: false))
+    }
+
+    @Test func theTargetIsReadAgainSoonAfterTheFocusReturns() {
+        let delays = MisbehavesRetarget.rereadDelays.map(\.nanoseconds)
+        #expect(!delays.isEmpty)
+        #expect(delays.allSatisfy { $0 > 0 })
+        #expect(delays == delays.sorted(), "each read waits longer than the one before")
+        #expect(delays.reduce(0, +) <= TimeSpan.seconds(1).nanoseconds, "the confirm step is corrected within a second")
     }
 
     static let target = MisbehavesTarget(

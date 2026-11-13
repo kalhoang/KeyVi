@@ -7,6 +7,7 @@
 // because the runner types into that field. The App's panel applies this policy with AppKit.
 
 public import InputHost
+public import RealtimeSupport
 
 /// Who holds keyboard focus in one phase of the misbehaves flow.
 public enum MisbehavesPanelFocus: Sendable, Hashable {
@@ -72,5 +73,25 @@ public struct MisbehavesFocusTracker: Sendable, Hashable {
         guard next != phase else { return nil }
         phase = next
         return next.actionOnEntry
+    }
+}
+
+/// PLT-R1205 steps 2 and 3: the target the confirm step names follows the live focus until the test starts. While
+/// the panel is key the live focus names this app (the host's focus snapshot follows the system-wide focused
+/// application), so a guided test requested from the key panel keeps the target and reads it again once keyboard
+/// focus is back in the problem field. The test itself always runs in the field focused at confirmation.
+public enum MisbehavesRetarget {
+    /// Waits before each re-read after "Run a guided test..." was pressed in the key panel: the window server hands
+    /// keyboard focus back asynchronously, so the reads stop at the first one that no longer names this app.
+    public static let rereadDelays: [TimeSpan] = [.milliseconds(50), .milliseconds(200), .milliseconds(500)]
+
+    /// Whether a live focus read replaces the target: only before anything is typed (the symptom step when the
+    /// test is requested, the empty-and-safe gate while re-reading) and never when it names this app's panel.
+    public static func takesLiveFocus(step: MisbehavesFlow.Step?, liveFocusIsThisApp: Bool) -> Bool {
+        guard !liveFocusIsThisApp else { return false }
+        switch step {
+        case .describe?, .confirmField?: return true
+        default: return false
+        }
     }
 }

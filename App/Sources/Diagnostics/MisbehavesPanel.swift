@@ -16,6 +16,7 @@ import CompatRules
 import Diagnostics
 import Injection
 import InputHost
+import RealtimeSupport
 import ShellCore
 import SwiftUI
 
@@ -113,6 +114,8 @@ final class MisbehavesModel: ObservableObject {
     /// Stop signal of the current guided test: set by Stop, by closing the panel and by an app switch; its focus
     /// check runs on the typing thread before every step (PLT-R1205 step 3, PLT-R387).
     private var stopSignal: ProbeStopSignal?
+    /// Re-reads the gate's target after the panel handed the focus back (`MisbehavesRetarget.rereadDelays`).
+    private var retargetTask: Task<Void, Never>?
     private var activationObserver: NSObjectProtocol?
     /// Bound to the host context read while the problem field had the focus (PLT-R1202): the panel takes the
     /// focus in steps 2 and 5, and a live read would then describe this app's own panel.
@@ -166,19 +169,45 @@ final class MisbehavesModel: ObservableObject {
     }
 
     /// Re-reads the live focus, so a user who clicked into the problem field after opening the panel sees that
-    /// field as the target. While the panel holds the focus the live focus is this app, and the target stays.
+    /// field as the target. While the panel holds the focus the live focus is this app: the gate hands the focus
+    /// back, and the target is read again once the problem field has it (PLT-R1205 steps 2 and 3).
     func requestGuidedTest() {
-        if let focus = services.currentFocus?(), !isThisApp(focus.app) {
-            var next = MisbehavesFlow(target: MisbehavesTarget(focus: focus))
-            next.symptom = flow?.symptom
-            flow = next
-            rebindReport()
-        }
+        let retargeted = retargetToLiveFocus()
         flow?.requestGuidedTest()
+        guard !retargeted, flow?.step == .confirmField else { return }
+        rereadTargetWhenFocusReturns()
+    }
+
+    /// Replaces the target with the live focus where `MisbehavesRetarget` allows it, keeping the symptom and the
+    /// step; returns whether it did.
+    private func retargetToLiveFocus() -> Bool {
+        guard let focus = services.currentFocus?(),
+            MisbehavesRetarget.takesLiveFocus(step: flow?.step, liveFocusIsThisApp: isThisApp(focus.app))
+        else { return false }
+        var next = MisbehavesFlow(target: MisbehavesTarget(focus: focus))
+        next.symptom = flow?.symptom
+        if flow?.step == .confirmField { next.requestGuidedTest() }
+        flow = next
+        rebindReport()
+        return true
+    }
+
+    /// The window server hands keyboard focus back asynchronously, so the gate's target is read again a few
+    /// times, until a read names the problem field or the step moves on.
+    private func rereadTargetWhenFocusReturns() {
+        retargetTask?.cancel()
+        retargetTask = Task { [weak self] in
+            for delay in MisbehavesRetarget.rereadDelays {
+                try? await Task.sleep(nanoseconds: delay.unsignedNanoseconds)
+                guard let self, !Task.isCancelled, self.flow?.step == .confirmField else { return }
+                if self.retargetToLiveFocus() { return }
+            }
+        }
     }
 
     /// The test runs in the field focused at the moment of confirmation (PLT-R1205 step 3), never in this app.
     func confirmAndStart() {
+        retargetTask?.cancel()
         guard task == nil, let focus = services.currentFocus?(), !isThisApp(focus.app) else {
             flow?.interrupt(.focusChanged)
             return
@@ -229,6 +258,7 @@ final class MisbehavesModel: ObservableObject {
     /// Stops typing at once: the runner reads the signal before every event. The task clears itself when the
     /// typing thread returns, so the pass-through is switched off exactly once.
     func stop() {
+        retargetTask?.cancel()
         stopSignal?.stop()
         task?.cancel()
         flow?.interrupt(.cancelled)
