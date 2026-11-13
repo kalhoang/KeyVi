@@ -1,22 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1205 step 4, PLT-R540, PLT-R520 and PLT-R521: when AX exposes no role, subrole, identifier or DOM classes,
-// the guided suggestion cannot be scoped to "only this kind of field". It used to be a bundle-only rule that tied
-// (score 4) with the app's other bundle-only user overrides (`user.compat.<bundle>` from the Apps pane,
-// `user.textfocus.<bundle>` from "type anyway"), so the lexicographically smaller id won and every focus change
-// recorded a tie. The suggestion now also matches the engine fingerprint it was measured on (+2): it outranks
-// the plain app-scope override deterministically, without a tie.
+// the guided suggestion cannot be scoped to "only this kind of field", so it is a "this app" override. An app has
+// one such slot, `user.compat.<bundle>`, the rule the Apps pane writes, shows, replaces and removes with "reset to
+// automatic" (PRD-R36). A second bundle-only rule for the same app would tie with it (score 4, smaller id wins,
+// a tie recorded on every focus change), and a rule outranking it would leave the Apps pane without effect. The
+// guided result therefore takes the slot itself: it replaces the app's compatibility mode, and a later choice in
+// the Apps pane replaces or removes it (end to end in ShellCoreTests/Settings/GuidedOverrideSlotTests.swift).
 
 import AppModel
 import CompatRules
 import Foundation
+import SettingsStore
 import Testing
 
 @testable import InputHost
+@testable import TestSupport
 
-@Suite("Guided test suggestion precedence (PLT-R520, PLT-R521)")
+@Suite("Guided test suggestion precedence (PLT-R520, PLT-R521, PLT-R540)")
 struct GuidedTestPrecedenceTests {
     static let bundle = GuidedFixture.browser
+    static let slotID = "user.compat.com.example.Browser"
 
     /// Focus with a bundle but nothing AX exposes about the field.
     static let blindContext = MatchContext(
@@ -33,10 +37,7 @@ struct GuidedTestPrecedenceTests {
     }
 
     static let compatMode = appScopeOverride(
-        "user.compat.com.example.Browser",
-        action: RuleAction(strategy: .backspaceReplace, params: StrategyParams(interEventDelayUs: 5_000)))
-    static let typeAnyway = appScopeOverride(
-        "user.textfocus.com.example.Browser", action: RuleAction(strategy: .backspaceReplace, requireTextFocus: .never))
+        slotID, action: RuleAction(strategy: .backspaceReplace, params: StrategyParams(interEventDelayUs: 5_000)))
 
     static func suggestion(_ context: MatchContext) -> Rule {
         GuidedTestRunner.suggestion(
@@ -51,33 +52,50 @@ struct GuidedTestPrecedenceTests {
         return try RuleSet(document: document, overrides: overrides, optedIn: [])
     }
 
-    @Test func blindFieldSuggestionMatchesTheAppAndItsEngine() throws {
+    /// The Apps pane's slot: same id, bundle-only match, so the pane's next choice replaces it.
+    @Test func blindFieldSuggestionTakesTheAppsPaneSlot() throws {
         let rule = Self.suggestion(Self.blindContext)
-        #expect(rule.match.bundleIds == [Self.bundle])
-        #expect(rule.match.engines == [.electron])
-        #expect(rule.match.ax == nil && rule.match.web == nil && rule.match.titlePattern == nil)
+        #expect(rule.id.rawValue == Self.slotID)
+        #expect(rule.match == RuleMatch(bundleIds: [Self.bundle]))
+        #expect(rule.summary == GuidedTestSuggestion.summary)
+        #expect(rule.action.params == StrategyParams(inlineCompletion: .axSelection))
         #expect(try GuidedFixture.schemaErrors(rule).isEmpty)
     }
 
-    /// The guided result wins over either app-scope override, whatever their ids, and no tie is recorded.
-    @Test(arguments: [compatMode, typeAnyway])
-    func blindFieldSuggestionOutranksTheAppScopeOverride(_ appScope: Rule) throws {
+    /// Stored over the app's compatibility mode (SettingsStore replaces an override with the same id): one rule,
+    /// the guided result, and no tie.
+    @Test func blindFieldSuggestionReplacesTheCompatibilityMode() async throws {
+        let store = SettingsStoreHarness()
+        _ = await store.store.load()
         let guided = Self.suggestion(Self.blindContext)
-        for overrides in [[appScope, guided], [guided, appScope]] {
-            let decision = try Self.ruleSet(overrides: overrides).resolve(Self.blindContext)
-            #expect(decision.rule == guided.id)
-            #expect(decision.source == .user)
-            #expect(decision.params.inlineCompletion == .axSelection)
-            #expect(decision.tieLoser == nil)
+        for rule in [Self.compatMode, guided] {
+            await store.store.addRuleOverride(try #require(GuidedTestOverride.stored(rule, at: Date())))
         }
+        let stored = await store.store.state.ruleOverrides
+        #expect(stored.count == 1)
+        let decoded = RulesLoader.decodeOverrides(stored.map(\.rule))
+        #expect(decoded.rejected.isEmpty && decoded.rules == [guided])
+        let decision = try Self.ruleSet(overrides: decoded.rules).resolve(Self.blindContext)
+        #expect(decision.rule == guided.id && decision.source == .user && decision.tieLoser == nil)
+        #expect(decision.params.inlineCompletion == .axSelection)
     }
 
-    /// A field-scoped suggestion already outranks the app-scope override through its AX terms; it gains no
-    /// engine term, so its id and match stay those of earlier versions.
+    /// Not tied to the engine it was measured on: the Apps pane's own rule is not either, and the slot is one
+    /// rule whoever wrote it last.
+    @Test func blindFieldSuggestionAppliesWhateverTheEngine() throws {
+        let guided = Self.suggestion(Self.blindContext)
+        var rebuilt = Self.blindContext
+        rebuilt.engine = .native
+        #expect(try Self.ruleSet(overrides: [guided]).resolve(rebuilt).rule == guided.id)
+    }
+
+    /// A field-scoped suggestion outranks the app-scope override through its AX terms and keeps its own
+    /// `user.guided.<bundle>.<hash>` id, so it coexists with the app's compatibility mode.
     @Test func fieldScopedSuggestionIsUnchanged() throws {
         var field = Self.blindContext
         field.role = "AXTextArea"
         let guided = Self.suggestion(field)
+        #expect(guided.id.rawValue.hasPrefix("user.guided.com.example.Browser."))
         #expect(guided.match.engines == nil)
         let decision = try Self.ruleSet(overrides: [Self.compatMode, guided]).resolve(field)
         #expect(decision.rule == guided.id && decision.tieLoser == nil)
@@ -87,12 +105,12 @@ struct GuidedTestPrecedenceTests {
         #expect(try Self.ruleSet(overrides: [Self.compatMode, guided]).resolve(other).rule == Self.compatMode.id)
     }
 
-    /// A different engine fingerprint (the app was rebuilt on another engine) is not what the test measured: the
-    /// app-scope override applies again.
-    @Test func blindFieldSuggestionStopsMatchingOnAnotherEngine() throws {
-        let guided = Self.suggestion(Self.blindContext)
-        var rebuilt = Self.blindContext
-        rebuilt.engine = .native
-        #expect(try Self.ruleSet(overrides: [Self.compatMode, guided]).resolve(rebuilt).rule == Self.compatMode.id)
+    /// Without a bundle ID there is no Apps pane row: the engine stays the only identity of the suggestion.
+    @Test func bundlelessSuggestionKeepsTheEngine() {
+        var context = Self.blindContext
+        context.bundle = nil
+        let rule = Self.suggestion(context)
+        #expect(rule.id.rawValue.hasPrefix("user.guided.app."))
+        #expect(rule.match == RuleMatch(engines: [.electron]))
     }
 }
