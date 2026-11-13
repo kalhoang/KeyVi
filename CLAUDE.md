@@ -23,6 +23,10 @@ The product name is "KeyVi" (slug `keyvi`), chosen by Pa on 2026-11-13. The only
 (and `scripts/brand.env` for scripts). Never hard-code the display name, slug, bundle ID or site host in Swift,
 UI strings, docs templates or scripts; read them from the bundle (`Brand` helper) or the brand files.
 UI strings take the app name as a format argument. `scripts/rename-app.sh` must keep working.
+Documentation exception (ADR 0400 decision 1, amended 2026-11-13): the front-door files that GitHub or the DMG shows as
+they are (root-level Markdown except `CHANGELOG.md` for now, the PR template, the issue forms and `compat/SCRIPT.md`;
+`FRONT_DOOR` in `scripts/check-docs.py`) write the literal name, slug and site host from the brand files, while `docs/`
+and `spec/` keep the brand placeholders.
 
 ## Layout
 | Path | Contents |

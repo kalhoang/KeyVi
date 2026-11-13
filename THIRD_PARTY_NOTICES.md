@@ -1,6 +1,6 @@
 # Third-party notices
 
-This file lists every third-party dependency, data list and asset that ships with {{AppName}} or its website, with its licence (CLR-R6, CLR-R7, QA-R66). It must be complete before every public release. Adding a dependency requires a decision record in `docs/decisions/` and an entry here (QA-R24).
+This file lists every third-party dependency, data list and asset that ships with KeyVi or its website, with its licence (CLR-R6, CLR-R7, QA-R66). It must be complete before every public release. Adding a dependency requires a decision record in `docs/decisions/` and an entry here (QA-R24).
 
 The project's own code is GPL-3.0-or-later (the root [LICENSE](LICENSE)); the engine packages and the `data/` pipeline are MPL-2.0 (their own `LICENSE` files; [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)). The entries below are the material that comes from elsewhere or needs a recorded source.
 

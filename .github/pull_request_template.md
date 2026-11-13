@@ -42,7 +42,7 @@ Reason for `corpus-change` or `perf-baseline` (if applicable):
 - [ ] Commits use English Conventional Commits (`type: description`).
 - [ ] No new dependency (or a decision record in `docs/decisions/` and an entry in `THIRD_PARTY_NOTICES.md` are included).
 - [ ] No new setting (or a written justification against PRD principle 5 is included below).
-- [ ] No hard-coded product name, slug, bundle ID or site host.
+- [ ] No hard-coded product name, slug, bundle ID or site host in code; documentation follows CONTRIBUTING.md section 6 (brand placeholders in `docs/`, literal values in the front-door files).
 - [ ] Every new source file has an SPDX header (`MPL-2.0` in the engine packages and `data/`, `GPL-3.0-or-later` elsewhere) (CLR-R11).
 
 ## Documentation and changelog (QA-R67)

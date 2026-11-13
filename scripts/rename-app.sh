@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Renames the product (spec/00-overview.md section 4; the current name is TEMPORARY).
+# Renames the product (spec/00-overview.md section 4).
 #   1. Rewrites the two brand sources: Config/Brand.xcconfig and scripts/brand.env
 #      (display name, slug, bundle IDs vn.kal.<slug> and vn.kal.<slug>.dev, site host <slug>.kal.vn).
 #      APP_SUPPORT_EMAIL and APP_REPOSITORY_URL are kept as they are. The old storage folder name
@@ -12,7 +12,9 @@
 #      spec/ and docs/decisions/ (historical records): old display name, bundle IDs, site host, slug.
 #      The root LICENSE (the verbatim GPL-3.0 text, ADR 0006) is never rewritten.
 #   3. Leaves template placeholders ({{AppName}}, {{app-slug}}, {{storage-folder}}, {{bundle-id}})
-#      untouched: they are rendered from scripts/brand.env at build or publish time.
+#      untouched: they are rendered from scripts/brand.env at build or publish time. The front door
+#      (FRONT_DOOR in scripts/check-docs.py: files GitHub or the DMG shows as they are) carries the
+#      literal values instead, so step 2 rewrites it (ADR 0400 decision 1, amended 2026-11-13).
 # Contract: docs/decisions/0504-publish-and-rename-contracts.md. Dry run by default; --apply writes.
 #
 # After a public release the bundle ID, folder names (PLT-R903) and feed URL must never change

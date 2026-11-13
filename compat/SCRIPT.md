@@ -170,13 +170,13 @@ For each run record the following. This is the evidence that goes into `compat/m
 | App version | `mdls` command above |
 | App category (browser, office, chat, notes, developer, terminal, design, launcher, remote, game, system, other) | Your judgement |
 | macOS version and build | `sw_vers` |
-| {{AppName}} version and build, channel | Menu, About & Support |
+| KeyVi version and build, channel | Menu, About & Support |
 | Architecture (Apple silicon or Intel) | Apple menu, About This Mac |
 | Result of each of the 12 steps: `pass`, `fail`, `n/a` | This script |
 | For each `fail`: the first wrong word or the observed symptom (lost, doubled, wrong tone, out of order, lag) | Your eyes |
 | Matched rule ID and the injection strategy shown | Menu, Diagnostics window (the matched rule is shown there) |
 | Diagnostics block (the in-app report; it contains no typed text) | Menu, Report a problem |
-| Does the same failure happen in the {{AppName}} practice field? | Report window, practice field button |
+| Does the same failure happen in the KeyVi practice field? | Report window, practice field button |
 | Verifier name or GitHub handle | You |
 
 If the result is `fail`, also save the diagnostics block for the issue. Never paste private text.

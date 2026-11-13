@@ -357,12 +357,15 @@ class IssueFormTests(unittest.TestCase):
         return matches[0]
 
     def test_diagnostics_field_has_no_render_and_names_the_header(self):
+        # The forms are front-door files (ADR 0400 decision 1, amended 2026-11-13): GitHub shows them as they are, so
+        # they name the header with the literal slug of scripts/brand.env; scripts/rename-app.sh rewrites it.
+        slug = re.search(r'^APP_SLUG="([^"]+)"$', (SCRIPTS / "brand.env").read_text(encoding="utf-8"), re.M).group(1)
         for form in ("bug.yml", "compatibility.yml"):
             with self.subTest(form=form):
                 field = self.field(form, "diagnostics")
                 self.assertTrue(field.startswith("textarea\n"), field[:40])
                 self.assertNotIn("render:", field)
-                self.assertIn("`<slug>-diagnostics v1`", field)
+                self.assertIn(f"`{slug}-diagnostics v1`", field)
 
 
 class PublishHelpersTests(TempDirTestCase):

@@ -7,7 +7,9 @@ import hashlib
 import json
 import plistlib
 import re
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -222,6 +224,156 @@ class NoticesTests(unittest.TestCase):
             self.assertIn("VERIFY", data)
             self.assertIn("not yet implemented", data)
             self.assertIn("ships only as a `VietnameseEngineData` resource", data)
+
+
+class FrontDoorBrandTests(unittest.TestCase):
+    """ADR 0400 decision 1, amended 2026-11-13: the files GitHub or the DMG shows as they are (the front door) write the
+    literal display name, slug and site host of scripts/brand.env, because nothing renders them; docs/ (outside the
+    decision records) keeps {{AppName}} and {{app-slug}}. `scripts/check-docs.py brand` enforces both directions and
+    scripts/rename-app.sh rewrites the literal front door on a rename."""
+
+    BRAND_ENV = ('APP_DISPLAY_NAME="Test App"\nAPP_SLUG="testapp"\nAPP_BUNDLE_ID_RELEASE="vn.example.testapp"\n'
+                 'APP_BUNDLE_ID_DEV="vn.example.testapp.dev"\nAPP_SITE_HOST="testapp.example.vn"\n')
+    LITERAL = "Install Test App from https://testapp.example.vn (cask testapp, bundle vn.example.testapp).\n"
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.write(self.root, "scripts/brand.env", self.BRAND_ENV)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    @staticmethod
+    def write(root: Path, rel: str, text: str) -> None:
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    @staticmethod
+    def brand(root: Path):
+        return py("check-docs.py", "brand", "--root", str(root))
+
+    @staticmethod
+    def repo_brand() -> dict[str, str]:
+        env = (REPO / "scripts" / "brand.env").read_text(encoding="utf-8")
+        return dict(re.findall(r'^(APP_[A-Z_]+)="([^"]*)"$', env, re.M))
+
+    def test_docs_outside_the_decision_records_still_reject_literal_values(self):
+        self.write(self.root, "docs/runbooks/a.md", "Open Test App at https://testapp.example.vn.\n")
+        self.write(self.root, "docs/support/b.md", "Run `testapp-notary`.\n")
+        self.write(self.root, "docs/decisions/0001-x.md", "Test App was the temporary name.\n")
+        result = self.brand(self.root)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("docs/runbooks/a.md:1: literal site host 'testapp.example.vn'", result.stderr)
+        self.assertIn("docs/support/b.md:1: literal slug ({{app-slug}}) 'testapp'", result.stderr)
+        self.assertNotIn("docs/decisions/", result.stderr)
+
+    def test_front_door_files_reject_every_placeholder(self):
+        cases = {
+            "README.md": ("# {{AppName}}\n", "{{AppName}}"),
+            "README.vi.md": ("Website: `https://{{app-slug}}.kal.vn`\n", "{{app-slug}}"),
+            "CONTRIBUTING.md": ("Contributing to {{AppName}}\n", "{{AppName}}"),
+            "SECURITY.md": ("{{ AppName }} handles keystrokes.\n", "{{ AppName }}"),
+            "CODE_OF_CONDUCT.md": ("Write to the {{app-slug}} mailbox.\n", "{{app-slug}}"),
+            "THIRD_PARTY_NOTICES.md": ("Ships with the app on {{site-host}}.\n", "{{site-host}}"),
+            "ARCHITECTURE.md": ("Settings live in {{storage-folder}}.\n", "{{storage-folder}}"),
+            "SUPPORT.md": ("Ask about {{AppName}}.\n", "{{AppName}}"),
+            ".github/pull_request_template.md": ("- [ ] No literal {{bundle-id}}.\n", "{{bundle-id}}"),
+            ".github/ISSUE_TEMPLATE/bug.yml": ("name: Bug report for {{AppName}}\n", "{{AppName}}"),
+            # Linked from README.md, CONTRIBUTING.md and the compatibility form; GitHub shows it as it is.
+            "compat/SCRIPT.md": ("| {{AppName}} version and build, channel |\n", "{{AppName}}"),
+        }
+        for rel, (text, _) in cases.items():
+            self.write(self.root, rel, text)
+        result = self.brand(self.root)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        for rel, (_, token) in cases.items():
+            with self.subTest(file=rel):
+                self.assertIn(f"{rel}:1: placeholder {token} is shown as it is", result.stderr)
+
+    def test_front_door_files_accept_the_literal_values(self):
+        for rel in ("README.md", "README.vi.md", "CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md",
+                    "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "CLAUDE.md", ".github/pull_request_template.md",
+                    ".github/ISSUE_TEMPLATE/bug.yml", "compat/SCRIPT.md"):
+            self.write(self.root, rel, self.LITERAL)
+        self.write(self.root, "docs/runbooks/a.md", "Install {{AppName}} from https://{{app-slug}}.kal.vn.\n")
+        result = self.brand(self.root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_the_repository_front_door_names_the_product(self):
+        brand = self.repo_brand()
+        name, slug, host = brand["APP_DISPLAY_NAME"], brand["APP_SLUG"], brand["APP_SITE_HOST"]
+        for rel in ("README.md", "README.vi.md"):
+            with self.subTest(readme=rel):
+                text = (REPO / rel).read_text(encoding="utf-8")
+                self.assertEqual(text.splitlines()[0], f"# {name}")
+                self.assertIn(f"`https://{host}`", text)
+                # The tap owner is still a VERIFY marker; only the cask name is the brand's.
+                self.assertRegex(text, r"[\w.-]+/tap/" + re.escape(slug) + "`")
+        notices = (REPO / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        self.assertIn(f"ships with {name} or its website", notices, "the DMG copies this file as it is")
+        for form in ("bug.yml", "compatibility.yml"):
+            with self.subTest(form=form):
+                text = (REPO / ".github" / "ISSUE_TEMPLATE" / form).read_text(encoding="utf-8")
+                self.assertIn(f"`{slug}-diagnostics v1`", text)
+                self.assertNotIn("<slug>", text)
+
+    def test_both_readmes_state_the_current_facts(self):
+        """The name is final (2026-11-13), the floor is macOS 12 (ADR 0315), the licences are decided (ADR 0006)."""
+        for rel, current, stale in (
+            ("README.md", ("macOS 12 Monterey or later", "Apple silicon or Intel", "GNU General Public License",
+                           "MPL-2.0-licensed", "Config/Brand.xcconfig", "scripts/brand.env", "0315-minimum-macos-12.md"),
+             ("name is temporary", "not been chosen", "macOS 15", "macOS 14", "pending confirmation")),
+            ("README.vi.md", ("macOS 12 Monterey trở lên", "chip Apple hoặc Intel", "GNU GPL", "giấy phép MPL-2.0",
+                              "Config/Brand.xcconfig", "scripts/brand.env", "0315-minimum-macos-12.md"),
+             ("tên tạm", "chưa được chọn", "macOS 15", "macOS 14", "chờ người phát triển")),
+        ):
+            text = " ".join((REPO / rel).read_text(encoding="utf-8").split())
+            for needle in current:
+                with self.subTest(file=rel, current=needle):
+                    self.assertIn(needle, text)
+            for needle in stale:
+                with self.subTest(file=rel, stale=needle):
+                    self.assertNotIn(needle, text)
+        architecture = (REPO / "ARCHITECTURE.md").read_text(encoding="utf-8")
+        self.assertNotIn("name is temporary", architecture)
+
+    def test_the_brand_sources_no_longer_call_the_name_temporary(self):
+        """README.md points readers at these files; their comments must match ADR 0005 (the name is final)."""
+        for rel in ("Config/Brand.xcconfig", "scripts/brand.env", "scripts/rename-app.sh"):
+            with self.subTest(file=rel):
+                self.assertFalse("name is temporary" in (REPO / rel).read_text(encoding="utf-8").lower(), rel)
+        header = (REPO / "scripts" / "rename-app.sh").read_text(encoding="utf-8").split("\nset ", 1)[0]
+        self.assertIn("front door", header, "step 3 must say the front door carries literal values")
+
+    def test_a_rename_rewrites_the_literal_front_door(self):
+        repo = self.root / "repo"
+        # Only what the two scripts need: copying all of scripts/ is slow on some volumes.
+        shutil.copytree(REPO / "scripts" / "lib", repo / "scripts" / "lib",
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        for script in ("rename-app.sh", "check-docs.py"):
+            shutil.copy2(REPO / "scripts" / script, repo / "scripts" / script)
+        self.write(repo, "scripts/brand.env", self.BRAND_ENV)
+        self.write(repo, "Config/Brand.xcconfig",
+                   "APP_DISPLAY_NAME = Test App\nAPP_SLUG = testapp\nAPP_BUNDLE_ID_RELEASE = vn.example.testapp\n"
+                   "APP_BUNDLE_ID_DEV = vn.example.testapp.dev\nAPP_SITE_HOST = testapp.example.vn\n")
+        self.write(repo, "README.md",
+                   "# Test App\n\nWebsite: `https://testapp.example.vn`, cask `OWNER/tap/testapp`.\n")
+        self.write(repo, "THIRD_PARTY_NOTICES.md",
+                   "Everything that ships with Test App or its website (testapp.example.vn).\n")
+        run("git", "-C", str(repo), "init", "-q", check=True)
+        run("git", "-C", str(repo), "add", "-A", check=True)
+        result = run(str(repo / "scripts" / "rename-app.sh"), "Xuôi", "xuoi", "--bundle-prefix", "vn.example",
+                     "--domain", "example.vn", "--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((repo / "README.md").read_text(encoding="utf-8"),
+                         "# Xuôi\n\nWebsite: `https://xuoi.example.vn`, cask `OWNER/tap/xuoi`.\n")
+        self.assertEqual((repo / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"),
+                         "Everything that ships with Xuôi or its website (xuoi.example.vn).\n")
+        after = self.brand(repo)
+        self.assertEqual(after.returncode, 0, after.stderr)
+
 
 class WorkflowCoverageTests(unittest.TestCase):
     """The CI gates the engine, data and platform tracks rely on stay in the workflows (QA-R2, QA-R5, QA-R8,

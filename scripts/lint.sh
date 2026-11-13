@@ -18,8 +18,9 @@ Runs, in order:
   matrix             scripts/check-matrix.py              (QA-R17: compat/matrix.json against its schema)
   spdx               scripts/check-spdx.sh                (CLR-R11)
   brand-sync         scripts/check-brand-sync.py          (Brand.xcconfig and brand.env agree)
-  md-links           scripts/check-docs.py links          (relative links in docs/, README*.md, CONTRIBUTING.md)
-  docs-brand         scripts/check-docs.py brand          (docs say {{AppName}} / {{app-slug}}, ADR 0400)
+  md-links           scripts/check-docs.py links          (relative links in docs/ and the front-door Markdown)
+  docs-brand         scripts/check-docs.py brand          (docs/ say {{AppName}} / {{app-slug}}; README, CONTRIBUTING
+                                                        and the other front-door files write the literal name, ADR 0400)
   shellcheck         shellcheck on scripts/ and deploy/ (skipped when shellcheck is not installed)
   url-hosts          scripts/check-url-hosts.sh           (QA-R60; only with --binary)
 

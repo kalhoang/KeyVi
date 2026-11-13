@@ -237,7 +237,9 @@ its `<slug>-diagnostics v1` header. The parser does not depend on the fence: it 
 anywhere in the issue body, so a paste of the inner lines only (no fence) still parses, and the closing
 fence or the end of the body ends the block. Both forms tell the reporter that the block starts with the
 header line `<slug>-diagnostics v1`. `scripts/tests/test_scripts.py` fails if either form gains a `render:`
-key on that field or stops naming the header.
+key on that field or stops naming the header. Amended 2026-11-13: the forms are front-door files (ADR 0400
+decision 1 amendment), so they write the header with the literal slug of `scripts/brand.env`, which
+`scripts/rename-app.sh` rewrites on a rename.
 
 ## Consequences
 
