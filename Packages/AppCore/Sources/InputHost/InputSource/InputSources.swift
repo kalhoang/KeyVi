@@ -42,22 +42,55 @@ public protocol LayoutTableBuilding: Sendable {
     func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable
 }
 
+/// Throws `LayoutTableError` when the `uchr` data is not a keyboard layout or `UCKeyTranslate` rejects it. A
+/// control character (Return, Tab, arrows, function keys) is `.none`; a key that only changes the dead-key state
+/// is `.deadKey` (PLT-R354). Logic: `UCKeyTranslateTable.swift`.
 public struct UCKeyTranslateLayoutBuilder: LayoutTableBuilding {
     public init() {}
-    public func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable { unimplemented() }
+    public func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable {
+        try UCKeyTranslateTable.build(from: data, keyboardType: keyboardType)
+    }
+}
+
+public enum LayoutTableError: Error, Sendable, Hashable {
+    case invalidLayoutData
+    case translationFailed(status: Int32)
 }
 
 /// Main thread: on every source change builds (or reuses) the table, classifies the source (PLT-R371,
 /// PLT-R372), applies the PLT-R373 binding and publishes an `InputSourceSnapshot`; signals a hard boundary.
+/// A snapshot (with a new generation) is published only when the source, its table or its bound mode changed.
+/// Logic: `InputSourceMonitor+Refresh.swift`.
 @MainActor
 public final class InputSourceMonitor {
-    public init(provider: any InputSourceProvider, builder: any LayoutTableBuilding,
-                publish: @escaping @Sendable (InputSourceSnapshot) -> Void) { unimplemented() }
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
-    public func apply(binding: LayoutBindingConfiguration) { unimplemented() }
+    let provider: any InputSourceProvider
+    let builder: any LayoutTableBuilding
+    let publish: @Sendable (InputSourceSnapshot) -> Void
+    var binding = LayoutBindingConfiguration(enabled: false, vietnamese: [], english: [])
+    var keyboardType: UInt32?
+    var tables: [LayoutTableKey: LayoutTable] = [:]
+    var lastPublished: InputSourceSnapshot?
+    var generation: UInt64 = 0
+    var observation: (any ObservationToken)?
+
+    public init(
+        provider: any InputSourceProvider, builder: any LayoutTableBuilding,
+        publish: @escaping @Sendable (InputSourceSnapshot) -> Void
+    ) {
+        self.provider = provider
+        self.builder = builder
+        self.publish = publish
+    }
+
+    public func start() { begin() }
+    public func stop() { end() }
+    public func apply(binding: LayoutBindingConfiguration) {
+        self.binding = binding
+        refresh()
+    }
+
     /// The tap saw a keyboard type without a table (ISO/ANSI/JIS): build one.
-    public func keyboardTypeSeen(_ keyboardType: UInt32) { unimplemented() }
+    public func keyboardTypeSeen(_ keyboardType: UInt32) { adopt(keyboardType: keyboardType) }
 }
 
 public struct LayoutBindingConfiguration: Sendable, Hashable {
