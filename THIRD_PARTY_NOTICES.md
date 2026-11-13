@@ -176,7 +176,7 @@ Rules (CLR-R6): every list needs a recorded permissive licence (MIT, BSD, Apache
 
 ## 4. Assets
 
-Every asset is original work created for this project unless a row below says otherwise. No third-party icon set, font glyph or traced image is included. Each asset records its author, date and source file here and in [docs/provenance](docs/provenance/README.md) section 7 (CLR-R7).
+Every asset is original work created for this project unless a row below says otherwise. No third-party icon set, font glyph or traced image is included. Each asset records its author, date and source file here and in [docs/provenance](docs/provenance/README.md) section 7 (CLR-R7). This covers every image file in the repository, shipped or not: asset catalogs, website files and test targets.
 
 ### Menu-bar status icons (placeholders)
 
@@ -187,11 +187,41 @@ Every asset is original work created for this project unless a row below says ot
 - Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
 - Status: placeholder artwork. VERIFY with Pa or a designer before 1.0; designed replacements get their own entry here when they land.
 
+### Donation QR codes in the app (placeholders)
+
+- Files: `App/Resources/Donation.xcassets/DonationVietQR.imageset/placeholder.svg` and `App/Resources/Donation.xcassets/DonationMoMo.imageset/placeholder.svg` (asset names `DonationVietQR` and `DonationMoMo`), shown in the donation block of About & Support (PRD-R59).
+- Author and date: drawn for this repository by the project's support workstream on 2026-11-13 (commit `25afa53`).
+- Source record: an XML comment at the top of each SVG.
+- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
+- Status: placeholder artwork, deliberately not a scannable QR code, so no payment can be misdirected. Pa supplies the real QR images, generated from Pa's own accounts ([donation setup](docs/runbooks/donation-setup.md)); they replace these files, are bundled as image files and never fetched at runtime, and get their source recorded here before the first public build.
+
+### Donation QR codes on the website (placeholders)
+
+- Files: `site/static/assets/qr/vietqr.svg` and `site/static/assets/qr/momo.svg`, shown on the website's donation page.
+- Author and date: drawn for this repository by the project's site workstream on 2026-11-13 (commit `bb65d7c`).
+- Source record: this entry and [docs/provenance](docs/provenance/README.md) section 7.
+- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
+- Status: placeholder artwork, deliberately not a scannable QR code. Replaced by the same real images as the app (see above), with the same rule.
+
+### Website favicon
+
+- File: `site/static/favicon.svg`: a white "V" stroke on a green rounded square.
+- Author and date: drawn for this repository by the project's site workstream on 2026-11-13 (commit `bb65d7c`).
+- Source record: this entry and [docs/provenance](docs/provenance/README.md) section 7.
+- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
+- Status: interim. VERIFY with Pa: replace it with a favicon derived from the app icon once that exists, and record the replacement here.
+
+### Input method spike icon (not shipped)
+
+- File: `SpikeIMK/Resources/SpikeIMK.tiff` (16 x 16 and 32 x 32 px: a rounded square outline with an "S1" mark), the input source icon of the `SpikeIMK` test target, which only Pa builds and installs and which is never part of a release.
+- Author and date: generated for this repository on 2026-11-13 (commit `6c21873`) by `SpikeIMK/Tools/make-icon.py`, original pixel art.
+- Source record: the header comment of `SpikeIMK/Tools/make-icon.py`, which also regenerates the file.
+- Licence: the app's licence (`LicenseRef-App-Pending`); no third-party material.
+
 ### Other assets
 
 - **App icon**: `App/Resources/Assets.xcassets/AppIcon.appiconset` holds no image yet (placeholder). Record the author, date and source file when it is added.
 - **DMG background**: not added yet (placeholder). Same rule.
-- **Donation QR codes** (VietQR, MoMo): generated from the maintainer's own accounts, bundled as image files, never fetched at runtime.
 - **Fonts**: none bundled by the app. The website's fonts, if any, are listed by the site track (placeholder).
 - **Illustrations and screen recordings** on the website and in onboarding: created for this project (placeholder; list each item).
 

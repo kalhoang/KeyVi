@@ -46,10 +46,10 @@ The block shows the QR codes, the account name as plain text, and the GitHub Spo
 
 | Asset | Used by | Notes |
 |---|---|---|
-| `donate-vietqr.png`, `donate-momo.png` | App (About & Support) and website `/ung-ho` | Place them where the app track and the site track expect their resources (VERIFY the paths with `App/` and `site/static/`) |
+| `donate-vietqr.png`, `donate-momo.png` | App (About & Support) and website `/ung-ho` | They replace the placeholders: in the app, the image sets `App/Resources/Donation.xcassets/DonationVietQR.imageset` and `DonationMoMo.imageset` (keep the asset names, which the app reads, and update each `Contents.json`); on the website, `site/static/assets/qr/vietqr.svg` and `momo.svg` (the donation page names these paths; a PNG needs the page changed too) |
 | Sponsor URL | App, website, `.github/FUNDING.yml` | One value, copied everywhere |
 
-Record each image in `THIRD_PARTY_NOTICES.md` section 4 as original work with its source (CLR-R7). The QR images contain account data by design and are public once released; do not commit them before Pa confirms the details (VERIFY).
+Replace the placeholder entries in `THIRD_PARTY_NOTICES.md` section 4 and [docs/provenance](../provenance/README.md) section 7 with the real images and their source (CLR-R7). The QR images contain account data by design and are public once released; do not commit them before Pa confirms the details (VERIFY).
 
 ## 5. Optional: public thank-you list (PRD-R61)
 
