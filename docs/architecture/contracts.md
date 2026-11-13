@@ -38,9 +38,9 @@ without permissions. Read [ARCHITECTURE.md](../../ARCHITECTURE.md) first for the
 | Module | Depends on | Main isolation | Notes |
 |---|---|---|---|
 | AppModel | Foundation | any | Values only |
-| RealtimeSupport | Synchronization, Dispatch, Foundation | any / tap-safe | The only place with `@unchecked Sendable` lock-free code |
+| RealtimeSupport | CRealtimeSupport (C11 atomic builtins), Dispatch, Foundation | any / tap-safe | The only place with `@unchecked Sendable` lock-free code; `Atomic`, `Mutex`, `TimeSpan` replace `Synchronization` and `Duration` (ADR 0315) |
 | Diagnostics | AppModel, RealtimeSupport | any; `TapLogRing.push`, histogram `record`, `CaptureController.isRecording` are tap-safe | |
-| SettingsStore | AppModel | utility (actor) | |
+| SettingsStore | AppModel, RealtimeSupport | utility (actor on `QueueExecutor`) | |
 | CompatRules | AppModel | any (pure values); resolution called on ax | |
 | Injection | AppModel, RealtimeSupport, Diagnostics | inject (worker), tap-safe producer API on `JobQueue` | Never imports CompatRules |
 | InputHost | all of the above, VietnameseEngine(Data) | tap (pipeline), ax (focus), main (controller, input sources), utility (monitors) | |
@@ -767,9 +767,553 @@ public struct SystemWallClock: WallClock {
 
 ## 5. RealtimeSupport: hot-path primitives
 
-Owned files: `Packages/AppCore/Sources/RealtimeSupport/**` (workstream W1-A hardens and benchmarks; the
-skeleton implementation is complete and passes Thread Sanitizer). Why the snapshot cell is shaped this way:
-[0303](../decisions/0303-snapshot-publication.md).
+Owned files: `Packages/AppCore/Sources/RealtimeSupport/**` and `Packages/AppCore/Sources/CRealtimeSupport/**`
+(workstream W1-A hardens and benchmarks; the skeleton implementation is complete and passes Thread Sanitizer).
+Why the snapshot cell is shaped this way: [0303](../decisions/0303-snapshot-publication.md). The atomics, the
+mutex and the time span replace the macOS 15 `Synchronization` module and the macOS 13 `Duration` for the
+macOS 12 floor: [0315](../decisions/0315-minimum-macos-12.md).
+
+<!-- include: Packages/AppCore/Sources/RealtimeSupport/Atomic.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Lock-free atomics with explicit memory orderings (PLT-R304, PLT-R388) for macOS 12 and later
+// (docs/decisions/0315-minimum-macos-12.md). The API mirrors the `Synchronization` module's `Atomic`, which
+// needs macOS 15, so call sites read the same: `Atomic<Int>(0)`, `load(ordering: .acquiring)`,
+// `wrappingAdd(1, ordering: .relaxed)`, `compareExchange(expected:desired:ordering:)`.
+//
+// Differences from `Synchronization.Atomic`, all deliberate:
+// - `Atomic` is a copyable handle to one word allocated at `init` (copies share the word); after `init` no
+//   operation allocates, locks or blocks.
+// - `UnsafeAtomic` applies the same operations to a word someone else owns (a raw buffer, a C global).
+// - Only the operations the code base uses exist; add more here rather than reaching for another module.
+
+public import CRealtimeSupport
+
+#if !(arch(arm64) || arch(x86_64))
+#error("RealtimeSupport atomics assume a 64-bit Apple platform (PLT-R105: arm64 and x86_64)")
+#endif
+
+// MARK: - Orderings
+
+/// Memory ordering of an atomic load.
+public struct AtomicLoadOrdering: Sendable, Hashable {
+    @usableFromInline let rawValue: CInt
+
+    @inlinable init(rawValue: CInt) { self.rawValue = rawValue }
+
+    /// No ordering constraint beyond atomicity.
+    @inlinable public static var relaxed: Self { Self(rawValue: 0) }
+    /// Later reads and writes stay after this load; pairs with a releasing store.
+    @inlinable public static var acquiring: Self { Self(rawValue: 2) }
+    /// Acquiring, and part of the single total order of sequentially consistent operations.
+    @inlinable public static var sequentiallyConsistent: Self { Self(rawValue: 5) }
+}
+
+/// Memory ordering of an atomic store.
+public struct AtomicStoreOrdering: Sendable, Hashable {
+    @usableFromInline let rawValue: CInt
+
+    @inlinable init(rawValue: CInt) { self.rawValue = rawValue }
+
+    /// No ordering constraint beyond atomicity.
+    @inlinable public static var relaxed: Self { Self(rawValue: 0) }
+    /// Earlier reads and writes stay before this store; pairs with an acquiring load.
+    @inlinable public static var releasing: Self { Self(rawValue: 3) }
+    /// Releasing, and part of the single total order of sequentially consistent operations.
+    @inlinable public static var sequentiallyConsistent: Self { Self(rawValue: 5) }
+}
+
+/// Memory ordering of an atomic read-modify-write operation.
+public struct AtomicUpdateOrdering: Sendable, Hashable {
+    @usableFromInline let rawValue: CInt
+
+    @inlinable init(rawValue: CInt) { self.rawValue = rawValue }
+
+    /// No ordering constraint beyond atomicity.
+    @inlinable public static var relaxed: Self { Self(rawValue: 0) }
+    /// The read half acquires.
+    @inlinable public static var acquiring: Self { Self(rawValue: 2) }
+    /// The write half releases.
+    @inlinable public static var releasing: Self { Self(rawValue: 3) }
+    /// Both halves: acquiring read, releasing write.
+    @inlinable public static var acquiringAndReleasing: Self { Self(rawValue: 4) }
+    /// Acquiring and releasing, and part of the single total order of sequentially consistent operations.
+    @inlinable public static var sequentiallyConsistent: Self { Self(rawValue: 5) }
+}
+
+// MARK: - Storage words
+
+/// An unsigned word the C layer operates on atomically (8, 32 or 64 bits).
+public protocol AtomicStorageWord: FixedWidthInteger, UnsignedInteger, Sendable {
+    static func atomicLoad(_ address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self
+    static func atomicStore(_ value: Self, to address: UnsafeMutablePointer<Self>, ordering: CInt)
+    static func atomicExchange(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self
+    /// Returns whether the exchange happened and the value found (equal to `expected` when it happened).
+    static func atomicCompareExchange(
+        expected: Self, desired: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt
+    ) -> (exchanged: Bool, original: Self)
+    /// Wrapping add; returns the previous value.
+    static func atomicFetchAdd(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self
+    /// Wrapping subtract; returns the previous value.
+    static func atomicFetchSubtract(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self
+}
+
+extension UInt8: AtomicStorageWord {
+    @inlinable public static func atomicLoad(_ address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_load_u8(address, ordering)
+    }
+    @inlinable public static func atomicStore(_ value: Self, to address: UnsafeMutablePointer<Self>, ordering: CInt) {
+        crt_store_u8(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicExchange(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_exchange_u8(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicCompareExchange(
+        expected: Self, desired: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt
+    ) -> (exchanged: Bool, original: Self) {
+        var found = expected
+        let exchanged = crt_compare_exchange_u8(address, &found, desired, ordering)
+        return (exchanged, found)
+    }
+    @inlinable
+    public static func atomicFetchAdd(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_fetch_add_u8(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicFetchSubtract(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt)
+        -> Self
+    {
+        crt_fetch_sub_u8(address, value, ordering)
+    }
+}
+
+extension UInt32: AtomicStorageWord {
+    @inlinable public static func atomicLoad(_ address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_load_u32(address, ordering)
+    }
+    @inlinable public static func atomicStore(_ value: Self, to address: UnsafeMutablePointer<Self>, ordering: CInt) {
+        crt_store_u32(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicExchange(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_exchange_u32(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicCompareExchange(
+        expected: Self, desired: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt
+    ) -> (exchanged: Bool, original: Self) {
+        var found = expected
+        let exchanged = crt_compare_exchange_u32(address, &found, desired, ordering)
+        return (exchanged, found)
+    }
+    @inlinable
+    public static func atomicFetchAdd(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_fetch_add_u32(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicFetchSubtract(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt)
+        -> Self
+    {
+        crt_fetch_sub_u32(address, value, ordering)
+    }
+}
+
+extension UInt64: AtomicStorageWord {
+    @inlinable public static func atomicLoad(_ address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_load_u64(address, ordering)
+    }
+    @inlinable public static func atomicStore(_ value: Self, to address: UnsafeMutablePointer<Self>, ordering: CInt) {
+        crt_store_u64(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicExchange(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_exchange_u64(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicCompareExchange(
+        expected: Self, desired: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt
+    ) -> (exchanged: Bool, original: Self) {
+        var found = expected
+        let exchanged = crt_compare_exchange_u64(address, &found, desired, ordering)
+        return (exchanged, found)
+    }
+    @inlinable
+    public static func atomicFetchAdd(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt) -> Self {
+        crt_fetch_add_u64(address, value, ordering)
+    }
+    @inlinable
+    public static func atomicFetchSubtract(_ value: Self, at address: UnsafeMutablePointer<Self>, ordering: CInt)
+        -> Self
+    {
+        crt_fetch_sub_u64(address, value, ordering)
+    }
+}
+
+// MARK: - Representable values
+
+/// A value that round-trips through one atomic storage word.
+public protocol AtomicRepresentable {
+    associatedtype AtomicRepresentation: AtomicStorageWord
+    static func encodeAtomicRepresentation(_ value: Self) -> AtomicRepresentation
+    static func decodeAtomicRepresentation(_ representation: AtomicRepresentation) -> Self
+}
+
+/// An integer stored as its own bit pattern in a word of the same width, so wrapping arithmetic on the word is
+/// wrapping arithmetic on the value.
+public protocol AtomicInteger: AtomicRepresentable, FixedWidthInteger {}
+
+extension AtomicInteger {
+    @inlinable public static func encodeAtomicRepresentation(_ value: Self) -> AtomicRepresentation {
+        AtomicRepresentation(truncatingIfNeeded: value)
+    }
+    @inlinable public static func decodeAtomicRepresentation(_ representation: AtomicRepresentation) -> Self {
+        Self(truncatingIfNeeded: representation)
+    }
+}
+
+extension UInt8: AtomicInteger { public typealias AtomicRepresentation = UInt8 }
+extension Int8: AtomicInteger { public typealias AtomicRepresentation = UInt8 }
+extension UInt32: AtomicInteger { public typealias AtomicRepresentation = UInt32 }
+extension Int32: AtomicInteger { public typealias AtomicRepresentation = UInt32 }
+extension UInt64: AtomicInteger { public typealias AtomicRepresentation = UInt64 }
+extension Int64: AtomicInteger { public typealias AtomicRepresentation = UInt64 }
+extension UInt: AtomicInteger { public typealias AtomicRepresentation = UInt64 }
+extension Int: AtomicInteger { public typealias AtomicRepresentation = UInt64 }
+
+extension Bool: AtomicRepresentable {
+    public typealias AtomicRepresentation = UInt8
+    @inlinable public static func encodeAtomicRepresentation(_ value: Bool) -> UInt8 { value ? 1 : 0 }
+    @inlinable public static func decodeAtomicRepresentation(_ representation: UInt8) -> Bool { representation != 0 }
+}
+
+extension Unmanaged: AtomicRepresentable {
+    public typealias AtomicRepresentation = UInt64
+    @inlinable public static func encodeAtomicRepresentation(_ value: Unmanaged<Instance>) -> UInt64 {
+        UInt64(UInt(bitPattern: value.toOpaque()))
+    }
+    @inlinable public static func decodeAtomicRepresentation(_ representation: UInt64) -> Unmanaged<Instance> {
+        // Only ever decodes words written by `encodeAtomicRepresentation`, which are never null.
+        Unmanaged.fromOpaque(UnsafeRawPointer(bitPattern: UInt(representation))!)
+    }
+}
+
+// MARK: - Operations on a word
+
+/// Atomic operations on a word owned elsewhere (raw buffers, C globals). The caller keeps the memory alive,
+/// aligned and accessed only atomically for as long as any `UnsafeAtomic` refers to it.
+public struct UnsafeAtomic<Value: AtomicRepresentable>: @unchecked Sendable {
+    // @unchecked: a plain address; atomicity of every access is the point of the type.
+    public let address: UnsafeMutablePointer<Value.AtomicRepresentation>
+
+    @inlinable public init(at address: UnsafeMutablePointer<Value.AtomicRepresentation>) { self.address = address }
+
+    @inlinable
+    public func load(ordering: AtomicLoadOrdering) -> Value {
+        Value.decodeAtomicRepresentation(.atomicLoad(address, ordering: ordering.rawValue))
+    }
+
+    @inlinable
+    public func store(_ desired: Value, ordering: AtomicStoreOrdering) {
+        Value.AtomicRepresentation.atomicStore(
+            Value.encodeAtomicRepresentation(desired), to: address, ordering: ordering.rawValue)
+    }
+
+    /// Stores `desired` and returns the previous value.
+    @inlinable @discardableResult
+    public func exchange(_ desired: Value, ordering: AtomicUpdateOrdering) -> Value {
+        Value.decodeAtomicRepresentation(
+            .atomicExchange(Value.encodeAtomicRepresentation(desired), at: address, ordering: ordering.rawValue))
+    }
+
+    /// Stores `desired` if the current value is `expected` (strong: no spurious failure). The failure ordering
+    /// is the success ordering without its releasing half.
+    @inlinable
+    public func compareExchange(expected: Value, desired: Value, ordering: AtomicUpdateOrdering)
+        -> (exchanged: Bool, original: Value)
+    {
+        let result = Value.AtomicRepresentation.atomicCompareExchange(
+            expected: Value.encodeAtomicRepresentation(expected), desired: Value.encodeAtomicRepresentation(desired),
+            at: address, ordering: ordering.rawValue)
+        return (result.exchanged, Value.decodeAtomicRepresentation(result.original))
+    }
+}
+
+extension UnsafeAtomic where Value: AtomicInteger {
+    @inlinable @discardableResult
+    public func wrappingAdd(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        let old = Value.decodeAtomicRepresentation(
+            .atomicFetchAdd(Value.encodeAtomicRepresentation(operand), at: address, ordering: ordering.rawValue))
+        return (old, old &+ operand)
+    }
+
+    @inlinable @discardableResult
+    public func wrappingSubtract(_ operand: Value, ordering: AtomicUpdateOrdering)
+        -> (oldValue: Value, newValue: Value)
+    {
+        let old = Value.decodeAtomicRepresentation(
+            .atomicFetchSubtract(Value.encodeAtomicRepresentation(operand), at: address, ordering: ordering.rawValue))
+        return (old, old &- operand)
+    }
+
+    /// Adds `operand` and traps if the result overflowed (the word keeps the wrapped value).
+    @inlinable @discardableResult
+    public func add(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        let result = wrappingAdd(operand, ordering: ordering)
+        precondition(!result.oldValue.addingReportingOverflow(operand).overflow, "atomic add overflowed")
+        return result
+    }
+
+    /// Subtracts `operand` and traps if the result overflowed (the word keeps the wrapped value).
+    @inlinable @discardableResult
+    public func subtract(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        let result = wrappingSubtract(operand, ordering: ordering)
+        precondition(!result.oldValue.subtractingReportingOverflow(operand).overflow, "atomic subtract overflowed")
+        return result
+    }
+
+    /// Stores the larger of the current value and `operand` (a compare-exchange loop: lock-free, not wait-free).
+    @inlinable @discardableResult
+    public func max(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        var current = load(ordering: .relaxed)
+        while true {
+            let desired = Swift.max(current, operand)
+            let result = compareExchange(expected: current, desired: desired, ordering: ordering)
+            if result.exchanged { return (current, desired) }
+            current = result.original
+        }
+    }
+
+    /// Stores the smaller of the current value and `operand` (a compare-exchange loop: lock-free, not wait-free).
+    @inlinable @discardableResult
+    public func min(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        var current = load(ordering: .relaxed)
+        while true {
+            let desired = Swift.min(current, operand)
+            let result = compareExchange(expected: current, desired: desired, ordering: ordering)
+            if result.exchanged { return (current, desired) }
+            current = result.original
+        }
+    }
+}
+
+// MARK: - Owned atomic
+
+/// One atomic word, allocated at `init` and freed with the last copy. Copies share the word.
+public struct Atomic<Value: AtomicRepresentable>: @unchecked Sendable {
+    // @unchecked: the buffer is written at init only; its single element is accessed only atomically.
+    @usableFromInline let storage: ManagedBuffer<Void, Value.AtomicRepresentation>
+
+    public init(_ initialValue: Value) {
+        storage = .create(minimumCapacity: 1) { _ in }
+        storage.withUnsafeMutablePointerToElements { word in
+            word.initialize(to: Value.encodeAtomicRepresentation(initialValue))
+        }
+    }
+
+    /// The operations on the owned word. Its address is stable: a `ManagedBuffer` never moves its elements.
+    @inlinable var word: UnsafeAtomic<Value> {
+        UnsafeAtomic(at: storage.withUnsafeMutablePointerToElements { $0 })
+    }
+
+    @inlinable
+    public func load(ordering: AtomicLoadOrdering) -> Value {
+        defer { withExtendedLifetime(storage) {} }
+        return word.load(ordering: ordering)
+    }
+
+    @inlinable
+    public func store(_ desired: Value, ordering: AtomicStoreOrdering) {
+        defer { withExtendedLifetime(storage) {} }
+        word.store(desired, ordering: ordering)
+    }
+
+    /// Stores `desired` and returns the previous value.
+    @inlinable @discardableResult
+    public func exchange(_ desired: Value, ordering: AtomicUpdateOrdering) -> Value {
+        defer { withExtendedLifetime(storage) {} }
+        return word.exchange(desired, ordering: ordering)
+    }
+
+    /// Stores `desired` if the current value is `expected` (strong: no spurious failure).
+    @inlinable
+    public func compareExchange(expected: Value, desired: Value, ordering: AtomicUpdateOrdering)
+        -> (exchanged: Bool, original: Value)
+    {
+        defer { withExtendedLifetime(storage) {} }
+        return word.compareExchange(expected: expected, desired: desired, ordering: ordering)
+    }
+}
+
+extension Atomic where Value: AtomicInteger {
+    @inlinable @discardableResult
+    public func wrappingAdd(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        defer { withExtendedLifetime(storage) {} }
+        return word.wrappingAdd(operand, ordering: ordering)
+    }
+
+    @inlinable @discardableResult
+    public func wrappingSubtract(_ operand: Value, ordering: AtomicUpdateOrdering)
+        -> (oldValue: Value, newValue: Value)
+    {
+        defer { withExtendedLifetime(storage) {} }
+        return word.wrappingSubtract(operand, ordering: ordering)
+    }
+
+    /// Adds `operand` and traps on overflow.
+    @inlinable @discardableResult
+    public func add(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        defer { withExtendedLifetime(storage) {} }
+        return word.add(operand, ordering: ordering)
+    }
+
+    /// Subtracts `operand` and traps on overflow.
+    @inlinable @discardableResult
+    public func subtract(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        defer { withExtendedLifetime(storage) {} }
+        return word.subtract(operand, ordering: ordering)
+    }
+
+    /// Stores the larger of the current value and `operand`.
+    @inlinable @discardableResult
+    public func max(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        defer { withExtendedLifetime(storage) {} }
+        return word.max(operand, ordering: ordering)
+    }
+
+    /// Stores the smaller of the current value and `operand`.
+    @inlinable @discardableResult
+    public func min(_ operand: Value, ordering: AtomicUpdateOrdering) -> (oldValue: Value, newValue: Value) {
+        defer { withExtendedLifetime(storage) {} }
+        return word.min(operand, ordering: ordering)
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/RealtimeSupport/Mutex.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Mutual exclusion for macOS 12 and later (docs/decisions/0315-minimum-macos-12.md). The API mirrors the
+// `Synchronization` module's `Mutex` (macOS 15): `Mutex(initialValue)` and `withLock { value in ... }`.
+//
+// Built on `os_unfair_lock`, like `Synchronization.Mutex` on Darwin: no allocation after `init`, waiters sleep
+// in the kernel with priority donation, recursion and unlocking from another thread trap. It blocks, so the
+// tap thread never takes one (PLT-R304, PLT-R305); the tap reads published snapshots and lock-free atomics.
+
+public import Darwin
+
+/// A value protected by an unfair lock. Copies are handles to the same lock and value.
+public struct Mutex<Value>: @unchecked Sendable {
+    // @unchecked: the value is reachable only inside `withLock`, while the lock is held.
+    @usableFromInline let storage: ManagedBuffer<Value, os_unfair_lock>
+
+    public init(_ initialValue: sending Value) {
+        storage = .create(minimumCapacity: 1) { _ in initialValue }
+        storage.withUnsafeMutablePointerToElements { lock in lock.initialize(to: os_unfair_lock()) }
+    }
+
+    /// Runs `body` with exclusive access to the value. Never call on the tap thread; never nest on one mutex.
+    @inlinable
+    public func withLock<Result, E: Error>(_ body: (inout sending Value) throws(E) -> sending Result) throws(E)
+        -> sending Result
+    {
+        // The header and element addresses of a `ManagedBuffer` are stable for its whole life.
+        let (value, lock) = storage.withUnsafeMutablePointers { ($0, $1) }
+        os_unfair_lock_lock(lock)
+        defer {
+            os_unfair_lock_unlock(lock)
+            withExtendedLifetime(storage) {}
+        }
+        return try body(&value.pointee)
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/RealtimeSupport/TimeSpan.swift until="    // MARK: Arithmetic" -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Length of time for timeouts, intervals, backoffs and deadlines (docs/decisions/0315-minimum-macos-12.md).
+// Replaces `Swift.Duration`, which needs macOS 13 (PLT-R106: the floor is macOS 12). Call sites keep the
+// `Duration` spelling of values: `.milliseconds(150)`, `.seconds(2)`, `.zero`, comparisons and arithmetic.
+//
+// Signed nanoseconds in 64 bits (about 292 years either way). Factories and arithmetic saturate at the bounds
+// instead of trapping, so a configuration value can never crash the input method.
+
+public import Dispatch
+
+public struct TimeSpan: Sendable, Hashable, Comparable, BitwiseCopyable, CustomStringConvertible {
+    /// Signed length in nanoseconds.
+    public var nanoseconds: Int64
+
+    @inlinable public init(nanoseconds: Int64) { self.nanoseconds = nanoseconds }
+
+    public static let zero = TimeSpan(nanoseconds: 0)
+
+    // MARK: Factories
+
+    @inlinable public static func nanoseconds(_ value: some BinaryInteger) -> TimeSpan {
+        TimeSpan(nanoseconds: Int64(clamping: value))
+    }
+
+    @inlinable public static func microseconds(_ value: some BinaryInteger) -> TimeSpan {
+        scaled(value, by: 1_000)
+    }
+
+    @inlinable public static func milliseconds(_ value: some BinaryInteger) -> TimeSpan {
+        scaled(value, by: 1_000_000)
+    }
+
+    @inlinable public static func seconds(_ value: some BinaryInteger) -> TimeSpan {
+        scaled(value, by: 1_000_000_000)
+    }
+
+    /// Fractional seconds, rounded to the nearest nanosecond; NaN is zero.
+    @inlinable public static func seconds(_ value: Double) -> TimeSpan {
+        fromNanoseconds(value * 1e9)
+    }
+
+    /// Fractional milliseconds, rounded to the nearest nanosecond; NaN is zero.
+    @inlinable public static func milliseconds(_ value: Double) -> TimeSpan {
+        fromNanoseconds(value * 1e6)
+    }
+
+    @inlinable static func scaled(_ value: some BinaryInteger, by factor: Int64) -> TimeSpan {
+        let clamped = Int64(clamping: value)
+        let (product, overflow) = clamped.multipliedReportingOverflow(by: factor)
+        guard !overflow else { return TimeSpan(nanoseconds: (clamped < 0) != (factor < 0) ? .min : .max) }
+        return TimeSpan(nanoseconds: product)
+    }
+
+    @inlinable static func fromNanoseconds(_ value: Double) -> TimeSpan {
+        guard !value.isNaN else { return .zero }
+        guard value < 9.223_372_036_854_775e18 else { return TimeSpan(nanoseconds: .max) }
+        guard value > -9.223_372_036_854_775e18 else { return TimeSpan(nanoseconds: .min) }
+        return TimeSpan(nanoseconds: Int64(value.rounded()))
+    }
+
+    // MARK: Conversions
+
+    /// Length in seconds as a floating-point value (for Foundation's `TimeInterval` APIs and display).
+    @inlinable public var inSeconds: Double { Double(nanoseconds) / 1e9 }
+
+    /// Nanoseconds clamped to zero and above, for APIs that take an unsigned count (`Task.sleep(nanoseconds:)`,
+    /// `DispatchTime(uptimeNanoseconds:)`).
+    @inlinable public var unsignedNanoseconds: UInt64 { UInt64(clamping: nanoseconds) }
+
+    /// Nanosecond-precision interval for Dispatch APIs; negative lengths become zero.
+    @inlinable public var dispatchInterval: DispatchTimeInterval {
+        .nanoseconds(Int(clamping: Swift.max(0, nanoseconds)))
+    }
+
+    public var description: String { "\(inSeconds) seconds" }
+```
+<!-- /include -->
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/SnapshotCell.swift -->
 ```swift
@@ -784,8 +1328,6 @@ skeleton implementation is complete and passes Thread Sanitizer). Why the snapsh
 // section that could have loaded it. Boxes are therefore always released on a writer thread, never on the tap.
 //
 // Readers other than the tap use `load()`, which takes a short writer-side lock and returns a strong copy.
-
-internal import Synchronization
 
 /// Read-section counter for the single tap reader. Even = outside a callback, odd = inside.
 public final class ReaderEpoch: Sendable {
@@ -883,8 +1425,6 @@ public final class SnapshotCell<Value: Sendable>: Sendable {
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/SPSCRing.swift -->
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
-
-internal import Synchronization
 
 /// Bounded lock-free single-producer single-consumer queue (PLT-R304 "pushing onto a lock-free
 /// single-producer queue"). Storage is allocated once; push and pop never allocate or block.
@@ -1014,6 +1554,11 @@ public struct MonotonicInstant: Sendable, Hashable, Comparable, BitwiseCopyable 
     public func nanoseconds(since earlier: MonotonicInstant) -> UInt64 {
         nanoseconds >= earlier.nanoseconds ? nanoseconds - earlier.nanoseconds : 0
     }
+
+    /// Saturating difference as a span (zero when `earlier` is later).
+    public func duration(since earlier: MonotonicInstant) -> TimeSpan {
+        .nanoseconds(nanoseconds(since: earlier))
+    }
 }
 
 /// Monotonic clock for timestamps, deadlines and pacing. `sleep(until:)` is allowed only on the `inject`
@@ -1124,7 +1669,6 @@ public struct InlineUTF16: Sendable, Hashable, BitwiseCopyable {
 // thread", so confinement is enforced by construction plus debug assertions, in exactly two audited types.
 
 public import Foundation
-internal import Synchronization
 
 /// State owned by exactly one dedicated thread (tap, inject or ax). The first `withValue` call binds the
 /// owner; later calls from another thread trap in debug builds.
@@ -1235,7 +1779,6 @@ public final class RunLoopThread: Sendable {
 // Never used on the tap thread (PLT-R305).
 
 public import Dispatch
-internal import Synchronization
 
 /// A scheduled one-shot or repeating timer. `cancel()` is idempotent and callable from any thread. A one-shot
 /// timer stays alive until it fires or is cancelled; a repeating timer is cancelled when its last reference
@@ -1247,10 +1790,10 @@ public protocol ScheduledTimer: Sendable {
 /// Schedules handlers on the scheduler's own queue (production: the utility queue, PLT-R203).
 public protocol TimerScheduler: Sendable {
     /// Runs `handler` once after `delay`. `leeway` lets the OS coalesce wakeups (PLT-R803).
-    func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     /// Runs `handler` every `interval`, first after one interval.
-    func scheduleRepeating(every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func scheduleRepeating(every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
 }
 
@@ -1260,7 +1803,7 @@ public final class DispatchTimerScheduler: TimerScheduler {
 
     public init(queue: DispatchQueue) { self.queue = queue }
 
-    public func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    public func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         let timer = DispatchTimer(queue: queue)
@@ -1272,7 +1815,7 @@ public final class DispatchTimerScheduler: TimerScheduler {
     }
 
     public func scheduleRepeating(
-        every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void
+        every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void
     ) -> any ScheduledTimer {
         // A zero or negative interval would make the source fire continuously (PLT-R803 "no busy waiting").
         let period = max(interval, Self.minimumRepeatInterval)
@@ -1282,7 +1825,7 @@ public final class DispatchTimerScheduler: TimerScheduler {
     }
 
     /// Floor for repeating intervals; callers' own periods are at least 2 s at rest (PLT-R803).
-    static let minimumRepeatInterval: Duration = .milliseconds(1)
+    static let minimumRepeatInterval: TimeSpan = .milliseconds(1)
 }
 
 private final class DispatchTimer: ScheduledTimer {
@@ -1296,7 +1839,7 @@ private final class DispatchTimer: ScheduledTimer {
     deinit { cancel() }
 
     func start(
-        deadline: DispatchTime, repeating: Duration?, leeway: Duration, _ handler: @escaping @Sendable () -> Void
+        deadline: DispatchTime, repeating: TimeSpan?, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void
     ) {
         source.schedule(
             deadline: deadline, repeating: repeating?.dispatchInterval ?? .never, leeway: leeway.dispatchInterval)
@@ -1309,20 +1852,6 @@ private final class DispatchTimer: ScheduledTimer {
         source.cancel()
     }
 }
-
-extension Duration {
-    /// Nanosecond-precision conversion for Dispatch APIs. Negative durations become zero and durations
-    /// beyond `Int64.max` nanoseconds saturate instead of trapping on overflow.
-    var dispatchInterval: DispatchTimeInterval {
-        let (seconds, attoseconds) = components
-        guard seconds >= 0, attoseconds >= 0 || seconds > 0 else { return .nanoseconds(0) }
-        let (scaled, overflow) = seconds.multipliedReportingOverflow(by: 1_000_000_000)
-        guard !overflow else { return .nanoseconds(Int.max) }
-        let (total, carry) = scaled.addingReportingOverflow(attoseconds / 1_000_000_000)
-        guard !carry else { return .nanoseconds(Int.max) }
-        return .nanoseconds(Int(clamping: max(0, total)))
-    }
-}
 ```
 <!-- /include -->
 
@@ -1330,45 +1859,46 @@ extension Duration {
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Fixed-size array of atomic UInt64 slots (histogram buckets, the worker outcome board). `Atomic` is
-// non-copyable, so it cannot live in a Swift `Array`; storage is allocated once and never resized, so every
-// operation after `init` is lock-free and allocation-free (PLT-R304).
-
-internal import Synchronization
+// Fixed-size array of atomic UInt64 slots (histogram buckets, the worker outcome board). The words are allocated
+// once and never resized, and every slot is accessed through `UnsafeAtomic`, so every operation after `init` is
+// lock-free and allocation-free (PLT-R304).
 
 public final class AtomicUInt64Array: @unchecked Sendable {
-    // @unchecked: the pointer is written only at init and deinit; every slot is an `Atomic`.
+    // @unchecked: the pointer is written only at init and deinit; every slot is accessed atomically.
     public let count: Int
-    private let slots: UnsafeMutablePointer<Atomic<UInt64>>
+    private let words: UnsafeMutablePointer<UInt64>
 
     public init(count: Int, initialValue: UInt64 = 0) {
         precondition(count > 0)
         self.count = count
-        slots = .allocate(capacity: count)
-        for index in 0..<count { (slots + index).initialize(to: Atomic(initialValue)) }
+        words = .allocate(capacity: count)
+        words.initialize(repeating: initialValue, count: count)
     }
 
     deinit {
-        slots.deinitialize(count: count)
-        slots.deallocate()
+        words.deinitialize(count: count)
+        words.deallocate()
+    }
+
+    @inline(__always)
+    private func slot(_ index: Int) -> UnsafeAtomic<UInt64> {
+        precondition(index >= 0 && index < count)
+        return UnsafeAtomic(at: words + index)
     }
 
     @inline(__always)
     public func load(_ index: Int) -> UInt64 {
-        precondition(index >= 0 && index < count)
-        return slots[index].load(ordering: .sequentiallyConsistent)
+        slot(index).load(ordering: .sequentiallyConsistent)
     }
 
     @inline(__always)
     public func store(_ value: UInt64, at index: Int) {
-        precondition(index >= 0 && index < count)
-        slots[index].store(value, ordering: .sequentiallyConsistent)
+        slot(index).store(value, ordering: .sequentiallyConsistent)
     }
 
     @inline(__always)
     public func increment(_ index: Int, by amount: UInt64 = 1) {
-        precondition(index >= 0 && index < count)
-        slots[index].wrappingAdd(amount, ordering: .relaxed)
+        slot(index).wrappingAdd(amount, ordering: .relaxed)
     }
 
     /// Copies every slot (not atomic as a whole; each slot is read atomically).
@@ -1656,7 +2186,7 @@ public protocol DiagnosticsLogging: Sendable {
 
 public import AppModel
 public import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 /// Metadata-only health event (PLT-R1206).
 public struct HealthEvent: Sendable, Hashable, Codable {
@@ -1867,7 +2397,6 @@ extension HealthEvent {
 
 public import AppModel
 internal import RealtimeSupport
-internal import Synchronization
 
 /// 64 log2 buckets of nanoseconds (bucket i counts values in [2^i, 2^(i+1)); bucket 0 also counts 0), one
 /// `Atomic<UInt64>` each. A histogram created with `subBuckets: true` also counts every value up to
@@ -2121,7 +2650,7 @@ public final class PlatformMetrics: Sendable {
 /// Bounded map of bundle -> histogram (at most `capacity` bundles, least recently used evicted). Uses a lock;
 /// never touched by the tap thread.
 public final class PerBundleHistograms: Sendable {
-    private struct State: ~Copyable {
+    private struct State {
         var histograms: [BundleKey: Log2Histogram] = [:]
         var order: [BundleKey] = []  // least recently used first
     }
@@ -2212,7 +2741,6 @@ public struct MetricsSnapshot: Sendable, Hashable, Codable {
 
 internal import AppModel
 public import RealtimeSupport
-internal import Synchronization
 
 public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case tapDisabledByTimeout = 1
@@ -2277,7 +2805,7 @@ public final class TapLogRing: Sendable {
 
 public import AppModel
 public import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 /// PLT-R903: `~/Library/Logs/<folder>/`, dir 0700, files 0600, JSON lines, 5 files of 1 MB, 14 days.
 public struct LogStorePolicy: Sendable, Hashable {
@@ -2885,11 +3413,10 @@ public enum DiagnosticsBlockKey: String, Sendable, CaseIterable {
 public import AppModel
 public import Foundation
 public import RealtimeSupport
-internal import Synchronization
 
 public enum CaptureLimits {
-    public static let defaultDuration: Duration = .seconds(60)
-    public static let maximumDuration: Duration = .seconds(180)
+    public static let defaultDuration: TimeSpan = .seconds(60)
+    public static let maximumDuration: TimeSpan = .seconds(180)
     public static let retention: TimeInterval = 24 * 3_600
 }
 
@@ -2991,7 +3518,7 @@ public final class CaptureController: Sendable {
     public var failedWrites: Int { writeFailures.load(ordering: .relaxed) }
 
     /// Explicit user action only, after a confirmation that explains what is recorded (PLT-R905).
-    public func start(duration: Duration) throws -> CaptureSessionInfo {
+    public func start(duration: TimeSpan) throws -> CaptureSessionInfo {
         guard duration > .zero, duration <= CaptureLimits.maximumDuration else { throw CaptureError.invalidDuration }
         return try session.withLock { (active: inout CaptureSession?) throws -> CaptureSessionInfo in
             guard active == nil else { throw CaptureError.alreadyRecording }
@@ -2999,7 +3526,7 @@ public final class CaptureController: Sendable {
             let startedAt = wallClock.now()
             let id = CaptureFiles.makeID(at: startedAt)
             let info = CaptureSessionInfo(
-                id: id, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(duration.timeInterval),
+                id: id, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(duration.inSeconds),
                 file: CaptureFiles.url(for: id, in: directory))
             try storage { try prepareFile(for: info) }
             let stopTimer = scheduler.schedule(after: duration, leeway: .milliseconds(100)) { [weak self] in
@@ -3017,7 +3544,7 @@ public final class CaptureController: Sendable {
 
     public func stop() -> CaptureSessionInfo? { finish(reason: .stopped) }
 
-    public func remaining(now: Date) -> Duration? {
+    public func remaining(now: Date) -> TimeSpan? {
         session.withLock { active in
             active.map { .seconds(max(0, $0.info.endsAt.timeIntervalSince(now))) }
         }
@@ -3624,7 +4151,8 @@ public struct MigrationChain: Sendable {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Settings persistence (PLT-R10xx). An actor whose executor is the utility serial queue, so all reads,
-// migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue").
+// migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue"). The
+// executor is `QueueExecutor` (ADR 0315: `DispatchSerialQueue` is an executor only from macOS 14).
 // Loading lives in SettingsStore+Load.swift, writing in SettingsStore+Persistence.swift, reset and import in
 // SettingsStore+Transfer.swift.
 
@@ -3682,7 +4210,9 @@ public enum ResetScope: Sendable, Hashable {
 }
 
 public actor SettingsStore {
-    let queue: DispatchSerialQueue
+    /// Serial queue the store's jobs run on.
+    let queue: DispatchQueue
+    let executor: QueueExecutor
     let storage: DocumentStorage
     let writtenBy: String
     let migrations: MigrationChain
@@ -3702,10 +4232,10 @@ public actor SettingsStore {
     var generation: UInt64 = 0
     var nextTimerToken: UInt64 = 0
 
-    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
+    public nonisolated var unownedExecutor: UnownedSerialExecutor { executor.asUnownedSerialExecutor() }
 
     /// - Parameters:
-    ///   - queue: the utility serial queue (QoS utility).
+    ///   - queue: the utility serial queue (QoS utility); must be serial.
     ///   - writtenBy: app version recorded in every file (PLT-R1002).
     ///   - scheduler: debounce timers; nil = `DispatchDebounceScheduler` on `queue`. Tests pass a manual one.
     ///   - onChange: called on `queue` after each change; InputHost publishes snapshots from it, ShellCore
@@ -3715,13 +4245,14 @@ public actor SettingsStore {
         fileSystem: any FileSystem,
         wallClock: any WallClock,
         writtenBy: String,
-        queue: DispatchSerialQueue,
+        queue: DispatchQueue,
         migrations: MigrationChain = .shipped,
         launchGuard: LaunchGuard,
         scheduler: (any DebounceScheduler)? = nil,
         onChange: @escaping @Sendable (SettingsState) -> Void
     ) {
         self.queue = queue
+        self.executor = QueueExecutor(queue: queue)
         self.storage = DocumentStorage(location: location, fileSystem: fileSystem, wallClock: wallClock)
         self.writtenBy = writtenBy
         self.migrations = migrations
@@ -4379,7 +4910,7 @@ public enum MacroValidator {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 internal import AppModel
-internal import Synchronization
+internal import RealtimeSupport
 
 //
 // Crash-loop safe mode (PLT-R1009): three launches that did not survive 60 s within a short window start the
@@ -5815,11 +6346,11 @@ public enum AXCallResult<Value: Sendable>: Sendable {
 /// `AXUIElementSetAttributeValue(kAXSelectedTextRangeAttribute / kAXSelectedTextAttribute)`, each after
 /// `AXUIElementSetMessagingTimeout` with the requested timeout.
 public protocol FocusedFieldAccess: Sendable {
-    func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange>
+    func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<TextRange>
     /// At most 64 UTF-16 units (PLT-R343); longer ranges are clamped by the implementation.
-    func text(_ field: FieldHandle, in range: TextRange, timeout: Duration) -> AXCallResult<String>
-    func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: Duration) -> AXCallResult<Void>
-    func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void>
+    func text(_ field: FieldHandle, in range: TextRange, timeout: TimeSpan) -> AXCallResult<String>
+    func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: TimeSpan) -> AXCallResult<Void>
+    func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void>
 }
 
 /// `AXUIElement` wrapper. AX references are immutable CF objects that may be used from any thread.
@@ -5854,7 +6385,7 @@ public struct PasteboardSnapshot: Sendable, Hashable {
 }
 
 public struct PasteboardLimits: Sendable, Hashable {
-    public var readTimeout: Duration = .milliseconds(100)
+    public var readTimeout: TimeSpan = .milliseconds(100)
     public var maxTotalBytes: Int = 10 * 1_024 * 1_024
     public init() {}
 }
@@ -5894,7 +6425,6 @@ public protocol PasteboardAccess: Sendable {
 public import AppModel
 public import Diagnostics
 public import RealtimeSupport
-internal import Synchronization
 
 /// When a job stops counting as in flight (ADR 0311).
 public enum InFlightPolicy: UInt8, Sendable, Hashable {
@@ -6049,7 +6579,7 @@ public enum EchoHealth: Sendable, Hashable {
 /// settles jobs whose final event echoed or whose echo timed out, and counts consecutive misses. The pending
 /// list is allocated once (capacity = queue capacity), so the tap path never allocates.
 public final class EchoTracker: @unchecked Sendable {
-    public let timeout: Duration
+    public let timeout: TimeSpan
     public let missesForBroken: Int
     private let queue: JobQueue
     /// PLT-R801 echo round trip (`PlatformMetrics.echoRoundTrip`); atomic increments only.
@@ -6070,7 +6600,7 @@ public final class EchoTracker: @unchecked Sendable {
     private let forgivenBound = Atomic<UInt64>(0)
 
     public init(
-        queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3,
+        queue: JobQueue, timeout: TimeSpan = .milliseconds(200), missesForBroken: Int = 3,
         roundTrip: Log2Histogram? = nil
     ) {
         self.queue = queue
@@ -6091,9 +6621,7 @@ public final class EchoTracker: @unchecked Sendable {
             count += 1
         }
         var settled = 0
-        let timeoutNanoseconds =
-            UInt64(timeout.components.seconds) * 1_000_000_000
-            + UInt64(timeout.components.attoseconds / 1_000_000_000)
+        let timeoutNanoseconds = timeout.unsignedNanoseconds
         let forgiven = forgivenBound.load(ordering: .sequentiallyConsistent)
         while count > 0 {
             let front = pending[head]
@@ -6171,17 +6699,16 @@ public final class CurrentFocusGeneration: Sendable {
 internal import AppModel
 public import Diagnostics
 public import RealtimeSupport
-internal import Synchronization
 
 public struct WorkerConfiguration: Sendable, Hashable {
     /// Oldest held event may wait this long before a flush (PLT-R314, VERIFY tuning).
-    public var livenessCeiling: Duration = .milliseconds(150)
+    public var livenessCeiling: TimeSpan = .milliseconds(150)
     /// Ceiling while a macro job runs (PLT-R480).
-    public var macroLivenessCeiling: Duration = .seconds(1)
+    public var macroLivenessCeiling: TimeSpan = .seconds(1)
     /// Queue length that forces a flush (PLT-R314).
     public var maxQueuedJobs: Int = 256
     /// Jobs longer than this are split (if `allowSplit`) or use the fallback (PLT-R408).
-    public var maxJobDuration: Duration = .milliseconds(150)
+    public var maxJobDuration: TimeSpan = .milliseconds(150)
     /// Long text: chunked Unicode up to 2,000 graphemes, paste above if opted in; hard cap 4,000 (PLT-R480).
     public var pasteThresholdGraphemes: Int = 2_000
     public var maximumExpansionGraphemes: Int = 4_000
@@ -6360,7 +6887,7 @@ public final class PasteboardPreserver {
     public func beginPaste(_ text: String) throws(PasteboardError) { try session.begin(text) }
 
     /// Steps 4-6, driven by the worker's deadlines.
-    public func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> RestoreResult {
+    public func restoreIfDue(now: MonotonicInstant, restoreDelay: TimeSpan) -> RestoreResult {
         session.restoreIfDue(now: now, restoreDelay: restoreDelay)
     }
 
@@ -6380,6 +6907,7 @@ public final class PasteboardPreserver {
 
 internal import AppModel
 internal import ApplicationServices
+public import RealtimeSupport
 
 /// CoreGraphics poster (PLT-R320-R322, PLT-R324).
 public final class CGEventPoster: EventPoster {
@@ -6399,16 +6927,16 @@ public final class CGEventPoster: EventPoster {
 /// Bounded AX field access (PLT-R343).
 public final class AXFocusedFieldAccess: FocusedFieldAccess {
     public init() {}
-    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange> {
+    public func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<TextRange> {
         AXFieldCalls.selectedRange(field.element?.element, timeout: timeout)
     }
-    public func text(_ field: FieldHandle, in range: TextRange, timeout: Duration) -> AXCallResult<String> {
+    public func text(_ field: FieldHandle, in range: TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         AXFieldCalls.text(field.element?.element, in: range, timeout: timeout)
     }
-    public func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: TimeSpan) -> AXCallResult<Void> {
         AXFieldCalls.setSelectedRange(field.element?.element, to: range, timeout: timeout)
     }
-    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         AXFieldCalls.setSelectedText(field.element?.element, to: text, timeout: timeout)
     }
 }
@@ -7317,6 +7845,7 @@ public enum HostStateResolver {
 
 public import CoreFoundation
 public import CoreGraphics
+public import RealtimeSupport
 
 /// Event mask of PLT-R301 (`keyDown`, `keyUp`, `flagsChanged`, `leftMouseDown`, `rightMouseDown`,
 /// `otherMouseDown`) plus `scrollWheel`, which is on by default because PRD-R14 (MUST) cancels the Control+Shift
@@ -7446,7 +7975,7 @@ public final class TapThread<Handler: TapEventHandler>: TapControl, Sendable {
 
     /// Waits until the thread has left its run loop (or never started). False on timeout. For the owner that
     /// recreates the tap after `stop()` (ADR 0309) and for tests; never called on the tap thread.
-    public func waitUntilExited(timeout: Duration) -> Bool { runtime.waitUntilExited(timeout: timeout) }
+    public func waitUntilExited(timeout: TimeSpan) -> Bool { runtime.waitUntilExited(timeout: timeout) }
 }
 ```
 <!-- /include -->
@@ -7459,14 +7988,13 @@ public final class TapThread<Handler: TapEventHandler>: TapControl, Sendable {
 // (W1-F1, `enter`/`exit` on every callback) and the tap watchdog (W1-F2) use it (ADR 0313); W1-F2 owns it.
 
 public import RealtimeSupport
-internal import Synchronization
 
 /// `enter` writes the callback entry time, `exit` clears it; the utility-queue watchdog disables the tap if one
 /// callback runs longer than 250 ms. The first callback after 2 s without callbacks signals `activitySignal`
 /// so the watchdog arms its 250 ms check only while keys flow (PLT-R803, ADR 0309).
 public final class CallbackWatchdog: Sendable {
-    public static let callbackLimit: Duration = .milliseconds(250)
-    public static let idleAfter: Duration = .seconds(2)
+    public static let callbackLimit: TimeSpan = .milliseconds(250)
+    public static let idleAfter: TimeSpan = .seconds(2)
     private static let idleNanoseconds: UInt64 = 2_000_000_000
 
     private let enteredAt = Atomic<UInt64>(0)  // 0 = outside a callback
@@ -7515,7 +8043,6 @@ public final class CallbackWatchdog: Sendable {
 
 internal import AppModel
 public import RealtimeSupport
-internal import Synchronization
 
 /// Why the watchdog acted.
 public enum TapTrip: Sendable, Hashable {
@@ -7549,14 +8076,14 @@ extension TapSnapshots: SnapshotReclaiming {}
 /// touches the tap again by itself. Handlers run on the scheduler's queue (utility in production), outside
 /// the watchdog's lock, so they may call back into it.
 public final class TapWatchdog: Sendable {
-    public static let enabledCheckInterval: Duration = .seconds(5)
-    public static let recoveryDelay: Duration = .seconds(2)
+    public static let enabledCheckInterval: TimeSpan = .seconds(5)
+    public static let recoveryDelay: TimeSpan = .seconds(2)
     /// Period of the callback check while keys flow (ADR 0309).
-    public static let callbackCheckInterval: Duration = CallbackWatchdog.callbackLimit
+    public static let callbackCheckInterval: TimeSpan = CallbackWatchdog.callbackLimit
 
-    private static let enabledCheckLeeway: Duration = .seconds(1)
-    private static let limitNanoseconds = CallbackWatchdog.callbackLimit.nanoseconds
-    private static let idleNanoseconds = CallbackWatchdog.idleAfter.nanoseconds
+    private static let enabledCheckLeeway: TimeSpan = .seconds(1)
+    private static let limitNanoseconds = CallbackWatchdog.callbackLimit.unsignedNanoseconds
+    private static let idleNanoseconds = CallbackWatchdog.idleAfter.unsignedNanoseconds
     /// The crossing check lands just past the limit, so "more than 250 ms" is already true when it runs.
     private static let crossingMargin: UInt64 = 1_000_000
 
@@ -7754,7 +8281,7 @@ public final class TapWatchdog: Sendable {
         if let running = observation.running {
             if running > Self.limitNanoseconds { return trip(&state, running: running) }
             if state.crossingTimer == nil {
-                let delay = Duration.nanoseconds(Self.limitNanoseconds - running + Self.crossingMargin)
+                let delay = TimeSpan.nanoseconds(Self.limitNanoseconds - running + Self.crossingMargin)
                 state.crossingTimer = scheduler.schedule(after: delay, leeway: delay / 10) { [weak self] in
                     self?.callbackCheck(crossing: true)
                 }
@@ -7846,7 +8373,7 @@ public enum LifecycleEffect: Sendable, Hashable {
     case reenableTap
     case requestFlush(FlushReason)
     case resetComposition
-    case scheduleRetry(after: Duration)
+    case scheduleRetry(after: TimeSpan)
     case cancelRetry
     case recordHealth(HealthEventKindCode)
     /// More than 3 system disables within 10 minutes (PLT-R330 step 5).
@@ -7869,24 +8396,24 @@ public enum HealthEventKindCode: String, Sendable, Hashable {
 /// `running` the reset comes before the publish, so the tap never transforms with a stale composition.
 public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R332: retry tap creation with backoff 1, 2, 5, 10 s (cap) while permissions look granted.
-    public static let backoff: [Duration] = [.seconds(1), .seconds(2), .seconds(5), .seconds(10)]
+    public static let backoff: [TimeSpan] = [.seconds(1), .seconds(2), .seconds(5), .seconds(10)]
     /// PLT-R306: recovery attempt 2 s after a watchdog trip, only once the callback has returned (ADR 0309).
-    public static let watchdogRecoveryDelay: Duration = .seconds(2)
+    public static let watchdogRecoveryDelay: TimeSpan = .seconds(2)
     /// PLT-R330 step 5: the notice appears when more than `instabilityThreshold` system disables fall within
     /// this window, at most once per window.
-    public static let instabilityWindow: Duration = .seconds(600)
+    public static let instabilityWindow: TimeSpan = .seconds(600)
     public static let instabilityThreshold = 3
     /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
     /// report one disable; reports closer than this count once toward the notice (both still run the procedure).
-    public static let disableCoalescingWindow: Duration = .seconds(1)
+    public static let disableCoalescingWindow: TimeSpan = .seconds(1)
     /// PLT-R323, PLT-R730: echo loss and OS policy leave the permission status `ready`, so failOpen(postingBroken)
     /// retries the tap on this backoff while permissions look granted. A break soon after a recreation moves to
     /// the next step (cap 5 minutes), so a posting path that stays broken cannot cause a create/break loop.
-    public static let postingBrokenBackoff: [Duration] = [
+    public static let postingBrokenBackoff: [TimeSpan] = [
         .seconds(30), .seconds(60), .seconds(120), .seconds(240), .seconds(300),
     ]
     /// A recreated tap that posts for longer than the previous delay plus this interval resets the backoff.
-    public static let postingBrokenStableInterval: Duration = .seconds(600)
+    public static let postingBrokenStableInterval: TimeSpan = .seconds(600)
 
     /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
     private enum TapPresence: Sendable, Hashable { case none, creating, alive }
@@ -8168,11 +8695,12 @@ public struct HostLifecycle: Sendable, Hashable {
     /// notice was shown during the last window.
     private mutating func noteSystemDisable(at now: MonotonicInstant) -> Bool {
         if let last = recentDisables.last,
-            now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < Self.disableCoalescingWindow.nanoseconds
+            now.nanoseconds(since: MonotonicInstant(nanoseconds: last))
+                < Self.disableCoalescingWindow.unsignedNanoseconds
         {
             return false
         }
-        let window = Self.instabilityWindow.nanoseconds
+        let window = Self.instabilityWindow.unsignedNanoseconds
         recentDisables.append(now.nanoseconds)
         recentDisables.removeAll { now.nanoseconds(since: MonotonicInstant(nanoseconds: $0)) > window }
         if recentDisables.count > Self.instabilityThreshold + 1 { recentDisables.removeFirst() }
@@ -8186,10 +8714,11 @@ public struct HostLifecycle: Sendable, Hashable {
 
     /// PLT-R323: the retry delay for this postingBroken. A break within the previous delay plus
     /// `postingBrokenStableInterval` of the previous break moves one step up the backoff; otherwise it restarts.
-    private mutating func notePostingBroken(at now: MonotonicInstant) -> Duration {
+    private mutating func notePostingBroken(at now: MonotonicInstant) -> TimeSpan {
         let backoff = Self.postingBrokenBackoff
         if let last = lastPostingBrokenAt {
-            let horizon = backoff[postingBrokenAttempt].nanoseconds + Self.postingBrokenStableInterval.nanoseconds
+            let horizon =
+                backoff[postingBrokenAttempt].unsignedNanoseconds + Self.postingBrokenStableInterval.unsignedNanoseconds
             let soon = now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < horizon
             postingBrokenAttempt = soon ? min(postingBrokenAttempt + 1, backoff.count - 1) : 0
         }
@@ -8245,7 +8774,7 @@ public struct InputHostDependencies: Sendable {
     public var tapLog: TapLogRing
     public var capture: CaptureController?
     /// Serial utility queue shared with SettingsStore and Diagnostics (PLT-R203).
-    public var utilityQueue: DispatchSerialQueue
+    public var utilityQueue: DispatchQueue
     /// PLT-R802 intervals for the tap callback, injection jobs and AX calls. When nil, the production
     /// controller creates them with the bundle identifier as subsystem.
     public var signposts: PlatformSignposts?
@@ -8258,7 +8787,7 @@ public struct InputHostDependencies: Sendable {
         workspace: any WorkspaceEvents, keyValueStore: any KeyValueStore, clock: any MonotonicClock,
         scheduler: any TimerScheduler, wallClock: any WallClock,
         metrics: PlatformMetrics, health: HealthEventLog, logger: any DiagnosticsLogging, tapLog: TapLogRing,
-        capture: CaptureController?, utilityQueue: DispatchSerialQueue, signposts: PlatformSignposts? = nil
+        capture: CaptureController?, utilityQueue: DispatchQueue, signposts: PlatformSignposts? = nil
     ) {
         self.tapFactory = tapFactory
         self.poster = poster
@@ -8595,7 +9124,7 @@ public enum HotkeyResult: Sendable, Hashable {
 /// started. A restore binding is recognised only as a key or key combo (it must be a key the pipeline can
 /// consume, PRD-R18, PLT-R353); a modifier-only restore binding is ignored. Logic: `HotkeyRecognition.swift`.
 public struct HotkeyRecognizer: Sendable {
-    public static let maximumTapDuration: Duration = .milliseconds(500)
+    public static let maximumTapDuration: TimeSpan = .milliseconds(500)
     let toggle: HotkeyBinding
     let restore: HotkeyBinding?
     var toggleTap: HotkeyChordTracker?
@@ -8784,7 +9313,6 @@ public struct LayoutBindingConfiguration: Sendable, Hashable {
 public import AppModel
 public import Foundation
 public import RealtimeSupport
-import Synchronization
 
 /// Production (`SystemSecureInputProbe`): `IsSecureEventInputEnabled()` (Carbon); holder via
 /// `IORegistryEntryCreateCFProperty(IORegistryGetRootEntry(kIOMainPortDefault), "IOConsoleUsers", ...)`,
@@ -8849,9 +9377,9 @@ public protocol ProcessIdentityProvider: Sendable {
 /// the monitor (`pollNow`, `keyEvidence`); a snapshot produced meanwhile is published after it returns.
 /// Logic: `SecureInputMonitor+Polling.swift`.
 public final class SecureInputMonitor: Sendable {
-    public static let pollInterval: Duration = .seconds(2)
+    public static let pollInterval: TimeSpan = .seconds(2)
     /// PLT-R803: at least 10 % leeway on every timer.
-    public static let pollLeeway: Duration = .milliseconds(200)
+    public static let pollLeeway: TimeSpan = .milliseconds(200)
 
     let probe: any SecureInputProbe
     let processes: any ProcessIdentityProvider
@@ -9001,7 +9529,7 @@ public struct AXCircuitBreaker: Sendable {
     var recentTimeouts: [Int32: [MonotonicInstant]] = [:]
     var openUntil: [Int32: MonotonicInstant] = [:]
 
-    public init(threshold: Int = 3, window: Duration = .seconds(10), cooldown: Duration = .seconds(60)) {
+    public init(threshold: Int = 3, window: TimeSpan = .seconds(10), cooldown: TimeSpan = .seconds(60)) {
         self.threshold = max(1, threshold)
         windowNanoseconds = Self.nanoseconds(window)
         cooldownNanoseconds = Self.nanoseconds(cooldown)
@@ -9156,7 +9684,6 @@ public import AppModel
 internal import Foundation
 public import RealtimeSupport
 public import SettingsStore
-import Synchronization
 
 /// Production (`SystemPermissionProbe`): `AXIsProcessTrusted()`, `CGPreflightPostEventAccess()`,
 /// `CGPreflightListenEventAccess()`, `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])`,
@@ -9201,11 +9728,11 @@ public struct PermissionStatus: Sendable, Hashable {
 /// one at a time and outside the check lock: it may call back into the monitor (`checkNow`, `setTapUnavailable`);
 /// a status produced meanwhile is delivered after it returns. Logic: `PermissionMonitor+Checks.swift`.
 public final class PermissionMonitor: Sendable {
-    public static let notReadyInterval: Duration = .seconds(2)
-    public static let readyInterval: Duration = .seconds(30)
-    public static let onboardingInterval: Duration = .seconds(1)
+    public static let notReadyInterval: TimeSpan = .seconds(2)
+    public static let readyInterval: TimeSpan = .seconds(30)
+    public static let onboardingInterval: TimeSpan = .seconds(1)
     /// PLT-R711: fast polling stops by itself after 5 minutes.
-    public static let onboardingLimit: Duration = .seconds(300)
+    public static let onboardingLimit: TimeSpan = .seconds(300)
     /// `KeyValueStore` key of the last granted identity (a 52-bit hash of the designated requirement digest).
     public static let lastGrantedDigestKey = "PermissionLastGrantedIdentity"
 
@@ -9307,7 +9834,6 @@ public import CompatRules
 public import Diagnostics
 public import Injection
 public import RealtimeSupport
-internal import Synchronization
 
 /// PLT-R810: posts physical-like key events tagged with the probe marker (processed by the pipeline as
 /// physical, excluded from user metrics) into the probe window's text view with the three timing profiles.
@@ -9318,13 +9844,13 @@ public final class LatencyProbeDriver: Sendable {
     let sequence = ProbeSequence()
     let changes = Mutex<[LatencyProbeObservedChange]>([])
     /// How long after the last key the driver keeps collecting text changes.
-    let settle: Duration
+    let settle: TimeSpan
 
     public convenience init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) {
         self.init(poster: poster, marker: marker, clock: clock, settle: .milliseconds(150))
     }
 
-    init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock, settle: Duration) {
+    init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock, settle: TimeSpan) {
         self.poster = poster
         self.marker = marker
         self.clock = clock
@@ -9564,8 +10090,9 @@ opens `Bundle(path: appBundle.path(forResource: language.rawValue, ofType: "lpro
 `localizedString(forKey:value:table:)` on that sub-bundle, so `Bundle.main`'s preferred localization (which
 follows macOS) is never consulted. Formatting uses `String(format:locale:arguments:)` with the selected
 `Locale`, so `.stringsdict` plurals and number formats follow the selected language (PRD-R65). The app name is
-always an argument (`"onboarding.welcome.title" = "Chào mừng bạn đến với %@"`). `InterfaceLanguageModel` is
-`@Observable`; when settings change D18 it swaps the `Localizer`, SwiftUI views (which render
+always an argument (`"onboarding.welcome.title" = "Chào mừng bạn đến với %@"`). `InterfaceLanguageModel` is an
+`ObservableObject` (ADR 0315: `@Observable` needs macOS 14); when settings change D18 it swaps the `Localizer`,
+SwiftUI views (which hold it, or a model relaying its changes, as `@ObservedObject` and render
 `Text(verbatim: localizer.string(...))`) re-render, AppKit menus are rebuilt on their next open, the status
 item's accessibility label and open window titles are refreshed. Sparkle's own update window follows macOS
 localization and Sparkle picks localized release notes by the macOS language, so each release links one
@@ -9717,8 +10244,9 @@ public struct Brand: Sendable, Hashable {
 // there, so switching language re-renders immediately and is independent of the macOS language.
 
 public import AppModel
+public import Combine
 public import Foundation
-public import Observation
+public import RealtimeSupport
 
 /// String tables (catalog file names). Owned per workstream (docs/architecture/workstreams.md).
 public enum StringTable: String, Sendable, CaseIterable {
@@ -9787,8 +10315,12 @@ public struct Localizer: Sendable {
     /// PRD-R65: an ISO calendar day (`YYYY-MM-DD`, as `compat-matrix.json` writes `lastVerified`) in the selected
     /// language, in the same long style as `formatDate`. Text that is not a valid day is returned unchanged.
     public func formatDay(iso day: String, timeZone: TimeZone = .current) -> String {
-        guard let match = day.wholeMatch(of: /(\d{4})-(\d{2})-(\d{2})/) else { return day }
-        let parts = DateComponents(year: Int(match.1), month: Int(match.2), day: Int(match.3))
+        // `YYYY-MM-DD` with ASCII digits, parsed by hand (Swift `Regex` needs macOS 13).
+        let fields = day.split(separator: "-", omittingEmptySubsequences: false)
+        guard fields.map(\.count) == [4, 2, 2],
+            fields.allSatisfy({ $0.allSatisfy { ("0"..."9").contains($0) } })
+        else { return day }
+        let parts = DateComponents(year: Int(fields[0]), month: Int(fields[1]), day: Int(fields[2]))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         // A day that does not exist (2026-02-30) rolls over in `date(from:)`; reading it back catches that.
@@ -9804,9 +10336,12 @@ public struct Localizer: Sendable {
     }
 
     /// Countdown of the typing-trace HUD (PLT-R905), `m:ss`.
-    public func formatCountdown(_ remaining: Duration) -> String {
-        let clamped = max(remaining, .zero)
-        return clamped.formatted(Duration.TimeFormatStyle(pattern: .minuteSecond).locale(locale))
+    /// Arithmetic instead of `Duration.TimeFormatStyle` (macOS 13); both interface languages write `m:ss` with
+    /// ASCII digits. Rounds to the nearest second, half to even, as that style did.
+    public func formatCountdown(_ remaining: TimeSpan) -> String {
+        let seconds = Int(max(remaining, .zero).inSeconds.rounded(.toNearestOrEven))
+        let secondsPart = seconds % 60
+        return "\(seconds / 60):\(secondsPart < 10 ? "0" : "")\(secondsPart)"
     }
 
     static func locale(for language: InterfaceLanguage) -> Locale {
@@ -9832,11 +10367,12 @@ public struct Localizer: Sendable {
 }
 
 /// Observable current language for SwiftUI views and AppKit controllers (menus rebuild on open).
+/// `ObservableObject` (not `@Observable`, which needs macOS 14; ADR 0315): SwiftUI views hold it as
+/// `@ObservedObject` or observe a model that forwards its `objectWillChange`; AppKit controllers use `afterChange`.
 @MainActor
-@Observable
-public final class InterfaceLanguageModel {
-    public private(set) var localizer: Localizer
-    @ObservationIgnored private let appBundle: Bundle
+public final class InterfaceLanguageModel: ObservableObject {
+    @Published public private(set) var localizer: Localizer
+    private let appBundle: Bundle
 
     public init(language: InterfaceLanguage, appBundle: Bundle) {
         self.appBundle = appBundle
@@ -9856,16 +10392,17 @@ public final class InterfaceLanguageModel {
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// System Settings pane names and deep links keyed by macOS version and the MACOS language (PLT-R704, PRD-R64),
-// loaded from the resource `SystemPanes.json`. UI copy is in the interface language; pane names quoted inside
-// it are in the system language so they match what the user sees in System Settings.
+// System Settings (macOS 13 and later) and System Preferences (macOS 12) pane names and deep links keyed by macOS
+// version and the MACOS language (PLT-R704, PRD-R64, ADR 0315), loaded from the resource `SystemPanes.json`. UI
+// copy is in the interface language; pane names quoted inside it are in the system language so they match what
+// the user sees on screen.
 //
 // SystemPanes.json shape:
 // { "schemaVersion": 1,
-//   "entries": [ { "macOS": {"min": "15.0", "max": "26.99"},
+//   "entries": [ { "macOS": {"min": "13.0", "max": "26.99"},
 //                  "names": { "vi": {"systemSettings": "Cài đặt hệ thống", "privacySecurity": "...",
 //                                    "accessibility": "Trợ năng", "inputMonitoring": "...", "keyboard": "...",
-//                                    "textReplacements": "..."},
+//                                    "textReplacements": "...", "usersGroups": "...", "loginItems": "..."},
 //                             "en": {...} },
 //                  "deepLinks": { "accessibility": "x-apple.systempreferences:...", ... } } ] }
 // Every entry is VERIFY on a real system in that language and version before release.
@@ -9878,16 +10415,20 @@ public enum SystemPane: String, Sendable, Hashable, CaseIterable {
 }
 
 public struct SystemPaneNames: Sendable, Hashable, Codable {
+    /// "System Settings" from macOS 13, "System Preferences" on macOS 12.
     public var systemSettings: String
     public var privacySecurity: String
     public var accessibility: String  // "Device Control and Data Access" on macOS 27 (PLT-R701)
     public var inputMonitoring: String
     public var keyboard: String
     public var textReplacements: String
+    /// The pane that holds Login Items: "Users & Groups" on macOS 12, "General" from macOS 13.
+    public var usersGroups: String
+    public var loginItems: String
 
     public init(
         systemSettings: String, privacySecurity: String, accessibility: String, inputMonitoring: String,
-        keyboard: String, textReplacements: String
+        keyboard: String, textReplacements: String, usersGroups: String, loginItems: String
     ) {
         self.systemSettings = systemSettings
         self.privacySecurity = privacySecurity
@@ -9895,6 +10436,8 @@ public struct SystemPaneNames: Sendable, Hashable, Codable {
         self.inputMonitoring = inputMonitoring
         self.keyboard = keyboard
         self.textReplacements = textReplacements
+        self.usersGroups = usersGroups
+        self.loginItems = loginItems
     }
 }
 
@@ -11297,8 +11840,10 @@ internal import AppModel
 public import Foundation
 internal import ServiceManagement
 
-/// Launch at login (PLT-R205, D17). Production: `SMAppService.mainApp` `status`, `register()`,
-/// `unregister()`; `requiresApproval` opens System Settings > Login Items via `SMAppService.openSystemSettingsLoginItems()`.
+/// Launch at login (PLT-R205, D17). Production: `SMAppService.mainApp` `status`, `register()`, `unregister()`;
+/// `requiresApproval` opens System Settings > Login Items via `SMAppService.openSystemSettingsLoginItems()`.
+/// macOS 12 has no `SMAppService` (ADR 0315): the status is `unavailable`, the user adds the app by hand and
+/// `openSystemSettings()` opens System Preferences > Users & Groups.
 public protocol LoginItemService: Sendable {
     var status: LoginItemStatus { get }
     func register() throws
@@ -11306,17 +11851,60 @@ public protocol LoginItemService: Sendable {
     func openSystemSettings()
 }
 
-public enum LoginItemStatus: String, Sendable, Hashable { case enabled, notRegistered, requiresApproval, notFound }
+public enum LoginItemStatus: String, Sendable, Hashable {
+    case enabled, notRegistered, requiresApproval, notFound
+    /// macOS 12: the app cannot register itself; the user adds it in System Preferences (ADR 0315).
+    case unavailable
+}
 
-/// Thin wrapper; only `status(from:)` is unit tested because the other members change the user's login items
-/// (verified by Pa, traceability PLT-R205).
-public struct SMAppServiceLoginItem: LoginItemService {
+/// `register()` and `unregister()` on macOS 12, where the app cannot change its own login item.
+public struct LoginItemUnavailable: Error, Sendable, Hashable {
     public init() {}
-    public var status: LoginItemStatus { Self.status(from: SMAppService.mainApp.status) }
-    public func register() throws { try SMAppService.mainApp.register() }
-    public func unregister() throws { try SMAppService.mainApp.unregister() }
-    public func openSystemSettings() { SMAppService.openSystemSettingsLoginItems() }
+}
 
+/// Thin wrapper; `status(from:)` and the macOS 12 branch are unit tested because the other members change the
+/// user's login items (verified by Pa, traceability PLT-R205).
+public struct SMAppServiceLoginItem: LoginItemService {
+    private let usesService: Bool
+    private let openLegacyLoginItems: @Sendable () -> Void
+
+    /// - Parameter openLegacyLoginItems: macOS 12 only. Opens System Preferences > Users & Groups (the
+    ///   `loginItems` deep link of SystemPanes.json) so the user can add the app to Login Items.
+    public init(openLegacyLoginItems: @escaping @Sendable () -> Void = {}) {
+        self.init(usesService: Self.serviceExists, openLegacyLoginItems: openLegacyLoginItems)
+    }
+
+    /// `usesService: false` is the macOS 12 behaviour (tests run it on any system).
+    init(usesService: Bool, openLegacyLoginItems: @escaping @Sendable () -> Void) {
+        self.usesService = usesService
+        self.openLegacyLoginItems = openLegacyLoginItems
+    }
+
+    static var serviceExists: Bool {
+        if #available(macOS 13, *) { true } else { false }
+    }
+
+    public var status: LoginItemStatus {
+        if usesService, #available(macOS 13, *) { return Self.status(from: SMAppService.mainApp.status) }
+        return .unavailable
+    }
+
+    public func register() throws {
+        guard usesService, #available(macOS 13, *) else { throw LoginItemUnavailable() }
+        try SMAppService.mainApp.register()
+    }
+
+    public func unregister() throws {
+        guard usesService, #available(macOS 13, *) else { throw LoginItemUnavailable() }
+        try SMAppService.mainApp.unregister()
+    }
+
+    public func openSystemSettings() {
+        guard usesService, #available(macOS 13, *) else { return openLegacyLoginItems() }
+        SMAppService.openSystemSettingsLoginItems()
+    }
+
+    @available(macOS 13, *)
     static func status(from status: SMAppService.Status) -> LoginItemStatus {
         switch status {
         case .enabled: .enabled
@@ -11416,11 +12004,11 @@ final class AppEnvironment {
     private(set) var updater: UpdaterController?
 
     let paths: StoragePaths
-    let utility: DispatchSerialQueue
+    let utility: DispatchQueue
     let keyValues = UserDefaultsKeyValueStore()
     let launchGuard: LaunchGuard
     let diagnostics: DiagnosticsWiring
-    let loginItem = SMAppServiceLoginItem()
+    let loginItem = SMAppServiceLoginItem(openLegacyLoginItems: AppEnvironment.openLegacyLoginItems)
     let settingsChanges = MainActorRelay<SettingsState>()
     /// System uptime at launch: keys pressed before it do not count for the relaunch policy (PLT-R1105).
     let launchUptime = ProcessInfo.processInfo.systemUptime
@@ -11457,7 +12045,7 @@ final class AppEnvironment {
         brand = Brand.from(bundle)
         language = InterfaceLanguageModel(language: DefaultSettings.v1.interfaceLanguage, appBundle: bundle)
         paths = StoragePaths(folder: brand.storageFolderName)
-        utility = DispatchSerialQueue(label: brand.slug + ".utility", qos: .utility)
+        utility = DispatchQueue(label: brand.slug + ".utility", qos: .utility)
         launchGuard = LaunchGuard(store: keyValues)
         diagnostics = DiagnosticsWiring(
             paths: paths, subsystem: brand.bundleIdentifier, utility: utility, defaults: .standard)
@@ -11578,7 +12166,14 @@ final class AppEnvironment {
         return (secondsSinceLastKey: idle, secureInputOn: IsSecureEventInputEnabled())
     }
 
-    private static func loadPaneTable() -> SystemPaneTable? {
+    /// macOS 12 (ADR 0315): no `SMAppService`, so "Mở Tùy chọn hệ thống" opens System Preferences > Users & Groups,
+    /// where the user adds the app to Login Items by hand.
+    nonisolated private static func openLegacyLoginItems() {
+        guard let url = loadPaneTable()?.deepLink(.loginItems, macOS: InputHostController.macOSVersion) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    nonisolated private static func loadPaneTable() -> SystemPaneTable? {
         guard let url = Bundle.main.url(forResource: "SystemPanes", withExtension: "json"),
             let data = try? Data(contentsOf: url)
         else { return nil }
@@ -11696,7 +12291,7 @@ extension AppEnvironment: LaunchSteps {
 
 import AppKit
 import AppModel
-import Observation
+import Combine
 import RealtimeSupport
 import ShellCore
 
@@ -11725,6 +12320,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var labelKey: String?
     private var appName: String?
     private var clickToToggle = false
+    private var languageObservation: AnyCancellable?
 
     /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
     init(
@@ -11789,14 +12385,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// PRD-R63: the status item's label follows a language change at once; the menu is rebuilt on next open.
     private func observeLanguage() {
-        withObservationTracking {
-            _ = language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.applyIcon()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = language.afterChange { [weak self] in self?.applyIcon() }
     }
 
     // MARK: - Actions (targets of the menu items built by StatusMenuBuilder)
@@ -11897,7 +12486,7 @@ final class CaptureHUDController {
         self.stop = stop
     }
 
-    func show(remaining: Duration) {
+    func show(remaining: TimeSpan) {
         let localizer = language.localizer
         let content = CaptureHUDView(
             title: localizer.string(MenuText.captureTitle),
@@ -11925,8 +12514,8 @@ final class CaptureHUDController {
 
 import AppKit
 import AppModel
+import Combine
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 import SwiftUI
@@ -11946,6 +12535,8 @@ protocol OnboardingActions: AnyObject {
     func openConflictHelp(_ conflict: ConflictingInput)  // PRD-R40 screen 5 help page (never quits other apps)
     func openKeyboardPane()  // PRD-R40 screen 5, built-in Vietnamese source
     func setOpenAtLogin(_ enabled: Bool)
+    /// False on macOS 12, where the app cannot add itself to the login items (ADR 0315).
+    var canOpenAtLogin: Bool { get }
     /// PRD-R40 screen 6, PRD-R32: the user's macros, for the import preview's duplicates.
     func currentMacros() async -> [StoredMacro]
     /// The merged list after the user confirmed the preview.
@@ -11961,6 +12552,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     static let contentSize = NSSize(width: 640, height: 480)
 
     private let model: OnboardingModel
+    private var languageObservation: AnyCancellable?
 
     required init?(coder: NSCoder) { nil }
 
@@ -12015,14 +12607,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func observeLanguage() {
-        withObservationTracking {
-            _ = model.language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.refreshTitle()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
     }
 }
 ```
@@ -12038,9 +12623,9 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
 import AppKit
 import AppModel
+import Combine
 import CompatRules
 import InputHost
-import Observation
 import SettingsStore
 import ShellCore
 import SwiftUI
@@ -12070,6 +12655,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let minimumSize = NSSize(width: 640, height: 560)
 
     private let model: SettingsWindowModel
+    private var languageObservation: AnyCancellable?
 
     /// Forwarded to the model; set by the composition root after construction.
     weak var actions: (any SettingsActions)? {
@@ -12081,19 +12667,20 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     /// - Parameters:
     ///   - brand: app name, slug, version and site host (never hard-coded).
     ///   - matrix: the bundled `compat-matrix.json`; nil shows every app as not verified (PRD-R35).
+    ///   - panes: System Settings / System Preferences names of the running macOS (PRD-R64, ADR 0315).
     ///   - inputSources: enabled input sources for the layout binding (PLT-R373), read when the pane appears.
     ///   - layout: the current layout table, so the recorder names Command+Q / Command+W on any layout.
     init(
         store: SettingsStore, language: InterfaceLanguageModel, updater: any UpdaterControlling,
         loginItem: any LoginItemService, brand: Brand = .from(.main),
-        matrix: MatrixDocument? = SettingsResources.bundledMatrix(),
+        matrix: MatrixDocument? = SettingsResources.bundledMatrix(), panes: SystemPaneNames,
         inputSources: @escaping @MainActor () -> [InputSourceInfo] = { [] },
         layout: @escaping @MainActor () -> LayoutTable? = { nil },
         keyValues: any KeyValueStore = UserDefaultsKeyValueStore()
     ) {
         model = SettingsWindowModel(
             commands: SettingsCommands(store: store), language: language, updater: updater, loginItem: loginItem,
-            brand: brand, matrix: matrix, inputSources: inputSources, layout: layout,
+            brand: brand, matrix: matrix, panes: panes, inputSources: inputSources, layout: layout,
             disclosures: AdvancedDisclosureMemory(store: keyValues))
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
@@ -12145,7 +12732,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func present() {
         Task { await model.refresh() }
         showWindow(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
         window?.makeKeyAndOrderFront(nil)
     }
 
@@ -12155,14 +12742,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func observeLanguage() {
-        withObservationTracking {
-            _ = model.language.localizer
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                self?.refreshTitle()
-                self?.observeLanguage()
-            }
-        }
+        languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
     }
 }
 
@@ -12185,8 +12765,8 @@ enum SettingsResources {
 
 import AppKit
 import AppModel
+import Combine
 import Diagnostics
-import Observation
 import ShellCore
 import SwiftUI
 
@@ -12234,7 +12814,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
         model.refresh(using: build)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     /// "Báo lỗi..." (PRD-R11 item 6, PRD-R47): the sheet with the Apps pane's apps and the last frontmost app
@@ -12301,7 +12881,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
         probe = controller
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     private func perform(_ action: DiagnosticsWindowAction) {
@@ -12357,7 +12937,7 @@ final class BugReportController: NSWindowController, NSWindowDelegate {
     func present() {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+        NSApp.bringToFront()
     }
 
     private func showPracticeField() {
@@ -12371,18 +12951,17 @@ final class BugReportController: NSWindowController, NSWindowDelegate {
 /// Window titles follow a runtime language change (PRD-R63); SwiftUI content re-renders by itself.
 @MainActor
 enum WindowTitles {
+    /// Unique address for the window's associated observation (never dereferenced).
+    private static let observationKey = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+
     static func follow(
         _ language: InterfaceLanguageModel, window: NSWindow, title: @escaping @MainActor (Localizer) -> String
     ) {
         window.title = title(language.localizer)
-        withObservationTracking {
-            _ = language.localizer
-        } onChange: { [weak window] in
-            Task { @MainActor [weak window] in
-                guard let window else { return }
-                follow(language, window: window, title: title)
-            }
-        }
+        let observation = language.afterChange { [weak window] in window?.title = title(language.localizer) }
+        // The window owns its title observation, which ends when the window is deallocated (ADR 0315:
+        // `withObservationTracking` needs macOS 14).
+        objc_setAssociatedObject(window, observationKey, observation, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
 }
 ```
@@ -13245,7 +13824,7 @@ public protocol IntegrationHookFileAccess: Sendable {
 // no allocation (PLT-R304, PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
 
 internal import Diagnostics
-internal import Synchronization
+internal import RealtimeSupport
 
 public final class HostCounters: Sendable {
     /// The main thread re-enabled the tap after a `tapDisabledByTimeout` (system or the `tapTimeout` hook).
@@ -13296,7 +13875,6 @@ internal import CoreGraphics
 public import Injection
 public import InputHost
 internal import RealtimeSupport
-internal import Synchronization
 
 public final class SimulatedTextField: Sendable {
     public enum Behaviour: Sendable, Hashable {
@@ -13456,14 +14034,13 @@ public final class SimulatedTextField: Sendable {
 // synchronously on the caller's thread in deadline order. Shared fake: integrator-owned (frozen in wave 1).
 
 public import RealtimeSupport
-internal import Synchronization
 
 public final class ManualScheduler: TimerScheduler, Sendable {
     private struct Entry {
         var id: UInt64
         var deadline: UInt64
         var interval: UInt64?
-        var leeway: Duration
+        var leeway: TimeSpan
         var handler: @Sendable () -> Void
     }
 
@@ -13483,22 +14060,22 @@ public final class ManualScheduler: TimerScheduler, Sendable {
 
     public init(clock: ManualClock) { self.clock = clock }
 
-    public func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    public func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         add(delay: delay, interval: nil, leeway: leeway, handler)
     }
 
     public func scheduleRepeating(
-        every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void
+        every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void
     ) -> any ScheduledTimer {
         add(delay: interval, interval: interval, leeway: leeway, handler)
     }
 
     /// Advances the clock by `duration`, firing every timer that becomes due, in deadline order (a repeating
     /// timer fires once per elapsed interval).
-    public func advance(by duration: Duration) {
-        let target = clock.now().nanoseconds &+ duration.nanosecondsValue
+    public func advance(by duration: TimeSpan) {
+        let target = clock.now().nanoseconds &+ duration.unsignedNanoseconds
         while let entry = popDue(before: target) {
             if clock.now().nanoseconds < entry.deadline {
                 clock.sleep(until: MonotonicInstant(nanoseconds: entry.deadline))
@@ -13512,8 +14089,8 @@ public final class ManualScheduler: TimerScheduler, Sendable {
     public var pendingCount: Int { entries.withLock { $0.count } }
 
     /// Intervals of the repeating timers still scheduled (PLT-R803 tests: nothing faster than 2 s at rest).
-    public var repeatingIntervals: [Duration] {
-        entries.withLock { $0.compactMap { $0.interval.map { Duration.nanoseconds(Int64(clamping: $0)) } } }
+    public var repeatingIntervals: [TimeSpan] {
+        entries.withLock { $0.compactMap { $0.interval.map { TimeSpan.nanoseconds(Int64(clamping: $0)) } } }
     }
 
     /// Delay until the earliest pending deadline, if any.
@@ -13534,8 +14111,7 @@ public final class ManualScheduler: TimerScheduler, Sendable {
 internal import AppModel
 internal import Foundation
 public import Injection
-internal import RealtimeSupport
-internal import Synchronization
+public import RealtimeSupport
 
 /// Records every posted event and optionally forwards it to a sink (simulated field, window-server model, echo
 /// loopback). `CGEventPost` never reports failure, so a revoked permission is modelled as `.silentlyDropping`:
@@ -13627,21 +14203,21 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     /// Number of AX calls made (bounded-call tests, PLT-R342).
     public var callCount: Int { calls.load(ordering: .relaxed) }
 
-    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<Injection.TextRange> {
+    public func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         read { self.field.axSelectedRange() }
     }
 
-    public func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
+    public func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         read { self.field.axText(in: range) }
     }
 
-    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
+    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan)
         -> AXCallResult<Void>
     {
         write(text: false) { self.field.axSetSelectedRange(range) }
     }
 
-    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         write(text: true) { self.field.axSetSelectedText(text) }
     }
 
@@ -13770,7 +14346,7 @@ public import CompatRules
 public import Foundation
 public import Injection
 public import InputHost
-import Synchronization
+import RealtimeSupport
 
 public final class FakeAXProvider: AXProvider, Sendable {
     private struct Observer {
@@ -14233,7 +14809,7 @@ public import AppModel
 public import CompatRules
 public import Foundation
 public import InputHost
-internal import Synchronization
+internal import RealtimeSupport
 
 public final class FakeDecisionResolver: FocusDecisionResolving, Sendable {
     private let decisions: [BundleKey: ResolvedDecision]
@@ -14290,7 +14866,7 @@ public final class FakeDecisionResolver: FocusDecisionResolving, Sendable {
 public import CoreFoundation
 public import CoreGraphics
 public import InputHost
-internal import Synchronization
+internal import RealtimeSupport
 
 /// Pure Swift tap handle. `install` adds a run-loop source that does nothing unless a test schedules a block
 /// with `performOnTapThread` (so the tap thread's run loop has a source and keeps running), and records
@@ -14486,7 +15062,6 @@ public import Diagnostics
 public import Injection
 public import InputHost
 internal import RealtimeSupport
-internal import Synchronization
 public import VietnameseEngine
 
 /// Scripted engine: maps typed characters to edits with a tiny Telex-like table (aa -> â, s -> acute on the
@@ -15127,7 +15702,7 @@ Keyboard > Text Input > Input Sources, and follows `SpikeIMK/README.md`; the res
 import AppKit
 import Carbon
 import InputMethodKit
-import Synchronization
+import RealtimeSupport
 
 /// Counters only: no key values are stored anywhere (PLT-R901 spirit, even for a spike).
 enum SpikeCounters {
