@@ -138,15 +138,75 @@ import Testing
         }
     }
 
-    @Test func everyControlInTheSettingsWindowHasLabelAndHint() throws {
-        // PRD-R66: each SwiftUI control carries `settingsAccessibility(...)` (label and hint from a W2-B catalog).
-        let control = /\b(Button|TextField|Toggle|Picker|Link|Menu|DisclosureGroup|TextEditor)\(/
-        for (name, lines) in try Self.sourceFiles() {
-            for (index, line) in lines.enumerated() where line.contains(control) && !line.contains("role:") {
-                let window = lines[index..<min(lines.count, index + 12)].joined(separator: "\n")
-                #expect(window.contains("settingsAccessibility("), "\(name):\(index + 1) has no label and hint")
+    static var control: Regex<(Substring, Substring)> { /\b(Button|TextField|Toggle|Picker|Link|Menu|DisclosureGroup|TextEditor)\(/ }
+
+    static func indentation(_ line: String) -> Int { line.prefix { $0 == " " }.count }
+
+    /// True when the control opened on `lines[start]` carries its own `settingsAccessibility(` modifier: on the
+    /// same line, or on a `.modifier` line at the control's indentation (after a trailing closure) or one level in
+    /// (a chain), with no other control at that depth or shallower in between (a nested or following control's
+    /// modifier does not count). The search stops where the enclosing block closes.
+    static func hasOwnAccessibility(_ lines: [String], at start: Int) -> Bool {
+        let opening = lines[start]
+        if let range = opening.firstMatch(of: control)?.range,
+            opening[range.upperBound...].contains("settingsAccessibility(")
+        {
+            return true
+        }
+        let base = indentation(opening)
+        var shallowestControl = Int.max
+        for line in lines[(start + 1)...] {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { continue }
+            let indent = indentation(line)
+            if indent < base { return false }
+            if trimmed.hasPrefix(".settingsAccessibility("), indent <= base + 4, indent < shallowestControl {
+                return true
+            }
+            if line.contains(control) { shallowestControl = min(shallowestControl, indent) }
+            if indent == base, !trimmed.hasPrefix("."), !trimmed.hasPrefix("}"), !trimmed.hasPrefix(")") {
+                return false
             }
         }
+        return false
+    }
+
+    @Test func everyControlInTheSettingsWindowHasLabelAndHint() throws {
+        // PRD-R66: each SwiftUI control, alert buttons with a role included, carries its own
+        // `settingsAccessibility(...)` (label and hint from a W2-B catalog).
+        for (name, lines) in try Self.sourceFiles() {
+            for (index, line) in lines.enumerated() where line.contains(Self.control) {
+                #expect(Self.hasOwnAccessibility(lines, at: index), "\(name):\(index + 1) has no label and hint")
+            }
+        }
+    }
+
+    @Test func accessibilityScanRejectsAnUnlabelledControlNextToALabelledOne() {
+        // The scan itself: a control without the modifier just above a labelled one, or one whose only nearby
+        // modifier belongs to a nested control, is caught; role buttons are checked too.
+        let siblings = [
+            "        Button(role: .cancel, action: cancel) {",
+            "            Text(verbatim: title)",
+            "        }",
+            "        Button(action: confirm) { Text(verbatim: title) }",
+            "            .settingsAccessibility(SettingsControl.resetConfirm, localizer)",
+        ]
+        #expect(!Self.hasOwnAccessibility(siblings, at: 0))
+        #expect(Self.hasOwnAccessibility(siblings, at: 3))
+        let nested = [
+            "        DisclosureGroup(isExpanded: $open) {",
+            "            Toggle(isOn: $flag) { Text(verbatim: title) }",
+            "                .settingsAccessibility(SettingsControl.resetConfirm, localizer)",
+            "        } label: {",
+            "            Text(verbatim: title)",
+            "        }",
+            "        .padding()",
+            "    }",
+        ]
+        #expect(!Self.hasOwnAccessibility(nested, at: 0))
+        #expect(Self.hasOwnAccessibility(nested, at: 1))
+        let parentLabelled = nested.prefix(6) + ["        .settingsAccessibility(SettingsControl.advanced, localizer)"]
+        #expect(Self.hasOwnAccessibility(Array(parentLabelled), at: 0))
     }
 
     @Test func everyDeclaredControlIsReachableInTheWindow() throws {
