@@ -74,8 +74,24 @@ final class TypingTraceCoordinator {
             endRecording()
         case .failed(let failure):
             endRecording()
-            review?.show(failure: Self.failureKey(failure))
+            let key = Self.failureKey(failure)
+            if let review {
+                review.show(failure: key)
+            } else {
+                showFailure(key)
+            }
         }
+    }
+
+    /// A start that failed (storage, a trace already running) has no review window yet: the reason is shown in
+    /// an alert, so the confirmed action never ends silently (PLT-R905).
+    private func showFailure(_ key: DiagnosticsText) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = language.localizer.string(DiagnosticsText.traceConfirmTitle)
+        alert.informativeText = language.localizer.string(key)
+        alert.addButton(withTitle: language.localizer.string(CommonText.close))
+        alert.runModal()
     }
 
     private func endRecording() {

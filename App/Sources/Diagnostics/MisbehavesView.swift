@@ -45,6 +45,10 @@ struct MisbehavesView: View {
     private func step(_ flow: MisbehavesFlow, _ localizer: Localizer) -> some View {
         switch flow.step {
         case .describe:
+            if model.targetIsThisApp {
+                Text(verbatim: localizer.format(DiagnosticsText.ownAppFocused, model.brand.displayName))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if model.canOfferGuidedTest {
                 Text(verbatim: localizer.format(DiagnosticsText.guidedExplain, model.brand.displayName))
                     .fixedSize(horizontal: false, vertical: true)
@@ -154,7 +158,10 @@ struct FinishedStep: View {
     let localizer: Localizer
 
     var body: some View {
-        if let best = model.flow?.best {
+        if model.flow?.couldNotReproduce == true {
+            Text(verbatim: localizer.string(DiagnosticsText.resultNotReproduced)).fixedSize(
+                horizontal: false, vertical: true)
+        } else if let best = model.flow?.best {
             let method = DiagnosticsCopy.method(
                 best.strategy, inlineCompletion: best.inlineCompletion, interEventDelayUs: best.interEventDelayUs,
                 localizer)

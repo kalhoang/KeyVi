@@ -56,10 +56,12 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
 
     /// PLT-R1205 step 1: the user focused the problem field, then chose the menu item. The panel does not take
     /// focus away from that field; it reads the live focus snapshot, which belongs to `bundle` (the menu's
-    /// frontmost app) unless focus moved since.
+    /// frontmost app) unless focus moved since. Opened from the Diagnostics window the live focus is this app:
+    /// the panel then names `bundle` in the report and asks the user to click into the problem field.
     func startMisbehavesFlow(for bundle: BundleKey?) {
         let controller = MisbehavesPanelController(
-            language: language, services: services, report: { [weak self] in self?.model.currentReport() })
+            language: language, services: services, bundle: bundle,
+            report: { [weak self] in self?.model.currentReport() })
         misbehaves = controller
         controller.present()
     }

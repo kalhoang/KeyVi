@@ -14,8 +14,9 @@ import ShellCore
 import SwiftUI
 
 @MainActor
-final class LatencyProbeWindowController: NSWindowController {
+final class LatencyProbeWindowController: NSWindowController, NSWindowDelegate {
     private let model: LatencyProbeModel
+    private var observers: [NSObjectProtocol] = []
 
     required init?(coder: NSCoder) { nil }
 
@@ -29,7 +30,31 @@ final class LatencyProbeWindowController: NSWindowController {
         window.contentViewController = NSHostingController(rootView: LatencyProbeView(model: model))
         window.center()
         super.init(window: window)
+        window.delegate = self
+        model.hasFocus = { [weak window] in
+            guard let window else { return false }
+            return window.isKeyWindow && window.firstResponder is NSTextView
+        }
+        observeFocusLoss(of: window)
         WindowTitles.follow(language, window: window) { $0.string(DiagnosticsText.probeTitle) }
+    }
+
+    /// PLT-R810: the probe types into its own text view only. Losing key status or the app losing activation
+    /// stops the run before the next key.
+    private func observeFocusLoss(of window: NSWindow) {
+        let center = NotificationCenter.default
+        let stop: @Sendable (Notification) -> Void = { [weak model] _ in
+            MainActor.assumeIsolated { model?.focusLost() }
+        }
+        observers = [
+            center.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main, using: stop),
+            center.addObserver(
+                forName: NSApplication.didResignActiveNotification, object: nil, queue: .main, using: stop),
+        ]
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        model.focusLost()
     }
 }
 
@@ -40,12 +65,16 @@ final class LatencyProbeModel {
         case idle
         case running(LatencyProbeResult.Profile)
         case done(LatencyProbeResult)
+        case stopped
         case unavailable
     }
 
     let language: InterfaceLanguageModel
     let appName: String
     @ObservationIgnored let services: LatencyProbeServices
+    /// Whether the probe window is key and its text view first responder (set by the window controller).
+    @ObservationIgnored var hasFocus: @MainActor () -> Bool = { false }
+    @ObservationIgnored private var stopSignal: ProbeStopSignal?
     private(set) var phase: Phase = .idle
     /// Bumped before each run so the text view clears its content.
     private(set) var runID = 0
@@ -67,29 +96,53 @@ final class LatencyProbeModel {
             return
         }
         runID += 1
-        let session = LatencyProbeSession(
-            driver: services.driver, metrics: services.metrics, wallClock: services.wallClock)
-        let show: @MainActor @Sendable (LatencyProbeResult.Profile) -> Void = { [weak self] profile in
-            self?.phase = .running(profile)
-        }
+        let signal = ProbeStopSignal()
+        stopSignal = signal
         phase = .running(.normal)
         Task { [weak self] in
             // Let the cleared text view become first responder before the first key is posted.
             try? await Task.sleep(for: Self.focusDelay)
-            let result = await session.run(script: script) { profile in Task { await show(profile) } }
-            self?.finish(result)
+            guard let self else { return }
+            if !self.hasFocus() { signal.stop() }
+            let result = await self.session.run(
+                script: script, progress: { profile in Task { await self.show(profile, signal: signal) } },
+                shouldContinue: { signal.shouldContinue() })
+            self.finish(result)
         }
     }
 
     static let focusDelay: Duration = .milliseconds(300)
 
-    private func finish(_ result: LatencyProbeResult) {
+    private var session: LatencyProbeSession {
+        LatencyProbeSession(driver: services.driver, metrics: services.metrics, wallClock: services.wallClock)
+    }
+
+    /// Before each profile: the window must still have the focus, else the run stops (PLT-R810).
+    private func show(_ profile: LatencyProbeResult.Profile, signal: ProbeStopSignal) {
+        guard hasFocus() else { return signal.stop() }
+        if isRunning { phase = .running(profile) }
+    }
+
+    /// The window resigned key, the app was deactivated or the window closes: no further key is posted.
+    func focusLost() {
+        guard isRunning else { return }
+        stopSignal?.stop()
+    }
+
+    private func finish(_ result: LatencyProbeResult?) {
+        stopSignal = nil
+        guard let result else {
+            phase = .stopped
+            return
+        }
         phase = .done(result)
         services.onResult(result)
     }
 
-    /// Main thread, from the text view's change notification.
-    func textChanged() { services.driver.textChanged(at: services.clock.now()) }
+    /// Main thread, from the text view's change notification; `text` is the view's content after the change.
+    func textChanged(_ text: String) {
+        services.driver.textChanged(at: services.clock.now(), kind: LatencyProbeChange(text: text))
+    }
 }
 
 struct LatencyProbeView: View {
@@ -127,6 +180,8 @@ struct LatencyProbeView: View {
                 Text(verbatim: DiagnosticsCopy.probeLine(line, localizer)).font(.callout.monospacedDigit())
             }
             Text(verbatim: localizer.string(DiagnosticsText.probeDone))
+        case .stopped:
+            Text(verbatim: localizer.string(DiagnosticsText.probeStopped))
         case .unavailable:
             Text(verbatim: localizer.string(DiagnosticsText.probeUnavailable))
         }
@@ -137,7 +192,7 @@ struct LatencyProbeView: View {
 /// starts, so the probe's keys land in it.
 struct ProbeTextView: NSViewRepresentable {
     let runID: Int
-    let onChange: @MainActor () -> Void
+    let onChange: @MainActor (String) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onChange: onChange) }
 
@@ -166,9 +221,13 @@ struct ProbeTextView: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
-        let onChange: @MainActor () -> Void
+        let onChange: @MainActor (String) -> Void
         var runID = 0
-        init(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
-        func textDidChange(_ notification: Notification) { onChange() }
+        init(onChange: @escaping @MainActor (String) -> Void) { self.onChange = onChange }
+        /// The content after the change tells whether it shows the measured run's composed character.
+        func textDidChange(_ notification: Notification) {
+            guard let text = notification.object as? NSTextView else { return }
+            onChange(text.string)
+        }
     }
 }

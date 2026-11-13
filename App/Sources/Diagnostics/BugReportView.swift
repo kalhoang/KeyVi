@@ -216,7 +216,7 @@ struct BugReportView: View {
     private func actions(_ localizer: Localizer) -> some View {
         HStack(spacing: 8) {
             ForEach(model.sheet.actions.filter { $0 != .practiceField }, id: \.self) { action in
-                let control = Self.control(action)
+                let control = action.control
                 Button {
                     model.perform(action)
                 } label: {
@@ -224,17 +224,6 @@ struct BugReportView: View {
                 }
                 .diagnosticsControl(control, localizer)
             }
-        }
-    }
-
-    static func control(_ action: BugReportAction) -> DiagnosticsControl {
-        switch action {
-        case .copyReport: .copyReport
-        case .github: .github
-        case .email: .email
-        case .saveFile: .saveFile
-        case .practiceField: .practiceButton
-        case .openDiagnostics: .openDiagnostics
         }
     }
 }

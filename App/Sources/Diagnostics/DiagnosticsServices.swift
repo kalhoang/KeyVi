@@ -51,8 +51,15 @@ struct DiagnosticsServices {
     var resolvedBrand: Brand { brand ?? Brand.from(.main) }
 }
 
-/// PLT-R1205 step 3. `setPassThrough` makes the host pass every event unchanged (no engine, no per-app memory
-/// write) while the runner types; without it the guided test is not offered.
+/// PLT-R1205 step 3. The composition root provides this only when the host has a diagnostics pass-through;
+/// without it the guided test is never offered (`MisbehavesTarget.offersGuidedTest`).
+///
+/// `setPassThrough(true)` must make the pipeline pass every keyboard event unchanged while the runner types:
+/// the engine is not fed, no per-app memory or manual mode is written (English mode is not a substitute: it
+/// records a manual switch and still runs macros), and the composition is reset on entry and exit (PLT-R210).
+/// `setPassThrough(false)` restores the previous behaviour. Calls are balanced: one `false` follows every
+/// `true`. Requested from W2-A as `InputHostController.setDiagnosticsPassThrough(_:)`, backed by a pause
+/// reason such as `PauseCode.diagnosticsTest`.
 @MainActor
 struct GuidedTestServices {
     var runner: GuidedTestRunner
@@ -60,6 +67,8 @@ struct GuidedTestServices {
     var macOSVersion: String
     /// Today as `YYYY-MM-DD` for the suggestion's provenance.
     var today: () -> String
+    /// Bounded AX reads of the guided test's focus check, called on the typing thread (PLT-R342).
+    var focusAX: any AXProvider = SystemAXProvider()
 }
 
 /// PLT-R905. `captureStateChanged` switches the menu-bar icon (W2-A: `StatusIconState` capturing).
