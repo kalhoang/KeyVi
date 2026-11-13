@@ -1,0 +1,204 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Edit jobs: posting-broken loss, generation discard (PLT-R316), preparation (PLT-R402, PLT-R403, PLT-R480),
+// re-entry verification (PLT-R342) and the strategy chain with detectable-failure fallbacks (PLT-R410, 4.5).
+
+internal import AppModel
+internal import Diagnostics
+internal import Foundation
+internal import RealtimeSupport
+
+extension WorkerCore {
+    func processEdit(_ job: EditJob) {
+        begin(job.sequence)
+        runningEdit = job.sequence
+        // A new edit changes the text a pending readback would check.
+        pendingVerification = nil
+        axAccess.usage.reset()
+        let outcome = editOutcome(job)
+        runningEdit = nil
+        finishEdit(job, outcome: outcome)
+    }
+
+    func finishEdit(_ job: EditJob, outcome: JobOutcome) {
+        feedback.record(outcome, for: job.sequence)
+        outcomes.record(outcome, for: job.sequence)
+        if outcome.deliveredEdit {
+            lastExecutedKind = job.kind
+            recordLatency(of: job, outcome: outcome)
+        }
+        finish()
+    }
+
+    private func editOutcome(_ job: EditJob) -> JobOutcome {
+        if feedback.isPostingBroken {
+            // ADR 0311: nothing is posted; the trigger is counted, never silently dropped.
+            if job.trigger != nil { countLoss() }
+            feedback.requestCompositionReset()
+            return .abandoned
+        }
+        if job.generation < focusGeneration.load() {
+            // PLT-R316 + ADR 0308: an edit computed for another field is never applied; its key is replayed.
+            replayTrigger(of: job)
+            feedback.requestCompositionReset()
+            recordHealth(.generationDiscard)
+            return .discardedForGeneration
+        }
+        let prepared = prepare(job)
+        if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
+        if !reentryMatches(prepared) { return passThrough(prepared) }
+        return runChain(prepared)
+    }
+
+    /// PLT-R403 NFC, PLT-R480 4,000-grapheme cap, PLT-R402 prefix trim, PLT-R408 first-edit delay.
+    func prepare(_ job: EditJob) -> EditJob {
+        var prepared = job
+        var insertion = job.insertion.precomposedStringWithCanonicalMapping
+        if insertion.count > configuration.maximumExpansionGraphemes {
+            insertion = String(insertion.prefix(configuration.maximumExpansionGraphemes))
+        }
+        let edit = MinimalEdit(
+            deleteCount: job.deleteCount, deleteUTF16Count: job.deleteUTF16Count, replaced: job.replacedText,
+            insertion: insertion)
+        prepared.deleteCount = edit.deleteCount
+        prepared.deleteUTF16Count = edit.deleteUTF16Count
+        prepared.insertion = edit.insertion
+        prepared.wordStartedNearFocusChange = firstEdit.applies(to: job)
+        return prepared
+    }
+
+    /// PLT-R342: read at most 64 UTF-16 units before the caret and compare with the expected word. Unreadable
+    /// fields apply the edit (`verifyReentry: whenReadable`); a mismatch drops the history and passes the key.
+    func reentryMatches(_ job: EditJob) -> Bool {
+        guard job.verifyBeforeApply, let expected = job.replacedText, !expected.isEmpty, let field = job.field
+        else { return true }
+        let timeout = InjectionTiming.axCallTimeout
+        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout), selection.length == 0
+        else { return true }
+        let expectedUnits = Array(expected.utf16.suffix(InjectionTiming.maximumAXReadUnits))
+        guard selection.location >= expectedUnits.count else { return false }
+        let range = Injection.TextRange(location: selection.location - expectedUnits.count, length: expectedUnits.count)
+        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return true }
+        return Array(text.utf16) == expectedUnits
+    }
+
+    /// Strategy, then fallbacks, for detectable failures only (PLT-R410, 4.5). `passThrough` replays the trigger.
+    func runChain(_ job: EditJob) -> JobOutcome {
+        let chain = strategyChain(for: job)
+        for (index, strategy) in chain.enumerated() {
+            if strategy == .passThrough || feedback.isPostingBroken { return passThrough(job) }
+            let next = index + 1 < chain.count ? chain[index + 1] : .passThrough
+            let anchor = verificationAnchor(for: job, strategy: strategy)
+            switch executors[strategy, default: PassThroughExecutor()].execute(job, in: self) {
+            case .completed:
+                scheduleVerification(of: job, strategy: strategy, anchor: anchor, fallback: next)
+                return index == 0 ? .executed : .executedWithFallback
+            case .failedBeforePosting(let reason):
+                noteFallback(job, from: strategy, to: next, reason: reason)
+            case .failedAfterPosting(let reason):
+                noteFallback(job, from: strategy, to: next, reason: reason)
+                feedback.requestCompositionReset()
+                return .executedWithFallback
+            }
+        }
+        return passThrough(job)
+    }
+
+    /// The key passes through instead of the edit: replay the trigger, reset the composition.
+    func passThrough(_ job: EditJob) -> JobOutcome {
+        replayTrigger(of: job)
+        feedback.requestCompositionReset()
+        return .passedThroughByFallback
+    }
+
+    /// PLT-R460/R480: `paste` only when opted in, first for long text; strategies degraded for this field in this
+    /// focus session are skipped (4.5).
+    func strategyChain(for job: EditJob) -> [InjectionStrategy] {
+        var chain = [job.plan.strategy] + job.plan.fallback
+        let parameters = job.plan.parameters
+        if parameters.pasteOptedIn {
+            if job.insertion.count > configuration.pasteThresholdGraphemes { chain.insert(.paste, at: 0) }
+        } else {
+            chain.removeAll { $0 == .paste }
+        }
+        notes.enter(job.generation)
+        let degraded = notes.degradedStrategies(field: job.field?.token)
+        var seen = Set<InjectionStrategy>()
+        return chain.filter { !degraded.contains($0) && seen.insert($0).inserted }
+    }
+
+    func noteFallback(_ job: EditJob, from: InjectionStrategy, to: InjectionStrategy, reason: FallbackReason) {
+        services.metrics.fallbackActivations.increment()
+        notes.enter(job.generation)
+        if reason.degradesSession { notes.degrade(field: job.field?.token, strategy: from) }
+        if notes.shouldReport(.fallback(from, reason)) {
+            recordHealth(.fallbackActivated, detail: .fallback(from: from, to: to))
+        }
+    }
+
+    /// T2 / T3 / probe T2 (02-platform.md 8.1), and the capture record (PLT-R905).
+    private func recordLatency(of job: EditJob, outcome: JobOutcome) {
+        let posted = context?.posted == true
+        let usedAX = axAccess.usage.wasUsed
+        guard posted || usedAX else { return }
+        let end = posted ? (lastPosted?.at ?? services.clock.now()) : services.clock.now()
+        let elapsed = end.nanoseconds(since: job.createdAt)
+        let metrics = services.metrics
+        let histogram = job.isProbe ? metrics.probeDecideToPosted : usedAX ? metrics.decideToPostedWithAX : metrics.decideToPosted
+        histogram.record(nanoseconds: elapsed)
+        if let capture = services.capture, capture.isRecording {
+            _ = capture.injectRecords.push(
+                .job(
+                    sequence: job.sequence.rawValue, strategy: job.plan.strategy,
+                    durationMicroseconds: elapsed / 1_000, outcome: outcome.captureLabel))
+        }
+    }
+}
+
+extension FallbackReason {
+    /// AX failures and readback mismatches mean "this field mishandles the strategy": use the fallback for the
+    /// rest of the focus session (4.5). Pasteboard state, posting and job length are per job.
+    var degradesSession: Bool {
+        switch self {
+        case .axUnavailable, .axTimedOut, .axWriteFailed, .readbackMismatch: true
+        case .pasteboardUnsafe, .postingFailed, .jobTooLong: false
+        }
+    }
+}
+
+/// Per focus session: strategies degraded per field, and health events already reported (one per kind and
+/// reason, so a field that always fails does not flood the 256-entry health log).
+struct SessionNotes {
+    enum Note: Hashable {
+        case fallback(InjectionStrategy, FallbackReason)
+        case completionFallback
+        case verificationMismatch(InjectionStrategy)
+        case placeholderResidue
+    }
+
+    private struct Degraded: Hashable {
+        var field: UInt64?
+        var strategy: InjectionStrategy
+    }
+
+    private var generation: FocusGeneration?
+    private var degraded: Set<Degraded> = []
+    private var reported: Set<Note> = []
+
+    mutating func enter(_ generation: FocusGeneration) {
+        guard generation != self.generation else { return }
+        self.generation = generation
+        degraded.removeAll()
+        reported.removeAll()
+    }
+
+    mutating func degrade(field: UInt64?, strategy: InjectionStrategy) {
+        degraded.insert(Degraded(field: field, strategy: strategy))
+    }
+
+    func degradedStrategies(field: UInt64?) -> Set<InjectionStrategy> {
+        Set(degraded.filter { $0.field == field }.map(\.strategy))
+    }
+
+    mutating func shouldReport(_ note: Note) -> Bool { reported.insert(note).inserted }
+}
