@@ -40,14 +40,16 @@ public enum ReportAssembler {
         now: Date
     ) -> DiagnosticsReport {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
-        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
+        // PLT-R541, ADR 0312: for the focused app the override that decided, so `rule.id` and
+        // `rule.userOverride` agree when the app has several; else the app's newest stored override.
         let decisionOverride = host.focus.app?.bundle == reportedApp ? host.decision?.userOverride : nil
+        let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
         return DiagnosticsReport(
             generatedAt: now, app: identity, system: system, hostState: host.state.code,
             keyboard: ReportSections.keyboard(host), permissions: ReportSections.permissions(host),
             tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
             focus: ReportSections.focus(host),
-            rule: ReportSections.rule(host.decision, userOverride: storedOverride ?? decisionOverride),
+            rule: ReportSections.rule(host.decision, userOverride: decisionOverride ?? storedOverride),
             settings: ReportSections.settings(settings),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
