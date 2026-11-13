@@ -117,6 +117,47 @@ import Testing
         #expect(state.ruleOverrides.isEmpty)
     }
 
+    @Test func macrosPaneResetBacksUpTheCurrentListBeforeDeletingIt_PRDR26_PLTR1006() async throws {
+        // The first write of the session backs up what was on disk; later edits are not backed up again. Deleting
+        // the list from the Macros pane must still leave the list as it was just before the reset recoverable.
+        let (harness, commands) = await loaded()
+        _ = await commands.saveMacros([StoredMacro(trigger: "vn", expansion: "Việt Nam")])
+        await harness.advance(by: .seconds(2))
+        _ = await commands.saveMacros([
+            StoredMacro(trigger: "vn", expansion: "Việt Nam"), StoredMacro(trigger: "dc", expansion: "được"),
+        ])
+        await harness.advance(by: .seconds(2))
+        #expect(macroBackups(harness).allSatisfy { !$0.contains("\"dc\"") })
+
+        var request = ResetRequest(target: .pane(.macros))
+        request.deleteMacros = true
+        let state = await commands.perform(request.plan)
+        await harness.advance(by: .seconds(2))
+        #expect(state.macros.isEmpty)
+        #expect(state.user.macrosEnabled == .unset)
+        #expect(macroBackups(harness).contains { $0.contains("\"dc\"") && $0.contains("\"vn\"") })
+        #expect(try #require(items(harness.object(.macros)?["macros"])).isEmpty)
+    }
+
+    @Test func macrosPaneResetWithoutTheBoxLeavesTheMacrosFileAlone() async {
+        let (harness, commands) = await loaded()
+        _ = await commands.saveMacros([StoredMacro(trigger: "vn", expansion: "Việt Nam")])
+        await harness.advance(by: .seconds(2))
+        let before = harness.paths
+        let state = await commands.perform(ResetRequest(target: .pane(.macros)).plan)
+        await harness.advance(by: .seconds(2))
+        #expect(state.macros.count == 1)
+        #expect(harness.paths.filter { $0.hasPrefix("backups/macros") } == before.filter { $0.hasPrefix("backups/macros") })
+    }
+
+    private func macroBackups(_ harness: SettingsStoreHarness) -> [String] {
+        harness.paths.filter { $0.hasPrefix("backups/macros.json") }.compactMap { path in
+            harness.memory.nodes[SettingsStoreHarness.directory.path + "/" + path]?.data.map {
+                String(decoding: $0, as: UTF8.self)
+            }
+        }
+    }
+
     @Test func importSummaryListsChangesAndSkippedFieldsThenApplies_PLTR1010() async throws {
         let (_, commands) = await loaded()
         _ = await commands.saveMacros([StoredMacro(trigger: "vn", expansion: "Việt Nam")])

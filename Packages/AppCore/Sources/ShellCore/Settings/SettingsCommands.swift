@@ -47,9 +47,35 @@ public struct SettingsCommands: Sendable {
                 $0.macrosInEnglishMode = .unset
             }
         }
-        if plan.deletesMacroList { await store.replaceMacros([]) }
+        if plan.deletesMacroList {
+            await secureMacrosFile()
+            await store.replaceMacros([])
+        }
         return await store.state
     }
+
+    /// PRD-R26, PLT-R1006 ("never wipe"): keeps the list as it is now recoverable before the Macros pane deletes
+    /// it, as the global reset does. Ordinary writes back a file up only once per session, so without this an
+    /// edit earlier in the session would leave no copy of the current list.
+    ///
+    /// Interim until SettingsStore offers a macros reset scope (requested from W1-B): a macros-only import of an
+    /// empty list is the store's public explicit-rewrite path. It backs `macros.json` up (or quarantines a corrupt
+    /// one) and adds nothing to the list. A refused import (safe mode) does not stop the reset the user
+    /// confirmed, matching the store's rule that a failed backup never blocks the user's action.
+    private func secureMacrosFile() async {
+        do {
+            let preview = try await store.previewImport(Self.emptyMacrosExport)
+            try await store.applyImport(preview, choices: Self.macrosOnly)
+        } catch {
+            return
+        }
+    }
+
+    static let emptyMacrosExport = Data(
+        #"{"kind":"settings-export","schemaVersion":\#(ImportSummary.currentSchemaVersion),"macros":[]}"#.utf8)
+
+    static let macrosOnly = ImportChoices(
+        applySettings: false, applyAppModes: false, applyRuleOverrides: false, applyMacros: true)
 
     /// The editor has validated the list (MacroValidator and the engine).
     public func saveMacros(_ macros: [StoredMacro]) async -> SettingsState {
