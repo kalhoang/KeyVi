@@ -32,8 +32,9 @@ from urllib.parse import unquote
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 # The front door: files GitHub (or the DMG, which copies THIRD_PARTY_NOTICES.md) shows exactly as they are. Every
-# root-level Markdown file, the pull request template and the issue forms. `*` never crosses a `/`.
-FRONT_DOOR = ("*.md", ".github/*.md", ".github/ISSUE_TEMPLATE/*")
+# root-level Markdown file, the pull request template, the issue forms and the compatibility script that README.md,
+# CONTRIBUTING.md and the compatibility form link to. `*` never crosses a `/`.
+FRONT_DOOR = ("*.md", ".github/*.md", ".github/ISSUE_TEMPLATE/*", "compat/SCRIPT.md")
 # Not in the front door yet: CHANGELOG.md still says {{AppName}} (the site build fills it in for its changelog page).
 FRONT_DOOR_PENDING = frozenset({"CHANGELOG.md"})
 PLACEHOLDER = re.compile(r"(?<!\$)\{\{\s*[A-Za-z][\w-]*\s*\}\}")

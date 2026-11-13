@@ -281,6 +281,8 @@ class FrontDoorBrandTests(unittest.TestCase):
             "SUPPORT.md": ("Ask about {{AppName}}.\n", "{{AppName}}"),
             ".github/pull_request_template.md": ("- [ ] No literal {{bundle-id}}.\n", "{{bundle-id}}"),
             ".github/ISSUE_TEMPLATE/bug.yml": ("name: Bug report for {{AppName}}\n", "{{AppName}}"),
+            # Linked from README.md, CONTRIBUTING.md and the compatibility form; GitHub shows it as it is.
+            "compat/SCRIPT.md": ("| {{AppName}} version and build, channel |\n", "{{AppName}}"),
         }
         for rel, (text, _) in cases.items():
             self.write(self.root, rel, text)
@@ -293,7 +295,7 @@ class FrontDoorBrandTests(unittest.TestCase):
     def test_front_door_files_accept_the_literal_values(self):
         for rel in ("README.md", "README.vi.md", "CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md",
                     "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "CLAUDE.md", ".github/pull_request_template.md",
-                    ".github/ISSUE_TEMPLATE/bug.yml"):
+                    ".github/ISSUE_TEMPLATE/bug.yml", "compat/SCRIPT.md"):
             self.write(self.root, rel, self.LITERAL)
         self.write(self.root, "docs/runbooks/a.md", "Install {{AppName}} from https://{{app-slug}}.kal.vn.\n")
         result = self.brand(self.root)
@@ -307,7 +309,8 @@ class FrontDoorBrandTests(unittest.TestCase):
                 text = (REPO / rel).read_text(encoding="utf-8")
                 self.assertEqual(text.splitlines()[0], f"# {name}")
                 self.assertIn(f"`https://{host}`", text)
-                self.assertIn(f"OWNER/tap/{slug}`", text)
+                # The tap owner is still a VERIFY marker; only the cask name is the brand's.
+                self.assertRegex(text, r"[\w.-]+/tap/" + re.escape(slug) + "`")
         notices = (REPO / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
         self.assertIn(f"ships with {name} or its website", notices, "the DMG copies this file as it is")
         for form in ("bug.yml", "compatibility.yml"):
@@ -335,6 +338,14 @@ class FrontDoorBrandTests(unittest.TestCase):
                     self.assertNotIn(needle, text)
         architecture = (REPO / "ARCHITECTURE.md").read_text(encoding="utf-8")
         self.assertNotIn("name is temporary", architecture)
+
+    def test_the_brand_sources_no_longer_call_the_name_temporary(self):
+        """README.md points readers at these files; their comments must match ADR 0005 (the name is final)."""
+        for rel in ("Config/Brand.xcconfig", "scripts/brand.env", "scripts/rename-app.sh"):
+            with self.subTest(file=rel):
+                self.assertFalse("name is temporary" in (REPO / rel).read_text(encoding="utf-8").lower(), rel)
+        header = (REPO / "scripts" / "rename-app.sh").read_text(encoding="utf-8").split("\nset ", 1)[0]
+        self.assertIn("front door", header, "step 3 must say the front door carries literal values")
 
     def test_a_rename_rewrites_the_literal_front_door(self):
         repo = self.root / "repo"

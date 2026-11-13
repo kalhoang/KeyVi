@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Single source of the product name. The name is TEMPORARY ("Kal Key"); Pa will choose the final
-// name later (spec/00-overview.md section 4). Rename with: scripts/rename-app.sh "<Display Name>" <slug>
+// Single source of the product name, final since 2026-11-13 (docs/decisions/0005-pa-decisions-2026-11-13.md).
+// Rename with: scripts/rename-app.sh "<Display Name>" <slug>
 // Never hard-code the display name, slug or bundle ID anywhere else in code or UI strings.
 
 APP_DISPLAY_NAME = KeyVi
