@@ -12,11 +12,14 @@ Checks:
   - no two rules with identical match signatures (PLT-R521)
   - titlePattern only together with bundleIds, at most 200 characters, compiles (PLT-R502)
   - inlineCompletion "placeholder" never in defaults, a global rule or a title-only rule (PLT-R422)
+  - a scoped placeholder rule has an automated test whose scenario (compat/scenarios/<id>.json) declares the
+    1,000-edit gate: repeat.words >= 1000, repeat.timing burst, expect.noPlaceholderResidue true, readback ax or
+    webdriver; warning, blocking in --release mode (PLT-R422, mirror of compat-lint's PlaceholderGate)
   - strategy "paste" requires requiresUserOptIn: true (PLT-R460)
   - manual scenarios have a row in compat/matrix.json (PLT-R531, test.automation)
 
 Usage:
-  python3 -I scripts/check-rules.py [--rules FILE] [--schema FILE] [--matrix FILE]
+  python3 -I scripts/check-rules.py [--rules FILE] [--schema FILE] [--matrix FILE] [--scenarios DIR]
                                     [--release] [--today YYYY-MM-DD] [--reviewby-report]
 A missing rules file passes with a notice unless --require is given.
 Exit status: 0 clean (warnings allowed), 1 errors, 2 usage or parse error.
@@ -40,6 +43,11 @@ REVIEW_MAX_AHEAD_DAYS = 366
 REVIEW_BLOCK_AFTER_DAYS = 30
 TITLE_PATTERN_MAX = 200
 NARROWING_MATCH_KEYS = ("ax", "web")
+PLACEHOLDER_COMPLETIONS = ("placeholder", "axSelectionThenPlaceholder")
+# PLT-R422 gate, the same values as CompatRules' PlaceholderGate (Packages/AppCore/Sources/CompatRules).
+GATE_MIN_WORDS = 1000
+GATE_TIMING = "burst"
+GATE_READBACKS = ("ax", "webdriver")
 
 
 class Report:
@@ -161,7 +169,7 @@ def check_action(rule: dict, label: str, report: Report) -> None:
         return
     params = action.get("params") or {}
     match = rule.get("match") or {}
-    if params.get("inlineCompletion") in ("placeholder", "axSelectionThenPlaceholder"):
+    if params.get("inlineCompletion") in PLACEHOLDER_COMPLETIONS:
         narrowing = any(match.get(key) for key in NARROWING_MATCH_KEYS)
         identity = match.get("bundleIds") or match.get("bundleGroup") or match.get("engines")
         if not match:
@@ -174,8 +182,57 @@ def check_action(rule: dict, label: str, report: Report) -> None:
         report.error(f"{label}: strategy paste requires requiresUserOptIn: true (PLT-R460)")
 
 
+def is_broad(match: dict) -> bool:
+    """Global (no identity and no narrowing field) or title-only; such rules are rejected by check_action."""
+    narrowing = any(match.get(key) for key in NARROWING_MATCH_KEYS)
+    identity = match.get("bundleIds") or match.get("bundleGroup") or match.get("engines")
+    return (bool(match.get("titlePattern")) and not narrowing) or (not narrowing and not identity)
+
+
+def declares_gate(scenario) -> bool:
+    """True when a scenario document declares the 1,000-edit placeholder gate (PlaceholderGate.isDeclared)."""
+    if not isinstance(scenario, dict):
+        return False
+    repetition = scenario.get("repeat") if isinstance(scenario.get("repeat"), dict) else {}
+    expect = scenario.get("expect") if isinstance(scenario.get("expect"), dict) else {}
+    words = repetition.get("words")
+    return (isinstance(words, int) and not isinstance(words, bool) and words >= GATE_MIN_WORDS
+            and repetition.get("timing") == GATE_TIMING and expect.get("noPlaceholderResidue") is True
+            and scenario.get("readback") in GATE_READBACKS)
+
+
+def load_scenario(scenarios_dir: Path | None, scenario_id: str):
+    if scenarios_dir is None or not re.fullmatch(r"[A-Za-z0-9]+([._-][A-Za-z0-9]+)*", scenario_id):
+        return None
+    try:
+        return json.loads((scenarios_dir / f"{scenario_id}.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def check_placeholder_gate(rule: dict, label: str, scenarios_dir: Path | None, release: bool,
+                           report: Report) -> None:
+    """PLT-R422: release-gated, because the gate is real only once its scenario passes on the runner. A missing
+    test is reported by check_test, a broad rule by check_action (an error whatever its test)."""
+    action = rule.get("action") if isinstance(rule.get("action"), dict) else {}
+    params = action.get("params") if isinstance(action.get("params"), dict) else {}
+    match = rule.get("match") if isinstance(rule.get("match"), dict) else {}
+    test = rule.get("test")
+    if params.get("inlineCompletion") not in PLACEHOLDER_COMPLETIONS or is_broad(match) or not isinstance(test, dict):
+        return
+    gated = report.error if release else report.warn
+    if test.get("automation") != "automated":
+        gated(f"{label}: placeholder gate needs an automated test (PLT-R422)")
+        return
+    scenario_id = str(test.get("scenario", ""))
+    if not declares_gate(load_scenario(scenarios_dir, scenario_id)):
+        gated(f"{label}: placeholder gate: scenario {scenario_id} does not declare repeat.words >= "
+              f"{GATE_MIN_WORDS}, repeat.timing {GATE_TIMING}, expect.noPlaceholderResidue true and an automatic "
+              f"readback ({' or '.join(GATE_READBACKS)}) (PLT-R422)")
+
+
 def check_document(doc: dict, schema: dict | None, matrix_text: str | None, today: dt.date,
-                   release: bool) -> Report:
+                   release: bool, scenarios_dir: Path | None = None) -> Report:
     report = Report()
     if schema is not None:
         for message in validate(doc, schema):
@@ -209,6 +266,7 @@ def check_document(doc: dict, schema: dict | None, matrix_text: str | None, toda
         check_test(rule, label, matrix_text, report)
         check_match(rule, label, groups, report)
         check_action(rule, label, report)
+        check_placeholder_gate(rule, label, scenarios_dir, release, report)
         signature = json.dumps(canonical(rule.get("match") or {}), sort_keys=True)
         if signature in signatures:
             report.error(f"{label}: identical match signature to rule {signatures[signature]} (PLT-R521)")
@@ -256,6 +314,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--rules", default=str(REPO_ROOT / "compat" / "rules.json"))
     parser.add_argument("--schema", help="rules JSON Schema (default: compat/schema/*rules*.json)")
     parser.add_argument("--matrix", default=str(REPO_ROOT / "compat" / "matrix.json"))
+    parser.add_argument("--scenarios", default=str(REPO_ROOT / "compat" / "scenarios"),
+                        help="scenario folder for the PLT-R422 gate (default: compat/scenarios)")
     parser.add_argument("--release", action="store_true", help="release gate: overdue reviewBy blocks")
     parser.add_argument("--require", action="store_true", help="fail when the rules file is missing")
     parser.add_argument("--today", help="override today's date (YYYY-MM-DD), for tests")
@@ -293,7 +353,8 @@ def main(argv: list[str]) -> int:
     if args.reviewby_report:
         print(review_report(doc, today))
 
-    report = check_document(doc, schema, matrix_text, today, args.release)
+    scenarios_dir = Path(args.scenarios) if Path(args.scenarios).is_dir() else None
+    report = check_document(doc, schema, matrix_text, today, args.release, scenarios_dir)
     emit(report)
     count = len(doc.get("rules", [])) if isinstance(doc.get("rules"), list) else 0
     print(f"check-rules: {count} rule(s), {len(report.errors)} error(s), {len(report.warnings)} warning(s)",
