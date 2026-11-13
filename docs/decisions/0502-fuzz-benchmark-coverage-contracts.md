@@ -1,7 +1,8 @@
 # 0502. Contracts for fuzzing, benchmarks, coverage and the integration harness
 
 - Status: accepted, 2026-11-13; amended 2026-11-13 after the engine and wave-1 merges (fuzz product,
-  nightly seed, engine benchmark gate, pipeline benchmark, harness environment)
+  nightly seed, engine benchmark gate, pipeline benchmark, harness environment); where each gate runs:
+  [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
 - Requirements: QA-R2, QA-R8, QA-R9, QA-R14, QA-R15, QA-R16, ENG-R1230, ENG-R1231, ENG-R1233, ENG section
   13.6, PLT-R820 to PLT-R822
 
