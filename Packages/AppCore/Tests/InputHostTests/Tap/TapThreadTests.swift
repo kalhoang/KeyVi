@@ -178,6 +178,18 @@ private let waitLimit: Duration = .seconds(5)
         #expect(factory.handles.isEmpty)
     }
 
+    @Test func stopDuringCreationRemovesTheNewTapAndFailsTheStart() throws {
+        let factory = StoppingFactory()
+        let thread = TapThread(factory: factory) { TrivialHandler(probe: HandlerProbe()) }
+        factory.onMake = { thread.stop() }
+        #expect(!thread.start())
+        let handle = try #require(factory.inner.handles.first)
+        #expect(handle.isInvalidated)
+        #expect(handle.enableCalls == [false])
+        #expect(thread.waitUntilExited(timeout: waitLimit))
+        #expect(!thread.isRunning)
+    }
+
     @Test func releasingTheTapThreadStopsIt() throws {
         let factory = FakeEventTapFactory()
         let probe = HandlerProbe()
@@ -189,7 +201,29 @@ private let waitLimit: Duration = .seconds(5)
     }
 }
 
+/// Calls `onMake` from inside `makeTap` (on the tap thread), then creates a fake handle.
+final class StoppingFactory: EventTapFactory, Sendable {
+    let inner = FakeEventTapFactory()
+    private let hook = Mutex<(@Sendable () -> Void)?>(nil)
+
+    var onMake: (@Sendable () -> Void)? {
+        get { hook.withLock { $0 } }
+        set { hook.withLock { $0 = newValue } }
+    }
+
+    func makeTap(mask: TapEventMask, callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?)
+        -> (any EventTapHandle)?
+    {
+        onMake?()
+        return inner.makeTap(mask: mask, callback: callback, userInfo: userInfo)
+    }
+}
+
 @Suite struct TapCallbackBridgeTests {
+    @Test func targetWithoutHandlerPassesEverything_PRD_R44() {
+        #expect(TapCallbackTarget().dispatch(rawEvent(.keyDown)) == .pass)
+    }
+
     @Test func eventsReachTheHandlerOnTheTapThreadThroughUserInfo() throws {
         let factory = FakeEventTapFactory()
         let probe = HandlerProbe()

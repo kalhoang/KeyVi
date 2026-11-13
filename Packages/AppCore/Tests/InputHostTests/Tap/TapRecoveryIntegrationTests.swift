@@ -8,6 +8,7 @@ import RealtimeSupport
 import Synchronization
 import TestSupport
 import Testing
+
 @testable import InputHost
 
 /// Minimal effect performer: one TapThread at a time, created from the factory on `.createTap`.

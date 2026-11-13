@@ -7,6 +7,7 @@ import RealtimeSupport
 import Synchronization
 import TestSupport
 import Testing
+
 @testable import InputHost
 
 @Suite struct TapWatchdogTripTests {
@@ -98,11 +99,13 @@ import Testing
         #expect(rig.reports.last == .callbackReturned)
     }
 
-    @Test func activityIsIgnoredWhileTheTapIsHeld() {
+    @Test func activityAndEnabledChecksAreIgnoredWhileTheTapIsHeld() {
         let rig = WatchdogRig()
         rig.tripNow()
         rig.watchdog.callbackActivity()
+        rig.watchdog.checkNow()
         #expect(rig.repeatingIntervals == [TapWatchdog.enabledCheckInterval])
+        #expect(rig.reports.count == 1, "the disabled tap is the watchdog's own doing, not unexpected")
     }
 
     @Test func watchingResumesOnceTheLifecycleReenabledTheTap() {

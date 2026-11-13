@@ -4,6 +4,7 @@
 import RealtimeSupport
 import Synchronization
 import TestSupport
+
 @testable import InputHost
 
 /// What the watchdog told its owner.

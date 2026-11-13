@@ -61,10 +61,33 @@ extension RawKeyEvent.Kind {
     fileprivate var carriesText: Bool { self == .keyDown || self == .keyUp }
 }
 
+/// The event fields the callback reads (PLT-R304 "reading event fields"). `CGEvent` conforms; the conversion
+/// below is generic over it, so production reads are direct calls and tests use a value type instead of
+/// creating CGEvents.
+protocol TapEventFields {
+    func integerValue(_ field: CGEventField) -> Int64
+    var flagBits: UInt64 { get }
+    /// Copies at most `capacity` UTF-16 units into `buffer`; returns the length the event reports.
+    func copyUnicode(into buffer: UnsafeMutablePointer<UInt16>, capacity: Int) -> Int
+}
+
+extension CGEvent: TapEventFields {
+    func integerValue(_ field: CGEventField) -> Int64 { getIntegerValueField(field) }
+
+    var flagBits: UInt64 { flags.rawValue }
+
+    func copyUnicode(into buffer: UnsafeMutablePointer<UInt16>, capacity: Int) -> Int {
+        var length = 0
+        keyboardGetUnicodeString(maxStringLength: capacity, actualStringLength: &length, unicodeString: buffer)
+        return length
+    }
+}
+
 extension RawKeyEvent {
-    /// Reads the fields the pipeline needs ("reading event fields", PLT-R304) into a bitwise-copyable value.
-    /// Tap-disabled notifications carry no fields; pointer and scroll events carry flags and user data only.
-    init(_ event: CGEvent, kind: Kind, receivedAt: MonotonicInstant) {
+    /// Reads the fields the pipeline needs into a bitwise-copyable value. Tap-disabled notifications carry no
+    /// fields; pointer and scroll events carry flags and user data only; only keyDown and keyUp read the
+    /// Unicode string.
+    init<Fields: TapEventFields>(_ event: Fields, kind: Kind, receivedAt: MonotonicInstant) {
         guard kind != .tapDisabledByTimeout, kind != .tapDisabledByUserInput else {
             self.init(
                 kind: kind, keyCode: KeyCode(rawValue: 0), flags: 0, autorepeat: false, keyboardType: 0,
@@ -72,21 +95,18 @@ extension RawKeyEvent {
             return
         }
         let keyboard = kind.isKeyboard
+        let keyCode = keyboard ? UInt16(truncatingIfNeeded: event.integerValue(.keyboardEventKeycode)) : 0
+        let keyboardType = keyboard ? UInt32(truncatingIfNeeded: event.integerValue(.keyboardEventKeyboardType)) : 0
         self.init(
-            kind: kind,
-            keyCode: KeyCode(
-                rawValue: keyboard ? UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode)) : 0),
-            flags: event.flags.rawValue,
-            autorepeat: keyboard && event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
-            keyboardType: keyboard
-                ? UInt32(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeyboardType)) : 0,
+            kind: kind, keyCode: KeyCode(rawValue: keyCode), flags: event.flagBits,
+            autorepeat: keyboard && event.integerValue(.keyboardEventAutorepeat) != 0, keyboardType: keyboardType,
             unicode: kind.carriesText ? Self.unicodeString(of: event) : .empty,
-            userData: event.getIntegerValueField(.eventSourceUserData),
-            receivedAt: receivedAt)
+            userData: event.integerValue(.eventSourceUserData), receivedAt: receivedAt)
     }
 
-    /// `CGEventKeyboardGetUnicodeString` into a stack buffer of `InlineUTF16.capacity` units (no heap).
-    private static func unicodeString(of event: CGEvent) -> InlineUTF16 {
+    /// `CGEventKeyboardGetUnicodeString` into a stack buffer of `InlineUTF16.capacity` units (no heap). A longer
+    /// string is cut to the capacity.
+    private static func unicodeString<Fields: TapEventFields>(of event: Fields) -> InlineUTF16 {
         var units:
             (
                 UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
@@ -94,11 +114,10 @@ extension RawKeyEvent {
             ) = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         return withUnsafeMutableBytes(of: &units) { raw in
             let buffer = raw.bindMemory(to: UInt16.self)
-            var length = 0
-            event.keyboardGetUnicodeString(
-                maxStringLength: buffer.count, actualStringLength: &length, unicodeString: buffer.baseAddress)
+            guard let base = buffer.baseAddress else { return .empty }
+            let length = event.copyUnicode(into: base, capacity: buffer.count)
             let count = max(0, min(length, buffer.count))
-            return InlineUTF16(UnsafeBufferPointer(start: buffer.baseAddress, count: count)) ?? .empty
+            return InlineUTF16(UnsafeBufferPointer(start: base, count: count)) ?? .empty
         }
     }
 }
