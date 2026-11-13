@@ -22,3 +22,8 @@ www.andymatuschak.org
 sparkle-project.org
 purl.org
 ns.adobe.com
+
+# Attribution text that is never contacted: source URLs quoted in Sparkle's licence, which About & Support shows
+# verbatim (ShellCore/Settings/SparkleNotice.swift, ENG-R811-style acknowledgement of bsdiff and sais-lite).
+www.daemonology.net
+sites.google.com
