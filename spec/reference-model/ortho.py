@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Scratch reference model of the orthography rules written for spec/01-engine.md.
 Own code, written from the spec text only. Not shipped."""
 import unicodedata

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 import sys; sys.path.insert(0,'.')
 from compose import compose, Cfg, commit, display
 from ortho import validity, VOWELS, strip

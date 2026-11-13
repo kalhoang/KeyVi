@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Scratch composition model (Telex / VNI) following spec/01-engine.md. Not shipped."""
 from ortho import L, render, viable, parse, norm_letters, VOWELS, validity, strip
 import unicodedata

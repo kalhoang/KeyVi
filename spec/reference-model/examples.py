@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 import sys; sys.path.insert(0,'.')
 from compose import t, tc
 # (keys, im, style, opts, expected_display_before_boundary)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 import sys, unicodedata; sys.path.insert(0,'.')
 from ortho import all_syllables, tones_for, tone_target, apply_tone, TONE_MARKS, parse
 from compose import compose, Cfg, display, commit
