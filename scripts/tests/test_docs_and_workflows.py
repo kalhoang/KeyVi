@@ -825,6 +825,48 @@ class LicenceTests(unittest.TestCase):
         self.assertIn("ADR 0006", script)
 
 
+class SpecFollowUpTests(unittest.TestCase):
+    """Wave 4 cross-track requests applied to the spec and the decision records (Pa's answers S8, Q8, Q6, S7)."""
+
+    PRODUCT = (REPO / "spec" / "03-product.md").read_text(encoding="utf-8")
+
+    @classmethod
+    def requirement(cls, rid: str) -> str:
+        return cls.PRODUCT.split(f"\n{rid} ", 1)[1].split("\nPRD-R", 1)[0]
+
+    def test_donation_block_is_bank_vietqr_only(self):
+        text = self.requirement("PRD-R59")
+        for needle in ("VietQR", "LioBank", "account number", "holder name", "No MoMo", "GitHub Sponsors",
+                       "sponsor page exists"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+        self.assertNotIn("VERIFY", text)
+        overview = (REPO / "spec" / "00-overview.md").read_text(encoding="utf-8")
+        funding = next(line for line in overview.splitlines() if line.startswith("| Funding |"))
+        self.assertIn("VietQR", funding)
+        self.assertIn("GitHub Sponsors once", funding)
+        adr = (REPO / "docs" / "decisions" / "0400-documentation-decisions.md").read_text(encoding="utf-8")
+        row = next(line for line in adr.splitlines() if line.startswith("| 8 |"))
+        for needle in ("VietQR", "bank name", "account number", "holder name never", "no MoMo", "S8"):
+            with self.subTest(row8=needle):
+                self.assertIn(needle, row)
+
+    def test_menu_bar_glyphs_are_coloured_and_told_apart_without_colour(self):
+        r9 = self.requirement("PRD-R9")
+        r10 = self.requirement("PRD-R10")
+        self.assertNotIn("monochrome", r9 + r10)
+        self.assertIn("not a template", r9)
+        for needle in ("emerald dot", "letter opacity", "badge shape", "VoiceOver"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, r10)
+
+    def test_onboarding_names_the_macos_12_permission_path(self):
+        screen = self.PRODUCT.split("**Screen 2: Permission**", 1)[1].split("**Screen 3", 1)[0]
+        self.assertIn("System Preferences > Security & Privacy > Privacy > Accessibility", screen)
+        self.assertIn("Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng", screen)
+        self.assertIn("macOS 12", screen)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""

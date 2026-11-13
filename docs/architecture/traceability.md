@@ -257,8 +257,8 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PRD-R5 | Ship exactly the listed defaults | `DefaultSettings.v1` | U | W1-B |  |
 | PRD-R6 | Unset follows defaults; set preserved forever | `Setting`, `UserSettings` | U | W1-B |  |
 | PRD-R7 | "Not a setting" items absent from UI | Settings UI | U (view model), M | W2-B |  |
-| PRD-R8 | Minimum macOS 15 | `Package.swift`, `project.yml` | L | skeleton (done) |  |
-| PRD-R9 | Monochrome template icon always visible | `StatusItemController`, assets | M | W1-G; Pa | **Pa** |
+| PRD-R8 | Minimum macOS 12 with Intel (Q6, ADR 0315) | `Package.swift`, `project.yml` | L | skeleton; W4-A |  |
+| PRD-R9 | Status icon always visible (Pa's coloured KV mark, not a template image; S7) | `StatusItemController`, `StatusGlyph`, assets from `scripts/make-app-icon.py menu-bar` | M | W1-G; W4-B; Pa | **Pa** |
 | PRD-R10 | Icon states with VoiceOver labels | `StatusPresentation`, `Menu` table, assets | U, M (VoiceOver) | W1-G; W2-F; Pa | **Pa** |
 | PRD-R11 | Menu layout | `MenuModel`, `StatusItemController` | U, M | W1-G |  |
 | PRD-R12 | Switch HUD 600 ms, non-activating, Reduce Motion | `SwitchHUDController` | U, M | W1-G; W2-F; Pa | **Pa** |

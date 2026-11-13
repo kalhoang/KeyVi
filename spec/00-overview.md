@@ -10,7 +10,7 @@
 | Code base | Written from scratch under clean-room rules (05-clean-room.md). No code from XKey, OpenKey, Unikey or other input methods. |
 | Brand | Personal project "by Kal", home `{{app-slug}}.kal.vn`, signed with Pa's individual Developer ID. Not a Kalera company product. |
 | Distribution | Notarized DMG, Homebrew cask, Sparkle 2 updates signed with EdDSA. No Mac App Store. |
-| Funding | Free and open source. Donations via a bank VietQR code only (no MoMo for now, decided later the same day). Polar.sh is not used for donations (its policy forbids them). |
+| Funding | Free and open source. Donations via a bank VietQR code (bank name and account number shown, never the holder name; no MoMo, decided later the same day), plus GitHub Sponsors once a sponsor page exists. Polar.sh is not used for donations (its policy forbids them). |
 | P0 | The three daily annoyances in 03-product.md section 3.0 (blocked typing in iTerm2, slang `dz` / `hẹo`, English restore only on Space) are release blockers. |
 | Slang | `z` and `dz` are accepted slang onsets; `f`, `j`, `w` are not (they would make English words compose). |
 | Memory store | The implementation uses a new, empty memory project (05-clean-room.md CLR-R8). |
