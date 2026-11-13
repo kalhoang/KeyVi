@@ -803,15 +803,44 @@ class GuestVmGuardTests(unittest.TestCase):
 class IntegrationGuestTests(unittest.TestCase):
     MARKER_LINE = re.compile(r'^HOOKS_MARKER="(.+)"$', re.M)
 
-    def test_the_guest_checks_the_same_hooks_marker_as_run_integration(self):
-        """ADR 0502: one marker string; the guest copy must follow scripts/run-integration.sh."""
+    def test_the_guest_builds_through_run_integration_with_the_ad_hoc_identity(self):
+        """The VM has no Apple Development identity: the guest asks scripts/run-integration.sh build for an ad-hoc
+        test build instead of keeping its own copy of the build (and of the ADR 0502 hooks marker check)."""
         guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        build = next(line for line in guest.splitlines()
+                     if "INTEGRATION_CODE_SIGN_IDENTITY=-" in line and not line.startswith("#"))
+        self.assertIn("COMPAT_HARNESS_LIVE=1", build)
+        self.assertIn('INTEGRATION_APP_DIR="$apps"', build)
+        self.assertIn("scripts/run-integration.sh build", guest)
+        self.assertNotIn("xcodebuild -project", guest)
+        self.assertNotIn("ENABLE_HARDENED_RUNTIME", guest)
+        self.assertIsNone(self.MARKER_LINE.search(guest), "the hooks marker check lives in run-integration.sh only")
         reference = (SCRIPTS / "run-integration.sh").read_text(encoding="utf-8")
-        marker = self.MARKER_LINE.search(guest)
-        self.assertIsNotNone(marker, "integration-guest.sh must define HOOKS_MARKER on its own line")
-        self.assertEqual(marker.group(1), self.MARKER_LINE.search(reference).group(1))
-        self.assertIn('"$HOOKS_MARKER"', guest)
-        self.assertEqual(guest.count(marker.group(1)), 1, "the marker literal appears once")
+        self.assertIsNotNone(self.MARKER_LINE.search(reference))
+        self.assertIn('INTEGRATION_CODE_SIGN_IDENTITY:-', reference)
+
+    def test_the_guest_enables_every_layout_the_testhost_scenarios_select(self):
+        """integration-suite.md section 2 step 4, inside the VM only: the list is read from the scenarios."""
+        guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        self.assertIn("compat/scenarios/testhost.*.json", guest)
+        self.assertIn("scripts/vm/guest/enable-input-sources.swift", guest)
+        self.assertLess(guest.index("enable-input-sources"), guest.index("scripts/run-integration.sh tests"))
+        program = (SCRIPTS / "vm" / "guest" / "enable-input-sources.swift").read_text(encoding="utf-8")
+        self.assertIn("kern.hv_vmm_present", program)
+        self.assertLess(program.index("insideVirtualMachine() else"), program.index("CommandLine.arguments"))
+        self.assertIn("TISEnableInputSource", program)
+        layouts = set()
+        for scenario in (REPO / "compat" / "scenarios").glob("testhost.*.json"):
+            match = re.search(r'"layout":\s*"([^"]+)"', scenario.read_text(encoding="utf-8"))
+            if match:
+                layouts.add(match.group(1))
+        self.assertTrue({"com.apple.keylayout.French", "com.apple.keylayout.German", "com.apple.keylayout.Dvorak",
+                         "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"} <= layouts, layouts)
+        # The guest's sed expression must read every one of them.
+        sed = subprocess.run(
+            ["sh", "-c", "sed -n 's/.*\"layout\": *\"\\([^\"]*\\)\".*/\\1/p' compat/scenarios/testhost.*.json | sort -u"],
+            capture_output=True, text=True, cwd=REPO, check=True)
+        self.assertEqual(set(sed.stdout.split()), layouts)
 
 
 class RunShTests(unittest.TestCase):
