@@ -68,6 +68,14 @@ pull requests. Whoever makes it required updates ADR 0503's list in the same cha
 - The engine benchmark against a baseline recorded on a development M4: calibration scales by the reference
   loop, but the `latencyStable` comparison may be tighter than the hosted runner's noise.
 - How many minutes the benchmarks job adds (release builds of the engine and of the AppCore test targets).
+- Noise in the sub-microsecond pipeline metrics once a baseline exists: `T1.p50` was about 0.3 us locally, so a
+  25 % change is under 100 ns and close to the clock's resolution. If the gate flakes, gate only `T1.p99` or
+  give `scripts/bench-compare.sh` a noise floor like the engine gate's, in a change to this record.
+
+Checked locally on 2026-11-13 (development Mac): `swift test -c release --filter PipelineBenchmark` builds the
+AppCore test targets in release and writes `formatVersion` 1; `scripts/bench-compare.sh` with the CI arguments
+passes without a baseline (`T1.p99` about 1.6 us against the 100 us gate); `Scripts/coverage.py` reads the
+shared engine export (99.64 % of the core); `compat-lint` reports 0 errors and 38 warnings.
 
 ## Consequences
 
