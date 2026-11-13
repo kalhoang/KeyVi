@@ -27,7 +27,7 @@ extension KeyPipeline {
             return passOrHold(event, now: now, probe: probe)
         }
         let key = KeyInputContext(event: event, now: now, probe: probe)
-        if restore { return restoreLastWord(key, focus: focus, inputSource: inputSource) }
+        if restore, let verdict = restoreLastWord(key, focus: focus, inputSource: inputSource) { return verdict }
         let keyClass = KeyClassification.classify(event, table: inputSource.table)  // step 7
         observeLayout(event, keyClass: keyClass, inputSource: inputSource, now: now)
         return feed(keyClass, key, focus: focus, inputSource: inputSource)
@@ -74,19 +74,19 @@ extension KeyPipeline {
         return verdict
     }
 
-    /// PLT-R353: the restore binding asks the engine; an edit consumes the key, otherwise the key passes and
-    /// Escape is a hard boundary (an Escape consumed as restore is not, so the engine keeps the token).
+    /// PLT-R353: the restore binding asks the engine; an edit consumes the key (an Escape consumed as restore is
+    /// not a boundary, so the engine keeps the token). Otherwise nil: the key passes through untouched as if it
+    /// were not bound, through the normal classification. So Escape and Command or Control chords stay hard
+    /// boundaries (PLT-R340) and a character key reaches the engine, which then matches what the app shows
+    /// (the engine already counted the toggle, ENG-R702).
     private func restoreLastWord(
         _ key: KeyInputContext, focus: FocusSnapshot, inputSource: InputSourceSnapshot
-    ) -> TapVerdict {
+    ) -> TapVerdict? {
         let replaced = engine.activeDisplay
         let output = engine.handle(.restoreToggle)
         engineDirty = true
-        if case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty {
-            return apply(output, kind: .restore, replaced: replaced, key, focus: focus, inputSource: inputSource)
-        }
-        if key.event.keyCode == .escape { hardBoundary(.shortcut, job: .escape, generation: focus.generation) }
-        return passOrHold(key.event, now: key.now, probe: key.probe)
+        guard case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty else { return nil }
+        return apply(output, kind: .restore, replaced: replaced, key, focus: focus, inputSource: inputSource)
     }
 
     /// Step 8: the one engine call for this key.
