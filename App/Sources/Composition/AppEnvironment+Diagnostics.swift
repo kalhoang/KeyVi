@@ -65,6 +65,16 @@ extension AppEnvironment {
             current: diagnostics.health.recent(limit: limit), limit: limit)
     }
 
+    /// PLT-R1206: secure-input episodes with the likely holder's bundle ID, from the host's state changes. An
+    /// episode is the time the host stays paused for secure input with one holder.
+    func noteSecureInputEpisode(_ state: HostState) {
+        if case .paused(.secureInput(let holder)) = state {
+            diagnostics.health.noteSecureInput(holder, active: true, at: Date())
+        } else {
+            diagnostics.health.noteSecureInput(nil, active: false, at: Date())
+        }
+    }
+
     /// PRD-R47 item 1: the apps of the Apps pane (PRD-R34), most recent first, without this app. Names are
     /// looked up again each time the sheet opens, so apps installed or removed meanwhile show correctly.
     private func recentReportApps(names: ReportAppNames) -> [BugReportAppChoice] {

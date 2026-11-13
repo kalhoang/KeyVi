@@ -36,9 +36,10 @@ extension AppEnvironment {
 
     func hostEvent(_ event: HostEvent) {
         switch event {
-        case .stateChanged:
+        case .stateChanged(let state):
             updateIcon()
             evaluateSelfCheck()
+            noteSecureInputEpisode(state)
         case .modeChanged(let mode, let manual, _):
             updateIcon()
             // PRD-R12, D14: only manual switches, only with the indicator on.

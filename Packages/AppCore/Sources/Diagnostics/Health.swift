@@ -49,8 +49,16 @@ public final class HealthEventLog: Sendable {
         var next = 0
     }
 
+    /// The secure-input episode in progress (PLT-R1206).
+    private struct Episode {
+        var holder: BundleKey?
+        var holderKind: SecureInputHolder.Kind?
+        var start: Date
+    }
+
     private let capacity: Int
     private let ring = Mutex(Ring())
+    private let episode = Mutex<Episode?>(nil)
     private let mirror: (any DiagnosticsLogging)?
 
     /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
@@ -71,6 +79,30 @@ public final class HealthEventLog: Sendable {
             ring.next = (ring.next + 1) % capacity
         }
         mirror?.log(.health(event), level: event.kind.logLevel)
+    }
+
+    /// Secure-input episodes (PLT-R1206): `active` with the likely holder starts an episode; the end of it, or a
+    /// different holder, records one `secureInputEpisode` event with the holder's bundle ID and kind and the
+    /// duration in milliseconds (never negative when the wall clock was set back). The holder's name is never
+    /// recorded (PLT-R901).
+    public func noteSecureInput(_ holder: SecureInputHolder?, active: Bool, at now: Date) {
+        let ended: Episode? = episode.withLock { current in
+            let next = active ? Episode(holder: holder?.bundle, holderKind: holder?.kind, start: now) : nil
+            if let running = current, let next, running.holder == next.holder, running.holderKind == next.holderKind {
+                return nil
+            }
+            let previous = current
+            current = next
+            return previous
+        }
+        guard let ended else { return }
+        let milliseconds = max(0, now.timeIntervalSince(ended.start)) * 1_000
+        record(
+            HealthEvent(
+                kind: .secureInputEpisode, at: now,
+                detail: .secureInput(
+                    holder: ended.holder, holderKind: ended.holderKind,
+                    durationMilliseconds: UInt64(milliseconds.rounded()))))
     }
 
     /// Newest last, at most `limit` events.
