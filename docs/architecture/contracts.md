@@ -1387,12 +1387,13 @@ characters. `Log2Histogram`, `AtomicCounter`, `PlatformMetrics`, `PerBundleHisto
 (memory part) and `TapLogRing` are implemented in the skeleton.
 
 Draining the tap log: Diagnostics provides `TapLogRing` and the record format, not the drainer. The drainer
-belongs to the composition root (W2-A, `InputHost/Lifecycle/InputHostController.swift` and `InputHost/Integration/`).
-It runs on the utility queue, calls `TapLogRing.drain`, turns each `TapLogRecord` (a code and two integers,
-never characters) into a `HealthEvent` or a `LogEvent`, and converts `TapLogRecord.at`, a `MonotonicInstant`,
-to wall-clock time with an offset sampled from the injected `MonotonicClock` and `WallClock`. A growing
-`droppedCount` (records lost while the ring was full) is reported the same way. The tap thread only calls
-`push` (PLT-R304).
+is not implemented yet: today `InputHostController` only holds the `tapLog` ring, and nothing in
+`Packages/AppCore/Sources/InputHost` calls `TapLogRing.drain`. It is to be implemented by the composition root
+(W2-A) in `InputHost/Lifecycle/InputHostController.swift`. It must run on the utility queue, call
+`TapLogRing.drain`, turn each `TapLogRecord` (a code and two integers, never characters) into a `HealthEvent`
+or a `LogEvent`, and convert `TapLogRecord.at`, a `MonotonicInstant`, to wall-clock time with an offset
+sampled from the injected `MonotonicClock` and `WallClock`. A growing `droppedCount` (records lost while the
+ring was full) must be reported the same way. The tap thread only calls `push` (PLT-R304).
 
 ### 6.1 The issue block (QA-R44)
 
@@ -6168,10 +6169,10 @@ Notes from the engine track (`Packages/VietnameseEngine`, public API in `Sources
 None of them changes a public signature.
 
 - Engines are built off the tap thread. `Engine.init` does the one-time table work: the first engine of a
-  process builds the generated tables (12 to 16 ms in a release build). The settings publisher creates engines
-  at launch and on configuration changes, on the utility queue, through `EngineBridge.catalog`; the tap only
-  indexes the prebuilt `EngineCatalog` (PLT-R304, PLT-R305). `Orthography` is `Sendable`, so tables built on
-  one thread are safe to read on another.
+  process builds the generated tables (about 12 ms on an Apple M4 in a release build: ADR 0104,
+  `PublicAPI.swift`). The settings publisher (W2-A) must create engines at launch and on configuration changes,
+  on the utility queue, through `EngineBridge.catalog`; the tap only indexes the prebuilt `EngineCatalog`
+  (PLT-R304, PLT-R305). `Orthography` is `Sendable`, so tables built on one thread are safe to read on another.
 - Every commit carries a decision. When an event commits a token or expands a macro,
   `EngineOutput.decision` is non-nil: `kept(rule)`, `restored(rule)` or `macro` (ENG-R801). Tokens decided by
   rule L0 (the display equals the keys typed) report `kept(.unchanged)`. Hosts and diagnostics never need a
