@@ -3,7 +3,7 @@
 // Lifecycle owner of the input host (2.1). Main actor: it starts and stops threads, applies settings, drives
 // the pure `HostLifecycle` state machine and performs its effects, and tells the shell what to show. It never
 // sits on the per-keystroke path. Workstream W2-A (composition with the real services); the state machine
-// itself is W1-F2.
+// itself is W1-F2. The effect, notice and settings paths live in `Integration/InputHostController+*.swift`.
 
 public import AppModel
 public import CompatRules
@@ -12,6 +12,7 @@ public import Foundation
 public import Injection
 public import RealtimeSupport
 public import SettingsStore
+internal import VietnameseEngine
 
 /// Everything the host needs from the platform, injected so the whole host runs under fakes in tests.
 public struct InputHostDependencies: Sendable {
@@ -87,7 +88,8 @@ public enum HostEvent: Sendable {
     case tapInstabilityNotice
     case conflictsDetected([ConflictingInput])
     case permissionsChanged(PermissionStatus)
-    /// ENG-R861 learning signal seen twice: proposed for the user list (open decision 8).
+    /// ENG-R861 learning signal seen twice: added to the user list (open decision 8, visible and removable in
+    /// Settings). The shell may mention it; it never logs the word.
     case learningProposal(LearningProposal)
 }
 
@@ -95,46 +97,201 @@ public struct LearningProposal: Sendable, Hashable {
     public enum List: Sendable, Hashable { case keepAsTyped, keepVietnamese }
     public var list: List
     public var rawKeys: String  // content: shown to the user in Settings, never logged
+
+    public init(list: List, rawKeys: String) {
+        self.list = list
+        self.rawKeys = rawKeys
+    }
+}
+
+/// Why the session is inactive (PLT-R333); the host is active only when none applies.
+enum SessionInactiveReason: Hashable {
+    case asleep, screenLocked, sessionResigned
 }
 
 @MainActor
 public final class InputHostController {
-    public init(dependencies: InputHostDependencies, settingsStore: SettingsStore) { unimplemented() }
+    let dependencies: InputHostDependencies
+    let settingsStore: SettingsStore
+    let hop: any MainThreadHop
+    let channels: HostChannels
+    let axThread: RunLoopThread
+    let focusTracker: FocusTracker
+    let worker: InjectionWorker
+    let settingsPublisher: TapSettingsPublisher
+    let tapLogDrainer: TapLogDrainer
+    let makeTapThread: TapThreadMaker
+    /// The clock the tap stamps events with; the worker, the tap watchdog and the log drainer share its base.
+    let tapClock: any MonotonicClock
+    /// False only in tests that drive the worker step by step (`InjectionWorker.runUntilIdle`).
+    let runsWorkerThread: Bool
+    let ruleBox = RuleSetBox()
+    let refresh: RefreshRequests
+    var inputSourceMonitor: InputSourceMonitor
+    var permissionMonitor: PermissionMonitor?
+    var secureInputMonitor: SecureInputMonitor?
+    var workspaceToken: (any ObservationToken)?
+    var drainTimer: (any ScheduledTimer)?
+    var retryTimer: (any ScheduledTimer)?
 
-    public private(set) var state: HostState {
-        get { unimplemented() }
-        set { unimplemented() }
+    var lifecycle = HostLifecycle()
+    var lifecycleGeneration: UInt64 = 0
+    var pendingInputs: [LifecycleInput] = []
+    var processingInputs = false
+    var session: TapSession?
+    /// A removed session whose thread may still be exiting; its echoes are retired before the next tap.
+    var retiredSession: TapSession?
+    var recorderActive = false
+    var started = false
+    var stopped = false
+
+    var rules: RulesLoadResult?
+    var ruleInputs: RuleSetInputs?
+    var settings: SettingsState?
+    var latestPermissions: PermissionStatus?
+    var latestToggle: (sequence: UInt64, bundle: BundleKey?, mode: TypingMode)?
+    var secureResumedGeneration: UInt64?
+    var lastFocusKey: FocusKey?
+    var captureGap: PauseCode?
+    var conflicts: [ConflictingInput] = []
+    var conflictsReported = false
+    var learning = LearningTracker()
+    var inactiveReasons: Set<SessionInactiveReason> = []
+
+    public internal(set) var state: HostState = .starting
+
+    public var onEvent: (@MainActor (HostEvent) -> Void)?
+
+    /// Production wiring: the real tap thread and pipeline, the main dispatch queue for hops, the uptime clock
+    /// for everything that shares a base with the tap's event timestamps.
+    public convenience init(dependencies: InputHostDependencies, settingsStore: SettingsStore) {
+        self.init(
+            dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
+            makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
+            loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.runningMacOSVersion,
+            runsWorkerThread: true)
     }
 
-    public var onEvent: (@MainActor (HostEvent) -> Void)? {
-        get { unimplemented() }
-        set { unimplemented() }
+    init(
+        dependencies: InputHostDependencies, settingsStore: SettingsStore, hop: any MainThreadHop,
+        makeTapThread: @escaping TapThreadMaker, tapClock: any MonotonicClock,
+        loadBundled: @escaping TapSettingsPublisher.BundledResourcesLoader, macOSVersion: LooseVersion,
+        runsWorkerThread: Bool
+    ) {
+        self.runsWorkerThread = runsWorkerThread
+        self.dependencies = dependencies
+        self.settingsStore = settingsStore
+        self.hop = hop
+        self.makeTapThread = makeTapThread
+        self.tapClock = tapClock
+        refresh = RefreshRequests(hop: hop)
+        let initial = InitialSnapshots.make(
+            source: dependencies.inputSources.currentSource(), settings: Self.placeholderSettings,
+            globalMode: .vietnamese)
+        channels = HostChannels(initial: initial, marker: .random(), signalQueue: dependencies.utilityQueue)
+        axThread = RunLoopThread(name: "ax", qualityOfService: .userInitiated)
+        let refresh = self.refresh
+        focusTracker = FocusTracker(
+            thread: axThread,
+            ax: FocusChangeSignalingAXProvider(base: dependencies.ax, thread: axThread) { refresh.request() },
+            processes: dependencies.processes, output: channels.snapshots.focus,
+            generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
+            health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion)
+        worker = InjectionWorker(
+            queue: channels.queue, signal: channels.workerSignal, feedback: channels.feedback,
+            marker: channels.marker, focusGeneration: channels.focusGeneration,
+            services: InjectionServices(
+                poster: dependencies.poster, fieldAccess: dependencies.fieldAccess, pasteboard: dependencies.pasteboard,
+                clock: tapClock, metrics: dependencies.metrics, health: dependencies.health,
+                logger: dependencies.logger, capture: dependencies.capture))
+        settingsPublisher = TapSettingsPublisher(
+            cell: channels.snapshots.settings, logger: dependencies.logger, loadBundled: loadBundled)
+        tapLogDrainer = TapLogDrainer(
+            ring: dependencies.tapLog, health: dependencies.health, logger: dependencies.logger, clock: tapClock,
+            wallClock: dependencies.wallClock)
+        let inputSourceCell = channels.snapshots.inputSource
+        inputSourceMonitor = InputSourceMonitor(
+            provider: dependencies.inputSources, builder: dependencies.layoutBuilder
+        ) { snapshot in
+            inputSourceCell.publish(snapshot)
+            refresh.request()
+        }
+        refresh.connect { [weak self] in self?.refreshState() }
+        makeMonitors()
+        connectSignals()
     }
 
-    /// Ready after launch within 300 ms target / 1 s gate when permissions are granted (S1).
-    public func start(rules: RulesLoadResult, settings: SettingsState) { unimplemented() }
-    public func stop() { unimplemented() }
+    /// Ready after launch within 300 ms target / 1 s gate when permissions are granted (S1). The first settings
+    /// snapshot (engine catalog with the bundled lists, ENG-R1231) is built on the utility queue before the
+    /// lifecycle may create the tap, so the first key already has the real engines.
+    public func start(rules: RulesLoadResult, settings: SettingsState) {
+        guard !started, !stopped else { return }
+        started = true
+        self.rules = rules
+        self.settings = settings
+        let publisher = settingsPublisher
+        dependencies.utilityQueue.sync {
+            publisher.preloadResources()
+            publisher.publish(settings)
+        }
+        startServices(rules: rules, settings: settings)
+        feed(.launched)
+        detectConflicts()
+    }
+
+    public func stop() {
+        guard !stopped else { return }
+        stopped = true
+        stopServices()
+    }
 
     /// Rebuilds engines and snapshots (utility queue) and re-resolves focus (ax) (PLT-R1008, PRD-R27).
-    public func apply(settings: SettingsState) { unimplemented() }
+    public func apply(settings: SettingsState) {
+        guard !stopped else { return }
+        self.settings = settings
+        applySettings(settings)
+    }
 
     /// Menu radio or click-to-toggle (D16). Hard boundary; updates per-app memory (PRD-R20).
-    public func setMode(_ mode: TypingMode, manual: Bool) { unimplemented() }
+    public func setMode(_ mode: TypingMode, manual: Bool) {
+        focusTracker.setMode(mode)
+        refreshAfterAXWork()
+        onEvent?(.modeChanged(mode, manual: manual, bundle: currentFocus().app?.bundle))
+    }
 
     /// Status for the menu "Với <App>" submenu and diagnostics.
-    public func currentFocus() -> FocusSnapshot { unimplemented() }
+    public func currentFocus() -> FocusSnapshot { channels.snapshots.focus.load() }
 
     /// Immediate secure-input poll when the menu opens (PLT-R395).
-    public func refreshSecureInput() -> SecureInputSnapshot { unimplemented() }
+    public func refreshSecureInput() -> SecureInputSnapshot {
+        secureInputMonitor?.pollNow() ?? channels.snapshots.secureInput.load()
+    }
 
     /// Immediate permission check on menu open, wake and session activation (PLT-R721).
-    public func refreshPermissions() -> PermissionStatus { unimplemented() }
+    public func refreshPermissions() -> PermissionStatus {
+        guard let monitor = permissionMonitor else { return latestPermissions ?? Self.unknownPermissions }
+        let status = monitor.checkNow()
+        latestPermissions = status
+        return status
+    }
 
     /// The settings window's recorder is capturing keys: suspend hotkeys (PRD-R15).
-    public func setRecorderActive(_ active: Bool) { unimplemented() }
+    public func setRecorderActive(_ active: Bool) {
+        guard active != recorderActive else { return }
+        recorderActive = active
+        publishLifecycle(lifecycle.phase)
+    }
 
     /// Data for the diagnostics report (PLT-R1202), metadata only.
-    public func reportContext() -> HostReportContext { unimplemented() }
+    public func reportContext() -> HostReportContext {
+        HostReportContext(
+            state: state, focus: currentFocus(), decision: focusTracker.currentDecision(),
+            inputSource: channels.snapshots.inputSource.load(),
+            enabledSources: dependencies.inputSources.enabledSources(),
+            secureInput: channels.snapshots.secureInput.load(),
+            permissions: latestPermissions ?? Self.unknownPermissions, tapEnabled: session?.thread.isEnabled ?? false,
+            conflicts: conflicts)
+    }
 }
 
 /// Host-side inputs of `DiagnosticsReport` (assembled by ShellCore).
