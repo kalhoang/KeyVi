@@ -93,7 +93,7 @@ struct MisbehavesView: View {
                 button(Self.control(offer), localizer) { model.perform(offer) }
             }
         }
-        Text(verbatim: localizer.format(DiagnosticsText.clipboardNotice, model.brand.displayName))
+        Text(verbatim: localizer.format(DiagnosticsText.misbehavesClipboardNotice, model.brand.displayName))
             .font(.footnote)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

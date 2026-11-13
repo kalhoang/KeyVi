@@ -246,7 +246,7 @@ final class MisbehavesModel {
             status = .copied
         case .copyReport:
             guard let report else { return }
-            ReportActions.copy(DiagnosticsRenderer.issueBlock(report))
+            ReportActions.copy(ReportPreviewFormat.copiedBlock.text(report))
             status = .copied
         case .openGitHubIssue: openGitHubIssue()
         }
@@ -272,13 +272,12 @@ final class MisbehavesModel {
         report = fresh
     }
 
-    var previewText: String {
-        report.map { DiagnosticsRenderer.plainText($0, language: localizer.language) } ?? ""
-    }
+    /// Exactly the block that "Copy report" and "Open GitHub issue" write (PLT-R1204).
+    var previewText: String { report.map(ReportPreviewFormat.copiedBlock.text) ?? "" }
 
     private func openGitHubIssue() {
         guard let repository = brand.repositoryURL, let report else { return }
-        ReportActions.copy(DiagnosticsRenderer.issueBlock(report))  // after the visible notice (PRD-R48)
+        ReportActions.copy(ReportPreviewFormat.copiedBlock.text(report))  // after the visible notice (PRD-R48)
         ReportActions.open(BugReportComposer.githubIssueURL(repository: repository, draft: draft, report: report))
         status = .githubPasteHint
     }
