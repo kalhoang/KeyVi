@@ -71,13 +71,17 @@ Common vocabulary is not a match: Vietnamese linguistic terms, Telex and VNI let
 Every icon, image and piece of artwork in the repository has a recorded source. The review (section 3) checks
 that each asset below still matches its record and that no new asset arrived without one.
 [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) section 4 carries the same entries with licences;
-`scripts/tests/test_docs_and_workflows.py` (`NoticesTests`) fails when an image set in the asset catalog has no entry in
-either file, or when an SVG has no source comment.
+`scripts/tests/test_docs_and_workflows.py` (`NoticesTests`) fails when an image has no entry in either file, or when
+an SVG has no source comment. Every image file in the repository is listed, shipped or not.
 
 | Asset | Files | Source record | Origin | Status |
 |---|---|---|---|---|
 | Menu-bar status icons (8 states: `StatusIcon-vietnamese`, `StatusIcon-english`, `StatusIcon-paused`, `StatusIcon-notWorking`, `StatusIcon-ignoredApp`, `StatusIcon-secureInputVietnamese`, `StatusIcon-secureInputEnglish`, `StatusIcon-capturing`) | `App/Resources/Assets.xcassets/StatusIcon-*.imageset/icon.svg` | XML comment at the top of each SVG | Original placeholder artwork drawn for this repository on 2026-11-13 from the PRD-R10 glyph table (commit `23b5e85`), geometry taken from `StatusGlyph.swift` | Placeholder; VERIFY the design with Pa or a designer before 1.0 |
 | Status glyphs drawn in code | `App/Sources/Shell/StatusGlyph.swift` | Header comment of the file | Original, written for this repository on 2026-11-13 (commit `82012a6`) | Placeholder, same VERIFY |
+| Donation QR codes in the app (`DonationVietQR`, `DonationMoMo`) | `App/Resources/Donation.xcassets/DonationVietQR.imageset/placeholder.svg`, `App/Resources/Donation.xcassets/DonationMoMo.imageset/placeholder.svg` | XML comment at the top of each SVG | Original placeholder artwork drawn for this repository on 2026-11-13 (commit `26f6fe1`), deliberately not a scannable QR code | Placeholder; Pa replaces it with the real QR images from Pa's own accounts ([donation setup](../runbooks/donation-setup.md)) and records them here before the first public build |
+| Donation QR codes on the website | `site/static/assets/qr/vietqr.svg`, `site/static/assets/qr/momo.svg` | This table and THIRD_PARTY_NOTICES.md section 4 | Original placeholder artwork drawn for this repository on 2026-11-13 (commit `4b77ba8`), deliberately not a scannable QR code | Placeholder; replaced by the same real images as the app |
+| Website favicon | `site/static/favicon.svg` | This table and THIRD_PARTY_NOTICES.md section 4 | Original, drawn for this repository on 2026-11-13 (commit `4b77ba8`): a white "V" stroke on a green rounded square | Interim; VERIFY with Pa, to be derived from the app icon once that exists |
+| Input method spike icon (not shipped) | `SpikeIMK/Resources/SpikeIMK.tiff` | Header comment of `SpikeIMK/Tools/make-icon.py` | Original pixel art generated on 2026-11-13 (commit `82012a6`) by `SpikeIMK/Tools/make-icon.py`, which regenerates it | Test target only, never released |
 | App icon | `App/Resources/Assets.xcassets/AppIcon.appiconset` | none yet | Not supplied | Pa or a designer supplies it; record it here and in THIRD_PARTY_NOTICES.md |
 
 ## Index of reports
