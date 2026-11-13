@@ -679,6 +679,22 @@ class DependencyAuditTests(TempDirTestCase):
         self.assertIn("branch or revision", result.stderr)
         self.assertIn("| c | 1.2.3 | ok |", result.stdout)
 
+    def test_the_app_may_pin_sparkle_only_plt_r104(self):
+        """Config/Package.resolved is the app's resolved file (project.yml copies it into the generated project);
+        any runtime dependency other than Sparkle fails the audit."""
+        config = self.tmp / "Config"
+        config.mkdir()
+        (config / "Package.resolved").write_text(json.dumps({"pins": [
+            {"identity": "sparkle", "location": "https://github.com/sparkle-project/Sparkle",
+             "state": {"version": "2.10.1", "revision": "abc"}},
+            {"identity": "extra", "location": "https://github.com/a/extra", "state": {"version": "1.0.0", "revision": "def"}},
+        ], "version": 3}))
+        result = py("dependency-audit.py", "--offline", "--root", str(self.tmp))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Config/Package.resolved: extra is a runtime dependency of the app", result.stderr)
+        self.assertIn("| sparkle | 2.10.1 | ok |", result.stdout)
+        self.assertEqual(py("dependency-audit.py", "--offline").returncode, 0, "the repository's own pins pass")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)

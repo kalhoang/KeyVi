@@ -15,8 +15,10 @@
 #     present and well formed: without it no later update could be verified (ADR 0304, QA-R33)
 #   - after notarisation: stapler validate (app and DMG) and spctl --assess
 #   - URL host allowlist (QA-R60)
-#   - no integration hooks code: no executable carries the marker of the INTEGRATION_HOOKS test build
-#     (App/Sources/IntegrationHooks; only Config/Integration.xcconfig sets the condition, ADR 0502)
+#   - no integration hooks adapter: no executable carries the marker of the INTEGRATION_HOOKS test build, the
+#     App-side adapter in App/Sources/IntegrationHooks and its queue (only Config/Integration.xcconfig sets the
+#     condition, ADR 0502). This proves the adapter is absent, not every hooks type: AppCore's hook server,
+#     directory watcher and instruments are compiled into every configuration and stay unused without it.
 #
 # Inputs: --app (the built .app), --dmg (optional), --previous-dr FILE (the designated-requirement.txt asset
 # of the previous published release; leave it out for the first release), --write-dr FILE (write this
@@ -67,8 +69,8 @@ require_cmd codesign lipo spctl xcrun
 load_brand
 load_team_id
 
-# The one string only the INTEGRATION_HOOKS code carries (IntegrationHooksBuild.marker, the label of the hooks'
-# queue; scripts/tests keep this copy equal to the Swift one).
+# The one string only the App-side INTEGRATION_HOOKS adapter carries (IntegrationHooksBuild.marker, the label
+# of the hooks' queue; scripts/tests keep this copy equal to the Swift one).
 HOOKS_MARKER="INTEGRATION_HOOKS test build: file-drop integration hooks"
 
 failures=()
@@ -238,7 +240,7 @@ check_no_hooks() {
   local found
   found="$(LC_ALL=C grep -r -a -F -l -- "$HOOKS_MARKER" "$app/Contents/MacOS" "$app/Contents/Frameworks" 2>/dev/null || true)"
   if [[ -n "$found" ]]; then
-    log "  integration hooks code found in: ${found//$'\n'/, }"
+    log "  integration hooks adapter found in: ${found//$'\n'/, }"
     log "  a release is built with -configuration Release, never Integration (docs/decisions/0502-*.md)"
     return 1
   fi
@@ -259,7 +261,7 @@ else
   info "no previous designated requirement given (first release)"
 fi
 check "URL host allowlist (QA-R60)" check_hosts
-check "no integration hooks code (INTEGRATION_HOOKS)" check_no_hooks
+check "no integration hooks adapter (INTEGRATION_HOOKS test build marker)" check_no_hooks
 if [[ -n "$dmg" ]]; then
   check "DMG signature" check_dmg_signature
 fi

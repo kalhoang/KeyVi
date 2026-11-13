@@ -287,6 +287,44 @@ contains "unsigned fuzz commit named" "test: unsigned fuzz change"
 expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
   --path Packages/VietnameseEngine
 
+echo "== notarize.sh never accepts a submission without its log (QA-R30 step 5)"
+N="$T/notary"
+mkdir -p "$N/bin"
+# Fake xcrun and ditto (the Linux CI job has neither): submit is Accepted; log fails until FAKE_LOG_AFTER calls,
+# then writes FAKE_LOG_JSON; stapler succeeds.
+cat >"$N/bin/xcrun" <<'EOF'
+#!/bin/sh
+case "$1 $2" in
+  "notarytool submit") printf '{"id": "sub-1", "status": "Accepted"}\n' ;;
+  "notarytool log")
+    count=$(( $(cat "$FAKE_LOG_COUNT" 2>/dev/null || echo 0) + 1 ))
+    echo "$count" >"$FAKE_LOG_COUNT"
+    [ "$count" -gt "${FAKE_LOG_AFTER:-99}" ] || { echo "Error: HTTP 500" >&2; exit 1; }
+    for last; do :; done
+    if [ -n "${FAKE_LOG_JSON:-}" ]; then printf '%s\n' "$FAKE_LOG_JSON" >"$last"; else printf '{"issues": null}\n' >"$last"; fi ;;
+  "stapler staple" | "stapler validate") ;;
+  *) exit 3 ;;
+esac
+EOF
+printf '#!/bin/sh\nexit 0\n' >"$N/bin/ditto"
+chmod +x "$N/bin/xcrun" "$N/bin/ditto"
+printf 'dmg' >"$N/test.dmg"
+notarize() { # notarize <expected exit> <name> [VAR=value...]
+  local want="$1" name="$2"
+  shift 2
+  rm -f "$N/count" "$N"/notarization-*.json
+  expect "$want" "$name" env PATH="$N/bin:$PATH" NOTARY_KEYCHAIN_PROFILE=test FAKE_LOG_COUNT="$N/count" \
+    NOTARY_LOG_RETRY_DELAY=0 "$@" "$S/notarize.sh" "$N/test.dmg" --log-dir "$N"
+}
+notarize 1 "an Accepted submission whose log cannot be fetched fails"
+contains "names the missing log" "notary log for test.dmg could not be fetched"
+if [[ "$(cat "$N/count")" == 3 ]]; then ok "the log is fetched three times before giving up"; else ko "the log is fetched three times before giving up"; fi
+notarize 0 "a log that arrives on the second try is accepted" FAKE_LOG_AFTER=1
+contains "stapled" "notarised and stapled: test.dmg"
+notarize 1 "an issue in the log fails" FAKE_LOG_AFTER=0 \
+  FAKE_LOG_JSON='{"issues": [{"severity": "warning", "path": "x", "message": "no timestamp"}]}'
+contains "issue count named" "lists 1 issue(s)"
+
 echo "== check-pr-labels.sh (QA-R6 corpus-change, QA-R15 perf-baseline)"
 L="$T/labels"
 corpus="Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus"
@@ -1022,6 +1060,9 @@ EOF
   expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
   contains "public key present passes" "ok: Sparkle public EdDSA key (SUPublicEDKey)"
   contains "an app without nested code passes the nested-code check" "ok: nested code signed with Developer ID"
+  # ADR 0502: the marker proves the App-side hooks adapter is absent, not every hooks type (AppCore's hook server
+  # and watcher are linked into every configuration, unused without the adapter); the label says exactly that.
+  contains "a build without the hooks passes the hooks check" "ok: no integration hooks adapter (INTEGRATION_HOOKS test build marker)"
   # PLT-R750, PLT-R908: an ad-hoc helper inside the bundle (as Sparkle ships its helpers) must fail before
   # notarisation; codesign --verify --deep --strict alone accepts it.
   nested="$M/nested/$(basename "$app")"
@@ -1043,8 +1084,8 @@ EOF
     >>"$hooked/Contents/MacOS/Test"
   codesign --force --sign - "$hooked" >/dev/null 2>&1
   expect 1 "verify-release fails on integration hooks code" "$M/scripts/verify-release.sh" --app "$hooked" --pre-notarization
-  contains "hooks code reported" "FAILED: no integration hooks code (INTEGRATION_HOOKS)"
-  contains "names the file" "integration hooks code found in: $hooked/Contents/MacOS/Test"
+  contains "hooks code reported" "FAILED: no integration hooks adapter (INTEGRATION_HOOKS test build marker)"
+  contains "names the file" "integration hooks adapter found in: $hooked/Contents/MacOS/Test"
   /usr/libexec/PlistBuddy -c 'Set :SUPublicEDKey ""' "$app/Contents/Info.plist"
   codesign --force --sign - "$app" >/dev/null 2>&1
   expect 1 "verify-release fails without SUPublicEDKey" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
