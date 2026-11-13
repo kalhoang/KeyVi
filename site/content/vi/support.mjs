@@ -50,7 +50,7 @@ export const support = {
 <p>Menu của {{AppName}} nêu ứng dụng có thể đang giữ chế độ này (đây là phỏng đoán tốt nhất, đôi khi chưa chính xác):</p>
 <ul>
   <li><strong>Terminal</strong>: trong menu Terminal, tắt <em>Secure Keyboard Entry</em>.</li>
-  <li><strong>iTerm2</strong>: iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay huỷ) lời nhắc mật khẩu đang chờ.</li>
+  <li><strong>iTerm2</strong>: iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ.</li>
   <li><strong>Trình duyệt</strong>: bấm ra ngoài ô mật khẩu hoặc đổi sang thẻ khác.</li>
   <li><strong>Trình quản lý mật khẩu</strong> hoặc ứng dụng khác: đóng cửa sổ nhập mật khẩu của nó.</li>
   <li>Không biết ứng dụng nào, hoặc menu chỉ ra <code>loginwindow</code>: khoá màn hình rồi mở lại (<kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Q</kbd>), hoặc đăng xuất rồi đăng nhập lại.</li>

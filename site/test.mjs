@@ -409,10 +409,16 @@ try {
     assert.match(read("en", "privacy", "index.html"), /Visitor analytics: none/);
   });
 
-  await check("populated: the iTerm2 Secure Input line is the one sentence of Q38 (no VERIFY left)", () => {
+  await check("populated: the iTerm2 Secure Input line is the app's one sentence of Q38 (no VERIFY left)", async () => {
     const line = (html) => html.match(/<li><strong>iTerm2<\/strong>: ([\s\S]*?)<\/li>/)[1];
     assert.equal(line(read("en", "support", "index.html")), "iTerm2 has Secure Keyboard Entry turned on. Turn off <em>iTerm2 &gt; Secure Keyboard Entry</em>, or finish or cancel the password prompt it is waiting for.");
-    assert.equal(line(read("ho-tro", "index.html")), "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay huỷ) lời nhắc mật khẩu đang chờ.");
+    assert.equal(line(read("ho-tro", "index.html")), "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ.");
+    // ADR 0400 item 15: the support page and the app's status line (Status.xcstrings) use the same sentence.
+    const catalog = JSON.parse(await readFile(join(ROOT_DIR, "App", "Resources", "Localization", "Status.xcstrings"), "utf8"));
+    const hint = catalog.strings["secureInputHint.iterm2.secureKeyboardEntry"].localizations;
+    const plain = (html) => line(html).replace(/<\/?em>/g, "").replaceAll("&gt;", ">");
+    assert.equal(plain(read("en", "support", "index.html")), hint.en.stringUnit.value);
+    assert.equal(plain(read("ho-tro", "index.html")), hint.vi.stringUnit.value);
   });
 
   await check("populated: support page has permission (macOS 27 naming), Secure Input, targets", () => {

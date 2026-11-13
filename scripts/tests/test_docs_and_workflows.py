@@ -1010,6 +1010,50 @@ class Wave5StatusTests(unittest.TestCase):
         self.assertIn("digits do not count", row)
 
 
+class ITerm2SentenceTests(unittest.TestCase):
+    """Q38 and ADR 0400 item 15: the app (Status.xcstrings), the support page and the support replies give the same
+    iTerm2 advice: turn off the menu item iTerm2 > Secure Keyboard Entry, or finish or cancel the pending password
+    prompt. No setting name is quoted and nothing is left to VERIFY (PLT-R398C)."""
+
+    REPLIES = (REPO / "docs" / "support" / "replies.md").read_text(encoding="utf-8")
+    ADR_0400 = (REPO / "docs" / "decisions" / "0400-documentation-decisions.md").read_text(encoding="utf-8")
+
+    def reply_step(self, language: str) -> str:
+        section = self.REPLIES.split(f"### {language}\n")
+        steps = [line for part in section[1:] for line in part.split("\n### ", 1)[0].splitlines()
+                 if "**iTerm2:**" in line]
+        self.assertTrue(steps, f"no iTerm2 step in the {language} replies")
+        return steps[0]
+
+    def test_the_replies_name_the_menu_item_and_the_pending_prompt(self):
+        cases = {
+            "Vietnamese": ("iTerm2 > Secure Keyboard Entry", "hủy", "lời nhắc mật khẩu đang chờ"),
+            "English": ("iTerm2 > Secure Keyboard Entry", "finish or cancel", "password prompt it is waiting for"),
+        }
+        for language, needles in cases.items():
+            step = self.reply_step(language)
+            for needle in needles:
+                with self.subTest(language=language, needle=needle):
+                    self.assertIn(needle, step)
+            with self.subTest(language=language, check="no VERIFY"):
+                self.assertNotIn("VERIFY", step)
+                self.assertNotIn("automatic option", step)
+
+    def test_decision_0400_item_15_says_the_page_and_the_app_agree(self):
+        closed = " ".join(self.ADR_0400.split("- **15** (Q38):", 1)[1].split("\n- **", 1)[0].split())
+        self.assertIn("the support page and the app use the same sentence", closed)
+        self.assertNotIn("until then", closed)
+        row = next(line for line in self.ADR_0400.splitlines() if line.startswith("| 15 |"))
+        self.assertIn("Decided (Q38)", row)
+
+    def test_decision_0005_q38_no_longer_requests_the_copy(self):
+        adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+        row = next(line for line in adr.splitlines() if line.startswith("| Q38 |"))
+        self.assertNotIn("requested from their owners", row)
+        self.assertIn("SecureInputHintCopyTests", row)
+        self.assertIn("site/content/vi/support.mjs", row)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
