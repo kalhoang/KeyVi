@@ -76,7 +76,10 @@ public enum MainNotice: Sendable {
     case modeToggled(sequence: UInt64, bundle: BundleKey?, mode: TypingMode)
     case secureInputResumedByKey(generation: UInt64)
     case tapDisabled(byTimeout: Bool)
-    case learning(LearningSignal)  // ENG-R861, memory only
+    /// ENG-R861, memory only. ENG-R862: `bundle` is the app of the focus snapshot the token was committed in, read
+    /// on the tap with the snapshot it already holds, so the word belongs to that app whenever main drains the
+    /// outbox (the focus may have moved by then).
+    case learning(LearningSignal, bundle: BundleKey?)
     /// First echo miss of a run: the utility queue checks `CGPreflightPostEventAccess()` (ADR 0311).
     case echoMissed
     /// Three consecutive misses: the tap already failed open in this callback (PLT-R730).

@@ -107,7 +107,8 @@ extension KeyPipeline {
         noteEngineCapture(output)
         keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
-        if let learning = output.learning { notifyMain(.learning(learning)) }  // ENG-R861, memory only
+        // ENG-R861, memory only; ENG-R862: attributed to the app typed in (a copy from the snapshot, PLT-R304).
+        if let learning = output.learning { notifyMain(.learning(learning, bundle: focus.app?.bundle)) }
         return apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)
     }
 
