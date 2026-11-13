@@ -117,8 +117,9 @@ step "plan check: compat-harness run --dry-run"
 "$harness" run --dry-run >"$out/dry-run.log" 2>&1 || stop "the plan check failed (dry-run.log)"
 
 step "TestHost suite: scripts/run-integration.sh tests"
-# COMPAT_HARNESS_EVIDENCE_DIR: the harness keeps a screenshot of every failed scenario (VM lab only; the screen
-# shows fixture text the harness typed).
+# COMPAT_HARNESS_EVIDENCE_DIR: the harness writes a focus report for every failed scenario (VM lab only: frontmost
+# app, role and identifier of the focused element, never a value). Not a screenshot: Screen Recording's consent
+# prompt then covered the windows of the following scenarios.
 mkdir -p "$out/evidence"
 COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_EVIDENCE_DIR="$out/evidence" scripts/run-integration.sh tests >"$out/tests.log" 2>&1
 rc=$?

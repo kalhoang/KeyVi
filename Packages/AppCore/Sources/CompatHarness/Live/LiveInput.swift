@@ -99,6 +99,49 @@ enum AX {
         _ = AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, kCFBooleanTrue)
     }
 
+    /// Frontmost app and the system-wide focused element (role, subrole, identifier, window title), never a value.
+    static func focusReport() -> [String] {
+        let systemWide = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(systemWide, timeout)
+        var lines = ["frontmost: " + (NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "none")]
+        if let app = attribute(systemWide, kAXFocusedApplicationAttribute),
+            CFGetTypeID(app) == AXUIElementGetTypeID()
+        {
+            var pid: pid_t = 0
+            AXUIElementGetPid(app as! AXUIElement, &pid)  // type ID checked above
+            lines.append(
+                "focused application: " + (NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? "?"))
+        }
+        guard let focused = attribute(systemWide, kAXFocusedUIElementAttribute),
+            CFGetTypeID(focused) == AXUIElementGetTypeID()
+        else { return lines + ["focused element: none"] }
+        let element = focused as! AXUIElement  // type ID checked above
+        for (label, name) in [
+            ("role", kAXRoleAttribute), ("subrole", kAXSubroleAttribute), ("identifier", kAXIdentifierAttribute),
+        ] {
+            lines.append("focused " + label + ": " + (attribute(element, name) as? String ?? "none"))
+        }
+        if let window = attribute(element, kAXWindowAttribute), CFGetTypeID(window) == AXUIElementGetTypeID() {
+            lines.append(
+                "focused window: " + (attribute(window as! AXUIElement, kAXTitleAttribute) as? String ?? "none"))
+        }
+        var settable: DarwinBoolean = false
+        AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
+        lines.append("focused value settable: " + String(settable.boolValue))
+        return lines
+    }
+
+    /// Whether the app's focused element takes text (its value is settable): a web mirror hands focus to the page
+    /// a moment after the AX focus request.
+    static func focusedElementIsEditable(in bundle: BundleKey) -> Bool {
+        guard let app = try? application(bundle), let focused = attribute(app, kAXFocusedUIElementAttribute),
+            CFGetTypeID(focused) == AXUIElementGetTypeID()
+        else { return false }
+        var settable: DarwinBoolean = false
+        let result = AXUIElementIsAttributeSettable(focused as! AXUIElement, kAXValueAttribute as CFString, &settable)
+        return result == .success && settable.boolValue
+    }
+
     static func set(_ element: AXUIElement, _ name: String, _ value: CFTypeRef) throws {
         let result = AXUIElementSetAttributeValue(element, name as CFString, value)
         guard result == .success else { throw LiveError.axFailure("set " + name, result.rawValue) }

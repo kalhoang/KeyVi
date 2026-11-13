@@ -15,6 +15,8 @@ import TestSupport
 struct LiveSystemActions: SystemActions {
     /// Time a seeded history page gets to load before the next step.
     static let historySettleNanoseconds: UInt64 = 2_000_000_000
+    /// Longest wait for the focused element to take text after `focusField`.
+    static let editableFocusWaitNanoseconds: UInt64 = 2_000_000_000
 
     let targets: HarnessTargets
     let sleeper: any HarnessSleeper
@@ -50,6 +52,12 @@ struct LiveSystemActions: SystemActions {
         let element = try await AX.element(identifier, in: bundle, sleeper: sleeper)
         AX.raiseWindow(of: element)
         try AX.set(element, kAXFocusedAttribute, kCFBooleanTrue)
+        // A web mirror hands focus to the page on a later turn: wait (best effort) until the focused element takes
+        // text, so the keys do not reach the element focused before (the first VM runs left the first word raw).
+        _ = try await HarnessPolling.firstValue(timeoutNanoseconds: Self.editableFocusWaitNanoseconds, sleeper: sleeper)
+        {
+            AX.focusedElementIsEditable(in: bundle) ? true : nil
+        }
     }
 
     func selectInputSource(_ source: InputSourceID) async throws {
