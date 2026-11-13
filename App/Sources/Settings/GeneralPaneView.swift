@@ -165,59 +165,90 @@ struct LayoutAssignmentRow: View {
 }
 
 /// D11 and D8 recorder (PRD-R15, PRD-R16, PRD-R18). While recording, the window's key events go to the recorder.
+/// The restore key also has its on/off switch (D8: Escape by default); the recorder row shows only while it is on.
 struct HotkeyRecorderView: View {
     @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
     @FocusState private var focused: Bool
 
     var body: some View {
-        let localizer = model.localizer
         let recording = model.recordingRole == role
         let binding = role == .toggleMode ? model.settings.toggleHotkey : model.settings.restoreHotkey
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(
-                    verbatim: localizer.string(
-                        role == .toggleMode ? SettingsText.toggleHotkeyTitle : SettingsText.restoreHotkeyTitle))
-                Spacer()
-                Text(
-                    verbatim: recording
-                        ? localizer.string(SettingsText.hotkeyRecording)
-                        : HotkeyRecorderText.display(binding, localizer: localizer)
-                )
-                .font(.body.monospaced())
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5).strokeBorder(
-                        recording ? Color.accentColor : .secondary, lineWidth: recording ? 2 : 1))
-                if recording {
-                    Button(action: model.cancelRecording) {
-                        Text(verbatim: localizer.string(SettingsText.hotkeyCancel))
-                    }
-                    .focused($focused)
-                    .settingsAccessibility(
-                        role == .toggleMode ? SettingsControl.toggleHotkeyCancel : SettingsControl.restoreHotkeyCancel,
-                        localizer)
-                } else {
-                    Button(action: { model.startRecording(role) }) {
-                        Text(verbatim: localizer.string(SettingsText.hotkeyChange))
-                    }
-                    .focused($focused)
-                    .settingsAccessibility(
-                        role == .toggleMode ? SettingsControl.toggleHotkeyChange : SettingsControl.restoreHotkeyChange,
-                        localizer)
-                }
-                RecorderShortcutButtons(model: model, role: role)
+            if role == .restoreLastWord { RestoreHotkeySwitchRow(model: model) }
+            if role == .toggleMode || binding != nil || recording {
+                recorderRow(binding: binding, recording: recording)
             }
             RecorderStatusLine(model: model, role: role)
         }
         .onAppear { if recording { focused = true } }
         .onChange(of: recording) { _ in focused = true }
     }
+
+    private func recorderRow(binding: HotkeyBinding?, recording: Bool) -> some View {
+        let localizer = model.localizer
+        return HStack(spacing: 8) {
+            Text(
+                verbatim: localizer.string(
+                    role == .toggleMode ? SettingsText.toggleHotkeyTitle : SettingsText.restoreHotkeyTitle))
+            Spacer()
+            Text(
+                verbatim: recording
+                    ? localizer.string(SettingsText.hotkeyRecording)
+                    : HotkeyRecorderText.display(binding, localizer: localizer)
+            )
+            .font(.body.monospaced())
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .overlay(
+                RoundedRectangle(cornerRadius: 5).strokeBorder(
+                    recording ? Color.accentColor : .secondary, lineWidth: recording ? 2 : 1))
+            if recording {
+                Button(action: model.cancelRecording) {
+                    Text(verbatim: localizer.string(SettingsText.hotkeyCancel))
+                }
+                .focused($focused)
+                .settingsAccessibility(
+                    role == .toggleMode ? SettingsControl.toggleHotkeyCancel : SettingsControl.restoreHotkeyCancel,
+                    localizer)
+            } else {
+                Button(action: { model.startRecording(role) }) {
+                    Text(verbatim: localizer.string(SettingsText.hotkeyChange))
+                }
+                .focused($focused)
+                .settingsAccessibility(
+                    role == .toggleMode ? SettingsControl.toggleHotkeyChange : SettingsControl.restoreHotkeyChange,
+                    localizer)
+            }
+            RecorderShortcutButtons(model: model, role: role)
+        }
+    }
 }
 
-/// "Dùng mặc định" for the toggle; "Dùng Escape" and "Không dùng" for the restore key (PRD-R18).
+/// D8, PRD-R18: the restore key's on/off switch. Off stores an explicit none; on gives Escape back, or keeps the
+/// key the user recorded (`RestoreHotkeyToggle`).
+struct RestoreHotkeySwitchRow: View {
+    @ObservedObject var model: SettingsWindowModel
+
+    var body: some View {
+        let localizer = model.localizer
+        let current = model.settings.restoreHotkey
+        Toggle(
+            isOn: Binding(
+                get: { RestoreHotkeyToggle.isOn(current) },
+                set: { on in
+                    model.cancelRecording()
+                    model.edit(RestoreHotkeyToggle.edit(turningOn: on, current: current))
+                })
+        ) {
+            Text(verbatim: localizer.string(SettingsText.restoreHotkeySwitch))
+        }
+        .settingsAccessibility(SettingsControl.restoreHotkeySwitch, localizer)
+    }
+}
+
+/// "Dùng mặc định" for the toggle; "Dùng Escape" for the restore key, whose off switch is
+/// `RestoreHotkeySwitchRow` (PRD-R18).
 struct RecorderShortcutButtons: View {
     @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
@@ -228,14 +259,10 @@ struct RecorderShortcutButtons: View {
             Button(action: model.useDefaultToggle) { Text(verbatim: localizer.string(SettingsText.hotkeyUseDefault)) }
                 .settingsAccessibility(SettingsControl.toggleHotkeyDefault, localizer)
         } else {
-            Button(action: { model.setRestoreHotkey(.key(.escape)) }) {
+            Button(action: { model.setRestoreHotkey(RestoreHotkeyToggle.defaultBinding) }) {
                 Text(verbatim: localizer.string(SettingsText.hotkeyUseEscape))
             }
             .settingsAccessibility(SettingsControl.restoreHotkeyEscape, localizer)
-            Button(action: { model.setRestoreHotkey(nil) }) {
-                Text(verbatim: localizer.string(SettingsText.hotkeyClear))
-            }
-            .settingsAccessibility(SettingsControl.restoreHotkeyClear, localizer)
         }
     }
 }

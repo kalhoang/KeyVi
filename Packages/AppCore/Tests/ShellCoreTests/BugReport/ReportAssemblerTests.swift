@@ -110,7 +110,7 @@ import Testing
         let settings = ReportFixtures.report().settings
         #expect(settings.typingMethod == .vni)
         #expect(settings.macroCount == 1)
-        #expect(settings.restoreHotkeySet == false)
+        #expect(settings.restoreHotkeySet)  // D8: Escape by default (decision of 13/11/2026)
         #expect(settings.toggleHotkey == .defaultToggle)
         // Names from SettingsStore (`UserSettings.explicitlySetKeys`), list names without their entries.
         #expect(settings.explicitlySetKeys == ["typingMethod", "interfaceLanguage", "keepAsTyped", "keepVietnamese"])

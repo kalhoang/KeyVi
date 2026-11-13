@@ -94,7 +94,8 @@ import Testing
     @Test func editsAreExplicitChoicesEvenWhenEqualToTheDefault_PRDR6() {
         let edits: [SettingsEdit] = [
             .typingMethod(.telex), .tonePlacement(.traditional), .englishRestore(true), .telexStandaloneW(true),
-            .telexBracketKeys(false), .restoreHotkey(nil), .macrosEnabled(true), .toggleHotkey(.defaultToggle),
+            .telexBracketKeys(false), .restoreHotkey(.key(.escape)), .macrosEnabled(true),
+            .toggleHotkey(.defaultToggle),
             .rememberPerApp(true), .showSwitchIndicator(true), .soundOnSwitch(false), .clickIconToToggle(false),
             .interfaceLanguage(.vietnamese), .automaticallyCheckForUpdates(true), .automaticallyInstallUpdates(true),
             .updateChannel(.stable), .layoutBinding(LayoutModeBinding()),

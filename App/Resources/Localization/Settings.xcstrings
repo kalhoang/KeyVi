@@ -1531,42 +1531,6 @@
         }
       }
     },
-    "settings.control.restoreHotkeyClear.accessibilityHint" : {
-      "comment" : "VoiceOver hint (PRD-R66).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Removes the restore-last-word key."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bỏ phím khôi phục từ vừa gõ."
-          }
-        }
-      }
-    },
-    "settings.control.restoreHotkeyClear.accessibilityLabel" : {
-      "comment" : "VoiceOver label (PRD-R66).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No restore hotkey"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không dùng phím khôi phục"
-          }
-        }
-      }
-    },
     "settings.control.restoreHotkeyEscape.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -1599,6 +1563,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dùng Escape làm phím khôi phục"
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeySwitch.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When off, no key restores the last word. Turning it on again sets Escape."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khi tắt, không phím nào khôi phục từ vừa gõ. Khi bật lại, phím là Escape."
+          }
+        }
+      }
+    },
+    "settings.control.restoreHotkeySwitch.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn the restore-last-word hotkey on or off"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt phím khôi phục từ vừa gõ"
           }
         }
       }
@@ -2607,24 +2607,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Đổi phím..."
-          }
-        }
-      }
-    },
-    "settings.hotkey.clear" : {
-      "comment" : "Restore key: none (D8).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "None"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Không dùng"
           }
         }
       }
@@ -4400,13 +4382,31 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brings the last word back to the keys you typed. Suggested: Escape. Pressing it again right away passes the key through as usual."
+            "value" : "Brings the last word back to the keys you typed. The default is Escape. Pressing it again right away passes the key through as usual, so Escape still closes dialogs. It is off automatically in terminals, code editors, games and remote desktop apps."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đưa từ vừa gõ về đúng các phím bạn đã gõ. Gợi ý: Escape. Bấm thêm lần nữa ngay sau đó thì phím được gửi đi như bình thường."
+            "value" : "Đưa từ vừa gõ về đúng các phím bạn đã gõ. Mặc định là Escape. Bấm thêm lần nữa ngay sau đó thì phím được gửi đi như bình thường, nên Escape vẫn đóng được hộp thoại. Phím này tự tắt trong Terminal, trình soạn mã, trò chơi và ứng dụng điều khiển máy từ xa."
+          }
+        }
+      }
+    },
+    "settings.typing.restoreHotkey.switch" : {
+      "comment" : "Restore key on/off switch (D8, PRD-R18).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use a restore key"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng phím khôi phục"
           }
         }
       }

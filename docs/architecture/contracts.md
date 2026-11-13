@@ -3937,7 +3937,7 @@ public enum DefaultSettings {
         englishRestore: true,  // D4
         telexStandaloneW: true,  // D5
         telexBracketKeys: false,  // D6
-        restoreHotkey: nil,  // D8 unset
+        restoreHotkey: .key(.escape),  // D8 Escape; an explicit null (the off switch) stays none (Q14, 13/11/2026)
         macrosEnabled: true,  // D9
         macrosInEnglishMode: false,  // D10
         toggleHotkey: .defaultToggle,  // D11 tap Control+Shift

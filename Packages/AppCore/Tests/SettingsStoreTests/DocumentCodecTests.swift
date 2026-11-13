@@ -127,7 +127,7 @@ private func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
         #expect(defaults.typingMethod == .telex)
         #expect(defaults.tonePlacement == .traditional)
         #expect(defaults.englishRestore && defaults.telexStandaloneW && !defaults.telexBracketKeys)
-        #expect(defaults.restoreHotkey == nil)
+        #expect(defaults.restoreHotkey == .key(.escape))  // D8, decision of 13/11/2026
         #expect(defaults.macrosEnabled && !defaults.macrosInEnglishMode)
         #expect(defaults.toggleHotkey == .modifierTap(.controlShift))
         #expect(defaults.rememberPerApp && defaults.firstSeenAppMode == .inherit)
