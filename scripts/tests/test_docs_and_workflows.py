@@ -1399,6 +1399,7 @@ def modern_tone_words(text: str) -> list[str]:
 
 
 MODERN_TONE_SECOND_VOWELS = {"o": "áàảãạéèẻẽẹ", "u": "ýỳỷỹỵ"}
+SWIFT_STRING_LITERAL = re.compile(r'"(?:[^"\\\n]|\\.)*"')
 
 
 class TonePlacementTests(unittest.TestCase):
@@ -1411,6 +1412,9 @@ class TonePlacementTests(unittest.TestCase):
     # The tone placement setting (PRD-R24, PRD-R25, D2) shows the modern style on purpose.
     SETTING_EXAMPLES = {"hoà", "thuỷ", "khoẻ"}
     SETTING_KEYS = {"settings.typing.tone.explanation", "settings.typing.tone.modern"}
+    SWIFT_ROOTS = ("Packages/AppCore/Sources", "App/Sources")
+    # Stragglers outside W7-B's paths, requested from the integrator: drop the entry with the fix.
+    SWIFT_PENDING_FIXES = {("Packages/AppCore/Sources/Diagnostics/CaptureRendering.swift", "xoá")}
 
     def test_the_check_flags_modern_placement_only(self):
         modern = "hoá hoà hoạ khoá khoẻ xoá Xoá loè toả tuỳ thuỷ huỷ luỹ Thuỵ HOÁ"
@@ -1442,6 +1446,21 @@ class TonePlacementTests(unittest.TestCase):
         for path in files:
             for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                 offenders += [f"{path.relative_to(REPO)}:{number}: {word}" for word in modern_tone_words(line)]
+        self.assertEqual(offenders, [])
+
+    def test_the_swift_string_literals_use_traditional_placement(self):
+        # Vietnamese text built in Swift (for example the readable typing trace of Diagnostics) reaches users without
+        # a catalog. Comments are skipped: they may name both styles on purpose.
+        offenders = []
+        for root in self.SWIFT_ROOTS:
+            for path in sorted((REPO / root).rglob("*.swift")):
+                relative = str(path.relative_to(REPO))
+                for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                    if line.lstrip().startswith("//"):
+                        continue
+                    for literal in SWIFT_STRING_LITERAL.findall(line):
+                        offenders += [f"{relative}:{number}: {word}" for word in modern_tone_words(literal)
+                                      if (relative, word) not in self.SWIFT_PENDING_FIXES]
         self.assertEqual(offenders, [])
 
     def test_the_decision_is_recorded_in_q13(self):
