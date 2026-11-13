@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
+<!-- QA-R10 web fields: input, textarea and contenteditable. Local file, no network resources (13.2). -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TestHost web fields</title>
+  <link rel="stylesheet" href="testhost.css">
+  <script src="testhost.js"></script>
+</head>
+<body>
+  <label for="web-input">Input</label>
+  <input id="web-input" type="text" autocomplete="off" spellcheck="false" data-testhost-field="testhost.web.input">
+
+  <label for="web-textarea">Textarea</label>
+  <textarea id="web-textarea" rows="3" spellcheck="false" data-testhost-field="testhost.web.textarea"></textarea>
+
+  <label id="web-contenteditable-label">Contenteditable</label>
+  <div id="web-contenteditable" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="false"
+       aria-labelledby="web-contenteditable-label" data-placeholder="Write here"
+       data-testhost-field="testhost.web.contentEditable"></div>
+</body>
+</html>

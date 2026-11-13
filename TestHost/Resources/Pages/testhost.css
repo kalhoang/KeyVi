@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: LicenseRef-App-Pending */
+/* Shared style of the local test pages. System fonts only (no network resources, 13.2). */
+:root {
+  color-scheme: light dark;
+  font: 14px -apple-system, system-ui, sans-serif;
+}
+
+body {
+  margin: 12px;
+}
+
+label {
+  display: block;
+  margin: 10px 0 4px;
+  font-weight: 600;
+}
+
+input,
+textarea,
+[contenteditable] {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid #8a8a8a;
+  border-radius: 4px;
+}
+
+[contenteditable] {
+  min-height: 48px;
+}
+
+[contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: #8a8a8a;
+}
+
+:focus-visible {
+  outline: 3px solid #0a64d6;
+  outline-offset: 1px;
+}
+
+.cell {
+  display: inline-block;
+  min-width: 160px;
+  min-height: 24px;
+  padding: 4px 6px;
+  border: 1px solid #8a8a8a;
+}
+
+.echo {
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
