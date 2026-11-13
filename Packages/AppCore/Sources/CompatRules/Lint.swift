@@ -11,6 +11,18 @@ public struct LintFinding: Sendable, Hashable {
     public var code: LintCode
     public var rule: RuleID?
     public var bundle: BundleKey?
+    /// Human-readable specifics (a decoding path, the other rule of a duplicate); never typed content.
+    public var detail: String?
+
+    public init(
+        severity: Severity, code: LintCode, rule: RuleID? = nil, bundle: BundleKey? = nil, detail: String? = nil
+    ) {
+        self.severity = severity
+        self.code = code
+        self.rule = rule
+        self.bundle = bundle
+        self.detail = detail
+    }
 }
 
 public enum LintCode: String, Sendable, Hashable, CaseIterable {
@@ -18,6 +30,7 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case missingProvenance  // PLT-R505
     case missingTest  // PLT-R505
     case noPassingTestedEntry  // 5.4 `tested`: at least one passing entry
+    case unverifiedTestedEntry  // a `tested` entry without an ISO date (VERIFY); release blocker
     case unknownScenario  // test.scenario has no compat/scenarios file
     case reviewByPassed  // PLT-R506 warning
     case reviewByPassedOver30Days  // PLT-R506 release blocker
@@ -25,14 +38,21 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case identicalMatchSignature  // PLT-R521
     case placeholderWithoutGateTest  // PLT-R422
     case manualTestWithoutMatrixRow  // PLT-R531
+    case manualMatrixRowUnverified  // PLT-R531: row lacks date, app version, macOS or tester; release blocker
     case tier1MatrixRowOlderThan90Days  // PLT-R531, 13.3 (release mode)
     case matrixRuleUnknown
+    case pasteWithoutOptIn  // PLT-R460
 }
 
 public struct RulesLinter: Sendable {
     public init(
         rules: RulesDocument, matrix: MatrixDocument?, scenarioIDs: Set<String>, today: Date, releaseMode: Bool
-    ) { unimplemented() }
+    ) {
+        context = LintContext(
+            rules: rules, matrix: matrix, scenarioIDs: scenarioIDs, today: ISODay(today), releaseMode: releaseMode)
+    }
 
-    public func run() -> [LintFinding] { unimplemented() }
+    let context: LintContext
+
+    public func run() -> [LintFinding] { LintEngine(context: context).run() }
 }
