@@ -18,7 +18,8 @@ private struct SplitMix64: RandomNumberGenerator {
     }
 }
 
-/// What `InputHostController` would do with the effects: creation answers at once, one tap at a time.
+/// What `InputHostController` would do with the effects: one tap at a time; a creation may stay in flight while
+/// other inputs arrive (the factory runs on the tap thread, so permissions can change before it answers).
 private struct ControllerModel {
     var tapAlive = false
     var creationInFlight = false
@@ -30,7 +31,9 @@ private struct ControllerModel {
     mutating func apply(_ effects: [LifecycleEffect]) {
         for effect in effects {
             switch effect {
-            case .createTap: creationInFlight = true
+            case .createTap:
+                #expect(!creationInFlight, "PLT-R302: one creation at a time")
+                creationInFlight = true
             case .removeTap: tapAlive = false
             case .scheduleRetry: retryScheduled = true
             case .cancelRetry: retryScheduled = false
@@ -65,12 +68,14 @@ private let randomInputs: [LifecycleInput] = [
             model.apply(effects)
             update(&model, after: input, effects: effects, phase: script.phase)
             checkTapBacksThePhase(script.phase, model: model)
+            checkTruthfulAndLive(script.phase, model: model)
             script.advance(by: .milliseconds(Int64(random.next() % 90_000)))
         }
     }
 
     private func nextInput(_ random: inout SplitMix64, model: inout ControllerModel) -> LifecycleInput {
-        if model.creationInFlight {
+        // Half of the time the creation stays in flight for another input (review finding: permission flicker).
+        if model.creationInFlight && random.next() % 2 == 0 {
             model.creationInFlight = false
             return random.next() % 3 == 0 ? .tapCreationFailed : .tapCreated
         }
@@ -115,6 +120,13 @@ private let randomInputs: [LifecycleInput] = [
         }
         if effects.contains(where: { if case .scheduleRetry = $0 { true } else { false } }) {
             #expect(after == .failOpen(.tapUnavailable) && model.permissionsGranted, "PLT-R332")
+        }
+    }
+
+    /// PLT-R211: `noPermission` is published only while permissions do not look granted.
+    private func checkTruthfulAndLive(_ phase: LifecycleSnapshot.Phase, model: ControllerModel) {
+        if phase == .noPermission {
+            #expect(!model.permissionsGranted, "noPermission published while permission is granted")
         }
     }
 

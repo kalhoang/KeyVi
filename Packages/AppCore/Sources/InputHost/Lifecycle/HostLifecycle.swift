@@ -139,12 +139,17 @@ public struct HostLifecycle: Sendable, Hashable {
 
     /// PLT-R731: permission back recreates the tap without a relaunch.
     private mutating func permissionGranted(previous: Bool?) -> [LifecycleEffect] {
-        guard tap == .none else { return [] }
-        switch phase {
-        case .noPermission, .starting, .failOpen(.permissionRevoked): return beginCreation()
+        switch (tap, phase) {
+        case (.none, .noPermission), (.none, .starting), (.none, .failOpen(.permissionRevoked)):
+            return beginCreation()
         // Posting broke while permissions still looked granted: wait until they really return.
-        case .failOpen(.postingBroken) where previous == false: return beginCreation()
-        default: return []
+        case (.none, .failOpen(.postingBroken)) where previous == false:
+            return beginCreation()
+        case (.creating, .noPermission):
+            // Lost and back while a creation is in flight: its result decides (PLT-R211, PLT-R332).
+            return move(to: .starting)
+        default:
+            return []
         }
     }
 
@@ -267,7 +272,7 @@ public struct HostLifecycle: Sendable, Hashable {
     private var wantsTap: Bool {
         guard launched, permissionsGranted == true else { return false }
         switch phase {
-        case .failOpen(.watchdog), .failOpen(.callbackStuck), .noPermission: return false
+        case .failOpen(.watchdog), .failOpen(.callbackStuck): return false
         default: return true
         }
     }
