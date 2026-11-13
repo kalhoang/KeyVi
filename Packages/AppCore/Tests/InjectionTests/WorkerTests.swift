@@ -214,7 +214,8 @@ private func key(_ character: Character, at offsetMs: UInt64 = 0, keyboardType: 
         let rig = WorkerRig(field: field, pasteboard: pasteboard)
         let parameters = Fixture.parameters { $0.pasteOptedIn = true }
         let edit = rig.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 1, insertion: "ừ", plan: Fixture.plan(.paste, parameters: parameters))
+            Fixture.job(
+                sequence: $0, deleteCount: 1, insertion: "ừ", plan: Fixture.plan(.paste, parameters: parameters))
         }
         rig.pushPairedKeyUp(InjectionFieldWiring.keyUp(Fixture.triggerS), forJob: edit)
         let held = rig.pushReplay(key("b"))
@@ -265,7 +266,9 @@ private func key(_ character: Character, at offsetMs: UInt64 = 0, keyboardType: 
         rig.run()
         #expect(rig.queue.inFlight == 1)
         for posted in rig.poster.posted {
-            if case .echo(let sequence) = rig.marker.classify(posted.userData) { echo.observed(sequence, at: rig.clock.now()) }
+            if case .echo(let sequence) = rig.marker.classify(posted.userData) {
+                echo.observed(sequence, at: rig.clock.now())
+            }
         }
         #expect(rig.queue.inFlight == 0)
     }

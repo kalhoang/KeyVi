@@ -39,7 +39,8 @@ enum Fixture {
             sequence: JobSequence(rawValue: sequence), generation: FocusGeneration(rawValue: generation), plan: plan,
             field: field, kind: kind, deleteCount: deleteCount, deleteUTF16Count: deleteUTF16Count ?? deleteCount,
             replacedText: replaced, insertion: insertion,
-            keyCodes: keyCodes ?? JobKeyCodes(trigger: trigger?.keyCode ?? KeyCode(rawValue: 0x01), paste: KeyCode(rawValue: 0x09)),
+            keyCodes: keyCodes
+                ?? JobKeyCodes(trigger: trigger?.keyCode ?? KeyCode(rawValue: 0x01), paste: KeyCode(rawValue: 0x09)),
             trigger: trigger, verifyBeforeApply: verifyBeforeApply, wordStartedNearFocusChange: nearFocusChange,
             createdAt: createdAt, isProbe: isProbe)
     }
@@ -119,7 +120,8 @@ final class WorkerRig {
     @discardableResult
     func pushPairedKeyUp(_ record: KeyEventRecord, forJob: UInt64) -> UInt64 {
         let sequence = nextSequence()
-        let job = InjectionJob.pairedKeyUp(JobSequence(rawValue: sequence), record, forJob: JobSequence(rawValue: forJob))
+        let job = InjectionJob.pairedKeyUp(
+            JobSequence(rawValue: sequence), record, forJob: JobSequence(rawValue: forJob))
         precondition(queue.push(job))
         return sequence
     }

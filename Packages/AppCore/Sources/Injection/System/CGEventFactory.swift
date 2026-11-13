@@ -24,7 +24,9 @@ final class CGEventFactory: @unchecked Sendable {
 
     /// PLT-R320 explicit flags, PLT-R404 Unicode payload (none for backspace, PLT-R407), PLT-R321 marker.
     func makeEvent(_ event: SyntheticKeyEvent, userData: Int64) throws(PostError) -> CGEvent {
-        guard let cgEvent = CGEvent(keyboardEventSource: source, virtualKey: event.keyCode.rawValue, keyDown: event.isKeyDown)
+        guard
+            let cgEvent = CGEvent(
+                keyboardEventSource: source, virtualKey: event.keyCode.rawValue, keyDown: event.isKeyDown)
         else { throw .eventCreationFailed }
         cgEvent.flags = CGEventFlags(rawValue: event.flags)
         Self.setUnicode(event.unicode, on: cgEvent)

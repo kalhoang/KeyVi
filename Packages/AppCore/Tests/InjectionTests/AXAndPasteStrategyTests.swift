@@ -18,7 +18,10 @@ private func environment(
 ) -> (FakeInjectionEnvironment, FakeEventPoster) {
     let poster = InjectionFieldWiring.poster(for: field, layout: InjectionTestLayouts.qwerty())
     let access = FakeFocusedFieldAccess(field: field, behaviour: behaviour)
-    return (FakeInjectionEnvironment(poster: poster, clock: ManualClock(), fieldAccess: access, pasteboard: pasteboard), poster)
+    return (
+        FakeInjectionEnvironment(poster: poster, clock: ManualClock(), fieldAccess: access, pasteboard: pasteboard),
+        poster
+    )
 }
 
 @Suite struct AXReplaceTests {
@@ -44,33 +47,46 @@ private func environment(
 
     @Test func readFailuresFailBeforeAnythingChanges() {
         let field = SimulatedTextField(text: "ab")
-        #expect(executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: environment(field: field, behaviour: .timeout).0)
-            == .failedBeforePosting(.axTimedOut))
-        #expect(executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: environment(field: field, behaviour: .unavailable).0)
-            == .failedBeforePosting(.axUnavailable))
-        #expect(executor.execute(Fixture.job(deleteCount: 1, insertion: "x", field: nil), in: environment(field: field).0)
-            == .failedBeforePosting(.axUnavailable))
-        #expect(executor.execute(Fixture.job(deleteCount: 3, insertion: "x"), in: environment(field: field).0)
-            == .failedBeforePosting(.readbackMismatch))
+        #expect(
+            executor.execute(
+                Fixture.job(deleteCount: 1, insertion: "x"), in: environment(field: field, behaviour: .timeout).0)
+                == .failedBeforePosting(.axTimedOut))
+        #expect(
+            executor.execute(
+                Fixture.job(deleteCount: 1, insertion: "x"), in: environment(field: field, behaviour: .unavailable).0)
+                == .failedBeforePosting(.axUnavailable))
+        #expect(
+            executor.execute(Fixture.job(deleteCount: 1, insertion: "x", field: nil), in: environment(field: field).0)
+                == .failedBeforePosting(.axUnavailable))
+        #expect(
+            executor.execute(Fixture.job(deleteCount: 3, insertion: "x"), in: environment(field: field).0)
+                == .failedBeforePosting(.readbackMismatch))
         #expect(field.text == "ab")
     }
 
     /// 4.5: writes may silently do nothing; the mandatory readback catches it.
     @Test func ignoredWritesAreCaughtByTheReadback() {
         let field = SimulatedTextField(text: "ab")
-        let outcome = executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: environment(field: field, behaviour: .writesIgnored).0)
+        let outcome = executor.execute(
+            Fixture.job(deleteCount: 1, insertion: "x"), in: environment(field: field, behaviour: .writesIgnored).0)
         #expect(outcome == .failedAfterPosting(.readbackMismatch))
     }
 
     @Test func failedTextWriteRestoresTheCaret() {
         let field = SimulatedTextField(text: "ab")
         let access = ScriptedFieldAccess(field: field, failTextWrite: true, failRestore: false)
-        let env = FakeInjectionEnvironment(poster: FakeEventPoster(), clock: ManualClock(), fieldAccess: access, pasteboard: FakePasteboard())
-        #expect(executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: env) == .failedBeforePosting(.axWriteFailed))
+        let env = FakeInjectionEnvironment(
+            poster: FakeEventPoster(), clock: ManualClock(), fieldAccess: access, pasteboard: FakePasteboard())
+        #expect(
+            executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: env)
+                == .failedBeforePosting(.axWriteFailed))
         #expect(field.selection == Injection.TextRange(location: 2, length: 0))
         let stuck = ScriptedFieldAccess(field: field, failTextWrite: true, failRestore: true)
-        let stuckEnv = FakeInjectionEnvironment(poster: FakeEventPoster(), clock: ManualClock(), fieldAccess: stuck, pasteboard: FakePasteboard())
-        #expect(executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: stuckEnv) == .failedAfterPosting(.axWriteFailed))
+        let stuckEnv = FakeInjectionEnvironment(
+            poster: FakeEventPoster(), clock: ManualClock(), fieldAccess: stuck, pasteboard: FakePasteboard())
+        #expect(
+            executor.execute(Fixture.job(deleteCount: 1, insertion: "x"), in: stuckEnv)
+                == .failedAfterPosting(.axWriteFailed))
     }
 
     @Test func axErrorMapping() {
@@ -100,7 +116,8 @@ private final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
         base.text(field, in: range, timeout: timeout)
     }
-    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration) -> AXCallResult<Void> {
+    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration) -> AXCallResult<Void>
+    {
         let writes = rangeWrites.add(1, ordering: .relaxed).newValue
         if writes > 1, failRestore { return .failed(code: -25200) }
         return base.setSelectedRange(field, to: range, timeout: timeout)
@@ -123,7 +140,8 @@ private final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
             $0.pasteOptedIn = true
             $0.restoreDelayMs = 400
         }
-        return Fixture.job(deleteCount: deleteCount, insertion: insertion, plan: Fixture.plan(.paste, parameters: parameters))
+        return Fixture.job(
+            deleteCount: deleteCount, insertion: insertion, plan: Fixture.plan(.paste, parameters: parameters))
     }
 
     @Test func deletesThenCommandVAndRestoresInlineWithoutAWorkerPLTR461() {

@@ -175,11 +175,14 @@ enum ScriptRunner {
         }
         switch post(script, pacing: pacing, splitBudget: allowSplit ? cap : nil, in: environment) {
         case .completed(let sequence): return .completed(lastEventSequence: sequence)
-        case .failed(let posted): return posted ? .failedAfterPosting(.postingFailed) : .failedBeforePosting(.postingFailed)
+        case .failed(let posted):
+            return posted ? .failedAfterPosting(.postingFailed) : .failedBeforePosting(.postingFailed)
         }
     }
 
-    static func post(_ script: KeyScript, pacing: Pacing, splitBudget: UInt64?, in environment: any InjectionEnvironment)
+    static func post(
+        _ script: KeyScript, pacing: Pacing, splitBudget: UInt64?, in environment: any InjectionEnvironment
+    )
         -> Result
     {
         var lastPairAt: MonotonicInstant?

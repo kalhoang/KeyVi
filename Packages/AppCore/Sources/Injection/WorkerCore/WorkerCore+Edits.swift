@@ -144,7 +144,8 @@ extension WorkerCore {
         let end = posted ? (lastPosted?.at ?? services.clock.now()) : services.clock.now()
         let elapsed = end.nanoseconds(since: job.createdAt)
         let metrics = services.metrics
-        let histogram = job.isProbe ? metrics.probeDecideToPosted : usedAX ? metrics.decideToPostedWithAX : metrics.decideToPosted
+        let histogram =
+            job.isProbe ? metrics.probeDecideToPosted : usedAX ? metrics.decideToPostedWithAX : metrics.decideToPosted
         histogram.record(nanoseconds: elapsed)
         if let capture = services.capture, capture.isRecording {
             _ = capture.injectRecords.push(

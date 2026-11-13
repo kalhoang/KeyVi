@@ -106,7 +106,9 @@ private struct ScriptedProducer {
         guard !unpairedEdits.isEmpty else { return }
         let forJob = unpairedEdits.removeFirst()
         let id = rig.nextSequence()
-        precondition(rig.queue.push(.pairedKeyUp(JobSequence(rawValue: id), record(.keyUp, id: id), forJob: JobSequence(rawValue: forJob))))
+        precondition(
+            rig.queue.push(
+                .pairedKeyUp(JobSequence(rawValue: id), record(.keyUp, id: id), forJob: JobSequence(rawValue: forJob))))
         pending.append(.paired(id: id, forJob: forJob, at: now))
     }
 
@@ -136,7 +138,9 @@ private struct ScriptedProducer {
                 return true
             }
             for _ in 0..<deleteCount {
-                expectedEvents += [.synthetic(keyCode: 0x33, down: true, text: ""), .synthetic(keyCode: 0x33, down: false, text: "")]
+                expectedEvents += [
+                    .synthetic(keyCode: 0x33, down: true, text: ""), .synthetic(keyCode: 0x33, down: false, text: ""),
+                ]
             }
             let text = Self.insertion(for: id)
             expectedEvents += [

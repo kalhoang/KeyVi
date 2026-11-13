@@ -22,7 +22,8 @@ private struct Bench {
         self.field = field
         poster = InjectionFieldWiring.poster(for: field, layout: layout)
         access = FakeFocusedFieldAccess(field: field, behaviour: axBehaviour)
-        environment = FakeInjectionEnvironment(poster: poster, clock: clock, fieldAccess: access, pasteboard: FakePasteboard())
+        environment = FakeInjectionEnvironment(
+            poster: poster, clock: clock, fieldAccess: access, pasteboard: FakePasteboard())
     }
 
     func run(_ strategy: InjectionStrategy, _ job: EditJob) -> StrategyOutcome {
@@ -62,7 +63,8 @@ private struct Bench {
     @Test func macrosAndRestoresUseTheFirstCharacterKeycodePLTR405() {
         let bench = Bench(field: SimulatedTextField())
         let keyCodes = JobKeyCodes(trigger: KeyCode(rawValue: 0x01), firstCharacter: KeyCode(rawValue: 0x11))
-        _ = bench.run(.backspaceReplace, Fixture.job(deleteCount: 0, insertion: "tôi", kind: .macro, keyCodes: keyCodes))
+        _ = bench.run(
+            .backspaceReplace, Fixture.job(deleteCount: 0, insertion: "tôi", kind: .macro, keyCodes: keyCodes))
         #expect(bench.poster.posted.keyDowns.allSatisfy { $0.keyCode == KeyCode(rawValue: 0x11) })
         let restore = Bench(field: SimulatedTextField())
         _ = restore.run(.backspaceReplace, Fixture.job(deleteCount: 0, insertion: "x", kind: .restore))
@@ -76,7 +78,8 @@ private struct Bench {
             $0.postDeleteSettleUs = 70_000  // capped to 50,000
             $0.firstEditDelayUs = 2_000
         }
-        let job = Fixture.job(deleteCount: 2, insertion: "âb", plan: Fixture.plan(parameters: parameters), nearFocusChange: true)
+        let job = Fixture.job(
+            deleteCount: 2, insertion: "âb", plan: Fixture.plan(parameters: parameters), nearFocusChange: true)
         _ = bench.run(.backspaceReplace, job)
         let start = Fixture.start.nanoseconds
         let expected: [UInt64] = [2_000_000, 3_000_000, 54_000_000, 55_000_000].map { start + $0 }
@@ -111,19 +114,23 @@ private struct Bench {
     @Test func postingFailureIsReportedBeforeOrAfterOutput() {
         let bench = Bench(field: SimulatedTextField(text: "a"))
         bench.poster.setMode(.failingCreation)
-        #expect(bench.run(.backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á")) == .failedBeforePosting(.postingFailed))
+        #expect(
+            bench.run(.backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á"))
+                == .failedBeforePosting(.postingFailed))
     }
 
     @Test func multiCharacterChunksForLongTextPLTR480() {
         let bench = Bench(field: SimulatedTextField())
         let text = String(repeating: "ư", count: 70)
         let allowed = Fixture.parameters { $0.allowMultiCharEvents = true }
-        _ = bench.run(.backspaceReplace, Fixture.job(deleteCount: 0, insertion: text, plan: Fixture.plan(parameters: allowed)))
+        _ = bench.run(
+            .backspaceReplace, Fixture.job(deleteCount: 0, insertion: text, plan: Fixture.plan(parameters: allowed)))
         #expect(bench.poster.posted.keyDowns.map(\.unicode.count) == [20, 20, 20, 10])
         #expect(bench.field.text == text)
         let chunked = Bench(field: SimulatedTextField())
         let rule = Fixture.parameters { $0.unicodeChunk = 4 }
-        _ = chunked.run(.backspaceReplace, Fixture.job(deleteCount: 0, insertion: "abcdef", plan: Fixture.plan(parameters: rule)))
+        _ = chunked.run(
+            .backspaceReplace, Fixture.job(deleteCount: 0, insertion: "abcdef", plan: Fixture.plan(parameters: rule)))
         #expect(chunked.poster.posted.keyDowns.map(\.unicode.string) == ["abcd", "ef"])
     }
 }
@@ -137,7 +144,8 @@ private struct Bench {
 
     /// Types `a` into a completion field: the field shows "a" plus the selected suggestion remainder.
     private func completionBench(_ axBehaviour: FakeFocusedFieldAccess.Behaviour = .normal) -> Bench {
-        let bench = Bench(field: SimulatedTextField(behaviour: .inlineCompletion(suggestions: ["amazon"])), axBehaviour: axBehaviour)
+        let bench = Bench(
+            field: SimulatedTextField(behaviour: .inlineCompletion(suggestions: ["amazon"])), axBehaviour: axBehaviour)
         bench.field.apply(InjectionFieldWiring.keyDown("a", receivedAt: Fixture.start), layout: bench.layout)
         return bench
     }
@@ -151,14 +159,16 @@ private struct Bench {
 
     @Test func axSelectionDeletesTheSuggestionFirstPLTR420() {
         let bench = completionBench()
-        _ = bench.run(.backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection)))
+        _ = bench.run(
+            .backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection)))
         #expect(bench.field.text == "á")
         #expect(bench.poster.posted.backspaceCount == 2)
     }
 
     @Test func axSelectionWithoutASuggestionAddsNothing() {
         let bench = Bench(field: SimulatedTextField(text: "a"))
-        _ = bench.run(.backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection)))
+        _ = bench.run(
+            .backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection)))
         #expect(bench.poster.posted.backspaceCount == 1)
         #expect(bench.field.text == "á")
     }
@@ -166,31 +176,37 @@ private struct Bench {
     @Test func axTimeoutFallsBackToThePlaceholderPLTR420() {
         let bench = completionBench(.timeout)
         _ = bench.run(
-            .backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelectionThenPlaceholder)))
+            .backspaceReplace,
+            Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelectionThenPlaceholder)))
         #expect(bench.field.text == "á")
         #expect(bench.poster.posted.keyDowns.first?.unicode.string == "\u{200B}")
     }
 
     @Test func axUnavailableWithoutPlaceholderUsesNothing() {
         let bench = completionBench(.unavailable)
-        _ = bench.run(.backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection)))
+        _ = bench.run(
+            .backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection)))
         #expect(bench.poster.posted.backspaceCount == 1)
     }
 
     @Test func placeholderNeedsNoAXPLTR421() {
         let bench = completionBench(.unavailable)
-        _ = bench.run(.backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.placeholder)))
+        _ = bench.run(
+            .backspaceReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.placeholder)))
         #expect(bench.field.text == "á")
         #expect(bench.access.callCount == 0)
     }
 
     @Test func selectReplaceHandlesSuggestionsToo() {
         let ax = completionBench()
-        _ = ax.run(.selectReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection, .selectReplace)))
+        _ = ax.run(
+            .selectReplace,
+            Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.axSelection, .selectReplace)))
         #expect(ax.field.text == "á")
         let placeholder = completionBench()
         _ = placeholder.run(
-            .selectReplace, Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.placeholder, .selectReplace)))
+            .selectReplace,
+            Fixture.job(deleteCount: 1, insertion: "á", plan: completionPlan(.placeholder, .selectReplace)))
         #expect(placeholder.field.text == "á")
     }
 
@@ -239,7 +255,9 @@ private struct Bench {
 
     @Test func passThroughExecutorPostsNothing() {
         let bench = Bench(field: SimulatedTextField(text: "a"))
-        #expect(bench.run(.passThrough, Fixture.job(deleteCount: 1, insertion: "á")) == .failedBeforePosting(.postingFailed))
+        #expect(
+            bench.run(.passThrough, Fixture.job(deleteCount: 1, insertion: "á")) == .failedBeforePosting(.postingFailed)
+        )
         #expect(bench.poster.posted.isEmpty)
         #expect(StrategyCatalog.executor(for: .paste).strategy == .paste)
     }

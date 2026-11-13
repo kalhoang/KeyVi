@@ -42,7 +42,9 @@ import Testing
         let rig = WorkerRig(field: SimulatedTextField(text: "a"))
         rig.fieldAccess.setBehaviour(.writesIgnored)
         let edit = rig.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(.axReplace, fallback: [.backspaceReplace]))
+            Fixture.job(
+                sequence: $0, deleteCount: 1, insertion: "á",
+                plan: Fixture.plan(.axReplace, fallback: [.backspaceReplace]))
         }
         rig.run()
         #expect(rig.outcome(edit) == .executedWithFallback)
@@ -76,7 +78,8 @@ import Testing
     @Test func pasteWithoutOptInIsSkipped() {
         let rig = WorkerRig(field: SimulatedTextField(text: "a"))
         let edit = rig.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(.paste, fallback: [.backspaceReplace]))
+            Fixture.job(
+                sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(.paste, fallback: [.backspaceReplace]))
         }
         rig.run()
         #expect(rig.outcome(edit) == .executed)
@@ -102,13 +105,18 @@ import Testing
 
     /// PLT-R480: over 2,000 graphemes with the opt-in, `paste` goes first; the clipboard is restored later.
     @Test func longTextUsesPasteWhenOptedInPLTR480() {
-        let saved = [PasteboardItemData(types: ["public.utf8-plain-text"], data: ["public.utf8-plain-text": Data("old".utf8)])]
+        let saved = [
+            PasteboardItemData(types: ["public.utf8-plain-text"], data: ["public.utf8-plain-text": Data("old".utf8)])
+        ]
         let pasteboard = FakePasteboard(items: saved)
         let field = SimulatedTextField(pasteboardText: { pasteboard.plainText })
         let rig = WorkerRig(field: field, pasteboard: pasteboard)
         let text = String(repeating: "ơ", count: 2_001)
         let opted = Fixture.parameters { $0.pasteOptedIn = true }
-        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: text, plan: Fixture.plan(parameters: opted), kind: .macro) }
+        rig.pushEdit {
+            Fixture.job(
+                sequence: $0, deleteCount: 0, insertion: text, plan: Fixture.plan(parameters: opted), kind: .macro)
+        }
         rig.run()
         #expect(rig.field.text == text)
         #expect(rig.poster.posted.keyDowns.count == 1)
@@ -118,7 +126,8 @@ import Testing
 
     @Test func userCopyDuringTheRestoreWindowIsKept() {
         let pasteboard = FakePasteboard(items: [])
-        let copied = PasteboardItemData(types: ["public.utf8-plain-text"], data: ["public.utf8-plain-text": Data("mine".utf8)])
+        let copied = PasteboardItemData(
+            types: ["public.utf8-plain-text"], data: ["public.utf8-plain-text": Data("mine".utf8)])
         let field = SimulatedTextField(pasteboardText: { pasteboard.plainText })
         let layout = InjectionTestLayouts.qwerty()
         let poster = FakeEventPoster { posted in
@@ -128,7 +137,9 @@ import Testing
         }
         let rig = WorkerRig(field: field, pasteboard: pasteboard, poster: poster)
         let opted = Fixture.parameters { $0.pasteOptedIn = true }
-        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: "x", plan: Fixture.plan(.paste, parameters: opted)) }
+        rig.pushEdit {
+            Fixture.job(sequence: $0, deleteCount: 0, insertion: "x", plan: Fixture.plan(.paste, parameters: opted))
+        }
         rig.run()
         #expect(pasteboard.items == [copied])
         #expect(rig.healthKinds() == [.pasteRestoreSkipped])
@@ -140,7 +151,9 @@ import Testing
     @Test func reentryAppliesWhenTheWordMatchesPLTR342() {
         let rig = WorkerRig(field: SimulatedTextField(text: "xin chao"))
         let edit = rig.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 2, replaced: "chao", insertion: "ào", kind: .reentry, verifyBeforeApply: true)
+            Fixture.job(
+                sequence: $0, deleteCount: 2, replaced: "chao", insertion: "ào", kind: .reentry, verifyBeforeApply: true
+            )
         }
         rig.run()
         #expect(rig.outcome(edit) == .executed)
@@ -151,7 +164,9 @@ import Testing
     @Test func reentryMismatchPassesTheKeyThroughPLTR342() {
         let rig = WorkerRig(field: SimulatedTextField(text: "xin chap"))
         let edit = rig.pushEdit {
-            Fixture.job(sequence: $0, deleteCount: 2, replaced: "chao", insertion: "ào", kind: .reentry, verifyBeforeApply: true)
+            Fixture.job(
+                sequence: $0, deleteCount: 2, replaced: "chao", insertion: "ào", kind: .reentry, verifyBeforeApply: true
+            )
         }
         rig.run()
         #expect(rig.outcome(edit) == .passedThroughByFallback)
@@ -179,7 +194,9 @@ import Testing
     @Test func verifyAfterEditMatchRecordsNothing() {
         let rig = WorkerRig(field: SimulatedTextField(text: "a"))
         let verify = Fixture.parameters { $0.verifyAfterEdit = true }
-        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(parameters: verify)) }
+        rig.pushEdit {
+            Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(parameters: verify))
+        }
         rig.run()
         #expect(rig.health.recent(limit: 10).isEmpty)
         #expect(rig.metrics.decideToPostedWithAX.snapshot().count == 1)
@@ -213,7 +230,9 @@ import Testing
     @Test func aNewEditSupersedesAPendingReadback() {
         let rig = WorkerRig(field: SimulatedTextField(text: "a"))
         let verify = Fixture.parameters { $0.verifyAfterEdit = true }
-        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(parameters: verify)) }
+        rig.pushEdit {
+            Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: Fixture.plan(parameters: verify))
+        }
         rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: "b") }
         rig.run()
         #expect(rig.health.recent(limit: 10).isEmpty)
@@ -227,7 +246,11 @@ import Testing
         let rig = WorkerRig()
         let delayed = Fixture.parameters { $0.firstEditDelayUs = 20_000 }
         let plan = Fixture.plan(parameters: delayed)
-        func push(_ text: String) { rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: text, plan: plan, nearFocusChange: true) } }
+        func push(_ text: String) {
+            rig.pushEdit {
+                Fixture.job(sequence: $0, deleteCount: 0, insertion: text, plan: plan, nearFocusChange: true)
+            }
+        }
         push("a")
         rig.run()
         #expect(rig.clock.now().nanoseconds == Fixture.start.nanoseconds + 20_000_000)
@@ -269,11 +292,14 @@ import Testing
         let queue = JobQueue(capacity: 64, signal: signal)
         let feedback = WorkerFeedback()
         let services = InjectionServices(
-            poster: poster, fieldAccess: FakeFocusedFieldAccess(field: SimulatedTextField()), pasteboard: FakePasteboard(),
-            clock: MachClock(), metrics: PlatformMetrics(), health: HealthEventLog(), logger: RecordingLogger(), capture: nil)
+            poster: poster, fieldAccess: FakeFocusedFieldAccess(field: SimulatedTextField()),
+            pasteboard: FakePasteboard(),
+            clock: MachClock(), metrics: PlatformMetrics(), health: HealthEventLog(), logger: RecordingLogger(),
+            capture: nil)
         let generation = CurrentFocusGeneration()
         let worker = InjectionWorker(
-            queue: queue, signal: signal, feedback: feedback, marker: EventMarker(tag: 0x55), focusGeneration: generation,
+            queue: queue, signal: signal, feedback: feedback, marker: EventMarker(tag: 0x55),
+            focusGeneration: generation,
             services: services)
         worker.start()
         worker.start()  // idempotent
@@ -298,8 +324,10 @@ import Testing
         let signal = WorkerSignal()
         let queue = JobQueue(capacity: 64, signal: signal)
         let services = InjectionServices(
-            poster: FakeEventPoster(), fieldAccess: FakeFocusedFieldAccess(field: SimulatedTextField()), pasteboard: pasteboard,
-            clock: MachClock(), metrics: PlatformMetrics(), health: HealthEventLog(), logger: RecordingLogger(), capture: nil)
+            poster: FakeEventPoster(), fieldAccess: FakeFocusedFieldAccess(field: SimulatedTextField()),
+            pasteboard: pasteboard,
+            clock: MachClock(), metrics: PlatformMetrics(), health: HealthEventLog(), logger: RecordingLogger(),
+            capture: nil)
         var configuration = WorkerConfiguration()
         configuration.livenessCeiling = .seconds(10)  // a loaded machine must not turn this into a flush test
         let worker = InjectionWorker(
@@ -313,7 +341,8 @@ import Testing
         }
         let now = MachClock().now()
         let job = Fixture.job(
-            sequence: queue.nextSequence().rawValue, deleteCount: 0, insertion: "x", plan: Fixture.plan(.paste, parameters: parameters),
+            sequence: queue.nextSequence().rawValue, deleteCount: 0, insertion: "x",
+            plan: Fixture.plan(.paste, parameters: parameters),
             generation: 0, trigger: InjectionFieldWiring.keyDown("s", receivedAt: now), createdAt: now)
         #expect(queue.push(.edit(job)))
         #expect(restored.wait(timeout: .now() + .seconds(10)) == .success)
@@ -326,7 +355,9 @@ private final class RestoreSignallingPasteboard: PasteboardAccess, Sendable {
     private let onRestore: @Sendable () -> Void
     init(onRestore: @escaping @Sendable () -> Void) { self.onRestore = onRestore }
     var changeCount: Int { base.changeCount }
-    func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot { try base.snapshot(limits: limits) }
+    func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot {
+        try base.snapshot(limits: limits)
+    }
     func writeTransient(_ text: String) throws(PasteboardError) -> Int { try base.writeTransient(text) }
     func restore(_ snapshot: PasteboardSnapshot) throws(PasteboardError) {
         try base.restore(snapshot)

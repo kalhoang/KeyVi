@@ -25,7 +25,8 @@ import Testing
         let userData = marker.userData(sequence: 77, probe: false)
         let chunk = try #require(InlineUTF16("ường"))
         let event = try factory.makeEvent(
-            SyntheticKeyEvent(keyCode: KeyCode(rawValue: 0x01), isKeyDown: true, flags: 0, unicode: chunk), userData: userData)
+            SyntheticKeyEvent(keyCode: KeyCode(rawValue: 0x01), isKeyDown: true, flags: 0, unicode: chunk),
+            userData: userData)
         #expect(event.type == .keyDown)
         #expect(event.getIntegerValueField(.keyboardEventKeycode) == 0x01)
         #expect(event.flags.rawValue == 0)
@@ -45,7 +46,8 @@ import Testing
     /// PLT-R324: replays keep keycode, flags, autorepeat, keyboard type and Unicode string, plus the marker.
     @Test func replayCopiesEveryRecordedFieldPLTR324() throws {
         let record = KeyEventRecord(
-            kind: .keyDown, keyCode: KeyCode(rawValue: 0x00), flags: CGEventFlags.maskAlphaShift.rawValue, autorepeat: true,
+            kind: .keyDown, keyCode: KeyCode(rawValue: 0x00), flags: CGEventFlags.maskAlphaShift.rawValue,
+            autorepeat: true,
             keyboardType: 59, unicode: InlineUTF16("A") ?? .empty, receivedAt: .zero, isProbe: false)
         let event = try factory.makeReplay(record, userData: 99)
         #expect(event.type == .keyDown)
@@ -76,7 +78,8 @@ import Testing
     private func unicode(of event: CGEvent) -> String {
         var length = 0
         var buffer = [UniChar](repeating: 0, count: 32)
-        event.keyboardGetUnicodeString(maxStringLength: buffer.count, actualStringLength: &length, unicodeString: &buffer)
+        event.keyboardGetUnicodeString(
+            maxStringLength: buffer.count, actualStringLength: &length, unicodeString: &buffer)
         return String(decoding: buffer.prefix(length), as: UTF16.self)
     }
 }

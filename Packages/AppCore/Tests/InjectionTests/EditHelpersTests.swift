@@ -75,8 +75,9 @@ import Testing
     @Test func oneGraphemePerEventByDefaultPLTR404() {
         #expect(strings(UnicodeChunker.chunks(of: "ến", maxUTF16: 1, oneGraphemePerEvent: true)) == ["ế", "n"])
         let decomposed = "e\u{0302}\u{0301}x"
-        #expect(strings(UnicodeChunker.chunks(of: decomposed, maxUTF16: 20, oneGraphemePerEvent: true))
-            == ["e\u{0302}\u{0301}", "x"])
+        #expect(
+            strings(UnicodeChunker.chunks(of: decomposed, maxUTF16: 20, oneGraphemePerEvent: true))
+                == ["e\u{0302}\u{0301}", "x"])
     }
 
     @Test func multiCharChunksNeverSplitAGrapheme() {
@@ -94,8 +95,9 @@ import Testing
     }
 
     @Test func graphemeLongerThanTheCapGoesAloneAndOversizedClustersSplitAtScalars() {
-        #expect(strings(UnicodeChunker.chunks(of: "a👍b", maxUTF16: 1, oneGraphemePerEvent: false))
-            == ["a", "👍", "b"])
+        #expect(
+            strings(UnicodeChunker.chunks(of: "a👍b", maxUTF16: 1, oneGraphemePerEvent: false))
+                == ["a", "👍", "b"])
         // A pathological cluster over the 20-unit event limit is split at scalar boundaries, never dropped.
         let zalgo = "a" + String(repeating: "\u{0301}", count: 30)
         let chunks = UnicodeChunker.chunks(of: zalgo, maxUTF16: 20, oneGraphemePerEvent: true)

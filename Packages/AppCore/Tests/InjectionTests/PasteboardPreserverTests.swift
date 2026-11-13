@@ -15,10 +15,13 @@ import Testing
 private let plain = "public.utf8-plain-text"
 private let twoItems = [
     PasteboardItemData(
-        types: [plain, "public.rtf"], data: [plain: Data("xin chào".utf8), "public.rtf": Data([0x7B, 0x5C, 0x72, 0x74])]),
+        types: [plain, "public.rtf"],
+        data: [plain: Data("xin chào".utf8), "public.rtf": Data([0x7B, 0x5C, 0x72, 0x74])]),
     PasteboardItemData(
         types: ["public.png", "public.file-url"],
-        data: ["public.png": Data([0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF]), "public.file-url": Data("file:///tmp/a".utf8)]),
+        data: [
+            "public.png": Data([0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF]), "public.file-url": Data("file:///tmp/a".utf8),
+        ]),
 ]
 
 private func ms(_ value: UInt64) -> MonotonicInstant {
@@ -50,7 +53,8 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
         for index in 0..<100 {
             try preserver.beginPaste("\(index)")
             preserver.arm(at: ms(UInt64(index) * 100))
-            #expect(preserver.restoreIfDue(now: ms(UInt64(index) * 100 + 99), restoreDelay: .milliseconds(400)) == .notDue)
+            #expect(
+                preserver.restoreIfDue(now: ms(UInt64(index) * 100 + 99), restoreDelay: .milliseconds(400)) == .notDue)
         }
         #expect(pasteboard.transientWriteCount == 100)
         #expect(preserver.deadline(restoreDelay: .milliseconds(400)) == ms(9_900 + 400))
@@ -230,5 +234,7 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
 
 /// A lazy data provider that never provides anything (an owner app that is gone or failing).
 private final class SilentProvider: NSObject, NSPasteboardItemDataProvider {
-    func pasteboard(_ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType) {}
+    func pasteboard(
+        _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
+    ) {}
 }

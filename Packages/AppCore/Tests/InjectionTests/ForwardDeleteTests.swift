@@ -19,8 +19,10 @@ import Testing
 
     /// Static: no Injection source names the forward-delete key code.
     @Test func noSourceReferencesTheForwardDeleteKeyPLTR407() throws {
-        let files = try #require(FileManager.default.enumerator(at: Self.injectionSources, includingPropertiesForKeys: nil))
-            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        let files = try #require(
+            FileManager.default.enumerator(at: Self.injectionSources, includingPropertiesForKeys: nil)
+        )
+        .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
         #expect(files.count >= 10)
         let forbidden = try Regex(#"\.forwardDelete\b|0x75\b|\b117\b"#)
         for file in files {
@@ -54,7 +56,8 @@ import Testing
         let field = SimulatedTextField(behaviour: .inlineCompletion(suggestions: ["abcdef"]), text: "abc")
         let poster = InjectionFieldWiring.poster(for: field, layout: InjectionTestLayouts.qwerty())
         let environment = FakeInjectionEnvironment(
-            poster: poster, clock: ManualClock(), fieldAccess: FakeFocusedFieldAccess(field: field, behaviour: behaviour),
+            poster: poster, clock: ManualClock(),
+            fieldAccess: FakeFocusedFieldAccess(field: field, behaviour: behaviour),
             pasteboard: FakePasteboard())
         let parameters = Fixture.parameters {
             $0.inlineCompletion = mode

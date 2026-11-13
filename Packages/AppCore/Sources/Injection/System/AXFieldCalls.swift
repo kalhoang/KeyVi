@@ -19,7 +19,8 @@ enum AXFieldCalls {
         return .success(Injection.TextRange(location: range.location, length: range.length))
     }
 
-    static func text(_ element: AXUIElement?, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
+    static func text(_ element: AXUIElement?, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String>
+    {
         guard let element else { return .unavailable }
         prepare(element, timeout: timeout)
         var bounded = boundedRange(range)

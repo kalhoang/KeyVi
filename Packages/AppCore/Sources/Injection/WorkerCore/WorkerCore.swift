@@ -62,7 +62,9 @@ final class WorkerCore {
         axAccess = InstrumentedFieldAccess(base: services.fieldAccess)
         let limits = StrategyLimits(configuration)
         executors = Dictionary(
-            uniqueKeysWithValues: InjectionStrategy.allCases.map { ($0, BuiltInExecutors.executor(for: $0, limits: limits)) })
+            uniqueKeysWithValues: InjectionStrategy.allCases.map {
+                ($0, BuiltInExecutors.executor(for: $0, limits: limits))
+            })
         backlog = JobBacklog(capacity: queue.capacity)
         outcomes = OutcomeLog(capacity: queue.capacity * 2)
     }
@@ -132,7 +134,9 @@ final class WorkerCore {
         feedback.requestCompositionReset()
         services.metrics.flushes.increment()
         recordHealth(.flush, detail: .count(abandoned))
-        if reason == .queueFull { services.logger.log(.note("flush after a full queue", category: .injection), level: .notice) }
+        if reason == .queueFull {
+            services.logger.log(.note("flush after a full queue", category: .injection), level: .notice)
+        }
     }
 
     // MARK: Jobs
