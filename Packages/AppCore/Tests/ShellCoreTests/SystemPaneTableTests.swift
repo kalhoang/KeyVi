@@ -5,6 +5,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct SystemPaneTableTests {

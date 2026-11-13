@@ -10,6 +10,7 @@ import Diagnostics
 import Foundation
 import Injection
 import RealtimeSupport
+
 @testable import InputHost
 @testable import SettingsStore
 @testable import ShellCore
@@ -52,7 +53,8 @@ enum ReportFixtures {
         id: RuleID(rawValue: "user.compat.com.example.Chat")!, summary: Canary.summary,
         match: RuleMatch(
             bundleIds: [reported], engines: [.electron], appVersion: VersionRange(min: LooseVersion("1.0")),
-            ax: AXMatch(roles: ["AXTextArea"], subroles: ["AXSearchField"], identifiers: ["composer"],
+            ax: AXMatch(
+                roles: ["AXTextArea"], subroles: ["AXSearchField"], identifiers: ["composer"],
                 domClasses: ["editor"], ancestorRoles: ["AXWebArea"], editable: true),
             web: WebMatch(urlPrefixes: [Canary.url]), titlePattern: Canary.title),
         action: RuleAction(
@@ -89,7 +91,8 @@ enum ReportFixtures {
             restoreHotkeyEnabled: true, rule: decision?.rule, source: decision?.source ?? .default,
             specificity: decision?.specificity ?? 0)
         let focus = FocusSnapshot(
-            generation: FocusGeneration(rawValue: 3), app: FocusedApp(
+            generation: FocusGeneration(rawValue: 3),
+            app: FocusedApp(
                 pid: 501, bundle: focused, appVersion: LooseVersion("2.3.1"), engine: .electron),
             field: field, decision: hostDecision, mode: .vietnamese, modeSource: .remembered, appliedToggleSequence: 0,
             fieldHandle: nil, changedAt: MonotonicInstant(nanoseconds: 1), pause: nil)
@@ -113,7 +116,8 @@ enum ReportFixtures {
 
     static func decision(userOverride: Rule? = nil) -> ResolvedDecision {
         ResolvedDecision(
-            rule: RuleID(rawValue: "electron.default")!, source: userOverride == nil ? .shipped : .user, specificity: 12,
+            rule: RuleID(rawValue: "electron.default")!, source: userOverride == nil ? .shipped : .user,
+            specificity: 12,
             strategy: .selectReplace, params: .defaults, fallback: [.backspaceReplace], defaultMode: .inherit,
             requireTextFocus: .never, verifyReentry: .whenReadable, axEnable: .none, overlay: false,
             requiresUserOptIn: false, engineContext: .general, features: .defaults, userOverride: userOverride)

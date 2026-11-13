@@ -7,6 +7,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct ShellCatalogTests {
@@ -93,7 +94,8 @@ import Testing
     @Test func shellSourcesHaveNoLiteralProductCopy() throws {
         // Acceptance: no `Text("...")` literal for product copy in owned App sources (ADR 0310).
         let folders = ["App/Sources/Shell", "App/Sources/Onboarding"]
-        let pattern = /(Text|Button|Toggle|Label|Link)\(\s*"[^"]+"|\.help\(\s*"|setAccessibility(Label|Help)\(\s*"|title:\s*"[^"]+"/
+        let pattern =
+            /(Text|Button|Toggle|Label|Link)\(\s*"[^"]+"|\.help\(\s*"|setAccessibility(Label|Help)\(\s*"|title:\s*"[^"]+"/
         for folder in folders {
             let directory = RepoPaths.url(folder)
             let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)

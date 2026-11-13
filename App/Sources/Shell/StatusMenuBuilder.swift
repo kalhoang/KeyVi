@@ -131,7 +131,8 @@ struct StatusMenuBuilder {
 
     /// PRD-R11 item 4: "Với <App>" with the four rules, then "Báo lỗi với ứng dụng này...".
     private func perAppItem(_ app: MenuModel.FrontmostAppMenu) -> NSMenuItem {
-        let item = NSMenuItem(title: localizer.format(MenuText.perAppTitle, app.displayName), action: nil, keyEquivalent: "")
+        let item = NSMenuItem(
+            title: localizer.format(MenuText.perAppTitle, app.displayName), action: nil, keyEquivalent: "")
         let submenu = NSMenu()
         submenu.autoenablesItems = false
         for rule in PerAppRule.allCases {

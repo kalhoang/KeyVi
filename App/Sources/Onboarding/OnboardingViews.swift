@@ -102,7 +102,11 @@ struct PermissionScreen: View {
             if let lost = content.lostNotice { Text(verbatim: lost).fontWeight(.medium) }
             Text(verbatim: content.body)
             ForEach(content.bullets, id: \.self) { bullet in
-                Label { Text(verbatim: bullet) } icon: { Image(systemName: "checkmark.shield").accessibilityHidden(true) }
+                Label {
+                    Text(verbatim: bullet)
+                } icon: {
+                    Image(systemName: "checkmark.shield").accessibilityHidden(true)
+                }
             }
             HStack(alignment: .center, spacing: 16) {
                 PermissionIllustration(label: localizer.string(OnboardingText.permissionIllustration))
@@ -231,8 +235,10 @@ struct MethodCard: View {
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 10).fill(.background))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(selected ? Color.accentColor : .secondary,
-                lineWidth: selected ? 3 : 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10).strokeBorder(
+                    selected ? Color.accentColor : .secondary,
+                    lineWidth: selected ? 3 : 1))
         }
         .buttonStyle(.plain)
         .onboardingAccessibility(method == .telex ? .methodTelex : .methodVNI, localizer)

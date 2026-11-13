@@ -5,6 +5,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct MenuModelTests {
@@ -77,7 +78,10 @@ import Testing
 
     @Test func perAppRulesInSubmenuOrder() {
         #expect(PerAppRule.allCases == [.remember, .alwaysEnglish, .alwaysVietnamese, .ignore])
-        #expect(PerAppRule.allCases.map(\.menuTitleKey) == [.ruleRemember, .ruleAlwaysEnglish, .ruleAlwaysVietnamese, .ruleIgnore])
+        #expect(
+            PerAppRule.allCases.map(\.menuTitleKey) == [
+                .ruleRemember, .ruleAlwaysEnglish, .ruleAlwaysVietnamese, .ruleIgnore,
+            ])
     }
 
     @Test func menuCopyIsVerbatim() throws {
@@ -128,9 +132,10 @@ import Testing
         #expect(HotkeyDisplay.string(for: .key(KeyCode(rawValue: 0x12)), localizer: vi) == "1")
         #expect(HotkeyDisplay.string(for: .key(KeyCode(rawValue: 0xA0)), localizer: en) == "Key 160")
         #expect(HotkeyDisplay.string(for: .key(KeyCode(rawValue: 0xA0)), localizer: vi) == "Phím 160")
-        for code in [KeyCode.returnKey, .tab, .delete, .forwardDelete, .home, .end, .pageUp, .pageDown, .leftArrow,
-            .rightArrow, .upArrow, .downArrow, .keypadEnter]
-        {
+        for code in [
+            KeyCode.returnKey, .tab, .delete, .forwardDelete, .home, .end, .pageUp, .pageDown, .leftArrow,
+            .rightArrow, .upArrow, .downArrow, .keypadEnter,
+        ] {
             #expect(HotkeyDisplay.string(for: .key(code), localizer: vi).count == 1)
         }
     }

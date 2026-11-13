@@ -57,7 +57,9 @@ final class OnboardingModel {
             permissionLost: flow.permissionOnly)
     }
 
-    var helpContent: PermissionHelpContent { PermissionHelpContent(localizer: localizer, appName: appName, panes: panes) }
+    var helpContent: PermissionHelpContent {
+        PermissionHelpContent(localizer: localizer, appName: appName, panes: panes)
+    }
 
     // MARK: - Footer
 
@@ -65,8 +67,11 @@ final class OnboardingModel {
         switch flow.screen {
         case .welcome: localizer.string(OnboardingText.welcomeStart)
         case .permission:
-            if !flow.permissionGranted { permissionContent.openPaneButton }
-            else { localizer.string(flow.permissionOnly ? CommonText.close : CommonText.continue) }
+            if !flow.permissionGranted {
+                permissionContent.openPaneButton
+            } else {
+                localizer.string(flow.permissionOnly ? CommonText.close : CommonText.continue)
+            }
         case .typingMethod, .switching, .conflicts: localizer.string(CommonText.continue)
         case .importFrom: localizer.string(OnboardingText.importChooseFile)
         case .tryIt: localizer.string(OnboardingText.tryItDone)

@@ -8,6 +8,7 @@ import CompatRules
 import Foundation
 import SettingsStore
 import Testing
+
 @testable import ShellCore
 
 @Suite struct CompatibilityModeChoiceTests {
@@ -44,7 +45,9 @@ import Testing
 
     @Test func ruleIDsAreValidForAnyBundleKey() {
         let hashed = BundleKey.executable(sha256Hex: String(repeating: "ab", count: 32))!
-        #expect(CompatibilityModeChoice.ruleID(for: hashed).rawValue == "user.compat.sha256-" + String(repeating: "ab", count: 32))
+        #expect(
+            CompatibilityModeChoice.ruleID(for: hashed).rawValue == "user.compat.sha256-"
+                + String(repeating: "ab", count: 32))
         let long = BundleKey(rawValue: String(repeating: "a.", count: 100) + "b")!
         let id = CompatibilityModeChoice.ruleID(for: long)
         #expect(id.rawValue.utf8.count <= 128)
@@ -59,7 +62,9 @@ import Testing
             "id": .string("user.compat.x"), "action": .object(["strategy": .string("backspaceReplace")]),
         ])
         #expect(CompatibilityModeChoice(overrideRule: plain) == nil)
-        let ax = JSONValue.object(["id": .string("user.compat.x"), "action": .object(["strategy": .string("axReplace")])])
+        let ax = JSONValue.object([
+            "id": .string("user.compat.x"), "action": .object(["strategy": .string("axReplace")]),
+        ])
         #expect(CompatibilityModeChoice(overrideRule: ax) == nil)
     }
 }
@@ -101,7 +106,8 @@ import Testing
     }
 
     @Test func emptyInputsGiveNoRows() throws {
-        let matrix = try JSONDecoder().decode(MatrixDocument.self, from: Data(#"{"schemaVersion":1,"entries":[]}"#.utf8))
+        let matrix = try JSONDecoder().decode(
+            MatrixDocument.self, from: Data(#"{"schemaVersion":1,"entries":[]}"#.utf8))
         #expect(AppsPaneModel.rows(appModes: AppModesDocument(), overrides: [], matrix: matrix, today: now).isEmpty)
     }
 }

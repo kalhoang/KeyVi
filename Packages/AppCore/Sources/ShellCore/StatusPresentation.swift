@@ -73,8 +73,11 @@ public enum StatusPresentation {
 /// One status line (PRD-R11 item 1, PRD-R43): message key, arguments and a single concrete action.
 public struct StatusLine: Sendable, Hashable {
     public enum Action: Sendable, Hashable {
-        case grantPermission, resumeOnboarding, showHolderApp(pid: Int32), secureInputHelp, reportProblem,
-            learnMore(URL), none
+        case grantPermission, resumeOnboarding
+        case showHolderApp(pid: Int32)
+        case secureInputHelp, reportProblem
+        case learnMore(URL)
+        case none
         /// "paused: no text field detected" (02-platform.md section 6, custom text views): one click writes a
         /// user override with `requireTextFocus: never` for this app (PLT-R540).
         case overrideTextFocus(bundle: BundleKey)

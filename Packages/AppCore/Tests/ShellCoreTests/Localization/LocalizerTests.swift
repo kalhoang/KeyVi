@@ -6,6 +6,7 @@ import AppModel
 import Foundation
 import Observation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct LocalizerTests {
@@ -108,7 +109,11 @@ import Testing
         let app = try TemporaryAppBundle(catalogs: [.menu])
         let model = InterfaceLanguageModel(language: .english, appBundle: app.bundle)
         let changed = ChangeFlag()
-        withObservationTracking { _ = model.localizer } onChange: { changed.set() }
+        withObservationTracking {
+            _ = model.localizer
+        } onChange: {
+            changed.set()
+        }
         model.select(.english)
         #expect(!changed.value)
         model.select(.vietnamese)

@@ -114,7 +114,8 @@ public struct PermissionHelpContent: Sendable, Hashable {
     public init(localizer: Localizer, appName: String, panes: SystemPaneNames) {
         title = localizer.format(OnboardingText.helpTitle, appName)
         steps = [
-            localizer.format(OnboardingText.helpStep1, panes.systemSettings, panes.privacySecurity, panes.accessibility),
+            localizer.format(
+                OnboardingText.helpStep1, panes.systemSettings, panes.privacySecurity, panes.accessibility),
             localizer.format(OnboardingText.helpStep2, appName),
             localizer.format(OnboardingText.helpStep3, appName),
         ]

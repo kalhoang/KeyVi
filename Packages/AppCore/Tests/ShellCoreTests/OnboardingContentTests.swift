@@ -6,6 +6,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct TryItChecklistTests {
@@ -71,7 +72,9 @@ import Testing
         let content = PermissionScreenContent(
             localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.missing, permissionLost: false)
         #expect(content.title == "Cho phép Example nhận phím gõ")
-        #expect(content.body == "Để thêm dấu khi bạn gõ, macOS cần bạn cho phép Example trong mục Quyền riêng tư & Bảo mật.")
+        #expect(
+            content.body == "Để thêm dấu khi bạn gõ, macOS cần bạn cho phép Example trong mục Quyền riêng tư & Bảo mật."
+        )
         #expect(
             content.bullets == [
                 "Example chỉ xử lý phím khi bạn gõ chữ.", "Ô mật khẩu luôn được bỏ qua.",
@@ -79,7 +82,8 @@ import Testing
             ])
         #expect(
             content.instruction
-                == "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật Example.")
+                == "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật Example."
+        )
         #expect(content.openPaneButton == "Mở Cài đặt hệ thống")
         #expect(content.lostNotice == nil && content.staleNotice == nil && content.inputMonitoringNotice == nil)
         #expect(content.relaunchButton == nil)
@@ -88,7 +92,8 @@ import Testing
     @Test func englishInterfaceOnAnEnglishSystemBeforeMacOS27() {
         let content = PermissionScreenContent(
             localizer: en, appName: "Example", panes: enPanes26, status: Permissions.missing, permissionLost: false)
-        #expect(content.instruction == "Open System Settings > Privacy & Security > Accessibility, then turn on Example.")
+        #expect(
+            content.instruction == "Open System Settings > Privacy & Security > Accessibility, then turn on Example.")
     }
 
     @Test func englishInterfaceKeepsVietnamesePaneNamesOnAVietnameseSystem() {
@@ -116,7 +121,9 @@ import Testing
     @Test func helpSheetResetsOnlyThisAppAndNeverSuggestsSudo() {
         let help = PermissionHelpContent(localizer: vi, appName: "Example", panes: viPanes27)
         #expect(help.steps.count == 3)
-        #expect(help.steps[0] == "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu.")
+        #expect(
+            help.steps[0] == "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu."
+        )
         #expect(help.resetButton == "Đặt lại quyền")
         let all = [help.title, help.resetIntro, help.confirmTitle, help.confirmBody, help.fallback] + help.steps
         for text in all {

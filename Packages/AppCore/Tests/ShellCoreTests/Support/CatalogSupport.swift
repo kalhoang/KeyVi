@@ -5,6 +5,7 @@
 // produces, ADR 0310), so `Localizer` is tested against the shipped copy.
 
 import Foundation
+
 @testable import ShellCore
 
 enum RepoPaths {

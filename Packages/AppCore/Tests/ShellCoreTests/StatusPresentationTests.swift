@@ -5,6 +5,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 /// Every `HostState` the host can publish, with a representative associated value per case.
@@ -76,7 +77,9 @@ enum AllHostStates {
     @Test func capturingWinsOverEveryStateForTheWholeRecording() {
         // PLT-R905: changed menu-bar icon for the whole duration.
         for state in AllHostStates.all {
-            #expect(StatusPresentation.iconState(state: state, mode: .english, ignored: true, capturing: true) == .capturing)
+            #expect(
+                StatusPresentation.iconState(state: state, mode: .english, ignored: true, capturing: true) == .capturing
+            )
         }
     }
 

@@ -84,7 +84,10 @@ enum IssueFormURL {
     static let descriptionLimit = 2_000
 
     enum Field: String, CaseIterable {
-        case app, whatHappened = "what-happened", symptom, practiceField = "practice-field"
+        case app
+        case whatHappened = "what-happened"
+        case symptom
+        case practiceField = "practice-field"
     }
 
     static func symptomOption(_ symptom: DiagnosticsReport.Symptom) -> String {
@@ -118,7 +121,9 @@ enum IssueFormURL {
             (Field.practiceField.rawValue, practiceFieldOption(draft.reproducesInPracticeField)),
         ]
         let query = items.map { "\($0.0)=\(URLQueryEncoding.encode($0.1))" }.joined(separator: "&")
-        let base = repository.absoluteString.hasSuffix("/") ? String(repository.absoluteString.dropLast())
+        let base =
+            repository.absoluteString.hasSuffix("/")
+            ? String(repository.absoluteString.dropLast())
             : repository.absoluteString
         // Every component is percent-encoded with the unreserved set, so the string is always a valid URL.
         return URL(string: "\(base)/issues/new?\(query)")!

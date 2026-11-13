@@ -113,7 +113,9 @@ struct ChecklistRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            Text(verbatim: localizer.format(done ? OnboardingText.tryItItemDone : OnboardingText.tryItItemPending, text)))
+            Text(
+                verbatim: localizer.format(done ? OnboardingText.tryItItemDone : OnboardingText.tryItItemPending, text))
+        )
     }
 
     private func label(_ localizer: Localizer) -> String {

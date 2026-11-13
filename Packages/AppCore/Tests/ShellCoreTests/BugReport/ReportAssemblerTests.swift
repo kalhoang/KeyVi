@@ -8,6 +8,7 @@ import CompatRules
 import Diagnostics
 import Foundation
 import Testing
+
 @testable import InputHost
 @testable import ShellCore
 
@@ -27,7 +28,8 @@ import Testing
             "conflictingInputApps", "userReport",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
-        #expect(Set(object.keys).isSuperset(of: allowed.subtracting(["reportedAppMode", "focus", "rule", "userReport"])))
+        #expect(
+            Set(object.keys).isSuperset(of: allowed.subtracting(["reportedAppMode", "focus", "rule", "userReport"])))
     }
 
     @Test func reportContainsNoContentAndNoOtherAppsData() throws {
@@ -205,7 +207,8 @@ import Testing
 
     @Test func overrideWithoutContentFieldsOmitsNothing() {
         let rule = Rule(
-            id: RuleID(rawValue: "user.ignore.1")!, summary: "s", match: RuleMatch(bundleIds: [ReportFixtures.reported]),
+            id: RuleID(rawValue: "user.ignore.1")!, summary: "s",
+            match: RuleMatch(bundleIds: [ReportFixtures.reported]),
             action: RuleAction(strategy: .passThrough))
         let projection = ReportAssembler.reportedOverride(from: rule)
         #expect(projection.omittedMatchFields.isEmpty)

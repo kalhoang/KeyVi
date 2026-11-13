@@ -187,9 +187,9 @@ public enum SystemInfoReader {
     static func hardwareArchitecture() -> String {
         if sysctlInt("hw.optional.arm64") == 1 { return "arm64" }
         #if arch(arm64)
-            return "arm64"
+        return "arm64"
         #else
-            return "x86_64"
+        return "x86_64"
         #endif
     }
 

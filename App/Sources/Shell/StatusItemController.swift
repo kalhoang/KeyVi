@@ -37,7 +37,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
     init(
-        language: InterfaceLanguageModel, actions: any StatusMenuActions, menuModel: @escaping @MainActor () -> MenuModel
+        language: InterfaceLanguageModel, actions: any StatusMenuActions,
+        menuModel: @escaping @MainActor () -> MenuModel
     ) {
         self.language = language
         self.actions = actions

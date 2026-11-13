@@ -6,6 +6,7 @@ import AppModel
 import Foundation
 import ServiceManagement
 import Testing
+
 @testable import ShellCore
 
 @Suite struct URLSchemeRouterTests {

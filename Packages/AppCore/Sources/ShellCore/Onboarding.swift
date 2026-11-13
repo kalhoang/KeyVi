@@ -7,7 +7,8 @@ public import Foundation
 public import InputHost
 
 public enum OnboardingScreen: Int, Sendable, Hashable, CaseIterable {
-    case welcome = 1, permission, typingMethod, switching, conflicts, importFrom, tryIt, done
+    case welcome = 1
+    case permission, typingMethod, switching, conflicts, importFrom, tryIt, done
 }
 
 public struct OnboardingInputs: Sendable, Hashable {

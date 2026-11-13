@@ -34,7 +34,9 @@ public enum MenuEntry: Sendable, Hashable {
             if line.actionLabelKey != nil { entries.append(.statusAction(line)) }
             entries.append(.separator)
         }
-        entries += TypingMode.allCases.map { .mode($0, isSelected: $0 == model.mode, hotkey: model.toggleHotkeyDisplay) }
+        entries += TypingMode.allCases.map {
+            .mode($0, isSelected: $0 == model.mode, hotkey: model.toggleHotkeyDisplay)
+        }
         entries.append(.separator)
         entries += TypingMethod.allCases.map { .method($0, isSelected: $0 == model.method) }
         if let app = model.frontmostApp { entries.append(.perApp(app)) }

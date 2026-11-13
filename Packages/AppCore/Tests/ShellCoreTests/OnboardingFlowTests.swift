@@ -7,6 +7,7 @@ import AppModel
 import Foundation
 import InputHost
 import Testing
+
 @testable import ShellCore
 
 enum Permissions {
@@ -31,7 +32,8 @@ enum Permissions {
         lost: Bool = false
     ) -> OnboardingInputs {
         OnboardingInputs(
-            permission: permission, conflicts: conflicts ? [conflict] : [], importCandidates: imports ? [candidate] : [],
+            permission: permission, conflicts: conflicts ? [conflict] : [],
+            importCandidates: imports ? [candidate] : [],
             permissionLostAfterCompletion: lost)
     }
 
@@ -54,7 +56,10 @@ enum Permissions {
 
     @Test func screensFiveAndSixAreSkippedWhenTheirConditionIsFalse() {
         var flow = OnboardingFlow(inputs: inputs())
-        #expect(walk(&flow, inputs: inputs(Permissions.granted)) == [.welcome, .permission, .typingMethod, .switching, .tryIt, .done])
+        #expect(
+            walk(&flow, inputs: inputs(Permissions.granted)) == [
+                .welcome, .permission, .typingMethod, .switching, .tryIt, .done,
+            ])
         var onlyImport = OnboardingFlow(inputs: inputs())
         #expect(
             walk(&onlyImport, inputs: inputs(Permissions.granted, imports: true))
@@ -201,6 +206,7 @@ enum Permissions {
         #expect(evaluate("/Applications") == .mustMove(reason: .outsideApplications))
         #expect(evaluate("/ApplicationsOld/Example.app") == .mustMove(reason: .outsideApplications))
         #expect(evaluate("/Users/other/Applications/Example.app") == .mustMove(reason: .outsideApplications))
-        #expect(evaluate("/Applications/../Users/example/Downloads/Example.app") == .mustMove(reason: .outsideApplications))
+        #expect(
+            evaluate("/Applications/../Users/example/Downloads/Example.app") == .mustMove(reason: .outsideApplications))
     }
 }

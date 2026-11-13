@@ -7,6 +7,7 @@ import AppModel
 import Diagnostics
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct BugReportComposerTests {
@@ -14,7 +15,8 @@ import Testing
 
     func brand(email: String? = "support@example.invalid", repository: URL? = nil) -> Brand {
         Brand(
-            displayName: "Example", slug: "example", siteHost: "example.invalid", bundleIdentifier: "invalid.example.app",
+            displayName: "Example", slug: "example", siteHost: "example.invalid",
+            bundleIdentifier: "invalid.example.app",
             version: "0.1.0", build: "7", supportEmail: email, repositoryURL: repository)
     }
 
@@ -67,7 +69,8 @@ import Testing
         let draft = BugReportDraft(
             app: nil, appName: nil, symptom: .other,
             userDescription: "a+b&c=d\n" + String(repeating: "x", count: 5_000), reproducesInPracticeField: nil)
-        let url = BugReportComposer.githubIssueURL(repository: repository, draft: draft, report: ReportFixtures.report())
+        let url = BugReportComposer.githubIssueURL(
+            repository: repository, draft: draft, report: ReportFixtures.report())
         let items = queryItems(url)
         #expect(items["what-happened"]?.hasPrefix("a+b&c=d\n") == true)
         #expect(items["what-happened"]?.count == IssueFormURL.descriptionLimit)
@@ -112,7 +115,8 @@ import Testing
         let draft = BugReportDraft(
             app: nil, appName: nil, symptom: .nothingTyped, userDescription: "  ", reproducesInPracticeField: true)
         let mail = try #require(
-            BugReportComposer.mail(draft: draft, report: ReportFixtures.report(draft: draft), brand: brand(), localizer: en))
+            BugReportComposer.mail(
+                draft: draft, report: ReportFixtures.report(draft: draft), brand: brand(), localizer: en))
         #expect(mail.subject == "Example: problem report")
         #expect(mail.body.contains("(No description)"))
         #expect(mail.body.contains("Practice field: Also happens there"))
@@ -160,8 +164,12 @@ import Testing
     }
 
     @Test func versionStringOmitsZeroPatch() {
-        #expect(SystemInfoReader.versionString(OperatingSystemVersion(majorVersion: 27, minorVersion: 1, patchVersion: 0)) == "27.1")
-        #expect(SystemInfoReader.versionString(OperatingSystemVersion(majorVersion: 15, minorVersion: 7, patchVersion: 2)) == "15.7.2")
+        #expect(
+            SystemInfoReader.versionString(OperatingSystemVersion(majorVersion: 27, minorVersion: 1, patchVersion: 0))
+                == "27.1")
+        #expect(
+            SystemInfoReader.versionString(OperatingSystemVersion(majorVersion: 15, minorVersion: 7, patchVersion: 2))
+                == "15.7.2")
         #expect(SystemInfoReader.sysctlString("no.such.sysctl") == nil)
         #expect(SystemInfoReader.sysctlInt("no.such.sysctl") == nil)
     }

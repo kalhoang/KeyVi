@@ -7,6 +7,7 @@ import AppModel
 import CompatRules
 import Foundation
 import Testing
+
 @testable import ShellCore
 
 @Suite struct StatusLineTests {
@@ -154,7 +155,8 @@ import Testing
         #expect(limitation.arguments == ["Editor: macOS does not let input methods type here."])
         #expect(limitation.action == .learnMore(URL(string: "https://example.invalid/apps/editor")!))
         // An expected pause falls through to the lower rows too.
-        #expect(try #require(line(.paused(.secureField), app: frontmost)).key == StatusText.knownLimitationNote.rawValue)
+        #expect(
+            try #require(line(.paused(.secureField), app: frontmost)).key == StatusText.knownLimitationNote.rawValue)
     }
 
     @Test func knownLimitationWithoutNoteOrLinkStillNamesTheApp() throws {
@@ -196,7 +198,8 @@ import Testing
         let app = try TemporaryAppBundle(catalogs: [.status])
         let vi = Localizer(language: .vietnamese, appBundle: app.bundle)
         let permission = try #require(line(.noPermission))
-        #expect(permission.message(vi) == "Chưa có quyền nhận phím gõ. Example đang tạm dừng để không ảnh hưởng bàn phím.")
+        #expect(
+            permission.message(vi) == "Chưa có quyền nhận phím gõ. Example đang tạm dừng để không ảnh hưởng bàn phím.")
         #expect(permission.actionLabel(vi) == "Cấp quyền...")
         let source = try #require(line(.paused(.nonLatinInputSource(name: "Kotoeri"))))
         #expect(source.message(vi) == "Đang dùng bàn phím Kotoeri. Example tạm dừng.")
