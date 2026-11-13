@@ -40,6 +40,53 @@ import Testing
         if let firstError, let firstWarning { #expect(firstError.lowerBound < firstWarning.lowerBound) }
     }
 
+    /// PLT-R422: in release mode the shipped placeholder rules whose test cannot show the 1,000-edit gate block
+    /// the release (the two manual spreadsheet rules); the browser rules' scenarios declare it.
+    @Test func releaseModeBlocksPlaceholderRulesWithoutTheirGate() {
+        let outcome = run(seededArguments + ["--release", "--today", "2026-11-13"])
+        for rule in ["web.googleSheets.cellEditor", "office.excel.cellEditor"] {
+            #expect(outcome.output.contains("error: placeholderWithoutGateTest [rule " + rule + "]"), "\(rule)")
+        }
+        for rule in ["browser.chromium.addressBar", "browser.gecko.urlBar"] {
+            #expect(!outcome.output.contains("placeholderWithoutGateTest [rule " + rule + "]"), "\(rule)")
+        }
+    }
+
+    /// The gate is read from the scenario file itself; an unreadable or ungated file does not count.
+    @Test func placeholderGateIsReadFromTheScenarioFile() throws {
+        let fileSystem = InMemoryFileSystem()
+        let action = RuleAction(
+            strategy: .backspaceReplace, params: StrategyParams(inlineCompletion: .axSelectionThenPlaceholder))
+        let rules = Build.document([
+            Build.rule(
+                "gated.rule", match: RuleMatch(engines: [.qt], ax: AXMatch(roles: ["AXTextField"])), action: action),
+            Build.rule(
+                "plain.rule", match: RuleMatch(engines: [.gecko], ax: AXMatch(roles: ["AXTextField"])), action: action),
+            Build.rule(
+                "broken.rule", match: RuleMatch(engines: [.electron], ax: AXMatch(roles: ["AXTextField"])),
+                action: action),
+        ])
+        try fileSystem.writeAtomically(
+            JSONEncoder().encode(rules), to: URL(fileURLWithPath: "/c/rules.json"), permissions: .ownerOnlyFile)
+        let gated = #"""
+            {"id":"gated.rule","timing":"normal","readback":"ax","expect":{"text":"á","noPlaceholderResidue":true},
+             "repeat":{"words":1000,"seed":7,"timing":"burst","prefix":["command+l"]}}
+            """#
+        let files = [
+            "gated.rule": gated, "plain.rule": #"{"id":"plain.rule","expect":{"text":"á"}}"#, "broken.rule": "{",
+        ]
+        for (id, body) in files {
+            try fileSystem.writeAtomically(
+                Data(body.utf8), to: URL(fileURLWithPath: "/c/scenarios/" + id + ".json"), permissions: .ownerOnlyFile)
+        }
+        let outcome = run(
+            ["--rules", "/c/rules.json", "--scenarios", "/c/scenarios", "--matrix", "/c/none.json", "--release"],
+            fileSystem: fileSystem)
+        #expect(!outcome.output.contains("[rule gated.rule]"), "\(outcome.output)")
+        #expect(outcome.output.contains("error: placeholderWithoutGateTest [rule plain.rule]"))
+        #expect(outcome.output.contains("error: placeholderWithoutGateTest [rule broken.rule]"))
+    }
+
     @Test func usageErrors() {
         #expect(run(["--rules"]).exitCode == CompatLintCommand.exitUsage)
         #expect(run(["--bogus"]).output.hasPrefix("compat-lint: unknown argument --bogus"))

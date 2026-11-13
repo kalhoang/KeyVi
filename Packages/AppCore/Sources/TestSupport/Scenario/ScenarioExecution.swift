@@ -60,8 +60,8 @@ extension ScenarioRunner {
         let start = clock.now()
         var observed: String?
         var stage = "setup"
-        let outcome: ScenarioResult.Outcome
-        let reason: String?
+        var outcome: ScenarioResult.Outcome
+        var reason: String?
         do {
             stage = "prepare"
             try await setup.prepare(scenario)
@@ -78,7 +78,7 @@ extension ScenarioRunner {
                     try await setup.perform(step, for: scenario)
                 }
             }
-            if scenario.expect.text != nil {
+            if scenario.expect.needsReadback {
                 stage = "readback " + scenario.readback.rawValue
                 observed = try await readback.currentText(of: scenario)
             }
@@ -86,6 +86,11 @@ extension ScenarioRunner {
             let observation = try await probe?.observe(after: scenario)
             outcome = ScenarioVerdict.outcome(expect: scenario.expect, text: observed, observation: observation)
             reason = ScenarioVerdict.reason(for: outcome)
+            if outcome == .pass, let repetition = scenario.repetition,
+                let failure = try await runRepetition(repetition, of: scenario, stage: &stage)
+            {
+                (outcome, reason, observed) = (.fail, failure.reason, failure.observed)
+            }
         } catch let human as HumanReadbackRequired {
             outcome = .needsHuman
             reason = "needs a person: " + (human.reason ?? "no tester attached")
@@ -110,6 +115,7 @@ public enum ScenarioVerdict {
     ) -> ScenarioResult.Outcome {
         // Swift `String ==` is canonical equivalence, so NFC and NFD spellings of the same text match.
         if let expected = expect.text, text != expected { return .fail }
+        if expect.noPlaceholderResidue == true, let text, hasPlaceholderResidue(text) { return .fail }
         let checks: [Bool?] = [
             compare(expect.paused, observation?.paused),
             compare(expect.holderBundleId, observation?.holderBundleId),
@@ -118,6 +124,13 @@ public enum ScenarioVerdict {
         if checks.contains(false) { return .fail }
         return checks.contains(nil) ? .needsHuman : .pass
     }
+
+    /// PLT-R421 placeholder (candidate U+200B ZERO WIDTH SPACE, VERIFY per app), the same scalar the injection
+    /// worker inserts.
+    static let placeholder: Unicode.Scalar = "\u{200B}"
+
+    /// PLT-R422: the text still holds a placeholder the worker inserted.
+    static func hasPlaceholderResidue(_ text: String) -> Bool { text.unicodeScalars.contains(placeholder) }
 
     /// Report text for a verdict outcome; nil for `pass`.
     static func reason(for outcome: ScenarioResult.Outcome) -> String? {

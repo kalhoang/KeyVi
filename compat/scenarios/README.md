@@ -56,6 +56,15 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
 - `readback: "human"` scenarios type the keys and then ask the tester to confirm the field. Their `wait` step
   is the time the tester gets to prepare the app (open a sheet, select a shape, connect a remote session). In
   unattended runs they report `needsHuman`, not a failure. They need a `compat/matrix.json` row (PLT-R531).
+- `repeat` is the PLT-R422 placeholder gate (section 4 acceptance). After the key script passes, the harness
+  types `words` randomised words of the Telex soak corpus (`seed` makes the sequence reproducible), each after
+  the `prefix` keys (which must select or clear the field, `command+l` in an address bar) at the block's own
+  `timing`, and reads every word back: it must be exactly the corpus word (no doubled or lost letter) and, with
+  `expect.noPlaceholderResidue: true`, hold no U+200B. A rule whose `inlineCompletion` is `placeholder` or
+  `axSelectionThenPlaceholder` needs an automated test scenario with `words` of at least 1,000, `timing`
+  `burst`, `noPlaceholderResidue` and an `ax` or `webdriver` readback. `compat-lint` reports any other such rule;
+  with `--release` the report is an error. Today the two manual spreadsheet rules (`web.googleSheets.cellEditor`,
+  `office.excel.cellEditor`) are such release blockers until their gate scenarios run on the runner.
 
 ## What is here
 

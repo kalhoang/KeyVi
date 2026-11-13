@@ -6,6 +6,7 @@
 // compat/rules.json has a scenario file (PLT-R505, PLT-R530, QA-R21).
 
 import AppModel
+import CompatRules
 import Foundation
 import InputHost
 import RealtimeSupport
@@ -145,6 +146,20 @@ private func scenarioFiles() throws -> [URL] {
         #expect(Set(byID.values.map(\.timing)) == [.normal, .fast, .burst])
         #expect(byID["chrome.page.textarea"]?.readback == .webdriver)
         #expect(byID["terminal.default"]?.readback == .terminalCapture)
+    }
+
+    /// PLT-R422: the browser rules that enable the placeholder carry the 1,000-word gate in their scenario, and
+    /// the Swift model agrees with the file check `compat-lint` makes (CompatRules' `PlaceholderGate`).
+    @Test func placeholderGateScenariosAgreeWithTheLinter() throws {
+        var gated: Set<String> = []
+        for file in try scenarioFiles() {
+            let data = try Data(contentsOf: file)
+            let scenario = try ScenarioLoader.decode(data, fileName: file.lastPathComponent)
+            let raw = try JSONDecoder().decode(JSONValue.self, from: data)
+            #expect(PlaceholderGate.isDeclared(in: raw) == scenario.declaresPlaceholderGate, "\(scenario.id)")
+            if scenario.declaresPlaceholderGate { gated.insert(scenario.id) }
+        }
+        #expect(gated == ["browser.chromium.addressBar", "browser.gecko.urlBar"])
     }
 
     /// TestHost scenarios use the alias and real TestHost field identifiers.
