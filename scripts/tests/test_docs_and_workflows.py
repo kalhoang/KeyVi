@@ -347,6 +347,33 @@ class WorkflowCoverageTests(unittest.TestCase):
         self.assertEqual(lines, ["race:SettingsStore."])
         self.assertIn('swift test --package-path "$APPCORE" --sanitize=thread', step)
 
+    def test_release_and_nightly_run_the_compatibility_release_lint(self):
+        """PLT-R422, PLT-R506, QA-R19: compat-lint's release-gated findings (VERIFY tested dates, unverified manual
+        matrix rows, placeholder rules without their 1,000-edit gate) block a release and show up every night."""
+        build = self.job("release.yml", "build")
+        self.assertLess(build.index("python3 -I scripts/check-rules.py --release"),
+                        build.index("run: swift run --package-path Packages/AppCore compat-lint --release"))
+        self.assertLess(build.index("compat-lint --release"), build.index("scripts/build-release.sh"),
+                        "the gate runs before anything is built or signed")
+        nightly = self.job("nightly.yml", "compat-release-lint")
+        self.assertIn("runs-on: xcode-27", nightly)
+        self.assertIn('run: swift run --package-path "$APPCORE" compat-lint --release', nightly)
+
+    def test_nightly_builds_and_keeps_the_engine_docc_archive(self):
+        """QA-R66, ADR 0402 item 3: the engine API documentation archive is built every night and uploaded as the
+        artifact engine-api-docc for 30 days, with the command CONTRIBUTING.md documents."""
+        body = self.job("nightly.yml", "engine-docc")
+        self.assertIn("name: Engine API docs (DocC, QA-R66)", body)
+        self.assertIn("runs-on: xcode-27", body)
+        self.assertIn("working-directory: Packages/VietnameseEngine", body)
+        self.assertIn("xcodebuild docbuild -scheme VietnameseEngine -destination 'generic/platform=macOS' "
+                      "-derivedDataPath .build/docc", body)
+        self.assertIn("name: engine-api-docc", body)
+        self.assertIn("path: Packages/VietnameseEngine/.build/docc/Build/Products/Debug/VietnameseEngine.doccarchive",
+                      body)
+        self.assertIn("if-no-files-found: error", body)
+        self.assertIn("retention-days: 30", body)
+
     def test_nightly_fuzzes_each_method_for_thirty_minutes(self):
         body = self.job("nightly.yml", "fuzz")
         self.assertIn("image: swift:6.4.2-noble@sha256:", body)

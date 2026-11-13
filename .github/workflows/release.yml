@@ -115,6 +115,10 @@ jobs:
         run: |
           python3 -I scripts/check-rules.py --release
           if [[ "$CHANNEL" == "stable" ]]; then python3 -I scripts/compat-stale-report.py --release; fi
+      - name: Compatibility release lint (compat-lint --release, PLT-R422, PLT-R506, QA-R19)
+        # Release-gated findings block here and nowhere else: VERIFY tested dates, unverified manual matrix rows and
+        # placeholder rules without their 1,000-edit gate (PLT-R422).
+        run: swift run --package-path Packages/AppCore compat-lint --release
       - name: Brand values
         id: brand
         run: |
