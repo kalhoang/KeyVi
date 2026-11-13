@@ -52,6 +52,10 @@ extension Composition {
     /// key if the tone is shown on it; for a letter produced by an escape only the escaping key. In
     /// literal mode (and with no letters) the last raw key is removed. The state is then recomputed by
     /// replay (ENG-R601).
+    ///
+    /// The tone keys go with the letter the tone is or would be shown on: after a removal (ENG-R411,
+    /// Telex `z`, VNI `0`) the tone is level, and leaving the tone key and the removal key behind would
+    /// replay them as letters or digits (`asz` + Backspace showing `sz`).
     package mutating func backspace(rules: ComposerRules) {
         guard literalStart == nil, let last = letters.last else {
             removeLastKey(rules: rules)
@@ -60,7 +64,7 @@ extension Composition {
         var removed = KeySet(index: Int(last.source))
         if !last.flags.contains(.escape) {
             removed.formUnion(last.modifierSources)
-            if toneOffset(style: rules.toneStyle) == letters.count - 1 { removed.formUnion(toneSources) }
+            if placementOffset(style: rules.toneStyle) == letters.count - 1 { removed.formUnion(toneSources) }
         }
         var kept: [UInt8] = []
         kept.reserveCapacity(raw.count)

@@ -40,3 +40,15 @@ ED029	Telex	-	a⌨1	a1	-	keypad digit is a boundary
 ED030	VNI	-	a⌨1	a1	-	keypad digit is a boundary in VNI too
 ED031	Telex	-	Vieetj,\s⌫⌫s	Viết	Vieetjs	tone replaced on a re-opened capitalised word
 ED032	Telex	-	vieejt\s⟲⌫	việt	-	after a reset Backspace re-opens nothing (the app deletes the space)
+ED033	Telex	-	asz⌫		-	ENG-R710, ENG-R411: the tone key and the z that removed it go with the letter the tone would sit on (the field is empty)
+ED034	Telex	-	tosz⌫	t	-	ENG-R710 after a z removal
+ED035	Telex	-	quasz⌫	qu	-	ENG-R710 after a z removal, qu onset
+ED036	Telex	-	hoasz⌫	ho	-	traditional placement is on o: the tone keys stay and replay harmlessly
+ED037	Telex	-	hoasz⌫⌫	h	-	the second Backspace takes the tone keys with o
+ED038	Telex	modern	hoasz⌫	ho	-	modern placement is on a: the tone keys go with it
+ED039	Telex	-	aszn⌫⌫		-	the coda goes first, then a with the tone keys (the field is empty)
+ED040	VNI	-	a10⌫		-	ENG-R710 after a 0 removal (the field is empty)
+ED041	VNI	-	to10⌫	t	-	ENG-R710 after a 0 removal
+ED042	VNI	-	vie65t0⌫⌫⌫	v	-	the tone key and the 0 go with ê, the 6 with ê too
+ED043	Telex	-	ww⌫	ư	-	ENG-R711: only the escaping w goes, the standalone ư comes back (the length stays)
+ED044	Telex	brackets	m[[⌫	mơ	-	ENG-R711 with a bracket key

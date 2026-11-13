@@ -73,7 +73,7 @@ Where the owner is another track, the row says so.
 | ENG-R402 | Shifted digits are symbols, boundaries | `Engine/TokenKey.swift` | `RegressionTests.reg14`, `layouts.tsv` (AZERTY digits with Shift) |
 | ENG-R403 | Telex and VNI never mix; VNI restore gives the digits | `Composition/KeyRoles.swift` | `RegressionTests.reg05`, Fuzz (ENG-T35), `restore-exact.tsv` |
 | ENG-R410 | Tone applies with a vowel group; same tone escapes | `Composition/Composition+Transforms.swift` (`applyTone`) | W001-W005, W131-W150, `OptionAndEscapeTests.doubledToneEndsWithTheKeyOverTheCorpus` |
-| ENG-R411 | Tone removal; `qu` with no vowel | `Composition/Composition+Transforms.swift` (`removeTone`) | W151-W158, `crash-regressions.tsv` CR001-CR009, `RegressionTests.reg01` |
+| ENG-R411 | Tone removal; `qu` with no vowel | `Composition/Composition+Transforms.swift` (`removeTone`) | W151-W158, `crash-regressions.tsv` CR001-CR009, `RegressionTests.reg01`, `editing.tsv` ED033-ED042 (Backspace after a removal) |
 | ENG-R412 | Circumflex targets, viability, escape | `Composition/Composition+Transforms.swift` (`applyCircumflex`) | W006-W009, W121-W130, `OptionAndEscapeTests.readingsOfDecision0102` |
 | ENG-R413 | Horn and breve, pair first, escape, standalone `ư` | `Composition/Composition+Transforms.swift` (`applyHornOrBreve`) | W010-W013, W121-W130, W246-W248 |
 | ENG-R414 | VNI `7` and `8` | `Composition/KeyRoles.swift` (`HornBreveScope`) | W159-W200, `OptionAndEscapeTests.readingsOfDecision0102` |
@@ -128,8 +128,8 @@ Where the owner is another track, the row says so.
 | ENG-R703 | Toggle with nothing to do passes through | `Engine/Reducer.swift` | E05, E06, `RestoreToggleTests.toggleWithoutTokenPassesThrough`, `no-shortcuts.tsv` NS010-NS012 |
 | ENG-R704 | Undo an automatic restore: Backspace, toggle | `Engine/History.swift` (`reopened`) | E04, `RestoreToggleTests.e04UndoesTheAutomaticRestore`, `editing.tsv` ED018-ED019 |
 | ENG-R705 | Restore reproduces digits and doubled letters | `Engine/ActiveToken.swift` | E03, E07, E08, `restore-exact.tsv`, `RestoreToggleTests.vniRestoreReproducesDigits` |
-| ENG-R710 | Backspace removes the letter's keys and recomputes | `Composition/Composition+Rendering.swift` (`backspace`) | W236-W243, `editing.tsv` ED001-ED006 |
-| ENG-R711 | Backspace on an escape letter removes only its key | `Composition/Composition+Rendering.swift` | W241, `RegressionTests.reg24` |
+| ENG-R710 | Backspace removes the letter's keys and recomputes | `Composition/Composition+Rendering.swift` (`backspace`, `Composition.placementOffset`) | W236-W243, `editing.tsv` ED001-ED006, ED033-ED044, `InvariantChecker` (Backspace shortens the token, every fuzz event) |
+| ENG-R711 | Backspace on an escape letter removes only its key | `Composition/Composition+Rendering.swift` | W241, `RegressionTests.reg24`, `editing.tsv` ED043-ED044 |
 | ENG-R712 | passThrough when one character goes, else an edit | `Engine/DisplayEdit.swift` (`actionForBackspace`) | `EditTraceTests.backspaceActions` |
 | ENG-R713 | Backspace with no token: history rules | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries` |
 

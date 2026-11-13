@@ -141,6 +141,13 @@ package struct Composition: Sendable, Hashable {
     /// Offset of the letter that shows the tone (5.1), nil without tone or vowel group.
     package func toneOffset(style: ToneStyle) -> Int? {
         guard tone != .level else { return nil }
+        return placementOffset(style: style)
+    }
+
+    /// Offset of the letter a tone would be shown on (5.1) whatever the current tone, nil without a
+    /// vowel group. After a removal (ENG-R411) the tone is level but its keys still belong to this
+    /// letter (ENG-R710).
+    package func placementOffset(style: ToneStyle) -> Int? {
         let view = LetterView(letters)
         let parse = SyllableParser.parse(view)
         return TonePlacement.toneOffset(in: DisplayLetterView(view, parse: parse), parse: parse, style: style)
