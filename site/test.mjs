@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Tiny test script: `node site/test.mjs`. Builds into temp dirs (fallback data and populated fixtures) and checks
 // pages, internal links and anchors, language attributes, privacy rules (PRD-R74), appcast and sitemap XML.
 import assert from "node:assert/strict";
@@ -339,7 +339,7 @@ try {
     for (const [lang, path, bankLabel, accountLabel] of [["vi", ["ung-ho", "index.html"], "Ngân hàng", "Số tài khoản"], ["en", ["en", "donate", "index.html"], "Bank", "Account number"]]) {
       const d = read(...path);
       if (lang === "vi") assert.match(d, /miễn phí và sẽ luôn miễn phí\. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp\./);
-      assert.match(d, /<img src="\/assets\/qr\/vietqr\.png" width="240" height="240" alt="[^"]+">/, `${lang}: bundled VietQR image`);
+      assert.match(d, /<img src="\/assets\/qr\/vietqr\.png(?:\?v=[0-9a-f]+)?" width="240" height="240" alt="[^"]+">/, `${lang}: bundled VietQR image`);
       assert.ok(d.includes(`<dt>${bankLabel}</dt><dd>LioBank</dd>`), `${lang}: bank name`);
       assert.ok(d.includes(`<dt>${accountLabel}</dt><dd>688688678</dd>`), `${lang}: account number`);
       assert.ok(!/momo/i.test(d), `${lang}: no MoMo (S8)`);
@@ -653,7 +653,7 @@ try {
   await check("every source file carries an SPDX header", async () => {
     const files = (await walk(SITE_DIR)).filter((f) => /\.(mjs|js|css)$/.test(f) && !f.includes(`${SITE_DIR}/dist`));
     const missing = [];
-    for (const file of files) if (!(await readFile(file, "utf8")).slice(0, 400).includes("SPDX-License-Identifier: LicenseRef-App-Pending")) missing.push(file.slice(SITE_DIR.length + 1));
+    for (const file of files) if (!(await readFile(file, "utf8")).slice(0, 400).includes("SPDX-License-Identifier: GPL-3.0-or-later")) missing.push(file.slice(SITE_DIR.length + 1));
     assert.deepEqual(missing, []);
   });
 } finally {
