@@ -38,6 +38,7 @@ struct MisbehavesView: View {
             .padding(18)
         }
         .frame(minWidth: 420, minHeight: 360)
+        .respectsReduceMotion()
     }
 
     @ViewBuilder

@@ -166,6 +166,7 @@ struct BugReportView: View {
             .padding(20)
         }
         .frame(minWidth: 480, minHeight: 520)
+        .respectsReduceMotion()
     }
 
     private func appPicker(_ localizer: Localizer) -> some View {

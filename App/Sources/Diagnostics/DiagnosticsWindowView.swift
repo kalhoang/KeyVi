@@ -112,6 +112,7 @@ struct DiagnosticsWindowView: View {
         }
         .padding(20)
         .frame(minWidth: 520, minHeight: 440)
+        .respectsReduceMotion()
     }
 
     private func actionRow(_ localizer: Localizer) -> some View {
@@ -153,4 +154,21 @@ extension View {
         accessibilityLabel(Text(verbatim: localizer.string(control.labelKey)))
             .accessibilityHint(Text(verbatim: localizer.string(control.hintKey)))
     }
+}
+
+/// PRD-R67: with Reduce Motion on, no view in the Diagnostics windows animates (disclosure groups included).
+struct ReduceMotionTransactions: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.transaction { transaction in
+            guard reduceMotion else { return }
+            transaction.animation = nil
+            transaction.disablesAnimations = true
+        }
+    }
+}
+
+extension View {
+    func respectsReduceMotion() -> some View { modifier(ReduceMotionTransactions()) }
 }

@@ -42,6 +42,7 @@ struct PracticeFieldView: View {
                 .diagnosticsControl(.practiceField, localizer)
         }
         .padding(20)
+        .respectsReduceMotion()
         .onAppear { focused = true }
     }
 }

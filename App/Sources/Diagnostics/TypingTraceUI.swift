@@ -192,5 +192,6 @@ struct TypingTraceReviewView: View {
         }
         .padding(18)
         .frame(minWidth: 480, minHeight: 360)
+        .respectsReduceMotion()
     }
 }

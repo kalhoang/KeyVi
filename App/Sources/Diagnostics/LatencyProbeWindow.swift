@@ -106,6 +106,7 @@ struct LatencyProbeView: View {
         }
         .padding(18)
         .frame(minWidth: 460, minHeight: 320)
+        .respectsReduceMotion()
     }
 
     @ViewBuilder
