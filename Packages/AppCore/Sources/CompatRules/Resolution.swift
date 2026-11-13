@@ -90,7 +90,8 @@ public struct ResolvedFeatures: Sendable, Hashable, Codable {
     public var restoreHotkey: Bool
 
     /// 5.4: all true except `autoCapitalize`.
-    public static let defaults = ResolvedFeatures(autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
+    public static let defaults = ResolvedFeatures(
+        autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
 
     public init(autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool) {
         self.autoCapitalize = autoCapitalize
@@ -157,23 +158,27 @@ public struct ResolvedDecision: Sendable, Hashable {
 /// Compiled, immutable rule set: shipped document plus user overrides plus opted-in IDs.
 public struct RuleSet: Sendable {
     public init(document: RulesDocument, overrides: [Rule], optedIn: Set<RuleID>) throws(RulesValidationError) {
-        unimplemented()
+        self.document = document
+        compiled = try CompiledRuleSet(document: document, overrides: overrides, optedIn: optedIn)
     }
 
     public let document: RulesDocument
+    let compiled: CompiledRuleSet
 
     /// Specificity per PLT-R520; user overrides outrank shipped rules (PLT-R522); ties resolve to the
     /// lexicographically smaller id (PLT-R521).
-    public func resolve(_ context: MatchContext) -> ResolvedDecision { unimplemented() }
+    public func resolve(_ context: MatchContext) -> ResolvedDecision {
+        compiled.resolve(context, defaults: document.defaults)
+    }
 
     /// Bundles whose AX focus is observed even when not frontmost (`overlay: true`, PLT-R380).
-    public var overlayBundles: Set<BundleKey> { unimplemented() }
+    public var overlayBundles: Set<BundleKey> { compiled.overlayBundles }
     /// Bundles with a `titlePattern` rule: only these get title-change observers (PLT-R380).
-    public var titlePatternBundles: Set<BundleKey> { unimplemented() }
-    public var conflictingInputApps: Set<BundleKey> { unimplemented() }
-    public func secureInputHintKey(for bundle: BundleKey) -> String? { unimplemented() }
+    public var titlePatternBundles: Set<BundleKey> { compiled.titlePatternBundles }
+    public var conflictingInputApps: Set<BundleKey> { compiled.conflictingInputApps }
+    public func secureInputHintKey(for bundle: BundleKey) -> String? { compiled.hintKey(for: bundle) }
     /// `bundleGroups["webkitBrowsers"]`, consumed by the fingerprinter (PLT-R510).
-    public var webkitBrowsers: Set<BundleKey> { unimplemented() }
+    public var webkitBrowsers: Set<BundleKey> { compiled.webkitBrowsers }
     /// Match signature used for duplicate detection (PLT-R521).
-    public static func signature(of match: RuleMatch) -> String { unimplemented() }
+    public static func signature(of match: RuleMatch) -> String { MatchSignature.canonical(match) }
 }

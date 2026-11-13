@@ -33,7 +33,13 @@
     "expect": {
       "type": "object",
       "additionalProperties": false,
-      "minProperties": 1,
+      "description": "At least one expectation. Written as anyOf over required keys because the CI validator has no minProperties keyword.",
+      "anyOf": [
+        { "required": ["text"] },
+        { "required": ["paused"] },
+        { "required": ["holderBundleId"] },
+        { "required": ["firstKeyAfterReleaseComposed"] }
+      ],
       "properties": {
         "text": { "type": "string" },
         "paused": { "type": "boolean" },

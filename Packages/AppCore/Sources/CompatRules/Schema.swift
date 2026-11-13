@@ -239,8 +239,8 @@ public enum RuleProvenance: Sendable, Hashable, Codable {
     case shipped(Provenance)
     case userSuggestion(UserProvenance)
 
-    public init(from decoder: any Decoder) throws { unimplemented() }
-    public func encode(to encoder: any Encoder) throws { unimplemented() }
+    public init(from decoder: any Decoder) throws { self = try Self.decodeTagged(from: decoder) }
+    public func encode(to encoder: any Encoder) throws { try encodeTagged(to: encoder) }
 }
 
 public struct Provenance: Sendable, Hashable, Codable {

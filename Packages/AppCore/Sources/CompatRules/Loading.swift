@@ -31,16 +31,18 @@ public struct RejectedOverride: Sendable, Hashable {
 
 public enum RulesLoader {
     /// Never throws and never crashes on bad input: falls back to the embedded ruleset (PLT-R503).
-    public static func load(contentsOf url: URL) -> RulesLoadResult { unimplemented() }
-    public static func decode(_ data: Data) throws(RulesValidationError) -> RulesDocument { unimplemented() }
+    public static func load(contentsOf url: URL) -> RulesLoadResult { RulesDecoding.load(contentsOf: url) }
+    public static func decode(_ data: Data) throws(RulesValidationError) -> RulesDocument {
+        try RulesDecoding.decode(data)
+    }
     /// Decodes rule-overrides.json entries; invalid entries are rejected individually.
     public static func decodeOverrides(_ raw: [JSONValue]) -> (rules: [Rule], rejected: [RejectedOverride]) {
-        unimplemented()
+        RulesDecoding.decodeOverrides(raw)
     }
 }
 
 /// Compiled-in known-good ruleset (PLT-R503): the `defaults` block and engine-only rules. It contains no
 /// bundle identifiers, so the bundle-ID literal lint (PLT-R501) stays clean.
 public enum EmbeddedRules {
-    public static var minimal: RulesDocument { unimplemented() }
+    public static var minimal: RulesDocument { EmbeddedRuleset.document }
 }

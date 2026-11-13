@@ -30,9 +30,10 @@
       "properties": {
         "bundleId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$" },
         "displayName": { "type": "string" },
+        "scope": { "enum": ["app", "webApp", "inApp"], "description": "PRD-R34, PRD-R35: absent or app for the one row per bundle ID shown in the Apps pane; webApp or inApp for a web app or a tool inside the host app." },
         "category": { "enum": ["browser", "office", "chat", "notes", "developer", "terminal", "design", "launcher", "remote", "game", "system", "other"] },
         "tier": { "enum": [1, 2] },
-        "ruleId": { "type": "string" },
+        "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$", "maxLength": 128 },
         "status": { "enum": ["works", "worksWithNotes", "notVerified", "knownLimitation"] },
         "note": {
           "type": "object",
