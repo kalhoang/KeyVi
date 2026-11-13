@@ -154,8 +154,12 @@ import VietnameseEngine
             }
             done.signal()
         }
+        // The semaphore's one signal is consumed by the first successful wait, so remember it: re-polling after a
+        // producer that finished before the 200th key would time out forever and hang the suite on a loaded machine.
+        var producerDone = false
         var typed = 0
-        while done.wait(timeout: .now()) == .timedOut || typed < 200 {
+        while !producerDone || typed < 200 {
+            if !producerDone { producerDone = done.wait(timeout: .now()) == .success }
             fixture.press(Key.a)
             typed += 1
         }
