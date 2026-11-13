@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Diagnostics window content (PLT-R1201): the health state in plain words, the exact text that "Copy report"
-// copies (permission states, secure input with the likely holder, focused app and field, matched rule with
-// strategy, parameters and source, latency percentiles and recent health events, PLT-R1202, PLT-R1204), the
-// latency histograms and the five buttons.
+// Diagnostics window content (PLT-R1201): the health state in plain words, the report in the interface language
+// (permission states, secure input with the likely holder, focused app and field, matched rule with strategy,
+// parameters and source, latency percentiles and recent health events, PLT-R1202, PRD-R62), the latency
+// histograms, the exact text that "Copy report" copies right above the buttons (PLT-R1204) and the five buttons.
 
 import AppKit
 import AppModel
@@ -61,13 +61,11 @@ final class DiagnosticsWindowModel {
         return fresh
     }
 
-    /// The exact text that "Copy report" writes (PLT-R1204: shown before copying).
-    var reportText: String { report.map(ReportPreviewFormat.copiedBlock.text) ?? "" }
-
-    /// PLT-R1201: one histogram per latency metric of the shown report.
-    var histograms: [LatencyHistogram] { report.map { LatencyHistograms.make($0.latency.metrics) } ?? [] }
+    /// The shown report in the interface language, the exact text "Copy report" writes and the histograms.
+    var display: ReportDisplay? { report.map { ReportDisplay(report: $0, language: localizer.language) } }
 
     var histogramsExpanded = false
+    var copyPreviewExpanded = false
 
     func copyReport() {
         ReportActions.copy(ReportPreviewFormat.copiedBlock.text(currentReport()))
@@ -104,13 +102,11 @@ struct DiagnosticsWindowView: View {
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
             }
-            Text(verbatim: localizer.string(DiagnosticsText.reportNote))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            ReportTextView(text: model.reportText, control: .reportText, localizer: localizer)
+            let display = model.display
+            ReportTextView(text: display?.information ?? "", control: .reportInformation, localizer: localizer)
             DisclosureGroup(isExpanded: $model.histogramsExpanded) {
                 ScrollView {
-                    LatencyHistogramsView(histograms: model.histograms, localizer: localizer)
+                    LatencyHistogramsView(histograms: display?.histograms ?? [], localizer: localizer)
                         .padding(.vertical, 4)
                 }
                 .frame(minHeight: 120, maxHeight: 240)
@@ -118,7 +114,19 @@ struct DiagnosticsWindowView: View {
                 Text(verbatim: localizer.string(DiagnosticsText.latencyHeading))
             }
             .diagnosticsControl(.latencyHistograms, localizer)
-            Text(verbatim: localizer.format(DiagnosticsText.clipboardNotice, model.services.resolvedBrand.displayName))
+            DisclosureGroup(isExpanded: $model.copyPreviewExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: localizer.string(DiagnosticsText.reportNote))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    ReportTextView(text: display?.copyPreview ?? "", control: .reportText, localizer: localizer)
+                        .frame(minHeight: 120, maxHeight: 220)
+                }
+            } label: {
+                Text(verbatim: localizer.string(DiagnosticsText.copyPreviewDisclosure))
+            }
+            .diagnosticsControl(.copyPreview, localizer)
+            Text(verbatim: clipboardNotice(localizer))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -132,6 +140,13 @@ struct DiagnosticsWindowView: View {
         .padding(20)
         .frame(minWidth: 520, minHeight: 440)
         .respectsReduceMotion()
+    }
+
+    /// PRD-R48: names the window's only clipboard button.
+    private func clipboardNotice(_ localizer: Localizer) -> String {
+        DiagnosticsCopy.clipboardNotice(
+            buttons: DiagnosticsCopy.windowClipboardControls, appName: model.services.resolvedBrand.displayName,
+            localizer)
     }
 
     private func actionRow(_ localizer: Localizer) -> some View {

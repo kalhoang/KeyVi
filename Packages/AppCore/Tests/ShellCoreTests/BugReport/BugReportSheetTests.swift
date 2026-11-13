@@ -120,7 +120,6 @@ enum SheetFixtures {
         #expect(ReportPreviewFormat.copiedBlock.text(report) == sheet.clipboardText(report))
         #expect(ReportPreviewFormat.copiedBlock.paths == [.copyReport, .github])
         #expect(ReportPreviewFormat.attachedFile.paths == [.email, .saveFile])
-        #expect(ReportPreviewFormat.allCases.map(\.title) == [.previewCopied, .previewFile])
         #expect(sheet.clipboardText(report) == DiagnosticsRenderer.issueBlock(report))
         let decoded = try JSONDecoder.reportDecoder.decode(DiagnosticsReport.self, from: sheet.attachment(report))
         #expect(decoded == report)

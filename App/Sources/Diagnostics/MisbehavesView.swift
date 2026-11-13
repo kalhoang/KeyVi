@@ -87,16 +87,23 @@ struct MisbehavesView: View {
 
     @ViewBuilder
     private func offers(_ localizer: Localizer) -> some View {
-        let offers = model.flow?.offers(hasRepository: model.brand.repositoryURL != nil) ?? [.copyReport]
+        let all = model.flow?.offers(hasRepository: model.brand.repositoryURL != nil) ?? [.copyReport]
+        let offers = all.filter { $0 != .useForMe || model.services.applyOverride != nil }
         HStack(spacing: 8) {
-            ForEach(offers.filter { $0 != .useForMe || model.services.applyOverride != nil }, id: \.self) { offer in
-                button(Self.control(offer), localizer) { model.perform(offer) }
+            ForEach(offers, id: \.self) { offer in
+                button(DiagnosticsCopy.control(offer), localizer) { model.perform(offer) }
             }
         }
-        Text(verbatim: localizer.format(DiagnosticsText.misbehavesClipboardNotice, model.brand.displayName))
+        Text(verbatim: clipboardNotice(offers, localizer))
             .font(.footnote)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// PRD-R48: names only the offers on screen that write to the clipboard.
+    private func clipboardNotice(_ offers: [MisbehavesOffer], _ localizer: Localizer) -> String {
+        DiagnosticsCopy.clipboardNotice(
+            buttons: DiagnosticsCopy.clipboardControls(offers), appName: model.brand.displayName, localizer)
     }
 
     private func button(_ control: DiagnosticsControl, _ localizer: Localizer, action: @escaping () -> Void)
@@ -104,15 +111,6 @@ struct MisbehavesView: View {
     {
         Button(action: action) { Text(verbatim: localizer.string(control.labelKey)) }
             .diagnosticsControl(control, localizer)
-    }
-
-    static func control(_ offer: MisbehavesOffer) -> DiagnosticsControl {
-        switch offer {
-        case .useForMe: .useForMe
-        case .copySuggestion: .copySuggestion
-        case .copyReport: .copyReport
-        case .openGitHubIssue: .openGitHubIssue
-        }
     }
 
     static func interruptionKey(_ reason: MisbehavesFlow.Interruption) -> DiagnosticsText {

@@ -159,7 +159,7 @@ struct BugReportView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Picker(selection: $model.previewFormat) {
                             ForEach(ReportPreviewFormat.allCases, id: \.self) { format in
-                                Text(verbatim: localizer.string(format.title)).tag(format)
+                                Text(verbatim: model.sheet.previewTitle(format, localizer)).tag(format)
                             }
                         } label: {
                             Text(verbatim: localizer.string(DiagnosticsText.previewFormat))
@@ -173,7 +173,7 @@ struct BugReportView: View {
                     Text(verbatim: localizer.string(DiagnosticsText.previewDisclosure))
                 }
                 .diagnosticsControl(.previewDisclosure, localizer)
-                Text(verbatim: localizer.format(DiagnosticsText.clipboardNotice, model.brand.displayName))
+                Text(verbatim: model.sheet.clipboardNotice(appName: model.brand.displayName, localizer))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

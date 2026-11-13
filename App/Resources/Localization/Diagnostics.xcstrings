@@ -462,42 +462,6 @@
         }
       }
     },
-    "bugReport.preview.format.copied" : {
-      "comment" : "Preview segment: the block that Copy report and Open GitHub put on the clipboard (PLT-R1204).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy report and Open GitHub"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sao chép báo cáo và Mở GitHub"
-          }
-        }
-      }
-    },
-    "bugReport.preview.format.file" : {
-      "comment" : "Preview segment: the JSON file that Send by email attaches and Save file saves (PLT-R1204).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Send by email and Save file..."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gửi qua email và Lưu tệp..."
-          }
-        }
-      }
-    },
     "bugReport.saveFailed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -621,20 +585,74 @@
         }
       }
     },
-    "diagnostics.clipboardNotice" : {
-      "comment" : "PRD-R48, shown before any clipboard write; argument is the app name.",
+    "diagnostics.buttons.and" : {
+      "comment" : "Joins the last two button titles of a list, as in the preview titles: \"Copy report and Open GitHub\" (PLT-R1204).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy report and Open GitHub put the diagnostics on the clipboard for you to paste. Apart from the paste compatibility mode you turn on yourself, this is the only time %@ writes to the clipboard."
+            "value" : "%1$@ and %2$@"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sao chép báo cáo và Mở GitHub chép dữ liệu chẩn đoán vào bộ nhớ tạm để bạn dán. Ngoài chế độ tương thích dán do bạn tự bật, đây là lúc duy nhất %@ ghi vào bộ nhớ tạm."
+            "value" : "%1$@ và %2$@"
+          }
+        }
+      }
+    },
+    "diagnostics.buttons.or" : {
+      "comment" : "Joins the last two button titles of a list, as in the clipboard notice: \"Copy report or Open GitHub\" (PRD-R48).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ or %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ hoặc %2$@"
+          }
+        }
+      }
+    },
+    "diagnostics.buttons.series" : {
+      "comment" : "Joins the earlier button titles of a list of three or more.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "diagnostics.clipboardNotice" : {
+      "comment" : "PRD-R48, shown before any clipboard write on every report surface. %1$@ is the list of the buttons on screen that write to the clipboard (joined with diagnostics.buttons.*), %2$@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you click %1$@, %2$@ puts the data on the clipboard for you to paste. Apart from the paste compatibility mode you turn on yourself, this is the only time %2$@ writes to the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khi bạn bấm %1$@, %2$@ chép dữ liệu vào bộ nhớ tạm để bạn dán. Ngoài chế độ tương thích dán do bạn tự bật, đây là lúc duy nhất %2$@ ghi vào bộ nhớ tạm."
           }
         }
       }
@@ -652,6 +670,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Đã sao chép báo cáo."
+          }
+        }
+      }
+    },
+    "diagnostics.copyPreview.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows or hides the exact text that will be copied."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện hoặc ẩn đúng văn bản sẽ được sao chép."
+          }
+        }
+      }
+    },
+    "diagnostics.copyPreview.disclosure" : {
+      "comment" : "Disclosure above Copy report in the Diagnostics window with the exact copied text (PLT-R1204).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show exactly what will be copied"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem đúng nội dung sẽ sao chép"
           }
         }
       }
@@ -688,6 +742,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chép báo cáo đang hiện vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "diagnostics.information.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permissions, secure input, the app and field you are typing in, the rule in use, latency and recent events."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quyền, chế độ nhập bảo mật, ứng dụng và ô đang gõ, quy tắc đang dùng, độ trễ và các sự kiện gần đây."
+          }
+        }
+      }
+    },
+    "diagnostics.information.heading" : {
+      "comment" : "Label of the report details in the interface language in the Diagnostics window (PLT-R1201).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostic details"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chi tiết chẩn đoán"
           }
         }
       }
@@ -1566,24 +1656,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bạn thấy đúng chữ “đá â”."
-          }
-        }
-      }
-    },
-    "misbehaves.clipboardNotice" : {
-      "comment" : "PRD-R48 notice in the misbehaves panel, shown before any clipboard write; the argument is the app name.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy report, Copy rule and Open GitHub issue put the data on the clipboard for you to paste. Apart from the paste compatibility mode you turn on yourself, this is the only time %@ writes to the clipboard."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sao chép báo cáo, Sao chép quy tắc và Mở báo lỗi trên GitHub chép dữ liệu vào bộ nhớ tạm để bạn dán. Ngoài chế độ tương thích dán do bạn tự bật, đây là lúc duy nhất %@ ghi vào bộ nhớ tạm."
           }
         }
       }

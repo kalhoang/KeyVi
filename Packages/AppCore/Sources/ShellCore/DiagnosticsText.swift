@@ -41,6 +41,11 @@ public enum DiagnosticsText: String, LocalizationKey {
     case openLogs = "diagnostics.openLogs"
     case copied = "diagnostics.copied"
     case clipboardNotice = "diagnostics.clipboardNotice"
+    case buttonsAnd = "diagnostics.buttons.and"
+    case buttonsOr = "diagnostics.buttons.or"
+    case buttonsSeries = "diagnostics.buttons.series"
+    case informationHeading = "diagnostics.information.heading"
+    case copyPreviewDisclosure = "diagnostics.copyPreview.disclosure"
     case logsUnavailable = "diagnostics.logsUnavailable"
     case latencyHeading = "diagnostics.latency.heading"
     case latencyT1 = "diagnostics.latency.t1"
@@ -62,8 +67,6 @@ public enum DiagnosticsText: String, LocalizationKey {
     case descriptionNote = "bugReport.description.hint"
     case previewDisclosure = "bugReport.preview.disclosure"
     case previewFormat = "bugReport.preview.format"
-    case previewCopied = "bugReport.preview.format.copied"
-    case previewFile = "bugReport.preview.format.file"
     case practiceButton = "bugReport.practiceField.button"
     case practiceLabel = "bugReport.practiceField.label"
     case practiceYes = "bugReport.practiceField.yes"
@@ -110,7 +113,6 @@ public enum DiagnosticsText: String, LocalizationKey {
     case openGitHubIssue = "misbehaves.openGitHubIssue"
     case applied = "misbehaves.applied"
     case stopTest = "misbehaves.stop"
-    case misbehavesClipboardNotice = "misbehaves.clipboardNotice"
     case strategyBackspaceReplace = "strategy.backspaceReplace"
     case strategySelectReplace = "strategy.selectReplace"
     case strategyAXReplace = "strategy.axReplace"
@@ -153,6 +155,8 @@ public enum DiagnosticsText: String, LocalizationKey {
     case latencyTestHint = "diagnostics.latencyTest.accessibilityHint"
     case openLogsHint = "diagnostics.openLogs.accessibilityHint"
     case reportTextHint = "diagnostics.report.accessibilityHint"
+    case informationHint = "diagnostics.information.accessibilityHint"
+    case copyPreviewHint = "diagnostics.copyPreview.accessibilityHint"
     case appPickerHint = "bugReport.app.accessibilityHint"
     case symptomHint = "bugReport.symptom.accessibilityHint"
     case descriptionHint = "bugReport.description.accessibilityHint"
@@ -186,7 +190,8 @@ public enum DiagnosticsText: String, LocalizationKey {
 
 /// Every control of the Diagnostics windows with its VoiceOver label and hint keys (PRD-R66, PRD-R67).
 public enum DiagnosticsControl: String, Sendable, CaseIterable {
-    case copyReport, misbehaves, recordTrace, latencyTest, openLogs, reportText, latencyHistograms, appPicker,
+    case copyReport, misbehaves, recordTrace, latencyTest, openLogs, reportInformation, copyPreview, reportText,
+        latencyHistograms, appPicker,
         symptom, description, previewDisclosure, previewFormat, practiceButton, practiceAnswer, github, email,
         saveFile, openDiagnostics, practiceField, guidedOffer, confirmField, answerYes, answerNo, stopTest,
         includePageAddress, pageAddressField, useForMe, copySuggestion, openGitHubIssue, traceDuration, traceStart,
@@ -200,6 +205,8 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         case .recordTrace: .recordTrace
         case .latencyTest: .latencyTest
         case .openLogs: .openLogs
+        case .reportInformation: .informationHeading
+        case .copyPreview: .copyPreviewDisclosure
         case .reportText: .reportHeading
         case .latencyHistograms: .latencyHeading
         case .appPicker: .appLabel
@@ -241,6 +248,8 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         case .recordTrace: .recordTraceHint
         case .latencyTest: .latencyTestHint
         case .openLogs: .openLogsHint
+        case .reportInformation: .informationHint
+        case .copyPreview: .copyPreviewHint
         case .reportText: .reportTextHint
         case .latencyHistograms: .latencyHistogramsHint
         case .appPicker: .appPickerHint
