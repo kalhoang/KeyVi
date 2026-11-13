@@ -9,7 +9,6 @@ public import AppModel
 public import Foundation
 public import RealtimeSupport
 public import SettingsStore
-internal import Synchronization
 
 /// Starts and stops the app under test. Live: NSRunningApplication and NSWorkspace (CompatHarness/Live).
 public protocol AppUnderTestControl: Sendable {

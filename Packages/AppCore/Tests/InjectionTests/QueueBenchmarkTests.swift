@@ -21,21 +21,22 @@ private let sanitizerLoaded = ["__tsan_init", "__asan_init"].contains { (symbol:
 struct QueueBenchmarkTests {
     private static let iterations = 100_000
     /// Per operation, debug build.
-    private static let bound: Duration = .microseconds(5)
+    private static let bound: TimeSpan = .microseconds(5)
 
     /// Attempts per test: the parallel test run loads the shared machine for its first seconds, so one busy
     /// moment must not decide an order-of-magnitude check. Stops at the first attempt inside the bound.
     private static let attempts = 5
 
-    private func measurePerOperation(_ body: () -> Void) -> Duration {
-        let clock = ContinuousClock()
-        let elapsed = clock.measure(body)
-        return elapsed / Self.iterations
+    private func measurePerOperation(_ body: () -> Void) -> TimeSpan {
+        let clock = MachClock()
+        let started = clock.now()
+        body()
+        return clock.now().duration(since: started) / Self.iterations
     }
 
     /// The best per-operation time of up to `attempts` fresh runs; `run` builds its own state each time.
-    private func bestPerOperation(_ run: () -> Duration) -> Duration {
-        var best: Duration = .seconds(1)
+    private func bestPerOperation(_ run: () -> TimeSpan) -> TimeSpan {
+        var best: TimeSpan = .seconds(1)
         for _ in 0..<Self.attempts where best >= Self.bound { best = min(best, run()) }
         return best
     }

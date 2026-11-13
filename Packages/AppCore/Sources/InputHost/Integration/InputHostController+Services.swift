@@ -14,7 +14,7 @@ internal import SettingsStore
 extension InputHostController {
     /// The tap-log drain runs on main-outbox drains and on this slow timer for records without a notice
     /// (PLT-R803: nothing faster than every 2 s in steady state).
-    static let tapLogDrainInterval: Duration = .seconds(30)
+    static let tapLogDrainInterval: TimeSpan = .seconds(30)
 
     func makeMonitors() {
         let hop = self.hop

@@ -2,7 +2,7 @@
 
 public import AppModel
 public import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 /// PLT-R903: `~/Library/Logs/<folder>/`, dir 0700, files 0600, JSON lines, 5 files of 1 MB, 14 days.
 public struct LogStorePolicy: Sendable, Hashable {

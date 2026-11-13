@@ -44,7 +44,7 @@ public enum LifecycleEffect: Sendable, Hashable {
     case reenableTap
     case requestFlush(FlushReason)
     case resetComposition
-    case scheduleRetry(after: Duration)
+    case scheduleRetry(after: TimeSpan)
     case cancelRetry
     case recordHealth(HealthEventKindCode)
     /// More than 3 system disables within 10 minutes (PLT-R330 step 5).
@@ -67,24 +67,24 @@ public enum HealthEventKindCode: String, Sendable, Hashable {
 /// `running` the reset comes before the publish, so the tap never transforms with a stale composition.
 public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R332: retry tap creation with backoff 1, 2, 5, 10 s (cap) while permissions look granted.
-    public static let backoff: [Duration] = [.seconds(1), .seconds(2), .seconds(5), .seconds(10)]
+    public static let backoff: [TimeSpan] = [.seconds(1), .seconds(2), .seconds(5), .seconds(10)]
     /// PLT-R306: recovery attempt 2 s after a watchdog trip, only once the callback has returned (ADR 0309).
-    public static let watchdogRecoveryDelay: Duration = .seconds(2)
+    public static let watchdogRecoveryDelay: TimeSpan = .seconds(2)
     /// PLT-R330 step 5: the notice appears when more than `instabilityThreshold` system disables fall within
     /// this window, at most once per window.
-    public static let instabilityWindow: Duration = .seconds(600)
+    public static let instabilityWindow: TimeSpan = .seconds(600)
     public static let instabilityThreshold = 3
     /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
     /// report one disable; reports closer than this count once toward the notice (both still run the procedure).
-    public static let disableCoalescingWindow: Duration = .seconds(1)
+    public static let disableCoalescingWindow: TimeSpan = .seconds(1)
     /// PLT-R323, PLT-R730: echo loss and OS policy leave the permission status `ready`, so failOpen(postingBroken)
     /// retries the tap on this backoff while permissions look granted. A break soon after a recreation moves to
     /// the next step (cap 5 minutes), so a posting path that stays broken cannot cause a create/break loop.
-    public static let postingBrokenBackoff: [Duration] = [
+    public static let postingBrokenBackoff: [TimeSpan] = [
         .seconds(30), .seconds(60), .seconds(120), .seconds(240), .seconds(300),
     ]
     /// A recreated tap that posts for longer than the previous delay plus this interval resets the backoff.
-    public static let postingBrokenStableInterval: Duration = .seconds(600)
+    public static let postingBrokenStableInterval: TimeSpan = .seconds(600)
 
     /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
     private enum TapPresence: Sendable, Hashable { case none, creating, alive }
@@ -366,11 +366,12 @@ public struct HostLifecycle: Sendable, Hashable {
     /// notice was shown during the last window.
     private mutating func noteSystemDisable(at now: MonotonicInstant) -> Bool {
         if let last = recentDisables.last,
-            now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < Self.disableCoalescingWindow.nanoseconds
+            now.nanoseconds(since: MonotonicInstant(nanoseconds: last))
+                < Self.disableCoalescingWindow.unsignedNanoseconds
         {
             return false
         }
-        let window = Self.instabilityWindow.nanoseconds
+        let window = Self.instabilityWindow.unsignedNanoseconds
         recentDisables.append(now.nanoseconds)
         recentDisables.removeAll { now.nanoseconds(since: MonotonicInstant(nanoseconds: $0)) > window }
         if recentDisables.count > Self.instabilityThreshold + 1 { recentDisables.removeFirst() }
@@ -384,10 +385,11 @@ public struct HostLifecycle: Sendable, Hashable {
 
     /// PLT-R323: the retry delay for this postingBroken. A break within the previous delay plus
     /// `postingBrokenStableInterval` of the previous break moves one step up the backoff; otherwise it restarts.
-    private mutating func notePostingBroken(at now: MonotonicInstant) -> Duration {
+    private mutating func notePostingBroken(at now: MonotonicInstant) -> TimeSpan {
         let backoff = Self.postingBrokenBackoff
         if let last = lastPostingBrokenAt {
-            let horizon = backoff[postingBrokenAttempt].nanoseconds + Self.postingBrokenStableInterval.nanoseconds
+            let horizon =
+                backoff[postingBrokenAttempt].unsignedNanoseconds + Self.postingBrokenStableInterval.unsignedNanoseconds
             let soon = now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < horizon
             postingBrokenAttempt = soon ? min(postingBrokenAttempt + 1, backoff.count - 1) : 0
         }

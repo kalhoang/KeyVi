@@ -4,7 +4,6 @@
 // thread", so confinement is enforced by construction plus debug assertions, in exactly two audited types.
 
 public import Foundation
-internal import Synchronization
 
 /// State owned by exactly one dedicated thread (tap, inject or ax). The first `withValue` call binds the
 /// owner; later calls from another thread trap in debug builds.

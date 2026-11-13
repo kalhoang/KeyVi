@@ -156,6 +156,10 @@ targets:
         PRODUCT_NAME: SpikeIMK
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID_DEV).inputmethod.SpikeIMK
         INFOPLIST_FILE: SpikeIMK/Info.plist
+    dependencies:
+      # `Atomic` counters (ADR 0315: the Synchronization module needs macOS 15).
+      - package: AppCore
+        products: [RealtimeSupport]
 
 schemes:
   App:

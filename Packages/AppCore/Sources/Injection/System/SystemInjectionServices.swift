@@ -7,6 +7,7 @@
 
 internal import AppModel
 internal import ApplicationServices
+public import RealtimeSupport
 
 /// CoreGraphics poster (PLT-R320-R322, PLT-R324).
 public final class CGEventPoster: EventPoster {
@@ -26,16 +27,16 @@ public final class CGEventPoster: EventPoster {
 /// Bounded AX field access (PLT-R343).
 public final class AXFocusedFieldAccess: FocusedFieldAccess {
     public init() {}
-    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange> {
+    public func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<TextRange> {
         AXFieldCalls.selectedRange(field.element?.element, timeout: timeout)
     }
-    public func text(_ field: FieldHandle, in range: TextRange, timeout: Duration) -> AXCallResult<String> {
+    public func text(_ field: FieldHandle, in range: TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         AXFieldCalls.text(field.element?.element, in: range, timeout: timeout)
     }
-    public func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: TimeSpan) -> AXCallResult<Void> {
         AXFieldCalls.setSelectedRange(field.element?.element, to: range, timeout: timeout)
     }
-    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         AXFieldCalls.setSelectedText(field.element?.element, to: text, timeout: timeout)
     }
 }

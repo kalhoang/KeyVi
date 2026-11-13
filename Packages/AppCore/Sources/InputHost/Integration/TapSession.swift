@@ -9,7 +9,6 @@ internal import Diagnostics
 internal import Foundation
 internal import Injection
 internal import RealtimeSupport
-internal import Synchronization
 
 /// The production pipeline: the real engine and the uptime clock (the same base the callback stamps with).
 typealias ProductionPipeline = KeyPipeline<VietnameseCompositionEngineFactory, MachClock>
@@ -20,7 +19,7 @@ typealias TapThreadMaker = @Sendable (PipelineContext) -> any TapControlStarting
 /// `TapThread` as the session needs it: start once, then control from any thread.
 protocol TapControlStarting: TapControl {
     func start() -> Bool
-    func waitUntilExited(timeout: Duration) -> Bool
+    func waitUntilExited(timeout: TimeSpan) -> Bool
 }
 
 extension TapThread: TapControlStarting {}
@@ -28,7 +27,7 @@ extension TapThread: TapControlStarting {}
 final class TapSession: Sendable {
     /// How long `.createTap` waits for the previous tap thread to leave its run loop (ADR 0309). A stopped
     /// thread exits within one run-loop turn; a stuck one never does, and then no second tap is created.
-    static let previousExitTimeout: Duration = .seconds(1)
+    static let previousExitTimeout: TimeSpan = .seconds(1)
 
     let thread: any TapControlStarting
     let echo: EchoTracker

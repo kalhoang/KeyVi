@@ -14,7 +14,7 @@ enum CaptureFiles {
     static let fileExtension = "jsonl"
     /// Ring drain period while recording. Capture is a short user-started session; 2 s keeps to PLT-R803 and
     /// the rings hold far more than 2 s of typing.
-    static let drainInterval: Duration = .seconds(2)
+    static let drainInterval: TimeSpan = .seconds(2)
     /// 180 s of fast typing is well under 1 MB; the cap only guards against a corrupted file.
     static let maximumFileBytes = 16 * 1_024 * 1_024
 
@@ -216,11 +216,4 @@ extension CaptureRecord {
 
 extension MonotonicInstant {
     func microseconds(since start: MonotonicInstant) -> UInt64 { nanoseconds(since: start) / 1_000 }
-}
-
-extension Duration {
-    var timeInterval: TimeInterval {
-        let (seconds, attoseconds) = components
-        return Double(seconds) + Double(attoseconds) / 1e18
-    }
 }

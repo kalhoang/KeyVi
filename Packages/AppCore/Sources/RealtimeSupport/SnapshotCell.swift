@@ -10,8 +10,6 @@
 //
 // Readers other than the tap use `load()`, which takes a short writer-side lock and returns a strong copy.
 
-internal import Synchronization
-
 /// Read-section counter for the single tap reader. Even = outside a callback, odd = inside.
 public final class ReaderEpoch: Sendable {
     private let counter = Atomic<UInt64>(0)

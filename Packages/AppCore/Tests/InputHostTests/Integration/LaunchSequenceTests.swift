@@ -242,19 +242,19 @@ struct LaunchSequenceTests {
     /// parallel test run itself loads the machine for its first seconds, so a fixed count of three let a busy
     /// moment decide the result.
     @Test func readyAfterLaunchUnder300Milliseconds_S1() async {
-        let target: Duration = .milliseconds(300)
-        var best: Duration = .seconds(60)
+        let target: TimeSpan = .milliseconds(300)
+        var best: TimeSpan = .seconds(60)
         let attempts = AllocationCounter.isSanitizerActive ? 1 : 10
         for _ in 0..<attempts where best >= target {
             let rig = HostRig(realResources: true)
             let steps = RecordingSteps()
             steps.load = { await rig.store.store.load() }
             steps.host = { rules, settings in rig.controller.start(rules: rules, settings: settings) }
-            let clock = ContinuousClock()
-            let started = clock.now
+            let clock = MachClock()
+            let started = clock.now()
             _ = await sequence(steps).run()
             rig.settle()
-            let elapsed = clock.now - started
+            let elapsed = clock.now().duration(since: started)
             #expect(rig.controller.state == .ready(.vietnamese))
             best = min(best, elapsed)
             rig.stop()

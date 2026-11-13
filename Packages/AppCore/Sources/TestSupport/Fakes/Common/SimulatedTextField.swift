@@ -13,7 +13,6 @@ internal import CoreGraphics
 public import Injection
 public import InputHost
 internal import RealtimeSupport
-internal import Synchronization
 
 public final class SimulatedTextField: Sendable {
     public enum Behaviour: Sendable, Hashable {

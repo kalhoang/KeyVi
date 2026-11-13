@@ -5,17 +5,16 @@
 internal import AppModel
 public import Diagnostics
 public import RealtimeSupport
-internal import Synchronization
 
 public struct WorkerConfiguration: Sendable, Hashable {
     /// Oldest held event may wait this long before a flush (PLT-R314, VERIFY tuning).
-    public var livenessCeiling: Duration = .milliseconds(150)
+    public var livenessCeiling: TimeSpan = .milliseconds(150)
     /// Ceiling while a macro job runs (PLT-R480).
-    public var macroLivenessCeiling: Duration = .seconds(1)
+    public var macroLivenessCeiling: TimeSpan = .seconds(1)
     /// Queue length that forces a flush (PLT-R314).
     public var maxQueuedJobs: Int = 256
     /// Jobs longer than this are split (if `allowSplit`) or use the fallback (PLT-R408).
-    public var maxJobDuration: Duration = .milliseconds(150)
+    public var maxJobDuration: TimeSpan = .milliseconds(150)
     /// Long text: chunked Unicode up to 2,000 graphemes, paste above if opted in; hard cap 4,000 (PLT-R480).
     public var pasteThresholdGraphemes: Int = 2_000
     public var maximumExpansionGraphemes: Int = 4_000

@@ -2,7 +2,6 @@
 //
 // SPSC ring under a real producer and consumer thread (PLT-R304 "lock-free single-producer queue").
 
-import Synchronization
 import Testing
 
 @testable import RealtimeSupport

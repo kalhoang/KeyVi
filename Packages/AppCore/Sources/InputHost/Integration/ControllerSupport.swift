@@ -8,7 +8,6 @@ internal import CompatRules
 internal import Foundation
 internal import Injection
 internal import RealtimeSupport
-internal import Synchronization
 internal import VietnameseEngine
 
 /// The current compiled rule set, readable from the utility queue (secure-input hint keys, PLT-R397).

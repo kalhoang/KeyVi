@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
-internal import Synchronization
-
 /// Bounded lock-free single-producer single-consumer queue (PLT-R304 "pushing onto a lock-free
 /// single-producer queue"). Storage is allocated once; push and pop never allocate or block.
 ///

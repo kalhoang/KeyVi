@@ -9,7 +9,6 @@ import AppModel
 import Diagnostics
 import Foundation
 import RealtimeSupport
-import Synchronization
 import TestSupport
 import Testing
 
@@ -23,7 +22,7 @@ struct HostHookActionsTests {
     /// and the worker thread handles the recovery's flush at once).
     private func drainingWait(_ rig: HostRig) -> HookConditionWait {
         HookConditionWait(timeout: .seconds(5), step: .milliseconds(1)) { step in
-            try? await Task.sleep(for: step)
+            try? await Task.sleep(nanoseconds: step.unsignedNanoseconds)
             await MainActor.run {
                 rig.controller.drainMainOutbox()
                 rig.settle()

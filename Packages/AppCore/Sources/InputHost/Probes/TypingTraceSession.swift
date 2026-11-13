@@ -9,13 +9,12 @@ public import AppModel
 public import Diagnostics
 public import Foundation
 public import RealtimeSupport
-internal import Synchronization
 
 public final class TypingTraceSession: Sendable {
     public enum State: Sendable, Hashable {
         case idle
         /// The menu icon changes and the HUD shows `remaining` with a Stop button for the whole recording.
-        case recording(CaptureSessionID, remaining: Duration)
+        case recording(CaptureSessionID, remaining: TimeSpan)
         /// Stopped by the user or the time limit: ready for review.
         case finished(CaptureSessionID)
         case exported
@@ -28,16 +27,16 @@ public final class TypingTraceSession: Sendable {
     }
 
     /// HUD countdown period. User-initiated and visible, so not a steady-state timer (PLT-R803).
-    public static let tick: Duration = .seconds(1)
+    public static let tick: TimeSpan = .seconds(1)
 
     /// The duration the user picked, clamped to 1...180 s (PLT-R905); 60 s by default.
-    public static func duration(seconds: Int?) -> Duration {
+    public static func duration(seconds: Int?) -> TimeSpan {
         guard let seconds else { return CaptureLimits.defaultDuration }
-        let maximum = Int(CaptureLimits.maximumDuration.components.seconds)
+        let maximum = Int(CaptureLimits.maximumDuration.nanoseconds / 1_000_000_000)
         return .seconds(min(max(seconds, 1), maximum))
     }
 
-    private struct Inner: ~Copyable {
+    private struct Inner {
         var state: State = .idle
         var timer: (any ScheduledTimer)?
     }
@@ -62,7 +61,7 @@ public final class TypingTraceSession: Sendable {
     public var state: State { inner.withLock { $0.state } }
 
     /// Explicit user action after the confirmation that explains what is recorded (PLT-R905).
-    public func start(duration: Duration = CaptureLimits.defaultDuration) {
+    public func start(duration: TimeSpan = CaptureLimits.defaultDuration) {
         switch state {
         case .recording: return  // one trace at a time; the HUD's Stop ends it
         case .finished(let previous): capture.discard(previous)  // an unreviewed trace never lingers

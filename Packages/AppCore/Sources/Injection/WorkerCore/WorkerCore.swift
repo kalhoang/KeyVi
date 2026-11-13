@@ -47,7 +47,7 @@ final class WorkerCore {
     var unreportedLosses = 0
     /// Edits discarded for a stale generation since the last `generationDiscard` health event (PLT-R316).
     var unreportedDiscards = 0
-    var restoreDelay: Duration?
+    var restoreDelay: TimeSpan?
     var pendingVerification: PendingVerification?
 
     init(

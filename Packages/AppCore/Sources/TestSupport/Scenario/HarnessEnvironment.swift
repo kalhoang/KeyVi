@@ -9,7 +9,6 @@
 public import AppModel
 public import Foundation
 public import RealtimeSupport
-internal import Synchronization
 
 /// Text output of the harness (stdout / stderr in the executable, a buffer in tests).
 public protocol HarnessConsole: Sendable {

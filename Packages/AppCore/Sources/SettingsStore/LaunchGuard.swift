@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 
 internal import AppModel
-internal import Synchronization
+internal import RealtimeSupport
 
 //
 // Crash-loop safe mode (PLT-R1009): three launches that did not survive 60 s within a short window start the

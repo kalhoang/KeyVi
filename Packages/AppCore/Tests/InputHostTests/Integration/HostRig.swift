@@ -13,7 +13,6 @@ import Foundation
 import Injection
 import RealtimeSupport
 import SettingsStore
-import Synchronization
 import TestSupport
 import Testing
 import VietnameseEngine
@@ -133,7 +132,7 @@ final class GatedTapThread: TapControlStarting {
     }
 
     func start() -> Bool { base.start() }
-    func waitUntilExited(timeout: Duration) -> Bool {
+    func waitUntilExited(timeout: TimeSpan) -> Bool {
         let exited = base.waitUntilExited(timeout: timeout)
         return exited && !gate.isHeld
     }

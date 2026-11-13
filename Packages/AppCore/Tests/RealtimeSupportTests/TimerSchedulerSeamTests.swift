@@ -2,7 +2,6 @@
 //
 // Skeleton seam tests (ADR 0313): keep green; owners may extend.
 import Dispatch
-import Synchronization
 import Testing
 
 @testable import RealtimeSupport
@@ -18,7 +17,7 @@ import Testing
                 done.resume()
             }
         }
-        try? await Task.sleep(for: .milliseconds(20))
+        try? await Task.sleep(nanoseconds: 20_000_000)
         let firedCount = fired.load(ordering: .relaxed)
         #expect(firedCount == 1)
     }
@@ -31,7 +30,7 @@ import Testing
         }
         timer.cancel()
         timer.cancel()
-        try? await Task.sleep(for: .milliseconds(60))
+        try? await Task.sleep(nanoseconds: 60_000_000)
         let didFire = fired.load(ordering: .relaxed)
         #expect(!didFire)
     }
@@ -45,12 +44,12 @@ import Testing
         // Wait for at least two firings, bounded, so a loaded machine cannot make the test flaky.
         var waited = 0
         while count.load(ordering: .relaxed) < 2, waited < 200 {
-            try? await Task.sleep(for: .milliseconds(10))
+            try? await Task.sleep(nanoseconds: 10_000_000)
             waited += 1
         }
         timer.cancel()
         let atCancel = count.load(ordering: .relaxed)
-        try? await Task.sleep(for: .milliseconds(30))
+        try? await Task.sleep(nanoseconds: 30_000_000)
         #expect(atCancel >= 2)
         let final = count.load(ordering: .relaxed)
         #expect(final <= atCancel + 1)

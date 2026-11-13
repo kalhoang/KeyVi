@@ -10,7 +10,6 @@ internal import Diagnostics
 internal import Foundation
 internal import Injection
 internal import RealtimeSupport
-internal import Synchronization
 
 /// Fan-in for the `WakeSignal`s whose target is created after the signal (the tap watchdog of the current
 /// session, the controller itself). `fire()` runs on the signal's queue, never on the tap thread.

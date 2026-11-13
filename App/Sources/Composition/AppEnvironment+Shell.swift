@@ -9,9 +9,9 @@ import AppModel
 import CompatRules
 import Diagnostics
 import InputHost
+import RealtimeSupport
 import SettingsStore
 import ShellCore
-import Synchronization
 
 /// Delivers values from any thread to one main-actor handler (the settings store calls back on the utility
 /// queue).

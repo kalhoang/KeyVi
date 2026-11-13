@@ -2,14 +2,14 @@
 //
 // Delayed-write timers for the settings store (PLT-R1003 1 s debounce, PLT-R392 5 s for app modes).
 //
-// ADR 0313 rule 4 asks time-dependent code to take `any TimerScheduler`, but SettingsStore depends on AppModel
-// only and `Package.swift` is frozen for wave 1, so it cannot import RealtimeSupport. This module declares the
-// one-shot subset it needs; TestSupport adapts `ManualScheduler` to it (`TimerDebounceScheduler`) and
-// production uses `DispatchDebounceScheduler` on the utility queue. Once the manifest lets SettingsStore import
-// RealtimeSupport, this protocol can become a thin alias of `TimerScheduler` (integrator request in the W1-B
-// report).
+// ADR 0313 rule 4 asks time-dependent code to take `any TimerScheduler`. SettingsStore was written against
+// AppModel only, so this module declares the one-shot subset it needs; TestSupport adapts `ManualScheduler` to it
+// (`TimerDebounceScheduler`) and production uses `DispatchDebounceScheduler` on the utility queue. SettingsStore
+// now imports RealtimeSupport for `TimeSpan` (ADR 0315), so this protocol can become a thin alias of
+// `TimerScheduler` in a later change.
 
 public import Dispatch
+public import RealtimeSupport
 
 /// A pending one-shot timer. `cancel()` is idempotent and callable from any thread.
 public protocol DebounceTimer: Sendable {
@@ -18,7 +18,7 @@ public protocol DebounceTimer: Sendable {
 
 /// Runs a handler once after a delay. Handlers may run on any thread; the store hops to its own queue.
 public protocol DebounceScheduler: Sendable {
-    func schedule(after delay: Duration, _ handler: @escaping @Sendable () -> Void) -> any DebounceTimer
+    func schedule(after delay: TimeSpan, _ handler: @escaping @Sendable () -> Void) -> any DebounceTimer
 }
 
 /// Production scheduler: one-shot `DispatchSourceTimer`s on one serial queue (the utility queue, PLT-R203).
@@ -27,15 +27,13 @@ public final class DispatchDebounceScheduler: DebounceScheduler {
 
     public init(queue: DispatchQueue) { self.queue = queue }
 
-    public func schedule(after delay: Duration, _ handler: @escaping @Sendable () -> Void) -> any DebounceTimer {
+    public func schedule(after delay: TimeSpan, _ handler: @escaping @Sendable () -> Void) -> any DebounceTimer {
         DispatchDebounceTimer(queue: queue, delay: Self.interval(delay), handler: handler)
     }
 
-    static func interval(_ duration: Duration) -> DispatchTimeInterval {
-        let (seconds, attoseconds) = duration.components
-        let nanoseconds = seconds.multipliedReportingOverflow(by: 1_000_000_000)
-        guard !nanoseconds.overflow, seconds >= 0 else { return seconds < 0 ? .nanoseconds(0) : .never }
-        return .nanoseconds(Int(clamping: nanoseconds.partialValue + attoseconds / 1_000_000_000))
+    /// A saturated span (`TimeSpan` clamps at about 292 years) never fires.
+    static func interval(_ duration: TimeSpan) -> DispatchTimeInterval {
+        duration.nanoseconds == .max ? .never : duration.dispatchInterval
     }
 }
 

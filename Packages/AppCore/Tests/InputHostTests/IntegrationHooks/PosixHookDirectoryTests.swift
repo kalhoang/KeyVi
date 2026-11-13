@@ -6,7 +6,7 @@
 
 import Diagnostics
 import Foundation
-import Synchronization
+import RealtimeSupport
 import Testing
 
 @testable import InputHost

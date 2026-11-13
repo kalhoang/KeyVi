@@ -9,7 +9,6 @@ public import AppModel
 public import Diagnostics
 public import Foundation
 public import RealtimeSupport
-internal import Synchronization
 
 /// Converts a monotonic instant into a wall-clock date by anchoring both clocks at the moment of the drain.
 /// Uptime does not advance during sleep while the wall clock does, so the anchor is taken per drain, not once.

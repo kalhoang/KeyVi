@@ -8,7 +8,6 @@ import CoreGraphics
 import Dispatch
 import Foundation
 import RealtimeSupport
-import Synchronization
 import TestSupport
 import Testing
 
@@ -84,7 +83,7 @@ func deliverOnTapThread(
     return verdict.withLock { $0 }
 }
 
-private let waitLimit: Duration = .seconds(5)
+private let waitLimit: TimeSpan = .seconds(5)
 
 @Suite struct TapThreadLifecycleTests {
     @Test func startFailsWhenTheFactoryReturnsNil_PLT_R332() {

@@ -6,7 +6,6 @@ public import AppModel
 public import Foundation
 public import RealtimeSupport
 public import SettingsStore
-internal import Synchronization
 
 /// In-memory `FileSystem` with POSIX-like permissions and atomic writes. Supports fault injection.
 public final class InMemoryFileSystem: FileSystem, @unchecked Sendable {

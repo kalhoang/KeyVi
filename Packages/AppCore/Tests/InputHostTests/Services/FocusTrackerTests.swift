@@ -11,7 +11,6 @@ import Foundation
 import Injection
 import RealtimeSupport
 import SettingsStore
-import Synchronization
 import Testing
 
 @testable import InputHost

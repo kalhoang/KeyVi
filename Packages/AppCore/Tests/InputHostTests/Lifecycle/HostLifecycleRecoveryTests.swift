@@ -3,6 +3,7 @@
 // Table tests of the lifecycle recovery paths found in review (W1-F2): a permission flicker while a tap creation
 // is in flight, the bounded retry out of failOpen(postingBroken), and one OS disable reported twice.
 import AppModel
+import RealtimeSupport
 import Testing
 
 @testable import InputHost
@@ -81,7 +82,7 @@ import Testing
 
     @Test func repeatedBreaksDoubleTheDelayUpToFiveMinutes() {
         var script = LifecycleScript.running()
-        var delays: [Duration] = []
+        var delays: [TimeSpan] = []
         for _ in 0..<6 {
             for case .scheduleRetry(let delay) in script.send(.postingBroken) { delays.append(delay) }
             script.advance(by: delays.last ?? .zero)
@@ -89,7 +90,7 @@ import Testing
             script.send(.tapCreated)
             script.advance(by: .seconds(5))  // the recreated tap breaks again soon
         }
-        #expect(delays == [30, 60, 120, 240, 300, 300].map { Duration.seconds($0) })
+        #expect(delays == [30, 60, 120, 240, 300, 300].map { TimeSpan.seconds($0) })
     }
 
     @Test func aTapThatKeepsPostingResetsTheBackoff() {

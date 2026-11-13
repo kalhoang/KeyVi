@@ -6,7 +6,7 @@
 // job runs, PLT-R311, so a job must not block for long).
 
 internal import Dispatch
-internal import Synchronization
+internal import RealtimeSupport
 
 /// Runs one read at a time on a private serial queue; the caller (the `inject` thread) waits at most the
 /// timeout. A read that overruns keeps running on the queue and the caller moves on; until it ends, every
@@ -31,7 +31,7 @@ final class BoundedRead: Sendable {
     var isBusy: Bool { busy.flag.load(ordering: .sequentiallyConsistent) }
 
     /// The value, or nil when `body` did not finish within `timeout` or an earlier read is still running.
-    func run<Value: Sendable>(timeout: Duration, _ body: @escaping @Sendable () -> Value) -> Value? {
+    func run<Value: Sendable>(timeout: TimeSpan, _ body: @escaping @Sendable () -> Value) -> Value? {
         guard busy.flag.compareExchange(expected: false, desired: true, ordering: .sequentiallyConsistent).exchanged
         else { return nil }
         let slot = Slot<Value>()
@@ -47,9 +47,5 @@ final class BoundedRead: Sendable {
         return slot.value.withLock { $0 }
     }
 
-    static func dispatchInterval(_ duration: Duration) -> DispatchTimeInterval {
-        let (seconds, attoseconds) = duration.components
-        let nanoseconds = max(0, seconds) * 1_000_000_000 + max(0, attoseconds) / 1_000_000_000
-        return .nanoseconds(Int(clamping: nanoseconds))
-    }
+    static func dispatchInterval(_ duration: TimeSpan) -> DispatchTimeInterval { duration.dispatchInterval }
 }

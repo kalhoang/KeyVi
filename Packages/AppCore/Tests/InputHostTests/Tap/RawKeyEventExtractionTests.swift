@@ -5,7 +5,6 @@
 import AppModel
 import CoreGraphics
 import RealtimeSupport
-import Synchronization
 import Testing
 
 @testable import InputHost
@@ -114,11 +113,13 @@ private let marker: Int64 = 0x5A5A_0000_0001
     }
 }
 
+/// The unsigned nanoseconds the tap watchdog and the lifecycle compare with instants (ADR 0315: `TimeSpan`
+/// saturates at `Int64.max` nanoseconds, about 292 years).
 @Suite struct DurationNanosecondsTests {
     @Test func convertsAndSaturates() {
-        #expect(Duration.milliseconds(250).nanoseconds == 250_000_000)
-        #expect(Duration.seconds(600).nanoseconds == 600_000_000_000)
-        #expect(Duration.seconds(-1).nanoseconds == 0)
-        #expect(Duration.seconds(Int64.max).nanoseconds == UInt64.max)
+        #expect(TimeSpan.milliseconds(250).unsignedNanoseconds == 250_000_000)
+        #expect(TimeSpan.seconds(600).unsignedNanoseconds == 600_000_000_000)
+        #expect(TimeSpan.seconds(-1).unsignedNanoseconds == 0)
+        #expect(TimeSpan.seconds(Int64.max).unsignedNanoseconds == UInt64(Int64.max))
     }
 }

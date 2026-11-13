@@ -6,7 +6,6 @@
 // `ManualClock`, so nothing is ever posted outside the self-hosted runner.
 
 public import RealtimeSupport
-internal import Synchronization
 
 /// Destination of planned key events.
 public protocol KeyEventSink: Sendable {

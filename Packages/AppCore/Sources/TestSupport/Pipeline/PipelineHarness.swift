@@ -12,7 +12,6 @@ internal import Diagnostics
 internal import Injection
 public import InputHost
 internal import RealtimeSupport
-internal import Synchronization
 
 /// Where the fake poster's sink puts posted events until the harness moves them into the server queue.
 final class PostedInbox: Sendable {

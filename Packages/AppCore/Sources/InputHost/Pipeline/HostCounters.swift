@@ -7,7 +7,7 @@
 // no allocation (PLT-R304, PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
 
 internal import Diagnostics
-internal import Synchronization
+internal import RealtimeSupport
 
 public final class HostCounters: Sendable {
     /// The main thread re-enabled the tap after a `tapDisabledByTimeout` (system or the `tapTimeout` hook).

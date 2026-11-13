@@ -4,7 +4,6 @@
 
 internal import AppModel
 public import RealtimeSupport
-internal import Synchronization
 
 /// Why the watchdog acted.
 public enum TapTrip: Sendable, Hashable {
@@ -38,14 +37,14 @@ extension TapSnapshots: SnapshotReclaiming {}
 /// touches the tap again by itself. Handlers run on the scheduler's queue (utility in production), outside
 /// the watchdog's lock, so they may call back into it.
 public final class TapWatchdog: Sendable {
-    public static let enabledCheckInterval: Duration = .seconds(5)
-    public static let recoveryDelay: Duration = .seconds(2)
+    public static let enabledCheckInterval: TimeSpan = .seconds(5)
+    public static let recoveryDelay: TimeSpan = .seconds(2)
     /// Period of the callback check while keys flow (ADR 0309).
-    public static let callbackCheckInterval: Duration = CallbackWatchdog.callbackLimit
+    public static let callbackCheckInterval: TimeSpan = CallbackWatchdog.callbackLimit
 
-    private static let enabledCheckLeeway: Duration = .seconds(1)
-    private static let limitNanoseconds = CallbackWatchdog.callbackLimit.nanoseconds
-    private static let idleNanoseconds = CallbackWatchdog.idleAfter.nanoseconds
+    private static let enabledCheckLeeway: TimeSpan = .seconds(1)
+    private static let limitNanoseconds = CallbackWatchdog.callbackLimit.unsignedNanoseconds
+    private static let idleNanoseconds = CallbackWatchdog.idleAfter.unsignedNanoseconds
     /// The crossing check lands just past the limit, so "more than 250 ms" is already true when it runs.
     private static let crossingMargin: UInt64 = 1_000_000
 
@@ -243,7 +242,7 @@ public final class TapWatchdog: Sendable {
         if let running = observation.running {
             if running > Self.limitNanoseconds { return trip(&state, running: running) }
             if state.crossingTimer == nil {
-                let delay = Duration.nanoseconds(Self.limitNanoseconds - running + Self.crossingMargin)
+                let delay = TimeSpan.nanoseconds(Self.limitNanoseconds - running + Self.crossingMargin)
                 state.crossingTimer = scheduler.schedule(after: delay, leeway: delay / 10) { [weak self] in
                     self?.callbackCheck(crossing: true)
                 }

@@ -6,7 +6,6 @@
 // Never used on the tap thread (PLT-R305).
 
 public import Dispatch
-internal import Synchronization
 
 /// A scheduled one-shot or repeating timer. `cancel()` is idempotent and callable from any thread. A one-shot
 /// timer stays alive until it fires or is cancelled; a repeating timer is cancelled when its last reference
@@ -18,10 +17,10 @@ public protocol ScheduledTimer: Sendable {
 /// Schedules handlers on the scheduler's own queue (production: the utility queue, PLT-R203).
 public protocol TimerScheduler: Sendable {
     /// Runs `handler` once after `delay`. `leeway` lets the OS coalesce wakeups (PLT-R803).
-    func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     /// Runs `handler` every `interval`, first after one interval.
-    func scheduleRepeating(every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func scheduleRepeating(every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
 }
 
@@ -31,7 +30,7 @@ public final class DispatchTimerScheduler: TimerScheduler {
 
     public init(queue: DispatchQueue) { self.queue = queue }
 
-    public func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    public func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         let timer = DispatchTimer(queue: queue)
@@ -43,7 +42,7 @@ public final class DispatchTimerScheduler: TimerScheduler {
     }
 
     public func scheduleRepeating(
-        every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void
+        every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void
     ) -> any ScheduledTimer {
         // A zero or negative interval would make the source fire continuously (PLT-R803 "no busy waiting").
         let period = max(interval, Self.minimumRepeatInterval)
@@ -53,7 +52,7 @@ public final class DispatchTimerScheduler: TimerScheduler {
     }
 
     /// Floor for repeating intervals; callers' own periods are at least 2 s at rest (PLT-R803).
-    static let minimumRepeatInterval: Duration = .milliseconds(1)
+    static let minimumRepeatInterval: TimeSpan = .milliseconds(1)
 }
 
 private final class DispatchTimer: ScheduledTimer {
@@ -67,7 +66,7 @@ private final class DispatchTimer: ScheduledTimer {
     deinit { cancel() }
 
     func start(
-        deadline: DispatchTime, repeating: Duration?, leeway: Duration, _ handler: @escaping @Sendable () -> Void
+        deadline: DispatchTime, repeating: TimeSpan?, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void
     ) {
         source.schedule(
             deadline: deadline, repeating: repeating?.dispatchInterval ?? .never, leeway: leeway.dispatchInterval)
@@ -78,19 +77,5 @@ private final class DispatchTimer: ScheduledTimer {
     func cancel() {
         guard !cancelled.exchange(true, ordering: .sequentiallyConsistent) else { return }
         source.cancel()
-    }
-}
-
-extension Duration {
-    /// Nanosecond-precision conversion for Dispatch APIs. Negative durations become zero and durations
-    /// beyond `Int64.max` nanoseconds saturate instead of trapping on overflow.
-    var dispatchInterval: DispatchTimeInterval {
-        let (seconds, attoseconds) = components
-        guard seconds >= 0, attoseconds >= 0 || seconds > 0 else { return .nanoseconds(0) }
-        let (scaled, overflow) = seconds.multipliedReportingOverflow(by: 1_000_000_000)
-        guard !overflow else { return .nanoseconds(Int.max) }
-        let (total, carry) = scaled.addingReportingOverflow(attoseconds / 1_000_000_000)
-        guard !carry else { return .nanoseconds(Int.max) }
-        return .nanoseconds(Int(clamping: max(0, total)))
     }
 }

@@ -2,7 +2,6 @@
 //
 // Test rig for TapWatchdog (W1-F2): virtual time, a callback watchdog driven by the test, a fake tap.
 import RealtimeSupport
-import Synchronization
 import TestSupport
 
 @testable import InputHost
@@ -16,8 +15,8 @@ enum WatchdogReport: Hashable {
 /// Forwards to `ManualScheduler` and records every request, so tests can check PLT-R803 leeways.
 final class RecordingScheduler: TimerScheduler, Sendable {
     struct Request: Hashable {
-        var delay: Duration
-        var leeway: Duration
+        var delay: TimeSpan
+        var leeway: TimeSpan
         var repeating: Bool
     }
 
@@ -28,14 +27,14 @@ final class RecordingScheduler: TimerScheduler, Sendable {
 
     var requests: [Request] { log.withLock { $0 } }
 
-    func schedule(after delay: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func schedule(after delay: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         log.withLock { $0.append(Request(delay: delay, leeway: leeway, repeating: false)) }
         return manual.schedule(after: delay, leeway: leeway, handler)
     }
 
-    func scheduleRepeating(every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void)
+    func scheduleRepeating(every interval: TimeSpan, leeway: TimeSpan, _ handler: @escaping @Sendable () -> Void)
         -> any ScheduledTimer
     {
         log.withLock { $0.append(Request(delay: interval, leeway: leeway, repeating: true)) }
@@ -85,9 +84,9 @@ final class WatchdogRig: Sendable {
 
     func exitCallback() { callbacks.exit() }
 
-    func advance(by duration: Duration) { scheduler.advance(by: duration) }
+    func advance(by duration: TimeSpan) { scheduler.advance(by: duration) }
 
-    var repeatingIntervals: [Duration] { scheduler.repeatingIntervals.sorted() }
+    var repeatingIntervals: [TimeSpan] { scheduler.repeatingIntervals.sorted() }
 
     /// Starts the watchdog and runs one callback that stays inside until it trips.
     func tripNow() {

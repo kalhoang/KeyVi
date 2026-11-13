@@ -65,11 +65,11 @@ public enum AXCallResult<Value: Sendable>: Sendable {
 /// `AXUIElementSetAttributeValue(kAXSelectedTextRangeAttribute / kAXSelectedTextAttribute)`, each after
 /// `AXUIElementSetMessagingTimeout` with the requested timeout.
 public protocol FocusedFieldAccess: Sendable {
-    func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange>
+    func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<TextRange>
     /// At most 64 UTF-16 units (PLT-R343); longer ranges are clamped by the implementation.
-    func text(_ field: FieldHandle, in range: TextRange, timeout: Duration) -> AXCallResult<String>
-    func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: Duration) -> AXCallResult<Void>
-    func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void>
+    func text(_ field: FieldHandle, in range: TextRange, timeout: TimeSpan) -> AXCallResult<String>
+    func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: TimeSpan) -> AXCallResult<Void>
+    func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void>
 }
 
 /// `AXUIElement` wrapper. AX references are immutable CF objects that may be used from any thread.
@@ -104,7 +104,7 @@ public struct PasteboardSnapshot: Sendable, Hashable {
 }
 
 public struct PasteboardLimits: Sendable, Hashable {
-    public var readTimeout: Duration = .milliseconds(100)
+    public var readTimeout: TimeSpan = .milliseconds(100)
     public var maxTotalBytes: Int = 10 * 1_024 * 1_024
     public init() {}
 }

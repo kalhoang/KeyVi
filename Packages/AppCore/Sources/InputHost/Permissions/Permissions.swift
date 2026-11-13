@@ -6,7 +6,6 @@ public import AppModel
 internal import Foundation
 public import RealtimeSupport
 public import SettingsStore
-import Synchronization
 
 /// Production (`SystemPermissionProbe`): `AXIsProcessTrusted()`, `CGPreflightPostEventAccess()`,
 /// `CGPreflightListenEventAccess()`, `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])`,
@@ -51,11 +50,11 @@ public struct PermissionStatus: Sendable, Hashable {
 /// one at a time and outside the check lock: it may call back into the monitor (`checkNow`, `setTapUnavailable`);
 /// a status produced meanwhile is delivered after it returns. Logic: `PermissionMonitor+Checks.swift`.
 public final class PermissionMonitor: Sendable {
-    public static let notReadyInterval: Duration = .seconds(2)
-    public static let readyInterval: Duration = .seconds(30)
-    public static let onboardingInterval: Duration = .seconds(1)
+    public static let notReadyInterval: TimeSpan = .seconds(2)
+    public static let readyInterval: TimeSpan = .seconds(30)
+    public static let onboardingInterval: TimeSpan = .seconds(1)
     /// PLT-R711: fast polling stops by itself after 5 minutes.
-    public static let onboardingLimit: Duration = .seconds(300)
+    public static let onboardingLimit: TimeSpan = .seconds(300)
     /// `KeyValueStore` key of the last granted identity (a 52-bit hash of the designated requirement digest).
     public static let lastGrantedDigestKey = "PermissionLastGrantedIdentity"
 

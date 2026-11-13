@@ -9,7 +9,7 @@
 import AppKit
 import Carbon
 import InputMethodKit
-import Synchronization
+import RealtimeSupport
 
 /// Counters only: no key values are stored anywhere (PLT-R901 spirit, even for a spike).
 enum SpikeCounters {

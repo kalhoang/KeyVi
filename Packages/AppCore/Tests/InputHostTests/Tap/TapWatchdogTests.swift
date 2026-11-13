@@ -4,7 +4,6 @@
 // ADR 0309, ADR 0303). W1-F2.
 import Dispatch
 import RealtimeSupport
-import Synchronization
 import TestSupport
 import Testing
 

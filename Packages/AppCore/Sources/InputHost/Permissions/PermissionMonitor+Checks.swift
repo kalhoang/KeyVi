@@ -11,7 +11,7 @@ struct PermissionMonitorState: Sendable {
     var tapUnavailable = false
     var last: PermissionStatus?
     var timer: (any ScheduledTimer)?
-    var timerInterval: Duration?
+    var timerInterval: TimeSpan?
     var fastPollingDeadline: (any ScheduledTimer)?
     /// Designated requirement digest of this build: read once, the signing identity cannot change at run time.
     var digest: String??
@@ -112,7 +112,7 @@ extension PermissionMonitor {
     /// PLT-R721 cadence: 1 s while onboarding polls fast, 2 s while not ready, 30 s while ready. Leeway 10 %
     /// (PLT-R803).
     private func reschedule(_ state: inout PermissionMonitorState) {
-        let interval: Duration =
+        let interval: TimeSpan =
             state.fastPolling
             ? Self.onboardingInterval : (state.last?.health == .ready ? Self.readyInterval : Self.notReadyInterval)
         guard state.timerInterval != interval else { return }

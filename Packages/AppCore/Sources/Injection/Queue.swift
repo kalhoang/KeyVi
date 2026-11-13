@@ -12,7 +12,6 @@
 public import AppModel
 public import Diagnostics
 public import RealtimeSupport
-internal import Synchronization
 
 /// When a job stops counting as in flight (ADR 0311).
 public enum InFlightPolicy: UInt8, Sendable, Hashable {
@@ -167,7 +166,7 @@ public enum EchoHealth: Sendable, Hashable {
 /// settles jobs whose final event echoed or whose echo timed out, and counts consecutive misses. The pending
 /// list is allocated once (capacity = queue capacity), so the tap path never allocates.
 public final class EchoTracker: @unchecked Sendable {
-    public let timeout: Duration
+    public let timeout: TimeSpan
     public let missesForBroken: Int
     private let queue: JobQueue
     /// PLT-R801 echo round trip (`PlatformMetrics.echoRoundTrip`); atomic increments only.
@@ -188,7 +187,7 @@ public final class EchoTracker: @unchecked Sendable {
     private let forgivenBound = Atomic<UInt64>(0)
 
     public init(
-        queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3,
+        queue: JobQueue, timeout: TimeSpan = .milliseconds(200), missesForBroken: Int = 3,
         roundTrip: Log2Histogram? = nil
     ) {
         self.queue = queue
@@ -209,9 +208,7 @@ public final class EchoTracker: @unchecked Sendable {
             count += 1
         }
         var settled = 0
-        let timeoutNanoseconds =
-            UInt64(timeout.components.seconds) * 1_000_000_000
-            + UInt64(timeout.components.attoseconds / 1_000_000_000)
+        let timeoutNanoseconds = timeout.unsignedNanoseconds
         let forgiven = forgivenBound.load(ordering: .sequentiallyConsistent)
         while count > 0 {
             let front = pending[head]

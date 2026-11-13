@@ -242,7 +242,7 @@ struct HostControllerLifecycleTests {
         for character in "aasf" { try press(character) }  // three edits, each waiting for its echo
         rig.controller.feed(.watchdogTripped(.callbackOverLimit(microseconds: 300_000)))
         rig.controller.worker.runUntilIdle()  // the trip's flush
-        try await Task.sleep(for: .milliseconds(250))  // the stall outlasts the 200 ms echo timeout
+        try await Task.sleep(nanoseconds: 250_000_000)  // the stall outlasts the 200 ms echo timeout
         rig.controller.feed(.callbackExited)
         rig.echoLoop.route.set(route.handle, userInfo: route.userInfo)
         rig.type("d")

@@ -10,7 +10,6 @@ internal import AppModel
 internal import CoreFoundation
 public import CoreGraphics
 internal import RealtimeSupport
-internal import Synchronization
 
 /// The instrumented seams of one app run.
 public struct IntegrationHookInstruments: Sendable {

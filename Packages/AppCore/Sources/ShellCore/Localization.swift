@@ -11,6 +11,7 @@
 public import AppModel
 public import Foundation
 public import Observation
+public import RealtimeSupport
 
 /// String tables (catalog file names). Owned per workstream (docs/architecture/workstreams.md).
 public enum StringTable: String, Sendable, CaseIterable {
@@ -96,9 +97,12 @@ public struct Localizer: Sendable {
     }
 
     /// Countdown of the typing-trace HUD (PLT-R905), `m:ss`.
-    public func formatCountdown(_ remaining: Duration) -> String {
-        let clamped = max(remaining, .zero)
-        return clamped.formatted(Duration.TimeFormatStyle(pattern: .minuteSecond).locale(locale))
+    /// Arithmetic instead of `Duration.TimeFormatStyle` (macOS 13); both interface languages write `m:ss` with
+    /// ASCII digits. Rounds to the nearest second, half to even, as that style did.
+    public func formatCountdown(_ remaining: TimeSpan) -> String {
+        let seconds = Int(max(remaining, .zero).inSeconds.rounded(.toNearestOrEven))
+        let secondsPart = seconds % 60
+        return "\(seconds / 60):\(secondsPart < 10 ? "0" : "")\(secondsPart)"
     }
 
     static func locale(for language: InterfaceLanguage) -> Locale {

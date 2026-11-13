@@ -4,7 +4,7 @@
 // integrator-owned (frozen in wave 1).
 
 public import Diagnostics
-internal import Synchronization
+internal import RealtimeSupport
 
 public final class RecordingLogger: DiagnosticsLogging, Sendable {
     public struct Entry: Sendable {

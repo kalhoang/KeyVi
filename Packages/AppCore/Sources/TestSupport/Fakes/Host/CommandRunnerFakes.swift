@@ -3,7 +3,7 @@
 // Command runner double for "Đặt lại quyền" (PLT-R740): records invocations, never executes anything.
 
 public import InputHost
-import Synchronization
+import RealtimeSupport
 
 public final class RecordingCommandRunner: CommandRunning, Sendable {
     private let invocations = Mutex<[CommandInvocation]>([])

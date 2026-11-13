@@ -11,7 +11,6 @@ public import Diagnostics
 public import Injection
 public import InputHost
 internal import RealtimeSupport
-internal import Synchronization
 public import VietnameseEngine
 
 /// Scripted engine: maps typed characters to edits with a tiny Telex-like table (aa -> â, s -> acute on the

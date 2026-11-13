@@ -12,7 +12,6 @@ import CompatRules
 import Foundation
 import Injection
 import RealtimeSupport
-import Synchronization
 import Testing
 
 @testable import InputHost
@@ -434,22 +433,22 @@ final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
 
     private var current: String { readings[min(max(index.withLock { $0 }, 0), readings.count - 1)] }
 
-    func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<Injection.TextRange> {
+    func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         index.withLock { $0 += 1 }
         return .success(Injection.TextRange(location: current.utf16.count, length: 0))
     }
 
-    func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
+    func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         let text = current
         return .success(range.location >= text.utf16.count ? "" : text)  // nothing after the caret
     }
 
-    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration) -> AXCallResult<Void>
+    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<Void>
     {
         .success(())
     }
 
-    func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         .success(())
     }
 }

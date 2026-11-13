@@ -12,19 +12,15 @@ enum InjectionTiming {
     /// PLT-R408: every timing parameter is capped at 50,000 microseconds.
     static let parameterCapMicroseconds = 50_000
     /// PLT-R420 (VERIFY value): bounded read of `AXSelectedTextRange` before deleting.
-    static let axSelectionTimeout: Duration = .milliseconds(15)
+    static let axSelectionTimeout: TimeSpan = .milliseconds(15)
     /// 4.5: each AX call of `axReplace`, re-entry verification (PLT-R342) and `verifyAfterEdit` readback.
-    static let axCallTimeout: Duration = .milliseconds(30)
+    static let axCallTimeout: TimeSpan = .milliseconds(30)
     /// PLT-R421 (VERIFY per app): U+200B ZERO WIDTH SPACE, its own grapheme cluster.
     static let placeholder = "\u{200B}"
     /// PLT-R343: AX reads never exceed 64 UTF-16 units.
     static let maximumAXReadUnits = 64
 
-    static func nanoseconds(_ duration: Duration) -> UInt64 {
-        let components = duration.components
-        guard components.seconds >= 0 else { return 0 }
-        return UInt64(components.seconds) * 1_000_000_000 + UInt64(components.attoseconds / 1_000_000_000)
-    }
+    static func nanoseconds(_ duration: TimeSpan) -> UInt64 { duration.unsignedNanoseconds }
 
     static func cappedNanoseconds(microseconds: Int) -> UInt64 {
         UInt64(min(max(0, microseconds), parameterCapMicroseconds)) * 1_000
@@ -33,9 +29,9 @@ enum InjectionTiming {
 
 /// Duration caps of one job (PLT-R408, PLT-R480).
 struct StrategyLimits: Sendable, Hashable {
-    var maxJobDuration: Duration = .milliseconds(150)
+    var maxJobDuration: TimeSpan = .milliseconds(150)
     /// Macro jobs share the 1 s macro liveness ceiling: a 150 ms cap would make that ceiling meaningless.
-    var maxMacroJobDuration: Duration = .seconds(1)
+    var maxMacroJobDuration: TimeSpan = .seconds(1)
 
     init() {}
 

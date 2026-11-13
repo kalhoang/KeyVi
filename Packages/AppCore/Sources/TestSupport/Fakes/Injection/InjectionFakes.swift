@@ -7,8 +7,7 @@
 internal import AppModel
 internal import Foundation
 public import Injection
-internal import RealtimeSupport
-internal import Synchronization
+public import RealtimeSupport
 
 /// Records every posted event and optionally forwards it to a sink (simulated field, window-server model, echo
 /// loopback). `CGEventPost` never reports failure, so a revoked permission is modelled as `.silentlyDropping`:
@@ -100,21 +99,21 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     /// Number of AX calls made (bounded-call tests, PLT-R342).
     public var callCount: Int { calls.load(ordering: .relaxed) }
 
-    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<Injection.TextRange> {
+    public func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         read { self.field.axSelectedRange() }
     }
 
-    public func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
+    public func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         read { self.field.axText(in: range) }
     }
 
-    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
+    public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan)
         -> AXCallResult<Void>
     {
         write(text: false) { self.field.axSetSelectedRange(range) }
     }
 
-    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+    public func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
         write(text: true) { self.field.axSetSelectedText(text) }
     }
 

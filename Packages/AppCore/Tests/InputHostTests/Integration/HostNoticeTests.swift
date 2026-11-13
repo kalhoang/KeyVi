@@ -247,7 +247,7 @@ struct HostNoticeTests {
         defer { release.signal() }
         _ = rig.controller.channels.outbox.toMain.push(.keyboardTypeSeen(41))
         rig.controller.channels.outbox.mainSignal.signal()
-        for _ in 0..<200 where rig.hop.pendingCount == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        for _ in 0..<200 where rig.hop.pendingCount == 0 { try await Task.sleep(nanoseconds: 5_000_000) }
         #expect(rig.hop.pendingCount > 0, "the outbox drain reached main while the utility queue was busy")
     }
 

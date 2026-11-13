@@ -5,11 +5,10 @@
 public import AppModel
 public import Foundation
 public import RealtimeSupport
-internal import Synchronization
 
 public enum CaptureLimits {
-    public static let defaultDuration: Duration = .seconds(60)
-    public static let maximumDuration: Duration = .seconds(180)
+    public static let defaultDuration: TimeSpan = .seconds(60)
+    public static let maximumDuration: TimeSpan = .seconds(180)
     public static let retention: TimeInterval = 24 * 3_600
 }
 
@@ -111,7 +110,7 @@ public final class CaptureController: Sendable {
     public var failedWrites: Int { writeFailures.load(ordering: .relaxed) }
 
     /// Explicit user action only, after a confirmation that explains what is recorded (PLT-R905).
-    public func start(duration: Duration) throws -> CaptureSessionInfo {
+    public func start(duration: TimeSpan) throws -> CaptureSessionInfo {
         guard duration > .zero, duration <= CaptureLimits.maximumDuration else { throw CaptureError.invalidDuration }
         return try session.withLock { (active: inout CaptureSession?) throws -> CaptureSessionInfo in
             guard active == nil else { throw CaptureError.alreadyRecording }
@@ -119,7 +118,7 @@ public final class CaptureController: Sendable {
             let startedAt = wallClock.now()
             let id = CaptureFiles.makeID(at: startedAt)
             let info = CaptureSessionInfo(
-                id: id, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(duration.timeInterval),
+                id: id, startedAt: startedAt, endsAt: startedAt.addingTimeInterval(duration.inSeconds),
                 file: CaptureFiles.url(for: id, in: directory))
             try storage { try prepareFile(for: info) }
             let stopTimer = scheduler.schedule(after: duration, leeway: .milliseconds(100)) { [weak self] in
@@ -137,7 +136,7 @@ public final class CaptureController: Sendable {
 
     public func stop() -> CaptureSessionInfo? { finish(reason: .stopped) }
 
-    public func remaining(now: Date) -> Duration? {
+    public func remaining(now: Date) -> TimeSpan? {
         session.withLock { active in
             active.map { .seconds(max(0, $0.info.endsAt.timeIntervalSince(now))) }
         }

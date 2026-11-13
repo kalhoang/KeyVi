@@ -55,14 +55,14 @@ struct PasteSession {
         pending?.armedAt = now
     }
 
-    func deadline(restoreDelay: Duration) -> MonotonicInstant? {
+    func deadline(restoreDelay: TimeSpan) -> MonotonicInstant? {
         guard let armedAt = pending?.armedAt else { return nil }
         return MonotonicInstant(nanoseconds: armedAt.nanoseconds &+ InjectionTiming.nanoseconds(restoreDelay))
     }
 
     /// Steps 4-5. Restores only if `changeCount` still equals the value from step 2. A restore that cannot be
     /// written is reported as skipped: the pending item is dropped rather than retried forever.
-    mutating func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> PasteboardPreserver.RestoreResult {
+    mutating func restoreIfDue(now: MonotonicInstant, restoreDelay: TimeSpan) -> PasteboardPreserver.RestoreResult {
         guard let current = pending else { return .nothingPending }
         if current.armedAt == nil { arm(at: now) }
         guard let due = deadline(restoreDelay: restoreDelay), now >= due else { return .notDue }
@@ -92,7 +92,7 @@ struct PasteSession {
 extension PasteboardPreserver {
     var hasPendingRestore: Bool { session.pending != nil }
     func arm(at now: MonotonicInstant) { session.arm(at: now) }
-    func deadline(restoreDelay: Duration) -> MonotonicInstant? { session.deadline(restoreDelay: restoreDelay) }
+    func deadline(restoreDelay: TimeSpan) -> MonotonicInstant? { session.deadline(restoreDelay: restoreDelay) }
     func restoreNow() { session.restoreNow() }
     func takeSkippedRestores() -> Int { session.takeSkippedRestores() }
 }
@@ -118,7 +118,7 @@ struct PasteExecutor: StrategyExecutor {
             return .failedBeforePosting(.pasteboardUnsafe)
         }
         let outcome = ScriptRunner.run(script, job: job, limits: limits, in: environment)
-        let restoreDelay = Duration.milliseconds(max(0, job.plan.parameters.restoreDelayMs))
+        let restoreDelay = TimeSpan.milliseconds(max(0, job.plan.parameters.restoreDelayMs))
         switch outcome {
         case .failedBeforePosting:
             preserver.restoreNow()
@@ -136,7 +136,7 @@ struct PasteExecutor: StrategyExecutor {
     }
 
     private static func restoreInline(
-        _ preserver: PasteboardPreserver, restoreDelay: Duration, in environment: any InjectionEnvironment
+        _ preserver: PasteboardPreserver, restoreDelay: TimeSpan, in environment: any InjectionEnvironment
     ) {
         preserver.arm(at: environment.now)
         if let deadline = preserver.deadline(restoreDelay: restoreDelay) { environment.sleep(until: deadline) }

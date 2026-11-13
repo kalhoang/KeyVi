@@ -2,7 +2,7 @@
 
 public import AppModel
 public import Foundation
-internal import Synchronization
+internal import RealtimeSupport
 
 /// Metadata-only health event (PLT-R1206).
 public struct HealthEvent: Sendable, Hashable, Codable {

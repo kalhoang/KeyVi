@@ -206,7 +206,7 @@ final class CaptureHUDController {
         self.stop = stop
     }
 
-    func show(remaining: Duration) {
+    func show(remaining: TimeSpan) {
         let localizer = language.localizer
         let content = CaptureHUDView(
             title: localizer.string(MenuText.captureTitle),

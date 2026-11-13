@@ -8,7 +8,6 @@
 
 public import AppModel
 internal import RealtimeSupport
-internal import Synchronization
 
 /// 64 log2 buckets of nanoseconds (bucket i counts values in [2^i, 2^(i+1)); bucket 0 also counts 0), one
 /// `Atomic<UInt64>` each. A histogram created with `subBuckets: true` also counts every value up to
@@ -262,7 +261,7 @@ public final class PlatformMetrics: Sendable {
 /// Bounded map of bundle -> histogram (at most `capacity` bundles, least recently used evicted). Uses a lock;
 /// never touched by the tap thread.
 public final class PerBundleHistograms: Sendable {
-    private struct State: ~Copyable {
+    private struct State {
         var histograms: [BundleKey: Log2Histogram] = [:]
         var order: [BundleKey] = []  // least recently used first
     }

@@ -13,7 +13,6 @@ public import CompatRules
 public import Diagnostics
 public import Injection
 public import RealtimeSupport
-internal import Synchronization
 
 /// PLT-R810: posts physical-like key events tagged with the probe marker (processed by the pipeline as
 /// physical, excluded from user metrics) into the probe window's text view with the three timing profiles.
@@ -24,13 +23,13 @@ public final class LatencyProbeDriver: Sendable {
     let sequence = ProbeSequence()
     let changes = Mutex<[LatencyProbeObservedChange]>([])
     /// How long after the last key the driver keeps collecting text changes.
-    let settle: Duration
+    let settle: TimeSpan
 
     public convenience init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) {
         self.init(poster: poster, marker: marker, clock: clock, settle: .milliseconds(150))
     }
 
-    init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock, settle: Duration) {
+    init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock, settle: TimeSpan) {
         self.poster = poster
         self.marker = marker
         self.clock = clock

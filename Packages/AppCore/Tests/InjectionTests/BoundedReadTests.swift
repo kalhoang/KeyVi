@@ -4,6 +4,7 @@
 
 import Dispatch
 import Foundation
+import RealtimeSupport
 import Testing
 
 @testable import Injection
@@ -19,14 +20,14 @@ import Testing
     @Test func anOverrunIsAbandonedAndBlocksFurtherReadsUntilItEnds() {
         let read = BoundedRead(label: "test.bounded-read")
         let release = DispatchSemaphore(value: 0)
-        let clock = ContinuousClock()
-        let started = clock.now
+        let clock = MachClock()
+        let started = clock.now()
         let first: Int? = read.run(timeout: .milliseconds(50)) {
             release.wait()
             return 1
         }
         #expect(first == nil)
-        #expect(clock.now - started < .seconds(2))
+        #expect(clock.now().duration(since: started) < .seconds(2))
         #expect(read.isBusy)
         #expect(read.run(timeout: .seconds(5)) { 2 } == nil, "a second read never runs next to the first")
         release.signal()

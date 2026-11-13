@@ -9,7 +9,6 @@ public import Diagnostics
 internal import Foundation
 public import RealtimeSupport
 public import SettingsStore
-internal import Synchronization
 public import VietnameseEngine
 internal import VietnameseEngineData
 

@@ -101,7 +101,7 @@ final class LatencyProbeModel {
         phase = .running(.normal)
         Task { [weak self] in
             // Let the cleared text view become first responder before the first key is posted.
-            try? await Task.sleep(for: Self.focusDelay)
+            try? await Task.sleep(nanoseconds: Self.focusDelay.unsignedNanoseconds)
             guard let self else { return }
             if !self.hasFocus() { signal.stop() }
             let result = await self.session.run(
@@ -111,7 +111,7 @@ final class LatencyProbeModel {
         }
     }
 
-    static let focusDelay: Duration = .milliseconds(300)
+    static let focusDelay: TimeSpan = .milliseconds(300)
 
     private var session: LatencyProbeSession {
         LatencyProbeSession(driver: services.driver, metrics: services.metrics, wallClock: services.wallClock)

@@ -5,6 +5,7 @@
 
 public import CoreFoundation
 public import CoreGraphics
+public import RealtimeSupport
 
 /// Event mask of PLT-R301 (`keyDown`, `keyUp`, `flagsChanged`, `leftMouseDown`, `rightMouseDown`,
 /// `otherMouseDown`) plus `scrollWheel`, which is on by default because PRD-R14 (MUST) cancels the Control+Shift
@@ -134,5 +135,5 @@ public final class TapThread<Handler: TapEventHandler>: TapControl, Sendable {
 
     /// Waits until the thread has left its run loop (or never started). False on timeout. For the owner that
     /// recreates the tap after `stop()` (ADR 0309) and for tests; never called on the tap thread.
-    public func waitUntilExited(timeout: Duration) -> Bool { runtime.waitUntilExited(timeout: timeout) }
+    public func waitUntilExited(timeout: TimeSpan) -> Bool { runtime.waitUntilExited(timeout: timeout) }
 }

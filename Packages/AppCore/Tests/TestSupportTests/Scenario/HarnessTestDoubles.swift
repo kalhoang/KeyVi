@@ -7,7 +7,6 @@
 import AppModel
 import Foundation
 import RealtimeSupport
-import Synchronization
 
 @testable import TestSupport
 

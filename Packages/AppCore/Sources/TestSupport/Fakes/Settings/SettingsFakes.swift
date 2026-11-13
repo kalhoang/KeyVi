@@ -9,7 +9,6 @@ internal import Dispatch
 public import Foundation
 public import RealtimeSupport
 public import SettingsStore
-internal import Synchronization
 
 /// `DebounceScheduler` over any `TimerScheduler` (tests: `ManualScheduler`, ADR 0313).
 public struct TimerDebounceScheduler: DebounceScheduler {
@@ -17,7 +16,7 @@ public struct TimerDebounceScheduler: DebounceScheduler {
 
     public init(_ base: any TimerScheduler) { self.base = base }
 
-    public func schedule(after delay: Duration, _ handler: @escaping @Sendable () -> Void) -> any DebounceTimer {
+    public func schedule(after delay: TimeSpan, _ handler: @escaping @Sendable () -> Void) -> any DebounceTimer {
         TimerBox(timer: base.schedule(after: delay, leeway: .milliseconds(100), handler))
     }
 
@@ -186,7 +185,7 @@ public struct SettingsStoreHarness: Sendable {
     }
 
     /// Advances virtual time, then waits until the store has run every write the timers queued.
-    public func advance(by duration: Duration) async {
+    public func advance(by duration: TimeSpan) async {
         scheduler.advance(by: duration)
         _ = await store.state
     }

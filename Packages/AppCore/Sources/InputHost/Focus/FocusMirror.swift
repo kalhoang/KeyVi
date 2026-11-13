@@ -4,7 +4,7 @@
 
 import AppModel
 import CompatRules
-import Synchronization
+import RealtimeSupport
 
 final class FocusMirror: Sendable {
     private struct State {
