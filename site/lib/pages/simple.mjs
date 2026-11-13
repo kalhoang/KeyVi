@@ -30,11 +30,14 @@ export function renderChangelog(ctx, lang) {
 export function renderPrivacy(ctx, lang) {
   const { c, f, p, ui } = kit(ctx, lang);
   const m = c.privacy;
+  // The website section states the analytics this build really ships (site/config.json `analytics`, ADR 0602).
+  const analytics = ctx.config.analytics;
+  const analyticsHtml = analytics.enabled ? f(m.analytics.posthog, { analyticsHost: analytics.apiHost, analyticsAssets: analytics.assetsHost }) : m.analytics.off;
   const body = `
     <h1>${esc(m.h1)}</h1>
     <p class="lede">${esc(m.lede)}</p>
     <p class="muted">${esc(m.updated)}</p>
-    <div class="prose">${f(m.html)}</div>`;
+    <div class="prose">${f(m.html, { analyticsHtml })}</div>`;
   return { routeId: "privacy", navId: "privacy", title: p(ui.titles.privacy), description: p(ui.descriptions.privacy), body };
 }
 

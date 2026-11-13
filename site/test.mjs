@@ -11,8 +11,10 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import { build } from "./build.mjs";
+import { ANALYTICS_SCRIPT_PATH, POSTHOG_HOSTS } from "./lib/analytics.mjs";
 import { loadBrand } from "./lib/brand.mjs";
 import { CATEGORIES, STATUSES } from "./lib/data.mjs";
+import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "./lib/headers.mjs";
 import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile } from "./lib/routes.mjs";
 
@@ -110,6 +112,19 @@ async function appHelpTargets() {
 }
 
 const sha256Base64 = (text) => createHash("sha256").update(text, "utf8").digest("base64");
+
+/** Origins other than the site itself that a page or header can make the browser contact: resource attributes
+ * (script src, stylesheet, preload, icon, img, media) and every CSP source with a scheme and host. */
+function thirdPartyOrigins(html) {
+  const origins = new Set();
+  const add = (url) => { const m = url.match(/^(https?:)?\/\/[^/"'\s]+/i); if (m) origins.add(m[0].startsWith("//") ? `https:${m[0]}` : m[0]); };
+  for (const tag of html.match(/<(?:script|img|source|video|audio|iframe|embed)\b[^>]*>/gi) ?? []) for (const src of attrs(tag, "src")) add(src);
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) if (!/rel="(?:alternate|canonical)"/.test(tag)) for (const href of attrs(tag, "href")) add(href);
+  for (const policy of attrs(html, "content").filter((value) => /default-src/.test(value))) for (const source of policy.split(/[\s;]+/)) add(source);
+  return origins;
+}
+
+const cspOf = (rules, path) => headersForPath(rules, path).filter(([name]) => name === "Content-Security-Policy").map(([, value]) => value);
 
 async function checkSite(label, dist) {
   const htmlFiles = (await walk(dist)).filter((f) => f.endsWith(".html"));
@@ -442,8 +457,119 @@ try {
   await check("release-notes stylesheet is allowed by static/_headers (PLT-R906)", async () => {
     const css = await readFile(join(SITE_DIR, "static", "assets", "release-notes.css"), "utf8");
     const headers = await readFile(join(SITE_DIR, "static", "_headers"), "utf8");
-    const policy = headers.split("\n").find((line) => line.trim().startsWith("Content-Security-Policy:")) ?? "";
-    assert.ok(policy.includes(`'sha256-${sha256Base64(css)}'`), `add 'sha256-${sha256Base64(css)}' to style-src in static/_headers`);
+    const policies = headers.split("\n").filter((line) => line.trim().startsWith("Content-Security-Policy:"));
+    assert.ok(policies.length >= 2, "site-wide and release-notes policies");
+    for (const policy of policies) assert.ok(policy.includes(`'sha256-${sha256Base64(css)}'`), `add 'sha256-${sha256Base64(css)}' to style-src in every CSP of static/_headers`);
+  });
+
+  await check("static/_headers: CSP, HSTS, frame, referrer, permissions and caching rules (ADR 0602)", async () => {
+    const rules = parseHeaders(await readFile(join(SITE_DIR, "static", "_headers"), "utf8"));
+    const header = (path, name) => headersForPath(rules, path).filter(([n]) => n === name).map(([, v]) => v);
+    const site = cspOf(rules, "/")[0] ?? "";
+    for (const directive of ["default-src 'self'", "script-src 'self'", "object-src 'none'", "frame-ancestors 'none'", "base-uri 'none'"]) assert.ok(site.includes(directive), directive);
+    assert.match(header("/", "Strict-Transport-Security")[0] ?? "", /^max-age=(\d+)/);
+    assert.ok(Number(header("/", "Strict-Transport-Security")[0].match(/max-age=(\d+)/)[1]) >= 31536000, "HSTS for at least a year");
+    assert.deepEqual(header("/", "X-Frame-Options"), ["DENY"]);
+    assert.deepEqual(header("/", "X-Content-Type-Options"), ["nosniff"]);
+    assert.deepEqual(header("/", "Referrer-Policy"), ["no-referrer"]);
+    assert.match(header("/", "Permissions-Policy")[0] ?? "", /camera=\(\)/);
+    assert.deepEqual(header("/appcast.xml", "Cache-Control"), ["public, max-age=300"]);
+    assert.deepEqual(header("/appcast.xml", "Content-Type"), ["application/rss+xml; charset=utf-8"]);
+    for (const path of ["/assets/style.css", "/download/app-1.0.0.dmg"]) assert.deepEqual(header(path, "Cache-Control"), ["public, max-age=31536000, immutable"], path);
+    assert.deepEqual(header("/tai-ve/", "Cache-Control"), [], "pages are not cached for a year");
+    const notes = cspOf(rules, "/release-notes/1.0.0/");
+    assert.equal(notes.length, 2, "release-notes pages get the site policy plus their own (both apply)");
+    assert.match(notes[1], /^default-src 'none';/);
+    assert.ok(!/script-src/.test(notes[1]), "no script on a release-notes page");
+  });
+
+  await check("_headers parser: round trip, every matching block applies, unsupported input is refused", () => {
+    const text = "# c\n/*\n  A: 1\n  B: x; y\n\n/assets/*\n  C: 2\n\n/a.xml\n  D: 3\n";
+    const rules = parseHeaders(text);
+    assert.deepEqual(parseHeaders(serializeHeaders(rules)), rules);
+    assert.deepEqual(headersForPath(rules, "/assets/x.css"), [["A", "1"], ["B", "x; y"], ["C", "2"]]);
+    assert.deepEqual(headersForPath(rules, "/a.xml"), [["A", "1"], ["B", "x; y"], ["D", "3"]]);
+    assert.deepEqual(headersForPath(rules, "/assets"), [["A", "1"], ["B", "x; y"]], "a prefix rule needs the slash");
+    for (const bad of ["/*.css\n  A: 1\n", "/:splat\n  A: 1\n", "  A: 1\n", "/*\n  A 1\n", "/*\n  A: 1\n/*\n  B: 2\n", "/*\n  A:\n"]) {
+      assert.throws(() => parseHeaders(bad), /_headers line/, JSON.stringify(bad));
+    }
+    assert.equal(extendCsp("default-src 'self'; script-src 'self'", { "script-src": ["https://a.test"], "connect-src": ["https://b.test"] }),
+      "default-src 'self'; script-src 'self' https://a.test; connect-src 'self' https://b.test");
+    const adapted = adaptHeaders(parseHeaders("/*\n  Content-Security-Policy: script-src 'self'\n/r/*\n  Content-Security-Policy: default-src 'none'\n"), { cspAdditions: { "script-src": ["https://a.test"] }, noindex: true });
+    assert.deepEqual(adapted[0].headers, [["Content-Security-Policy", "script-src 'self' https://a.test"], ["X-Robots-Tag", "noindex"]]);
+    assert.deepEqual(adapted[1].headers, [["Content-Security-Policy", "default-src 'none'"]], "the release-notes policy is never widened");
+  });
+
+  await check("analytics off: no loader, no PostHog, no third-party origin in pages, CSP or dist/_headers (Q7)", async () => {
+    for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
+      assert.ok(!existsSync(join(dist, ANALYTICS_SCRIPT_PATH)), `${dist}: no analytics.js without a key`);
+      for (const [file, html] of pages) {
+        assert.ok(!/analytics\.js|posthog/i.test(html), `${file}: analytics markup without a key`);
+        assert.deepEqual([...thirdPartyOrigins(html)], [], `${file}: third-party origin`);
+      }
+      const headers = await readFile(join(dist, "_headers"), "utf8");
+      assert.ok(!/posthog|https?:\/\//i.test(headers.replace(/^#.*$/gm, "")), "dist/_headers names no other host");
+      assert.ok(!/X-Robots-Tag/.test(headers), "no noindex unless asked");
+    }
+  });
+
+  await check("analytics on: one cookieless loader on every website page, only the PostHog hosts, never on release notes", async () => {
+    const configPath = join(tmp, "analytics-config.json");
+    const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
+    const key = "phc_TestProjectKey0123456789abcdef";
+    const apiHost = "https://eu.i.posthog.com";
+    const assetsHost = POSTHOG_HOSTS[apiHost];
+    await writeFile(configPath, JSON.stringify({ ...base, analytics: { posthogKey: key, posthogHost: apiHost } }));
+    const out = join(tmp, "analytics");
+    await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
+    const tag = `<script src="${ANALYTICS_SCRIPT_PATH}" defer data-posthog-key="${key}" data-posthog-host="${apiHost}" data-posthog-assets="${assetsHost}"></script>`;
+    const files = (await walk(out)).filter((f) => f.endsWith(".html"));
+    assert.ok(files.length >= ROUTES.length * LANGS.length);
+    for (const file of files) {
+      const html = await readFile(file, "utf8");
+      if (isReleaseNotesPage(file.slice(out.length + 1))) { assert.ok(!html.includes("analytics.js"), `${file}: loader on a release-notes page`); continue; }
+      assert.equal(html.split(tag).length - 1, 1, `${file}: exactly one analytics loader`);
+      assert.deepEqual([...thirdPartyOrigins(html)].sort(), [apiHost, assetsHost].sort(), `${file}: only the PostHog hosts`);
+      assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), `${file}: no inline script (PRD-R74)`);
+    }
+    const loader = await readFile(join(out, ANALYTICS_SCRIPT_PATH), "utf8");
+    for (const setting of ['cookieless_mode: "always"', 'persistence: "memory"', 'person_profiles: "never"', "autocapture: false", "disable_session_recording: true", "advanced_disable_flags: true"]) assert.ok(loader.includes(setting), setting);
+    assert.ok(loader.includes("/static/1/array.js") && !/https?:\/\//.test(loader.replace(/^\/\/.*$/gm, "")), "the loader names no host itself");
+    const rules = parseHeaders(await readFile(join(out, "_headers"), "utf8"));
+    const site = cspOf(rules, "/tai-ve/")[0];
+    assert.match(site, new RegExp(`script-src 'self' ${assetsHost.replace(/\./g, "\\.")}(;|$)`));
+    assert.match(site, new RegExp(`connect-src 'self' ${apiHost.replace(/\./g, "\\.")} ${assetsHost.replace(/\./g, "\\.")}(;|$)`));
+    const notes = cspOf(rules, "/release-notes/1.0.0/");
+    assert.ok(notes.some((policy) => /^default-src 'none'/.test(policy) && !/script-src|posthog/.test(policy)));
+    const privacyVi = await readFile(join(out, "rieng-tu", "index.html"), "utf8");
+    const privacyEn = await readFile(join(out, "en", "privacy", "index.html"), "utf8");
+    assert.match(privacyVi, /PostHog Cloud ở chế độ không cookie/);
+    assert.ok(privacyVi.includes(`<code>${apiHost}</code>`) && privacyVi.includes(`<code>${assetsHost}</code>`));
+    assert.match(privacyEn, /PostHog Cloud in cookieless mode/);
+    assert.ok(!/Phân tích truy cập: không có/.test(privacyVi) && !/Visitor analytics: none/.test(privacyEn), "the privacy page states what ships");
+  });
+
+  await check("analytics config is validated (key shape, PostHog Cloud host only)", async () => {
+    const configPath = join(tmp, "analytics-bad.json");
+    const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
+    for (const [analytics, message] of [
+      [{ posthogKey: 'phc_abc"><script>' }, /posthogKey/],
+      [{ posthogKey: "phc_TestProjectKey0123456789abcdef", posthogHost: "https://tracker.example" }, /posthogHost/],
+      [{ posthogKey: 42 }, /posthogKey/],
+      ["on", /analytics must be an object/],
+    ]) {
+      await writeFile(configPath, JSON.stringify({ ...base, analytics }));
+      await assert.rejects(() => build({ outDir: join(tmp, "analytics-bad"), today: "2026-11-13", configPath }), message, JSON.stringify(analytics));
+    }
+  });
+
+  await check("noindex preview: X-Robots-Tag on every response only when asked (Pa, 2026-11-13)", async () => {
+    const out = join(tmp, "noindex");
+    await build({ outDir: out, today: "2026-11-13", noindex: true });
+    const rules = parseHeaders(await readFile(join(out, "_headers"), "utf8"));
+    for (const path of ["/", "/appcast.xml", "/assets/style.css", "/release-notes/1.0.0/"]) {
+      assert.deepEqual(headersForPath(rules, path).filter(([name]) => name === "X-Robots-Tag"), [["X-Robots-Tag", "noindex"]], path);
+    }
   });
 
   await check("strict mode refuses to ship VERIFY markers and placeholder config", async () => {

@@ -9,5 +9,9 @@
     "vi": "",
     "en": "",
     "link": ""
+  },
+  "analytics": {
+    "posthogKey": "",
+    "posthogHost": "https://us.i.posthog.com"
   }
 }

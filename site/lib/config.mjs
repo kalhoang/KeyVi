@@ -3,6 +3,8 @@
 // Values still containing a placeholder marker are reported so a release build can refuse to ship them.
 // `banner` is the website notice of the rollback and absence runbooks (QA-R38 step 2, QA-R54): when enabled,
 // every page shows its text (vi or en) and an optional HTTPS link, usually the pinned issue.
+// `analytics` is the optional PostHog Cloud setup of lib/analytics.mjs: an empty key means no analytics at all.
+import { parseAnalytics } from "./analytics.mjs";
 import { readJsonIfExists } from "./util.mjs";
 
 const PLACEHOLDER_MARKERS = ["OWNER", ".invalid"];
@@ -38,5 +40,5 @@ export async function loadConfig(configPath) {
   const placeholders = Object.entries(values)
     .filter(([, value]) => PLACEHOLDER_MARKERS.some((marker) => value.includes(marker)))
     .map(([key]) => key);
-  return Object.freeze({ ...values, placeholders, banner: parseBanner(fromFile.banner) });
+  return Object.freeze({ ...values, placeholders, banner: parseBanner(fromFile.banner), analytics: parseAnalytics(fromFile.analytics) });
 }

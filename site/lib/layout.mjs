@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 // Page shell: head (canonical, hreflang, CSP), header, language switch, footer.
-// Privacy by construction (PRD-R74): system fonts, one local stylesheet, no third-party anything.
+// Privacy by construction (PRD-R74): system fonts, one local stylesheet, no third-party anything, except the
+// optional cookieless analytics of lib/analytics.mjs when site/config.json sets a key (Pa, 2026-11-13, Q7).
+import { analyticsCspAdditions, analyticsScriptTag } from "./analytics.mjs";
+import { extendCsp } from "./headers.mjs";
 import { esc } from "./util.mjs";
 import { routePath } from "./routes.mjs";
 
@@ -85,7 +88,9 @@ function footer(ctx, page) {
 export function renderDocument(ctx, page) {
   const { ui, lang } = page;
   const fullTitle = page.isHome ? page.title : `${page.title} · ${ctx.brand.name}`;
-  const scripts = (page.scripts ?? []).map((src) => `<script src="${esc(src)}" defer></script>`).join("\n  ");
+  const analytics = ctx.config.analytics;
+  const scripts = [...(page.scripts ?? []).map((src) => `<script src="${esc(src)}" defer></script>`), analyticsScriptTag(analytics)].filter(Boolean).join("\n  ");
+  const csp = extendCsp(CSP, analyticsCspAdditions(analytics));
   const robots = page.robots ? `<meta name="robots" content="${esc(page.robots)}">\n  ` : "";
   const canonical = page.routeId === undefined ? "" : `<link rel="canonical" href="${esc(absolute(ctx, page.path))}">`;
   return `<!doctype html>
@@ -93,7 +98,7 @@ export function renderDocument(ctx, page) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="${esc(CSP)}">
+  <meta http-equiv="Content-Security-Policy" content="${esc(csp)}">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#141513" media="(prefers-color-scheme: dark)">
