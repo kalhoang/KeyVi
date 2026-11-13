@@ -88,7 +88,13 @@ let package = Package(
             exclude: ["Fixtures"],  // golden files read through #filePath
             swiftSettings: strict
         ),
-        .testTarget(name: "SettingsStoreTests", dependencies: ["SettingsStore", "TestSupport"], swiftSettings: strict),
+        .testTarget(
+            name: "SettingsStoreTests",
+            dependencies: [
+                "SettingsStore", "TestSupport", .product(name: "VietnameseEngine", package: "VietnameseEngine"),
+            ],
+            swiftSettings: strict
+        ),
         .testTarget(name: "CompatRulesTests", dependencies: ["CompatRules", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "InjectionTests", dependencies: ["Injection", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "InputHostTests", dependencies: ["InputHost", "TestSupport"], swiftSettings: strict),

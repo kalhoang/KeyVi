@@ -8,7 +8,7 @@
 #   4. notarise and staple the app, create and sign the DMG, notarise and staple the DMG
 #   5. verify again (stapler, spctl), SHA-256 sums, GitHub artifact attestation
 #   6. upload everything to a DRAFT GitHub Release
-# NO Sparkle EdDSA signing here (QA-R32): Pa runs scripts/publish-release on his Mac afterwards.
+# NO Sparkle EdDSA signing here (QA-R32): Pa runs scripts/publish-release on Pa's own Mac afterwards.
 #
 # Repository settings this workflow relies on (docs/decisions/0503-release-pipeline.md):
 #   - environment `release`: required reviewer Pa, deployment rule "tags matching v*", secrets

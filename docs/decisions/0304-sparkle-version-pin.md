@@ -12,15 +12,19 @@
 - Pin Sparkle **2.10.1** with `exactVersion` in `project.yml`, revision
   `ab7d71291238df6e0492143b120c9b696a35f603` recorded in `Config/Package.resolved`.
 - Info.plist: `SUFeedURL = https://$(APP_SITE_HOST)/appcast.xml`, `SUPublicEDKey = $(SPARKLE_PUBLIC_ED_KEY)`
-  (from `Config/Sparkle.xcconfig`, filled once Pa generates the key on his Mac), `SUEnableAutomaticChecks`,
+  (from `Config/Sparkle.xcconfig`, filled once Pa generates the key on Pa's Mac), `SUEnableAutomaticChecks`,
   `SUScheduledCheckInterval = 86400`, `SUAllowsAutomaticUpdates`, `SUAutomaticallyUpdate`,
-  `SUEnableSystemProfiling = NO` (PRD-R55), `SUVerifyUpdateBeforeExtraction = YES` (PLT-R1102; VERIFY the key
-  is honoured by 2.10.1, otherwise remove it).
-- The wrapper (`App/Sources/Updater`) uses `SPUStandardUpdaterController` with an `SPUUpdaterDelegate` that
+  `SUEnableSystemProfiling = NO` (PRD-R55), `SUVerifyUpdateBeforeExtraction = YES` (PLT-R1102; read
+  by 2.10.1 in SPUUpdater.m and Autoupdate/AppInstaller.m).
+- The wrapper (`App/Sources/Updater`) uses `SPUUpdater` with a subclass of `SPUStandardUserDriver` that only
+  replaces the error alert (PRD-R43), and an `SPUUpdaterDelegate` that
   returns `["beta"]` from `allowedChannels(for:)` only when the user opted in (PLT-R1101, PRD-R53), applies
   settings D19-D21 to `automaticallyChecksForUpdates` / `automaticallyDownloadsUpdates` at launch and on
-  change, and implements `updater(_:willInstallUpdateOnQuit:immediateInstallationBlock:)` so an automatic
-  relaunch happens only after 60 s without a key press and with secure input off (PLT-R1105).
+  change, and implements `updater(_:willInstallUpdateOnQuit:immediateInstallationBlock:)`: it takes over and
+  installs at once only when no key was pressed for 60 s, secure input is off and the item is not critical;
+  otherwise it returns false, because returning true stalls Sparkle's update cycle (no manual or scheduled
+  checks, no critical-update window) until the handler runs, and Sparkle then installs at quit without
+  relaunching (PLT-R1105, PRD-R54).
 - Upgrades of the pin are decision-record changes with the release notes reviewed for installer and
   signature changes; Dependabot proposes them (QA-R24).
 
@@ -44,7 +48,7 @@ generation): emit the single bilingual `releaseNotesLink`.
 
 `SUPublicEDKey` in `App/Info.plist` is `$(SPARKLE_PUBLIC_ED_KEY)` from `Config/Sparkle.xcconfig`, empty in the
 skeleton. Before the first build that is given to anyone, Pa runs Sparkle's `generate_keys` (from the Sparkle
-2.10.1 distribution, `bin/generate_keys`) on his Mac. It stores the private key in the login Keychain and prints
+2.10.1 distribution, `bin/generate_keys`) on Pa's Mac. It stores the private key in the login Keychain and prints
 the public key; Pa pastes the public key as the value of `SPARKLE_PUBLIC_ED_KEY`, commits that one line, and
 keeps an offline backup of the private key (`generate_keys -x <file>`, then store the file offline). The private
 key never enters the repository, CI or any other tool session (QA-R32, QA-R33). The project docs track links this

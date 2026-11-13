@@ -97,7 +97,8 @@ enum ListFormat {
 public enum SettingsImportMessage {
     public static func text(for error: SettingsImportError, appName: String, _ localizer: Localizer) -> String {
         switch error {
-        case .tooLarge(let limit): localizer.format(SettingsText.importErrorTooLarge, SizeText.megabytes(limit, localizer))
+        case .tooLarge(let limit):
+            localizer.format(SettingsText.importErrorTooLarge, SizeText.megabytes(limit, localizer))
         case .tooDeeplyNested, .notJSON, .notAnObject: localizer.string(SettingsText.importErrorFormat)
         case .notASettingsExport: localizer.format(SettingsText.importErrorNotExport, appName)
         case .invalidSchemaVersion: localizer.string(SettingsText.importErrorVersion)

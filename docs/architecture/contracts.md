@@ -89,7 +89,7 @@ only on the self-hosted runner or by Pa.
 | `FileSystem` (AppModel) | `LocalFileSystem`: FileManager + POSIX `open(O_EXCL)`, `write`, `fsync`, `rename`, `chmod`; `URLResourceValues.isExcludedFromBackup` | utility | `InMemoryFileSystem` |
 | `KeyValueStore` (SettingsStore) | `UserDefaults` of the bundle ID | utility | `InMemoryKeyValueStore` |
 | `LoginItemService` (ShellCore) | `SMAppServiceLoginItem`: `SMAppService.mainApp.status`, `register()`, `unregister()`, `SMAppService.openSystemSettingsLoginItems()` | main | test double |
-| `UpdaterControlling` (ShellCore) | `UpdaterController` (App) over `SPUStandardUpdaterController` | main | test double |
+| `UpdaterControlling` (ShellCore) | `UpdaterController` (App) over `SPUUpdater` with an `SPUStandardUserDriver` subclass (ADR 0304) | main | test double |
 | `KeyboardDriver`, `ScenarioReadback` (TestSupport) | `compat-harness`: its own `CGEventSource` posting physical-like events with timing profiles; readback through AX, `safaridriver`/`chromedriver`, terminal capture or a human prompt | self-hosted runner | n/a |
 
 ## 4. AppModel: shared vocabulary
@@ -3972,7 +3972,8 @@ public enum MacroImporter {
 }
 
 /// Editor-side validation (PRD-R29). The engine's `MacroTable.init` stays authoritative when the table is
-/// built; a test asserts both agree on every fixture.
+/// built: `MacroEngineAgreementTests` builds a `MacroTable` from seeded random tables this validator accepts
+/// (typed or imported and merged) and checks pairwise agreement in both directions.
 ///
 /// Agreement with `MacroTable.ValidationError` (ENG-R1101, ENG-R1103): `emptyTrigger` = `emptyShortcut`;
 /// `triggerTooLong` = `shortcutTooLong` (more than 32); `invalidTriggerCharacter` = `shortcutHasWhitespace` or
@@ -5264,7 +5265,9 @@ public struct EditJob: Sendable {
     /// discard) the worker replays it, so the conservation invariant still holds (PLT-R312). Nil when the
     /// original key is already queued as a replay (`thenPassThrough`).
     public var trigger: KeyEventRecord?
-    /// Re-entry into a committed word: verify before applying when the rule allows (PLT-R342).
+    /// Re-entry into a committed word: verify before applying when the rule allows (PLT-R342). The pipeline sets it
+    /// for every edit of a word re-opened by Backspace when `verifyReentry != .never` (`.reentry`, and also
+    /// `.macro` and `.restore`, which keep their kind); the worker honours it for every kind.
     public var verifyBeforeApply: Bool
     /// The word began within 300 ms of a focus change or click (`firstEditDelayUs`, PLT-R408).
     public var wordStartedNearFocusChange: Bool
@@ -7766,7 +7769,7 @@ public struct HostLifecycle: Sendable, Hashable {
 // Lifecycle owner of the input host (2.1). Main actor: it starts and stops threads, applies settings, drives
 // the pure `HostLifecycle` state machine and performs its effects, and tells the shell what to show. It never
 // sits on the per-keystroke path. Workstream W2-A (composition with the real services); the state machine
-// itself is W1-F2.
+// itself is W1-F2. The effect, notice and settings paths live in `Integration/InputHostController+*.swift`.
 
 public import AppModel
 public import CompatRules
@@ -7775,6 +7778,7 @@ public import Foundation
 public import Injection
 public import RealtimeSupport
 public import SettingsStore
+internal import VietnameseEngine
 
 /// Everything the host needs from the platform, injected so the whole host runs under fakes in tests.
 public struct InputHostDependencies: Sendable {
@@ -7850,7 +7854,8 @@ public enum HostEvent: Sendable {
     case tapInstabilityNotice
     case conflictsDetected([ConflictingInput])
     case permissionsChanged(PermissionStatus)
-    /// ENG-R861 learning signal seen twice: proposed for the user list (open decision 8).
+    /// ENG-R861 learning signal seen twice: added to the user list (open decision 8, visible and removable in
+    /// Settings). The shell may mention it; it never logs the word.
     case learningProposal(LearningProposal)
 }
 
@@ -7858,46 +7863,211 @@ public struct LearningProposal: Sendable, Hashable {
     public enum List: Sendable, Hashable { case keepAsTyped, keepVietnamese }
     public var list: List
     public var rawKeys: String  // content: shown to the user in Settings, never logged
+
+    public init(list: List, rawKeys: String) {
+        self.list = list
+        self.rawKeys = rawKeys
+    }
+}
+
+/// Why the session is inactive (PLT-R333); the host is active only when none applies.
+enum SessionInactiveReason: Hashable {
+    case asleep, screenLocked, sessionResigned
 }
 
 @MainActor
 public final class InputHostController {
-    public init(dependencies: InputHostDependencies, settingsStore: SettingsStore) { unimplemented() }
+    let dependencies: InputHostDependencies
+    let settingsStore: SettingsStore
+    let hop: any MainThreadHop
+    let channels: HostChannels
+    let axThread: RunLoopThread
+    let focusTracker: FocusTracker
+    let worker: InjectionWorker
+    let settingsPublisher: TapSettingsPublisher
+    let tapLogDrainer: TapLogDrainer
+    let makeTapThread: TapThreadMaker
+    /// The clock the tap stamps events with; the worker, the tap watchdog and the log drainer share its base.
+    let tapClock: any MonotonicClock
+    /// False only in tests that drive the worker step by step (`InjectionWorker.runUntilIdle`).
+    let runsWorkerThread: Bool
+    let ruleBox = RuleSetBox()
+    let refresh: RefreshRequests
+    var inputSourceMonitor: InputSourceMonitor
+    var permissionMonitor: PermissionMonitor?
+    var secureInputMonitor: SecureInputMonitor?
+    var workspaceToken: (any ObservationToken)?
+    var drainTimer: (any ScheduledTimer)?
+    var retryTimer: (any ScheduledTimer)?
+    /// Bumped on every schedule and cancel; a fire whose hop to main carries an older value is stale.
+    var retryGeneration: UInt64 = 0
 
-    public private(set) var state: HostState {
-        get { unimplemented() }
-        set { unimplemented() }
+    var lifecycle = HostLifecycle()
+    var lifecycleGeneration: UInt64 = 0
+    var pendingInputs: [LifecycleInput] = []
+    var processingInputs = false
+    var session: TapSession?
+    /// A removed session whose thread may still be exiting; its echoes are retired before the next tap.
+    var retiredSession: TapSession?
+    var recorderActive = false
+    var started = false
+    var stopped = false
+
+    var rules: RulesLoadResult?
+    var ruleInputs: RuleSetInputs?
+    var settings: SettingsState?
+    var latestPermissions: PermissionStatus?
+    var latestToggle: (sequence: UInt64, bundle: BundleKey?, mode: TypingMode)?
+    var secureResumedGeneration: UInt64?
+    var lastFocusKey: FocusKey?
+    var captureGap: PauseCode?
+    var conflicts: [ConflictingInput] = []
+    var conflictsReported = false
+    var conflictsRescanned = false
+    var learning = LearningTracker()
+    var inactiveReasons: Set<SessionInactiveReason> = []
+
+    public internal(set) var state: HostState = .starting
+
+    public var onEvent: (@MainActor (HostEvent) -> Void)?
+
+    /// Production wiring: the real tap thread and pipeline, the main dispatch queue for hops, the uptime clock
+    /// for everything that shares a base with the tap's event timestamps.
+    public convenience init(dependencies: InputHostDependencies, settingsStore: SettingsStore) {
+        self.init(
+            dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
+            makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
+            loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
+            runsWorkerThread: true)
     }
 
-    public var onEvent: (@MainActor (HostEvent) -> Void)? {
-        get { unimplemented() }
-        set { unimplemented() }
+    init(
+        dependencies: InputHostDependencies, settingsStore: SettingsStore, hop: any MainThreadHop,
+        makeTapThread: @escaping TapThreadMaker, tapClock: any MonotonicClock,
+        loadBundled: @escaping TapSettingsPublisher.BundledResourcesLoader, macOSVersion: LooseVersion,
+        runsWorkerThread: Bool
+    ) {
+        self.runsWorkerThread = runsWorkerThread
+        self.dependencies = dependencies
+        self.settingsStore = settingsStore
+        self.hop = hop
+        self.makeTapThread = makeTapThread
+        self.tapClock = tapClock
+        refresh = RefreshRequests(hop: hop)
+        let initial = InitialSnapshots.make(
+            source: dependencies.inputSources.currentSource(), settings: Self.placeholderSettings,
+            globalMode: .vietnamese)
+        channels = HostChannels(initial: initial, marker: .random(), signalQueue: dependencies.utilityQueue)
+        axThread = RunLoopThread(name: "ax", qualityOfService: .userInitiated)
+        let refresh = self.refresh
+        focusTracker = FocusTracker(
+            thread: axThread,
+            ax: FocusChangeSignalingAXProvider(base: dependencies.ax, thread: axThread) { refresh.request() },
+            processes: dependencies.processes, output: channels.snapshots.focus,
+            generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
+            health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion)
+        worker = InjectionWorker(
+            queue: channels.queue, signal: channels.workerSignal, feedback: channels.feedback,
+            marker: channels.marker, focusGeneration: channels.focusGeneration,
+            services: InjectionServices(
+                poster: dependencies.poster, fieldAccess: dependencies.fieldAccess, pasteboard: dependencies.pasteboard,
+                clock: tapClock, metrics: dependencies.metrics, health: dependencies.health,
+                logger: dependencies.logger, capture: dependencies.capture))
+        settingsPublisher = TapSettingsPublisher(
+            cell: channels.snapshots.settings, logger: dependencies.logger, loadBundled: loadBundled)
+        tapLogDrainer = TapLogDrainer(
+            ring: dependencies.tapLog, health: dependencies.health, logger: dependencies.logger, clock: tapClock,
+            wallClock: dependencies.wallClock)
+        let inputSourceCell = channels.snapshots.inputSource
+        inputSourceMonitor = InputSourceMonitor(
+            provider: dependencies.inputSources, builder: dependencies.layoutBuilder
+        ) { snapshot in
+            inputSourceCell.publish(snapshot)
+            refresh.request()
+        }
+        refresh.connect { [weak self] in self?.refreshState() }
+        makeMonitors()
+        connectSignals()
     }
 
-    /// Ready after launch within 300 ms target / 1 s gate when permissions are granted (S1).
-    public func start(rules: RulesLoadResult, settings: SettingsState) { unimplemented() }
-    public func stop() { unimplemented() }
+    /// Ready after launch within 300 ms target / 1 s gate when permissions are granted (S1). The first settings
+    /// snapshot (engine catalog with the bundled lists, ENG-R1231) is built on the utility queue before the
+    /// lifecycle may create the tap, so the first key already has the real engines.
+    public func start(rules: RulesLoadResult, settings: SettingsState) {
+        guard !started, !stopped else { return }
+        started = true
+        self.rules = rules
+        self.settings = settings
+        let publisher = settingsPublisher
+        dependencies.utilityQueue.sync {
+            publisher.preloadResources()
+            publisher.publish(settings)
+        }
+        startServices(rules: rules, settings: settings)
+        feed(.launched)
+        detectConflicts()
+    }
+
+    public func stop() {
+        guard !stopped else { return }
+        stopped = true
+        stopServices()
+    }
 
     /// Rebuilds engines and snapshots (utility queue) and re-resolves focus (ax) (PLT-R1008, PRD-R27).
-    public func apply(settings: SettingsState) { unimplemented() }
+    /// Before `start` it only records the state; `start` publishes it.
+    public func apply(settings: SettingsState) {
+        guard !stopped else { return }
+        self.settings = settings
+        guard started else { return }
+        applySettings(settings)
+    }
 
     /// Menu radio or click-to-toggle (D16). Hard boundary; updates per-app memory (PRD-R20).
-    public func setMode(_ mode: TypingMode, manual: Bool) { unimplemented() }
+    public func setMode(_ mode: TypingMode, manual: Bool) {
+        focusTracker.setMode(mode)
+        refreshAfterAXWork()
+        onEvent?(.modeChanged(mode, manual: manual, bundle: currentFocus().app?.bundle))
+    }
 
     /// Status for the menu "Với <App>" submenu and diagnostics.
-    public func currentFocus() -> FocusSnapshot { unimplemented() }
+    public func currentFocus() -> FocusSnapshot { channels.snapshots.focus.load() }
 
     /// Immediate secure-input poll when the menu opens (PLT-R395).
-    public func refreshSecureInput() -> SecureInputSnapshot { unimplemented() }
+    public func refreshSecureInput() -> SecureInputSnapshot {
+        secureInputMonitor?.pollNow() ?? channels.snapshots.secureInput.load()
+    }
 
     /// Immediate permission check on menu open, wake and session activation (PLT-R721).
-    public func refreshPermissions() -> PermissionStatus { unimplemented() }
+    public func refreshPermissions() -> PermissionStatus {
+        guard let monitor = permissionMonitor else { return latestPermissions ?? Self.unknownPermissions }
+        let status = monitor.checkNow()
+        latestPermissions = status
+        return status
+    }
+
+    /// Onboarding's permission screen is visible: poll every second for at most 5 minutes (PLT-R711).
+    public func setPermissionFastPolling(_ enabled: Bool) {
+        permissionMonitor?.setFastPolling(enabled)
+    }
 
     /// The settings window's recorder is capturing keys: suspend hotkeys (PRD-R15).
-    public func setRecorderActive(_ active: Bool) { unimplemented() }
+    public func setRecorderActive(_ active: Bool) {
+        guard active != recorderActive else { return }
+        recorderActive = active
+        publishLifecycle(lifecycle.phase)
+    }
 
     /// Data for the diagnostics report (PLT-R1202), metadata only.
-    public func reportContext() -> HostReportContext { unimplemented() }
+    public func reportContext() -> HostReportContext {
+        HostReportContext(
+            state: state, focus: currentFocus(), decision: focusTracker.currentDecision(),
+            inputSource: channels.snapshots.inputSource.load(),
+            enabledSources: dependencies.inputSources.enabledSources(),
+            secureInput: channels.snapshots.secureInput.load(),
+            permissions: latestPermissions ?? Self.unknownPermissions, tapEnabled: session?.thread.isEnabled ?? false,
+            conflicts: conflicts)
+    }
 }
 
 /// Host-side inputs of `DiagnosticsReport` (assembled by ShellCore).
@@ -8272,8 +8442,12 @@ public struct FocusAttributes: Sendable, Hashable {
     public var identifier: String?  // kAXIdentifierAttribute
     public var domClasses: [String]  // "AXDOMClassList" when exposed
     public var editable: Bool?
-    public var ancestorRoles: [String]  // up to 6 parents (5.2)
-    public var documentURL: String?  // transient
+    /// Nearest parent first: up to 6 (5.2), or up to the nearest `AXWebArea` when a document URL was requested
+    /// and the web area is further up. Matching uses the first 6.
+    public var ancestorRoles: [String]
+    /// Transient. The `AXURL` of the focused web area (5.5): only when the element is an `AXWebArea` or lies
+    /// inside one, never for browser chrome such as the omnibox. The tracker drops it otherwise.
+    public var documentURL: String?
     public var windowTitle: String?  // transient
     public init(
         role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?,
@@ -8648,26 +8822,144 @@ public enum ConflictDetector {
 //
 // Diagnostics drivers that type into the user's Mac. They exist for the product owner to run by hand from the
 // Diagnostics window; automated tests use fakes only. Wave-2 contract (workstream W2-C).
+//
+// Every event these drivers post carries the probe kind of the event marker (bit 23, PLT-R321): the tap
+// processes it as physical and routes its metrics to the probe histograms, so user metrics exclude it
+// (PLT-R810), and it can never be mistaken for the worker's own echo (ADR 0311). The blocking pacing runs on a
+// dedicated thread, never on the tap or the main thread.
 
 public import AppModel
 public import CompatRules
 public import Diagnostics
 public import Injection
 public import RealtimeSupport
+internal import Synchronization
 
 /// PLT-R810: posts physical-like key events tagged with the probe marker (processed by the pipeline as
 /// physical, excluded from user metrics) into the probe window's text view with the three timing profiles.
 public final class LatencyProbeDriver: Sendable {
-    public init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) { unimplemented() }
-    /// Types `keys` (key codes from the current layout) with `profile` spacing; the probe window reports
-    /// text-change times through `textChanged(at:)`.
-    public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [MonotonicInstant] {
-        unimplemented()
+    let poster: any EventPoster
+    let marker: EventMarker
+    let clock: any MonotonicClock
+    let sequence = ProbeSequence()
+    let changes = Mutex<[LatencyProbeObservedChange]>([])
+    /// How long after the last key the driver keeps collecting text changes.
+    let settle: Duration
+
+    public convenience init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock) {
+        self.init(poster: poster, marker: marker, clock: clock, settle: .milliseconds(150))
     }
-    public func textChanged(at instant: MonotonicInstant) { unimplemented() }
-    public func result(baseline: [MonotonicInstant], measured: [MonotonicInstant], metrics: PlatformMetrics)
-        -> LatencyProbeResult.ProfileResult
-    { unimplemented() }
+
+    init(poster: any EventPoster, marker: EventMarker, clock: any MonotonicClock, settle: Duration) {
+        self.poster = poster
+        self.marker = marker
+        self.clock = clock
+        self.settle = settle
+    }
+
+    /// Pass-through run: types `keys` (key codes from the current layout) with `profile` spacing and returns one
+    /// sample per key. Every key changes the text once and the window applies keys in order, so the k-th text
+    /// change belongs to the k-th delivered key, however late it arrives (a time window would credit a late
+    /// change to the next key in the burst profile). `shouldContinue` is read before every key on the typing
+    /// thread; once it returns false nothing more is posted.
+    public func run(
+        profile: LatencyProbeResult.Profile, keys: [KeyCode],
+        shouldContinue: @escaping @Sendable () -> Bool = { true }
+    ) async -> [LatencyProbeSample] {
+        let (posted, observed) = await type(keys, profile: profile, shouldContinue: shouldContinue)
+        return LatencyProbeMath.correlate(posted, changes: observed.map(\.instant))
+    }
+
+    /// Measured run: returns the samples of the keys at `edits` (indices into `keys`), each matched in order to
+    /// a change that shows the composed character (`LatencyProbeChange.composed`). The deletion half of an
+    /// edit and the plain keys around it are not counted (PLT-R810 T4).
+    public func run(
+        profile: LatencyProbeResult.Profile, keys: [KeyCode], edits: [Int],
+        shouldContinue: @escaping @Sendable () -> Bool = { true }
+    ) async -> [LatencyProbeSample] {
+        let (posted, observed) = await type(keys, profile: profile, shouldContinue: shouldContinue)
+        let editKeys = edits.compactMap { posted.indices.contains($0) ? posted[$0] : nil }
+        let composed = observed.filter { $0.kind == .composed }.map(\.instant)
+        return LatencyProbeMath.correlate(editKeys, changes: composed)
+    }
+
+    private func type(
+        _ keys: [KeyCode], profile: LatencyProbeResult.Profile, shouldContinue: @escaping @Sendable () -> Bool
+    ) async -> ([LatencyProbePostedKey], [LatencyProbeObservedChange]) {
+        changes.withLock { $0.removeAll() }
+        let posted = await DedicatedThread.run(name: "latency-probe") {
+            self.postAll(keys, every: profile.keyInterval, shouldContinue: shouldContinue)
+        }
+        return (posted, changes.withLock { $0 })
+    }
+
+    /// Called by the probe window (main thread) for every text change of its text view; `kind` tells whether
+    /// the text now ends with the composed character of the measured run (`LatencyProbeScript.composed`).
+    public func textChanged(at instant: MonotonicInstant, kind: LatencyProbeChange = .plain) {
+        changes.withLock { $0.append(LatencyProbeObservedChange(instant: instant, kind: kind)) }
+    }
+
+    /// T2 from the probe decide-to-posted histogram recorded during the measured run (`decideToPosted`), T4 as
+    /// the measured text-change latency minus the pass-through baseline of the same profile (02-platform.md
+    /// 8.1), both at p50 and p99 in microseconds.
+    public func result(
+        profile: LatencyProbeResult.Profile, baseline: [LatencyProbeSample], measured: [LatencyProbeSample],
+        decideToPosted: HistogramSnapshot
+    ) -> LatencyProbeResult.ProfileResult {
+        LatencyProbeMath.result(
+            profile: profile, baseline: baseline, measured: measured, decideToPosted: decideToPosted)
+    }
+}
+
+/// What a text change of the probe window shows: the composed character of the measured run (the visible
+/// result of an edit) or anything else (a pass-through key, the deletion half of an edit, a space).
+public enum LatencyProbeChange: Sendable, Hashable {
+    case plain
+    case composed
+
+    /// Classifies the probe text view's content after a change.
+    public init(text: String) {
+        self = text.last == LatencyProbeScript.composed ? .composed : .plain
+    }
+}
+
+struct LatencyProbeObservedChange: Sendable, Hashable {
+    var instant: MonotonicInstant
+    var kind: LatencyProbeChange
+}
+
+/// A key the driver typed: when, and whether the poster accepted it (an undelivered key has no change).
+struct LatencyProbePostedKey: Sendable, Hashable {
+    var instant: MonotonicInstant
+    var delivered: Bool
+}
+
+/// Stop request for a driver that types into the user's Mac (PLT-R1205, PLT-R810, PLT-R387). The main thread
+/// sets it (Stop, window closed, app switched); the dedicated typing thread reads the flag before every event
+/// and runs the focus check before every step. A failed focus check latches the stop.
+public final class ProbeStopSignal: Sendable {
+    private let stopped = Atomic<Bool>(false)
+    private let stillFocused: @Sendable () -> Bool
+
+    /// `stillFocused` answers whether the field under test still has keyboard focus (bounded AX call,
+    /// PLT-R342); it runs on the typing thread, never on the main thread.
+    public init(stillFocused: @escaping @Sendable () -> Bool = { true }) {
+        self.stillFocused = stillFocused
+    }
+
+    public func stop() { stopped.store(true, ordering: .releasing) }
+
+    public var isStopped: Bool { stopped.load(ordering: .acquiring) }
+
+    /// False once stopped; otherwise runs the focus check and stops when it fails.
+    public func shouldContinue() -> Bool {
+        guard !isStopped else { return false }
+        guard stillFocused() else {
+            stop()
+            return false
+        }
+        return true
+    }
 }
 
 /// PLT-R1205 step 3: candidate strategies tried in a field the user confirmed is empty and safe.
@@ -8687,25 +8979,88 @@ public enum GuidedTestCandidateResult: Sendable, Hashable {
     case failedByReadback(residue: Bool)
     case needsHumanAnswer  // "Do you see 'đá â'? Yes / No"
     case humanSaidYes, humanSaidNo
+    /// The readable field was not empty before typing (for example residue of an earlier candidate): nothing
+    /// was typed. The test never types into a field with content.
+    case fieldNotEmpty
+    /// The stop signal fired (Stop, panel closed, focus moved) before the candidate finished: typing ended at
+    /// once and nothing was removed, so no backspace can reach another field (PLT-R1205 step 3, PLT-R387).
+    case stopped
 }
 
 public final class GuidedTestRunner: Sendable {
-    public static func candidates(isNativeApp: Bool) -> [GuidedTestCandidate] { unimplemented() }
-    public init(
+    let poster: any EventPoster
+    let fieldAccess: any FocusedFieldAccess
+    let marker: EventMarker
+    let clock: any MonotonicClock
+    let keys: GuidedTestKeys
+    let sequence = ProbeSequence()
+
+    /// Current strategy first, then the PLT-R1205 list: `backspaceReplace` with `axSelection`, with
+    /// `placeholder`, `selectReplace`, `axReplace` for native apps, then the current strategy paced at 2 and
+    /// 5 ms. Without a known current strategy the default plan stands in for it.
+    public static func candidates(isNativeApp: Bool) -> [GuidedTestCandidate] {
+        GuidedTestPlans.candidates(current: nil, isNativeApp: isNativeApp)
+    }
+
+    /// Same list with the focused field's current plan first (PLT-R1205 step 3 "current strategy").
+    public static func candidates(current: InjectionPlan?, isNativeApp: Bool) -> [GuidedTestCandidate] {
+        GuidedTestPlans.candidates(current: current, isNativeApp: isNativeApp)
+    }
+
+    public convenience init(
         poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock
     ) {
-        unimplemented()
+        self.init(poster: poster, fieldAccess: fieldAccess, marker: marker, clock: clock, layout: nil)
     }
-    public func run(_ candidate: GuidedTestCandidate, field: FieldHandle?) async -> GuidedTestCandidateResult {
-        unimplemented()
+
+    /// `layout` supplies the key codes of the canary keys (PLT-R405); without it the US positions are used.
+    public init(
+        poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
+        layout: LayoutTable?
+    ) {
+        self.poster = poster
+        self.fieldAccess = fieldAccess
+        self.marker = marker
+        self.clock = clock
+        keys = GuidedTestKeys(layout: layout)
     }
+
+    /// Types the canary "đá â" with `candidate`, reads it back through AX when possible and removes it again
+    /// with the same strategy, reporting residue (PLT-R1205 step 3, PLT-R410). When the field cannot be read the
+    /// text stays for the user to judge: the result is `.needsHumanAnswer` and `removeTestText` follows the
+    /// answer. `stop` is checked before every event and its focus check before every step and before the
+    /// removal; once it fires the result is `.stopped` and nothing more is posted.
+    public func run(
+        _ candidate: GuidedTestCandidate, field: FieldHandle?, stop: ProbeStopSignal = ProbeStopSignal()
+    ) async -> GuidedTestCandidateResult {
+        await DedicatedThread.run(name: "guided-test") { self.typeAndVerify(candidate, field: field, stop: stop) }
+    }
+
+    /// Removes the canary after a human answer. Returns whether text remained (nil when the field cannot be
+    /// read, or when `stop` fired and nothing was removed).
+    public func removeTestText(
+        _ candidate: GuidedTestCandidate, field: FieldHandle?, stop: ProbeStopSignal = ProbeStopSignal()
+    ) async -> Bool? {
+        await DedicatedThread.run(name: "guided-test") { self.remove(candidate, field: field, stop: stop) }
+    }
+
     /// Rule suggestion in the 5.4 schema (PLT-R1205 step 4); a URL prefix only if the user ticked "include page
     /// address" and edited it down to a host-level prefix. The suggestion is shown and copied on its own; the
     /// diagnostics report never contains its URL (ADR 0312).
     public static func suggestion(
         context: MatchContext, best: GuidedTestCandidate, appVersion: String?, macOS: String, date: String,
         includeURLPrefix: String?
-    ) -> Rule { unimplemented() }
+    ) -> Rule {
+        GuidedTestSuggestion.rule(
+            context: context, best: best, appVersion: appVersion, macOS: macOS, date: date,
+            includeURLPrefix: includeURLPrefix)
+    }
+}
+
+/// Probe-kind marker sequence shared by one driver's events (23 bits, wraps).
+final class ProbeSequence: Sendable {
+    private let value = Atomic<UInt32>(0)
+    func next() -> UInt32 { value.wrappingAdd(1, ordering: .relaxed).newValue & EventMarker.sequenceMask }
 }
 ```
 <!-- /include -->
@@ -9531,21 +9886,17 @@ public enum ReportAssembler {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
         let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
         let decisionOverride = host.focus.app?.bundle == reportedApp ? host.decision?.userOverride : nil
-        let mirror = ReportMirror(
-            formatVersion: DiagnosticsReport.formatVersion, generatedAt: now, app: identity, system: system,
-            hostState: host.state.code, keyboard: ReportSections.keyboard(host),
-            permissions: ReportSections.permissions(host), tap: ReportSections.tap(host, health: health, now: now),
-            secureInput: ReportSections.secureInput(host), focus: ReportSections.focus(host),
+        return DiagnosticsReport(
+            generatedAt: now, app: identity, system: system, hostState: host.state.code,
+            keyboard: ReportSections.keyboard(host), permissions: ReportSections.permissions(host),
+            tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
+            focus: ReportSections.focus(host),
             rule: ReportSections.rule(host.decision, userOverride: storedOverride ?? decisionOverride),
             settings: ReportSections.settings(settings),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
-            latency: ReportMirror.Latency(metrics: metrics, probe: probe),
+            latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
             healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),
-            userReport: draft.map {
-                ReportMirror.UserReport(
-                    symptom: $0.symptom, reportedApp: $0.app, reproducesInPracticeField: $0.reproducesInPracticeField)
-            })
-        return mirror.decode()
+            userReport: ReportSections.userReport(draft))
     }
 
     /// Typed projection of the reported app's user override (PLT-R541, ADR 0312): copies strategy, params,
@@ -9698,6 +10049,161 @@ public enum SystemInfoReader {
         return value
     }
 }
+
+/// An app the user can pick in the sheet (PRD-R47 item 1): recent apps, the last frontmost one first.
+public struct BugReportAppChoice: Sendable, Hashable {
+    public var bundle: BundleKey
+    public var name: String
+
+    public init(bundle: BundleKey, name: String) {
+        self.bundle = bundle
+        self.name = name
+    }
+}
+
+/// Buttons of the bug report sheet, in display order.
+public enum BugReportAction: String, Sendable, Hashable, CaseIterable {
+    /// Visible without opening the preview, so "Copy report" is the third click from the menu (section 12).
+    case copyReport
+    case github, email, saveFile
+    /// PRD-R49 "test in the practice field".
+    case practiceField
+    case openDiagnostics
+
+    /// The sheet control (label and VoiceOver hint keys) of this button (PRD-R66).
+    public var control: DiagnosticsControl {
+        switch self {
+        case .copyReport: .copyReport
+        case .github: .github
+        case .email: .email
+        case .saveFile: .saveFile
+        case .practiceField: .practiceButton
+        case .openDiagnostics: .openDiagnostics
+        }
+    }
+}
+
+/// PRD-R47-R49 sheet state without UI: the draft, the preview disclosure and the outputs of each path.
+public struct BugReportSheet: Sendable, Hashable {
+    public var apps: [BugReportAppChoice]
+    public private(set) var draft: BugReportDraft
+    public var previewExpanded = false
+    public let paths: [BugReportPath]
+
+    /// `preselected` is the last frontmost app (PRD-R47 item 1); it is added to `apps` when missing.
+    public init(apps: [BugReportAppChoice], preselected: BugReportAppChoice?, brand: Brand) {
+        var list = apps
+        if let preselected, !list.contains(where: { $0.bundle == preselected.bundle }) {
+            list.insert(preselected, at: 0)
+        }
+        self.apps = list
+        paths = BugReportComposer.availablePaths(brand: brand)
+        draft = BugReportDraft(
+            app: preselected?.bundle, appName: preselected?.name, symptom: .other, userDescription: "",
+            reproducesInPracticeField: nil)
+    }
+
+    public var actions: [BugReportAction] {
+        BugReportAction.allCases.filter { action in
+            switch action {
+            case .github: paths.contains(.github)
+            case .email: paths.contains(.email)
+            case .copyReport, .saveFile, .practiceField, .openDiagnostics: true
+            }
+        }
+    }
+
+    public mutating func selectApp(_ bundle: BundleKey?) {
+        let choice = bundle.flatMap { key in apps.first { $0.bundle == key } }
+        draft.app = choice?.bundle
+        draft.appName = choice?.name
+    }
+
+    public mutating func select(_ symptom: DiagnosticsReport.Symptom) { draft.symptom = symptom }
+    public mutating func setDescription(_ text: String) { draft.userDescription = text }
+    public mutating func setReproducesInPracticeField(_ value: Bool?) { draft.reproducesInPracticeField = value }
+
+    /// The report for this draft: the user's choices without the free text, and nothing about an app other
+    /// than the selected one (PLT-R913, PLT-R541). Pass the report built for the draft when the App can rebuild
+    /// it; otherwise sections of a previously reported app are dropped here.
+    public func report(from base: DiagnosticsReport) -> DiagnosticsReport {
+        var report = base
+        report.userReport = ReportSections.userReport(draft)
+        if report.reportedAppMode?.bundle != draft.app { report.reportedAppMode = nil }
+        if let override = report.rule?.userOverride, !Self.matches(override, draft.app) {
+            report.rule?.userOverride = nil
+        }
+        return report
+    }
+
+    private static func matches(_ override: DiagnosticsReport.ReportedOverride, _ app: BundleKey?) -> Bool {
+        guard let app else { return false }
+        return override.match.bundleIds?.contains(app) == true
+    }
+
+    /// PLT-R1204: the exact text shown in the preview is the plain-text rendering.
+    public func preview(_ report: DiagnosticsReport, language: InterfaceLanguage) -> String {
+        DiagnosticsRenderer.plainText(report, language: language)
+    }
+
+    /// The block written to the clipboard by "Copy report" and "Mở GitHub" (QA-R44), after the notice (PRD-R48).
+    public func clipboardText(_ report: DiagnosticsReport) -> String { DiagnosticsRenderer.issueBlock(report) }
+
+    /// The JSON file for "Gửi qua email" and "Lưu tệp..." (PRD-R47).
+    public func attachment(_ report: DiagnosticsReport) throws -> Data { try DiagnosticsRenderer.json(report) }
+
+    public func attachmentFileName(slug: String, report: DiagnosticsReport) -> String {
+        BugReportComposer.attachmentFileName(slug: slug, date: report.generatedAt)
+    }
+
+    public func githubURL(repository: URL, report: DiagnosticsReport) -> URL {
+        BugReportComposer.githubIssueURL(repository: repository, draft: draft, report: report)
+    }
+
+    public func mail(report: DiagnosticsReport, brand: Brand, localizer: Localizer) -> MailDraft? {
+        BugReportComposer.mail(draft: draft, report: report, brand: brand, localizer: localizer)
+    }
+}
+
+/// Buttons of the Diagnostics window (PLT-R1201), in display order.
+public enum DiagnosticsWindowAction: String, Sendable, Hashable, CaseIterable {
+    case copyReport, misbehaves, recordTrace, latencyTest, openLogs
+}
+
+/// What the report menu items open (PRD-R11 items 4 and 6, PLT-R1205 step 1).
+public enum DiagnosticsDestination: Sendable, Hashable {
+    case bugReport(preselected: BundleKey?)
+    case misbehaves(BundleKey)
+}
+
+/// Navigation from the menu to the report (02-platform.md section 12: a first-time user produces a report in
+/// at most 3 clicks from the menu).
+public enum DiagnosticsNavigation {
+    public enum Click: Sendable, Hashable {
+        case statusItem
+        case menu(MenuEntry)
+        case sheet(BugReportAction)
+    }
+
+    /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
+    /// the misbehaves flow for that app (the user focused the problem field first).
+    public static func destination(reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?)
+        -> DiagnosticsDestination
+    {
+        if let bundle { return .misbehaves(bundle) }
+        return .bugReport(preselected: lastFrontmost)
+    }
+
+    /// The shortest click path from the closed menu to "Copy report": open the menu, choose "Báo lỗi...", press
+    /// "Copy report" in the sheet. Nil when the menu or the sheet do not offer the step.
+    public static func pathToCopyReport(menu: MenuModel, sheet: BugReportSheet) -> [Click]? {
+        guard menu.entries.contains(.reportProblem), sheet.actions.contains(.copyReport) else { return nil }
+        guard case .bugReport = destination(reportProblemFor: nil, lastFrontmost: menu.frontmostApp?.bundle) else {
+            return nil
+        }
+        return [.statusItem, .menu(.reportProblem), .sheet(.copyReport)]
+    }
+}
 ```
 <!-- /include -->
 
@@ -9720,6 +10226,10 @@ public struct AppsPaneRow: Sendable, Hashable, Identifiable {
     public var status: MatrixStatus  // after the 120-day rule (QA-R19)
     public var note: LocalizedNote?
     public var compatibilityMode: CompatibilityModeChoice
+    /// Name from the matrix row, for apps that are not installed (the App prefers the installed app's name).
+    public var matrixDisplayName: String?
+    /// When the user chose `compatibilityMode` ("set by you on <date>", PLT-R541); nil for automatic.
+    public var compatibilitySetOn: Date?
 }
 
 /// PRD-R36: "Chế độ tương thích" under Advanced, at most three plain choices plus automatic. Choosing one writes
@@ -9789,7 +10299,8 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
 
 public enum AppsPaneModel {
     /// Most recent first: apps typed in (memory order) plus apps with explicit rules (PRD-R34), then apps that
-    /// only have a compatibility override.
+    /// only have a compatibility override. The status is the matrix row that stands for the whole app
+    /// (`MatrixDocument.appEntry(for:)`) after the 120-day rule; web-app and in-app rows are for the detail view.
     public static func rows(
         appModes: AppModesDocument, overrides: [StoredRuleOverride], matrix: MatrixDocument?, today: Date
     ) -> [AppsPaneRow] {
@@ -9801,27 +10312,150 @@ public enum AppsPaneModel {
         return bundles.compactMap { bundle in
             guard seen.insert(bundle).inserted else { return nil }
             let entry = entries[bundle]
-            let matrixEntry = matrix?.entries.first { $0.bundleId == bundle }
+            let matrixEntry = matrix?.appEntry(for: bundle)
             return AppsPaneRow(
                 bundle: bundle, rule: entry?.rule ?? .remember, rememberedMode: entry?.mode,
                 status: matrixEntry.map { MatrixStatusResolver.displayStatus($0, today: today) } ?? .notVerified,
-                note: matrixEntry?.note, compatibilityMode: modes[bundle] ?? .automatic)
+                note: matrixEntry?.note, compatibilityMode: modes[bundle]?.choice ?? .automatic,
+                matrixDisplayName: matrixEntry?.displayName, compatibilitySetOn: modes[bundle]?.createdAt)
         }
     }
 
     /// Newest compatibility override per app.
-    private static func compatibilityModes(_ overrides: [StoredRuleOverride]) -> [BundleKey: CompatibilityModeChoice] {
-        var modes: [BundleKey: CompatibilityModeChoice] = [:]
+    private static func compatibilityModes(_ overrides: [StoredRuleOverride])
+        -> [BundleKey: (choice: CompatibilityModeChoice, createdAt: Date)]
+    {
+        var modes: [BundleKey: (choice: CompatibilityModeChoice, createdAt: Date)] = [:]
         for stored in overrides.sorted(by: { $0.createdAt > $1.createdAt }) {
             guard let choice = CompatibilityModeChoice(overrideRule: stored.rule),
                 case .array(let ids)? = stored.rule["match"]?["bundleIds"]
             else { continue }
             for case .string(let raw) in ids {
                 guard let bundle = BundleKey(rawValue: raw), modes[bundle] == nil else { continue }
-                modes[bundle] = choice
+                modes[bundle] = (choice, stored.createdAt)
             }
         }
         return modes
+    }
+}
+
+/// The app detail sheet (PRD-R35, PRD-R36): status and note of the app row, the web-app and in-app rows of the
+/// matrix, and the compatibility mode under Advanced.
+public struct AppDetail: Sendable, Hashable {
+    public let row: AppsPaneRow
+    /// `MatrixDocument.scopedEntries(for:)` with their display status, only shown here.
+    public let scoped: [ScopedStatus]
+    /// ISO date of the app row's last verification, if any.
+    public let lastVerified: String?
+
+    public struct ScopedStatus: Sendable, Hashable {
+        public var entry: MatrixEntry
+        public var status: MatrixStatus
+    }
+
+    public init(row: AppsPaneRow, matrix: MatrixDocument?, today: Date) {
+        self.row = row
+        scoped = (matrix?.scopedEntries(for: row.bundle) ?? []).map {
+            ScopedStatus(entry: $0, status: MatrixStatusResolver.displayStatus($0, today: today))
+        }
+        lastVerified = matrix?.appEntry(for: row.bundle)?.lastVerified
+    }
+}
+
+/// What choosing a compatibility mode does to `rule-overrides.json` (PLT-R540).
+public enum CompatibilityModeCommand: Sendable, Hashable {
+    case add(StoredRuleOverride)
+    case remove(RuleID)
+}
+
+extension CompatibilityModeChoice {
+    /// `.automatic` removes this app's override; the others write `user.compat.<bundle>` dated today.
+    public func command(for bundle: BundleKey, at date: Date, timeZone: TimeZone = .current) -> CompatibilityModeCommand
+    {
+        guard let rule = overrideRule(for: bundle, date: Self.day(date, timeZone: timeZone)) else {
+            return .remove(Self.ruleID(for: bundle))
+        }
+        return .add(StoredRuleOverride(createdAt: date, rule: rule))
+    }
+
+    /// `YYYY-MM-DD` in the user's calendar day.
+    static func day(_ date: Date, timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// PRD-R48, PLT-R462: the paste mode is chosen only after the clipboard explanation.
+    public var needsClipboardExplanation: Bool { self == .pasteText }
+
+    public var title: AppsText {
+        switch self {
+        case .automatic: .compatAutomatic
+        case .typeSlower: .compatTypeSlower
+        case .selectThenType: .compatSelectThenType
+        case .pasteText: .compatPasteText
+        }
+    }
+
+    /// PRD-R36: one sentence per choice.
+    public var explanation: AppsText {
+        switch self {
+        case .automatic: .compatAutomaticExplanation
+        case .typeSlower: .compatTypeSlowerExplanation
+        case .selectThenType: .compatSelectThenTypeExplanation
+        case .pasteText: .compatPasteTextExplanation
+        }
+    }
+}
+
+extension PerAppRule {
+    /// PRD-R34 column labels.
+    public var appsTitle: AppsText {
+        switch self {
+        case .remember: .ruleRemember
+        case .alwaysEnglish: .ruleAlwaysEnglish
+        case .alwaysVietnamese: .ruleAlwaysVietnamese
+        case .ignore: .ruleIgnore
+        }
+    }
+}
+
+extension MatrixStatus {
+    /// PRD-R35 labels.
+    public var appsTitle: AppsText {
+        switch self {
+        case .works: .statusWorks
+        case .worksWithNotes: .statusWorksWithNotes
+        case .notVerified: .statusNotVerified
+        case .knownLimitation: .statusKnownLimitation
+        }
+    }
+
+    /// SF Symbol shown with the label, so the status never relies on colour alone (PRD-R67).
+    public var symbolName: String {
+        switch self {
+        case .works: "checkmark.circle"
+        case .worksWithNotes: SettingsSymbol.info
+        case .notVerified: "questionmark.circle"
+        case .knownLimitation: "exclamationmark.triangle"
+        }
+    }
+}
+
+extension AppsPaneRow {
+    /// Remembered mode column (PRD-R34).
+    public var rememberedModeTitle: AppsText {
+        switch rememberedMode {
+        case .vietnamese: .modeVietnamese
+        case .english: .modeEnglish
+        case nil: .modeNone
+        }
+    }
+
+    /// The matrix note in the interface language (PRD-R35).
+    public func noteText(_ language: InterfaceLanguage) -> String? {
+        note.map { language == .vietnamese ? $0.vi : $0.en }
     }
 }
 ```
@@ -9923,7 +10557,8 @@ thread).
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Composition root (workstream W2-A). Builds every production service once, wires AppCore modules together
-// and owns the window controllers. Main actor only.
+// and owns the window controllers. Main actor only. The launch order is `LaunchSequence` (InputHost
+// Integration, tested with fakes); the shell and onboarding wiring live in `AppEnvironment+*.swift`.
 
 import AppKit
 import AppModel
@@ -9931,6 +10566,7 @@ import CompatRules
 import Diagnostics
 import Injection
 import InputHost
+import RealtimeSupport
 import SettingsStore
 import ShellCore
 
@@ -9940,20 +10576,233 @@ final class AppEnvironment {
     let language: InterfaceLanguageModel
     let settingsStore: SettingsStore
     let host: InputHostController
-    let statusItem: StatusItemController
-    let updater: UpdaterController
+    /// Created by the launch's shell step (PRD-R9), after the location check and the settings load.
+    private(set) var statusItem: StatusItemController?
+    /// Created by the launch's last step (PLT-R1101).
+    private(set) var updater: UpdaterController?
+
+    let paths: StoragePaths
+    let utility: DispatchSerialQueue
+    let keyValues = UserDefaultsKeyValueStore()
+    let launchGuard: LaunchGuard
+    let diagnostics: DiagnosticsWiring
+    let loginItem = SMAppServiceLoginItem()
+    let settingsChanges = MainActorRelay<SettingsState>()
+    var settings = SettingsState()
+    var safeMode = false
+    var launch: LaunchSequence?
+    var switchHUD: SwitchHUDController?
+    var onboarding: OnboardingWindowController?
+    /// PRD-R40 screen 6: competitor apps seen running while onboarding is open, kept after the user quits them on
+    /// screen 5 so the import offer still appears.
+    var importCandidates: [ImportCandidate] = []
+    var settingsWindow: SettingsWindowController?
+    var diagnosticsWindow: DiagnosticsWindowController?
+    lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
+    /// QA-R42: the first launch after an update checks the host once it left `starting`.
+    var selfCheckPending = false
+    /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
+    var tapReenabledUntil: Date?
+    var lastMenuRefresh: Date?
 
     /// Launch order (S1 target 300 ms to tap active): LaunchGuard -> AppLocationCheck (move offer before any
-    /// permission request, PLT-R710) -> SettingsStore.load -> RulesLoader.load(compat-rules.json) ->
-    /// InputHostController.start -> StatusItemController -> onboarding if not completed (PRD-R40, PRD-R42)
-    /// -> UpdaterController.start.
-    init(bundle: Bundle) { unimplemented() }
+    /// permission request, PLT-R710) -> LegacyStorageMigrator -> SettingsStore.load ->
+    /// RulesLoader.load(compat-rules.json) -> InputHostController.start -> StatusItemController -> onboarding if
+    /// not completed (PRD-R40, PRD-R42) -> UpdaterController.start.
+    init(bundle: Bundle) {
+        brand = Brand.from(bundle)
+        language = InterfaceLanguageModel(language: DefaultSettings.v1.interfaceLanguage, appBundle: bundle)
+        paths = StoragePaths(folder: brand.storageFolderName)
+        utility = DispatchSerialQueue(label: brand.slug + ".utility", qos: .utility)
+        launchGuard = LaunchGuard(store: keyValues)
+        diagnostics = DiagnosticsWiring(
+            paths: paths, subsystem: brand.bundleIdentifier, utility: utility, defaults: .standard)
+        let relay = settingsChanges
+        settingsStore = SettingsStore(
+            location: StorageLocation(directory: paths.applicationSupport), fileSystem: LocalFileSystem(),
+            wallClock: SystemWallClock(), writtenBy: brand.version, queue: utility, launchGuard: launchGuard,
+            onChange: { relay.send($0) })
+        host = InputHostController(
+            dependencies: .production(diagnostics: diagnostics, keyValues: keyValues, utility: utility),
+            settingsStore: settingsStore)
+        settingsChanges.connect { [weak self] state in self?.settingsChanged(state) }
+        host.onEvent = { [weak self] event in self?.hostEvent(event) }
+    }
 
-    func start() { unimplemented() }
+    func start() {
+        diagnostics.logger.log(.lifecycle(.launched(appIdentity)), level: .notice)
+        let sequence = LaunchSequence(
+            launchGuard: launchGuard, appVersion: bundleVersion, wallClock: SystemWallClock(),
+            scheduler: DispatchTimerScheduler(queue: utility), steps: self)
+        launch = sequence
+        Task {
+            switch await sequence.run() {
+            case .running(let safeMode): self.launched(safeMode: safeMode)
+            case .relocating, .quit: NSApp.terminate(nil)
+            }
+        }
+    }
+
     /// Quit: flush settings (PLT-R1003), stop the host (tap removed), let Sparkle install on quit (D20).
-    func terminate() { unimplemented() }
+    func terminate(completion: @escaping @MainActor () -> Void) {
+        diagnostics.logger.log(.lifecycle(.terminating), level: .notice)
+        launch?.terminate()
+        host.stop()
+        let store = settingsStore
+        let diagnostics = self.diagnostics
+        Task {
+            await store.flush()
+            diagnostics.flush()
+            completion()
+        }
+    }
+
     /// `<slug>://...` opens Settings and nothing else (PLT-R909).
-    func handle(url: URL) { unimplemented() }
+    func handle(url: URL) {
+        guard URLSchemeRouter.route(url, scheme: brand.urlScheme) == .openSettings else { return }
+        openSettings()
+    }
+
+    // MARK: Launch results
+
+    /// `CFBundleShortVersionString` plus the build, so an update clears a crash loop (W1-B request).
+    var bundleVersion: String { LaunchSequence.versionString(short: brand.version, build: brand.build) }
+
+    var appIdentity: AppIdentity {
+        AppIdentity(
+            displayName: brand.displayName, slug: brand.slug, bundleIdentifier: brand.bundleIdentifier,
+            version: brand.version, build: brand.build, channel: settings.effective.updateChannel)
+    }
+
+    private func launched(safeMode: Bool) {
+        self.safeMode = safeMode
+        diagnostics.startMaintenance()
+        if safeMode {
+            diagnostics.logger.log(
+                .lifecycle(.safeModeEntered(recentCrashes: launchGuard.recentCrashes)), level: .error)
+            diagnostics.health.record(HealthEvent(kind: .safeModeEntered, at: Date()))
+            DispatchQueue.main.async { [weak self] in self?.presentSafeMode() }
+        }
+        selfCheckPending = UpdateSelfCheck(store: keyValues).noteLaunch(version: bundleVersion) == .versionChanged
+        evaluateSelfCheck()
+    }
+
+    /// Every settings change: the host (engines, rules, focus), the language, the shell and the updater.
+    func settingsChanged(_ state: SettingsState) {
+        settings = state
+        safeMode = state.safeMode  // PLT-R1009: the store decides; leaving safe mode reloads the files
+        host.apply(settings: state)
+        language.select(state.effective.interfaceLanguage)
+        statusItem?.setClickToToggle(state.effective.clickIconToToggle)
+        applyUpdaterSettings()
+        updateIcon()
+    }
+
+    func applyUpdaterSettings() {
+        guard let updater else { return }
+        let effective = settings.effective
+        updater.automaticallyChecksForUpdates = effective.automaticallyCheckForUpdates
+        updater.automaticallyDownloadsUpdates = effective.automaticallyInstallUpdates
+        updater.channel = effective.updateChannel == .beta ? .beta : .stable
+    }
+
+    private static func loadPaneTable() -> SystemPaneTable? {
+        guard let url = Bundle.main.url(forResource: "SystemPanes", withExtension: "json"),
+            let data = try? Data(contentsOf: url)
+        else { return nil }
+        return try? SystemPaneTable(resource: data)
+    }
+}
+
+// MARK: - Launch steps
+
+extension AppEnvironment: LaunchSteps {
+    func resolveLocation() async -> LaunchLocationDecision {
+        #if DEBUG
+        // Development builds run from DerivedData; the move offer is a shipped-app behaviour (PLT-R710).
+        return .proceed
+        #else
+        let bundleURL = Bundle.main.bundleURL
+        let launchGuard = self.launchGuard
+        let files = FileManagerRelocationFiles()
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        let relocator = AppRelocator(
+            files: files, relauncher: WorkspaceRelauncher(beforeLaunch: { launchGuard.markSurvived() }),
+            applicationsDirectory: AppRelocator.applicationsDirectory(
+                system: URL(fileURLWithPath: "/Applications", isDirectory: true),
+                user: home.appendingPathComponent("Applications", isDirectory: true), files: files))
+        let gate = LocationGate<AppLocationCheck.Reason>(
+            verdict: { Self.locationVerdict(bundleURL) },
+            offer: { [language, brand] reason in
+                MoveOfferAlert.ask(reason: reason, appName: brand.displayName, language: language) == .move
+            },
+            reportFailure: { [weak self] _ in
+                guard let self else { return }
+                CompositionAlerts.moveFailed(appName: brand.displayName, strings: strings)
+            }, relocator: relocator, bundleURL: bundleURL)
+        return await gate.resolve()
+        #endif
+    }
+
+    static func locationVerdict(_ bundleURL: URL) -> LocationGate<AppLocationCheck.Reason>.Verdict {
+        let readOnly = (try? bundleURL.resourceValues(forKeys: [.volumeIsReadOnlyKey]).volumeIsReadOnly) ?? false
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        switch AppLocationCheck.evaluate(bundleURL: bundleURL, homeDirectory: home, isOnReadOnlyVolume: readOnly) {
+        case .ok: return .ok
+        case .mustMove(let reason): return .mustMove(reason)
+        }
+    }
+
+    func migrateLegacyStorage() {
+        let brand = self.brand
+        let bases = paths.bases
+        utility.sync {
+            _ = LegacyStorageMigrator.migrate(
+                current: brand.storageFolderName, legacyNames: brand.legacyStorageFolderNames, bases: bases,
+                fileSystem: LocalFileSystem())
+        }
+    }
+
+    func loadSettings() async -> SettingsState {
+        let state = await settingsStore.load()
+        settings = state
+        language.select(state.effective.interfaceLanguage)
+        return state
+    }
+
+    func loadRules() -> RulesLoadResult {
+        let url =
+            Bundle.main.url(forResource: "compat-rules", withExtension: "json")
+            ?? Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/compat-rules.json")
+        return RulesLoader.load(contentsOf: url)
+    }
+
+    func startHost(rules: RulesLoadResult, settings: SettingsState) {
+        host.start(rules: rules, settings: settings)
+    }
+
+    func showShell(settings: SettingsState, safeMode: Bool) {
+        let item = StatusItemController(language: language, actions: self) { [unowned self] in menuModel() }
+        statusItem = item
+        switchHUD = SwitchHUDController(language: language)
+        item.setClickToToggle(settings.effective.clickIconToToggle)
+        updateIcon()
+    }
+
+    func presentOnboarding(settings: SettingsState) {
+        presentOnboarding(startAt: nil)
+    }
+
+    func startUpdater(settings: SettingsState) {
+        let host = self.host
+        let controller = UpdaterController {
+            let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+            return (secondsSinceLastKey: idle, secureInputOn: host.refreshSecureInput().enabled)
+        }
+        updater = controller
+        applyUpdaterSettings()
+        controller.start()
+    }
 }
 ```
 <!-- /include -->
@@ -10291,27 +11140,145 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Settings window with at most five panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
-// (PRD-R34-R38). Workstream W2-B.
+// (PRD-R34-R38). Workstream W2-B. A normal window (not floating) whose size and position are remembered
+// (PRD-R28); SwiftUI content in an NSHostingController (ADR 0305).
 
 import AppKit
 import AppModel
+import CompatRules
+import InputHost
+import Observation
 import SettingsStore
 import ShellCore
+import SwiftUI
 
-enum SettingsPane: String, CaseIterable {
-    case general, typing, apps, macros, aboutSupport
+/// The pane identifiers used by the composition root (`show(.macros)`, `show(.aboutSupport)`).
+typealias SettingsPane = SettingsPaneKind
+
+/// What the Settings window asks the composition root to do; implemented by AppEnvironment.
+@MainActor
+protocol SettingsActions: AnyObject {
+    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37).
+    func reportProblem(for bundle: BundleKey?)
+    /// "Chẩn đoán..." (D26 entry, W2-C's diagnostics window).
+    func openDiagnostics()
+    /// PRD-R40: onboarding can be reopened from About & Support.
+    func reopenOnboarding()
+    /// ADR 0305: the tap suspends hotkeys while the recorder captures keys
+    /// (`InputHostController.setRecorderActive(_:)`).
+    func setHotkeyRecorderActive(_ active: Bool)
 }
 
 @MainActor
-final class SettingsWindowController: NSWindowController {
-    required init?(coder: NSCoder) { unimplemented() }
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+    static let frameAutosaveName = "SettingsWindow"
+    static let defaultSize = NSSize(width: 700, height: 620)
+    static let minimumSize = NSSize(width: 640, height: 560)
 
+    private let model: SettingsWindowModel
+
+    /// Forwarded to the model; set by the composition root after construction.
+    weak var actions: (any SettingsActions)? {
+        didSet { model.actions = actions }
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    /// - Parameters:
+    ///   - brand: app name, slug, version and site host (never hard-coded).
+    ///   - matrix: the bundled `compat-matrix.json`; nil shows every app as not verified (PRD-R35).
+    ///   - inputSources: enabled input sources for the layout binding (PLT-R373), read when the pane appears.
+    ///   - layout: the current layout table, so the recorder names Command+Q / Command+W on any layout.
     init(
         store: SettingsStore, language: InterfaceLanguageModel, updater: any UpdaterControlling,
-        loginItem: any LoginItemService
-    ) { unimplemented() }
+        loginItem: any LoginItemService, brand: Brand = .from(.main),
+        matrix: MatrixDocument? = SettingsResources.bundledMatrix(),
+        inputSources: @escaping @MainActor () -> [InputSourceInfo] = { [] },
+        layout: @escaping @MainActor () -> LayoutTable? = { nil },
+        keyValues: any KeyValueStore = UserDefaultsKeyValueStore()
+    ) {
+        model = SettingsWindowModel(
+            commands: SettingsCommands(store: store), language: language, updater: updater, loginItem: loginItem,
+            brand: brand, matrix: matrix, inputSources: inputSources, layout: layout,
+            disclosures: AdvancedDisclosureMemory(store: keyValues))
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: Self.defaultSize),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.level = .normal  // PRD-R28: does not float above other apps
+        window.isReleasedWhenClosed = false
+        window.contentMinSize = Self.minimumSize
+        window.contentViewController = NSHostingController(rootView: SettingsRootView(model: model))
+        window.setContentSize(Self.defaultSize)
+        window.center()
+        window.setFrameAutosaveName(Self.frameAutosaveName)  // PRD-R28: size and position remembered
+        super.init(window: window)
+        window.delegate = self
+        refreshTitle()
+        observeLanguage()
+    }
 
-    func show(_ pane: SettingsPane) { unimplemented() }
+    /// Shows the window on `pane` (menu "Cài đặt...", "Gõ tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
+    func show(_ pane: SettingsPane) {
+        model.select(pane)
+        present()
+    }
+
+    /// Onboarding's "Đổi phím chuyển" (PRD-R40 screen 4, `OnboardingActions.openHotkeyRecorder()`): opens the
+    /// General pane with the toggle recorder already recording and focused. `role: .restoreLastWord` opens the
+    /// Typing pane's restore recorder instead.
+    func showHotkeyRecorder(role: HotkeyRole = .toggleMode) {
+        model.select(role == .toggleMode ? .general : .typing)
+        if role == .restoreLastWord { model.setAdvancedExpanded(true, for: .typing) }
+        present()
+        model.startRecording(role)
+    }
+
+    /// The composition root forwards `SettingsStore`'s `onChange` here on the main actor, so changes made
+    /// elsewhere (menu, per-app memory, import) show at once.
+    func settingsChanged(_ state: SettingsState) {
+        model.apply(state)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        model.cancelRecording()
+    }
+
+    /// ADR 0305, PRD-R67: once another app or window takes the keyboard, the recorder stops swallowing keys and
+    /// the tap's hotkeys work again.
+    func windowDidResignKey(_ notification: Notification) {
+        model.interruptRecording()
+    }
+
+    private func present() {
+        Task { await model.refresh() }
+        showWindow(nil)
+        NSApp.activate()
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// PRD-R63: the title follows a language change; SwiftUI content re-renders by itself.
+    private func refreshTitle() {
+        window?.title = model.localizer.format(SettingsText.windowTitle, model.brand.displayName)
+    }
+
+    private func observeLanguage() {
+        withObservationTracking {
+            _ = model.language.localizer
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.refreshTitle()
+                self?.observeLanguage()
+            }
+        }
+    }
+}
+
+/// Bundled data the window reads.
+enum SettingsResources {
+    /// `compat-matrix.json` copied into the bundle by the build (PRD-R38); nil when missing or invalid.
+    static func bundledMatrix(bundle: Bundle = .main) -> MatrixDocument? {
+        bundle.url(forResource: "compat-matrix", withExtension: "json").flatMap(MatrixLoader.load(contentsOf:))
+    }
 }
 ```
 <!-- /include -->
@@ -10326,25 +11293,167 @@ final class SettingsWindowController: NSWindowController {
 import AppKit
 import AppModel
 import Diagnostics
+import Observation
 import ShellCore
+import SwiftUI
 
 @MainActor
-final class DiagnosticsWindowController: NSWindowController {
-    required init?(coder: NSCoder) { unimplemented() }
+final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
+    static let contentSize = NSSize(width: 620, height: 560)
 
-    init(language: InterfaceLanguageModel, report: @escaping @MainActor () -> DiagnosticsReport) { unimplemented() }
-    func showReport() { unimplemented() }
-    func startMisbehavesFlow(for bundle: BundleKey?) { unimplemented() }
-    func startTypingTrace() { unimplemented() }
-    func runLatencyProbe() { unimplemented() }
+    private let language: InterfaceLanguageModel
+    private let services: DiagnosticsServices
+    private let model: DiagnosticsWindowModel
+    private var misbehaves: MisbehavesPanelController?
+    private var trace: TypingTraceCoordinator?
+    private var probe: LatencyProbeWindowController?
+
+    required init?(coder: NSCoder) { nil }
+
+    /// `report` builds a fresh report (W2-A: `ReportAssembler.report` with the host's context). Without
+    /// `services` only the report and its buttons work; each driver appears when its service is provided.
+    init(
+        language: InterfaceLanguageModel, report: @escaping @MainActor () -> DiagnosticsReport,
+        services: DiagnosticsServices = DiagnosticsServices()
+    ) {
+        self.language = language
+        self.services = services
+        model = DiagnosticsWindowModel(language: language, services: services, report: report)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: Self.contentSize),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.setFrameAutosaveName("Diagnostics")
+        window.contentViewController = NSHostingController(rootView: DiagnosticsWindowView(model: model))
+        window.setContentSize(Self.contentSize)
+        window.center()
+        super.init(window: window)
+        window.delegate = self
+        model.perform = { [weak self] action in self?.perform(action) }
+        WindowTitles.follow(language, window: window) { $0.string(DiagnosticsText.windowTitle) }
+    }
+
+    /// Opens the window with a freshly generated report (the text shown is the text copied, PLT-R1204).
+    func showReport() {
+        model.refresh()
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    /// PLT-R1205 step 1: the user focused the problem field, then chose the menu item. The panel does not take
+    /// focus away from that field; it reads the live focus snapshot, which belongs to `bundle` (the menu's
+    /// frontmost app) unless focus moved since. Opened from the Diagnostics window the live focus is this app:
+    /// the panel then names `bundle` in the report and asks the user to click into the problem field.
+    func startMisbehavesFlow(for bundle: BundleKey?) {
+        let controller = MisbehavesPanelController(
+            language: language, services: services, bundle: bundle,
+            report: { [weak self] in self?.model.currentReport() })
+        misbehaves = controller
+        controller.present()
+    }
+
+    func startTypingTrace() {
+        guard let capture = services.trace else { return }
+        let coordinator =
+            trace
+            ?? TypingTraceCoordinator(
+                language: language, services: capture, appName: services.resolvedBrand.displayName)
+        trace = coordinator
+        coordinator.confirmAndStart(over: window)
+    }
+
+    func runLatencyProbe() {
+        guard let latency = services.latency else { return }
+        let controller =
+            probe
+            ?? LatencyProbeWindowController(
+                language: language, services: latency, appName: services.resolvedBrand.displayName)
+        probe = controller
+        controller.showWindow(nil)
+        controller.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    private func perform(_ action: DiagnosticsWindowAction) {
+        switch action {
+        case .copyReport: model.copyReport()
+        case .misbehaves: startMisbehavesFlow(for: services.currentFocus?().app?.bundle)
+        case .recordTrace: startTypingTrace()
+        case .latencyTest: runLatencyProbe()
+        case .openLogs: model.openLogs()
+        }
+    }
 }
 
 @MainActor
-final class BugReportController: NSWindowController {
-    required init?(coder: NSCoder) { unimplemented() }
+final class BugReportController: NSWindowController, NSWindowDelegate {
+    static let contentSize = NSSize(width: 560, height: 620)
+
+    private let model: BugReportModel
+    private let language: InterfaceLanguageModel
+    private var practice: PracticeFieldWindowController?
+
+    required init?(coder: NSCoder) { nil }
 
     /// Shows the exact redacted text before anything is copied or saved (PLT-R1204, PRD-R48).
-    init(draft: BugReportDraft, report: DiagnosticsReport, language: InterfaceLanguageModel) { unimplemented() }
+    init(
+        draft: BugReportDraft, report: DiagnosticsReport, language: InterfaceLanguageModel,
+        services: DiagnosticsServices = DiagnosticsServices()
+    ) {
+        self.language = language
+        model = BugReportModel(draft: draft, report: report, language: language, services: services)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: Self.contentSize), styleMask: [.titled, .closable, .resizable],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.setFrameAutosaveName("BugReport")
+        window.contentViewController = NSHostingController(rootView: BugReportView(model: model))
+        window.setContentSize(Self.contentSize)
+        window.center()
+        super.init(window: window)
+        window.delegate = self
+        model.openPracticeField = { [weak self] in self?.showPracticeField() }
+        model.window = { [weak self] in self?.window }
+        WindowTitles.follow(language, window: window) { $0.string(DiagnosticsText.sheetTitle) }
+    }
+
+    /// "Mở cửa sổ chẩn đoán" (set by the composition root, which owns the Diagnostics window).
+    var openDiagnostics: () -> Void {
+        get { model.openDiagnostics }
+        set { model.openDiagnostics = newValue }
+    }
+
+    func present() {
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+
+    private func showPracticeField() {
+        let controller = practice ?? PracticeFieldWindowController(language: language)
+        practice = controller
+        controller.showWindow(nil)
+        controller.window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+/// Window titles follow a runtime language change (PRD-R63); SwiftUI content re-renders by itself.
+@MainActor
+enum WindowTitles {
+    static func follow(
+        _ language: InterfaceLanguageModel, window: NSWindow, title: @escaping @MainActor (Localizer) -> String
+    ) {
+        window.title = title(language.localizer)
+        withObservationTracking {
+            _ = language.localizer
+        } onChange: { [weak window] in
+            Task { @MainActor [weak window] in
+                guard let window else { return }
+                follow(language, window: window, title: title)
+            }
+        }
+    }
 }
 ```
 <!-- /include -->
@@ -10355,50 +11464,278 @@ final class BugReportController: NSWindowController {
 //
 // Thin wrapper around Sparkle 2 (PLT-R1101-R1110, PRD-R50-R55, docs/decisions/0304-sparkle-version-pin.md).
 // Workstream W2-D.
+//
+// Settings D19-D21 live in settings.json (PLT-R1001); this controller mirrors them into Sparkle at launch and on
+// every change, and reports user changes made here (About & Support pane, Sparkle's update window) back through
+// `onPreferenceChange` so the composition root writes them to the settings store. Sparkle starts only when the
+// bundle carries an https feed on the site host and a valid EdDSA key (PLT-R1102).
 
 import AppKit
 import AppModel
+import Diagnostics
 import ShellCore
 import Sparkle
 
+/// What the controller needs from the outside. `live` is the production wiring; tests pass fakes.
 @MainActor
-final class UpdaterController: NSObject, UpdaterControlling {
-    /// `idleState` answers "seconds since the last key press, and is secure input on?" for the relaunch policy
-    /// (PLT-R1105).
-    init(idleState: @escaping @MainActor () -> (secondsSinceLastKey: Double, secureInputOn: Bool)) {
-        unimplemented()
+struct UpdaterDependencies {
+    /// The app's Info.plist: brand keys, and the Sparkle keys checked before start.
+    var info: [String: Any]
+    /// Runs work on a later turn of the main queue, after blocks already queued there (production:
+    /// `DispatchQueue.main.async`). Sparkle ends a failed session on such a turn once it is acknowledged.
+    var onNextMainTurn: @MainActor (_ work: @escaping @MainActor () -> Void) -> Void
+    var logger: (any DiagnosticsLogging)?
+    /// The interface language of the moment (D18): the update-failed alert follows it, not the macOS language.
+    var localizer: @MainActor () -> Localizer
+    var presenter: any UpdateFailurePresenting
+    var openURL: @MainActor (URL) -> Void
+    var makeDriver: UpdateDriverFactory
+
+    static func live(
+        bundle: Bundle = .main, logger: (any DiagnosticsLogging)? = nil, language: InterfaceLanguageModel? = nil
+    ) -> UpdaterDependencies {
+        let fallback = Localizer(language: .vietnamese, appBundle: bundle)
+        return UpdaterDependencies(
+            info: bundle.infoDictionary ?? [:], onNextMainTurn: Self.mainQueueAsync, logger: logger,
+            localizer: { language?.localizer ?? fallback }, presenter: AlertUpdateFailurePresenter(),
+            openURL: { _ = NSWorkspace.shared.open($0) }, makeDriver: SparkleDriver.factory(bundle: bundle))
     }
 
-    func start() { unimplemented() }
-
-    var canCheckForUpdates: Bool { unimplemented() }
-    var automaticallyChecksForUpdates: Bool {
-        get { unimplemented() }
-        set { unimplemented() }
+    private static func mainQueueAsync(_ work: @escaping @MainActor () -> Void) {
+        DispatchQueue.main.async { MainActor.assumeIsolated { work() } }
     }
-    var automaticallyDownloadsUpdates: Bool {
-        get { unimplemented() }
-        set { unimplemented() }
-    }
-    var channel: UpdateChannelSelection {
-        get { unimplemented() }
-        set { unimplemented() }
-    }
-    func checkForUpdates() { unimplemented() }
 }
 
-/// Sparkle calls its delegate on the main thread, so the `nonisolated` requirements read main-actor state
-/// through `MainActor.assumeIsolated` (ADR 0313). Values crossing out of it must be Sendable.
+@MainActor
+final class UpdaterController: NSObject, UpdaterControlling {
+    /// User changes of D19-D21 made through this controller; the composition root persists them with
+    /// `change.apply(to:)` inside `SettingsStore.updateSettings` (PRD-R6: only the changed key becomes explicit).
+    var onPreferenceChange: (@MainActor (UpdatePreferenceChange) -> Void)?
+
+    private let dependencies: UpdaterDependencies
+    private let brand: Brand
+    private let idleState: @MainActor () -> KeyboardIdleState
+    private var preferences = UpdatePreferences.shipped
+    /// What Sparkle reported right after the last push. A later read-back that differs is a choice the user made
+    /// in Sparkle's own window; one that never moved (a setter Sparkle ignored) is not (PRD-R6).
+    private var sparkleBaseline: SparkleChoices?
+    private var driver: (any UpdateDriving)?
+    private var startAttempted = false
+
+    /// `idleState` answers "seconds since the last key press, and is secure input on?" for the relaunch policy
+    /// (PLT-R1105). Use `.infinity` seconds when no key was pressed since launch.
+    init(
+        idleState: @escaping @MainActor () -> (secondsSinceLastKey: Double, secureInputOn: Bool),
+        dependencies: UpdaterDependencies = .live()
+    ) {
+        self.dependencies = dependencies
+        brand = Brand.from(info: dependencies.info)
+        self.idleState = {
+            let state = idleState()
+            return KeyboardIdleState(secondsSinceLastKey: state.secondsSinceLastKey, secureInputOn: state.secureInputOn)
+        }
+        super.init()
+    }
+
+    /// Starts Sparkle once, as the last step of the launch order. Without a valid configuration nothing starts, the
+    /// refusal is logged and "Check for updates" stays disabled (PLT-R1102).
+    func start() {
+        guard !startAttempted else { return }
+        startAttempted = true
+        if let refusal = UpdaterConfiguration.refusal(info: dependencies.info) {
+            log(.failed(code: refusal.rawValue), level: .error)
+            return
+        }
+        let driver = dependencies.makeDriver(self) { [weak self] error, acknowledgement in
+            guard let self else { return acknowledgement() }
+            presentFailure(error, acknowledgement: acknowledgement)
+        }
+        driver.sendsSystemProfile = false  // PRD-R55, also off in Info.plist and filtered by the delegate.
+        push(preferences, to: driver)
+        do {
+            try driver.start()
+            self.driver = driver
+        } catch {
+            log(.failed(code: (error as NSError).code), level: .error)
+        }
+    }
+
+    /// Applies D19-D21 from the settings store, at launch (before `start`) and after every settings change.
+    /// Idempotent, and never reported back through `onPreferenceChange`.
+    func apply(_ next: UpdatePreferences) {
+        let previous = preferences
+        preferences = next
+        guard let driver else { return }
+        push(next, to: driver)
+        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
+        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
+    }
+
+    var currentPreferences: UpdatePreferences { preferences }
+
+    // MARK: UpdaterControlling
+
+    var canCheckForUpdates: Bool { driver?.canCheckForUpdates ?? false }
+
+    var automaticallyChecksForUpdates: Bool {
+        get { preferences.automaticallyCheck }
+        set { userChanged(.automaticallyCheck(newValue)) }
+    }
+
+    var automaticallyDownloadsUpdates: Bool {
+        get { preferences.automaticallyInstall }
+        set { userChanged(.automaticallyInstall(newValue)) }
+    }
+
+    var channel: UpdateChannelSelection {
+        get { UpdateChannelPolicy.selection(for: preferences.channel) }
+        set { userChanged(.channel(UpdateChannelPolicy.channel(for: newValue))) }
+    }
+
+    func checkForUpdates() {
+        guard let driver, driver.canCheckForUpdates else { return }
+        driver.checkForUpdates()
+    }
+
+    // MARK: Internals
+
+    private func userChanged(_ change: UpdatePreferenceChange) {
+        let next = preferences.applying(change)
+        guard next != preferences else { return }
+        apply(next)
+        onPreferenceChange?(change)
+    }
+
+    /// Writes only values that differ: setting `automaticallyChecksForUpdates` makes Sparkle reschedule its cycle.
+    private func push(_ preferences: UpdatePreferences, to driver: any UpdateDriving) {
+        if driver.automaticallyChecksForUpdates != preferences.automaticallyCheck {
+            driver.automaticallyChecksForUpdates = preferences.automaticallyCheck
+        }
+        if driver.automaticallyDownloadsUpdates != preferences.automaticallyInstall {
+            driver.automaticallyDownloadsUpdates = preferences.automaticallyInstall
+        }
+        sparkleBaseline = SparkleChoices(of: driver)
+    }
+
+    /// Sparkle's update window has an "automatically download and install" checkbox that writes Sparkle's own
+    /// defaults. Adopting it at the end of a session keeps settings.json the single source (PLT-R1001). Only a
+    /// value that moved since the last push counts: Sparkle silently ignores `automaticallyDownloadsUpdates` when
+    /// the bundle disallows automatic updates, and that must never turn into an explicit D20 (PRD-R6).
+    private func adoptSparkleChoices() {
+        guard let driver, let baseline = sparkleBaseline else { return }
+        let current = SparkleChoices(of: driver)
+        if current.automaticallyCheck != baseline.automaticallyCheck {
+            userChanged(.automaticallyCheck(current.automaticallyCheck))
+        }
+        if current.automaticallyDownload != baseline.automaticallyDownload {
+            userChanged(.automaticallyInstall(current.automaticallyDownload))
+        }
+        sparkleBaseline = SparkleChoices(of: driver)
+    }
+
+    /// PRD-R43 update-failed alert. The failure itself is logged by `updater(_:didAbortWithError:)`.
+    ///
+    /// Sparkle closes its "Checking for updates" and progress windows only when the session ends, which happens on
+    /// the main-queue turn after the acknowledgement. So the session is acknowledged first and the alert is shown
+    /// on a later turn: it never sits on top of a frozen progress window, and "Thử lại" can start a new check.
+    private func presentFailure(_ error: NSError, acknowledgement: @escaping () -> Void) {
+        acknowledgement()
+        dependencies.onNextMainTurn { [weak self] in self?.showFailureAlert() }
+    }
+
+    private func showFailureAlert() {
+        let content = UpdateFailureContent(
+            localizer: dependencies.localizer(), appName: brand.displayName, version: brand.version,
+            siteHost: brand.siteHost)
+        switch dependencies.presenter.present(content) {
+        case .retry:
+            checkForUpdates()
+        case .download:
+            dependencies.openURL(content.downloadURL)
+        case .close:
+            break
+        }
+    }
+
+    private func log(_ event: LogEvent.UpdateEvent, level: LogLevel) {
+        dependencies.logger?.log(.update(event), level: level)
+    }
+}
+
+/// The two Sparkle settings the user can flip in Sparkle's own windows.
+private struct SparkleChoices: Equatable {
+    var automaticallyCheck: Bool
+    var automaticallyDownload: Bool
+
+    @MainActor
+    init(of driver: any UpdateDriving) {
+        automaticallyCheck = driver.automaticallyChecksForUpdates
+        automaticallyDownload = driver.automaticallyDownloadsUpdates
+    }
+}
+
+/// `SPUUpdaterDelegate` is `NS_SWIFT_UI_ACTOR` in Sparkle 2.10.1, so its requirements are main-actor isolated and
+/// these witnesses are checked by the compiler. The ADR 0313 pattern (`nonisolated` plus `MainActor.assumeIsolated`)
+/// is not used: under Swift 6 region isolation it cannot store Sparkle's non-Sendable install block in main-actor
+/// state.
 extension UpdaterController: SPUUpdaterDelegate {
     /// `["beta"]` only after the user opted in (PLT-R1101, PRD-R53).
-    nonisolated func allowedChannels(for updater: SPUUpdater) -> Set<String> { unimplemented() }
+    func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        UpdateChannelPolicy.allowedChannels(for: preferences.channel)
+    }
 
-    /// Install on quit by default; call `immediateInstallHandler` only after 60 s without a key press and with
-    /// secure input off (PLT-R1105).
-    nonisolated func updater(
+    /// Install on quit by default (PLT-R1105). The handler is taken, and run at once, only when the keyboard has
+    /// been idle for 60 s with secure input off and the update is not critical. Otherwise this returns false:
+    /// returning true stalls Sparkle's update cycle until the handler runs, which would disable "Check for
+    /// updates", stop the 24 h schedule and hide critical updates (PRD-R54) while the keyboard stays busy.
+    func updater(
         _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
         immediateInstallationBlock immediateInstallHandler: @escaping () -> Void
-    ) -> Bool { unimplemented() }
+    ) -> Bool {
+        // The installer is prepared for install at quit in both cases; the typed log has no separate event for
+        // the early relaunch.
+        log(.installScheduledOnQuit, level: .info)
+        switch RelaunchGate.decision(for: idleState(), isCritical: item.isCriticalUpdate) {
+        case .installNow:
+            immediateInstallHandler()
+            return true
+        case .installOnQuit:
+            return false
+        }
+    }
+
+    func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
+        log(.checkStarted(manual: updateCheck == .updates), level: .info)
+    }
+
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        log(.updateFound(build: item.versionString), level: .notice)
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
+        let code = (error as NSError).code
+        guard UpdateFailureFilter.isFailure(code: code) else { return }
+        log(.failed(code: code), level: .error)
+    }
+
+    func updater(
+        _ updater: SPUUpdater, userDidMake choice: SPUUserUpdateChoice, forUpdate updateItem: SUAppcastItem,
+        state: SPUUserUpdateState
+    ) {
+        adoptSparkleChoices()
+    }
+
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: (any Error)?) {
+        adoptSparkleChoices()
+    }
+
+    /// PRD-R55: no system profile, even if a future Info.plist turned profiling on.
+    func allowedSystemProfileKeys(for updater: SPUUpdater) -> [String]? { [] }
+
+    /// PLT-R906: the appcast request carries no extra parameters.
+    func feedParameters(for updater: SPUUpdater, sendingSystemProfile sendingProfile: Bool) -> [[String: String]] {
+        []
+    }
 }
 ```
 <!-- /include -->
@@ -10921,6 +12258,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
     private struct State {
         var focusedPID: Int32?
         var attributes: [Int32: FocusAttributes] = [:]
+        var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
         var unavailable: Set<Int32> = []
         var observers: [Observer] = []
@@ -10934,11 +12272,14 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     public init() {}
 
-    /// Sets the focused app/element; posts the given notification to observers.
-    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?) {
+    /// Sets the focused app/element; posts the given notification to observers. `element` names the focused
+    /// element within the app: the same number is the same `AXUIElement` (CFEqual), another number another one,
+    /// so tests can move focus between fields of one app or keep it on one field while its attributes change.
+    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?, element: UInt16 = 0) {
         state.withLock {
             $0.focusedPID = pid
             $0.attributes[pid] = attributes
+            $0.elements[pid] = element
         }
         if let notify { post(notify, from: pid) }
     }
@@ -10975,15 +12316,30 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func focusedApplication() -> AXCallResult<Int32?> { .success(state.withLock { $0.focusedPID }) }
 
     public func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?> {
-        let (timingOut, unavailable, hasElement) = state.withLock { state in
+        let (timingOut, unavailable, hasElement, element) = state.withLock { state in
             state.elementQueries[pid, default: 0] += 1
-            return (state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil)
+            return (
+                state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil,
+                state.elements[pid] ?? 0
+            )
         }
         if timingOut { return .timedOut }
         if unavailable { return .unavailable }
         guard hasElement else { return .success(nil) }
-        // An application element is a local reference: creating it sends no AX message.
-        return .success(AXFocusedElement(pid: pid, element: AXElementReference(AXUIElementCreateApplication(pid))))
+        return .success(AXFocusedElement(pid: pid, element: Self.elementReference(pid: pid, element: element)))
+    }
+
+    /// Fixture limits that keep every synthetic reference distinct and inside `Int32`.
+    static let maximumFakePID: Int32 = 99_999
+    static let maximumFakeElement: UInt16 = 20_000
+
+    /// An application element is a local reference: creating it sends no AX message. Element 0 is the app's
+    /// own reference; other elements use unused pids above 1,000,000, one per (pid, element) with the full pid.
+    static func elementReference(pid: Int32, element: UInt16) -> AXElementReference {
+        precondition((0...maximumFakePID).contains(pid), "fake pids stay below 100,000")
+        precondition(element <= maximumFakeElement, "fake element numbers stay at or below 20,000")
+        let reference = element == 0 ? pid : 1_000_000 + Int32(element) * (maximumFakePID + 1) + pid
+        return AXElementReference(AXUIElementCreateApplication(reference))
     }
 
     public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
@@ -11304,6 +12660,7 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
     public struct FakeBundle: Sendable, Hashable {
         public var frameworks: [String]
         public var helpers: [String]
+        /// Paths relative to the bundle, for example `Contents/MacOS/libxul.dylib`.
         public var files: [String]
         public var info: [String: JSONValue]
         public init(frameworks: [String], helpers: [String], files: [String], info: [String: JSONValue]) {
@@ -11316,12 +12673,23 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
 
     public func frameworkNames(in bundle: URL) -> [String] { bundles[bundle]?.frameworks ?? [] }
     public func helperAppNames(in bundle: URL) -> [String] { bundles[bundle]?.helpers ?? [] }
-    /// `files` holds paths relative to `Contents`; the depth is the number of path components.
-    public func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool {
-        bundles[bundle]?.files.contains { path in
+
+    /// Same contract as the production inspector (PLT-R510): `directory` is a folder inside a known bundle, and
+    /// a file matches when it lies at most `maxDepth` levels below it (1 = directly inside).
+    public func containsFile(named name: String, in directory: URL, maxDepth: Int) -> Bool {
+        let target = directory.standardizedFileURL.path
+        guard
+            let (bundleURL, bundle) = bundles.first(where: { url, _ in
+                let root = url.standardizedFileURL.path
+                return target == root || target.hasPrefix(root + "/")
+            })
+        else { return false }
+        let folder = target.dropFirst(bundleURL.standardizedFileURL.path.count).split(separator: "/")
+        return bundle.files.contains { path in
             let components = path.split(separator: "/")
-            return components.last.map(String.init) == name && components.count <= maxDepth
-        } ?? false
+            guard components.last.map(String.init) == name, components.starts(with: folder) else { return false }
+            return components.count - folder.count <= maxDepth
+        }
     }
 
     public func infoDictionary(of bundle: URL) -> [String: JSONValue]? { bundles[bundle]?.info }

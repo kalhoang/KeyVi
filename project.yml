@@ -53,6 +53,8 @@ targets:
     platform: macOS
     sources:
       - path: App/Sources
+        excludes:
+          - "Updater/Tests/**"
       - path: App/Resources
     settings:
       base:
@@ -87,6 +89,33 @@ targets:
               echo "warning: missing $src (Debug uses the embedded ruleset)"
             fi
           done
+
+  # W2-D: logic tests of the Sparkle wrapper (QA-R3). No TEST_HOST, so running them never launches the app; the
+  # App scheme builds the app first, and BuiltBundleTests reads its Info.plist and frameworks from the products
+  # directory. UPDATER_TESTS turns on the test files under App/Sources/Updater/Tests (excluded from App).
+  UpdaterTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: App/Sources/Updater
+      # The shipped Updates catalog (compiled into the bundle's lproj folders) and the site's routes as resources,
+      # so the tests never open repository files at run time (xctest has no access to every volume).
+      - path: App/Resources/Localization/Updates.xcstrings
+      - path: site/lib/routes.mjs
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID_DEV).updatertests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) UPDATER_TESTS
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+    dependencies:
+      - package: AppCore
+        products: [AppModel, RealtimeSupport, Diagnostics, SettingsStore, ShellCore, TestSupport]
+      - package: Sparkle
+        product: Sparkle
 
   # QA-R10 test host app for platform integration tests. Never shipped. Ad-hoc signed: it needs no
   # permissions and no stable signing identity (the app under test is the one that holds TCC grants).
@@ -126,6 +155,8 @@ schemes:
     build:
       targets:
         App: all
+    test:
+      targets: [UpdaterTests]
     run:
       config: Debug
     archive:

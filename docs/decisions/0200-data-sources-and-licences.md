@@ -66,8 +66,8 @@ file, so shipping that file in `NOTICES.txt` and the app's acknowledgements sati
    and its `README` notes that using COCA frequency data "will require permission".
 3. What is redistributed is a list of single common English words: no COCA text, n-grams or frequency
    values. Single words are facts, not protected expression; the selection is Kevin Atkinson's compilation,
-   which he licenses for redistribution with the notice above, and he states that his COCA use is within
-   the NDA. An NDA binds its signatory, not downstream users of his published lists.
+   which the author licenses for redistribution with the notice above, and the author states that the COCA
+   use is within the NDA. An NDA binds its signatory, not downstream users of the published lists.
 
 **Conclusion:** levels 10 to 35 of SCOWL 2020.12.07 are redistributable under the SCOWL notice. Residual
 risk is low and contractual only (between the SCOWL author and the COCA vendor). If Pa wants zero COCA

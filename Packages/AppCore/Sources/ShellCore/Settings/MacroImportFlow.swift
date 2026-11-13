@@ -64,7 +64,8 @@ extension MacroImportRefusal {
     public func message(_ localizer: Localizer) -> String {
         switch self {
         case .tooLarge:
-            return localizer.format(MacrosText.importTooLarge, SizeText.megabytes(MacroImporter.maxFileBytes, localizer))
+            return localizer.format(
+                MacrosText.importTooLarge, SizeText.megabytes(MacroImporter.maxFileBytes, localizer))
         case .empty: return localizer.string(MacrosText.importEmpty)
         case .invalidFile(nil): return localizer.string(MacrosText.importInvalidFile)
         case .invalidFile(let row?):

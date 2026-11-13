@@ -138,7 +138,9 @@ import Testing
         }
     }
 
-    static var control: Regex<(Substring, Substring)> { /\b(Button|TextField|Toggle|Picker|Link|Menu|DisclosureGroup|TextEditor)\(/ }
+    static var control: Regex<(Substring, Substring)> {
+        /\b(Button|TextField|Toggle|Picker|Link|Menu|DisclosureGroup|TextEditor)\(/
+    }
 
     static func indentation(_ line: String) -> Int { line.prefix { $0 == " " }.count }
 

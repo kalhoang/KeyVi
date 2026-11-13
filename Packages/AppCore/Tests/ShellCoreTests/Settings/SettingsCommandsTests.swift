@@ -147,7 +147,8 @@ import Testing
         let state = await commands.perform(ResetRequest(target: .pane(.macros)).plan)
         await harness.advance(by: .seconds(2))
         #expect(state.macros.count == 1)
-        #expect(harness.paths.filter { $0.hasPrefix("backups/macros") } == before.filter { $0.hasPrefix("backups/macros") })
+        #expect(
+            harness.paths.filter { $0.hasPrefix("backups/macros") } == before.filter { $0.hasPrefix("backups/macros") })
     }
 
     private func macroBackups(_ harness: SettingsStoreHarness) -> [String] {

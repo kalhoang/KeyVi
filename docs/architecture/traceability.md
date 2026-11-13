@@ -25,7 +25,7 @@ no requirement missing, none duplicated.
 already delivers, or another track (engine, engine data, docs, CI and release, site). Revised 2026-11-13 after the
 design review: W1-F is split into W1-F1 (pipeline) and W1-F2 (tap, watchdogs, lifecycle state machine); W1-H
 moved to wave 2a as W2-E1; the former W2-E is W2-E2 (wave 2b). A **Pa** mark means the
-item can only be finished by Pa by hand on his Mac or with his accounts; nothing automated attempts it (no
+item can only be finished by Pa by hand on Pa's Mac or with Pa's accounts; nothing automated attempts it (no
 synthetic events, taps, permission or input-source changes, credentials).
 
 ## Items only Pa can verify on this Mac
@@ -38,10 +38,10 @@ synthetic events, taps, permission or input-source changes, credentials).
 | Spike S1 | PLT-R398D | Build and install `SpikeIMK`, enable it as an input source, test iTerm2 and Terminal with secure keyboard entry, record the result ADR |
 | VERIFY on hardware | PLT-R301, PLT-R320, PLT-R323, PLT-R363, PLT-R385, PLT-R462, PLT-R510, PLT-R704, PRD-R17, PRD-R64, PRD-R68 | Confirm echo delivery, suppression defaults, Unicode string presence, AX behaviour, fingerprints, pane names on a Vietnamese system |
 | Notarization and signing | PLT-R750, PLT-R752, QA-R31 | Developer ID certificate, App Store Connect API key, approve the protected `release` environment |
-| Update key and channel | PLT-R1101, PLT-R1102, PLT-R1103, PLT-R1105, PLT-R1107, PLT-R1108, PRD-R50, PRD-R52, QA-R32, QA-R33, QA-R38, QA-R39, QA-R40 | Generate the EdDSA key pair (fill `SPARKLE_PUBLIC_ED_KEY`), keep backups, publish from his Mac, rehearse rollback, run the upgrade test |
+| Update key and channel | PLT-R1101, PLT-R1102, PLT-R1103, PLT-R1105, PLT-R1107, PLT-R1108, PRD-R50, PRD-R52, QA-R32, QA-R33, QA-R38, QA-R39, QA-R40 | Generate the EdDSA key pair (fill `SPARKLE_PUBLIC_ED_KEY`), keep backups, publish from Pa's Mac, rehearse rollback, run the upgrade test |
 | VoiceOver and accessibility | PLT-R211, PRD-R10, PRD-R12, PRD-R66, PRD-R67, PRD-R68 | VoiceOver labels and announcements, Increase Contrast, Reduce Motion, keyboard-only Settings and onboarding |
 | Diagnostics run by hand | PLT-R810, PLT-R905, PLT-R1201, PLT-R1204, PLT-R1205 | Latency probe, typing trace with HUD and review, guided test on a local inline-completion page |
-| Accounts and data | PRD-R59, QA-R12, QA-R23, QA-R25, PLT-R205, PRD-R9 | Donation account details and QR images; self-hosted runner; branch protection; login item and icon behaviour on his menu bar |
+| Accounts and data | PRD-R59, QA-R12, QA-R23, QA-R25, PLT-R205, PRD-R9 | Donation account details and QR images; self-hosted runner; branch protection; login item and icon behaviour on Pa's menu bar |
 | Provenance | CLR-R13 | Similarity review by someone allowed to read the other code bases |
 | Artwork | CLR-R7, PRD-R9, PRD-R10, PRD-R40, PRD-R59 | Approve or replace the placeholder status-icon glyphs (drawn in code, `App/Sources/Shell/StatusGlyph.swift`), the app icon (the asset catalog is empty), onboarding illustrations (placeholders marked VERIFY) and the donation QR images; record each asset's source |
 | Brand data | PRD-R47, PRD-R49, QA-R51, QA-R60, PLT-R903 | Fill `APP_SUPPORT_EMAIL` and `APP_REPOSITORY_URL` in `Config/Brand.xcconfig` (empty hides the email and GitHub buttons); choose the final name before the first public release (the rename appends the old folder to `APP_LEGACY_STORAGE_FOLDER_NAMES`, ADR 0307) |

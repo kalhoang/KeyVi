@@ -64,6 +64,6 @@
 ## Consequences
 
 - A release takes two manual actions by Pa: approving the `release` environment, then running
-  `scripts/publish-release` on his Mac. A compromised GitHub account can at most create a draft release;
+  `scripts/publish-release` on Pa's Mac. A compromised GitHub account can at most create a draft release;
   it cannot ship an auto-update.
 - Changing the build number scheme later must keep numbers increasing; record it in a new decision.

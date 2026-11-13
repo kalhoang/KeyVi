@@ -29,7 +29,8 @@ same time ([ADR 0313](../decisions/0313-testability-seams.md)), so "Depends on: 
    paths, and the spec sections behind your scope IDs. Clean-room rules apply in full (CLR-R1-R5).
 2. **Ownership.** Edit only your owned paths. Everything else is read-only for you. These are frozen for the
    whole of waves 1 and 2 and change only through the integrator: `Packages/AppCore/Package.swift`,
-   `project.yml`, `Config/**`, `App/Info.plist`, `Packages/AppCore/Sources/AppModel/**`,
+   `project.yml`, `Config/**` (except `Config/Sparkle.xcconfig`, owned by W2-D), `App/Info.plist`,
+   `Packages/AppCore/Sources/AppModel/**`,
    `Packages/AppCore/Sources/TestSupport/Fakes/Common/**`, the `ScaffoldTests.swift` and `*SeamTests.swift`
    files (owners may add tests next to them), `ARCHITECTURE.md`, `docs/architecture/**`,
    `docs/decisions/030x-*.md` and `031x-*.md`. Need a change there? Put the exact request in your report.
@@ -329,7 +330,9 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 ### W2-A Composition root, host controller, end-to-end with fakes
 
 - **Owned paths:** `App/Sources/Composition/**`, `Packages/AppCore/Sources/InputHost/Lifecycle/InputHostController.swift`,
-  `Packages/AppCore/Sources/InputHost/Integration/**`, `Packages/AppCore/Tests/InputHostTests/Integration/**`
+  `Packages/AppCore/Sources/InputHost/Integration/**`, `Packages/AppCore/Tests/InputHostTests/Integration/**`,
+  `App/Resources/Localization/Composition.xcstrings` (added at the wave 2a merge: safe-mode, move-failed and
+  conflict-notice copy)
 - **Depends on:** W1-A to W1-G.
 - **Scope:** PLT-R201, PLT-R205, PLT-R307, PLT-R311, PLT-R312, PLT-R314, PLT-R316, PLT-R399, PLT-R710, PLT-R909, PLT-R1008, PLT-R1009, PRD-R27, PRD-R52, QA-R42
 - **Work:** `InputHostController` (performs `HostLifecycle` effects with the real services, timers through
@@ -356,6 +359,7 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 - **Owned paths:** `App/Sources/Settings/**`, `App/Resources/Donation.xcassets/**`,
   `App/Resources/Localization/Settings.xcstrings`, `Macros.xcstrings`, `Apps.xcstrings`, `Support.xcstrings`,
   `Packages/AppCore/Sources/ShellCore/AppsPane.swift`, `Packages/AppCore/Sources/ShellCore/Services.swift`,
+  `Packages/AppCore/Sources/ShellCore/Settings/**` (view models, ADR 0305; added at the wave 2a merge),
   `Packages/AppCore/Tests/ShellCoreTests/Settings/**`
 - **Depends on:** W1-B, W1-C, W1-E, W1-G.
 - **Scope:** PLT-R373, PLT-R462, PLT-R540, PLT-R1010, PRD-R7, PRD-R15, PRD-R16, PRD-R24, PRD-R25, PRD-R26, PRD-R28, PRD-R31, PRD-R32, PRD-R34, PRD-R36, PRD-R37, PRD-R53, PRD-R57, PRD-R59, PRD-R62, PRD-R66, PRD-R67
@@ -382,7 +386,8 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 
 - **Owned paths:** `App/Sources/Diagnostics/**`, `App/Resources/Localization/Diagnostics.xcstrings`,
   `Packages/AppCore/Sources/InputHost/Probes/**`, `Packages/AppCore/Tests/InputHostTests/Probes/**`,
-  `Packages/AppCore/Sources/ShellCore/BugReport.swift`, `Packages/AppCore/Tests/ShellCoreTests/BugReport/**`
+  `Packages/AppCore/Sources/ShellCore/BugReport.swift`, `Packages/AppCore/Tests/ShellCoreTests/BugReport/**`,
+  and since the wave 2a merge `ShellCore/BugReportSummary.swift`, `ShellCore/ReportAssembly.swift`
 - **Depends on:** W1-A, W1-D, W1-F1, W1-G.
 - **Scope:** PLT-R410, PLT-R540, PLT-R810, PLT-R905, PLT-R1201, PLT-R1204, PLT-R1205, PRD-R47, PRD-R48, PRD-R49, PRD-R62, PRD-R66, PRD-R67
 - **Work:** diagnostics window (PLT-R1201), report preview before copy/save (PLT-R1204), bug report sheet with
@@ -486,7 +491,7 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 ## Interim verification before the self-hosted runner exists
 
 The runner is open question 3/5 for Pa. Until it exists, every traceability row verified by I (TestHost
-integration) or C (compatibility scenario) is verified as **M** by Pa on his Mac, with these reduced steps
+integration) or C (compatibility scenario) is verified as **M** by Pa on Pa's Mac, with these reduced steps
 (traceability.md lists the affected rows). No workstream posts events, creates taps or changes input
 sources on that Mac.
 
