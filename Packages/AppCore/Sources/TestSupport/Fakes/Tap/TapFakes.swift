@@ -96,3 +96,49 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
         }
     }
 }
+
+/// `TapControl` without a thread: records enable calls and stops; `systemDisables()` turns the tap off the way
+/// the OS does, without an enable call (PLT-R331 tests of `TapWatchdog`).
+public final class FakeTapControl: TapControl, Sendable {
+    private struct State {
+        var enabled: Bool
+        var running: Bool
+        var enableCalls: [Bool] = []
+        var stopCalls = 0
+    }
+
+    private let state: Mutex<State>
+
+    public init(enabled: Bool = true, running: Bool = true) {
+        state = Mutex(State(enabled: enabled, running: running))
+    }
+
+    public func setEnabled(_ enabled: Bool) {
+        state.withLock {
+            $0.enabled = enabled
+            $0.enableCalls.append(enabled)
+        }
+    }
+
+    public var isEnabled: Bool { state.withLock { $0.enabled && $0.running } }
+    public var isRunning: Bool { state.withLock { $0.running } }
+
+    public func stop() {
+        state.withLock {
+            $0.running = false
+            $0.stopCalls += 1
+        }
+    }
+
+    public func systemDisables() { state.withLock { $0.enabled = false } }
+    public var enableCalls: [Bool] { state.withLock { $0.enableCalls } }
+    public var stopCalls: Int { state.withLock { $0.stopCalls } }
+}
+
+/// Counts `reclaimAll()` calls (ADR 0303: the watchdog's 5 s tick frees retired snapshot boxes).
+public final class FakeSnapshotReclaimer: SnapshotReclaiming, Sendable {
+    private let calls = Atomic<Int>(0)
+    public init() {}
+    public func reclaimAll() { calls.wrappingAdd(1, ordering: .relaxed) }
+    public var reclaimCount: Int { calls.load(ordering: .relaxed) }
+}
