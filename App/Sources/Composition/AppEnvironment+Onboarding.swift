@@ -125,7 +125,7 @@ extension AppEnvironment: OnboardingActions {
 
     /// PRD-R40 screen 6, PRD-R32: macros from the chosen file, the user's own macros kept for duplicates.
     func importMacros(from url: URL) {
-        guard let data = try? Data(contentsOf: url) else { return }
+        guard let data = OnboardingMacroImport.read(url) else { return }
         let store = settingsStore
         let fileExtension = url.pathExtension
         Task {

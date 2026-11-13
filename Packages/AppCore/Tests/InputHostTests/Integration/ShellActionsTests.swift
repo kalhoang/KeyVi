@@ -41,6 +41,24 @@ struct ShellActionsTests {
         #expect(OnboardingMacroImport.merged(data: huge, fileExtension: "txt", existing: []) == nil)
     }
 
+    /// PLT-R912: a file over the cap is rejected without being loaded into memory.
+    @Test func importReadsAtMostTheCapFromDisk_PLT_R912() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "w2a-import-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let small = directory.appendingPathComponent("macros.txt")
+        try Data("vn\tViệt Nam\n".utf8).write(to: small)
+        #expect(OnboardingMacroImport.read(small) == Data("vn\tViệt Nam\n".utf8))
+        let exact = directory.appendingPathComponent("exact.txt")
+        try Data(count: MacroImporter.maxFileBytes).write(to: exact)
+        #expect(OnboardingMacroImport.read(exact)?.count == MacroImporter.maxFileBytes)
+        let large = directory.appendingPathComponent("large.txt")
+        try Data(count: MacroImporter.maxFileBytes + 1).write(to: large)
+        #expect(OnboardingMacroImport.read(large) == nil)
+        #expect(OnboardingMacroImport.read(directory.appendingPathComponent("missing.txt")) == nil)
+    }
+
     @Test func supportLinksPointAtTheSiteSections() throws {
         let site = try #require(URL(string: "https://example.org/"))
         #expect(

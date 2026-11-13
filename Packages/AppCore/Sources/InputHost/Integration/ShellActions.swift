@@ -45,6 +45,16 @@ public enum TextFocusOverride {
 /// Onboarding screen 6: macros from a file the user picked, merged without touching the user's own macros
 /// ("keep mine" for duplicates, PRD-R32). Nil when the format is not recognised or the file is too large.
 public enum OnboardingMacroImport {
+    /// Reads the picked file, at most `MacroImporter.maxFileBytes` (PLT-R912): one byte more is read only to
+    /// detect an oversized file, so a huge file is never loaded into memory. Nil when unreadable or too large.
+    public static func read(_ url: URL) -> Data? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        let data: Data
+        do { data = try handle.read(upToCount: MacroImporter.maxFileBytes + 1) ?? Data() } catch { return nil }
+        return data.count <= MacroImporter.maxFileBytes ? data : nil
+    }
+
     public static func merged(data: Data, fileExtension: String?, existing: [StoredMacro]) -> [StoredMacro]? {
         guard data.count <= MacroImporter.maxFileBytes,
             let format = MacroImporter.detectFormat(data, fileExtension: fileExtension)

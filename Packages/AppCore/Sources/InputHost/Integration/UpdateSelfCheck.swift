@@ -70,8 +70,10 @@ public struct UpdateSelfCheck: Sendable {
     }
 }
 
-/// PRD-R52: settings whose meaning changed in a release (key and the version that changed it). Empty in v1;
-/// a non-empty list shows one menu status line for 24 hours, linking to the release notes.
+/// PRD-R52: settings whose meaning changed in a release (key and the version that changed it). Empty in v1, so
+/// the first launch after an update shows nothing. DEFERRED until the first entry: recording the previous version,
+/// the 24-hour menu status line (needs a Status-table key) and its release-notes link. A test fails as soon as an
+/// entry is added, so the list cannot grow without that wiring.
 public enum SettingMeaningChanges {
     public struct Entry: Sendable, Hashable {
         public var version: LooseVersion
@@ -79,9 +81,4 @@ public enum SettingMeaningChanges {
     }
 
     public static let entries: [Entry] = []
-
-    /// Entries introduced after `previous` up to and including `current`.
-    public static func between(previous: LooseVersion?, current: LooseVersion) -> [Entry] {
-        entries.filter { entry in entry.version <= current && previous.map { entry.version > $0 } ?? false }
-    }
 }

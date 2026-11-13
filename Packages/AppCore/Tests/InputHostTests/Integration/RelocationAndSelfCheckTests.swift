@@ -238,8 +238,8 @@ struct UpdateSelfCheckTests {
     }
 
     @Test func noSettingChangedMeaningInVersionOne_PRD_R52() {
-        #expect(SettingMeaningChanges.entries.isEmpty)
-        #expect(SettingMeaningChanges.between(previous: LooseVersion("0.1.0"), current: LooseVersion("0.2.0")!).isEmpty)
-        #expect(SettingMeaningChanges.between(previous: nil, current: LooseVersion("0.2.0")!).isEmpty)
+        #expect(
+            SettingMeaningChanges.entries.isEmpty,
+            "the 24-hour status line and its release-notes link are not wired yet: wire them with the first entry")
     }
 }
