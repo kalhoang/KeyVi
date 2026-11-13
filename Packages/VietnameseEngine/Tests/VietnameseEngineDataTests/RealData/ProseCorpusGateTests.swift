@@ -6,9 +6,11 @@
 // difference attributable to an `en` row of the ambiguity table.
 //
 // Reading (docs/decisions/0202): the legal texts mix the two tone placements of spec 5.2 (`hoá` 339 times,
-// `hóa` 366 times; `thoả` / `thỏa`, `uỷ` / `ủy`), while a typist has one tone-style setting. A token that
-// differs from the source only by that placement is the same syllable in the typist's style; it counts as
-// identical and the number of such tokens is printed.
+// `hóa` 366 times; `thoả` / `thỏa`, `uỷ` / `ủy`), while a typist has one tone-style setting. The typists run in
+// both styles. A token whose typed form is exactly the source syllable spelled by the independent oracle in the
+// typist's own style (`hoá` typed `hóa` by a traditional typist, never the reverse) counts as identical; the
+// number of such tokens and the strict share are printed. A typist that writes the other style's placement is a
+// difference, so the relaxation cannot hide a tone-placement regression.
 
 import Foundation
 import Testing
@@ -19,8 +21,8 @@ import VietnameseEngineTesting
 struct ProseCorpusGateTests {
     private static let corpus = Result { try RealData.proseCorpus() }
 
-    static let cases: [(CorpusMethod, CorpusOrder)] = CorpusMethod.allCases.flatMap { method in
-        ProseCorpusCheck.typists.map { (method, $0) }
+    static let cases: [(CorpusMethod, CorpusOrder, ToneStyle)] = CorpusMethod.allCases.flatMap { method in
+        ProseCorpusCheck.typists.flatMap { order in [ToneStyle.traditional, .modern].map { (method, order, $0) } }
     }
 
     /// Differences that the data cannot remove (docs/decisions/0202, open issue for Pa): rule L10 restores
@@ -28,16 +30,18 @@ struct ProseCorpusGateTests {
     /// `trên Internet. Cơ chế` commits `Cow` for the Telex typists, whose keys for `Cơ` are `Cow`.
     static let knownEngineDifferences: Set<String> = ["Cơ -> Cow"]
 
-    @Test("ENG-R873: three typists, both methods", arguments: cases)
-    func typist(_ method: CorpusMethod, _ order: CorpusOrder) throws {
+    @Test("ENG-R873: three typists, both methods, both tone styles", arguments: cases)
+    func typist(_ method: CorpusMethod, _ order: CorpusOrder, _ style: ToneStyle) throws {
         let resources = try RealData.resources()
         let report = ProseCorpusCheck.run(
-            text: try Self.corpus.get(), method: method, order: order, resources: resources)
-        let styleOnly = report.differences.filter { Self.differsOnlyByTonePlacement($0.word, $0.committed) }
-        let differences = report.differences.filter { !Self.differsOnlyByTonePlacement($0.word, $0.committed) }
+            text: try Self.corpus.get(), method: method, order: order, style: style, resources: resources)
+        let styleOnly = report.differences.filter { Self.isSourceInTypistStyle($0.word, $0.committed, style: style) }
+        let differences = report.differences.filter {
+            !Self.isSourceInTypistStyle($0.word, $0.committed, style: style)
+        }
         let identical = Double(report.tokens - differences.count) / Double(report.tokens)
         print(
-            "[ENG-R873] \(method) \(order): \(report.tokens) tokens, identical "
+            "[ENG-R873] \(method) \(order) \(style): \(report.tokens) tokens, identical "
                 + String(format: "%.4f %%", identical * 100) + " (\(styleOnly.count) differ only by the 5.2 "
                 + "tone placement; strictly identical " + String(format: "%.4f %%", report.identicalShare * 100)
                 + "), \(differences.count) differences:\n" + RealData.listing(differences))
@@ -62,29 +66,43 @@ struct ProseCorpusGateTests {
         change.decision == .restored(.ambiguityTable) && resources.ambiguity[change.committed.lowercased()] == .english
     }
 
-    /// The same Tier A syllable (onset, vowel group, coda, tone) with the same letter cases, written with
-    /// the other tone placement of spec 5.2 (`hoá` and `hóa`, `Uỷ` and `Ủy`).
-    static func differsOnlyByTonePlacement(_ source: String, _ typed: String) -> Bool {
-        guard source != typed, source.count == typed.count,
-            zip(source, typed).allSatisfy({ $0.isUppercase == $1.isUppercase })
-        else { return false }
-        let lhs = Orthography.analyze(source.lowercased())
-        let rhs = Orthography.analyze(typed.lowercased())
-        return lhs.validity == .standard && rhs.validity == .standard && lhs.onset == rhs.onset
-            && lhs.vowelGroup == rhs.vowelGroup && lhs.coda == rhs.coda && lhs.tone == rhs.tone
+    /// `typed` differs from `source` and is exactly the source syllable (onset, rhyme, tone, letter case) spelled
+    /// by `SyllableOracle` with the tone placement of `style` (spec 5.1, 5.2): `hoá` typed `hóa` in the
+    /// traditional style, `hóa` typed `hoá` in the modern style, and nothing else.
+    static func isSourceInTypistStyle(_ source: String, _ typed: String, style: ToneStyle) -> Bool {
+        guard source != typed, let casing = casing(of: source) else { return false }
+        let analysis = Orthography.analyze(source.lowercased())
+        guard analysis.validity == .standard else { return false }
+        let spelled = SyllableOracle.spell(
+            onset: analysis.onset, rhyme: analysis.vowelGroup + analysis.coda, tone: analysis.tone, style: style,
+            casing: casing)
+        return typed == spelled
+    }
+
+    private static func casing(of word: String) -> SyllableOracle.Casing? {
+        guard let first = word.first else { return nil }
+        let rest = word.dropFirst()
+        if word.allSatisfy(\.isLowercase) { return .lowercase }
+        if word.count > 1, word.allSatisfy(\.isUppercase) { return .uppercase }
+        return first.isUppercase && rest.allSatisfy(\.isLowercase) ? .titlecase : nil
     }
 
     private static func key(_ change: ChangedWord) -> String { "\(change.word) -> \(change.committed)" }
 
-    @Test("The tone-placement comparison accepts only the 5.2 placement of the same syllable")
+    @Test("The tone-placement comparison accepts only the typist's own 5.2 placement of the same syllable")
     func tonePlacementComparison() {
-        #expect(Self.differsOnlyByTonePlacement("hoá", "hóa"))
-        #expect(Self.differsOnlyByTonePlacement("Uỷ", "Ủy"))
-        #expect(Self.differsOnlyByTonePlacement("HOÀ", "HÒA"))
-        #expect(!Self.differsOnlyByTonePlacement("hoá", "hoá"))
-        #expect(!Self.differsOnlyByTonePlacement("hoá", "hoà"))
-        #expect(!Self.differsOnlyByTonePlacement("hoá", "Hóa"))
-        #expect(!Self.differsOnlyByTonePlacement("Cơ", "Cow"))
-        #expect(!Self.differsOnlyByTonePlacement("IX", "Ĩ"))
+        #expect(Self.isSourceInTypistStyle("hoá", "hóa", style: .traditional))
+        #expect(!Self.isSourceInTypistStyle("hóa", "hoá", style: .traditional), "a modern placement is a regression")
+        #expect(Self.isSourceInTypistStyle("hóa", "hoá", style: .modern))
+        #expect(!Self.isSourceInTypistStyle("hoá", "hóa", style: .modern))
+        #expect(Self.isSourceInTypistStyle("Uỷ", "Ủy", style: .traditional))
+        #expect(Self.isSourceInTypistStyle("HOÀ", "HÒA", style: .traditional))
+        #expect(Self.isSourceInTypistStyle("Thoả", "Thỏa", style: .traditional))
+        #expect(!Self.isSourceInTypistStyle("hoá", "hoá", style: .traditional))
+        #expect(!Self.isSourceInTypistStyle("hoá", "hoà", style: .traditional))
+        #expect(!Self.isSourceInTypistStyle("hoá", "Hóa", style: .traditional))
+        #expect(!Self.isSourceInTypistStyle("hOá", "hÓa", style: .traditional), "mixed case is not a syllable case")
+        #expect(!Self.isSourceInTypistStyle("Cơ", "Cow", style: .traditional))
+        #expect(!Self.isSourceInTypistStyle("IX", "Ĩ", style: .traditional))
     }
 }

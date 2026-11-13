@@ -59,6 +59,20 @@ struct CorpusTargetTests {
         }
     }
 
+    @Test("ENG-T20: the prose typists type in the configured tone style (5.2)", arguments: CorpusMethod.allCases)
+    func proseToneStyle(_ method: CorpusMethod) {
+        // The source mixes both placements; each typist writes every token in its own style.
+        let text = "hóa hoá thủy thuỷ\n"
+        for order in ProseCorpusCheck.typists {
+            let traditional = ProseCorpusCheck.run(
+                text: text, method: method, order: order, resources: SpecFixtures.commitResources())
+            #expect(traditional.differences.map { "\($0.word)>\($0.committed)" } == ["hoá>hóa", "thuỷ>thủy"])
+            let modern = ProseCorpusCheck.run(
+                text: text, method: method, order: order, style: .modern, resources: SpecFixtures.commitResources())
+            #expect(modern.differences.map { "\($0.word)>\($0.committed)" } == ["hóa>hoá", "thủy>thuỷ"])
+        }
+    }
+
     @Test("ENG-R874: in VNI, words without digits are never changed")
     func vniWithoutDigits() throws {
         let engine = Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: Self.resources)
