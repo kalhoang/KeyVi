@@ -110,7 +110,7 @@
           "additionalProperties": false,
           "properties": { "urlPrefixes": { "type": "array", "items": { "type": "string", "pattern": "^https?://" }, "minItems": 1 } }
         },
-        "titlePattern": { "type": "string", "maxLength": 200 }
+        "titlePattern": { "type": "string", "minLength": 1, "maxLength": 200 }
       },
       "if": { "required": ["titlePattern"] },
       "then": { "required": ["bundleIds"], "description": "PLT-R502: titlePattern only together with bundleIds." }
@@ -205,14 +205,14 @@
       }
     },
     "userOverrideRule": {
-      "description": "rule-overrides.json entries (PLT-R522, PLT-R1205): same rule shape, id prefixed user., provenance from the guided test, no titlePattern (PLT-R502).",
+      "description": "rule-overrides.json entries (PLT-R522, PLT-R1205): same rule shape, id prefixed user., provenance from the guided test, no titlePattern (PLT-R502), no bundleGroup (PLT-R540: one app or one kind of field).",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "summary", "match", "action"],
       "properties": {
         "id": { "type": "string", "pattern": "^user\\.[A-Za-z0-9_.-]+$" },
         "summary": { "type": "string" },
-        "match": { "allOf": [{ "$ref": "#/$defs/match" }, { "not": { "required": ["titlePattern"] } }] },
+        "match": { "allOf": [{ "$ref": "#/$defs/match" }, { "not": { "required": ["titlePattern"] } }, { "not": { "required": ["bundleGroup"] } }] },
         "action": { "$ref": "#/$defs/action" },
         "provenance": {
           "type": "object",

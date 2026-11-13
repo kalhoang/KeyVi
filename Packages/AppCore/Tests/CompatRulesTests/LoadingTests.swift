@@ -132,6 +132,10 @@ import Testing
         #expect(RulesValidator.issues(in: Build.document([noBundle])) == [.titlePatternWithoutBundleIDs(ruleID("t.a"))])
         #expect(RulesValidator.issues(in: Build.document([tooLong])) == [.titlePatternTooLong(ruleID("t.b"))])
         #expect(RulesValidator.issues(in: Build.document([invalid])) == [.invalidTitlePattern(ruleID("t.c"))])
+        // NSRegularExpression rejects "" while Python's re accepts it: the schema has minLength 1 and the
+        // validator names the cause itself, so CI and load agree (PLT-R502, PLT-R503).
+        let empty = Build.rule("t.d", match: RuleMatch(bundleIds: [bundleKey("com.a.b")], titlePattern: ""))
+        #expect(RulesValidator.issues(in: Build.document([empty])) == [.invalidTitlePattern(ruleID("t.d"))])
         let userTitle = Build.userRule(
             "user.t", match: RuleMatch(bundleIds: [bundleKey("com.a.b")], titlePattern: "Inbox"))
         #expect(throws: RulesValidationError.titlePatternInUserOverride(ruleID("user.t"))) {
@@ -183,7 +187,7 @@ import Testing
             try Build.ruleSet([shipped], overrides: [clash, clash])
         }
         let grouped = Build.userRule("user.g", match: RuleMatch(bundleGroup: "nope"))
-        #expect(throws: RulesValidationError.unknownBundleGroup(rule: ruleID("user.g"), group: "nope")) {
+        #expect(throws: groupInOverride("user.g")) {
             try Build.ruleSet([shipped], overrides: [grouped])
         }
         #expect(throws: RulesValidationError.unsupportedSchemaVersion(3)) {
@@ -232,6 +236,32 @@ import Testing
         #expect(rejected[3].error == .decoding(path: "$.test", reason: "not allowed in a user override"))
         #expect(rejected[7].error == .duplicateRuleID(ruleID("user.ok")))
         #expect(rejected[8].error == .parameterOutOfRange(rule: ruleID("user.ok"), key: "interEventDelayUs"))
+    }
+
+    /// PLT-R540, PLT-R522: an override is scoped to one app or one kind of field, so a `bundleGroup` (known or
+    /// not) is rejected for that entry alone, and the surviving overrides still compile into a rule set.
+    @Test func overrideWithBundleGroupIsRejectedIndividuallyPLTR540() throws {
+        func encoded(_ rule: Rule) throws -> JSONValue {
+            try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(rule))
+        }
+        let entries = [
+            try encoded(Build.userRule("user.unknown", match: RuleMatch(bundleGroup: "nope"))),
+            try encoded(Build.userRule("user.known", match: RuleMatch(bundleGroup: "terminals"))),
+            try encoded(Build.userRule("user.ok", match: RuleMatch(bundleIds: [bundleKey("com.a.b")]))),
+        ]
+        let (rules, rejected) = RulesLoader.decodeOverrides(entries)
+        #expect(rules.map(\.id) == [ruleID("user.ok")])
+        #expect(
+            rejected == [
+                RejectedOverride(index: 0, error: groupInOverride("user.unknown")),
+                RejectedOverride(index: 1, error: groupInOverride("user.known")),
+            ])
+        let shipped = Build.rule("terminal.default", match: RuleMatch(bundleGroup: "terminals"))
+        let ruleSet = try Build.ruleSet(
+            [shipped], overrides: rules, groups: ["terminals": [bundleKey("com.a.b")]])
+        let resolved = ruleSet.resolve(Build.context(bundle: "com.a.b"))
+        #expect(resolved.rule == ruleID("user.ok"))
+        #expect(resolved.source == .user)
     }
 
     // MARK: Embedded ruleset (PLT-R503, PLT-R501)
@@ -294,4 +324,9 @@ enum BundleIDShape {
     static let lintPattern =
         "^(?:com|org|net|io|dev|app|vn|me|co|ai|so|sh|tv|us|uk|de|fr|jp|cn|ru|ca|au|eu|nl|se|ch|info|biz|xyz|tech|"
         + "cloud|edu|gov)\\.[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)*$"
+}
+
+/// The per-entry rejection of a `bundleGroup` in a user override (PLT-R540).
+private func groupInOverride(_ id: String) -> RulesValidationError {
+    .decoding(path: "rule " + id + " match.bundleGroup", reason: "not allowed in a user override")
 }

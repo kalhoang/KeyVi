@@ -33,6 +33,13 @@ import Testing
             ("no passing tested entry", { rule in Self.setTestedResult(&rule, "fail") }),
             ("delay over the cap", { rule in Self.setParam(&rule, "interEventDelayUs", .number(50_001)) }),
             ("unknown key", { rule in rule["extra"] = .bool(true) }),
+            (
+                "empty title pattern",
+                { rule in
+                    Self.setMatch(&rule, "bundleIds", .array([.string("com.a.b")]))
+                    Self.setMatch(&rule, "titlePattern", .string(""))
+                }
+            ),
         ]
         for (label, mutate) in mutations {
             let errors = schema.errors(Self.mutatingFirstRule(base, mutate))
@@ -52,6 +59,11 @@ import Testing
         withTitle.match.titlePattern = "Inbox"
         let titled = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(withTitle))
         #expect(!schema.errors(titled, at: "#/$defs/userOverrideRule").isEmpty)  // PLT-R502
+        var grouped = override
+        grouped.match.bundleIds = nil
+        grouped.match.bundleGroup = "terminals"
+        let groupedJSON = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(grouped))
+        #expect(!schema.errors(groupedJSON, at: "#/$defs/userOverrideRule").isEmpty)  // PLT-R540
     }
 
     @Test func provenanceIsDecodedByThePresenceOfSource() throws {

@@ -45,9 +45,17 @@ enum RulesValidator {
         return issues
     }
 
-    /// Problems of one user override (PLT-R522, PLT-R502). Group references are checked by `RuleSet.init`.
+    /// Problems of one user override (PLT-R522, PLT-R502, PLT-R540). Overrides never reference `bundleGroups`,
+    /// so an override does not depend on the shipped document and is accepted or rejected on its own.
     static func overrideIssues(_ rule: Rule) -> [RulesValidationError] {
         ruleIssues(rule, groups: nil, isUserOverride: true)
+    }
+
+    /// PLT-R540 scopes an override to "this app" or "only this kind of field"; a group of apps is out of scope.
+    /// Rejecting the key outright, instead of checking it against the document's groups, also keeps a rules
+    /// update that renames a group from invalidating a stored override and with it the whole rule set.
+    static func bundleGroupInUserOverride(_ id: RuleID) -> RulesValidationError {
+        .decoding(path: "rule " + id.rawValue + " match.bundleGroup", reason: "not allowed in a user override")
     }
 
     /// Throws the first problem of the shipped document or of the overrides (`RuleSet.init`).
@@ -67,7 +75,9 @@ enum RulesValidator {
         if isUserOverride && !rule.id.rawValue.hasPrefix(userOverridePrefix) {
             issues.append(.userOverrideIDNotPrefixed(rule.id))
         }
-        if let group = rule.match.bundleGroup, let groups, groups[group] == nil {
+        if isUserOverride && rule.match.bundleGroup != nil {
+            issues.append(bundleGroupInUserOverride(rule.id))
+        } else if let group = rule.match.bundleGroup, let groups, groups[group] == nil {
             issues.append(.unknownBundleGroup(rule: rule.id, group: group))
         }
         if let field = MatchLists.emptyField(in: rule.match) {
@@ -86,7 +96,10 @@ enum RulesValidator {
         if isUserOverride { return [.titlePatternInUserOverride(rule.id)] }
         var issues: [RulesValidationError] = []
         if rule.match.bundleIds?.isEmpty ?? true { issues.append(.titlePatternWithoutBundleIDs(rule.id)) }
-        if pattern.unicodeScalars.count > ParameterLimits.titlePatternLength {
+        if pattern.isEmpty {
+            // Explicit: NSRegularExpression rejects "" but Python's re accepts it (schema minLength 1).
+            issues.append(.invalidTitlePattern(rule.id))
+        } else if pattern.unicodeScalars.count > ParameterLimits.titlePatternLength {
             issues.append(.titlePatternTooLong(rule.id))
         } else if (try? NSRegularExpression(pattern: pattern)) == nil {
             issues.append(.invalidTitlePattern(rule.id))
