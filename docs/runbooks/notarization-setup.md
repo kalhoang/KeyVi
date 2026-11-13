@@ -20,7 +20,7 @@ xcrun notarytool store-credentials "<profile-name>" \
 ```
 
 - The profile is saved in the login keychain; no secret is written to a file in the repository.
-- Choose a stable profile name such as `<slug>-notary` (the slug comes from `scripts/brand.env`). `scripts/notarize.sh` reads the profile name from its environment or its header (VERIFY the variable name in the script and write it here).
+- Name the profile `<slug>-notary`, with the slug from `scripts/brand.env` (for example `source scripts/brand.env; echo "$APP_SLUG-notary"`). `scripts/notarize.sh` uses that profile by default; to use another name, set `NOTARY_KEYCHAIN_PROFILE=<profile-name>` when you run it. `scripts/notarize.sh <file> --dry-run` prints which credential source it would use without contacting Apple.
 - After storing, delete the plain `.p8` from any working directory. Keep the password-manager copy.
 - Check the profile works without submitting anything:
 
@@ -33,8 +33,8 @@ xcrun notarytool store-credentials "<profile-name>" \
 Open decision 14 allows signing in the protected `release` environment; otherwise everything stays on Pa's Mac (the scripts support both).
 
 1. In the repository, Settings, Environments, `release`: required reviewer is Pa; deployment restricted to tags on protected branches (QA-R31).
-2. Add environment secrets (not repository secrets): the base64 of the `.p8` file, the Key ID, the Issuer ID, plus the signing certificate and its password ([certificate renewal](certificate-renewal.md) step 6).
-3. The workflow decodes the `.p8` into a temporary file, uses `notarytool submit ... --key <file> --key-id <id> --issuer <issuer> --wait`, and deletes the file and the temporary keychain at the end of the job.
+2. Add environment secrets (not repository secrets): `ASC_API_KEY_P8_BASE64` (the base64 of the `.p8` file, `base64 -i AuthKey_<KEYID>.p8 | pbcopy`), `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`, plus `DEVELOPER_ID_P12_BASE64` and `DEVELOPER_ID_P12_PASSWORD` for the signing certificate ([certificate renewal](certificate-renewal.md) step 6). These are the names `release.yml` and `scripts/ci-signing.sh` read ([ADR 0503](../decisions/0503-release-pipeline.md)).
+3. `scripts/ci-signing.sh setup` decodes the `.p8` into a temporary file and exports its path as `ASC_API_KEY_PATH`; `scripts/notarize.sh` then runs `notarytool submit ... --key "$ASC_API_KEY_PATH" --key-id "$ASC_API_KEY_ID" --issuer "$ASC_API_ISSUER_ID" --wait`. `scripts/ci-signing.sh cleanup` deletes the file and the temporary keychain at the end of the job, even when it fails.
 4. Never print the secrets: no `set -x`, no `env`, no echo of the values.
 
 Never put the Sparkle EdDSA key in CI (QA-R32).

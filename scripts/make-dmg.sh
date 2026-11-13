@@ -4,6 +4,13 @@
 # Creates the distribution disk image (QA-R30 step 4): the app plus an /Applications link, an
 # optional background image (packaging/dmg/background.png, see packaging/dmg/README.md), compressed
 # UDZO, then signed with the Developer ID identity and a secure timestamp.
+#
+# Inputs: the .app (notarised and stapled first, ADR 0503 decision 2). Options: --out (default
+# <dir of app>/<slug>-<version>.dmg, the version read from the app's CFBundleShortVersionString),
+# --keychain (CI: $SIGNING_KEYCHAIN), --identity (default CODE_SIGN_IDENTITY_RELEASE from
+# Config/Signing.xcconfig), --no-sign. Reads scripts/brand.env (APP_DISPLAY_NAME is the volume name,
+# APP_SLUG the file name). Environment: none. Output: the DMG; its path is the last line on stdout.
+# Notarise it afterwards with scripts/notarize.sh <dmg>.
 set -euo pipefail
 
 usage() {
@@ -57,8 +64,16 @@ if [[ -f "$background" ]]; then
 fi
 
 rm -f "$out"
-hdiutil create -volname "$APP_DISPLAY_NAME" -srcfolder "$staging" -fs HFS+ -format UDZO \
-  -imagekey zlib-level=9 -ov "$out" >/dev/null
+# hdiutil create sometimes fails with "Resource busy" when another process holds a disk image at the same
+# moment (seen on shared Macs and hosted runners); retry a few times before giving up.
+attempt=1
+until hdiutil create -volname "$APP_DISPLAY_NAME" -srcfolder "$staging" -fs HFS+ -format UDZO \
+  -imagekey zlib-level=9 -ov "$out" >/dev/null; do
+  [[ $attempt -lt 3 ]] || die "hdiutil create failed $attempt times"
+  warn "hdiutil create failed (attempt $attempt); retrying"
+  attempt=$((attempt + 1))
+  sleep $((attempt * 2))
+done
 hdiutil verify "$out" >/dev/null
 
 if [[ $sign -eq 1 ]]; then

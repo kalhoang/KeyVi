@@ -12,6 +12,13 @@
 #     present and well formed: without it no later update could be verified (ADR 0304, QA-R33)
 #   - after notarisation: stapler validate (app and DMG) and spctl --assess
 #   - URL host allowlist (QA-R60)
+#
+# Inputs: --app (the built .app), --dmg (optional), --previous-dr FILE (the designated-requirement.txt asset
+# of the previous published release; leave it out for the first release), --write-dr FILE (write this
+# build's requirement, uploaded as a release asset), --pre-notarization (skip stapler and Gatekeeper).
+# Reads: scripts/brand.env (APP_BUNDLE_ID_RELEASE and the hosts for the URL check), Config/Signing.xcconfig
+# (DEVELOPMENT_TEAM), scripts/url-hosts.allow. Environment: none (BRAND_ENV overrides brand.env in tests).
+# Every check runs; the script lists every failure, then exits 1.
 set -euo pipefail
 
 usage() {

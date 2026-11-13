@@ -6,7 +6,16 @@
 #   - arm64 + x86_64, hardened runtime, secure timestamp, Developer ID Application identity,
 #     no injected base entitlements (no get-task-allow), no other entitlements
 #   - MARKETING_VERSION = <version>, CURRENT_PROJECT_VERSION = <build>
-# Output: dist/<slug>-<version>/<Display Name>.app plus build-info.json (Xcode version, QA-R23).
+#
+# Inputs: <version> (X.Y.Z or X.Y.Z-beta.N; release.yml takes it from the v* tag) and <build> (the
+# CFBundleVersion integer from scripts/build-number.sh <version>, ADR 0503). Options: --keychain (CI passes
+# $SIGNING_KEYCHAIN, exported by scripts/ci-signing.sh setup), --identity, --out, --unsigned, --dry-run.
+# Reads: project.yml (XcodeGen, scripts/install-xcodegen.sh pins the tool), Config/Signing.xcconfig
+# (CODE_SIGN_IDENTITY_RELEASE, DEVELOPMENT_TEAM), scripts/brand.env (APP_DISPLAY_NAME, APP_SLUG). The Sparkle
+# public key comes from Config/Sparkle.xcconfig through the project; scripts/verify-release.sh checks it.
+# Environment: none required. The Developer ID identity must be in the login keychain or in --keychain.
+# Outputs: dist/<slug>-<version>/<Display Name>.app, App.xcarchive and build-info.json (commit, Xcode, Swift,
+# macOS, QA-R23). The last line on stdout is the path of the .app.
 set -euo pipefail
 
 usage() {

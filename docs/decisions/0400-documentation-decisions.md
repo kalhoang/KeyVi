@@ -70,6 +70,14 @@ Search the repository with `grep -rn VERIFY` to find them all. Each row names th
 | 26 | App licence, DCO or CLA | `CONTRIBUTING.md` section 3 | Open decision 2; see 0401 |
 | 27 | Rollback rehearsal log | `docs/runbooks/rollback.md` section 5 | Fill the table after the drill on the beta channel (QA-R39) |
 
+Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
+
+- **12**: the release script headers document their inputs and environment variables; `release.md`,
+  `notarization-setup.md` (keychain profile `<slug>-notary`, overridable with `NOTARY_KEYCHAIN_PROFILE`; CI
+  secret and variable names) and `key-rotation.md` (`publish-release --sparkle-account`) now state them.
+- **25**: `compat/SCRIPT.md` section 5 uses the names of `compat/schema/matrix.schema.json`, and a test
+  validates its example against the schema.
+
 ## Consequences
 
 - Renaming the product requires no documentation change until a baked README is wanted (decision 1).

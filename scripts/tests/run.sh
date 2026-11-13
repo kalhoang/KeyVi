@@ -438,6 +438,39 @@ EOF
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
 
+  echo "== notarize.sh credential choice (dry run, nothing is submitted)"
+  expect 0 "notarize dry run with the default profile" env -u NOTARY_KEYCHAIN_PROFILE -u ASC_API_KEY_PATH \
+    "$M/scripts/notarize.sh" "$dmg" --dry-run
+  contains "default keychain profile is <slug>-notary" 'notarytool keychain profile "testapp-notary"'
+  expect 0 "NOTARY_KEYCHAIN_PROFILE overrides the default" env -u ASC_API_KEY_PATH NOTARY_KEYCHAIN_PROFILE=pa-notary \
+    "$M/scripts/notarize.sh" "$app" --dry-run
+  contains "profile from the environment" 'notarytool keychain profile "pa-notary"'
+  contains "an app is zipped for submission" "would zip Test App.app"
+  printf 'not a real key' >"$T/AuthKey_TEST.p8"
+  expect 0 "API key environment wins" env ASC_API_KEY_PATH="$T/AuthKey_TEST.p8" ASC_API_KEY_ID=K ASC_API_ISSUER_ID=I \
+    "$M/scripts/notarize.sh" "$dmg" --dry-run
+  contains "API key source named" "App Store Connect API key (ASC_API_KEY_PATH"
+  expect 1 "API key path without its ID is refused" env -u ASC_API_KEY_ID ASC_API_KEY_PATH="$T/AuthKey_TEST.p8" \
+    "$M/scripts/notarize.sh" "$dmg" --dry-run
+
+  echo "== make-dmg.sh retries a busy hdiutil"
+  mkdir -p "$T/fakebin"
+  cat >"$T/fakebin/hdiutil" <<'EOF'
+#!/bin/sh
+# Fails the first "create" like a busy disk image subsystem, then succeeds.
+case "$1" in
+  create)
+    if [ ! -f "$FAKE_HDIUTIL_STATE" ]; then : >"$FAKE_HDIUTIL_STATE"; echo "hdiutil: create failed - Resource busy" >&2; exit 1; fi
+    for last; do :; done
+    : >"$last" ;;
+esac
+exit 0
+EOF
+  chmod +x "$T/fakebin/hdiutil"
+  expect 0 "make-dmg succeeds after one busy hdiutil create" env PATH="$T/fakebin:$PATH" \
+    FAKE_HDIUTIL_STATE="$T/hdiutil-state" "$M/scripts/make-dmg.sh" "$app" --no-sign --out "$T/retry.dmg"
+  contains "retry announced" "hdiutil create failed (attempt 1); retrying"
+
   echo "== verify-release.sh: Sparkle public key gate (ADR 0304)"
   # The ad-hoc app fails the Developer ID checks anyway; only the key check's own result matters here.
   expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization

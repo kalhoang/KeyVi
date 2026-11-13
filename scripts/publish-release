@@ -20,6 +20,20 @@
 #      QA-R36) into dist/homebrew/ and, with --tap-dir, into Pa's tap checkout.
 #   6. Optionally (--github-release) publish the draft GitHub Release and point URLs at its assets.
 #
+# Inputs: <version>; the update archive and DMG (--from-github downloads <slug>-<version>.zip, .dmg and
+# SHA256SUMS from the draft release v<version> made by release.yml; otherwise --archive/--dmg or
+# dist/<slug>-<version>/). Release-notes text: the `## [<version>]` section of CHANGELOG.md (English) and of
+# CHANGELOG.vi.md (Vietnamese), or the files given with --notes-en / --notes-vi; `{{AppName}}` in them is
+# filled from scripts/brand.env. The draft GitHub release text written by release.yml comes from the
+# CHANGELOG.md section only.
+# Reads: scripts/brand.env (name, slug, bundle ID, site host), packaging/homebrew/Casks/cask.rb.template,
+# scripts/zap-paths.txt, site/static/appcast.xml and site/data/releases.json (both created when absent).
+# Keychain: the Sparkle EdDSA private key stays in Pa's login keychain; --sparkle-account NAME selects its
+# account (passed to sign_update --account), otherwise sign_update uses its default account.
+# Environment: SPARKLE_SIGN_UPDATE (path of sign_update; otherwise the SwiftPM artifacts, Xcode DerivedData,
+# or a pinned, checksum-verified Sparkle 2.10.1 download); GitHub access through `gh` (gh auth login, or
+# GH_TOKEN) for --from-github, --github-release and the attestation check; BRAND_ENV (tests).
+#
 # Every output is first written into a temporary copy. The default dry run prints it and deletes it;
 # --apply copies the outputs into the repository only after every step succeeded, so a failure never
 # leaves a half-updated appcast, page or releases.json.
