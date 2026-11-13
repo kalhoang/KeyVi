@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Lifecycle state machine of the input host (02-platform.md 2.1, PLT-R330-R332, PLT-R730, PLT-R731, ADR 0309)
+// Lifecycle state machine of the input host (02-platform.md 2.1, PLT-R330-R333, PLT-R730, PLT-R731, ADR 0309)
 // as a pure value type, so it is tested deterministically without threads, taps or services (ADR 0313).
 // `InputHostController` (main actor, W2-A) feeds it inputs and performs the effects. Workstream W1-F2.
 
 internal import AppModel
 public import Injection
+public import RealtimeSupport
 
 public enum LifecycleInput: Sendable, Hashable {
     case launched
+    /// A permission status from `PermissionMonitor`. The caller checks permissions immediately on wake, session
+    /// activation and a system tap disable (PLT-R721) and feeds the result BEFORE `.sessionActive(true)` or
+    /// `.tapDisabledBySystem`, so those inputs act on fresh permissions (PLT-R330 step 1, PLT-R333).
     case permissionsChanged(PermissionStatus)
     case tapCreated
     case tapCreationFailed
@@ -49,17 +53,318 @@ public enum HealthEventKindCode: String, Sendable, Hashable {
     case tapTimeout, tapDisabledByUserInput, tapReenabled, watchdogTrip, postingBroken, permissionTransition
 }
 
+/// Phases: `starting` until permissions are known and the tap is created, `noPermission`, `running` (the tap
+/// transforms, subject to per-key pauses), `sessionInactive` (PLT-R333), `failOpen(reason)` (PRD-R44: keys pass
+/// unchanged). Effects come back in the order the caller performs them. Every transition into or out of
+/// `failOpen` or `sessionInactive` (a pause) carries `.resetComposition` (PLT-R210); when the new phase is
+/// `running` the reset comes before the publish, so the tap never transforms with a stale composition.
 public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R332: retry tap creation with backoff 1, 2, 5, 10 s (cap) while permissions look granted.
     public static let backoff: [Duration] = [.seconds(1), .seconds(2), .seconds(5), .seconds(10)]
     /// PLT-R306: recovery attempt 2 s after a watchdog trip, only once the callback has returned (ADR 0309).
     public static let watchdogRecoveryDelay: Duration = .seconds(2)
+    /// PLT-R330 step 5: the notice appears when more than `instabilityThreshold` system disables fall within
+    /// this window, at most once per window.
+    public static let instabilityWindow: Duration = .seconds(600)
+    public static let instabilityThreshold = 3
+    /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
+    /// report one disable; reports closer than this count once toward the notice (both still run the procedure).
+    public static let disableCoalescingWindow: Duration = .seconds(1)
+    /// PLT-R323, PLT-R730: echo loss and OS policy leave the permission status `ready`, so failOpen(postingBroken)
+    /// retries the tap on this backoff while permissions look granted. A break soon after a recreation moves to
+    /// the next step (cap 5 minutes), so a posting path that stays broken cannot cause a create/break loop.
+    public static let postingBrokenBackoff: [Duration] = [
+        .seconds(30), .seconds(60), .seconds(120), .seconds(240), .seconds(300),
+    ]
+    /// A recreated tap that posts for longer than the previous delay plus this interval resets the backoff.
+    public static let postingBrokenStableInterval: Duration = .seconds(600)
 
-    public init() { unimplemented() }
+    /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
+    private enum TapPresence: Sendable, Hashable { case none, creating, alive }
 
-    public var phase: LifecycleSnapshot.Phase { unimplemented() }
+    public private(set) var phase: LifecycleSnapshot.Phase = .starting
+    /// The user's "turn off" switch: a pause reason (`paused(userDisabled)`), not a lifecycle phase.
+    public private(set) var userDisabled = false
+
+    private var launched = false
+    /// nil until the first status arrives.
+    private var permissionsGranted: Bool?
+    private var sessionActive = true
+    private var tap = TapPresence.none
+    private var retryAttempt = 0
+    private var retryPending = false
+    /// Nanosecond instants of the latest system disables, at most `instabilityThreshold + 1`.
+    private var recentDisables: [UInt64] = []
+    private var lastNoticeAt: UInt64?
+    /// Index into `postingBrokenBackoff` used by the latest postingBroken, and when it happened.
+    private var postingBrokenAttempt = 0
+    private var lastPostingBrokenAt: UInt64?
+
+    public init() {}
 
     /// Pure transition: returns the effects to perform, in order. Never blocks; the caller owns timers
-    /// (`TimerScheduler`) and turns their firing into `.retryTimerFired`.
-    public mutating func handle(_ input: LifecycleInput) -> [LifecycleEffect] { unimplemented() }
+    /// (`TimerScheduler`) and turns their firing into `.retryTimerFired`. `now` (the services' monotonic clock)
+    /// dates system disables for the PLT-R330 instability window.
+    public mutating func handle(_ input: LifecycleInput, at now: MonotonicInstant) -> [LifecycleEffect] {
+        switch input {
+        case .launched: return launch()
+        case .permissionsChanged(let status): return permissionsChanged(granted: Self.looksGranted(status))
+        case .sessionActive(let active): return sessionChanged(active: active)
+        case .userDisabled(let disabled): return userDisabledChanged(disabled)
+        default: break
+        }
+        guard launched else { return [] }
+        switch input {
+        case .tapCreated: return tapCreated()
+        case .tapCreationFailed: return tapCreationFailed()
+        case .retryTimerFired: return retryFired()
+        case .watchdogTripped(let trip): return watchdogTripped(trip, at: now)
+        case .callbackExited: return callbackExited()
+        case .postingBroken: return postingBroken(at: now)
+        case .tapDisabledBySystem(let byTimeout):
+            return systemDisabled(reason: byTimeout ? .tapTimeout : .tapDisabledByUserInput, at: now)
+        case .launched, .permissionsChanged, .sessionActive, .userDisabled: return []
+        }
+    }
+
+    /// "Permissions appear granted" (PLT-R332): health `ready`. `stale` and `noPermission` do not.
+    static func looksGranted(_ status: PermissionStatus) -> Bool { status.health == .ready }
+
+    // MARK: - Inputs
+
+    private mutating func launch() -> [LifecycleEffect] {
+        guard !launched else { return [] }
+        launched = true
+        switch permissionsGranted {
+        case nil: return []
+        case false?: return move(to: .noPermission)
+        case true?: return beginCreation()
+        }
+    }
+
+    private mutating func permissionsChanged(granted: Bool) -> [LifecycleEffect] {
+        let previous = permissionsGranted
+        permissionsGranted = granted
+        guard launched else { return [] }
+        var effects = granted ? permissionGranted() : permissionLost()
+        if let previous, previous != granted { effects.append(.recordHealth(.permissionTransition)) }
+        return effects
+    }
+
+    /// PLT-R731: permission back recreates the tap without a relaunch. A failOpen(postingBroken) host keeps its
+    /// own retry timer: a real revocation already moved it to failOpen(permissionRevoked).
+    private mutating func permissionGranted() -> [LifecycleEffect] {
+        switch (tap, phase) {
+        case (.none, .noPermission), (.none, .starting), (.none, .failOpen(.permissionRevoked)):
+            return beginCreation()
+        case (.creating, .noPermission):
+            // Lost and back while a creation is in flight: its result decides (PLT-R211, PLT-R332).
+            return move(to: .starting)
+        default:
+            return []
+        }
+    }
+
+    private mutating func permissionLost() -> [LifecycleEffect] {
+        var effects = cancelPendingRetry()
+        switch phase {
+        case .running, .sessionInactive:
+            effects += failOpenRemovingTap(.permissionRevoked)
+        case .starting, .failOpen(.tapUnavailable):
+            effects += move(to: .noPermission)
+        case .failOpen(.postingBroken):
+            effects += move(to: .failOpen(.permissionRevoked))
+        case .noPermission, .failOpen(.permissionRevoked), .failOpen(.watchdog), .failOpen(.callbackStuck):
+            // A tripped tap thread may still be inside its callback: it is removed once the callback returned.
+            break
+        }
+        return effects
+    }
+
+    private mutating func tapCreated() -> [LifecycleEffect] {
+        guard tap == .creating else { return [] }
+        guard wantsTap else {
+            tap = .none
+            return [.removeTap]
+        }
+        tap = .alive
+        retryAttempt = 0
+        return move(to: sessionActive ? .running : .sessionInactive)
+    }
+
+    /// PLT-R332: failOpen(tapUnavailable), retry with backoff only while permissions look granted.
+    private mutating func tapCreationFailed() -> [LifecycleEffect] {
+        guard tap == .creating else { return [] }
+        tap = .none
+        guard wantsTap else { return [] }
+        let delay = Self.backoff[min(retryAttempt, Self.backoff.count - 1)]
+        retryAttempt += 1
+        retryPending = true
+        return move(to: .failOpen(.tapUnavailable)) + [.scheduleRetry(after: delay)]
+    }
+
+    private mutating func retryFired() -> [LifecycleEffect] {
+        guard retryPending else { return [] }
+        retryPending = false
+        let retryPhase = phase == .failOpen(.tapUnavailable) || phase == .failOpen(.postingBroken)
+        guard retryPhase, permissionsGranted == true, tap == .none else { return [] }
+        // The phase stays fail-open during the attempt, so the menu does not flicker.
+        tap = .creating
+        return [.createTap]
+    }
+
+    private mutating func watchdogTripped(_ trip: TapTrip, at now: MonotonicInstant) -> [LifecycleEffect] {
+        switch trip {
+        case .callbackOverLimit:
+            // PLT-R306: the watchdog already disabled the tap (keys flow); `.disableTap` repeats it from the
+            // lifecycle owner. Nothing touches the tap thread, which may be stuck (ADR 0309).
+            guard tapIsInstalled else { return [] }
+            return publish(.failOpen(.watchdog)) + [
+                .disableTap, .requestFlush(.failOpen), .resetComposition, .recordHealth(.watchdogTrip),
+            ]
+        case .callbackStuck:
+            // ADR 0309: stay fail-open; never a second tap or tap thread (PLT-R302).
+            guard phase == .failOpen(.watchdog) else { return [] }
+            return move(to: .failOpen(.callbackStuck))
+        case .unexpectedlyDisabled:
+            // PLT-R331: the same procedure as a disabled event.
+            return systemDisabled(reason: .tapReenabled, at: now)
+        }
+    }
+
+    /// ADR 0309: the callback returned, so the same tap is re-enabled (or removed when permission went away).
+    private mutating func callbackExited() -> [LifecycleEffect] {
+        guard phase == .failOpen(.watchdog) || phase == .failOpen(.callbackStuck), tap == .alive else { return [] }
+        guard permissionsGranted == true else { return failOpenRemovingTap(.permissionRevoked) }
+        return [.reenableTap] + move(to: sessionActive ? .running : .sessionInactive) + [.recordHealth(.tapReenabled)]
+    }
+
+    /// PLT-R730: posting no longer works. PLT-R323: echo loss or OS policy can leave permissions `ready`, and the
+    /// monitor then never reports a change, so the tap is retried on the bounded `postingBrokenBackoff`.
+    private mutating func postingBroken(at now: MonotonicInstant) -> [LifecycleEffect] {
+        guard tapIsInstalled else { return [] }
+        let delay = notePostingBroken(at: now)
+        retryPending = true
+        return failOpenRemovingTap(.postingBroken) + [.recordHealth(.postingBroken), .scheduleRetry(after: delay)]
+    }
+
+    /// PLT-R330: re-enable (permissions are valid while a tap is installed: a revocation already removed it),
+    /// reset, replay held events, record the reason, and the notice after more than 3 within 10 minutes.
+    /// Every report runs the whole procedure (a second disable within the coalescing window is possible and needs
+    /// the reset), but reports within `disableCoalescingWindow` of the last counted one count once (PLT-R331).
+    private mutating func systemDisabled(reason: HealthEventKindCode, at now: MonotonicInstant) -> [LifecycleEffect] {
+        guard tapIsInstalled else { return [] }
+        var effects: [LifecycleEffect] = [
+            .reenableTap, .resetComposition, .requestFlush(.tapDisabled), .recordHealth(reason),
+        ]
+        if noteSystemDisable(at: now) { effects.append(.showTapInstabilityNotice) }
+        return effects
+    }
+
+    /// PLT-R333: resign, sleep or lock pause the host; activation re-validates the tap (re-enable, idempotent)
+    /// after the caller fed fresh permissions, then returns to running.
+    private mutating func sessionChanged(active: Bool) -> [LifecycleEffect] {
+        guard active != sessionActive else { return [] }
+        sessionActive = active
+        guard launched else { return [] }
+        if !active {
+            return phase == .running ? move(to: .sessionInactive) : []
+        }
+        guard phase == .sessionInactive, permissionsGranted == true, tap == .alive else { return [] }
+        return [.reenableTap] + move(to: .running)
+    }
+
+    /// PLT-R210: entering or leaving `paused(userDisabled)` resets the composition.
+    private mutating func userDisabledChanged(_ disabled: Bool) -> [LifecycleEffect] {
+        guard disabled != userDisabled else { return [] }
+        userDisabled = disabled
+        return launched ? [.resetComposition] : []
+    }
+
+    // MARK: - Helpers
+
+    /// A tap is installed and supposed to be enabled (not held by the watchdog).
+    private var tapIsInstalled: Bool { tap == .alive && (phase == .running || phase == .sessionInactive) }
+
+    /// A tap may be created now: permissions look granted and no tripped tap thread may still be stuck.
+    private var wantsTap: Bool {
+        guard launched, permissionsGranted == true else { return false }
+        switch phase {
+        case .failOpen(.watchdog), .failOpen(.callbackStuck): return false
+        default: return true
+        }
+    }
+
+    private mutating func beginCreation() -> [LifecycleEffect] {
+        tap = .creating
+        return move(to: .starting) + [.createTap]
+    }
+
+    private mutating func cancelPendingRetry() -> [LifecycleEffect] {
+        retryAttempt = 0
+        guard retryPending else { return [] }
+        retryPending = false
+        return [.cancelRetry]
+    }
+
+    /// PLT-R730: stop swallowing (the published phase), replay held events, reset, then remove the tap.
+    private mutating func failOpenRemovingTap(_ reason: FailOpenReason) -> [LifecycleEffect] {
+        tap = .none
+        return publish(.failOpen(reason)) + [.requestFlush(.failOpen), .resetComposition, .removeTap]
+    }
+
+    /// Sets the phase and returns the publish effect, without the PLT-R210 reset (callers place it).
+    private mutating func publish(_ new: LifecycleSnapshot.Phase) -> [LifecycleEffect] {
+        guard new != phase else { return [] }
+        phase = new
+        return [.publish(new)]
+    }
+
+    /// Sets the phase with the PLT-R210 reset when a pause or fail-open is entered or left.
+    private mutating func move(to new: LifecycleSnapshot.Phase) -> [LifecycleEffect] {
+        let old = phase
+        let published = publish(new)
+        guard !published.isEmpty, Self.holdsComposition(old) || Self.holdsComposition(new) else { return published }
+        return new == .running ? [.resetComposition] + published : published + [.resetComposition]
+    }
+
+    private static func holdsComposition(_ phase: LifecycleSnapshot.Phase) -> Bool {
+        switch phase {
+        case .failOpen, .sessionInactive: true
+        case .noPermission, .starting, .running: false
+        }
+    }
+
+    /// PLT-R330 step 5: true when this disable makes more than `instabilityThreshold` within the window and no
+    /// notice was shown during the last window.
+    private mutating func noteSystemDisable(at now: MonotonicInstant) -> Bool {
+        if let last = recentDisables.last,
+            now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < Self.disableCoalescingWindow.nanoseconds
+        {
+            return false
+        }
+        let window = Self.instabilityWindow.nanoseconds
+        recentDisables.append(now.nanoseconds)
+        recentDisables.removeAll { now.nanoseconds(since: MonotonicInstant(nanoseconds: $0)) > window }
+        if recentDisables.count > Self.instabilityThreshold + 1 { recentDisables.removeFirst() }
+        guard recentDisables.count > Self.instabilityThreshold else { return false }
+        if let lastNoticeAt, now.nanoseconds(since: MonotonicInstant(nanoseconds: lastNoticeAt)) < window {
+            return false
+        }
+        lastNoticeAt = now.nanoseconds
+        return true
+    }
+
+    /// PLT-R323: the retry delay for this postingBroken. A break within the previous delay plus
+    /// `postingBrokenStableInterval` of the previous break moves one step up the backoff; otherwise it restarts.
+    private mutating func notePostingBroken(at now: MonotonicInstant) -> Duration {
+        let backoff = Self.postingBrokenBackoff
+        if let last = lastPostingBrokenAt {
+            let horizon = backoff[postingBrokenAttempt].nanoseconds + Self.postingBrokenStableInterval.nanoseconds
+            let soon = now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < horizon
+            postingBrokenAttempt = soon ? min(postingBrokenAttempt + 1, backoff.count - 1) : 0
+        }
+        lastPostingBrokenAt = now.nanoseconds
+        return backoff[postingBrokenAttempt]
+    }
 }
