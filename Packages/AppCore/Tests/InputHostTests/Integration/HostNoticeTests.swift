@@ -210,6 +210,21 @@ struct HostNoticeTests {
         #expect(rig.controller.channels.snapshots.inputSource.load().generation >= before)
     }
 
+    /// ADR 0303, PLT-R330 (1): the tap -> main wake does not wait behind utility work (settings rebuilds, file
+    /// writes, the conflict scan); production targets the main queue.
+    @Test func tapNoticesDoNotWaitBehindUtilityWork() async throws {
+        let rig = HostRig(mainSignalQueue: DispatchSerialQueue(label: "test.host.main-signal"))
+        await rig.start()
+        defer { rig.stop() }
+        let release = DispatchSemaphore(value: 0)
+        rig.utility.async { release.wait() }  // a long utility job
+        defer { release.signal() }
+        _ = rig.controller.channels.outbox.toMain.push(.keyboardTypeSeen(41))
+        rig.controller.channels.outbox.mainSignal.signal()
+        for _ in 0..<200 where rig.hop.pendingCount == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(rig.hop.pendingCount > 0, "the outbox drain reached main while the utility queue was busy")
+    }
+
     @Test func tapNoticesArriveThroughTheOutboxSignal() async {
         let rig = HostRig()
         await rig.start()

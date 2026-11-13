@@ -175,14 +175,14 @@ public final class InputHostController {
             dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
             loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
-            runsWorkerThread: true)
+            runsWorkerThread: true, mainSignalQueue: .main)
     }
 
     init(
         dependencies: InputHostDependencies, settingsStore: SettingsStore, hop: any MainThreadHop,
         makeTapThread: @escaping TapThreadMaker, tapClock: any MonotonicClock,
         loadBundled: @escaping TapSettingsPublisher.BundledResourcesLoader, macOSVersion: LooseVersion,
-        runsWorkerThread: Bool
+        runsWorkerThread: Bool, mainSignalQueue: DispatchQueue? = nil
     ) {
         self.runsWorkerThread = runsWorkerThread
         self.dependencies = dependencies
@@ -194,7 +194,11 @@ public final class InputHostController {
         let initial = InitialSnapshots.make(
             source: dependencies.inputSources.currentSource(), settings: Self.placeholderSettings,
             globalMode: .vietnamese)
-        channels = HostChannels(initial: initial, marker: .random(), signalQueue: dependencies.utilityQueue)
+        // ADR 0303: tap -> main wakes on the main queue in production; tests keep the utility queue (nil), where
+        // `ManualMainHop` collects the drains.
+        channels = HostChannels(
+            initial: initial, marker: .random(), signalQueue: dependencies.utilityQueue,
+            mainSignalQueue: mainSignalQueue ?? dependencies.utilityQueue)
         axThread = RunLoopThread(name: "ax", qualityOfService: .userInitiated)
         let refresh = self.refresh
         focusTracker = FocusTracker(

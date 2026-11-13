@@ -39,13 +39,16 @@ final class HostChannels: Sendable {
     let focusGeneration = CurrentFocusGeneration()
     let outbox: TapOutbox
     let callbackWatchdog: CallbackWatchdog
-    /// Wired by the controller: main outbox drain, ax inbox drain, watchdog arming. The signals fire on the
-    /// utility queue; the main outbox relay hops to the main actor through the controller's `MainThreadHop`.
+    /// Wired by the controller: main outbox drain, ax inbox drain, watchdog arming. The main outbox signal fires
+    /// on `mainSignalQueue` (the main queue in production, ADR 0303), so tap notices (the PLT-R330 re-enable, the
+    /// switch HUD) never wait behind utility work; its relay hops to the main actor through the controller's
+    /// `MainThreadHop`, which runs inline when already on main. The ax and activity signals fire on the utility
+    /// queue (ADR 0303: the ax relay hops to the ax run loop).
     let mainRelay = SignalRelay()
     let axRelay = SignalRelay()
     let activityRelay = SignalRelay()
 
-    init(initial: InitialSnapshots, marker: EventMarker, signalQueue: DispatchQueue) {
+    init(initial: InitialSnapshots, marker: EventMarker, signalQueue: DispatchQueue, mainSignalQueue: DispatchQueue) {
         let epoch = ReaderEpoch()
         snapshots = TapSnapshots(
             epoch: epoch, settings: SnapshotCell(initial.settings, epoch: epoch),
@@ -61,7 +64,7 @@ final class HostChannels: Sendable {
         outbox = TapOutbox(
             toMain: SPSCRing(capacity: HostChannelCapacity.mainNotices),
             toAX: SPSCRing(capacity: HostChannelCapacity.axNotices),
-            mainSignal: WakeSignal(queue: signalQueue) { mainRelay.fire() },
+            mainSignal: WakeSignal(queue: mainSignalQueue) { mainRelay.fire() },
             axSignal: WakeSignal(queue: signalQueue) { axRelay.fire() })
         // PLT-R803: the watchdog's 250 ms check is armed only by the first callback after 2 s idle.
         callbackWatchdog = CallbackWatchdog(activitySignal: WakeSignal(queue: signalQueue) { activityRelay.fire() })
