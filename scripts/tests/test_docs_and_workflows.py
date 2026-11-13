@@ -959,6 +959,57 @@ class AccessibilityAuditDocTests(unittest.TestCase):
                 self.assertNotIn("not reachable by keyboard focus", line)
 
 
+class Wave5StatusTests(unittest.TestCase):
+    """Wave 5 implemented the decisions that the spec and decision 0005 marked as later work (Q14, Q16, Q43, Q48,
+    ENG-R906, ENG-R1103), so no record still says "later wave" for them."""
+
+    SPEC = REPO / "spec"
+    ADR_0005 = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+
+    @staticmethod
+    def flat(text: str) -> str:
+        return " ".join(text.split())
+
+    def test_the_spec_no_longer_defers_any_decision_to_a_later_wave(self):
+        for path in sorted(self.SPEC.glob("*.md")):
+            with self.subTest(path=path.name):
+                self.assertNotIn("implemented in a later wave", self.flat(path.read_text(encoding="utf-8")))
+
+    def test_eng_r862_cites_the_per_app_learning_decision(self):
+        engine = (self.SPEC / "01-engine.md").read_text(encoding="utf-8")
+        row = next(line for line in engine.splitlines() if line.startswith("- **ENG-R862**"))
+        self.assertIn("docs/decisions/0320-per-app-learned-words.md", row)
+        self.assertTrue((REPO / "docs" / "decisions" / "0320-per-app-learned-words.md").is_file())
+
+    def test_decision_0005_marks_the_wave_5_items_implemented(self):
+        rows = {
+            "| Q14 |": "Q14", "| Q16 |": "Q16", "| Q43 |": "Q43", "| Q48 |": "Q48",
+            "| Telex bracket keys and case |": "ENG-R906", "| Macro digit shadowing |": "ENG-R1103",
+        }
+        lines = self.ADR_0005.splitlines()
+        for prefix, label in rows.items():
+            row = next(line for line in lines if line.startswith(prefix))
+            with self.subTest(item=label):
+                self.assertIn("implemented (wave 5, W5-", row)
+                self.assertNotIn("implementation wave 5", row)
+                self.assertNotIn("Implementation: wave 5", row)
+        later = self.flat(self.ADR_0005.split("## Implemented later", 1)[1].split("\n## ", 1)[0])
+        for item in ("Q14", "Q16", "Q43", "Q48", "ENG-R906", "ENG-R1103"):
+            with self.subTest(section="Implemented later", item=item):
+                self.assertIn(item, later)
+        self.assertIn("Implemented in wave 5", later)
+        consequences = self.flat(self.ADR_0005.split("## Consequences", 1)[1])
+        self.assertNotIn("until the wave lands", consequences)
+        self.assertIn("implemented in wave 5", consequences)
+
+    def test_decision_0103_notes_that_digits_now_count(self):
+        adr = (REPO / "docs" / "decisions" / "0103-engine-commit-history-macros.md").read_text(encoding="utf-8")
+        row = next(line for line in adr.splitlines() if line.startswith("| Shadowed triggers (ENG-R1103) |"))
+        self.assertIn("superseded", row)
+        self.assertIn("0005", row)
+        self.assertIn("digits do not count", row)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
