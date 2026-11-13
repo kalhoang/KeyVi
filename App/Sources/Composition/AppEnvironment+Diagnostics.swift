@@ -56,13 +56,12 @@ extension AppEnvironment {
             probe: latencyProbeResult, draft: draft, now: Date())
     }
 
-    /// PLT-R1202 "last 50 health events", PRD-R46: this session's events from memory after the earlier sessions'
-    /// events from the log, so a crash or tap timeout from before this launch is still in the report.
+    /// PLT-R1202, PRD-R46: this session's events from memory after the earlier sessions' events from the log, so
+    /// a crash or tap timeout from before this launch is still in the report. The assembler lists the last 50 and
+    /// counts the 24-hour tap timeouts over all of them.
     private func reportHealthEvents() -> [HealthEvent] {
-        let limit = HealthEventLog.reportedEventCount
-        return HealthEvent.reportList(
-            earlier: diagnostics.logger.earlierSessionHealthEvents(limit: limit),
-            current: diagnostics.health.recent(limit: limit), limit: limit)
+        let logger = diagnostics.logger
+        return diagnostics.health.reportSource { logger.earlierSessionHealthEvents(limit: $0) }
     }
 
     /// PLT-R1206: secure-input episodes with the likely holder's bundle ID, from the host's state changes. An

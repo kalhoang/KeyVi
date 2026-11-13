@@ -43,6 +43,8 @@ public struct HealthEvent: Sendable, Hashable, Codable {
 public final class HealthEventLog: Sendable {
     /// The report lists the last 50 health events (PLT-R1202).
     public static let reportedEventCount = 50
+    /// Events kept in memory, and read back from earlier sessions' logs, for the report's 24-hour counters.
+    public static let defaultCapacity = 256
 
     private struct Ring {
         var events: [HealthEvent] = []
@@ -63,7 +65,7 @@ public final class HealthEventLog: Sendable {
 
     /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
     /// level for events that lose or risk losing keys and notice level otherwise (PRD-R46, PLT-R1206).
-    public init(capacity: Int = 256, mirror: (any DiagnosticsLogging)? = nil) {
+    public init(capacity: Int = HealthEventLog.defaultCapacity, mirror: (any DiagnosticsLogging)? = nil) {
         precondition(capacity > 0)
         self.capacity = capacity
         self.mirror = mirror
@@ -113,6 +115,13 @@ public final class HealthEventLog: Sendable {
                 ? ring.events : Array(ring.events[ring.next...] + ring.events[..<ring.next])
             return Array(ordered.suffix(max(0, limit)))
         }
+    }
+
+    /// The events a report is assembled from (PLT-R1202, PRD-R46): the earlier sessions' events (`earlier`, asked
+    /// for at most this ring's capacity) then this session's, newest last. The report lists the last 50 of them;
+    /// its 24-hour tap counters see all of them, so many later events do not hide a recent tap timeout.
+    public func reportSource(earlier: (Int) -> [HealthEvent]) -> [HealthEvent] {
+        HealthEvent.reportList(earlier: earlier(capacity), current: recent(limit: capacity), limit: 2 * capacity)
     }
 
     /// Count of events of `kind` within `window` before `now` (PLT-R330 "more than 3 within 10 minutes").
