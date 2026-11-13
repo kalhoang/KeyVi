@@ -131,9 +131,12 @@ final class FocusCore {
         refresh(force: true)
     }
 
-    func revalidate() {
+    /// `scanOverlays`: NSWorkspace activation and wake rescan running overlay apps (a full process scan in
+    /// production). The PLT-R382 idle-key revalidation does not: it runs on the first key after every typing
+    /// pause, competes with the T6 budget, and an overlay app that launches activates and triggers a scan.
+    func revalidate(scanOverlays: Bool) {
         guard running else { return }
-        syncObservers(scanOverlays: true)
+        if scanOverlays { syncObservers(scanOverlays: true) }
         refresh(force: false)
     }
 

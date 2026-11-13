@@ -155,8 +155,9 @@ public final class FocusTracker: Sendable {
         perform { $0.update(settings: settings, appModes: appModes) }
     }
 
-    /// NSWorkspace activation, wake, idle-key flag (PLT-R381, PLT-R382): revalidate system-wide focus.
-    public func revalidate() { perform { $0.revalidate() } }
+    /// NSWorkspace activation and wake (PLT-R381): rescan overlay apps and revalidate system-wide focus. The
+    /// idle-key flag (PLT-R382) arrives through the inbox and revalidates without the rescan.
+    public func revalidate() { perform { $0.revalidate(scanOverlays: true) } }
     /// Drains `inbox` (tap toggles first, then revalidation) on the ax thread; wired to the AX wake signal.
     public func drainInbox() { perform { $0.drainInbox() } }
 

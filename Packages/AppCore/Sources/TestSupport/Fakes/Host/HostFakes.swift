@@ -166,9 +166,16 @@ public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendabl
         var processes: [Int32: ProcessIdentity]
         var order: [Int32]
         var dead: Set<Int32> = []
+        var identityLookups: [Int32: Int] = [:]
+        var runningApplicationScans = 0
     }
 
     private let state: Mutex<State>
+
+    /// How often `identity(of:)` was asked for `pid` (cost checks, PLT-R382).
+    public func identityLookups(of pid: Int32) -> Int { state.withLock { $0.identityLookups[pid] ?? 0 } }
+    /// How often `runningApplications()` ran (a full scan in production).
+    public var runningApplicationScans: Int { state.withLock { $0.runningApplicationScans } }
 
     public init(processes: [ProcessIdentity]) {
         state = Mutex(
@@ -178,13 +185,19 @@ public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendabl
     }
 
     public func identity(of pid: Int32) -> ProcessIdentity? {
-        state.withLock { $0.dead.contains(pid) ? nil : $0.processes[pid] }
+        state.withLock { state in
+            state.identityLookups[pid, default: 0] += 1
+            return state.dead.contains(pid) ? nil : state.processes[pid]
+        }
     }
 
     public func isAlive(_ pid: Int32) -> Bool { state.withLock { $0.processes[pid] != nil && !$0.dead.contains(pid) } }
 
     public func runningApplications() -> [ProcessIdentity] {
-        state.withLock { state in state.order.filter { !state.dead.contains($0) }.compactMap { state.processes[$0] } }
+        state.withLock { state in
+            state.runningApplicationScans += 1
+            return state.order.filter { !state.dead.contains($0) }.compactMap { state.processes[$0] }
+        }
     }
 
     public func add(_ process: ProcessIdentity) {

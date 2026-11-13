@@ -208,6 +208,27 @@ struct FocusTrackerTests {
         #expect(harness.snapshot.app?.bundle == zalo)
     }
 
+    /// PLT-R382 + T6: the first key after a typing pause revalidates focus without a full scan of running
+    /// applications and without re-reading the owner's identity; NSWorkspace activation still rescans overlays.
+    @Test func idleRevalidationSkipsTheRunningApplicationScanPLTR382() {
+        let harness = Harness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: attributes(), notify: nil)
+        harness.start()
+        let scans = harness.processes.runningApplicationScans
+        let lookups = harness.processes.identityLookups(of: terminalPID)
+        for _ in 0..<5 {
+            _ = harness.inbox.push(.revalidateFocus)
+            harness.tracker.drainInbox()
+        }
+        harness.sync()
+        #expect(harness.processes.runningApplicationScans == scans)
+        #expect(harness.processes.identityLookups(of: terminalPID) == lookups)
+        harness.tracker.revalidate()  // NSWorkspace activation or wake
+        harness.sync()
+        #expect(harness.processes.runningApplicationScans == scans + 1)
+    }
+
     @Test func resolutionHappensOncePerFocusChange() {
         let harness = Harness()
         defer { harness.finish() }

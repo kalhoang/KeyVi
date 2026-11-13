@@ -29,7 +29,7 @@ extension FocusCore {
             }
         }
         if toggled { republishMode() }
-        if revalidate { self.revalidate() }
+        if revalidate { self.revalidate(scanOverlays: false) }
     }
 
     func setMode(_ mode: TypingMode) {

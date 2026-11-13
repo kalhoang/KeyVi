@@ -32,7 +32,9 @@ extension FocusCore {
         case .timedOut: return FocusReading(availability: .timedOut)
         case .unavailable, .failed: return FocusReading(availability: .unavailable)
         }
-        let identity = services.processes.identity(of: pid)
+        // The owner's identity is read once per focus owner, not on every revalidation (PLT-R382, T6).
+        let cached = current?.pid == pid ? current?.identity : nil
+        let identity = cached ?? services.processes.identity(of: pid)
         var reading = FocusReading(
             pid: pid, identity: identity, engine: engine(for: identity, rules: rules), availability: .available)
         // PLT-R384: while the breaker is open the snapshot says `timedOut` and rules fall back to bundle and
