@@ -27,6 +27,7 @@ public final class LaunchGuard: Sendable {
         static let inProgressSince = "launchGuard.inProgressSince"
         static let recentCrashes = "launchGuard.recentCrashes"
         static let firstCrashAt = "launchGuard.firstCrashAt"
+        static let appVersion = "launchGuard.appVersion"
     }
 
     private let store: any KeyValueStore
@@ -38,9 +39,16 @@ public final class LaunchGuard: Sendable {
     ///
     /// `now` is wall-clock seconds since 1970 (monotonic time restarts at boot). A launch that is still marked
     /// in progress never reached `markSurvived()`, so it crashed or was killed within 60 s of starting.
-    public func beginLaunch(now: Double) -> Bool {
+    /// `appVersion` (the bundle version) clears the streak when it differs from the version recorded by the
+    /// previous launch: installing an update is the usual way out of a crash loop, and a fixed build must not
+    /// start in safe mode because of the old build's crashes. Nil keeps the recorded version.
+    public func beginLaunch(now: Double, appVersion: String? = nil) -> Bool {
         let previousStart = store.double(forKey: Key.inProgressSince)
-        if previousStart > 0 { recordCrash(launchedAt: previousStart) }
+        if adoptVersion(appVersion) {
+            clearStreak()
+        } else if previousStart > 0 {
+            recordCrash(launchedAt: previousStart)
+        }
         store.set(now, forKey: Key.inProgressSince)
         let enter = recentCrashes >= Self.crashThreshold
         safeModeFlag.store(enter, ordering: .sequentiallyConsistent)
@@ -65,6 +73,27 @@ public final class LaunchGuard: Sendable {
     public func reset() {
         clearStreak()
         safeModeFlag.store(false, ordering: .sequentiallyConsistent)
+    }
+
+    /// Records `version`; true when it replaces a different recorded version.
+    private func adoptVersion(_ version: String?) -> Bool {
+        guard let version else { return false }
+        let fingerprint = Self.versionFingerprint(version)
+        let recorded = store.integer(forKey: Key.appVersion)
+        guard recorded != fingerprint else { return false }
+        store.set(fingerprint, forKey: Key.appVersion)
+        return recorded != 0
+    }
+
+    /// Stable, non-zero 32-bit FNV-1a hash of the version string. The key-value store holds numbers only, and
+    /// 32 bits stay exact even in a store that keeps every number as a `Double`; zero means "nothing recorded".
+    static func versionFingerprint(_ version: String) -> Int {
+        var hash: UInt32 = 0x811c_9dc5
+        for byte in version.utf8 {
+            hash ^= UInt32(byte)
+            hash &*= 0x0100_0193
+        }
+        return hash == 0 ? 1 : Int(hash)
     }
 
     private func recordCrash(launchedAt start: Double) {

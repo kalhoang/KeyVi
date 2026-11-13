@@ -72,6 +72,38 @@ import Testing
         #expect(!LaunchGuard(store: store).beginLaunch(now: start + 200))
     }
 
+    /// PLT-R1009: an update is the usual fix for a crash loop, so a new app version starts with a clean streak
+    /// and does not count the crash of the previous version's last launch.
+    @Test func aNewAppVersionClearsTheStreakAndSafeModePLTR1009() {
+        let store = InMemoryKeyValueStore()
+        for index in 0..<3 { _ = LaunchGuard(store: store).beginLaunch(now: start + Double(index), appVersion: "1.0") }
+        let safe = LaunchGuard(store: store)
+        #expect(safe.beginLaunch(now: start + 5, appVersion: "1.0"))
+        safe.markSurvived()
+        let sameVersion = LaunchGuard(store: store)
+        #expect(sameVersion.beginLaunch(now: start + 60, appVersion: "1.0"))
+        // The 1.0 launch above never survived; the update must not count it.
+        let updated = LaunchGuard(store: store)
+        #expect(!updated.beginLaunch(now: start + 120, appVersion: "1.1"))
+        #expect(updated.recentCrashes == 0)
+        #expect(!updated.isSafeModeActive)
+        let next = LaunchGuard(store: store)
+        #expect(!next.beginLaunch(now: start + 180, appVersion: "1.1"))
+        #expect(next.recentCrashes == 1)
+    }
+
+    @Test func launchesWithoutAVersionKeepTheRecordedOne() {
+        let store = InMemoryKeyValueStore()
+        _ = LaunchGuard(store: store).beginLaunch(now: start, appVersion: "1.0")
+        _ = LaunchGuard(store: store).beginLaunch(now: start + 1)
+        let guardian = LaunchGuard(store: store)
+        _ = guardian.beginLaunch(now: start + 2, appVersion: "1.0")
+        #expect(guardian.recentCrashes == 2)
+        #expect(LaunchGuard.versionFingerprint("1.0") != LaunchGuard.versionFingerprint("1.1"))
+        #expect(LaunchGuard.versionFingerprint("1.0") == LaunchGuard.versionFingerprint("1.0"))
+        #expect(LaunchGuard.versionFingerprint("") != 0)
+    }
+
     @Test func userDefaultsStoreRoundTrips() {
         let suite = "settings-store-tests-" + UUID().uuidString
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
