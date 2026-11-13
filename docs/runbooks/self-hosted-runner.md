@@ -165,16 +165,21 @@ A script on the host (to be written as `scripts/vm/runner-job.sh` when Actions i
 token="$(gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token --jq .token)"
 # 2. A throwaway clone; `with` boots it and stops it when the command ends, also on failure.
 scripts/vm/lab.sh clone {{app-slug}}-dev {{app-slug}}-dev-job
-scripts/vm/lab.sh with {{app-slug}}-dev-job -- sh -c '
-  printf "%s\n" "$1" | scripts/vm/lab.sh ssh "$VM_NAME" "read -r token; cd actions-runner &&
+#    The token goes in on standard input: `with` hands its stdin to the host command untouched, and the guest
+#    shell reads it with `read`, so it is on no host command line (`printf` is a shell builtin).
+printf '%s\n' "$token" | scripts/vm/lab.sh with {{app-slug}}-dev-job -- sh -c '
+  scripts/vm/lab.sh ssh "$VM_NAME" "read -r token; cd actions-runner &&
     ./config.sh --unattended --ephemeral --url https://github.com/<owner>/<repo> --token \"\$token\" \
       --name $VM_NAME-\$(date +%s) --labels self-hosted,macOS,ARM64,tcc-granted,xcode-27 --work _work &&
-    sudo -n launchctl asuser \$(id -u) sudo -n -u admin ./run.sh"' sh "$token"
+    sudo -n launchctl asuser \$(id -u) sudo -n -u admin ./run.sh"'
+unset token
 # 3. The clone goes away with everything the job wrote.
 scripts/vm/lab.sh delete {{app-slug}}-dev-job
 ```
 
-- The token travels on standard input, never on a command line or in a file of the VM.
+- On the host the token travels on standard input only, never on a command line or in a file. Inside the VM
+  `config.sh` takes it as `--token`, so it is on the guest's command line for the few seconds of the
+  registration; the throwaway clone is deleted after the job, and the token expires after one hour anyway.
 - `run.sh` runs in the logged-in GUI session (`launchctl asuser`), because synthetic events and AX need it;
   `tart exec` is the alternative (the guest agent lives in that session). VERIFY which one `tccd` accepts with the
   grants of section 8.2.

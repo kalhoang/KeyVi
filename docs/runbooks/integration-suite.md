@@ -223,9 +223,9 @@ and `results/`).
 
 Run `20261113T145511Z-integration` on commit `4553435`, about 17 minutes in all (build of the test build, TestHost
 and the harness about 10 minutes, suite about 5 minutes). The path works end to end: XcodeGen, the ad-hoc
-`Integration` build with the hooks marker, TestHost, `compat-harness`, 34 allowed TCC rows written by
-`grant-tcc.sh` (5 clients by 3 services; the image itself already grants `sshd-keygen-wrapper`, the tart guest
-agent and `osascript`), the plan check, and a live run that
+`Integration` build with the hooks marker, TestHost, `compat-harness`, 15 TCC rows written by `grant-tcc.sh`
+(5 clients by 3 services; `tcc-rows.txt` lists 34 allowed rows in all, the rest being the image's own grants for
+`sshd-keygen-wrapper`, the tart guest agent and `osascript`), the plan check, and a live run that
 posted events into TestHost. **5 of 40 TestHost scenarios passed** (`testhost.backspace.punctuation`,
 `testhost.native.telex`, `testhost.privacyCanary.backspaceReplace`, `testhost.privacyCanary.passThrough`,
 `testhost.secureInput.release`); the privacy scan found no canary (13 files, 3.6 MB of log). 35 failed:

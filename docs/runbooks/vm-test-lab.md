@@ -79,7 +79,9 @@ Exit status of `lab.sh`: 0 success, 1 failure, 2 usage error, 3 refused by a saf
 ## 5. Safety rules
 
 1. Host and guest stay apart: nothing in `scripts/vm/` launches an app, posts events or changes settings on the
-   host. The smoke test builds on the host and runs the app only inside the VM.
+   host. The smoke test builds on the host and runs the app only inside the VM. The scripts meant for the guest
+   (`guest/smoke-guest.sh`, `guest/integration-guest.sh`, `grant-tcc.sh`) check `kern.hv_vmm_present` first and
+   exit 3 on a real Mac, before they parse an argument or touch anything.
 2. One VM at a time, and a script stops what it started (section 3).
 3. Only throwaway clones are deleted: `lab.sh delete` refuses a VM without the marker that `lab.sh clone`
    writes, so `{{app-slug}}-monterey` and `{{app-slug}}-dev` cannot be deleted by a script. Deleting a base VM is
@@ -108,7 +110,8 @@ What it does (ADR 0315, PLT-R105, PLT-R106):
    in `/tmp/vm-smoke-dd` (never on `/Volumes/Data`, where xcodebuild times out). Ad-hoc signed, so it can run
    without an identity; the hardened runtime is off because an ad-hoc signature has no Team ID and library
    validation then refuses the embedded Sparkle framework (seen on the first run, section 6.1).
-2. Checks on the host that both slices exist with `minos 12.0`, then refuses early if another VM runs.
+2. Checks on the host that both slices exist with `minos 12.0` or older (a newer `minos` fails here, before any
+   VM boots), then refuses early if another VM runs.
 3. Clones `{{app-slug}}-monterey` to `{{app-slug}}-monterey-smoke`, boots it (4096 MB, 2 CPUs), copies the app and the
    guest script in, and inside the VM: records the system, verifies the signature, checks `lipo -archs` and
    `minos` of each slice, installs Rosetta with `softwareupdate --install-rosetta --agree-to-license` if missing,
