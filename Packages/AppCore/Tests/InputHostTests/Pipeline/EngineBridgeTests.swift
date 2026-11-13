@@ -1,0 +1,199 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// ADR 0306: settings -> engine configuration, the eight-engine catalog, macros and resources.
+
+import AppModel
+import Foundation
+import SettingsStore
+import TestSupport
+import Testing
+import VietnameseEngine
+
+@testable import InputHost
+
+@Suite struct EngineBridgeConfigurationTests {
+    private func settings(_ change: (inout EffectiveSettings) -> Void = { _ in }) -> EffectiveSettings {
+        var settings = DefaultSettings.v1
+        change(&settings)
+        return settings
+    }
+
+    /// D1, D5, D6: Telex carries its options; VNI has none.
+    @Test func typingMethodAndTelexOptions() {
+        let telex = EngineBridge.configuration(
+            for: settings {
+                $0.telexStandaloneW = false
+                $0.telexBracketKeys = true
+            }, variant: .default)
+        #expect(telex.inputMethod == .telex(TelexOptions(standaloneW: false, bracketKeys: true)))
+        let vni = EngineBridge.configuration(for: settings { $0.typingMethod = .vni }, variant: .default)
+        #expect(vni.inputMethod == .vni)
+    }
+
+    /// D2.
+    @Test func tonePlacement() {
+        #expect(EngineBridge.configuration(for: settings(), variant: .default).toneStyle == .traditional)
+        let modern = EngineBridge.configuration(for: settings { $0.tonePlacement = .modern }, variant: .default)
+        #expect(modern.toneStyle == .modern)
+    }
+
+    /// D4 and the rule feature both have to allow English restore.
+    @Test(arguments: [(true, true, true), (true, false, false), (false, true, false), (false, false, false)])
+    func englishRestoreNeedsSettingAndVariant(setting: Bool, variant: Bool, expected: Bool) {
+        let configuration = EngineBridge.configuration(
+            for: settings { $0.englishRestore = setting },
+            variant: EngineVariant(appContext: .general, englishRestore: variant, macros: true))
+        #expect(configuration.autoRestore == expected)
+    }
+
+    /// ENG-R850: the rule's engine context selects the app context.
+    @Test func appContextFollowsTheVariant() {
+        let code = EngineBridge.configuration(
+            for: settings(), variant: EngineVariant(appContext: .code, englishRestore: true, macros: true))
+        #expect(code.appContext == .code)
+        #expect(EngineBridge.configuration(for: settings(), variant: .default).appContext == .general)
+    }
+}
+
+@Suite struct EngineCatalogTests {
+    private static let allVariants: [EngineVariant] = EngineVariant.catalogOrder
+
+    @Test func catalogHoldsOneEnginePerVariant() {
+        let catalog = EngineBridge.catalog(settings: DefaultSettings.v1, resources: .empty)
+        for variant in Self.allVariants {
+            let engine = catalog.engine(for: variant)
+            #expect(engine.configuration == EngineBridge.configuration(for: DefaultSettings.v1, variant: variant))
+        }
+        #expect(Set(Self.allVariants.map(\.catalogIndex)) == Set(0..<8))
+    }
+
+    @Test func variantIndexRoundTrips() {
+        for index in 0..<8 { #expect(EngineVariant(catalogIndex: index).catalogIndex == index) }
+    }
+
+    /// ENG-R1107: only variants that allow macros, with D9 on, carry the macro table.
+    @Test func macrosOnlyInVariantsThatAllowThem() {
+        var settings = DefaultSettings.v1
+        let withMacros = EngineVariant(appContext: .general, englishRestore: true, macros: true)
+        let withoutMacros = EngineVariant(appContext: .general, englishRestore: true, macros: false)
+        #expect(EngineSettingsMapping.includesMacros(withMacros, settings: settings))
+        #expect(!EngineSettingsMapping.includesMacros(withoutMacros, settings: settings))
+        settings.macrosEnabled = false
+        #expect(!EngineSettingsMapping.includesMacros(withMacros, settings: settings))
+    }
+
+    @Test func missingVariantsFallBackToTheDefault() {
+        let special = Engine(configuration: EngineConfiguration(toneStyle: .modern), resources: .empty)
+        let catalog = EngineCatalog(engines: [.default: special])
+        for variant in Self.allVariants { #expect(catalog.engine(for: variant).configuration.toneStyle == .modern) }
+        let empty = EngineCatalog(engines: [:])
+        #expect(empty.engine(for: .default).configuration == EngineConfiguration())
+    }
+
+    @Test func factoryBuildsTheEngineOfTheFocusedVariant() {
+        let settings = DefaultSettings.v1
+        let catalog = EngineBridge.catalog(settings: settings, resources: .empty)
+        let snapshot = PipelineFixtures.settings()
+        let tap = TapSettingsSnapshot(
+            generation: 1, engines: catalog, toggleHotkey: snapshot.toggleHotkey, restoreHotkey: nil,
+            macrosInEnglishMode: false, rememberPerApp: true)
+        let variant = EngineVariant(appContext: .code, englishRestore: false, macros: false)
+        var engine = VietnameseCompositionEngineFactory().makeEngine(for: variant, settings: tap)
+        #expect(engine.session.engine.configuration.appContext == .code)
+        #expect(!engine.session.engine.configuration.autoRestore)
+        _ = engine.handle(.key(KeyInput("a")))
+        _ = engine.handle(.reset(.focusChanged))
+        #expect(engine.activeDisplay.isEmpty)
+    }
+}
+
+@Suite struct EngineBridgeMacroTests {
+    private func macro(_ trigger: String, _ expansion: String = "x", enabled: Bool = true) -> StoredMacro {
+        StoredMacro(trigger: trigger, expansion: expansion, enabled: enabled)
+    }
+
+    @Test func disabledMacrosAreLeftOut() {
+        let macros = [macro("btw", "by the way"), macro("off", enabled: false), macro("hn", "Hà Nội")]
+        let candidates = MacroTableBuilder.candidates(from: macros)
+        #expect(candidates.map(\.entry.trigger) == ["btw", "hn"])
+        #expect(candidates.map(\.id) == [macros[0].id.uuidString, macros[2].id.uuidString])
+        let (_, issues) = EngineBridge.macroTable(from: macros)
+        #expect(issues.isEmpty)
+    }
+
+    /// PRD-R29: invalid entries are skipped and reported one by one; the rest still build.
+    @Test func rejectedEntriesAreDroppedAndReported() {
+        let macros = [macro("ok"), macro("bad trigger"), macro("dup"), macro("DUP"), macro("ad"), macro("ad.x")]
+        var validations = 0
+        let (_, issues) = MacroTableBuilder.build(from: macros) { entries in
+            validations += 1
+            let triggers = entries.map(\.trigger)
+            if triggers.contains("bad trigger") {
+                throw MacroTable.ValidationError.invalidTriggerCharacter("bad trigger")
+            }
+            if triggers.contains("DUP") { throw MacroTable.ValidationError.duplicateTrigger("DUP") }
+            if triggers.contains("ad.x") {
+                throw MacroTable.ValidationError.shadowedByShorterTrigger(trigger: "ad.x", shorter: "ad")
+            }
+            return try MacroTable(entries)
+        }
+        #expect(validations == 4)
+        #expect(
+            issues == [
+                .rejected(macroID: macros[1].id.uuidString, reason: .invalidTriggerCharacter("bad trigger")),
+                .rejected(macroID: macros[3].id.uuidString, reason: .duplicateTrigger("DUP")),
+                .rejected(
+                    macroID: macros[5].id.uuidString, reason: .shadowedByShorterTrigger(trigger: "ad.x", shorter: "ad")),
+            ])
+    }
+
+    @Test func unknownTriggerInAnErrorRejectsEverythingLeft() {
+        let macros = [macro("one"), macro("two")]
+        let (_, issues) = MacroTableBuilder.build(from: macros) { _ in throw MacroTable.ValidationError.emptyTrigger("")
+        }
+        #expect(issues.count == 2)
+    }
+
+    @Test func unexpectedErrorsKeepTheTableEmpty() {
+        struct Unexpected: Error {}
+        let (_, issues) = MacroTableBuilder.build(from: [macro("one")]) { _ in throw Unexpected() }
+        #expect(issues.isEmpty)
+    }
+
+    @Test func offendingTriggerOfEveryError() {
+        let errors: [(MacroTable.ValidationError, String)] = [
+            (.emptyTrigger(""), ""), (.triggerTooLong("t"), "t"), (.invalidTriggerCharacter("i"), "i"),
+            (.expansionTooLong("e"), "e"), (.duplicateTrigger("d"), "d"),
+            (.shadowedByShorterTrigger(trigger: "s.x", shorter: "s"), "s.x"),
+        ]
+        for (error, trigger) in errors { #expect(error.offendingTrigger == trigger) }
+    }
+}
+
+@Suite struct EngineBridgeResourcesTests {
+    @Test func userListsAndMacrosAreAttached() throws {
+        var settings = DefaultSettings.v1
+        settings.keepAsTyped = ["xin"]
+        settings.keepVietnamese = ["chao"]
+        var loads = 0
+        let resources = EngineBridge.resources(settings: settings, macros: .empty) {
+            loads += 1
+            return Resources(
+                english: WordSet(["hello"]), techAlways: WordSet([]), techCodeOnly: WordSet([]),
+                attestedSyllables: WordSet([]), ambiguity: [:], userKeepRaw: WordSet(["stale"]),
+                userKeepVietnamese: WordSet([]))
+        }
+        #expect(loads == 1)
+        #expect(resources.english.contains("hello"))
+        #expect(resources.userKeepRaw.contains("xin"))
+        #expect(!resources.userKeepRaw.contains("stale"))
+        #expect(resources.userKeepVietnamese.contains("chao"))
+    }
+
+    @Test func loaderErrorsPropagate() {
+        struct LoadFailed: Error {}
+        #expect(throws: LoadFailed.self) {
+            try EngineBridge.resources(settings: DefaultSettings.v1, macros: .empty) { throw LoadFailed() }
+        }
+    }
+}
