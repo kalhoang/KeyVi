@@ -185,9 +185,11 @@ public final class CaptureController: Sendable {
 
     /// Deletes captures older than 24 hours; run at launch and hourly on the utility queue.
     public func purgeExpired(now: Date) {
-        let activeFile = session.withLock { $0?.info.file }
+        // Compared by name: directory listings may spell the folder differently (symlinks, trailing slash).
+        let activeName = session.withLock { $0?.info.file.lastPathComponent }
         guard let entries = try? fileSystem.contentsOfDirectory(at: directory) else { return }
-        for url in entries where url.pathExtension == CaptureFiles.fileExtension && url != activeFile {
+        for url in entries where url.pathExtension == CaptureFiles.fileExtension && url.lastPathComponent != activeName
+        {
             guard let created = try? fileSystem.attributes(at: url).creationDate else { continue }
             if now.timeIntervalSince(created) >= CaptureLimits.retention { try? fileSystem.removeItem(at: url) }
         }
