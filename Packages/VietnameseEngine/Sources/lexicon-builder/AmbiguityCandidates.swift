@@ -86,7 +86,8 @@ enum AmbiguityCandidates {
         var words: [String: (source: String, rank: Int)] = [:]
         for (word, level) in english { words[word] = ("scowl-\(level)", level) }
         for list in ["tech-always", "tech-code-only"] {
-            for word in try TechList.load(layout.inputs.appendingPathComponent("\(list).txt")) where words[word] == nil {
+            for word in try TechList.load(layout.inputs.appendingPathComponent("\(list).txt")) where words[word] == nil
+            {
                 words[word] = (list, techRank)
             }
         }
@@ -100,7 +101,9 @@ enum AmbiguityCandidates {
 
         func candidateDisplay(_ raw: String, _ style: ToneStyle) -> String? {
             let display = typer.display(typing: raw, style: style)
-            guard display != raw, attested.contains(display), typer.validity(of: display) == .standard else { return nil }
+            guard display != raw, attested.contains(display), typer.validity(of: display) == .standard else {
+                return nil
+            }
             return display
         }
 

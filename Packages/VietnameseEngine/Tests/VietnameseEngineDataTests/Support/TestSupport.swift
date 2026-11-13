@@ -106,7 +106,8 @@ enum ResourceFixture {
         "tech-always.txt": "usb\nwifi\nwww\n",
         "tech-code-only.txt": "tar\n",
         "attested.txt": "hòa\nhoà\ná\nđi\n",
-        "ambiguity.tsv": "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tx\nis\ten\tunreviewed\tí\tx\ntest\ten\tproposed\ttét\tx\n",
+        "ambiguity.tsv":
+            "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tx\nis\ten\tunreviewed\tí\tx\ntest\ten\tproposed\ttét\tx\n",
         "NOTICES.txt": "notices\n",
     ]
 

@@ -23,8 +23,13 @@ struct LexiconBuilderTests {
             let result = try Builder.run(["build", "--output", output.path])
             #expect(result.status == 0, "build failed: \(result.errors)")
         }
-        let names = try FileManager.default.contentsOfDirectory(atPath: first.appendingPathComponent("Resources").path).sorted()
-        #expect(names == ["NOTICES.txt", "ambiguity.tsv", "attested.txt", "english.txt", "manifest.json", "tech-always.txt", "tech-code-only.txt"])
+        let names = try FileManager.default.contentsOfDirectory(atPath: first.appendingPathComponent("Resources").path)
+            .sorted()
+        #expect(
+            names == [
+                "NOTICES.txt", "ambiguity.tsv", "attested.txt", "english.txt", "manifest.json", "tech-always.txt",
+                "tech-code-only.txt",
+            ])
         for name in names {
             let a = try Data(contentsOf: first.appendingPathComponent("Resources/\(name)"))
             let b = try Data(contentsOf: second.appendingPathComponent("Resources/\(name)"))
@@ -52,16 +57,21 @@ struct LexiconBuilderTests {
         defer { TempDirectory.remove(root) }
         #expect(try Builder.run(["pin", "--data-root", root.appendingPathComponent("data").path]).status == 0)
         let resources = root.appendingPathComponent("out")
-        let ok = try Builder.run(["build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path])
+        let ok = try Builder.run([
+            "build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path,
+        ])
         #expect(ok.status == 0, "\(ok.errors)")
         let loaded = try Resources.load(
-            from: resources.appendingPathComponent("Resources"), userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+            from: resources.appendingPathComponent("Resources"), userKeepRaw: WordSet([]),
+            userKeepVietnamese: WordSet([]))
         #expect(loaded.english.contains("test"))
         #expect(!loaded.english.contains("don"), "entries with apostrophes are dropped")
         #expect(loaded.attestedSyllables.contains("thủy") && loaded.attestedSyllables.contains("thuỷ"))
         #expect(loaded.ambiguity["test"] == .english)
         try write("www\nwifi\nnew\n", to: root.appendingPathComponent("data/inputs/tech-always.txt"))
-        let refused = try Builder.run(["build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path])
+        let refused = try Builder.run([
+            "build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path,
+        ])
         #expect(refused.status != 0)
         #expect(refused.errors.contains("changed: inputs/tech-always.txt"))
     }
@@ -69,7 +79,8 @@ struct LexiconBuilderTests {
     // MARK: Tokeniser
 
     @Test func tokeniserKeepsOnlyVietnameseLetterRuns() throws {
-        let input = "Điều 15. Văn bản quy phạm pháp luật (hoà-bình), THUỶ 2026; fax, Internet, ĐHQG, M'Đrắk, cafe\u{0301}\n"
+        let input =
+            "Điều 15. Văn bản quy phạm pháp luật (hoà-bình), THUỶ 2026; fax, Internet, ĐHQG, M'Đrắk, cafe\u{0301}\n"
         let tokens = try Builder.run(["tokenize"], input: input)
         #expect(tokens.status == 0)
         #expect(
@@ -84,7 +95,8 @@ struct LexiconBuilderTests {
     // MARK: Prose corpus (ENG-T20)
 
     @Test func proseCorpusHasAtLeast200000SyllablesAndIsReproducible() throws {
-        let text = try String(contentsOf: TestPaths.dataRoot.appendingPathComponent("corpus/prose-vi.txt"), encoding: .utf8)
+        let text = try String(
+            contentsOf: TestPaths.dataRoot.appendingPathComponent("corpus/prose-vi.txt"), encoding: .utf8)
         let body = text.split(separator: "\n").filter { !$0.hasPrefix("#") }
         let tokens = body.reduce(0) { $0 + $1.split(separator: " ").count }
         #expect(tokens >= 200_000)
@@ -175,12 +187,15 @@ enum MiniDataRoot {
         try write("color\n", to: scowl.appendingPathComponent("american-words.20"))
         try write("# tech\nwww\nwifi\n", to: data.appendingPathComponent("inputs/tech-always.txt"))
         try write("tar\n", to: data.appendingPathComponent("inputs/tech-code-only.txt"))
-        try write("# additions\nthủy\tfixture\ná\tfixture\n", to: data.appendingPathComponent("inputs/attested-additions.txt"))
+        try write(
+            "# additions\nthủy\tfixture\ná\tfixture\n", to: data.appendingPathComponent("inputs/attested-additions.txt")
+        )
         try write(
             "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tfixture\ntest\ten\tproposed\ttét\tfixture\n",
             to: data.appendingPathComponent("inputs/ambiguity.tsv"))
         let header = "id\tfile\turl\tsha256\tbytes\tretrieved\ttitle\tnumber\tissued\tissuer\tpage\n"
-        let row = "law\tlegal/law.doc\thttps://example.invalid/law.doc\t\(String(repeating: "0", count: 64))\t0\t2026-11-13\tLuật\t1/2026/QH15\t2026-01-01\tQuốc hội\thttps://example.invalid\n"
+        let row =
+            "law\tlegal/law.doc\thttps://example.invalid/law.doc\t\(String(repeating: "0", count: 64))\t0\t2026-11-13\tLuật\t1/2026/QH15\t2026-01-01\tQuốc hội\thttps://example.invalid\n"
         try write(header + row, to: data.appendingPathComponent("inputs/legal/SOURCES.tsv"))
         try write("Điều 1. Luật này quy định về thủy lợi.\n", to: data.appendingPathComponent("inputs/legal/law.txt"))
         try write("Notices\n@include extra.txt\n", to: data.appendingPathComponent("licenses/bundled-notices.txt"))

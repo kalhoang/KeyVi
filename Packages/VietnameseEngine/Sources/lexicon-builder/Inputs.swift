@@ -34,7 +34,8 @@ enum TechList {
         var words: [String] = []
         for (number, word) in FileIO.contentLines(try FileIO.readUTF8(url)) {
             guard isValidEntry(word) else {
-                throw BuilderError("\(url.lastPathComponent) line \(number): '\(word)' must be lowercase a-z/0-9 with a letter")
+                throw BuilderError(
+                    "\(url.lastPathComponent) line \(number): '\(word)' must be lowercase a-z/0-9 with a letter")
             }
             guard seen.insert(word).inserted else {
                 throw BuilderError("\(url.lastPathComponent) line \(number): duplicate entry '\(word)'")
@@ -70,7 +71,8 @@ enum AttestedAdditions {
             guard syllable == VietnameseText.nfc(syllable).lowercased(), !syllable.isEmpty,
                 syllable.allSatisfy(VietnameseText.isVietnameseLetter)
             else {
-                throw BuilderError("attested-additions.txt line \(number): '\(syllable)' must be lowercase NFC Vietnamese letters")
+                throw BuilderError(
+                    "attested-additions.txt line \(number): '\(syllable)' must be lowercase NFC Vietnamese letters")
             }
             guard seen.insert(syllable).inserted else {
                 throw BuilderError("attested-additions.txt line \(number): duplicate '\(syllable)'")
@@ -120,7 +122,9 @@ struct AmbiguityRow: Equatable {
 
     static func parse(_ line: String, number: Int) throws -> AmbiguityRow {
         let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-        guard fields.count == 5 else { throw BuilderError("ambiguity.tsv line \(number): expected 5 tab-separated fields") }
+        guard fields.count == 5 else {
+            throw BuilderError("ambiguity.tsv line \(number): expected 5 tab-separated fields")
+        }
         guard TechList.isValidEntry(fields[0]) else {
             throw BuilderError("ambiguity.tsv line \(number): raw '\(fields[0])' must be lowercase a-z/0-9")
         }

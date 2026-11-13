@@ -10,7 +10,7 @@ import VietnameseEngine
 import VietnameseEngineData
 
 #if canImport(Darwin)
-    import Darwin
+import Darwin
 #endif
 
 @Suite(.serialized)
@@ -18,12 +18,18 @@ struct BundledResourcesTests {
     @Test func loadsAndContainsTheSpecifiedData() throws {
         let resources = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
         // English lexicon: SCOWL words, lowercase ASCII (ENG-T12 spot words that are dictionary words).
-        for word in ["text", "user", "case", "data", "password", "traffic", "boss", "coffee", "tomorrow", "mother", "the", "and", "you"] {
+        for word in [
+            "text", "user", "case", "data", "password", "traffic", "boss", "coffee", "tomorrow", "mother", "the", "and",
+            "you",
+        ] {
             #expect(resources.english.contains(word), "english lexicon lacks \(word)")
         }
         #expect(!resources.english.contains("Monday"))
         // Tech lists (spec/01-engine.md 8.2 examples).
-        for word in ["www", "http", "https", "wifi", "usb", "ios", "macos", "json", "html", "api", "url", "a4", "mp3", "mp4", "4g", "5g", "h2o"] {
+        for word in [
+            "www", "http", "https", "wifi", "usb", "ios", "macos", "json", "html", "api", "url", "a4", "mp3", "mp4",
+            "4g", "5g", "h2o",
+        ] {
             #expect(resources.techAlways.contains(word), "tech-always lacks \(word)")
         }
         for word in ["tar", "less", "more", "cat", "top", "make", "sed", "awk"] {
@@ -73,9 +79,10 @@ struct BundledResourcesTests {
         for _ in 0..<5 {
             loaded = nil
             let before = liveMallocBytes()
-            timings.append(try clock.measure {
-                loaded = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
-            })
+            timings.append(
+                try clock.measure {
+                    loaded = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+                })
             growth.append(liveMallocBytes() - before)
         }
         let median = timings.sorted()[timings.count / 2]
@@ -119,11 +126,11 @@ struct BundledResourcesTests {
 
     private func liveMallocBytes() -> Int {
         #if canImport(Darwin)
-            var statistics = malloc_statistics_t()
-            malloc_zone_statistics(nil, &statistics)
-            return Int(statistics.size_in_use)
+        var statistics = malloc_statistics_t()
+        malloc_zone_statistics(nil, &statistics)
+        return Int(statistics.size_in_use)
         #else
-            return 0
+        return 0
         #endif
     }
 }

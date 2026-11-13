@@ -60,7 +60,8 @@ enum Builder {
             entries[name] = words.count
         }
         let sortedRows = ambiguity.sorted { $0.raw.utf8.lexicographicallyPrecedes($1.raw.utf8) }
-        output.resources.append((ResourceName.ambiguity, Data(joinedLines([AmbiguityRow.header] + sortedRows.map(\.line)).utf8)))
+        output.resources.append(
+            (ResourceName.ambiguity, Data(joinedLines([AmbiguityRow.header] + sortedRows.map(\.line)).utf8)))
         entries[ResourceName.ambiguity] = sortedRows.count
         output.resources.append((ResourceName.notices, Data(try notices(layout).utf8)))
 
@@ -74,7 +75,10 @@ enum Builder {
         ]
         let inputsDigest = SHA256.hex(of: try FileIO.read(layout.manifestFile))
         output.resources.append(
-            (ResourceName.manifest, Data(manifestJSON(output.resources, entries: entries, stats: stats, inputsDigest: inputsDigest).utf8)))
+            (
+                ResourceName.manifest,
+                Data(manifestJSON(output.resources, entries: entries, stats: stats, inputsDigest: inputsDigest).utf8)
+            ))
         output.derived.append((ResourceName.attestedCandidates, Data(candidatesTSV(attested.counts).utf8)))
         return output
     }
@@ -129,9 +133,10 @@ enum Builder {
                 let name = line.dropFirst("@include ".count).trimmingCharacters(in: .whitespaces)
                 let data = try FileIO.read(layout.licenses.appendingPathComponent(name))
                 let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
-                lines.append(contentsOf: text.split(separator: "\n", omittingEmptySubsequences: false).map {
-                    $0.replacingOccurrences(of: " +$", with: "", options: .regularExpression)
-                })
+                lines.append(
+                    contentsOf: text.split(separator: "\n", omittingEmptySubsequences: false).map {
+                        $0.replacingOccurrences(of: " +$", with: "", options: .regularExpression)
+                    })
             } else {
                 lines.append(String(line))
             }
@@ -145,12 +150,16 @@ enum Builder {
     static func manifestJSON(
         _ files: [(name: String, data: Data)], entries: [String: Int], stats: [(String, Int)], inputsDigest: String
     ) -> String {
-        var lines = ["{", "  \"format\": 1,", "  \"generator\": \"lexicon-builder\",", "  \"inputsSHA256\": \"\(inputsDigest)\",", "  \"files\": ["]
+        var lines = [
+            "{", "  \"format\": 1,", "  \"generator\": \"lexicon-builder\",",
+            "  \"inputsSHA256\": \"\(inputsDigest)\",", "  \"files\": [",
+        ]
         for (index, file) in files.enumerated() {
             let comma = index == files.count - 1 ? "" : ","
             let count = entries[file.name].map { ", \"entries\": \($0)" } ?? ""
             lines.append(
-                "    {\"name\": \"\(file.name)\", \"bytes\": \(file.data.count)\(count), \"sha256\": \"\(SHA256.hex(of: file.data))\"}\(comma)")
+                "    {\"name\": \"\(file.name)\", \"bytes\": \(file.data.count)\(count), \"sha256\": \"\(SHA256.hex(of: file.data))\"}\(comma)"
+            )
         }
         lines.append("  ],")
         lines.append("  \"stats\": {")
