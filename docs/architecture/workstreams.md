@@ -332,7 +332,7 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 - **Owned paths:** `App/Sources/Composition/**`, `Packages/AppCore/Sources/InputHost/Lifecycle/InputHostController.swift`,
   `Packages/AppCore/Sources/InputHost/Integration/**`, `Packages/AppCore/Tests/InputHostTests/Integration/**`,
   `App/Resources/Localization/Composition.xcstrings` (added at the wave 2a merge: safe-mode, move-failed and
-  conflict-notice copy)
+  conflict-notice copy; since wave 2b its keys are ShellCore's `CompositionText`, `StringTable.composition`)
 - **Depends on:** W1-A to W1-G.
 - **Scope:** PLT-R201, PLT-R205, PLT-R307, PLT-R311, PLT-R312, PLT-R314, PLT-R316, PLT-R399, PLT-R710, PLT-R909, PLT-R1008, PLT-R1009, PRD-R27, PRD-R52, QA-R42
 - **Work:** `InputHostController` (performs `HostLifecycle` effects with the real services, timers through
@@ -387,7 +387,9 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 - **Owned paths:** `App/Sources/Diagnostics/**`, `App/Resources/Localization/Diagnostics.xcstrings`,
   `Packages/AppCore/Sources/InputHost/Probes/**`, `Packages/AppCore/Tests/InputHostTests/Probes/**`,
   `Packages/AppCore/Sources/ShellCore/BugReport.swift`, `Packages/AppCore/Tests/ShellCoreTests/BugReport/**`,
-  and since the wave 2a merge `ShellCore/BugReportSummary.swift`, `ShellCore/ReportAssembly.swift`
+  and since the wave 2a merge `ShellCore/BugReportSummary.swift`, `ShellCore/ReportAssembly.swift`, and since
+  wave 2b `ShellCore/DiagnosticsText.swift` (the Diagnostics keys, controls and copy helpers, split out of
+  `BugReportSummary.swift` by W2-H)
 - **Depends on:** W1-A, W1-D, W1-F1, W1-G.
 - **Scope:** PLT-R410, PLT-R540, PLT-R810, PLT-R905, PLT-R1201, PLT-R1204, PLT-R1205, PRD-R47, PRD-R48, PRD-R49, PRD-R62, PRD-R66, PRD-R67
 - **Work:** diagnostics window (PLT-R1201), report preview before copy/save (PLT-R1204), bug report sheet with
