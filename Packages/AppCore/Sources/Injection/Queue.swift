@@ -10,6 +10,7 @@
 // job's events were posted reaches the tap before their echo, so it is held instead of overtaking them.
 
 public import AppModel
+public import Diagnostics
 public import RealtimeSupport
 internal import Synchronization
 
@@ -169,12 +170,16 @@ public final class EchoTracker: @unchecked Sendable {
     public let timeout: Duration
     public let missesForBroken: Int
     private let queue: JobQueue
+    /// PLT-R801 echo round trip (`PlatformMetrics.echoRoundTrip`); atomic increments only.
+    private let roundTrip: Log2Histogram?
     private let pending: UnsafeMutablePointer<EchoExpectation>
     private let pendingCapacity: Int
     // Tap-thread state.
     private var head = 0
     private var count = 0
     private var highestEcho: UInt32 = 0
+    /// When the echo that raised `highestEcho` arrived: the round trip of a job ends no later than that.
+    private var highestEchoAt = MonotonicInstant.zero
     private var hasSeenEcho = false
     private var misses = 0
     private let missesMirror = Atomic<Int>(0)
@@ -182,10 +187,14 @@ public final class EchoTracker: @unchecked Sendable {
     /// tap was disabled (0: none). Written by the tap or the lifecycle owner, read by the tap at settlement.
     private let forgivenBound = Atomic<UInt64>(0)
 
-    public init(queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3) {
+    public init(
+        queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3,
+        roundTrip: Log2Histogram? = nil
+    ) {
         self.queue = queue
         self.timeout = timeout
         self.missesForBroken = missesForBroken
+        self.roundTrip = roundTrip
         pendingCapacity = queue.capacity
         pending = .allocate(capacity: queue.capacity)
     }
@@ -208,6 +217,7 @@ public final class EchoTracker: @unchecked Sendable {
             let front = pending[head]
             if hasSeenEcho && Self.isAtOrBefore(front.finalEventSequence, highestEcho) {
                 misses = 0
+                roundTrip?.record(nanoseconds: highestEchoAt.nanoseconds(since: front.postedAt))
             } else if front.postedAt.nanoseconds < forgiven {
                 // PLT-R330, PLT-R306: posted before the tap was re-enabled, so its echo bypassed the disabled
                 // tap and will never come. Settled at once without counting a miss: the posting path is fine.
@@ -229,7 +239,10 @@ public final class EchoTracker: @unchecked Sendable {
     /// or before it. Echoes arrive in posting order, and one that arrives before its expectation was drained is
     /// matched by the watermark when the expectation shows up.
     public func observed(_ sequence: UInt32, at now: MonotonicInstant) {
-        if !hasSeenEcho || Self.isAtOrBefore(highestEcho, sequence) { highestEcho = sequence }
+        if !hasSeenEcho || Self.isAtOrBefore(highestEcho, sequence) {
+            highestEcho = sequence
+            highestEchoAt = now
+        }
         hasSeenEcho = true
         _ = settle(now: now)
     }

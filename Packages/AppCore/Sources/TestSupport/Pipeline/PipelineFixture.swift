@@ -46,7 +46,7 @@ public final class PipelineFixture {
             inputSource: SnapshotCell(inputSource, epoch: epoch), secureInput: SnapshotCell(secureInput, epoch: epoch),
             lifecycle: SnapshotCell(lifecycle, epoch: epoch))
         queue = JobQueue(capacity: queueCapacity, signal: WorkerSignal(), policy: policy)
-        echo = EchoTracker(queue: queue)
+        echo = EchoTracker(queue: queue, roundTrip: metrics.echoRoundTrip)
         outbox = TapOutbox(
             toMain: SPSCRing(capacity: 256), toAX: SPSCRing(capacity: 256), mainSignal: PipelineFixtures.wakeSignal,
             axSignal: PipelineFixtures.wakeSignal)

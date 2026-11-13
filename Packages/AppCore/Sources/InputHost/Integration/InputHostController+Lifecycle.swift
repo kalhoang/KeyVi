@@ -69,7 +69,7 @@ extension InputHostController {
             retiredSession = nil
         }
         channels.feedback.clearPostingBroken()
-        let echo = EchoTracker(queue: channels.queue)
+        let echo = EchoTracker(queue: channels.queue, roundTrip: dependencies.metrics.echoRoundTrip)
         let context = PipelineContext(
             snapshots: channels.snapshots, queue: channels.queue, feedback: channels.feedback, echo: echo,
             marker: channels.marker, outbox: channels.outbox, metrics: dependencies.metrics,

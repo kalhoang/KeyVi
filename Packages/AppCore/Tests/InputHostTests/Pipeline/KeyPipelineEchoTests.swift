@@ -60,6 +60,27 @@ private func taplogCodes(_ fixture: PipelineFixture) -> [TapLogRecord] {
         #expect(fixture.queue.inFlight == 0)
     }
 
+    /// PLT-R801: every job settled by its echo records the echo round trip; a timeout records nothing.
+    @Test func echoedJobsRecordTheRoundTrip() throws {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        fixture.keyDown(Key.a)
+        let edit = try #require(fixture.popJobs().first?.edit)
+        fixture.queue.finished(edit.sequence, expectation: expectation(edit.sequence, 7, fixture))
+        fixture.clock.advance(byMicroseconds: 3_000)
+        fixture.send(
+            PipelineFixtures.keyEvent(.keyUp, Key.a, userData: fixture.marker.userData(sequence: 7, probe: false)))
+        let snapshot = fixture.metrics.echoRoundTrip.snapshot()
+        #expect(snapshot.count == 1)
+        #expect(fixture.queue.inFlight == 0)
+        fixture.keyDown(Key.s)
+        let next = try #require(fixture.popJobs().first?.edit)
+        fixture.queue.finished(next.sequence, expectation: expectation(next.sequence, 8, fixture))
+        fixture.clock.advance(byMicroseconds: 201_000)
+        fixture.keyDown(Key.d)  // the second job timed out: a miss, not a round trip
+        #expect(fixture.metrics.echoRoundTrip.snapshot().count == 1)
+    }
+
     private func threeUnechoedEdits(_ fixture: PipelineFixture) {
         fixture.press(Key.a)
         fixture.press(Key.a)  // edit "â"
