@@ -26,6 +26,30 @@ struct ShellActionsTests {
         #expect(TextFocusOverride.ruleID(for: hashed).rawValue == "user.textfocus.sha256-" + hex)
     }
 
+    @Test func guidedTestSuggestionIsStoredAsAValidUserOverride_PLT_R1205() throws {
+        let bundle = try #require(BundleKey(rawValue: "com.example.editor"))
+        let rule = Rule(
+            id: try #require(RuleID(rawValue: "user.suggested.com.example.editor")), summary: "Suggested",
+            match: RuleMatch(bundleIds: [bundle]), action: RuleAction(strategy: .selectReplace),
+            provenance: .userSuggestion(UserProvenance(source: "user-suggestion", date: "2026-11-13")))
+        let date = Date(timeIntervalSince1970: 1_794_528_000)
+        let stored = try #require(GuidedTestOverride.stored(rule, at: date))
+        #expect(stored.createdAt == date)
+        let decoded = RulesLoader.decodeOverrides([stored.rule])
+        #expect(decoded.rejected.isEmpty)
+        #expect(decoded.rules == [rule])
+    }
+
+    @Test func keyboardIdleCountsOnlyKeysSinceLaunch_PLT_R1105() {
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: 12, secondsSinceLaunch: 600) == 12)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: 900, secondsSinceLaunch: 600) == .infinity)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: 600, secondsSinceLaunch: 600) == .infinity)
+        #expect(
+            KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: .infinity, secondsSinceLaunch: 5) == .infinity)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: .nan, secondsSinceLaunch: 600) == 0)
+        #expect(KeyboardIdleReading.secondsSinceLastKey(systemIdleSeconds: -1, secondsSinceLaunch: 600) == 0)
+    }
+
     @Test func provenanceDayIsUTC() {
         #expect(TextFocusOverride.day(Date(timeIntervalSince1970: 1_800_000_000)) == "2027-01-15")
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// PRD-R43 rows, PRD-R41 resume, PLT-R397/R398C hints, PLT-R540 override action, ADR 0309 reopen, precedence
-// host state > tap notice > known limitation.
+// PRD-R43 rows, PRD-R41 resume, PLT-R397/R398C hints, PLT-R540 override action, ADR 0309 reopen, PLT-R1009 safe
+// mode, precedence host state > safe mode > tap notice > known limitation.
 
 import AppModel
 import CompatRules
@@ -19,11 +19,55 @@ import Testing
 
     func line(
         _ state: HostState, hint: String? = nil, app: FrontmostAppStatus? = nil, reenabled: Bool = false,
-        onboardingCompleted: Bool = true
+        onboardingCompleted: Bool = true, safeMode: Bool = false
     ) -> StatusLine? {
         StatusLine.forState(
             state, holderHintKey: hint, appName: appName, frontmostApp: app, tapRecentlyReenabled: reenabled,
-            onboardingCompleted: onboardingCompleted)
+            onboardingCompleted: onboardingCompleted, safeMode: safeMode)
+    }
+
+    @Test func safeModeLineOffersResetExitOrReport_PLTR1009_PRDR43() throws {
+        // What happened (safe mode, defaults in memory), which component (the app) and one action: the
+        // safe-mode choices, so reset and exit are reachable from the menu without the report flow.
+        let safe = try #require(line(.ready(.vietnamese), safeMode: true))
+        #expect(safe.key == StatusText.safeMode.rawValue)
+        #expect(safe.arguments == [appName])
+        #expect(safe.action == .safeModeChoices)
+        #expect(safe.actionLabelKey == StatusText.actionSafeModeChoices.rawValue)
+        #expect(safe.actionLabelArguments.isEmpty)
+        #expect(line(.ready(.vietnamese)) == nil)  // nothing outside safe mode
+        let menu = MenuModel(
+            statusLine: safe, mode: .vietnamese, toggleHotkeyDisplay: "", method: .telex, frontmostApp: nil,
+            appName: appName, updateCheckEnabled: false)
+        #expect(Array(menu.entries.prefix(3)) == [.status(safe), .statusAction(safe), .separator])
+    }
+
+    @Test func safeModeRanksBelowHostStateAndAboveNoticeAndLimitation() throws {
+        // A host-state line explains why typing does not work right now and wins; safe mode outranks the
+        // transient tap notice and the frontmost app's known limitation.
+        #expect(try #require(line(.noPermission, safeMode: true)).key == StatusText.noPermission.rawValue)
+        let failOpen = try #require(line(.failOpen(.watchdog), safeMode: true))
+        #expect(failOpen.key == StatusText.watchdog.rawValue)
+        let overNotice = try #require(line(.ready(.english), app: frontmost, reenabled: true, safeMode: true))
+        #expect(overNotice.key == StatusText.safeMode.rawValue)
+        let overPause = try #require(line(.paused(.secureField), app: frontmost, safeMode: true))
+        #expect(overPause.key == StatusText.safeMode.rawValue)
+    }
+
+    @Test func safeModeCopyNamesTheAppAndTheAction() throws {
+        let app = try TemporaryAppBundle(catalogs: [.status])
+        let safe = try #require(line(.ready(.vietnamese), safeMode: true))
+        let vi = Localizer(language: .vietnamese, appBundle: app.bundle)
+        let en = Localizer(language: .english, appBundle: app.bundle)
+        #expect(
+            safe.message(vi)
+                == "Example đang chạy ở chế độ an toàn với cài đặt mặc định vì đã dừng đột ngột nhiều lần khi mở.")
+        #expect(safe.actionLabel(vi) == "Đặt lại hoặc dùng lại cài đặt...")
+        #expect(
+            safe.message(en)
+                == "Example is running in safe mode with the default settings because it stopped unexpectedly "
+                + "several times while opening.")
+        #expect(safe.actionLabel(en) == "Reset or use saved settings...")
     }
 
     @Test func permissionMissingOffersGrantAndTheBuiltInFallback() throws {
@@ -151,6 +195,7 @@ import Testing
             .paused(.sessionInactive): nil,
             .paused(.userDisabled): (.userDisabled, .none),
             .paused(.noTextFocus): (.noTextFocus, .overrideTextFocus(bundle: frontmost.bundle)),
+            .paused(.diagnosticsTest): nil,  // the guided test's own pause: its panel says what happens
             .failOpen(.permissionRevoked): (.noPermission, .grantPermission),
             .failOpen(.postingBroken): (.postingBroken, .reportProblem),
             .failOpen(.tapUnavailable): (.tapUnavailable, .reportProblem),
@@ -174,7 +219,7 @@ import Testing
     @Test func expectedPausesAndHealthyStatesShowNoLine() {
         for state: HostState in [
             .starting, .ready(.vietnamese), .ready(.english), .paused(.secureField), .paused(.sessionInactive),
-            .paused(.passThroughRule(AllHostStates.rule)),
+            .paused(.passThroughRule(AllHostStates.rule)), .paused(.diagnosticsTest),
         ] {
             #expect(line(state) == nil, "\(state)")
         }
@@ -217,7 +262,10 @@ import Testing
         ]
         var lines = AllHostStates.all.compactMap { line($0, app: frontmost) }
         lines += holders.compactMap { line(.paused(.secureInput($0)), hint: "iterm2.secureKeyboardEntry") }
-        lines += [line(.ready(.english), reenabled: true), line(.ready(.english), app: frontmost)].compactMap { $0 }
+        lines += [
+            line(.ready(.english), reenabled: true), line(.ready(.english), app: frontmost),
+            line(.ready(.english), safeMode: true),
+        ].compactMap { $0 }
         for language in InterfaceLanguage.allCases {
             let localizer = Localizer(language: language, appBundle: app.bundle)
             for line in lines {

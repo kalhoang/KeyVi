@@ -22,6 +22,12 @@ struct StatusLineBuilder {
         }
     }
 
+    /// PLT-R1009: the app runs on defaults in memory after a crash loop. The action opens the safe-mode choices
+    /// (reset, use the saved settings, report), so they stay reachable from the menu at any time.
+    func safeModeLine() -> StatusLine {
+        line(.safeMode, [appName], action: .safeModeChoices, label: .actionSafeModeChoices)
+    }
+
     func tapReenabledLine() -> StatusLine {
         line(.tapReenabled, [], action: .reportProblem, label: .actionReportProblem)
     }
@@ -66,8 +72,9 @@ struct StatusLineBuilder {
         case .noTextFocus: noTextFocusLine()
         case .userDisabled: line(.userDisabled, [appName], action: .none)
         // Expected pauses that are not problems: a password field, an ignored app (the icon says so), a
-        // locked session. PRD-R11 shows a status line only for a problem.
-        case .secureField, .passThroughRule, .sessionInactive: nil
+        // locked session, the guided test typing (its panel says so). PRD-R11 shows a status line only for a
+        // problem.
+        case .secureField, .passThroughRule, .sessionInactive, .diagnosticsTest: nil
         }
     }
 

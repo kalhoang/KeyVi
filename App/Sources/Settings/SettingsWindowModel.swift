@@ -35,8 +35,8 @@ final class SettingsWindowModel {
     var appDetail: AppDetail?
     var pendingPasteMode: BundleKey?
     var showsLicences = false
-    /// PRD-R53 note after switching from Beta back to Stable.
-    var channelNote: SupportText?
+    /// PRD-R53 note after switching from Beta back to Stable (the updater's `Updates` copy).
+    var channelNote = UpdateChannelNote()
 
     // Panes
     var macroList = MacroListState(macros: [])
@@ -118,9 +118,9 @@ final class SettingsWindowModel {
 
     // MARK: - Settings
 
-    /// PRD-R27: applies at once; D19 to D21 also reach the updater immediately.
+    /// PRD-R27: applies at once. D19 to D21 reach the updater through the store: every publish re-applies the
+    /// effective settings to it (`AppEnvironment.settingsChanged`), so each edit is written once.
     func edit(_ edit: SettingsEdit) {
-        UpdaterSettingsBridge.apply(edit, to: updater)
         if case .interfaceLanguage(let value) = edit { language.select(value) }
         Task { apply(await commands.apply(edit)) }
     }
@@ -190,7 +190,7 @@ final class SettingsWindowModel {
 
     /// PRD-R53: leaving Beta says that nothing is downgraded.
     func selectChannel(_ channel: UpdateChannel) {
-        channelNote = AboutSupportContent.channelNote(from: settings.updateChannel, to: channel)
+        channelNote.channelChanged(from: settings.updateChannel, to: channel)
         edit(.updateChannel(channel))
     }
 

@@ -330,6 +330,9 @@ public enum DiagnosticsWindowAction: String, Sendable, Hashable, CaseIterable {
 public enum DiagnosticsDestination: Sendable, Hashable {
     case bugReport(preselected: BundleKey?)
     case misbehaves(BundleKey)
+    /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use saved settings, report, later) come
+    /// first, so reset and exit stay reachable whichever status line is showing.
+    case safeModeChoices
 }
 
 /// Navigation from the menu to the report (02-platform.md section 12: a first-time user produces a report in
@@ -342,12 +345,28 @@ public enum DiagnosticsNavigation {
     }
 
     /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
-    /// the misbehaves flow for that app (the user focused the problem field first).
-    public static func destination(reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?)
-        -> DiagnosticsDestination
-    {
+    /// the misbehaves flow for that app (the user focused the problem field first). In safe mode both open the
+    /// safe-mode choices, whose "Report a Problem..." button continues to the report (PLT-R1009).
+    public static func destination(
+        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false
+    ) -> DiagnosticsDestination {
+        if safeMode { return .safeModeChoices }
         if let bundle { return .misbehaves(bundle) }
         return .bugReport(preselected: lastFrontmost)
+    }
+
+    /// PLT-R1009: the shortest click path from the closed menu to the safe-mode choices. The status line's own
+    /// action when the safe-mode line is showing, else the report item (a host-state line can outrank the
+    /// safe-mode line). Nil outside safe mode or when the menu offers neither.
+    public static func pathToSafeModeChoices(menu: MenuModel, safeMode: Bool) -> [Click]? {
+        guard safeMode else { return nil }
+        if let line = menu.statusLine, line.action == .safeModeChoices, menu.entries.contains(.statusAction(line)) {
+            return [.statusItem, .menu(.statusAction(line))]
+        }
+        guard menu.entries.contains(.reportProblem),
+            destination(reportProblemFor: nil, lastFrontmost: nil, safeMode: true) == .safeModeChoices
+        else { return nil }
+        return [.statusItem, .menu(.reportProblem)]
     }
 
     /// The shortest click path from the closed menu to "Copy report": open the menu, choose "Báo lỗi...", press

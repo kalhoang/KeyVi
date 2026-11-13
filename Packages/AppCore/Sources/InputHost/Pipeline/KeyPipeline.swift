@@ -124,8 +124,8 @@ public enum KeyClassifier {
 
 /// Host state per key (2.1), the same pure function the main thread uses for the menu icon.
 public enum HostStateResolver {
-    /// Precedence: noPermission / failOpen / starting > sessionInactive > userDisabled > secureInput (unless
-    /// resumed by key evidence for this generation) > secureField > builtInVietnameseSource >
+    /// Precedence: noPermission / failOpen / starting > sessionInactive > diagnosticsTest > userDisabled >
+    /// secureInput (unless resumed by key evidence for this generation) > secureField > builtInVietnameseSource >
     /// nonLatinInputSource > passThroughRule > noTextFocus (focus pause or PLT-R386 gating) > ready(mode).
     public static func resolve(
         lifecycle: LifecycleSnapshot, secureInput: SecureInputSnapshot, secureResumedGeneration: UInt64?,

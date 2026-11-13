@@ -16,14 +16,8 @@ public struct ImportSummary: Sendable, Hashable {
         choices = ImportChoices()
     }
 
-    /// The export format this build writes. Mirrors SettingsStore's internal `SettingsExportFormat.schemaVersion`;
-    /// `SettingsCommandsTests.importLimitAndSchemaVersionMatchTheStore_PLTR912_PRDR72` ties the two together.
-    public static let currentSchemaVersion = 1
-
-    /// PLT-R912 import cap. Mirrors SettingsStore's internal `SettingsExportFormat.maxImportBytes` (same test).
-    public static let importByteLimit = 5 * 1024 * 1024
-
-    public var isNewerSchema: Bool { preview.schemaVersion > Self.currentSchemaVersion }
+    /// Above the export schema this build writes (PLT-R1010); the store owns the number.
+    public var isNewerSchema: Bool { preview.schemaVersion > SettingsExportFormat.schemaVersion }
 
     /// Which sections the file has, so the sheet offers a checkbox only for those.
     public var hasSettings: Bool { preview.content["settings"] != nil }

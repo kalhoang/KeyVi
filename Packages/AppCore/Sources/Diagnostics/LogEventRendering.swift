@@ -122,6 +122,7 @@ extension LogEvent {
             // The build string comes from the appcast (outside input): only a version-shaped token is kept.
             case .updateFound(let build): ("updateFound", ["build": .string(MetadataText.logToken(build))])
             case .installScheduledOnQuit: ("installScheduledOnQuit", [:])
+            case .installingNow: ("installingNow", [:])
             case .failed(let code): ("failed", ["code": .number(Double(code))])
             }
         return RenderedLogEvent(category: .updates, code: "update." + name, fields: fields)

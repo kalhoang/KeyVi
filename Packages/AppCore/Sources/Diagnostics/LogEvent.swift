@@ -58,6 +58,8 @@ public enum LogEvent: Sendable {
         case checkStarted(manual: Bool)
         case updateFound(build: String)
         case installScheduledOnQuit
+        /// The keyboard was idle and secure input off: the update installs and relaunches now (PLT-R1105).
+        case installingNow
         case failed(code: Int)
     }
 }

@@ -38,6 +38,9 @@ public enum PauseReason: Sendable, Hashable {
     case sessionInactive
     case userDisabled
     case noTextFocus
+    /// The guided test of "This app misbehaves" types with its own strategy (PLT-R1205 steps 3-5): every key
+    /// passes unchanged, hotkeys are suspended and nothing reaches the engine or per-app memory.
+    case diagnosticsTest
 
     public var code: PauseCode {
         switch self {
@@ -49,6 +52,7 @@ public enum PauseReason: Sendable, Hashable {
         case .sessionInactive: .sessionInactive
         case .userDisabled: .userDisabled
         case .noTextFocus: .noTextFocus
+        case .diagnosticsTest: .diagnosticsTest
         }
     }
 }
@@ -62,7 +66,7 @@ public enum FailOpenReason: String, Sendable, Hashable, Codable {
 
 public enum PauseCode: String, Sendable, Hashable, Codable {
     case secureInput, nonLatinInputSource, builtInVietnameseSource, passThroughRule, secureField,
-        sessionInactive, userDisabled, noTextFocus
+        sessionInactive, userDisabled, noTextFocus, diagnosticsTest
 }
 
 /// Content-free state code for logs and reports.

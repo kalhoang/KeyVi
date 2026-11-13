@@ -232,13 +232,20 @@ public struct LifecycleSnapshot: Sendable, Hashable {
     public var recorderActive: Bool
     /// Global mode when per-app memory is off or no app is known.
     public var globalMode: TypingMode
+    /// The guided test is typing (PLT-R1205 steps 3-5): host state `paused(diagnosticsTest)`, every key passes
+    /// unchanged and hotkeys are suspended.
+    public var diagnosticsPassThrough: Bool
 
-    public init(generation: UInt64, phase: Phase, userDisabled: Bool, recorderActive: Bool, globalMode: TypingMode) {
+    public init(
+        generation: UInt64, phase: Phase, userDisabled: Bool, recorderActive: Bool, globalMode: TypingMode,
+        diagnosticsPassThrough: Bool = false
+    ) {
         self.generation = generation
         self.phase = phase
         self.userDisabled = userDisabled
         self.recorderActive = recorderActive
         self.globalMode = globalMode
+        self.diagnosticsPassThrough = diagnosticsPassThrough
     }
 }
 

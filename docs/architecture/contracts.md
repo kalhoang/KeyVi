@@ -482,6 +482,9 @@ public enum PauseReason: Sendable, Hashable {
     case sessionInactive
     case userDisabled
     case noTextFocus
+    /// The guided test of "This app misbehaves" types with its own strategy (PLT-R1205 steps 3-5): every key
+    /// passes unchanged, hotkeys are suspended and nothing reaches the engine or per-app memory.
+    case diagnosticsTest
 
     public var code: PauseCode {
         switch self {
@@ -493,6 +496,7 @@ public enum PauseReason: Sendable, Hashable {
         case .sessionInactive: .sessionInactive
         case .userDisabled: .userDisabled
         case .noTextFocus: .noTextFocus
+        case .diagnosticsTest: .diagnosticsTest
         }
     }
 }
@@ -506,7 +510,7 @@ public enum FailOpenReason: String, Sendable, Hashable, Codable {
 
 public enum PauseCode: String, Sendable, Hashable, Codable {
     case secureInput, nonLatinInputSource, builtInVietnameseSource, passThroughRule, secureField,
-        sessionInactive, userDisabled, noTextFocus
+        sessionInactive, userDisabled, noTextFocus, diagnosticsTest
 }
 
 /// Content-free state code for logs and reports.
@@ -1386,14 +1390,15 @@ patterns, [0312](../decisions/0312-report-override-projection.md)); the typing t
 characters. `Log2Histogram`, `AtomicCounter`, `PlatformMetrics`, `PerBundleHistograms`, `HealthEventLog`
 (memory part) and `TapLogRing` are implemented in the skeleton.
 
-Draining the tap log: Diagnostics provides `TapLogRing` and the record format, not the drainer. The drainer
-is not implemented yet: today `InputHostController` only holds the `tapLog` ring, and nothing in
-`Packages/AppCore/Sources/InputHost` calls `TapLogRing.drain`. It is to be implemented by the composition root
-(W2-A) in `InputHost/Lifecycle/InputHostController.swift`. It must run on the utility queue, call
-`TapLogRing.drain`, turn each `TapLogRecord` (a code and two integers, never characters) into a `HealthEvent`
-or a `LogEvent`, and convert `TapLogRecord.at`, a `MonotonicInstant`, to wall-clock time with an offset
-sampled from the injected `MonotonicClock` and `WallClock`. A growing `droppedCount` (records lost while the
-ring was full) must be reported the same way. The tap thread only calls `push` (PLT-R304).
+Draining the tap log: Diagnostics provides `TapLogRing` and the record format, not the drainer. The drainer is
+InputHost's `TapLogDrainer` (`InputHost/Integration/TapLogDrainer.swift`, W2-A). `InputHostController` creates
+it with the tap's clock and the injected `WallClock`, runs `drain()` every 30 s on the utility queue through the
+injected `TimerScheduler` (`tapLogDrainInterval`), and once more when the host stops. Each drain calls
+`TapLogRing.drain`, turns each `TapLogRecord` (a code and two integers, never characters) into a `HealthEvent`
+or a fixed `LogEvent` note, and dates `TapLogRecord.at`, a `MonotonicInstant`, with `MonotonicToWallClock`,
+anchored on both clocks at the moment of the drain (uptime stops during sleep, the wall clock does not). A
+growing `droppedCount` (records lost while the ring was full) is reported as a log note with the number in
+`TapLogDrainResult.newlyDropped`. The tap thread only calls `push` (PLT-R304).
 
 ### 6.1 The issue block (QA-R44)
 
@@ -1626,6 +1631,8 @@ public enum LogEvent: Sendable {
         case checkStarted(manual: Bool)
         case updateFound(build: String)
         case installScheduledOnQuit
+        /// The keyboard was idle and secure input off: the update installs and relaunches now (PLT-R1105).
+        case installingNow
         case failed(code: Int)
     }
 }
@@ -3354,6 +3361,9 @@ public enum StoreNotice: Sendable, Hashable {
 public enum ResetScope: Sendable, Hashable {
     case all(includeMacros: Bool)  // PRD-R26: macros only with the separate checkbox
     case general, typing, apps  // per pane
+    /// Macros pane (PRD-R26): D9 and D10 back to "unset" (PRD-R6); the list is emptied only when `includeList`
+    /// (the separate checkbox). Each rewritten file is backed up first, like every reset (PLT-R1006).
+    case macros(includeList: Bool)
 }
 
 public actor SettingsStore {
@@ -3620,10 +3630,14 @@ public enum SettingsImportError: Error, Sendable, Hashable {
     case unavailableInSafeMode
 }
 
-enum SettingsExportFormat {
+/// The export format. The schema version and the import cap are public so the Settings window's import sheet
+/// reads them from here instead of keeping copies (PLT-R912, PRD-R72).
+public enum SettingsExportFormat {
     static let kind = "settings-export"
-    static let schemaVersion = 1
-    static let maxImportBytes = 5 * 1024 * 1024
+    /// The export schema this build writes; a file above it is "from a newer version" (PLT-R1010).
+    public static let schemaVersion = 1
+    /// PLT-R912: larger files are refused before parsing (`SettingsImportError.tooLarge`).
+    public static let maxImportBytes = 5 * 1024 * 1024
     static let headerKeys: Set<String> = ["kind", "schemaVersion", "writtenBy", "exportedAt"]
     static let settings = "settings", appModes = "appModes", ruleOverrides = "ruleOverrides", macros = "macros"
     static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros]
@@ -5107,6 +5121,13 @@ pass ([0311](../decisions/0311-in-flight-until-echo.md)); with `InFlightPolicy.u
 are not delivered) it settles at `finished`. While posting is broken the worker posts nothing and counts losses.
 Strategy fallbacks apply only to detectable failures (PLT-R410, 4.5).
 
+Re-entry verification (PLT-R342, decided in wave 2a): `EditJob.verifyBeforeApply` is honoured for every
+`EditKind`. The pipeline sets it for every edit of a word re-opened by Backspace when the rule's
+`verifyReentry` is not `.never`: `.reentry` edits, and `.macro` and `.restore` edits on such a word, which keep
+their kind. A flagged job whose expected text (`replacedText`, bounded AX read) does not match is passed
+through: its trigger is replayed unchanged, and a restore (no trigger) delivers nothing. `backspaceRecompose`
+edits never ask for verification.
+
 <!-- include: Packages/AppCore/Sources/Injection/Jobs.swift -->
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
@@ -6089,6 +6110,18 @@ a different or `nil` revision builds a fresh engine and is a boundary (`configur
 revision only rebuilds the hotkey recogniser and keeps the word being typed. `nil` means unknown, so a publisher
 that never sets a revision gets the safe behaviour (every generation rebuilds).
 
+Re-entry (PLT-R342): every edit of a word re-opened by Backspace carries `verifyBeforeApply` when the rule's
+`verifyReentry` is not `.never`, whatever its kind (`.reentry`, `.macro`, `.restore`); the worker honours the
+flag for every kind (section 9).
+
+Diagnostics pass-through (PLT-R1205 steps 3-5): while `LifecycleSnapshot.diagnosticsPassThrough` is true the
+host state is `paused(diagnosticsTest)` (after the phase checks, before `userDisabled`). Every keyboard event
+then passes unchanged (held only while earlier jobs are in flight, PLT-R311) without feeding the engine, and
+hotkeys are suspended like during recording, so no VI/EN toggle reaches per-app memory and the manual mode is
+unchanged. The flag is read from the snapshot at callback entry like every other per-key input: no lock and no
+allocation (PLT-R304, PLT-R305). The guided test's own events carry this launch's marker (probe kind), so they
+stay out of the user's metrics (PLT-R810).
+
 ### 10.2 Hotkey recogniser (PRD-R14, PRD-R15)
 
 `HotkeyRecognizer` is a value-type state machine fed with `HotkeyInput` built from tap events:
@@ -6125,10 +6158,17 @@ that never sets a revision gets the safe behaviour (every generation rebuilds).
   `failOpen(callbackStuck)`, never a second tap ([0309](../decisions/0309-callback-watchdog-gating.md)).
 - `HostLifecycle` is the 2.1 state machine as a value: `handle(_ input:) -> [LifecycleEffect]`. Inputs are
   permission changes, tap created or failed, retry timer fired, watchdog trips, callback exited, posting broken,
-  system disables, session and user-disable changes; effects are publish, create/remove/disable/re-enable tap,
-  flush, reset composition, schedule/cancel retry (1, 2, 5, 10 s after a failed tap creation, PLT-R332; the
-  posting-broken backoff below), health records and the instability notice. `InputHostController` (W2-A)
-  performs the effects with real services.
+  system disables, session and user-disable changes and the diagnostics pass-through; effects are publish,
+  publish flags (same phase, a flag changed), create/remove/disable/re-enable tap, flush, reset composition,
+  schedule/cancel retry (1, 2, 5, 10 s after a failed tap creation, PLT-R332; the posting-broken backoff below),
+  health records and the instability notice. `InputHostController` (W2-A) performs the effects with real
+  services.
+- Diagnostics pass-through (PLT-R1205 steps 3-5): `InputHostController.setDiagnosticsPassThrough(_:)` feeds
+  `.diagnosticsPassThrough(Bool)`. Calls nest (a depth count); only the first start and the matching last end
+  change `HostLifecycle.diagnosticsPassThrough`, and an end without a start is ignored. Entering returns
+  `[.publishFlags, .resetComposition]` (the tap stops transforming in its next callback, then the word is
+  dropped); leaving returns `[.resetComposition, .publishFlags]` (PLT-R210: never a transform with a stale
+  composition). Before launch the flag is only recorded; the first publish carries it. It is never a phase.
 - Posting broken (PLT-R323, PLT-R730, [0311](../decisions/0311-in-flight-until-echo.md) amendment).
   `.postingBroken` (three echo misses, or a false post preflight) returns the fail-open effects (publish
   `failOpen(postingBroken)`, flush, reset composition, remove the tap), then `.recordHealth(.postingBroken)` and
@@ -6431,13 +6471,20 @@ public struct LifecycleSnapshot: Sendable, Hashable {
     public var recorderActive: Bool
     /// Global mode when per-app memory is off or no app is known.
     public var globalMode: TypingMode
+    /// The guided test is typing (PLT-R1205 steps 3-5): host state `paused(diagnosticsTest)`, every key passes
+    /// unchanged and hotkeys are suspended.
+    public var diagnosticsPassThrough: Bool
 
-    public init(generation: UInt64, phase: Phase, userDisabled: Bool, recorderActive: Bool, globalMode: TypingMode) {
+    public init(
+        generation: UInt64, phase: Phase, userDisabled: Bool, recorderActive: Bool, globalMode: TypingMode,
+        diagnosticsPassThrough: Bool = false
+    ) {
         self.generation = generation
         self.phase = phase
         self.userDisabled = userDisabled
         self.recorderActive = recorderActive
         self.globalMode = globalMode
+        self.diagnosticsPassThrough = diagnosticsPassThrough
     }
 }
 
@@ -6882,8 +6929,8 @@ public enum KeyClassifier {
 
 /// Host state per key (2.1), the same pure function the main thread uses for the menu icon.
 public enum HostStateResolver {
-    /// Precedence: noPermission / failOpen / starting > sessionInactive > userDisabled > secureInput (unless
-    /// resumed by key evidence for this generation) > secureField > builtInVietnameseSource >
+    /// Precedence: noPermission / failOpen / starting > sessionInactive > diagnosticsTest > userDisabled >
+    /// secureInput (unless resumed by key evidence for this generation) > secureField > builtInVietnameseSource >
     /// nonLatinInputSource > passThroughRule > noTextFocus (focus pause or PLT-R386 gating) > ready(mode).
     public static func resolve(
         lifecycle: LifecycleSnapshot, secureInput: SecureInputSnapshot, secureResumedGeneration: UInt64?,
@@ -7417,6 +7464,10 @@ public enum LifecycleInput: Sendable, Hashable {
     case tapDisabledBySystem(byTimeout: Bool)
     case sessionActive(Bool)
     case userDisabled(Bool)
+    /// The guided test of "This app misbehaves" starts (`true`) or ends (`false`) typing with its own strategy
+    /// (PLT-R1205 steps 3-5). Calls nest: only the first start and the matching last end change the state, and
+    /// an end without a start is ignored.
+    case diagnosticsPassThrough(Bool)
 }
 
 public enum LifecycleEffect: Sendable, Hashable {
@@ -7436,6 +7487,9 @@ public enum LifecycleEffect: Sendable, Hashable {
     case recordHealth(HealthEventKindCode)
     /// More than 3 system disables within 10 minutes (PLT-R330 step 5).
     case showTapInstabilityNotice
+    /// The phase is unchanged but a flag the tap reads changed (diagnostics pass-through): publish the snapshot
+    /// again with the current phase.
+    case publishFlags
 }
 
 /// Health kinds the lifecycle records (mirrors the Diagnostics `HealthEvent.Kind` cases it uses, so this
@@ -7476,6 +7530,11 @@ public struct HostLifecycle: Sendable, Hashable {
     public private(set) var phase: LifecycleSnapshot.Phase = .starting
     /// The user's "turn off" switch: a pause reason (`paused(userDisabled)`), not a lifecycle phase.
     public private(set) var userDisabled = false
+    /// The guided test is typing: a pause reason (`paused(diagnosticsTest)`), not a lifecycle phase.
+    public var diagnosticsPassThrough: Bool { passThroughDepth > 0 }
+
+    /// Nesting depth of `.diagnosticsPassThrough` calls.
+    private var passThroughDepth = 0
 
     private var launched = false
     /// nil until the first status arrives.
@@ -7502,6 +7561,7 @@ public struct HostLifecycle: Sendable, Hashable {
         case .permissionsChanged(let status): return permissionsChanged(granted: Self.looksGranted(status))
         case .sessionActive(let active): return sessionChanged(active: active)
         case .userDisabled(let disabled): return userDisabledChanged(disabled)
+        case .diagnosticsPassThrough(let on): return passThroughChanged(on)
         default: break
         }
         guard launched else { return [] }
@@ -7514,7 +7574,7 @@ public struct HostLifecycle: Sendable, Hashable {
         case .postingBroken: return postingBroken(at: now)
         case .tapDisabledBySystem(let byTimeout):
             return systemDisabled(reason: byTimeout ? .tapTimeout : .tapDisabledByUserInput, at: now)
-        case .launched, .permissionsChanged, .sessionActive, .userDisabled: return []
+        case .launched, .permissionsChanged, .sessionActive, .userDisabled, .diagnosticsPassThrough: return []
         }
     }
 
@@ -7670,6 +7730,20 @@ public struct HostLifecycle: Sendable, Hashable {
         guard disabled != userDisabled else { return [] }
         userDisabled = disabled
         return launched ? [.resetComposition] : []
+    }
+
+    /// PLT-R1205, PLT-R210: entering stops transforming in the tap's next callback (publish), then resets;
+    /// leaving resets first, so the tap never transforms with a stale composition, then publishes.
+    private mutating func passThroughChanged(_ on: Bool) -> [LifecycleEffect] {
+        let wasOn = diagnosticsPassThrough
+        if on {
+            passThroughDepth += 1
+        } else {
+            guard passThroughDepth > 0 else { return [] }
+            passThroughDepth -= 1
+        }
+        guard diagnosticsPassThrough != wasOn, launched else { return [] }
+        return on ? [.publishFlags, .resetComposition] : [.resetComposition, .publishFlags]
     }
 
     // MARK: - Helpers
@@ -8033,6 +8107,12 @@ public final class InputHostController {
     /// Status for the menu "Với <App>" submenu and diagnostics.
     public func currentFocus() -> FocusSnapshot { channels.snapshots.focus.load() }
 
+    /// The current layout's key table (PLT-R360), for the hotkey recorder and the latency probe.
+    public func currentLayoutTable() -> LayoutTable? { channels.snapshots.inputSource.load().table }
+
+    /// Enabled input sources (IDs and names), for the layout binding in Settings (PLT-R373).
+    public func enabledInputSources() -> [InputSourceInfo] { dependencies.inputSources.enabledSources() }
+
     /// Immediate secure-input poll when the menu opens (PLT-R395).
     public func refreshSecureInput() -> SecureInputSnapshot {
         secureInputMonitor?.pollNow() ?? channels.snapshots.secureInput.load()
@@ -8056,6 +8136,16 @@ public final class InputHostController {
         guard active != recorderActive else { return }
         recorderActive = active
         publishLifecycle(lifecycle.phase)
+    }
+
+    /// The guided test of "This app misbehaves" is about to type (`true`) or has finished (`false`)
+    /// (PLT-R1205 steps 3-5). While on, the tap passes every keyboard event unchanged without feeding the engine,
+    /// hotkeys are suspended so nothing is written to per-app memory and the manual mode stays as it is, and the
+    /// composition is reset on entry and exit (PLT-R210). Calls nest; each `true` needs one `false`. The tap reads
+    /// the flag from the lifecycle snapshot (PLT-R304: no lock, no allocation).
+    public func setDiagnosticsPassThrough(_ on: Bool) {
+        guard !stopped else { return }
+        feed(.diagnosticsPassThrough(on))
     }
 
     /// Data for the diagnostics report (PLT-R1202), metadata only.
@@ -8992,7 +9082,9 @@ public final class GuidedTestRunner: Sendable {
     let fieldAccess: any FocusedFieldAccess
     let marker: EventMarker
     let clock: any MonotonicClock
-    let keys: GuidedTestKeys
+    /// Read when a run or removal starts, so a runner kept for the process lifetime follows input source
+    /// changes (PLT-R405, PLT-R373).
+    let currentLayout: @Sendable () -> LayoutTable?
     let sequence = ProbeSequence()
 
     /// Current strategy first, then the PLT-R1205 list: `backspaceReplace` with `axSelection`, with
@@ -9014,15 +9106,24 @@ public final class GuidedTestRunner: Sendable {
     }
 
     /// `layout` supplies the key codes of the canary keys (PLT-R405); without it the US positions are used.
-    public init(
+    public convenience init(
         poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
         layout: LayoutTable?
+    ) {
+        self.init(poster: poster, fieldAccess: fieldAccess, marker: marker, clock: clock, currentLayout: { layout })
+    }
+
+    /// `currentLayout` is read at the start of every run and removal, so the canary's key codes match the layout
+    /// in use at that moment (PLT-R405); nil falls back to the US positions.
+    public init(
+        poster: any EventPoster, fieldAccess: any FocusedFieldAccess, marker: EventMarker, clock: any MonotonicClock,
+        currentLayout: @escaping @Sendable () -> LayoutTable?
     ) {
         self.poster = poster
         self.fieldAccess = fieldAccess
         self.marker = marker
         self.clock = clock
-        keys = GuidedTestKeys(layout: layout)
+        self.currentLayout = currentLayout
     }
 
     /// Types the canary "đá â" with `candidate`, reads it back through AX when possible and removes it again
@@ -9091,7 +9192,15 @@ Status lines (PRD-R43, section 6 of 02-platform.md): `StatusLine.forState` takes
 holder hint, the app name, the frontmost app's `FrontmostAppStatus` (matrix status and one-line limitation note
 from `compat-matrix.json`) and whether the tap was just re-enabled, so it can produce every row of the PRD-R43
 table, including "App in Known limitation list" and "paused: no text field detected" with the one-click
-`.overrideTextFocus(bundle:)` action (a user override with `requireTextFocus: never`, PLT-R540).
+`.overrideTextFocus(bundle:)` action (a user override with `requireTextFocus: never`, PLT-R540). With
+`safeMode: true` (`SettingsState.safeMode`, PLT-R1009) it shows `status.safeMode` with the
+`.safeModeChoices` action, which opens the safe-mode alert (reset, use the saved settings, report), below the
+host-state lines and above the tap notice and the known limitation. Because a host-state line (for example
+`paused(noTextFocus)` when the menu is opened from the desktop) can hide the safe-mode line,
+`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)` returns `.safeModeChoices` for both
+report items while in safe mode, and `pathToSafeModeChoices(menu:safeMode:)` pins that the choices stay at most
+two clicks away under every host state. `paused(diagnosticsTest)` shows no line:
+the guided test's panel says what is happening.
 
 Bug report paths (PRD-R47): GitHub uses `Brand.repositoryURL` (nil hides the button); email builds a
 `MailDraft` that the App sends with `NSSharingService(named: .composeEmail)` including the JSON report as an
@@ -9230,6 +9339,7 @@ public enum StringTable: String, Sendable, CaseIterable {
     case diagnostics = "Diagnostics"  // PLT-R1201, PLT-R1205, PRD-R47
     case support = "Support"  // About & Support, donation block (PRD-R59)
     case updates = "Updates"  // PRD-R50-R54
+    case composition = "Composition"  // composition root notices: safe mode, move failed, conflicts
 }
 
 /// Resolves keys for one language. Immutable; a new instance is created on language change.
@@ -9502,7 +9612,8 @@ public enum StatusPresentation {
             return mode == .vietnamese ? .secureInputVietnamese : .secureInputEnglish
         case .passThroughRule:
             return .ignoredApp
-        case .nonLatinInputSource, .builtInVietnameseSource, .sessionInactive, .userDisabled, .noTextFocus:
+        case .nonLatinInputSource, .builtInVietnameseSource, .sessionInactive, .userDisabled, .noTextFocus,
+            .diagnosticsTest:
             return .paused
         }
     }
@@ -9516,7 +9627,8 @@ public enum StatusPresentation {
             return MenuText.iconStarting.rawValue
         case (.paused, .paused(.noTextFocus)):
             return MenuText.iconPausedNoTextFocus.rawValue
-        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)):
+        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)),
+            (.paused, .paused(.diagnosticsTest)):
             return MenuText.iconPausedOther.rawValue
         case (.notWorking, .failOpen(let reason)) where reason != .permissionRevoked:
             return MenuText.iconNotWorkingFailOpen.rawValue
@@ -9539,6 +9651,8 @@ public struct StatusLine: Sendable, Hashable {
         case overrideTextFocus(bundle: BundleKey)
         /// `failOpen(callbackStuck)`: only reopening the app recovers (ADR 0309).
         case reopenApp
+        /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use the saved settings, report).
+        case safeModeChoices
     }
 
     public var key: String  // in the `Status` table
@@ -9564,18 +9678,21 @@ public struct StatusLine: Sendable, Hashable {
     }
 
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
-    /// source, built-in Vietnamese source, no text focus with override action) > tap re-enabled notice >
-    /// "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
+    /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// While a host-state line hides the safe-mode line, the report item still opens the safe-mode choices
+    /// (`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)`).
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
-    /// (PRD-R41).
+    /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
         _ state: HostState, holderHintKey: String?, appName: String, frontmostApp: FrontmostAppStatus?,
-        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true
+        tapRecentlyReenabled: Bool, onboardingCompleted: Bool = true, safeMode: Bool = false
     ) -> StatusLine? {
         let context = StatusLineBuilder(
             appName: appName, holderHintKey: holderHintKey, frontmostApp: frontmostApp,
             onboardingCompleted: onboardingCompleted)
         if let line = context.hostLine(for: state) { return line }
+        if safeMode { return context.safeModeLine() }
         if tapRecentlyReenabled { return context.tapReenabledLine() }
         return context.knownLimitationLine()
     }
@@ -10174,6 +10291,9 @@ public enum DiagnosticsWindowAction: String, Sendable, Hashable, CaseIterable {
 public enum DiagnosticsDestination: Sendable, Hashable {
     case bugReport(preselected: BundleKey?)
     case misbehaves(BundleKey)
+    /// Crash-loop safe mode (PLT-R1009): the safe-mode choices (reset, use saved settings, report, later) come
+    /// first, so reset and exit stay reachable whichever status line is showing.
+    case safeModeChoices
 }
 
 /// Navigation from the menu to the report (02-platform.md section 12: a first-time user produces a report in
@@ -10186,12 +10306,28 @@ public enum DiagnosticsNavigation {
     }
 
     /// "Báo lỗi..." opens the bug report sheet with the last frontmost app; "Báo lỗi với ứng dụng này..." opens
-    /// the misbehaves flow for that app (the user focused the problem field first).
-    public static func destination(reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?)
-        -> DiagnosticsDestination
-    {
+    /// the misbehaves flow for that app (the user focused the problem field first). In safe mode both open the
+    /// safe-mode choices, whose "Report a Problem..." button continues to the report (PLT-R1009).
+    public static func destination(
+        reportProblemFor bundle: BundleKey?, lastFrontmost: BundleKey?, safeMode: Bool = false
+    ) -> DiagnosticsDestination {
+        if safeMode { return .safeModeChoices }
         if let bundle { return .misbehaves(bundle) }
         return .bugReport(preselected: lastFrontmost)
+    }
+
+    /// PLT-R1009: the shortest click path from the closed menu to the safe-mode choices. The status line's own
+    /// action when the safe-mode line is showing, else the report item (a host-state line can outrank the
+    /// safe-mode line). Nil outside safe mode or when the menu offers neither.
+    public static func pathToSafeModeChoices(menu: MenuModel, safeMode: Bool) -> [Click]? {
+        guard safeMode else { return nil }
+        if let line = menu.statusLine, line.action == .safeModeChoices, menu.entries.contains(.statusAction(line)) {
+            return [.statusItem, .menu(.statusAction(line))]
+        }
+        guard menu.entries.contains(.reportProblem),
+            destination(reportProblemFor: nil, lastFrontmost: nil, safeMode: true) == .safeModeChoices
+        else { return nil }
+        return [.statusItem, .menu(.reportProblem)]
     }
 
     /// The shortest click path from the closed menu to "Copy report": open the menu, choose "Báo lỗi...", press
@@ -10541,10 +10677,15 @@ public struct DonationInfo: Sendable, Hashable {
 ## 12. App: AppShell components and the Sparkle wrapper
 
 Owned files: `App/Sources/Shell/**`, `App/Sources/Onboarding/**`, `App/Resources/Localization/{Localizable,Menu,Status,Onboarding}.xcstrings`,
-`App/Resources/Assets.xcassets/**`, `App/Resources/SystemPanes.json` (W1-G); `App/Sources/Composition/**`
-(W2-A); `App/Sources/Settings/**` and the `Settings`, `Macros`, `Apps`, `Support` tables (W2-B);
-`App/Sources/Diagnostics/**` and the `Diagnostics` table (W2-C); `App/Sources/Updater/**` and the `Updates`
-table (W2-D). Isolation: main actor throughout. Framework choice: [0305](../decisions/0305-ui-framework.md).
+`App/Resources/Assets.xcassets/**`, `App/Resources/SystemPanes.json` (W1-G); `App/Sources/Composition/**` and the
+`Composition` table (W2-A); `App/Sources/Settings/**` and the `Settings`, `Macros`, `Apps`, `Support` tables
+(W2-B); `App/Sources/Diagnostics/**` and the `Diagnostics` table (W2-C); `App/Sources/Updater/**` and the
+`Updates` table (W2-D). Isolation: main actor throughout. Framework choice: [0305](../decisions/0305-ui-framework.md).
+
+String Catalogs (`App/Resources/Localization/`, one table per feature area, `StringTable` in ShellCore):
+`Localizable` (common words), `Menu`, `Status`, `Onboarding`, `Settings`, `Macros`, `Apps`, `Diagnostics`,
+`Support`, `Updates` and `Composition` (the composition root's safe-mode, move-failed and conflict notices,
+keys in ShellCore's `CompositionText`). Every table is read through `Localizer` in the selected language.
 
 The skeleton's `AppMain` shows `BootstrapStatusItem` (a programmatically drawn template glyph from
 `StatusGlyph`, a status line and Quit), so the App target launches without touching any unimplemented contract.
@@ -10562,6 +10703,7 @@ thread).
 
 import AppKit
 import AppModel
+import Carbon.HIToolbox
 import CompatRules
 import Diagnostics
 import Injection
@@ -10588,6 +10730,8 @@ final class AppEnvironment {
     let diagnostics: DiagnosticsWiring
     let loginItem = SMAppServiceLoginItem()
     let settingsChanges = MainActorRelay<SettingsState>()
+    /// System uptime at launch: keys pressed before it do not count for the relaunch policy (PLT-R1105).
+    let launchUptime = ProcessInfo.processInfo.systemUptime
     var settings = SettingsState()
     var safeMode = false
     var launch: LaunchSequence?
@@ -10598,6 +10742,8 @@ final class AppEnvironment {
     var importCandidates: [ImportCandidate] = []
     var settingsWindow: SettingsWindowController?
     var diagnosticsWindow: DiagnosticsWindowController?
+    /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
+    var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
     /// QA-R42: the first launch after an update checks the host once it left `starting`.
     var selfCheckPending = false
@@ -10694,16 +10840,24 @@ final class AppEnvironment {
         host.apply(settings: state)
         language.select(state.effective.interfaceLanguage)
         statusItem?.setClickToToggle(state.effective.clickIconToToggle)
+        settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
         applyUpdaterSettings()
         updateIcon()
     }
 
+    /// D19-D21 from the store reach Sparkle through `apply`, which never reports back (setting the controller's
+    /// properties would record the stored values as new user choices, PRD-R6).
     func applyUpdaterSettings() {
-        guard let updater else { return }
-        let effective = settings.effective
-        updater.automaticallyChecksForUpdates = effective.automaticallyCheckForUpdates
-        updater.automaticallyDownloadsUpdates = effective.automaticallyInstallUpdates
-        updater.channel = effective.updateChannel == .beta ? .beta : .stable
+        updater?.apply(UpdatePreferences(settings.effective))
+    }
+
+    /// PLT-R1105: seconds since the last key press since launch (`.infinity` when none) and the system's secure
+    /// input state. Read once, when Sparkle offers the immediate install.
+    func keyboardIdleState() -> (secondsSinceLastKey: Double, secureInputOn: Bool) {
+        let systemIdle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+        let idle = KeyboardIdleReading.secondsSinceLastKey(
+            systemIdleSeconds: systemIdle, secondsSinceLaunch: ProcessInfo.processInfo.systemUptime - launchUptime)
+        return (secondsSinceLastKey: idle, secureInputOn: IsSecureEventInputEnabled())
     }
 
     private static func loadPaneTable() -> SystemPaneTable? {
@@ -10738,7 +10892,7 @@ extension AppEnvironment: LaunchSteps {
             },
             reportFailure: { [weak self] _ in
                 guard let self else { return }
-                CompositionAlerts.moveFailed(appName: brand.displayName, strings: strings)
+                CompositionAlerts.moveFailed(appName: brand.displayName, localizer: language.localizer)
             }, relocator: relocator, bundleURL: bundleURL)
         return await gate.resolve()
         #endif
@@ -10793,14 +10947,18 @@ extension AppEnvironment: LaunchSteps {
         presentOnboarding(startAt: nil)
     }
 
+    /// PLT-R1101: D19-D21 are applied before Sparkle starts; changes the user makes in the updater (About & Support,
+    /// Sparkle's window) are written to settings.json as explicit keys, one key per change (PRD-R6).
     func startUpdater(settings: SettingsState) {
-        let host = self.host
-        let controller = UpdaterController {
-            let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
-            return (secondsSinceLastKey: idle, secureInputOn: host.refreshSecureInput().enabled)
+        let controller = UpdaterController(
+            idleState: { [weak self] in self?.keyboardIdleState() ?? (secondsSinceLastKey: 0, secureInputOn: true) },
+            dependencies: .live(bundle: .main, logger: diagnostics.logger, language: language))
+        let store = settingsStore
+        controller.onPreferenceChange = { change in
+            Task { await store.updateSettings { change.apply(to: &$0) } }
         }
         updater = controller
-        applyUpdaterSettings()
+        controller.apply(UpdatePreferences(settings.effective))
         controller.start()
     }
 }
@@ -11561,14 +11719,14 @@ final class UpdaterController: NSObject, UpdaterControlling {
     }
 
     /// Applies D19-D21 from the settings store, at launch (before `start`) and after every settings change.
-    /// Idempotent, and never reported back through `onPreferenceChange`.
+    /// Idempotent, and the stored values are never reported back through `onPreferenceChange`. A value the user
+    /// moved in Sparkle's own update window since the last push is adopted first (reported once, so the store
+    /// keeps it) rather than overwritten by the store's older value: the store publishes on every change, also
+    /// while Sparkle's window is open (PLT-R1001, PRD-R6).
     func apply(_ next: UpdatePreferences) {
-        let previous = preferences
-        preferences = next
-        guard let driver else { return }
-        push(next, to: driver)
-        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
-        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
+        let moves = sparkleMoves().filter { next.applying($0) != next }
+        commit(moves.reduce(next) { $0.applying($1) })
+        for change in moves { onPreferenceChange?(change) }
     }
 
     var currentPreferences: UpdatePreferences { preferences }
@@ -11602,8 +11760,17 @@ final class UpdaterController: NSObject, UpdaterControlling {
     private func userChanged(_ change: UpdatePreferenceChange) {
         let next = preferences.applying(change)
         guard next != preferences else { return }
-        apply(next)
+        commit(next)
         onPreferenceChange?(change)
+    }
+
+    private func commit(_ next: UpdatePreferences) {
+        let previous = preferences
+        preferences = next
+        guard let driver else { return }
+        push(next, to: driver)
+        // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
+        if previous.channel != next.channel { driver.resetUpdateCycleAfterShortDelay() }
     }
 
     /// Writes only values that differ: setting `automaticallyChecksForUpdates` makes Sparkle reschedule its cycle.
@@ -11621,16 +11788,20 @@ final class UpdaterController: NSObject, UpdaterControlling {
     /// defaults. Adopting it at the end of a session keeps settings.json the single source (PLT-R1001). Only a
     /// value that moved since the last push counts: Sparkle silently ignores `automaticallyDownloadsUpdates` when
     /// the bundle disallows automatic updates, and that must never turn into an explicit D20 (PRD-R6).
-    private func adoptSparkleChoices() {
-        guard let driver, let baseline = sparkleBaseline else { return }
+    private func adoptSparkleChoices() { apply(preferences) }
+
+    /// The Sparkle values that moved since the last push, as preference changes.
+    private func sparkleMoves() -> [UpdatePreferenceChange] {
+        guard let driver, let baseline = sparkleBaseline else { return [] }
         let current = SparkleChoices(of: driver)
+        var moves: [UpdatePreferenceChange] = []
         if current.automaticallyCheck != baseline.automaticallyCheck {
-            userChanged(.automaticallyCheck(current.automaticallyCheck))
+            moves.append(.automaticallyCheck(current.automaticallyCheck))
         }
         if current.automaticallyDownload != baseline.automaticallyDownload {
-            userChanged(.automaticallyInstall(current.automaticallyDownload))
+            moves.append(.automaticallyInstall(current.automaticallyDownload))
         }
-        sparkleBaseline = SparkleChoices(of: driver)
+        return moves
     }
 
     /// PRD-R43 update-failed alert. The failure itself is logged by `updater(_:didAbortWithError:)`.
@@ -11692,14 +11863,13 @@ extension UpdaterController: SPUUpdaterDelegate {
         _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
         immediateInstallationBlock immediateInstallHandler: @escaping () -> Void
     ) -> Bool {
-        // The installer is prepared for install at quit in both cases; the typed log has no separate event for
-        // the early relaunch.
-        log(.installScheduledOnQuit, level: .info)
         switch RelaunchGate.decision(for: idleState(), isCritical: item.isCriticalUpdate) {
         case .installNow:
+            log(.installingNow, level: .info)
             immediateInstallHandler()
             return true
         case .installOnQuit:
+            log(.installScheduledOnQuit, level: .info)
             return false
         }
     }

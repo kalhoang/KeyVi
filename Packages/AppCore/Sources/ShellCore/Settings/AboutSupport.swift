@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // About & Support pane logic (PRD-R24, PRD-R53, PRD-R59, ENG-R811): version line, update settings applied to the
-// Sparkle wrapper, the "no downgrade" note when leaving Beta, licences and acknowledgements, donation block.
+// Sparkle wrapper, licences and acknowledgements, donation block. The "no downgrade" note when leaving Beta is the
+// updater's `UpdateChannelNote` (App/Sources/Updater, `Updates` table).
 
 public import AppModel
 
@@ -11,29 +12,9 @@ public enum AboutSupportContent {
         localizer.format(SupportText.version, brand.version, brand.build)
     }
 
-    /// PRD-R53: switching from Beta back to Stable offers the next stable when it is newer and never downgrades
-    /// automatically, and the pane says so.
-    public static func channelNote(from previous: UpdateChannel, to selected: UpdateChannel) -> SupportText? {
-        previous == .beta && selected == .stable ? .channelNoDowngrade : nil
-    }
-
     /// The Sparkle wrapper's view of the channel setting.
     public static func selection(for channel: UpdateChannel) -> UpdateChannelSelection {
         channel == .beta ? .beta : .stable
-    }
-}
-
-/// Mirrors D19 to D21 onto the updater as soon as the user changes them (the wrapper also applies the stored
-/// settings at launch, ADR 0304). Other edits are ignored.
-public enum UpdaterSettingsBridge {
-    @MainActor
-    public static func apply(_ edit: SettingsEdit, to updater: any UpdaterControlling) {
-        switch edit {
-        case .automaticallyCheckForUpdates(let value): updater.automaticallyChecksForUpdates = value
-        case .automaticallyInstallUpdates(let value): updater.automaticallyDownloadsUpdates = value
-        case .updateChannel(let channel): updater.channel = AboutSupportContent.selection(for: channel)
-        default: break
-        }
     }
 }
 

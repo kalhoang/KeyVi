@@ -88,10 +88,14 @@ public enum SettingsImportError: Error, Sendable, Hashable {
     case unavailableInSafeMode
 }
 
-enum SettingsExportFormat {
+/// The export format. The schema version and the import cap are public so the Settings window's import sheet
+/// reads them from here instead of keeping copies (PLT-R912, PRD-R72).
+public enum SettingsExportFormat {
     static let kind = "settings-export"
-    static let schemaVersion = 1
-    static let maxImportBytes = 5 * 1024 * 1024
+    /// The export schema this build writes; a file above it is "from a newer version" (PLT-R1010).
+    public static let schemaVersion = 1
+    /// PLT-R912: larger files are refused before parsing (`SettingsImportError.tooLarge`).
+    public static let maxImportBytes = 5 * 1024 * 1024
     static let headerKeys: Set<String> = ["kind", "schemaVersion", "writtenBy", "exportedAt"]
     static let settings = "settings", appModes = "appModes", ruleOverrides = "ruleOverrides", macros = "macros"
     static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros]

@@ -303,6 +303,48 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         #expect(state.macros.count == 2)
     }
 
+    /// PRD-R26: the Macros pane resets D9 and D10 to "unset" and keeps the list unless the box is ticked; only
+    /// the files it rewrites are backed up first (PLT-R1006 "never wipe").
+    @Test func macrosPaneResetUnsetsTheSwitchesAndKeepsTheListUnlessAsked_PRDR26() async throws {
+        let harness = await loadedFixture()
+        await harness.store.updateSettings { $0.macrosInEnglishMode = .set(true) }
+        await harness.store.reset(.macros(includeList: false))
+        var state = await harness.store.state
+        #expect(state.user.macrosEnabled == .unset && state.user.macrosInEnglishMode == .unset)
+        #expect(state.user.soundOnSwitch == .set(true) && state.user.typingMethod == .set(.vni))
+        #expect(state.macros.count == 2)
+        #expect(harness.object(.settings)?["settings"]?["macrosEnabled"] == nil)
+        #expect(harness.paths.contains { $0.hasPrefix("backups/settings.json.v1.") })
+        #expect(!harness.paths.contains { $0.hasPrefix("backups/macros.json") })
+
+        await harness.store.reset(.macros(includeList: true))
+        state = await harness.store.state
+        #expect(state.macros.isEmpty)
+        #expect(harness.object(.macros)?["macros"] == .array([]))
+        #expect(harness.paths.contains { $0.hasPrefix("backups/macros.json.v1.") })
+    }
+
+    /// PLT-R1006: an edit earlier in the session already backed up the on-disk list once; deleting the list
+    /// from the Macros pane still keeps the list as it was just before the reset recoverable.
+    @Test func macrosListResetBacksUpTheListAsItIsNow_PLTR1006() async throws {
+        let harness = SettingsStoreHarness()
+        _ = await harness.store.load()
+        await harness.store.replaceMacros([StoredMacro(trigger: "vn", expansion: "Việt Nam")])
+        await harness.store.flush()
+        await harness.store.replaceMacros([
+            StoredMacro(trigger: "vn", expansion: "Việt Nam"), StoredMacro(trigger: "dc", expansion: "được"),
+        ])
+        await harness.store.flush()
+        await harness.store.reset(.macros(includeList: true))
+        let backups = harness.paths.filter { $0.hasPrefix("backups/macros.json") }.compactMap { path in
+            harness.memory.nodes[SettingsStoreHarness.directory.path + "/" + path]?.data.map {
+                String(decoding: $0, as: UTF8.self)
+            }
+        }
+        #expect(backups.contains { $0.contains("\"dc\"") && $0.contains("\"vn\"") })
+        #expect(await harness.store.state.macros.isEmpty)
+    }
+
     /// PRD-R26: global reset keeps macros unless the separate box is ticked; files are backed up first.
     @Test func globalResetKeepsMacrosUnlessAskedAndBacksUpFirst() async throws {
         let harness = await loadedFixture()

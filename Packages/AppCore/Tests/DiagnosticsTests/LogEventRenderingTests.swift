@@ -47,6 +47,7 @@ enum LogEventCatalog {
             (.update(.checkStarted(manual: true)), "update.checkStarted"),
             (.update(.updateFound(build: metadataText)), "update.updateFound"),
             (.update(.installScheduledOnQuit), "update.installScheduledOnQuit"),
+            (.update(.installingNow), "update.installingNow"),
             (.update(.failed(code: -1)), "update.failed"),
             (.note("tap re-created", category: .tap), "note"),
             (

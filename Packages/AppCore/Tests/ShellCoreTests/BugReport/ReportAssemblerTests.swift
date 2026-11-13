@@ -7,6 +7,7 @@ import AppModel
 import CompatRules
 import Diagnostics
 import Foundation
+import SettingsStore
 import Testing
 
 @testable import InputHost
@@ -90,6 +91,57 @@ import Testing
         #expect(settings.toggleHotkey == .defaultToggle)
         // Names from SettingsStore (`UserSettings.explicitlySetKeys`), list names without their entries.
         #expect(settings.explicitlySetKeys == ["typingMethod", "interfaceLanguage", "keepAsTyped", "keepVietnamese"])
+    }
+
+    /// PRD-R6, PLT-R901: the report's changed-settings list is SettingsStore's `explicitlySetKeys`, nothing kept by
+    /// hand in ShellCore. The 19 setting names come first in declaration order; the user lists (`keepAsTyped`,
+    /// `keepVietnamese`, `optedInRules`) are reported by name only when non-empty, never with their entries
+    /// (decision recorded in docs/decisions/0314-report-lists-user-word-lists-by-name.md).
+    @Test func explicitlySetKeysAreTheStoresNamesAndNeverListEntries_PRDR6_PLTR901() throws {
+        var user = UserSettings()
+        user.typingMethod = .set(.vni)
+        user.tonePlacement = .set(.modern)
+        user.englishRestore = .set(true)
+        user.telexStandaloneW = .set(true)
+        user.telexBracketKeys = .set(false)
+        user.restoreHotkey = .set(nil)
+        user.macrosEnabled = .set(false)
+        user.macrosInEnglishMode = .set(true)
+        user.toggleHotkey = .set(.modifierTap(.rightCommand))
+        user.rememberPerApp = .set(false)
+        user.firstSeenAppMode = .set(.en)
+        user.showSwitchIndicator = .set(false)
+        user.soundOnSwitch = .set(true)
+        user.clickIconToToggle = .set(true)
+        user.interfaceLanguage = .set(.english)
+        user.automaticallyCheckForUpdates = .set(false)
+        user.automaticallyInstallUpdates = .set(false)
+        user.updateChannel = .set(.beta)
+        user.layoutBinding = .set(LayoutModeBinding(enabled: true))
+        user.keepAsTyped = [Canary.userList]
+        user.keepVietnamese = [Canary.userList + "vi"]
+        user.optedInRules = [try #require(RuleID(rawValue: "user.zqxkanaryrule"))]
+        let reported = ReportSections.settings(SettingsState(user: user)).explicitlySetKeys
+        #expect(reported == user.explicitlySetKeys)
+        #expect(
+            Array(reported.prefix(19)) == [
+                "typingMethod", "tonePlacement", "englishRestore", "telexStandaloneW", "telexBracketKeys",
+                "restoreHotkey", "macrosEnabled", "macrosInEnglishMode", "toggleHotkey", "rememberPerApp",
+                "firstSeenAppMode", "showSwitchIndicator", "soundOnSwitch", "clickIconToToggle", "interfaceLanguage",
+                "automaticallyCheckForUpdates", "automaticallyInstallUpdates", "updateChannel", "layoutBinding",
+            ])
+        #expect(Array(reported.dropFirst(19)) == ["keepAsTyped", "keepVietnamese", "optedInRules"])
+        var report = ReportFixtures.report()
+        report.settings = ReportSections.settings(SettingsState(user: user))
+        let outputs = [
+            try json(report), DiagnosticsRenderer.issueBlock(report),
+            DiagnosticsRenderer.plainText(report, language: .vietnamese),
+            DiagnosticsRenderer.plainText(report, language: .english),
+        ]
+        for output in outputs {
+            #expect(!output.contains("zqxkanary"), "a list entry leaked into the report")
+            #expect(output.contains("keepAsTyped"), "the list name is reported")
+        }
     }
 
     @Test func onlyTheReportedAppsMemoryEntryIsIncluded() throws {

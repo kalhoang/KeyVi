@@ -145,6 +145,24 @@
         }
       }
     },
+    "status.action.safeModeChoices" : {
+      "comment" : "PLT-R1009 action of the safe-mode line: opens the safe-mode choices (reset, use the saved settings, report).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset or use saved settings..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đặt lại hoặc dùng lại cài đặt..."
+          }
+        }
+      }
+    },
     "status.action.secureInputHelp" : {
       "comment" : "Help for secure input.",
       "extractionState" : "manual",
@@ -411,6 +429,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Đang dùng bàn phím %1$@. %2$@ tạm dừng."
+          }
+        }
+      }
+    },
+    "status.safeMode" : {
+      "comment" : "PLT-R1009 crash-loop safe mode, shown while SettingsState.safeMode is true (PRD-R43: what happened, which component, one action). Argument: app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is running in safe mode with the default settings because it stopped unexpectedly several times while opening."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ đang chạy ở chế độ an toàn với cài đặt mặc định vì đã dừng đột ngột nhiều lần khi mở."
           }
         }
       }

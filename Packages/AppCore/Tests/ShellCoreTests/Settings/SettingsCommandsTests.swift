@@ -227,24 +227,27 @@ import Testing
                 == "Không đọc được tệp này.")
     }
 
-    @Test func importLimitAndSchemaVersionMatchTheStore_PLTR912_PRDR72() async throws {
-        // The window reads at most ImportSummary.importByteLimit + 1 bytes and calls a file "from a newer version"
-        // above ImportSummary.currentSchemaVersion: both must follow SettingsStore, or the notice and cap drift.
+    @Test func importLimitAndSchemaVersionComeFromTheStore_PLTR912_PRDR72() async throws {
+        // The window reads at most SettingsExportFormat.maxImportBytes + 1 bytes and calls a file "from a newer
+        // version" above SettingsExportFormat.schemaVersion: the store's own public constants, so they cannot drift.
         let (_, commands) = await loaded()
-        let oversized = Data(repeating: 0x20, count: ImportSummary.importByteLimit + 1)
-        await #expect(throws: SettingsImportError.tooLarge(limit: ImportSummary.importByteLimit)) {
+        let limit = SettingsExportFormat.maxImportBytes
+        let oversized = Data(repeating: 0x20, count: limit + 1)
+        await #expect(throws: SettingsImportError.tooLarge(limit: limit)) {
             _ = try await commands.previewImport(oversized)
         }
-        let atLimit = Data(repeating: 0x20, count: ImportSummary.importByteLimit)
+        let atLimit = Data(repeating: 0x20, count: limit)
         await #expect(throws: SettingsImportError.notJSON) { _ = try await commands.previewImport(atLimit) }
         let data = try await commands.export(ExportOptions(includeMacros: true, includeAppModes: true), now: date)
         let object = try JSONDecoder().decode(JSONValue.self, from: data)
-        #expect(object["schemaVersion"] == .number(Double(ImportSummary.currentSchemaVersion)))
+        #expect(object["schemaVersion"] == .number(Double(SettingsExportFormat.schemaVersion)))
         let preview = try await commands.previewImport(data)
         #expect(!ImportSummary(preview: preview).isNewerSchema)
+        let newer = #"{"kind":"settings-export","schemaVersion":\#(SettingsExportFormat.schemaVersion + 1)}"#
+        #expect(ImportSummary(preview: try await commands.previewImport(Data(newer.utf8))).isNewerSchema)
         let l = try Localizers()
         #expect(
-            SettingsImportMessage.text(for: .tooLarge(limit: ImportSummary.importByteLimit), appName: "App", l.en)
+            SettingsImportMessage.text(for: .tooLarge(limit: limit), appName: "App", l.en)
                 == "This file is larger than 5 MB.")
     }
 

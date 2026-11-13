@@ -25,6 +25,7 @@ public enum StringTable: String, Sendable, CaseIterable {
     case diagnostics = "Diagnostics"  // PLT-R1201, PLT-R1205, PRD-R47
     case support = "Support"  // About & Support, donation block (PRD-R59)
     case updates = "Updates"  // PRD-R50-R54
+    case composition = "Composition"  // composition root notices: safe mode, move failed, conflicts
 }
 
 /// Resolves keys for one language. Immutable; a new instance is created on language change.

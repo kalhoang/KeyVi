@@ -300,6 +300,24 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         #expect(!harness.launchGuard.isSafeModeActive)
     }
 
+    /// PLT-R1009: the Macros pane's reset from safe mode leaves safe mode by reading the files, so the macros
+    /// list it keeps is the user's own.
+    @Test func macrosResetFromSafeModeKeepsTheListAndLeavesSafeMode() async throws {
+        let setup = SettingsStoreHarness()
+        seedRelease(SchemaFixtures.v1, in: setup)
+        crashLoop(setup)
+        let harness = SettingsStoreHarness(reusing: setup)
+        _ = harness.launchGuard.beginLaunch(now: 1_800_000_010)
+        _ = await harness.store.load()
+        await harness.store.reset(.macros(includeList: false))
+        let state = await harness.store.state
+        #expect(!state.safeMode)
+        #expect(state.macros.count == 2)
+        #expect(state.user.macrosEnabled == .unset)
+        #expect(state.user.typingMethod != .unset)  // other panes come back from disk
+        #expect(!harness.launchGuard.isSafeModeActive)
+    }
+
     /// PLT-R1009: erasing everything from safe mode does not read the documents first (their content may be
     /// what crashes): each file is read once, for its backup, and then replaced by defaults.
     @Test func fullResetFromSafeModeSkipsTheReload() async throws {

@@ -50,7 +50,7 @@ private let randomInputs: [LifecycleInput] = [
     .watchdogTripped(.callbackStuck(microseconds: 2_300_000)), .watchdogTripped(.unexpectedlyDisabled),
     .callbackExited, .postingBroken, .tapDisabledBySystem(byTimeout: true),
     .tapDisabledBySystem(byTimeout: false), .sessionActive(true), .sessionActive(false), .userDisabled(true),
-    .userDisabled(false),
+    .userDisabled(false), .diagnosticsPassThrough(true), .diagnosticsPassThrough(false),
 ]
 
 @Suite struct HostLifecycleInvariantTests {

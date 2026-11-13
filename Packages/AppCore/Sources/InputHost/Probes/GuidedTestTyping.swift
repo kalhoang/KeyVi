@@ -99,7 +99,7 @@ extension GuidedTestRunner {
     ) -> Bool? {
         if !text.isEmpty {
             let job = editJob(
-                candidate: candidate, field: field, trigger: "a", replaced: text, insertion: "", now: environment.now)
+                candidate: candidate, field: field, trigger: "a", replaced: text, insertion: "", in: environment)
             _ = execute(job, candidate: candidate, in: environment)
             environment.pause(GuidedTestCanary.settle)
         }
@@ -113,11 +113,11 @@ extension GuidedTestRunner {
         defer { environment.pause(GuidedTestCanary.stepInterval) }
         switch step {
         case .key(let character):
-            return environment.typeLiteral(character, keyCode: keys.code(character))
+            return environment.typeLiteral(character, keyCode: environment.keys.code(character))
         case .edit(let trigger, let replaced, let insertion):
             let job = editJob(
                 candidate: candidate, field: field, trigger: trigger, replaced: replaced, insertion: insertion,
-                now: environment.now)
+                in: environment)
             return execute(job, candidate: candidate, in: environment)
         }
     }
@@ -133,13 +133,14 @@ extension GuidedTestRunner {
 
     private func editJob(
         candidate: GuidedTestCandidate, field: FieldHandle?, trigger: Character, replaced: String, insertion: String,
-        now: MonotonicInstant
+        in environment: GuidedTestEnvironment
     ) -> EditJob {
         EditJob(
             sequence: JobSequence(rawValue: 0), generation: FocusGeneration(rawValue: 0), plan: candidate.plan,
             field: field, kind: .compose, deleteCount: replaced.count, deleteUTF16Count: replaced.utf16.count,
-            replacedText: replaced, insertion: insertion, keyCodes: JobKeyCodes(trigger: keys.code(trigger)),
-            trigger: nil, verifyBeforeApply: false, wordStartedNearFocusChange: false, createdAt: now, isProbe: true)
+            replacedText: replaced, insertion: insertion,
+            keyCodes: JobKeyCodes(trigger: environment.keys.code(trigger)), trigger: nil, verifyBeforeApply: false,
+            wordStartedNearFocusChange: false, createdAt: environment.now, isProbe: true)
     }
 
     /// The field around the caret: at most 64 UTF-16 units before it (the typed text, PLT-R343), the length of
@@ -183,10 +184,13 @@ struct FieldReading: Sendable, Hashable {
 final class GuidedTestEnvironment: InjectionEnvironment {
     private let runner: GuidedTestRunner
     private let stop: ProbeStopSignal
+    /// Resolved once per run or removal from the layout current at that moment (PLT-R405).
+    let keys: GuidedTestKeys
 
     init(runner: GuidedTestRunner, stop: ProbeStopSignal) {
         self.runner = runner
         self.stop = stop
+        keys = GuidedTestKeys(layout: runner.currentLayout())
     }
 
     var now: MonotonicInstant { runner.clock.now() }

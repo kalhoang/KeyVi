@@ -26,12 +26,11 @@ public enum ResetTarget: Sendable, Hashable {
 
 /// What a confirmed reset does to the store.
 public struct ResetPlan: Sendable, Hashable {
-    /// The store's own scope (backs up each affected file first, PLT-R1006).
-    public var storeScope: ResetScope?
-    /// Macros pane: D9 (and the hidden D10) back to "unset" so they follow future defaults (PRD-R6).
-    public var unsetsMacroSwitches: Bool
-    /// Macros pane with the checkbox ticked: the list is emptied.
-    public var deletesMacroList: Bool
+    /// The store's own scope, which backs up each affected file first (PLT-R1006). The Macros pane uses
+    /// `.macros(includeList:)`: D9 and D10 back to "unset" (PRD-R6), the list emptied only when ticked.
+    public var storeScope: ResetScope
+
+    public init(storeScope: ResetScope) { self.storeScope = storeScope }
 }
 
 /// State of the confirmation sheet.
@@ -75,14 +74,11 @@ public struct ResetRequest: Sendable, Hashable {
     public var plan: ResetPlan {
         let deletes = offersMacroDeletion && deleteMacros
         switch target {
-        case .all:
-            return ResetPlan(
-                storeScope: .all(includeMacros: deletes), unsetsMacroSwitches: false, deletesMacroList: false)
-        case .pane(.general):
-            return ResetPlan(storeScope: .general, unsetsMacroSwitches: false, deletesMacroList: false)
-        case .pane(.typing): return ResetPlan(storeScope: .typing, unsetsMacroSwitches: false, deletesMacroList: false)
-        case .pane(.apps): return ResetPlan(storeScope: .apps, unsetsMacroSwitches: false, deletesMacroList: false)
-        case .pane(.macros): return ResetPlan(storeScope: nil, unsetsMacroSwitches: true, deletesMacroList: deletes)
+        case .all: return ResetPlan(storeScope: .all(includeMacros: deletes))
+        case .pane(.general): return ResetPlan(storeScope: .general)
+        case .pane(.typing): return ResetPlan(storeScope: .typing)
+        case .pane(.apps): return ResetPlan(storeScope: .apps)
+        case .pane(.macros): return ResetPlan(storeScope: .macros(includeList: deletes))
         }
     }
 }

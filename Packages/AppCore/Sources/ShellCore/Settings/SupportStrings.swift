@@ -14,7 +14,6 @@ public enum SupportText: String, LocalizationKey {
     case channelExplanation = "support.channel.explanation"
     case channelStable = "support.channel.stable"
     case channelBeta = "support.channel.beta"
-    case channelNoDowngrade = "support.channel.noDowngrade"
     case autoCheckTitle = "support.autoCheck.title"
     case autoCheckExplanation = "support.autoCheck.explanation"
     case autoInstallTitle = "support.autoInstall.title"

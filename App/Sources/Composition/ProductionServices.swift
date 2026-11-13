@@ -159,10 +159,3 @@ final class WorkspaceRelauncher: AppRelauncher {
 
     func terminate() { NSApp.terminate(nil) }
 }
-
-/// Settings and macros windows are owned by W2-B; until its hotkey recorder API is merged, onboarding's
-/// "Đổi phím chuyển" opens the General pane, where the recorder lives (PRD-R40 screen 4).
-@MainActor
-protocol HotkeyRecorderPresenting: AnyObject {
-    func presentHotkeyRecorder()
-}

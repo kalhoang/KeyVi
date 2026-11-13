@@ -26,6 +26,15 @@ struct FixedLayoutBuilder: LayoutTableBuilding {
     func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable { table }
 }
 
+/// Returns the table registered for the layout data's source (tests that switch input sources).
+struct PerSourceLayoutBuilder: LayoutTableBuilding {
+    var tables: [InputSourceID: LayoutTable]
+    func build(from data: KeyboardLayoutData, keyboardType: UInt32) throws -> LayoutTable {
+        guard let table = tables[data.source] else { throw LayoutTableError.invalidLayoutData }
+        return table
+    }
+}
+
 /// Where the current tap lives, so the poster's sink (inject thread or test thread) can echo into it.
 final class TapRoute: Sendable {
     private let route = Mutex<(handle: FakeEventTapHandle, userInfo: UInt)?>(nil)

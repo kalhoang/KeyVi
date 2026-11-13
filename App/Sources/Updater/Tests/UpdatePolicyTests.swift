@@ -67,6 +67,21 @@ import Testing
         #expect(UpdateChannelPolicy.notice(switchingFrom: .stable, to: .stable) == nil)
         #expect(UpdateChannelPolicy.notice(switchingFrom: .beta, to: .beta) == nil)
     }
+
+    @Test("PRD-R53: the About & Support note follows each channel change and names the app")
+    func channelNoteOfTheSettingsPane() throws {
+        var note = UpdateChannelNote()
+        let vi = TestResources.localizer(.vietnamese)
+        #expect(note.text(appName: UpdaterFixtures.appName, localizer: vi) == nil)
+        note.channelChanged(from: .beta, to: .stable)
+        #expect(note.key == .stableNoDowngrade)
+        let table = try TestResources.updatesTable(.vietnamese)
+        let template = try #require(table[UpdatesText.stableNoDowngrade.rawValue])
+        let expected = template.replacingOccurrences(of: "%@", with: UpdaterFixtures.appName)
+        #expect(note.text(appName: UpdaterFixtures.appName, localizer: vi) == expected)
+        note.channelChanged(from: .stable, to: .beta)
+        #expect(note.key == nil, "a later change clears the note")
+    }
 }
 
 @Suite struct UpdateFailureFilterTests {

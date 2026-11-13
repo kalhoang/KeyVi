@@ -6,6 +6,7 @@
 
 import AppKit
 import AppModel
+import Carbon.HIToolbox
 import CompatRules
 import Diagnostics
 import Injection
@@ -32,6 +33,8 @@ final class AppEnvironment {
     let diagnostics: DiagnosticsWiring
     let loginItem = SMAppServiceLoginItem()
     let settingsChanges = MainActorRelay<SettingsState>()
+    /// System uptime at launch: keys pressed before it do not count for the relaunch policy (PLT-R1105).
+    let launchUptime = ProcessInfo.processInfo.systemUptime
     var settings = SettingsState()
     var safeMode = false
     var launch: LaunchSequence?
@@ -42,6 +45,8 @@ final class AppEnvironment {
     var importCandidates: [ImportCandidate] = []
     var settingsWindow: SettingsWindowController?
     var diagnosticsWindow: DiagnosticsWindowController?
+    /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
+    var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
     /// QA-R42: the first launch after an update checks the host once it left `starting`.
     var selfCheckPending = false
@@ -138,16 +143,24 @@ final class AppEnvironment {
         host.apply(settings: state)
         language.select(state.effective.interfaceLanguage)
         statusItem?.setClickToToggle(state.effective.clickIconToToggle)
+        settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
         applyUpdaterSettings()
         updateIcon()
     }
 
+    /// D19-D21 from the store reach Sparkle through `apply`, which never reports back (setting the controller's
+    /// properties would record the stored values as new user choices, PRD-R6).
     func applyUpdaterSettings() {
-        guard let updater else { return }
-        let effective = settings.effective
-        updater.automaticallyChecksForUpdates = effective.automaticallyCheckForUpdates
-        updater.automaticallyDownloadsUpdates = effective.automaticallyInstallUpdates
-        updater.channel = effective.updateChannel == .beta ? .beta : .stable
+        updater?.apply(UpdatePreferences(settings.effective))
+    }
+
+    /// PLT-R1105: seconds since the last key press since launch (`.infinity` when none) and the system's secure
+    /// input state. Read once, when Sparkle offers the immediate install.
+    func keyboardIdleState() -> (secondsSinceLastKey: Double, secureInputOn: Bool) {
+        let systemIdle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+        let idle = KeyboardIdleReading.secondsSinceLastKey(
+            systemIdleSeconds: systemIdle, secondsSinceLaunch: ProcessInfo.processInfo.systemUptime - launchUptime)
+        return (secondsSinceLastKey: idle, secureInputOn: IsSecureEventInputEnabled())
     }
 
     private static func loadPaneTable() -> SystemPaneTable? {
@@ -182,7 +195,7 @@ extension AppEnvironment: LaunchSteps {
             },
             reportFailure: { [weak self] _ in
                 guard let self else { return }
-                CompositionAlerts.moveFailed(appName: brand.displayName, strings: strings)
+                CompositionAlerts.moveFailed(appName: brand.displayName, localizer: language.localizer)
             }, relocator: relocator, bundleURL: bundleURL)
         return await gate.resolve()
         #endif
@@ -237,14 +250,18 @@ extension AppEnvironment: LaunchSteps {
         presentOnboarding(startAt: nil)
     }
 
+    /// PLT-R1101: D19-D21 are applied before Sparkle starts; changes the user makes in the updater (About & Support,
+    /// Sparkle's window) are written to settings.json as explicit keys, one key per change (PRD-R6).
     func startUpdater(settings: SettingsState) {
-        let host = self.host
-        let controller = UpdaterController {
-            let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
-            return (secondsSinceLastKey: idle, secureInputOn: host.refreshSecureInput().enabled)
+        let controller = UpdaterController(
+            idleState: { [weak self] in self?.keyboardIdleState() ?? (secondsSinceLastKey: 0, secureInputOn: true) },
+            dependencies: .live(bundle: .main, logger: diagnostics.logger, language: language))
+        let store = settingsStore
+        controller.onPreferenceChange = { change in
+            Task { await store.updateSettings { change.apply(to: &$0) } }
         }
         updater = controller
-        applyUpdaterSettings()
+        controller.apply(UpdatePreferences(settings.effective))
         controller.start()
     }
 }

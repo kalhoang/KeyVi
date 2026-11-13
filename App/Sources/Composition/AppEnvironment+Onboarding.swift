@@ -110,8 +110,8 @@ extension AppEnvironment: OnboardingActions {
 
     func setTypingMethod(_ method: TypingMethod) { setMethod(method) }
 
-    /// PRD-R40 screen 4 "Đổi phím chuyển": the recorder lives in Settings (W2-B owns it).
-    func openHotkeyRecorder() { presentHotkeyRecorder() }
+    /// PRD-R40 screen 4 "Đổi phím chuyển": the Hotkeys recorder in Settings, already recording and focused.
+    func openHotkeyRecorder() { settingsController()?.showHotkeyRecorder(role: .toggleMode) }
 
     /// PRD-R40 screen 5: a help page; the app never quits or changes the other app.
     func openConflictHelp(_ conflict: ConflictingInput) { openSupport(.conflicts) }
@@ -151,6 +151,15 @@ extension AppEnvironment: OnboardingActions {
     }
 }
 
-extension AppEnvironment: HotkeyRecorderPresenting {
-    func presentHotkeyRecorder() { settingsController()?.show(.general) }
+/// What the Settings window asks of the composition root (W2-B).
+extension AppEnvironment: SettingsActions {
+    // `reportProblem(for:)` is shared with the status menu (StatusMenuActions).
+
+    func openDiagnostics() { diagnosticsController().showReport() }
+
+    /// PRD-R40: onboarding reopened from About & Support starts at screen 1.
+    func reopenOnboarding() { presentOnboarding(startAt: nil) }
+
+    /// ADR 0305, PRD-R15: the tap suspends its hotkeys while the recorder captures keys.
+    func setHotkeyRecorderActive(_ active: Bool) { host.setRecorderActive(active) }
 }

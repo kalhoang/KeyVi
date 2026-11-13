@@ -37,6 +37,7 @@ extension InputHostController {
         case .cancelRetry: cancelRetry()
         case .recordHealth(let kind): recordHealth(kind)
         case .showTapInstabilityNotice: onEvent?(.tapInstabilityNotice)
+        case .publishFlags: publishLifecycle(lifecycle.phase)
         }
     }
 
@@ -47,7 +48,8 @@ extension InputHostController {
         channels.snapshots.lifecycle.publish(
             LifecycleSnapshot(
                 generation: lifecycleGeneration, phase: phase, userDisabled: lifecycle.userDisabled,
-                recorderActive: recorderActive, globalMode: currentFocus().mode))
+                recorderActive: recorderActive, globalMode: currentFocus().mode,
+                diagnosticsPassThrough: lifecycle.diagnosticsPassThrough))
         refreshState()
     }
 

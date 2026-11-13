@@ -85,7 +85,7 @@ import Testing
         [.noPermission, .starting, .readyVietnamese, .readyEnglish]
         + [PauseCode.secureInput, .nonLatinInputSource, .builtInVietnameseSource, .passThroughRule, .secureField]
         .map(HostStateCode.paused)
-        + [PauseCode.sessionInactive, .userDisabled, .noTextFocus].map(HostStateCode.paused)
+        + [PauseCode.sessionInactive, .userDisabled, .noTextFocus, .diagnosticsTest].map(HostStateCode.paused)
         + [FailOpenReason.permissionRevoked, .postingBroken, .tapUnavailable, .watchdog, .callbackStuck]
         .map(HostStateCode.failOpen)
 

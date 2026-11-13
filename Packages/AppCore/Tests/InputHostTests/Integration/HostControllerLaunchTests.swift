@@ -248,6 +248,120 @@ struct HostControllerLifecycleTests {
         #expect(!rig.controller.channels.snapshots.lifecycle.load().recorderActive)
     }
 
+    /// PLT-R1205 steps 3-5: while the guided test types, the host passes every key unchanged, shows the pause,
+    /// and returns to typing Vietnamese only after the last of nested calls; per-app memory and the manual mode
+    /// stay as they were (no mode change event, no memory write).
+    @Test func diagnosticsPassThroughPassesKeysAndNests_PLT_R1205() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        rig.type("vieetj ")
+        let memoryBefore = await rig.store.store.state.appModes
+        let resetsBefore = rig.controller.channels.feedback.compositionResetCount
+        rig.controller.setDiagnosticsPassThrough(true)
+        rig.controller.setDiagnosticsPassThrough(true)
+        rig.settle()
+        #expect(rig.controller.channels.snapshots.lifecycle.load().diagnosticsPassThrough)
+        #expect(rig.controller.state == .paused(.diagnosticsTest))
+        #expect(rig.controller.channels.feedback.compositionResetCount == resetsBefore + 1, "one reset on entry")
+        let verdicts = rig.type("dduwowngf ")
+        #expect(verdicts.allSatisfy { $0 == .pass })
+        #expect(rig.field.text == "việt dduwowngf ", "nothing typed during the test is transformed")
+        rig.controller.setDiagnosticsPassThrough(false)
+        rig.settle()
+        #expect(rig.controller.state == .paused(.diagnosticsTest), "still inside the outer call")
+        rig.controller.setDiagnosticsPassThrough(false)
+        rig.settle()
+        #expect(rig.controller.state == .ready(.vietnamese))
+        #expect(rig.controller.channels.feedback.compositionResetCount == resetsBefore + 2, "one reset on exit")
+        rig.type("ddi")
+        #expect(rig.field.text == "việt dduwowngf đi")
+        #expect(!rig.events.contains { if case .modeChanged = $0 { true } else { false } })
+        #expect(rig.controller.currentFocus().mode == .vietnamese, "the manual mode is unchanged")
+        #expect(await rig.store.store.state.appModes == memoryBefore, "nothing written to per-app memory")
+    }
+
+    /// PLT-R1205 step 3 with the real pipeline: the runner shares the launch's marker, so its keys and edits reach
+    /// the field exactly as posted while the pass-through is on (the engine would otherwise transform "dd" again).
+    @Test func guidedTestRunnerTypesThroughThePassThrough_PLT_R1205() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let runner = rig.controller.makeGuidedTestRunner()
+        let field = FieldHandle(pid: HostRig.editorPID, token: 1, element: nil)
+        rig.controller.setDiagnosticsPassThrough(true)
+        rig.settle()
+        let result = await runner.run(GuidedTestCandidate(plan: .default), field: field)
+        rig.controller.setDiagnosticsPassThrough(false)
+        rig.settle()
+        #expect(result == .passedByReadback)
+        #expect(rig.field.text.isEmpty, "the canary was removed")
+        #expect(rig.metrics.snapshot().callbackDuration.count == 0, "probe events stay out of user metrics")
+        #expect(rig.controller.state == .ready(.vietnamese))
+    }
+
+    /// PLT-R405, PLT-R373: the Diagnostics window keeps one runner for the process lifetime, so the canary's key
+    /// codes come from the layout current when a run starts, not when the runner was made. After a switch from
+    /// ABC to AZERTY the `a` key moves; a stale table would type `q` and fail every readback.
+    @Test func guidedTestRunnerReadsTheLayoutAtRunTime_PLT_R405() async throws {
+        let french = InputSourceInfo(
+            id: try #require(InputSourceID(rawValue: "com.apple.keylayout.French")), kind: .asciiLayout,
+            localizedName: "French", languages: ["fr"], isBuiltInVietnamese: false)
+        let azerty = PipelineFixtures.azertyTable()
+        let builder = PerSourceLayoutBuilder(tables: [
+            HostRig.abc.id: PipelineFixtures.qwertyTable(), french.id: azerty,
+        ])
+        let rig = HostRig(
+            source: HostRig.abc,
+            layoutData: [
+                HostRig.abc.id: KeyboardLayoutData(source: HostRig.abc.id, uchr: Data()),
+                french.id: KeyboardLayoutData(source: french.id, uchr: Data()),
+            ], builder: builder)
+        await rig.start()
+        defer { rig.stop() }
+        let runner = rig.controller.makeGuidedTestRunner()
+        rig.inputSources.select(french)
+        rig.settle()
+        #expect(rig.controller.currentLayoutTable()?.keyCode(producing: "a") == azerty.keyCode(producing: "a"))
+        rig.echoLoop.layout.withLock { $0 = azerty }
+        let field = FieldHandle(pid: HostRig.editorPID, token: 1, element: nil)
+        let postedBefore = rig.poster.posted.count
+        rig.controller.setDiagnosticsPassThrough(true)
+        rig.settle()
+        let result = await runner.run(GuidedTestCandidate(plan: .default), field: field)
+        rig.controller.setDiagnosticsPassThrough(false)
+        rig.settle()
+        #expect(result == .passedByReadback)
+        let literalA = rig.poster.posted.dropFirst(postedBefore).compactMap { posted -> KeyCode? in
+            guard case .synthetic(let event, _) = posted, event.isKeyDown, event.unicode == InlineUTF16("a") else {
+                return nil
+            }
+            return event.keyCode
+        }
+        #expect(!literalA.isEmpty)
+        #expect(literalA.allSatisfy { $0 == azerty.keyCode(producing: "a") }, "the AZERTY `a` key, not QWERTY's")
+    }
+
+    @Test func latencyProbeDriverIsCreatedForThisLaunch_PLT_R810() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let driver = rig.controller.makeLatencyProbeDriver()
+        #expect(driver.marker == rig.controller.channels.marker)
+    }
+
+    /// The Settings window's recorder and layout binding read the host's layout table and enabled sources
+    /// (PLT-R360, PLT-R373) through these queries, never per render from TIS.
+    @Test func layoutAndEnabledSourcesComeFromTheHost() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let table = rig.controller.currentLayoutTable()
+        #expect(table?.source == rig.controller.channels.snapshots.inputSource.load().table?.source)
+        #expect(table?.source == HostRig.abc.id)
+        #expect(rig.controller.enabledInputSources() == rig.inputSources.enabledSources())
+    }
+
     @Test func stopRemovesTheTapAndLeavesNothingRunning() async throws {
         let rig = HostRig()
         await rig.start()

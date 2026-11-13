@@ -32,10 +32,6 @@ extension AppEnvironment {
     /// PLT-R395, PLT-R721: checks run when the menu opens, at most this often.
     static let menuRefreshInterval: TimeInterval = 0.25
 
-    var strings: CompositionStrings {
-        CompositionStrings(language: language.localizer.language, appBundle: .main)
-    }
-
     // MARK: Host events
 
     func hostEvent(_ event: HostEvent) {
@@ -80,8 +76,7 @@ extension AppEnvironment {
 
     private func warnAboutConflicts(_ conflicts: [ConflictingInput]) {
         let choice = CompositionAlerts.conflicts(
-            conflicts, appName: brand.displayName, keyboardPane: paneNames().keyboard, localizer: language.localizer,
-            strings: strings)
+            conflicts, appName: brand.displayName, keyboardPane: paneNames().keyboard, localizer: language.localizer)
         switch choice {
         case .help: openSupport(.conflicts)
         case .openKeyboard: openPane(.keyboard)
@@ -123,7 +118,7 @@ extension AppEnvironment {
         return StatusLine.forState(
             state, holderHintKey: holderHint, appName: brand.displayName, frontmostApp: frontmostStatus(),
             tapRecentlyReenabled: recentlyReenabled,
-            onboardingCompleted: settings.user.onboarding.completedVersion != nil)
+            onboardingCompleted: settings.user.onboarding.completedVersion != nil, safeMode: safeMode)
     }
 
     private func displayedMode() -> TypingMode {
@@ -168,14 +163,13 @@ extension AppEnvironment: StatusMenuActions {
         Task { await settingsStore.setAppRule(rule, for: bundle) }
     }
 
-    /// In safe mode the report item leads to the safe-mode choices first, so reset and exit stay reachable from
-    /// the menu (PLT-R1009, W1-B request).
+    /// The report flow. In safe mode the report items lead to the safe-mode choices first, so reset and exit stay
+    /// reachable from the menu even while a host-state line hides the safe-mode line (PLT-R1009).
     func reportProblem(for bundle: BundleKey?) {
-        if safeMode {
-            presentSafeMode()
-            return
+        switch DiagnosticsNavigation.destination(reportProblemFor: bundle, lastFrontmost: nil, safeMode: safeMode) {
+        case .safeModeChoices: presentSafeMode()
+        case .misbehaves, .bugReport: diagnosticsController().startMisbehavesFlow(for: bundle)
         }
-        diagnosticsController().startMisbehavesFlow(for: bundle)
     }
 
     func openMacros() { settingsController()?.show(.macros) }
@@ -193,6 +187,7 @@ extension AppEnvironment: StatusMenuActions {
         case .learnMore(let url): NSWorkspace.shared.open(url)
         case .overrideTextFocus(let bundle): addTextFocusOverride(for: bundle)
         case .reopenApp: relaunchSelf()
+        case .safeModeChoices: presentSafeMode()
         case .none: break
         }
     }
@@ -225,34 +220,39 @@ extension AppEnvironment: StatusMenuActions {
     func settingsController() -> SettingsWindowController? {
         if let settingsWindow { return settingsWindow }
         guard let updater else { return nil }
+        let host = self.host
         let controller = SettingsWindowController(
-            store: settingsStore, language: language, updater: updater, loginItem: loginItem)
+            store: settingsStore, language: language, updater: updater, loginItem: loginItem, brand: brand,
+            inputSources: { host.enabledInputSources() }, layout: { host.currentLayoutTable() },
+            keyValues: keyValues)
+        controller.actions = self
         settingsWindow = controller
         return controller
     }
 
     func diagnosticsController() -> DiagnosticsWindowController {
         if let diagnosticsWindow { return diagnosticsWindow }
-        let controller = DiagnosticsWindowController(language: language) { [unowned self] in diagnosticsReport() }
+        let controller = DiagnosticsWindowController(
+            language: language, report: { [unowned self] in diagnosticsReport() }, services: diagnosticsServices())
         diagnosticsWindow = controller
         return controller
     }
 
     /// PLT-R1202: metadata only, assembled by ShellCore from the live host; conflicts are rescanned so the report
-    /// does not show an app the user has quit since launch.
-    func diagnosticsReport() -> DiagnosticsReport {
+    /// does not show an app the user has quit since launch. The draft adds only the user's choices (PRD-R47).
+    func diagnosticsReport(draft: BugReportDraft? = nil) -> DiagnosticsReport {
         host.rescanConflicts()
         return ReportAssembler.report(
             identity: appIdentity, system: SystemInfoReader.current(uiLanguage: language.localizer.language),
             host: host.reportContext(), settings: settings, metrics: diagnostics.metrics.snapshot(),
-            health: diagnostics.health.recent(limit: 50), probe: nil, draft: nil, now: Date())
+            health: diagnostics.health.recent(limit: 50), probe: latencyProbeResult, draft: draft, now: Date())
     }
 
     // MARK: Safe mode (PLT-R1009)
 
     func presentSafeMode() {
         let store = settingsStore
-        switch CompositionAlerts.safeMode(appName: brand.displayName, strings: strings) {
+        switch CompositionAlerts.safeMode(appName: brand.displayName, localizer: language.localizer) {
         case .reset:
             Task {
                 await store.reset(.all(includeMacros: false))  // PRD-R26: macros only with their own checkbox

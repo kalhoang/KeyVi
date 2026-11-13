@@ -5,7 +5,7 @@
 // PRD-R32) and the support links. Kept here so they are tested without AppKit. Workstream W2-A.
 
 public import AppModel
-internal import CompatRules
+public import CompatRules
 public import Foundation
 public import SettingsStore
 
@@ -39,6 +39,17 @@ public enum TextFocusOverride {
         calendar.timeZone = TimeZone(identifier: "UTC")!
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 1970, parts.month ?? 1, parts.day ?? 1)
+    }
+}
+
+/// "Use this for me now" of the guided test (PLT-R1205 step 5, PLT-R540): the suggested rule, stored as a user
+/// override in `rule-overrides.json`. It applies on the next keystroke.
+public enum GuidedTestOverride {
+    public static func stored(_ rule: Rule, at date: Date) -> StoredRuleOverride? {
+        guard let data = try? JSONEncoder().encode(rule),
+            let json = try? JSONDecoder().decode(JSONValue.self, from: data)
+        else { return nil }
+        return StoredRuleOverride(createdAt: date, rule: json)
     }
 }
 

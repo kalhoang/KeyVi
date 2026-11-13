@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// Catalog test for the four shell-owned String Catalogs (PRD-R62, PRD-R66, ADR 0310): every key in vi and en
-// with matching format arguments, no empty values, no hard-coded brand, no dashes, every key the code uses
-// present, and no dead copy. W2-F extends this to all ten tables.
+// Catalog test for the shell-owned String Catalogs and the composition root's `Composition` table (PRD-R62,
+// PRD-R66, ADR 0310): every key in vi and en with matching format arguments, no empty values, no hard-coded
+// brand, no dashes, every key the code uses present, and no dead copy. W2-F extends this to all tables.
 
 import AppModel
 import Foundation
@@ -11,7 +11,7 @@ import Testing
 @testable import ShellCore
 
 @Suite struct ShellCatalogTests {
-    static let ownedTables: [StringTable] = [.common, .menu, .status, .onboarding]
+    static let ownedTables: [StringTable] = [.common, .menu, .status, .onboarding, .composition]
 
     /// Keys the code refers to, per table.
     static func referencedKeys() -> [StringTable: Set<String>] {
@@ -22,6 +22,7 @@ import Testing
         keys[.status] = Set(StatusText.allCases.map(\.rawValue))
         keys[.onboarding] = Set(OnboardingText.allCases.map(\.rawValue))
             .union(OnboardingControl.allCases.flatMap { [$0.accessibilityLabelKey, $0.accessibilityHintKey] })
+        keys[.composition] = Set(CompositionText.allCases.map(\.rawValue))
         return keys
     }
 
@@ -89,6 +90,18 @@ import Testing
             #expect(vi.string(state.accessibilityLabelKey, table: .menu) == viLabel)
             #expect(en.string(state.accessibilityLabelKey, table: .menu) == enLabel)
         }
+    }
+
+    @Test func compositionCopyResolvesThroughTheSharedLocalizer() throws {
+        // The composition root's alerts read the `Composition` table through `Localizer` (ADR 0310), so a
+        // language change and the Vietnamese fallback behave as for every other table.
+        let app = try TemporaryAppBundle(catalogs: [.composition])
+        let vi = Localizer(language: .vietnamese, appBundle: app.bundle)
+        let en = Localizer(language: .english, appBundle: app.bundle)
+        #expect(StringTable.composition.rawValue == "Composition")
+        #expect(vi.format(CompositionText.safeModeTitle, "App") == "App đang chạy ở chế độ an toàn")
+        #expect(en.format(CompositionText.safeModeTitle, "App") == "App is running in safe mode")
+        #expect(en.string(CompositionText.conflictsDismiss) == "OK")
     }
 
     @Test func everyControlInOwnedWindowsHasLabelAndHint() throws {

@@ -431,3 +431,33 @@ import Testing
         #expect(script.phase == .running)
     }
 }
+
+/// PLT-R1205 steps 3-5: the guided test's pass-through is a pause of its own, entered and left with a composition
+/// reset (PLT-R210); calls nest and an unbalanced end changes nothing.
+@Suite struct HostLifecyclePassThroughTests {
+    @Test func passThroughResetsOnEntryAndExitAndNests_PLT_R1205() {
+        var script = LifecycleScript.running()
+        // Entering: publish first (the tap stops transforming in the next callback), then reset.
+        #expect(script.send(.diagnosticsPassThrough(true)) == [.publishFlags, .resetComposition])
+        #expect(script.lifecycle.diagnosticsPassThrough)
+        #expect(script.send(.diagnosticsPassThrough(true)) == [], "nested start")
+        #expect(script.send(.diagnosticsPassThrough(false)) == [], "nested end: still passing through")
+        #expect(script.lifecycle.diagnosticsPassThrough)
+        // Leaving: reset first, so the tap never transforms with a stale composition, then publish.
+        #expect(script.send(.diagnosticsPassThrough(false)) == [.resetComposition, .publishFlags])
+        #expect(!script.lifecycle.diagnosticsPassThrough)
+        #expect(script.send(.diagnosticsPassThrough(false)) == [], "an unbalanced end is ignored")
+        #expect(script.send(.diagnosticsPassThrough(true)) == [.publishFlags, .resetComposition])
+        #expect(script.phase == .running, "never a lifecycle phase")
+    }
+
+    @Test func passThroughBeforeLaunchIsRecordedForTheFirstPublish() {
+        var script = LifecycleScript()
+        #expect(script.send(.diagnosticsPassThrough(true)) == [])
+        #expect(script.lifecycle.diagnosticsPassThrough)
+        script.send(.permissionsChanged(.granted))
+        script.send(.launched)
+        #expect(script.send(.tapCreated) == [.publish(.running)])
+        #expect(script.lifecycle.diagnosticsPassThrough)
+    }
+}

@@ -53,6 +53,9 @@ public enum StoreNotice: Sendable, Hashable {
 public enum ResetScope: Sendable, Hashable {
     case all(includeMacros: Bool)  // PRD-R26: macros only with the separate checkbox
     case general, typing, apps  // per pane
+    /// Macros pane (PRD-R26): D9 and D10 back to "unset" (PRD-R6); the list is emptied only when `includeList`
+    /// (the separate checkbox). Each rewritten file is backed up first, like every reset (PLT-R1006).
+    case macros(includeList: Bool)
 }
 
 public actor SettingsStore {
