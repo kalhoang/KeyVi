@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Bug report sheet logic (PRD-R47-R49, PLT-R1204, PLT-R1205) and report assembly (PLT-R1202).
 

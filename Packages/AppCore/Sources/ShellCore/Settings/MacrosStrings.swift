@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the `Macros` String Catalog (ADR 0310, PRD-R62, PRD-R66): Macros pane, editor and import preview
 // (PRD-R29-R33). A catalog test checks that every key exists in vi and en with matching arguments and that the

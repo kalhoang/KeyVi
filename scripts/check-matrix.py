@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Validates compat/matrix.json against compat/schema/matrix.schema.json (QA-R17, PRD-R35).
 
 The schema is the source of truth for the field names and values that the in-app Apps page and the website

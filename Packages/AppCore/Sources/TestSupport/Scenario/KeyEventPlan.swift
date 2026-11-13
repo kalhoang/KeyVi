@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Turns a key script into timed key events (02-platform.md 13.2): the keyboard driver posts them, the dry run
 // only counts them. Timing profiles: normal 80 to 150 ms between keystrokes (uniform, seeded), fast 30 ms,

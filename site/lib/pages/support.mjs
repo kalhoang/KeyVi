@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Support page (PRD-R73, QA-R52) and the migration guides (PRD-R71, PRD-R69).
 import { kit } from "../context.mjs";
 import { MIGRATION_SOURCES, routePath } from "../routes.mjs";

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One "this app" user override per app (PLT-R540). The Apps pane's compatibility mode (PRD-R36) and the status
 // line's "type here anyway" (02-platform.md section 6, custom text views) both write a bundle-only user override.

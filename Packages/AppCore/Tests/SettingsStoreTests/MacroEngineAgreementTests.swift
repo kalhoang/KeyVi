@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The engine is the contract (ENG-R1101, ENG-R1103, PRD-R29): every macro table the editor's `MacroValidator`
 // accepts, typed by hand or imported, must build a `MacroTable` without throwing. Property-style: seeded random

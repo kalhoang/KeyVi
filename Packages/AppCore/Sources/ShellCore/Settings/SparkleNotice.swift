@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Licence notice of Sparkle 2.10.1, the only third-party runtime dependency (QA-R24, ADR 0304), shown in About &
 // Support > Licences. Copied from the Sparkle `LICENSE` file at tag 2.10.1 as recorded in THIRD_PARTY_NOTICES.md;

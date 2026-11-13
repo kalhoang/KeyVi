@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Loads and validates compat/scenarios/*.json (PLT-R530). Strict like the schema: unknown keys are errors
 // (`additionalProperties: false`), the file name is the scenario id (CompatRules' linter resolves a rule's

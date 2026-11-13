@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Readable rendering of a typing trace, reviewed by the user before export (PLT-R905). One line per record:
 // time since start, what happened, key code, modifiers, the layout character and the outcome. Control

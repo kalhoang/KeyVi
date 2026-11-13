@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # QA-R2 line coverage gate for one SwiftPM package: engine at least 95 %, app logic at least 80 %,
 # and a drop of more than 1 point against a baseline summary fails.

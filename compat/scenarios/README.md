@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Compatibility scenarios
 
 One JSON file per scenario (PLT-R530), named `<id>.json`, validated against

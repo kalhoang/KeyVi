@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Website build (QA-R22, PRD-R73): Vietnamese at /, English at /en/, compatibility matrix from
 # compat/matrix.json, changelog from CHANGELOG.md, download data from site/data/releases.json and the
 # Sparkle feed site/static/appcast.xml (one stable URL, PLT-R1101).

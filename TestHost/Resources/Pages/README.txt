@@ -1,4 +1,4 @@
-SPDX-License-Identifier: LicenseRef-App-Pending
+SPDX-License-Identifier: GPL-3.0-or-later
 Local test pages (02-platform.md 13.2, QA-R10, QA-R21). Loaded by the TestHost WKWebView from the app bundle
 and by real browsers on the self-hosted runner from file:// (scenario setup values use the {pages}
 placeholder). They contain no http(s) references and no network resources; ScenarioFilesTests enforces it.

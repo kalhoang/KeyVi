@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R740, PLT-R741: "Đặt lại quyền" builds tccutil only with the app's own bundle ID. Never executed here.
 

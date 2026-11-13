@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Main-actor state of the onboarding window. Navigation rules live in ShellCore's `OnboardingFlow`; screen copy
 // in `PermissionScreenContent` and friends; this type only connects them to the views and the actions.

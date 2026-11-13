@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Vietnamese page copy: home, download, compatibility, changelog, privacy, donate.
 // Drafts from spec/03-product.md are reused verbatim where they exist (PRD-R40, PRD-R59).
 // Trusted HTML; tokens like {{AppName}} are filled at build time. Standard Vietnamese, addressed to "bạn".

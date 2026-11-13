@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R380-R393, PLT-R523, PRD-R19-R22: focus tracking on a real ax RunLoopThread with fake AX, processes and
 // rules (`FocusTrackerHarness.swift`). Every test waits for the ax thread with `waitUntilIdle()`; time comes from

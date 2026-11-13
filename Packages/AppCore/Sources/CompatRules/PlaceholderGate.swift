@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R422 and the section 4 acceptance: the zero-width placeholder is allowed only in a rule whose test shows
 // zero leftover placeholders over at least 1,000 randomised edits at burst typing speed. A scenario file declares

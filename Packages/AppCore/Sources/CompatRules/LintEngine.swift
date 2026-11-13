@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The checks behind `RulesLinter` (02-platform.md 13.1 "Rules", PLT-R503 to PLT-R531). They mirror
 // scripts/check-rules.py so compat-lint stands on its own, and add the matrix checks of PLT-R531 and QA-R17.

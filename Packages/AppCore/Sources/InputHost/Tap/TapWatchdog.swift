@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R306, PLT-R331 and snapshot reclamation on the utility queue (ADR 0309, ADR 0303). Workstream W1-F2.
 

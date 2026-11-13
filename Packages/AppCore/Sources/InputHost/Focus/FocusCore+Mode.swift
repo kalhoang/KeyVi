@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Toggles, per-app memory and the toggle race on the ax thread (PLT-R390-R392, PRD-R19-R21, contracts.md 10.4).
 

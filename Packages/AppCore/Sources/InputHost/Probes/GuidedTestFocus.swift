@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Focus check of the guided test (PLT-R1205 step 3, PLT-R387): the runner types only while the field the user
 // confirmed still has keyboard focus. Runs on the guided-test thread through bounded AX reads (100 ms messaging

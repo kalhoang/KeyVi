@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // App profiles and the configurator (QA-R11, QA-R21): profile decoding and validation, the repository profiles
 // against their schema and the scenario files, the settings documents read back by the real SettingsStore, the

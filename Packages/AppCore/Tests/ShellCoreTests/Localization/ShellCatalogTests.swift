@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shell-specific copy checks (PRD-R10, PRD-R66, ADR 0310). The generic checks of every table (vi and en,
 // format arguments, brand, dashes, referenced and orphaned keys, literal copy) live in CatalogAuditTests; the

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Vietnamese support copy: FAQ, troubleshooting by symptom, bug reporting, response targets (QA-R52),
 // and the migration guides (PRD-R71). Migration steps describe only what a user sees in the other app's
 // own window; every such step is marked VERIFY until checked on a real install (CLR-R5).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Small shared helpers for the static site generator. No dependencies.
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";

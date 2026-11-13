@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Any-thread control surface of the worker: the `inject` thread, its stop flag and the asynchronous flush
 // request (PLT-R203, PLT-R314). Nothing here blocks the tap: `requestFlush` is one atomic store plus a signal.

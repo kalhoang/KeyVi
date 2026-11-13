@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One fixture per macro import format (PRD-R32), each with valid rows and deliberately invalid ones so the
 // tests can check line numbers and reasons (PRD-R70, PRD-R43). The Text Replacements shape follows the file

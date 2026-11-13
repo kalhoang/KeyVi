@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R530 scenario execution with fakes: setup, typing, readback, state probe, verdict, duration.
 

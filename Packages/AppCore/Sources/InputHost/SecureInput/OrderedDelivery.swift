@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // In-order, non-nested delivery of monitor results outside the monitor's state lock (PLT-R395, PLT-R721).
 // Monitors enqueue under their state lock (so the queue order is the computation order) and drain after

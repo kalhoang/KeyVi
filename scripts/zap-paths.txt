@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Every storage path the app creates (PLT-R1012), for the Homebrew cask `zap` stanza and the
 # uninstall help page. Source: spec/02-platform.md Appendix A and PLT-R1001, PLT-R903, PLT-R905.
 #

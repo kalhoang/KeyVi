@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W3-A: the app side of the integration hooks (ADR 0502, "Integration hooks") with an in-memory directory, a
 // manual watcher and scripted actions: every request answered once with its own sequence number, never deleted,

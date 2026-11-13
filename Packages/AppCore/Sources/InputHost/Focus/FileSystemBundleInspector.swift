@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `BundleInspector` (PLT-R510): read-only, bounded FileManager listing of an app bundle on the ax
 // thread. Results are cached by the focus tracker, so each bundle version is inspected once. Nothing here opens a

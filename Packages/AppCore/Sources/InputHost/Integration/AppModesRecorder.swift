@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Delivery of the memory documents the ax thread emits to SettingsStore (PLT-R392, PRD-R20). One unstructured
 // task per document has no ordering guarantee, and the store replaces the remembered modes wholesale, so an

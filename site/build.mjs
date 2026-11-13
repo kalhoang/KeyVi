@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Static site generator: `node site/build.mjs` writes site/dist. Node 22+, no dependencies.
 //   --out <dir>        output directory (default site/dist)
 //   --data-dir <dir>   read releases.json, matrix.json, CHANGELOG.md from this directory (tests, previews)

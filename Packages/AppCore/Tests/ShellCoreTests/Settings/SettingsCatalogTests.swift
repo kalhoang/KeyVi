@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R7 (no "not a setting" items), PRD-R24 (five panes, order, Advanced content), PRD-R25 (one explanation per
 // setting in vi and en), PRD-R6 (edits are explicit choices).

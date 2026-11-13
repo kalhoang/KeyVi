@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Table tests of the lifecycle recovery paths found in review (W1-F2): a permission flicker while a tap creation
 // is in flight, the bounded retry out of failOpen(postingBroken), and one OS disable reported twice.

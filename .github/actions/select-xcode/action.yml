@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Selects the pinned Xcode with xcode-select and records the toolchain in the job summary (QA-R23).
 # The pin lives in one place: the default of the `xcode` input below (docs/decisions/0500).
 name: Select pinned Xcode

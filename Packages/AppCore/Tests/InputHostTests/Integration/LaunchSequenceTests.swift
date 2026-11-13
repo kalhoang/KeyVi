@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The launch path with fakes (W2-A acceptance): order of the steps, safe mode after three crashes
 // (PLT-R1009), the move offer before any permission request (PLT-R710), the legacy folder moved before the

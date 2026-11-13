@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R360, PLT-R361, PLT-R354: tables built with UCKeyTranslate from installed system layouts, read by ID.
 // Read-only: no input source is selected or enabled.

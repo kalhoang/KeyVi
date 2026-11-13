@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Worker-local state containers (inject thread only): the backlog of popped but unstarted jobs, the outcome log
 // used to resolve paired keyUps (PLT-R313, ADR 0308), and first-edit timing (PLT-R408).

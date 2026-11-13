@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Diagnostics window content (PLT-R1201): the health state in plain words, the report in the interface language
 // (permission states, secure input with the likely holder, focused app and field, matched rule with strategy,

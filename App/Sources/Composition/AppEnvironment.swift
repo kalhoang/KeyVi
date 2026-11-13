@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Composition root (workstream W2-A). Builds every production service once, wires AppCore modules together
 // and owns the window controllers. Main actor only. The launch order is `LaunchSequence` (InputHost

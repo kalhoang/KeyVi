@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pure helpers shared by every strategy: prefix trimming (PLT-R402) and Unicode chunking (PLT-R404, PLT-R480).
 

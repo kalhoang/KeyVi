@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R59 and Pa's decision S8: the bundled VietQR code pays the account the donation block shows. The image is
 // decoded with Core Image and its EMVCo payload checked field by field (NAPAS profile, CRC-16/CCITT-FALSE), so a

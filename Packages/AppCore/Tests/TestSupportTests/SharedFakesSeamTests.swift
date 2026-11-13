@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Skeleton seam tests for the shared fakes (ADR 0313): keep green.
 import AppModel

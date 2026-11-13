@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R47-R49: GitHub issue-form URL from Brand.repositoryURL, mail draft to Brand.supportEmail, mailto
 // fallback; neither carries diagnostics beyond the summary; paths without a repository or address are hidden.

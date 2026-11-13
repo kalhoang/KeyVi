@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // UpdaterController with a fake Sparkle driver (QA-R3): channels, settings D19-D21 at launch and on change,
 // start-up refusals, logging, the idle relaunch and the update-failed alert. Delegate methods are called through

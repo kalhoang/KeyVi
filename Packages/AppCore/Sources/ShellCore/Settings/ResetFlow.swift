@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Khôi phục mặc định" per pane and globally (PRD-R26): always confirmed, always offers an export first, and
 // never deletes macros unless the user ticks the separate checkbox.

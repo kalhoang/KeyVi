@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Merging an `app-modes.json` document published by SettingsStore into the live memory on the ax thread.
 // The ax thread is the authority on remembered modes (toggles land here first); SettingsStore is the authority

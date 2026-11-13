@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Route table: every page exists in Vietnamese (at /) and English (at /en/). Output is
 // <path>/index.html so the site works on any static host without rewrite rules.
 export const MIGRATION_SOURCES = Object.freeze([

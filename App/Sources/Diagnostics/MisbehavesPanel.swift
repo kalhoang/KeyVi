@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "This app misbehaves" panel (PLT-R1205): a non-activating panel, so the problem field keeps keyboard focus
 // while the guided test types into it. The flow logic is ShellCore/InputHost's `MisbehavesFlow`; this file

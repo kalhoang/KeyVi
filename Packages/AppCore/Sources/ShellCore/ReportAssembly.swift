@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Section builders for `ReportAssembler` (PLT-R1202, PLT-R1203, PLT-R913). Each builder fills one
 // `DiagnosticsReport` section through the public memberwise initialisers of Diagnostics, so a new field in a

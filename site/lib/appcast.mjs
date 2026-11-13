@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Copies the Sparkle feed to dist/appcast.xml. The URL never moves (PRD-R73, PLT-R1101); publish-release
 // owns the file's content. Brand tokens are filled so the checked-in initial feed carries no literal name.
 import { readTextIfExists } from "./util.mjs";

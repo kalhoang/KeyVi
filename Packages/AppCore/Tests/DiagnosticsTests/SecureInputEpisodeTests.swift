@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1206: secure-input episodes are health events with the likely holder's bundle ID, and every category the
 // requirement lists has its own event kind.

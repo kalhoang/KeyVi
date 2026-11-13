@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The integration hooks' wire format (ADR 0502, "Integration hooks"), now one shared definition for the harness
 // and the app's INTEGRATION_HOOKS build (W3-A). These tests pin the JSON the W2-E2 harness already writes and

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # One command for every repository lint (QA-R22, QA-R24, PLT-R501, PLT-R902, PLT-R407, PLT-R503 to
 # PLT-R521, QA-R60, CLR-R11). Runs every check, then reports all failures at once.

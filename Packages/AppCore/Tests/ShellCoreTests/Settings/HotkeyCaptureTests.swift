@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Capture lifecycle of the Settings hotkey recorder (ADR 0305, PRD-R14, PRD-R67): the window's key monitor and the
 // tap's hotkey suspension exist only while a recording is visible and the window is key. Switching pane, the window

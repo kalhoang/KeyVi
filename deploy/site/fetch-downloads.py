@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Fetches the release files the website serves under https://<site host>/download/ (Pa, 2026-11-13, Q10: updates
 and DMGs live on the site host only; ADR 0602).
 

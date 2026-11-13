@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Timing and policy of the VI/EN switch HUD (PRD-R12, D14): shown for 600 ms on a manual toggle only, a new
 // toggle restarts the timer, never shown for automatic per-app switches. The panel itself lives in App/Shell.

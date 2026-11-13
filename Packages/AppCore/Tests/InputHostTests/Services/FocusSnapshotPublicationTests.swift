@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // How the ax thread publishes `FocusSnapshot` for the tap (contracts.md 10.4, W1-F1 requests): the field token
 // is stable for one element across republications and new on every element change, an idle revalidation that

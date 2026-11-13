@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Prints the variables of deploy/site/stack.yml and of the site image reference, from scripts/brand.env, so neither
 # the stack file nor the workflow carries a brand literal (CLAUDE.md "Name (temporary)", ADR 0602). Paste the output

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test doubles for the compat-harness services (W2-E1): system actions, WebDriver transport, tester input,
 // live-service factories, soak monitor and metric source. Nothing here posts an event, opens an app or

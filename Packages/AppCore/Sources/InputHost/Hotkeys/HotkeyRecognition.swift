@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Toggle recogniser logic (PRD-R14, PRD-R18, contracts.md 10.2). Pure value code: runs on the tap thread inside
 // the pipeline, so it never allocates in steady state (fixed-size state, no collections).

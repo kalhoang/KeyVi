@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Integration hooks (W2-E2, ADR 0502 "Integration hooks"): the wire format the INTEGRATION_HOOKS test build must
 // answer, the file-drop transport over InMemoryFileSystem with ManualClock, the state probe and the `testHook`

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Store notices outside the Settings window (PLT-R1006, PLT-R1007): each new notice maps to its contracts.md
 // `LogEvent.SettingsEvent` and health event, so the log and the report carry the episode (PLT-R1202), and

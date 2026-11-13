@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Observation token over `NotificationCenter`, shared by the TIS and NSWorkspace wrappers. The token is the
 // observer itself (selector-based), so it holds no non-Sendable observer objects.

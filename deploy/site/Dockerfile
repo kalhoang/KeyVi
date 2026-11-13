@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Website image for the Kalera Docker Swarm (ADR 0602, docs/runbooks/site-deploy.md). Build from the repository root:
 #   docker build -f deploy/site/Dockerfile --platform linux/amd64 --build-arg SITE_STRICT=false -t <image> .

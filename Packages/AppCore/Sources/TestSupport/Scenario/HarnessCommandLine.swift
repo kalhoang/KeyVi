@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Command line of `compat-harness` (PLT-R530, PLT-R821, QA-R16; command lines agreed with the CI track in
 // ADR 0502 and scripts/run-integration.sh). `--dry-run` on every subcommand loads and plans without posting

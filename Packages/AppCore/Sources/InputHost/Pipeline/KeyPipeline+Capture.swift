@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typing-trace records from the tap (PLT-R905, PRD-R46, D26): every physical key with its keycode, flags, layout
 // character and outcome, and the engine's decision for it. Only while the user's capture runs; never while

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Synchronises repository labels (QA-R45) from .github/labels.yml with the GitHub CLI.
 # Dry run by default; --apply creates or updates labels; --prune also deletes labels that are not in

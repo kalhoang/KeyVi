@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The testable part of the W1-A diagnostics wiring request: the maintenance cadence (log rotation at launch and
 // every 6 hours, PLT-R903; capture purge at launch and hourly, PLT-R905) and the per-installation redaction salt

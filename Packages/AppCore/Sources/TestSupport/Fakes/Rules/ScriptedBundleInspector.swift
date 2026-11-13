@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Scripted app bundles for engine fingerprinting tests (PLT-R510), with inspection counting for cache tests.
 // Distinct from the Host fakes' FakeBundleInspector (W1-E). Usable by any test that needs a

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Turns the deployed _headers file (dist/_headers of `node site/build.mjs`, Cloudflare Pages and Netlify format) into
 // the nginx `location` blocks of the site container, so the container sends exactly the headers the file lists
 // (ADR 0602). deploy/site/build.mjs runs it while the image is built; deploy/site/test.mjs proves the equivalence.

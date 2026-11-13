@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Worker behaviour the pipeline relies on (W1-F1 requests): re-entry verification for every job the pipeline
 // flags (PLT-R342), restore jobs without a trigger deliver nothing when they do not run (PLT-R312, ADR 0308), and

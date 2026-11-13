@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Review hardening of the pipeline: toggle sequences after a tap recreation (PLT-R391, PLT-R731, contracts.md
 // 10.4), re-entry verification only for committed words (PLT-R342), autorepeat never toggles (PRD-R14), live

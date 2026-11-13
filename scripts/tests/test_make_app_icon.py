@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Self-tests for scripts/make-app-icon.py: menu bar glyphs (PRD-R10, PRD-R67, Pa's artwork S7), the app icon set
 and the website icons. Standard library only. Run: python3 -I scripts/tests/test_make_app_icon.py"""
 from __future__ import annotations

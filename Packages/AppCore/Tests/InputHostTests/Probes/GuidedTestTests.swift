@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1205 guided test against fakes only: candidate list, canary typing with each candidate on the simulated
 // field, AX readback and removal with residue (PLT-R410), the human fallback, and the rule suggestion

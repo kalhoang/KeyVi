@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // File-drop transport of the integration hooks (ADR 0502, "Integration hooks"). The harness writes
 // `request-<sequence>.json` atomically into the hooks directory of the app under test; the INTEGRATION_HOOKS test

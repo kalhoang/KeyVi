@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typing-trace records from the tap (PLT-R905, PRD-R46): keys with keycode, flags, layout character and outcome,
 // the engine's decision, clicks; nothing while secure input or a secure field is active (PLT-R387, PLT-R398A).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Source checks for the "never" rules of the host services (traceability "L"): PLT-R398 (no
 // EnableSecureEventInput), PLT-R385 (no AXEnhancedUserInterface), PLT-R343 (no full AXValue read).

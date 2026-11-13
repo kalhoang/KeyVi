@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Signing identities (public information: team IDs appear in every signature).
 // Team: Pa's individual Apple Developer team (PLT-R750). Bundle ID and Team ID must never change after release.
 DEVELOPMENT_TEAM = N2J45D3NKD

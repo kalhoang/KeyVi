@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Live services of `compat-harness`. Self-hosted runner only (QA-R12, QA-R13): never constructed in a dry
 // run (main.swift), never exercised by tests, never run on a developer Mac (workstreams.md rule 5).

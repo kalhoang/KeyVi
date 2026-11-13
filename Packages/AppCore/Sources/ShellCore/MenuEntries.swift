@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The status menu as an ordered list of entries (PRD-R11), so its order, conditional items and copy keys are
 // tested without AppKit. `StatusItemController` maps each entry to one `NSMenuItem`.

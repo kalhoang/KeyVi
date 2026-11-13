@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R16 soak plan and verdict, PLT-R821/PLT-R822 benchmark format (ADR 0502) and the committed platform
 // baseline. Virtual time and fakes only.

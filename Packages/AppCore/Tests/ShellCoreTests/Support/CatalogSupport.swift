@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test helpers: locate the repository, parse String Catalogs and build a throwaway app bundle whose
 // `vi.lproj` / `en.lproj` hold `.strings` files compiled from the real catalogs (the same layout Xcode

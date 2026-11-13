@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Debounced atomic writes (PLT-R1003: temp file, fsync, rename, 1 s; PLT-R392: app modes 5 s) and change
 // publication (PLT-R1008). A change marks its file dirty and arms one timer per file; further changes before it

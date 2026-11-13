@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Hotkey recorder logic (PRD-R15, PRD-R16, PRD-R18) and the catalogue of macOS shortcuts it warns about.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Loads and normalises the data the site renders: releases (site/data/releases.json, written by
 // scripts/publish-release), the compatibility matrix (compat/matrix.json, QA-R17) and the changelog
 // (CHANGELOG.md). Input is treated as untrusted: unknown shapes are skipped with a warning, never fatal.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ax-thread state of `FocusTracker` (PLT-R380-R393, PLT-R523). Created by the tracker, then touched only inside
 // `ThreadConfined.withValue` blocks performed on the ax `RunLoopThread`; never shared with another thread.

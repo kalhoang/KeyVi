@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // TapThread with FakeEventTapFactory (PLT-R203, PLT-R301-R303, PLT-R332, PLT-R730, ADR 0313). No real tap is
 // ever created: the fake handle installs an inert run-loop source. W1-F2.

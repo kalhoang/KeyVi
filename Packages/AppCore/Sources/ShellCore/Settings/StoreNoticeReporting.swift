@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Store notices outside the Settings window (PLT-R1006, PLT-R1007). SettingsStore has no Diagnostics dependency,
 // so the composition root maps each new notice to its contracts.md `LogEvent.SettingsEvent` and health event:

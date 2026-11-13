@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R461 step 1, PLT-R462: a blocking read bounded by a deadline, one read at a time.
 

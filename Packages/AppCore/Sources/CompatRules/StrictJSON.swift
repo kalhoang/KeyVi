@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Strict decoding for the compatibility files (PLT-R503 "validated at load"). Swift's synthesized Decodable
 // ignores unknown keys; the JSON Schemas say `additionalProperties: false`. The decoded value is re-encoded and

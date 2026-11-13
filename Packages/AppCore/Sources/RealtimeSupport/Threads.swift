@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Dedicated threads (PLT-R203). Swift concurrency cannot express "this state belongs to the ax run-loop
 // thread", so confinement is enforced by construction plus debug assertions, in exactly two audited types.

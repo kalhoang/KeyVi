@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The property harness behind `PipelineHarness` (13.1, ADR 0311): physical and posted events share one
 // `SimulatedWindowServer` FIFO in front of the pipeline; what the pipeline passes reaches the field and the

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Per-pid AX circuit breaker (PLT-R384). A value owned by the ax thread.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R399, PRD-R40 screen 5, CLR-R5: every other Vietnamese input method the conflict screen names has its bundle
 // IDs in compat/rules.json, and compat/conflicting-apps.json records where each ID was read (the running app or

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The combined property harness of W2-A (02-platform.md 13.1): the W1-F1 setup (physical and posted events in
 // one `SimulatedWindowServer` FIFO in front of the pipeline, a `ConservationLedger`, seeded steps) with the

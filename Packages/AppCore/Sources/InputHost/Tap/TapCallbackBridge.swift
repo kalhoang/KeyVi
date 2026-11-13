@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The C callback of the event tap and the copy of `CGEvent` fields into a `RawKeyEvent` (PLT-R301, PLT-R304,
 // PLT-R305, ADR 0313). Runs on the tap thread for every event: no locks, no allocation, no I/O. W1-F2.

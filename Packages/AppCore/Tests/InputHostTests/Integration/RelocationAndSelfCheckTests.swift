@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The PLT-R710 move with fakes (nothing is ever moved or relaunched on this Mac) and the QA-R42 / PRD-R52
 // first-launch-after-update check. Workstream W2-A.

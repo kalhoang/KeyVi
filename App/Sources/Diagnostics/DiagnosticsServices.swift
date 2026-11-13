@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the composition root (W2-A) hands to the Diagnostics controllers, and the AppKit side effects of the
 // report paths: clipboard (only after the PRD-R48 notice), save panel, mail draft with attachment, opening

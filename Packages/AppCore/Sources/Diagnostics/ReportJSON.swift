@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // JSON forms of the report (PRD-R47 attachment) and of the reported user override as rule JSON in the
 // `compat/rules.json` 5.4 shape (PLT-R541, docs/decisions/0312-report-override-projection.md).

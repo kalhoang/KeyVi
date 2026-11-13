@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R310 step 5 as the pipeline sees it. The recogniser itself (PRD-R14 to PRD-R18) is W1-E's
 // `HotkeyRecognizer`; the pipeline is generic over this protocol so its own tests can run against a reference

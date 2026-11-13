@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the four String Catalogs owned by the shell (ADR 0310, PRD-R62). Views and models refer to copy
 // only through these enums, so a test can check that every key the code uses exists in its catalog in vi and

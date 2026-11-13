@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Counts the heap allocations (and frees) the calling thread makes while a closure runs. Used by the
 // acceptance tests that prove the tap-safe primitives and the tap pipeline never allocate in steady state

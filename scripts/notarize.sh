@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Notarises an .app or a .dmg with notarytool (QA-R30 steps 5 and 6), waits for the result, fetches
 # the notarisation log and fails on any status other than Accepted or on any issue in the log, then

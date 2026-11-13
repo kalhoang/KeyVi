@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lists shipped rules whose `test.scenario` has no compat/scenarios/<id>.json (PLT-R505, PLT-R530, QA-R21).
 // Reads only `rules[].id` and `rules[].test.scenario`, so it keeps working while the rules schema evolves.

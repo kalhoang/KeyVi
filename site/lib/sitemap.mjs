@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // sitemap.xml (with hreflang alternates) and robots.txt.
 import { ROUTES } from "./routes.mjs";
 import { esc } from "./util.mjs";

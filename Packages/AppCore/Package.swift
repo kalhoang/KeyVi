@@ -1,5 +1,5 @@
 // swift-tools-version: 6.0
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Platform modules without UI (spec/02-platform.md PLT-R102, docs/decisions/0302-package-and-target-split.md).
 // This manifest is FROZEN for wave-1 workstreams (docs/architecture/workstreams.md): a workstream that needs a

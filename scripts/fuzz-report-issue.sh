@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Opens one GitHub issue per new fuzzing finding with the minimised input (QA-R8 nightly). A finding
 # is identified by the SHA-256 of its minimised input; an open issue that already names that hash is

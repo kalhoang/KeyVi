@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `compat-harness` commands (PLT-R530, PLT-R821, QA-R16, QA-R21). The executable (Sources/CompatHarness)
 // only parses arguments and supplies the live services; everything else is here so it is tested. Dry runs

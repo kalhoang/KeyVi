@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R6, PLT-R901: the names of explicitly set settings for the content-free diagnostics report. They are the
 // JSON keys of settings.json, the same strings ShellCore's `ExplicitSettingKeys.names` uses (W1-G request), so

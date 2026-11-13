@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1202 (only listed fields), PLT-R1203 and PLT-R901 (no content: canaries), PLT-R913 (reported app only),
 // PLT-R541 and ADR 0312 (typed override projection), PLT-R362 (layout ID), PRD-R33 (macro count only).

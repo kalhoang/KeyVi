@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Event tap fakes (ADR 0313): never create a real tap and never talk to the WindowServer. Implemented in the
 // skeleton; workstream W1-F2 owns this directory and may add behaviours.

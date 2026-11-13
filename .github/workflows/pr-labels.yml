@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Pull request label gate (QA-R6 corpus-change, QA-R15 perf-baseline): scripts/check-pr-labels.sh. A workflow of
 # its own, so adding or removing a label re-runs only this check and never re-runs or cancels the CI suite.
 # Its job is one of the required checks (docs/decisions/0503-release-pipeline.md).

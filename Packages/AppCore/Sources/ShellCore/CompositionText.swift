@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the `Composition` String Catalog (ADR 0310): the composition root's own notices, safe mode
 // (PLT-R1009), a failed move to Applications (PLT-R710) and the once-per-launch conflict warning (PLT-R399).

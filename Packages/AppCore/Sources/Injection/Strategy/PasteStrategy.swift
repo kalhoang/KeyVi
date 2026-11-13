@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `paste` (4.6) with full clipboard preservation (PLT-R461). Opt-in only (PLT-R460); the worker filters it out
 // of the strategy chain unless `pasteOptedIn` is set.

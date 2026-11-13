@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Mapping of the four documents (ADR 0307, contracts.md section 7) between their raw JSON object and typed
 // payloads.

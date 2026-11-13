@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Minimal W3C WebDriver client for browser page readback (13.2: `safaridriver`, `chromedriver`). Talks only
 // to driver endpoints on the loopback interface: the ones given on the command line (`--webdriver

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Run typing latency test" (PLT-R810): for each timing profile a pass-through baseline run and a measured run
 // with edits, combined into a `LatencyProbeResult` for the diagnostics report.

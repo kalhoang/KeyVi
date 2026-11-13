@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Rows of the PRD-R43 table as `StatusLine` values. Every line states what happened, which app or component
 // is involved and one concrete action (PRD-R43); no line carries typed content (PLT-R901).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R909 URL scheme, PLT-R205 login item status mapping (the real register/unregister are Pa's manual check).
 

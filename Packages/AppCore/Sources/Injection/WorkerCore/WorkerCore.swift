@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The worker's loop body (PLT-R311-R316, ADR 0308, ADR 0311). Confined to the `inject` thread, or to the caller
 // of `runUntilIdle` in step mode; `InjectionWorker` serialises access through an uncontended lock.

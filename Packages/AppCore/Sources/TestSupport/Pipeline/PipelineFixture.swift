@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // A `KeyPipeline` wired to real seams (JobQueue, EchoTracker, WorkerFeedback, metrics, rings) and published
 // snapshots, driven event by event from the test thread, which plays the tap thread. Step tests pop the jobs

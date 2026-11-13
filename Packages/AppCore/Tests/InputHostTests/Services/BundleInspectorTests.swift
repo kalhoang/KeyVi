@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R510, PLT-R384: the production bundle inspector on a synthetic bundle in a temporary directory (read-only
 // lists). `containsFile` walks only the folder the fingerprinter names, bounded by depth, and never follows a

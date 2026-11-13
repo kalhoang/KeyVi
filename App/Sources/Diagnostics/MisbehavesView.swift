@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Steps of the "This app misbehaves" panel (PLT-R1205): detected target, symptom, the empty-and-safe gate,
 // progress with the "Do you see 'đá â'?" question, the suggestion with the opt-in page address, and the offers.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The keys of the `settings` object of settings.json, one descriptor per `Setting<Value>` of `UserSettings`.
 // Decoding, encoding, reset scopes, the diagnostics key list and the import summary all walk this table, so a

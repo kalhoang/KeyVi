@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Read-only smoke tests of the TIS wrapper (PLT-R370): reads properties, selects nothing.
 

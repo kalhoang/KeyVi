@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The rules `ConservationLedger` checks (PLT-R311, PLT-R312, PLT-R313, ADR 0308, ADR 0311).
 

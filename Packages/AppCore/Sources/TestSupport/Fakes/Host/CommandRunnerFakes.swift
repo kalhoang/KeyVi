@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Command runner double for "Đặt lại quyền" (PLT-R740): records invocations, never executes anything.
 

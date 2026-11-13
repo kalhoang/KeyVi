@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Continuous integration (QA-R22, QA-R2, QA-R5, QA-R8 per PR, QA-R14, QA-R24, PLT-R820, PLT-R822).
 # Runner labels, Xcode and Swift pins were verified on 2026-11-13: docs/decisions/0500.
 name: CI

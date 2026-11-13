@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Text the user is typing in the Settings window: the practice field and the two word-list add fields
 // (PRD-R24, ENG-R860). It lives outside SettingsWindowModel so that a keystroke re-renders only the field that

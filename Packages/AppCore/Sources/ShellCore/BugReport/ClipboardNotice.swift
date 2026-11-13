@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R48 clipboard notices and the PLT-R1204 preview titles, composed from the buttons a surface actually shows:
 // a button that is hidden (no repository, no support address, no suggestion yet) is never named, and a renamed

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reset (PRD-R26), export and import (PLT-R1010, PRD-R72). Reset and import are explicit user actions: each
 // affected file is copied to backups first, then rewritten at once at the current schema. That is the only

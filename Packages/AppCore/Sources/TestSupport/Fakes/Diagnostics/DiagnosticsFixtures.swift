@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Ready-made `DiagnosticsReport` values for tests of every consumer (renderers, bug report composer, the
 // diagnostics window). The brand values are neutral placeholders, never the real slug or bundle ID; the

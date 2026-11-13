@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Fixed-capacity UTF-16 buffer (at most 20 code units, the practical limit of
 /// `CGEventKeyboardSetUnicodeString`, PLT-R404). Bitwise-copyable so events can be held, queued and

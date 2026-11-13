@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Sparkle-free rules of the updater (PLT-R1101, PLT-R1102, PLT-R1105, PRD-R50, PRD-R53, PRD-R55). Kept apart from
 // the Sparkle adapter so every rule is unit tested without an `SPUUpdater`.

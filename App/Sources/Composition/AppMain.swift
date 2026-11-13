@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Entry point of the menu-bar app (LSUIElement, PLT-R201). It builds the composition root and forwards the
 // application events to it; everything else lives in `AppEnvironment`. Workstream W2-A.

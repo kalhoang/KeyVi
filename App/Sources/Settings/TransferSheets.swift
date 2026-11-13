@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reset confirmation (PRD-R26: confirmation, export offer, separate macros checkbox), export sheet (PLT-R1010:
 // macros and per-app modes can be unticked, with the privacy note) and import summary (PLT-R1010: changes,

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # URL hosts allowed inside the shipped app (QA-R60, PLT-R906). Adding a host needs a decision record
 # and a /rieng-tu update in the same PR. One host per line; "*.example.org" allows subdomains.
 #

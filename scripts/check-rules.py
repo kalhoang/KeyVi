@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Validates the shipped compatibility rules file (spec/02-platform.md section 5).
 
 Checks:

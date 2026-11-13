@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Renames the product (spec/00-overview.md section 4; the current name is TEMPORARY).
 #   1. Rewrites the two brand sources: Config/Brand.xcconfig and scripts/brand.env

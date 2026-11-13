@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The latency histograms of the Diagnostics window (PLT-R1201): one per 02-platform.md 8.1 metric that the report
 // carries (PLT-R801), drawn from the report's own histogram snapshots, so the window and the copied percentiles

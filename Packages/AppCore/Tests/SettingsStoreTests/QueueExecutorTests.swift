@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ADR 0315: the settings store runs on its own `QueueExecutor` (the utility serial queue, PLT-R203) on every
 // system, and debounce timers enter it with `withQueueIsolation` instead of `assumeIsolated`.

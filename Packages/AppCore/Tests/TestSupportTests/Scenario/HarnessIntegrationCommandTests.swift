@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The W2-E2 additions to compat-harness driven end to end with fakes: app configuration per scenario, the
 // integration hooks (testHook steps, state probe, soak counters, bench histograms), the privacy canary scan after a

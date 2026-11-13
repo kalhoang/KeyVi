@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R10 and 13.2 content checks over TestHost/** (the app target has no unit-test target; these read its files):
 // local pages load from file:// without network access, every page field is a TestHost field, the window
@@ -105,7 +105,7 @@ private func testHostFieldIDs() throws -> [String] {
     @Test func scriptsAndStylesCarrySPDXHeaders() throws {
         for page in try files(in: pagesDirectory) where ["js", "css", "html"].contains(page.pathExtension) {
             let head = try read(page).split(separator: "\n").prefix(5).joined(separator: "\n")
-            #expect(head.contains("SPDX-License-Identifier: LicenseRef-App-Pending"), "\(page.lastPathComponent)")
+            #expect(head.contains("SPDX-License-Identifier: GPL-3.0-or-later"), "\(page.lastPathComponent)")
         }
     }
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the app under test is configured with for one scenario: factory defaults, the scenario's typing method
 // and its profile (AppProfiles.swift). `AppSettingsDocuments` renders that as the four settings files of

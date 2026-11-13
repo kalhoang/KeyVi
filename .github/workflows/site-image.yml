@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Website image (ADR 0602, docs/runbooks/site-deploy.md): build the site container, prove that the running container
 # sends the headers of site/static/_headers, push it to GHCR and redeploy the Swarm service through its Portainer
 # webhook. Kalera rule: image builds and deploy webhooks run ONLY on the branch `prod`, never on main or on pull

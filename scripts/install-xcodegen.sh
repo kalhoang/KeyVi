@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Installs the pinned XcodeGen release, verified by SHA-256 (PLT-R910), into .build/tools/ and prints
 # the directory that contains the `xcodegen` binary. In GitHub Actions the directory is also appended

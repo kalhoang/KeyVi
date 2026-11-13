@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # PLT-R501: application code MUST NOT contain per-app branches. Fails when a bundle-ID-shaped
 # string literal (reverse-DNS such as "com.example.App") appears in Swift code outside

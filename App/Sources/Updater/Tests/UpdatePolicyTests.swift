@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Sparkle-free rules: D19-D21 mapping, explicit-key writes, channel mapping and notice, failure filter and the
 // start-up configuration check (PLT-R1101, PLT-R1102, PRD-R6, PRD-R53, PRD-R55).

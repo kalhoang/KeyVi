@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R903: JSON lines in `~/Library/Logs/<folder>/`, dir 0700, files 0600, 5 files of 1 MB, 14 days.
 // PRD-R46: health events are mirrored into the file.

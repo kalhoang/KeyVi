@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // 02-platform.md 13.1 property suites over the W1-F1 harness and reference consumer: conservation (PLT-R312),
 // hold-while-busy ordering including keys queued at the server before a post (PLT-R311, ADR 0311), keyUp

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R371, PLT-R372: classification by type, ASCII capability and language; IDs kept as valid metadata.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Optional website analytics (Pa, 2026-11-13, Q7; ADR 0601 amendment, ADR 0602): PostHog Cloud in cookieless mode.
 // site/config.json `analytics.posthogKey` empty means no analytics: no script, no third-party origin in the CSP.
 // With a key, layout.mjs adds one local loader to the pages it renders. The build writes it as

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pure helpers behind menu and onboarding actions of the composition root: the "type here anyway" user
 // override (PLT-R540, 02-platform.md section 6 custom text views), the onboarding macro import (PRD-R40 screen 6,

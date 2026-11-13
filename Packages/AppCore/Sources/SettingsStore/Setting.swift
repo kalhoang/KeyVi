@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// A user setting that is either untouched (`unset`, follows future default changes) or an explicit choice
 /// (`set`, preserved forever, even when equal to today's default). PRD-R6, PLT-R1004.

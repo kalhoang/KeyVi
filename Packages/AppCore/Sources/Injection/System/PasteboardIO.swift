@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // NSPasteboard access behind `NSPasteboardAccess` (PLT-R461). Tests use a uniquely named pasteboard, which
 // macOS always allows without an access alert; the general pasteboard is touched only by the app.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // compat-rules.json schema, version 1 (02-platform.md 5.4). Field names, optionality and enum spellings match
 // the spec table exactly; compat/schema/rules.schema.json is the JSON Schema twin (CI validates both ways).

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Reverse-DNS identifiers that are NOT application bundle IDs and may appear in Swift code.
 # One Python regular expression per line, matched against the literal's content.
 # Adding a line needs a reason in the same commit (docs/decisions/0505-lint-contracts.md).

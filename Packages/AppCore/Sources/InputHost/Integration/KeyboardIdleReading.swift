@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Keyboard idleness for the updater's relaunch policy (PLT-R1105): an update installs at once only after 60 s
 // without a key press and with secure input off. The App reads the session's idle time from `CGEventSource`

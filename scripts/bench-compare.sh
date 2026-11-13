@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Benchmark gate for results in formatVersion 1 (QA-R14, PLT-R822; format in
 # docs/decisions/0502-fuzz-benchmark-coverage-contracts.md). Takes the median of several result files

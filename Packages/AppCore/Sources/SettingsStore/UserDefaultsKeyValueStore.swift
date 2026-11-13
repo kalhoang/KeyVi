@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `KeyValueStore`: the app's own user defaults domain (contracts.md section 3). Holds the launch
 // guard and other non-exported state, never user choices (ADR 0307 "Outside the folder").

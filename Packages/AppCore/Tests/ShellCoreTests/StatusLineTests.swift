@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R43 rows, PRD-R41 resume, PLT-R397/R398C hints, PLT-R540 override action, ADR 0309 reopen, PLT-R1009 safe
 // mode, precedence host state > safe mode > tap notice > known limitation.

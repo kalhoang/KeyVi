@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Hosted-CI check of the compatibility scenarios (docs/architecture/workstreams.md W2-E1 and "Interim
 # verification", PLT-R530, QA-R21): `compat-harness run --scenarios compat/scenarios --dry-run` loads every

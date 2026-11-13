@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pipeline property-test support (13.1): scripted engine, window-server queue model, deterministic harness,
 // conservation ledger and seeded event generator. Workstream W1-F1. `SimulatedTextField` and the injection

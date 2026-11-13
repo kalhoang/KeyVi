@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // The `_headers` file (Cloudflare Pages and Netlify format): a path pattern on its own line, then indented
 // `Name: value` lines. site/static/_headers is the single source of the website's response headers; the build
 // adapts it (analytics origins in the CSP, the preview's noindex) and deploy/site turns the result into nginx

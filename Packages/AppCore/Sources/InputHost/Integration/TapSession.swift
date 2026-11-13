@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One tap: the tap thread with its `KeyPipeline`, its watchdog and the echo tracker it settles jobs with
 // (PLT-R302, PLT-R306, PLT-R323, ADR 0309, ADR 0311). The lifecycle owner creates a fresh session for every

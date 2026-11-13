@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Input-source classification (PLT-R371, PLT-R372). Pure: the TIS wrapper reads the raw properties, this file
 // decides what they mean, so the decision is unit-tested without Text Input Sources.

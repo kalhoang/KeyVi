@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The app side of the integration hooks (ADR 0502, "Integration hooks"; W3-A): for every `request-<n>.json` in
 // the hooks directory, run the command and answer `response-<n>.json` carrying the request's own sequence number.

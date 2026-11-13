@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Final release step, run on Pa's Mac (QA-R32, QA-R37, PLT-R1103): the Sparkle EdDSA private key
 # stays in the login keychain and never reaches CI.

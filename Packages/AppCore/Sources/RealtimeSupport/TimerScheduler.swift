@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Timers for host services (docs/decisions/0313-testability-seams.md). Every periodic or delayed action of the
 // permission monitor, secure-input monitor, tap watchdog and lifecycle backoff goes through `TimerScheduler`,

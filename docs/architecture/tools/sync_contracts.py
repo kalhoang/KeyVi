@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Splice compile-checked contract sources into docs/architecture/contracts.md.
 
 Markers in the Markdown:

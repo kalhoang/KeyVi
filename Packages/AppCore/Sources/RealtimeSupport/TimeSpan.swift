@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Length of time for timeouts, intervals, backoffs and deadlines (docs/decisions/0315-minimum-macos-12.md).
 // Replaces `Swift.Duration`, which needs macOS 13 (PLT-R106: the floor is macOS 12). Call sites keep the

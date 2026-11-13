@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One-time move of the storage folders after a product rename (ADR 0307, review finding on the temporary
 // name). Runs at launch before `SettingsStore.load`, on the utility queue. Workstream W1-B.

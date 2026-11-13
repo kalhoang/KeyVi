@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Report inputs for ReportAssembler and BugReportComposer tests. Canary strings mark every piece of content
 // or other apps' data that must never reach a report, a URL or a mail body (PLT-R901, PLT-R1203, PLT-R913,

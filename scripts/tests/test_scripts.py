@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Self-tests for the Python release and lint scripts. Run: python3 -I scripts/tests/test_scripts.py"""
 from __future__ import annotations
 

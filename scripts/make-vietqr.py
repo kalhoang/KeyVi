@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Generates the donation VietQR image (PRD-R59; Pa's decision S8 of 2026-11-13: a bank VietQR only, no MoMo).
 
 The payload is an EMVCo merchant-presented QR code as NAPAS profiles it for VietQR transfers to an account:

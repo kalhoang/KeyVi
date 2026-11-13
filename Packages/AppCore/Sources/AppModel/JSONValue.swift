@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Untyped JSON tree. Settings documents keep their raw object so unknown keys survive a rewrite
 /// (PLT-R1002) and migrations are pure functions over JSON (PLT-R1005).

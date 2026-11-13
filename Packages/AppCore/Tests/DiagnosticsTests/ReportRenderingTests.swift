@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Plain text (PLT-R1204), JSON attachment (PRD-R47) and the override rule JSON (PLT-R541, ADR 0312).
 

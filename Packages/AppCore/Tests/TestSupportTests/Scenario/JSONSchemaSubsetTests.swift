@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The JSON Schema subset used to validate compat/scenarios against compat/schema/scenario.schema.json.
 

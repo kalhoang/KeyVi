@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Helpers for the Settings window tests (W2-B): localizers over the shipped catalogs and test doubles for the
 // login item service and the Sparkle wrapper.

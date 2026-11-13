@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the report previews show (PLT-R1204, PRD-R47 item 4): byte for byte the text a path writes, never a
 // paraphrase. The Diagnostics window and the "This app misbehaves" panel copy only the block, so they show the

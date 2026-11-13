@@ -88,7 +88,7 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 ## Giấy phép và nguồn gốc mã
 
 - Gói engine dùng giấy phép MPL-2.0: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE).
-- Giấy phép của ứng dụng chưa được quyết định. Cho đến khi có quyết định, các tệp nguồn ngoài engine mang dòng `SPDX-License-Identifier: LicenseRef-App-Pending` và chưa có tệp `LICENSE` ở thư mục gốc.
+- Giấy phép của ứng dụng chưa được quyết định. Cho đến khi có quyết định, các tệp nguồn ngoài engine mang dòng `SPDX-License-Identifier: GPL-3.0-or-later` và chưa có tệp `LICENSE` ở thư mục gốc.
 - {{AppName}} là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Liên kết

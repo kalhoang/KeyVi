@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Keyboard driver of `compat-harness` (13.2). Posts the planned events through a `KeyEventSink` at absolute
 // deadlines of an injected clock. The live sink (CompatHarness/Live) creates CGEvents from the harness's own

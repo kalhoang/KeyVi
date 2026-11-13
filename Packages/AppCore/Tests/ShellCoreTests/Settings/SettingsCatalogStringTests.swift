@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Catalog test for the four W2-B String Catalogs (PRD-R62, PRD-R66, ADR 0310): every key in vi and en with
 // matching format arguments, no empty values, no hard-coded brand, no dashes, every key the code uses present

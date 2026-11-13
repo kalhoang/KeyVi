@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R822 regression gate for the self-hosted platform metrics: fail when a metric exceeds its 8.1 gate, or
 // exceeds the stored baseline (perf/platform-baseline.json, ADR 0502 formatVersion 1) by more than 25 %. Platform

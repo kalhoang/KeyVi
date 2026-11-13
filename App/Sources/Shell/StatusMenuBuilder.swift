@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Maps ShellCore's `MenuEntry` list (PRD-R11) to `NSMenuItem`s. Copy comes from the Menu and Status tables in
 // the selected language (ADR 0310); every item carries a VoiceOver hint (PRD-R66).

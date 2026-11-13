@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Stale compatibility rows report (QA-R19, PLT-R531, section 13.3).
 
 Lists compat/matrix.json entries whose last verification is older than 120 days (they display as

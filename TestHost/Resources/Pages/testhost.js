@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared script of the local test pages (02-platform.md 13.2, QA-R10). No network: every page is loaded from
 // file:// by the TestHost WKWebView or by a browser on the self-hosted runner.

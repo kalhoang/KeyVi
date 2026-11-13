@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Release-build guard (docs/architecture/workstreams.md rule 9, contracts.md): fails when a call to
 # `unimplemented(` remains in product code, because such a member traps at run time. Scanned:

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // C1, C2 and M1 (02-platform.md 8.1, PLT-R821) from outside the app under test: CPU time and phys_footprint deltas
 // of its process (live: `proc_pid_rusage`, no root needed). One run restarts the app with its windows closed and

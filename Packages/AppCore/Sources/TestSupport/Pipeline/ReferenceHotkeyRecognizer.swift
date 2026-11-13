@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // A small reference implementation of the recogniser contract (contracts.md 10.2, PRD-R14, PRD-R15, PRD-R18)
 // so the pipeline's suites run independently of W1-E's `HotkeyRecognizer`. Test support only; the production

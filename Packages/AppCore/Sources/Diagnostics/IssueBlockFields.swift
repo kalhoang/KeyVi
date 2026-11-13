@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Field values of the issue block, section by section, in the order of the ADR 0501 example. Values are
 // metadata only (PLT-R1202, PLT-R1203, PRD-R45): enumerated raw values, validated identifiers, counts,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Helpers behind menu and onboarding actions (PLT-R540, PRD-R32, PRD-R40, PLT-R711). Workstream W2-A.
 

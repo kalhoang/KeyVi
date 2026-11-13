@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # PLT-R902: the logging API is typed and string interpolation into log calls is forbidden, so typed
 # content can never reach a log by accident (PLT-R901, ENG-R1220). Flags Swift lines where a log-like

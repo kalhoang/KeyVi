@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1105 automatic relaunch rule: never in the middle of a word, never while secure input is on, and never
 // for a critical update, whose window Sparkle must show immediately (PRD-R54).

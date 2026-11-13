@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R310 step 7: keycode plus modifier state -> key class, through the precomputed layout table (PLT-R360).
 // Pure and tap-safe: integer tests, one array read, no allocation.

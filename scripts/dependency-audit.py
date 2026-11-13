@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Nightly dependency audit (QA-R24, PLT-R104, PLT-R910).
 
 For every committed Package.resolved (SwiftPM pins of the engine, AppCore and the app):

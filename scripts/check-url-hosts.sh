@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # QA-R60 / PLT-R906: the shipped binary may contain URL hosts only from an allowlist (site and
 # appcast host, the repository host for issue forms, the support mail domain). Any other host means a

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R47-R49 sheet logic, PLT-R1204 (the preview is the exact text), the 3-click path from the menu to
 // "Copy report" (section 12 acceptance), and the canary checks of PLT-R1203 and ADR 0312: a report generated

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The integration hooks' actions on the running input host (ADR 0502, "Integration hooks"): the state snapshot
 // from `HostState`, `HostCounters` and `PlatformMetrics`; the metrics reset; the tap timeout and the permission

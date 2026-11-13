@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Rule suggestion of the guided test (PLT-R1205 step 4, PLT-R540): a `userOverrideRule` of
 // compat/schema/rules.schema.json. Match from the focus snapshot (bundle ID plus the field kind), action from the

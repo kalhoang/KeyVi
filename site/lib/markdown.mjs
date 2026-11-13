@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Minimal Markdown renderer for CHANGELOG.md (Keep a Changelog): headings, lists, paragraphs, code,
 // emphasis, links. All text is HTML-escaped first; only https/relative/anchor links are emitted.
 import { esc } from "./util.mjs";

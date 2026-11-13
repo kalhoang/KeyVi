@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // settings.json payload (PLT-R1001). Only explicit user choices are persisted; defaults live in code
 // (`DefaultSettings`) and rules (PLT-R1004). Keys are the JSON names below and MUST NOT be renamed without a

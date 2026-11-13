@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # VERIFY: replace @OWNER-HANDLE with the maintainer's GitHub handle before the repository becomes public.
 # `@OWNER-HANDLE` below is a placeholder, not a real account.
 # Security-sensitive areas (QA-R59) and the release machinery require the maintainer's review.

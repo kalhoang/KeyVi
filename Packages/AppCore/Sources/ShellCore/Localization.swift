@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Runtime UI-language switch without restart (PRD-R63, docs/architecture/contracts.md "Localisation").
 //

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared localisation helpers of the Settings window (W2-B): controls with VoiceOver label and hint keys
 // (PRD-R66) and a key that may live in any of the four Settings-window tables.

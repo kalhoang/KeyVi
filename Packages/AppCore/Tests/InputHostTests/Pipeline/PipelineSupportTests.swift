@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The property suite is only as good as its checker: these tests show that the ledger, the window-server
 // model, the generator, the scripted engine and the reference recogniser behave as the suites assume, and

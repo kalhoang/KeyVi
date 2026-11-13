@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Keyboard events and accessibility for the self-hosted runner (13.2). The harness posts from its own HID-state
 // event source at the HID tap, without the app's event marker, so the app under test treats the events as

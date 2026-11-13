@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings -> `TapSettingsSnapshot` (PLT-R1008, PRD-R27, docs/decisions/0306-engine-bridge.md decision 1). Runs on
 // the utility queue, never on the tap: engines are built here (the first `Engine.init` builds tables) and the

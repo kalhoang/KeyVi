@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Verifies a release build (QA-R30 steps 3 and 6, PLT-R750, PLT-R908, section 9 acceptance):
 #   - codesign --verify --deep --strict

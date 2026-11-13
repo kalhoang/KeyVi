@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The serial injection worker on the dedicated `inject` thread (PLT-R203, PLT-R311-R317, section 4).
 

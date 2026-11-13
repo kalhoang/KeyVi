@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Monthly support metrics from the GitHub API (QA-R50, QA-R46 to QA-R48).
 
 Reports for issues closed (or opened) in the period:

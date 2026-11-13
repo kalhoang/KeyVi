@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Tests of the site container (ADR 0602): `node deploy/site/test.mjs`. The central check builds the site the way the
 // image does, reads the generated nginx locations back with nginx's own matching rules, and proves that every
 // request path gets exactly the headers that _headers lists for it.

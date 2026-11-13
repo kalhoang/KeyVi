@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R384: 3 timeouts within 10 s for one pid stop AX queries to it for 60 s.
 

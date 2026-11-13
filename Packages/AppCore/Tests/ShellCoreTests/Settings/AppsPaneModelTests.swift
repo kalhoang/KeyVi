@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R34 rows, PRD-R35 matrix status (the app row through MatrixDocument.appEntry(for:) and
 // MatrixStatusResolver.displayStatus, scoped rows only in the detail view), PRD-R36 and PLT-R540 compatibility

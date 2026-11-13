@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reading the system-wide focus on the ax thread (PLT-R381, PLT-R383, PLT-R384, PLT-R510, 5.2). Every AX call
 // is bounded by the provider's 100 ms messaging timeout and skipped while the pid's breaker is open.

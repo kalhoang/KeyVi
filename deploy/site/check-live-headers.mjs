@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Asks a running site container for one file of every _headers pattern and checks that each response carries every
 // header the file lists for that path, with the same value (ADR 0602). site-image.yml runs it against the freshly
 // built image before anything is pushed.

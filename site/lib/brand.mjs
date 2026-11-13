@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Reads the brand values (display name, slug, bundle IDs, site host) from scripts/brand.env.
 // The name is temporary; scripts/rename-app.sh keeps brand.env in sync, so the site never hard-codes it.
 import { readFile } from "node:fs/promises";

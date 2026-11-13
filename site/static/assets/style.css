@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LicenseRef-App-Pending */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* System fonts only (PRD-R74). Light and dark via prefers-color-scheme. Contrast checked for WCAG AA. */
 :root {
   color-scheme: light dark;

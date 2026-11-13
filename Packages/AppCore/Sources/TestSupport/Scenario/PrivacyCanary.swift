@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Privacy canary (02-platform.md section 9 acceptance, 13.1, PLT-R901, PLT-R904): the `testhost.privacyCanary.*`
 // scenarios type canary words through every injection strategy (profile `privacy-canary`); afterwards no file the

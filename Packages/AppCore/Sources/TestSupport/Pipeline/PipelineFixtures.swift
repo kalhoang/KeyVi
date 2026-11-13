@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Snapshot values, synthetic layout tables and a directly driven pipeline for step tests (W1-F1, reused by
 // W2-A). Key codes are the public ANSI virtual key codes (Carbon `Events.h`).

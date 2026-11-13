@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `InputHostController` performs the effects of the pure `HostLifecycle` (02-platform.md 2.1, PLT-R330-R333,
 // PLT-R730, PLT-R731, ADR 0309, ADR 0311) with the real services: tap sessions, the worker's flush, composition

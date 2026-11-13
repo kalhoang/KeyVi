@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The launch order of the app (contracts.md section 12 "AppShell", PLT-R710, PLT-R1009, ADR 0307, S1). The
 // composition root implements the steps with the real services; the order and the branches live here so they

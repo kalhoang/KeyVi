@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Static check: no shipped compatibility rule emits forward delete (PLT-R407, section 4 acceptance).
 
 The rules schema has no forward-delete strategy. This check fails if any value or key in the rules

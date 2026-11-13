@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The code of a Swift source with comments and string-literal contents blanked out, so the source scans of the
 // catalog and accessibility audits (PRD-R62, PRD-R67) see what the program does, not what its text says. A raw

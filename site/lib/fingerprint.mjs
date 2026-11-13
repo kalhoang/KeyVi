@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Content fingerprints for /assets/ URLs (ADR 0602). site/static/_headers caches `/assets/*` for a year as
 // `immutable`, so a URL must change whenever its file changes: every `src` or `href` that names a file of
 // site/static/assets gets `?v=<short content hash>`. Files the build writes under a hashed name (the analytics loader,

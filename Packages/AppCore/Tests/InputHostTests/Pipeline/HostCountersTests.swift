@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W3-A: the since-launch observations the integration hooks report (ADR 0502, "Integration hooks"): whether the
 // first key-down after a secure-input release was composed (PLT-R398B), and the engine resets and tap recoveries

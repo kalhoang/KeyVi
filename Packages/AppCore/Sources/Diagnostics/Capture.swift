@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Time-boxed typing trace (PLT-R905, PRD-R46, D26): the only artefact that ever contains typed characters.
 

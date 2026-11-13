@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // JSON plumbing shared by the four documents, export/import and the macro importer. Every byte stream read from
 // disk or from a user-chosen file goes through `JSONSupport.parseValue`, which bounds nesting with a byte scan

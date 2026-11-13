@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Updates String Catalog and the update-failed alert content (PRD-R43, PRD-R53, PRD-R62, PRD-R66): every key
 // the code uses exists in vi and en with the same arguments, no dead copy, no brand literal, no dashes, the

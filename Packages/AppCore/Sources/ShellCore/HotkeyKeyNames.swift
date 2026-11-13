@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Display names of key codes for `HotkeyDisplay`. Key codes are physical positions (Carbon `kVK_*` values from
 // Apple's HIToolbox Events.h); printable keys are labelled with their ANSI (U.S.) legend. VERIFY with Pa whether

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R310 steps 6 to 10 for keyDown and keyUp: classification, the engine call, outcomes and jobs, the keyUp
 // pairing of ADR 0308, hold while busy (PLT-R311) and hard boundaries (PLT-R340).

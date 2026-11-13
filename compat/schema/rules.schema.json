@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compat/schema/rules.schema.json",
   "title": "Compatibility rules (compat/rules.json, shipped as compat-rules.json)",
-  "description": "Schema version 1 of 02-platform.md section 5.4. Twin of Packages/AppCore/Sources/CompatRules/Schema.swift; CI validates the rules file against both. License: LicenseRef-App-Pending.",
+  "description": "Schema version 1 of 02-platform.md section 5.4. Twin of Packages/AppCore/Sources/CompatRules/Schema.swift; CI validates the rules file against both. License: GPL-3.0-or-later.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "rulesetVersion", "defaults", "bundleGroups", "conflictingInputApps", "secureInputHints", "rules"],

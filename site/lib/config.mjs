@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Site settings that are not brand values (repository URL, support addresses, Homebrew tap, sponsor link).
 // Values still containing a placeholder marker are reported so a release build can refuse to ship them.
 // `banner` is the website notice of the rollback and absence runbooks (QA-R38 step 2, QA-R54): when enabled,

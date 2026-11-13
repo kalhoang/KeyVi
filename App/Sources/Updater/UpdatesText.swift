@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the `Updates` String Catalog (ADR 0310, PRD-R62). The updater refers to copy only through these
 // enums, so the catalog test can check that every key exists in vi and en with matching arguments and that the

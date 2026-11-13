@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Fixed-size records the tap thread writes into a lock-free ring (PLT-R304 "writing fixed-size records into a
 // lock-free log ring buffer"). The utility queue drains them into health events and the log file.

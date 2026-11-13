@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Simulated native fields of the test host (QA-R10, 02-platform.md 4.3 and 6). Each reproduces one behaviour
 // that breaks naive injection, deterministically and without accounts or network:

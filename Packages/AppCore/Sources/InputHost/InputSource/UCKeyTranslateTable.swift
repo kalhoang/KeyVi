@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Layout table construction with `UCKeyTranslate` (PLT-R360, PLT-R361, PLT-R354). Runs off the tap thread on
 // the layout's `uchr` bytes; the result is a fixed 128 x 4 array the tap indexes without allocating.

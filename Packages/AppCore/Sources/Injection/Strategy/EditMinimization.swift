@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Prefix trimming of an edit (PLT-R402) and Unicode chunking of an insertion (PLT-R404, PLT-R480). Pure
 // functions on the inject thread; never on the tap (they allocate).

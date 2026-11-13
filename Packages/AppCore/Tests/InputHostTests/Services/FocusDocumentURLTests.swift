@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // 02-platform.md 5.5: the match context carries the document URL "of the focused web area" only. Browser chrome
 // such as the omnibox never gets the tab's URL, so the seeded address-bar rules do not tie with URL rules such

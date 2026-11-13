@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Always-on, content-free, lock-free histograms (PLT-R801): fixed memory, log2 buckets, safe on the tap.
 // Implemented in the skeleton because the pipeline and the worker record into them on every event

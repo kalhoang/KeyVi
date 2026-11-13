@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // CI checks over compat/rules.json and compat/matrix.json (13.1 "Rules"), run by `compat-lint`.
 

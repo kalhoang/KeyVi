@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W2-A combined property suite (02-platform.md 13.1, QA-R1 layer 4): the pipeline with the REAL inject worker
 // in step mode, with the scripted engine and with the real engine, in both window-server modes. Properties:

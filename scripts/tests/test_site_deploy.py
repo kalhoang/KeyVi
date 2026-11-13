@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Self-tests of the website deployment on the Kalera Docker Swarm (ADR 0602, docs/runbooks/site-deploy.md): the
 Dockerfile, the Portainer stack, the prod-only image workflow, the stack variables script and the release-file fetch.
 The header equivalence of the container itself is tested by `node deploy/site/test.mjs`.

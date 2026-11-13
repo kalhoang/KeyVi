@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R40 screen copy (verbatim), PRD-R64 pane names in the macOS language, PLT-R702/R712 Input Monitoring,
 // PLT-R740/R741 re-grant guidance, PLT-R710 move offer, try-it checklist.

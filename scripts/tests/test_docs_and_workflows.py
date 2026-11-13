@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Self-tests that keep the decision records, notices and CI workflows in step with the code they describe.
 Run: python3 -I scripts/tests/test_docs_and_workflows.py"""
 from __future__ import annotations

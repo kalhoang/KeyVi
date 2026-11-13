@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1201 "latency histograms" in the Diagnostics window: one histogram per 02-platform.md 8.1 metric of the
 // report, bins from the first to the last non-empty bucket with upper bounds that agree with the report's

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The app under test on the self-hosted runner: start and stop it (AppConfigurator), the files and unified log it
 // wrote (privacy canary, section 9), its network connections (egress, 13.7). Runner only: never constructed in a

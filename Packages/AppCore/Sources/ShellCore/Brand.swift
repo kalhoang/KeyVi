@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The single runtime source of the product name (CLAUDE.md "Name (temporary)"). Values come from Info.plist
 // keys that project.yml fills from Config/Brand.xcconfig; nothing here is hard-coded. Implemented in the

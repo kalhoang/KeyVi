@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Full label set of QA-R45 plus the PR labels of QA-R6 and QA-R15 and the labels that the
 # diagnostics-block action applies automatically (QA-R44). Read by scripts/sync-labels.sh.
 # Format: a list of entries with name, color (6 hex digits, no #) and description (max 100 characters).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // WKWebView part of the test host (QA-R10): loads a local page from the bundle (no network, 13.2), and mirrors
 // the DOM value of every element marked `data-testhost-field` into a native read-only field with the same

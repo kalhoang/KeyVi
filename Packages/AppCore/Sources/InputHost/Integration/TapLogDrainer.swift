@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The consumer side of `TapLogRing` (PLT-R304 "fixed-size records into a lock-free ring", PLT-R903): on the
 // utility queue it turns the tap's records into health events and typed log events. Records carry the tap's

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test doubles and fixtures for the scenario runner and compat-harness tests (W2-E1). Nothing here posts an
 // event, opens an app or touches the network.

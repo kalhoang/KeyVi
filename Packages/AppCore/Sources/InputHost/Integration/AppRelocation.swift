@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R710: before any permission request the app must run from /Applications or ~/Applications and not be
 // translocated; otherwise it offers to move itself and relaunch, and never requests permissions from the

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Accessibility audit (W2-F, PRD-R10, PRD-R12, PRD-R63, PRD-R66, PRD-R67, PLT-R211). Two kinds of checks:
 // - model level: the status item's VoiceOver label is truthful for every host state, every menu entry has a hint,

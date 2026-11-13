@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One fixture per released schema version of every settings file (PLT-R1005, QA-R41). Kept as Swift literals
 // because the frozen test target declares no resources. When a schema version ships, its files are copied here

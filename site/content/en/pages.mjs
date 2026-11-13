@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // English page copy: home, download, compatibility, changelog, privacy, donate (mirrors content/vi/pages.mjs).
 // Trusted HTML; tokens like {{AppName}} are filled at build time.
 

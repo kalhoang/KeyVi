@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test doubles and fixtures for the updater tests (QA-R3). Compiled only into the UpdaterTests bundle, where
 // UPDATER_TESTS is set; the App target excludes this folder and would compile it to nothing anyway. Nothing here

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Brand-neutral scenario targets. Scenario files never spell the product's own bundle IDs (CLAUDE.md brand
 // rule): TestHost scenarios use the reserved alias `local.testhost`, resolved at run time from

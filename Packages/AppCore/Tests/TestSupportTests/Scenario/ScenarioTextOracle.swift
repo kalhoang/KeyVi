@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Expected-text oracle for TestHost scenarios: replays a key script through the real engine, configured from the
 // settings files the harness writes for the scenario (AppSettingsDocuments -> SettingsStore -> EngineBridge), and

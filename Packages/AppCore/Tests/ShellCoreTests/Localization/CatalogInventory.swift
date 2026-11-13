@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the catalog audit compares (PRD-R62, ADR 0310): the String Catalog files on disk, the keys the code refers
 // to through typed enums (ShellCore's `LocalizationKey` and control enums, and the App target's `UpdatesText`,

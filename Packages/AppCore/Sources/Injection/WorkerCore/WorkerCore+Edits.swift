@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Edit jobs: posting-broken loss, generation discard (PLT-R316), preparation (PLT-R402, PLT-R403, PLT-R480),
 // re-entry verification (PLT-R342) and the strategy chain with detectable-failure fallbacks (PLT-R410, 4.5).

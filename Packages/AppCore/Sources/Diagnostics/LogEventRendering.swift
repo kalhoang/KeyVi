@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed `LogEvent` -> stable code and metadata fields (PLT-R902). Every field value is an enumerated raw
 // value, a validated identifier (`BundleKey`, `RuleID`), a number, a static literal, a `Redacted` marker or a

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Onboarding layout (PRD-R40): one screen at a time with the footer (Quay lại, Bỏ qua, primary). Strings are
 // resolved through the selected language's `Localizer` and rendered with `Text(verbatim:)` (ADR 0310). Every

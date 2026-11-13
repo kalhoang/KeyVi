@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pure parts of the production AX wrapper (PLT-R380, PLT-R384). No AX message is sent: calling AX needs the
 // Accessibility permission, which tests never request (the real path runs on the self-hosted runner). The

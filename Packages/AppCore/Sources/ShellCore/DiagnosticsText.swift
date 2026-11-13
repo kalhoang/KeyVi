@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the `Diagnostics` String Catalog (ADR 0310), the controls of the Diagnostics windows with their
 // VoiceOver keys (PRD-R66, PRD-R67) and the helpers that compose Diagnostics copy from typed values

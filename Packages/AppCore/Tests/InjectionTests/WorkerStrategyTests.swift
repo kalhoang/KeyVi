@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Worker-level strategy behaviour: fallback chain and focus-session degradation (4.5, PLT-R410), re-entry
 // verification (PLT-R342), verifyAfterEdit readback (PLT-R410, PLT-R422), long text (PLT-R460, PLT-R480),

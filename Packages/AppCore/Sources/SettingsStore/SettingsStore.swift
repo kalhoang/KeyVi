@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings persistence (PLT-R10xx). An actor whose executor is the utility serial queue, so all reads,
 // migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue"). The

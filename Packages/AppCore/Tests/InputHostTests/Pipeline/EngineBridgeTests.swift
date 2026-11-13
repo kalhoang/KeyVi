@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ADR 0306: settings -> engine configuration, the eight-engine catalog, macros and resources.
 

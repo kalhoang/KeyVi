@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Onboarding wiring of the composition root (PRD-R40-R42, PLT-R701-R712, PLT-R740) and the first-launch-after-
 // update self-check (QA-R42). Workstream W2-A.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test-only JSON Schema validator for the keyword subset that scripts/lib/jsonschema_lite.py supports (and that
 // compat/schema/*.json are restricted to): type, enum, const, required, properties, additionalProperties,

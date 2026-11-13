@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R14, PLT-R353: auto-repeat keyDowns never toggle and never restore. The pipeline guards toggles itself,
 // but its restore path relies on the recogniser (W1-F1 request), so the guarantee is pinned here for every

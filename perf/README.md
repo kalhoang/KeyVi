@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Platform performance baselines
 
 `platform-baseline.json` is the stored baseline of the self-hosted platform metrics (PLT-R821, PLT-R822,

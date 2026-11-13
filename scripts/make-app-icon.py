@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Builds the app's icons from Pa's own artwork in assets/ (CLR-R7, Pa's decision S7 of 2026-11-13).
 
 Subcommands:

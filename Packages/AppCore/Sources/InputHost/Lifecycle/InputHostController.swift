@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lifecycle owner of the input host (2.1). Main actor: it starts and stops threads, applies settings, drives
 // the pure `HostLifecycle` state machine and performs its effects, and tells the shell what to show. It never

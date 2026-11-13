@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Self-tests for the repository scripts: Python unit tests plus shell-level checks of the lints and
 # the release tooling against temporary fixtures. Fixtures are generated at run time in a temporary
@@ -126,9 +126,9 @@ expect 0 "typed calls, comments and CLI prints pass" "$S/lint-log-interpolation.
 echo "== check-spdx.sh"
 mkdir -p "$T/s/Packages/VietnameseEngine/Sources" "$T/s/App" "$T/s/scripts" "$T/s/spec"
 printf '// SPDX-License-Identifier: MPL-2.0\n' >"$T/s/Packages/VietnameseEngine/Sources/A.swift"
-printf '// SPDX-License-Identifier: LicenseRef-App-Pending\n' >"$T/s/App/B.swift"
+printf '// SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/App/B.swift"
 printf 'print(1)\n' >"$T/s/spec/model.py"
-printf '#!/bin/sh\n# SPDX-License-Identifier: LicenseRef-App-Pending\n' >"$T/s/scripts/tool"
+printf '#!/bin/sh\n# SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/scripts/tool"
 expect 0 "correct headers pass, spec/ excluded" "$S/check-spdx.sh" --root "$T/s"
 printf '// SPDX-License-Identifier: MIT\n' >"$T/s/App/B.swift"
 printf '#!/bin/sh\necho hi\n' >"$T/s/scripts/tool2"
@@ -195,7 +195,7 @@ contains "invalid repository URL named" "APP_REPOSITORY_URL invalid"
 
 echo "== check-brand-sync.py"
 cat >"$T/sync.xcconfig" <<'EOF'
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 APP_DISPLAY_NAME = Test App
 APP_SLUG = testapp
 // The URL is written with $() because // starts an xcconfig comment.
@@ -524,7 +524,7 @@ APP_REPOSITORY_URL="https://github.com/o/testapp"
 APP_LEGACY_STORAGE_FOLDER_NAMES=""
 EOF
 cat >"$R/Config/Brand.xcconfig" <<'EOF'
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 APP_DISPLAY_NAME = Test App
 APP_SLUG = testapp
 APP_BUNDLE_ID_RELEASE = vn.example.testapp

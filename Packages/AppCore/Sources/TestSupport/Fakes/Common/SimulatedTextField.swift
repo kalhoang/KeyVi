@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Text field model used by the injection tests (W1-D), the pipeline harness (W1-F1) and the guided-test tests
 // (W2-C): caret, selection, inline-completion suggestion, per-event processing. Applies synthetic and replayed

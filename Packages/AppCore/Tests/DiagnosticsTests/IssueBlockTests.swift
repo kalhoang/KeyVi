@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R44 / ADR 0501: the issue block is stable, machine-parseable and round-trips through its parser.
 

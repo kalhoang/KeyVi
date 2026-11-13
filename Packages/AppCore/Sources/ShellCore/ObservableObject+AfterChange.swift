@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Observation helpers for `ObservableObject` models on macOS 12 (ADR 0315: `@Observable` and
 // `withObservationTracking` need macOS 14).

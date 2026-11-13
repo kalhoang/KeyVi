@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Macros pane actions (PRD-R29-R33). Every change is validated in ShellCore (MacroValidator and the engine's
 // MacroTable) before `SettingsStore.replaceMacros`; files are read or written only where the user picked them.

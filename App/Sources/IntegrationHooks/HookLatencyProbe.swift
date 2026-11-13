@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The `latencyProbe` hook (PLT-R810, T4 of 02-platform.md 8.1 for the runner's bench, ADR 0502): the built-in
 // latency probe with one timing profile, typed into a plain text view in a window of its own, without the

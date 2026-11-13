@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Long waits of `compat-harness` (setup `wait` steps up to 60 s, seeded-history settling, the 300 s C1 idle
 // window). They suspend instead of blocking a cooperative-pool thread; only the keyboard driver keeps a

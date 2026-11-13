@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Hashes used by host services: SHA-256 for executable keys (PLT-R393) and signing-identity digests
 // (PLT-R720), and a short stable hash that survives key-value stores holding integers as doubles.

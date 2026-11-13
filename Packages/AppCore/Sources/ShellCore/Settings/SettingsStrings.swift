@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the `Settings` String Catalog (ADR 0310, PRD-R62, PRD-R66): Settings window chrome, General and
 // Typing panes, hotkey recorder, reset, export, import and store notices. A catalog test checks that every key

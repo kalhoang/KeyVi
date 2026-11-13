@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Shared helpers for the repository scripts. Source it; do not execute it.
 #   source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"

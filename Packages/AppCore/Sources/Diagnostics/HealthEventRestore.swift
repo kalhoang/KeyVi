@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Health events of earlier sessions (PRD-R46): the log keeps every event as a `health.<kind>` record with the
 // metadata fields of `HealthEvent.logFields`, so a crash or a tap timeout from before this launch can be read

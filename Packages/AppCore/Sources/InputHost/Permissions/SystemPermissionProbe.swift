@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `PermissionProbe` (PLT-R701, PLT-R702, PLT-R720). Thin wrapper over the system checks. The three
 // request/prompt calls show system UI: only onboarding calls them, after the user asked (PLT-R711).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test doubles for the W2-E2 harness services: an in-memory app that answers the integration hooks through the
 // file-drop channel, a direct hook client, app start/stop, privacy evidence, connection sampling and process

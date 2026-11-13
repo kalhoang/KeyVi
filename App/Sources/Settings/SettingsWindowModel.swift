@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Main-actor state of the Settings window. Rules and copy live in ShellCore (SettingsCatalog, SettingsEdit,
 // SettingsCommands and friends, tested there); this type connects them to the views, the store and the actions.

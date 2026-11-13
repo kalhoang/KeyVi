@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Portainer stack of the website on the Kalera Docker Swarm (ADR 0602, docs/runbooks/site-deploy.md). Every name and
 # host comes from the stack's environment variables, printed by deploy/site/stack-env.sh from scripts/brand.env:

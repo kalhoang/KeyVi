@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared machinery of the key-based strategies (4.2, 4.4, 4.6): synthetic key builders, the ordered list of key
 // pairs a job posts, pacing with absolute deadlines (PLT-R408, PLT-R409) and optional splitting.

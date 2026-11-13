@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Fixed-size array of atomic UInt64 slots (histogram buckets, the worker outcome board). The words are allocated
 // once and never resized, and every slot is accessed through `UnsafeAtomic`, so every operation after `init` is

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Secure Event Input polling, episodes and holder naming (PLT-R395-R398B). Utility queue in production.
 

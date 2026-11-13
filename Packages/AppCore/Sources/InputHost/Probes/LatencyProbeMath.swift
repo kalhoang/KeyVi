@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Latency probe arithmetic (PLT-R810, 02-platform.md 8.1 T2 and T4): pacing, sample correlation and
 // percentiles. Pure functions over synthetic timestamps, tested with `ManualClock`.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // compat-lint: CI checks over compat/rules.json and compat/matrix.json (PLT-R505, PLT-R506, PLT-R521,
 // PLT-R531). The logic is `CompatLintCommand` in CompatRules, where it is unit tested.

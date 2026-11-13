@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Per-run state of a live `compat-harness` command: the app profiles, the configurator that writes each scenario's
 // configuration into the test build's settings (and restores them afterwards), and the integration hooks when the

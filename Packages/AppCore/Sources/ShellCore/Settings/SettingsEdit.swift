@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One change made in the Settings window. Every edit is an explicit user choice, so it is stored as `.set`
 // even when it equals today's default (PRD-R6, PLT-R1004), and applies immediately (PRD-R27, PLT-R1008).

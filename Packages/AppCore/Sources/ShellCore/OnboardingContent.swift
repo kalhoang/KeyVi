@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Testable content of the onboarding screens: the try-it checklist (PRD-R40 screen 7), the permission screen's
 // instructions in the macOS language (PRD-R40 screen 2, PRD-R64, PLT-R702, PLT-R740) and the move offer copy

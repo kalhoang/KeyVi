@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R46, PLT-R1202: health events live in memory and in the rotating log, so a crash or a tap timeout from
 // before this launch still appears in the report's last 50 events. The log record of every event reads back

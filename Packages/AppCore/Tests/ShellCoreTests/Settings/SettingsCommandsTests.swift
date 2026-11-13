@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Settings window's writes against a real SettingsStore over in-memory fakes: explicit edits (PRD-R6,
 // PRD-R27), per-app rules (PRD-R21), compatibility overrides in rule-overrides.json (PLT-R540, PLT-R541), resets

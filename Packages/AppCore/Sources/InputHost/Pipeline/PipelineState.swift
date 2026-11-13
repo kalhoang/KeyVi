@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Tap-thread state of `KeyPipeline` (contracts.md 10.1). Only trivially copyable values: the pipeline keeps no
 // strings or arrays across callbacks, so nothing it holds can be the last reference to snapshot memory and no

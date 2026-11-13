@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the Settings window shows (PRD-R7, PRD-R24, PRD-R25): five panes in a fixed order, the settings of each
 // pane with a title and a one-line explanation, and the defaults that are deliberately not settings.

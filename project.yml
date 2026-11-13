@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # XcodeGen spec (docs/decisions/0301-xcodegen-project.md). `xcodegen generate` writes App.xcodeproj, which is
 # never committed. Target and scheme names are brand-neutral; the product name, bundle IDs and site host come

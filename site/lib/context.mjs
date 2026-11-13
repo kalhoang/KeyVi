@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Build context: brand, config, data, per-language content and the token tables used to fill copy.
 import { existsSync } from "node:fs";
 import { join } from "node:path";

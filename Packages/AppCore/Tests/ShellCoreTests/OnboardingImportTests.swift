@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Onboarding screen 6 import (PRD-R40, PRD-R32, PRD-R43 "Import file invalid", PRD-R70): the chosen file gets the
 // Macros pane's preview (counts of new, duplicate and invalid rows, the duplicate choice, invalid lines with

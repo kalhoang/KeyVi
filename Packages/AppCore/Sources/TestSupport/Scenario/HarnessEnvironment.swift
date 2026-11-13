@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Everything `compat-harness` touches outside its own memory. The executable builds `live` only when
 // `HarnessEnvironment.allowsLive` says so: a non-dry-run `run`, `soak`, `bench` or `egress` on a machine whose

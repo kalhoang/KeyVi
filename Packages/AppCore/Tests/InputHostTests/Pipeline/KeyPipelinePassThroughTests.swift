@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The guided test's diagnostics pass-through in the tap pipeline (PLT-R1205 steps 3-5): every keyboard event
 // passes unchanged without reaching the engine, hotkeys neither toggle nor restore (no per-app memory write,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Host-service fakes (W1-E). Pure Swift state behind a lock; no AX, TIS, IORegistry or TCC access. Observer
 // callbacks run synchronously on the caller's thread, outside the fake's lock.

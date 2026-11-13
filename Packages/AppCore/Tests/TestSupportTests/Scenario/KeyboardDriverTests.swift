@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // 13.2 keyboard driver: physical key names, timing profiles (normal 80-150 ms, fast 30 ms, burst 5 ms),
 // modifiers as flagsChanged, deterministic plans, no stuck keys after a failure. Virtual time only.

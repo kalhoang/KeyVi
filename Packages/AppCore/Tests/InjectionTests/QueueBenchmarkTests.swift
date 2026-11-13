@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Micro-benchmarks of the skeleton tap <-> worker seam (W1-D work item; T1 budget p50 15 us, p99 60 us per
 // callback, 02-platform.md 8.1). Bounds are deliberately loose: debug builds on shared CI machines; the release

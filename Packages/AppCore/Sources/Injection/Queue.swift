@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared state between the tap (producer) and the worker (consumer). Everything the tap touches here is a
 // lock-free push or pop or an atomic load/store (PLT-R304). Implemented in the skeleton because it is the seam

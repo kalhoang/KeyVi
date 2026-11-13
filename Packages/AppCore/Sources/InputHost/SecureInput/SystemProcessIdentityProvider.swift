@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `ProcessIdentityProvider` (PLT-R393, PLT-R396, PLT-R399, PLT-R510). Thin: the system reads are
 // here, the mapping to `ProcessIdentity` is `ProcessIdentityFactory` (pure, unit-tested).

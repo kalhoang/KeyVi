@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Store notices shown at the top of the Settings window (PLT-R1006, PLT-R1007, PLT-R1009). A state recovered
 // from a backup is already saved, so its notice is informational and "Đã hiểu" only dismisses it; a corrupt

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The compiled form behind `RuleSet` (02-platform.md 5.5). Rules are kept in winning order: user overrides
 // first (PLT-R522), then higher specificity (PLT-R520), then the lexicographically smaller id (PLT-R521). The

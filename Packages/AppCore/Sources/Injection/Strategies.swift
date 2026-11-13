@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Strategy catalogue (02-platform.md section 4) and the pure helpers every strategy shares.
 

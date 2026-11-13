@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Sparkle adapter without starting Sparkle: the production factory builds an unstarted `SPUUpdater` for the
 // given bundle, the user driver hands errors to the controller (PRD-R43), and the live wiring follows the

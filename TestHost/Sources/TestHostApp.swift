@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R10 test host: one window with every TestHostField (native text field and text view, WKWebView page with
 // input, textarea and contenteditable, simulated address bar, simulated spreadsheet cell, password field), each

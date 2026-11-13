@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W3-A: the hooks directory on a real file system (a fresh temporary directory per test, removed afterwards):
 // 0700 directory, 0600 atomic answers, refusal of links, other users' files, non-regular files and oversized

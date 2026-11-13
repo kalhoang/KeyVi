@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Every write the Settings window makes, as calls on the `SettingsStore` actor (utility queue). Each command
 // returns the store's state afterwards, so the window shows the result even before the composition root's

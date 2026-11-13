@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R42: on the first launch after an update the app checks itself (permission state, tap creation) and, on
 // failure, shows the targeted permission screen (PRD-R42) instead of failing silently. PRD-R52: otherwise the

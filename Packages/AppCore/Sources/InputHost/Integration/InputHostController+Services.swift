@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Service wiring of `InputHostController`: monitors, signals, workspace events, settings and rules, start and
 // stop (PLT-R203 thread map, PLT-R333, PLT-R395, PLT-R399, PLT-R721, PLT-R1008, PRD-R27). Workstream W2-A.

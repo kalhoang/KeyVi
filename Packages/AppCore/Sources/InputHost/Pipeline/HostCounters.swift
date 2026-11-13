@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Content-free observations of the host since launch that the integration hooks report in `AppStateSnapshot`
 // (ADR 0502, "Integration hooks"): tap recoveries after a timeout and the engine resets that came with them

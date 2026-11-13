@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The whole input host under fakes (QA-R1 layer 4, ADR 0313): `InputHostController` with the real tap thread
 // (fake handle, no WindowServer), the real pipeline and engine, the real focus tracker on its ax thread, the

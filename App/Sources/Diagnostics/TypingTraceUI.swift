@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Record typing trace..." (PLT-R905, D26): a confirmation that explains what is recorded, the capture HUD with
 // countdown and Stop on all Spaces, the changed menu-bar icon, then a review window with export and discard.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Tap -> main notices, focus and secure-input changes as the shell sees them, per-app memory persistence,
 // learning, conflicts and the typing-trace gaps (PRD-R10, PRD-R11, PRD-R20, PRD-R23, PLT-R395-R398B,

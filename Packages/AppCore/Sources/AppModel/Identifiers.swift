@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Validated metadata identifiers. They are the only string-like values the typed logger accepts without
 // redaction (PLT-R902): their character set and length make it impossible to carry typed content in them.

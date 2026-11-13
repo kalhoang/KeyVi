@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `AXProvider` (PLT-R380-R385, PLT-R343). Thin wrapper, called only on the ax thread. Every element
 // gets the 100 ms messaging timeout; reads are bounded attributes, never a field's full `AXValue`. It never sets

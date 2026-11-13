@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed logging API (PLT-R902). Every payload is an enumerated metadata type. Strings appear only as
 // `StaticString` literals or `Redacted`. A lint (scripts/lint.sh, CI track) rejects string interpolation in

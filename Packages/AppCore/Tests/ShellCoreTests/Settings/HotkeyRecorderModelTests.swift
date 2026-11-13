@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings hotkey recorder (PRD-R15, PRD-R16, PRD-R18): any press order, modifier-only taps from the list only,
 // right-side taps from the device bits, macOS conflicts accepted with a warning that names the feature.

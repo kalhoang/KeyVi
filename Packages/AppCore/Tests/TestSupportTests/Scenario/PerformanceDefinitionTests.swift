@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // T2 to T6, C1, C2, M1, M2 (02-platform.md 8.1, PLT-R821, PLT-R822, ADR 0502): the committed placeholder baseline,
 // the 25 % regression gate, the histogram and latency-probe metrics through the hooks, the process metrics

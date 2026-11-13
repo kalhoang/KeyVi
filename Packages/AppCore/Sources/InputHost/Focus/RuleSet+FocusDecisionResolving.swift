@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The compiled rule set as the focus tracker's resolver (PLT-R380, PLT-R510, PLT-R520-R523). `resolve`,
 // `overlayBundles` and `titlePatternBundles` are RuleSet's own members; fingerprinting inspects the bundle on

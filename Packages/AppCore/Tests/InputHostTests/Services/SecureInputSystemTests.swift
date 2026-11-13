@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R396: selecting the console session in IOConsoleUsers. Read-only smoke of the system probe.
 

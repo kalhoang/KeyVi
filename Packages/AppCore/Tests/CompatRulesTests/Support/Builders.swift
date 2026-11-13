@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Small builders for rules, documents and match contexts. Bundle identifiers appear only in test fixtures
 // (PLT-R501).

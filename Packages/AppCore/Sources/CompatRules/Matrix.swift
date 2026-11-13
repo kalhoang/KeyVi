@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // compat/matrix.json: verification status (02-platform.md 13.3, QA-R17), a separate file and schema from the
 // behaviour rules. Single source for the Apps pane and the website matrix (PRD-R35, PRD-R38).

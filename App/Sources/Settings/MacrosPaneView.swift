@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Gõ tắt / Macros" (PRD-R29-R33): the D9 switch, search, sort, add, import and export, a list with an enable
 // checkbox per macro, edit, duplicate, delete and enable or disable all. The list scrolls (PRD-R24 acceptance).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Export and import sheets (PLT-R1010, PRD-R72): what the export contains, the import summary (changed settings,
 // counts, skipped fields of a newer schema) and a plain explanation for every refused file (PRD-R43).

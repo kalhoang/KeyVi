@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The settings, rules and tap-log bridges of the host (PLT-R1008, PRD-R27, ENG-R1101, ENG-R1231, D10,
 // PLT-R503, PLT-R540, PLT-R903, PLT-R1206, ENG-R861). Workstream W2-A.

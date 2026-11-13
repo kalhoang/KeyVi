@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The short summary that goes into the GitHub issue form and the mail body (PRD-R47). It holds the reported app,
 // the symptom, the practice-field answer, app and macOS versions, architecture and typing method, plus the text

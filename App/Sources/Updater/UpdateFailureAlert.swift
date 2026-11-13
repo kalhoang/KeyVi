@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The "Update failed" state of PRD-R43: what happened, which version keeps running, and two concrete actions
 // ("Thử lại", "Tải từ trang web"). Shown in place of Sparkle's generic error alert, in the interface language

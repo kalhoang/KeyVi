@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lifecycle state machine of the input host (02-platform.md 2.1, PLT-R330-R333, PLT-R730, PLT-R731, ADR 0309)
 // as a pure value type, so it is tested deterministically without threads, taps or services (ADR 0313).

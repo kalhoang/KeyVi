@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The composition root's own modal notices: safe mode (PLT-R1009), a failed move to Applications (PLT-R710) and
 // the once-per-launch conflict warning (PLT-R399). Copy lives in the `Composition` String Catalog, read through

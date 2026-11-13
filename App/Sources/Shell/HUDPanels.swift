@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Non-activating HUD panels (ADR 0305): `.nonactivatingPanel`, all Spaces, above full-screen apps, never key.
 // The switch HUD (PRD-R12) sits near the bottom centre; the capture HUD (PLT-R905) near the top right. Both

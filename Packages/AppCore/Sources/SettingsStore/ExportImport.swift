@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Own export format (PLT-R1010, PRD-R72), brand-neutral so renaming the app never breaks old exports:
 //

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Table tests of the input host lifecycle (02-platform.md 2.1, contracts.md 10.3). W1-F2.
 import AppModel

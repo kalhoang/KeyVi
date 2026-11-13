@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Macros pane (PRD-R29, PRD-R31): the editor rejects invalid shortcuts with the PRD-R29 reasons, stores
 // expansions in NFC (ENG-R1101), never saves a table the engine rejects (ENG-R1103), warns about Telex digit

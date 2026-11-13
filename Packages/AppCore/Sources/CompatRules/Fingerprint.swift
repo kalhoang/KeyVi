@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Engine fingerprinting (PLT-R510). Pure logic over a `BundleInspector`; the ax thread caches results per
 // (bundle path, CFBundleVersion). Every heuristic is VERIFY against current builds.

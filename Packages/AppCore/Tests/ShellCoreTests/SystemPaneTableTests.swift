@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R701, PLT-R704, PRD-R64: pane names by macOS version and macOS language, deep links from data.
 

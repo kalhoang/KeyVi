@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Page shell: head (canonical, hreflang, CSP), header, language switch, footer.
 // Privacy by construction (PRD-R74): system fonts, one local stylesheet, no third-party anything, except the
 // optional cookieless analytics of lib/analytics.mjs when site/config.json sets a key (Pa, 2026-11-13, Q7).

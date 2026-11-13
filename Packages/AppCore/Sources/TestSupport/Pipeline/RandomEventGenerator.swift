@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Seeded generator for the pipeline property suites (02-platform.md 13.1). Plausible input: keys are pressed
 // and released (with rollover and autorepeat), modifier flags follow the held modifiers, Control+Shift taps

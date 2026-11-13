@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Release pipeline (QA-R30, QA-R31, PLT-R1103), triggered by a v* tag. In order:
 #   0. the tag names a commit on main or release/x.y, and no unimplemented() call is left in product code
 #   1. re-run the full CI suite on the tagged commit and require a green integration run on it

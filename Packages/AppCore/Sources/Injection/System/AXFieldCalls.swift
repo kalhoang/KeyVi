@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Bounded AX calls for injection (PLT-R342, PLT-R343, 4.5). Never reads `AXValue`: only the selected range, a
 // parameterized range read of at most 64 UTF-16 units, and selection writes. Every call first sets the

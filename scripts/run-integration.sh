@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Platform integration layers on the self-hosted macOS runner (QA-R10 to QA-R16, PLT-R821,
 # section 13.2). The runner has Accessibility (and, if needed, Input Monitoring) granted to the

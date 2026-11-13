@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Macros pane list (PRD-R31): search, sort, add, edit, duplicate, delete, enable or disable one or all.
 // Pure value state; the window saves `macros` through `SettingsStore.replaceMacros` after each change. Macro

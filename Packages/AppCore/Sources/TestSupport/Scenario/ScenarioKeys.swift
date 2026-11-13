@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Physical key names of scenario key scripts (PLT-R530). A name is a key POSITION on the ANSI keyboard, not a
 // character: on a QWERTZ layout the key named `z` types "y". Values are the public macOS virtual key codes

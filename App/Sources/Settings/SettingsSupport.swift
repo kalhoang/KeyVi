@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Small AppKit helpers of the Settings window: open and save panels (files only where the user picks them,
 // PRD-R69), bounded reads of untrusted files (PLT-R912) and app names and icons for the Apps pane (PRD-R34).

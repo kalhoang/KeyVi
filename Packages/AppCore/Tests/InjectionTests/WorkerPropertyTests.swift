@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Worker property suite with a scripted producer (W1-D acceptance): random interleavings of edits (some paced,
 // some macros), held events, paired keyUps, boundaries, focus changes, clock advances and worker runs are checked

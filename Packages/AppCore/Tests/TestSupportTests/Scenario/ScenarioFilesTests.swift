@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W2-E1 and W2-E2 acceptance over the repository's compat/scenarios: every file decodes and validates against
 // compat/schema/scenario.schema.json, the 02-platform.md 13.2 minimum set and the 5.6 example rules are present,

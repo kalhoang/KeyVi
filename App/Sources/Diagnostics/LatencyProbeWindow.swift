@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Run typing latency test" window (PLT-R810): a plain text view that receives the probe's keys and reports
 // every text change to the driver, a start button, progress per profile and the T2 and T4 result lines. The

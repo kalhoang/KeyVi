@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Bundle heuristics of PLT-R510, in the documented order. Every marker is VERIFY against current builds; they
 // are names Apple's bundle layout makes visible (frameworks, helper apps, Info.plist keys), never app identity.

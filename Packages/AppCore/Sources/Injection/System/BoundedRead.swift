@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // A read that may block on another process (lazily provided pasteboard data waits on its owner), bounded by a
 // deadline: PLT-R461 step 1 ("if any item cannot be read within 100 ms ... abort"), PLT-R462 (the worker waits

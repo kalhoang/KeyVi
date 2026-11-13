@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The two English-restore user lists of the Typing pane (ENG-R860) and the optional layout-to-mode binding of
 // General > Advanced (PLT-R373).

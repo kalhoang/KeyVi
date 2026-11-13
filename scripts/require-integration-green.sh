@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Release gate (QA-R30 step 1): the latest integration.yml run on the tagged commit must be green.
 # Waits while a run on that commit is queued or in progress (the tag push itself starts one).

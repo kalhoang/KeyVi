@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R810 latency probe: result math with synthetic timestamps (`ManualClock`), probe-kind marker on every
 // posted event (user metrics exclude them), three timing profiles, T2 from the probe histogram of the measured

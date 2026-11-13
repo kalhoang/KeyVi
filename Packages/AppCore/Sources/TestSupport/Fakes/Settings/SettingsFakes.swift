@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings fakes (workstream W1-B): a debounce adapter over `ManualScheduler`, a file system spy with fault
 // injection, a change recorder and a harness that wires a `SettingsStore` to all of them, so store behaviour

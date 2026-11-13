@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Compatibility scenario files (PLT-R530): `compat/scenarios/<id>.json`, schema
 // compat/schema/scenario.schema.json. Executed by `compat-harness` on the self-hosted runner only.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // InjectionWorker in step mode (`runUntilIdle`, ManualClock): FIFO, held replays, generation discard, liveness,
 // paired keyUps, one `finished` per job, posting broken (PLT-R311-R316, ADR 0308, ADR 0311).

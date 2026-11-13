@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Every Vietnamese copy draft in spec/03-product.md, verbatim, in one list (PRD-R62, PRD-R40, W2-F copy
 // review): menu (PRD-R11), icon labels (PRD-R10), switch HUD (PRD-R12, PRD-R66), status lines and error states

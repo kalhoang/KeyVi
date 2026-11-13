@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R370-R372, PLT-R333: a menu-bar agent is almost never the active application, and AppKit suspends
 // distributed notification delivery for inactive applications unless the observer asks for immediate delivery.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // SwiftUI APIs newer than the macOS 12 floor, with the macOS 12 fallback next to each (ADR 0315). Views call
 // these instead of checking availability themselves, so the label-and-hint audit still sees plain controls.

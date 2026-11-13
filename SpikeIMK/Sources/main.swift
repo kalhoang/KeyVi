@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Spike S1 (PLT-R398D): does an InputMethodKit input source still receive key events in Terminal and iTerm2
 // while Secure Keyboard Entry is on, and can it still commit text there? This bundle counts key-down events and

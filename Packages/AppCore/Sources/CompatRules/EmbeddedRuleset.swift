@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The compiled-in known-good ruleset (PLT-R503), used when the shipped compat-rules.json is missing or invalid.
 // It holds the 5.4 `defaults` block and the engine-only rules of compat/rules.json (match by engine, optionally

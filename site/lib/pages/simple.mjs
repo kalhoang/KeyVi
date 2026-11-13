@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Content-led pages: changelog, privacy, donate, 404.
 import { kit } from "../context.mjs";
 import { renderMarkdown } from "../markdown.mjs";

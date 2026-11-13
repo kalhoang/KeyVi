@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Shared helpers for the Python self-tests in scripts/tests (test_scripts.py, test_docs_and_workflows.py)."""
 from __future__ import annotations
 

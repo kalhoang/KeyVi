@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W1-A acceptance: 10 million concurrent publish/read iterations never observe a torn or freed value
 // (PLT-R388, docs/decisions/0303-snapshot-publication.md).

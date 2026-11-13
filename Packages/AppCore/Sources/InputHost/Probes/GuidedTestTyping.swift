@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The guided test's canary (PLT-R1205 step 3): literal keys and the engine's edits for "đá â" typed with one
 // candidate strategy, AX readback (PLT-R410 `axReadback`, bounded per PLT-R343) and removal with the same

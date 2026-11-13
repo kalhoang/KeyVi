@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Chung / General" (PRD-R24): open at login (D17), toggle hotkey (D11), remember per app (D12), switch indicator
 // (D14), interface language (D18); Advanced: sound on switch (D15), click icon to toggle (D16), layout binding

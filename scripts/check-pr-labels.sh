@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Pull request label gate, run by .github/workflows/pr-labels.yml:
 #   - QA-R6: a change that removes or rewrites a line of an engine corpus file (an expected output changes)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Coverage-guided fuzzing of the engine with libFuzzer (QA-R8, QA-R9, ENG-T30 to ENG-T37). Runs on Linux,
 # where the Swift toolchain ships libFuzzer (`-sanitize=fuzzer`); the macOS toolchain does not.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Input host state machine vocabulary (02-platform.md 2.1). InputHost drives it; ShellCore renders it
 // (PRD-R10, PRD-R11, PRD-R43); Diagnostics logs its content-free code.

@@ -101,7 +101,7 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 ## Licence and provenance
 
 - The engine package is MPL-2.0-licensed: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE).
-- The app licence has not been decided yet. Until it is, non-engine source files carry `SPDX-License-Identifier: LicenseRef-App-Pending` and there is no top-level `LICENSE` file.
+- The app licence has not been decided yet. Until it is, non-engine source files carry `SPDX-License-Identifier: GPL-3.0-or-later` and there is no top-level `LICENSE` file.
 - {{AppName}} is an independent implementation written under clean-room rules: [spec/05-clean-room.md](spec/05-clean-room.md). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Links

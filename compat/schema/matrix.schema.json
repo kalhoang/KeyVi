@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compat/schema/matrix.schema.json",
   "title": "Compatibility verification matrix (compat/matrix.json)",
-  "description": "02-platform.md 13.3 and 04-quality-release.md QA-R17. Verification status only; behaviour lives in rules.json. Twin of CompatRules/Matrix.swift. License: LicenseRef-App-Pending.",
+  "description": "02-platform.md 13.3 and 04-quality-release.md QA-R17. Verification status only; behaviour lives in rules.json. Twin of CompatRules/Matrix.swift. License: GPL-3.0-or-later.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "entries"],

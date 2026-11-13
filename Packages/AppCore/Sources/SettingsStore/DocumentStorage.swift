@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // File operations of the settings folder (PLT-R1001, PLT-R1005, PLT-R1006): reading and classifying a document,
 // atomic writes (0600 in a 0700 folder), quarantining a corrupt file as `<file>.corrupt-<timestamp>`, and the

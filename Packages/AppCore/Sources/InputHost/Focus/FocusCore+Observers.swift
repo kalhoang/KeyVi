@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // AXObservers on the focus owner and on overlay apps (PLT-R380). Their run-loop sources live on the ax thread;
 // callbacks hop back through `FocusNotificationSink`.

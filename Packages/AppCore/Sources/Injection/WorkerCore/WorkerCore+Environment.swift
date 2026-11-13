@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The worker as the strategies' `InjectionEnvironment` and `StrategyHost`, plus the work it does on deadlines:
 // clipboard restore (PLT-R461 steps 4-6) and deferred readback for `verifyAfterEdit` (PLT-R410, PLT-R422).

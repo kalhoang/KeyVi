@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // TapWatchdog with ManualScheduler and a CallbackWatchdog driven by the test (PLT-R306, PLT-R331, PLT-R803,
 // ADR 0309, ADR 0303). W1-F2.

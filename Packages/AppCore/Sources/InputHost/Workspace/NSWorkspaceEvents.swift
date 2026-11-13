@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `WorkspaceEvents` (PLT-R333, PLT-R381): NSWorkspace notifications for activation, sleep, wake and
 // Fast User Switching, distributed notifications for screen lock. Thin: the mapping is `WorkspaceEventMapping`.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Property test of the lifecycle state machine against a simulated controller (W1-F2). Random input sequences
 // check the invariants that must hold after every step, whatever the order of events.

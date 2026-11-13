@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The services the composition root hands to the Diagnostics windows (W2-C): the report (live for the
 // misbehaves panel, bound to the moment the flow opened for the bug report sheet, PLT-R1202), the Apps pane's apps

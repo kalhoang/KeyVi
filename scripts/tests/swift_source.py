@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Just enough Swift reading for the documentation tests: enum raw values and the issue-block key order.
 
 This is not a Swift parser. It relies on the shapes used in Packages/AppCore/Sources/Diagnostics (one

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `backspaceReplace` (4.2), `selectReplace` (4.4) and inline-completion handling (4.3), plus the executor table.
 

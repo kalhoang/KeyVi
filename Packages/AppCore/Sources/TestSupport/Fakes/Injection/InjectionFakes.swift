@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Injection service fakes, implemented in the skeleton (ADR 0313) so the worker (W1-D), the pipeline harness
 // (W1-F1) and the guided test (W2-C) can test in parallel. W1-D owns this directory and may add behaviours;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Sparkle side of the wrapper (PLT-R104, ADR 0304). `SPUUpdater` with Sparkle's standard user driver, which
 // is what `SPUStandardUpdaterController` builds internally, except that the user driver is a subclass whose only

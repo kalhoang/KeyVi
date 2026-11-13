@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings -> engine values (docs/decisions/0306-engine-bridge.md, decision 1). Utility queue only.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Conversion of event fields into RawKeyEvent (PLT-R304, PLT-R321, PLT-R363), with a value type standing in
 // for CGEvent so no event object is ever created. W1-F2.

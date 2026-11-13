@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R310 steps 1 to 6: tap-disabled events, echo settlement and fail-open, marker check, pointer and scroll,
 // snapshot reconciliation, secure-input resume, host state and hotkeys.

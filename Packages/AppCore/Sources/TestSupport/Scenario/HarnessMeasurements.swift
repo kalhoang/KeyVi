@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Measurement plumbing of the live `compat-harness` commands (PLT-R821, PLT-R822, QA-R16, 13.7, section 9 canary):
 // the bench source (process sampling plus the app's histograms and latency probe when the hooks answer), the soak

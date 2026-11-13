@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Human-readable report in the interface language, shown verbatim before copying or exporting (PLT-R1204).
 // Same content as the JSON and the issue block; metadata only (PLT-R1202, PLT-R1203).

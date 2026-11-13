@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `InputHostController` under fakes: launch to ready, the HostLifecycle tables performed end to end, the
 // retry timer, posting-broken recovery and stop (02-platform.md 2.1, PLT-R302, PLT-R330-R333, PLT-R730,

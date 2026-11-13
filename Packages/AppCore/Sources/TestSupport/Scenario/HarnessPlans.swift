@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Human-readable plans printed by `compat-harness <command> --dry-run`. Pure functions over loaded data: the
 // dry run never creates a keyboard driver, never launches an app and never posts an event. The plan shows

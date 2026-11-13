@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Harness side of the app under test's integration hooks (QA-R11, PLT-R821, 13.2 "tap timeout injection (test
 // hook)", "permission revocation during typing"). The app answers only in the test build that the self-hosted

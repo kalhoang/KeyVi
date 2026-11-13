@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Sparkle 2 settings (PLT-R1101, PLT-R1102, docs/decisions/0304-sparkle-version-pin.md).
 // `//` starts a comment in xcconfig files, hence the `$()` in the URL.
 // The app checks both values at launch (App/Sources/Updater/UpdatePolicy.swift, `UpdaterConfiguration`): the feed

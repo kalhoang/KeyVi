@@ -100,7 +100,7 @@ migration.
 
 <!-- include: Packages/AppCore/Sources/AppModel/Identifiers.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Validated metadata identifiers. They are the only string-like values the typed logger accepts without
 // redaction (PLT-R902): their character set and length make it impossible to carry typed content in them.
@@ -253,7 +253,7 @@ public struct FocusGeneration: RawRepresentable, Sendable, Hashable, Comparable,
 
 <!-- include: Packages/AppCore/Sources/AppModel/Vocabulary.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared enumerations. Raw values are the JSON spellings used in settings files and in compat/rules.json
 // (02-platform.md 5.4), so they MUST NOT change without a schema migration (PLT-R1005).
@@ -340,7 +340,7 @@ public enum PermissionKind: String, Sendable, Hashable, Codable, CaseIterable {
 
 <!-- include: Packages/AppCore/Sources/AppModel/Hotkeys.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Hotkey bindings (03-product.md PRD-R14 to PRD-R18). Stored in settings.json; recognised by InputHost.
 
@@ -442,7 +442,7 @@ public enum HotkeyBinding: Sendable, Hashable, Codable {
 
 <!-- include: Packages/AppCore/Sources/AppModel/HostState.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Input host state machine vocabulary (02-platform.md 2.1). InputHost drives it; ShellCore renders it
 // (PRD-R10, PRD-R11, PRD-R43); Diagnostics logs its content-free code.
@@ -555,7 +555,7 @@ public struct SecureInputHolder: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/AppModel/Versions.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Semver-ish version for `match.appVersion` / `match.macOS` (02-platform.md 5.4) and diagnostics.
 /// Parses leading dot-separated integers ("27.1", "155.0.7000.12", "1.0.0-beta.2" -> [1, 0, 0]) and compares
@@ -630,7 +630,7 @@ public struct VersionRange: Sendable, Hashable, Codable {
 
 <!-- include: Packages/AppCore/Sources/AppModel/JSONValue.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Untyped JSON tree. Settings documents keep their raw object so unknown keys survive a rewrite
 /// (PLT-R1002) and migrations are pure functions over JSON (PLT-R1005).
@@ -700,7 +700,7 @@ public enum JSONValue: Sendable, Hashable, Codable {
 
 <!-- include: Packages/AppCore/Sources/AppModel/FileSystem.swift until="/// Production file system" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import Foundation
 
@@ -775,7 +775,7 @@ macOS 12 floor: [0315](../decisions/0315-minimum-macos-12.md).
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/Atomic.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lock-free atomics with explicit memory orderings (PLT-R304, PLT-R388) for macOS 12 and later
 // (docs/decisions/0315-minimum-macos-12.md). The API mirrors the `Synchronization` module's `Atomic`, which
@@ -1195,7 +1195,7 @@ extension Atomic where Value: AtomicInteger {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/Mutex.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Mutual exclusion for macOS 12 and later (docs/decisions/0315-minimum-macos-12.md). The API mirrors the
 // `Synchronization` module's `Mutex` (macOS 15): `Mutex(initialValue)` and `withLock { value in ... }`.
@@ -1236,7 +1236,7 @@ public struct Mutex<Value>: @unchecked Sendable {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/TimeSpan.swift until="    // MARK: Arithmetic" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Length of time for timeouts, intervals, backoffs and deadlines (docs/decisions/0315-minimum-macos-12.md).
 // Replaces `Swift.Duration`, which needs macOS 13 (PLT-R106: the floor is macOS 12). Call sites keep the
@@ -1317,7 +1317,7 @@ public struct TimeSpan: Sendable, Hashable, Comparable, BitwiseCopyable, CustomS
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/SnapshotCell.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Snapshot publication (PLT-R304, PLT-R388, docs/decisions/0303-snapshot-publication.md).
 //
@@ -1424,7 +1424,7 @@ public final class SnapshotCell<Value: Sendable>: Sendable {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/SPSCRing.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Bounded lock-free single-producer single-consumer queue (PLT-R304 "pushing onto a lock-free
 /// single-producer queue"). Storage is allocated once; push and pop never allocate or block.
@@ -1484,7 +1484,7 @@ public final class SPSCRing<Element: Sendable>: @unchecked Sendable {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/Signals.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import Dispatch
 
@@ -1532,7 +1532,7 @@ public final class WorkerSignal: Sendable {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/MonotonicClock.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 internal import Darwin
 
@@ -1600,7 +1600,7 @@ public struct MachClock: MonotonicClock {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/InlineUTF16.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Fixed-capacity UTF-16 buffer (at most 20 code units, the practical limit of
 /// `CGEventKeyboardSetUnicodeString`, PLT-R404). Bitwise-copyable so events can be held, queued and
@@ -1663,7 +1663,7 @@ public struct InlineUTF16: Sendable, Hashable, BitwiseCopyable {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/Threads.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Dedicated threads (PLT-R203). Swift concurrency cannot express "this state belongs to the ax run-loop
 // thread", so confinement is enforced by construction plus debug assertions, in exactly two audited types.
@@ -1771,7 +1771,7 @@ public final class RunLoopThread: Sendable {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/TimerScheduler.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Timers for host services (docs/decisions/0313-testability-seams.md). Every periodic or delayed action of the
 // permission monitor, secure-input monitor, tap watchdog and lifecycle backoff goes through `TimerScheduler`,
@@ -1857,7 +1857,7 @@ private final class DispatchTimer: ScheduledTimer {
 
 <!-- include: Packages/AppCore/Sources/RealtimeSupport/AtomicArray.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Fixed-size array of atomic UInt64 slots (histogram buckets, the worker outcome board). The words are allocated
 // once and never resized, and every slot is accessed through `UnsafeAtomic`, so every operation after `init` is
@@ -1947,7 +1947,7 @@ are in ADR 0501, including the keys added in wave 1 (`report.symptomDetail`, `ui
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Identity.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 
@@ -2000,7 +2000,7 @@ public struct SystemInfo: Sendable, Hashable, Codable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Redaction.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 internal import AppModel
 internal import CryptoKit
@@ -2101,7 +2101,7 @@ enum MetadataText {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/LogEvent.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed logging API (PLT-R902). Every payload is an enumerated metadata type. Strings appear only as
 // `StaticString` literals or `Redacted`. A lint (scripts/lint.sh, CI track) rejects string interpolation in
@@ -2182,7 +2182,7 @@ public protocol DiagnosticsLogging: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Health.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 public import Foundation
@@ -2321,7 +2321,7 @@ public final class HealthEventLog: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/HealthEventRestore.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Health events of earlier sessions (PRD-R46): the log keeps every event as a `health.<kind>` record with the
 // metadata fields of `HealthEvent.logFields`, so a crash or a tap timeout from before this launch can be read
@@ -2387,7 +2387,7 @@ extension HealthEvent {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Metrics.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Always-on, content-free, lock-free histograms (PLT-R801): fixed memory, log2 buckets, safe on the tap.
 // Implemented in the skeleton because the pipeline and the worker record into them on every event
@@ -2734,7 +2734,7 @@ public struct MetricsSnapshot: Sendable, Hashable, Codable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/TapLog.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Fixed-size records the tap thread writes into a lock-free ring (PLT-R304 "writing fixed-size records into a
 // lock-free log ring buffer"). The utility queue drains them into health events and the log file.
@@ -2801,7 +2801,7 @@ public final class TapLogRing: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/LogStore.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 public import Foundation
@@ -2920,7 +2920,7 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Report.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Environment report (PLT-R1202) and the machine-parseable issue block (QA-R44).
 //
@@ -3406,7 +3406,7 @@ public enum DiagnosticsBlockKey: String, Sendable, CaseIterable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Capture.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Time-boxed typing trace (PLT-R905, PRD-R46, D26): the only artefact that ever contains typed characters.
 
@@ -3690,7 +3690,7 @@ public final class CaptureController: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Signposts.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 internal import AppModel
 internal import os
@@ -3803,7 +3803,7 @@ or CSV path.
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/Setting.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// A user setting that is either untouched (`unset`, follows future default changes) or an explicit choice
 /// (`set`, preserved forever, even when equal to today's default). PRD-R6, PLT-R1004.
@@ -3829,7 +3829,7 @@ public enum Setting<Value: Sendable & Hashable & Codable>: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/UserSettings.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // settings.json payload (PLT-R1001). Only explicit user choices are persisted; defaults live in code
 // (`DefaultSettings`) and rules (PLT-R1004). Keys are the JSON names below and MUST NOT be renamed without a
@@ -3992,7 +3992,7 @@ extension UserSettings {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/Documents.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The four files of PLT-R1001. Each is `{ "schemaVersion": Int, "writtenBy": String, ...payload }`; unknown
 // keys are preserved on rewrite (PLT-R1002) because every document keeps its raw JSON object and overlays
@@ -4094,7 +4094,7 @@ public struct StorageLocation: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/Migrations.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 
@@ -4148,7 +4148,7 @@ public struct MigrationChain: Sendable {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/SettingsStore.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings persistence (PLT-R10xx). An actor whose executor is the utility serial queue, so all reads,
 // migrations and debounced atomic writes are serialized there (PLT-R1003, PLT-R203 "utility queue"). The
@@ -4386,7 +4386,7 @@ public actor SettingsStore {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/ExportImport.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Own export format (PLT-R1010, PRD-R72), brand-neutral so renaming the app never breaks old exports:
 //
@@ -4607,7 +4607,7 @@ struct SettingsImporter {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/MacroImport.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Macro import (PRD-R32, PRD-R69, PRD-R70). Tolerant: invalid rows are skipped with a reason, one bad row
 // never aborts the import, duplicates never overwrite without the user's choice.
@@ -4907,7 +4907,7 @@ public enum MacroValidator {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/LaunchGuard.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 internal import AppModel
 internal import RealtimeSupport
@@ -5027,7 +5027,7 @@ public final class LaunchGuard: Sendable {
 
 <!-- include: Packages/AppCore/Sources/SettingsStore/LegacyStorage.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One-time move of the storage folders after a product rename (ADR 0307, review finding on the temporary
 // name). Runs at launch before `SettingsStore.load`, on the utility queue. Workstream W1-B.
@@ -5136,7 +5136,7 @@ missing or invalid file shows every app as not verified.
 
 <!-- include: Packages/AppCore/Sources/CompatRules/Schema.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // compat-rules.json schema, version 1 (02-platform.md 5.4). Field names, optionality and enum spellings match
 // the spec table exactly; compat/schema/rules.schema.json is the JSON Schema twin (CI validates both ways).
@@ -5467,7 +5467,7 @@ public struct RuleTest: Sendable, Hashable, Codable {
 
 <!-- include: Packages/AppCore/Sources/CompatRules/Resolution.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Rule resolution (02-platform.md 5.5). Runs on the ax thread on focus change, never per keystroke (PLT-R523).
 
@@ -5656,7 +5656,7 @@ public struct RuleSet: Sendable {
 
 <!-- include: Packages/AppCore/Sources/CompatRules/Loading.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 public import Foundation
@@ -5709,7 +5709,7 @@ public enum EmbeddedRules {
 
 <!-- include: Packages/AppCore/Sources/CompatRules/Fingerprint.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Engine fingerprinting (PLT-R510). Pure logic over a `BundleInspector`; the ax thread caches results per
 // (bundle path, CFBundleVersion). Every heuristic is VERIFY against current builds.
@@ -5752,7 +5752,7 @@ public struct EngineFingerprinter: Sendable {
 
 <!-- include: Packages/AppCore/Sources/CompatRules/Matrix.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // compat/matrix.json: verification status (02-platform.md 13.3, QA-R17), a separate file and schema from the
 // behaviour rules. Single source for the Apps pane and the website matrix (PRD-R35, PRD-R38).
@@ -5887,7 +5887,7 @@ public enum MatrixStatusResolver {
 
 <!-- include: Packages/AppCore/Sources/CompatRules/Lint.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // CI checks over compat/rules.json and compat/matrix.json (13.1 "Rules"), run by `compat-lint`.
 
@@ -5980,7 +5980,7 @@ edits never ask for verification.
 
 <!-- include: Packages/AppCore/Sources/Injection/Jobs.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Job model (PLT-R311, PLT-R401). Jobs are built on the tap thread and executed strictly FIFO on `inject`.
 
@@ -6200,7 +6200,7 @@ public enum InjectionJob: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Injection/Marker.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Self-generated event marker (PLT-R321). Layout of `kCGEventSourceUserData` (Int64):
 //   bits 63...24  per-launch random tag (40 bits, CSPRNG, never zero)
@@ -6259,7 +6259,7 @@ public enum MarkerMatch: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/Injection/ReverseDNSConstants.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reverse-DNS strings that are NOT bundle identifiers (pasteboard types). They live only in files named
 // `ReverseDNSConstants.swift`; each is allowed by scripts/lint-bundle-ids.allow (PLT-R501, ARCHITECTURE.md 7).
@@ -6279,7 +6279,7 @@ public enum PasteboardTypeName {
 
 <!-- include: Packages/AppCore/Sources/Injection/Services.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Platform services used by the inject thread. Production implementations live in Injection/System;
 // TestSupport provides fakes so every strategy is testable without permissions (QA-R1 layer 4).
@@ -6411,7 +6411,7 @@ public protocol PasteboardAccess: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Injection/Queue.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared state between the tap (producer) and the worker (consumer). Everything the tap touches here is a
 // lock-free push or pop or an atomic load/store (PLT-R304). Implemented in the skeleton because it is the seam
@@ -6692,7 +6692,7 @@ public final class CurrentFocusGeneration: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Injection/Worker.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The serial injection worker on the dedicated `inject` thread (PLT-R203, PLT-R311-R317, section 4).
 
@@ -6802,7 +6802,7 @@ public final class InjectionWorker: Sendable {
 
 <!-- include: Packages/AppCore/Sources/Injection/Strategies.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Strategy catalogue (02-platform.md section 4) and the pure helpers every strategy shares.
 
@@ -6898,7 +6898,7 @@ public final class PasteboardPreserver {
 
 <!-- include: Packages/AppCore/Sources/Injection/System/SystemInjectionServices.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production implementations of the injection services. They need granted permissions and are exercised by
 // the self-hosted integration suite (13.2), never by hosted CI or on the maintainer's everyday Mac.
@@ -7117,7 +7117,7 @@ None of them changes a public signature.
 
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Immutable values the tap reads with one atomic load each (PLT-R304, PLT-R388). FROZEN CONTRACT between the
 // pipeline (consumer) and the host services (producers); docs/architecture/contracts.md section InputHost.
@@ -7404,7 +7404,7 @@ public struct TapSnapshots: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/LayoutTable.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Layout translation table (PLT-R360, PLT-R361). Built off the hot path from the layout's `uchr` data with
 // `UCKeyTranslate`; looked up on the tap by array index.
@@ -7468,7 +7468,7 @@ public struct LayoutTable: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Engine/EngineBridge.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // How the engine is bridged (docs/decisions/0306-engine-bridge.md). The engine is a pure value type
 // (`Engine.reduce`, 01-engine.md 12.2); the host keeps one `Session` on the tap thread and swaps engines only
@@ -7572,7 +7572,7 @@ public enum EngineBridge {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Pipeline/Events.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 public import RealtimeSupport
@@ -7683,7 +7683,7 @@ public final class TapOutbox: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Pipeline/KeyPipeline.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The decision pipeline (PLT-R310) with hold/replay and conservation (PLT-R311-R317), echo (PLT-R323) and the
 // secure-input resume rule (PLT-R398B). Runs only on the tap thread; not Sendable on purpose.
@@ -7838,7 +7838,7 @@ public enum HostStateResolver {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Tap/TapThread.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The `tap` thread (PLT-R203, PLT-R301-R303): one active session-level, head-insert event tap whose run-loop
 // source is the only source on its run loop. Workstream W1-F2.
@@ -7982,7 +7982,7 @@ public final class TapThread<Handler: TapEventHandler>: TapControl, Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Tap/CallbackWatchdog.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Per-callback watchdog state (PLT-R306, ADR 0309). Implemented in the skeleton because both the pipeline
 // (W1-F1, `enter`/`exit` on every callback) and the tap watchdog (W1-F2) use it (ADR 0313); W1-F2 owns it.
@@ -8037,7 +8037,7 @@ public final class CallbackWatchdog: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Tap/TapWatchdog.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R306, PLT-R331 and snapshot reclamation on the utility queue (ADR 0309, ADR 0303). Workstream W1-F2.
 
@@ -8327,7 +8327,7 @@ public final class TapWatchdog: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Lifecycle/HostLifecycle.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lifecycle state machine of the input host (02-platform.md 2.1, PLT-R330-R333, PLT-R730, PLT-R731, ADR 0309)
 // as a pure value type, so it is tested deterministically without threads, taps or services (ADR 0313).
@@ -8731,7 +8731,7 @@ public struct HostLifecycle: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Lifecycle/InputHostController.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lifecycle owner of the input host (2.1). Main actor: it starts and stops threads, applies settings, drives
 // the pure `HostLifecycle` state machine and performs its effects, and tells the shell what to show. It never
@@ -9088,7 +9088,7 @@ public struct HostReportContext: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Hotkeys/Hotkeys.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Hotkey recogniser (PRD-R14, PRD-R15, PRD-R18, PLT-R310 step 5) and recorder (PRD-R15, PRD-R16). Pure value
 // types: the recogniser lives on the tap thread inside the pipeline, the recorder in the settings UI.
@@ -9195,7 +9195,7 @@ public struct HotkeyRecorder: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/InputSource/InputSources.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Input-source awareness (PLT-R360-R373). TIS calls run on the main thread only; `UCKeyTranslate` is a pure
 // function over `uchr` bytes and may run anywhere off the tap.
@@ -9305,7 +9305,7 @@ public struct LayoutBindingConfiguration: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/SecureInput/SecureInput.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Secure Event Input (PLT-R395-R398C, P0-1). Only two pause signals exist: the OS secure-input state and an
 // `AXSecureTextField` focus (PLT-R398A). No heuristics.
@@ -9413,7 +9413,7 @@ public final class SecureInputMonitor: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Focus/Focus.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Focus tracking on the `ax` thread (PLT-R380-R387, PLT-R510, PLT-R520-R523, T6 <= 30 ms p95).
 
@@ -9615,7 +9615,7 @@ public enum HostDecisionMapper {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Memory/AppModeMemory.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Per-app VI/EN memory (PLT-R390-R393, PRD-R19-R23). A value type owned by the ax thread; persisted through
 // SettingsStore (`recordAppModes`, 5 s debounce).
@@ -9676,7 +9676,7 @@ public struct AppModeMemory: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Permissions/Permissions.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Permissions (PLT-R701-R741). Probes are cheap system calls made off the tap thread.
 
@@ -9772,7 +9772,7 @@ public protocol PermissionResetting: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Workspace/Workspace.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 public import AppModel
 
@@ -9819,7 +9819,7 @@ public enum ConflictDetector {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Probes/Probes.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Diagnostics drivers that type into the user's Mac. They exist for the product owner to run by hand from the
 // Diagnostics window; automated tests use fakes only. Wave-2 contract (workstream W2-C).
@@ -10129,7 +10129,7 @@ earlier sessions' events from the log followed by this session's (`HealthEvent.r
 
 <!-- include: Packages/AppCore/Sources/ShellCore/Brand.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The single runtime source of the product name (CLAUDE.md "Name (temporary)"). Values come from Info.plist
 // keys that project.yml fills from Config/Brand.xcconfig; nothing here is hard-coded. Implemented in the
@@ -10233,7 +10233,7 @@ public struct Brand: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/Localization.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Runtime UI-language switch without restart (PRD-R63, docs/architecture/contracts.md "Localisation").
 //
@@ -10390,7 +10390,7 @@ public final class InterfaceLanguageModel: ObservableObject {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/SystemPanes.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // System Settings (macOS 13 and later) and System Preferences (macOS 12) pane names and deep links keyed by macOS
 // version and the MACOS language (PLT-R704, PRD-R64, ADR 0315), loaded from the resource `SystemPanes.json`. UI
@@ -10516,7 +10516,7 @@ public struct SystemPaneTable: Sendable {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/StatusPresentation.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Menu-bar icon states (PRD-R10), menu model (PRD-R11) and status lines (PRD-R43). Pure functions of host
 // state, testable without AppKit.
@@ -10790,7 +10790,7 @@ public enum HotkeyDisplay {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/Onboarding.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Onboarding flow (PRD-R40-R42, PLT-R710-R712). The state machine is pure; App/ renders the screens.
 
@@ -10956,7 +10956,7 @@ public enum AppLocationCheck {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/BugReport.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Bug report sheet logic (PRD-R47-R49, PLT-R1204, PLT-R1205) and report assembly (PLT-R1202).
 
@@ -11360,7 +11360,7 @@ public enum DiagnosticsNavigation {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/BugReport/RecentReportApps.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Apps offered by the bug report sheet's picker (PRD-R47 item 1): the apps of the Apps pane, that is the apps the
 // user has typed in from the per-app memory, most recent first, plus apps with a compatibility override (PRD-R34).
@@ -11435,7 +11435,7 @@ public enum RecentReportApps {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/BugReport/ReportPreview.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the report previews show (PLT-R1204, PRD-R47 item 4): byte for byte the text a path writes, never a
 // paraphrase. The Diagnostics window and the "This app misbehaves" panel copy only the block, so they show the
@@ -11488,7 +11488,7 @@ public struct ReportDisplay: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/BugReport/LatencyHistograms.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The latency histograms of the Diagnostics window (PLT-R1201): one per 02-platform.md 8.1 metric that the report
 // carries (PLT-R801), drawn from the report's own histogram snapshots, so the window and the copied percentiles
@@ -11586,7 +11586,7 @@ public enum LatencyHistograms {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/AppsPane.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Apps pane model (PRD-R34-R38).
 
@@ -11837,7 +11837,7 @@ extension AppsPaneRow {
 
 <!-- include: Packages/AppCore/Sources/ShellCore/Services.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 internal import AppModel
 public import Foundation
@@ -11979,7 +11979,7 @@ thread).
 
 <!-- include: App/Sources/Composition/AppEnvironment.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Composition root (workstream W2-A). Builds every production service once, wires AppCore modules together
 // and owns the window controllers. Main actor only. The launch order is `LaunchSequence` (InputHost
@@ -12288,7 +12288,7 @@ extension AppEnvironment: LaunchSteps {
 
 <!-- include: App/Sources/Shell/StatusItemController.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Menu-bar status item and menu (PRD-R9-R13), switch HUD (PRD-R12) and capture HUD (PLT-R905).
 // Workstream W1-G.
@@ -12510,7 +12510,7 @@ final class CaptureHUDController {
 
 <!-- include: App/Sources/Onboarding/OnboardingWindowController.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Onboarding window, 640 x 480 pt, centred, not floating, eight screens driven by ShellCore's OnboardingFlow
 // (PRD-R40-R42). Workstream W1-G.
@@ -12618,7 +12618,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
 <!-- include: App/Sources/Settings/SettingsWindowController.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings window with at most five panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
 // (PRD-R34-R38). Workstream W2-B. A normal window (not floating) whose size and position are remembered
@@ -12761,7 +12761,7 @@ enum SettingsResources {
 
 <!-- include: App/Sources/Diagnostics/DiagnosticsWindowController.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Diagnostics window (PLT-R1201), "This app misbehaves" flow (PLT-R1205), bug report sheet (PRD-R47-R49),
 // typing trace review (PLT-R905) and latency probe window (PLT-R810). Workstream W2-C.
@@ -12972,7 +12972,7 @@ enum WindowTitles {
 
 <!-- include: App/Sources/Diagnostics/DiagnosticsServices.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // What the composition root (W2-A) hands to the Diagnostics controllers, and the AppKit side effects of the
 // report paths: clipboard (only after the PRD-R48 notice), save panel, mail draft with attachment, opening
@@ -13165,7 +13165,7 @@ enum ReportActions {
 
 <!-- include: App/Sources/Updater/UpdaterController.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Thin wrapper around Sparkle 2 (PLT-R1101-R1110, PRD-R50-R55, docs/decisions/0304-sparkle-version-pin.md).
 // Workstream W2-D.
@@ -13502,7 +13502,7 @@ carries the hooks' marker.
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/IntegrationHooks.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Wire format of the integration hooks (ADR 0502, "Integration hooks"; QA-R11, PLT-R821, 13.2 "tap timeout
 // injection (test hook)"). One Codable definition shared by the harness (TestSupport, FileDropHookChannel) and the
@@ -13723,7 +13723,7 @@ public enum IntegrationHookFiles {
 
 <!-- include: Packages/AppCore/Sources/InputHost/IntegrationHooks/IntegrationHookServer.swift until="public actor IntegrationHookServer" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The app side of the integration hooks (ADR 0502, "Integration hooks"; W3-A): for every `request-<n>.json` in
 // the hooks directory, run the command and answer `response-<n>.json` carrying the request's own sequence number.
@@ -13768,7 +13768,7 @@ public enum LatencyProbeOutcome: Sendable, Hashable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/IntegrationHooks/IntegrationHookDirectory.swift until="/// POSIX implementation" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The hooks directory of the INTEGRATION_HOOKS test build (ADR 0502, "Integration hooks"):
 // `~/Library/Application Support/<storage folder>/IntegrationHooks/`, 0700, requests and responses 0600. The app
@@ -13818,7 +13818,7 @@ public protocol IntegrationHookFileAccess: Sendable {
 
 <!-- include: Packages/AppCore/Sources/InputHost/Pipeline/HostCounters.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Content-free observations of the host since launch that the integration hooks report in `AppStateSnapshot`
 // (ADR 0502, "Integration hooks"): tap recoveries after a timeout and the engine resets that came with them
@@ -13863,7 +13863,7 @@ public final class HostCounters: Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Common/SimulatedTextField.swift until="    // MARK: Decoding" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Text field model used by the injection tests (W1-D), the pipeline harness (W1-F1) and the guided-test tests
 // (W2-C): caret, selection, inline-completion suggestion, per-event processing. Applies synthetic and replayed
@@ -14031,7 +14031,7 @@ public final class SimulatedTextField: Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Common/ManualScheduler.swift until="    private func add(" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Deterministic `TimerScheduler` over `ManualClock` (ADR 0313). Tests advance virtual time; due timers fire
 // synchronously on the caller's thread in deadline order. Shared fake: integrator-owned (frozen in wave 1).
@@ -14105,7 +14105,7 @@ public final class ManualScheduler: TimerScheduler, Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Injection/InjectionFakes.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Injection service fakes, implemented in the skeleton (ADR 0313) so the worker (W1-D), the pipeline harness
 // (W1-F1) and the guided test (W2-C) can test in parallel. W1-D owns this directory and may add behaviours;
@@ -14338,7 +14338,7 @@ public final class FakePasteboard: PasteboardAccess, Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Host/HostFakes.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Host-service fakes (W1-E). Pure Swift state behind a lock; no AX, TIS, IORegistry or TCC access. Observer
 // callbacks run synchronously on the caller's thread, outside the fake's lock.
@@ -14803,7 +14803,7 @@ public final class FakeBundleInspector: BundleInspector, Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Rules/RulesFakes.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Scripted decision resolver so focus tests (W1-E) do not depend on the rules implementation (W1-C).
 // Implemented in the skeleton (ADR 0313); W1-C owns this directory and may add helpers.
@@ -14861,7 +14861,7 @@ public final class FakeDecisionResolver: FocusDecisionResolving, Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Tap/TapFakes.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Event tap fakes (ADR 0313): never create a real tap and never talk to the WindowServer. Implemented in the
 // skeleton; workstream W1-F2 owns this directory and may add behaviours.
@@ -15052,7 +15052,7 @@ public final class FakeSnapshotReclaimer: SnapshotReclaiming, Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Pipeline/PipelineSupport.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pipeline property-test support (13.1): scripted engine, window-server queue model, deterministic harness,
 // conservation ledger and seeded event generator. Workstream W1-F1. `SimulatedTextField` and the injection
@@ -15240,7 +15240,7 @@ public final class PipelineHarness {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Scenario/Scenario.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Compatibility scenario files (PLT-R530): `compat/scenarios/<id>.json`, schema
 // compat/schema/scenario.schema.json. Executed by `compat-harness` on the self-hosted runner only.
@@ -15413,7 +15413,7 @@ public struct ScenarioRunner: Sendable {
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Scenario/AppHooks.swift until="/// Scenario expectations from the app's own state" -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Harness side of the app under test's integration hooks (QA-R11, PLT-R821, 13.2 "tap timeout injection (test
 // hook)", "permission revocation during typing"). The app answers only in the test build that the self-hosted
@@ -15491,7 +15491,7 @@ Command+1, Command+2 and Command+3 move the focus inside a key script (per-windo
 
 <!-- include: TestHost/Sources/TestHostFields.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R10 contract: each field exposes its current text to the runner through AX (`AXValue` of the element
 // with this accessibility identifier). Web fields mirror their DOM value into a native read-only field through
@@ -15694,7 +15694,7 @@ Keyboard > Text Input > Input Sources, and follows `SpikeIMK/README.md`; the res
 
 <!-- include: SpikeIMK/Sources/main.swift -->
 ```swift
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Spike S1 (PLT-R398D): does an InputMethodKit input source still receive key events in Terminal and iTerm2
 // while Secure Keyboard Entry is on, and can it still commit text there? This bundle counts key-down events and
@@ -15807,7 +15807,7 @@ withExtendedLifetime(server) {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- SPDX-License-Identifier: LicenseRef-App-Pending -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>

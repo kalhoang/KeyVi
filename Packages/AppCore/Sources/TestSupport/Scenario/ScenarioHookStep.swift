@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `testHook` setup steps (QA-R11 tap disable and recovery, permission revoked mid-session; 13.2 "tap timeout
 // injection (test hook)"). Value grammar: `<hook>` fires in setup order before typing; `<hook>@<n>` fires after the

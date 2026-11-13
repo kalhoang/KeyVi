@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W1-F1 step acceptance: PLT-R310 steps one key at a time against the real seams and the scripted engine.
 

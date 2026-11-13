@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Permissions (PLT-R701-R741). Probes are cheap system calls made off the tap thread.
 

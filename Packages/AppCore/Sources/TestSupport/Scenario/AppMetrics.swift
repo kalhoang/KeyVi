@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // T2, T3, T5 and T6 from the app's own PLT-R801 histograms and T4 from its built-in latency probe (PLT-R810),
 // both read through the integration hooks (ADR 0502). One run: reset the app's metrics, type the measured

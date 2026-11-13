@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Blank issues are disabled (QA-R43). Questions go to Discussions; security reports go private.
 # VERIFY: replace OWNER/REPO with the real repository path before the repository becomes public.
 blank_issues_enabled: false

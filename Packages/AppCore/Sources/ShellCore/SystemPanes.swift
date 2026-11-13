@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // System Settings (macOS 13 and later) and System Preferences (macOS 12) pane names and deep links keyed by macOS
 // version and the MACOS language (PLT-R704, PRD-R64, ADR 0315), loaded from the resource `SystemPanes.json`. UI

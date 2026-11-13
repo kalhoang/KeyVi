@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The pipeline against host state: P0-1 secure input (PLT-R398A, PLT-R398B), per-app mode and the toggle race
 // (PLT-R391, PRD-R19, contracts.md 10.4), live settings (PLT-R1008, PRD-R27), focus and source boundaries

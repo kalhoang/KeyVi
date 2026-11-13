@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Helpers for scripts/publish-release (run with python3 -I).
 
 Subcommands:

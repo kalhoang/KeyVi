@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Đặt lại quyền" (PLT-R740, PLT-R741): `/usr/bin/tccutil reset Accessibility <own bundle ID>`, user-initiated
 // only. The command is built only for the app's own bundle identifier, never without one, never with sudo.

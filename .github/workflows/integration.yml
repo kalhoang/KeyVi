@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Platform integration on the self-hosted Mac (QA-R10 to QA-R16, QA-R21, PLT-R821, section 13.2).
 #
 # QA-R13: the self-hosted runner holds granted permissions, so this workflow MUST only run code from

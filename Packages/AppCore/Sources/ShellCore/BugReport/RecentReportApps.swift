@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Apps offered by the bug report sheet's picker (PRD-R47 item 1): the apps of the Apps pane, that is the apps the
 // user has typed in from the per-app memory, most recent first, plus apps with a compatibility override (PRD-R34).

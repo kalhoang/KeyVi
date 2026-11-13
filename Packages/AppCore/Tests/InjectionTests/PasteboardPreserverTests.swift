@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Full clipboard preservation (PLT-R461) against `FakePasteboard` and against a uniquely named `NSPasteboard`
 // (named pasteboards never show an access alert; the general pasteboard is never touched by tests).

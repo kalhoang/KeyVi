@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Platform services used by the inject thread. Production implementations live in Injection/System;
 // TestSupport provides fakes so every strategy is testable without permissions (QA-R1 layer 4).

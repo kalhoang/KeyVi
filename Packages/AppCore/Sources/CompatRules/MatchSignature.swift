@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Canonical match signature for duplicate detection (PLT-R521): the match encoded as JSON with sorted keys and
 // every list sorted, so two rules that differ only in list order or key order have the same signature. Same

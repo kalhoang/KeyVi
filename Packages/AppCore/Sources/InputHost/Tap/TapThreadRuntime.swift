@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The non-generic part of `TapThread` (PLT-R203, PLT-R303): the dedicated thread, its CFRunLoop with only the
 // tap source, and the state the owner and the watchdog read from other threads. Workstream W1-F2.

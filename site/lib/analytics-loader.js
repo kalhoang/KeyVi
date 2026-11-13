@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Website analytics loader (Pa, 2026-11-13, Q7; ADR 0602). `node site/build.mjs` writes it to
 // assets/analytics.<content hash>.js only when site/config.json sets analytics.posthogKey, and layout.mjs loads it on website pages only (never in the
 // app, never on release-notes pages). It loads PostHog's browser library (major version 1) from the PostHog asset

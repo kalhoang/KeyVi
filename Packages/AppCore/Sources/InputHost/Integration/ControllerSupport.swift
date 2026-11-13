@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Small Sendable helpers of `InputHostController`: the rule set shared with the utility-queue secure-input
 // monitor, the coalesced main-thread refresh, and the constants the controller starts from. Workstream W2-A.

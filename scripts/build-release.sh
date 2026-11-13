@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Builds the universal Release app (QA-R30 step 2, PLT-R105, PLT-R750, PLT-R908):
 #   - XcodeGen project from project.yml, scheme App, configuration Release

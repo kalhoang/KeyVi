@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Bringing the app forward for a window the user asked for (Settings, onboarding, diagnostics, alerts).
 

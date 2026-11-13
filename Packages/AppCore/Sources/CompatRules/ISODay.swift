@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Calendar-day arithmetic for `reviewBy` (PLT-R506), matrix freshness (QA-R19, PLT-R531) and lint dates.
 // Pure integer math on the proleptic Gregorian calendar in UTC, so results never depend on the host time zone.

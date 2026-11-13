@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Serial executor that runs an actor's jobs on one dispatch queue (PLT-R203 "utility queue"), for macOS 12 and
 // later (docs/decisions/0315-minimum-macos-12.md). `DispatchSerialQueue` only acts as an executor from macOS 14,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Setup routing, readbacks (AX, WebDriver, terminal capture, human), brand-neutral targets. Fakes only.
 

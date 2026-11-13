@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `DiagnosticsLogging` fake that keeps events in memory (canary tests read them back). Shared fake:
 // integrator-owned (frozen in wave 1).

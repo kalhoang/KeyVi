@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Báo lỗi..." sheet (PRD-R47-R49): app picker, symptom chips, the user's own example, the preview disclosure
 // with the exact text, the clipboard notice before any clipboard write (PRD-R48) and the GitHub, email and

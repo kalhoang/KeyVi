@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Documentation lints (QA-R66, CLAUDE.md "Name (temporary)").
 
   links  every relative Markdown link in docs/, README*.md and CONTRIBUTING.md resolves: the file or

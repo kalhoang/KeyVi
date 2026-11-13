@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Vietnamese UI strings shared by every page. Standard, neutral Vietnamese addressed to "bạn" (PRD-R62).
 // {{AppName}}, {{slug}}, {{host}} are replaced at build time from scripts/brand.env.
 export default {

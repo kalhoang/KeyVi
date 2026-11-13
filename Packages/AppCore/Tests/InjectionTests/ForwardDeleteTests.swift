@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R407: no strategy ever posts the forward-delete key (kVK_ForwardDelete, 0x75). Checked statically over
 // the Injection sources and exhaustively over every executor, completion mode and edit shape.

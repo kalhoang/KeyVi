@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R10 contract: each field exposes its current text to the runner through AX (`AXValue` of the element
 // with this accessibility identifier). Web fields mirror their DOM value into a native read-only field through

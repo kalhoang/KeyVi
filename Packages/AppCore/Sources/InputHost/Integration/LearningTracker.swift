@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ENG-R861 learning signals and open decision 8 ("automatic after two identical signals, visible and
 // removable", docs/decisions/0001-defaults-for-open-decisions.md). Signals are content (raw keys): they live in

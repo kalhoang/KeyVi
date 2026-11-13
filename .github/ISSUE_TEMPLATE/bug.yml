@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Bug report form (QA-R43). The diagnostics block is machine-parsed by a GitHub Action that applies
 # labels app:<bundle>, macos:<major>, arch:<arm64|x86_64>, method:<telex|vni> (QA-R44).
 name: Bug report (Báo lỗi)

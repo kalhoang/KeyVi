@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Puts the app under test into the configuration a scenario needs (AppConfiguration.swift): quit it (its own
 // quit path flushes its settings first, PLT-R1003), back up its four settings files once, write the new ones, start

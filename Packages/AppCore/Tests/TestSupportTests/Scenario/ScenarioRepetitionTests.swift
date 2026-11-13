@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R422 and the section 4 acceptance: the scenario `repeat` block types 1,000 randomised corpus words at burst
 // speed, reads every word back and fails on a duplicated or lost letter or a leftover placeholder (U+200B).

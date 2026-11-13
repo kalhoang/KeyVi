@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The tap hot path: PLT-R305 (no steady-state heap allocation outside the engine call) and the PLT-R820
 // pipeline benchmark that records T1 with fakes. The benchmark writes a formatVersion 1 result

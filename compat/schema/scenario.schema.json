@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compat/schema/scenario.schema.json",
   "title": "Compatibility scenario (compat/scenarios/<id>.json)",
-  "description": "PLT-R530. Executed by compat-harness on the self-hosted runner only. Twin of TestSupport/Scenario/Scenario.swift. License: LicenseRef-App-Pending.",
+  "description": "PLT-R530. Executed by compat-harness on the self-hosted runner only. Twin of TestSupport/Scenario/Scenario.swift. License: GPL-3.0-or-later.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "targetBundleId", "setup", "keys", "timing", "method", "expect", "readback"],

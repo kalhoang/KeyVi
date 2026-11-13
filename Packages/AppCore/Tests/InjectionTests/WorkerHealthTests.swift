@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Health events and loss accounting at the worker level: the PLT-R420 completion fallback, per-job history
 // mismatches in `axReplace` (4.5), event-creation failures (PLT-R312, ADR 0308), generation-discard reporting

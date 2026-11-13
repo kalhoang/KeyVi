@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Helpers for injection tests (W1-D) and anyone driving the worker against a `SimulatedTextField`: a small
 // US-QWERTY layout table, a poster wired to a field, and a plain `InjectionEnvironment` for strategy tests.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // JSON-lines files of the diagnostics log (PLT-R903, PRD-R46): `diagnostics.jsonl` is written, full files
 // rotate to `diagnostics.1.jsonl` ... `diagnostics.<maxFiles-1>.jsonl`, files untouched for longer than the

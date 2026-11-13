@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Provenance of SpikeIMK/Resources/SpikeIMK.tiff (CLR-R7): original pixel art drawn by this script.
 # Usage: python3 -I SpikeIMK/Tools/make-icon.py /tmp/s16.png /tmp/s32.png && tiffutil -cathidpicheck /tmp/s16.png /tmp/s32.png -out SpikeIMK/Resources/SpikeIMK.tiff
 # Writes a 16x16 and 32x32 monochrome PNG pair: a rounded square outline with an "S1" mark (spike S1).

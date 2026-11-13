@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Per-app VI/EN memory logic (PLT-R390-R393, PRD-R19-R23).
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `compat-harness bench` (PLT-R821, PLT-R822, QA-R14, ADR 0502): measures the self-hosted subset of the
 // 02-platform.md 8.1 gates, five runs by default, and writes the median in the benchmark `formatVersion` 1

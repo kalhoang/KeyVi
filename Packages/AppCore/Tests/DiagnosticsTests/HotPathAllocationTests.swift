@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W1-A acceptance: the snapshot read path, SPSCRing.push/pop, Log2Histogram.record and TapLogRing.push make
 // zero heap allocations (PLT-R304, PLT-R305). Every measured loop uses `while`: a debug-build `for-in` over a

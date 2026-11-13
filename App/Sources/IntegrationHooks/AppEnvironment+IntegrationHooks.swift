@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Composition of the integration hooks in the runner's test build (ADR 0502, "Integration hooks"): the server
 // starts right after the host, so the harness's first `state` request after a launch is answered; the update check

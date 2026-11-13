@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Macro editor sheet (PRD-R29-R31: live validation with the PRD-R29 reasons, Telex digit advice, NFC on save)
 // and the import preview sheet (PRD-R32: counts of new, duplicate and invalid rows and the duplicate choice).

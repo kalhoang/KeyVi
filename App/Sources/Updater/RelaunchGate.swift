@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The automatic relaunch rule (PLT-R1105, PRD-R50): a downloaded update installs at quit, or earlier only when
 // no key was pressed for 60 s and secure input is off, so no update ever installs in the middle of a word.

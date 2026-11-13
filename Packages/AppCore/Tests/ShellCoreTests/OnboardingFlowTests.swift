@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R40-R42, PLT-R710, PLT-R711: screen order, conditional screens, no skipping screen 2, advance on the first
 // poll after the grant, permission-lost variant, location check.

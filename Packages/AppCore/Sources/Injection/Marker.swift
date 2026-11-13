@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Self-generated event marker (PLT-R321). Layout of `kCGEventSourceUserData` (Int64):
 //   bits 63...24  per-launch random tag (40 bits, CSPRNG, never zero)

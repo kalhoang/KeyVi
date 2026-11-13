@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One scenario run (PLT-R530): setup steps, key script, readback, app-state observation, verdict. Every side
 // effect goes through a protocol so the runner logic is tested with fakes; the live implementations live in

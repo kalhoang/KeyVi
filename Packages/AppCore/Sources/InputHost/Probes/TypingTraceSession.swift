@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Record typing trace..." (PLT-R905, D26) around `CaptureController`: start after the confirmation, a
 // one-second countdown for the HUD while recording, the end by Stop or by the time limit, then review, export

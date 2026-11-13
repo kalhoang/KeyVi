@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // QA-R11 scenario expectations checked against the real engine (ScenarioTextOracle): every TestHost scenario that
 // types into a plain native field on the ABC layout must expect exactly what the engine produces under the

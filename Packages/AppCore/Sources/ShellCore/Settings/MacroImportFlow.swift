@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Nhập từ tệp..." in the Macros pane (PRD-R32, PRD-R70): a file the user picked is parsed by SettingsStore's
 // tolerant importer, previewed with counts of new, duplicate and invalid rows, and merged with the user's choice

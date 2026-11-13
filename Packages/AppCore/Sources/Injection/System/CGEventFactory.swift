@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Builds the CGEvents that `CGEventPoster` posts. Creating an event posts nothing, so tests inspect the fields
 // here without Accessibility trust and without sending input anywhere.

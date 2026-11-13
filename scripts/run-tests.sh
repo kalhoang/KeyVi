@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Runs every hosted test layer with one command (QA-R1 layers 1 to 4 plus repository checks):
 #   engine build + unit + corpus + property tests, engine coverage gate (95 %), AppCore tests and

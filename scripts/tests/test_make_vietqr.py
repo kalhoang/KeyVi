@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Self-tests for scripts/make-vietqr.py (PRD-R59, Pa's decision S8). Standard library only; the decode check of the
 committed image runs when OpenCV is installed (ShellCoreTests' DonationQRTests decodes it with Core Image on every
 run). Run: python3 -I scripts/tests/test_make_vietqr.py"""

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Landing page (PRD-R73): value statement, demo slot, download button, brew line, three proof points.
 import { esc } from "../util.mjs";
 import { kit, macosRequirement } from "../context.mjs";

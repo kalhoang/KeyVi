@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Building blocks shared by the panes: a setting with its one-line explanation (PRD-R25), the remembered
 // Advanced disclosure (PRD-R24), the per-pane reset button (PRD-R26) and the VoiceOver label and hint modifier

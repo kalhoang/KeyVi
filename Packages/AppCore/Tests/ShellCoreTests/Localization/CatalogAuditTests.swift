@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One audit over every String Catalog in App/Resources/Localization (PRD-R62, PRD-R66, ADR 0310, W2-F): the
 // files are exactly the `StringTable` cases; every key has a translated vi and en value with the same format

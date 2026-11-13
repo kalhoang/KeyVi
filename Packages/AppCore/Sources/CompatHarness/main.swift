@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `compat-harness` (PLT-R530, PLT-R821, QA-R16): command-line entry. Parsing, planning, scenario execution,
 // soak and benchmark logic live in TestSupport/Scenario and are unit tested; this file only wires the live

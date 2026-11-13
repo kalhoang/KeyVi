@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared enumerations. Raw values are the JSON spellings used in settings files and in compat/rules.json
 // (02-platform.md 5.4), so they MUST NOT change without a schema migration (PLT-R1005).

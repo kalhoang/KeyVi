@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Mutual exclusion for macOS 12 and later (docs/decisions/0315-minimum-macos-12.md). The API mirrors the
 // `Synchronization` module's `Mutex` (macOS 15): `Mutex(initialValue)` and `withLock { value in ... }`.

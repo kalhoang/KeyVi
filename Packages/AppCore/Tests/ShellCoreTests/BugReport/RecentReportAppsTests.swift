@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R47 item 1: the bug report picker lists the apps of the Apps pane (PRD-R34, most recent first), bundle IDs
 // and display names only, without this app, bounded, and preselects the last frontmost app.

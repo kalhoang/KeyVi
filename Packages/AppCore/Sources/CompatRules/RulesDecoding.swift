@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Implementation of `RulesLoader` (PLT-R503): strict decode, schema version gate, semantic validation, and the
 // embedded fallback. Nothing here traps on bad input; every failure becomes a `RulesValidationError`.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Behaviour of the seeded compat/rules.json for the app classes of 02-platform.md 5.6 and section 6, and static
 // guarantees about the CompatRules sources (PLT-R501, PLT-R504).

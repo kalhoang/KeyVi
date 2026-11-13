@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Privacy canary (section 9 acceptance, PLT-R901) and egress check (13.7, PLT-R906): byte patterns, scanner,
 // canary list kept equal to what the engine shows, canary scenarios covering every strategy, lsof parsing and the

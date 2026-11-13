@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The composition root's shell wiring: host events to the icon, HUD and notices (PRD-R10-R12, PLT-R399,
 // PRD-R43), the menu model built on every open (PRD-R11, PRD-R13, PLT-R395, PLT-R721), and the menu actions.

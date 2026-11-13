@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `EventTapHandle` around the `CFMachPort` returned by `CGEvent.tapCreate` (contracts.md section 3,
 // ADR 0313). Never created in tests on a developer Mac. Workstream W1-F2.

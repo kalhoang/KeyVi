@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reset (PRD-R26), export and import (PLT-R1010, PRD-R72) and the Apps pane writes (PRD-R21, PRD-R36, PLT-R540).
 // Files are read or written only where the user picked them; import data is untrusted and validated by the store

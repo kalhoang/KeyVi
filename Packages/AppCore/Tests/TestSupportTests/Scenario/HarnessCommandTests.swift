@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // compat-harness command line, dry runs (the only mode allowed on a developer Mac), coverage, and the live
 // commands driven entirely by recording fakes (no event leaves the process).

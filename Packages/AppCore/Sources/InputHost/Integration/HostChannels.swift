@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The objects the tap, the inject worker, the ax thread and the main thread share for the whole life of the
 // process (ARCHITECTURE.md sections 3 and 6): the five snapshot cells, the job queue and its feedback, the

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `compat-harness soak` (QA-R16, 02-platform.md 13.6): replays exactly N keystrokes of Telex words through
 // the real pipeline into the scenario targets in turn (TextEdit, a Chrome page, Terminal by default), checks

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R386, PLT-R387, PLT-R390, PLT-R460: rule decision -> tap decision and focus-derived pauses.
 

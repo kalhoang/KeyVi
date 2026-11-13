@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R701, PLT-R702, PLT-R711, PLT-R720, PLT-R721, PLT-R803: health, stale grants and polling cadence.
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ADR 0315: RealtimeSupport's `Mutex` replaces the macOS 15 `Synchronization.Mutex` with the same `withLock` API.
 

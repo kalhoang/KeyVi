@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Candidate list, candidate <-> injection plan mapping and the choice of the best candidate for the guided
 // test of the "This app misbehaves" flow (PLT-R1205 step 3).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ADR 0315: `ObservableObject` replaces `@Observable` (macOS 14). `afterChange` replaces `withObservationTracking`
 // for AppKit controllers; `relayChanges(of:)` lets views that observe a model update when an object it owns changes.

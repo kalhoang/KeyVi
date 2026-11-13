@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Parses the diagnostics block of an issue body and prints the labels to apply (QA-R44).
 
 Format (docs/decisions/0501-diagnostics-block-format.md): a fenced code block whose first non-empty

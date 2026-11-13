@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared fixtures for the focus-tracker tests: a real ax RunLoopThread with fake AX, processes and rules, time
 // from a ManualClock. Every test waits for the ax thread with `sync()`. Bundle identifiers appear only in test

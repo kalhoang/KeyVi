@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One rule prepared for matching (02-platform.md 5.5): lists become sets, the bundle group is expanded, the
 // title pattern is compiled once at load (PLT-R502) and the specificity score is computed (PLT-R520).

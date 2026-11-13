@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // About & Support pane logic (PRD-R24, PRD-R53, PRD-R59, ENG-R811): version line, update settings applied to the
 // Sparkle wrapper, licences and acknowledgements, donation block (a bank VietQR code only, Pa's decision S8). The

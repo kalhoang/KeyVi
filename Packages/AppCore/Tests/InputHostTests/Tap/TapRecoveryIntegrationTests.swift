@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // TapThread + TapWatchdog + HostLifecycle with fakes: the effects are performed the way InputHostController
 // will perform them, and the factory proves that a stuck callback never leads to a second tap (PLT-R302,

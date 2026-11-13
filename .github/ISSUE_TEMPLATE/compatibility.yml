@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Compatibility report form (QA-R43, QA-R20). Steps come from compat/SCRIPT.md (QA-R18).
 name: Compatibility report (Báo cáo tương thích)
 description: Results of the 12-step compatibility script for one app (Kết quả kiểm tra tương thích một ứng dụng)

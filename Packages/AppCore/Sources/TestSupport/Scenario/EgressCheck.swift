@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Network egress test (02-platform.md 13.7, PLT-R906, PLT-R504): for N minutes, sample the open internet sockets
 // of the app under test once per interval (`lsof -nP -a -p <pid> -i -F pPn`, no root needed for the runner's own

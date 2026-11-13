@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Engine factory wrapper for the PLT-R305 pipeline allocation test: every engine call runs with
 // `AllocationCounter` paused, so the test measures the pipeline, not the engine (ENG-R1230 covers that).

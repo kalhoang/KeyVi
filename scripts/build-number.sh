@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Derives CFBundleVersion from the semantic version (QA-R26, PLT-R1104): a single integer that
 # increases with every build published to any channel, without any stored counter.

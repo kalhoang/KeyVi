@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "This app misbehaves" flow (PLT-R1205) as a value: what the panel shows, the symptom, the gate before any
 // typing, candidate progress with the human fallback question, the rule suggestion and the offers. The App's

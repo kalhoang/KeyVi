@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `axReplace` (4.5): select the composition range ending at the caret, replace the selection, then a mandatory
 // bounded readback. Never replaces the whole `AXValue`; posts no key events.

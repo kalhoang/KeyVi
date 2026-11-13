@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed keys of the `Support` String Catalog (ADR 0310, PRD-R62, PRD-R66): About & Support pane, licences and the
 // donation block (PRD-R24, PRD-R53, PRD-R59). A catalog test checks that every key exists in vi and en with matching

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Nhập từ tệp..." (PRD-R32, PRD-R43, PRD-R70): preview counts equal SettingsStore's importer (W1-B), refused
 // files are explained with their line, merges follow the duplicate choice, expansions are saved in NFC, and the

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # TEMPLATE: rendered by scripts/publish-release (python3 -I scripts/lib/publish_helpers.py render-cask).
 # TEMPLATE: Placeholders come from scripts/brand.env and the release; do not edit rendered casks by hand.
 # TEMPLATE: Lines starting with "# TEMPLATE:" are dropped from the rendered cask.

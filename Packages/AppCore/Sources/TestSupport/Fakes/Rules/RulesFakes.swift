@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Scripted decision resolver so focus tests (W1-E) do not depend on the rules implementation (W1-C).
 // Implemented in the skeleton (ADR 0313); W1-C owns this directory and may add helpers.

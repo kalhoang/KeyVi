@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production service wrappers without posting, AX trust or the general pasteboard: CGEvents are built and
 // inspected but never posted; AX calls are exercised only on the paths that need no element.

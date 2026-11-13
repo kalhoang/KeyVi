@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R310 step 7 (KeyClassifier) and step 6 (HostStateResolver, 02-platform.md 2.1).
 

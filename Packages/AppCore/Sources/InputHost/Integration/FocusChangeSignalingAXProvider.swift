@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The main thread shows what the tap does (PRD-R10, PRD-R11): when the focus tracker publishes a new snapshot
 // on the ax thread, the icon and the menu must follow. The tracker has no publication callback, so the host

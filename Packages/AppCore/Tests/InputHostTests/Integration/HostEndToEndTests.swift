@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // End to end with fakes (W2-A acceptance): keys go through the real tap thread, pipeline, engine and inject
 // worker of a started `InputHostController`, with keyboard layout tables built by UCKeyTranslate from the

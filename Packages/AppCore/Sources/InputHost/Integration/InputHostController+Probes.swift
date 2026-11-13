@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The diagnostics drivers that post their own events (PLT-R1205 guided test, PLT-R810 latency probe). They
 // share this launch's event marker with the tap, so the pipeline recognises their events as probe events: kept

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Diagnostics window shows the PLT-R1201 information in the interface language and, next to "Copy report",
 // the exact text that button writes (PLT-R1204). Both views come from the same report.

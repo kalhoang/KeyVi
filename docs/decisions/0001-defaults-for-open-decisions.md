@@ -8,7 +8,7 @@
 | # | Decision | Working default used by the implementation |
 |---|---|---|
 | 1 | Product name | Temporary name **Kal Key**, slug `kalkey`, bundle ID `vn.kal.kalkey` (dev: `vn.kal.kalkey.dev`). Single source: `Config/Brand.xcconfig` + `scripts/brand.env`; rename with `scripts/rename-app.sh`. The spec's recommendation (Xuôi, `xuoi`) is not applied because Pa said the name is not chosen yet. |
-| 2 | App licence | Pending. Non-engine sources carry `SPDX-License-Identifier: LicenseRef-App-Pending`; no top-level LICENSE until Pa decides. |
+| 2 | App licence | Pending. Non-engine sources carry `SPDX-License-Identifier: GPL-3.0-or-later`; no top-level LICENSE until Pa decides. |
 | 3 | Engine licence | MPL-2.0 (`Packages/VietnameseEngine/LICENSE`). |
 | 4 | Default tone placement | Traditional (`hòa`, `thủy`). |
 | 5 | Restore-last-word hotkey | Unset by default. |

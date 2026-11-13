@@ -33,7 +33,7 @@ Process details for the similarity review that the maintainer runs before public
 | Area | Licence | Sign-off |
 |---|---|---|
 | `Packages/VietnameseEngine/` (and the fuzz package `Packages/VietnameseEngineFuzz/`, VERIFY against its own `LICENSE`) | MPL-2.0 (SPDX `MPL-2.0`) | Developer Certificate of Origin: add `Signed-off-by: Your Name <you@example.com>` to every commit with `git commit -s`. A DCO check (`scripts/check-dco.sh`) enforces it on pull requests from forks; the e-mail must match the commit author. |
-| Everything else (app, AppCore, TestHost, scripts, site, docs) | **Pending.** The app licence is an open decision (spec/00-overview.md section 5, item 2). Source files carry `SPDX-License-Identifier: LicenseRef-App-Pending`. | **External pull requests to these areas are not accepted until the licence and the sign-off method (DCO or CLA) are decided and this section is updated.** Issues, compatibility reports and discussion are welcome now. |
+| Everything else (app, AppCore, TestHost, scripts, site, docs) | **Pending.** The app licence is an open decision (spec/00-overview.md section 5, item 2). Source files carry `SPDX-License-Identifier: GPL-3.0-or-later`. | **External pull requests to these areas are not accepted until the licence and the sign-off method (DCO or CLA) are decided and this section is updated.** Issues, compatibility reports and discussion are welcome now. |
 
 The DCO sign-off also confirms that you followed the clean-room rule above (CLR-R14). The reasoning is recorded in [docs/decisions/0401-interim-contribution-policy.md](docs/decisions/0401-interim-contribution-policy.md).
 

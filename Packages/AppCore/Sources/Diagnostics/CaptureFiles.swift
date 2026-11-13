@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Session state and file format of the typing trace (PLT-R905). One JSON object per line: a `session` header,
 // then `key`, `engine`, `job`, `focus` and `gap` lines with `t` in microseconds since the start, and an `end`

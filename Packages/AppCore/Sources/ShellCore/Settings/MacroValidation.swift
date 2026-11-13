@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Macro editor validation (PRD-R29, ENG-R1101, ENG-R1103). `MacroValidator` (SettingsStore) gives the per-row
 // reason; the engine's `MacroTable` stays authoritative and is run on the whole list before anything is saved,

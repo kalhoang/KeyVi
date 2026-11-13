@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Resource measurement of the app under test on the self-hosted runner (PLT-R821): CPU time and
 // phys_footprint from `proc_pid_rusage` (no root needed), held modifiers from the combined session state. The C1,

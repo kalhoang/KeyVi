@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Download page (PRD-R73): stable and beta DMGs, SHA-256, signature statement, requirements, Homebrew, archive.
 import { kit, macosRequirement } from "../context.mjs";
 import { formatDate } from "../dates.mjs";

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The Settings hotkey recorder (PRD-R15, PRD-R16, PRD-R18) over InputHost's `HotkeyRecorder`. The window feeds it
 // the raw key code and modifier flags of its own key events while recording; the tap's hotkeys are suspended

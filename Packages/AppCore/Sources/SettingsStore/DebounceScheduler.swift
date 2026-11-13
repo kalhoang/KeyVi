@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Delayed-write timers for the settings store (PLT-R1003 1 s debounce, PLT-R392 5 s for app modes).
 //

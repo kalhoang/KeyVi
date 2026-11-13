@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Creates the distribution disk image (QA-R30 step 4): the app plus an /Applications link, an
 # optional background image (packaging/dmg/background.png, see packaging/dmg/README.md), compressed

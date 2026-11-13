@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The app side of the integration hooks (ADR 0502, "Integration hooks"), compiled only into the self-hosted
 // runner's test build: the INTEGRATION_HOOKS condition is set by the Integration configuration

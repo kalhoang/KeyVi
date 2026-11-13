@@ -1,5 +1,5 @@
 #!/usr/bin/env -S python3 -I
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Checks that Config/Brand.xcconfig and scripts/brand.env carry the same brand values (CLAUDE.md "Name
 (temporary)"). The xcconfig is what the app reads; brand.env is what scripts and the site read. Both list
 the same APP_* keys: display name, slug, bundle IDs, site host, and the optional APP_SUPPORT_EMAIL,

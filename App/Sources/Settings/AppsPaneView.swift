@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Ứng dụng / Apps" (PRD-R34-R38): apps typed in (most recent first) and apps with rules, with icon and name,
 // rule, remembered mode and compatibility status (symbol plus text, never colour alone, PRD-R67). Each row offers

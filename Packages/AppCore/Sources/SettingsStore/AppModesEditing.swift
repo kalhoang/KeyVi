@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Pure edits of `AppModesDocument` used by the store (PRD-R21, PRD-R23, PLT-R390-R392). Every result is
 // `normalized()`: one entry per bundle, at most 1,000 memory-only entries, explicit rules never evicted.

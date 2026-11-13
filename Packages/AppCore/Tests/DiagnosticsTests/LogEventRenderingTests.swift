@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Typed LogEvent rendering (PLT-R902): every case maps to a stable code, a category and metadata fields.
 

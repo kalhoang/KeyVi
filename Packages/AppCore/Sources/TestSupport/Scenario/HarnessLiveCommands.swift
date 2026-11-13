@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Non-dry-run commands of `compat-harness`. They post physical-like events, launch apps and change input
 // sources, so they run only on the self-hosted runner (QA-R12, QA-R13). Without live services (no

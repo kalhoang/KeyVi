@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The function-like declarations (`func`, `init`, computed `var`) of a Swift source and the brace-delimited range
 // of each, so a source audit can ask what the innermost declaration around a call site contains (PRD-R67: every

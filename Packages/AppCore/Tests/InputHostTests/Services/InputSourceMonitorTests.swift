@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R370-R373, PLT-R360: snapshots on source changes, table reuse, keyboard types and the layout binding.
 

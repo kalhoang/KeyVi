@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Developer Certificate of Origin check (docs/decisions/0401-interim-contribution-policy.md, QA-R61,
 # CLR-R14): every non-merge commit in BASE..HEAD that touches the MPL-2.0 engine packages must carry a

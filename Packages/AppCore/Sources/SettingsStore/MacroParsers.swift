@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Parsers behind `MacroImporter` (PRD-R32, PRD-R70). Every file is user-chosen and treated as untrusted: size is
 // capped by the caller, JSON and property-list nesting is bounded before Foundation's recursive parsers run,

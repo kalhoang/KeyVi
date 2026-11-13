@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production `InputSourceProvider` over Text Input Sources (PLT-R360, PLT-R370-R372). Read-only: it never
 // selects, enables or disables an input source. Thin wrapper: classification is `InputSourceClassifier`.

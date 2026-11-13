@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Onboarding screens 4 to 8 (PRD-R40) and the permission help sheet (PLT-R740, PLT-R741).
 

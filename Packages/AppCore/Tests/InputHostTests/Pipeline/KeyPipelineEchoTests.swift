@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Echo liveness and fail-open (PLT-R323, PLT-R730, ADR 0311), tap-disabled events (PLT-R330), probe events
 // (PLT-R810), queue overflow (PLT-R314), keyboard-type notices and engine outputs the scripted engine never

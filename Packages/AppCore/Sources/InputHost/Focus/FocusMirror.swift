@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Any-thread copies of focus facts that are not part of the tap snapshot (diagnostics report, PLT-R385 record).
 

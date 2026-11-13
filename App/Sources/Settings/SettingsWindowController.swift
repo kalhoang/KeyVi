@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings window with at most five panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
 // (PRD-R34-R38). Workstream W2-B. A normal window (not floating) whose size and position are remembered

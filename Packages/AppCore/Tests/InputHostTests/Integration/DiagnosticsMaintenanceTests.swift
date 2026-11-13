@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The W1-A diagnostics wiring request: log rotation at launch and every 6 hours, capture purge at launch and
 // hourly (PLT-R903, PLT-R905), and one redaction salt per installation (PLT-R1203). Workstream W2-A.

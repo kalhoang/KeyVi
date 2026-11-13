@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Skeleton seam tests (ADR 0313): keep green; W1-G owns and may extend.
 import Foundation

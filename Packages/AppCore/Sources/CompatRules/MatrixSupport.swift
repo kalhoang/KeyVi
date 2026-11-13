@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Loading and display rules for compat/matrix.json (QA-R17, QA-R19, PRD-R35).
 

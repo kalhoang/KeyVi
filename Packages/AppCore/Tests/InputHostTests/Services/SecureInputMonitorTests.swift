@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R395-R398B: 2 s polling through the scheduler, transition generations, episodes ended by key evidence,
 // likely-holder naming and hint keys.

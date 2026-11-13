@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Hotkey recorder of the Settings window (PRD-R15, PRD-R16, PRD-R18). The capture lifecycle (key monitor, tap
 // hotkey suspension, ADR 0305) lives in ShellCore's HotkeyCaptureController; this file adapts it to the views and

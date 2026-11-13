@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R905 typing trace flow over the real `CaptureController` with in-memory storage and virtual time: 60 s
 // default, 180 s maximum, a countdown for the HUD, Stop or the time limit ends it, review before export,

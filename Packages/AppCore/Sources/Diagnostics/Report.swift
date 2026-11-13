@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Environment report (PLT-R1202) and the machine-parseable issue block (QA-R44).
 //

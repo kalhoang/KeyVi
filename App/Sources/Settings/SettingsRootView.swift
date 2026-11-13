@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings window layout: the five panes in PRD-R24 order behind a segmented pane picker (keyboard reachable),
 // store notices on top, the current pane, and the sheets of the reset, export, import, macro and app flows.

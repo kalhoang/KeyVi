@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R905 / PRD-R46 typing trace: at most 180 s, stops by itself, marks secure-input gaps, 0600 files
 // excluded from backup, deleted after 24 hours or right after export or discard.

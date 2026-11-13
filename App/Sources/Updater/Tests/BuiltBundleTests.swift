@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Checks on the app bundle the App scheme just built (it builds the app before running this bundle): Sparkle keys
 // in Info.plist (PLT-R1101, PLT-R1102, PRD-R55), Sparkle as the only embedded framework at the pinned version

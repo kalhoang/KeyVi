@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // SPSC ring under a real producer and consumer thread (PLT-R304 "lock-free single-producer queue").
 

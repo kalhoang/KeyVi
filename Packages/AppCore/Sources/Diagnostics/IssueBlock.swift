@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The machine-parseable diagnostics block (QA-R44), format v1 of docs/decisions/0501-diagnostics-block-format.md:
 // a fenced block (info string `text`), the header `<slug>-diagnostics v1`, then `key: value` lines, at most 200

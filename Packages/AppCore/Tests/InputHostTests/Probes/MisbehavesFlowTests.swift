@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R1205 flow logic: nothing is typed before the user confirms the field is empty and safe, the human
 // fallback question, early stop at the first pass, interruptions, the host-level page address (ADR 0312) and

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R14, PRD-R18, PLT-R353: toggle tap, combos and the restore candidate (contracts.md 10.2).
 

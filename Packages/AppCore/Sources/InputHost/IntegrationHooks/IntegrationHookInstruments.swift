@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The two seams the integration hooks drive (ADR 0502, "Integration hooks"; ADR 0313 testability seams): a tap
 // factory that can time the current tap out the way macOS does (PLT-R330, QA-R11) and a permission probe whose

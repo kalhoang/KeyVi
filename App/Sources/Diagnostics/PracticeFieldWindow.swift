@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R49 practice field: a local text field to check whether a problem is app-specific. Its text lives only in
 // the view and is never saved or reported.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // System calls behind `SystemSecureInputProbe` (PLT-R395, PLT-R396). Read-only: `IsSecureEventInputEnabled()`
 // and one IORegistry property read. Never `EnableSecureEventInput` (PLT-R398).

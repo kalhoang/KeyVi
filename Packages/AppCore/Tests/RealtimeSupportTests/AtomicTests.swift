@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ADR 0315: RealtimeSupport's `Atomic` and `UnsafeAtomic` replace the macOS 15 `Synchronization.Atomic` with the
 // same call shape. Value semantics per width, read-modify-write results, and exact totals under contention.

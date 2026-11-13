@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reverse-DNS strings that are NOT bundle identifiers (pasteboard types). They live only in files named
 // `ReverseDNSConstants.swift`; each is allowed by scripts/lint-bundle-ids.allow (PLT-R501, ARCHITECTURE.md 7).

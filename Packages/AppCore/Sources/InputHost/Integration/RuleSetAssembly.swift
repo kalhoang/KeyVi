@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shipped rules + `rule-overrides.json` + opted-in rule IDs -> the compiled `RuleSet` the focus tracker resolves
 // with (PLT-R503, PLT-R522, PLT-R540). Pure; called on main at launch and whenever overrides or opt-ins change.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Giới thiệu & Hỗ trợ / About & Support" (PRD-R24): version and channel, update controls (D19-D21, PRD-R53),
 // diagnostics (D26), report a problem, export, import and reset, privacy summary, licences and acknowledgements

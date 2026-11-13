@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Tap -> main notices and the main thread's view of host state (PRD-R10, PRD-R11, PLT-R323, PLT-R330,
 // PLT-R398B, PLT-R905, ENG-R861). Workstream W2-A.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Shared helpers for the pipeline suites: ANSI virtual key codes, flag bits and job inspection.
 

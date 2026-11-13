@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The `Diagnostics` String Catalog (PRD-R62, PRD-R66, ADR 0310): every key in vi and en with matching format
 // arguments, no brand literal, no dashes, no dead copy, a label and a hint for every control, PRD-R47 copy

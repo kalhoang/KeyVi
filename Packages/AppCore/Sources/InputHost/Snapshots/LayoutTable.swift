@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Layout translation table (PLT-R360, PLT-R361). Built off the hot path from the layout's `uchr` data with
 // `UCKeyTranslate`; looked up on the tap by array index.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R65: dates, numbers and versions follow the selected interface language, not the macOS language, through
 // the shipped catalogs; PRD-R63: a language change re-renders the copy of every table without a restart.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W1-A acceptance canary (PLT-R901, PLT-R1203, PRD-R45, ADR 0312): logging every LogEvent case with
 // canary-shaped metadata, a full report in every output and the issue block never contain the canary.

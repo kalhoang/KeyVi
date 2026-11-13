@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Setup actions on the self-hosted runner (PLT-R530): launch apps, open pages, focus fields through AX,
 // select input sources (Text Input Sources), toggle TestHost's secure-input holder, start the terminal

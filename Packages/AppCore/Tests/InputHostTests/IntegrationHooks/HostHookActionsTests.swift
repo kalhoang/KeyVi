@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W3-A: the integration hooks against the whole input host under fakes (HostRig: real tap thread with a fake
 // handle, real pipeline and engine). The two automated QA-R11 scenarios of docs/runbooks/integration-suite.md

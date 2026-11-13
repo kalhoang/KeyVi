@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Validator for the JSON Schema keywords the compat schemas use (draft 2020-12 subset): type, enum, const,
 // required, properties, additionalProperties, items, minItems, maxItems, uniqueItems, minLength, maxLength,

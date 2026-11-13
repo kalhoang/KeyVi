@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 /// Marks a contract body that a workstream has not implemented yet (docs/architecture/workstreams.md).
 /// The skeleton compiles against every contract; calling an unimplemented member traps with its location.

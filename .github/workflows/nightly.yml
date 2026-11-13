@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Nightly checks (QA-R22): 30-minute fuzzing per input method with sanitizers and 100,000,000-event
 # property run (QA-R8, ENG section 13.6), sanitizer test runs on macOS, dependency audit (QA-R24),
 # stale compatibility rows (QA-R19), rule reviewBy dates (PLT-R506), the compatibility release lint

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compat/scenarios/profiles/profile.schema.json",
   "title": "App profile of compat-harness (compat/scenarios/profiles/<id>.json)",
-  "description": "Settings, macros and user rule overrides the harness writes into the test build's settings before the listed scenarios (QA-R11, QA-R21). Twin of TestSupport/Scenario/AppProfiles.swift. License: LicenseRef-App-Pending.",
+  "description": "Settings, macros and user rule overrides the harness writes into the test build's settings before the listed scenarios (QA-R11, QA-R21). Twin of TestSupport/Scenario/AppProfiles.swift. License: GPL-3.0-or-later.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "summary", "scenarios"],

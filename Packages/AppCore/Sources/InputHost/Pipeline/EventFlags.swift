@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Event flag bits and virtual key codes the pipeline reads. Literal constants (tap-safe, no lazy globals);
 // `PipelineConstantsTests` checks them against CoreGraphics. Key codes are the public macOS virtual key codes

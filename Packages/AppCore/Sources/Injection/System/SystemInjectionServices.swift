@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production implementations of the injection services. They need granted permissions and are exercised by
 // the self-hosted integration suite (13.2), never by hosted CI or on the maintainer's everyday Mac.

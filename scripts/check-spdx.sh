@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
 # CLR-R11: every source file carries an SPDX licence header within its first 5 lines.
 #   - Engine packages (Packages/VietnameseEngine/, Packages/VietnameseEngineFuzz/) and the data pipeline
 #     that builds their bundled resources (data/, ENG-R810): MPL-2.0
-#   - Everything else: LicenseRef-App-Pending (the app licence is an open decision for Pa)
+#   - Everything else: GPL-3.0-or-later (ADR 0006, chosen by Pa on 2026-11-13)
 # Source files: *.swift, *.sh, *.bash, *.py, *.mjs, *.js, *.ts, *.css, *.rb, *.template,
 # *.xcconfig, workflow YAML under .github/, and extensionless executables under scripts/ with a
 # shebang. Excluded: spec/ (the specification, imported as is), generated output (dist/, .build*/,
@@ -80,7 +80,7 @@ for rel in sorted(set(files)):
     if EXCLUDED.search(rel) or not os.path.isfile(path) or not is_source(rel, path):
         continue
     checked += 1
-    expected = "MPL-2.0" if MIT_PATH.search(rel) else "LicenseRef-App-Pending"
+    expected = "MPL-2.0" if MIT_PATH.search(rel) else "GPL-3.0-or-later"
     try:
         with open(path, encoding="utf-8", errors="replace") as source:
             head = "".join(source.readline() for _ in range(5))

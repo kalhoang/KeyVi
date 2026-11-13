@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R710 move offer, shown before any permission request when `AppLocationCheck.evaluate` says `mustMove`.
 // The composition root (W2-A) performs the move and relaunch after "Chuyển và mở lại"; this type only asks.

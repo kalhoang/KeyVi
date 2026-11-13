@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The literal and comment stripper the source audits rely on (PRD-R62, PRD-R67).
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The reference job consumer of the W1-F1 property suite: a deterministic, single-threaded stand-in for the
 // inject worker with the behaviours conservation depends on (PLT-R311, PLT-R314, PLT-R316, PLT-R323, ADR 0308,

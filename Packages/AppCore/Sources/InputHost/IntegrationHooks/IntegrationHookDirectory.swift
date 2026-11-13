@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The hooks directory of the INTEGRATION_HOOKS test build (ADR 0502, "Integration hooks"):
 // `~/Library/Application Support/<storage folder>/IntegrationHooks/`, 0700, requests and responses 0600. The app

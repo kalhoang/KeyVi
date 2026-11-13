@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Second test-host window (QA-R11 "per-app rule switching between two host windows", privacy canary strategies,
 // restore hotkey). Its fields have their own accessibility identifiers, so an app profile can give one of them a

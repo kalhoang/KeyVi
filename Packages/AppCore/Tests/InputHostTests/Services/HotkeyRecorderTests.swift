@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PRD-R15, PRD-R16, PRD-R18: the recorder captures chords in any press order and warns about macOS shortcuts.
 

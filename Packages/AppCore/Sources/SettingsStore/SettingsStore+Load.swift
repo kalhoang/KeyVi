@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Loading the four documents (PLT-R1005, PLT-R1006, PLT-R1007, PLT-R1009). Per file:
 // - missing, no quarantined copy: defaults (first launch);

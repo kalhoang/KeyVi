@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 """A small JSON Schema validator (subset of draft 2020-12) using only the standard library.
 
 CI scripts run with `python3 -I` and no third-party packages, so this covers the keywords the

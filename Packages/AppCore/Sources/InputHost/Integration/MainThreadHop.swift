@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // How background callbacks (permission and secure-input monitors, timers on the utility queue, the ax thread)
 // reach the main-actor controller. Production hops through the main dispatch queue; tests run the blocks in

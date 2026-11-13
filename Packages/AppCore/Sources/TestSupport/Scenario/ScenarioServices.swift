@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Setup performer and readbacks of `compat-harness` (PLT-R530, 13.2): the routing logic lives here and is
 // tested with fakes; `SystemActions`, `AXFieldReader` and `LineReader` are implemented for real in
@@ -233,7 +233,7 @@ public struct TerminalCaptureReadback: Sendable {
     /// the capture file. Started by the setup on the runner (`zsh -f <script> <capture file>`).
     public static let zshScript = """
         #!/bin/zsh -f
-        # SPDX-License-Identifier: LicenseRef-App-Pending
+        # SPDX-License-Identifier: GPL-3.0-or-later
         # compat-harness terminal capture (02-platform.md 13.2): writes every entered line to the file in $1.
         capture="$1"
         : > "$capture"

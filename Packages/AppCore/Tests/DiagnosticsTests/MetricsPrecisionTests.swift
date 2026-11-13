@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // W3-A: gate-aligned sub-buckets of the decide-to-posted histograms (02-platform.md 8.1 T2 and T3; the W1-A
 // precision request in integration-notes.md "WAVE 2b") and `PlatformMetrics.reset()` for the integration hooks'

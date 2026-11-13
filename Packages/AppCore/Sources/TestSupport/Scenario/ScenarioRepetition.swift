@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The scenario `repeat` block (PLT-R422, section 4 acceptance "1,000 randomised words each, zero duplicates and
 // zero leftover placeholders"): seeded words from the Telex soak corpus, each typed after the block's prefix and

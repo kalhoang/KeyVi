@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The `compat-lint` command (02-platform.md 13.1 "Rules"): reads the rules file, the matrix and the scenario
 // folder, runs `RulesLinter` and renders findings. It lives in the library so it is unit tested; the executable

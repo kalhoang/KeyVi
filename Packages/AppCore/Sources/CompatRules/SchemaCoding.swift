@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Coding of `RuleProvenance`: shipped rules use the 5.4 provenance object, user overrides the PLT-R1205
 // suggestion shape. The two are told apart by the presence of `source`; both encode as a flat object.

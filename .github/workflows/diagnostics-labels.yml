@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LicenseRef-App-Pending
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Applies labels from the diagnostics block of new or edited issues (QA-R44): app:<bundle ID>,
 # macos:<major>, arch:arm64|x86_64, method:telex|vni. Block format: docs/decisions/0501.
 #

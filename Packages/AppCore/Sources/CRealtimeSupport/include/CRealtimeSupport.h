@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Lock-free atomic operations on 8-, 32- and 64-bit words for RealtimeSupport's `Atomic`, `UnsafeAtomic` and
 // `AtomicUInt64Array` (docs/decisions/0315-minimum-macos-12.md). The Swift `Synchronization` module needs

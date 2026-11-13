@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Diagnostics drivers that type into the user's Mac. They exist for the product owner to run by hand from the
 // Diagnostics window; automated tests use fakes only. Wave-2 contract (workstream W2-C).

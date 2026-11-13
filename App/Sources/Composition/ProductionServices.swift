@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Production wiring of the composition root: storage paths (ADR 0307, PLT-R903), the diagnostics services
 // (PLT-R903, PLT-R905, PLT-R1206), the platform services of the input host (contracts.md section 3) and the

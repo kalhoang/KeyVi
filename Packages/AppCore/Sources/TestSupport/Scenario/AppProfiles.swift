@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // App profiles (compat/scenarios/profiles/<id>.json, schema profile.schema.json next to them): the settings,
 // macros and user rule overrides the app under test needs for some scenarios (QA-R11 macros `vn` and `@@`,

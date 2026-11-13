@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Test rig for TapWatchdog (W1-F2): virtual time, a callback watchdog driven by the test, a fake tap.
 import RealtimeSupport

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compat/schema/conflicting-apps.schema.json",
   "title": "Sources of the conflicting input apps (compat/conflicting-apps.json)",
-  "description": "PLT-R399, PRD-R40 screen 5, CLR-R5. One entry per other Vietnamese input method: the bundle IDs that compat/rules.json lists in conflictingInputApps and where each was read (the running app, for example `lsappinfo info -only bundleid`, or public vendor documentation), never from another input method's source or bundle internals. Not shipped. License: LicenseRef-App-Pending.",
+  "description": "PLT-R399, PRD-R40 screen 5, CLR-R5. One entry per other Vietnamese input method: the bundle IDs that compat/rules.json lists in conflictingInputApps and where each was read (the running app, for example `lsappinfo info -only bundleid`, or public vendor documentation), never from another input method's source or bundle internals. Not shipped. License: GPL-3.0-or-later.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "apps"],

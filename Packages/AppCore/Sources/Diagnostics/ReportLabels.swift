@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Labels of the plain-text report (PLT-R1204) in the two interface languages (PRD-R63). Diagnostics has no
 // resource bundle, so the strings live here; the app name is never part of them (brand rule). Vietnamese copy

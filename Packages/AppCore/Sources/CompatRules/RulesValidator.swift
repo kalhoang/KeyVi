@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Semantic checks shared by the loader (PLT-R503), `RuleSet.init` and the linter: the parts of
 // compat/schema/rules.schema.json that Swift types cannot express (ranges, title patterns, group references,

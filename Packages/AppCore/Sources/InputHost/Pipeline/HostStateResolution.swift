@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-App-Pending
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Host state per key (02-platform.md 2.1, PLT-R310 step 6). The same pure function serves the tap and the
 // main thread's icon and menu (PRD-R10, PRD-R11), so what the user sees is what the tap does.
