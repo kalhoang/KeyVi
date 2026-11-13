@@ -55,6 +55,9 @@ extension SettingsStore {
             user.optedInRules = []
             appModes = AppModesDocument(globalMode: appModes.globalMode)
             ruleOverrides = []
+        case .macros(let includeList):
+            unset(.macros)
+            if includeList { macros = [] }
         }
     }
 
@@ -184,6 +187,7 @@ extension ResetScope {
             includeMacros ? Set(SettingsFile.allCases) : [.settings, .appModes, .ruleOverrides]
         case .general, .typing: [.settings]
         case .apps: [.settings, .appModes, .ruleOverrides]
+        case .macros(let includeList): includeList ? [.settings, .macros] : [.settings]
         }
     }
 }

@@ -87,7 +87,7 @@ extension SettingsWindowModel {
     }
 
     private func previewImport(_ url: URL) async {
-        guard let data = await FilePanels.readOffMain(url, maxBytes: ImportSummary.importByteLimit) else {
+        guard let data = await FilePanels.readOffMain(url, maxBytes: SettingsExportFormat.maxImportBytes) else {
             importError = localizer.string(SettingsText.importErrorUnreadable)
             return
         }

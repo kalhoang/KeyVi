@@ -114,8 +114,13 @@ import VietnameseEngineData
         #expect(ResetRequest(target: .all).title(l.en) == "Restore all settings to their defaults?")
         var typing = ResetRequest(target: .pane(.typing))
         typing.deleteMacros = true  // ignored where the checkbox is not offered
-        #expect(typing.plan == ResetPlan(storeScope: .typing, unsetsMacroSwitches: false, deletesMacroList: false))
+        #expect(typing.plan == ResetPlan(storeScope: .typing))
         #expect(ResetRequest(target: .all).plan.storeScope == .all(includeMacros: false))
+        // The Macros pane goes through the store's own scope, so the backup happens before the rewrite.
+        var macros = ResetRequest(target: .pane(.macros))
+        #expect(macros.plan == ResetPlan(storeScope: .macros(includeList: false)))
+        macros.deleteMacros = true
+        #expect(macros.plan.storeScope == .macros(includeList: true))
         #expect(PaneReset.allCases.map(\.pane) == [.general, .typing, .apps, .macros])
         #expect(SettingsPaneKind.allCases.map(\.paneReset) == [.general, .typing, .apps, .macros, nil])
     }
