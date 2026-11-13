@@ -12,7 +12,7 @@ public struct LoginItemPresentation: Sendable, Hashable {
     public var isAvailable: Bool
     /// Extra line under the toggle.
     public var note: SettingsText?
-    /// "Mở Cài đặt hệ thống" next to the note ("Mở Tùy chọn hệ thống" when `isAvailable` is false, macOS 12).
+    /// A button next to the note that opens System Settings (System Preferences on macOS 12, see `LoginItemRowText`).
     public var offersSystemSettings: Bool
 
     public init(status: LoginItemStatus, failed: Bool = false) {
@@ -50,5 +50,27 @@ public enum LoginItemControl {
         } catch {
             return LoginItemPresentation(status: service.status, failed: true)
         }
+    }
+}
+
+/// The words of the login item row: the note under the toggle and the title of the button that opens the system
+/// pane (also its VoiceOver label). On macOS 12 the pane names come only from SystemPanes.json in the macOS
+/// language, so the note and the button spell System Preferences the same way (PRD-R64, ADR 0315); the button's
+/// VoiceOver hint (`SettingsControl.openSystemPreferences`) names no pane.
+public struct LoginItemRowText: Sendable, Hashable {
+    public var note: String?
+    public var button: String?
+
+    public init(localizer: Localizer, appName: String, panes: SystemPaneNames, presentation: LoginItemPresentation) {
+        note = presentation.note.map { note in
+            note == .openAtLoginManual
+                ? localizer.format(note, appName, panes.systemSettings, panes.usersGroups, panes.loginItems)
+                : localizer.format(note, appName)
+        }
+        guard presentation.offersSystemSettings else { return }
+        button =
+            presentation.isAvailable
+            ? localizer.string(SettingsText.openSystemSettings)
+            : localizer.format(SettingsText.openSystemPreferences, panes.systemSettings)
     }
 }

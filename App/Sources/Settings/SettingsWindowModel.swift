@@ -152,11 +152,10 @@ final class SettingsWindowModel: ObservableObject {
 
     func openLoginItemsSettings() { loginService.openSystemSettings() }
 
-    /// The line under the toggle. On macOS 12 it names the System Preferences panes in the macOS language
-    /// (PRD-R64, ADR 0315); every other note takes the app name only.
-    func loginItemNote(_ note: SettingsText) -> String {
-        guard note == .openAtLoginManual else { return localizer.format(note, appName) }
-        return localizer.format(note, appName, panes.systemSettings, panes.usersGroups, panes.loginItems)
+    /// The note and the button of the login item row. On macOS 12 both name System Preferences from the pane
+    /// table in the macOS language (PRD-R64, ADR 0315).
+    var loginItemText: LoginItemRowText {
+        LoginItemRowText(localizer: localizer, appName: appName, panes: panes, presentation: loginItem)
     }
 
     // MARK: - Word lists (ENG-R860)

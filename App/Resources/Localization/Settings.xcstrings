@@ -1100,37 +1100,37 @@
       }
     },
     "settings.control.openSystemPreferences.accessibilityHint" : {
-      "comment" : "VoiceOver hint (PRD-R66), macOS 12 only (ADR 0315).",
+      "comment" : "VoiceOver hint (PRD-R66), macOS 12 only (ADR 0315). Names no pane: the button title already names it from SystemPanes.json.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens System Preferences, where you can add the app to Login Items."
+            "value" : "Opens the system pane where you can add the app to the apps that open at login."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở Tùy chọn hệ thống để bạn thêm ứng dụng vào Mục đăng nhập."
+            "value" : "Mở phần cài đặt của hệ thống để bạn thêm ứng dụng vào danh sách tự mở khi đăng nhập."
           }
         }
       }
     },
     "settings.control.openSystemPreferences.accessibilityLabel" : {
-      "comment" : "VoiceOver label (PRD-R66), macOS 12 only (ADR 0315).",
+      "comment" : "VoiceOver label (PRD-R66), macOS 12 only (ADR 0315). %@ is the System Preferences name in the macOS language (SystemPanes.json, PRD-R64); the label repeats the button title.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open System Preferences"
+            "value" : "Open %@"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở Tùy chọn hệ thống"
+            "value" : "Mở %@"
           }
         }
       }
@@ -2360,19 +2360,19 @@
       }
     },
     "settings.general.openAtLogin.openSystemPreferences" : {
-      "comment" : "Button, macOS 12 only (ADR 0315): System Preferences is the macOS 12 name of System Settings.",
+      "comment" : "Button, macOS 12 only (ADR 0315). %@ is the System Preferences name in the macOS language (SystemPanes.json, PRD-R64), the same words as in the note above it.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open System Preferences"
+            "value" : "Open %@"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở Tùy chọn hệ thống"
+            "value" : "Mở %@"
           }
         }
       }

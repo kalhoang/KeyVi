@@ -12166,8 +12166,8 @@ final class AppEnvironment {
         return (secondsSinceLastKey: idle, secureInputOn: IsSecureEventInputEnabled())
     }
 
-    /// macOS 12 (ADR 0315): no `SMAppService`, so "Mở Tùy chọn hệ thống" opens System Preferences > Users & Groups,
-    /// where the user adds the app to Login Items by hand.
+    /// macOS 12 (ADR 0315): no `SMAppService`, so the System Preferences button opens System Preferences >
+    /// Users & Groups, where the user adds the app to Login Items by hand.
     nonisolated private static func openLegacyLoginItems() {
         guard let url = loadPaneTable()?.deepLink(.loginItems, macOS: InputHostController.macOSVersion) else { return }
         NSWorkspace.shared.open(url)

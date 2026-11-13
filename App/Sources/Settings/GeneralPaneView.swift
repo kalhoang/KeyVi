@@ -57,6 +57,7 @@ struct OpenAtLoginRow: View {
     var body: some View {
         let localizer = model.localizer
         let presentation = model.loginItem
+        let text = model.loginItemText
         SettingRow(localizer: localizer, item: .openAtLogin, arguments: [model.appName]) {
             VStack(alignment: .leading, spacing: 4) {
                 Toggle(isOn: Binding(get: { presentation.isOn }, set: { model.setOpenAtLogin($0) })) {
@@ -64,26 +65,20 @@ struct OpenAtLoginRow: View {
                 }
                 .settingsAccessibility(SettingsControl.openAtLogin, localizer)
                 .disabled(!presentation.isAvailable)
-                if let note = presentation.note {
+                if let note = text.note {
                     Label {
-                        Text(verbatim: model.loginItemNote(note))
+                        Text(verbatim: note)
                     } icon: {
                         Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
                     }
                     .font(.callout)
                 }
-                if presentation.offersSystemSettings {
-                    Button(action: model.openLoginItemsSettings) {
-                        Text(
-                            verbatim: localizer.string(
-                                presentation.isAvailable
-                                    ? SettingsText.openSystemSettings : SettingsText.openSystemPreferences
-                            ))
-                    }
-                    .settingsAccessibility(
-                        presentation.isAvailable
-                            ? SettingsControl.openSystemSettings : SettingsControl.openSystemPreferences,
-                        localizer)
+                if let button = text.button {
+                    Button(action: model.openLoginItemsSettings) { Text(verbatim: button) }
+                        .settingsAccessibility(
+                            presentation.isAvailable
+                                ? SettingsControl.openSystemSettings : SettingsControl.openSystemPreferences,
+                            localizer, label: button)
                 }
             }
         }
