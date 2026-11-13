@@ -122,6 +122,51 @@ struct HostNoticeTests {
         #expect(rig.events.filter { if case .conflictsDetected = $0 { true } else { false } }.count == 1)
     }
 
+    /// PRD-R40 screen 5 "Kiểm tra lại" and PLT-R1202: a rescan sees the user quit the other app, and does not
+    /// repeat the once-per-launch notice.
+    @Test func rescanSeesAQuitConflictWithoutRepeatingTheNotice_PLT_R399() async throws {
+        let rig = HostRig()
+        let rules = HostRig.shippedRules
+        let conflicting = try #require(rules.document.conflictingInputApps.first)
+        rig.processes.add(FakeProcessIdentityProvider.process(pid: Self.otherPID, bundle: conflicting.rawValue))
+        await rig.start(rules: rules)
+        defer { rig.stop() }
+        rig.settle()
+        #expect(rig.controller.reportContext().conflicts.count == 1)
+
+        rig.processes.terminate(pid: Self.otherPID)
+        #expect(rig.controller.rescanConflicts().isEmpty)
+        #expect(rig.controller.reportContext().conflicts.isEmpty)
+
+        rig.processes.add(FakeProcessIdentityProvider.process(pid: Self.otherPID + 1, bundle: conflicting.rawValue))
+        #expect(rig.controller.rescanConflicts().count == 1, "a conflict that comes back is listed again")
+        rig.settle()
+        let reports = rig.events.filter { if case .conflictsDetected = $0 { true } else { false } }
+        #expect(reports.count == 1, "the notice stays once per launch")
+    }
+
+    @Test func aLateLaunchScanDoesNotOverwriteANewerRescan_PLT_R399() async throws {
+        let rig = HostRig()
+        let rules = HostRig.shippedRules
+        let conflicting = try #require(rules.document.conflictingInputApps.first)
+        rig.processes.add(FakeProcessIdentityProvider.process(pid: Self.otherPID, bundle: conflicting.rawValue))
+        let state = await rig.store.store.load()
+        rig.controller.start(rules: rules, settings: state)
+        defer { rig.stop() }
+        rig.utility.sync {}  // the launch scan found the app; its hop to main is still queued
+        rig.processes.terminate(pid: Self.otherPID)
+        #expect(rig.controller.rescanConflicts().isEmpty)
+        rig.settle()
+        #expect(rig.controller.reportContext().conflicts.isEmpty)
+        #expect(rig.events.filter { if case .conflictsDetected = $0 { true } else { false } }.count == 1)
+    }
+
+    @Test func rescanBeforeStartFindsNothingAndDoesNotNotify_PLT_R399() {
+        let rig = HostRig()
+        #expect(rig.controller.rescanConflicts().isEmpty)
+        #expect(!rig.events.contains { if case .conflictsDetected = $0 { true } else { false } })
+    }
+
     @Test func reportContextIsMetadataOfTheLiveHost_PLT_R1202() async {
         let rig = HostRig()
         await rig.start()

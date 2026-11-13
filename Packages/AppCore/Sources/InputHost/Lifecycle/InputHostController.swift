@@ -155,6 +155,7 @@ public final class InputHostController {
     var captureGap: PauseCode?
     var conflicts: [ConflictingInput] = []
     var conflictsReported = false
+    var conflictsRescanned = false
     var learning = LearningTracker()
     var inactiveReasons: Set<SessionInactiveReason> = []
 

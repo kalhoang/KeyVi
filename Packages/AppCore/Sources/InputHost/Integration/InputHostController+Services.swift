@@ -169,21 +169,39 @@ extension InputHostController {
     }
 
     /// PLT-R399: other Vietnamese input apps (bundle IDs from the rules resource) and enabled built-in Vietnamese
-    /// sources, reported once per launch. The process scan runs on the utility queue.
+    /// sources, reported once per launch. The launch scan runs on the utility queue.
     func detectConflicts() {
-        let sources = dependencies.inputSources.enabledSources()
-        let conflicting = ruleBox.ruleSet?.conflictingInputApps ?? []
-        let processes = dependencies.processes
+        let scan = conflictScan()
         let hop = self.hop
         dependencies.utilityQueue.async { [weak self] in
-            let found = ConflictDetector.detect(
-                running: processes.runningApplications(), enabledSources: sources, conflictingApps: conflicting)
+            let found = scan()
             hop.hop { self?.reportConflicts(found) }
         }
     }
 
+    /// PRD-R40 screen 5 "Kiểm tra lại" and the diagnostics report (PLT-R1202): a fresh scan, run on the main
+    /// actor because it answers a user action. Updates the list the report and onboarding read; the
+    /// once-per-launch notice is never repeated.
+    @discardableResult
+    public func rescanConflicts() -> [ConflictingInput] {
+        conflicts = conflictScan()()
+        conflictsRescanned = true
+        return conflicts
+    }
+
+    private func conflictScan() -> @Sendable () -> [ConflictingInput] {
+        let sources = dependencies.inputSources.enabledSources()
+        let conflicting = ruleBox.ruleSet?.conflictingInputApps ?? []
+        let processes = dependencies.processes
+        return {
+            ConflictDetector.detect(
+                running: processes.runningApplications(), enabledSources: sources, conflictingApps: conflicting)
+        }
+    }
+
     func reportConflicts(_ found: [ConflictingInput]) {
-        conflicts = found
+        // A user rescan that ran while the launch scan was in flight is newer; keep it.
+        if !conflictsRescanned { conflicts = found }
         guard !found.isEmpty, !conflictsReported else { return }
         conflictsReported = true
         onEvent?(.conflictsDetected(found))
