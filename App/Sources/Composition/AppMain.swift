@@ -25,10 +25,11 @@ final class AppMain: NSObject, NSApplicationDelegate {
         environment.start()
     }
 
-    /// Quit waits for the settings flush (PLT-R1003); the reply comes from `AppEnvironment.terminate`.
+    /// Quit waits for the settings flush (PLT-R1003, bounded); the reply comes from `AppEnvironment.terminate`
+    /// through the main run loop (AppEnvironment+Quit.swift).
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let environment else { return .terminateNow }
-        environment.terminate { sender.reply(toApplicationShouldTerminate: true) }
+        environment.terminate()
         return .terminateLater
     }
 

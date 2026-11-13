@@ -59,6 +59,8 @@ final class AppEnvironment {
     /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
     var tapReenabledUntil: Date?
     var lastMenuRefresh: Date?
+    /// The quit under way (AppEnvironment+Quit.swift): settings flushed off the main actor, reply through the run loop.
+    var quit: QuitCoordinator?
 
     /// Launch order (S1 target 300 ms to tap active): LaunchGuard -> AppLocationCheck (move offer before any
     /// permission request, PLT-R710) -> LegacyStorageMigrator -> SettingsStore.load ->
@@ -98,23 +100,6 @@ final class AppEnvironment {
             case .running(let safeMode): self.launched(safeMode: safeMode)
             case .relocating, .quit: NSApp.terminate(nil)
             }
-        }
-    }
-
-    /// Quit: flush settings (PLT-R1003), stop the host (tap removed), let Sparkle install on quit (D20).
-    func terminate(completion: @escaping @MainActor () -> Void) {
-        diagnostics.logger.log(.lifecycle(.terminating), level: .notice)
-        launch?.terminate()
-        #if INTEGRATION_HOOKS
-        integrationHooks.stop()
-        #endif
-        host.stop()
-        let store = settingsStore
-        let diagnostics = self.diagnostics
-        Task {
-            await store.flush()
-            diagnostics.flush()
-            completion()
         }
     }
 
