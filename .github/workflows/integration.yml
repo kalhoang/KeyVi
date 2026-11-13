@@ -36,7 +36,9 @@ jobs:
       github.event_name != 'schedule' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: [self-hosted, macOS, ARM64, tcc-granted]
-    timeout-minutes: 90
+    # Budget (runner estimates, VERIFY on the first runs): test build about 15 min, TestHost suite about 15 min,
+    # scenarios about 30 min, one bench run about 18 min. Five bench runs (about 90 min) are nightly (QA-R14).
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,12 +51,16 @@ jobs:
             echo "- macOS: $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
             echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Test build with the integration hooks (ADR 0502)
+        run: scripts/run-integration.sh build --out .build/integration
       - name: Integration tests in the test host (QA-R11)
         run: scripts/run-integration.sh tests --out .build/integration
       - name: Compatibility scenarios (PLT-R530, QA-R21)
         if: hashFiles('compat/scenarios/**') != ''
         run: scripts/run-integration.sh compat --out .build/integration
-      - name: End-to-end platform benchmarks (PLT-R821, PLT-R822)
+      - name: End-to-end platform benchmarks, one run (PLT-R821, PLT-R822)
+        env:
+          COMPAT_HARNESS_BENCH_RUNS: "1"
         run: scripts/run-integration.sh bench --out .build/integration
       - name: Upload results
         if: always()
@@ -78,11 +84,13 @@ jobs:
         with:
           persist-credentials: false
           clean: true
+      - name: Test build with the integration hooks (ADR 0502)
+        run: scripts/run-integration.sh build --out .build/integration
       - name: Integration tests in the test host (QA-R11)
         run: scripts/run-integration.sh tests --out .build/integration
       - name: Soak, 1,000,000 keystrokes (QA-R16, section 13.6)
         run: scripts/run-integration.sh soak --out .build/integration
-      - name: End-to-end platform benchmarks, self-hosted subset (section 13.4)
+      - name: End-to-end platform benchmarks, five runs (section 13.4, QA-R14)
         run: scripts/run-integration.sh bench --out .build/integration
       - name: Upload results
         if: always()
