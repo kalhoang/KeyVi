@@ -1,14 +1,14 @@
 {
   "format": 1,
   "generator": "lexicon-builder",
-  "inputsSHA256": "0fb8326d0d008215536f46ed3a85f133b593c3c09f80edff8d20b49ab90efe03",
+  "inputsSHA256": "9a64523218add279a118fb17b19f4df43cd6835b50ae5d70fe46451a2704bc00",
   "files": [
     {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
     {"name": "tech-always.txt", "bytes": 2178, "entries": 389, "sha256": "9b9d52d64ab9d92c432279e85f488f8826310ac6ad247b3ae00d748ee64aaf5c"},
     {"name": "tech-code-only.txt", "bytes": 1169, "entries": 223, "sha256": "1d718c72491e7eb1afe87922ed01cd8cc5788b416fe2b01eb4ffe82f36b905ba"},
     {"name": "attested.txt", "bytes": 11445, "entries": 1954, "sha256": "cc55425a86553d4fd028f3d6f770e65ac4b8264354266605a8dbf7859d469009"},
     {"name": "ambiguity.tsv", "bytes": 78537, "entries": 619, "sha256": "1632acae70b29224345437258951b055693ebd9be506c1267666bbfd3d9ebce8"},
-    {"name": "NOTICES.txt", "bytes": 14007, "sha256": "a923779210633861bba3d07e57981c1f5158c3d706c2bf6241d76a0a34f9e80c"}
+    {"name": "NOTICES.txt", "bytes": 14146, "sha256": "189d3318fcb8e6d4abd43932ae4c1223a6538c1e2d98826bc20743e2837174ee"}
   ],
   "stats": {
     "englishWords": 40205,

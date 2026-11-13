@@ -67,6 +67,15 @@ struct BundledResourcesTests {
         #expect(notices.contains("Article 15(2)"))
     }
 
+    @Test func bundledNoticesCreditTheLegalTextPortals() throws {
+        // ENG-R811 and docs/decisions/0200 section 2: the download portals of the legal texts ask for
+        // their name when information is republished, and THIRD_PARTY_NOTICES.md section 3 promises
+        // that courtesy credit in the shipped NOTICES.txt.
+        let notices = try Resources.bundledNotices()
+        #expect(notices.contains("Intellectual Property Office of Viet Nam (ipvietnam.gov.vn)"))
+        #expect(notices.contains("Official Gazette (congbao.chinhphu.vn)"))
+    }
+
     /// ENG-R1231: `Resources.bundled` loads in at most 50 ms and all resources take at most 8 MB.
     /// Memory is measured as the growth of live malloc bytes while the loaded resources are held
     /// (page-level footprint is useless here: earlier loads leave reusable pages behind), repeated

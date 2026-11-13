@@ -277,6 +277,9 @@ on Intellectual Property of Viet Nam (No. 50/2005/QH11, as amended): "Văn bản
 văn bản hành chính, văn bản khác thuộc lĩnh vực tư pháp và bản dịch chính thức của văn bản đó."
 Only single syllables are bundled; no text of the documents is shipped.
 
+Legal texts obtained from the Intellectual Property Office of Viet Nam (ipvietnam.gov.vn) and the
+Official Gazette (congbao.chinhphu.vn).
+
 
 3. Lists written by the project (tech-always.txt, tech-code-only.txt, ambiguity.tsv, and the hand
    additions to attested.txt)
