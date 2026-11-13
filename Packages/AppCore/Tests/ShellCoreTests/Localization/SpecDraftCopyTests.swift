@@ -261,7 +261,7 @@ import Testing
             vi: "Mang gõ tắt và cài đặt từ {{OtherApp}}"),
         Draft(
             table: .onboarding, key: "onboarding.import.body", arguments: ["{{OtherApp}}"],
-            vi: "Bạn có thể nhập danh sách gõ tắt đã xuất từ {{OtherApp}}."),
+            vi: "Bạn có thể chuyển danh sách gõ tắt từ {{OtherApp}} sang bằng tệp văn bản theo mẫu."),
         Draft(table: .onboarding, key: "onboarding.import.chooseFile", vi: "Chọn tệp..."),
         Draft(table: .onboarding, key: "onboarding.import.later", vi: "Để sau"),
         Draft(table: .onboarding, key: "onboarding.tryIt.title", vi: "Thử gõ một chút"),

@@ -25,7 +25,7 @@ import Testing
     @Test func seededFilesPass() {
         let outcome = run(seededArguments)
         #expect(outcome.exitCode == CompatLintCommand.exitClean, "\(outcome.output)")
-        #expect(outcome.output.contains("compat-lint: 21 rule(s), 59 matrix row(s), 0 error(s)"))
+        #expect(outcome.output.contains("compat-lint: 21 rule(s), 60 matrix row(s), 0 error(s)"))
         #expect(outcome.output.contains("warning: unverifiedTestedEntry [rule terminal.default]"))
     }
 
@@ -40,16 +40,12 @@ import Testing
         if let firstError, let firstWarning { #expect(firstError.lowerBound < firstWarning.lowerBound) }
     }
 
-    /// PLT-R422: in release mode the shipped placeholder rules whose test cannot show the 1,000-edit gate block
-    /// the release (the two manual spreadsheet rules); the browser rules' scenarios declare it.
-    @Test func releaseModeBlocksPlaceholderRulesWithoutTheirGate() {
+    /// PLT-R422: every shipped placeholder rule carries its 1,000-edit gate in its scenario, so release mode reports
+    /// no `placeholderWithoutGateTest`. The spreadsheet rules use axSelection only until that gate exists (ADR 0005);
+    /// an ungated placeholder rule is still blocked (see `placeholderGateIsReadFromTheScenarioFile`).
+    @Test func seededPlaceholderRulesAllCarryTheirGate() {
         let outcome = run(seededArguments + ["--release", "--today", "2026-11-13"])
-        for rule in ["web.googleSheets.cellEditor", "office.excel.cellEditor"] {
-            #expect(outcome.output.contains("error: placeholderWithoutGateTest [rule " + rule + "]"), "\(rule)")
-        }
-        for rule in ["browser.chromium.addressBar", "browser.gecko.urlBar"] {
-            #expect(!outcome.output.contains("placeholderWithoutGateTest [rule " + rule + "]"), "\(rule)")
-        }
+        #expect(!outcome.output.contains("placeholderWithoutGateTest"), "\(outcome.output)")
     }
 
     /// The gate is read from the scenario file itself; an unreadable or ungated file does not count.

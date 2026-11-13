@@ -72,7 +72,7 @@ import Testing
                 bundle: "com.google.Chrome", engine: .chromium, role: "AXTextArea",
                 url: "https://docs.google.com/spreadsheets/d/1"), rule: "web.googleSheets.cellEditor"
         ) {
-            $0.params.inlineCompletion == .placeholder && $0.params.firstEditDelayUs == 8_000 && $0.matchedURL
+            $0.params.inlineCompletion == .axSelection && $0.params.firstEditDelayUs == 8_000 && $0.matchedURL
         },
         // 02-platform.md 5.5: documentURL is the URL "of the focused web area", so the host leaves it nil while
         // the omnibox has focus on a Sheets tab; the address-bar rule then wins with no tie (PLT-R521).
@@ -103,7 +103,7 @@ import Testing
             label: "Excel cell editor", context: Build.context(bundle: "com.microsoft.Excel", role: "AXTextArea"),
             rule: "office.excel.cellEditor"
         ) {
-            $0.params.inlineCompletion == .axSelectionThenPlaceholder
+            $0.params.inlineCompletion == .axSelection
         },
         .init(
             label: "Excel elsewhere falls back to the Office rule",
