@@ -229,7 +229,7 @@ Where the owner is another track, the row says so.
 | ENG-T04 | 100 % of the reference model's cases | same | `GeneratedCorpusTests.caseCounts` (prints counts) |
 | ENG-T10 | English lexicon in both contexts | `VietnameseEngineTesting/Corpora/CorpusTargets.swift` (`EnglishCorpusCheck`) | `EnglishCorpusGateTests` (bundled data), `CorpusTargetTests.englishCorpus` (fixtures) |
 | ENG-T11 | `known-exceptions.txt` | `Corpus/known-exceptions.txt` (51 entries pending Pa's review) | `EnglishCorpusGateTests` (every English-run change listed, no stale entry), `CorpusTargetTests.englishCorpus` |
-| ENG-T12 | Spot list unchanged | - | `SpotListTests` |
+| ENG-T12 | Spot list unchanged | `VietnameseEngineTesting/Fixtures/SpotList.swift` | `SpotListTests` (13.9 fixtures), `SpotListGateTests` (bundled data) |
 | ENG-T20 | Prose corpus, three typists | `ProseCorpusCheck`; corpus `data/corpus/prose-vi.txt` (`lexicon-builder prose-corpus`) | `ProseCorpusGateTests`, `LexiconBuilderTests.proseCorpusHasAtLeast200000SyllablesAndIsReproducible`, `CorpusTargetTests.prose` |
 | ENG-T30 | No crash, bounded memory | `InvariantChecker` | `FuzzTests.randomStreams`, `longTokens`, `Packages/VietnameseEngineFuzz` |
 | ENG-T31 | Simulated field equals the engine's view; no over-deletion | `InvariantChecker`, `Simulation/SimulatedTextField.swift` | Fuzz, every corpus case |
