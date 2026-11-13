@@ -129,6 +129,8 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
     private var settingsGeneration: UInt64 = 1
     private var inputSourceGeneration: UInt64 = 1
     private var secureGeneration: UInt64 = 0
+    /// The secure-input generation key evidence ended, from the tap's notice (PLT-R398B).
+    private var secureResumedGeneration: UInt64?
     private var lifecycleGeneration: UInt64 = 1
     private var permissionGranted = true
     private var postingBrokeInRun = false
@@ -192,10 +194,13 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
         case .key(let event): enqueuePhysical(event)
         case .focusChange: publishFocusChange()
         case .secureInput(let enabled):
+            // PLT-R398B: the poll that publishes "off" right after key evidence ended this episode is the same
+            // release; the host stayed ready, so it is no transition and needs no reset (PLT-R210).
+            let endsResumedEpisode = !enabled && secureResumedGeneration == secureGeneration
             secureGeneration += 1
             snapshots.secureInput.publish(
                 SecureInputSnapshot(generation: secureGeneration, enabled: enabled, holder: nil))
-            engineLog?.mark()
+            if !endsResumedEpisode { engineLog?.mark() }
         case .permission(let granted):
             permissionGranted = granted
             publishLifecycle()
@@ -423,7 +428,11 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
 
     private func drainNotices() {
         while let notice = outbox.toMain.pop() {
-            if case .postingBroken = notice { statistics.postingBrokenNotices += 1 }
+            switch notice {
+            case .postingBroken: statistics.postingBrokenNotices += 1
+            case .secureInputResumedByKey(let generation): secureResumedGeneration = generation
+            default: break
+            }
         }
         while outbox.toAX.pop() != nil {}
     }

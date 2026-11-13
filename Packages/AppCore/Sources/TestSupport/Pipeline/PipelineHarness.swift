@@ -72,6 +72,8 @@ final class HarnessCore {
     private var settingsGeneration: UInt64 = 1
     private var inputSourceGeneration: UInt64 = 1
     private var secureGeneration: UInt64 = 0
+    /// The secure-input generation key evidence ended, from the tap's notice (PLT-R398B).
+    private var secureResumedGeneration: UInt64?
     private var lifecycleGeneration: UInt64 = 1
     private var permissionGranted = true
     private var postingBrokenSeen = false
@@ -117,10 +119,13 @@ final class HarnessCore {
         case .key(let event): enqueuePhysical(event)
         case .focusChange: publishFocusChange()
         case .secureInput(let enabled):
+            // PLT-R398B: the poll that publishes "off" right after key evidence ended this episode is the same
+            // release; the host stayed ready, so it is no transition and needs no reset (PLT-R210).
+            let endsResumedEpisode = !enabled && secureResumedGeneration == secureGeneration
             secureGeneration += 1
             fixture.publish(
                 secureInput: SecureInputSnapshot(generation: secureGeneration, enabled: enabled, holder: nil))
-            engineLog.mark()
+            if !endsResumedEpisode { engineLog.mark() }
         case .permission(let granted):
             permissionGranted = granted
             publishLifecycle()
@@ -296,7 +301,9 @@ final class HarnessCore {
         while let notice = fixture.outbox.toMain.pop() {
             switch notice {
             case .modeToggled: statistics.toggles += 1
-            case .secureInputResumedByKey: statistics.secureResumes += 1
+            case .secureInputResumedByKey(let generation):
+                statistics.secureResumes += 1
+                secureResumedGeneration = generation
             case .postingBroken: statistics.postingBrokenNotices += 1
             default: break
             }

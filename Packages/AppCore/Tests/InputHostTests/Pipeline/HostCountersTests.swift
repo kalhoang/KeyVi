@@ -76,6 +76,55 @@ import VietnameseEngine
         #expect(fixture.context.counters.firstKeyAfterSecureInputReleaseComposed == true)
     }
 
+    /// PLT-R398B: after key evidence ends the episode, the next poll publishes the "off" generation. That poll is
+    /// the same release, not a new one: it neither resets the word being typed nor records a second first key.
+    @Test func thePollAfterKeyEvidenceIsTheSameRelease() {
+        let fixture = PipelineFixture()
+        fixture.publish(secureInput: secure(1, true))
+        fixture.press(Key.a)  // key evidence: the first key after the release
+        fixture.press(Key.s)
+        let resetsBeforePoll = fixture.log.resets
+        fixture.publish(secureInput: secure(2, false))
+        fixture.press(Key.d)
+        #expect(fixture.log.resets == resetsBeforePoll)
+        #expect(!fixture.log.resets.contains(.secureInputChanged))
+        #expect(fixture.log.feeds == [.key(KeyInput("a")), .key(KeyInput("s")), .key(KeyInput("d"))])
+        #expect(fixture.context.counters.firstKeyAfterSecureInputReleaseComposed == true)
+        fixture.keyDown(Key.left)  // not composed: would overwrite the answer if the poll had re-armed the flag
+        #expect(fixture.context.counters.firstKeyAfterSecureInputReleaseComposed == true)
+    }
+
+    /// A later, separate episode still counts: on, evidence, off, then on and off again.
+    @Test func aLaterEpisodeAfterKeyEvidenceStillCounts() {
+        let fixture = PipelineFixture()
+        fixture.publish(secureInput: secure(1, true))
+        fixture.press(Key.a)
+        fixture.publish(secureInput: secure(2, false))
+        fixture.publish(secureInput: secure(3, true))
+        fixture.publish(secureInput: secure(4, false))
+        fixture.keyDown(Key.left)
+        #expect(fixture.context.counters.firstKeyAfterSecureInputReleaseComposed == false)
+    }
+
+    /// The flag reports whether the first key reached the engine, not whether it could have: a toggle hotkey or a
+    /// navigation key as the first key after a release is not composed.
+    @Test func aFirstKeyThatNeverReachesTheEngineIsNotComposed() {
+        let hotkey = PipelineFixture()
+        let pipeline = KeyPipeline(
+            context: hotkey.context, factory: RepeatingComboFactory(engines: ScriptedEngineFactory(log: hotkey.log)),
+            clock: hotkey.clock)
+        hotkey.publish(secureInput: secure(1, true))
+        #expect(pipeline.handle(PipelineFixtures.keyEvent(.keyDown, Key.space, flags: Flag.control)) == .swallow)
+        #expect(pipeline.lastOutcome == .consumedAsHotkey)
+        #expect(hotkey.context.counters.firstKeyAfterSecureInputReleaseComposed == false)
+
+        let navigation = PipelineFixture()
+        navigation.publish(secureInput: secure(1, true))
+        navigation.publish(secureInput: secure(2, false))
+        navigation.keyDown(Key.left)
+        #expect(navigation.context.counters.firstKeyAfterSecureInputReleaseComposed == false)
+    }
+
     /// Fail-open (posting broken) passes the key untransformed: not composed.
     @Test func aFailedOpenTapIsNotComposed() {
         let fixture = PipelineFixture()
