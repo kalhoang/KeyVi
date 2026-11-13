@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The composition root's own modal notices: safe mode (PLT-R1009), a failed move to Applications (PLT-R710) and
-// the once-per-launch conflict warning (PLT-R399). None of them is shown by the integration hooks test build. Copy lives in the `Composition` String Catalog, read through
-// the shared `Localizer` of the selected interface language (ADR 0310; keys in ShellCore's `CompositionText`);
-// the app name is always a format argument. The conflict warning reuses the onboarding screen 5 copy from
-// spec/03-product.md. Workstream W2-A.
+// the once-per-launch conflict warning (PLT-R399). None of them is shown by the integration hooks test build.
+// Copy lives in the `Composition` String Catalog, read through the shared `Localizer` of the selected interface
+// language (ADR 0310; keys in ShellCore's `CompositionText`); the app name is always a format argument. The
+// conflict warning reuses the onboarding screen 5 copy from spec/03-product.md. Workstream W2-A.
 
 import AppKit
 import AppModel
