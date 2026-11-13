@@ -111,6 +111,7 @@ public enum DiagnosticsText: String, LocalizationKey {
     case useForMe = "misbehaves.useForMe"
     case copySuggestion = "misbehaves.copySuggestion"
     case openGitHubIssue = "misbehaves.openGitHubIssue"
+    case fullReport = "misbehaves.fullReport"
     case applied = "misbehaves.applied"
     case stopTest = "misbehaves.stop"
     case strategyBackspaceReplace = "strategy.backspaceReplace"
@@ -179,6 +180,7 @@ public enum DiagnosticsText: String, LocalizationKey {
     case useForMeHint = "misbehaves.useForMe.accessibilityHint"
     case copySuggestionHint = "misbehaves.copySuggestion.accessibilityHint"
     case openGitHubIssueHint = "misbehaves.openGitHubIssue.accessibilityHint"
+    case fullReportHint = "misbehaves.fullReport.accessibilityHint"
     case traceDurationHint = "trace.duration.accessibilityHint"
     case traceStartHint = "trace.confirm.start.accessibilityHint"
     case traceTextHint = "trace.review.text.accessibilityHint"
@@ -194,8 +196,8 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         latencyHistograms, appPicker,
         symptom, description, previewDisclosure, previewFormat, practiceButton, practiceAnswer, github, email,
         saveFile, openDiagnostics, practiceField, guidedOffer, confirmField, answerYes, answerNo, stopTest,
-        includePageAddress, pageAddressField, useForMe, copySuggestion, openGitHubIssue, traceDuration, traceStart,
-        traceText, traceExport, traceDiscard, probeStart, probeField
+        includePageAddress, pageAddressField, useForMe, copySuggestion, openGitHubIssue, fullReport, traceDuration,
+        traceStart, traceText, traceExport, traceDiscard, probeStart, probeField
 
     /// The visible title doubles as the label, so VoiceOver reads what sighted users see.
     public var labelKey: DiagnosticsText {
@@ -231,6 +233,7 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         case .useForMe: .useForMe
         case .copySuggestion: .copySuggestion
         case .openGitHubIssue: .openGitHubIssue
+        case .fullReport: .fullReport
         case .traceDuration: .traceDuration
         case .traceStart: .traceStart
         case .traceText: .traceReviewTitle
@@ -274,6 +277,7 @@ public enum DiagnosticsControl: String, Sendable, CaseIterable {
         case .useForMe: .useForMeHint
         case .copySuggestion: .copySuggestionHint
         case .openGitHubIssue: .openGitHubIssueHint
+        case .fullReport: .fullReportHint
         case .traceDuration: .traceDurationHint
         case .traceStart: .traceStartHint
         case .traceText: .traceTextHint

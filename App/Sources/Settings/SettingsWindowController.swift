@@ -19,8 +19,9 @@ typealias SettingsPane = SettingsPaneKind
 /// What the Settings window asks the composition root to do; implemented by AppEnvironment.
 @MainActor
 protocol SettingsActions: AnyObject {
-    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37).
-    func reportProblem(for bundle: BundleKey?)
+    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37): the bug report
+    /// sheet, pre-filled with `bundle` when given.
+    func reportProblemFromSettings(for bundle: BundleKey?)
     /// "Chẩn đoán..." (D26 entry, W2-C's diagnostics window).
     func openDiagnostics()
     /// PRD-R40: onboarding can be reopened from About & Support.

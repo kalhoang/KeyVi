@@ -60,13 +60,14 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     /// "Báo lỗi..." (PRD-R11 item 6, PRD-R47): the sheet with the Apps pane's apps and the last frontmost app
     /// chosen: `preselected` (the focused app when the menu item was chosen), or the most recent other app when that
     /// is this app or unknown. The host context is read now, before the sheet takes the focus.
-    func openBugReport(preselected: BundleKey?) {
+    /// `symptom` is the one chosen in the misbehaves panel when the sheet continues from it (PRD-R49).
+    func openBugReport(preselected: BundleKey?, symptom: DiagnosticsReport.Symptom = .other) {
         let apps = services.recentApps()
         let choice = RecentReportApps.preselection(
             focused: preselected, recent: apps, excluding: services.resolvedBrand.bundleIdentifier,
             name: services.appName)
         let draft = BugReportDraft(
-            app: choice?.bundle, appName: choice?.name, symptom: .other, userDescription: "",
+            app: choice?.bundle, appName: choice?.name, symptom: symptom, userDescription: "",
             reproducesInPracticeField: nil)
         let build = reportBuilder()
         bugReport?.close()
@@ -95,7 +96,8 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     func startMisbehavesFlow(for bundle: BundleKey?) {
         let controller = MisbehavesPanelController(
             language: language, services: services, bundle: bundle,
-            report: { [weak self] in self?.model.currentReport() })
+            report: { [weak self] in self?.model.currentReport() },
+            openBugReport: { [weak self] app, symptom in self?.openBugReport(preselected: app, symptom: symptom) })
         misbehaves = controller
         controller.present()
     }

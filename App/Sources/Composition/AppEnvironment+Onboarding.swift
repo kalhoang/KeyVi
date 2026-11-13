@@ -153,7 +153,7 @@ extension AppEnvironment: OnboardingActions {
 
 /// What the Settings window asks of the composition root (W2-B).
 extension AppEnvironment: SettingsActions {
-    // `reportProblem(for:)` is shared with the status menu (StatusMenuActions).
+    // `reportProblemFromSettings(for:)` is next to the menu's `reportProblem(for:)` (AppEnvironment+Shell).
 
     func openDiagnostics() { diagnosticsController().showReport() }
 

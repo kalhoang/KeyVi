@@ -1817,6 +1817,42 @@
         }
       }
     },
+    "misbehaves.fullReport" : {
+      "comment" : "PRD-R47, PRD-R49: continues from the misbehaves panel to the bug report sheet, pre-filled with the app and the chosen symptom (email, save, free text and preview).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Bug Report..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ báo lỗi..."
+          }
+        }
+      }
+    },
+    "misbehaves.fullReport.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the bug report window with this app and the problem you chose filled in."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở cửa sổ báo lỗi, điền sẵn ứng dụng này và lỗi bạn đã chọn."
+          }
+        }
+      }
+    },
     "misbehaves.guided.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",

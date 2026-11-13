@@ -93,6 +93,7 @@ struct MisbehavesView: View {
             ForEach(offers, id: \.self) { offer in
                 button(DiagnosticsCopy.control(offer), localizer) { model.perform(offer) }
             }
+            button(.fullReport, localizer) { model.openFullReport() }
         }
         Text(verbatim: clipboardNotice(offers, localizer))
             .font(.footnote)

@@ -166,14 +166,21 @@ extension AppEnvironment: StatusMenuActions {
         Task { await settingsStore.setAppRule(rule, for: bundle) }
     }
 
-    /// The report flow. "Báo lỗi..." opens the bug report sheet with the last frontmost app (PRD-R47; the sheet
-    /// falls back to the most recent other app while one of this app's windows has the focus); "Báo lỗi với ứng
-    /// dụng này..." opens the misbehaves flow for that app (PLT-R1205). In safe mode the report items lead to the
-    /// safe-mode choices first, so reset and exit stay reachable from the menu even while a host-state line hides
-    /// the safe-mode line (PLT-R1009).
-    func reportProblem(for bundle: BundleKey?) {
+    /// The menu's report flow. "Báo lỗi..." opens the bug report sheet with the last frontmost app (PRD-R47; the
+    /// sheet falls back to the most recent other app while one of this app's windows has the focus); "Báo lỗi với
+    /// ứng dụng này..." opens the misbehaves flow for that app (PLT-R1205), which continues to the sheet. In safe
+    /// mode the report items lead to the safe-mode choices first, so reset and exit stay reachable from the menu
+    /// even while a host-state line hides the safe-mode line (PLT-R1009).
+    func reportProblem(for bundle: BundleKey?) { openReport(for: bundle, origin: .menu) }
+
+    /// Settings' report items: the bug report sheet, pre-filled with the Apps pane's app (PRD-R37).
+    func reportProblemFromSettings(for bundle: BundleKey?) { openReport(for: bundle, origin: .settings) }
+
+    private func openReport(for bundle: BundleKey?, origin: DiagnosticsNavigation.Origin) {
         let focused = host.currentFocus().app?.bundle
-        switch DiagnosticsNavigation.destination(reportProblemFor: bundle, lastFrontmost: focused, safeMode: safeMode) {
+        switch DiagnosticsNavigation.destination(
+            reportProblemFor: bundle, lastFrontmost: focused, safeMode: safeMode, origin: origin)
+        {
         case .safeModeChoices: presentSafeMode()
         case .misbehaves(let app): diagnosticsController().startMisbehavesFlow(for: app)
         case .bugReport(let preselected): diagnosticsController().openBugReport(preselected: preselected)

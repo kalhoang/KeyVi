@@ -180,7 +180,7 @@ final class SettingsWindowModel {
 
     func perform(_ action: StoreNoticePresentation.Action) {
         switch action {
-        case .report: actions?.reportProblem(for: nil)
+        case .report: actions?.reportProblemFromSettings(for: nil)
         case .resetAll: resetRequest = ResetRequest(target: .all)
         case .dismiss, .useDefaults, .leaveSafeMode: Task { apply(await commands.perform(action)) }
         }
@@ -195,7 +195,7 @@ final class SettingsWindowModel {
     }
 
     func checkForUpdates() { updater.checkForUpdates() }
-    func reportProblem(for bundle: BundleKey? = nil) { actions?.reportProblem(for: bundle) }
+    func reportProblem(for bundle: BundleKey? = nil) { actions?.reportProblemFromSettings(for: bundle) }
     func openDiagnostics() { actions?.openDiagnostics() }
     func reopenOnboarding() { actions?.reopenOnboarding() }
 
