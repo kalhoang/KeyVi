@@ -13,9 +13,11 @@
     "defaults": { "$ref": "#/$defs/defaults" },
     "bundleGroups": {
       "type": "object",
-      "description": "Reserved names: terminals, webkitBrowsers (PLT-R510).",
-      "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
-      "additionalProperties": { "type": "array", "items": { "$ref": "#/$defs/bundleId" }, "uniqueItems": true }
+      "description": "Reserved names: terminals, webkitBrowsers (PLT-R510). Group names are camelCase identifiers.",
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9]*$": { "type": "array", "items": { "$ref": "#/$defs/bundleId" }, "uniqueItems": true }
+      },
+      "additionalProperties": false
     },
     "conflictingInputApps": { "type": "array", "items": { "$ref": "#/$defs/bundleId" }, "uniqueItems": true },
     "secureInputHints": {
@@ -110,7 +112,8 @@
         },
         "titlePattern": { "type": "string", "maxLength": 200 }
       },
-      "dependentRequired": { "titlePattern": ["bundleIds"] }
+      "if": { "required": ["titlePattern"] },
+      "then": { "required": ["bundleIds"], "description": "PLT-R502: titlePattern only together with bundleIds." }
     },
     "features": {
       "type": "object",
@@ -171,7 +174,8 @@
               "result": { "enum": ["pass", "fail"] }
             }
           },
-          "contains": { "type": "object", "properties": { "result": { "const": "pass" } } }
+          "description": "At least one passing entry (5.4). Expressed as not(every item is not a pass) because the CI validator has no contains keyword.",
+          "not": { "items": { "not": { "required": ["result"], "properties": { "result": { "const": "pass" } } } } }
         },
         "notes": { "type": "string" },
         "addedIn": { "type": "string" },

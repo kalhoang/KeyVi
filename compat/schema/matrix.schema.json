@@ -32,7 +32,7 @@
         "displayName": { "type": "string" },
         "category": { "enum": ["browser", "office", "chat", "notes", "developer", "terminal", "design", "launcher", "remote", "game", "system", "other"] },
         "tier": { "enum": [1, 2] },
-        "ruleId": { "type": "string" },
+        "ruleId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$", "maxLength": 128 },
         "status": { "enum": ["works", "worksWithNotes", "notVerified", "knownLimitation"] },
         "note": {
           "type": "object",
