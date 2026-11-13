@@ -66,6 +66,20 @@ Common vocabulary is not a match: Vietnamese linguistic terms, Telex and VNI let
 - `THIRD_PARTY_NOTICES.md` lists every dependency, word list and asset with its licence.
 - The agent instructions file contains the clean-room notice from CLR-R10 ([CLAUDE.md](../../CLAUDE.md), [AGENTS.md](../../AGENTS.md)).
 
+## 7. Asset sources (CLR-R7)
+
+Every icon, image and piece of artwork in the repository has a recorded source. The review (section 3) checks
+that each asset below still matches its record and that no new asset arrived without one.
+[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) section 4 carries the same entries with licences;
+`scripts/tests/test_scripts.py` (`NoticesTests`) fails when an image set in the asset catalog has no entry in
+either file, or when an SVG has no source comment.
+
+| Asset | Files | Source record | Origin | Status |
+|---|---|---|---|---|
+| Menu-bar status icons (8 states: `StatusIcon-vietnamese`, `StatusIcon-english`, `StatusIcon-paused`, `StatusIcon-notWorking`, `StatusIcon-ignoredApp`, `StatusIcon-secureInputVietnamese`, `StatusIcon-secureInputEnglish`, `StatusIcon-capturing`) | `App/Resources/Assets.xcassets/StatusIcon-*.imageset/icon.svg` | XML comment at the top of each SVG | Original placeholder artwork drawn for this repository on 2026-11-13 from the PRD-R10 glyph table (commit `23b5e85`), geometry taken from `StatusGlyph.swift` | Placeholder; VERIFY the design with Pa or a designer before 1.0 |
+| Status glyphs drawn in code | `App/Sources/Shell/StatusGlyph.swift` | Header comment of the file | Original, written for this repository on 2026-11-13 (commit `82012a6`) | Placeholder, same VERIFY |
+| App icon | `App/Resources/Assets.xcassets/AppIcon.appiconset` | none yet | Not supplied | Pa or a designer supplies it; record it here and in THIRD_PARTY_NOTICES.md |
+
 ## Index of reports
 
 | Date | Release | Reviewer | Result | Report |

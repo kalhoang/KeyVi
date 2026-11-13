@@ -681,5 +681,60 @@ class DependencyAuditTests(TempDirTestCase):
         self.assertIn("| c | 1.2.3 | ok |", result.stdout)
 
 
+class NoticesTests(unittest.TestCase):
+    """THIRD_PARTY_NOTICES.md and docs/provenance record every dependency, data file and asset (CLR-R6, CLR-R7,
+    QA-R66)."""
+
+    NOTICES = (REPO / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    PROVENANCE = (REPO / "docs" / "provenance" / "README.md").read_text(encoding="utf-8")
+    CATALOG = REPO / "App" / "Resources" / "Assets.xcassets"
+
+    @classmethod
+    def section(cls, number: int) -> str:
+        return cls.NOTICES.split(f"\n## {number}. ", 1)[1].split("\n## ", 1)[0]
+
+    def test_every_catalog_image_is_recorded_with_its_source(self):
+        image_sets = sorted(path for path in self.CATALOG.glob("*.imageset"))
+        self.assertGreaterEqual(len(image_sets), 8)
+        assets = self.section(4)
+        for image_set in image_sets:
+            with self.subTest(asset=image_set.name):
+                self.assertIn(image_set.name.removesuffix(".imageset"), assets)
+                self.assertIn(image_set.name.removesuffix(".imageset"), self.PROVENANCE)
+                for svg in image_set.glob("*.svg"):
+                    header = svg.read_text(encoding="utf-8")[:600]
+                    self.assertIn("Source:", header, f"{svg} needs a source comment (CLR-R7)")
+                    self.assertIn("CLR-R7", header)
+
+    def test_status_glyph_code_is_recorded_as_original_artwork(self):
+        glyph = "App/Sources/Shell/StatusGlyph.swift"
+        self.assertIn("CLR-R7", (REPO / glyph).read_text(encoding="utf-8")[:600])
+        self.assertIn(f"`{glyph}`", self.section(4))
+        self.assertIn(f"`{glyph}`", self.PROVENANCE)
+
+    def test_sparkle_pin_is_the_same_everywhere(self):
+        import re
+        resolved = json.loads((REPO / "Config" / "Package.resolved").read_text(encoding="utf-8"))
+        pin = next(p for p in resolved["pins"] if p["identity"] == "sparkle")["state"]
+        project = (REPO / "project.yml").read_text(encoding="utf-8")
+        publish = (REPO / "scripts" / "publish-release").read_text(encoding="utf-8")
+        self.assertIn(f"exactVersion: {pin['version']}", project)
+        self.assertIn(f'SPARKLE_VERSION="{pin["version"]}"', publish)
+        self.assertIn(f"### Sparkle {pin['version']}\n", self.NOTICES)
+        self.assertIn(f"Version: **{pin['version']}**", self.NOTICES)
+        self.assertIn(f"revision `{pin['revision']}`", self.NOTICES)
+        self.assertEqual(re.findall(r"### Sparkle ([0-9.]+)", self.NOTICES), [pin["version"]])
+
+    def test_every_shipped_data_file_is_covered_by_the_data_notices(self):
+        data = self.section(3)
+        self.assertIn("[`data/NOTICES.md`](data/NOTICES.md)", data)
+        self.assertTrue((REPO / "data" / "NOTICES.md").is_file())
+        resources = REPO / "Packages" / "VietnameseEngine" / "Sources" / "VietnameseEngineData" / "Resources"
+        shipped = sorted(p.name for p in resources.iterdir() if p.name not in {"README.txt", "manifest.json"})
+        self.assertIn("NOTICES.txt", shipped)
+        missing = [name for name in shipped if f"`{name}`" not in data]
+        self.assertEqual(missing, [], "list these bundled data files in THIRD_PARTY_NOTICES.md section 3")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

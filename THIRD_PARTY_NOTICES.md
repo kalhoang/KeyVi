@@ -13,6 +13,7 @@ Sparkle is the only runtime dependency (QA-R24).
 - Project: <https://github.com/sparkle-project/Sparkle>
 - Used for: update checks, download, signature verification and installation (EdDSA).
 - Version: **2.10.1**, pinned exactly (PLT-R910): `exactVersion` in `project.yml` and revision `ab7d71291238df6e0492143b120c9b696a35f603` in [`Config/Package.resolved`](Config/Package.resolved) ([ADR 0304](docs/decisions/0304-sparkle-version-pin.md)). The release scripts download the same version's tools (`Sparkle-2.10.1.tar.xz`, SHA-256 pinned in `scripts/publish-release`).
+- Consistency (checked 2026-11-13 after wave 1): `project.yml` (`exactVersion: 2.10.1`), `Config/Package.resolved`, `scripts/publish-release` (`SPARKLE_VERSION`) and this entry name the same version and revision; `scripts/tests/test_scripts.py` (`NoticesTests`) fails if they diverge.
 - Licence: MIT, with additional licences for code bundled inside Sparkle (bsdiff, sais-lite, ed25519, SUSignatureVerifier).
 - Source of the notice text below: the `LICENSE` file of the Sparkle repository at tag `2.10.1`, compared line by line on 2026-11-13 (identical). Re-fetch and compare it whenever the pin changes; a pin change is a decision-record change (ADR 0304).
 
@@ -159,20 +160,37 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ## 3. Data: word lists and corpora
 
-The authoritative list, with source URL, pinned version, checksum, licence, the full notice text and the way the data is transformed, lives in **[`data/NOTICES.md`](data/NOTICES.md)**, maintained by the data track together with the pinned inputs in `data/` (ENG-R810, ENG-R811). Every word-list row below points there; this file only summarises it, and the notice texts that must be reproduced (for example SCOWL's) are reproduced in `data/NOTICES.md`, not copied here, so there is one copy to keep current.
+The authoritative list, with source URL, pinned version, checksum, licence, the full notice text and the way the data is transformed, lives in **[`data/NOTICES.md`](data/NOTICES.md)**, maintained by the data track together with the pinned inputs in `data/` (ENG-R810, ENG-R811; checksums in `data/inputs/MANIFEST.sha256`, checked in CI). This file only summarises it. The notice texts that must reach users are generated from `data/licenses/bundled-notices.txt` into the bundled `NOTICES.txt`, which the app shows in its acknowledgements (ENG-R811), so there is one copy to keep current.
 
-| Data | Used for | Source, version, notice | Licence | Status |
+| Data | Shipped as (`VietnameseEngineData` resources) | Source, version, notice | Licence | Status |
 |---|---|---|---|---|
-| SCOWL (Spell Checker Oriented Word Lists, Kevin Atkinson) | English lexicon for automatic restore (spec/01-engine.md section 8.2) | [`data/NOTICES.md`](data/NOTICES.md), SCOWL entry | MIT/X11-style notice that must be reproduced (ENG-R811); the data track also verifies that the chosen size levels are redistributable | Filled by the data track |
-| Public gazetteers (proper-noun corpus) | `proper-nouns` corpus file | [`data/NOTICES.md`](data/NOTICES.md), gazetteer entries | Record licence per CLR-R6 | Filled by the data track |
-| Hand-written lists (tech-always list, code-only tech list, ambiguity table, collisions) | Restore data and corpus | Written for this project | Same as the engine (MPL-2.0) | Original |
-| Attested syllables | Tie-breaker data only | Built by a reproducible script from legal normative texts, plus reviewed additions; documents listed in [`data/NOTICES.md`](data/NOTICES.md) | Record the exact documents and the legal basis | Filled by the data track |
+| English lexicon: SCOWL 2020.12.07 by Kevin Atkinson, size levels 10, 20 and 35 | `english.txt` | [`data/NOTICES.md`](data/NOTICES.md), SCOWL entry; the full SCOWL `Copyright` file is reproduced in `NOTICES.txt` | SCOWL permission notice (MIT/X11-style), reproduced as required (ENG-R811) | Recorded |
+| Attested syllables, built from 13 Vietnamese laws and codes (`data/inputs/legal/SOURCES.tsv`) plus reviewed additions | `attested.txt` (syllables only, tie-breaker data) | [`data/NOTICES.md`](data/NOTICES.md); courtesy credit to the Intellectual Property Office of Viet Nam and the Official Gazette in `NOTICES.txt` | Legal normative documents are not protected by copyright (Law on Intellectual Property No. 50/2005/QH11, Article 15(2)) | Recorded |
+| Hand-written lists: tech-always list, code-only tech list, attested additions, ambiguity table | `tech-always.txt`, `tech-code-only.txt`, part of `attested.txt`, `ambiguity.tsv` | Written for this project ([`data/NOTICES.md`](data/NOTICES.md)) | MPL-2.0, as the engine package | Original |
+| Notices for the bundled data | `NOTICES.txt` | Generated from `data/licenses/bundled-notices.txt` | Carries the texts above | Recorded |
+| Prose corpus (tests only, not shipped) | none (`data/corpus/prose-vi.txt`) | Same legal texts as the attested syllables | Same as the attested syllables | Recorded |
+| Place names of Viet Nam (proper-noun test corpus, not shipped) | none (`Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus/proper-nouns.tsv`) | Official register of administrative units of Viet Nam (General Statistics Office); source recorded in the file header; spellings typed by hand | State administrative document excluded from copyright (Article 15 of the same law); place names are facts | Recorded |
+| Other engine test corpora (collisions, editing, macros, layouts, spec examples) | none | Written for this project, or generated from `spec/` by the scripts in `Packages/VietnameseEngine/Scripts/` | MPL-2.0, as the engine package | Original |
 
 Rules (CLR-R6): every list needs a recorded permissive licence (MIT, BSD, Apache-2.0, CC0, CC-BY or public domain). GPL and LGPL data, including the hunspell-vi and Aspell Vietnamese lists, must not be bundled or downloaded. The syllable validator is rule-based, so no Vietnamese dictionary is needed.
 
 ## 4. Assets
 
-- **Icons** (app icon, menu-bar template icons, DMG background): original work created for this project. No third-party icon sets are included. Record the author, date and source file of each asset here when it is added (placeholder).
+Every asset is original work created for this project unless a row below says otherwise. No third-party icon set, font glyph or traced image is included. Each asset records its author, date and source file here and in [docs/provenance](docs/provenance/README.md) section 7 (CLR-R7).
+
+### Menu-bar status icons (placeholders)
+
+- Files: eight monochrome template images, 18 x 18 pt, one per `StatusIconState` (PRD-R10): `App/Resources/Assets.xcassets/StatusIcon-<state>.imageset/icon.svg` for the states `vietnamese`, `english`, `paused`, `notWorking`, `ignoredApp`, `secureInputVietnamese`, `secureInputEnglish` and `capturing` (asset names `StatusIcon-vietnamese`, `StatusIcon-english`, `StatusIcon-paused`, `StatusIcon-notWorking`, `StatusIcon-ignoredApp`, `StatusIcon-secureInputVietnamese`, `StatusIcon-secureInputEnglish`, `StatusIcon-capturing`).
+- The same glyphs drawn in code: `App/Sources/Shell/StatusGlyph.swift` (the geometry source of the SVG files).
+- Author and date: drawn for this repository by the project's shell workstream on 2026-11-13 (commit `6c21873` for `StatusGlyph.swift`, commit `fab7dbb` for the SVG files), from the PRD-R10 glyph table in `spec/03-product.md`.
+- Source record: an XML comment at the top of each SVG and the header comment of `StatusGlyph.swift`.
+- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
+- Status: placeholder artwork. VERIFY with Pa or a designer before 1.0; designed replacements get their own entry here when they land.
+
+### Other assets
+
+- **App icon**: `App/Resources/Assets.xcassets/AppIcon.appiconset` holds no image yet (placeholder). Record the author, date and source file when it is added.
+- **DMG background**: not added yet (placeholder). Same rule.
 - **Donation QR codes** (VietQR, MoMo): generated from the maintainer's own accounts, bundled as image files, never fetched at runtime.
 - **Fonts**: none bundled by the app. The website's fonts, if any, are listed by the site track (placeholder).
 - **Illustrations and screen recordings** on the website and in onboarding: created for this project (placeholder; list each item).
