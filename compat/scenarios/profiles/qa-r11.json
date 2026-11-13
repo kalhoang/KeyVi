@@ -1,0 +1,27 @@
+{
+  "$schema": "profile.schema.json",
+  "id": "qa-r11",
+  "summary": "QA-R11 TestHost suite: macros vn and @@, restore hotkey on Escape, a pass-through rule for the second window's text field",
+  "scenarios": [
+    "testhost.macro.letters",
+    "testhost.macro.punctuation",
+    "testhost.perWindowRule.mainWindow",
+    "testhost.perWindowRule.secondWindow",
+    "testhost.restoreHotkey.twice"
+  ],
+  "settings": {
+    "restoreHotkey": { "type": "key", "keyCode": 53 }
+  },
+  "macros": [
+    { "trigger": "vn", "expansion": "Việt Nam" },
+    { "trigger": "@@", "expansion": "xin chào" }
+  ],
+  "ruleOverrides": [
+    {
+      "id": "user.testhost.secondWindowPassThrough",
+      "summary": "TestHost second window text field: keys pass through (QA-R11 per-window rule)",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.second.textField"] } },
+      "action": { "strategy": "passThrough" }
+    }
+  ]
+}

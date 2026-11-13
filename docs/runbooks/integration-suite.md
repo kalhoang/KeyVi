@@ -1,0 +1,190 @@
+# Runbook: platform integration suite on the self-hosted runner
+
+Owner: the maintainer. Specification: QA-R10 to QA-R16, QA-R21, PLT-R821, PLT-R822, PLT-R901, PLT-R906,
+spec/02-platform.md sections 8.1, 9 and 13.2 to 13.7. Contracts: [ADR 0502](../decisions/0502-fuzz-benchmark-coverage-contracts.md).
+Machine setup: [self-hosted-runner.md](self-hosted-runner.md).
+
+The suite posts synthetic key events, launches apps, switches input sources and rewrites the test build's
+settings. It runs **only on the self-hosted runner**. On any other Mac, including Pa's, only `--dry-run` is allowed:
+without `COMPAT_HARNESS_LIVE=1` (set only in the runner's `.env`) every live command exits 3 before touching
+anything.
+
+## 1. What runs where
+
+| Item | Who | When | Command (from the checkout root) | Needs |
+|---|---|---|---|---|
+| Plan check of every scenario, profile and rule | Hosted CI, any Mac | Every PR | `swift run --package-path Packages/AppCore compat-harness run --dry-run` (also `soak`, `bench`, `egress --dry-run`) | Nothing |
+| Scenario expectations against the real engine | Hosted CI, any Mac | Every PR | `swift test` in `Packages/AppCore` (`ScenarioOracleTests`, `ScenarioFilesTests`) | Nothing |
+| QA-R11 TestHost suite and privacy canary | Runner | Every merge to `main`, nightly | `compat-harness run --only 'testhost.*' --output .build/integration/tests` | Test build, TestHost, grants (section 2) |
+| Compatibility scenarios (13.2 minimum set, every rule's scenario) | Runner | Every merge to `main` | `compat-harness run --scenarios compat/scenarios --output .build/integration/compat` | Third-party apps, chromedriver, loopback server |
+| Soak, 1,000,000 keystrokes (QA-R16, 13.6) | Runner | Nightly | `compat-harness soak --keystrokes 1000000 --output .build/integration/soak` | About 8.3 hours |
+| Platform benchmarks T2 to T6, C1, C2, M1 (PLT-R821) | Runner | Nightly | `compat-harness bench --runs 5 --output .build/integration/platform-bench.json` | About 18 minutes per run |
+| Egress test (13.7, PLT-R906) | Runner, started by Pa | Before every release | `compat-harness egress --phase local` then `--phase production` (section 5) | Local appcast, production feed |
+| Scenarios that report `needsHuman` | Pa | Before every release | `compat-harness run --only <ids>` in a terminal session on the runner | A person at the runner |
+| Upgrade test (QA-R40, 13.5) | Pa | Before every release | [release.md](release.md) section 5 | Previous DMG |
+
+All `compat-harness` commands are run as `swift run --package-path Packages/AppCore -c release compat-harness
+<command> ...`; the table drops the prefix.
+
+## 2. One-time preparation (Pa, on the runner machine)
+
+These steps change system settings, so they are Pa's to do on the runner machine, never on Pa's own Mac.
+
+1. Set up the runner as [self-hosted-runner.md](self-hosted-runner.md) sections 1 to 4 describe, including
+   `COMPAT_HARNESS_LIVE=1` in the runner's `.env`. Until `scripts/run-integration.sh` defaults to the new baseline
+   path, add `PLATFORM_BASELINE=perf/platform-baseline.json` to the same file.
+2. Use English as the runner user's primary language: the harness finds the "Secure Keyboard Entry" item of the
+   Terminal and iTerm2 app menus by its English title (VERIFY on the installed macOS).
+3. Turn off text substitutions for the runner user (automatic capitalisation, smart quotes and dashes, spelling
+   correction, period with double space), or TextEdit and Notes change the expected text.
+4. Enable the input sources the scenarios select: ABC, German, French, Dvorak, Japanese Romaji
+   ([compat/scenarios/README.md](../../compat/scenarios/README.md), "Runner prerequisites").
+5. Install the third-party apps of the 13.2 set (TextEdit, Notes, Safari, Chrome, Firefox, Terminal, iTerm2,
+   Ghostty, VS Code) and chromedriver matching Chrome; start chromedriver and the loopback HTTP server
+   (`python3 -m http.server 8000 --bind 127.0.0.1 --directory TestHost/Resources/Pages`) as LaunchAgents of the
+   runner user.
+6. Build the test build of the app (Debug, Apple Development identity, `APP_BUNDLE_ID_DEV` of
+   `scripts/brand.env`) into `~/Applications/`, always to the same path. When the app-side integration hooks exist,
+   build it with the `INTEGRATION_HOOKS` compilation condition (ADR 0502, "Integration hooks"); without them the
+   suite still runs, but `testHook` steps and the paused and holder expectations report `needsHuman`, and T2 to T6
+   are skipped.
+7. Build TestHost (`xcodebuild -scheme TestHost`) into `~/Applications/` as well. It needs no permission.
+8. Grant Accessibility (and Input Monitoring if macOS asks) to the test build, and Accessibility to the harness
+   binary `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads
+   fields and presses menu items. VERIFY which process macOS holds responsible when the runner service starts the
+   harness: if the grant does not take, grant the runner's `Runner.Worker` as well.
+9. Start the test build once by hand and finish its onboarding, so it never shows onboarding during a run (the
+   harness keeps the onboarding state when it rewrites the settings).
+10. Run the plan check on the runner: `compat-harness run --dry-run`. It must print every scenario, an `app:` line
+    per scenario and end without errors.
+
+## 3. Every run (the runner, through `integration.yml`)
+
+1. The workflow checks out `main` (never a pull request, QA-R13).
+2. **Plan check:** `compat-harness run --dry-run` fails fast on an invalid scenario, profile or rule gap.
+3. **TestHost suite:** `compat-harness run --only 'testhost.*' --output .build/integration/tests`. For each
+   scenario the harness:
+   1. applies the scenario's configuration when it differs from the previous one: quits the test build, writes its
+      four settings files (factory defaults, the scenario's method, its profile from `compat/scenarios/profiles/`),
+      starts it and waits until it is ready; the original files are backed up once in
+      `<output>/app-settings-backup/` and restored after the run, also when the run stops on an error (only a
+      killed harness process skips the restore, see section 8);
+   2. presses TestHost's Reset fields button, then runs the setup steps, types the keys at the scenario's timing
+      profile, reads the field back through AX and asks the app for its state;
+   3. after the last scenario, scans the app's files and unified log for the canary tokens (section 4).
+4. **Compatibility scenarios:** `compat-harness run --scenarios compat/scenarios --output .build/integration/compat`
+   runs every scenario the same way, including the third-party apps.
+5. **Benchmarks (nightly):** `compat-harness bench --runs 5 --output .build/integration/platform-bench.json`, then
+   `scripts/bench-compare.sh --results .build/integration/platform-bench.json --threshold 25 --baseline
+   perf/platform-baseline.json`. Each run restarts the app, measures C1 over minutes 5 to 10 and M1 at minute 10,
+   types 5 minutes at 10 keys per second for C2, types the T2/T3/T5/T6 workload into TestHost under profile
+   `bench-workload`, and runs the app's latency probe for T4 ([perf/README.md](../../perf/README.md)).
+6. **Soak (nightly):** `compat-harness soak --keystrokes 1000000 --output .build/integration/soak`: 8.3 hours of
+   Telex words into TextEdit, a Chrome page and Terminal in turn.
+7. The workflow uploads `.build/integration` as the run's artefact.
+
+Requested from the CI track (not yet in `scripts/run-integration.sh`): the `tests` subcommand runs the TestHost
+suite command of step 3 instead of `xcodebuild test -scheme TestHost` (that scheme has no test action); `bench`
+uses `perf/platform-baseline.json`; the push-to-`main` job of `integration.yml` (90-minute timeout) runs `bench`
+with `--runs 1` or leaves it to the nightly job, because five runs take about 90 minutes.
+
+## 4. Reading the results
+
+| File | Content | Fails the run when |
+|---|---|---|
+| `tests/results.json`, `compat/results.json` | One entry per scenario: `pass`, `fail` or `needsHuman`, duration, `observedText`, `reason` (stage and error, never typed text) | Any `fail`, or a privacy finding |
+| `tests/privacy-report.json` (also `privacy` in `results.json`) | Files and log bytes scanned, files that could not be read, findings (location, canary token, encoding) | Any finding or unreadable file |
+| `tests/app-settings-backup/` | The test build's settings files before the run | Never (restored automatically) |
+| `soak/soak-summary.json` | Keystrokes, failed chunks, footprint samples, M2 growth, stuck modifiers, watchdog trips, flushes, app restarted | Failed chunk, M2 over 5 MB/h or 25 % over the baseline, stuck modifier, crash, watchdog trip, flush in the normal profile |
+| `soak/soak-metrics.json` | M2 in the ADR 0502 format | (compared by the harness) |
+| `platform-bench.json` and `.runs/run-N.json` | Median and per-run values of T2 to T6, C1, C2, M1 | A metric over its gate or 25 % over the baseline; exit 3 when a measurement failed |
+| `egress-local.json`, `egress-production.json` | Samples, every remote endpoint with allowed or not | Any endpoint not allowed |
+
+The console prints one line per scenario (`pass`, `fail` or `needsHuman`, duration, reason) and one line per
+metric (`C1.cpuPercent 0.120, gate 0.300, baseline 0.300 (placeholder): ok`).
+
+## 5. Egress test (13.7), before every release
+
+1. Phase `local`: serve a local appcast on the loopback server, point the test build's feed at it (VERIFY the
+   mechanism with Sparkle 2: `defaults write <APP_BUNDLE_ID_DEV> SUFeedURL http://127.0.0.1:8000/appcast.xml`, or a
+   test build whose `SUFeedURL` is the local feed), start the test build, then run
+   `compat-harness egress --phase local --minutes 10 --output .build/integration/egress-local.json`. The harness
+   asks the app for a forced update check through its hooks; without the hooks build, click Check for Updates in
+   the menu within the first minute.
+2. Remove the feed override (`defaults delete <APP_BUNDLE_ID_DEV> SUFeedURL`) and restart the test build.
+3. Phase `production`: `compat-harness egress --phase production --minutes 10 --output
+   .build/integration/egress-production.json`. Allowed: loopback and the current addresses of `APP_SITE_HOST`. If
+   Pa chooses GitHub Releases for the archives (02-platform.md section 14), add `--allow-hosts
+   <site host>,objects.githubusercontent.com,release-assets.githubusercontent.com`.
+4. Both reports must say `passed`; attach them to the release checklist.
+
+## 6. Hook scenarios after the schema change
+
+`testhost.tapTimeout.recovery` and `testhost.failOpen.permissionRevoked` are `human` scenarios until the scenario
+schema lists `testHook` (requested from its owner) and the test build answers the hooks. Then:
+
+1. The integrator adds `"testHook"` to the `setup[].action` enum of `compat/schema/scenario.schema.json` and
+   removes `.testHook` from `ScenarioValidator.pendingSchemaActions`.
+2. Replace the setup, expectation and readback of the two files with these (keys unchanged, `ax` readback):
+
+   `testhost.tapTimeout.recovery` (keys `d u y e e t j`): the tap times out after `duye`; after the recovery the
+   engine starts a new word, so `etj` becomes `ẹt` (QA-R11: engine state reset after recovery).
+
+   ```json
+   "setup": [
+     { "action": "launch" },
+     { "action": "setSecureInput", "value": "off" },
+     { "action": "focusField", "value": "testhost.native.textField" },
+     { "action": "testHook", "value": "tapTimeout@4" }
+   ],
+   "expect": { "text": "duyeẹt", "paused": false },
+   "readback": "ax"
+   ```
+
+   `testhost.failOpen.permissionRevoked` (keys `v i e e t j`): the permission is revoked after `viee` (shown as
+   `viê`); the remaining keys pass through untouched (PLT-R730) and the harness restores the permission after the
+   scenario.
+
+   ```json
+   "setup": [
+     { "action": "launch" },
+     { "action": "setSecureInput", "value": "off" },
+     { "action": "focusField", "value": "testhost.native.textField" },
+     { "action": "testHook", "value": "revokePermission@4" }
+   ],
+   "keys": ["v", "i", "e", "e", "t", "j"],
+   "expect": { "text": "viêtj", "paused": true },
+   "readback": "ax"
+   ```
+
+3. Run `swift test` (schema conformance, `ScenarioFilesTests`) and the plan check.
+
+## 7. Updating the baseline
+
+After the first green nightly on the runner, and whenever a deliberate change moves a metric, record a new
+baseline in a pull request labelled `perf-baseline` with the reason (QA-R15), as
+[perf/README.md](../../perf/README.md) shows. Never loosen a gate itself without Pa's sign-off (8.1).
+
+## 8. Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| Every live command exits 3 at once | `COMPAT_HARNESS_LIVE=1` missing from the runner's `.env`, or the service was not restarted after editing it |
+| `Integration hooks: not answering` | The test build is not the INTEGRATION_HOOKS build, or it is not running. Rebuild with the condition (section 2 step 6) |
+| `configure app: ...` on a scenario | A profile names an unknown shipped rule, or `scripts/brand.env` cannot resolve `local.testhost`; run the plan check |
+| Scenarios type nothing, then fail | Stale grant after a rebuild or macOS update: remove and re-add the entries (self-hosted-runner.md section 4) |
+| `no accessibility element with identifier testhost.resetFields` | TestHost is an old build without the Reset fields button: rebuild TestHost |
+| `no accessibility element with identifier Secure Keyboard Entry` | The runner user's language is not English, or the terminal renamed the item |
+| `input source not enabled: <id>` | Enable the input source for the runner user (section 2 step 4) |
+| Privacy finding | A real leak (PLT-R901): file a P0 against the module that wrote the file or log line; never weaken the scan |
+| Settings of the test build look wrong after a killed run (job timeout, `kill`) | The harness restores them on every error it sees, but a killed process cannot: copy the files from `<output>/app-settings-backup/` back while the app is not running, before the next run backs up the wrong ones |
+
+## 9. What stays with Pa
+
+- Running the scenarios that report `needsHuman` (the `human` readbacks of the design, remote, office, JVM,
+  overlay-panel and game rules; iTerm2's automatic password-prompt mode) and recording their rows in
+  `compat/matrix.json` (PLT-R531, PRD-R1).
+- The one-time preparation of section 2, re-granting after macOS or Xcode updates, and the egress test of
+  section 5 before every release.
+- Until the runner exists: the interim checklist of
+  [workstreams.md](../architecture/workstreams.md#interim-verification-before-the-self-hosted-runner-exists).

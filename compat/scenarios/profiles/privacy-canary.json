@@ -1,0 +1,38 @@
+{
+  "$schema": "profile.schema.json",
+  "id": "privacy-canary",
+  "summary": "Privacy canary (section 9): one TestHost field per injection strategy, so the canary words pass through all of them",
+  "scenarios": [
+    "testhost.privacyCanary.axReplace",
+    "testhost.privacyCanary.backspaceReplace",
+    "testhost.privacyCanary.passThrough",
+    "testhost.privacyCanary.paste",
+    "testhost.privacyCanary.selectReplace"
+  ],
+  "ruleOverrides": [
+    {
+      "id": "user.testhost.canary.selectReplace",
+      "summary": "Privacy canary: selectReplace in the second window's text view",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.second.textView"] } },
+      "action": { "strategy": "selectReplace" }
+    },
+    {
+      "id": "user.testhost.canary.axReplace",
+      "summary": "Privacy canary: axReplace in the second window's text field",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.second.textField"] } },
+      "action": { "strategy": "axReplace" }
+    },
+    {
+      "id": "user.testhost.canary.paste",
+      "summary": "Privacy canary: paste in the second window's plain field",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.second.plainField"] } },
+      "action": { "strategy": "paste" }
+    },
+    {
+      "id": "user.testhost.canary.passThrough",
+      "summary": "Privacy canary: passThrough in the main window's text view",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.native.textView"] } },
+      "action": { "strategy": "passThrough" }
+    }
+  ]
+}

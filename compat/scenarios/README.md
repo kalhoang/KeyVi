@@ -12,7 +12,29 @@ swift run --package-path Packages/AppCore compat-harness coverage        # rules
 ```
 
 `swift test` (`ScenarioFilesTests`) decodes every file, validates it against the schema, checks the 13.2 minimum
-set and the spec 5.6 example rules, and fails when a rule in `compat/rules.json` has no scenario file.
+set, the QA-R11 suite and the spec 5.6 example rules, and fails when a rule in `compat/rules.json` has no scenario
+file. `ScenarioOracleTests` replays every TestHost scenario that types into a plain native field through the real
+engine, configured from the files the harness writes for it, and fails when its `expect.text` is not what the engine
+produces. The live run on the self-hosted runner is described step by step in
+[docs/runbooks/integration-suite.md](../../docs/runbooks/integration-suite.md).
+
+## App profiles (`profiles/`)
+
+Every scenario runs on factory defaults, its `method` (Telex or VNI) and, when a profile in `profiles/` lists it,
+that profile: settings (the `settings` object of settings.json), macros and user rule overrides
+(`profiles/profile.schema.json`). Before a scenario whose configuration differs from the previous one, the harness
+quits the test build, writes its four settings files (backed up once, restored after the run even when it stops on
+an error, onboarding state kept), starts it again and waits until it is ready. `--no-configure` turns this off.
+
+| Profile | Scenarios | What it sets |
+|---|---|---|
+| `qa-r11` | `testhost.macro.*`, `testhost.restoreHotkey.twice`, `testhost.perWindowRule.*` | Macros `vn` and `@@`, restore hotkey Escape, `passThrough` for `testhost.second.textField` |
+| `testhost-reproductions` | `testhost.addressBar.*`, `testhost.sheetCell.*`, `testhost.web.{inlineAutocomplete,editModeTransition,composer}` | QA-R21: each simulated field gets the action of the shipped rule it reproduces (`actionFromRule`) |
+| `privacy-canary` | `testhost.privacyCanary.*` | One TestHost field per injection strategy |
+| `bench-workload` | none (`compat-harness bench`) | `axSelection` for the TestHost address bar, so T3 gets samples |
+
+Overrides name `local.testhost` in `bundleIds`; the harness resolves it like `targetBundleId`. Web pages are matched
+by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testhost-composer`).
 
 ## Conventions
 
@@ -45,6 +67,8 @@ set and the spec 5.6 example rules, and fails when a rule in `compat/rules.json`
 | Fail-open and tap recovery | `testhost.failOpen.permissionRevoked`, `testhost.tapTimeout.recovery` | 13.2, QA-R11 (manual for now, see below) |
 | 13.2 apps | `textedit.*`, `notes.telex.basic`, `browser.{webkit,chromium}.addressBar`, `browser.gecko.urlBar`, `safari.page.textarea`, `chrome.page.textarea`, `terminal.{default,iterm2,ghostty}`, `editor.vscodeFamily`, `launcher.spotlight` | 13.2 minimum automated set |
 | Rule scenarios needing a person | `web.googleSheets.*`, `design.shortcutHeavy`, `remote.*`, `office.*`, `electron.default`, `editor.vscode.integratedTerminal`, `jvm.default`, `editor.customTextViews`, `launcher.overlayPanels`, `games.passThrough` | 5.6 examples and section 6 rules |
+| QA-R11 suite | `testhost.commonWords.{telex,vni}` (the 200 most frequent tokens of `data/derived/attested-candidates.tsv` that the engine keeps in both methods; golden files, `UPDATE_SCENARIO_GOLDENS=1`), `testhost.englishRestore.samples`, `testhost.backspace.punctuation`, `testhost.fastTyping` (fast profile, 33 keys per second), `testhost.toggleHotkey`, `testhost.perWindowRule.*`, `testhost.macro.*`, `testhost.restoreHotkey.twice` | QA-R11, PLT-R341, PLT-R353, PRD-R14, PRD-R30 |
+| Privacy canary | `testhost.privacyCanary.<strategy>` for all five strategies | Section 9 canary, PLT-R901: after the run the harness scans the app's files and unified log |
 
 The soak (`compat-harness soak`, QA-R16, 13.6) types into `textedit.telex.basic`, `chrome.page.textarea` and
 `terminal.default` by default.
@@ -82,22 +106,27 @@ The soak (`compat-harness soak`, QA-R16, 13.6) types into `textedit.telex.basic`
 - The spreadsheet transition window of TestHost and the edit-mode page (20 ms) is a model, not a measurement:
   VERIFY it against Google Sheets in Safari and tune `firstEditDelayUs` scenarios accordingly.
 
-## Not automatable yet
+## Secure Keyboard Entry
 
 `terminal.iterm2.secureKeyboardEntry` and `terminal.iterm2.secureKeyboardEntryOff` (PLT-R398C) toggle iTerm2's
-Secure Keyboard Entry, which the harness can only switch in TestHost until W2-E2 adds an automated toggle. Their
-`setSecureInput` step reports `needsHuman` with the reason "switch secure keyboard entry ... by hand" instead of
-failing.
+Secure Keyboard Entry. On the runner the harness presses the "Secure Keyboard Entry" item of the app menu through
+AX for every app whose `secureInputHints` hint key in `compat/rules.json` ends in `.secureKeyboardEntry` (Terminal,
+iTerm2), only when its check mark differs (VERIFY the item title on the runner's macOS language). The paused and
+holder expectations are read from the app through its integration hooks; without the hooks build they report
+`needsHuman`.
+
+## Needs a person
 
 `design.shortcutHeavy` (5.6 rule: `defaultMode` EN for shortcut-heavy design apps) uses its 20 s wait for the
 tester to select a shape and then click into a text frame of the app. The harness types `d d`; with the rule
 applied the app stays in EN mode, so the frame shows "dd" (no "đ"), and the tester also confirms the shape was
 not deleted by a backspace.
 
-### Not automatable with the current schema
+### Waiting for the schema and the app's hooks
 
 `testhost.failOpen.permissionRevoked` (revoke Accessibility during the wait) and `testhost.tapTimeout.recovery`
-(trigger the tap-timeout test hook during the wait) are `human` scenarios because the schema has no setup
-action for a test hook or a permission change. Automating them needs setup actions such as `injectTestHook` and
-`revokePermission` in the scenario schema and `Scenario.SetupStep.Action` (requested from the schema owner),
-plus the app-side hook (W2-E2).
+(trigger the tap timeout during the wait) stay `human` scenarios. The harness already runs the `testHook` setup step
+(`tapTimeout`, `revokePermission`, `restorePermission`, optionally `@<n>` to fire after the first n keys, so the hook
+lands mid-word); the scenario schema does not list it yet (requested from its owner, `pendingSchemaActions`), and the
+app must answer the hooks (INTEGRATION_HOOKS test build). The automated versions of both files are in
+[docs/runbooks/integration-suite.md](../../docs/runbooks/integration-suite.md), section 6.

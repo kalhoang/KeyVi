@@ -30,6 +30,7 @@ final class FakeSystemActions: SystemActions, Sendable {
     func startTerminalCapture(in bundle: BundleKey, script: URL, captureFile: URL) async throws {
         calls.append("capture in " + bundle.rawValue + " -> " + captureFile.lastPathComponent)
     }
+    func resetTestHostFields(in bundle: BundleKey) async throws { calls.append("reset fields in " + bundle.rawValue) }
 }
 
 /// Scripted WebDriver endpoint: answers by path suffix, records requests.
@@ -77,6 +78,8 @@ struct FakeLineReader: LineReader {
 /// Live services that record every factory call; `harnessDryRunNeverTouchesLiveServices` asserts none happen.
 final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let calls = Recorder<String>()
+    /// The targets each `systemActions(targets:)` call received (PLT-R398C: the Secure Keyboard Entry apps).
+    let systemTargets = Recorder<HarnessTargets>()
     let sink: RecordingKeyEventSink
     let system = FakeSystemActions()
     let axText: String
@@ -84,11 +87,19 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let metrics: (any PlatformMetricSource)?
     let probe: (any ScenarioStateProbe)?
     let transport: FakeTransport
+    let control = FakeAppControl()
+    let evidence: FakePrivacyEvidence
+    let sampler: FakeConnectionSampler
+    /// Factory calls (`evidence`, `sink`, `system`) that throw `TestFailure.injected`.
+    let failing: Set<String>
+    static let library = URL(fileURLWithPath: "/library", isDirectory: true)
 
     init(
         clock: ManualClock, axText: String = "", monitor: (any SoakMonitor)? = nil,
         metrics: (any PlatformMetricSource)? = nil, probe: (any ScenarioStateProbe)? = nil,
-        transport: FakeTransport = FakeTransport(responses: [:])
+        transport: FakeTransport = FakeTransport(responses: [:]),
+        evidence: FakePrivacyEvidence = FakePrivacyEvidence(files: [], log: ""),
+        sampler: FakeConnectionSampler = FakeConnectionSampler(samples: []), failing: Set<String> = []
     ) {
         sink = RecordingKeyEventSink(clock: clock)
         self.axText = axText
@@ -96,15 +107,44 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
         self.metrics = metrics
         self.probe = probe
         self.transport = transport
+        self.evidence = evidence
+        self.sampler = sampler
+        self.failing = failing
+    }
+
+    private func call(_ name: String) throws {
+        calls.append(name)
+        if failing.contains(name) { throw TestFailure.injected }
+    }
+
+    func libraryDirectory() -> URL {
+        calls.append("library")
+        return Self.library
+    }
+
+    func appControl(targets: HarnessTargets) throws -> any AppUnderTestControl {
+        calls.append("control")
+        return control
+    }
+
+    func privacyEvidence(targets: HarnessTargets, library: URL) throws -> any PrivacyEvidenceSource {
+        try call("evidence")
+        return evidence
+    }
+
+    func connectionSampler() -> any ConnectionSampler {
+        calls.append("sampler")
+        return sampler
     }
 
     func keyEventSink() throws -> any KeyEventSink {
-        calls.append("sink")
+        try call("sink")
         return sink
     }
 
     func systemActions(targets: HarnessTargets) throws -> any SystemActions {
-        calls.append("system")
+        try call("system")
+        systemTargets.append(targets)
         return system
     }
 

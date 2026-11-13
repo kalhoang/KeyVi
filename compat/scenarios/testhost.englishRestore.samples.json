@@ -1,0 +1,73 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.englishRestore.samples",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textView"
+    }
+  ],
+  "keys": [
+    "t",
+    "e",
+    "x",
+    "t",
+    "space",
+    "u",
+    "s",
+    "e",
+    "r",
+    "space",
+    "w",
+    "i",
+    "f",
+    "i",
+    "space",
+    "shift+u",
+    "shift+s",
+    "shift+b",
+    "space",
+    "w",
+    "i",
+    "n",
+    "d",
+    "o",
+    "w",
+    "space",
+    "c",
+    "l",
+    "a",
+    "s",
+    "s",
+    "space",
+    "r",
+    "e",
+    "v",
+    "i",
+    "e",
+    "w",
+    "space",
+    "s",
+    "t",
+    "a",
+    "t",
+    "u",
+    "s",
+    "space"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "text user wifi USB window class review status "
+  },
+  "readback": "ax"
+}

@@ -2,7 +2,8 @@
 //
 // QA-R10 test host: one window with every TestHostField (native text field and text view, WKWebView page with
 // input, textarea and contenteditable, simulated address bar, simulated spreadsheet cell, password field), each
-// exposing its text through AX identifiers. Started only by the self-hosted runner (QA-R12); never shipped.
+// exposing its text through AX identifiers, plus a second window for per-window rules (QA-R11) and a Window menu
+// whose shortcuts move the focus (Command+1, 2, 3). Started only by the self-hosted runner (QA-R12); never shipped.
 
 import AppKit
 
@@ -10,6 +11,7 @@ import AppKit
 @MainActor
 final class TestHostApp: NSObject, NSApplicationDelegate {
     private var windowController: TestHostWindowController?
+    private let secondWindow = TestHostSecondWindowController()
     /// A page AppKit delivered before the window existed (launch by document: `application(_:open:)` runs before
     /// `applicationDidFinishLaunching`).
     private var pendingPage: URL?
@@ -24,6 +26,9 @@ final class TestHostApp: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let controller = TestHostWindowController()
+        controller.onReset = { [secondWindow] in secondWindow.resetAll() }
+        NSApp.mainMenu = TestHostMenu.make(target: self)
+        secondWindow.showWindow(nil)
         controller.showWindow(nil)
         windowController = controller
         if let pendingPage {
@@ -48,4 +53,37 @@ final class TestHostApp: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    // MARK: Window menu (focus changes inside a key script, QA-R11 per-window rules, T6 workload)
+
+    @objc func focusMainField(_ sender: Any?) { windowController?.focus(.nativeTextField) }
+    @objc func focusSecondWindowField(_ sender: Any?) { secondWindow.focus(.secondTextField) }
+    @objc func focusAddressBar(_ sender: Any?) { windowController?.focus(.addressBarWithCompletion) }
+}
+
+/// Main menu: Quit and the Window menu's focus shortcuts. Titles are fixed English fixture text.
+@MainActor
+enum TestHostMenu {
+    static func make(target: TestHostApp) -> NSMenu {
+        let main = NSMenu()
+        let appMenu = NSMenu()
+        appMenu.addItem(
+            NSMenuItem(title: "Quit TestHost", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let windowMenu = NSMenu(title: "Window")
+        for (title, action, key) in [
+            ("Focus Main Field", #selector(TestHostApp.focusMainField(_:)), "1"),
+            ("Focus Second Window Field", #selector(TestHostApp.focusSecondWindowField(_:)), "2"),
+            ("Focus Address Bar", #selector(TestHostApp.focusAddressBar(_:)), "3"),
+        ] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.target = target
+            windowMenu.addItem(item)
+        }
+        for menu in [appMenu, windowMenu] {
+            let holder = NSMenuItem()
+            holder.submenu = menu
+            main.addItem(holder)
+        }
+        return main
+    }
 }

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Everything `compat-harness` touches outside its own memory. The executable builds `live` only when
-// `HarnessEnvironment.allowsLive` says so: a non-dry-run `run`, `soak` or `bench` on a machine whose environment
-// sets `COMPAT_HARNESS_LIVE=1` (the self-hosted runner). Everywhere else `live` is nil and those commands stop
-// with `HarnessExit.incomplete` before any event, app launch or input-source change (workstreams.md rule 5,
-// QA-R12, QA-R13). Forgetting `--dry-run` on a developer Mac is therefore harmless.
+// `HarnessEnvironment.allowsLive` says so: a non-dry-run `run`, `soak`, `bench` or `egress` on a machine whose
+// environment sets `COMPAT_HARNESS_LIVE=1` (the self-hosted runner). Everywhere else `live` is nil and those
+// commands stop with `HarnessExit.incomplete` before any event, app launch or input-source change (workstreams.md
+// rule 5, QA-R12, QA-R13). Forgetting `--dry-run` on a developer Mac is therefore harmless.
 
 public import AppModel
-internal import Foundation
+public import Foundation
 public import RealtimeSupport
 internal import Synchronization
 
@@ -25,10 +25,17 @@ public protocol LiveHarnessServices: Sendable {
     func httpTransport() -> any HTTPTransport
     /// `nil` when no terminal is attached (CI): `human` readbacks then report `needsHuman`.
     func lineReader() -> (any LineReader)?
-    /// App-state probe for paused / holder expectations; `nil` until W2-E2 provides one.
+    /// Overrides the app-state probe; nil uses the app's integration hooks (`HookStateProbe`) when they answer.
     func stateProbe(targets: HarnessTargets) -> (any ScenarioStateProbe)?
     func soakMonitor(targets: HarnessTargets) throws -> any SoakMonitor
+    /// C1, C2 and M1 from outside the app (live: `ProcessMetricSource` over `proc_pid_rusage`).
     func metricSource(options: HarnessOptions, targets: HarnessTargets) throws -> any PlatformMetricSource
+    /// `~/Library` of the runner user: Application Support, Logs and Preferences of the app under test live below.
+    func libraryDirectory() -> URL
+    func appControl(targets: HarnessTargets) throws -> any AppUnderTestControl
+    /// Files and unified log of the app under test; the log covers the time since this call (privacy canary).
+    func privacyEvidence(targets: HarnessTargets, library: URL) throws -> any PrivacyEvidenceSource
+    func connectionSampler() -> any ConnectionSampler
 }
 
 public struct HarnessEnvironment: Sendable {
@@ -36,9 +43,9 @@ public struct HarnessEnvironment: Sendable {
     public static let liveOptInVariable = "COMPAT_HARNESS_LIVE"
 
     /// Whether the executable may construct live services: never for dry runs, `coverage` or `help`, and for
-    /// `run`, `soak` and `bench` only when `environment[liveOptInVariable]` is exactly `1`.
+    /// `run`, `soak`, `bench` and `egress` only when `environment[liveOptInVariable]` is exactly `1`.
     public static func allowsLive(options: HarnessOptions, environment: [String: String]) -> Bool {
-        guard !options.dryRun, [.run, .soak, .bench].contains(options.command) else { return false }
+        guard !options.dryRun, [.run, .soak, .bench, .egress].contains(options.command) else { return false }
         return environment[liveOptInVariable] == "1"
     }
 

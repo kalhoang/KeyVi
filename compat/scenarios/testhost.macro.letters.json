@@ -1,0 +1,40 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.macro.letters",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textField"
+    }
+  ],
+  "keys": [
+    "x",
+    "i",
+    "n",
+    "space",
+    "c",
+    "h",
+    "a",
+    "o",
+    "f",
+    "space",
+    "v",
+    "n",
+    "space"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "xin chào Việt Nam "
+  },
+  "readback": "ax"
+}

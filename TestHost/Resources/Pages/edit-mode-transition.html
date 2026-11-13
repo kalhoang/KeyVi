@@ -13,8 +13,9 @@
 </head>
 <body>
   <p id="cell-label">Cell B2 (column: Đức, Dũng, Nguyễn, Hà Nội)</p>
-  <div id="cell" class="cell" tabindex="0" role="gridcell" aria-labelledby="cell-label"></div>
-  <input id="cell-editor" type="text" autocomplete="off" spellcheck="false" hidden aria-labelledby="cell-label"
+  <!-- class testhost-edit-mode-cell: the user rule override of profile testhost-reproductions matches both. -->
+  <div id="cell" class="cell testhost-edit-mode-cell" tabindex="0" role="gridcell" aria-labelledby="cell-label"></div>
+  <input id="cell-editor" class="testhost-edit-mode-cell" type="text" autocomplete="off" spellcheck="false" hidden aria-labelledby="cell-label"
          data-testhost-field="testhost.web.input" data-testhost-fold-diacritics
          data-testhost-completions="Đức|Dũng|Nguyễn|Hà Nội">
   <p>Dropped keys: <span id="dropped">0</span></p>

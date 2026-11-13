@@ -13,8 +13,12 @@ public struct Scenario: Sendable, Hashable, Codable {
     public enum Method: String, Sendable, Hashable, Codable { case telex, vni }
 
     public struct SetupStep: Sendable, Hashable, Codable {
-        public enum Action: String, Sendable, Hashable, Codable {
+        public enum Action: String, Sendable, Hashable, Codable, CaseIterable {
             case launch, openURL, seedHistory, focusField, selectInputSource, setSecureInput, wait
+            /// Triggers an integration hook of the app under test: `tapTimeout`, `revokePermission` or
+            /// `restorePermission`, optionally `@N` to fire after the first N entries of `keys` (QA-R11).
+            /// Requested addition to compat/schema/scenario.schema.json (`ScenarioValidator.pendingSchemaActions`).
+            case testHook
         }
 
         public var action: Action

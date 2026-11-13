@@ -20,6 +20,10 @@ public protocol SystemActions: Sendable {
     func setSecureInput(_ enabled: Bool, in bundle: BundleKey) async throws
     /// Terminal scenarios: opens a window of the terminal app running `zsh -f <script> <captureFile>`.
     func startTerminalCapture(in bundle: BundleKey, script: URL, captureFile: URL) async throws
+    /// TestHost: presses its "Reset fields" button (`TestHostControls.resetFields`) when it is running, so every
+    /// TestHost scenario starts from empty fields. Does nothing when TestHost is not running (its `launch` step
+    /// then starts it with empty fields).
+    func resetTestHostFields(in bundle: BundleKey) async throws
 }
 
 public enum HarnessSetupError: Error, Sendable, Hashable {
@@ -28,8 +32,10 @@ public enum HarnessSetupError: Error, Sendable, Hashable {
 }
 
 /// Routes setup steps: resolves `local.testhost`, expands `{pages}`, sends page navigation and field focus to
-/// WebDriver for `webdriver` scenarios, starts the capture shell for `terminalCapture` scenarios and sends
-/// everything else to `SystemActions`; `wait` suspends through the injected `HarnessSleeper`.
+/// WebDriver for `webdriver` scenarios, starts the capture shell for `terminalCapture` scenarios, sends `testHook`
+/// to the app's integration hooks and everything else to `SystemActions`; `wait` suspends through the injected
+/// `HarnessSleeper`. Before a TestHost scenario it clears TestHost's fields; after a scenario that revoked the
+/// permission it restores it.
 public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     public struct TerminalCapture: Sendable {
         public var fileSystem: any FileSystem
@@ -47,16 +53,31 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     private let webDrivers: WebDriverClients
     private let terminal: TerminalCapture?
     private let sleeper: any HarnessSleeper
+    private let hooks: (any AppHookClient)?
 
+    /// `hooks` nil: `testHook` steps report `needsHuman` (the app under test is not the hooks build).
     public init(
         system: any SystemActions, targets: HarnessTargets, webDrivers: WebDriverClients, terminal: TerminalCapture?,
-        sleeper: any HarnessSleeper
+        sleeper: any HarnessSleeper, hooks: (any AppHookClient)? = nil
     ) {
         self.system = system
         self.targets = targets
         self.webDrivers = webDrivers
         self.terminal = terminal
         self.sleeper = sleeper
+        self.hooks = hooks
+    }
+
+    public func prepare(_ scenario: Scenario) async throws {
+        guard scenario.targetBundleId.rawValue == HarnessTargets.testHostAlias else { return }
+        try await system.resetTestHostFields(in: try resolve(scenario.targetBundleId))
+    }
+
+    /// A scenario that revoked the permission and did not restore it leaves the app failed open for the next
+    /// one; restore it here (QA-R11 permission scenario).
+    public func finish(_ scenario: Scenario) async {
+        guard let hooks, ScenarioSchedule.hooks(of: scenario).last == .revokePermission else { return }
+        try? await hooks.trigger(.restorePermission)
     }
 
     public func perform(_ step: Scenario.SetupStep, for scenario: Scenario) async throws {
@@ -98,7 +119,19 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
                 throw HarnessSetupError.invalidValue(action: step.action.rawValue)
             }
             try await sleeper.sleep(nanoseconds: milliseconds * 1_000_000)
+        case .testHook: try await trigger(step)
         }
+    }
+
+    private func trigger(_ step: Scenario.SetupStep) async throws {
+        guard let hook = ScenarioHookStep.of(step)?.hook else {
+            throw HarnessSetupError.invalidValue(action: step.action.rawValue)
+        }
+        guard let hooks else {
+            throw HumanReadbackRequired(
+                reason: "test hook " + hook.rawValue + " needs the INTEGRATION_HOOKS test build of the app")
+        }
+        try await hooks.trigger(hook)
     }
 
     private func startCapture(in bundle: BundleKey) async throws {

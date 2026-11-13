@@ -57,10 +57,13 @@ struct LiveSystemActions: SystemActions {
         else { throw LiveError.inputSourceNotFound(source.rawValue) }
     }
 
-    /// TestHost: presses its "Hold secure input" checkbox when its state differs. Other apps (iTerm2's and
-    /// Terminal's "Secure Keyboard Entry", PLT-R398C) have no automated toggle until W2-E2, so the scenario
-    /// reports `needsHuman` with the reason instead of failing.
+    /// TestHost: presses its "Hold secure input" checkbox when its state differs. Apps with a "Secure Keyboard
+    /// Entry" item in their app menu (`targets.secureKeyboardEntryApps`: Terminal, iTerm2, PLT-R398C): presses that
+    /// item when its check mark differs. Any other app reports `needsHuman` with the reason instead of failing.
     func setSecureInput(_ enabled: Bool, in bundle: BundleKey) async throws {
+        if targets.secureKeyboardEntryApps.contains(bundle) {
+            return try SecureKeyboardEntryMenu.set(enabled, in: bundle)
+        }
         guard bundle == targets.testHostBundleID else {
             throw HumanReadbackRequired(
                 reason: "switch secure keyboard entry " + (enabled ? "on" : "off") + " in " + bundle.rawValue
@@ -70,6 +73,16 @@ struct LiveSystemActions: SystemActions {
         let isOn = (AX.attribute(toggle, kAXValueAttribute) as? NSNumber)?.boolValue ?? false
         guard isOn != enabled else { return }
         let result = AXUIElementPerformAction(toggle, kAXPressAction as CFString)
+        guard result == .success else { throw LiveError.axFailure("press", result.rawValue) }
+    }
+
+    /// Presses TestHost's "Reset fields" button through AX when TestHost runs (a fresh launch has empty fields).
+    func resetTestHostFields(in bundle: BundleKey) async throws {
+        guard NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first != nil else {
+            return
+        }
+        let button = try AX.element(TestHostControls.resetFields, in: bundle)
+        let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
         guard result == .success else { throw LiveError.axFailure("press", result.rawValue) }
     }
 
@@ -84,5 +97,36 @@ struct LiveSystemActions: SystemActions {
         configuration.activates = true
         _ = try await NSWorkspace.shared.open(
             [wrapper], withApplicationAt: try applicationURL(bundle), configuration: configuration)
+    }
+}
+
+/// The "Secure Keyboard Entry" item of an app menu (Terminal, iTerm2), reached through AX: the app menu is the
+/// menu-bar item after the Apple menu. Item titles are those of an English system (the runner's language, VERIFY);
+/// the check mark is `AXMenuItemMarkChar`.
+enum SecureKeyboardEntryMenu {
+    static let itemTitle = "Secure Keyboard Entry"
+
+    static func set(_ enabled: Bool, in bundle: BundleKey) throws {
+        NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first?.activate()
+        let app = try AX.application(bundle)
+        guard let bar = AX.attribute(app, kAXMenuBarAttribute), CFGetTypeID(bar) == AXUIElementGetTypeID() else {
+            throw LiveError.elementNotFound("menu bar")
+        }
+        let menus = AX.attribute(bar as! AXUIElement, kAXChildrenAttribute) as? [AXUIElement] ?? []  // type checked
+        guard menus.count > 1, let item = find(itemTitle, below: menus[1]) else {
+            throw LiveError.elementNotFound(itemTitle)
+        }
+        let checked = !((AX.attribute(item, kAXMenuItemMarkCharAttribute) as? String) ?? "").isEmpty
+        guard checked != enabled else { return }
+        let result = AXUIElementPerformAction(item, kAXPressAction as CFString)
+        guard result == .success else { throw LiveError.axFailure("press " + itemTitle, result.rawValue) }
+    }
+
+    private static func find(_ title: String, below element: AXUIElement, depth: Int = 0) -> AXUIElement? {
+        if AX.attribute(element, kAXTitleAttribute) as? String == title { return element }
+        guard depth < 3, let children = AX.attribute(element, kAXChildrenAttribute) as? [AXUIElement] else {
+            return nil
+        }
+        return children.lazy.compactMap { find(title, below: $0, depth: depth + 1) }.first
     }
 }

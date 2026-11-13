@@ -19,13 +19,26 @@ enum TestHostField: String, CaseIterable {
     case spreadsheetCell = "testhost.sim.sheetCell"
     /// `NSSecureTextField`: asserts no transformation (PLT-R387).
     case passwordField = "testhost.native.password"
+    /// Second window (SecondWindow.swift): per-window rules, privacy canary strategies, restore hotkey.
+    case secondTextField = "testhost.second.textField"
+    case secondTextView = "testhost.second.textView"
+    case secondPlainField = "testhost.second.plainField"
+    /// Shows every Escape that reaches it as `<esc>` (PLT-R353).
+    case escapeField = "testhost.second.escapeField"
 }
+
+/// Identifier of the button that clears every field of both windows (pressed by the harness before each
+/// TestHost scenario, TestHostControls.resetFields).
+let resetFieldsIdentifier = "testhost.resetFields"
 
 @MainActor
 final class TestHostWindowController: NSWindowController {
     private var access: [TestHostField: (get: () -> String, reset: () -> Void)] = [:]
+    private var views: [TestHostField: NSView] = [:]
     let web = WebFieldsController()
     let secureInput = SecureInputHolder()
+    /// Called by the Reset fields button; the app delegate also clears the second window.
+    var onReset: (() -> Void)?
 
     required init?(coder: NSCoder) { nil }
 
@@ -40,6 +53,7 @@ final class TestHostWindowController: NSWindowController {
         buildNativeFields(into: layout)
         buildWebFields(into: layout)
         layout.addRow("Secure input", secureInput.checkbox)
+        layout.addRow("", resetButton())
         window.contentView = layout.contentView()
         window.initialFirstResponder = layout.firstField
         web.loadPage(named: WebFieldsController.pages[0])
@@ -50,6 +64,7 @@ final class TestHostWindowController: NSWindowController {
         textField.placeholderString = "Type here"
         describe(textField, .nativeTextField, "Native text field", "Plain NSTextField.")
         access[.nativeTextField] = ({ textField.stringValue }, { textField.stringValue = "" })
+        views[.nativeTextField] = textField
         layout.addRow("Native text field", textField)
 
         let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 360, height: 80))
@@ -63,6 +78,7 @@ final class TestHostWindowController: NSWindowController {
             identifier: TestHostField.addressBarWithCompletion.rawValue, label: "Simulated address bar",
             hint: "Completes from history inline and selects the suggested remainder.")
         access[.addressBarWithCompletion] = ({ addressBar.string }, { addressBar.replaceAll(with: "") })
+        views[.addressBarWithCompletion] = addressBar
         layout.addRow("Address bar (inline completion)", Self.toolbar(addressBar.embedded()))
 
         let cell = SpreadsheetCellTextView(
@@ -103,7 +119,33 @@ final class TestHostWindowController: NSWindowController {
         view.setAccessibilityHelp(hint)
     }
 
-    private static func scrolling(_ textView: NSTextView, height: CGFloat) -> NSScrollView {
+    private func resetButton() -> NSButton {
+        let button = NSButton(title: "Reset fields", target: self, action: #selector(resetFields(_:)))
+        button.setAccessibilityIdentifier(resetFieldsIdentifier)
+        button.setAccessibilityLabel("Reset fields")
+        button.setAccessibilityHelp("Clears every field of both windows before the next scenario.")
+        return button
+    }
+
+    @objc private func resetFields(_ sender: Any?) {
+        resetAll()
+        onReset?()
+    }
+
+    /// Clears every field of this window, native and web.
+    func resetAll() {
+        for field in access.values { field.reset() }
+    }
+
+    /// Brings this window forward and focuses a native field (Window menu, Command+1 and Command+3).
+    func focus(_ field: TestHostField) {
+        guard let view = views[field] else { return }
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+        window?.makeFirstResponder(view)
+    }
+
+    static func scrolling(_ textView: NSTextView, height: CGFloat) -> NSScrollView {
         let scroll = NSScrollView()
         scroll.documentView = textView
         scroll.hasVerticalScroller = true

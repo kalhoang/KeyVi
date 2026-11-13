@@ -2,7 +2,8 @@
 
 Owner: the maintainer. Specification: QA-R10 to QA-R13, QA-R16, QA-R40, spec/02-platform.md sections 8.4 and 13.2. Open decision 16 (which Mac, always on or not) is Pa's.
 
-Platform integration tests post synthetic key events through the real pipeline into `TestHost/`. That needs Accessibility (and maybe Input Monitoring) permission, which GitHub-hosted runners cannot be assumed to grant, so a Mac under Pa's control runs them (QA-R12). Because that Mac holds granted permissions, it is a sensitive machine (QA-R13).
+Platform integration tests post synthetic key events through the real pipeline into `TestHost/`. How to run the
+suite, read its results and update the performance baseline: [integration-suite.md](integration-suite.md). That needs Accessibility (and maybe Input Monitoring) permission, which GitHub-hosted runners cannot be assumed to grant, so a Mac under Pa's control runs them (QA-R12). Because that Mac holds granted permissions, it is a sensitive machine (QA-R13).
 
 This runbook does not change any system setting by itself. Steps that change settings are for Pa to do on the runner machine.
 
@@ -49,7 +50,7 @@ Export the variable **only on this runner**, in the `.env` file of the runner ap
    COMPAT_HARNESS_LIVE=1
    ```
 
-   One `NAME=value` per line, without `export` or quotes. The file holds no secret; keep it readable only by the runner user (`chmod 600 .env`).
+   One `NAME=value` per line, without `export` or quotes. The file holds no secret; keep it readable only by the runner user (`chmod 600 .env`). Until `scripts/run-integration.sh` defaults to the new baseline path, add `PLATFORM_BASELINE=perf/platform-baseline.json` on its own line (ADR 0502, "Platform baseline and measurements").
 2. Restart the service so the runner reads it: `./svc.sh stop`, then `./svc.sh start`.
 3. Check it: run `integration.yml` with `workflow_dispatch` on `main`. If the file was not read, the compatibility step stops at once with "COMPAT_HARNESS_LIVE=1 is not set".
 
@@ -69,6 +70,8 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
 
 - **chromedriver** listening on its default endpoint `http://127.0.0.1:9515`. Every `webdriver` scenario without a `--webdriver BUNDLE=URL` entry reads the page back through that endpoint, and CI passes no `--webdriver`. Install the chromedriver that matches the installed Chrome and keep it running as the runner user before `compat` and `soak` start (for example as a LaunchAgent of the runner user). Other drivers, such as `safaridriver --port N`, need an explicit `--webdriver BUNDLE=URL` passed through `COMPAT_HARNESS_RUN_ARGS` or `COMPAT_HARNESS_SOAK_ARGS`. The harness talks only to loopback endpoints.
 - A loopback HTTP server on port 8000 for the `seedHistory` scenarios, plus the enabled input sources, text-substitution settings and app states listed in [compat/scenarios/README.md](../../compat/scenarios/README.md).
+- English as the runner user's language (the harness presses the "Secure Keyboard Entry" item of the Terminal and iTerm2 app menus by its title), onboarding of the test build finished once by hand, and, when available, the test build compiled with `INTEGRATION_HOOKS` so the harness can read the app's state, trigger the tap-timeout and permission hooks and read its histograms. The complete list: [integration-suite.md](integration-suite.md) section 2.
+- The harness rewrites the test build's settings files for each scenario's configuration (`compat/scenarios/profiles/`) and restores them after the run; it touches nothing else of the runner user.
 
 ## 4. Pre-grant permissions to the stable-signed test build (TCC)
 
@@ -79,7 +82,7 @@ Grant once, by hand, as the runner user:
 1. Build the test version of the app and the test runner once on the runner machine, signed with the stable identity. Put the app in a fixed path, for example `~/Applications/`, and always rebuild to the same path.
 2. Open System Settings, Privacy & Security, **Accessibility** (called "Device Control and Data Access" on macOS 27; VERIFY the names on each installed macOS) and switch on:
    - the app under test (the dev-signed menu-bar app), and
-   - every other binary that posts events or creates the tap in the test pipeline, such as the test runner or the compatibility harness (VERIFY the exact list against the integration test setup).
+   - the compatibility harness `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads fields through AX and presses menu items (VERIFY whether macOS holds the runner's `Runner.Worker` responsible instead; grant it too if the harness grant does not take). TestHost needs no permission.
 3. If macOS asks for **Input Monitoring** for the tap, grant it the same way (PLT-R702).
 4. Do **not** edit the TCC database directly. Doing so needs SIP disabled, which is not acceptable for this project. If the machine is managed, a PPPC configuration profile can pre-approve Accessibility and event posting for the specific code requirement (PLT-R760); a profile still requires the user's approval in System Settings on an unmanaged Mac.
 5. Run the preflight (a workflow step at the start of `integration.yml`) that checks `AXIsProcessTrusted()` and the post-event preflight for the test binaries and fails with the message "permissions not granted to the test build" rather than failing later in a confusing way.
@@ -90,8 +93,8 @@ When a grant goes stale (after a macOS update, a changed signing identity, or a 
 
 | Workflow | Trigger | Content |
 |---|---|---|
-| `integration.yml` | push to `main`, release tags, manual | Platform integration tests (QA-R11), end-to-end benchmarks (QA-R14), nightly soak of 1,000,000 keystrokes (QA-R16) |
-| Release gate | before every release | Upgrade test (QA-R40, [release](release.md) section 5), egress test, fresh-install checks |
+| `integration.yml` | push to `main`, release tags, manual | Platform integration tests (QA-R11) with the privacy canary scan, compatibility scenarios (13.2), end-to-end benchmarks (QA-R14, nightly), soak of 1,000,000 keystrokes (QA-R16, nightly) |
+| Release gate | before every release | Upgrade test (QA-R40, [release](release.md) section 5), egress test (`compat-harness egress`, [integration-suite.md](integration-suite.md) section 5), fresh-install checks |
 
 The integration test list is in QA-R11: the 200 most common Vietnamese words in both methods, English restore, backspace across punctuation, fast typing at 15 keys per second, toggle hotkey, per-app rule switching, macro expansion, restore hotkey rules, Secure Input on and off, tap disable and recovery, and permission revoked mid-session (must fail open).
 

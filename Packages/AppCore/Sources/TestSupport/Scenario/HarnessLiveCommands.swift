@@ -17,6 +17,8 @@ public struct ScenarioRunReport: Sendable, Hashable, Codable {
     public var failed: Int
     public var needsHuman: Int
     public var results: [ScenarioResult]
+    /// Privacy canary scan after a run that included canary scenarios (section 9 acceptance); nil otherwise.
+    public var privacy: PrivacyReport?
 }
 
 /// Services shared by `run` and `soak`.
@@ -39,7 +41,9 @@ extension Harness {
         return live
     }
 
-    func scenarioServices(_ live: any LiveHarnessServices, targets: HarnessTargets) throws -> LiveScenarioServices {
+    func scenarioServices(
+        _ live: any LiveHarnessServices, targets: HarnessTargets, hooks: (any AppHookClient)? = nil
+    ) throws -> LiveScenarioServices {
         let webDrivers = try WebDriverClients(
             endpoints: options.webDrivers, transport: live.httpTransport(), fallback: options.webDriverFallback)
         let captureFile = url(
@@ -48,14 +52,14 @@ extension Harness {
         let system = try live.systemActions(targets: targets)
         let setup = ScenarioSetupRouter(
             system: system, targets: targets, webDrivers: webDrivers,
-            terminal: terminal, sleeper: environment.sleeper)
+            terminal: terminal, sleeper: environment.sleeper, hooks: hooks)
         let readback = ReadbackRouter(
             targets: targets, ax: live.axReader(), webDrivers: webDrivers,
             terminal: TerminalCaptureReadback(fileSystem: environment.fileSystem, captureFile: captureFile),
             human: live.lineReader().map(HumanConfirmationReadback.init))
         return LiveScenarioServices(
             sink: try live.keyEventSink(), system: system, setup: setup, readback: readback,
-            probe: live.stateProbe(targets: targets))
+            probe: live.stateProbe(targets: targets) ?? hooks.map(HookStateProbe.init))
     }
 
     func runner(_ services: LiveScenarioServices, seed: UInt64) -> ScenarioRunner {
@@ -71,33 +75,72 @@ extension Harness {
         }
         let targets = targets
         do {
-            let services = try scenarioServices(live, targets: targets)
-            var results: [ScenarioResult] = []
-            for original in scenarios {
-                var scenario = targets.resolvingExpectation(of: original)
-                if let profile = options.profile { scenario.timing = profile }
-                let result = await runner(services, seed: SeededGenerator.seed(options.seed, scenario: scenario.id))
-                    .run(scenario)
-                environment.console.emit(
-                    result.outcome.rawValue + " " + scenario.id + String(format: " (%.1f s)", result.durationSeconds)
-                        + (result.reason.map { ": " + $0 } ?? ""))
-                results.append(result)
+            let (results, privacy) = try await withSession(live, targets: targets) { session in
+                try await runAll(scenarios, live: live, targets: targets, session: session)
             }
-            await releaseSecureInput(after: scenarios, services: services, targets: targets)
-            let report = ScenarioRunReport(
-                profile: options.profile, seed: options.seed, passed: results.count { $0.outcome == .pass },
-                failed: results.count { $0.outcome == .fail }, needsHuman: results.count { $0.outcome == .needsHuman },
-                results: results)
-            try write(
-                try Self.json(report), to: options.report ?? (options.output ?? ".build/integration") + "/results.json")
-            environment.console.emit(
-                "compat-harness run: \(report.passed) passed, \(report.failed) failed, \(report.needsHuman) need a person"
-            )
-            return report.failed == 0 ? .success : .failure
+            return try finishRun(results, privacy: privacy)
         } catch {
             environment.console.emitError("compat-harness run: " + String(describing: error))
             return .failure
         }
+    }
+
+    /// Every selected scenario on its configuration, then the privacy canary scan when canary scenarios ran.
+    func runAll(
+        _ scenarios: [Scenario], live: any LiveHarnessServices, targets: HarnessTargets, session: HarnessSession
+    ) async throws -> ([ScenarioResult], PrivacyReport?) {
+        let evidence =
+            scenarios.contains { PrivacyCanary.isCanaryScenario($0.id) }
+            ? try live.privacyEvidence(targets: targets, library: session.library) : nil
+        let services = try scenarioServices(live, targets: targets, hooks: session.hooks)
+        var results: [ScenarioResult] = []
+        for original in scenarios {
+            var scenario = targets.resolvingExpectation(of: original)
+            if let profile = options.profile { scenario.timing = profile }
+            let result = await run(scenario, services: services, session: session)
+            environment.console.emit(
+                result.outcome.rawValue + " " + scenario.id
+                    + String(format: " (%.1f s)", result.durationSeconds)
+                    + (result.reason.map { ": " + $0 } ?? ""))
+            results.append(result)
+        }
+        await releaseSecureInput(after: scenarios, services: services, targets: targets)
+        guard let evidence else { return (results, nil) }
+        return (results, try await privacyScan(evidence))
+    }
+
+    /// Configures the app for the scenario, then runs it. A configuration failure fails only this scenario.
+    func run(_ scenario: Scenario, services: LiveScenarioServices, session: HarnessSession) async -> ScenarioResult {
+        do {
+            try await session.configurator?.apply(AppConfiguration.of(scenario, profiles: session.profiles))
+        } catch {
+            return ScenarioResult(
+                scenario: scenario.id, outcome: .fail, observedText: nil, durationSeconds: 0,
+                reason: "configure app: " + String(describing: error))
+        }
+        return await runner(services, seed: SeededGenerator.seed(options.seed, scenario: scenario.id)).run(scenario)
+    }
+
+    func finishRun(_ results: [ScenarioResult], privacy: PrivacyReport?) throws -> HarnessExit {
+        let report = ScenarioRunReport(
+            profile: options.profile, seed: options.seed, passed: results.count { $0.outcome == .pass },
+            failed: results.count { $0.outcome == .fail }, needsHuman: results.count { $0.outcome == .needsHuman },
+            results: results, privacy: privacy)
+        try write(
+            try Self.json(report), to: options.report ?? (options.output ?? ".build/integration") + "/results.json")
+        environment.console.emit(
+            "compat-harness run: \(report.passed) passed, \(report.failed) failed, \(report.needsHuman) need a person"
+        )
+        if let privacy {
+            environment.console.emit(
+                "Privacy canary: \(privacy.scannedFiles) file(s), \(privacy.scannedLogBytes) log byte(s), "
+                    + (privacy.passed ? "no canary found" : "FAILED"))
+            for finding in privacy.findings {
+                environment.console.emitError("canary in " + finding.location + " (" + finding.encoding + ")")
+            }
+            for file in privacy.unreadable { environment.console.emitError("not scanned: " + file) }
+        }
+        return report.failed == 0 && privacy?.passed != false ? .success : .failure
     }
 
     /// A run that switched TestHost's secure-input holder on must not leave it on for the next job.
@@ -117,42 +160,58 @@ extension Harness {
         }
         let resolved = self.targets
         do {
-            let services = try scenarioServices(live, targets: resolved)
-            var timed = targets
-            for index in timed.indices { timed[index].timing = soakProfile }
-            let plan = SoakPlan.make(
-                keystrokes: options.keystrokes, targets: timed, seed: options.seed,
-                chunkKeystrokes: options.chunkKeystrokes)
-            let system = services.system
-            let soak = SoakRunner(
-                targets: timed, runner: runner(services, seed: options.seed),
-                monitor: try live.soakMonitor(targets: resolved), clock: environment.clock,
-                activate: { target in
-                    guard let bundle = resolved.resolve(target.targetBundleId) else {
-                        throw HarnessSetupError.unresolvedTarget(target.targetBundleId.rawValue)
-                    }
-                    try await system.launch(bundle)
-                })
-            let summary = await soak.run(plan)
-            try write(try Self.json(summary), to: (options.output ?? ".build/integration/soak") + "/soak-summary.json")
-            environment.console.emit(
-                "compat-harness soak: \(summary.keystrokes) keystrokes, \(summary.failures.count) failed chunk(s), growth "
-                    + (summary.growthMegabytesPerHour.map { String(format: "%.2f MB/h", $0) } ?? "not measured")
-                    + (summary.passed ? ", passed" : ", FAILED"))
-            return summary.passed ? .success : .failure
+            let summary = try await withSession(live, targets: resolved) { session in
+                let services = try scenarioServices(live, targets: resolved, hooks: session.hooks)
+                var timed = targets
+                for index in timed.indices { timed[index].timing = soakProfile }
+                let plan = SoakPlan.make(
+                    keystrokes: options.keystrokes, targets: timed, seed: options.seed,
+                    chunkKeystrokes: options.chunkKeystrokes)
+                let system = services.system
+                let monitor = HookedSoakMonitor(base: try live.soakMonitor(targets: resolved), hooks: session.hooks)
+                let soak = SoakRunner(
+                    targets: timed, runner: runner(services, seed: options.seed), monitor: monitor,
+                    clock: environment.clock,
+                    activate: { target in
+                        guard let bundle = resolved.resolve(target.targetBundleId) else {
+                            throw HarnessSetupError.unresolvedTarget(target.targetBundleId.rawValue)
+                        }
+                        try await system.launch(bundle)
+                    })
+                return await soak.run(plan)
+            }
+            return try finishSoak(summary)
         } catch {
             environment.console.emitError("compat-harness soak: " + String(describing: error))
             return .failure
         }
     }
 
+    func finishSoak(_ summary: SoakSummary) throws -> HarnessExit {
+        let directory = options.output ?? ".build/integration/soak"
+        try write(try Self.json(summary), to: directory + "/soak-summary.json")
+        environment.console.emit(
+            "compat-harness soak: \(summary.keystrokes) keystrokes, \(summary.failures.count) failed chunk(s), growth "
+                + (summary.growthMegabytesPerHour.map { String(format: "%.2f MB/h", $0) } ?? "not measured")
+                + (summary.watchdogTrips.map { ", \($0) watchdog trip(s)" } ?? "")
+                + (summary.appRestarted == true ? ", app restarted" : "") + (summary.passed ? ", passed" : ", FAILED"))
+        guard let document = summary.metricsDocument() else { return summary.passed ? .success : .failure }
+        try write(try document.encoded(), to: directory + "/soak-metrics.json")
+        let verdicts = RegressionGate.evaluate(document, gates: [PlatformGates.soakGrowth], baseline: loadBaseline())
+        verdicts.map(RegressionGate.describe).forEach(environment.console.emit)
+        return summary.passed && !verdicts.contains(where: \.failed) ? .success : .failure
+    }
+
     func runBench() async -> HarnessExit {
         guard let live = requireLive("bench") else { return .incomplete }
         let metrics = options.metrics.compactMap(PlatformGates.metric(named:))
+        let targets = targets
         do {
-            let source = try live.metricSource(options: options, targets: targets)
-            let report = await PlatformBenchmarkRunner(source: source, clock: environment.clock)
-                .run(metrics: metrics, runs: options.runs)
+            let report = try await withSession(live, targets: targets) { session in
+                let source = try benchSource(live, targets: targets, session: session)
+                return await PlatformBenchmarkRunner(source: source, clock: environment.clock)
+                    .run(metrics: metrics, runs: options.runs)
+            }
             let output = options.output ?? ".build/integration/platform-bench.json"
             try write(try report.median.encoded(), to: output)
             for (index, run) in report.perRun.enumerated() {
@@ -165,27 +224,21 @@ extension Harness {
         }
     }
 
-    /// PLT-R822: a gated metric above its gate fails here, with no tolerance; the baseline comparison at 25 %
-    /// is scripts/bench-compare.sh's job. Metrics whose measurement failed make the run incomplete; metrics the
-    /// source cannot measure yet (app histograms before W2-E2's export) are skipped with a warning.
+    /// PLT-R822: over the gate or more than 25 % above the baseline fails (RegressionGate; scripts/bench-compare.sh
+    /// repeats the baseline comparison in CI). Metrics whose measurement failed make the run incomplete; metrics
+    /// the source cannot measure (app histograms without the hooks build) are skipped with a warning.
     func benchVerdict(_ report: PlatformBenchmarkReport, metrics: [PlatformMetric]) -> HarnessExit {
-        var overGate = false
         for metric in metrics {
             if let reason = report.skipped[metric.name] {
                 environment.console.emitError("skipped: " + metric.name + " (" + reason + ")")
-                continue
-            }
-            guard let value = report.median.metrics[metric.name]?.value else {
+            } else if report.median.metrics[metric.name] == nil {
                 environment.console.emitError(
                     "not measured: " + metric.name + " (" + (report.unmeasured[metric.name] ?? "no value") + ")")
-                continue
             }
-            let verdict = value > metric.gate ? "OVER GATE" : "ok"
-            overGate = overGate || value > metric.gate
-            environment.console.emit(
-                metric.name + String(format: " %.3f ", value) + metric.unit + ", gate \(metric.gate): " + verdict)
         }
-        if overGate { return .failure }
+        let verdicts = RegressionGate.evaluate(report.median, gates: metrics, baseline: loadBaseline())
+        verdicts.map(RegressionGate.describe).forEach(environment.console.emit)
+        if verdicts.contains(where: \.failed) { return .failure }
         return report.unmeasured.isEmpty ? .success : .incomplete
     }
 }

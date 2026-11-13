@@ -2,8 +2,10 @@
 //
 // `compat-harness soak` (QA-R16, 02-platform.md 13.6): replays exactly N keystrokes of Telex words through
 // the real pipeline into the scenario targets in turn (TextEdit, a Chrome page, Terminal by default), checks
-// the text of every chunk, samples the footprint of the app under test for M2 (gate 5 MB/h, 8.1) and checks
-// that no modifier is left held. The live monitor (proc_pid_rusage, CGEventSource flags) runs on the runner.
+// the text of every chunk, samples the footprint of the app under test for M2 (gate 5 MB/h, 8.1), checks that no
+// modifier is left held and, through the integration hooks, that the app neither crashed nor tripped its watchdog
+// (13.6; flushes are gated in the normal profile, T5). 1,000,000 keys at the fast profile (30 ms) take 8.3 hours,
+// the 13.6 duration. The live monitor (proc_pid_rusage, CGEventSource flags, hooks) runs on the runner.
 
 internal import Foundation
 public import RealtimeSupport
@@ -82,6 +84,31 @@ public protocol SoakMonitor: Sendable {
     func footprintMegabytes() async throws -> Double
     /// `CGEventFlags` of the combined session state after the run.
     func heldModifierFlags() -> UInt64
+    /// The app's own counters (integration hooks); nil when the app does not answer them.
+    func counters() async -> SoakCounters?
+}
+
+extension SoakMonitor {
+    public func counters() async -> SoakCounters? { nil }
+}
+
+/// 13.6 checks beyond text and memory: no crash (same process at the end), zero watchdog trips, flushes.
+public struct SoakCounters: Sendable, Hashable, Codable {
+    public var processIdentifier: Int32
+    public var flushes: UInt64
+    public var watchdogTrips: UInt64
+
+    public init(processIdentifier: Int32, flushes: UInt64, watchdogTrips: UInt64) {
+        self.processIdentifier = processIdentifier
+        self.flushes = flushes
+        self.watchdogTrips = watchdogTrips
+    }
+
+    public init(_ snapshot: AppStateSnapshot) {
+        self.init(
+            processIdentifier: snapshot.processIdentifier, flushes: snapshot.metrics.flushes,
+            watchdogTrips: snapshot.metrics.watchdogTrips)
+    }
 }
 
 public struct SoakSummary: Sendable, Hashable, Codable {
@@ -108,7 +135,22 @@ public struct SoakSummary: Sendable, Hashable, Codable {
     public var samples: [Sample]
     public var growthMegabytesPerHour: Double?
     public var stuckModifierFlags: UInt64
+    /// Counter deltas over the soak (13.6); nil when the app does not answer the integration hooks.
+    public var watchdogTrips: UInt64?
+    public var flushes: UInt64?
+    /// The app process changed during the soak: it crashed or was restarted (13.6 "no crash").
+    public var appRestarted: Bool?
     public var passed: Bool
+
+    /// M2 as an ADR 0502 result for the regression gate; nil when growth was not measured.
+    public func metricsDocument() -> BenchmarkDocument? {
+        guard let growth = growthMegabytesPerHour else { return nil }
+        let gate = PlatformGates.soakGrowth
+        return BenchmarkDocument(
+            formatVersion: 1, benchmark: "platform-soak", runs: 1,
+            calibration: .init(name: PlatformBenchmarkRunner.calibrationName, nanoseconds: 1),
+            metrics: [gate.name: .init(value: growth, unit: gate.unit, budget: gate.gate, calibrated: false)])
+    }
 
     /// Least-squares slope of footprint over time in MB/h; nil with fewer than two distinct sample times.
     public static func growth(_ samples: [Sample]) -> Double? {
@@ -152,6 +194,7 @@ public struct SoakRunner: Sendable {
 
     public func run(_ plan: SoakPlan) async -> SoakSummary {
         let start = clock.now().nanoseconds
+        let before = await monitor?.counters()
         var failures: [SoakSummary.Failure] = []
         var samples: [SoakSummary.Sample] = []
         var prepared = Set<Int>()
@@ -170,10 +213,27 @@ public struct SoakRunner: Sendable {
         }
         let growth = SoakSummary.growth(samples)
         let stuck = (monitor?.heldModifierFlags() ?? 0) & SoakSummary.modifierMask
-        let passed = failures.isEmpty && stuck == 0 && (growth ?? 0) <= SoakSummary.growthGateMegabytesPerHour
-        return SoakSummary(
+        var summary = SoakSummary(
             keystrokes: plan.keystrokes, chunks: plan.chunks.count, failures: failures, samples: samples,
-            growthMegabytesPerHour: growth, stuckModifierFlags: stuck, passed: passed)
+            growthMegabytesPerHour: growth, stuckModifierFlags: stuck, passed: false)
+        if let before { Self.record(before: before, after: await monitor?.counters(), into: &summary) }
+        let normalProfile = targets.first?.timing == .normal
+        summary.passed =
+            failures.isEmpty && stuck == 0 && (growth ?? 0) <= SoakSummary.growthGateMegabytesPerHour
+            && summary.appRestarted != true && (summary.watchdogTrips ?? 0) == 0
+            && (!normalProfile || (summary.flushes ?? 0) == 0)
+        return summary
+    }
+
+    /// 13.6: zero watchdog trips, no crash, zero flushes in the normal profile (T5).
+    static func record(before: SoakCounters, after: SoakCounters?, into summary: inout SoakSummary) {
+        guard let after, after.processIdentifier == before.processIdentifier else {
+            summary.appRestarted = true
+            return
+        }
+        summary.appRestarted = false
+        summary.watchdogTrips = after.watchdogTrips &- before.watchdogTrips
+        summary.flushes = after.flushes &- before.flushes
     }
 
     /// 13.6: the first chunk of a target runs its full setup (launch, page, capture shell, waits). Later chunks

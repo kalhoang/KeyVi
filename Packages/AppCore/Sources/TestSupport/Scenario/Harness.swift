@@ -2,7 +2,8 @@
 //
 // `compat-harness` commands (PLT-R530, PLT-R821, QA-R16, QA-R21). The executable (Sources/CompatHarness)
 // only parses arguments and supplies the live services; everything else is here so it is tested. Dry runs
-// and `coverage` never touch `environment.live`.
+// and `coverage` never touch `environment.live`. Live runs: HarnessLiveCommands.swift, HarnessSession.swift,
+// HarnessMeasurements.swift.
 
 internal import AppModel
 internal import Foundation
@@ -25,6 +26,7 @@ public struct Harness: Sendable {
         case .run: return options.dryRun ? planScenarios() : await runScenarios()
         case .soak: return options.dryRun ? planSoak() : await runSoak()
         case .bench: return options.dryRun ? planBench() : await runBench()
+        case .egress: return options.dryRun ? planEgress() : await runEgress()
         }
     }
 
@@ -40,9 +42,12 @@ public struct Harness: Sendable {
         let brandFile = repository.appendingPathComponent("scripts/brand.env")
         let brand = (try? environment.fileSystem.readData(at: brandFile, maxBytes: 64 * 1024))
             .map { String(decoding: $0, as: UTF8.self) }
-        return HarnessTargets.resolve(
+        var targets = HarnessTargets.resolve(
             repository: repository, brandEnvironment: brand, testHost: options.testHostBundleID,
             appUnderTest: options.appBundleID)
+        // PLT-R398C: the live system actions toggle Secure Keyboard Entry through the app menu of these apps.
+        targets.secureKeyboardEntryApps = rulesData().map(HarnessTargets.secureKeyboardEntryApps(rulesData:)) ?? []
+        return targets
     }
 
     /// Loaded scenarios filtered by `--only`; nil (after printing why) when loading fails.
@@ -55,13 +60,19 @@ public struct Harness: Sendable {
             return nil
         }
         guard !options.only.isEmpty else { return loaded }
-        let unknown = Set(options.only).subtracting(loaded.map(\.id))
+        let unknown = options.only.filter { pattern in !loaded.contains { Self.matches($0.id, pattern) } }
         guard unknown.isEmpty else {
             environment.console.emitError(
                 "compat-harness: unknown scenario id(s) " + unknown.sorted().joined(separator: ", "))
             return nil
         }
-        return loaded.filter { options.only.contains($0.id) }
+        return loaded.filter { scenario in options.only.contains { Self.matches(scenario.id, $0) } }
+    }
+
+    /// `--only` entries are scenario ids; one ending in `*` selects every id with that prefix (`testhost.*`, the
+    /// QA-R11 TestHost suite).
+    static func matches(_ id: String, _ pattern: String) -> Bool {
+        pattern.hasSuffix("*") ? id.hasPrefix(String(pattern.dropLast())) : id == pattern
     }
 
     func unresolved(_ scenarios: [Scenario], _ targets: HarnessTargets) -> [String] {
@@ -93,19 +104,44 @@ public struct Harness: Sendable {
     // MARK: Dry runs
 
     func planScenarios() -> HarnessExit {
-        guard let scenarios = selectedScenarios() else { return .failure }
+        guard let scenarios = selectedScenarios(), let profiles = loadProfiles() else { return .failure }
         let targets = targets
-        HarnessPlans.scenarioPlan(scenarios, targets: targets, options: options).forEach(environment.console.emit)
+        HarnessPlans.scenarioPlan(scenarios, targets: targets, options: options, profiles: profiles)
+            .forEach(environment.console.emit)
         var exit = HarnessExit.success
         if environment.fileSystem.fileExists(at: url(options.rules)) {
             exit = coverage() == .success ? exit : .failure
         }
+        let problems = planProblems(scenarios, profiles: profiles)
+        for problem in problems { environment.console.emitError("compat-harness: " + problem) }
+        if !problems.isEmpty { exit = .failure }
         let missing = unresolved(scenarios, targets)
         if !missing.isEmpty {
             environment.console.emitError("compat-harness: unresolved target in " + missing.joined(separator: ", "))
             exit = .failure
         }
         return exit
+    }
+
+    /// Profiles that name unknown scenarios or rules, and scenario files that use a setup action the scenario
+    /// schema does not list yet (`ScenarioValidator.pendingSchemaActions`).
+    func planProblems(_ scenarios: [Scenario], profiles: [AppProfile]) -> [String] {
+        let loader = ScenarioLoader(fileSystem: environment.fileSystem)
+        let ids = Set(
+            ((try? loader.scenarioFiles(in: url(options.scenarios))) ?? []).map {
+                $0.deletingPathExtension().lastPathComponent
+            })
+        let rules = rulesData().flatMap { try? RuleScenarioCoverage.ruleScenarios(rulesData: $0) } ?? []
+        var problems = AppProfileLoader.problems(profiles, scenarioIDs: ids, shippedRuleIDs: Set(rules.map(\.rule)))
+        for scenario in scenarios {
+            let pending = scenario.setup.map(\.action).filter(ScenarioValidator.pendingSchemaActions.contains)
+            if let action = pending.first {
+                problems.append(
+                    scenario.id + " uses " + action.rawValue
+                        + ", which compat/schema/scenario.schema.json does not list yet")
+            }
+        }
+        return problems
     }
 
     func soakTargets() -> [Scenario]? {
@@ -136,7 +172,8 @@ public struct Harness: Sendable {
 
     func planBench() -> HarnessExit {
         let metrics = options.metrics.compactMap(PlatformGates.metric(named:))
-        HarnessPlans.benchPlan(metrics, options: options, targets: targets).forEach(environment.console.emit)
+        HarnessPlans.benchPlan(metrics, options: options, targets: targets, baseline: loadBaseline())
+            .forEach(environment.console.emit)
         return .success
     }
 

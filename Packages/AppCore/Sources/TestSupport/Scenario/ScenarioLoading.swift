@@ -90,6 +90,11 @@ public enum ScenarioValidator {
     public static let expectKeys: Set<String> = ["text", "paused", "holderBundleId", "firstKeyAfterReleaseComposed"]
     /// Longest `wait` step accepted, in milliseconds.
     public static let maximumWaitMilliseconds = 60_000
+    /// Setup actions the Swift model accepts that compat/schema/scenario.schema.json does not list yet. The
+    /// schema file is outside this workstream; the exact patch is requested from the integrator (ADR 0502,
+    /// "Integration hooks"). `ScenarioFilesTests` keeps the difference to exactly this set, and no scenario file
+    /// may use these actions until the schema lists them.
+    public static let pendingSchemaActions: Set<Scenario.SetupStep.Action> = [.testHook]
 
     public static func problems(in scenario: Scenario) -> [String] {
         var problems: [String] = []
@@ -106,7 +111,9 @@ public enum ScenarioValidator {
             problems.append("expect needs at least one expectation")
         }
         for (index, step) in scenario.setup.enumerated() {
-            if let problem = problem(in: step) { problems.append("setup[\(index)] " + problem) }
+            if let problem = problem(in: step, keyCount: scenario.keys.count) {
+                problems.append("setup[\(index)] " + problem)
+            }
         }
         if scenario.readback == .webdriver, !scenario.setup.contains(where: { $0.action == .openURL }) {
             problems.append("webdriver readback needs an openURL step")
@@ -144,7 +151,7 @@ public enum ScenarioValidator {
         }
     }
 
-    private static func problem(in step: Scenario.SetupStep) -> String? {
+    private static func problem(in step: Scenario.SetupStep, keyCount: Int) -> String? {
         let value = step.value ?? ""
         switch step.action {
         case .launch:
@@ -159,6 +166,13 @@ public enum ScenarioValidator {
             guard let milliseconds = Int(value), (1...maximumWaitMilliseconds).contains(milliseconds) else {
                 return "wait value must be 1 to \(maximumWaitMilliseconds) milliseconds"
             }
+            return nil
+        case .testHook:
+            guard let hook = ScenarioHookStep.parse(value) else {
+                let names = AppTestHook.allCases.map(\.rawValue).joined(separator: ", ")
+                return "testHook value must be one of " + names + ", optionally @<key count>"
+            }
+            if let after = hook.afterKeys, after > keyCount { return "testHook @\(after) is past the end of keys" }
             return nil
         }
     }

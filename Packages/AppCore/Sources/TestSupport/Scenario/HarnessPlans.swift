@@ -8,7 +8,9 @@ internal import AppModel
 internal import Foundation
 
 enum HarnessPlans {
-    static func scenarioPlan(_ scenarios: [Scenario], targets: HarnessTargets, options: HarnessOptions) -> [String] {
+    static func scenarioPlan(
+        _ scenarios: [Scenario], targets: HarnessTargets, options: HarnessOptions, profiles: [AppProfile] = []
+    ) -> [String] {
         var lines = [
             "compat-harness run --dry-run: \(scenarios.count) scenario(s) from " + options.scenarios
                 + " (plan only, no events are posted)",
@@ -24,9 +26,25 @@ enum HarnessPlans {
             totalKeys += keys
             totalRange = (totalRange.lowerBound + range.lowerBound)...(totalRange.upperBound + range.upperBound)
             lines += describe(scenario, targets: targets, duration: range)
+            if options.configureApp {
+                lines.append("    app: " + AppConfiguration.of(scenario, profiles: profiles).label)
+            }
         }
         lines.append(
             "Total: \(scenarios.count) scenario(s), \(totalKeys) keystroke(s), typing time " + seconds(totalRange))
+        lines.append(
+            options.configureApp
+                ? "App settings: each scenario's configuration is written to the test build's settings, "
+                    + "restored after the run"
+                : "App settings: left alone (--no-configure)")
+        let canaries = scenarios.filter { PrivacyCanary.isCanaryScenario($0.id) }.count
+        if canaries > 0 {
+            let patterns = PrivacyCanary.tokens.reduce(0) { $0 + PrivacyCanary.patterns(for: $1).count }
+            lines.append(
+                "Privacy canary: after the run, scan the app's files and unified log for "
+                    + "\(PrivacyCanary.tokens.count) canary token(s) in \(patterns) byte pattern(s) "
+                    + "(\(canaries) canary scenario(s))")
+        }
         return lines
     }
 
@@ -87,24 +105,47 @@ enum HarnessPlans {
         lines.append(
             "Checks: text of every chunk; footprint growth at most \(SoakSummary.growthGateMegabytesPerHour) MB/h (M2); "
                 + "no modifier held at the end (QA-R16)")
+        lines.append(
+            "With the integration hooks: same app process at the end (no crash), zero watchdog trips, zero flushes in "
+                + "the normal profile (13.6); M2 written as soak-metrics.json and compared with the baseline at "
+                + "\(Int(RegressionGate.thresholdPercent)) %")
         return lines
     }
 
-    static func benchPlan(_ metrics: [PlatformMetric], options: HarnessOptions, targets: HarnessTargets) -> [String] {
+    static func benchPlan(
+        _ metrics: [PlatformMetric], options: HarnessOptions, targets: HarnessTargets, baseline: BenchmarkDocument?
+    ) -> [String] {
         var lines = [
             "compat-harness bench --dry-run: \(metrics.count) metric(s), median of \(options.runs) run(s), output "
                 + (options.output ?? "stdout") + " (ADR 0502 formatVersion 1, calibrated false; plan only)",
             "App under test: " + (targets.appUnderTestBundleID?.rawValue ?? "unresolved"),
         ]
         for metric in metrics {
+            let stored = baseline?.metrics[metric.name]
             lines.append(
                 "  " + metric.name + ": gate \(metric.gate) " + metric.unit + ", source " + metric.source.rawValue
-                    + ", " + metric.definition)
+                    + ", baseline "
+                    + (stored.map { String($0.value) + ($0.placeholder == true ? " (placeholder)" : "") }
+                        ?? "none") + ", " + metric.definition)
         }
         lines.append(
-            "Durations per run: idle \(options.idleSeconds) s (C1), typing \(options.typingSeconds) s at 10 keys/s (C2)"
-        )
+            "Per run: restart, \(options.settleSeconds) s window (C1 over its last \(options.idleSeconds) s, M1 at its end), "
+                + "typing \(options.typingSeconds) s at 10 keys/s (C2), workload of \(options.workloadKeystrokes) keys "
+                + "under profile " + BenchWorkload.profileID + " (T2, T3, T5, T6), latency probe (T4)")
+        lines.append(
+            "Gate: over the 8.1 gate, or more than \(Int(RegressionGate.thresholdPercent)) % above "
+                + (options.baseline ?? RegressionGate.baselinePath) + " (PLT-R822)")
         return lines
+    }
+
+    static func egressPlan(options: HarnessOptions, hosts: String, appUnderTest: BundleKey?) -> [String] {
+        [
+            "compat-harness egress --dry-run: phase " + options.phase.rawValue + ", \(options.minutes) minute(s), one "
+                + "sample every \(options.intervalSeconds) s (plan only, no app is touched)",
+            "App under test: " + (appUnderTest?.rawValue ?? "unresolved"),
+            "Allowed: loopback; hosts: " + hosts,
+            "Sampler: lsof -nP -a -p <pid> -i -F pPn; a forced update check through the integration hooks at the start",
+        ]
     }
 
     static func seconds(_ range: ClosedRange<UInt64>) -> String {

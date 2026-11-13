@@ -111,14 +111,54 @@ private func testHostFieldIDs() throws -> [String] {
 }
 
 @Suite struct TestHostSourcesTests {
-    /// QA-R10 field list, in the contract's order.
+    /// QA-R10 field list, in the contract's order, then the second window's fields (QA-R11 per-window rules).
     @Test func everyFieldKindIsDeclared() throws {
         #expect(
             try testHostFieldIDs() == [
                 "testhost.native.textField", "testhost.native.textView", "testhost.web.input", "testhost.web.textarea",
                 "testhost.web.contentEditable", "testhost.sim.addressBar", "testhost.sim.sheetCell",
-                "testhost.native.password",
+                "testhost.native.password", "testhost.second.textField", "testhost.second.textView",
+                "testhost.second.plainField", "testhost.second.escapeField",
             ])
+    }
+
+    /// The second window builds every one of its fields with label and hint, and the escape field marks Escape.
+    @Test func secondWindowBuildsItsFields() throws {
+        let second = try read(sourcesDirectory.appendingPathComponent("SecondWindow.swift"))
+        for field in ["secondTextField", "secondTextView", "secondPlainField", "escapeField"] {
+            #expect(second.contains("access[." + field + "]"), "\(field)")
+        }
+        #expect(second.contains("override func cancelOperation") && second.contains("static let marker = \"<esc>\""))
+        #expect(EscapeMarker.value == "<esc>")
+    }
+
+    /// The harness drives TestHost through these controls: Reset fields before each scenario, Command+1, 2, 3 to
+    /// move the focus inside a key script (BenchWorkload, per-window scenarios).
+    @Test func resetButtonAndFocusShortcutsExist() throws {
+        let sources = try files(in: sourcesDirectory).map(read).joined(separator: "\n")
+        #expect(sources.contains("\"" + TestHostControls.resetFields + "\""))
+        #expect(sources.contains("setAccessibilityLabel(\"Reset fields\")"))
+        for (key, selector) in [("1", "focusMainField"), ("2", "focusSecondWindowField"), ("3", "focusAddressBar")] {
+            #expect(sources.contains("#selector(TestHostApp." + selector + "(_:)), \"" + key + "\")"), "\(selector)")
+        }
+        #expect(BenchWorkload.focusKeys == ["command+1", "command+2", "command+3"])
+        for id in [TestHostControls.mainTextField, TestHostControls.secondTextField, TestHostControls.addressBar] {
+            #expect(try testHostFieldIDs().contains(id), "\(id)")
+        }
+    }
+
+    /// Profile `testhost-reproductions` matches the local pages' fields by DOM class.
+    @Test func pagesCarryTheClassesTheProfilesMatch() throws {
+        let profiles = try repositoryProfiles()
+        let classes = profiles.flatMap(\.ruleOverrides).flatMap { override -> [String] in
+            guard case .array(let items)? = override.rule["match"]?["ax"]?["domClasses"] else { return [] }
+            return items.compactMap(\.stringValue)
+        }
+        #expect(classes.count == 3)
+        let pages = try files(in: pagesDirectory).filter { $0.pathExtension == "html" }.map(read).joined()
+        for name in classes {
+            #expect(pages.range(of: #"class="[^"]*\b"# + name + #"\b"#, options: .regularExpression) != nil, "\(name)")
+        }
     }
 
     @Test func windowBuildsAndExposesEveryField() throws {

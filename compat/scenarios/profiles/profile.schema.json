@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compat/scenarios/profiles/profile.schema.json",
+  "title": "App profile of compat-harness (compat/scenarios/profiles/<id>.json)",
+  "description": "Settings, macros and user rule overrides the harness writes into the test build's settings before the listed scenarios (QA-R11, QA-R21). Twin of TestSupport/Scenario/AppProfiles.swift. License: LicenseRef-App-Pending.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "summary", "scenarios"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" },
+    "summary": { "type": "string", "minLength": 1 },
+    "scenarios": { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" }, "uniqueItems": true },
+    "settings": {
+      "type": "object",
+      "description": "Keys and values of the settings object of settings.json (contracts.md section 7). typingMethod comes from each scenario's method.",
+      "not": { "required": ["typingMethod"] }
+    },
+    "macros": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["trigger", "expansion"],
+        "properties": {
+          "trigger": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "expansion": { "type": "string", "maxLength": 4000 },
+          "adaptCase": { "type": "boolean" }
+        }
+      }
+    },
+    "ruleOverrides": {
+      "type": "array",
+      "description": "rule-overrides.json rules (02-platform.md 5.8). bundleIds may name local.testhost. actionFromRule copies the action of a shipped rule of compat/rules.json instead of action.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "summary", "match"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^user\\.[A-Za-z0-9_.-]+$" },
+          "summary": { "type": "string", "minLength": 1 },
+          "match": { "type": "object" },
+          "action": { "type": "object" },
+          "actionFromRule": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" }
+        },
+        "oneOf": [{ "required": ["action"] }, { "required": ["actionFromRule"] }]
+      }
+    }
+  }
+}

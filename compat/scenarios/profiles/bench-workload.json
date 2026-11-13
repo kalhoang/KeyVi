@@ -1,0 +1,14 @@
+{
+  "$schema": "profile.schema.json",
+  "id": "bench-workload",
+  "summary": "compat-harness bench workload (T2, T3, T5, T6): the TestHost address bar uses axSelection, so T3 gets samples",
+  "scenarios": [],
+  "ruleOverrides": [
+    {
+      "id": "user.testhost.bench.addressBar",
+      "summary": "Bench workload: axSelection inline completion in the TestHost address bar (T3)",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.sim.addressBar"] } },
+      "actionFromRule": "browser.webkit.addressBar"
+    }
+  ]
+}
