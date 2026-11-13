@@ -22,6 +22,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
     private struct State {
         var focusedPID: Int32?
         var attributes: [Int32: FocusAttributes] = [:]
+        var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
         var unavailable: Set<Int32> = []
         var observers: [Observer] = []
@@ -35,11 +36,14 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     public init() {}
 
-    /// Sets the focused app/element; posts the given notification to observers.
-    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?) {
+    /// Sets the focused app/element; posts the given notification to observers. `element` names the focused
+    /// element within the app: the same number is the same `AXUIElement` (CFEqual), another number another one,
+    /// so tests can move focus between fields of one app or keep it on one field while its attributes change.
+    public func focus(pid: Int32, attributes: FocusAttributes, notify: AXNotificationKind?, element: UInt16 = 0) {
         state.withLock {
             $0.focusedPID = pid
             $0.attributes[pid] = attributes
+            $0.elements[pid] = element
         }
         if let notify { post(notify, from: pid) }
     }
@@ -76,15 +80,24 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func focusedApplication() -> AXCallResult<Int32?> { .success(state.withLock { $0.focusedPID }) }
 
     public func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?> {
-        let (timingOut, unavailable, hasElement) = state.withLock { state in
+        let (timingOut, unavailable, hasElement, element) = state.withLock { state in
             state.elementQueries[pid, default: 0] += 1
-            return (state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil)
+            return (
+                state.timingOut.contains(pid), state.unavailable.contains(pid), state.attributes[pid] != nil,
+                state.elements[pid] ?? 0
+            )
         }
         if timingOut { return .timedOut }
         if unavailable { return .unavailable }
         guard hasElement else { return .success(nil) }
-        // An application element is a local reference: creating it sends no AX message.
-        return .success(AXFocusedElement(pid: pid, element: AXElementReference(AXUIElementCreateApplication(pid))))
+        return .success(AXFocusedElement(pid: pid, element: Self.elementReference(pid: pid, element: element)))
+    }
+
+    /// An application element is a local reference: creating it sends no AX message. Element 0 is the app's
+    /// own reference; other elements use unused pids above 1,000,000, one per (pid, element).
+    static func elementReference(pid: Int32, element: UInt16) -> AXElementReference {
+        let reference = element == 0 ? pid : 1_000_000 + Int32(element) * 10_000 + pid % 10_000
+        return AXElementReference(AXUIElementCreateApplication(reference))
     }
 
     public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
