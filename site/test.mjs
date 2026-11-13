@@ -11,12 +11,13 @@ import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 import { build } from "./build.mjs";
-import { ANALYTICS_SCRIPT_PATH, POSTHOG_HOSTS } from "./lib/analytics.mjs";
+import { POSTHOG_HOSTS, analyticsScriptPath, loaderSource } from "./lib/analytics.mjs";
 import { loadBrand } from "./lib/brand.mjs";
 import { CATEGORIES, STATUSES } from "./lib/data.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "./lib/headers.mjs";
 import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile } from "./lib/routes.mjs";
+import { shortHash } from "./lib/util.mjs";
 
 const SITE_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(SITE_DIR, "..");
@@ -235,6 +236,25 @@ async function checkSite(label, dist) {
   return pages;
 }
 
+/**
+ * Every `/assets/...` URL in the built pages names the current content of its file, either as `?v=<hash>` or in the
+ * file name (`name.<hash>.js`), so a changed file always gets a new URL despite the year-long immutable caching of
+ * `/assets/*` in static/_headers (browsers and Cloudflare never serve a stale copy, and no purge is needed).
+ */
+async function assertFingerprinted(dist) {
+  let seen = 0;
+  for (const file of (await walk(dist)).filter((f) => f.endsWith(".html"))) {
+    const html = await readFile(file, "utf8");
+    for (const [, url] of html.matchAll(/(?:src|href)="(\/assets\/[^"]*)"/g)) {
+      const [path, query = ""] = url.split("?", 2);
+      const hash = shortHash(await readFile(join(dist, path)));
+      assert.ok(query === `v=${hash}` || path.endsWith(`.${hash}.js`), `${file}: ${url} does not carry the content hash ${hash}`);
+      seen += 1;
+    }
+  }
+  assert.ok(seen > 0, `${dist}: no /assets/ reference found`);
+}
+
 const tmp = await mkdtemp(join(tmpdir(), "site-test-"));
 try {
   // 1. Fallback data (no releases.json, sample matrix fixture).
@@ -280,7 +300,7 @@ try {
     assert.match(m, /iTerm2[\s\S]*?status-notVerified[\s\S]*?quá 120 ngày/);
     assert.ok(!m.includes("<script>alert"), "matrix notes are escaped");
     assert.match(m, /data-matrix-filters/);
-    assert.match(m, /<script src="\/assets\/matrix\.js" defer><\/script>/);
+    assert.match(m, /<script src="\/assets\/matrix\.js\?v=[0-9a-f]{10}" defer><\/script>/);
     assert.ok(!/Mystery app[\s\S]{0,200}status-works/.test(m), "unknown status falls back to notVerified");
     assert.match(read("en", "compatibility", "index.html"), /Works with notes/);
   });
@@ -502,7 +522,7 @@ try {
 
   await check("analytics off: no loader, no PostHog, no third-party origin in pages, CSP or dist/_headers (Q7)", async () => {
     for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
-      assert.ok(!existsSync(join(dist, ANALYTICS_SCRIPT_PATH)), `${dist}: no analytics.js without a key`);
+      assert.deepEqual((await readdir(join(dist, "assets"))).filter((name) => name.startsWith("analytics")), [], `${dist}: no analytics loader without a key`);
       for (const [file, html] of pages) {
         assert.ok(!/analytics\.js|posthog/i.test(html), `${file}: analytics markup without a key`);
         assert.deepEqual([...thirdPartyOrigins(html)], [], `${file}: third-party origin`);
@@ -522,7 +542,9 @@ try {
     await writeFile(configPath, JSON.stringify({ ...base, analytics: { posthogKey: key, posthogHost: apiHost } }));
     const out = join(tmp, "analytics");
     await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
-    const tag = `<script src="${ANALYTICS_SCRIPT_PATH}" defer data-posthog-key="${key}" data-posthog-host="${apiHost}" data-posthog-assets="${assetsHost}"></script>`;
+    const src = analyticsScriptPath(await loaderSource());
+    assert.match(src, /^\/assets\/analytics\.[0-9a-f]{10}\.js$/, "the loader URL carries its content hash");
+    const tag = `<script src="${src}" defer data-posthog-key="${key}" data-posthog-host="${apiHost}" data-posthog-assets="${assetsHost}"></script>`;
     const files = (await walk(out)).filter((f) => f.endsWith(".html"));
     assert.ok(files.length >= ROUTES.length * LANGS.length);
     for (const file of files) {
@@ -532,7 +554,9 @@ try {
       assert.deepEqual([...thirdPartyOrigins(html)].sort(), [apiHost, assetsHost].sort(), `${file}: only the PostHog hosts`);
       assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), `${file}: no inline script (PRD-R74)`);
     }
-    const loader = await readFile(join(out, ANALYTICS_SCRIPT_PATH), "utf8");
+    const loader = await readFile(join(out, src), "utf8");
+    assert.ok(!existsSync(join(out, "assets", "analytics.js")), "no loader under a fixed name");
+    await assertFingerprinted(out);
     for (const setting of ['cookieless_mode: "always"', 'persistence: "memory"', 'person_profiles: "never"', "autocapture: false", "disable_session_recording: true", "advanced_disable_flags: true"]) assert.ok(loader.includes(setting), setting);
     assert.ok(loader.includes("/static/1/array.js") && !/https?:\/\//.test(loader.replace(/^\/\/.*$/gm, "")), "the loader names no host itself");
     const rules = parseHeaders(await readFile(join(out, "_headers"), "utf8"));
@@ -561,6 +585,15 @@ try {
       await writeFile(configPath, JSON.stringify({ ...base, analytics }));
       await assert.rejects(() => build({ outDir: join(tmp, "analytics-bad"), today: "2026-11-13", configPath }), message, JSON.stringify(analytics));
     }
+  });
+
+  await check("every /assets/ reference carries the content hash of its file (immutable /assets/* caching)", async () => {
+    const rules = parseHeaders(await readFile(join(SITE_DIR, "static", "_headers"), "utf8"));
+    assert.ok(headersForPath(rules, "/assets/x.js").some(([name, value]) => name === "Cache-Control" && /immutable/.test(value)),
+      "this check exists because /assets/* is cached for a year");
+    await assertFingerprinted(populated);
+    assert.notEqual(analyticsScriptPath("loader a"), analyticsScriptPath("loader b"), "a changed loader gets a new URL");
+    assert.equal(analyticsScriptPath("loader a"), analyticsScriptPath("loader a"), "an unchanged loader keeps its URL");
   });
 
   await check("noindex preview: X-Robots-Tag on every response only when asked (Pa, 2026-11-13)", async () => {

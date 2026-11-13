@@ -78,7 +78,7 @@ docker logout ghcr.io
 1. In the `kal.vn` zone, create the record for the site host with the same target as the other hosts this Swarm serves through Traefik (for example the record of `kal.vn`, whose `kal-profile` stack runs on the same Swarm), **proxied** (orange cloud), as Pa decided. VERIFY the target before saving.
 2. SSL/TLS mode of the zone: **Full (strict)**. Traefik presents a valid certificate from the DNS challenge, so strict validation works; Flexible would send plain HTTP to the origin.
 3. Traefik requests the certificate on the first HTTPS request for the host. If it stays on Traefik's default certificate, the shared DNS challenge token does not cover `kal.vn` yet (section 2) or the resolver name is wrong (section 4 step 2).
-4. Cloudflare honours the origin's `Cache-Control` (`appcast.xml` 5 minutes, `/assets/*` and `/download/*` one year, pages not cached), so no cache purge is needed after a deploy. The stylesheet URL carries a content hash.
+4. Cloudflare honours the origin's `Cache-Control` (`appcast.xml` 5 minutes, `/assets/*` and `/download/*` one year, pages not cached), so no cache purge is needed after a deploy: every URL under `/assets/` names the current content of its file (`?v=<content hash>`, or the hash in the file name for the analytics loader; `node site/test.mjs` checks every page), and release files under `/download/` carry their version in the name. Keep the zone's Caching Level at **Standard** (the default), which keeps the query string in the cache key.
 
 Checks after the first deploy:
 
@@ -108,7 +108,7 @@ curl -sS "https://$APP_SITE_HOST/healthz"                              # ok
 1. In PostHog Cloud, organisation "Kalera", create a project for the website. Region (US or EU): VERIFY the organisation's region; it decides `posthogHost`.
 2. Project settings: turn on **cookieless tracking** (Web analytics) and **Discard client IP data**. Both are required for what the privacy page states.
 3. In `site/config.json`, set `analytics.posthogKey` to the project API key (`phc_...`; it is public by design) and `analytics.posthogHost` to `https://us.i.posthog.com` or `https://eu.i.posthog.com`. Pull request, then deploy (section 6).
-4. What changes, all tested by `node site/test.mjs`: every website page loads `/assets/analytics.js` (cookieless mode, page views only), the site-wide CSP gains exactly the two PostHog hosts, and `/rieng-tu` and `/en/privacy/` describe the analytics instead of "none". The app and the release-notes pages never load it.
+4. What changes, all tested by `node site/test.mjs`: every website page loads `/assets/analytics.<content hash>.js` (cookieless mode, page views only), the site-wide CSP gains exactly the two PostHog hosts, and `/rieng-tu` and `/en/privacy/` describe the analytics instead of "none". The app and the release-notes pages never load it.
 5. To stop: empty `posthogKey` and deploy.
 
 ## 8. Preview until the first public release

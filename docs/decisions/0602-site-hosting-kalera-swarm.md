@@ -31,7 +31,9 @@ that is empty until Pa provides one (Q7); until the first public release a previ
    repeats the comparison against the running container (`check-live-headers.mjs`) before it pushes anything.
    `_headers` gained HSTS, `X-Frame-Options`, immutable caching of `/download/*` and a strict
    `/release-notes/*` policy (no script, no image, the stylesheet hash only) that applies on top of the site-wide
-   one.
+   one. Because `/assets/*` and `/download/*` are cached for a year as `immutable`, every page URL of a file under
+   `/assets/` carries its content hash (`site/lib/fingerprint.mjs` adds `?v=<hash>`; the analytics loader has the hash
+   in its file name) and release files carry their version, so a deploy never needs a cache purge.
 3. **Builds and deploys only from `prod`.** `site-image.yml` runs on pushes to `prod` (and a manual run on `prod`),
    never on `main` or pull requests: tests, release files, build, live header check, push of `sha-<commit>` and
    `prod`, then the Portainer service webhook. `site.yml` keeps testing and building on pull requests and `main` and
@@ -52,7 +54,7 @@ that is empty until Pa provides one (Q7); until the first public release a previ
    files with the appcast that names them.
 7. **Analytics (Q7).** `site/config.json` `analytics.posthogKey` empty means no script and no third-party origin. A
    key (validated as `phc_` plus letters and digits) and a PostHog Cloud host (US or EU only) make the build write the
-   local loader `assets/analytics.js` and add it to every page that `layout.mjs` renders; the loader starts PostHog in
+   local loader `assets/analytics.<content hash>.js` and add it to every page that `layout.mjs` renders; the loader starts PostHog in
    cookieless mode with page views only. Release-notes pages are static files from `scripts/publish-release` and never
    get it. This replaces "Website analytics: none" of ADR 0601 decision 5 and ADR 0001 item 18 for builds that set a
    key; the privacy page renders the state the build ships.

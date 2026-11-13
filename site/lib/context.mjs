@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 // Build context: brand, config, data, per-language content and the token tables used to fill copy.
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { analyticsScriptPath, loaderSource } from "./analytics.mjs";
 import { loadBrand } from "./brand.mjs";
 import { loadConfig } from "./config.mjs";
 import { loadChangelog, loadMatrix, loadReleases } from "./data.mjs";
+import { assetHashes } from "./fingerprint.mjs";
 import { verifyBadge } from "./layout.mjs";
 import { LANGS, ROUTES, routePath } from "./routes.mjs";
-import { esc, interp, shortHash } from "./util.mjs";
+import { esc, interp } from "./util.mjs";
 
 export const DEFAULT_MIN_MACOS = "15"; // PRD-R8, pending Pa's confirmation (ADR 0001 #6)
 const MACOS_NAMES = new Map([["15", "Sequoia"]]);
@@ -49,7 +50,8 @@ export async function createContext(options) {
   const changelog = await loadChangelog(rootDir, options.dataDir, fixturesDir, warn);
   const content = Object.fromEntries(await Promise.all(LANGS.map(async (lang) => [lang, await loadContent(siteDir, lang)])));
 
-  const css = await readFile(join(siteDir, "static", "assets", "style.css"));
+  const hashes = await assetHashes(join(siteDir, "static", "assets"));
+  const loader = config.analytics.enabled ? await loaderSource() : null;
   const demo = ["demo.mp4", "demo.webm"].filter((name) => existsSync(join(siteDir, "static", "assets", name)));
 
   const ctx = {
@@ -61,7 +63,8 @@ export async function createContext(options) {
     data: { releases, matrix, changelog },
     content,
     demo,
-    assets: { css: `/assets/style.css?v=${shortHash(css)}` },
+    // Every /assets/ URL carries a content hash (lib/fingerprint.mjs); `analytics` is the loader file the build writes.
+    assets: { css: "/assets/style.css", hashes, analytics: loader === null ? null : { path: analyticsScriptPath(loader), source: loader } },
   };
   ctx.tokensFor = (lang) => tokensFor(ctx, lang);
   return ctx;

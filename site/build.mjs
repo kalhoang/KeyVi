@@ -10,7 +10,7 @@
 import { cp, mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ANALYTICS_SCRIPT_PATH, analyticsCspAdditions, loaderSource } from "./lib/analytics.mjs";
+import { analyticsCspAdditions } from "./lib/analytics.mjs";
 import { renderAppcast } from "./lib/appcast.mjs";
 import { createContext } from "./lib/context.mjs";
 import { isoDay, parseIsoDate } from "./lib/dates.mjs";
@@ -75,7 +75,7 @@ export async function build(options = {}) {
   await Promise.all(pages.map((page) => writeFileDeep(join(outDir, page.file), page.html)));
   await cp(join(SITE_DIR, "static"), outDir, { recursive: true, filter: (src) => !src.endsWith(`${sep}appcast.xml`) && !src.endsWith(`${sep}_headers`) });
   await writeHeaders(outDir, ctx.config.analytics, options.noindex === true);
-  if (ctx.config.analytics.enabled) await writeFileDeep(join(outDir, ANALYTICS_SCRIPT_PATH.slice(1)), await loaderSource());
+  if (ctx.assets.analytics) await writeFileDeep(join(outDir, ctx.assets.analytics.path.slice(1)), ctx.assets.analytics.source);
   await writeFileDeep(join(outDir, "appcast.xml"), await renderAppcast(join(SITE_DIR, "static", "appcast.xml"), ctx.brand));
   await writeFileDeep(join(outDir, "sitemap.xml"), renderSitemap(ctx.brand, isoDay(today)));
   await writeFileDeep(join(outDir, "robots.txt"), renderRobots(ctx.brand));
