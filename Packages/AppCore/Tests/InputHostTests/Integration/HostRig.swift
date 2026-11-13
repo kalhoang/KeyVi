@@ -167,6 +167,9 @@ final class HostRig {
     let hop = ManualMainHop()
     let store: SettingsStoreHarness
     let controller: InputHostController
+    /// The integration hooks' seams when built with `hooks: true` (W3-A): the tap factory and the permission probe
+    /// wrapped as the INTEGRATION_HOOKS build wraps them.
+    let instruments: IntegrationHookInstruments?
     var events: [HostEvent] = []
     private(set) var layout: LayoutTable
 
@@ -174,7 +177,7 @@ final class HostRig {
         layout: LayoutTable = PipelineFixtures.qwertyTable(), source: InputSourceInfo = HostRig.abc,
         layoutData: [InputSourceID: KeyboardLayoutData]? = nil, builder: (any LayoutTableBuilding)? = nil,
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
-        capture: CaptureController? = nil
+        capture: CaptureController? = nil, hooks: Bool = false
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -189,7 +192,7 @@ final class HostRig {
         self.permissions = permissions
         health = HealthEventLog(mirror: logger)
         store = SettingsStoreHarness()
-        let dependencies = InputHostDependencies(
+        let plain = InputHostDependencies(
             tapFactory: tapFactory, poster: poster, fieldAccess: FakeFocusedFieldAccess(field: field),
             pasteboard: FakePasteboard(), ax: ax, processes: processes,
             bundleInspector: FakeBundleInspector(bundles: [:]),
@@ -197,9 +200,18 @@ final class HostRig {
             secureInput: secureInput, permissions: permissions, workspace: workspace, keyValueStore: keyValues,
             clock: clock, scheduler: scheduler, wallClock: wallClock, metrics: metrics, health: health,
             logger: logger, tapLog: tapLog, capture: capture, utilityQueue: utility)
+        var dependencies = plain
+        if hooks {
+            let (instrumented, instruments) = IntegrationHookInstruments.instrument(plain)
+            dependencies = instrumented
+            self.instruments = instruments
+        } else {
+            instruments = nil
+        }
         controller = InputHostController(
             dependencies: dependencies, settingsStore: store.store, hop: hop,
-            makeTapThread: Self.gatedThreadMaker(TapSession.productionThreadMaker(factory: tapFactory), exitGate),
+            makeTapThread: Self.gatedThreadMaker(
+                TapSession.productionThreadMaker(factory: dependencies.tapFactory), exitGate),
             tapClock: MachClock(),
             loadBundled: realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources,
             macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false)
