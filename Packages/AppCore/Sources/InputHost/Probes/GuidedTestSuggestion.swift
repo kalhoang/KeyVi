@@ -60,14 +60,23 @@ enum GuidedTestSuggestion {
 
     /// "This app" plus "only this kind of field" (PLT-R540): role and subrole, then the identifier when AX
     /// exposes one, else the DOM classes. No bundle group (one app only) and no title pattern.
+    ///
+    /// The engine fingerprint the test ran on is added when nothing else narrows the match: without a bundle ID
+    /// it is the only identity, and with a bundle ID but no AX field terms the suggestion would otherwise be a
+    /// bare app-scope rule (score 4) tying with the app's other app-scope overrides (`user.compat.<bundle>`,
+    /// `user.textfocus.<bundle>`), where the smaller id wins and every focus change records a tie (PLT-R521).
+    /// With the engine (+2, PLT-R520) the measured result outranks them deterministically, and it stops
+    /// applying if the app moves to another engine, which the test did not measure.
     static func match(_ context: MatchContext, urlPrefix: String?) -> RuleMatch {
         let ax = AXMatch(
             roles: list(context.role), subroles: list(context.subrole), identifiers: list(context.identifier),
             domClasses: context.identifier == nil && !context.domClasses.isEmpty ? context.domClasses : nil)
         let hasAX = ax.roles != nil || ax.subroles != nil || ax.identifiers != nil || ax.domClasses != nil
         let prefix = urlPrefix.flatMap(hostLevelPrefix)
+        let fieldScoped = hasAX || prefix != nil
         return RuleMatch(
-            bundleIds: context.bundle.map { [$0] }, engines: context.bundle == nil ? [context.engine] : nil,
+            bundleIds: context.bundle.map { [$0] },
+            engines: context.bundle == nil || !fieldScoped ? [context.engine] : nil,
             ax: hasAX ? ax : nil, web: prefix.map { WebMatch(urlPrefixes: [$0]) })
     }
 
