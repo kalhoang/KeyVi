@@ -184,9 +184,10 @@ States: `noPermission`, `starting`, `ready(vi|en)`, `paused(reason)`, `failOpen(
 ```
 
 - Pause reasons are evaluated per key by `HostStateResolver` from snapshots, with precedence lifecycle >
-  sessionInactive > userDisabled > secureInput > secureField > nonLatinInputSource > builtInVietnameseSource >
-  passThroughRule > noTextFocus. The main thread runs the same function for the icon and menu (PRD-R10,
-  PRD-R11), so what the user sees is what the tap does.
+  sessionInactive > diagnosticsTest > userDisabled > secureInput > secureField > builtInVietnameseSource >
+  nonLatinInputSource > passThroughRule > noTextFocus. The main thread runs the same function for the icon and
+  menu (PRD-R10, PRD-R11), so what the user sees is what the tap does. `diagnosticsTest` is the guided test's
+  pass-through (PLT-R1205): every key passes unchanged and hotkeys are suspended while the test types.
 - Lifecycle phases (`noPermission`, `starting`, `running`, `sessionInactive`, `failOpen`) are decided by the
   pure state machine `HostLifecycle` (inputs: permission changes, tap created or failed, retry timer, watchdog
   trips, posting broken, session events; outputs: effects) and published as `LifecycleSnapshot` by its owner
