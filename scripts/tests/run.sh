@@ -285,10 +285,11 @@ See [b](b.md#target-heading), [Vietnamese](#đặt-lại-quyền), [second](#ste
 cat [not a link](missing.md)
 ```
 EOF
-printf '# B\n\n## Target heading\n' >"$K/docs/runbooks/b.md"
+# A footnote definition is not a reference link definition (QA-R66: no false positives).
+printf '# B\n\n## Target heading\n\nA note.[^1]\n\n[^1]: The footnote text.\n' >"$K/docs/runbooks/b.md"
 printf '# Decision\n\nTest App was the temporary name.\n' >"$K/docs/decisions/0001-x.md"
 printf '# Readme\n\nInstall {{AppName}} from [the runbook](docs/runbooks/a.md).\n' >"$K/README.md"
-expect 0 "valid links, GitHub slugs (Vietnamese, duplicates, code) and skipped links pass" \
+expect 0 "valid links, GitHub slugs (Vietnamese, duplicates, code), footnotes and skipped links pass" \
   python3 -I "$S/check-docs.py" links --root "$K"
 printf '\nBroken: [x](missing.md), [y](b.md#nope), [z](#nowhere).\n' >>"$K/docs/runbooks/a.md"
 expect 1 "broken file and anchors fail" python3 -I "$S/check-docs.py" links --root "$K"

@@ -28,7 +28,8 @@ from urllib.parse import unquote
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INLINE_LINK = re.compile(r"!?\[(?:[^\[\]]|\[[^\]]*\])*\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)")
-REFERENCE_DEF = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)")
+# Footnote definitions ("[^1]: text") are not link definitions; their text is no target.
+REFERENCE_DEF = re.compile(r"^\s{0,3}\[(?!\^)[^\]]+\]:\s*(<[^>]+>|\S+)")
 HEADING = re.compile(r"^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 HTML_ANCHOR = re.compile(r"<a\s+[^>]*(?:id|name)=\"([^\"]+)\"", re.I)
 FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
