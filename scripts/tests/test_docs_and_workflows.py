@@ -1054,6 +1054,35 @@ class ITerm2SentenceTests(unittest.TestCase):
         self.assertIn("site/content/vi/support.mjs", row)
 
 
+class IntegratorDecisionTests(unittest.TestCase):
+    """Decisions the integrator took under Pa's delegation after wave 5, recorded in ADR 0400."""
+
+    ADR_0400 = (REPO / "docs" / "decisions" / "0400-documentation-decisions.md").read_text(encoding="utf-8")
+
+    def section(self) -> str:
+        marker = "Decided by the integrator under Pa's delegation"
+        self.assertIn(marker, self.ADR_0400)
+        return " ".join(self.ADR_0400.split(marker, 1)[1].split("\n## ", 1)[0].split())
+
+    def test_the_four_delegated_decisions_are_recorded(self):
+        text = self.section()
+        for needle in ("THIRD_PARTY_NOTICES.txt", "full", "analytics", "noindex", "data-domains", "ad-hoc",
+                       "TCC grant", "Apple Development", "Q9", "hủy", "two sentences"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, text)
+
+    def test_the_dmg_decision_matches_make_dmg(self):
+        script = (REPO / "scripts" / "make-dmg.sh").read_text(encoding="utf-8")
+        self.assertIn("THIRD_PARTY_NOTICES.md", script)
+        self.assertIn("THIRD_PARTY_NOTICES.txt", script)
+
+    def test_the_analytics_decision_matches_the_site(self):
+        config = json.loads((REPO / "site" / "config.json").read_text(encoding="utf-8"))
+        self.assertTrue(config["analytics"].get("websiteId"), "the analytics block stays filled")
+        tracker = (REPO / "site" / "lib" / "analytics.mjs").read_text(encoding="utf-8")
+        self.assertIn('data-domains="${esc(siteHost)}"', tracker)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""

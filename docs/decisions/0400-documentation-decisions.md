@@ -91,6 +91,22 @@ Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
 - **24** is narrowed: the word-list rows of `THIRD_PARTY_NOTICES.md` section 3 point at `data/NOTICES.md`,
   which the data track fills; the asset and site rows remain open.
 
+Decided by the integrator under Pa's delegation (2026-11-13, after wave 5):
+
+- **Notices in the DMG.** The DMG ships the full `THIRD_PARTY_NOTICES.md` as `THIRD_PARTY_NOTICES.txt`, next to
+  `LICENSE.txt` (`scripts/make-dmg.sh`; GPL-3.0 section 4, [0006](0006-app-licence-and-pro-edition.md)), not an
+  excerpt, so every conveyed copy carries every notice.
+- **Website analytics.** The site's `analytics` block in `site/config.json` stays filled (self-hosted Umami, Q7):
+  the preview is served with `noindex`, and the tracker tag's `data-domains` attribute limits counting to the site
+  host, so the preview and local builds opened under another host count nothing.
+- **Integration runner in the VM.** The virtual machine integration runner uses ad-hoc signing and makes a fresh
+  TCC grant after each build (an ad-hoc signature changes with every build, so the grant is tied to that build);
+  the Apple Development identity stays in the host keychain and is never copied into the VM (Q9: signing keys never
+  leave Pa's Mac). The scripts belong to the integration workstream (`scripts/run-integration.sh`, `scripts/vm/`).
+- **Q38 Vietnamese sentence.** The iTerm2 hint uses `hủy` (traditional tone placement, as the rest of the UI) and
+  keeps two sentences: "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục iTerm2 > Secure Keyboard Entry, hoặc
+  nhập xong (hay hủy) lời nhắc mật khẩu đang chờ."
+
 ## Consequences
 
 - Renaming the product requires no documentation change until a baked README is wanted (decision 1).
