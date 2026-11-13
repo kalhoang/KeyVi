@@ -142,6 +142,51 @@ printf '{"tracker": "https://telemetry.example.com/collect", "mail": "mailto:hel
 expect 1 "unknown host fails" env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
 contains "unknown host named" "telemetry.example.com"
 contains "mail host checked" "elsewhere.example"
+rm "$T/u/Test.app/Contents/Resources/extra.json"
+# QA-R60: the repository host and the support mail domain come from brand.env, not the allowlist.
+cp "$T/brand.env" "$T/brand-repo.env"
+printf 'APP_REPOSITORY_URL="https://git.example.org/o/r"\nAPP_SUPPORT_EMAIL="help@mail.example.vn"\n' >>"$T/brand-repo.env"
+expect 1 "github.com is no longer allowed once APP_REPOSITORY_URL names another host" \
+  env BRAND_ENV="$T/brand-repo.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
+contains "default GitHub host reported" "github.com"
+printf '{"repo": "https://git.example.org/o/r/issues/new", "mail": "mailto:help@mail.example.vn"}\n' \
+  >"$T/u/Test.app/Contents/Resources/config.json"
+expect 0 "repository host and support mail domain from brand.env pass" \
+  env BRAND_ENV="$T/brand-repo.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
+expect 1 "support mail domain is not allowed while APP_SUPPORT_EMAIL is empty" \
+  env BRAND_ENV="$T/brand.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
+contains "mail domain reported" "mail.example.vn"
+printf 'APP_REPOSITORY_URL="http://insecure.example/o/r"\n' >>"$T/brand-repo.env"
+expect 1 "brand values are validated (https repository URL)" \
+  env BRAND_ENV="$T/brand-repo.env" "$S/check-url-hosts.sh" "$T/u/Test.app"
+contains "invalid repository URL named" "APP_REPOSITORY_URL invalid"
+
+echo "== check-brand-sync.py"
+cat >"$T/sync.xcconfig" <<'EOF'
+// SPDX-License-Identifier: LicenseRef-App-Pending
+APP_DISPLAY_NAME = Test App
+APP_SLUG = testapp
+// The URL is written with $() because // starts an xcconfig comment.
+APP_REPOSITORY_URL = https:/$()/github.com/o/testapp
+APP_LEGACY_STORAGE_FOLDER_NAMES =
+EOF
+cat >"$T/sync.env" <<'EOF'
+# comment
+APP_DISPLAY_NAME="Test App"
+APP_SLUG="testapp"
+APP_REPOSITORY_URL="https://github.com/o/testapp"
+APP_LEGACY_STORAGE_FOLDER_NAMES=""
+EOF
+expect 0 "brand files in sync (xcconfig URL escape understood)" \
+  python3 -I "$S/check-brand-sync.py" --xcconfig "$T/sync.xcconfig" --env "$T/sync.env"
+printf 'APP_SUPPORT_EMAIL="help@example.vn"\n' >>"$T/sync.env"
+expect 1 "a key filled in one brand file only fails" \
+  python3 -I "$S/check-brand-sync.py" --xcconfig "$T/sync.xcconfig" --env "$T/sync.env"
+contains "missing key named" "APP_SUPPORT_EMAIL is in brand.env but missing from Brand.xcconfig"
+printf 'APP_SUPPORT_EMAIL = help@example.org\n' >>"$T/sync.xcconfig"
+expect 1 "different values fail" \
+  python3 -I "$S/check-brand-sync.py" --xcconfig "$T/sync.xcconfig" --env "$T/sync.env"
+contains "difference named" "APP_SUPPORT_EMAIL differs"
 
 echo "== check-rules / forward delete on a missing rules file"
 expect 0 "check-rules passes when compat/rules.json is absent" python3 -I "$S/check-rules.py" --rules "$T/none.json"
@@ -179,6 +224,11 @@ R="$T/repo"
 mkdir -p "$R/Config" "$R/docs/decisions" "$R/spec"
 cp -R "$S" "$R/scripts"
 cp "$T/brand.env" "$R/scripts/brand.env"
+cat >>"$R/scripts/brand.env" <<'EOF'
+APP_SUPPORT_EMAIL="help@example.vn"
+APP_REPOSITORY_URL="https://github.com/o/testapp"
+APP_LEGACY_STORAGE_FOLDER_NAMES=""
+EOF
 cat >"$R/Config/Brand.xcconfig" <<'EOF'
 // SPDX-License-Identifier: LicenseRef-App-Pending
 APP_DISPLAY_NAME = Test App
@@ -186,6 +236,9 @@ APP_SLUG = testapp
 APP_BUNDLE_ID_RELEASE = vn.example.testapp
 APP_BUNDLE_ID_DEV = vn.example.testapp.dev
 APP_SITE_HOST = testapp.example.vn
+APP_SUPPORT_EMAIL = help@example.vn
+APP_REPOSITORY_URL = https:/$()/github.com/o/testapp
+APP_LEGACY_STORAGE_FOLDER_NAMES =
 EOF
 printf 'Install Test App from https://testapp.example.vn (cask testapp, bundle vn.example.testapp).\nKeep {{AppName}} and testappx.\n' >"$R/README.md"
 printf 'Test App was the temporary name.\n' >"$R/docs/decisions/0001-x.md"
@@ -193,12 +246,37 @@ printf '{{AppName}} Test App\n' >"$R/spec/00.md"
 (cd "$R" && git init -q && git add -A)
 expect 2 "rename needs two arguments" "$R/scripts/rename-app.sh" OnlyOne
 expect 1 "rename rejects a bad slug" "$R/scripts/rename-app.sh" "New" "Bad_Slug"
+expect 1 "rename rejects ; in the name (legacy folder separator, ADR 0307)" "$R/scripts/rename-app.sh" "A;B" ab
 expect 0 "rename dry run" "$R/scripts/rename-app.sh" "Xuôi" xuoi --bundle-prefix vn.example --domain example.vn
 contains "dry run lists README" "--- README.md"
+contains "dry run shows the legacy folder" "legacy storage folders: (none) -> Test App"
 if grep -q "Test App" "$R/README.md"; then ok "dry run writes nothing"; else ko "dry run wrote files"; fi
+if grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES=""$' "$R/scripts/brand.env"; then
+  ok "dry run leaves brand.env alone"
+else
+  ko "dry run leaves brand.env alone"
+fi
 expect 0 "rename apply" "$R/scripts/rename-app.sh" "Xuôi" xuoi --bundle-prefix vn.example --domain example.vn --apply
 if grep -q '^APP_DISPLAY_NAME="Xuôi"$' "$R/scripts/brand.env"; then ok "brand.env rewritten"; else ko "brand.env rewritten"; fi
 if grep -q '^APP_BUNDLE_ID_DEV = vn.example.xuoi.dev$' "$R/Config/Brand.xcconfig"; then ok "xcconfig rewritten"; else ko "xcconfig rewritten"; fi
+# ADR 0307 amendment: the old folder name (ASCII display name) goes into the legacy list of both files.
+if grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES="Test App"$' "$R/scripts/brand.env" &&
+  grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES = Test App$' "$R/Config/Brand.xcconfig"; then
+  ok "old folder name appended to APP_LEGACY_STORAGE_FOLDER_NAMES"
+else
+  ko "old folder name appended to APP_LEGACY_STORAGE_FOLDER_NAMES"
+fi
+# shellcheck disable=SC2016 # the xcconfig URL escape $() is literal text
+if grep -q '^APP_SUPPORT_EMAIL="help@example.vn"$' "$R/scripts/brand.env" &&
+  grep -q '^APP_REPOSITORY_URL="https://github.com/o/testapp"$' "$R/scripts/brand.env" &&
+  grep -q '^APP_SUPPORT_EMAIL = help@example.vn$' "$R/Config/Brand.xcconfig" &&
+  grep -qF 'APP_REPOSITORY_URL = https:/$()/github.com/o/testapp' "$R/Config/Brand.xcconfig"; then
+  ok "support email and repository URL kept (old slug inside the URL untouched)"
+else
+  ko "support email and repository URL kept"
+fi
+expect 0 "brand files still in sync after a rename" python3 -I "$R/scripts/check-brand-sync.py" \
+  --xcconfig "$R/Config/Brand.xcconfig" --env "$R/scripts/brand.env"
 if grep -q 'Install Xuôi from https://xuoi.example.vn (cask xuoi, bundle vn.example.xuoi)' "$R/README.md"; then
   ok "README literals rewritten"
 else
@@ -207,6 +285,20 @@ fi
 if grep -q '{{AppName}} and testappx' "$R/README.md"; then ok "placeholders and longer words untouched"; else ko "placeholders untouched"; fi
 if grep -q 'Test App was' "$R/docs/decisions/0001-x.md"; then ok "decision records untouched"; else ko "decision records untouched"; fi
 if grep -q 'Test App' "$R/spec/00.md"; then ok "spec untouched"; else ko "spec untouched"; fi
+# A non-ASCII name stores its folders under the slug (PLT-R903), so the slug is what becomes legacy.
+expect 0 "second rename" "$R/scripts/rename-app.sh" "Zeta Gõ" zetago --bundle-prefix vn.example --domain example.vn --apply
+if grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES="xuoi;Test App"$' "$R/scripts/brand.env"; then
+  ok "legacy list is newest first and uses the slug for a non-ASCII name"
+else
+  ko "legacy list is newest first and uses the slug for a non-ASCII name"
+fi
+expect 0 "rename back to an earlier name" "$R/scripts/rename-app.sh" "Test App" testapp \
+  --bundle-prefix vn.example --domain example.vn --apply
+if grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES = zetago;xuoi$' "$R/Config/Brand.xcconfig"; then
+  ok "the current folder is never listed as legacy"
+else
+  ko "the current folder is never listed as legacy"
+fi
 mkdir -p "$R/site/data"
 printf '{"releases":[{"version":"0.1.0"}]}\n' >"$R/site/data/releases.json"
 expect 1 "rename refused after a release" "$R/scripts/rename-app.sh" "Other" other

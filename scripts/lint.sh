@@ -16,6 +16,7 @@ Runs, in order:
   forward-delete     scripts/check-no-forward-delete.py  (PLT-R407)
   rules              scripts/check-rules.py               (PLT-R503 to PLT-R531)
   spdx               scripts/check-spdx.sh                (CLR-R11)
+  brand-sync         scripts/check-brand-sync.py          (Brand.xcconfig and brand.env agree)
   shellcheck         shellcheck on scripts/ (skipped when shellcheck is not installed)
   url-hosts          scripts/check-url-hosts.sh           (QA-R60; only with --binary)
 
@@ -39,7 +40,7 @@ while [[ $# -gt 0 ]]; do
     --binary) binary="${2:?--binary needs a value}"; shift 2 ;;
     --release) release=1; shift ;;
     --skip) skip=",${2:?--skip needs a value},"; shift 2 ;;
-    --list) printf '%s\n' swift-format bundle-ids log-interpolation forward-delete rules spdx shellcheck url-hosts; exit 0 ;;
+    --list) printf '%s\n' swift-format bundle-ids log-interpolation forward-delete rules spdx brand-sync shellcheck url-hosts; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
 done
@@ -98,6 +99,7 @@ run_check log-interpolation scripts/lint-log-interpolation.sh
 run_check forward-delete py scripts/check-no-forward-delete.py
 run_check rules py scripts/check-rules.py ${rules_args[@]+"${rules_args[@]}"}
 run_check spdx scripts/check-spdx.sh
+run_check brand-sync py scripts/check-brand-sync.py
 run_check shellcheck shellcheck_scripts
 if [[ -n "$binary" ]]; then
   run_check url-hosts scripts/check-url-hosts.sh "$binary"

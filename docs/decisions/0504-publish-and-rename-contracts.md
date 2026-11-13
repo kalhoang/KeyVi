@@ -45,7 +45,10 @@ name, or the slug when the display name contains non-ASCII characters (`APP_STOR
 ## Rename contract (`scripts/rename-app.sh`)
 
 - Sources of truth: `Config/Brand.xcconfig` and `scripts/brand.env` (five values: display name, slug,
-  release and dev bundle IDs `vn.kal.<slug>` and `vn.kal.<slug>.dev`, site host `<slug>.kal.vn`).
+  release and dev bundle IDs `vn.kal.<slug>` and `vn.kal.<slug>.dev`, site host `<slug>.kal.vn`). Since the
+  2026-11-13 amendment below both files also carry `APP_SUPPORT_EMAIL`, `APP_REPOSITORY_URL` and
+  `APP_LEGACY_STORAGE_FOLDER_NAMES`; `scripts/check-brand-sync.py` (part of `scripts/lint.sh`) fails when
+  the two files disagree.
 - Templates keep placeholders (`{{AppName}}`, `{{app-slug}}`, `{{storage-folder}}`, `{{bundle-id}}`,
   ...) and are rendered at build or publish time; the script never touches them.
 - Static text that must show the name (README, docs, site copy) may contain the literal brand values:
@@ -54,6 +57,25 @@ name, or the slug when the display name contains non-ASCII characters (`APP_STOR
   (historical records). The dry run lists every changed line; `--apply` writes.
 - After a public release (any entry in `site/data/releases.json`) the script refuses unless
   `--after-release`: the bundle ID, folder names and feed URL are permanent (PLT-R750, PLT-R903, QA-R33).
+
+## Amendment 2026-11-13: optional brand values and legacy folders
+
+Follows the platform design review (ADR 0307 amendment, PRD-R47, QA-R51, QA-R60).
+
+- `scripts/brand.env` mirrors the three optional keys of `Config/Brand.xcconfig`. Empty means "not decided
+  yet". `APP_REPOSITORY_URL` is a plain URL in `brand.env` (`https://github.com/<owner>/<repo>`) and is
+  written `https:/$()/github.com/<owner>/<repo>` in the xcconfig, because `//` starts an xcconfig comment.
+  `load_brand` (`scripts/lib/common.sh`) validates the shape of each value when it is set.
+- `scripts/rename-app.sh` keeps `APP_SUPPORT_EMAIL` and `APP_REPOSITORY_URL` exactly as they are (a
+  repository URL that contains the old slug is not rewritten). It puts the old storage folder name
+  (PLT-R903: the display name, or the slug when the display name is not ASCII) first in
+  `APP_LEGACY_STORAGE_FOLDER_NAMES`, drops duplicates and drops the new folder name, so renaming back to an
+  earlier name never asks the migrator to move a folder onto itself. A display name may not contain `;`,
+  the list separator. The script body is one compound command, so rewriting its own file (a usage example
+  that equals an old name) cannot derail the running shell.
+- `scripts/check-url-hosts.sh` allows the host of `APP_REPOSITORY_URL` (`github.com` while it is empty) and
+  the domain of `APP_SUPPORT_EMAIL` (when set) from `brand.env`; neither is listed in
+  `scripts/url-hosts.allow` any more.
 
 ## Consequences
 

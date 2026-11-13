@@ -14,7 +14,8 @@ script with `--help`.
 | Forward delete (PLT-R407) | `check-no-forward-delete.py` | any rule value or key naming forward delete, keycode 117 in a key-code parameter, a delete direction other than backspace | provenance and summary text may describe the symptom |
 | Rules (PLT-R503 to PLT-R531) | `check-rules.py` | schema errors (first `compat/schema/*rules*.json`), missing provenance or scenario, duplicate ids, identical match signatures, invalid `titlePattern`, placeholder in global or title-only rules, paste without opt-in, manual scenario without a matrix row, `reviewBy` more than 12 months ahead; `--release`: `reviewBy` more than 30 days overdue | missing rules file passes (nothing ships yet) unless `--require` |
 | SPDX (CLR-R11) | `check-spdx.sh` | source file without `SPDX-License-Identifier` in its first 5 lines, or the wrong licence: `MPL-2.0` under `Packages/VietnameseEngine/` and `Packages/VietnameseEngineFuzz/`, `LicenseRef-App-Pending` elsewhere | `spec/`, generated output, JSON and Markdown |
-| URL hosts (QA-R60) | `check-url-hosts.sh` | a `scheme://host` or `mailto:` host in the built app outside `scripts/url-hosts.allow` plus the site host | XML namespace and DTD hosts listed in the allowlist (VERIFY against the first Release build) |
+| URL hosts (QA-R60) | `check-url-hosts.sh` | a `scheme://host` or `mailto:` host in the built app outside `scripts/url-hosts.allow` plus the hosts derived from `scripts/brand.env`: the site host, the host of `APP_REPOSITORY_URL` (`github.com` while empty) and the domain of `APP_SUPPORT_EMAIL` (when set) | XML namespace and DTD hosts listed in the allowlist (VERIFY against the first Release build) |
+| Brand files (CLAUDE.md) | `check-brand-sync.py` | a key of `Config/Brand.xcconfig` missing from `scripts/brand.env` or the other way round, or a different value (`$()` in the xcconfig is ignored) | none |
 | Shell scripts | `shellcheck -x` | warnings in `scripts/` | none |
 
 Notes:
