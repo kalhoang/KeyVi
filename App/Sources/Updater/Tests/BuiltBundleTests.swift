@@ -80,5 +80,17 @@ import Testing
         #expect(Localizer(language: .vietnamese, appBundle: app).string(UpdatesText.retry) == "Thử lại")
         #expect(Localizer(language: .english, appBundle: app).string(UpdatesText.retry) == "Try Again")
     }
+
+    /// ADR 0006 (GPL-3.0 section 0, Appropriate Legal Notices): the root LICENSE ships in the bundle, so the
+    /// Licences panel can show it. Read from the built app, never from the repository (xctest cannot see every
+    /// volume).
+    @Test("ADR 0006: the root LICENSE (GPL-3.0) is a resource of the built app")
+    func licenceIsBundled() throws {
+        let app = try Self.builtApp()
+        let url = try #require(app.url(forResource: "LICENSE", withExtension: nil), "LICENSE in Contents/Resources")
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("GNU GENERAL PUBLIC LICENSE") && text.contains("Version 3, 29 June 2007"))
+        #expect(text.contains("END OF TERMS AND CONDITIONS"), "the full text, not an excerpt")
+    }
 }
 #endif
