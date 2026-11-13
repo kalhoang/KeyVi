@@ -264,6 +264,44 @@ contains "unsigned fuzz commit named" "test: unsigned fuzz change"
 expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
   --path Packages/VietnameseEngine
 
+echo "== check-docs.py (relative links and brand literals in docs)"
+K="$T/k"
+mkdir -p "$K/docs/runbooks" "$K/docs/decisions" "$K/scripts"
+cp "$T/brand.env" "$K/scripts/brand.env"
+cat >"$K/docs/runbooks/a.md" <<'EOF'
+# Runbook A
+
+## Đặt lại quyền
+
+## Step: one `code`
+
+## Step: one `code`
+
+See [b](b.md#target-heading), [Vietnamese](#đặt-lại-quyền), [second](#step-one-code-1), [dir](../decisions/),
+[site](https://example.org/x), [mail](mailto:a@example.org), [template](https://{{app-slug}}.example/x) and
+<a id="custom"></a>[custom](#custom).
+
+```sh
+cat [not a link](missing.md)
+```
+EOF
+printf '# B\n\n## Target heading\n' >"$K/docs/runbooks/b.md"
+printf '# Decision\n\nTest App was the temporary name.\n' >"$K/docs/decisions/0001-x.md"
+printf '# Readme\n\nInstall {{AppName}} from [the runbook](docs/runbooks/a.md).\n' >"$K/README.md"
+expect 0 "valid links, GitHub slugs (Vietnamese, duplicates, code) and skipped links pass" \
+  python3 -I "$S/check-docs.py" links --root "$K"
+printf '\nBroken: [x](missing.md), [y](b.md#nope), [z](#nowhere).\n' >>"$K/docs/runbooks/a.md"
+expect 1 "broken file and anchors fail" python3 -I "$S/check-docs.py" links --root "$K"
+contains "missing file named" "docs/runbooks/a.md:17: link target not found: missing.md"
+contains "missing anchor in another file named" "no heading or anchor #nope in docs/runbooks/b.md"
+contains "missing anchor in the same file named" "no heading or anchor #nowhere in docs/runbooks/a.md"
+expect 0 "placeholders pass; decision records may name the product" python3 -I "$S/check-docs.py" brand --root "$K"
+printf 'Open Test App, then visit https://testapp.example.vn (bundle vn.example.testapp.dev).\n' >"$K/docs/runbooks/b.md"
+printf 'Run testapp-notary.\n' >"$K/CONTRIBUTING.md"
+expect 1 "literal brand values in docs fail" python3 -I "$S/check-docs.py" brand --root "$K"
+contains "bundle ID reported first on its line" "docs/runbooks/b.md:1: literal bundle ID 'vn.example.testapp.dev'"
+contains "slug reported" "CONTRIBUTING.md:1: literal slug ({{app-slug}}) 'testapp'"
+
 echo "== check-rules / forward delete on a missing rules file"
 expect 0 "check-rules passes when compat/rules.json is absent" python3 -I "$S/check-rules.py" --rules "$T/none.json"
 expect 0 "forward-delete passes when absent" python3 -I "$S/check-no-forward-delete.py" "$T/none.json"
