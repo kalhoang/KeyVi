@@ -24,7 +24,7 @@ extension WorkerCore {
         feedback.record(outcome, for: job.sequence)
         outcomes.record(outcome, for: job.sequence)
         if outcome.deliveredEdit {
-            lastExecutedKind = job.kind
+            if job.kind == .macro { lastMacroFinishedAt = services.clock.now() }
             recordLatency(of: job, outcome: outcome)
         }
         finish()

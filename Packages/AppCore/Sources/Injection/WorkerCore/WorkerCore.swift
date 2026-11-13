@@ -41,7 +41,8 @@ final class WorkerCore {
     var context: JobContext?
     /// Sequence of the edit being executed, for pairedKeyUps released mid-job.
     var runningEdit: JobSequence?
-    var lastExecutedKind: EditKind?
+    /// When the last macro job finished: keys received before it waited behind the macro (PLT-R480).
+    var lastMacroFinishedAt: MonotonicInstant?
     /// Undeliverable events since the last `postingBroken` health event (ADR 0311).
     var unreportedLosses = 0
     var restoreDelay: Duration?
@@ -107,12 +108,13 @@ final class WorkerCore {
         while let job = queue.pop() { backlog.append(job) }
     }
 
-    /// PLT-R314: more than `maxQueuedJobs` waiting, or the oldest waiting key older than the ceiling (1 s right
-    /// after a macro, PLT-R480).
+    /// PLT-R314: more than `maxQueuedJobs` waiting, or the oldest waiting key older than the ceiling (1 s for keys
+    /// that waited behind a macro job, PLT-R480).
     func livenessExceeded() -> Bool {
         if backlog.count + queue.queuedCount > configuration.maxQueuedJobs { return true }
         guard let since = backlog.first?.waitingSince else { return false }
-        let ceiling = lastExecutedKind == .macro ? configuration.macroLivenessCeiling : configuration.livenessCeiling
+        let waitedBehindMacro = lastMacroFinishedAt.map { since < $0 } ?? false
+        let ceiling = waitedBehindMacro ? configuration.macroLivenessCeiling : configuration.livenessCeiling
         return services.clock.now().nanoseconds(since: since) > InjectionTiming.nanoseconds(ceiling)
     }
 

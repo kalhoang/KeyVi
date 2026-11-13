@@ -134,20 +134,40 @@ private func key(_ character: Character, at offsetMs: UInt64 = 0, keyboardType: 
         #expect(rig.metrics.flushes.value == 1)
     }
 
-    /// PLT-R480: right after a macro the ceiling is 1 s.
+    /// PLT-R480: keys that waited behind a macro get 1 s; keys typed after it get the normal 150 ms.
     @Test func macroLivenessCeilingIsOneSecondPLTR480() {
         let rig = WorkerRig()
-        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: "cảm ơn", kind: .macro) }
-        rig.run()
-        rig.pushReplay(key("a", at: 0))
-        rig.clock.advance(byMicroseconds: 900_000)
+        let paced = Fixture.parameters { $0.interEventDelayUs = 50_000 }
+        rig.pushEdit {
+            Fixture.job(
+                sequence: $0, deleteCount: 0, insertion: "cảm ơn", plan: Fixture.plan(parameters: paced), kind: .macro)
+        }
+        rig.pushReplay(key("a", at: 0))  // held while the 250 ms macro runs
         rig.run()
         #expect(rig.metrics.flushes.value == 0)
-        rig.pushReplay(key("b", at: 900))
-        rig.clock.advance(byMicroseconds: 1_000_001)
+        #expect(rig.field.text == "cảm ơna")
+        rig.pushReplay(key("b", at: 250))  // typed after the macro finished
+        rig.clock.advance(byMicroseconds: 150_001)
         rig.run()
         #expect(rig.metrics.flushes.value == 1)
         #expect(rig.field.text == "cảm ơnab")
+    }
+
+    /// A 950 ms macro after a 100 ms wait: the key held behind it waited 1,050 ms, over the macro ceiling.
+    @Test func keysBehindAMacroFlushAfterOneSecond() {
+        let rig = WorkerRig()
+        let paced = Fixture.parameters { $0.interEventDelayUs = 50_000 }
+        let macro = rig.pushEdit {
+            Fixture.job(
+                sequence: $0, deleteCount: 0, insertion: String(repeating: "ơ", count: 20),
+                plan: Fixture.plan(parameters: paced), kind: .macro)
+        }
+        rig.pushReplay(key("a", at: 0))
+        rig.clock.advance(byMicroseconds: 100_000)
+        rig.run()
+        #expect(rig.outcome(macro) == .executed)
+        #expect(rig.metrics.flushes.value == 1)
+        #expect(rig.field.text == String(repeating: "ơ", count: 20) + "a")
     }
 
     /// PLT-R314: more than 256 queued jobs force a flush.
