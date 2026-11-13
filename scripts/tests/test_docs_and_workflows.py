@@ -932,6 +932,33 @@ class TraceabilityTests(unittest.TestCase):
                     self.assertIn(needle, row)
 
 
+class AccessibilityAuditDocTests(unittest.TestCase):
+    """docs/runbooks/accessibility-audit.md follows the wave 5 fixes: the misbehaves panel takes keyboard focus
+    outside the guided test (PLT-R1205 step 6, Q43) and the typing trace confirmation states the chosen duration
+    (PLT-R905), so neither is an open finding any more."""
+
+    TEXT = (REPO / "docs" / "runbooks" / "accessibility-audit.md").read_text(encoding="utf-8")
+
+    def test_the_misbehaves_step_checks_keyboard_focus_per_step(self):
+        section = " ".join(self.TEXT.split("### 3.8 ", 1)[1].split("\n### ", 1)[0].split())
+        step = section.split(" 3. ", 1)[1].split(" 4. ", 1)[0]
+        for needle in ("PLT-R1205 step 6", "takes keyboard focus when it opens and in its final step",
+                       "Full Keyboard Access", "symptom chips", "cannot become key",
+                       "the problem field keeps the focus", "Do you see 'đá â'?", "VoiceOver"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, step)
+        self.assertNotIn("non-activating on purpose", step)
+
+    def test_the_wave_5_fixes_are_no_longer_open_findings(self):
+        findings = self.TEXT.split("## 9. Findings for other owners", 1)[1]
+        open_items = [line for line in findings.splitlines() if line.startswith("- ")]
+        self.assertTrue(open_items, "section 9 lost its list")
+        for line in open_items:
+            with self.subTest(line=line):
+                self.assertNotIn("Typing trace confirmation", line)
+                self.assertNotIn("not reachable by keyboard focus", line)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
