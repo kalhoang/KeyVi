@@ -94,12 +94,8 @@ public enum AppsPaneModel {
         appModes: AppModesDocument, overrides: [StoredRuleOverride], matrix: MatrixDocument?, today: Date
     ) -> [AppsPaneRow] {
         let modes = compatibilityModes(overrides)
-        var bundles = appModes.apps.map(\.bundle)
-        for bundle in modes.keys.sorted() where !bundles.contains(bundle) { bundles.append(bundle) }
         let entries = Dictionary(appModes.apps.map { ($0.bundle, $0) }, uniquingKeysWith: { first, _ in first })
-        var seen: Set<BundleKey> = []
-        return bundles.compactMap { bundle in
-            guard seen.insert(bundle).inserted else { return nil }
+        return orderedBundles(appModes: appModes, modes: modes).map { bundle in
             let entry = entries[bundle]
             let matrixEntry = matrix?.appEntry(for: bundle)
             return AppsPaneRow(
@@ -108,6 +104,22 @@ public enum AppsPaneModel {
                 note: matrixEntry?.note, compatibilityMode: modes[bundle]?.choice ?? .automatic,
                 matrixDisplayName: matrixEntry?.displayName, compatibilitySetOn: modes[bundle]?.createdAt)
         }
+    }
+
+    /// The apps of the pane in display order, each once: the per-app memory (most recently used first, PRD-R34),
+    /// then the apps that only have a compatibility override. The bug report picker lists the same apps
+    /// (PRD-R47 item 1, `RecentReportApps`).
+    public static func orderedBundles(appModes: AppModesDocument, overrides: [StoredRuleOverride]) -> [BundleKey] {
+        orderedBundles(appModes: appModes, modes: compatibilityModes(overrides))
+    }
+
+    private static func orderedBundles(
+        appModes: AppModesDocument, modes: [BundleKey: (choice: CompatibilityModeChoice, createdAt: Date)]
+    ) -> [BundleKey] {
+        var bundles = appModes.apps.map(\.bundle)
+        for bundle in modes.keys.sorted() where !bundles.contains(bundle) { bundles.append(bundle) }
+        var seen: Set<BundleKey> = []
+        return bundles.filter { seen.insert($0).inserted }
     }
 
     /// Newest compatibility override per app.
