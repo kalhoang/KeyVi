@@ -55,6 +55,24 @@
         }
       }
     },
+    "conflicts.openKeyboard.hint" : {
+      "comment" : "PLT-R399 conflict notice: hint of the button that opens Keyboard settings for the built-in Vietnamese input source (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens Keyboard settings, where you can choose the ABC or U.S. keyboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở phần cài đặt Bàn phím, nơi bạn có thể chọn bàn phím ABC hoặc U.S."
+          }
+        }
+      }
+    },
     "move.failed.body" : {
       "comment" : "PLT-R710 move failure body. Argument: app name.",
       "extractionState" : "manual",

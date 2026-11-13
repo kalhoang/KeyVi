@@ -79,9 +79,14 @@ extension AppEnvironment {
     }
 
     private func warnAboutConflicts(_ conflicts: [ConflictingInput]) {
-        let wantsHelp = CompositionAlerts.conflicts(
-            conflicts, appName: brand.displayName, localizer: language.localizer, strings: strings)
-        if wantsHelp { openSupport(.conflicts) }
+        let choice = CompositionAlerts.conflicts(
+            conflicts, appName: brand.displayName, keyboardPane: paneNames().keyboard, localizer: language.localizer,
+            strings: strings)
+        switch choice {
+        case .help: openSupport(.conflicts)
+        case .openKeyboard: openPane(.keyboard)
+        case .dismiss: break
+        }
     }
 
     // MARK: Menu model (built on every open)
