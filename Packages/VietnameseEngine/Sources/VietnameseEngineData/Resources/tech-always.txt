@@ -25,6 +25,8 @@ archlinux
 asana
 asus
 atm
+aux
+auxf
 avi
 avif
 aws
@@ -39,6 +41,7 @@ canva
 cccd
 centos
 chatgpt
+chown
 chromeos
 cli
 cloudflare
@@ -58,6 +61,7 @@ debian
 dell
 deno
 dhcp
+diff
 discord
 django
 dll
@@ -71,6 +75,7 @@ dpi
 dropbox
 dvi
 dylib
+ef
 epub
 exe
 exynos
@@ -146,6 +151,7 @@ ipv4
 ipv6
 iso
 itunes
+ix
 javascript
 jira
 jpeg
@@ -230,8 +236,10 @@ onedrive
 openai
 oppo
 opus
+otool
 otp
 pandas
+passwd
 paypal
 pcr
 pdf
@@ -313,6 +321,7 @@ tiki
 tiktok
 tls
 toml
+tox
 tpu
 trello
 ts
@@ -370,6 +379,7 @@ xamarin
 xbox
 xcode
 xiaomi
+xix
 xls
 xlsx
 xml

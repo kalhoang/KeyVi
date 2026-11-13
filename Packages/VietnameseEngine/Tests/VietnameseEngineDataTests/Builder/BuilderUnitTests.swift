@@ -59,6 +59,22 @@ import VietnameseEngine
         #expect(words["café"] == nil && words["x-ray"] == nil && words["don't"] == nil)
     }
 
+    @Test func englishLexiconDropsOneLetterEntriesOtherThanAAndI() throws {
+        // SCOWL lists letters such as `m`; Vietnamese text uses lone consonants as list markers (`m)`) and
+        // chat abbreviations (`m` for mày), and ENG-R823 would make each of them an English token that
+        // turns the run English (docs/decisions/0202).
+        let root = try MiniDataRoot.make()
+        defer { TempDirectory.remove(root) }
+        let scowl = root.appendingPathComponent("data/inputs/english/scowl-2020.12.07")
+        try write("a\nm\nx\nok\n", to: scowl.appendingPathComponent("english-words.20"))
+        let words = try EnglishLexicon.load(Layout(dataRoot: root.appendingPathComponent("data"), resources: root))
+        #expect(words["a"] == 20)
+        #expect(words["i"] == 10)
+        #expect(words["ok"] == 20)
+        #expect(words["m"] == nil)
+        #expect(words["x"] == nil)
+    }
+
     // MARK: Hand-edited inputs
 
     @Test func techListValidatesEntries() throws {

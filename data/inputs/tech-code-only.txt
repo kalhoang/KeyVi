@@ -23,7 +23,6 @@ cat
 cd
 chgrp
 chmod
-chown
 clang
 clear
 cmake
@@ -38,7 +37,6 @@ date
 defaults
 deno
 df
-diff
 dig
 dnf
 docker
@@ -118,9 +116,7 @@ nslookup
 nvim
 open
 openssl
-otool
 pacman
-passwd
 patch
 perl
 pgrep
@@ -179,7 +175,6 @@ tee
 tmux
 top
 touch
-tox
 tr
 traceroute
 trap
@@ -217,12 +212,9 @@ zsh
 # Common flag clusters (typed after '-')
 al
 alh
-aux
-auxf
 ax
 cvf
 czf
-ef
 fsl
 fssl
 ivh

@@ -1,21 +1,21 @@
 {
   "format": 1,
   "generator": "lexicon-builder",
-  "inputsSHA256": "60dd86a75ad34869f0ceca15a23f48e5eef7031f59cf381eda61ba9400992ebe",
+  "inputsSHA256": "c8cb52f8a3a469eaf4091f3108199044d1a6675a5c1d6fe8d8bdb4b7419d1bef",
   "files": [
-    {"name": "english.txt", "bytes": 359556, "entries": 40206, "sha256": "85a920ef5d0d870644e2bb1f61f7d26191145473baf56cb7605d5fe1dfdb900a"},
-    {"name": "tech-always.txt", "bytes": 2149, "entries": 384, "sha256": "a84a9252fa131ef57a031cffab2f0495fa30590a3a9712ca8e3087ed093a5d14"},
-    {"name": "tech-code-only.txt", "bytes": 1200, "entries": 229, "sha256": "bd45cc81c81d8b0bcb36cdbbd22df17481c7e2c667bce91db9c4493a98c83c69"},
-    {"name": "attested.txt", "bytes": 11351, "entries": 1934, "sha256": "88f1f9a022f04c95faf839ad953e6172678283ae3af2a6a13f8a7816fa4f2574"},
-    {"name": "ambiguity.tsv", "bytes": 23937, "entries": 335, "sha256": "d9874af9d02c46ef135a5506615296ae36e5fda346fb4f8bb7a529258c6d97e0"},
+    {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
+    {"name": "tech-always.txt", "bytes": 2196, "entries": 394, "sha256": "f2752707280c77ccdc622c4e9be55a747b6cd42bd7126e4e2fa24efd6263b1b7"},
+    {"name": "tech-code-only.txt", "bytes": 1160, "entries": 221, "sha256": "77e4deb9884c964beb791fb25140259044c62ef179732a4a8a41603496c4c337"},
+    {"name": "attested.txt", "bytes": 11442, "entries": 1953, "sha256": "be29a9542faff9ce5fc1e655a4e7f4021bcb9e7b0067420bfed92e13b95be5d1"},
+    {"name": "ambiguity.tsv", "bytes": 73123, "entries": 622, "sha256": "49c736c315f41b72d1c00497c04bb81cdf86ed980911c4eea3780393463ef01e"},
     {"name": "NOTICES.txt", "bytes": 14007, "sha256": "a923779210633861bba3d07e57981c1f5158c3d706c2bf6241d76a0a34f9e80c"}
   ],
   "stats": {
-    "englishWords": 40206,
+    "englishWords": 40205,
     "legalTokens": 673599,
     "legalDistinctTokens": 1784,
     "attestedFromCorpus": 1678,
-    "attestedFromAdditions": 243,
+    "attestedFromAdditions": 262,
     "attestedStyleVariants": 13
   }
 }

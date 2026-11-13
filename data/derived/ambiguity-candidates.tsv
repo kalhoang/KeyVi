@@ -1,333 +1,622 @@
-raw	traditional	modern	source	corpus_count	current_row
-there	thể	thể	scowl-10	2489	vi/proposed
-been	bên	bên	scowl-10	1456	vi/proposed
-car	cả	cả	scowl-10	181	vi/proposed
-its	ít	ít	scowl-10	179	vi/proposed
-hair	hải	hải	scowl-10	163	vi/unreviewed
-these	thế	thế	scowl-10	144	vi/proposed
-did	đi	đi	scowl-10	97	vi/proposed
-sex	sẽ	sẽ	scowl-10	61	vi/unreviewed
-thus	thú	thú	scowl-10	55	vi/unreviewed
-six	sĩ	sĩ	scowl-10	30	vi/unreviewed
-sorts	sót	sót	scowl-10	24	vi/unreviewed
-refer	rể	rể	scowl-10	12	vi/unreviewed
-bars	bá	bá	scowl-10	10	vi/unreviewed
-this	thí	thí	scowl-10	8	vi/proposed
-too	tô	tô	scowl-10	3	vi/unreviewed
-gas	gá	gá	scowl-10	2	vi/unreviewed
-low	lơ	lơ	scowl-10	1	vi/unreviewed
-air	ải	ải	scowl-10	0	vi/unreviewed
-arm	ảm	ảm	scowl-10	0	vi/unreviewed
-as	á	á	scowl-10	0	vi/proposed
-away	ây	ây	scowl-10	0	vi/unreviewed
-bar	bả	bả	scowl-10	0	vi/unreviewed
-best	bét	bét	scowl-10	0	en/proposed
-bets	bét	bét	scowl-10	0	vi/unreviewed
-bits	bít	bít	scowl-10	0	vi/unreviewed
-box	bõ	bõ	scowl-10	0	vi/unreviewed
-bus	bú	bú	scowl-10	0	vi/unreviewed
-chair	chải	chải	scowl-10	0	vi/unreviewed
-chaos	cháo	cháo	scowl-10	0	vi/unreviewed
-char	chả	chả	scowl-10	0	vi/unreviewed
-chips	chíp	chíp	scowl-10	0	vi/unreviewed
-chose	chóe	choé	scowl-10	0	vi/unreviewed
-cost	cót	cót	scowl-10	0	en/proposed
-cums	cúm	cúm	scowl-10	0	vi/unreviewed
-cuts	cút	cút	scowl-10	0	vi/unreviewed
-hangs	háng	háng	scowl-10	0	vi/unreviewed
-has	há	há	scowl-10	0	vi/proposed
-here	hể	hể	scowl-10	0	vi/unreviewed
-hes	hé	hé	scowl-10	0	vi/unreviewed
-his	hí	hí	scowl-10	0	vi/unreviewed
-hits	hít	hít	scowl-10	0	vi/unreviewed
-host	hót	hót	scowl-10	0	vi/unreviewed
-how	hơ	hơ	scowl-10	0	vi/unreviewed
-if	ì	ì	scowl-10	0	vi/unreviewed
-is	í	í	scowl-10	0	en/proposed
-last	lát	lát	scowl-10	0	vi/unreviewed
-lets	lét	lét	scowl-10	0	vi/unreviewed
-list	lít	lít	scowl-10	0	en/proposed
-lose	lóe	loé	scowl-10	0	vi/unreviewed
-lost	lót	lót	scowl-10	0	vi/unreviewed
-lots	lót	lót	scowl-10	0	vi/unreviewed
-mix	mĩ	mĩ	scowl-10	0	vi/unreviewed
-most	mót	mót	scowl-10	0	vi/unreviewed
-must	mút	mút	scowl-10	0	vi/unreviewed
-nor	nỏ	nỏ	scowl-10	0	vi/unreviewed
-now	nơ	nơ	scowl-10	0	vi/unreviewed
-own	ơn	ơn	scowl-10	0	vi/unreviewed
-quits	quít	quít	scowl-10	0	vi/unreviewed
-rest	rét	rét	scowl-10	0	vi/unreviewed
-room	rôm	rôm	scowl-10	0	en/proposed
-runs	rún	rún	scowl-10	0	vi/unreviewed
-sense	sến	sến	scowl-10	0	vi/unreviewed
-sets	sét	sét	scowl-10	0	vi/unreviewed
-sits	sít	sít	scowl-10	0	vi/unreviewed
-tax	tã	tã	scowl-10	0	vi/unreviewed
-terms	tém	tém	scowl-10	0	vi/unreviewed
-test	tét	tét	scowl-10	0	en/proposed
-tree	trê	trê	scowl-10	0	vi/unreviewed
-trust	trút	trút	scowl-10	0	vi/unreviewed
-turn	tủn	tủn	scowl-10	0	vi/unreviewed
-us	ú	ú	scowl-10	0	vi/unreviewed
-vans	ván	ván	scowl-10	0	vi/unreviewed
-vary	vảy	vảy	scowl-10	0	vi/unreviewed
-vast	vát	vát	scowl-10	0	vi/unreviewed
-was	ứa	ứa	scowl-10	0	en/proposed
-won	ươn	ươn	scowl-10	0	vi/unreviewed
-worn	ưởn	ưởn	scowl-10	0	vi/unreviewed
-worst	ướt	ướt	scowl-10	0	vi/unreviewed
-defends	đến	đến	scowl-20	4143	vi/unreviewed
-cow	cơ	cơ	scowl-20	4072	vi/unreviewed
-cars	cá	cá	scowl-20	1370	vi/unreviewed
-cheers	chế	chế	scowl-20	953	vi/unreviewed
-terse	tế	tế	scowl-20	753	vi/unreviewed
-bans	bán	bán	scowl-20	751	vi/unreviewed
-tins	tín	tín	scowl-20	158	vi/unreviewed
-theme	thêm	thêm	scowl-20	127	vi/proposed
-moon	môn	môn	scowl-20	107	vi/unreviewed
-songs	sóng	sóng	scowl-20	105	vi/unreviewed
-cans	cán	cán	scowl-20	80	vi/unreviewed
-defend	đền	đền	scowl-20	28	vi/unreviewed
-deed	đê	đê	scowl-20	17	vi/unreviewed
-burst	bút	bút	scowl-20	15	vi/unreviewed
-bust	bút	bút	scowl-20	15	vi/unreviewed
-hurts	hút	hút	scowl-20	11	vi/unreviewed
-caps	cáp	cáp	scowl-20	2	vi/unreviewed
-hats	hát	hát	scowl-20	2	vi/unreviewed
-hero	hẻo	hẻo	scowl-20	2	vi/unreviewed
-beef	bề	bề	scowl-20	1	vi/unreviewed
-beers	bế	bế	scowl-20	1	vi/unreviewed
-cast	cát	cát	scowl-20	1	vi/unreviewed
-cats	cát	cát	scowl-20	1	vi/unreviewed
-nest	nét	nét	scowl-20	1	vi/unreviewed
-nets	nét	nét	scowl-20	1	vi/unreviewed
-arms	ám	ám	scowl-20	0	vi/unreviewed
-arts	át	át	scowl-20	0	vi/unreviewed
-axis	ái	ái	scowl-20	0	vi/unreviewed
-beer	bể	bể	scowl-20	0	vi/unreviewed
-boost	bốt	bốt	scowl-20	0	vi/unreviewed
-boots	bốt	bốt	scowl-20	0	vi/unreviewed
-born	bỏn	bỏn	scowl-20	0	vi/unreviewed
-bow	bơ	bơ	scowl-20	0	vi/unreviewed
-burn	bủn	bủn	scowl-20	0	vi/unreviewed
-burns	bún	bún	scowl-20	0	vi/unreviewed
-charts	chát	chát	scowl-20	0	vi/unreviewed
-chats	chát	chát	scowl-20	0	vi/unreviewed
-chest	chét	chét	scowl-20	0	vi/unreviewed
-chops	chóp	chóp	scowl-20	0	vi/unreviewed
-corn	cỏn	cỏn	scowl-20	0	vi/unreviewed
-cows	cớ	cớ	scowl-20	0	vi/unreviewed
-cups	cúp	cúp	scowl-20	0	vi/unreviewed
-deeds	đế	đế	scowl-20	0	vi/unreviewed
-guts	gút	gút	scowl-20	0	vi/unreviewed
-hairs	hái	hái	scowl-20	0	vi/unreviewed
-honor	hổn	hổn	scowl-20	0	vi/unreviewed
-horn	hỏn	hỏn	scowl-20	0	vi/unreviewed
-kits	kít	kít	scowl-20	0	vi/unreviewed
-lawn	lăn	lăn	scowl-20	0	vi/unreviewed
-lays	láy	láy	scowl-20	0	vi/unreviewed
-lens	lén	lén	scowl-20	0	vi/unreviewed
-lest	lét	lét	scowl-20	0	vi/unreviewed
-lifts	lít	lít	scowl-20	0	vi/unreviewed
-lips	líp	líp	scowl-20	0	vi/unreviewed
-lisp	líp	líp	scowl-20	0	vi/unreviewed
-loops	lốp	lốp	scowl-20	0	vi/unreviewed
-lungs	lúng	lúng	scowl-20	0	vi/unreviewed
-lust	lút	lút	scowl-20	0	vi/unreviewed
-mist	mít	mít	scowl-20	0	vi/unreviewed
-motors	mốt	mốt	scowl-20	0	vi/unreviewed
-noon	nôn	nôn	scowl-20	0	vi/unreviewed
-nuts	nút	nút	scowl-20	0	vi/unreviewed
-owns	ớn	ớn	scowl-20	0	vi/unreviewed
-photos	phốt	phốt	scowl-20	0	vi/unreviewed
-queen	quên	quên	scowl-20	0	vi/unreviewed
-quest	quét	quét	scowl-20	0	vi/unreviewed
-rats	rát	rát	scowl-20	0	vi/unreviewed
-reset	rết	rết	scowl-20	0	vi/unreviewed
-roof	rồ	rồ	scowl-20	0	vi/unreviewed
-roots	rốt	rốt	scowl-20	0	vi/unreviewed
-rows	rớ	rớ	scowl-20	0	vi/unreviewed
-sir	sỉ	sỉ	scowl-20	0	vi/unreviewed
-texts	tét	tét	scowl-20	0	vi/unreviewed
-thee	thê	thê	scowl-20	0	vi/unreviewed
-thirst	thít	thít	scowl-20	0	vi/unreviewed
-tips	típ	típ	scowl-20	0	vi/unreviewed
-toast	toát	toát	scowl-20	0	vi/unreviewed
-toes	tóe	toé	scowl-20	0	vi/unreviewed
-tops	tóp	tóp	scowl-20	0	vi/unreviewed
-tore	tỏe	toẻ	scowl-20	0	vi/unreviewed
-ups	úp	úp	scowl-20	0	vi/unreviewed
-verse	vế	vế	scowl-20	0	vi/unreviewed
-virus	víu	víu	scowl-20	0	vi/unreviewed
-wars	ứa	ứa	scowl-20	0	vi/unreviewed
-worms	ướm	ướm	scowl-20	0	vi/unreviewed
-barn	bản	bản	scowl-35	3291	vi/unreviewed
-torso	tố	tố	scowl-35	2144	vi/unreviewed
-sow	sơ	sơ	scowl-35	1203	vi/unreviewed
-turf	tù	tù	scowl-35	1170	vi/unreviewed
-boor	bổ	bổ	scowl-35	1060	vi/unreviewed
-hoof	hồ	hồ	scowl-35	812	vi/unreviewed
-tees	tế	tế	scowl-35	753	vi/unreviewed
-barns	bán	bán	scowl-35	751	vi/unreviewed
-teen	tên	tên	scowl-35	688	vi/unreviewed
-boors	bố	bố	scowl-35	555	vi/unreviewed
-boos	bố	bố	scowl-35	555	vi/unreviewed
-sangs	sáng	sáng	scowl-35	430	vi/unreviewed
-rust	rút	rút	scowl-35	283	vi/unreviewed
-ruts	rút	rút	scowl-35	283	vi/unreviewed
-taxis	tái	tái	scowl-35	251	vi/unreviewed
-coos	cố	cố	scowl-35	174	vi/unreviewed
-dad	đa	đa	scowl-35	142	vi/unreviewed
-tans	tán	tán	scowl-35	109	vi/unreviewed
-saps	sáp	sáp	scowl-35	70	vi/unreviewed
-moo	mô	mô	scowl-35	60	vi/unreviewed
-tar	tả	tả	scowl-35	40	vi/unreviewed
-toots	tốt	tốt	scowl-35	32	vi/unreviewed
-carats	cất	cất	scowl-35	21	vi/unreviewed
-vex	vẽ	vẽ	scowl-35	19	vi/unreviewed
-buts	bút	bút	scowl-35	15	vi/unreviewed
-marts	mát	mát	scowl-35	15	vi/unreviewed
-mast	mát	mát	scowl-35	15	vi/unreviewed
-mats	mát	mát	scowl-35	15	vi/unreviewed
-dads	đá	đá	scowl-35	14	vi/unreviewed
-lairs	lái	lái	scowl-35	13	vi/unreviewed
-chins	chín	chín	scowl-35	12	vi/unreviewed
-boons	bốn	bốn	scowl-35	11	vi/unreviewed
-huts	hút	hút	scowl-35	11	vi/unreviewed
-testers	tết	tết	scowl-35	9	vi/unreviewed
-tee	tê	tê	scowl-35	8	vi/unreviewed
-arcs	ác	ác	scowl-35	6	vi/unreviewed
-coo	cô	cô	scowl-35	6	vi/unreviewed
-chiefest	chiết	chiết	scowl-35	4	vi/unreviewed
-mar	mả	mả	scowl-35	3	vi/unreviewed
-raps	ráp	ráp	scowl-35	3	vi/unreviewed
-rasp	ráp	ráp	scowl-35	3	vi/unreviewed
-bangs	báng	báng	scowl-35	2	vi/unreviewed
-carps	cáp	cáp	scowl-35	2	vi/unreviewed
-darns	dán	dán	scowl-35	2	vi/unreviewed
-harts	hát	hát	scowl-35	2	vi/unreviewed
-beefs	bế	bế	scowl-35	1	vi/unreviewed
-bees	bế	bế	scowl-35	1	vi/unreviewed
-carts	cát	cát	scowl-35	1	vi/unreviewed
-hoofs	hố	hố	scowl-35	1	vi/unreviewed
-moor	mổ	mổ	scowl-35	1	vi/unreviewed
-quarts	quát	quát	scowl-35	1	vi/unreviewed
-vest	vét	vét	scowl-35	1	vi/unreviewed
-vets	vét	vét	scowl-35	1	vi/unreviewed
-airs	ái	ái	scowl-35	0	vi/unreviewed
-aura	ẩu	ẩu	scowl-35	0	vi/unreviewed
-auras	ấu	ấu	scowl-35	0	vi/unreviewed
-bats	bát	bát	scowl-35	0	vi/unreviewed
-bee	bê	bê	scowl-35	0	vi/unreviewed
-beets	bết	bết	scowl-35	0	vi/unreviewed
-berets	bết	bết	scowl-35	0	vi/unreviewed
-beset	bết	bết	scowl-35	0	vi/unreviewed
-boo	bô	bô	scowl-35	0	vi/unreviewed
-boon	bôn	bôn	scowl-35	0	vi/unreviewed
-bows	bớ	bớ	scowl-35	0	vi/unreviewed
-buns	bún	bún	scowl-35	0	vi/unreviewed
-burps	búp	búp	scowl-35	0	vi/unreviewed
-bursar	bủa	bủa	scowl-35	0	vi/unreviewed
-chef	chè	chè	scowl-35	0	vi/unreviewed
-chirps	chíp	chíp	scowl-35	0	vi/unreviewed
-choirs	chói	chói	scowl-35	0	vi/unreviewed
-chores	chóe	choé	scowl-35	0	vi/unreviewed
-chow	chơ	chơ	scowl-35	0	vi/unreviewed
-chows	chớ	chớ	scowl-35	0	vi/unreviewed
-chums	chúm	chúm	scowl-35	0	vi/unreviewed
-churn	chủn	chủn	scowl-35	0	vi/unreviewed
-coops	cốp	cốp	scowl-35	0	vi/unreviewed
-cops	cóp	cóp	scowl-35	0	vi/unreviewed
-corps	cóp	cóp	scowl-35	0	vi/unreviewed
-cots	cót	cót	scowl-35	0	vi/unreviewed
-cur	củ	củ	scowl-35	0	vi/unreviewed
-dais	dái	dái	scowl-35	0	vi/unreviewed
-dams	dám	dám	scowl-35	0	vi/unreviewed
-darts	dát	dát	scowl-35	0	vi/unreviewed
-defers	dế	dế	scowl-35	0	vi/unreviewed
-dodo	đô	đô	scowl-35	0	vi/unreviewed
-dos	dó	dó	scowl-35	0	vi/unreviewed
-dud	đu	đu	scowl-35	0	vi/unreviewed
-duds	đú	đú	scowl-35	0	vi/unreviewed
-dwarf	dừa	dừa	scowl-35	0	vi/unreviewed
-dwarfs	dứa	dứa	scowl-35	0	vi/unreviewed
-gays	gáy	gáy	scowl-35	0	vi/unreviewed
-goof	gồ	gồ	scowl-35	0	vi/unreviewed
-goon	gôn	gôn	scowl-35	0	vi/unreviewed
-gust	gút	gút	scowl-35	0	vi/unreviewed
-hams	hám	hám	scowl-35	0	vi/unreviewed
-harms	hám	hám	scowl-35	0	vi/unreviewed
-hens	hén	hén	scowl-35	0	vi/unreviewed
-hers	hé	hé	scowl-35	0	vi/unreviewed
-hips	híp	híp	scowl-35	0	vi/unreviewed
-hoots	hốt	hốt	scowl-35	0	vi/unreviewed
-hops	hóp	hóp	scowl-35	0	vi/unreviewed
-hows	hớ	hớ	scowl-35	0	vi/unreviewed
-ifs	í	í	scowl-35	0	vi/unreviewed
-lair	lải	lải	scowl-35	0	vi/unreviewed
-lax	lã	lã	scowl-35	0	vi/unreviewed
-lee	lê	lê	scowl-35	0	vi/unreviewed
-lefts	lét	lét	scowl-35	0	vi/unreviewed
-loaf	lòa	loà	scowl-35	0	vi/unreviewed
-loafs	lóa	loá	scowl-35	0	vi/unreviewed
-lofts	lót	lót	scowl-35	0	vi/unreviewed
-longs	lóng	lóng	scowl-35	0	vi/unreviewed
-loom	lôm	lôm	scowl-35	0	vi/unreviewed
-looms	lốm	lốm	scowl-35	0	vi/unreviewed
-loots	lốt	lốt	scowl-35	0	vi/unreviewed
-losers	lóe	loé	scowl-35	0	vi/unreviewed
-lows	lớ	lớ	scowl-35	0	vi/unreviewed
-mama	mâm	mâm	scowl-35	0	vi/unreviewed
-mars	má	má	scowl-35	0	vi/unreviewed
-mas	má	má	scowl-35	0	vi/unreviewed
-mes	mé	mé	scowl-35	0	vi/unreviewed
-moms	móm	móm	scowl-35	0	vi/unreviewed
-moots	mốt	mốt	scowl-35	0	vi/unreviewed
-mops	móp	móp	scowl-35	0	vi/unreviewed
-morns	món	món	scowl-35	0	vi/unreviewed
-mow	mơ	mơ	scowl-35	0	vi/unreviewed
-mows	mớ	mớ	scowl-35	0	vi/unreviewed
-nays	náy	náy	scowl-35	0	vi/unreviewed
-nits	nít	nít	scowl-35	0	vi/unreviewed
-oaf	òa	oà	scowl-35	0	vi/unreviewed
-queers	quế	quế	scowl-35	0	vi/unreviewed
-rafts	rát	rát	scowl-35	0	vi/unreviewed
-rams	rám	rám	scowl-35	0	vi/unreviewed
-rays	ráy	ráy	scowl-35	0	vi/unreviewed
-reef	rề	rề	scowl-35	0	vi/unreviewed
-rifts	rít	rít	scowl-35	0	vi/unreviewed
-roost	rốt	rốt	scowl-35	0	vi/unreviewed
-rotors	rốt	rốt	scowl-35	0	vi/unreviewed
-rots	rót	rót	scowl-35	0	vi/unreviewed
-rums	rúm	rúm	scowl-35	0	vi/unreviewed
-rungs	rúng	rúng	scowl-35	0	vi/unreviewed
-sari	sải	sải	scowl-35	0	vi/unreviewed
-saris	sái	sái	scowl-35	0	vi/unreviewed
-seeps	sếp	sếp	scowl-35	0	vi/unreviewed
-sifts	sít	sít	scowl-35	0	vi/unreviewed
-sown	sơn	sơn	scowl-35	0	vi/unreviewed
-suns	sún	sún	scowl-35	0	vi/unreviewed
-surf	sù	sù	scowl-35	0	vi/unreviewed
-swoon	suôn	suôn	scowl-35	0	vi/unreviewed
-taps	táp	táp	scowl-35	0	vi/unreviewed
-tars	tá	tá	scowl-35	0	vi/unreviewed
-tarts	tát	tát	scowl-35	0	vi/unreviewed
-teem	têm	têm	scowl-35	0	vi/unreviewed
-thefts	thét	thét	scowl-35	0	vi/unreviewed
-tits	tít	tít	scowl-35	0	vi/unreviewed
-tow	tơ	tơ	scowl-35	0	vi/unreviewed
-tows	tớ	tớ	scowl-35	0	vi/unreviewed
-trots	trót	trót	scowl-35	0	vi/unreviewed
-tufts	tút	tút	scowl-35	0	vi/unreviewed
-turfs	tú	tú	scowl-35	0	vi/unreviewed
-urn	ủn	ủn	scowl-35	0	vi/unreviewed
-vats	vát	vát	scowl-35	0	vi/unreviewed
-veers	vế	vế	scowl-35	0	vi/unreviewed
-vexes	vế	vế	scowl-35	0	vi/unreviewed
-visa	vía	vía	scowl-35	0	vi/unreviewed
-vow	vơ	vơ	scowl-35	0	vi/unreviewed
-vows	vớ	vớ	scowl-35	0	vi/unreviewed
-m4a	a	a	tech-always	2184	vi/unreviewed
-h2o	o	o	tech-always	23	vi/unreviewed
-nextjs	nét	nét	tech-always	1	vi/unreviewed
+raw	method	traditional	modern	attested	source	corpus_count	merge_as	current_row
+there	telex	thể	thể	yes	scowl-10	2489	vi/unreviewed	vi/proposed
+been	telex	bên	bên	yes	scowl-10	1456	vi/unreviewed	vi/proposed
+car	telex	cả	cả	yes	scowl-10	181	vi/unreviewed	vi/proposed
+its	telex	ít	ít	yes	scowl-10	179	vi/unreviewed	vi/proposed
+hair	telex	hải	hải	yes	scowl-10	163	vi/unreviewed	vi/unreviewed
+these	telex	thế	thế	yes	scowl-10	144	vi/unreviewed	vi/proposed
+did	telex	đi	đi	yes	scowl-10	97	vi/unreviewed	vi/proposed
+sex	telex	sẽ	sẽ	yes	scowl-10	61	vi/unreviewed	vi/unreviewed
+thus	telex	thú	thú	yes	scowl-10	55	vi/unreviewed	vi/unreviewed
+six	telex	sĩ	sĩ	yes	scowl-10	30	vi/unreviewed	vi/unreviewed
+sorts	telex	sót	sót	yes	scowl-10	24	vi/unreviewed	vi/unreviewed
+refer	telex	rể	rể	yes	scowl-10	12	vi/unreviewed	vi/unreviewed
+bars	telex	bá	bá	yes	scowl-10	10	vi/unreviewed	vi/unreviewed
+this	telex	thí	thí	yes	scowl-10	8	vi/unreviewed	vi/proposed
+too	telex	tô	tô	yes	scowl-10	3	vi/unreviewed	vi/unreviewed
+gas	telex	gá	gá	yes	scowl-10	2	vi/unreviewed	vi/unreviewed
+low	telex	lơ	lơ	yes	scowl-10	1	vi/unreviewed	vi/unreviewed
+air	telex	ải	ải	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+arm	telex	ảm	ảm	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+as	telex	á	á	yes	scowl-10	0	vi/unreviewed	vi/proposed
+away	telex	ây	ây	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+bar	telex	bả	bả	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+best	telex	bét	bét	yes	scowl-10	0	vi/unreviewed	en/proposed
+bets	telex	bét	bét	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+bits	telex	bít	bít	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+box	telex	bõ	bõ	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+bus	telex	bú	bú	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+chair	telex	chải	chải	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+chaos	telex	cháo	cháo	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+char	telex	chả	chả	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+chars	telex	chá	chá	no	scowl-10	0	en/proposed	en/proposed
+chips	telex	chíp	chíp	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+chose	telex	chóe	choé	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+chosen	telex	choén	choén	no	scowl-10	0	en/proposed	en/proposed
+cost	telex	cót	cót	yes	scowl-10	0	vi/unreviewed	en/proposed
+cums	telex	cúm	cúm	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+cuts	telex	cút	cút	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+days	telex	dáy	dáy	no	scowl-10	0	en/proposed	en/proposed
+deem	telex	dêm	dêm	no	scowl-10	0	en/proposed	en/proposed
+deems	telex	dếm	dếm	no	scowl-10	0	en/proposed	en/proposed
+does	telex	dóe	doé	no	scowl-10	0	en/proposed	en/proposed
+door	telex	dổ	dổ	no	scowl-10	0	en/proposed	en/proposed
+doors	telex	dố	dố	no	scowl-10	0	en/proposed	en/proposed
+down	telex	dơn	dơn	no	scowl-10	0	en/proposed	en/proposed
+goes	telex	góe	goé	no	scowl-10	0	en/proposed	en/proposed
+hangs	telex	háng	háng	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+harm	telex	hảm	hảm	no	scowl-10	0	en/proposed	en/proposed
+has	telex	há	há	yes	scowl-10	0	vi/unreviewed	vi/proposed
+her	telex	hẻ	hẻ	no	scowl-10	0	en/proposed	en/proposed
+here	telex	hể	hể	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+hes	telex	hé	hé	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+his	telex	hí	hí	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+hits	telex	hít	hít	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+horse	telex	hóe	hoé	no	scowl-10	0	en/proposed	en/proposed
+host	telex	hót	hót	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+how	telex	hơ	hơ	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+if	telex	ì	ì	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+is	telex	í	í	yes	scowl-10	0	vi/unreviewed	en/proposed
+keen	telex	kên	kên	no	scowl-10	0	en/proposed	en/proposed
+keeps	telex	kếp	kếp	no	scowl-10	0	en/proposed	en/proposed
+last	telex	lát	lát	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+lets	telex	lét	lét	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+list	telex	lít	lít	yes	scowl-10	0	vi/unreviewed	en/proposed
+lose	telex	lóe	loé	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+lost	telex	lót	lót	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+lots	telex	lót	lót	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+major	telex	mảo	mảo	no	scowl-10	0	en/proposed	en/proposed
+meets	telex	mết	mết	no	scowl-10	0	en/proposed	en/proposed
+mere	telex	mể	mể	no	scowl-10	0	en/proposed	en/proposed
+mix	telex	mĩ	mĩ	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+most	telex	mót	mót	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+must	telex	mút	mút	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+nor	telex	nỏ	nỏ	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+now	telex	nơ	nơ	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+of	telex	ò	ò	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+or	telex	ỏ	ỏ	no	scowl-10	0	en/proposed	en/proposed
+own	telex	ơn	ơn	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+pair	telex	pải	pải	no	scowl-10	0	en/proposed	en/proposed
+pairs	telex	pái	pái	no	scowl-10	0	en/proposed	en/proposed
+parts	telex	pát	pát	no	scowl-10	0	en/proposed	en/proposed
+past	telex	pát	pát	no	scowl-10	0	en/proposed	en/proposed
+pays	telex	páy	páy	no	scowl-10	0	en/proposed	en/proposed
+per	telex	pẻ	pẻ	no	scowl-10	0	en/proposed	en/proposed
+pieces	telex	piếc	piếc	no	scowl-10	0	en/proposed	en/proposed
+poor	telex	pổ	pổ	no	scowl-10	0	en/proposed	en/proposed
+post	telex	pót	pót	no	scowl-10	0	en/proposed	en/proposed
+puts	telex	pút	pút	no	scowl-10	0	en/proposed	en/proposed
+queue	telex	quêu	quêu	no	scowl-10	0	en/proposed	en/proposed
+quits	telex	quít	quít	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+refers	telex	rế	rế	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+refuse	telex	rếu	rếu	no	scowl-10	0	en/proposed	en/proposed
+rest	telex	rét	rét	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+room	telex	rôm	rôm	yes	scowl-10	0	vi/unreviewed	en/proposed
+rooms	telex	rốm	rốm	no	scowl-10	0	en/proposed	en/proposed
+row	telex	rơ	rơ	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+runs	telex	rún	rún	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+says	telex	sáy	sáy	no	scowl-10	0	en/proposed	en/proposed
+see	telex	sê	sê	no	scowl-10	0	en/proposed	en/proposed
+seem	telex	sêm	sêm	no	scowl-10	0	en/proposed	en/proposed
+seems	telex	sếm	sếm	no	scowl-10	0	en/proposed	en/proposed
+seen	telex	sên	sên	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+sees	telex	sế	sế	no	scowl-10	0	en/proposed	en/proposed
+sense	telex	sến	sến	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+sets	telex	sét	sét	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+sits	telex	sít	sít	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+soon	telex	sôn	sôn	no	scowl-10	0	en/proposed	en/proposed
+tax	telex	tã	tã	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+term	telex	tẻm	tẻm	no	scowl-10	0	en/proposed	en/proposed
+terms	telex	tém	tém	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+test	telex	tét	tét	yes	scowl-10	0	vi/unreviewed	en/proposed
+those	telex	thóe	thoé	no	scowl-10	0	en/proposed	en/proposed
+town	telex	tơn	tơn	no	scowl-10	0	en/proposed	en/proposed
+traps	telex	tráp	tráp	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+tree	telex	trê	trê	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+trees	telex	trế	trế	no	scowl-10	0	en/proposed	en/proposed
+trust	telex	trút	trút	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+turn	telex	tủn	tủn	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+turns	telex	tún	tún	no	scowl-10	0	en/proposed	en/proposed
+us	telex	ú	ú	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+vans	telex	ván	ván	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+vary	telex	vảy	vảy	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+vast	telex	vát	vát	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+war	telex	ửa	ửa	no	scowl-10	0	en/proposed	en/proposed
+was	telex	ứa	ứa	yes	scowl-10	0	vi/unreviewed	en/proposed
+won	telex	ươn	ươn	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+worn	telex	ưởn	ưởn	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+worst	telex	ướt	ướt	yes	scowl-10	0	vi/unreviewed	vi/unreviewed
+wrong	telex	ưởng	ưởng	no	scowl-10	0	en/proposed	en/proposed
+defends	telex	đến	đến	yes	scowl-20	4143	vi/unreviewed	vi/unreviewed
+cow	telex	cơ	cơ	yes	scowl-20	4072	vi/unreviewed	vi/unreviewed
+cars	telex	cá	cá	yes	scowl-20	1370	vi/unreviewed	vi/unreviewed
+cheers	telex	chế	chế	yes	scowl-20	953	vi/unreviewed	vi/unreviewed
+terse	telex	tế	tế	yes	scowl-20	753	vi/unreviewed	vi/unreviewed
+bans	telex	bán	bán	yes	scowl-20	751	vi/unreviewed	vi/unreviewed
+tins	telex	tín	tín	yes	scowl-20	158	vi/unreviewed	vi/unreviewed
+theme	telex	thêm	thêm	yes	scowl-20	127	vi/unreviewed	vi/proposed
+moon	telex	môn	môn	yes	scowl-20	107	vi/unreviewed	vi/unreviewed
+songs	telex	sóng	sóng	yes	scowl-20	105	vi/unreviewed	vi/unreviewed
+cans	telex	cán	cán	yes	scowl-20	80	vi/unreviewed	vi/unreviewed
+defend	telex	đền	đền	yes	scowl-20	28	vi/unreviewed	vi/unreviewed
+deed	telex	đê	đê	yes	scowl-20	17	vi/unreviewed	vi/unreviewed
+burst	telex	bút	bút	yes	scowl-20	15	vi/unreviewed	vi/unreviewed
+bust	telex	bút	bút	yes	scowl-20	15	vi/unreviewed	vi/unreviewed
+hurts	telex	hút	hút	yes	scowl-20	11	vi/unreviewed	vi/unreviewed
+caps	telex	cáp	cáp	yes	scowl-20	2	vi/unreviewed	vi/unreviewed
+hats	telex	hát	hát	yes	scowl-20	2	vi/unreviewed	vi/unreviewed
+hero	telex	hẻo	hẻo	yes	scowl-20	2	vi/unreviewed	vi/unreviewed
+beef	telex	bề	bề	yes	scowl-20	1	vi/unreviewed	vi/unreviewed
+beers	telex	bế	bế	yes	scowl-20	1	vi/unreviewed	vi/unreviewed
+cast	telex	cát	cát	yes	scowl-20	1	vi/unreviewed	vi/unreviewed
+cats	telex	cát	cát	yes	scowl-20	1	vi/unreviewed	vi/unreviewed
+nest	telex	nét	nét	yes	scowl-20	1	vi/unreviewed	vi/unreviewed
+nets	telex	nét	nét	yes	scowl-20	1	vi/unreviewed	vi/unreviewed
+arms	telex	ám	ám	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+arts	telex	át	át	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+ax	telex	ã	ã	no	scowl-20	0	en/proposed	en/proposed
+axis	telex	ái	ái	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+beer	telex	bể	bể	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+bias	telex	bía	bía	no	scowl-20	0	en/proposed	en/proposed
+boom	telex	bôm	bôm	no	scowl-20	0	en/proposed	en/proposed
+boost	telex	bốt	bốt	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+boots	telex	bốt	bốt	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+born	telex	bỏn	bỏn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+bow	telex	bơ	bơ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+burn	telex	bủn	bủn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+burns	telex	bún	bún	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+chairs	telex	chái	chái	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+chaps	telex	cháp	cháp	no	scowl-20	0	en/proposed	en/proposed
+charm	telex	chảm	chảm	no	scowl-20	0	en/proposed	en/proposed
+charms	telex	chám	chám	no	scowl-20	0	en/proposed	en/proposed
+charts	telex	chát	chát	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+chats	telex	chát	chát	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+cheer	telex	chể	chể	no	scowl-20	0	en/proposed	en/proposed
+chest	telex	chét	chét	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+choir	telex	chỏi	chỏi	no	scowl-20	0	en/proposed	en/proposed
+chops	telex	chóp	chóp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+corn	telex	cỏn	cỏn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+cows	telex	cớ	cớ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+cups	telex	cúp	cúp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+dawn	telex	dăn	dăn	no	scowl-20	0	en/proposed	en/proposed
+deeds	telex	đế	đế	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+dense	telex	dến	dến	no	scowl-20	0	en/proposed	en/proposed
+deserts	telex	dết	dết	no	scowl-20	0	en/proposed	en/proposed
+dons	telex	dón	dón	no	scowl-20	0	en/proposed	en/proposed
+doom	telex	dôm	dôm	no	scowl-20	0	en/proposed	en/proposed
+dooms	telex	dốm	dốm	no	scowl-20	0	en/proposed	en/proposed
+dose	telex	dóe	doé	no	scowl-20	0	en/proposed	en/proposed
+dots	telex	dót	dót	no	scowl-20	0	en/proposed	en/proposed
+dust	telex	dút	dút	no	scowl-20	0	en/proposed	en/proposed
+gaps	telex	gáp	gáp	no	scowl-20	0	en/proposed	en/proposed
+gasp	telex	gáp	gáp	no	scowl-20	0	en/proposed	en/proposed
+gifts	telex	gít	gít	no	scowl-20	0	en/proposed	en/proposed
+gown	telex	gơn	gơn	no	scowl-20	0	en/proposed	en/proposed
+guns	telex	gún	gún	no	scowl-20	0	en/proposed	en/proposed
+guts	telex	gút	gút	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+guys	telex	gúy	guý	no	scowl-20	0	en/proposed	en/proposed
+hairs	telex	hái	hái	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+honor	telex	hổn	hổn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+honors	telex	hốn	hốn	no	scowl-20	0	en/proposed	en/proposed
+horn	telex	hỏn	hỏn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+kits	telex	kít	kít	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lawn	telex	lăn	lăn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lays	telex	láy	láy	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lens	telex	lén	lén	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lest	telex	lét	lét	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lifts	telex	lít	lít	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lips	telex	líp	líp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lisp	telex	líp	líp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+loans	telex	loán	loán	no	scowl-20	0	en/proposed	en/proposed
+loops	telex	lốp	lốp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lungs	telex	lúng	lúng	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+lust	telex	lút	lút	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+mans	telex	mán	mán	no	scowl-20	0	en/proposed	en/proposed
+maps	telex	máp	máp	no	scowl-20	0	en/proposed	en/proposed
+meters	telex	mết	mết	no	scowl-20	0	en/proposed	en/proposed
+metres	telex	mết	mết	no	scowl-20	0	en/proposed	en/proposed
+mist	telex	mít	mít	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+moons	telex	mốn	mốn	no	scowl-20	0	en/proposed	en/proposed
+moron	telex	mổn	mổn	no	scowl-20	0	en/proposed	en/proposed
+morons	telex	mốn	mốn	no	scowl-20	0	en/proposed	en/proposed
+motors	telex	mốt	mốt	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+noon	telex	nôn	nôn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+norm	telex	nỏm	nỏm	no	scowl-20	0	en/proposed	en/proposed
+nose	telex	nóe	noé	no	scowl-20	0	en/proposed	en/proposed
+nuns	telex	nún	nún	no	scowl-20	0	en/proposed	en/proposed
+nuts	telex	nút	nút	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+oar	telex	ỏa	oả	no	scowl-20	0	en/proposed	en/proposed
+owns	telex	ớn	ớn	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+par	telex	pả	pả	no	scowl-20	0	en/proposed	en/proposed
+peer	telex	pể	pể	no	scowl-20	0	en/proposed	en/proposed
+peers	telex	pế	pế	no	scowl-20	0	en/proposed	en/proposed
+pens	telex	pén	pén	no	scowl-20	0	en/proposed	en/proposed
+photos	telex	phốt	phốt	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+pins	telex	pín	pín	no	scowl-20	0	en/proposed	en/proposed
+pops	telex	póp	póp	no	scowl-20	0	en/proposed	en/proposed
+ports	telex	pót	pót	no	scowl-20	0	en/proposed	en/proposed
+puns	telex	pún	pún	no	scowl-20	0	en/proposed	en/proposed
+queen	telex	quên	quên	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+queens	telex	quến	quến	no	scowl-20	0	en/proposed	en/proposed
+quest	telex	quét	quét	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+queues	telex	quếu	quếu	no	scowl-20	0	en/proposed	en/proposed
+rats	telex	rát	rát	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+reset	telex	rết	rết	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+reuse	telex	rếu	rếu	no	scowl-20	0	en/proposed	en/proposed
+rips	telex	ríp	ríp	no	scowl-20	0	en/proposed	en/proposed
+roof	telex	rồ	rồ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+roots	telex	rốt	rốt	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+rose	telex	róe	roé	no	scowl-20	0	en/proposed	en/proposed
+rows	telex	rớ	rớ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+sexes	telex	sế	sế	no	scowl-20	0	en/proposed	en/proposed
+sins	telex	sín	sín	no	scowl-20	0	en/proposed	en/proposed
+sir	telex	sỉ	sỉ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+sons	telex	són	són	no	scowl-20	0	en/proposed	en/proposed
+sore	telex	sỏe	soẻ	no	scowl-20	0	en/proposed	en/proposed
+sums	telex	súm	súm	no	scowl-20	0	en/proposed	en/proposed
+sworn	telex	sưởn	sưởn	no	scowl-20	0	en/proposed	en/proposed
+taxi	telex	tãi	tãi	no	scowl-20	0	en/proposed	en/proposed
+tens	telex	tén	tén	no	scowl-20	0	en/proposed	en/proposed
+tense	telex	tến	tến	no	scowl-20	0	en/proposed	en/proposed
+texts	telex	tét	tét	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+thee	telex	thê	thê	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+themes	telex	thếm	thếm	no	scowl-20	0	en/proposed	en/proposed
+thirst	telex	thít	thít	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+tips	telex	típ	típ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+toast	telex	toát	toát	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+toes	telex	tóe	toé	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+tons	telex	tón	tón	no	scowl-20	0	en/proposed	en/proposed
+tops	telex	tóp	tóp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+tore	telex	tỏe	toẻ	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+torn	telex	tỏn	tỏn	no	scowl-20	0	en/proposed	en/proposed
+towns	telex	tớn	tớn	no	scowl-20	0	en/proposed	en/proposed
+trips	telex	tríp	tríp	no	scowl-20	0	en/proposed	en/proposed
+troops	telex	trốp	trốp	no	scowl-20	0	en/proposed	en/proposed
+ups	telex	úp	úp	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+verse	telex	vế	vế	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+virus	telex	víu	víu	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+wars	telex	ứa	ứa	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+worm	telex	ưởm	ưởm	no	scowl-20	0	en/proposed	en/proposed
+worms	telex	ướm	ướm	yes	scowl-20	0	vi/unreviewed	vi/unreviewed
+wrongs	telex	ướng	ướng	no	scowl-20	0	en/proposed	en/proposed
+barn	telex	bản	bản	yes	scowl-35	3291	vi/unreviewed	vi/unreviewed
+torso	telex	tố	tố	yes	scowl-35	2144	vi/unreviewed	vi/unreviewed
+sow	telex	sơ	sơ	yes	scowl-35	1203	vi/unreviewed	vi/unreviewed
+turf	telex	tù	tù	yes	scowl-35	1170	vi/unreviewed	vi/unreviewed
+boor	telex	bổ	bổ	yes	scowl-35	1060	vi/unreviewed	vi/unreviewed
+hoof	telex	hồ	hồ	yes	scowl-35	812	vi/unreviewed	vi/unreviewed
+tees	telex	tế	tế	yes	scowl-35	753	vi/unreviewed	vi/unreviewed
+barns	telex	bán	bán	yes	scowl-35	751	vi/unreviewed	vi/unreviewed
+teen	telex	tên	tên	yes	scowl-35	688	vi/unreviewed	vi/unreviewed
+boors	telex	bố	bố	yes	scowl-35	555	vi/unreviewed	vi/unreviewed
+boos	telex	bố	bố	yes	scowl-35	555	vi/unreviewed	vi/unreviewed
+sangs	telex	sáng	sáng	yes	scowl-35	430	vi/unreviewed	vi/unreviewed
+rust	telex	rút	rút	yes	scowl-35	283	vi/unreviewed	vi/unreviewed
+ruts	telex	rút	rút	yes	scowl-35	283	vi/unreviewed	vi/unreviewed
+taxis	telex	tái	tái	yes	scowl-35	251	vi/unreviewed	vi/unreviewed
+coos	telex	cố	cố	yes	scowl-35	174	vi/unreviewed	vi/unreviewed
+dad	telex	đa	đa	yes	scowl-35	142	vi/unreviewed	vi/unreviewed
+tans	telex	tán	tán	yes	scowl-35	109	vi/unreviewed	vi/unreviewed
+saps	telex	sáp	sáp	yes	scowl-35	70	vi/unreviewed	vi/unreviewed
+moo	telex	mô	mô	yes	scowl-35	60	vi/unreviewed	vi/unreviewed
+tar	telex	tả	tả	yes	scowl-35	40	vi/unreviewed	vi/unreviewed
+toots	telex	tốt	tốt	yes	scowl-35	32	vi/unreviewed	vi/unreviewed
+carats	telex	cất	cất	yes	scowl-35	21	vi/unreviewed	vi/unreviewed
+vex	telex	vẽ	vẽ	yes	scowl-35	19	vi/unreviewed	vi/unreviewed
+buts	telex	bút	bút	yes	scowl-35	15	vi/unreviewed	vi/unreviewed
+marts	telex	mát	mát	yes	scowl-35	15	vi/unreviewed	vi/unreviewed
+mast	telex	mát	mát	yes	scowl-35	15	vi/unreviewed	vi/unreviewed
+mats	telex	mát	mát	yes	scowl-35	15	vi/unreviewed	vi/unreviewed
+dads	telex	đá	đá	yes	scowl-35	14	vi/unreviewed	vi/unreviewed
+lairs	telex	lái	lái	yes	scowl-35	13	vi/unreviewed	vi/unreviewed
+chins	telex	chín	chín	yes	scowl-35	12	vi/unreviewed	vi/unreviewed
+boons	telex	bốn	bốn	yes	scowl-35	11	vi/unreviewed	vi/unreviewed
+huts	telex	hút	hút	yes	scowl-35	11	vi/unreviewed	vi/unreviewed
+testers	telex	tết	tết	yes	scowl-35	9	vi/unreviewed	vi/unreviewed
+tee	telex	tê	tê	yes	scowl-35	8	vi/unreviewed	vi/unreviewed
+arcs	telex	ác	ác	yes	scowl-35	6	vi/unreviewed	vi/unreviewed
+coo	telex	cô	cô	yes	scowl-35	6	vi/unreviewed	vi/unreviewed
+chiefest	telex	chiết	chiết	yes	scowl-35	4	vi/unreviewed	vi/unreviewed
+mar	telex	mả	mả	yes	scowl-35	3	vi/unreviewed	vi/unreviewed
+raps	telex	ráp	ráp	yes	scowl-35	3	vi/unreviewed	vi/unreviewed
+rasp	telex	ráp	ráp	yes	scowl-35	3	vi/unreviewed	vi/unreviewed
+bangs	telex	báng	báng	yes	scowl-35	2	vi/unreviewed	vi/unreviewed
+carps	telex	cáp	cáp	yes	scowl-35	2	vi/unreviewed	vi/unreviewed
+darns	telex	dán	dán	yes	scowl-35	2	vi/unreviewed	vi/unreviewed
+harts	telex	hát	hát	yes	scowl-35	2	vi/unreviewed	vi/unreviewed
+beefs	telex	bế	bế	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+bees	telex	bế	bế	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+carts	telex	cát	cát	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+hoofs	telex	hố	hố	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+moor	telex	mổ	mổ	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+quarts	telex	quát	quát	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+vest	telex	vét	vét	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+vets	telex	vét	vét	yes	scowl-35	1	vi/unreviewed	vi/unreviewed
+airs	telex	ái	ái	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+aura	telex	ẩu	ẩu	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+auras	telex	ấu	ấu	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+bats	telex	bát	bát	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+bays	telex	báy	báy	no	scowl-35	0	en/proposed	en/proposed
+bee	telex	bê	bê	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+beets	telex	bết	bết	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+berets	telex	bết	bết	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+beset	telex	bết	bết	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+bins	telex	bín	bín	no	scowl-35	0	en/proposed	en/proposed
+boo	telex	bô	bô	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+booms	telex	bốm	bốm	no	scowl-35	0	en/proposed	en/proposed
+boon	telex	bôn	bôn	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+bosom	telex	bốm	bốm	no	scowl-35	0	en/proposed	en/proposed
+bows	telex	bớ	bớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+bums	telex	búm	búm	no	scowl-35	0	en/proposed	en/proposed
+buns	telex	bún	bún	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+burps	telex	búp	búp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+bursar	telex	bủa	bủa	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chasm	telex	chám	chám	no	scowl-35	0	en/proposed	en/proposed
+cheeps	telex	chếp	chếp	no	scowl-35	0	en/proposed	en/proposed
+chef	telex	chè	chè	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chefs	telex	ché	ché	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chirps	telex	chíp	chíp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+choirs	telex	chói	chói	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chore	telex	chỏe	choẻ	no	scowl-35	0	en/proposed	en/proposed
+chores	telex	chóe	choé	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chow	telex	chơ	chơ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chows	telex	chớ	chớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+chums	telex	chúm	chúm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+churn	telex	chủn	chủn	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+churns	telex	chún	chún	no	scowl-35	0	en/proposed	en/proposed
+cons	telex	cón	cón	no	scowl-35	0	en/proposed	en/proposed
+coops	telex	cốp	cốp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+cops	telex	cóp	cóp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+corns	telex	cón	cón	no	scowl-35	0	en/proposed	en/proposed
+corps	telex	cóp	cóp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+cots	telex	cót	cót	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+cox	telex	cõ	cõ	no	scowl-35	0	en/proposed	en/proposed
+cur	telex	củ	củ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dais	telex	dái	dái	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dams	telex	dám	dám	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+darn	telex	dản	dản	no	scowl-35	0	en/proposed	en/proposed
+darts	telex	dát	dát	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dawns	telex	dắn	dắn	no	scowl-35	0	en/proposed	en/proposed
+deeps	telex	dếp	dếp	no	scowl-35	0	en/proposed	en/proposed
+deer	telex	dể	dể	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+defer	telex	dể	dể	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+defers	telex	dế	dế	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dens	telex	dén	dén	no	scowl-35	0	en/proposed	en/proposed
+denser	telex	dển	dển	no	scowl-35	0	en/proposed	en/proposed
+deters	telex	dết	dết	no	scowl-35	0	en/proposed	en/proposed
+dims	telex	dím	dím	no	scowl-35	0	en/proposed	en/proposed
+dins	telex	dín	dín	no	scowl-35	0	en/proposed	en/proposed
+dips	telex	díp	díp	no	scowl-35	0	en/proposed	en/proposed
+dodo	telex	đô	đô	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+doer	telex	dỏe	doẻ	no	scowl-35	0	en/proposed	en/proposed
+doers	telex	dóe	doé	no	scowl-35	0	en/proposed	en/proposed
+donor	telex	dổn	dổn	no	scowl-35	0	en/proposed	en/proposed
+donors	telex	dốn	dốn	no	scowl-35	0	en/proposed	en/proposed
+dos	telex	dó	dó	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dosed	telex	đóe	đoé	no	scowl-35	0	en/proposed	en/proposed
+downs	telex	dớn	dớn	no	scowl-35	0	en/proposed	en/proposed
+dud	telex	đu	đu	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+duds	telex	đú	đú	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dungs	telex	dúng	dúng	no	scowl-35	0	en/proposed	en/proposed
+dwarf	telex	dừa	dừa	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+dwarfs	telex	dứa	dứa	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+exerts	telex	ết	ết	no	scowl-35	0	en/proposed	en/proposed
+gangs	telex	gáng	gáng	no	scowl-35	0	en/proposed	en/proposed
+gays	telex	gáy	gáy	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+gins	telex	gín	gín	no	scowl-35	0	en/proposed	en/proposed
+gist	telex	gít	gít	no	scowl-35	0	en/proposed	en/proposed
+goats	telex	goát	goát	no	scowl-35	0	en/proposed	en/proposed
+gongs	telex	góng	góng	no	scowl-35	0	en/proposed	en/proposed
+goo	telex	gô	gô	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+goof	telex	gồ	gồ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+goofs	telex	gố	gố	no	scowl-35	0	en/proposed	en/proposed
+goon	telex	gôn	gôn	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+goons	telex	gốn	gốn	no	scowl-35	0	en/proposed	en/proposed
+gore	telex	gỏe	goẻ	no	scowl-35	0	en/proposed	en/proposed
+gores	telex	góe	goé	no	scowl-35	0	en/proposed	en/proposed
+gowns	telex	gớn	gớn	no	scowl-35	0	en/proposed	en/proposed
+gums	telex	gúm	gúm	no	scowl-35	0	en/proposed	en/proposed
+gust	telex	gút	gút	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+hams	telex	hám	hám	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+hangar	telex	hẩng	hẩng	no	scowl-35	0	en/proposed	en/proposed
+hangars	telex	hấng	hấng	no	scowl-35	0	en/proposed	en/proposed
+harms	telex	hám	hám	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+harps	telex	háp	háp	no	scowl-35	0	en/proposed	en/proposed
+hays	telex	háy	háy	no	scowl-35	0	en/proposed	en/proposed
+hems	telex	hém	hém	no	scowl-35	0	en/proposed	en/proposed
+hens	telex	hén	hén	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+herpes	telex	hếp	hếp	no	scowl-35	0	en/proposed	en/proposed
+hers	telex	hé	hé	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+hims	telex	hím	hím	no	scowl-35	0	en/proposed	en/proposed
+hips	telex	híp	híp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+hoax	telex	hõa	hoã	no	scowl-35	0	en/proposed	en/proposed
+hoes	telex	hóe	hoé	no	scowl-35	0	en/proposed	en/proposed
+hoops	telex	hốp	hốp	no	scowl-35	0	en/proposed	en/proposed
+hoots	telex	hốt	hốt	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+hops	telex	hóp	hóp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+horns	telex	hón	hón	no	scowl-35	0	en/proposed	en/proposed
+hose	telex	hóe	hoé	no	scowl-35	0	en/proposed	en/proposed
+hows	telex	hớ	hớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+hums	telex	húm	húm	no	scowl-35	0	en/proposed	en/proposed
+ifs	telex	í	í	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+ins	telex	ín	ín	no	scowl-35	0	en/proposed	en/proposed
+keens	telex	kến	kến	no	scowl-35	0	en/proposed	en/proposed
+lair	telex	lải	lải	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+laps	telex	láp	láp	no	scowl-35	0	en/proposed	en/proposed
+lawns	telex	lắn	lắn	no	scowl-35	0	en/proposed	en/proposed
+lax	telex	lã	lã	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+lee	telex	lê	lê	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+leer	telex	lể	lể	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+leers	telex	lế	lế	no	scowl-35	0	en/proposed	en/proposed
+lefts	telex	lét	lét	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+lepers	telex	lếp	lếp	no	scowl-35	0	en/proposed	en/proposed
+liar	telex	lỉa	lỉa	no	scowl-35	0	en/proposed	en/proposed
+liars	telex	lía	lía	no	scowl-35	0	en/proposed	en/proposed
+loaf	telex	lòa	loà	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+loafs	telex	lóa	loá	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+lofts	telex	lót	lót	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+longs	telex	lóng	lóng	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+loom	telex	lôm	lôm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+looms	telex	lốm	lốm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+loon	telex	lôn	lôn	no	scowl-35	0	en/proposed	en/proposed
+loons	telex	lốn	lốn	no	scowl-35	0	en/proposed	en/proposed
+loots	telex	lốt	lốt	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+lops	telex	lóp	lóp	no	scowl-35	0	en/proposed	en/proposed
+lore	telex	lỏe	loẻ	no	scowl-35	0	en/proposed	en/proposed
+loser	telex	lỏe	loẻ	no	scowl-35	0	en/proposed	en/proposed
+losers	telex	lóe	loé	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+lows	telex	lớ	lớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+majors	telex	máo	máo	no	scowl-35	0	en/proposed	en/proposed
+mama	telex	mâm	mâm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+mamas	telex	mấm	mấm	no	scowl-35	0	en/proposed	en/proposed
+mars	telex	má	má	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+mas	telex	má	má	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+meres	telex	mế	mế	no	scowl-35	0	en/proposed	en/proposed
+merest	telex	mết	mết	no	scowl-35	0	en/proposed	en/proposed
+mes	telex	mé	mé	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+metes	telex	mết	mết	no	scowl-35	0	en/proposed	en/proposed
+moms	telex	móm	móm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+moors	telex	mố	mố	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+moos	telex	mố	mố	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+moots	telex	mốt	mốt	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+mops	telex	móp	móp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+morn	telex	mỏn	mỏn	no	scowl-35	0	en/proposed	en/proposed
+morns	telex	món	món	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+mow	telex	mơ	mơ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+mows	telex	mớ	mớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+mums	telex	múm	múm	no	scowl-35	0	en/proposed	en/proposed
+mys	telex	mý	mý	no	scowl-35	0	en/proposed	en/proposed
+naps	telex	náp	náp	no	scowl-35	0	en/proposed	en/proposed
+nays	telex	náy	náy	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+nieces	telex	niếc	niếc	no	scowl-35	0	en/proposed	en/proposed
+nips	telex	níp	níp	no	scowl-35	0	en/proposed	en/proposed
+nits	telex	nít	nít	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+noes	telex	nóe	noé	no	scowl-35	0	en/proposed	en/proposed
+norms	telex	nóm	nóm	no	scowl-35	0	en/proposed	en/proposed
+oaf	telex	òa	oà	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+oafs	telex	óa	oá	no	scowl-35	0	en/proposed	en/proposed
+oars	telex	óa	oá	no	scowl-35	0	en/proposed	en/proposed
+ore	telex	ỏe	oẻ	no	scowl-35	0	en/proposed	en/proposed
+ores	telex	óe	oé	no	scowl-35	0	en/proposed	en/proposed
+ox	telex	õ	õ	no	scowl-35	0	en/proposed	en/proposed
+oxen	telex	oẽn	oẽn	no	scowl-35	0	en/proposed	en/proposed
+pangs	telex	páng	páng	no	scowl-35	0	en/proposed	en/proposed
+pans	telex	pán	pán	no	scowl-35	0	en/proposed	en/proposed
+papas	telex	pấp	pấp	no	scowl-35	0	en/proposed	en/proposed
+pars	telex	pá	pá	no	scowl-35	0	en/proposed	en/proposed
+pas	telex	pá	pá	no	scowl-35	0	en/proposed	en/proposed
+pasta	telex	pất	pất	no	scowl-35	0	en/proposed	en/proposed
+pats	telex	pát	pát	no	scowl-35	0	en/proposed	en/proposed
+pawn	telex	păn	păn	no	scowl-35	0	en/proposed	en/proposed
+pawns	telex	pắn	pắn	no	scowl-35	0	en/proposed	en/proposed
+peeps	telex	pếp	pếp	no	scowl-35	0	en/proposed	en/proposed
+peps	telex	pép	pép	no	scowl-35	0	en/proposed	en/proposed
+perches	telex	pếch	pếch	no	scowl-35	0	en/proposed	en/proposed
+perjure	telex	pểu	pểu	no	scowl-35	0	en/proposed	en/proposed
+perjures	telex	pếu	pếu	no	scowl-35	0	en/proposed	en/proposed
+peruse	telex	pếu	pếu	no	scowl-35	0	en/proposed	en/proposed
+pest	telex	pét	pét	no	scowl-35	0	en/proposed	en/proposed
+pesters	telex	pết	pết	no	scowl-35	0	en/proposed	en/proposed
+peters	telex	pết	pết	no	scowl-35	0	en/proposed	en/proposed
+pets	telex	pét	pét	no	scowl-35	0	en/proposed	en/proposed
+pierces	telex	piếc	piếc	no	scowl-35	0	en/proposed	en/proposed
+pis	telex	pí	pí	no	scowl-35	0	en/proposed	en/proposed
+pits	telex	pít	pít	no	scowl-35	0	en/proposed	en/proposed
+poops	telex	pốp	pốp	no	scowl-35	0	en/proposed	en/proposed
+pots	telex	pót	pót	no	scowl-35	0	en/proposed	en/proposed
+pups	telex	púp	púp	no	scowl-35	0	en/proposed	en/proposed
+pus	telex	pú	pú	no	scowl-35	0	en/proposed	en/proposed
+quays	telex	quáy	quáy	no	scowl-35	0	en/proposed	en/proposed
+queer	telex	quể	quể	no	scowl-35	0	en/proposed	en/proposed
+queers	telex	quế	quế	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rafts	telex	rát	rát	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rams	telex	rám	rám	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rays	telex	ráy	ráy	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+reef	telex	rề	rề	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+reefs	telex	rế	rế	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rifts	telex	rít	rít	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rims	telex	rím	rím	no	scowl-35	0	en/proposed	en/proposed
+roams	telex	roám	roám	no	scowl-35	0	en/proposed	en/proposed
+roar	telex	rỏa	roả	no	scowl-35	0	en/proposed	en/proposed
+roars	telex	róa	roá	no	scowl-35	0	en/proposed	en/proposed
+roast	telex	roát	roát	no	scowl-35	0	en/proposed	en/proposed
+roes	telex	róe	roé	no	scowl-35	0	en/proposed	en/proposed
+roofs	telex	rố	rố	no	scowl-35	0	en/proposed	en/proposed
+roost	telex	rốt	rốt	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rosary	telex	roảy	roảy	no	scowl-35	0	en/proposed	en/proposed
+rotors	telex	rốt	rốt	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rots	telex	rót	rót	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rums	telex	rúm	rúm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+rungs	telex	rúng	rúng	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+sacs	telex	sác	sác	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+sari	telex	sải	sải	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+saris	telex	sái	sái	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+seeps	telex	sếp	sếp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+seer	telex	sể	sể	no	scowl-35	0	en/proposed	en/proposed
+sifts	telex	sít	sít	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+sips	telex	síp	síp	no	scowl-35	0	en/proposed	en/proposed
+sirs	telex	sí	sí	no	scowl-35	0	en/proposed	en/proposed
+soar	telex	sỏa	soả	no	scowl-35	0	en/proposed	en/proposed
+soars	telex	sóa	soá	no	scowl-35	0	en/proposed	en/proposed
+sofa	telex	sòa	soà	no	scowl-35	0	en/proposed	en/proposed
+sofas	telex	sóa	soá	no	scowl-35	0	en/proposed	en/proposed
+sops	telex	sóp	sóp	no	scowl-35	0	en/proposed	en/proposed
+sores	telex	sóe	soé	no	scowl-35	0	en/proposed	en/proposed
+sorest	telex	soét	soét	no	scowl-35	0	en/proposed	en/proposed
+sown	telex	sơn	sơn	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+sows	telex	sớ	sớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+suns	telex	sún	sún	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+surf	telex	sù	sù	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+surfs	telex	sú	sú	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+swoon	telex	suôn	suôn	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+swoons	telex	suốn	suốn	no	scowl-35	0	en/proposed	en/proposed
+tangs	telex	táng	táng	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+taps	telex	táp	táp	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+tars	telex	tá	tá	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+tarts	telex	tát	tát	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+teem	telex	têm	têm	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+teems	telex	tếm	tếm	no	scowl-35	0	en/proposed	en/proposed
+teens	telex	tến	tến	no	scowl-35	0	en/proposed	en/proposed
+tenser	telex	tển	tển	no	scowl-35	0	en/proposed	en/proposed
+terser	telex	tể	tể	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+thefts	telex	thét	thét	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+thins	telex	thín	thín	no	scowl-35	0	en/proposed	en/proposed
+thongs	telex	thóng	thóng	no	scowl-35	0	en/proposed	en/proposed
+thorn	telex	thỏn	thỏn	no	scowl-35	0	en/proposed	en/proposed
+thorns	telex	thón	thón	no	scowl-35	0	en/proposed	en/proposed
+tits	telex	tít	tít	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+tongs	telex	tóng	tóng	no	scowl-35	0	en/proposed	en/proposed
+tots	telex	tót	tót	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+tow	telex	tơ	tơ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+tows	telex	tớ	tớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+trays	telex	tráy	tráy	no	scowl-35	0	en/proposed	en/proposed
+trims	telex	trím	trím	no	scowl-35	0	en/proposed	en/proposed
+trots	telex	trót	trót	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+tufts	telex	tút	tút	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+turfs	telex	tú	tú	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+urn	telex	ủn	ủn	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+urns	telex	ún	ún	no	scowl-35	0	en/proposed	en/proposed
+vats	telex	vát	vát	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+veer	telex	vể	vể	no	scowl-35	0	en/proposed	en/proposed
+veers	telex	vế	vế	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+vexes	telex	vế	vế	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+visa	telex	vía	vía	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+vow	telex	vơ	vơ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+vows	telex	vớ	vớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
+wax	telex	ữa	ữa	no	scowl-35	0	en/proposed	en/proposed
+nextjs	telex	nét	nét	yes	tech-always	1	en/proposed	en/proposed
+a3	vni	ả	ả	yes	tech-always	0	en/proposed	en/proposed
+a4	vni	ã	ã	no	tech-always	0	en/proposed	en/proposed
+a5	vni	ạ	ạ	yes	tech-always	0	en/proposed	en/proposed
+aux	telex	ãu	ãu	no	tech-always	0	en/proposed	en/proposed
+auxf	telex	àu	àu	no	tech-always	0	en/proposed	en/proposed
+chown	telex	chơn	chơn	no	tech-always	0	en/proposed	en/proposed
+co2	vni	cò	cò	yes	tech-always	0	en/proposed	en/proposed
+ef	telex	è	è	no	tech-always	0	en/proposed	en/proposed
+exe	telex	ễ	ễ	no	tech-always	0	en/proposed	en/proposed
+ix	telex	ĩ	ĩ	no	tech-always	0	en/proposed	en/proposed
+momo	telex	môm	môm	no	tech-always	0	en/proposed	en/proposed
+o2	vni	ò	ò	yes	tech-always	0	en/proposed	en/proposed
+tox	telex	tõ	tõ	no	tech-always	0	en/proposed	en/proposed
+ux	telex	ũ	ũ	no	tech-always	0	en/proposed	en/proposed
+xix	telex	xĩ	xĩ	no	tech-always	0	en/proposed	en/proposed

@@ -5,6 +5,12 @@
 import Foundation
 
 enum EnglishLexicon {
+    /// One-letter entries kept: the English words `a` and `I`. SCOWL also lists letters such as `m`;
+    /// Vietnamese text uses lone consonants as list markers (`m)`) and chat abbreviations (`m` for mày), and
+    /// rule ENG-R823 would make each of them an English token that turns the run English
+    /// (docs/decisions/0202).
+    static let oneLetterWords: Set<String> = ["a", "i"]
+
     /// Lowercase ASCII words of the selected SCOWL lists with their smallest size level, a legal
     /// frequency proxy (level 10 holds the most common words; spec/01-engine.md 8.2, ENG-R820).
     static func load(_ layout: Layout) throws -> [String: Int] {
@@ -19,6 +25,7 @@ enum EnglishLexicon {
                 for raw in text.split(whereSeparator: \.isNewline) {
                     let word = raw.trimmingCharacters(in: .whitespaces).lowercased()
                     guard !word.isEmpty, word.utf8.allSatisfy({ $0 >= 0x61 && $0 <= 0x7A }) else { continue }
+                    guard word.utf8.count > 1 || oneLetterWords.contains(word) else { continue }
                     levels[word] = min(levels[word] ?? level, level)
                 }
             }

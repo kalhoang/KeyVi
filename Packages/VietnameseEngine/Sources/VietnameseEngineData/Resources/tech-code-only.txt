@@ -2,8 +2,6 @@ al
 alh
 alias
 apt
-aux
-auxf
 awk
 ax
 base64
@@ -21,7 +19,6 @@ cat
 cd
 chgrp
 chmod
-chown
 clang
 clear
 cmake
@@ -38,13 +35,11 @@ date
 defaults
 deno
 df
-diff
 dig
 dnf
 docker
 du
 echo
-ef
 egrep
 emacs
 env
@@ -124,9 +119,7 @@ nslookup
 nvim
 open
 openssl
-otool
 pacman
-passwd
 patch
 perl
 pgrep
@@ -188,7 +181,6 @@ tee
 tmux
 top
 touch
-tox
 tr
 traceroute
 trap
