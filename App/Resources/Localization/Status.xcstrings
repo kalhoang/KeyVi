@@ -20,19 +20,19 @@
       }
     },
     "secureInputHint.iterm2.secureKeyboardEntry" : {
-      "comment" : "PLT-R398C iTerm2 hint. VERIFY the setting name in the current iTerm2.",
+      "comment" : "PLT-R398C iTerm2 hint, decision Q38 (docs/decisions/0005-pa-decisions-2026-11-13.md): one sentence from iTerm2's public documentation, the menu item and the pending password prompt; it quotes no setting because the documentation names none for the automatic secure keyboard entry. The menu item is quoted by its English name, as on the website and in the support replies.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTerm2: turn off Secure Keyboard Entry in the iTerm2 menu, and turn off the option that turns it on at password prompts in iTerm2's settings."
+            "value" : "iTerm2 has Secure Keyboard Entry turned on. Turn off iTerm2 > Secure Keyboard Entry, or finish or cancel the password prompt it is waiting for."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTerm2: tắt Secure Keyboard Entry trong menu iTerm2, và tắt tùy chọn tự bật khi thấy lời nhắc mật khẩu trong cài đặt của iTerm2."
+            "value" : "iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục iTerm2 > Secure Keyboard Entry, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ."
           }
         }
       }

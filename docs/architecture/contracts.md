@@ -12906,10 +12906,11 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     /// The app the window's report flows name while this window has the focus (PRD-R47 item 1).
     func lastFrontmostApp() -> BundleKey? { services.lastFrontmost(recent: services.recentApps())?.bundle }
 
-    /// PLT-R1205 step 1: the user focused the problem field, then chose the menu item. The panel does not take
-    /// focus away from that field; it reads the live focus snapshot, which belongs to `bundle` (the menu's
-    /// frontmost app) unless focus moved since. Opened from the Diagnostics window the live focus is this app:
-    /// the panel then names `bundle` in the report and asks the user to click into the problem field.
+    /// PLT-R1205 step 1: the user focused the problem field, then chose the menu item. The panel reads the focus
+    /// snapshot and binds its report before it takes keyboard focus for the symptom (step 6); the snapshot
+    /// belongs to `bundle` (the menu's frontmost app) unless focus moved since. Opened from the Diagnostics window
+    /// the live focus is this app: the panel then names `bundle` in the report and asks the user to click into
+    /// the problem field.
     func startMisbehavesFlow(for bundle: BundleKey?) {
         let controller = MisbehavesPanelController(
             language: language, services: services, bundle: bundle,
@@ -13047,8 +13048,9 @@ struct DiagnosticsServices {
     typealias ReportBuilder = @MainActor (BugReportDraft?) -> DiagnosticsReport
 
     var brand: Brand?
-    /// The report for a bug report draft with the host's live context (`ReportAssembler.report`). Used by the
-    /// non-activating misbehaves panel, where the live focus stays in the problem field.
+    /// The report for a bug report draft with the host's live context (`ReportAssembler.report`). The misbehaves
+    /// panel falls back to it only without `reportSession`: the panel takes the focus in some steps (PLT-R1205
+    /// step 6), and the live context then names this app's own panel.
     var reportForDraft: ((BugReportDraft?) -> DiagnosticsReport)?
     /// A builder bound to the host context read when it is called: the bug report sheet calls it once when it
     /// opens, so a choice made later in the sheet (whose window then has the focus) still describes the field

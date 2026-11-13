@@ -19,8 +19,9 @@ struct DiagnosticsServices {
     typealias ReportBuilder = @MainActor (BugReportDraft?) -> DiagnosticsReport
 
     var brand: Brand?
-    /// The report for a bug report draft with the host's live context (`ReportAssembler.report`). Used by the
-    /// non-activating misbehaves panel, where the live focus stays in the problem field.
+    /// The report for a bug report draft with the host's live context (`ReportAssembler.report`). The misbehaves
+    /// panel falls back to it only without `reportSession`: the panel takes the focus in some steps (PLT-R1205
+    /// step 6), and the live context then names this app's own panel.
     var reportForDraft: ((BugReportDraft?) -> DiagnosticsReport)?
     /// A builder bound to the host context read when it is called: the bug report sheet calls it once when it
     /// opens, so a choice made later in the sheet (whose window then has the focus) still describes the field
