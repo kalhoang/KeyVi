@@ -229,6 +229,16 @@ struct ResourceDirectory {
     }
 
     private static func checkUnique(_ words: [String], file: ResourceFile, firstLine: Int) throws {
+        // lexicon-builder writes every list sorted by UTF-8 bytes, so strictly ascending neighbours prove
+        // uniqueness without hashing (ENG-R1231). For NFC text String `<` follows code point order, which is
+        // UTF-8 byte order. Any other order falls back to the set below.
+        var ascending = true
+        var index = 1
+        while ascending, index < words.count {
+            ascending = words[index - 1] < words[index]
+            index += 1
+        }
+        if ascending { return }
         var seen = Set<String>(minimumCapacity: words.count)
         for (index, word) in words.enumerated() where !seen.insert(word).inserted {
             throw LoadError.malformedEntry(resource: file.rawValue, line: index + firstLine, reason: .duplicate)
