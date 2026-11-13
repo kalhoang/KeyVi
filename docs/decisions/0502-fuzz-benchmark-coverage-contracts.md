@@ -170,13 +170,18 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
   test action, so the earlier `xcodebuild test -scheme TestHost` could not run).
 - The test build (W3-A): `scripts/run-integration.sh build` runs `xcodegen generate`, then
   `xcodebuild -scheme App -configuration Integration` and `xcodebuild -scheme TestHost -configuration Debug`
-  (both `-disableAutomaticPackageResolution`, derived data in `$INTEGRATION_DERIVED_DATA`, default
-  `.build/integration-build`, outside the uploaded artefact), installs both into `$INTEGRATION_APP_DIR` (default
-  `~/Applications`) at the same path every time, and fails when the installed executable lacks the hooks marker.
+  (both `-disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES`: on the command line the setting also reaches the
+  SwiftPM package targets, which the xcconfig line does not; derived data in `$INTEGRATION_DERIVED_DATA`, default
+  `.build/integration-build`, outside the uploaded artefact), terminates a copy still running from the install path
+  (SIGTERM, a bounded wait, then SIGKILL; a signal rather than an Apple Event, which would need an Automation grant),
+  installs both into `$INTEGRATION_APP_DIR` (default `~/Applications`) at the same path every time, and fails when
+  the installed executable lacks the hooks marker.
   Both `integration.yml` jobs run it before the TestHost suite, so the runner always tests the checked-out commit.
 - `bench` compares with `PLATFORM_BASELINE`, default `perf/platform-baseline.json`; `soak` repeats the M2
   comparison with `bench-compare.sh` when `soak-metrics.json` exists. The push-to-`main` job runs one bench run
-  (`COMPAT_HARNESS_BENCH_RUNS=1`, 120-minute budget); the nightly job runs five (QA-R14).
+  (`COMPAT_HARNESS_BENCH_RUNS=1`, 120-minute timeout for a 78-minute budget); the nightly job runs five (QA-R14)
+  before the soak, so an overrunning soak never costs the bench result, with a 720-minute timeout for a 618-minute
+  budget (build 15, tests 15, bench 90, soak 498). The soak still runs when the bench step fails a regression.
 - `compat-harness egress --phase local|production --minutes 10 --output <file.json>`: the 13.7 egress test
   (below). Live only with `COMPAT_HARNESS_LIVE=1`, like `run`, `soak` and `bench`.
 
@@ -223,7 +228,10 @@ them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Re
   writes `request-<n>.json`, and it clears leftover `request-*` and `response-*` files when a run starts, so an
   answer written after a killed run is never taken for the current one (PLT-R821). The app answers with the number
   in the file name, which must equal the request's `sequence`, and never answers a number twice (a response file
-  already present, or one of the last 256 numbers it handled).
+  already present, or one of the last 256 numbers it handled). A number counts as handled only once its answer is
+  on disk: an answer whose write failed is kept and written again by the next scan, without running the command a
+  second time. An unusable directory and a failed write are logged with a fixed reason message (symbolic link, not a
+  directory, another user, permission denied, disk full, I/O error; no path, PLT-R902).
 - App-side file rules (`PosixHookDirectory`): an existing directory must be a real directory of the current user
   (a link or another user's directory disables the hooks for the run) and is tightened to 0700; a request is opened
   with `O_NOFOLLOW | O_NONBLOCK` and checked with `fstat` on the descriptor, so links, other users' files, FIFOs and
@@ -245,7 +253,9 @@ them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Re
   while `ready`), `pauseReason` (`PauseCode`), `failOpenReason` (`FailOpenReason`), `secureInputHolderBundleId`
   (only while paused for secure input), `firstKeyAfterSecureInputReleaseComposed` (PLT-R398B, nil before the first
   release: set by the pipeline on the first key-down after a release, which is key evidence or a new secure-input
-  generation with the flag off; composed means it reached the engine in Vietnamese mode, not failed open),
+  generation with the flag off; composed means the key was fed to the engine, so a hotkey, a navigation key, English
+  mode, a passThrough strategy or a fail-open pass is not composed. The poll that publishes the "off" generation
+  right after key evidence belongs to the same release: no second boundary, no second first key),
   `tapRecoveries` (main-thread re-enables after a timeout), `engineResetsAfterTapRecovery` (timeouts after which the
   pipeline's engine was reset), `metrics` (`MetricsSnapshot` as JSON). Metadata only: no text, titles or URLs; the
   input source name and the holder's display name of `HostState` are dropped (PLT-R901). Error codes:

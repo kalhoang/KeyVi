@@ -48,8 +48,11 @@ These steps change system settings, so they are Pa's to do on the runner machine
    runner's checkout. It builds the xcodegen configuration `Integration` (`Config/Integration.xcconfig`: the
    `INTEGRATION_HOOKS` compilation condition, release-like code generation, `APP_BUNDLE_ID_DEV` of
    `scripts/brand.env`, the Apple Development identity) and installs it into `~/Applications/` (or
-   `$INTEGRATION_APP_DIR`), always to the same path, so the grants of step 8 survive every rebuild. It refuses a
-   build that does not answer the hooks (ADR 0502, "Integration hooks"). The workflows run the same step before every
+   `$INTEGRATION_APP_DIR`), always to the same path, so the grants of step 8 survive every rebuild. A copy still
+   running from that path (an earlier job, a killed harness, a manual session) is terminated first (SIGTERM, then
+   SIGKILL after `$INTEGRATION_QUIT_TIMEOUT` seconds, default 10). It passes `ONLY_ACTIVE_ARCH=YES` on the command
+   line so the package targets build for the runner's architecture only. It refuses a build that does not answer the
+   hooks (ADR 0502, "Integration hooks"). The workflows run the same step before every
    job, so the runner always tests the commit it checked out. By hand, the build alone is
    `xcodebuild -project App.xcodeproj -scheme App -configuration Integration build` after `xcodegen generate`.
    Never ship this build: `scripts/verify-release.sh` fails any app that contains the hooks.
@@ -89,9 +92,11 @@ These steps change system settings, so they are Pa's to do on the runner machine
    0502, "Platform baseline and measurements"). Each run restarts the app, measures C1 over minutes 5 to 10 and M1 at minute 10,
    types 5 minutes at 10 keys per second for C2, types the T2/T3/T5/T6 workload into TestHost under profile
    `bench-workload`, and runs the app's latency probe for T4 ([perf/README.md](../../perf/README.md)).
-6. **Soak (nightly):** `compat-harness soak --keystrokes 1000000 --output .build/integration/soak`: 8.3 hours of
-   Telex words into TextEdit, a Chrome page and Terminal in turn; then `bench-compare.sh` repeats the M2 comparison
-   with `perf/platform-baseline.json` when `soak-metrics.json` was written.
+6. **Soak (nightly, after the five-run bench):** `compat-harness soak --keystrokes 1000000 --output
+   .build/integration/soak`: 8.3 hours of Telex words into TextEdit, a Chrome page and Terminal in turn; then
+   `bench-compare.sh` repeats the M2 comparison with `perf/platform-baseline.json` when `soak-metrics.json` was
+   written. The nightly job budgets 618 minutes (build 15, tests 15, bench 90, soak 498) under a 720-minute timeout;
+   the bench runs first so an overrunning soak never loses it, and the soak still runs after a bench regression.
 7. The workflow uploads `.build/integration` as the run's artefact.
 
 ## 4. Reading the results
@@ -153,7 +158,7 @@ baseline in a pull request labelled `perf-baseline` with the reason (QA-R15), as
 | Symptom | Cause and fix |
 |---|---|
 | Every live command exits 3 at once | `COMPAT_HARNESS_LIVE=1` missing from the runner's `.env`, or the service was not restarted after editing it |
-| `Integration hooks: not answering` | The test build is not the INTEGRATION_HOOKS build, or it is not running. Rebuild with `scripts/run-integration.sh build` (section 2 step 6). If it still does not answer, check that `~/Library/Application Support/<storage folder>/IntegrationHooks` is a real directory owned by the runner user (a link or another user's directory turns the hooks off) |
+| `Integration hooks: not answering` | The test build is not the INTEGRATION_HOOKS build, or it is not running. Rebuild with `scripts/run-integration.sh build` (section 2 step 6). If it still does not answer, look in the app's diagnostics log for `integration hooks disabled: ...` (the reason: symbolic link, not a directory, another user, permission denied, disk full, I/O error) and fix `~/Library/Application Support/<storage folder>/IntegrationHooks` accordingly: it must be a real directory owned by the runner user. `a response could not be written` means a full disk or a replaced directory; the next directory change retries the answer |
 | `the installed test build does not answer the integration hooks` (from `build`) | The `Integration` configuration lost its `INTEGRATION_HOOKS` condition: check `Config/Integration.xcconfig` and `project.yml` |
 | A hook answers `busy` | Another hook was still running, the host did not reach the expected state within 2 s (tap re-enabled, failed open, running again), or the probe window lost focus: look at the app's health events, then rerun |
 | `configure app: ...` on a scenario | A profile names an unknown shipped rule, or `scripts/brand.env` cannot resolve `local.testhost`; run the plan check |
