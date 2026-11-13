@@ -2,7 +2,7 @@
 
 /// Public orthography queries for the diagnostics window and tests (ENG-R1212). They run only on
 /// text the user explicitly pastes there, never on typed keys.
-public enum Orthography {
+public enum Orthography: Sendable {
     /// Parses one word (3.13) and classifies it (3.12). Case is ignored (ENG-R332). The word may be
     /// precomposed (NFC) or use combining marks. Placement of the tone is not part of validity
     /// (3.13 step 5): `toneLetterOffset` reports where the word carries its tone, in characters.

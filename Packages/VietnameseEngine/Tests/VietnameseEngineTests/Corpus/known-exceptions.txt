@@ -1,0 +1,4 @@
+# ENG-T11 (spec/01-engine.md 13.3): English words that may change after commit in an English run, one per
+# line: word<TAB>display<TAB>rule<TAB>reason. Adding an exception requires review by Pa.
+# None yet: the 13.9 fixtures and the QA-R4 hand list restore every word. The data track's lexicon run
+# (ENG-T10 with the bundled resources) lists its exceptions here.
