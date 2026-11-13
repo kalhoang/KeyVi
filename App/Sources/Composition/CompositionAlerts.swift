@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The composition root's own modal notices: safe mode (PLT-R1009), a failed move to Applications (PLT-R710) and
-// the once-per-launch conflict warning (PLT-R399). Copy lives in the `Composition` String Catalog, read through
+// the once-per-launch conflict warning (PLT-R399). None of them is shown by the integration hooks test build. Copy lives in the `Composition` String Catalog, read through
 // the shared `Localizer` of the selected interface language (ADR 0310; keys in ShellCore's `CompositionText`);
 // the app name is always a format argument. The conflict warning reuses the onboarding screen 5 copy from
 // spec/03-product.md. Workstream W2-A.
@@ -89,10 +89,18 @@ enum CompositionAlerts {
 
     /// An agent app's alert opened from the launch path may otherwise appear behind the frontmost app without
     /// keyboard focus (PLT-R1009, PLT-R399: the user must see the explanation).
+    ///
+    /// The self-hosted runner's test build (INTEGRATION_HOOKS, ADR 0502) never opens one: a modal notice would take
+    /// the keys a scenario types and stall the harness. It answers `.abort`, which every caller treats as its
+    /// choice that changes nothing (later, dismiss); the episode itself is still logged by the caller's path.
     @discardableResult
     private static func run(_ alert: NSAlert) -> NSApplication.ModalResponse {
+        #if INTEGRATION_HOOKS
+        return .abort
+        #else
         NSApp.bringToFront()
         return alert.runModal()
+        #endif
     }
 
     /// PRD-R66: an alert button is labelled by its title; the hint carries what it does.

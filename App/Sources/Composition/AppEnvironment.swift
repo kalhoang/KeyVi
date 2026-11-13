@@ -193,8 +193,10 @@ final class AppEnvironment {
 
 extension AppEnvironment: LaunchSteps {
     func resolveLocation() async -> LaunchLocationDecision {
-        #if DEBUG
-        // Development builds run from DerivedData; the move offer is a shipped-app behaviour (PLT-R710).
+        #if DEBUG || INTEGRATION_HOOKS
+        // Development builds run from DerivedData; the move offer is a shipped-app behaviour (PLT-R710). The
+        // runner's test build is installed at one fixed path whose TCC grants a move would lose, and it never
+        // shows a modal offer (scripts/run-integration.sh build).
         return .proceed
         #else
         let bundleURL = Bundle.main.bundleURL
