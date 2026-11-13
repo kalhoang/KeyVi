@@ -1,6 +1,6 @@
 # Runbook: self-hosted macOS runner for integration tests
 
-Owner: the maintainer. Specification: QA-R10 to QA-R13, QA-R16, QA-R40, spec/02-platform.md sections 8.4 and 13.2. Open decision 16 (which Mac, always on or not) is Pa's.
+Owner: the maintainer. Specification: QA-R10 to QA-R13, QA-R16, QA-R40, spec/02-platform.md sections 8.4 and 13.2. Open decision 16 (which Mac, always on or not): Pa chose a tart VM on Pa's Mac on 2026-11-13 (answer S6/Q12), started only for a job (section 8).
 
 Platform integration tests post synthetic key events through the real pipeline into `TestHost/`. How to run the
 suite, read its results and update the performance baseline: [integration-suite.md](integration-suite.md). That needs Accessibility (and maybe Input Monitoring) permission, which GitHub-hosted runners cannot be assumed to grant, so a Mac under Pa's control runs them (QA-R12). Because that Mac holds granted permissions, it is a sensitive machine (QA-R13).
@@ -9,6 +9,9 @@ This runbook does not change any system setting by itself. Steps that change set
 
 ## 1. Choose the machine
 
+- Chosen (Pa, 2026-11-13): the `{{app-slug}}-dev` tart VM (macOS 27, Xcode 27.2) on Pa's Mac, booted for one job
+  and stopped after it, with an ephemeral runner (section 8; the lab itself: [vm-test-lab.md](vm-test-lab.md)).
+  Sections 2 to 7 still apply inside the VM unless section 8 says otherwise.
 - Preferred: a dedicated Mac mini (Apple silicon) that stays on, with the newest macOS the project supports (QA-R23). A second Intel or older-macOS machine is optional for the matrix.
 - Acceptable: Pa's own Mac overnight, using a separate standard macOS user account for the runner so that Pa's data and the runner's grants stay apart.
 - Pin the Xcode version with `xcode-select` to the one recorded in the CI workflow (QA-R23). Install XcodeGen and Swift toolchain components the workflows need.
@@ -86,7 +89,7 @@ Grant once, by hand, as the runner user:
    - the app under test (the dev-signed menu-bar app), and
    - the compatibility harness `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads fields through AX and presses menu items (VERIFY whether macOS holds the runner's `Runner.Worker` responsible instead; grant it too if the harness grant does not take). TestHost needs no permission.
 3. If macOS asks for **Input Monitoring** for the tap, grant it the same way (PLT-R702).
-4. Do **not** edit the TCC database directly. Doing so needs SIP disabled, which is not acceptable for this project. If the machine is managed, a PPPC configuration profile can pre-approve Accessibility and event posting for the specific code requirement ([managed Macs](../support/managed-macs.md), PLT-R760; a profile for the dev build names the `.dev` bundle ID and its Apple Development requirement); a profile still requires the user's approval in System Settings on an unmanaged Mac.
+4. Do **not** edit the TCC database of a physical runner Mac directly. Doing so needs SIP disabled, which is not acceptable for this project on a real Mac. The one exception is the disposable `{{app-slug}}-dev` VM (section 8): its Cirrus Labs image ships with SIP disabled, and `scripts/vm/grant-tcc.sh` writes the grants there (it refuses to run on a real Mac or with SIP enabled). If the machine is managed, a PPPC configuration profile can pre-approve Accessibility and event posting for the specific code requirement ([managed Macs](../support/managed-macs.md), PLT-R760; a profile for the dev build names the `.dev` bundle ID and its Apple Development requirement); a profile still requires the user's approval in System Settings on an unmanaged Mac.
 5. Run the preflight (a workflow step at the start of `integration.yml`) that checks `AXIsProcessTrusted()` and the post-event preflight for the test binaries and fails with the message "permissions not granted to the test build" rather than failing later in a confusing way.
 
 When a grant goes stale (after a macOS update, a changed signing identity, or a moved binary), the symptom is a green start and tests that type nothing. Fix: remove the entry with the minus button, add it again, or reset only the dev bundle's entry: `tccutil reset Accessibility vn.kal.<slug>.dev` (always with the bundle ID; never run it without one, PLT-R741). Then grant again as above and re-run the nightly.
@@ -114,3 +117,92 @@ Only synthetic events targeted at the test host and the app under test are poste
 ## 7. GitHub-hosted runners (QA-R12 VERIFY)
 
 Check whether a GitHub-hosted macOS image lets a test binary receive Accessibility or Input Monitoring (some images allow editing the TCC database). If it does, a subset of the integration tests can also run per pull request; record the result and the labels in `docs/decisions/`. Until then, hosted runners run only the permission-free layers.
+
+## 8. The runner inside the `{{app-slug}}-dev` tart VM (planned, not registered)
+
+GitHub Actions is disabled on the private repository for now (cost), so **no runner is registered**. This section
+is the plan for the day Actions is enabled; until then the same VM runs the suite by hand with
+`scripts/vm/integration-dev.sh` ([integration-suite.md](integration-suite.md) section 10).
+
+### 8.1 Shape
+
+- **Machine:** a throwaway clone of the prepared `{{app-slug}}-dev` VM per job (`scripts/vm/lab.sh clone`), 6144 MB
+  and 4 CPUs, deleted after the job. Grants, the runner files and the prerequisites of
+  [integration-suite.md](integration-suite.md) section 2 live in the base image, so every clone starts with them;
+  whatever a job leaves behind disappears with its clone. A job can therefore not persist anything into the next
+  one (QA-R13).
+- **Runner:** GitHub's runner application in `~/actions-runner` of the base image, configured per job as an
+  **ephemeral** runner (`config.sh --ephemeral`): it takes exactly one job, then GitHub removes the registration.
+- **Labels:** `self-hosted`, `macOS`, `ARM64`, `tcc-granted`, `xcode-27`. `integration.yml` asks for the first
+  four; `xcode-27` names the Xcode of the image (`scripts/actionlint.yaml` already declares both custom labels).
+- **On demand, never idle:** the VM boots only when an integration job waits for these labels and stops when the
+  ephemeral runner exits after its job. Nothing runs between jobs.
+
+### 8.2 Preparing the base image once
+
+In the `{{app-slug}}-dev` VM (`scripts/vm/lab.sh up {{app-slug}}-dev`, then `lab.sh ssh`, or the VM window of
+[vm-test-lab.md](vm-test-lab.md) section 4):
+
+1. Download the runner package for macOS ARM64 from the repository's "New self-hosted runner" page into
+   `~/actions-runner` and check its SHA-256 as shown there. Do not configure it in the base image.
+2. Put `COMPAT_HARNESS_LIVE=1` into `~/actions-runner/.env` (section 3.1).
+3. Do the one-time preparation of [integration-suite.md](integration-suite.md) section 2 inside the VM (language,
+   text substitutions, input sources, third-party apps, chromedriver and the loopback server as LaunchAgents of
+   `admin`).
+4. Grants: the test build, TestHost, `compat-harness`, and the process that starts the harness, which is the
+   runner's `Runner.Worker` when the runner starts it (VERIFY on the first job which client `tccd` names in the
+   unified log, and grant that one). With SIP disabled, `sudo scripts/vm/grant-tcc.sh --bundle ... --binary ...`
+   writes them; the ad-hoc test build needs a new grant after each build, which the job does after
+   `scripts/run-integration.sh build` (section 8.4).
+5. Shut the VM down (`lab.sh down`). The base image is now the runner image.
+
+### 8.3 One job
+
+A script on the host (to be written as `scripts/vm/runner-job.sh` when Actions is enabled) does, for each job:
+
+```sh
+# 1. A registration token, valid for one hour, never stored (gh is logged in on the host).
+token="$(gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token --jq .token)"
+# 2. A throwaway clone; `with` boots it and stops it when the command ends, also on failure.
+scripts/vm/lab.sh clone {{app-slug}}-dev {{app-slug}}-dev-job
+scripts/vm/lab.sh with {{app-slug}}-dev-job -- sh -c '
+  printf "%s\n" "$1" | scripts/vm/lab.sh ssh "$VM_NAME" "read -r token; cd actions-runner &&
+    ./config.sh --unattended --ephemeral --url https://github.com/<owner>/<repo> --token \"\$token\" \
+      --name $VM_NAME-\$(date +%s) --labels self-hosted,macOS,ARM64,tcc-granted,xcode-27 --work _work &&
+    sudo -n launchctl asuser \$(id -u) sudo -n -u admin ./run.sh"' sh "$token"
+# 3. The clone goes away with everything the job wrote.
+scripts/vm/lab.sh delete {{app-slug}}-dev-job
+```
+
+- The token travels on standard input, never on a command line or in a file of the VM.
+- `run.sh` runs in the logged-in GUI session (`launchctl asuser`), because synthetic events and AX need it;
+  `tart exec` is the alternative (the guest agent lives in that session). VERIFY which one `tccd` accepts with the
+  grants of section 8.2.
+- `with` returns when the ephemeral runner exits after its job; the VM then stops. The host script also needs a
+  deadline: if no job is assigned within 15 minutes, or the job exceeds its workflow timeout plus 30 minutes
+  (120 and 720 minutes in `integration.yml`), it stops the VM and removes the registration
+  (`gh api -X DELETE repos/<owner>/<repo>/actions/runners/<id>`).
+
+### 8.4 When to start a job
+
+There is no public endpoint on Pa's Mac for GitHub's `workflow_job` webhook, so the host polls instead: a
+LaunchAgent of Pa's user runs every 5 minutes, asks
+`gh api "repos/<owner>/<repo>/actions/runs?status=queued"` for queued `integration.yml` runs, and starts one job
+(section 8.3) when one waits. The nightly schedule can start it directly at the scheduled time. Only one VM runs at
+a time (`lab.sh` refuses a second), so a smoke test and a job never overlap.
+
+Inside the job, `scripts/run-integration.sh build` builds the test build with the Apple Development identity of
+`Config/Integration.xcconfig`. The VM holds no identity, so either (a) Pa imports the Apple Development
+certificate into the base image's login keychain (allowed by section 2 rule 4: it is not a release secret), which
+also keeps the grants valid across builds (section 4), or (b) the build takes an ad-hoc override and the job runs
+`grant-tcc.sh` after every build, as `scripts/vm/integration-dev.sh` does today. Pa decides; (b) needs
+`scripts/run-integration.sh` to accept the override (a request to the scripts owner).
+
+### 8.5 Security
+
+- Only `main` and release tags reach this runner (section 2); fork pull requests never do.
+- The VM holds no release secret: no Developer ID, Sparkle key, notarization profile or long-lived token.
+- The VM is on tart's NAT network (`192.168.64.0/24`): it reaches the internet for GitHub and could reach services
+  that listen on the host's `192.168.64.1`, so keep none open there that a job must not see. No host folder is
+  shared with the VM (`tart run --dir` is never used).
+- SIP is disabled only inside the disposable image; the host's SIP and TCC are never touched.
