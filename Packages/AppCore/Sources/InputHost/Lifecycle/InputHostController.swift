@@ -275,6 +275,11 @@ public final class InputHostController {
         return status
     }
 
+    /// Onboarding's permission screen is visible: poll every second for at most 5 minutes (PLT-R711).
+    public func setPermissionFastPolling(_ enabled: Bool) {
+        permissionMonitor?.setFastPolling(enabled)
+    }
+
     /// The settings window's recorder is capturing keys: suspend hotkeys (PRD-R15).
     public func setRecorderActive(_ active: Bool) {
         guard active != recorderActive else { return }
