@@ -64,10 +64,16 @@ name, or the slug when the display name contains non-ASCII characters (`APP_STOR
   the two files disagree.
 - Templates keep placeholders (`{{AppName}}`, `{{app-slug}}`, `{{storage-folder}}`, `{{bundle-id}}`,
   ...) and are rendered at build or publish time; the script never touches them.
-- Static text that must show the name (README, docs, site copy) may contain the literal brand values:
-  the script rewrites every literal occurrence of the old display name, bundle IDs, site host and the slug
-  as a whole word in tracked text files, except `spec/` (imported specification) and `docs/decisions/`
-  (historical records). The dry run lists every changed line; `--apply` writes.
+- README, docs and site copy use the placeholders (`{{AppName}}`, `{{app-slug}}`, `<slug>`), never the
+  literal brand values: `scripts/check-docs.py brand` (part of `scripts/lint.sh`) fails on a literal display
+  name, slug, bundle ID or site host in `docs/` (outside `docs/decisions/`), `README*.md` and
+  `CONTRIBUTING.md`, and `site/test.mjs` does the same for the site sources (amended 2026-11-13; this bullet
+  first allowed literals there).
+- Files outside those scopes may still carry literal values where a placeholder cannot be rendered (for
+  example `.github/`, `packaging/`, `compat/` fixtures and issue-form config). The script rewrites every
+  literal occurrence of the old display name, bundle IDs, site host and the slug as a whole word in
+  tracked text files, except `spec/` (imported specification) and `docs/decisions/` (historical records).
+  The dry run lists every changed line; `--apply` writes.
 - After a public release (any entry in `site/data/releases.json`) the script refuses unless
   `--after-release`: the bundle ID, folder names and feed URL are permanent (PLT-R750, PLT-R903, QA-R33).
 
