@@ -8,7 +8,10 @@ public import AppModel
 /// Modifier states covered by the table. Option and Command/Control states are classified, not translated
 /// (PLT-R350).
 public enum LayoutModifierState: Int, Sendable, Hashable, CaseIterable {
-    case none = 0, shift, capsLock, shiftCapsLock
+    case none = 0
+    case shift
+    case capsLock
+    case shiftCapsLock
 }
 
 public enum LayoutEntry: Sendable, Hashable {
