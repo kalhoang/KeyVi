@@ -58,10 +58,13 @@ struct LiveSystemActions: SystemActions {
     }
 
     /// TestHost: presses its "Hold secure input" checkbox when its state differs. Other apps (iTerm2's and
-    /// Terminal's "Secure Keyboard Entry", PLT-R398C) are left to W2-E2 and reported as unsupported.
+    /// Terminal's "Secure Keyboard Entry", PLT-R398C) have no automated toggle until W2-E2, so the scenario
+    /// reports `needsHuman` with the reason instead of failing.
     func setSecureInput(_ enabled: Bool, in bundle: BundleKey) async throws {
         guard bundle == targets.testHostBundleID else {
-            throw LiveError.unsupported("secure input toggle in " + bundle.rawValue)
+            throw HumanReadbackRequired(
+                reason: "switch secure keyboard entry " + (enabled ? "on" : "off") + " in " + bundle.rawValue
+                    + " by hand")
         }
         let toggle = try AX.element(TestHostControls.secureInputToggle, in: bundle)
         let isOn = (AX.attribute(toggle, kAXValueAttribute) as? NSNumber)?.boolValue ?? false

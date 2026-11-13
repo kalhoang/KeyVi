@@ -19,7 +19,7 @@
   "method": "telex",
   "layout": "com.apple.keylayout.ABC",
   "expect": {
-    "paused": true
+    "text": "dd"
   },
   "readback": "human"
 }

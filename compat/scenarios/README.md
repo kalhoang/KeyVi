@@ -51,6 +51,16 @@ The soak (`compat-harness soak`, QA-R16, 13.6) types into `textedit.telex.basic`
 
 ## Runner prerequisites (VERIFY when the runner is set up)
 
+- Live runs need the machine-level opt-in `COMPAT_HARNESS_LIVE=1` in the runner's environment (for example a
+  line in the `.env` file of the GitHub Actions runner directory, which the runner loads into every job).
+  Without it `run`, `soak` and `bench` exit 3 before posting an event, launching an app or changing an input
+  source, so a forgotten `--dry-run` on a developer Mac is harmless. Never set it anywhere else.
+- Every layout the scenarios select must be enabled for the test user (System Settings, Keyboard, Input
+  Sources): ABC (`com.apple.keylayout.ABC`), German, French, Dvorak and Japanese Romaji
+  (`com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese`). The harness lists only enabled sources, so a
+  missing one fails the scenario at its first step with `input source not enabled: <id>`.
+- `results.json` gives a `reason` for every failed or `needsHuman` scenario (failing stage and error, no
+  typed text), and the console prints it after the duration.
 - Bundle IDs were read from installed apps where present (TextEdit, Notes, Safari, Terminal, Chrome, Firefox,
   iTerm2, VS Code, Spotlight, Screen Sharing, Chess). The others are the publicly documented IDs and must be
   checked against the installed app's `Info.plist` (02-platform.md 5.6): Ghostty `com.mitchellh.ghostty`,
@@ -62,12 +72,29 @@ The soak (`compat-harness soak`, QA-R16, 13.6) types into `textedit.telex.basic`
 - VS Code and Chrome expose their editor and omnibox to AX (VERIFY; 6 warns about `AXManualAccessibility`
   side effects). Safari's WebDriver window blocks physical input, so Safari page scenarios read back through AX.
 - A loopback HTTP server on port 8000 for `seedHistory` (for example `python3 -m http.server 8000 --bind
-  127.0.0.1 --directory TestHost/Resources/Pages`) and a WebDriver endpoint per browser
-  (`--webdriver com.google.Chrome=http://127.0.0.1:9515`).
+  127.0.0.1 --directory TestHost/Resources/Pages`) and `chromedriver` listening on its default
+  `http://127.0.0.1:9515`, which every `webdriver` scenario without a `--webdriver BUNDLE=URL` entry uses. Other
+  drivers (for example `safaridriver --port N`) need an explicit `--webdriver`, passed through
+  `COMPAT_HARNESS_RUN_ARGS` / `COMPAT_HARNESS_SOAK_ARGS`.
+- The soak prepares each target once (launch, page, capture shell) and, for later chunks, only brings the app
+  back to the front with a launch request and refocuses the field. VERIFY that activating a running Terminal
+  and the chromedriver-started Chrome this way raises the soak's window rather than opening a new one.
 - The spreadsheet transition window of TestHost and the edit-mode page (20 ms) is a model, not a measurement:
   VERIFY it against Google Sheets in Safari and tune `firstEditDelayUs` scenarios accordingly.
 
-## Not automatable with the current schema
+## Not automatable yet
+
+`terminal.iterm2.secureKeyboardEntry` and `terminal.iterm2.secureKeyboardEntryOff` (PLT-R398C) toggle iTerm2's
+Secure Keyboard Entry, which the harness can only switch in TestHost until W2-E2 adds an automated toggle. Their
+`setSecureInput` step reports `needsHuman` with the reason "switch secure keyboard entry ... by hand" instead of
+failing.
+
+`design.shortcutHeavy` (5.6 rule: `defaultMode` EN for shortcut-heavy design apps) uses its 20 s wait for the
+tester to select a shape and then click into a text frame of the app. The harness types `d d`; with the rule
+applied the app stays in EN mode, so the frame shows "dd" (no "đ"), and the tester also confirms the shape was
+not deleted by a backspace.
+
+### Not automatable with the current schema
 
 `testhost.failOpen.permissionRevoked` (revoke Accessibility during the wait) and `testhost.tapTimeout.recovery`
 (trigger the tap-timeout test hook during the wait) are `human` scenarios because the schema has no setup
