@@ -113,6 +113,24 @@ struct HistoryTests {
         #expect(driver.field.string == "b" && driver.state.activeDisplay.isEmpty)
     }
 
+    @Test(arguments: [Int.max, Int.max / History.entriesPerToken + 1])
+    func hugeHistoryLimitNeverTraps(limit: Int) throws {
+        // ENG-R1001 ("never a crash"), ENG-T30: a host may pass a huge limit to mean "unlimited"; the
+        // entry bound (limit x 64) saturates instead of overflowing on the first commit.
+        #expect(History.entryLimit(forTokens: limit) == .max)
+        var driver = try Committing.driver("ban nam, ⌫⌫", EngineConfiguration(historyLimit: limit))
+        #expect(driver.field.string == "ban nam" && driver.state.activeDisplay == "nam")
+        try driver.type(" ")
+        #expect(driver.field.string == "ban nam " && driver.state.historyCount == 2)
+        // The limit is a public property, so it can also be set after the initialiser; the fuzz checker
+        // computes the same bound.
+        var configuration = EngineConfiguration()
+        configuration.historyLimit = limit
+        var checker = InvariantChecker(engine: Engine(configuration: configuration, resources: .empty))
+        try checker.send(KeyNotation.events("ban nam  ⌫⌫⌫"))
+        try checker.finish()
+    }
+
     @Test func longBoundaryRunsStayBounded() throws {
         var session = Session(engine: Engine(configuration: EngineConfiguration(historyLimit: 2), resources: .empty))
         for _ in 0..<5_000 { _ = session.handle(.key(KeyInput("!"))) }

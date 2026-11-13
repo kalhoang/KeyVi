@@ -116,6 +116,9 @@ public struct FuzzStatistics: Sendable, Hashable {
 /// - ENG-T35: in VNI every letter of the token comes from a letter typed in the token.
 /// - ENG-T36: for a transform key K that applies to the token T, T + K + K ends with the literal K.
 /// - ENG-T37: the letters of a composing token are viable.
+/// - ENG-R710, ENG-R711: a Backspace on the active token leaves it with fewer characters than before (it
+///   removes the last visible character; the replay never brings back keys as extra letters), or as
+///   many when it removes an escaping key and the escaped effect comes back.
 ///
 /// Checks that cost time proportional to the token are done every event for tokens up to a limit and
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
@@ -183,6 +186,7 @@ public struct InvariantChecker: Sendable {
         let index = statistics.events
         remember(event)
         let produced = producedCount(before: event)
+        let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
         let before = takesPureReduceSample(index) ? session.state : nil
         let start = clock.now
         let output = session.handle(event)
@@ -193,6 +197,7 @@ public struct InvariantChecker: Sendable {
         try checkEdit(output, produced: produced, index: index)
         try applyToField(event, output, index: index)
         try checkView(index: index)
+        try checkBackspace(beforeBackspace, index: index)
         try checkState(output, index: index)
         try checkRestore(index: index)
         try checkEscape(index: index)
@@ -351,13 +356,48 @@ public struct InvariantChecker: Sendable {
         }
     }
 
+    // MARK: - ENG-R710: Backspace shortens the token
+
+    /// The token before a Backspace: its display length and whether the Backspace removes only an escaping
+    /// key (ENG-R711). Nil when the event is not a Backspace on a token. Counting is O(token), so long
+    /// tokens are measured only periodically.
+    private func tokenCountBeforeBackspace(_ event: EngineEvent, index: Int) -> (count: Int, removesEscape: Bool)? {
+        guard case .backspace = event, let token = session.state.active,
+            token.composition.raw.count <= options.perEventTokenLimit || index % options.fullCheckInterval == 0
+        else { return nil }
+        let composition = token.composition
+        var removesEscape = false
+        if !token.isMacro, !token.showsRawKeys {
+            if let literalStart = composition.literalStart {
+                // An escape that appends a non-letter (`ww`, `[[`, VNI `a11`) starts literal mode with its key.
+                removesEscape = composition.escapeUsed && literalStart == composition.raw.count - 1
+            } else {
+                removesEscape = composition.letters.last?.flags.contains(.escape) ?? false
+            }
+        }
+        return (token.display.count, removesEscape)
+    }
+
+    /// ENG-R710: Backspace removes the last visible character of the token, so the display gets shorter. A
+    /// replay that turns the remaining keys into stray letters or digits (a tone key left behind by its
+    /// letter) makes it as long or longer. ENG-R711: removing an escaping key brings the escaped effect
+    /// back, so the length may stay (`ww` shows `w`, Backspace shows `ư`); it never grows.
+    private func checkBackspace(_ before: (count: Int, removesEscape: Bool)?, index: Int) throws {
+        guard let before else { return }
+        let countAfter = session.state.activeDisplay.count
+        guard countAfter < before.count || (before.removesEscape && countAfter == before.count) else {
+            throw violation(
+                "ENG-R710", "Backspace left \(countAfter) characters of a token of \(before.count)", index)
+        }
+    }
+
     // MARK: - State invariants
 
     private mutating func checkState(_ output: EngineOutput, index: Int) throws {
         let state = session.state
         let limit = engine.configuration.historyLimit
         // ENG-T30, QA-R7 P3: memory beyond the active token is bounded by the history limit.
-        if state.history.tokenCount > limit || state.history.entries.count > limit * History.entriesPerToken {
+        if state.history.tokenCount > limit || state.history.entries.count > History.entryLimit(forTokens: limit) {
             throw violation("ENG-T30", "history holds \(state.history.entries.count) entries", index)
         }
         // ENG-R620.
