@@ -68,7 +68,9 @@ enum AttestedAdditions {
                 throw BuilderError("attested-additions.txt line \(number): expected 'syllable<TAB>reason'")
             }
             let syllable = fields[0]
-            guard syllable == VietnameseText.nfc(syllable).lowercased(), !syllable.isEmpty,
+            guard VietnameseText.isNFC(syllable),
+                syllable.unicodeScalars.elementsEqual(syllable.lowercased().unicodeScalars),
+                !syllable.isEmpty,
                 syllable.allSatisfy(VietnameseText.isVietnameseLetter)
             else {
                 throw BuilderError(
@@ -134,7 +136,7 @@ struct AmbiguityRow: Equatable {
         guard let status = Status(rawValue: fields[2]) else {
             throw BuilderError("ambiguity.tsv line \(number): status must be proposed, reviewed or unreviewed")
         }
-        guard fields[3] == VietnameseText.nfc(fields[3]) else {
+        guard VietnameseText.isNFC(fields[3]) else {
             throw BuilderError("ambiguity.tsv line \(number): display must be NFC")
         }
         return AmbiguityRow(raw: fields[0], decision: decision, status: status, display: fields[3], note: fields[4])
