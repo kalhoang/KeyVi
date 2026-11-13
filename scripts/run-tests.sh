@@ -15,7 +15,7 @@ Usage: scripts/run-tests.sh [options]
 Options:
   --coverage      enforce the coverage gates (engine >= 95 %, AppCore >= 80 %, QA-R2)
   --bench         run the engine benchmark gate (scripts/bench-compare.sh)
-  --app           generate the Xcode project and build the app (universal Debug, unsigned)
+  --app           generate the Xcode project, build the app (universal Debug, unsigned) and run UpdaterTests
   --lint          run scripts/lint.sh first
   --only LIST     comma-separated subset: engine,appcore,data,scripts,bench,app
   --scratch NAME  use .build-NAME scratch paths (parallel builds, see CLAUDE.md)
@@ -100,8 +100,11 @@ app_build() {
   xcodegen_bin="$(scripts/install-xcodegen.sh --prefer-system)"
   "$xcodegen_bin/xcodegen" generate
   xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
-    -destination 'generic/platform=macOS' ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO \
+    -destination 'generic/platform=macOS' -disableAutomaticPackageResolution ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO \
     CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' build
+  # The Sparkle wrapper tests, as in ci.yml (no TEST_HOST: nothing launches the app).
+  xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'platform=macOS' \
+    -disableAutomaticPackageResolution CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' test -only-testing:UpdaterTests
 }
 
 if [[ $lint -eq 1 ]]; then

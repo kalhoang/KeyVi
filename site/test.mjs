@@ -3,8 +3,9 @@
 // Tiny test script: `node site/test.mjs`. Builds into temp dirs (fallback data and populated fixtures) and checks
 // pages, internal links and anchors, language attributes, privacy rules (PRD-R74), appcast and sitemap XML.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -84,6 +85,32 @@ function resolveInternal(dist, fromFile, href) {
   return { file, fragment };
 }
 
+/** Help pages the app opens: every site path with an anchor in the String Catalogs (for example the PRD-R16
+ * hotkey conflict guide) and the SupportLinks topics of InputHost (ShellActions.swift). */
+async function appHelpTargets() {
+  const targets = [];
+  const catalogDir = join(ROOT_DIR, "App", "Resources", "Localization");
+  for (const name of (await readdir(catalogDir)).filter((n) => n.endsWith(".xcstrings"))) {
+    const catalog = JSON.parse(await readFile(join(catalogDir, name), "utf8"));
+    for (const [key, entry] of Object.entries(catalog.strings ?? {})) {
+      for (const [lang, localization] of Object.entries(entry.localizations ?? {})) {
+        const value = localization.stringUnit?.value ?? "";
+        const match = value.match(/^(\/(?:[a-z0-9-]+\/)*)#([a-z0-9-]+)$/);
+        if (match) targets.push({ path: match[1], fragment: match[2], source: `${name} ${key} (${lang})` });
+      }
+    }
+  }
+  const swift = await readFile(join(ROOT_DIR, "Packages", "AppCore", "Sources", "InputHost", "Integration", "ShellActions.swift"), "utf8");
+  const paths = swift.match(/language == \.vietnamese \? "([^"]+)" : "([^"]+)"/);
+  assert.ok(paths, "SupportLinks support paths");
+  for (const [, topic, language, anchor] of swift.matchAll(/case \(\.(\w+), \.(vietnamese|english)\): anchor = "([^"]+)"/g)) {
+    targets.push({ path: `/${language === "vietnamese" ? paths[1] : paths[2]}`, fragment: anchor, source: `SupportLinks.${topic} (${language})` });
+  }
+  return targets;
+}
+
+const sha256Base64 = (text) => createHash("sha256").update(text, "utf8").digest("base64");
+
 async function checkSite(label, dist) {
   const htmlFiles = (await walk(dist)).filter((f) => f.endsWith(".html"));
   const pages = new Map(await Promise.all(htmlFiles.map(async (f) => [f, await readFile(f, "utf8")])));
@@ -134,7 +161,13 @@ async function checkSite(label, dist) {
       if (/<(?:iframe|embed|object)\b/i.test(html)) problems.push(`${rel(file)}: embedded content`);
       if (/<img[^>]+src="(?:https?:)?\/\//i.test(html)) problems.push(`${rel(file)}: external image`);
       if (/<script(?![^>]*\bsrc=)[^>]*>/i.test(html)) problems.push(`${rel(file)}: inline script`);
-      if (/<style[\s>]/i.test(html)) problems.push(`${rel(file)}: inline style element`);
+      if (isReleaseNotesPage(rel(file))) {
+        // PLT-R906: the page shown in the update window inlines its stylesheet, allowed by hash only.
+        for (const [, css] of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) {
+          if (!html.includes(`style-src 'sha256-${sha256Base64(css)}'`)) problems.push(`${rel(file)}: inline style not allowed by its CSP hash`);
+        }
+        if (/<link\b/i.test(html)) problems.push(`${rel(file)}: release-notes page loads a resource`);
+      } else if (/<style[\s>]/i.test(html)) problems.push(`${rel(file)}: inline style element`);
       for (const img of html.match(/<img\b[^>]*>/g) ?? []) if (!/\salt="[^"]+"/.test(img)) problems.push(`${rel(file)}: img without alt`);
       if (!/Content-Security-Policy/.test(html)) problems.push(`${rel(file)}: no CSP meta`);
     }
@@ -291,6 +324,76 @@ try {
     assert.match(read("en", "support", "index.html"), /Device Control and Data Access/);
   });
 
+  await check("populated: every help anchor the app opens exists (PRD-R16 hotkey guide, SupportLinks topics)", async () => {
+    const targets = await appHelpTargets();
+    assert.ok(targets.some((t) => t.source.includes("settings.hotkey.conflict.helpPath")), "PRD-R16 help path found");
+    assert.ok(targets.filter((t) => t.source.startsWith("SupportLinks")).length >= 8, "SupportLinks topics found");
+    const problems = [];
+    for (const target of targets) {
+      const file = join(populated, target.path, "index.html");
+      if (!existsSync(file)) problems.push(`${target.source}: no page ${target.path}`);
+      else if (!(await readFile(file, "utf8")).includes(`id="${target.fragment}"`)) problems.push(`${target.source}: no #${target.fragment} on ${target.path}`);
+    }
+    assert.deepEqual(problems, []);
+  });
+
+  await check("populated: the macOS shortcut guide covers every combination the recorder warns about (PRD-R16)", () => {
+    const section = (html, id) => html.split(`id="${id}"`)[1]?.split("</section>")[0] ?? "";
+    const vi = section(read("ho-tro", "index.html"), "phim-tat-macos");
+    const en = section(read("en", "support", "index.html"), "macos-shortcuts");
+    for (const [label, html, keyboard, spotlight] of [["vi", vi, "Bàn phím", "Spotlight"], ["en", en, "Keyboard", "Spotlight"]]) {
+      assert.ok(html.includes(keyboard) && html.includes(spotlight), `${label}: System Settings path`);
+      for (const keys of [["Command", "Space"], ["Control", "Space"], ["Control", "Option", "Space"], ["Control", "Command", "Space"], ["Command", "Tab"], ["Command", "Q"], ["Command", "W"]]) {
+        const combo = keys.map((key) => `<kbd>${key}</kbd>`).join(" + ");
+        assert.ok(html.includes(combo), `${label}: ${keys.join("+")}`);
+      }
+    }
+  });
+
+  await check("populated: the FAQ explains the pause for non-Latin input sources (D22, PRD-R7)", () => {
+    const summaries = (html) => [...html.matchAll(/<summary>([\s\S]*?)<\/summary>/g)].map((m) => m[1]).join("\n");
+    assert.match(summaries(read("ho-tro", "index.html")), /tiếng Nhật, Trung hay Hàn/);
+    assert.match(summaries(read("en", "support", "index.html")), /Japanese, Chinese or Korean/);
+  });
+
+  await check("populated: migration pages promise only the importers that ship (PRD-R69, contracts.md 7.3)", () => {
+    // The app imports macros from TSV or CSV, the Text Replacements plist and its own export; importers for other
+    // input methods' files come only after their formats are observed in real exports (CLR-R5).
+    const external = ["xkey", "openkey", "evkey", "go-nhanh", "phtv"];
+    const overpromise = { vi: /nhập được|có thể nhập|nhập gõ tắt và|nhập phần gõ tắt/i, en: /can import|imports (?:the )?macros|imports? (?:its|their) settings/i };
+    const template = { vi: 'href="/ho-tro/chuyen-tu/tep-van-ban/"', en: 'href="/en/support/migrate-from/plain-text-file/"' };
+    for (const id of external) {
+      for (const [lang, html] of [["vi", read("ho-tro", "chuyen-tu", id, "index.html")], ["en", read("en", "support", "migrate-from", id, "index.html")]]) {
+        const lede = html.match(/<p class="lede">([\s\S]*?)<\/p>/)[1];
+        assert.ok(lede.includes(template[lang]), `${lang} ${id}: the intro points at the plain text template`);
+        const text = html.split('<main id="main"')[1].replace(/<[^>]+>/g, " ");
+        assert.ok(!overpromise[lang].test(text), `${lang} ${id}: promises an importer that does not exist`);
+      }
+    }
+    const cards = (html) => html.match(/<ul class="cards">[\s\S]*?<\/ul>/)[0];
+    assert.ok(!/kiểu gõ|loại trừ|theo ứng dụng/.test(cards(read("ho-tro", "index.html"))), "vi index cards");
+    assert.ok(!/typing method|excluded apps|per-app/.test(cards(read("en", "support", "index.html"))), "en index cards");
+  });
+
+  await check("populated: the settings export example has the keys the app writes and reads (PRD-R72)", async () => {
+    const swift = await readFile(join(ROOT_DIR, "Packages", "AppCore", "Sources", "SettingsStore", "ExportImport.swift"), "utf8");
+    const header = [...swift.match(/headerKeys: Set<String> = \[([^\]]+)\]/)[1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
+    const sections = [...swift.match(/static let settings = "settings",[^\n]*/)[0].matchAll(/"(\w+)"/g)].map((m) => m[1]);
+    const kind = swift.match(/static let kind = "([^"]+)"/)[1];
+    const documents = await readFile(join(ROOT_DIR, "Packages", "AppCore", "Sources", "SettingsStore", "Documents.swift"), "utf8");
+    const macroBlock = documents.split("public struct StoredMacro")[1].split("public init")[0];
+    const macroKeys = [...macroBlock.matchAll(/public var (\w+):/g)].map((m) => m[1]);
+    for (const page of [read("ho-tro", "chuyen-tu", "tep-van-ban", "index.html"), read("en", "support", "migrate-from", "plain-text-file", "index.html")]) {
+      const code = [...page.matchAll(/<pre><code>([\s\S]*?)<\/code><\/pre>/g)].map((m) => m[1]).find((c) => c.includes('"schemaVersion"'));
+      const example = JSON.parse(code);
+      assert.deepEqual(Object.keys(example).sort(), [...header, ...sections].sort());
+      assert.equal(example.kind, kind);
+      assert.deepEqual(Object.keys(example.macros[0]).sort(), [...macroKeys].sort());
+      assert.equal(typeof example.appModes, "object");
+      assert.ok(!Array.isArray(example.appModes), "appModes is an object");
+    }
+  });
+
   await check("populated: language switch and hreflang alternates point at the sibling page", () => {
     const html = read("tai-ve", "index.html");
     assert.match(html, /hreflang="en" href="https:\/\/[^"]+\/en\/download\/"/);
@@ -309,6 +412,38 @@ try {
   await check("fallback: changelog fills {{AppName}} from brand.env", () => {
     const en = fallbackPages.get(join(fallback, "en", "changelog", "index.html"));
     assert.ok(!en.includes("{{AppName}}"));
+  });
+
+  await check("site notice: on every page in both languages when enabled, nowhere when off (QA-R38, QA-R54)", async () => {
+    for (const html of [...fallbackPages.values(), ...pop.values()]) assert.ok(!html.includes("site-notice"), "no notice by default");
+    const configPath = join(tmp, "notice-config.json");
+    const base = JSON.parse(await readFile(join(SITE_DIR, "config.json"), "utf8"));
+    const notice = { enabled: true, vi: "Bản 1.2.0 làm mất chữ trong Terminal, hãy cập nhật lên 1.2.1.", en: "Version 1.2.0 drops letters in Terminal; update to 1.2.1.", link: "https://github.com/OWNER/REPO/issues/42" };
+    await writeFile(configPath, JSON.stringify({ ...base, banner: notice }));
+    const out = join(tmp, "notice");
+    await build({ outDir: out, today: "2026-11-13", dataDir: join(SITE_DIR, "fixtures", "populated"), configPath });
+    const files = (await walk(out)).filter((f) => f.endsWith(".html") && !isReleaseNotesPage(f.slice(out.length + 1)));
+    assert.ok(files.length >= ROUTES.length * LANGS.length);
+    for (const file of files) {
+      const html = await readFile(file, "utf8");
+      const lang = file.slice(out.length + 1).startsWith("en/") ? "en" : "vi";
+      const aside = html.match(/<aside class="site-notice"[\s\S]*?<\/aside>/)?.[0] ?? "";
+      assert.ok(aside.includes(notice[lang].replace("&", "&amp;")), `${file}: ${lang} notice text`);
+      assert.ok(aside.includes(`href="${notice.link}"`), `${file}: link to the pinned issue`);
+      assert.ok(html.indexOf("site-notice") < html.indexOf('<main id="main"'), `${file}: at the top of the page`);
+      assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html), `${file}: no inline script (PRD-R74)`);
+    }
+    await writeFile(configPath, JSON.stringify({ ...base, banner: { enabled: true, vi: "", en: "x", link: "" } }));
+    await assert.rejects(() => build({ outDir: join(tmp, "notice-bad"), today: "2026-11-13", configPath }), /banner/);
+    await writeFile(configPath, JSON.stringify({ ...base, banner: { ...notice, link: "javascript:alert(1)" } }));
+    await assert.rejects(() => build({ outDir: join(tmp, "notice-bad"), today: "2026-11-13", configPath }), /https/);
+  });
+
+  await check("release-notes stylesheet is allowed by static/_headers (PLT-R906)", async () => {
+    const css = await readFile(join(SITE_DIR, "static", "assets", "release-notes.css"), "utf8");
+    const headers = await readFile(join(SITE_DIR, "static", "_headers"), "utf8");
+    const policy = headers.split("\n").find((line) => line.trim().startsWith("Content-Security-Policy:")) ?? "";
+    assert.ok(policy.includes(`'sha256-${sha256Base64(css)}'`), `add 'sha256-${sha256Base64(css)}' to style-src in static/_headers`);
   });
 
   await check("strict mode refuses to ship VERIFY markers and placeholder config", async () => {

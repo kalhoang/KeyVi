@@ -4,12 +4,13 @@
 
 For every committed Package.resolved (SwiftPM pins of the engine, AppCore and the app):
   - every pin must be an exact version (a `version` in the pin state), not a branch or bare revision
-  - the shipping app may depend on Sparkle only (PLT-R104); other packages are reported so a
-    decision record can be checked (test-only dependencies are allowed)
+  - the shipping app may depend on Sparkle only (PLT-R104): any other pin in Config/Package.resolved, the
+    app's resolved file that project.yml copies into the generated project, fails the audit (the packages'
+    own Package.resolved files may hold test-only dependencies)
   - each pinned version is checked against the GitHub Advisory Database (ecosystem swift) through
     `gh api /advisories`; any advisory affecting the pinned version fails the audit
 Also reports Package.swift manifests without a committed Package.resolved next to them when they
-declare dependencies.
+declare remote dependencies (local path dependencies have no pins).
 
 Usage: python3 -I scripts/dependency-audit.py [--offline] [--root DIR]
 --offline skips the advisory query (pin hygiene only).
@@ -26,6 +27,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_ALLOWED = {"sparkle"}
+APP_RESOLVED = Path("Config") / "Package.resolved"
 SKIP_DIRS = {".git", ".build", "node_modules", "DerivedData", "dist"}
 
 
@@ -72,7 +74,9 @@ def main(argv: list[str]) -> int:
     resolved_files = find_files(root, "Package.resolved")
     for manifest in find_files(root, "Package.swift"):
         text = manifest.read_text(encoding="utf-8")
-        if re.search(r"\.package\s*\(", text) and not (manifest.parent / "Package.resolved").exists():
+        # Local `.package(path:)` dependencies are never pinned; only remote ones need a Package.resolved.
+        if re.search(r"\.package\s*\(\s*(?:name:\s*\"[^\"]*\"\s*,\s*)?(?:url|id):", text) \
+                and not (manifest.parent / "Package.resolved").exists():
             problems.append(f"{manifest.relative_to(root)} declares dependencies but has no committed Package.resolved")
     for path in resolved_files:
         rel = path.relative_to(root)
@@ -92,8 +96,9 @@ def main(argv: list[str]) -> int:
                     ids = ", ".join(a.get("ghsa_id", "?") for a in found)
                     problems.append(f"{rel}: {identity} {version} is affected by {ids}")
                     status = f"ADVISORY {ids}"
-            if "app" in str(rel).lower() and identity not in RUNTIME_ALLOWED:
-                status += " (not Sparkle: needs a decision record unless test-only, PLT-R104)"
+            if rel == APP_RESOLVED and identity not in RUNTIME_ALLOWED:
+                problems.append(f"{rel}: {identity} is a runtime dependency of the app; PLT-R104 allows Sparkle only")
+                status += " (not Sparkle, PLT-R104)"
             rows.append((str(rel), identity, version, status))
 
     lines = ["### Dependency audit", "", "| Package.resolved | Package | Version | Status |", "|---|---|---|---|"]

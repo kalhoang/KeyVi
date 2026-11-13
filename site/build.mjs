@@ -4,6 +4,7 @@
 //   --out <dir>        output directory (default site/dist)
 //   --data-dir <dir>   read releases.json, matrix.json, CHANGELOG.md from this directory (tests, previews)
 //   --today <date>     fixed build date (YYYY-MM-DD), also honours SOURCE_DATE_EPOCH
+//   --config <file>    read this file instead of site/config.json (tests, previews)
 //   --strict           fail when VERIFY markers or placeholder config values remain (release gate)
 import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
@@ -52,7 +53,7 @@ export async function build(options = {}) {
   const outDir = resolve(options.outDir ?? join(SITE_DIR, "dist"));
   assertSafeOutDir(outDir);
   const today = resolveToday(options.today);
-  const ctx = await createContext({ rootDir: ROOT_DIR, siteDir: SITE_DIR, dataDir: options.dataDir, today });
+  const ctx = await createContext({ rootDir: ROOT_DIR, siteDir: SITE_DIR, dataDir: options.dataDir, configPath: options.configPath, today });
 
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
@@ -94,6 +95,7 @@ function parseArgs(argv) {
     if (arg === "--out") options.outDir = value();
     else if (arg === "--data-dir") options.dataDir = resolve(value());
     else if (arg === "--today") options.today = value();
+    else if (arg === "--config") options.configPath = resolve(value());
     else if (arg === "--strict") options.strict = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }

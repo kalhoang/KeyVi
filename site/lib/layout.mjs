@@ -49,6 +49,18 @@ function header(ctx, page) {
   </header>`;
 }
 
+// QA-R38 step 2, QA-R54: the incident or absence notice of site/config.json `banner`, on every page. Plain
+// escaped text and a link, no script (PRD-R74).
+function siteNotice(ctx, page) {
+  const notice = ctx.config.banner;
+  if (!notice?.enabled) return "";
+  const { ui, lang } = page;
+  const link = notice.link ? ` <a href="${esc(notice.link)}" rel="noopener">${esc(ui.notice.link)}</a>` : "";
+  return `<aside class="site-notice" aria-label="${esc(ui.notice.label)}">
+    <div class="wrap"><p>${esc(notice[lang])}${link}</p></div>
+  </aside>`;
+}
+
 function footer(ctx, page) {
   const { ui, lang } = page;
   return `<footer class="site-footer">
@@ -99,6 +111,7 @@ export function renderDocument(ctx, page) {
 </head>
 <body>
   <a class="skip" href="#main">${esc(ui.skipLink)}</a>
+  ${siteNotice(ctx, page)}
   ${header(ctx, page)}
   <main id="main" class="wrap">
 ${page.body}

@@ -14,8 +14,18 @@
 # (CODE_SIGN_IDENTITY_RELEASE, DEVELOPMENT_TEAM), scripts/brand.env (APP_DISPLAY_NAME, APP_SLUG). The Sparkle
 # public key comes from Config/Sparkle.xcconfig through the project; scripts/verify-release.sh checks it.
 # Environment: none required. The Developer ID identity must be in the login keychain or in --keychain.
-# Outputs: dist/<slug>-<version>/<Display Name>.app, App.xcarchive and build-info.json (commit, Xcode, Swift,
-# macOS, QA-R23). The last line on stdout is the path of the .app.
+# Nested code (PLT-R750, PLT-R908, PLT-R909): Code Sign On Copy re-signs Sparkle.framework but not the helpers
+# inside it, which Sparkle ships ad-hoc signed; only Xcode's Archive and Export would re-sign them (Sparkle
+# documentation, "Sandboxing with Sparkle", section Code Signing). This script re-signs them itself, inside out
+# and without --deep as that section describes, after copying the app out of the archive:
+#   - the XPC services are removed: the app is not sandboxed and sets neither SUEnableInstallerLauncherService
+#     nor SUEnableDownloaderService, so they never run, and PLT-R909 allows no XPC listeners (same page,
+#     "Removing XPC Services")
+#   - Autoupdate and Updater.app, then the framework, then the app last, so its seal covers the new signatures,
+#     each with the Developer ID certificate Xcode signed the app with, hardened runtime and a secure timestamp
+# scripts/verify-release.sh then checks every nested executable.
+# Outputs: dist/<slug>-<version>/<Display Name>.app, App.xcarchive (as Xcode wrote it) and build-info.json
+# (commit, Xcode, Swift, macOS, QA-R23). The last line on stdout is the path of the .app.
 set -euo pipefail
 
 usage() {
@@ -94,20 +104,55 @@ else
   )
 fi
 
+# PLT-R910, ADR 0301: -disableAutomaticPackageResolution makes a drift between project.yml and the committed
+# Config/Package.resolved fail the build instead of silently resolving another Sparkle revision.
 cmd=(
   xcodebuild archive
   -project App.xcodeproj -scheme App -configuration Release
   -destination 'generic/platform=macOS'
   -archivePath "$archive"
+  -disableAutomaticPackageResolution
   ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO
   "MARKETING_VERSION=$version" "CURRENT_PROJECT_VERSION=$build"
   "${sign_args[@]}"
 )
 
+# Sparkle's helpers, signed before the framework (see the header). The XPC services are removed, not signed.
+SPARKLE_HELPERS=(Autoupdate Updater.app)
+
+# The leaf certificate Xcode signed the app with; the nested code is re-signed with the same one.
+signing_authority() {
+  codesign --display --verbose=2 "$1" 2>&1 | sed -n 's/^Authority=//p' | head -n1
+}
+
+sign_code() {
+  local args=(--force --sign "$sign_identity" --options runtime --timestamp)
+  [[ -n "$keychain" ]] && args+=(--keychain "$keychain")
+  codesign "${args[@]}" "$@"
+}
+
+resign_nested_code() {
+  local app="$1" framework="$1/Contents/Frameworks/Sparkle.framework" current version helper
+  [[ -d "$framework" ]] || die "Sparkle.framework is missing from $app (PLT-R104)"
+  current="$(readlink "$framework/Versions/Current")" || die "Sparkle.framework has no Versions/Current link"
+  version="$framework/Versions/$current"
+  rm -rf "$version/XPCServices" "$framework/XPCServices"
+  for helper in "${SPARKLE_HELPERS[@]}"; do
+    [[ -e "$version/$helper" ]] || die "Sparkle helper missing: $version/$helper"
+    sign_code "$version/$helper"
+  done
+  sign_code "$framework"
+  sign_code --preserve-metadata=identifier,entitlements,flags "$app"
+}
+
 if [[ $dry_run -eq 1 ]]; then
   printf 'xcodegen generate\n'
   printf '%q ' "${cmd[@]}"
   printf '\n'
+  if [[ $unsigned -eq 0 ]]; then
+    printf 'then, in the copied app: remove Sparkle.framework XPCServices; codesign inside out: %s, Sparkle.framework, the app\n' \
+      "${SPARKLE_HELPERS[*]}"
+  fi
   exit 0
 fi
 
@@ -124,6 +169,13 @@ done
 [[ -n "$app_src" ]] || die "no .app in $archive/Products/Applications"
 app="$out/$APP_DISPLAY_NAME.app"
 ditto "$app_src" "$app"
+
+if [[ $unsigned -eq 0 ]]; then
+  sign_identity="$(signing_authority "$app")"
+  [[ "$sign_identity" =~ ^Developer\ ID\ Application:\ .*\($APP_TEAM_ID\)$ ]] \
+    || die "$app is not signed with Developer ID Application for team $APP_TEAM_ID (found: ${sign_identity:-none})"
+  resign_nested_code "$app"
+fi
 
 actual_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
 actual_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"

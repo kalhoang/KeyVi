@@ -6,6 +6,7 @@ Subcommands:
   releases-add       add one entry to site/data/releases.json (QA-R37)
   release-notes-page write (or, with --check, only validate) the bilingual release-notes page the appcast
                      links to (PRD-R51, ADR 0304)
+  beta-soak        check that a stable version has been on beta for at least 72 hours (QA-R29)
   render-cask      render packaging/homebrew/Casks/cask.rb.template (QA-R36, PLT-R1110)
   render-zap       print the zap paths with brand values (PLT-R1012)
   changelog-notes  extract the notes of one version from a Keep a Changelog file
@@ -13,7 +14,9 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
+import hashlib
 import email.utils
 import html
 import json
@@ -161,8 +164,10 @@ def cmd_releases_add(args) -> int:
 
 NOTES_MAX_VISIBLE_LINES = 5  # PRD-R51: five lines visible, then the "more" link to the changelog
 DASHES = ("\u2013", "\u2014")  # the site's prose rule (site/test.mjs) rejects en and em dashes
-# Bump the query when site/static/assets/release-notes.css changes (/assets/* is cached as immutable).
-RELEASE_NOTES_CSS = "/assets/release-notes.css?v=1"
+# PLT-R906: the update window shows the page without loading anything else, so this stylesheet is inlined and
+# the page's CSP allows exactly that block by its SHA-256 (site/static/_headers lists the same hash).
+RELEASE_NOTES_CSS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "site", "static",
+                                 "assets", "release-notes.css")
 PAGE_COPY = {
     "vi": {"heading": "Tiếng Việt", "more": "Xem nhật ký thay đổi đầy đủ"},
     "en": {"heading": "English", "more": "Read the full changelog"},
@@ -252,6 +257,11 @@ def cmd_release_notes_page(args) -> int:
     if os.path.exists(args.out) and not args.force:
         raise SystemExit(f"{args.out} already exists: version {args.version} has been published")
     title = html.escape(f"{args.app_name} {args.version}")
+    with open(RELEASE_NOTES_CSS, encoding="utf-8") as handle:
+        css = handle.read()
+    if "</style" in css.lower() or "url(" in css or "@import" in css:
+        raise SystemExit(f"{RELEASE_NOTES_CSS} must not close the style element or load anything (PLT-R906)")
+    digest = base64.b64encode(hashlib.sha256(css.encode("utf-8")).digest()).decode("ascii")
     page = "\n".join([
         "<!doctype html>",
         '<html lang="vi">',
@@ -259,11 +269,11 @@ def cmd_release_notes_page(args) -> int:
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         '<meta name="color-scheme" content="light dark">',
-        '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'self\'; '
-        "img-src 'self'; base-uri 'none'; form-action 'none'\">",
+        f'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'sha256-{digest}\'; '
+        "img-src 'none'; base-uri 'none'; form-action 'none'\">",
         '<meta name="robots" content="noindex">',
         f"<title>{title}</title>",
-        f'<link rel="stylesheet" href="{RELEASE_NOTES_CSS}">',
+        f"<style>{css}</style>",
         "</head>",
         "<body>",
         "<main>",
@@ -279,6 +289,38 @@ def cmd_release_notes_page(args) -> int:
     print(page, end="")
     return 0
 
+
+
+def cmd_beta_soak(args) -> int:
+    """QA-R29: a stable release MUST have been on beta for at least 72 hours (P0 hotfixes excepted, which
+    publish-release handles). releases.json dates are days, so 72 hours means three days before today."""
+    if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
+        raise SystemExit(f"beta-soak checks stable versions (X.Y.Z), not {args.version}")
+    today = dt.date.fromisoformat(args.today) if args.today else dt.datetime.now(dt.timezone.utc).date()
+    latest_allowed = today - dt.timedelta(days=-(-args.hours // 24))
+    releases = []
+    if os.path.exists(args.file):
+        with open(args.file, encoding="utf-8") as handle:
+            releases = json.load(handle).get("releases") or []
+    beta_re = re.compile(re.escape(args.version) + r"-beta\.\d+")
+    betas = []
+    for entry in releases:
+        if not isinstance(entry, dict) or not beta_re.fullmatch(str(entry.get("version", ""))):
+            continue
+        try:
+            betas.append((dt.date.fromisoformat(str(entry.get("date", ""))), entry["version"]))
+        except ValueError:
+            continue
+    if not betas:
+        print(f"no {args.version}-beta.N listed in {args.file}", file=sys.stderr)
+        return 1
+    # The latest beta is what becomes stable, so it is the one that has to have soaked for the whole period.
+    date, latest = max(betas)
+    if date > latest_allowed:
+        print(f"the latest beta {latest} is from {date.isoformat()}", file=sys.stderr)
+        return 1
+    print(f"{latest} on beta since {date.isoformat()}")
+    return 0
 
 
 def zap_lines(path: str, folder: str, bundle_id: str) -> list[str]:
@@ -416,6 +458,13 @@ def main(argv: list[str]) -> int:
             p.add_argument("--site-host", required=True)
             p.add_argument("--desc", required=True)
         p.set_defaults(func=func)
+
+    p = sub.add_parser("beta-soak")
+    p.add_argument("--file", required=True, help="site/data/releases.json")
+    p.add_argument("--version", required=True, help="the stable version X.Y.Z")
+    p.add_argument("--hours", type=int, default=72)
+    p.add_argument("--today", default="", help="YYYY-MM-DD (default: today, UTC)")
+    p.set_defaults(func=cmd_beta_soak)
 
     p = sub.add_parser("changelog-notes")
     p.add_argument("--file", required=True)

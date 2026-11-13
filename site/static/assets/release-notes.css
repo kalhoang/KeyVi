@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: LicenseRef-App-Pending */
 /* Release-notes pages written by scripts/publish-release (ADR 0304): shown inside the in-app update window, */
-/* so they are compact and carry no site navigation. Same palette as style.css. When this file changes, bump */
-/* RELEASE_NOTES_CSS in scripts/lib/publish_helpers.py (/assets/* is cached as immutable). */
+/* so they are compact and carry no site navigation. Same palette as style.css. publish-release inlines this */
+/* file into each page, which then loads nothing else (PLT-R906). When it changes, add its new SHA-256 to */
+/* style-src in static/_headers and keep the old ones for pages already published (site/test.mjs checks). */
 :root {
   color-scheme: light dark;
   --bg: #faf8f4;

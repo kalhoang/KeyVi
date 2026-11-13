@@ -287,6 +287,81 @@ contains "unsigned fuzz commit named" "test: unsigned fuzz change"
 expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
   --path Packages/VietnameseEngine
 
+echo "== notarize.sh never accepts a submission without its log (QA-R30 step 5)"
+N="$T/notary"
+mkdir -p "$N/bin"
+# Fake xcrun and ditto (the Linux CI job has neither): submit is Accepted; log fails until FAKE_LOG_AFTER calls,
+# then writes FAKE_LOG_JSON; stapler succeeds.
+cat >"$N/bin/xcrun" <<'EOF'
+#!/bin/sh
+case "$1 $2" in
+  "notarytool submit") printf '{"id": "sub-1", "status": "Accepted"}\n' ;;
+  "notarytool log")
+    count=$(( $(cat "$FAKE_LOG_COUNT" 2>/dev/null || echo 0) + 1 ))
+    echo "$count" >"$FAKE_LOG_COUNT"
+    [ "$count" -gt "${FAKE_LOG_AFTER:-99}" ] || { echo "Error: HTTP 500" >&2; exit 1; }
+    for last; do :; done
+    if [ -n "${FAKE_LOG_JSON:-}" ]; then printf '%s\n' "$FAKE_LOG_JSON" >"$last"; else printf '{"issues": null}\n' >"$last"; fi ;;
+  "stapler staple" | "stapler validate") ;;
+  *) exit 3 ;;
+esac
+EOF
+printf '#!/bin/sh\nexit 0\n' >"$N/bin/ditto"
+chmod +x "$N/bin/xcrun" "$N/bin/ditto"
+printf 'dmg' >"$N/test.dmg"
+notarize() { # notarize <expected exit> <name> [VAR=value...]
+  local want="$1" name="$2"
+  shift 2
+  rm -f "$N/count" "$N"/notarization-*.json
+  expect "$want" "$name" env PATH="$N/bin:$PATH" NOTARY_KEYCHAIN_PROFILE=test FAKE_LOG_COUNT="$N/count" \
+    NOTARY_LOG_RETRY_DELAY=0 "$@" "$S/notarize.sh" "$N/test.dmg" --log-dir "$N"
+}
+notarize 1 "an Accepted submission whose log cannot be fetched fails"
+contains "names the missing log" "notary log for test.dmg could not be fetched"
+if [[ "$(cat "$N/count")" == 3 ]]; then ok "the log is fetched three times before giving up"; else ko "the log is fetched three times before giving up"; fi
+notarize 0 "a log that arrives on the second try is accepted" FAKE_LOG_AFTER=1
+contains "stapled" "notarised and stapled: test.dmg"
+notarize 1 "an issue in the log fails" FAKE_LOG_AFTER=0 \
+  FAKE_LOG_JSON='{"issues": [{"severity": "warning", "path": "x", "message": "no timestamp"}]}'
+contains "issue count named" "lists 1 issue(s)"
+
+echo "== check-pr-labels.sh (QA-R6 corpus-change, QA-R15 perf-baseline)"
+L="$T/labels"
+corpus="Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus"
+mkdir -p "$L/$corpus" "$L/perf"
+git -C "$L" init -q
+git -C "$L" config user.name "Ada Contributor"
+git -C "$L" config user.email "ada@example.org"
+git -C "$L" config commit.gpgsign false
+printf 'vieejt\tviệt\n' >"$L/$corpus/editing.tsv"
+printf 'a\tb\n' >"$L/$corpus/layouts.tsv"
+printf '{"metrics": {}}\n' >"$L/perf/platform-baseline.json"
+git -C "$L" add -A && git -C "$L" commit -q -m "chore: base"
+label_base="$(git -C "$L" rev-parse HEAD)"
+labels_check() { # labels_check <expected exit> <name> <labels>
+  expect "$1" "$2" "$S/check-pr-labels.sh" --repo "$L" --base "$label_base" --head HEAD --labels "$3"
+}
+printf 'tieengs\ttiếng\n' >>"$L/$corpus/editing.tsv"
+git -C "$L" commit -q -am "test: add a corpus case"
+labels_check 0 "a new corpus case needs no label" ""
+printf 'vieejt\tviet\ntieengs\ttiếng\n' >"$L/$corpus/editing.tsv"
+git -C "$L" commit -q -am "test: change an expected output"
+labels_check 1 "a changed expected output needs corpus-change" "bug,perf-baseline"
+contains "names the corpus file" "$corpus/editing.tsv"
+contains "names the label" "corpus-change"
+labels_check 0 "the corpus-change label allows it" "bug,corpus-change"
+git -C "$L" reset -q --hard "$label_base"
+printf 'c\td\n' >"$L/$corpus/layouts.tsv"
+git -C "$L" commit -q -am "test: regenerate the layout corpus"
+labels_check 0 "generated corpus files are left to their generators' --check" ""
+printf '{"metrics": {"T2.p99": 1}}\n' >"$L/perf/platform-baseline.json"
+git -C "$L" commit -q -am "perf: new baseline"
+labels_check 1 "a baseline change needs perf-baseline" "corpus-change"
+contains "names the baseline" "perf/platform-baseline.json"
+contains "names the perf label" "perf-baseline"
+labels_check 0 "the perf-baseline label allows it" "perf-baseline"
+expect 1 "unknown revisions are rejected" "$S/check-pr-labels.sh" --repo "$L" --base nope --head HEAD --labels ""
+
 echo "== check-docs.py (relative links and brand literals in docs)"
 K="$T/k"
 mkdir -p "$K/docs/runbooks" "$K/docs/decisions" "$K/scripts"
@@ -406,6 +481,28 @@ if grep -Fq "engine-fuzz-vni	$F/out/engine-fuzz-vni/minimized-crash-1" "$F/out/f
 else
   ko "findings.txt names the run and the minimised input"; sed 's/^/     /' "$F/out/findings.txt"
 fi
+
+echo "== coverage.sh: the drop gate fails closed when a required baseline is missing (QA-R2)"
+CV="$T/cov"
+mkdir -p "$CV/bin" "$CV/pkg/Sources/Lib"
+printf '// swift-tools-version: 6.0\n' >"$CV/pkg/Package.swift"
+touch "$CV/pkg/Sources/Lib/A.swift"
+printf '{"data":[{"files":[{"filename":"%s","summary":{"lines":{"count":10,"covered":9}}}]}]}\n' \
+  "$(cd "$CV/pkg" && pwd)/Sources/Lib/A.swift" >"$CV/codecov.json"
+printf '#!/bin/sh\nprintf "%%s\\n" "%s"\n' "$CV/codecov.json" >"$CV/bin/swift"
+chmod +x "$CV/bin/swift"
+expect 0 "a missing optional baseline only skips the drop check" env PATH="$CV/bin:$PATH" \
+  "$S/coverage.sh" --package "$CV/pkg" --min 80 --no-test --baseline "$CV/none.json" --summary-out "$CV/s.json"
+contains "skip is reported" "No baseline summary available; drop check skipped."
+expect 1 "a missing required baseline fails" env PATH="$CV/bin:$PATH" \
+  "$S/coverage.sh" --package "$CV/pkg" --min 80 --no-test --baseline "$CV/none.json" --require-baseline \
+  --summary-out "$CV/s.json"
+contains "names the missing baseline" "coverage baseline $CV/none.json is missing"
+printf '{"percent": 92.5}\n' >"$CV/base.json"
+expect 1 "a drop of more than one point fails" env PATH="$CV/bin:$PATH" \
+  "$S/coverage.sh" --package "$CV/pkg" --min 80 --no-test --baseline "$CV/base.json" --require-baseline \
+  --summary-out "$CV/s.json"
+contains "drop reported" "coverage dropped 2.50 points"
 
 echo "== rename-app.sh in a scratch copy"
 R="$T/repo"
@@ -686,6 +783,9 @@ if [[ $no_macos -eq 0 ]]; then
   mkdir -p "$M/Config" "$M/packaging"
   cp "$REPO/Config/Signing.xcconfig" "$M/Config/"
   cp -R "$REPO/packaging/homebrew" "$M/packaging/"
+  # publish-release inlines the release-notes stylesheet into each notes page (PLT-R906).
+  mkdir -p "$M/site/static/assets"
+  cp "$REPO/site/static/assets/release-notes.css" "$M/site/static/assets/"
   printf '# Changelog\n\n## [1.2.3] - 2026-11-13\n- First public test\n' >"$M/CHANGELOG.md"
   app="$M/dist/testapp-1.2.3/Test App.app"
   mkdir -p "$app/Contents/MacOS"
@@ -746,9 +846,178 @@ EOF
   contains "long notes cite PRD-R51" "PRD-R51 allows at most 5"
   if [[ -e "$T/sign-called" ]]; then ko "long notes fail before sign_update"; else ok "long notes fail before sign_update"; fi
   cp "$T/changelog-short.md" "$M/CHANGELOG.md"
+
+  echo "== publish-release: the signing key is the one installed apps trust (QA-R33, PLT-R1102)"
+  K="$T/sparkle-bin"
+  mkdir -p "$K"
+  app_key="pfIShU4dEXqPd5ObYNfDBiQWcXozk7estwzTnF9BamQ="
+  old_key="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  # Fakes: generate_keys prints FAKE_KEYCHAIN_KEY (and fails without -p: it must never create a key);
+  # sign_update signs with a fixed signature and fails --verify when FAKE_VERIFY_FAILS is set.
+  cat >"$K/generate_keys" <<'EOF'
+#!/bin/sh
+printf 'generate_keys %s\n' "$*" >>"$FAKE_SPARKLE_LOG"
+case " $* " in *" -p "*) ;; *) exit 9 ;; esac
+printf '%s\n' "$FAKE_KEYCHAIN_KEY"
+EOF
+  cat >"$K/sign_update" <<'EOF'
+#!/bin/sh
+printf 'sign_update %s\n' "$*" >>"$FAKE_SPARKLE_LOG"
+case " $* " in
+  *" --verify "*) [ -z "${FAKE_VERIFY_FAILS:-}" ]; exit ;;
+esac
+for last; do :; done
+printf 'sparkle:edSignature="%s" length="%s"\n' "$(printf 'S%.0s' $(seq 86))==" "$(stat -f %z "$last")"
+EOF
+  chmod +x "$K/generate_keys" "$K/sign_update"
+  publish_signed() { # publish_signed <expected exit> <name> <keychain key> [publish-release options...]
+    local want="$1" name="$2" key="$3"
+    shift 3
+    : >"$K/log"
+    expect "$want" "$name" env SPARKLE_SIGN_UPDATE="$K/sign_update" FAKE_SPARKLE_LOG="$K/log" FAKE_KEYCHAIN_KEY="$key" \
+      "$M/scripts/publish-release" 1.2.3 --sign-in-dry-run --skip-attestation --skip-gatekeeper "$@"
+  }
+  publish_signed 1 "a keychain key other than the app's SUPublicEDKey is refused" "$old_key"
+  contains "names the mismatch" "does not match the SUPublicEDKey"
+  if grep -q '^sign_update' "$K/log"; then ko "nothing is signed with the wrong key"; else ok "nothing is signed with the wrong key"; fi
+  publish_signed 0 "the app's own key signs" "$app_key" --sparkle-account release
+  if grep -qx 'generate_keys --account release -p' "$K/log"; then
+    ok "the public half is read with -p for the chosen account"
+  else
+    ko "the public half is read with -p for the chosen account"; sed 's/^/     /' "$K/log"
+  fi
+  if grep -q '^sign_update --account release ' "$K/log" && grep -q '^sign_update --verify ' "$K/log"; then
+    ok "signed and verified with the same account"
+  else
+    ko "signed and verified with the same account"; sed 's/^/     /' "$K/log"
+  fi
+  FAKE_VERIFY_FAILS=1 publish_signed 1 "a failed sign_update --verify is fatal" "$app_key"
+  contains "names the verification" "sign_update --verify rejected the signature"
+  publish_signed 0 "a key rotation release (R1) is signed with the old key" "$old_key" --rotating-from-key "$old_key"
+  contains "the rotation is announced" "key rotation: signing with the old key"
+  publish_signed 1 "--rotating-from-key still has to match the keychain key" "$app_key" --rotating-from-key "$old_key"
+  publish_signed 1 "a malformed --rotating-from-key is refused" "$app_key" --rotating-from-key "not-a-key"
+  expect 1 "an unpinned sign_update from another project's DerivedData is never used" \
+    grep -q 'Library/Developer/Xcode/DerivedData' "$M/scripts/publish-release"
+
+  echo "== publish-release: a stable release needs 72 hours on beta (QA-R29)"
+  expect 0 "a dry run of a stable without a beta warns" "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper
+  contains "the QA-R29 warning" "QA-R29: no 1.2.3-beta.N on the beta channel for at least 72 hours"
+  printf -- '- Sửa lỗi\n' >"$T/notes-vi.md"
+  rm -f "$T/sign-called"
+  expect 1 "--apply refuses a stable without 72 hours on beta" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --apply --skip-attestation --notes-vi "$T/notes-vi.md"
+  contains "the QA-R29 error" "QA-R29: no 1.2.3-beta.N on the beta channel for at least 72 hours"
+  if [[ -e "$T/sign-called" ]]; then ko "QA-R29 fails before sign_update"; else ok "QA-R29 fails before sign_update"; fi
+  expect 0 "--p0-hotfix skips the beta period" "$M/scripts/publish-release" 1.2.3 --p0-hotfix --skip-attestation \
+    --skip-gatekeeper
+  contains "the hotfix is named" "P0 hotfix: QA-R29 beta period skipped, phased rollout off (QA-R35)"
+  if grep -q 'phasedRolloutInterval' "$T/out"; then ko "a P0 hotfix is not phased"; else ok "a P0 hotfix is not phased"; fi
+  mkdir -p "$M/site/data"
+  printf '{"schemaVersion": 1, "releases": [{"version": "1.2.3-beta.2", "channel": "beta", "date": "%s"}]}\n' \
+    "$(date -u -v-4d +%Y-%m-%d)" >"$M/site/data/releases.json"
+  expect 0 "a beta four days old satisfies QA-R29" "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper
+  if grep -q 'QA-R29' "$T/out"; then ko "no QA-R29 warning after the beta period"; else ok "no QA-R29 warning after the beta period"; fi
+  rm -f "$M/site/data/releases.json"
+
   expect 0 "build-release dry run" bash -c "cd '$M' && touch project.yml && scripts/build-release.sh 1.2.3 1020399 --dry-run"
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
+  # PLT-R910, ADR 0301: the committed Package.resolved is the only source of package versions.
+  contains "package versions stay pinned in the release archive" "-disableAutomaticPackageResolution"
+  contains "dry run announces the nested re-sign" "remove Sparkle.framework XPCServices"
+
+  echo "== build-release.sh re-signs Sparkle's helpers inside out (PLT-R750, PLT-R908, PLT-R909)"
+  # Fake xcodegen, xcodebuild and codesign: the archive holds an app that embeds a Sparkle.framework laid out like
+  # the pinned 2.10.1 one; codesign records every signing call and answers --display with FAKE_AUTHORITY.
+  BR="$T/br"
+  mkdir -p "$BR/bin"
+  cat >"$BR/bin/xcodegen" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+  cat >"$BR/bin/xcodebuild" <<'EOF'
+#!/bin/sh
+case " $* " in *" archive "*) ;; *) echo "Xcode 27.2"; exit 0 ;; esac
+archive=""; version=""; build=""; prev=""
+for arg in "$@"; do
+  [ "$prev" = "-archivePath" ] && archive="$arg"
+  case "$arg" in MARKETING_VERSION=*) version="${arg#*=}" ;; CURRENT_PROJECT_VERSION=*) build="${arg#*=}" ;; esac
+  prev="$arg"
+done
+app="$archive/Products/Applications/Test App.app/Contents"
+fw="$app/Frameworks/Sparkle.framework"
+mkdir -p "$app/MacOS" "$fw/Versions/B/XPCServices/Installer.xpc/Contents/MacOS" \
+  "$fw/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS" "$fw/Versions/B/Updater.app/Contents/MacOS"
+printf 'binary\n' >"$app/MacOS/Test"
+printf 'binary\n' >"$fw/Versions/B/Sparkle"
+printf 'binary\n' >"$fw/Versions/B/Autoupdate"
+ln -s B "$fw/Versions/Current"
+ln -s Versions/Current/Sparkle "$fw/Sparkle"
+ln -s Versions/Current/Autoupdate "$fw/Autoupdate"
+ln -s Versions/Current/XPCServices "$fw/XPCServices"
+cat >"$app/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleShortVersionString</key><string>$version</string>
+<key>CFBundleVersion</key><string>$build</string>
+</dict></plist>
+PLIST
+EOF
+  cat >"$BR/bin/codesign" <<'EOF'
+#!/bin/sh
+case " $* " in
+  *" --display "*) printf 'Executable=x\nAuthority=%s\nAuthority=Developer ID Certification Authority\n' "$FAKE_AUTHORITY" >&2 ;;
+  *)
+    for last; do :; done
+    printf 'codesign %s\n' "$*" >>"$FAKE_CODESIGN_LOG"
+    printf '%s\n' "$last" >>"$FAKE_CODESIGN_LOG.targets" ;;
+esac
+EOF
+  chmod +x "$BR/bin/xcodegen" "$BR/bin/xcodebuild" "$BR/bin/codesign"
+  team="$(sed -n 's/^DEVELOPMENT_TEAM = //p' "$M/Config/Signing.xcconfig")"
+  authority="Developer ID Application: Test Person ($team)"
+  : >"$BR/codesign.log"
+  : >"$BR/codesign.log.targets"
+  expect 0 "signed release build" env PATH="$BR/bin:$PATH" FAKE_CODESIGN_LOG="$BR/codesign.log" \
+    FAKE_AUTHORITY="$authority" "$M/scripts/build-release.sh" 1.2.3 1020399 --keychain "$BR/ci.keychain" --out "$BR/out"
+  fw="$BR/out/Test App.app/Contents/Frameworks/Sparkle.framework"
+  if [[ ! -e "$fw/Versions/B/XPCServices" && ! -L "$fw/XPCServices" ]]; then
+    ok "unused XPC services removed from the shipped framework (PLT-R909)"
+  else
+    ko "unused XPC services removed from the shipped framework (PLT-R909)"
+  fi
+  if [[ -d "$BR/out/App.xcarchive/Products/Applications/Test App.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" ]]; then
+    ok "the archive itself is left as Xcode wrote it"
+  else
+    ko "the archive itself is left as Xcode wrote it"
+  fi
+  signed="$(sed "s#^$BR/out/##" "$BR/codesign.log.targets")"
+  expected_order="$(printf '%s\n' "Test App.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" \
+    "Test App.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app" \
+    "Test App.app/Contents/Frameworks/Sparkle.framework" "Test App.app")"
+  if [[ "$signed" == "$expected_order" ]]; then
+    ok "helpers, then the framework, then the app are signed, in that order"
+  else
+    ko "helpers, then the framework, then the app are signed, in that order"; sed 's/^/     /' "$BR/codesign.log"
+  fi
+  if [[ "$(grep -c -F -- "--force --sign $authority --options runtime --timestamp --keychain $BR/ci.keychain" "$BR/codesign.log")" == 4 ]]; then
+    ok "every re-sign uses the app's Developer ID, hardened runtime, a secure timestamp and the CI keychain"
+  else
+    ko "every re-sign uses the app's Developer ID, hardened runtime, a secure timestamp and the CI keychain"
+    sed 's/^/     /' "$BR/codesign.log"
+  fi
+  if grep -q -- '--deep' "$BR/codesign.log"; then ko "no --deep (Sparkle documentation)"; else ok "no --deep (Sparkle documentation)"; fi
+  if grep -F -- "--preserve-metadata=identifier,entitlements,flags $BR/out/Test App.app" "$BR/codesign.log" >/dev/null; then
+    ok "the app keeps its identifier and flags when re-sealed"
+  else
+    ko "the app keeps its identifier and flags when re-sealed"
+  fi
+  expect 1 "a build Xcode did not sign with Developer ID is refused" env PATH="$BR/bin:$PATH" \
+    FAKE_CODESIGN_LOG="$BR/codesign.log" FAKE_AUTHORITY="Apple Development: Test Person (ABCDE12345)" \
+    "$M/scripts/build-release.sh" 1.2.3 1020399 --out "$BR/out2"
+  contains "names the expected identity" "not signed with Developer ID Application for team $team"
 
   echo "== notarize.sh credential choice (dry run, nothing is submitted)"
   expect 0 "notarize dry run with the default profile" env -u NOTARY_KEYCHAIN_PROFILE -u ASC_API_KEY_PATH \
@@ -790,7 +1059,27 @@ EOF
   contains "missing previous requirement named" "previous designated requirement file not found"
   expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
   contains "public key present passes" "ok: Sparkle public EdDSA key (SUPublicEDKey)"
-  contains "a build without the hooks passes the hooks check" "ok: no integration hooks code (INTEGRATION_HOOKS)"
+  contains "an app without nested code passes the nested-code check" "ok: nested code signed with Developer ID"
+  # ADR 0502: the marker proves the App-side hooks adapter is absent, not every hooks type (AppCore's hook server
+  # and watcher are linked into every configuration, unused without the adapter); the label says exactly that.
+  contains "a build without the hooks passes the hooks check" "ok: no integration hooks adapter (INTEGRATION_HOOKS test build marker)"
+  # PLT-R750, PLT-R908: an ad-hoc helper inside the bundle (as Sparkle ships its helpers) must fail before
+  # notarisation; codesign --verify --deep --strict alone accepts it.
+  nested="$M/nested/$(basename "$app")"
+  mkdir -p "$M/nested"
+  cp -R "$app" "$nested"
+  cp /usr/bin/true "$nested/Contents/MacOS/helper"
+  codesign --force --sign - "$nested/Contents/MacOS/helper" >/dev/null 2>&1
+  # A data-only bundle (like a SwiftPM resource bundle) holds no code: the app's seal covers it as resources.
+  mkdir -p "$nested/Contents/Resources/Data.bundle/Contents/Resources"
+  printf 'data\n' >"$nested/Contents/Resources/Data.bundle/Contents/Resources/words.txt"
+  codesign --force --sign - "$nested" >/dev/null 2>&1
+  expect 1 "verify-release fails on an ad-hoc nested executable" "$M/scripts/verify-release.sh" --app "$nested" \
+    --pre-notarization
+  contains "deep verification alone accepts it" "ok: codesign --verify --deep --strict"
+  contains "nested code check fails" "FAILED: nested code signed with Developer ID"
+  contains "names the nested file" "Contents/MacOS/helper: not signed with Developer ID"
+  if grep -q 'Data.bundle' "$T/out"; then ko "a data-only bundle is not nested code"; else ok "a data-only bundle is not nested code"; fi
   # W3-A, ADR 0502: an app built with the INTEGRATION_HOOKS condition carries the marker; a release must not.
   hooked="$M/hooked/$(basename "$app")"
   mkdir -p "$M/hooked"
@@ -799,8 +1088,8 @@ EOF
     >>"$hooked/Contents/MacOS/Test"
   codesign --force --sign - "$hooked" >/dev/null 2>&1
   expect 1 "verify-release fails on integration hooks code" "$M/scripts/verify-release.sh" --app "$hooked" --pre-notarization
-  contains "hooks code reported" "FAILED: no integration hooks code (INTEGRATION_HOOKS)"
-  contains "names the file" "integration hooks code found in: $hooked/Contents/MacOS/Test"
+  contains "hooks code reported" "FAILED: no integration hooks adapter (INTEGRATION_HOOKS test build marker)"
+  contains "names the file" "integration hooks adapter found in: $hooked/Contents/MacOS/Test"
   /usr/libexec/PlistBuddy -c 'Set :SUPublicEDKey ""' "$app/Contents/Info.plist"
   codesign --force --sign - "$app" >/dev/null 2>&1
   expect 1 "verify-release fails without SUPublicEDKey" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization

@@ -3,5 +3,11 @@
   "sponsorsUrl": "https://github.com/sponsors/OWNER",
   "homebrewTap": "OWNER/tap",
   "supportEmail": "support@example.invalid",
-  "securityEmail": "security@example.invalid"
+  "securityEmail": "security@example.invalid",
+  "banner": {
+    "enabled": false,
+    "vi": "",
+    "en": "",
+    "link": ""
+  }
 }

@@ -10,8 +10,10 @@
 #      (downloaded from the draft GitHub Release with --from-github, or local files), verify the
 #      SHA-256 sums, the GitHub build provenance attestation, the code signature, the stapled ticket
 #      and Gatekeeper assessment.
-#   2. EdDSA-sign the update archive with Sparkle's sign_update (from the resolved SwiftPM artifacts
-#      or a pinned, checksum-verified download).
+#   2. Check that the EdDSA key in the keychain is the one installed apps trust (the archive's SUPublicEDKey,
+#      or the old key given with --rotating-from-key during a key rotation, QA-R33), then EdDSA-sign the
+#      update archive with Sparkle's sign_update and verify the signature (both fatal, PLT-R1102). The tools
+#      come from SPARKLE_SIGN_UPDATE or a pinned, checksum-verified Sparkle download.
 #   3. Insert the appcast item (site/static/appcast.xml): sparkle:version, shortVersionString,
 #      minimumSystemVersion, edSignature, length, ONE release-notes link without xml:lang variants
 #      (ADR 0304 amendment), channel for betas, phasedRolloutInterval for stable (QA-R34, QA-R35).
@@ -31,10 +33,13 @@
 # Reads: scripts/brand.env (name, slug, bundle ID, site host), packaging/homebrew/Casks/cask.rb.template,
 # scripts/zap-paths.txt, site/static/appcast.xml and site/data/releases.json (both created when absent).
 # Keychain: the Sparkle EdDSA private key stays in Pa's login keychain; --sparkle-account NAME selects its
-# account (passed to sign_update --account), otherwise sign_update uses its default account.
-# Environment: SPARKLE_SIGN_UPDATE (path of sign_update; otherwise the SwiftPM artifacts, Xcode DerivedData,
-# or a pinned, checksum-verified Sparkle 2.10.1 download); GitHub access through `gh` (gh auth login, or
-# GH_TOKEN) for --from-github, --github-release and the attestation check; BRAND_ENV (tests).
+# account (passed to generate_keys and sign_update as --account), otherwise their default account is used.
+# Environment: SPARKLE_SIGN_UPDATE (path of sign_update; otherwise a pinned, checksum-verified Sparkle 2.10.1
+# download, never an unpinned copy from some other project), SPARKLE_GENERATE_KEYS (default: generate_keys
+# next to sign_update); GitHub access through `gh` (gh auth login, or GH_TOKEN) for --from-github,
+# --github-release and the attestation check; BRAND_ENV (tests).
+# QA-R29: a stable release needs an X.Y.Z-beta.N of the same version on the beta channel for at least 72 hours
+# (site/data/releases.json); --p0-hotfix skips that and turns phased rollout off (QA-R35).
 #
 # Every output is first written into a temporary copy. The default dry run prints it and deletes it;
 # --apply copies the outputs into the repository only after every step succeeded, so a failure never
@@ -65,19 +70,23 @@ Behaviour:
   --github-release      publish the draft GitHub Release and use its asset URLs (archive hosting
                         on GitHub, spec/02-platform.md section 14 item 4)
   --download-base URL   base URL for the archive and DMG (default https://<site host>/download)
-  --no-phasing          skip phased rollout (P0 hotfix, QA-R35)
+  --no-phasing          skip phased rollout (QA-R35)
+  --p0-hotfix           stable release fixing a P0: skip the 72-hour beta period (QA-R29) and phasing
   --critical            mark as critical update (security or data-loss fixes only, QA-R34)
   --minimum-autoupdate-version BUILD   force a manual install for older builds (PLT-R1109)
   --tap-dir DIR         Homebrew tap checkout; the rendered cask is written to DIR/Casks/
   --tap-commit          commit the cask in --tap-dir (never pushes)
-  --sparkle-account NAME   keychain account of the EdDSA key (sign_update --account)
+  --sparkle-account NAME   keychain account of the EdDSA key (generate_keys and sign_update --account)
+  --rotating-from-key KEY  key rotation release R1 (docs/runbooks/key-rotation.md): the archive ships the
+                        new SUPublicEDKey and is signed with the old key; KEY is the old public key
   --sign-in-dry-run     call sign_update during a dry run too (keychain prompt)
   --skip-attestation    do not run `gh attestation verify` (builds made on Pa's Mac have none)
   --skip-gatekeeper     skip stapler and Gatekeeper checks (dry runs with test builds; refused
                         together with --apply)
   -h, --help            show this help
 
-Environment: SPARKLE_SIGN_UPDATE=/path/to/sign_update overrides the lookup.
+Environment: SPARKLE_SIGN_UPDATE=/path/to/sign_update and SPARKLE_GENERATE_KEYS=/path/to/generate_keys
+override the pinned download.
 EOF
 }
 
@@ -100,6 +109,8 @@ min_autoupdate=""
 tap_dir=""
 tap_commit=0
 sparkle_account=""
+rotating_from_key=""
+p0_hotfix=0
 sign_in_dry_run=0
 skip_attestation=0
 skip_gatekeeper=0
@@ -123,6 +134,8 @@ while [[ $# -gt 0 ]]; do
     --tap-dir) tap_dir="${2:?}"; shift 2 ;;
     --tap-commit) tap_commit=1; shift ;;
     --sparkle-account) sparkle_account="${2:?}"; shift 2 ;;
+    --rotating-from-key) rotating_from_key="${2:?}"; shift 2 ;;
+    --p0-hotfix) p0_hotfix=1; phasing=0; shift ;;
     --sign-in-dry-run) sign_in_dry_run=1; shift ;;
     --skip-attestation) skip_attestation=1; shift ;;
     --skip-gatekeeper) skip_gatekeeper=1; shift ;;
@@ -138,6 +151,9 @@ if [[ "$version" != *-beta.* && $beta -eq 1 ]]; then die "--beta needs an X.Y.Z-
 [[ -z "$min_autoupdate" || "$min_autoupdate" =~ ^[0-9]+$ ]] || die "--minimum-autoupdate-version takes a build number"
 channel="stable"
 [[ $beta -eq 1 ]] && channel="beta"
+[[ $p0_hotfix -eq 0 || "$channel" == "stable" ]] || die "--p0-hotfix applies to stable releases only"
+[[ -z "$rotating_from_key" || "$rotating_from_key" =~ ^[A-Za-z0-9+/]{43}=$ ]] \
+  || die "--rotating-from-key takes the old base64 EdDSA public key (as printed by generate_keys -p)"
 if [[ $skip_gatekeeper -eq 1 && $apply -eq 1 ]]; then die "--skip-gatekeeper cannot be combined with --apply"; fi
 
 load_brand
@@ -177,6 +193,19 @@ fi
 notes_vi="${notes_vi:-$notes_en}"
 py scripts/lib/publish_helpers.py release-notes-page --check --app-name "$APP_DISPLAY_NAME" --version "$version" \
   --notes-vi "$notes_vi" --notes-en "$notes_en" || die "the release notes for $version are not publishable"
+
+# QA-R29: a stable release has been on beta for at least 72 hours with no new P0/P1, except P0 hotfixes.
+# Checked before any download or keychain access; a dry run only warns.
+if [[ "$channel" == "stable" && $p0_hotfix -eq 1 ]]; then
+  warn "P0 hotfix: QA-R29 beta period skipped, phased rollout off (QA-R35)"
+elif [[ "$channel" == "stable" ]]; then
+  if ! soak="$(py scripts/lib/publish_helpers.py beta-soak --file site/data/releases.json --version "$version" \
+    --hours 72 2>&1)"; then
+    soak_message="QA-R29: no $version-beta.N on the beta channel for at least 72 hours ($soak); a P0 fix may pass --p0-hotfix"
+    [[ $apply -eq 0 ]] || die "$soak_message"
+    warn "$soak_message"
+  fi
+fi
 
 gh_repo_args=()
 if [[ $from_github -eq 1 || $github_release -eq 1 || $skip_attestation -eq 0 ]]; then
@@ -242,31 +271,45 @@ dmg_len="$(stat -f %z "$dmg")"
 dmg_sha="$(sha256_of "$dmg")"
 
 # --- 2. EdDSA signature ----------------------------------------------------------------------
+# The tools come from SPARKLE_SIGN_UPDATE or the pinned Sparkle download only: a sign_update found in some other
+# project's DerivedData could be any version (PLT-R104, PLT-R910).
 find_sign_update() {
   if [[ -n "${SPARKLE_SIGN_UPDATE:-}" ]]; then
     printf '%s\n' "$SPARKLE_SIGN_UPDATE"
     return
   fi
-  local candidate
-  for candidate in \
-    "$REPO_ROOT"/.build/artifacts/sparkle/Sparkle/bin/sign_update \
-    "$HOME"/Library/Developer/Xcode/DerivedData/*/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update; do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return
-    fi
-  done
   local cache="$HOME/Library/Caches/$APP_SLUG-release-tools/sparkle-$SPARKLE_VERSION"
-  if [[ ! -x "$cache/bin/sign_update" ]]; then
+  if [[ ! -x "$cache/bin/sign_update" || ! -x "$cache/bin/generate_keys" ]]; then
     info "downloading Sparkle $SPARKLE_VERSION (pinned SHA-256)"
     mkdir -p "$cache"
     fetch_verified "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz" \
       "$SPARKLE_TARBALL_SHA256" "$cache/sparkle.tar.xz"
-    tar -xJf "$cache/sparkle.tar.xz" -C "$cache" ./bin/sign_update 2>/dev/null \
-      || tar -xJf "$cache/sparkle.tar.xz" -C "$cache" bin/sign_update
+    tar -xJf "$cache/sparkle.tar.xz" -C "$cache" ./bin/sign_update ./bin/generate_keys 2>/dev/null \
+      || tar -xJf "$cache/sparkle.tar.xz" -C "$cache" bin/sign_update bin/generate_keys
     rm -f "$cache/sparkle.tar.xz"
   fi
   printf '%s\n' "$cache/bin/sign_update"
+}
+
+# QA-R33, ADR 0304: installed apps accept only updates signed with the key whose public half they carry. A wrong
+# keychain account (a test key, or the new key during a rotation) would publish an update every copy rejects.
+check_signing_key() {
+  local generate_keys trusted what keychain_key
+  generate_keys="${SPARKLE_GENERATE_KEYS:-$(dirname "$sign_update")/generate_keys}"
+  [[ -x "$generate_keys" ]] || die "generate_keys not found at $generate_keys (set SPARKLE_GENERATE_KEYS)"
+  if [[ -n "$rotating_from_key" ]]; then
+    trusted="$rotating_from_key"
+    what="old SUPublicEDKey given with --rotating-from-key"
+    info "key rotation: signing with the old key; the archive ships the new SUPublicEDKey $ed_public_key"
+  else
+    trusted="$ed_public_key"
+    what="SUPublicEDKey of the archive"
+  fi
+  # -p only prints the public half of the existing key; generate_keys without -p would create a new key.
+  keychain_key="$("$generate_keys" ${sign_args[@]+"${sign_args[@]}"} -p | grep -E '^[A-Za-z0-9+/]{43}=$' | tail -n1 || true)"
+  [[ -n "$keychain_key" ]] || die "generate_keys -p printed no public key (no EdDSA key for this keychain account?)"
+  [[ "$keychain_key" == "$trusted" ]] \
+    || die "the keychain EdDSA key $keychain_key does not match the $what ($trusted): check --sparkle-account (QA-R33)"
 }
 
 if [[ $apply -eq 1 || $sign_in_dry_run -eq 1 ]]; then
@@ -274,13 +317,14 @@ if [[ $apply -eq 1 || $sign_in_dry_run -eq 1 ]]; then
   info "signing with $sign_update"
   sign_args=()
   [[ -n "$sparkle_account" ]] && sign_args=(--account "$sparkle_account")
+  check_signing_key
   sig_line="$("$sign_update" ${sign_args[@]+"${sign_args[@]}"} "$archive")"
   ed_signature="$(sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p' <<<"$sig_line")"
   signed_len="$(sed -n 's/.*length="\([0-9]*\)".*/\1/p' <<<"$sig_line")"
   [[ -n "$ed_signature" ]] || die "sign_update returned no signature"
   [[ "$signed_len" == "$archive_len" ]] || die "sign_update length $signed_len != file size $archive_len"
   "$sign_update" --verify "$archive" "$ed_signature" ${sign_args[@]+"${sign_args[@]}"} >/dev/null 2>&1 \
-    || warn "sign_update --verify did not confirm the signature (older sign_update without --verify?)"
+    || die "sign_update --verify rejected the signature of $archive (PLT-R1102)"
 else
   ed_signature="DRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRYRUNDRY=="
   info "dry run: EdDSA signing skipped (use --sign-in-dry-run to exercise sign_update)"

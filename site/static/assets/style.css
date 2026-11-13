@@ -65,6 +65,9 @@ kbd { background: var(--surface); border: 1px solid var(--line); border-bottom-w
 .skip:focus { left: 0.5rem; top: 0.5rem; }
 
 /* Header and footer */
+/* Incident or absence notice (site/config.json banner, QA-R38, QA-R54). */
+.site-notice { background: var(--surface); border-bottom: 3px solid var(--warn); }
+.site-notice p { margin: 0; padding: 0.7rem 0; font-weight: 600; }
 .site-header { border-bottom: 1px solid var(--line); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; padding-block: 0.9rem; }
 .brand { font-family: var(--font-head); font-size: 1.35rem; font-weight: 700; color: var(--ink); text-decoration: none; margin-right: auto; }

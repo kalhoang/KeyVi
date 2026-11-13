@@ -138,7 +138,11 @@ jobs:
       - name: Engine tests with AddressSanitizer and UBSan
         run: swift test --package-path "$ENGINE" --sanitize=address --sanitize=undefined
       - name: AppCore tests with ThreadSanitizer (hot-path concurrency, PLT-R203)
+        # The suppression covers only SettingsStore's DispatchSerialQueue executor, which TSan cannot see order
+        # (PLT-R1003; the reasoning is in the file). Any other report still fails the run.
         if: hashFiles('Packages/AppCore/Package.swift') != ''
+        env:
+          TSAN_OPTIONS: "suppressions=${{ github.workspace }}/scripts/sanitizers/tsan-appcore.supp"
         run: swift test --package-path "$APPCORE" --sanitize=thread
       - name: AppCore tests with AddressSanitizer
         if: hashFiles('Packages/AppCore/Package.swift') != ''

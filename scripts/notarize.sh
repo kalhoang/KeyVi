@@ -22,6 +22,8 @@
 #      docs/runbooks/notarization-setup.md tells Pa to store with `xcrun notarytool store-credentials`.
 #
 # Outputs: notarization-<file name>.json (the notary log) in the log directory; the stapled target.
+# The log is required (QA-R30 step 5): fetching it is retried three times, NOTARY_LOG_RETRY_DELAY seconds apart
+# (default 10), and an Accepted submission whose log never arrives fails.
 set -euo pipefail
 
 usage() {
@@ -115,8 +117,16 @@ print(data.get("id", "-"), data.get("status", "unknown"))' "$result")
 info "submission $submission_id: $status"
 
 log_file="$log_dir/notarization-${name}.json"
+log_attempts=3
 if [[ "$submission_id" != "-" ]]; then
-  xcrun notarytool log "$submission_id" "${auth[@]}" "$log_file" >/dev/null || warn "could not fetch the notary log"
+  for attempt in $(seq 1 "$log_attempts"); do
+    xcrun notarytool log "$submission_id" "${auth[@]}" "$log_file" >/dev/null && break
+    rm -f "$log_file"
+    if [[ $attempt -lt $log_attempts ]]; then
+      warn "could not fetch the notary log (attempt $attempt); retrying"
+      sleep "${NOTARY_LOG_RETRY_DELAY:-10}"
+    fi
+  done
 fi
 
 issues=0
@@ -138,6 +148,8 @@ PY
 )"
 fi
 [[ "$status" == "Accepted" ]] || die "notarisation status for $name is $status (log: $log_file)"
+# QA-R30 step 5: issues are listed only in the log, so an Accepted status alone never passes.
+[[ -f "$log_file" ]] || die "notary log for $name could not be fetched (QA-R30 step 5 needs it to check for issues)"
 [[ "$issues" == "0" ]] || die "notary log for $name lists $issues issue(s) (QA-R30: any issue fails)"
 
 if [[ $staple -eq 1 ]]; then
