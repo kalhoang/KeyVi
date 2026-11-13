@@ -126,11 +126,11 @@ public enum PipelineFixtures {
 
     public static func inputSource(
         generation: UInt64 = 1, kind: InputSourceKind = .asciiLayout, table: LayoutTable? = qwertyTable(),
-        builtInVietnamese: Bool = false
+        builtInVietnamese: Bool = false, boundMode: TypingMode? = nil
     ) -> InputSourceSnapshot {
         let info = InputSourceInfo(
             id: layoutID, kind: kind, localizedName: "ABC", languages: ["en"], isBuiltInVietnamese: builtInVietnamese)
-        return InputSourceSnapshot(generation: generation, source: info, table: table, boundMode: nil)
+        return InputSourceSnapshot(generation: generation, source: info, table: table, boundMode: boundMode)
     }
 
     public static func lifecycle(

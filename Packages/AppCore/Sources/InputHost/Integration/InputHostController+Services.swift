@@ -51,9 +51,9 @@ extension InputHostController {
         axThread.start()
         let assembly = installRules(rules: rules, settings: settings)
         let effective = settings.effective
-        focusTracker.setMemoryObserver { [settingsStore] document in
-            Task { await settingsStore.recordAppModes(document) }
-        }
+        let recorder = AppModesRecorder(store: settingsStore)  // in emission order (PLT-R392)
+        appModesRecorder = recorder
+        focusTracker.setMemoryObserver { document in recorder.record(document) }
         focusTracker.update(settings: effective, appModes: settings.appModes)
         focusTracker.start(
             rules: assembly.ruleSet,
@@ -88,6 +88,7 @@ extension InputHostController {
         secureInputMonitor?.stop()
         inputSourceMonitor.stop()
         focusTracker.stop()
+        appModesRecorder?.finish()
         if runsWorkerThread { worker.stop() }
         channels.cancelSignals()
         refresh.connect(nil)
@@ -156,9 +157,13 @@ extension InputHostController {
     }
 
     func permissionsChanged(_ status: PermissionStatus) {
+        let previous = latestPermissions
         latestPermissions = status
         feed(.permissionsChanged(status))
         onEvent?(.permissionsChanged(status))
+        // PLT-R331: a permission change is one of the watchdog's check points; a tap the system left disabled
+        // during the change (status still ready) runs the PLT-R330 procedure now, not at the next 5 s tick.
+        if previous != nil, previous != status { session?.watchdog.checkNow() }
     }
 
     /// Queues a state refresh behind the work already queued on the ax thread, so it reads the snapshot that

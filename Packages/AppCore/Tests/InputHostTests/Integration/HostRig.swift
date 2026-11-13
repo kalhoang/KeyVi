@@ -106,6 +106,13 @@ enum PipelineHarnessEvents {
     }
 }
 
+/// The pipeline contexts the controller handed to its tap threads, newest last.
+final class ContextLog: Sendable {
+    private let contexts = Mutex<[PipelineContext]>([])
+    func append(_ context: PipelineContext) { contexts.withLock { $0.append(context) } }
+    var last: PipelineContext? { contexts.withLock { $0.last } }
+}
+
 /// Lets a test pretend that a removed tap thread has not left its run loop yet (ADR 0309).
 final class TapExitGate: Sendable {
     private let held = Mutex(false)
@@ -158,6 +165,7 @@ final class HostRig {
     let workspace = FakeWorkspaceEvents()
     let keyValues = InMemoryKeyValueStore()
     let exitGate = TapExitGate()
+    let contexts = ContextLog()
     let wallClock = FixedWallClock()
     let metrics = PlatformMetrics()
     let logger = RecordingLogger()
@@ -177,7 +185,7 @@ final class HostRig {
         layout: LayoutTable = PipelineFixtures.qwertyTable(), source: InputSourceInfo = HostRig.abc,
         layoutData: [InputSourceID: KeyboardLayoutData]? = nil, builder: (any LayoutTableBuilding)? = nil,
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
-        capture: CaptureController? = nil, hooks: Bool = false
+        capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -199,7 +207,8 @@ final class HostRig {
             inputSources: inputSources, layoutBuilder: builder ?? FixedLayoutBuilder(table: layout),
             secureInput: secureInput, permissions: permissions, workspace: workspace, keyValueStore: keyValues,
             clock: clock, scheduler: scheduler, wallClock: wallClock, metrics: metrics, health: health,
-            logger: logger, tapLog: tapLog, capture: capture, utilityQueue: utility)
+            logger: logger, tapLog: tapLog, capture: capture, utilityQueue: utility,
+            signposts: PlatformSignposts(subsystem: "test.host.signposts"))
         var dependencies = plain
         if hooks {
             let (instrumented, instruments) = IntegrationHookInstruments.instrument(plain)
@@ -211,16 +220,21 @@ final class HostRig {
         controller = InputHostController(
             dependencies: dependencies, settingsStore: store.store, hop: hop,
             makeTapThread: Self.gatedThreadMaker(
-                TapSession.productionThreadMaker(factory: dependencies.tapFactory), exitGate),
+                TapSession.productionThreadMaker(factory: dependencies.tapFactory), exitGate, contexts),
             tapClock: MachClock(),
             loadBundled: realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources,
-            macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false)
+            macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false, mainSignalQueue: mainSignalQueue)
         controller.onEvent = { [weak self] in self?.events.append($0) }
         focusEditor()
     }
 
-    private static func gatedThreadMaker(_ base: @escaping TapThreadMaker, _ gate: TapExitGate) -> TapThreadMaker {
-        { context in GatedTapThread(base: base(context), gate: gate) }
+    private static func gatedThreadMaker(
+        _ base: @escaping TapThreadMaker, _ gate: TapExitGate, _ contexts: ContextLog
+    ) -> TapThreadMaker {
+        { context in
+            contexts.append(context)
+            return GatedTapThread(base: base(context), gate: gate)
+        }
     }
 
     /// The editor's text field has focus (a native, editable AXTextField).
@@ -252,6 +266,12 @@ final class HostRig {
             utility.sync {}
             if hop.drain() == 0 && hop.pendingCount == 0 { break }
         }
+    }
+
+    /// Waits until the per-app memory documents the ax thread emitted reached the settings store (PLT-R392).
+    func memoryRecorded() async {
+        settle()
+        for _ in 0..<1_000 where (controller.appModesRecorder?.pendingCount ?? 0) > 0 { await Task.yield() }
     }
 
     func routeToCurrentTap() {

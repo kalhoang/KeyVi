@@ -210,10 +210,73 @@ struct HostControllerLifecycleTests {
         rig.controller.feed(.watchdogTripped(.callbackOverLimit(microseconds: 300_000)))
         #expect(rig.lifecyclePhase == .failOpen(.watchdog))
         #expect(handle.isEnabled == false)
+        #expect(rig.metrics.watchdogTrips.value == 1, "the soak gate counts trips (8.1 M2)")
         rig.controller.feed(.callbackExited)
         #expect(rig.lifecyclePhase == .running)
         #expect(handle.isEnabled)
         #expect(rig.liveHandles.count == 1, "ADR 0309: the same tap, never a second one")
+    }
+
+    /// PLT-R306, PLT-R323, ADR 0311: jobs posted while the watchdog held the tap disabled (the flush replays
+    /// included) never echo. The returned callback re-enables the same tap, and the next key must not mistake
+    /// those missing echoes for broken posting (which would remove the tap for 30 s).
+    @Test func jobsPostedAroundAWatchdogTripDoNotBreakPosting_PLT_R306() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let route = try #require(rig.echoLoop.route.current)
+        let table = PipelineFixtures.qwertyTable()
+        func press(_ character: Character) throws {
+            let (code, flags) = try #require(HostRig.key(producing: character, in: table))
+            for kind in [RawKeyEvent.Kind.keyDown, .keyUp] {
+                let event = RawKeyEvent(
+                    kind: kind, keyCode: code, flags: flags, autorepeat: false,
+                    keyboardType: PipelineFixtures.keyboardType, unicode: .empty, userData: 0,
+                    receivedAt: MachClock().now())
+                _ = HostRig.deliverOnTap(event, handle: route.handle, userInfo: route.userInfo)
+                rig.controller.worker.runUntilIdle()
+            }
+        }
+        // The callback is stuck: what the worker posts from now on bypasses the tap.
+        rig.echoLoop.route.set(nil, userInfo: 0)
+        for character in "aasf" { try press(character) }  // three edits, each waiting for its echo
+        rig.controller.feed(.watchdogTripped(.callbackOverLimit(microseconds: 300_000)))
+        rig.controller.worker.runUntilIdle()  // the trip's flush
+        try await Task.sleep(for: .milliseconds(250))  // the stall outlasts the 200 ms echo timeout
+        rig.controller.feed(.callbackExited)
+        rig.echoLoop.route.set(route.handle, userInfo: route.userInfo)
+        rig.type("d")
+        rig.settle()
+        #expect(!rig.controller.channels.feedback.isPostingBroken)
+        #expect(rig.metrics.echoLosses.value == 0)
+        #expect(rig.lifecyclePhase == .running)
+        #expect(rig.liveHandles.count == 1)
+    }
+
+    /// PLT-R331: a permission change is one of the watchdog's check points, so a tap the system left disabled
+    /// while the status stayed ready is re-enabled at once, not at the next 5 s tick.
+    @Test func permissionChangeChecksTheTapAtOnce_PLT_R331() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let handle = try #require(rig.liveHandles.first)
+        handle.setEnabled(false)  // disabled by the system during the change
+        rig.permissions.set(trusted: true, post: true, listen: false)  // Input Monitoring off, still ready
+        _ = rig.controller.permissionMonitor?.checkNow()
+        rig.settle()
+        #expect(rig.controller.latestPermissions?.listenEvent == .denied)
+        #expect(rig.lifecyclePhase == .running)
+        #expect(handle.isEnabled, "PLT-R330 step 1 ran without waiting for the 5 s tick")
+    }
+
+    /// PLT-R802: the controller hands its signposts to every tap callback context (and to the worker and the
+    /// focus tracker, built from the same dependencies).
+    @Test func signpostsReachTheTapCallback_PLT_R802() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let context = try #require(rig.contexts.last)
+        #expect(context.signposts != nil)
     }
 
     @Test func sleepLockAndUserSwitchPauseUntilEveryReasonCleared_PLT_R333() async {
@@ -256,6 +319,7 @@ struct HostControllerLifecycleTests {
         await rig.start()
         defer { rig.stop() }
         rig.type("vieetj ")
+        await rig.memoryRecorded()
         let memoryBefore = await rig.store.store.state.appModes
         let resetsBefore = rig.controller.channels.feedback.compositionResetCount
         rig.controller.setDiagnosticsPassThrough(true)
@@ -278,6 +342,7 @@ struct HostControllerLifecycleTests {
         #expect(rig.field.text == "việt dduwowngf đi")
         #expect(!rig.events.contains { if case .modeChanged = $0 { true } else { false } })
         #expect(rig.controller.currentFocus().mode == .vietnamese, "the manual mode is unchanged")
+        await rig.memoryRecorded()
         #expect(await rig.store.store.state.appModes == memoryBefore, "nothing written to per-app memory")
     }
 
@@ -298,6 +363,37 @@ struct HostControllerLifecycleTests {
         #expect(rig.field.text.isEmpty, "the canary was removed")
         #expect(rig.metrics.snapshot().callbackDuration.count == 0, "probe events stay out of user metrics")
         #expect(rig.controller.state == .ready(.vietnamese))
+    }
+
+    /// PLT-R373: with the binding on, the selected layout decides the mode: switching from the VI-bound layout
+    /// to the EN-bound one passes keys and the menu shows English; switching back returns to Vietnamese.
+    @Test func layoutBindingDecidesTheMode_PLT_R373() async throws {
+        let us = InputSourceInfo(
+            id: try #require(InputSourceID(rawValue: "com.apple.keylayout.US")), kind: .asciiLayout,
+            localizedName: "U.S.", languages: ["en"], isBuiltInVietnamese: false)
+        let rig = HostRig(
+            source: HostRig.abc,
+            layoutData: [
+                HostRig.abc.id: KeyboardLayoutData(source: HostRig.abc.id, uchr: Data()),
+                us.id: KeyboardLayoutData(source: us.id, uchr: Data()),
+            ])
+        _ = await rig.store.store.load()
+        let binding = LayoutModeBinding(enabled: true, vietnamese: [HostRig.abc.id], english: [us.id])
+        await rig.store.store.updateSettings { $0.layoutBinding = .set(binding) }
+        await rig.start(preloaded: true)
+        defer { rig.stop() }
+        rig.type("aa")
+        #expect(rig.field.text == "â")
+        rig.inputSources.select(us)
+        rig.settle()
+        #expect(rig.controller.state == .ready(.english))
+        rig.type(" aa")
+        #expect(rig.field.text == "â aa")
+        rig.inputSources.select(HostRig.abc)
+        rig.settle()
+        #expect(rig.controller.state == .ready(.vietnamese))
+        rig.type(" aa")
+        #expect(rig.field.text == "â aa â")
     }
 
     /// PLT-R405, PLT-R373: the Diagnostics window keeps one runner for the process lifetime, so the canary's key

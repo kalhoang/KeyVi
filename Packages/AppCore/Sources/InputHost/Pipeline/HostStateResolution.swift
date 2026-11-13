@@ -36,21 +36,22 @@ enum HostStateResolution {
         return .ready(effectiveMode)
     }
 
-    /// PLT-R386 gating from the focus snapshot: `whenKnown` pauses only when AX says the focused element is not
-    /// editable text; `always` transforms only when AX confirms editable text. `byEngine` is resolved to a
-    /// concrete value on the ax thread (HostDecisionMapper); if it ever arrives here it gates like `never`.
+    /// PLT-R386 gating from the focus snapshot, with the ax thread's own definition (`TextFocusGate`): a text
+    /// role or the search-field subrole is editable text whatever the settable flag says, so the tap and the
+    /// menu never pause a field the ax thread published as ready (PLT-R523: one resolution, not two).
+    /// `byEngine` is resolved to a concrete value on the ax thread; if it ever arrives here it gates like `never`.
     static func lacksTextFocus(_ focus: FocusSnapshot) -> Bool {
-        let known = focus.field.axAvailability == .available
-        switch focus.decision.requireTextFocus {
-        case .never, .byEngine: return false
-        case .whenKnown: return known && focus.field.editable == false
-        case .always: return !(known && focus.field.editable == true)
-        }
+        TextFocusGate.blocks(focus.decision.requireTextFocus, field: focus.field)
     }
 
-    /// The tap's own toggle wins until the ax thread has applied it to memory (contracts.md 10.4, PLT-R391).
-    /// The focus owner is matched by pid, which identifies the same process the toggle was made in.
-    static func effectiveMode(focus: FocusSnapshot, override: ToggleOverride?) -> TypingMode {
+    /// PLT-R373: with the layout binding on, a layout designated VI or EN decides the mode, ahead of the toggle
+    /// hotkey, per-app memory and the global mode (the toggle does nothing on a bound layout, `KeyPipeline`).
+    /// Otherwise the tap's own toggle wins until the ax thread has applied it to memory (contracts.md 10.4,
+    /// PLT-R391); the focus owner is matched by pid, which identifies the same process the toggle was made in.
+    static func effectiveMode(
+        focus: FocusSnapshot, inputSource: InputSourceSnapshot, override: ToggleOverride?
+    ) -> TypingMode {
+        if let bound = inputSource.boundMode { return bound }
         if let override, override.sequence > focus.appliedToggleSequence,
             override.pid == (focus.app?.pid ?? ToggleOverride.noProcess)
         {

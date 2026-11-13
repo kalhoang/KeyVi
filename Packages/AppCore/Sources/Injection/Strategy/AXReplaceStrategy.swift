@@ -33,20 +33,36 @@ struct AXReplaceExecutor: StrategyExecutor {
             let reason = Self.reason(written, write: true)
             return restored ? .failedBeforePosting(reason) : .failedAfterPosting(reason)
         }
-        return Self.readBack(job, field: field, start: start, access: access)
+        guard Self.readBack(job, field: field, start: start, access: access) else {
+            return Self.mismatch(field: field, target: target, caret: selection, access: access)
+        }
+        return .completed(lastEventSequence: 0)
     }
 
-    /// Mandatory readback (4.5), at most 64 UTF-16 units (PLT-R343). `completed` carries no event sequence:
-    /// `axReplace` posts nothing and the worker settles the job immediately.
-    static func readBack(_ job: EditJob, field: FieldHandle, start: Int, access: any FocusedFieldAccess)
-        -> StrategyOutcome
-    {
+    /// Mandatory readback (4.5), at most 64 UTF-16 units (PLT-R343). On success `execute` reports `completed`
+    /// without an event sequence: `axReplace` posts nothing and the worker settles the job immediately.
+    static func readBack(_ job: EditJob, field: FieldHandle, start: Int, access: any FocusedFieldAccess) -> Bool {
         let expected = Array(job.insertion.utf16.prefix(InjectionTiming.maximumAXReadUnits))
         let range = Injection.TextRange(location: start, length: expected.count)
-        guard case .success(let text) = access.text(field, in: range, timeout: InjectionTiming.axCallTimeout),
-            Array(text.utf16) == expected
-        else { return .failedAfterPosting(.readbackMismatch) }
-        return .completed(lastEventSequence: 0)
+        guard case .success(let text) = access.text(field, in: range, timeout: InjectionTiming.axCallTimeout)
+        else { return false }
+        return Array(text.utf16) == expected
+    }
+
+    /// 4.5 "writes may silently do nothing": when the composition range is still selected the text write was
+    /// ignored, so nothing changed. Put the caret back (the next key would otherwise replace the selected word)
+    /// and report a failure before posting: the fallback strategy delivers the edit, the trigger is not lost
+    /// (PLT-R312) and the field still uses the fallback for the rest of the focus session. A moved selection
+    /// means something was written: the fallback must not apply the edit a second time.
+    static func mismatch(
+        field: FieldHandle, target: Injection.TextRange, caret: Injection.TextRange, access: any FocusedFieldAccess
+    ) -> StrategyOutcome {
+        let timeout = InjectionTiming.axCallTimeout
+        guard case .success(let now) = access.selectedRange(field, timeout: timeout), now == target else {
+            return .failedAfterPosting(.readbackMismatch)
+        }
+        let restored = access.setSelectedRange(field, to: caret, timeout: timeout).isSuccess
+        return restored ? .failedBeforePosting(.readbackMismatch) : .failedAfterPosting(.readbackMismatch)
     }
 
     static func reason<Value>(_ result: AXCallResult<Value>, write: Bool) -> FallbackReason {

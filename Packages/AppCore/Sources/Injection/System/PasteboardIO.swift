@@ -8,23 +8,43 @@ internal import Foundation
 internal import RealtimeSupport
 internal import UniformTypeIdentifiers
 
-/// VERIFY (PLT-R462): AppKit does not document `NSPasteboard` as thread-safe. The worker calls it only from the
-/// `inject` thread, never concurrently; if the self-hosted runner shows problems, hop to main asynchronously
-/// and wait on the worker's own condition with a timeout. That single-thread use is the reason for `@unchecked`.
+/// VERIFY (PLT-R462): AppKit does not document `NSPasteboard` as thread-safe. It is used by one thread at a time:
+/// the `inject` thread, or the bounded-read queue while the `inject` thread waits for it. A snapshot that
+/// overran its deadline keeps the read queue busy; until it ends the other calls do not touch the pasteboard
+/// (`changeCount` answers `unknownChangeCount`, writes fail). That discipline is the reason for `@unchecked`.
 final class PasteboardIO: @unchecked Sendable {
+    /// Never a real change count: comparisons with a recorded one fail, so nothing is restored over it.
+    static let unknownChangeCount = Int.min
+
     private let pasteboard: NSPasteboard
     private let clock = MachClock()
+    private let reads = BoundedRead(label: "pasteboard-read")
 
     init(name: String?) {
         pasteboard = name.map { NSPasteboard(name: NSPasteboard.Name($0)) } ?? .general
     }
 
-    var changeCount: Int { pasteboard.changeCount }
+    var changeCount: Int { reads.isBusy ? Self.unknownChangeCount : pasteboard.changeCount }
 
-    /// Step 1: every item with every readable type. Aborts on file promises, data that cannot be materialised, more than
-    /// `maxTotalBytes`, more than `readTimeout` in total (checked between reads: a read cannot be interrupted), or
-    /// a change by another app while reading.
+    /// Step 1, bounded: a lazily provided type makes `data(forType:)` wait on its owner, which may be slow or
+    /// hung, and a single read cannot be interrupted. The read runs on the bounded-read queue and the snapshot
+    /// gives up after `readTimeout` (PLT-R461 step 1, PLT-R462): the paste is abandoned and the fallback types.
     func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot {
+        let read = reads.run(timeout: limits.readTimeout) { [self] () -> Result<PasteboardSnapshot, PasteboardError> in
+            do throws(PasteboardError) {
+                return .success(try readSnapshot(limits: limits))
+            } catch {
+                return .failure(error)
+            }
+        }
+        guard let read else { throw .timedOut }
+        return try read.get()
+    }
+
+    /// Every item with every readable type. Aborts on file promises, data that cannot be materialised, more than
+    /// `maxTotalBytes`, more than `readTimeout` in total (also checked between reads), or a change by another
+    /// app while reading.
+    private func readSnapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot {
         let started = clock.now()
         let timeout = InjectionTiming.nanoseconds(limits.readTimeout)
         let changeCount = pasteboard.changeCount
@@ -56,6 +76,7 @@ final class PasteboardIO: @unchecked Sendable {
 
     /// Step 2: one item with plain text and the nspasteboard.org marker types; returns the new `changeCount`.
     func writeTransient(_ text: String) throws(PasteboardError) -> Int {
+        guard !reads.isBusy else { throw .writeFailed }  // an overrun read still holds the pasteboard
         let item = NSPasteboardItem()
         guard item.setData(Data(text.utf8), forType: NSPasteboard.PasteboardType(PasteboardTypeName.plainText))
         else { throw .writeFailed }
@@ -69,6 +90,7 @@ final class PasteboardIO: @unchecked Sendable {
 
     /// Step 5: all saved items and types, in their original order.
     func restore(_ snapshot: PasteboardSnapshot) throws(PasteboardError) {
+        guard !reads.isBusy else { throw .writeFailed }
         pasteboard.clearContents()
         guard !snapshot.items.isEmpty else { return }
         let items = snapshot.items.map { saved in

@@ -62,7 +62,7 @@ final class WorkerCore {
         self.configuration = configuration
         self.control = control
         preserver = PasteboardPreserver(pasteboard: services.pasteboard)
-        axAccess = InstrumentedFieldAccess(base: services.fieldAccess)
+        axAccess = InstrumentedFieldAccess(base: services.fieldAccess, signposts: services.signposts)
         let limits = StrategyLimits(configuration)
         executors = Dictionary(
             uniqueKeysWithValues: InjectionStrategy.allCases.map {
@@ -149,6 +149,8 @@ final class WorkerCore {
     // MARK: Jobs
 
     func process(_ job: InjectionJob) {
+        let signpost = services.signposts?.begin(.injectionJob)  // PLT-R802
+        defer { if let signpost { services.signposts?.end(.injectionJob, signpost) } }
         switch job {
         case .edit(let edit): processEdit(edit)
         case .replay(let sequence, let record):

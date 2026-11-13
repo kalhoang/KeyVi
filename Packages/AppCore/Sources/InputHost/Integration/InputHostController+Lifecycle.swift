@@ -30,7 +30,7 @@ extension InputHostController {
         case .createTap: createTap()
         case .removeTap: removeTap()
         case .disableTap: session?.thread.setEnabled(false)
-        case .reenableTap: session?.thread.setEnabled(true)
+        case .reenableTap: session?.reenable(at: tapClock)  // the worker stamps posts with `tapClock`
         case .requestFlush(let reason): worker.requestFlush(reason)
         case .resetComposition: channels.feedback.requestCompositionReset()
         case .scheduleRetry(let delay): scheduleRetry(after: delay)
@@ -69,12 +69,12 @@ extension InputHostController {
             retiredSession = nil
         }
         channels.feedback.clearPostingBroken()
-        let echo = EchoTracker(queue: channels.queue)
+        let echo = EchoTracker(queue: channels.queue, roundTrip: dependencies.metrics.echoRoundTrip)
         let context = PipelineContext(
             snapshots: channels.snapshots, queue: channels.queue, feedback: channels.feedback, echo: echo,
             marker: channels.marker, outbox: channels.outbox, metrics: dependencies.metrics,
             tapLog: dependencies.tapLog, capture: dependencies.capture, watchdog: channels.callbackWatchdog,
-            counters: counters)
+            counters: counters, signposts: dependencies.signposts)
         let thread = makeTapThread(context)
         let watchdog = makeWatchdog(for: thread)
         let candidate = TapSession(thread: thread, echo: echo, watchdog: watchdog)
@@ -141,6 +141,8 @@ extension InputHostController {
     // MARK: Health
 
     func recordHealth(_ code: HealthEventKindCode) {
+        // PLT-R306: the soak gate (8.1 M2, "zero watchdog trips") and the issue block read this counter.
+        if code == .watchdogTrip { dependencies.metrics.watchdogTrips.increment() }
         guard let kind = HealthEvent.Kind(rawValue: code.rawValue) else { return }
         var detail: HealthEvent.Detail?
         if case .failOpen(let reason) = lifecycle.phase { detail = .failOpen(reason) }

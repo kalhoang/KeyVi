@@ -200,6 +200,32 @@ struct HostNoticeTests {
         _ = capture.stop()
     }
 
+    /// PLT-R905: a real trace holds the keys, the engine's decisions and focus snapshots, not only job lines.
+    @Test func typingTraceRecordsKeysEngineDecisionsAndFocus_PLT_R905() async throws {
+        let clock = ManualClock()
+        let capture = CaptureController(
+            directory: URL(fileURLWithPath: "/captures", isDirectory: true), fileSystem: InMemoryFileSystem(),
+            wallClock: FixedWallClock(), clock: clock, scheduler: ManualScheduler(clock: clock))
+        let rig = HostRig(capture: capture)
+        await rig.start()
+        defer { rig.stop() }
+        let info = try capture.start(duration: .seconds(60))
+        rig.ax.focus(
+            pid: HostRig.editorPID,
+            attributes: FocusAttributes(
+                role: "AXTextArea", subrole: nil, identifier: nil, domClasses: [], editable: true, ancestorRoles: [],
+                documentURL: nil, windowTitle: nil),
+            notify: .focusedElementChanged)
+        rig.settle()
+        rig.type("aa")
+        let trace = try capture.render(info.id, language: .english)
+        _ = capture.stop()
+        #expect(trace.contains("focus  \(HostRig.editorBundle)  AXTextArea"))
+        #expect(trace.contains("keyDown  0x00"))
+        #expect(trace.contains("consumedForEdit"))
+        #expect(trace.contains("engine  delete 1  insert \"â\""))
+    }
+
     @Test func keyboardTypeNoticeReachesTheInputSourceMonitor() async {
         let rig = HostRig()
         await rig.start()
@@ -208,6 +234,21 @@ struct HostNoticeTests {
         rig.controller.handle(MainNotice.keyboardTypeSeen(41))
         rig.settle()
         #expect(rig.controller.channels.snapshots.inputSource.load().generation >= before)
+    }
+
+    /// ADR 0303, PLT-R330 (1): the tap -> main wake does not wait behind utility work (settings rebuilds, file
+    /// writes, the conflict scan); production targets the main queue.
+    @Test func tapNoticesDoNotWaitBehindUtilityWork() async throws {
+        let rig = HostRig(mainSignalQueue: DispatchSerialQueue(label: "test.host.main-signal"))
+        await rig.start()
+        defer { rig.stop() }
+        let release = DispatchSemaphore(value: 0)
+        rig.utility.async { release.wait() }  // a long utility job
+        defer { release.signal() }
+        _ = rig.controller.channels.outbox.toMain.push(.keyboardTypeSeen(41))
+        rig.controller.channels.outbox.mainSignal.signal()
+        for _ in 0..<200 where rig.hop.pendingCount == 0 { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(rig.hop.pendingCount > 0, "the outbox drain reached main while the utility queue was busy")
     }
 
     @Test func tapNoticesArriveThroughTheOutboxSignal() async {

@@ -19,15 +19,18 @@ enum GuidedTestSuggestion {
         context: MatchContext, best: GuidedTestCandidate, appVersion: String?, macOS: String, date: String,
         includeURLPrefix: String?
     ) -> Rule {
-        Rule(
-            id: ruleID(for: context.bundle), summary: summary, match: match(context, urlPrefix: includeURLPrefix),
-            action: action(best),
+        let match = match(context, urlPrefix: includeURLPrefix)
+        return Rule(
+            id: ruleID(for: context.bundle, match: match), summary: summary, match: match, action: action(best),
             provenance: .userSuggestion(
                 UserProvenance(source: source, appVersion: appVersion, macOS: macOS, date: date)))
     }
 
-    /// `user.guided.<bundle ID>` (rule ID grammar: dot-separated `[A-Za-z0-9_-]` segments, at most 128 bytes).
-    static func ruleID(for bundle: BundleKey?) -> RuleID {
+    /// `user.guided.<bundle ID>.<match hash>` (rule ID grammar: dot-separated `[A-Za-z0-9_-]` segments, at most
+    /// 128 bytes). PLT-R540 "only this kind of field": the hash of the match signature keeps one override per
+    /// field kind, so a second guided test in another kind of field of the same app adds an override instead of
+    /// replacing the first one, and a repeated test in the same kind of field replaces its own.
+    static func ruleID(for bundle: BundleKey?, match: RuleMatch) -> RuleID {
         let segments = (bundle?.rawValue ?? "app").split(separator: ".").map { segment in
             String(
                 segment.unicodeScalars.map { scalar in
@@ -35,9 +38,24 @@ enum GuidedTestSuggestion {
                         ? Character(scalar) : "_"
                 })
         }
-        var raw = String(([idPrefix] + segments).joined(separator: ".").prefix(128))
-        while raw.hasSuffix(".") { raw.removeLast() }
-        return RuleID(rawValue: raw) ?? RuleID(rawValue: idPrefix + ".app")!
+        let suffix = "." + signatureHash(RuleSet.signature(of: match))
+        var base = String(([idPrefix] + segments).joined(separator: ".").prefix(maximumIDBytes - suffix.utf8.count))
+        while base.hasSuffix(".") { base.removeLast() }
+        return RuleID(rawValue: base + suffix) ?? RuleID(rawValue: idPrefix + ".app" + suffix)!
+    }
+
+    /// Rule ID grammar limit.
+    static let maximumIDBytes = 128
+
+    /// 32-bit FNV-1a of the signature as 8 lowercase hex digits: stable across launches (unlike `Hasher`).
+    static func signatureHash(_ signature: String) -> String {
+        var hash: UInt32 = 0x811C_9DC5
+        for byte in signature.utf8 {
+            hash ^= UInt32(byte)
+            hash = hash &* 0x0100_0193
+        }
+        let hex = String(hash, radix: 16)
+        return String(repeating: "0", count: 8 - hex.count) + hex
     }
 
     /// "This app" plus "only this kind of field" (PLT-R540): role and subrole, then the identifier when AX

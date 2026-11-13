@@ -377,6 +377,25 @@ struct FocusTrackerTests {
         }
     }
 
+    /// PRD-R26: an Apps-pane reset clears the live memory even when the session started with no remembered
+    /// modes. Once the store returned a newer document, the empty launch state is no echo any more.
+    @Test func aResetToTheLaunchStateClearsTheMemory() throws {
+        let harness = Harness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: zaloPID, attributes: attributes(), notify: nil)
+        harness.start()  // fresh install: global VI, nothing remembered
+        harness.toggle(1, terminal, .english)
+        harness.toggle(2, zalo, .vietnamese)  // the global mode is back to VI
+        let latest = try #require(harness.documents.last)
+        harness.tracker.update(settings: DefaultSettings.v1, appModes: latest)  // the store's echo
+        harness.sync()
+        harness.tracker.update(settings: DefaultSettings.v1, appModes: AppModesDocument(globalMode: .vietnamese))
+        harness.sync()
+        harness.activate(terminalPID)
+        #expect(harness.snapshot.mode == .vietnamese, "Terminal's remembered EN was reset")
+        #expect(harness.documents.last?.apps.contains { $0.bundle == terminal && $0.mode == .english } == false)
+    }
+
     /// An import or reset (a document this memory never emitted) replaces the remembered modes.
     @Test func anImportedDocumentReplacesTheRememberedModes() {
         let harness = Harness()

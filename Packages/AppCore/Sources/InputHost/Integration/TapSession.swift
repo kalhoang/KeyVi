@@ -46,6 +46,17 @@ final class TapSession: Sendable {
         thread.stop()
     }
 
+    /// PLT-R330 step 1, PLT-R306 recovery (ADR 0309): the same tap is enabled again. Everything posted until the
+    /// tap is back in the event route bypassed it and never echoes, so those expectations are forgiven
+    /// (`EchoTracker.forgiveLostEchoes`) instead of counting as misses that would fail open with
+    /// `postingBroken` (PLT-R323). Forgiven before enabling, so no callback after the enable can count them, and
+    /// again after it, for anything posted in between.
+    func reenable(at clock: any MonotonicClock) {
+        echo.forgiveLostEchoes(postedAtOrBefore: clock.now())
+        thread.setEnabled(true)
+        echo.forgiveLostEchoes(postedAtOrBefore: clock.now())
+    }
+
     /// Settles every expectation this session's tracker still holds (and every one waiting in the queue) as
     /// timed out, so the job queue's in-flight count is exact before the next session takes over. Only after
     /// the tap thread exited: `EchoTracker` is tap-thread state and the thread exit orders the accesses.

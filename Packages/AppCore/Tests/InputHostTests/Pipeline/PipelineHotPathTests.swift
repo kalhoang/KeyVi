@@ -5,6 +5,7 @@
 // (docs/decisions/0502-fuzz-benchmark-coverage-contracts.md) to PIPELINE_BENCH_OUTPUT when it is set; CI runs
 // it in release (`swift test -c release --filter PipelineBenchmark`) and compares it with a baseline file.
 
+import Diagnostics
 import Foundation
 import Injection
 import RealtimeSupport
@@ -64,9 +65,10 @@ private func completeJobs(_ fixture: PipelineFixture) -> Int {
     @Test(.enabled(if: AllocationCounter.isAvailable, "sanitizer runtimes replace malloc and never call the hook"))
     func steadyStateAllocatesNothingOutsideTheEngine() {
         let fixture = PipelineFixture()
+        var context = fixture.context
+        context.signposts = PlatformSignposts(subsystem: "test.pipeline.signposts")  // PLT-R802, as in production
         let pipeline = KeyPipeline(
-            context: fixture.context, factory: AllocationExcludingFactory(ScriptedEngineFactory()), clock: fixture.clock
-        )
+            context: context, factory: AllocationExcludingFactory(ScriptedEngineFactory()), clock: fixture.clock)
         let stream = TypingStream.events()
         var edits = 0
         var held = 0

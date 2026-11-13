@@ -62,7 +62,21 @@ extension KeyPipeline {
         reconcile(
             settings: settings, focus: focus, inputSource: inputSource, secureInput: secureInput, lifecycle: lifecycle)
         resumeSecureInputIfNeeded(event, secureInput: secureInput, generation: focus.generation, now: now)
-        let mode = HostStateResolution.effectiveMode(focus: focus, override: toggleOverride)
+        capturingThisKey = captureAllowed(focus: focus, secureInput: secureInput)  // PLT-R905
+        let verdict = decideKeyboard(
+            event, now: now, probe: probe, focus: focus, inputSource: inputSource, secureInput: secureInput,
+            lifecycle: lifecycle)
+        if capturingThisKey { recordKeyCapture(event, table: inputSource.table, at: now) }
+        capturingThisKey = false
+        return verdict
+    }
+
+    /// Steps 6 to 10 once the snapshots are reconciled.
+    private func decideKeyboard(
+        _ event: RawKeyEvent, now: MonotonicInstant, probe: Bool, focus: FocusSnapshot,
+        inputSource: InputSourceSnapshot, secureInput: SecureInputSnapshot, lifecycle: LifecycleSnapshot
+    ) -> TapVerdict {
+        let mode = HostStateResolution.effectiveMode(focus: focus, inputSource: inputSource, override: toggleOverride)
         let state = HostStateResolution.resolve(
             lifecycle: lifecycle, secureInput: secureInput, secureResumedGeneration: seen.secureResumedGeneration,
             inputSource: inputSource, focus: focus, effectiveMode: mode)
@@ -81,7 +95,7 @@ extension KeyPipeline {
         let hotkeysActive = !lifecycle.recorderActive && !lifecycle.diagnosticsPassThrough
         // PRD-R14: autorepeat never toggles, whatever the recogniser reports; the repeat is consumed below.
         if hotkeysActive && !event.autorepeat && (hotkey == .toggleTap || hotkey == .toggleCombo) {
-            toggleMode(from: mode, state: state, focus: focus)
+            toggleMode(from: mode, state: state, focus: focus, inputSource: inputSource)
             if hotkey == .toggleCombo { return consumeAsHotkey(event) }
         }
         switch event.kind {
@@ -100,6 +114,9 @@ extension KeyPipeline {
         // PLT-R330: the lifecycle owner re-enables the tap and flushes held events; the tap resets, logs, counts.
         let byTimeout = event.kind == .tapDisabledByTimeout
         if byTimeout { context.metrics.tapTimeouts.increment() }
+        // ADR 0311: what was posted until now may have bypassed the disabled tap; its missing echoes are not
+        // posting failures. The lifecycle owner extends this up to the re-enable (`TapSession.reenable`).
+        context.echo.forgiveLostEchoes(postedAtOrBefore: now)
         context.tapLog.push(TapLogRecord(code: byTimeout ? .tapDisabledByTimeout : .tapDisabledByUserInput, at: now))
         notifyMain(.tapDisabled(byTimeout: byTimeout))
         let generation = context.snapshots.focus.read { $0.generation }
@@ -136,6 +153,7 @@ extension KeyPipeline {
     // MARK: Step 3
 
     func handlePointerDown(now: MonotonicInstant) {
+        recordPointerCapture(at: now)
         _ = hotkeys.handle(.pointerDown(at: now))
         keyState.lastPointerDownAt = now
         keyState.deadKeyPending = false  // PLT-R354: the click moved the caret
@@ -207,8 +225,10 @@ extension KeyPipeline {
     }
 
     /// PRD-R14, PRD-R20, contracts.md 10.4: flip at once, tag with a sequence, tell main and ax, reset.
-    func toggleMode(from mode: TypingMode, state: HostState, focus: FocusSnapshot) {
+    func toggleMode(from mode: TypingMode, state: HostState, focus: FocusSnapshot, inputSource: InputSourceSnapshot) {
         if case .paused(.passThroughRule) = state { return }  // PRD-R21: an ignored app's toggle does nothing
+        // PLT-R373: the selected layout decides; switching layouts (Globe, Control+Space) is the toggle.
+        if inputSource.boundMode != nil { return }
         // Contracts.md 10.4: above anything the ax thread applied (a recreated tap starts from the snapshot).
         toggleSequence = max(toggleSequence, focus.appliedToggleSequence) &+ 1
         let newMode = mode.toggled

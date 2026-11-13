@@ -95,6 +95,32 @@ import VietnameseEngine
         fixture.flags(Key.control, 0)
     }
 
+    /// PLT-R373: with the binding on, the selected layout decides the mode, whatever per-app memory says.
+    @Test func boundLayoutDecidesTheMode() {
+        let fixture = PipelineFixture(inputSource: PipelineFixtures.inputSource(boundMode: .english))
+        fixture.typeKeys([Key.a, Key.a])
+        #expect(fixture.log.feeds.isEmpty)
+        #expect(fixture.popJobs().isEmpty)
+        fixture.publish(focus: PipelineFixtures.focus(generation: 2, mode: .english))
+        fixture.publish(inputSource: PipelineFixtures.inputSource(generation: 2, boundMode: .vietnamese))
+        fixture.typeKeys([Key.a, Key.a])
+        #expect(fixture.log.feeds == [.key(KeyInput("a")), .key(KeyInput("a"))])
+        fixture.publish(inputSource: PipelineFixtures.inputSource(generation: 3))  // not bound: memory decides
+        fixture.log.clear()
+        fixture.typeKeys([Key.a])
+        #expect(fixture.log.feeds.isEmpty)
+    }
+
+    /// PLT-R373: on a bound layout the toggle hotkey changes nothing (no override, no memory write, no HUD).
+    @Test func toggleDoesNothingOnABoundLayout() {
+        let fixture = PipelineFixture(inputSource: PipelineFixtures.inputSource(boundMode: .vietnamese))
+        tapControlShift(fixture)
+        #expect(!fixture.mainNotices().contains { if case .modeToggled = $0 { true } else { false } })
+        #expect(!fixture.axNotices().contains { if case .modeToggled = $0 { true } else { false } })
+        fixture.typeKeys([Key.a])
+        #expect(fixture.log.feeds == [.key(KeyInput("a"))])
+    }
+
     /// Contracts.md 10.4, PLT-R391: a focus snapshot resolved before the ax thread applied the tap's toggle
     /// never reverts the mode; once applied, the snapshot is authoritative again.
     @Test func toggleRaceNeverRevertsTheMode() {

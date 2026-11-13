@@ -160,27 +160,32 @@ final class AXUsage: Sendable {
 
 struct InstrumentedFieldAccess: FocusedFieldAccess {
     let base: any FocusedFieldAccess
+    /// PLT-R802: one `axCall` interval per AX call.
+    let signposts: PlatformSignposts?
     let usage = AXUsage()
 
     func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<Injection.TextRange> {
-        usage.mark()
-        return base.selectedRange(field, timeout: timeout)
+        call { base.selectedRange(field, timeout: timeout) }
     }
 
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
-        usage.mark()
-        return base.text(field, in: range, timeout: timeout)
+        call { base.text(field, in: range, timeout: timeout) }
     }
 
     func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration)
         -> AXCallResult<Void>
     {
-        usage.mark()
-        return base.setSelectedRange(field, to: range, timeout: timeout)
+        call { base.setSelectedRange(field, to: range, timeout: timeout) }
     }
 
     func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
+        call { base.setSelectedText(field, to: text, timeout: timeout) }
+    }
+
+    private func call<Result>(_ body: () -> Result) -> Result {
         usage.mark()
-        return base.setSelectedText(field, to: text, timeout: timeout)
+        let signpost = signposts?.begin(.axCall)
+        defer { if let signpost { signposts?.end(.axCall, signpost) } }
+        return body()
     }
 }

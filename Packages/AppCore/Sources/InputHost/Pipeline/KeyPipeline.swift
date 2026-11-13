@@ -24,11 +24,13 @@ public struct PipelineContext: Sendable {
     /// Since-launch observations for the integration hooks (tap recoveries, first key after a secure-input
     /// release). The controller passes its own; other callers get a private one.
     public var counters: HostCounters
+    /// PLT-R802: a `tapCallback` interval around every callback (one flag check when nothing records).
+    public var signposts: PlatformSignposts?
 
     public init(
         snapshots: TapSnapshots, queue: JobQueue, feedback: WorkerFeedback, echo: EchoTracker, marker: EventMarker,
         outbox: TapOutbox, metrics: PlatformMetrics, tapLog: TapLogRing, capture: CaptureController?,
-        watchdog: CallbackWatchdog, counters: HostCounters = HostCounters()
+        watchdog: CallbackWatchdog, counters: HostCounters = HostCounters(), signposts: PlatformSignposts? = nil
     ) {
         self.snapshots = snapshots
         self.queue = queue
@@ -41,6 +43,7 @@ public struct PipelineContext: Sendable {
         self.capture = capture
         self.watchdog = watchdog
         self.counters = counters
+        self.signposts = signposts
     }
 }
 
@@ -74,6 +77,9 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
     var outcome: EventOutcome?
     /// The last job pushed was a `BoundaryJob` (consecutive boundaries need one job).
     var lastPushWasBoundary = false
+    /// PLT-R905: the key being processed goes into the typing trace, with its engine decision.
+    var capturingThisKey = false
+    var engineCapture: EngineCapture?
 
     public init(context: PipelineContext, factory: Factory, clock: Clock) {
         self.context = context
@@ -102,6 +108,7 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
     /// The whole of PLT-R310 for one event. Brackets itself with `ReaderEpoch.enter()/exit()` and
     /// `CallbackWatchdog.enter/exit`.
     public func handle(_ event: RawKeyEvent) -> TapVerdict {
+        let signpost = context.signposts?.begin(.tapCallback)  // PLT-R802
         let epoch = context.snapshots.epoch
         epoch.enter()
         let start = clock.now()
@@ -111,6 +118,7 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
         if !isProbe { context.metrics.callbackDuration.record(nanoseconds: clock.now().nanoseconds(since: start)) }
         context.watchdog.exit()
         epoch.exit()
+        if let signpost { context.signposts?.end(.tapCallback, signpost) }
         return verdict
     }
 

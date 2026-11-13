@@ -65,6 +65,10 @@ final class FocusCore {
         var health: HealthEventLog
         var clock: any MonotonicClock
         var macOSVersion: LooseVersion
+        /// PLT-R905 typing trace: focus snapshots (roles and bundle IDs) while a capture runs.
+        var capture: CaptureController?
+        /// PLT-R802: an `axCall` interval around every focus-tracking AX call.
+        var signposts: PlatformSignposts?
     }
 
     let services: Services
@@ -123,6 +127,7 @@ final class FocusCore {
 
     func update(settings: EffectiveSettings, appModes: AppModesDocument) {
         self.settings = settings
+        emittedHistory.acknowledge(appModes)
         memory = AppModeMemory.merged(
             current: memory, incoming: appModes, recentlyEmitted: emittedHistory,
             rememberPerApp: settings.rememberPerApp, firstSeen: settings.firstSeenAppMode)
@@ -211,10 +216,20 @@ final class FocusCore {
         // The generation first: the worker discards edits built for an older one (PLT-R316).
         services.generation.store(generation)
         services.output.publish(snapshot)
+        recordFocusCapture(snapshot, at: instant)
         mirror.update(decision: decision)
         current = FocusContext(
             pid: reading.pid, element: reading.element?.element, identity: reading.identity, match: match,
             decision: decision, resolution: resolution, snapshot: snapshot)
+    }
+
+    /// PLT-R905: every focus change goes into a running typing trace with roles and the bundle ID only, never
+    /// titles or URLs (the record type has no field for them).
+    private func recordFocusCapture(_ snapshot: FocusSnapshot, at instant: MonotonicInstant) {
+        guard let capture = services.capture, capture.isRecording else { return }
+        let record = CaptureRecord.focus(
+            bundle: snapshot.app?.bundle, role: snapshot.field.role, subrole: snapshot.field.subrole, at: instant)
+        _ = capture.focusRecords.push(record)
     }
 
     /// contracts.md 10.4: the token names the element. A republication for the same element (rule or settings

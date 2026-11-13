@@ -227,6 +227,28 @@ struct AppModeMemoryTests {
         #expect(first.document() == imported)
     }
 
+    /// The store returns InputHost's documents in emission order: an echo of emission i retires the older states,
+    /// so a later reset or import equal to one of them is applied, not taken for an echo (PRD-R26).
+    @Test func anEchoRetiresOlderStates() {
+        let launch = AppModesDocument(globalMode: .vietnamese)
+        let toggled = AppModesDocument(globalMode: .english, apps: [AppModeEntry(bundle: terminal, mode: .english)])
+        let back = AppModesDocument(
+            globalMode: .vietnamese,
+            apps: [AppModeEntry(bundle: zalo, mode: .vietnamese), AppModeEntry(bundle: terminal, mode: .english)])
+        var emitted = history(launch, toggled, back)
+        emitted.acknowledge(launch)  // a publication from before the first toggle: nothing retired
+        #expect(emitted.contains(launch) && emitted.contains(toggled))
+        emitted.acknowledge(toggled)
+        #expect(!emitted.contains(launch))
+        #expect(emitted.contains(toggled) && emitted.contains(back))
+        emitted.acknowledge(AppModesDocument(globalMode: .english))  // never emitted: nothing changes
+        #expect(emitted.states.count == 2)
+        let live = AppModeMemory(document: back, rememberPerApp: true, firstSeen: .inherit)
+        let reset = AppModeMemory.merged(
+            current: live, incoming: launch, recentlyEmitted: emitted, rememberPerApp: true, firstSeen: .inherit)
+        #expect(reset.document().apps.isEmpty)
+    }
+
     @Test func historyKeepsTheLastSixteenDistinctModeStates() {
         var history = EmittedModeHistory()
         let documents = (0..<20).map { index in

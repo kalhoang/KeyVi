@@ -180,20 +180,58 @@ import Testing
         #expect(
             resolve(focus: PipelineFixtures.focus(pause: .passThroughRule(rule))) == .paused(.passThroughRule(rule)))
         #expect(resolve(focus: PipelineFixtures.focus(pause: .noTextFocus)) == .paused(.noTextFocus))
-        // PLT-R386 gating from the field context.
-        let notEditable = PipelineFixtures.field(editable: false)
+        // PLT-R386 gating from the field context: a text role is editable text whatever the settable flag says.
+        let textFieldNotSettable = PipelineFixtures.field(editable: false)
+        let button = FieldContext(
+            axAvailability: .available, role: "AXButton", subrole: nil, identifier: nil, domClasses: [],
+            editable: false, secure: false)
         let unknown = FieldContext.unknown
         func gated(_ require: RequireTextFocus, _ field: FieldContext) -> HostState {
             resolve(
                 focus: PipelineFixtures.focus(
                     decision: PipelineFixtures.decision(requireTextFocus: require), field: field))
         }
-        #expect(gated(.whenKnown, notEditable) == .paused(.noTextFocus))
+        #expect(gated(.whenKnown, textFieldNotSettable) == .ready(.vietnamese))
+        #expect(gated(.always, textFieldNotSettable) == .ready(.vietnamese))
+        #expect(gated(.always, PipelineFixtures.field(editable: nil)) == .ready(.vietnamese))
+        #expect(gated(.whenKnown, button) == .paused(.noTextFocus))
+        #expect(gated(.always, button) == .paused(.noTextFocus))
         #expect(gated(.whenKnown, unknown) == .ready(.vietnamese))
         #expect(gated(.always, unknown) == .paused(.noTextFocus))
         #expect(gated(.always, PipelineFixtures.field()) == .ready(.vietnamese))
-        #expect(gated(.never, notEditable) == .ready(.vietnamese))
-        #expect(gated(.byEngine, notEditable) == .ready(.vietnamese))
+        #expect(gated(.never, button) == .ready(.vietnamese))
+        #expect(gated(.byEngine, button) == .ready(.vietnamese))
+    }
+
+    /// PLT-R386, PLT-R523: the tap and the menu agree with the pause the ax thread published, for every
+    /// requirement, role, settable flag and AX availability.
+    @Test func tapGatingAgreesWithTheAXThread() {
+        let requirements: [RequireTextFocus] = [.never, .whenKnown, .always, .byEngine]
+        let roles: [String?] = [nil, "AXTextField", "AXTextArea", "AXComboBox", "AXButton", "AXGroup"]
+        let subroles: [String?] = [nil, "AXSearchField"]
+        let flags: [Bool?] = [nil, true, false]
+        let availabilities: [AXAvailability] = [.available, .unavailable, .timedOut]
+        for require in requirements {
+            for role in roles {
+                for subrole in subroles {
+                    for editable in flags {
+                        for availability in availabilities {
+                            let field = FieldContext(
+                                axAvailability: availability, role: role, subrole: subrole, identifier: nil,
+                                domClasses: [], editable: editable, secure: false)
+                            let decision = PipelineFixtures.decision(requireTextFocus: require)
+                            let published = TextFocusGate.pause(field: field, decision: decision)
+                            let focus = PipelineFixtures.focus(decision: decision, field: field, pause: published)
+                            let paused = resolve(focus: focus) == .paused(.noTextFocus)
+                            #expect(
+                                paused == (published == .noTextFocus),
+                                "\(require) \(role ?? "-") \(subrole ?? "-") \(String(describing: editable)) \(availability)"
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Test func pauseReasonsKeepTheirPrecedence() {

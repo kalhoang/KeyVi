@@ -352,12 +352,38 @@ import VietnameseEngine
         #expect(!fixture.log.feeds.contains(.restoreToggle))
     }
 
+    /// PLT-R353: with nothing to restore the bound key passes as if unbound; a function key is a boundary.
     @Test func restoreWithNothingToRestorePassesAnyBoundKey() {
         let restore = HotkeyBinding.key(KeyCode(rawValue: Key.f5))
         let fixture = PipelineFixture(settings: PipelineFixtures.settings(restore: restore))
         #expect(fixture.keyDown(Key.f5) == .pass)
         #expect(fixture.log.feeds == [.restoreToggle])
-        #expect(fixture.log.resets.isEmpty)
+        #expect(fixture.log.resets == [.unknown])
+    }
+
+    /// PLT-R353: a character key bound to restore that passes types its character; the engine is fed, so the
+    /// next edit does not delete the character it never saw.
+    @Test func restoreBoundToACharacterKeyThatPassesKeepsTheEngineInSync() {
+        let restore = HotkeyBinding.key(KeyCode(rawValue: Key.d))
+        let fixture = PipelineFixture(settings: PipelineFixtures.settings(restore: restore))
+        fixture.press(Key.a)
+        #expect(fixture.keyDown(Key.d) == .pass)
+        #expect(fixture.lastOutcome == .passed)
+        fixture.keyUp(Key.d)
+        fixture.press(Key.a)
+        #expect(fixture.popJobs().isEmpty, "no edit: the engine saw \"ad\", not \"a\"")
+        #expect(fixture.log.feeds == [.key(KeyInput("a")), .restoreToggle, .key(KeyInput("d")), .key(KeyInput("a"))])
+    }
+
+    /// PLT-R353, PLT-R340: a Command chord bound to restore that passes is still a hard boundary while the app
+    /// runs its shortcut.
+    @Test func restoreBoundToACommandChordThatPassesIsAHardBoundary() {
+        let restore = HotkeyBinding.keyCombo(modifiers: .command, keyCode: KeyCode(rawValue: Key.d))
+        let fixture = PipelineFixture(settings: PipelineFixtures.settings(restore: restore))
+        fixture.press(Key.a)
+        fixture.flags(Key.command, Flag.command)
+        #expect(fixture.keyDown(Key.d, flags: Flag.command) == .pass)
+        #expect(fixture.log.resets == [.shortcut])
     }
 
     /// PRD-R21: in an ignored app the toggle does nothing.

@@ -75,10 +75,11 @@ extension InputHostController {
         let snapshots = channels.snapshots
         let focus = snapshots.focus.load()
         let secureInput = snapshots.secureInput.load()
+        let inputSource = snapshots.inputSource.load()
         let resolved = HostStateResolver.resolve(
             lifecycle: snapshots.lifecycle.load(), secureInput: secureInput,
-            secureResumedGeneration: secureResumedGeneration, inputSource: snapshots.inputSource.load(),
-            focus: focus, effectiveMode: effectiveMode(focus))
+            secureResumedGeneration: secureResumedGeneration, inputSource: inputSource,
+            focus: focus, effectiveMode: effectiveMode(focus, inputSource: inputSource))
         updateCaptureGap(secureInput: secureInput, focus: focus)
         let key = FocusKey(bundle: focus.app?.bundle, rule: focus.decision.rule)
         if key != lastFocusKey {
@@ -92,9 +93,10 @@ extension InputHostController {
         onEvent?(.stateChanged(resolved))
     }
 
-    /// The tap's own toggle wins until the ax thread applied it (contracts.md 10.4); the main thread knows the
-    /// toggle's bundle from the notice.
-    func effectiveMode(_ focus: FocusSnapshot) -> TypingMode {
+    /// A bound layout decides (PLT-R373, as in the tap); otherwise the tap's own toggle wins until the ax thread
+    /// applied it (contracts.md 10.4); the main thread knows the toggle's bundle from the notice.
+    func effectiveMode(_ focus: FocusSnapshot, inputSource: InputSourceSnapshot) -> TypingMode {
+        if let bound = inputSource.boundMode { return bound }
         if let toggle = latestToggle, toggle.sequence > focus.appliedToggleSequence, toggle.bundle == focus.app?.bundle
         {
             return toggle.mode

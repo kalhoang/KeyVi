@@ -31,11 +31,13 @@ public struct InjectionServices: Sendable {
     public var health: HealthEventLog
     public var logger: any DiagnosticsLogging
     public var capture: CaptureController?
+    /// PLT-R802: intervals around each job and each AX call (nil: none, as in most tests).
+    public var signposts: PlatformSignposts?
 
     public init(
         poster: any EventPoster, fieldAccess: any FocusedFieldAccess, pasteboard: any PasteboardAccess,
         clock: any MonotonicClock, metrics: PlatformMetrics, health: HealthEventLog,
-        logger: any DiagnosticsLogging, capture: CaptureController?
+        logger: any DiagnosticsLogging, capture: CaptureController?, signposts: PlatformSignposts? = nil
     ) {
         self.poster = poster
         self.fieldAccess = fieldAccess
@@ -45,6 +47,7 @@ public struct InjectionServices: Sendable {
         self.health = health
         self.logger = logger
         self.capture = capture
+        self.signposts = signposts
     }
 }
 

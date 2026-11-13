@@ -52,6 +52,27 @@ import Testing
         #expect(rig.feedback.compositionResetCount == 1)
     }
 
+    /// 4.5, PLT-R312: the field applied the selection but silently ignored the text write. Nothing changed,
+    /// so the caret is put back and the fallback delivers the edit; the word stays and nothing is lost.
+    @Test func ignoredTextWriteRestoresTheCaretAndUsesTheFallback() {
+        let rig = WorkerRig(field: SimulatedTextField(text: "a"))
+        rig.fieldAccess.setBehaviour(.textWritesIgnored)
+        let plan = Fixture.plan(.axReplace, fallback: [.backspaceReplace])
+        let edit = rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: plan) }
+        rig.run()
+        #expect(rig.outcome(edit) == .executedWithFallback)
+        #expect(rig.field.text == "á")
+        #expect(rig.field.selection == Injection.TextRange(location: 1, length: 0))
+        #expect(rig.feedback.compositionResetCount == 0)
+        // The field keeps the fallback for the rest of the focus session (4.5).
+        let calls = rig.fieldAccess.callCount
+        let next = rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: "b", plan: plan) }
+        rig.run()
+        #expect(rig.outcome(next) == .executed)
+        #expect(rig.fieldAccess.callCount == calls)
+        #expect(rig.field.text == "áb")
+    }
+
     @Test func exhaustedChainPassesTheTriggerThrough() {
         let rig = WorkerRig(field: SimulatedTextField(text: "a"))
         rig.fieldAccess.setBehaviour(.timeout)
