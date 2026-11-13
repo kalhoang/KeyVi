@@ -20,7 +20,7 @@ struct BenchmarkReport: Codable {
     }
 
     struct ResourcesFigures: Codable {
-        /// The bundled word lists are present (the data track has delivered them).
+        /// The bundled word lists are present (they contain the English word `the`).
         var available: Bool
         var coldLoadMilliseconds: Double
         var medianLoadMilliseconds: Double
@@ -78,7 +78,11 @@ struct BenchmarkReport: Codable {
     /// The first `Engine.init` of the process, which builds the generated tables.
     var engineColdInitMilliseconds: Double
     var resources: ResourcesFigures
-    /// All typist and fuzz events of a run together; the median of each percentile over the runs (QA-R14).
+    /// The word lists every workload uses: the bundled resources with a 10,000-entry macro table.
+    var wordLists = "bundled"
+    /// Words of the prose corpus (13.4) each typist types; 0 when the corpus was not found.
+    var proseTokens = 0
+    /// All prose, typist and fuzz events of a run together; the median of each percentile over the runs (QA-R14).
     /// The budget gate reads this.
     var latency: Percentiles
     /// Percentiles of each event's fastest time over the runs. Every run replays the same events from the
@@ -97,6 +101,9 @@ struct EngineBenchmark {
         var runs = 5
         var fuzzEvents = 1_000_000
         var worstCaseEvents = 10_000_000
+        /// Words of the prose corpus each of the three typists types (0: the whole corpus).
+        var proseTokens = 50_000
+        var prose: String?
         var output: String?
 
         init(_ arguments: [String]) {
@@ -107,10 +114,13 @@ struct EngineBenchmark {
                 case "--fuzz-events": fuzzEvents = iterator.next().flatMap(Int.init) ?? fuzzEvents
                 case "--worst-case-events": worstCaseEvents = iterator.next().flatMap(Int.init) ?? worstCaseEvents
                 case "--output": output = iterator.next()
+                case "--prose": prose = iterator.next()
+                case "--prose-tokens": proseTokens = iterator.next().flatMap(Int.init) ?? proseTokens
                 case "--quick":
                     runs = 1
                     fuzzEvents = 100_000
                     worstCaseEvents = 1_000_000
+                    proseTokens = 5_000
                 default:
                     FileHandle.standardError.write(Data("unknown argument \(argument)\n".utf8))
                     exit(2)
@@ -140,8 +150,12 @@ struct EngineBenchmark {
         let reference = Percentiles((0..<5).map { _ in Timing.referenceLoop(sink: &sink) }).p50
 
         let resources = try Workloads.resources()
+        let proseFile = options.prose.map { URL(fileURLWithPath: $0) } ?? Workloads.defaultProseCorpus
+        let paragraphs = try Workloads.proseParagraphs(proseFile, limit: options.proseTokens)
+        if paragraphs == nil { print("note: no prose corpus at \(proseFile.path); prose workloads skipped") }
         let workloads =
-            Workloads.typists(resources: resources)
+            Workloads.prose(resources: resources, paragraphs: paragraphs ?? [])
+            + Workloads.typists(resources: resources)
             + Workloads.fuzz(resources: resources, events: options.fuzzEvents, seed: 0xBE7C_0F00)
         for workload in workloads { _ = Timing.perEvent(workload, sink: &sink) }  // warm-up run
 
@@ -166,7 +180,7 @@ struct EngineBenchmark {
             budget: budget.max, sink: &sink)
         let longTokens = measureLongTokens(resources: resources, sink: &sink)
 
-        let report = BenchmarkReport(
+        var report = BenchmarkReport(
             date: ISO8601DateFormatter().string(from: Date()), configuration: configuration,
             machine: .init(
                 cpu: SystemInfo.cpuName(), model: SystemInfo.model(),
@@ -181,6 +195,7 @@ struct EngineBenchmark {
                     stable: Percentiles(minimums[index]))
             },
             worstCase: worstCase, longTokens: longTokens)
+        report.proseTokens = paragraphs?.reduce(0) { $0 + $1.count } ?? 0
         try write(report, to: options.output)
         printSummary(report)
         if sink == Int.min { print(sink) }  // keeps the measured work observable
@@ -301,7 +316,9 @@ struct EngineBenchmark {
     static func printSummary(_ report: BenchmarkReport) {
         func us(_ value: Int64) -> String { String(format: "%.3f µs", Double(value) / 1_000) }
         let latency = report.latency
-        print("[ENG-T40] \(report.machine.cpu), \(report.configuration), median of \(report.runs) runs")
+        print(
+            "[ENG-T40] \(report.machine.cpu), \(report.configuration), median of \(report.runs) runs; "
+                + "\(report.wordLists) word lists, \(report.proseTokens) prose words per typist")
         print(
             "[ENG-R1230] \(latency.events) events: p50 \(us(latency.p50)), p99 \(us(latency.p99)), "
                 + "p99.9 \(us(latency.p999)), max \(us(latency.max)) (budget 5 / 25 / 100 µs)")

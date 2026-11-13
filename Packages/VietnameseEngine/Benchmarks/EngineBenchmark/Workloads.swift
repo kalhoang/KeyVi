@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import Foundation
 import VietnameseEngine
+import VietnameseEngineData
 import VietnameseEngineTesting
 
-/// The event streams of ENG-T40: the generated Vietnamese corpus typed by three simulated typists in
-/// both methods, and a fuzz stream. Everything is generated from fixed seeds, so every run replays the
-/// same events.
+/// The event streams of ENG-T40: the prose corpus of 13.4 and the generated Vietnamese corpus typed by
+/// three simulated typists in both methods, and a fuzz stream. Everything is generated from fixed inputs
+/// and seeds, so every run replays the same events.
 struct Workload {
     let name: String
     let engine: Engine
@@ -13,19 +15,69 @@ struct Workload {
 }
 
 enum Workloads {
-    /// The 13.9 fixture word lists and a macro table of 10,000 random entries (ENG-R1105: tables of that
-    /// size must stay within ENG-R1230).
+    /// The bundled word lists (spec 8.2, `Resources.bundled`) and a macro table of 10,000 random entries
+    /// (ENG-R1105: tables of that size must stay within ENG-R1230).
     static func resources() throws -> Resources {
         let macros = try MacroTable(RandomMacroTable.entries(count: 10_000, seed: 0xBE7C_0001))
-        return SpecFixtures.commitResources(macros: macros)
+        return try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]), macros: macros)
     }
 
-    /// The three typists of ENG-R873 and ENG-T20 over every Tier A toned syllable, in Telex and VNI,
-    /// traditional style: O1 (canonical, tone key last), O2 (tone right after the vowel group) and O3
-    /// (letters first, then modifiers and tone after the coda, the "free order" typist). The generated
-    /// corpus stands in for the prose corpus of 13.4 until the data track supplies one. Syllables are
-    /// separated as in prose: mostly a space, sometimes `, ` or `. `, a Return now and then, and a
-    /// mistyped letter corrected with Backspace every 17th syllable.
+    /// `data/corpus/prose-vi.txt` of the repository this benchmark was built from (ENG-T20, 13.4).
+    static var defaultProseCorpus: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // EngineBenchmark
+            .deletingLastPathComponent()  // Benchmarks
+            .deletingLastPathComponent()  // VietnameseEngine
+            .deletingLastPathComponent()  // Packages
+            .deletingLastPathComponent()  // repository
+            .appendingPathComponent("data/corpus/prose-vi.txt")
+    }
+
+    /// The paragraphs of the prose corpus as words, at most `limit` words (0: all); nil when the file is
+    /// missing.
+    static func proseParagraphs(_ url: URL, limit: Int) throws -> [[String]]? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        var paragraphs: [[String]] = []
+        var count = 0
+        for line in try String(contentsOf: url, encoding: .utf8).split(separator: "\n") where !line.hasPrefix("#") {
+            var words = line.split(separator: " ").map(String.init)
+            if limit > 0 { words = Array(words.prefix(limit - count)) }
+            if words.isEmpty { break }
+            paragraphs.append(words)
+            count += words.count
+        }
+        return paragraphs
+    }
+
+    /// ENG-T40: the prose corpus typed by the three typists of ENG-T20 (`ProseCorpusCheck`: O2, O1, O3),
+    /// one pass each, in Telex and VNI, words separated by a space and paragraphs by a Return.
+    static func prose(resources: Resources, paragraphs: [[String]]) -> [Workload] {
+        CorpusMethod.allCases.map { method in
+            var events: [EngineEvent] = []
+            for order in ProseCorpusCheck.typists {
+                for words in paragraphs {
+                    for (index, word) in words.enumerated() {
+                        if index > 0 { events.append(.key(KeyInput(" "))) }
+                        for key in ProseCorpusCheck.keys(for: word, method: method, order: order) {
+                            events.append(.key(KeyInput(key)))
+                        }
+                    }
+                    events.append(.key(KeyInput("\n")))
+                }
+            }
+            return Workload(
+                name: "prose-\(method.rawValue)",
+                engine: Engine(
+                    configuration: EngineConfiguration(inputMethod: method.inputMethod), resources: resources),
+                events: events)
+        }
+    }
+
+    /// The three typists over every Tier A toned syllable, in Telex and VNI, traditional style: O1
+    /// (canonical, tone key last), O2 (tone right after the vowel group) and O3 (letters first, then
+    /// modifiers and tone after the coda, the "free order" typist). Syllables are separated as in prose:
+    /// mostly a space, sometimes `, ` or `. `, a Return now and then, and a mistyped letter corrected with
+    /// Backspace every 17th syllable.
     static func typists(resources: Resources) -> [Workload] {
         var telex: [EngineEvent] = []
         var vni: [EngineEvent] = []
