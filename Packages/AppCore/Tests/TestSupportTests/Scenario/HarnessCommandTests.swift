@@ -233,6 +233,38 @@ private let rulesJSON = """
     }
 }
 
+/// workstreams.md rule 5, QA-R12, QA-R13: the executable builds live services only when the machine opted in.
+@Suite struct HarnessLiveOptInTests {
+    private func allows(_ arguments: [String], _ environment: [String: String]) throws -> Bool {
+        HarnessEnvironment.allowsLive(options: try HarnessCommandLine.parse(arguments), environment: environment)
+    }
+
+    @Test func liveNeedsTheRunnerOptInVariable() throws {
+        let optedIn = [HarnessEnvironment.liveOptInVariable: "1"]
+        for command in ["run", "soak", "bench"] {
+            #expect(try allows([command], optedIn), "\(command)")
+            // A developer Mac: no variable, so a forgotten --dry-run still cannot post an event.
+            #expect(try !allows([command], [:]), "\(command)")
+            #expect(try !allows([command], [HarnessEnvironment.liveOptInVariable: "0"]), "\(command)")
+            #expect(try !allows([command], [HarnessEnvironment.liveOptInVariable: "yes"]), "\(command)")
+            #expect(try !allows([command], ["OTHER": "1"]), "\(command)")
+        }
+    }
+
+    @Test func dryRunsCoverageAndHelpNeverGetLiveServices() throws {
+        let optedIn = [HarnessEnvironment.liveOptInVariable: "1"]
+        for arguments in [
+            ["run", "--dry-run"], ["soak", "--dry-run"], ["bench", "--dry-run"], ["coverage"], ["help"],
+        ] {
+            #expect(try !allows(arguments, optedIn), "\(arguments)")
+        }
+    }
+
+    @Test func optInVariableName() {
+        #expect(HarnessEnvironment.liveOptInVariable == "COMPAT_HARNESS_LIVE")
+    }
+}
+
 @Suite struct HarnessLiveCommandTests {
     @Test func liveCommandsRefuseToRunWithoutLiveServices() async throws {
         let fileSystem = try makeCheckout(scenarios: ["a.json": scenarioJSON(id: "a")])
@@ -240,6 +272,7 @@ private let rulesJSON = """
             let (harness, console) = try harness([command], fileSystem: fileSystem)
             #expect(await harness.execute() == .incomplete, "\(command)")
             #expect(console.errors.first?.contains("use --dry-run") == true)
+            #expect(console.errors.first?.contains(HarnessEnvironment.liveOptInVariable + "=1") == true)
         }
     }
 

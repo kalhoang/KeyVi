@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Non-dry-run commands of `compat-harness`. They post physical-like events, launch apps and change input
-// sources, so they run only on the self-hosted runner (QA-R12, QA-R13); without live services they stop with
+// sources, so they run only on the self-hosted runner (QA-R12, QA-R13). Without live services (no
+// `COMPAT_HARNESS_LIVE=1` in the environment, see `HarnessEnvironment.allowsLive`) they stop with
 // `HarnessExit.incomplete` before doing anything.
 
 internal import AppModel
@@ -31,7 +32,8 @@ extension Harness {
     func requireLive(_ command: String) -> (any LiveHarnessServices)? {
         guard let live = environment.live else {
             environment.console.emitError(
-                "compat-harness " + command + ": live services are not available on this machine; use --dry-run")
+                "compat-harness " + command + ": live services are disabled on this machine (only the self-hosted "
+                    + "runner sets " + HarnessEnvironment.liveOptInVariable + "=1); use --dry-run")
             return nil
         }
         return live
