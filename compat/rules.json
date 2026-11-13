@@ -17,7 +17,11 @@
     ],
     "webkitBrowsers": ["com.apple.Safari", "com.apple.SafariTechnologyPreview"]
   },
-  "conflictingInputApps": ["com.trankynam.GoTiengViet", "com.tuyenmai.openkey", "com.lamquangminh.evkey"],
+  "conflictingInputApps": [
+    "com.trankynam.GoTiengViet", "com.tuyenmai.openkey", "com.lamquangminh.evkey", "com.lamquangminh.evkeyhelper",
+    "com.codetay.XKey", "com.codetay.inputmethod.XKey", "com.phamhungtien.phtv", "org.gonhanh.GoNhanh",
+    "space.khaphan.gonhanh"
+  ],
   "secureInputHints": [
     { "bundleId": "com.apple.Terminal", "hintKey": "terminal.secureKeyboardEntry" },
     { "bundleId": "com.googlecode.iterm2", "hintKey": "iterm2.secureKeyboardEntry" },
