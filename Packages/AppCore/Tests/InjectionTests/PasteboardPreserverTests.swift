@@ -218,6 +218,35 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
         }
     }
 
+    /// PLT-R461 step 1, PLT-R462, PRD-R44: a lazy owner that answers slowly is abandoned at the read deadline
+    /// instead of blocking the inject thread (and with it every key the tap holds) until it answers. Until the
+    /// abandoned read ends nothing else touches the pasteboard.
+    @Test func aSlowLazyOwnerIsAbandonedAtTheDeadline() throws {
+        try withUniquePasteboard { name, pasteboard in
+            let provider = SlowProvider(delay: .milliseconds(1_500))
+            pasteboard.clearContents()
+            let item = NSPasteboardItem()
+            item.setData(Data("x".utf8), forType: .string)
+            item.setDataProvider(provider, forTypes: [.tiff])
+            pasteboard.writeObjects([item])
+            let access = NSPasteboardAccess(pasteboardName: name)
+            var limits = PasteboardLimits()
+            limits.readTimeout = .milliseconds(100)
+            let clock = ContinuousClock()
+            let started = clock.now
+            #expect(throws: PasteboardError.timedOut) { try access.snapshot(limits: limits) }
+            #expect(clock.now - started < .milliseconds(1_000), "the snapshot waited for the owner")
+            #expect(throws: PasteboardError.writeFailed) { try access.writeTransient("t") }
+            #expect(access.changeCount == PasteboardIO.unknownChangeCount)
+            provider.waitUntilAnswered(timeout: .seconds(5))
+            for _ in 0..<500 where access.changeCount == PasteboardIO.unknownChangeCount {
+                Thread.sleep(forTimeInterval: 0.01)
+            }
+            #expect(access.changeCount == pasteboard.changeCount)
+            withExtendedLifetime(provider) {}
+        }
+    }
+
     @Test func emptyPasteboardRoundTrips() throws {
         try withUniquePasteboard { name, pasteboard in
             pasteboard.clearContents()
@@ -229,6 +258,27 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
             try access.restore(snapshot)
             #expect((pasteboard.pasteboardItems ?? []).isEmpty)
         }
+    }
+}
+
+/// A lazy data provider that answers after a delay (a slow or busy owner app).
+private final class SlowProvider: NSObject, NSPasteboardItemDataProvider, Sendable {
+    let delay: Duration
+    private let answered = DispatchSemaphore(value: 0)
+
+    init(delay: Duration) { self.delay = delay }
+
+    func pasteboard(
+        _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
+    ) {
+        let (seconds, attoseconds) = delay.components
+        Thread.sleep(forTimeInterval: Double(seconds) + Double(attoseconds) / 1e18)
+        item.setData(Data([0x4D, 0x4D]), forType: type)
+        answered.signal()
+    }
+
+    func waitUntilAnswered(timeout: Duration) {
+        _ = answered.wait(timeout: .now() + .milliseconds(Int(timeout.components.seconds * 1_000)))
     }
 }
 
