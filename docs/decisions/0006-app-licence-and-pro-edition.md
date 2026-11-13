@@ -75,7 +75,9 @@ wants both a free, open app and the option of a paid Pro edition later, without 
 6. **Supersedes 0401.** External pull requests are accepted in every area, under the terms above. The `dco`
    job of `.github/workflows/ci.yml` must drop its `--path` arguments so that it checks every commit of a pull
    request from a fork (`scripts/check-dco.sh` already defaults to every path); the maintainer's own branches
-   stay unchecked so the existing history is never rewritten (CLR-R12).
+   stay unchecked so the existing history is never rewritten (CLR-R12). The `ci.yml` edit lands with this
+   decision; until then the maintainer runs `scripts/check-dco.sh` without `--path` on every external pull
+   request before merging it, and `CONTRIBUTING.md` states the merge rule rather than the CI scope.
 
 ## Consequences
 

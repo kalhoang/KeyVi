@@ -792,10 +792,14 @@ class LicenceTests(unittest.TestCase):
         text = " ".join((REPO / "CONTRIBUTING.md").read_text(encoding="utf-8").split())
         for needle in ("Signed-off-by", "Developer Certificate of Origin", "https://developercertificate.org",
                        "GPL-3.0-or-later", "also licensed to the project under the MIT licence",
-                       "No contributor licence agreement", "ADR 0006", "scripts/check-dco.sh"):
+                       "No contributor licence agreement", "ADR 0006", "scripts/check-dco.sh",
+                       "A pull request with an unsigned commit is not merged"):
             with self.subTest(needle=needle):
                 self.assertIn(needle, text)
         self.assertNotIn("not accepted until", text)
+        # The merge rule must not depend on the CI scope: the dco job of ci.yml checked only the engine paths when
+        # ADR 0006 was written, so CONTRIBUTING.md states the rule, not what CI happens to check.
+        self.assertNotIn("checks every commit of a pull request from a fork", text)
 
     def test_pull_request_template_asks_for_the_sign_off_and_the_inbound_licence(self):
         text = (REPO / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
