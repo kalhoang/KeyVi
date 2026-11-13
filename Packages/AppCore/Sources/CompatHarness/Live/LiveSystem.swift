@@ -92,9 +92,18 @@ struct LiveSystemActions: SystemActions {
             return
         }
         let button = try await AX.element(TestHostControls.resetFields, in: bundle, sleeper: sleeper)
-        let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        // A busy TestHost (just back from the Japanese input source, a page still loading) can miss the 1 s AX
+        // messaging timeout once (`cannotComplete`, seen in the VM): the press is retried before it fails.
+        var result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        for _ in 0..<Self.pressRetries where result == .cannotComplete {
+            try await sleeper.sleep(nanoseconds: Self.pressRetryNanoseconds)
+            result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        }
         guard result == .success else { throw LiveError.axFailure("press", result.rawValue) }
     }
+
+    static let pressRetries = 3
+    static let pressRetryNanoseconds: UInt64 = 500_000_000
 
     /// Opens a `.command` wrapper (`zsh -f <script> <capture>`) with the terminal app. VERIFY on the runner that
     /// iTerm2 and Ghostty run `.command` files like Terminal does.
