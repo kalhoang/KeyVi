@@ -80,8 +80,11 @@ Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
   validates its example against the schema.
 - **8** and **9** (S8, Q8): the donation block shows the bank VietQR code, the bank name and the account number,
   never the holder name; no MoMo; no public sponsor list for now.
-- **15** (Q38): the support page and the app use one sentence for iTerm2: Secure Keyboard Entry is on; turn off
-  the menu item, or finish or cancel the password prompt iTerm2 is waiting for. No setting name is quoted.
+- **15** (Q38): the support page uses one sentence for iTerm2: Secure Keyboard Entry is on; turn off the menu
+  item, or finish or cancel the password prompt iTerm2 is waiting for. No setting name is quoted. The app's
+  secure-input hint (`App/Resources/Localization/Status.xcstrings`, key
+  `secureInputHint.iterm2.secureKeyboardEntry`, which `compat/rules.json` names through its `hintKey`) follows
+  with the same sentence in the App workstream; until then it still carries the older two-part text.
 - **19**: `Packages/VietnameseEngineFuzz/LICENSE` exists (MPL-2.0, like the engine; ADR 0006).
 - **26**: [0006](0006-app-licence-and-pro-edition.md) decides the app licence and the contributor terms.
 - **24** is narrowed: the word-list rows of `THIRD_PARTY_NOTICES.md` section 3 point at `data/NOTICES.md`,

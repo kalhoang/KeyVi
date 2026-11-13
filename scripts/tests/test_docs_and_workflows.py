@@ -870,6 +870,15 @@ class SpecFollowUpTests(unittest.TestCase):
         self.assertIn("Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng", screen)
         self.assertIn("macOS 12", screen)
 
+    def test_onboarding_button_takes_the_pane_app_name_from_the_table(self):
+        """The button reads `Mở %@` with the pane app's name (App/Resources/SystemPanes.json, PLT-R704); macOS 12
+        calls it Tùy chọn Hệ thống, so the spec must not fix the label to Cài đặt hệ thống."""
+        screen = self.PRODUCT.split("**Screen 2: Permission**", 1)[1].split("**Screen 3", 1)[0]
+        button = next(line for line in screen.splitlines() if line.startswith("- Button:"))
+        self.assertIn("`Mở {{SystemSettings}}`", button)
+        self.assertIn("PLT-R704", button)
+        self.assertNotIn("`Mở Cài đặt hệ thống`", button)
+
 
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
