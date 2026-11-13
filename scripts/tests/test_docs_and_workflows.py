@@ -923,7 +923,7 @@ class TraceabilityTests(unittest.TestCase):
             "PRD-R18": ("RestoreHotkeyDefaultTests",),
             "ENG-R906": ("KeyPipelineCapsLockTests",),
             "ENG-R862": ("PerAppLearningTests", "ADR 0320"),
-            "ENG-R1103": ("MacroEditorTests", "ADR 0321"),
+            "ENG-R1103": ("MacroEditorTests", "MacroEngineAgreementTests", "ADR 0321"),
         }
         for identifier, needles in expected.items():
             row = self.row(identifier)
@@ -952,11 +952,26 @@ class AccessibilityAuditDocTests(unittest.TestCase):
     def test_the_wave_5_fixes_are_no_longer_open_findings(self):
         findings = self.TEXT.split("## 9. Findings for other owners", 1)[1]
         open_items = [line for line in findings.splitlines() if line.startswith("- ")]
-        self.assertTrue(open_items, "section 9 lost its list")
         for line in open_items:
             with self.subTest(line=line):
                 self.assertNotIn("Typing trace confirmation", line)
                 self.assertNotIn("not reachable by keyboard focus", line)
+
+    def test_the_browser_secure_input_hints_are_not_an_open_finding(self):
+        """Q40 (decision 0005) added the browser rows to `secureInputHints`; only Cốc Cốc waits for Pa."""
+        findings = self.TEXT.split("## 9. Findings for other owners", 1)[1]
+        open_items = [line for line in findings.splitlines() if line.startswith("- ")]
+        for line in open_items:
+            with self.subTest(line=line):
+                self.assertNotIn("Browser rows for", line)
+        flat = " ".join(findings.split())
+        self.assertIn("Q40", flat)
+        rules = json.loads((REPO / "compat" / "rules.json").read_text(encoding="utf-8"))
+        browsers = [hint for hint in rules["secureInputHints"] if hint["hintKey"] == "browser.passwordField"]
+        self.assertEqual(len(browsers), 6, "update section 9 when the browser rows change")
+        for name in ("Safari", "Google Chrome", "Microsoft Edge", "Firefox", "Arc", "Brave"):
+            with self.subTest(browser=name):
+                self.assertIn(name, flat)
 
 
 class Wave5StatusTests(unittest.TestCase):
@@ -973,7 +988,7 @@ class Wave5StatusTests(unittest.TestCase):
     def test_the_spec_no_longer_defers_any_decision_to_a_later_wave(self):
         for path in sorted(self.SPEC.glob("*.md")):
             with self.subTest(path=path.name):
-                self.assertNotIn("implemented in a later wave", self.flat(path.read_text(encoding="utf-8")))
+                self.assertNotIn("later wave", self.flat(path.read_text(encoding="utf-8")))
 
     def test_eng_r862_cites_the_per_app_learning_decision(self):
         engine = (self.SPEC / "01-engine.md").read_text(encoding="utf-8")
@@ -1005,9 +1020,12 @@ class Wave5StatusTests(unittest.TestCase):
     def test_decision_0103_notes_that_digits_now_count(self):
         adr = (REPO / "docs" / "decisions" / "0103-engine-commit-history-macros.md").read_text(encoding="utf-8")
         row = next(line for line in adr.splitlines() if line.startswith("| Shadowed triggers (ENG-R1103) |"))
+        decision = row.split("|")[2]
+        self.assertIn("since decision 0005", decision)
+        self.assertIn("0321", decision)
+        self.assertIn("trailing main-row digit", decision)
+        self.assertNotIn("digits do not count", decision)
         self.assertIn("superseded", row)
-        self.assertIn("0005", row)
-        self.assertIn("digits do not count", row)
 
 
 class ITerm2SentenceTests(unittest.TestCase):
@@ -1105,6 +1123,7 @@ class ChangelogTests(unittest.TestCase):
         expected = {
             "Changed": ("only in the app where you taught it", "stay global", "Settings > Typing",
                         "Escape restores the last word", "terminals, code editors, games and remote desktop apps",
+                        "launchers such as Spotlight, Raycast and Alfred",
                         "trailing digit", "`k` and `k1`", "delete or rename one of the pair",
                         "GPL-3.0-or-later", "LICENSE", "THIRD_PARTY_NOTICES"),
             "Fixed": ("This app misbehaves", "keyboard"),
@@ -1114,6 +1133,31 @@ class ChangelogTests(unittest.TestCase):
             for needle in needles:
                 with self.subTest(group=group, needle=needle):
                     self.assertIn(needle, text)
+
+    def test_the_escape_exclusions_name_the_same_families_everywhere(self):
+        """D8, PLT-R353, decision 0005 Q14, the traceability row and the changelog name the launchers too: compat
+        rules `launcher.spotlight` and `launcher.overlayPanels` set `features.restoreHotkey: false` (QA-R66)."""
+        rules = json.loads((REPO / "compat" / "rules.json").read_text(encoding="utf-8"))
+        off = {
+            rule["id"] for rule in rules["rules"]
+            if rule.get("action", {}).get("features", {}).get("restoreHotkey") is False
+        }
+        self.assertGreaterEqual(off, {"launcher.spotlight", "launcher.overlayPanels"})
+        needle = "launchers such as Spotlight, Raycast and Alfred"
+        product = (REPO / "spec" / "03-product.md").read_text(encoding="utf-8")
+        platform = (REPO / "spec" / "02-platform.md").read_text(encoding="utf-8")
+        adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+        matrix = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+        places = {
+            "D8": next(line for line in product.splitlines() if line.startswith("| D8 |")),
+            "PLT-R353": next(line for line in platform.splitlines() if line.startswith("- **PLT-R353**")),
+            "Q14": next(line for line in adr.splitlines() if line.startswith("| Q14 |")),
+            "traceability": next(line for line in matrix.splitlines() if line.startswith("| PLT-R353 |")),
+            "changelog": self.group("Changed"),
+        }
+        for name, text in places.items():
+            with self.subTest(place=name):
+                self.assertIn(needle, " ".join(text.split()))
 
     def test_no_brand_name_or_dash_in_the_entries(self):
         text = self.unreleased()

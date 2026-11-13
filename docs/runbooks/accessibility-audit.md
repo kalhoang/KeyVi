@@ -319,4 +319,7 @@ wave 5 and removed from this list: the typing trace confirmation now states the 
 (`TypingTraceConfirmationTests`), and the misbehaves panel takes keyboard focus outside the guided test
 (`MisbehavesFocusTests`, section 3.8 step 3).
 
-- Browser rows for `secureInputHints` in `compat/rules.json` (owner W1-C).
+The browser rows for `secureInputHints` in `compat/rules.json` were added under Q40 (decision 0005): Safari,
+Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
+
+- Cốc Cốc's `secureInputHints` row waits for its bundle identifier with its exact case (Q40, owner Pa).

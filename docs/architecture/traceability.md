@@ -112,7 +112,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R350 | Shift/Caps via table; Command/Control/Option chords | `KeyClassifier` | U | W1-F1 |  |
 | PLT-R351 | Autorepeat handling | `KeyPipeline` | U, P | W1-F1 |  |
 | PLT-R352 | User backspace reported to engine | `KeyPipeline` | P | W1-F1 |  |
-| PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline`; Escape off by rule (`features.restoreHotkey: false`) in terminals, code editors, games and remote desktop clients (`compat/rules.json`, D8) | U (`RestoreHotkeyExclusionTests`, `RestoreHotkeyDefaultTests`), I | W1-E, W1-F1; W2-E2; W5-A |  |
+| PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline`; Escape off by rule (`features.restoreHotkey: false`) in terminals, code editors, games and remote desktop clients, and in launchers such as Spotlight, Raycast and Alfred (`compat/rules.json`, D8) | U (`RestoreHotkeyExclusionTests`, `RestoreHotkeyDefaultTests`), I | W1-E, W1-F1; W2-E2; W5-A |  |
 | PLT-R354 | Dead keys pass and reset | `UCKeyTranslateLayoutBuilder`, `KeyClassifier` | U | W1-E, W1-F1 |  |
 | PLT-R355 | Keypad digits are not VNI tone keys | `KeyClassifier` (`fromKeypad`), engine | U, E | W1-F1; engine track |  |
 | PLT-R356 | Navigation keys never edit | `KeyPipeline` | P | W1-F1 |  |
@@ -254,7 +254,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 |---|---|---|---|---|---|
 | ENG-R862 | Learned entries stored per app, typed entries global | `SettingsStore/LearnedWords.swift`, `InputHost/Integration/LearningTracker.swift`, `TapSettingsPublisher.focusChanged(to:)`; ADR 0320 | U (`PerAppLearningTests.swift`: `LearningTrackerTests`, `FocusedAppWordListTests`, `HostPerAppLearningTests`) | engine track; W5-B |  |
 | ENG-R906 | Bracket letters uppercase under Caps Lock | `KeyPipeline` reports `KeyInput.capsLock` from the event flags (PLT-R304) | E, U (`KeyPipelineCapsLockTests`) | engine track; W5-A |  |
-| ENG-R1103 | Shadowed macro triggers rejected, including a trailing digit | Macros pane editor and importer refuse the pair; ADR 0321 | E, U (`MacroEditorTests`) | engine track; W5-B |  |
+| ENG-R1103 | Shadowed macro triggers rejected, including a trailing digit | Macros pane editor and importer refuse the pair; ADR 0321 | E, U (`MacroEditorTests`, `MacroEngineAgreementTests`) | engine track; W5-B |  |
 
 ## 03-product.md (PRD-R)
 

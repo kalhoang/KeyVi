@@ -43,7 +43,7 @@ Every file uses `{{AppName}}` (display name) and `{{app-slug}}` (ASCII slug: bun
 
 ## 5. Open decisions for Pa (consolidated)
 
-All answered on 13/11/2026; the app licence followed the same evening. The full list of answers, with the place that implements each one (or the later wave that will), is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+All answered on 13/11/2026; the app licence followed the same evening. The full list of answers, with the place that implements each one, is `docs/decisions/0005-pa-decisions-2026-11-13.md`.
 
 | # | Decision | Answer (Pa, 13/11/2026) | Where |
 |---|---|---|---|
