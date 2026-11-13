@@ -7,15 +7,19 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Testing
+
 @testable import TestSupport
 
 @Suite struct ScenarioKeysTests {
     /// Every literal alternative of the schema's `keys` pattern maps to a key.
     @Test func everySchemaKeyNameIsKnown() throws {
-        let names = "abcdefghijklmnopqrstuvwxyz0123456789".map(String.init) + [
-            "space", "return", "tab", "backspace", "escape", "left", "right", "up", "down", "shift", "control", "option",
-            "command", "comma", "period", "semicolon", "slash", "minus", "equal", "quote", "leftBracket", "rightBracket",
-        ]
+        let names =
+            "abcdefghijklmnopqrstuvwxyz0123456789".map(String.init) + [
+                "space", "return", "tab", "backspace", "escape", "left", "right", "up", "down", "shift", "control",
+                "option",
+                "command", "comma", "period", "semicolon", "slash", "minus", "equal", "quote", "leftBracket",
+                "rightBracket",
+            ]
         for name in names { #expect(ScenarioKeys.stroke(name) != nil, "\(name)") }
         #expect(ScenarioKeys.keyCodes.count == names.count - 4)  // modifiers are not base keys
     }
@@ -29,9 +33,12 @@ import Testing
     }
 
     @Test func modifierCombinations() {
-        #expect(ScenarioKeys.stroke("shift+a") == KeyStroke(modifier: .shift, keyCode: KeyCode(rawValue: 0), keyIsModifier: false))
+        #expect(
+            ScenarioKeys.stroke("shift+a")
+                == KeyStroke(modifier: .shift, keyCode: KeyCode(rawValue: 0), keyIsModifier: false))
         #expect(ScenarioKeys.stroke("command+v")?.modifier == .command)
-        #expect(ScenarioKeys.stroke("control+shift") == KeyStroke(modifier: .control, keyCode: .shift, keyIsModifier: true))
+        #expect(
+            ScenarioKeys.stroke("control+shift") == KeyStroke(modifier: .control, keyCode: .shift, keyIsModifier: true))
         #expect(ScenarioKeys.stroke("shift") == KeyStroke(modifier: nil, keyCode: .shift, keyIsModifier: true))
     }
 

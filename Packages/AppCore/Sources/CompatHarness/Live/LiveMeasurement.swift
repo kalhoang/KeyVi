@@ -31,7 +31,9 @@ enum ProcessSampler {
         let process = try pid(bundle)
         var info = rusage_info_v4()
         let result = withUnsafeMutablePointer(to: &info) { pointer in
-            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(process, RUSAGE_INFO_V4, $0) }
+            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) {
+                proc_pid_rusage(process, RUSAGE_INFO_V4, $0)
+            }
         }
         guard result == 0 else { throw LiveError.appNotRunning(bundle.rawValue) }
         var timebase = mach_timebase_info_data_t()

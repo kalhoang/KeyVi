@@ -22,7 +22,9 @@ final class MirrorTextField: NSTextField {
 @MainActor
 final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     /// Bundled local pages, in picker order. `fields.html` holds the QA-R10 input, textarea and contenteditable.
-    static let pages = ["fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "contenteditable-composer.html"]
+    static let pages = [
+        "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "contenteditable-composer.html",
+    ]
     static let messageHandler = "testhost"
     static let mirroredFields: [TestHostField] = [.webInput, .webTextarea, .webContentEditable]
 
@@ -64,7 +66,8 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
     /// Directory of the bundled pages (XcodeGen may copy the folder or flatten its files).
     static var pagesDirectory: URL? {
         let bundle = Bundle.main
-        let url = bundle.url(forResource: "fields", withExtension: "html", subdirectory: "Pages")
+        let url =
+            bundle.url(forResource: "fields", withExtension: "html", subdirectory: "Pages")
             ?? bundle.url(forResource: "fields", withExtension: "html")
         return url?.deletingLastPathComponent()
     }

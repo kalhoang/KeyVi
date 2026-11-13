@@ -7,6 +7,7 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Testing
+
 @testable import TestSupport
 
 @Suite struct SoakPlanTests {
@@ -81,8 +82,10 @@ import Testing
         let runner = ScenarioRunner(
             driver: FakeDriver(), readback: EchoReadback(), setup: FakeSetup(), probe: nil, clock: clock)
         let monitor = ScriptedSoakMonitor(footprints: [30, 31, 32, 33], clock: clock, stepMicroseconds: 1_800_000_000)
-        let summary = await SoakRunner(targets: [target], runner: runner, monitor: monitor, clock: clock, sampleEveryChunks: 1)
-            .run(plan)
+        let summary = await SoakRunner(
+            targets: [target], runner: runner, monitor: monitor, clock: clock, sampleEveryChunks: 1
+        )
+        .run(plan)
         #expect(summary.failures.isEmpty)
         #expect(summary.samples.count == 4)
         #expect(summary.growthMegabytesPerHour == 2)
@@ -92,7 +95,8 @@ import Testing
     @Test func growthAboveTheM2GateFails() async {
         let clock = ManualClock()
         let target = makeScenario(id: "t")
-        let runner = ScenarioRunner(driver: FakeDriver(), readback: EchoReadback(), setup: FakeSetup(), probe: nil, clock: clock)
+        let runner = ScenarioRunner(
+            driver: FakeDriver(), readback: EchoReadback(), setup: FakeSetup(), probe: nil, clock: clock)
         let monitor = ScriptedSoakMonitor(footprints: [30, 40], clock: clock, stepMicroseconds: 3_600_000_000)
         let plan = SoakPlan.make(keystrokes: 32, targets: [target], seed: 1, chunkKeystrokes: 16)
         let summary = await SoakRunner(targets: [target], runner: runner, monitor: monitor, clock: clock).run(plan)
@@ -103,7 +107,8 @@ import Testing
     @Test func heldModifierFailsTheSoak() async {
         let clock = ManualClock()
         let target = makeScenario(id: "t")
-        let runner = ScenarioRunner(driver: FakeDriver(), readback: EchoReadback(), setup: FakeSetup(), probe: nil, clock: clock)
+        let runner = ScenarioRunner(
+            driver: FakeDriver(), readback: EchoReadback(), setup: FakeSetup(), probe: nil, clock: clock)
         let monitor = ScriptedSoakMonitor(footprints: [30], heldFlags: 0x0002_0102, clock: clock)
         let plan = SoakPlan.make(keystrokes: 16, targets: [target], seed: 1)
         let summary = await SoakRunner(targets: [target], runner: runner, monitor: monitor, clock: clock).run(plan)
@@ -114,7 +119,8 @@ import Testing
 
     @Test func growthNeedsTwoDistinctTimes() {
         #expect(SoakSummary.growth([]) == nil)
-        #expect(SoakSummary.growth([.init(elapsedSeconds: 5, megabytes: 1), .init(elapsedSeconds: 5, megabytes: 9)]) == nil)
+        #expect(
+            SoakSummary.growth([.init(elapsedSeconds: 5, megabytes: 1), .init(elapsedSeconds: 5, megabytes: 9)]) == nil)
         let flat = (0..<5).map { SoakSummary.Sample(elapsedSeconds: Double($0) * 3600, megabytes: 40) }
         #expect(SoakSummary.growth(flat) == 0)
     }

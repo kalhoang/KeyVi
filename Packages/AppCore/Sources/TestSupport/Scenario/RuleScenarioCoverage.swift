@@ -4,8 +4,8 @@
 // Reads only `rules[].id` and `rules[].test.scenario`, so it keeps working while the rules schema evolves.
 // Used by `compat-harness coverage`, by the dry-run plan and by ScenarioFilesTests.
 
-public import Foundation
 internal import AppModel
+public import Foundation
 
 public struct RuleScenarioGap: Sendable, Hashable, CustomStringConvertible {
     public var ruleID: String

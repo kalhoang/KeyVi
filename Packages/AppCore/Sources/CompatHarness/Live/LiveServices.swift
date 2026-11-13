@@ -67,7 +67,8 @@ struct LiveServices: LiveHarnessServices {
     func metricSource(options: HarnessOptions, targets: HarnessTargets) throws -> any PlatformMetricSource {
         guard let app = targets.appUnderTestBundleID else { throw LiveError.appNotFound("app under test") }
         return LiveMetricSource(
-            app: app, targets: targets, sink: try CGEventKeySink(), system: LiveSystemActions(targets: targets, clock: clock),
+            app: app, targets: targets, sink: try CGEventKeySink(),
+            system: LiveSystemActions(targets: targets, clock: clock),
             clock: clock, idleSeconds: options.idleSeconds, typingSeconds: options.typingSeconds, seed: options.seed)
     }
 }

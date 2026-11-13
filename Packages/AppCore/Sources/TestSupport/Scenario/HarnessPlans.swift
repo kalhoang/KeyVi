@@ -31,7 +31,8 @@ enum HarnessPlans {
     }
 
     static func describe(_ scenario: Scenario, targets: HarnessTargets, duration: ClosedRange<UInt64>) -> [String] {
-        let target = targets.resolve(scenario.targetBundleId)?.rawValue ?? "UNRESOLVED " + scenario.targetBundleId.rawValue
+        let target =
+            targets.resolve(scenario.targetBundleId)?.rawValue ?? "UNRESOLVED " + scenario.targetBundleId.rawValue
         let events = (try? KeyEventPlan.make(keys: scenario.keys, profile: scenario.timing, seed: 0).events.count) ?? 0
         let setup = scenario.setup.map { step in
             step.action.rawValue + (step.value.map { " " + targets.expand($0) } ?? "")
@@ -52,7 +53,9 @@ enum HarnessPlans {
         if let text = expect.text { parts.append("text \u{201C}" + text + "\u{201D}") }
         if let paused = expect.paused { parts.append("paused \(paused)") }
         if let holder = expect.holderBundleId { parts.append("holder " + holder.rawValue) }
-        if let composed = expect.firstKeyAfterReleaseComposed { parts.append("first key after release composed \(composed)") }
+        if let composed = expect.firstKeyAfterReleaseComposed {
+            parts.append("first key after release composed \(composed)")
+        }
         return parts.joined(separator: ", ")
     }
 
@@ -62,7 +65,9 @@ enum HarnessPlans {
             + gaps.map { "  missing: " + $0.description }
     }
 
-    static func soakPlan(_ plan: SoakPlan, targets: [Scenario], resolved: HarnessTargets, profile: Scenario.TimingProfile)
+    static func soakPlan(
+        _ plan: SoakPlan, targets: [Scenario], resolved: HarnessTargets, profile: Scenario.TimingProfile
+    )
         -> [String]
     {
         let duration = KeyEventPlan.estimatedDuration(keystrokes: plan.keystrokes, profile: profile)
@@ -97,7 +102,8 @@ enum HarnessPlans {
                     + ", " + metric.definition)
         }
         lines.append(
-            "Durations per run: idle \(options.idleSeconds) s (C1), typing \(options.typingSeconds) s at 10 keys/s (C2)")
+            "Durations per run: idle \(options.idleSeconds) s (C1), typing \(options.typingSeconds) s at 10 keys/s (C2)"
+        )
         return lines
     }
 

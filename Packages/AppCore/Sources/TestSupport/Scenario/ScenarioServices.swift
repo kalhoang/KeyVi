@@ -221,7 +221,8 @@ public struct HumanConfirmationReadback: Sendable {
 
     public func confirm(_ scenario: Scenario) throws -> String {
         let expected = scenario.expect.text ?? ""
-        let prompt = "[" + scenario.id + "] expected field text: \u{201C}" + expected
+        let prompt =
+            "[" + scenario.id + "] expected field text: \u{201C}" + expected
             + "\u{201D}. Press Return if it matches, otherwise type what the field shows: "
         guard let answer = reader.readLine(prompt: prompt) else { throw HumanReadbackRequired() }
         return answer.isEmpty ? expected : answer

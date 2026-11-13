@@ -7,6 +7,7 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Synchronization
+
 @testable import TestSupport
 
 /// Repository root of this checkout, from this file's location.
@@ -80,7 +81,8 @@ struct TimedDriver: KeyboardDriver {
 func makeCheckout(scenarios: [String: String], rules: String? = nil) throws -> InMemoryFileSystem {
     let fileSystem = InMemoryFileSystem()
     let root = URL(fileURLWithPath: "/repo")
-    try fileSystem.createDirectory(at: root.appendingPathComponent("compat/scenarios"), permissions: .ownerOnlyDirectory)
+    try fileSystem.createDirectory(
+        at: root.appendingPathComponent("compat/scenarios"), permissions: .ownerOnlyDirectory)
     try fileSystem.createDirectory(at: root.appendingPathComponent("scripts"), permissions: .ownerOnlyDirectory)
     let brand = "# test brand\nAPP_BUNDLE_ID_DEV=\"org.example.product.dev\"\n"
     try fileSystem.writeAtomically(

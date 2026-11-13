@@ -88,7 +88,9 @@ public enum HarnessCommandLine {
         return options
     }
 
-    private static func apply(_ flag: String, _ value: String, to options: inout HarnessOptions) throws(HarnessUsageError) {
+    private static func apply(_ flag: String, _ value: String, to options: inout HarnessOptions)
+        throws(HarnessUsageError)
+    {
         switch flag {
         case "--repository": options.repository = value
         case "--scenarios": options.scenarios = value

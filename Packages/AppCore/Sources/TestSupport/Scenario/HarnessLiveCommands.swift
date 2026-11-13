@@ -38,7 +38,8 @@ extension Harness {
 
     func scenarioServices(_ live: any LiveHarnessServices, targets: HarnessTargets) throws -> LiveScenarioServices {
         let webDrivers = try WebDriverClients(endpoints: options.webDrivers, transport: live.httpTransport())
-        let captureFile = url(options.terminalCapture ?? (options.output ?? ".build/integration") + "/terminal-capture.txt")
+        let captureFile = url(
+            options.terminalCapture ?? (options.output ?? ".build/integration") + "/terminal-capture.txt")
         let terminal = ScenarioSetupRouter.TerminalCapture(fileSystem: environment.fileSystem, captureFile: captureFile)
         let setup = ScenarioSetupRouter(
             system: try live.systemActions(targets: targets), targets: targets, webDrivers: webDrivers,
@@ -59,7 +60,9 @@ extension Harness {
     }
 
     func runScenarios() async -> HarnessExit {
-        guard let live = requireLive("run"), let scenarios = selectedScenarios() else { return .incompleteOrFailure(environment.live) }
+        guard let live = requireLive("run"), let scenarios = selectedScenarios() else {
+            return .incompleteOrFailure(environment.live)
+        }
         let targets = targets
         do {
             let services = try scenarioServices(live, targets: targets)
@@ -77,9 +80,11 @@ extension Harness {
                 profile: options.profile, seed: options.seed, passed: results.count { $0.outcome == .pass },
                 failed: results.count { $0.outcome == .fail }, needsHuman: results.count { $0.outcome == .needsHuman },
                 results: results)
-            try write(try Self.json(report), to: options.report ?? (options.output ?? ".build/integration") + "/results.json")
+            try write(
+                try Self.json(report), to: options.report ?? (options.output ?? ".build/integration") + "/results.json")
             environment.console.emit(
-                "compat-harness run: \(report.passed) passed, \(report.failed) failed, \(report.needsHuman) need a person")
+                "compat-harness run: \(report.passed) passed, \(report.failed) failed, \(report.needsHuman) need a person"
+            )
             return report.failed == 0 ? .success : .failure
         } catch {
             environment.console.emitError("compat-harness run: " + String(describing: error))
@@ -88,7 +93,9 @@ extension Harness {
     }
 
     func runSoak() async -> HarnessExit {
-        guard let live = requireLive("soak"), let targets = soakTargets() else { return .incompleteOrFailure(environment.live) }
+        guard let live = requireLive("soak"), let targets = soakTargets() else {
+            return .incompleteOrFailure(environment.live)
+        }
         let resolved = self.targets
         do {
             let services = try scenarioServices(live, targets: resolved)
@@ -144,7 +151,8 @@ extension Harness {
             }
             let verdict = value > metric.gate ? "OVER GATE" : "ok"
             overGate = overGate || value > metric.gate
-            environment.console.emit(metric.name + String(format: " %.3f ", value) + metric.unit + ", gate \(metric.gate): " + verdict)
+            environment.console.emit(
+                metric.name + String(format: " %.3f ", value) + metric.unit + ", gate \(metric.gate): " + verdict)
         }
         if overGate { return .failure }
         return report.unmeasured.isEmpty ? .success : .incomplete

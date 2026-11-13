@@ -6,6 +6,7 @@
 
 import Foundation
 import Testing
+
 @testable import TestSupport
 
 private let pagesDirectory = repositoryRoot.appendingPathComponent("TestHost/Resources/Pages")
@@ -28,7 +29,9 @@ private func matches(_ pattern: String, in text: String) -> [String] {
 
 /// Raw values of `enum TestHostField` in TestHost/Sources/TestHostFields.swift.
 private func testHostFieldIDs() throws -> [String] {
-    matches(#"case \w+ = "(testhost\.[A-Za-z.]+)""#, in: try read(sourcesDirectory.appendingPathComponent("TestHostFields.swift")))
+    matches(
+        #"case \w+ = "(testhost\.[A-Za-z.]+)""#,
+        in: try read(sourcesDirectory.appendingPathComponent("TestHostFields.swift")))
 }
 
 @Suite struct LocalPagesTests {
@@ -41,9 +44,11 @@ private func testHostFieldIDs() throws -> [String] {
             #expect(text.range(of: "http://", options: .caseInsensitive) == nil, "\(page.lastPathComponent)")
             #expect(text.range(of: "https://", options: .caseInsensitive) == nil, "\(page.lastPathComponent)")
             // Protocol-relative URLs ("//host/x") would fetch over the network as well.
-            let references = matches(#"(?:src|href)\s*=\s*"([^"]*)""#, in: text) + matches(#"url\(\s*['"]?([^'")]*)"#, in: text)
+            let references =
+                matches(#"(?:src|href)\s*=\s*"([^"]*)""#, in: text) + matches(#"url\(\s*['"]?([^'")]*)"#, in: text)
             for reference in references {
-                #expect(!reference.hasPrefix("//") && !reference.contains(":"), "\(page.lastPathComponent): \(reference)")
+                #expect(
+                    !reference.hasPrefix("//") && !reference.contains(":"), "\(page.lastPathComponent): \(reference)")
                 #expect(
                     FileManager.default.fileExists(atPath: pagesDirectory.appendingPathComponent(reference).path),
                     "\(page.lastPathComponent) references missing \(reference)")
@@ -111,14 +116,17 @@ private func testHostFieldIDs() throws -> [String] {
         #expect(
             try testHostFieldIDs() == [
                 "testhost.native.textField", "testhost.native.textView", "testhost.web.input", "testhost.web.textarea",
-                "testhost.web.contentEditable", "testhost.sim.addressBar", "testhost.sim.sheetCell", "testhost.native.password",
+                "testhost.web.contentEditable", "testhost.sim.addressBar", "testhost.sim.sheetCell",
+                "testhost.native.password",
             ])
     }
 
     @Test func windowBuildsAndExposesEveryField() throws {
         let controller = try read(sourcesDirectory.appendingPathComponent("TestHostFields.swift"))
         let web = try read(sourcesDirectory.appendingPathComponent("WebFields.swift"))
-        for native in ["nativeTextField", "nativeTextView", "addressBarWithCompletion", "spreadsheetCell", "passwordField"] {
+        for native in [
+            "nativeTextField", "nativeTextView", "addressBarWithCompletion", "spreadsheetCell", "passwordField",
+        ] {
             #expect(controller.contains("access[." + native + "]"), "\(native)")
         }
         #expect(controller.contains("for field in WebFieldsController.mirroredFields"))
@@ -135,7 +143,9 @@ private func testHostFieldIDs() throws -> [String] {
     @Test func pickerListsExactlyTheBundledPages() throws {
         let web = try read(sourcesDirectory.appendingPathComponent("WebFields.swift"))
         let listed = matches(#""([a-z-]+\.html)""#, in: web)
-        let bundled = try files(in: pagesDirectory).map(\.lastPathComponent).filter { $0.hasSuffix(".html") && $0 != "index.html" }
+        let bundled = try files(in: pagesDirectory).map(\.lastPathComponent).filter {
+            $0.hasSuffix(".html") && $0 != "index.html"
+        }
         #expect(Set(listed) == Set(bundled))
     }
 
@@ -143,7 +153,9 @@ private func testHostFieldIDs() throws -> [String] {
     @Test func sourcesStayBrandNeutralAndOffline() throws {
         for file in try files(in: sourcesDirectory) {
             let text = try read(file)
-            #expect(matches(#""((?:com|org|net|io|dev|app|vn)\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]+)""#, in: text).isEmpty, "\(file.lastPathComponent)")
+            #expect(
+                matches(#""((?:com|org|net|io|dev|app|vn)\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]+)""#, in: text).isEmpty,
+                "\(file.lastPathComponent)")
             #expect(text.range(of: "http", options: .caseInsensitive) == nil, "\(file.lastPathComponent)")
             #expect(!text.contains("print("), "\(file.lastPathComponent)")
         }

@@ -5,6 +5,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import TestSupport
 
 @Suite struct JSONSchemaSubsetTests {
@@ -43,7 +44,8 @@ import Testing
         #expect(violations(schema, #"{"id":"x","z":1}"#) == ["/z: property not allowed"])
         #expect(violations(schema, "{}").contains("/: fewer than 1 properties"))
         #expect(violations(schema, #"{"id":"x","n":1,"z":2}"#).contains("/: more than 2 properties"))
-        #expect(violations(#"{"additionalProperties":{"type":"number"}}"#, #"{"a":"x"}"#) == ["/a: expected type number"])
+        #expect(
+            violations(#"{"additionalProperties":{"type":"number"}}"#, #"{"a":"x"}"#) == ["/a: expected type number"])
     }
 
     @Test func arrayKeywords() {
@@ -91,7 +93,10 @@ import Testing
         #expect(violations(schema, #"{"id":"y"}"#) == ["/id: does not match ^x"])
         #expect(violations(schema, #"{"n":"s"}"#) == ["/n: expected type number"])
         #expect(violations(schema, #"{"bad":1}"#) == ["/bad: unresolvable $ref other.json"])
-        #expect(violations(##"{"properties":{"a":{"$ref":"#/missing"}}}"##, #"{"a":1}"#) == ["/a: unresolvable $ref #/missing"])
+        #expect(
+            violations(##"{"properties":{"a":{"$ref":"#/missing"}}}"##, #"{"a":1}"#) == [
+                "/a: unresolvable $ref #/missing"
+            ])
     }
 
     @Test func booleanSchemasAndDataInit() throws {

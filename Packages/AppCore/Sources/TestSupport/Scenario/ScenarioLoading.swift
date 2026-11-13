@@ -57,7 +57,8 @@ public struct ScenarioLoader: Sendable {
             raw = try decoder.decode(JSONValue.self, from: data)
             scenario = try decoder.decode(Scenario.self, from: data)
         } catch {
-            throw ScenarioLoadError(file: fileName, problems: ["not a valid scenario document: " + Self.describe(error)])
+            throw ScenarioLoadError(
+                file: fileName, problems: ["not a valid scenario document: " + Self.describe(error)])
         }
         var problems = ScenarioValidator.unknownKeys(in: raw)
         problems += ScenarioValidator.problems(in: scenario)

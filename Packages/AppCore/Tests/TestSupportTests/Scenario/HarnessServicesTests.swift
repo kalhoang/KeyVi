@@ -6,6 +6,7 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Testing
+
 @testable import TestSupport
 
 private let testHostID = bundle("org.example.product.dev.testhost")
@@ -16,12 +17,14 @@ private let targets = HarnessTargets(
 @Suite struct HarnessTargetsTests {
     @Test func brandEnvironmentParsing() {
         let text = "# comment\nAPP_SLUG=\"slug\"\n  APP_BUNDLE_ID_DEV = org.example.dev \nnot a line\n=x\nEMPTY=\"\"\n"
-        #expect(BrandEnvironment.parse(text) == ["APP_SLUG": "slug", "APP_BUNDLE_ID_DEV": "org.example.dev", "EMPTY": ""])
+        #expect(
+            BrandEnvironment.parse(text) == ["APP_SLUG": "slug", "APP_BUNDLE_ID_DEV": "org.example.dev", "EMPTY": ""])
     }
 
     @Test func testHostAliasResolvesFromTheBrandFile() {
         let resolved = HarnessTargets.resolve(
-            repository: URL(fileURLWithPath: "/repo"), brandEnvironment: "APP_BUNDLE_ID_DEV=\"org.example.product.dev\"")
+            repository: URL(fileURLWithPath: "/repo"), brandEnvironment: "APP_BUNDLE_ID_DEV=\"org.example.product.dev\""
+        )
         #expect(resolved.testHostBundleID == testHostID)
         #expect(resolved.appUnderTestBundleID == bundle("org.example.product.dev"))
         #expect(resolved.resolve(bundle(HarnessTargets.testHostAlias)) == testHostID)
@@ -37,7 +40,9 @@ private let targets = HarnessTargets(
         #expect(explicit.appUnderTestBundleID == bundle("e.f"))
         let missing = HarnessTargets.resolve(repository: URL(fileURLWithPath: "/repo"), brandEnvironment: nil)
         #expect(missing.resolve(bundle(HarnessTargets.testHostAlias)) == nil)
-        #expect(HarnessTargets.resolve(repository: URL(fileURLWithPath: "/r"), brandEnvironment: "APP_BUNDLE_ID_DEV=").testHostBundleID == nil)
+        #expect(
+            HarnessTargets.resolve(repository: URL(fileURLWithPath: "/r"), brandEnvironment: "APP_BUNDLE_ID_DEV=")
+                .testHostBundleID == nil)
     }
 
     @Test func pagesPlaceholderExpandsToAFileURL() {
@@ -48,14 +53,17 @@ private let targets = HarnessTargets(
 
 @Suite struct ScenarioSetupRouterTests {
     private func router(
-        _ system: FakeSystemActions, transport: FakeTransport? = nil, fileSystem: InMemoryFileSystem = InMemoryFileSystem(),
+        _ system: FakeSystemActions, transport: FakeTransport? = nil,
+        fileSystem: InMemoryFileSystem = InMemoryFileSystem(),
         clock: ManualClock = ManualClock()
     ) throws -> ScenarioSetupRouter {
-        let endpoints = transport.map { _ in [bundle("com.example.Browser"): URL(string: "http://127.0.0.1:4444")!] } ?? [:]
+        let endpoints =
+            transport.map { _ in [bundle("com.example.Browser"): URL(string: "http://127.0.0.1:4444")!] } ?? [:]
         let drivers = try WebDriverClients(endpoints: endpoints, transport: transport ?? FakeTransport(responses: [:]))
         return ScenarioSetupRouter(
             system: system, targets: targets, webDrivers: drivers,
-            terminal: .init(fileSystem: fileSystem, captureFile: URL(fileURLWithPath: "/out/capture.txt")), clock: clock)
+            terminal: .init(fileSystem: fileSystem, captureFile: URL(fileURLWithPath: "/out/capture.txt")), clock: clock
+        )
     }
 
     @Test func nativeStepsGoToTheSystemWithAliasesResolved() async throws {
@@ -66,7 +74,8 @@ private let targets = HarnessTargets(
             .init(action: .launch), .init(action: .launch, value: "com.example.Other"),
             .init(action: .openURL, value: "{pages}/fields.html"), .init(action: .seedHistory, value: "file:///h"),
             .init(action: .focusField, value: "testhost.native.textField"),
-            .init(action: .selectInputSource, value: "com.apple.keylayout.ABC"), .init(action: .setSecureInput, value: "on"),
+            .init(action: .selectInputSource, value: "com.apple.keylayout.ABC"),
+            .init(action: .setSecureInput, value: "on"),
             .init(action: .setSecureInput, value: "off"),
         ] {
             try await router.perform(step, for: scenario)
@@ -74,7 +83,8 @@ private let targets = HarnessTargets(
         let id = testHostID.rawValue
         #expect(
             system.calls.all == [
-                "launch " + id, "launch com.example.Other", "open file:///repo/TestHost/Resources/Pages/fields.html in " + id,
+                "launch " + id, "launch com.example.Other",
+                "open file:///repo/TestHost/Resources/Pages/fields.html in " + id,
                 "seed file:///h in " + id, "focus testhost.native.textField in " + id, "source com.apple.keylayout.ABC",
                 "secure true in " + id, "secure false in " + id,
             ])
@@ -83,7 +93,8 @@ private let targets = HarnessTargets(
     @Test func waitAdvancesTheInjectedClock() async throws {
         let clock = ManualClock()
         let before = clock.now().nanoseconds
-        try await router(FakeSystemActions(), clock: clock).perform(.init(action: .wait, value: "250"), for: makeScenario())
+        try await router(FakeSystemActions(), clock: clock).perform(
+            .init(action: .wait, value: "250"), for: makeScenario())
         #expect(clock.now().nanoseconds - before == 250_000_000)
     }
 
@@ -100,10 +111,12 @@ private let targets = HarnessTargets(
         }
         let unresolved = ScenarioSetupRouter(
             system: FakeSystemActions(),
-            targets: HarnessTargets(testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/")),
+            targets: HarnessTargets(
+                testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/")),
             webDrivers: WebDriverClients(clients: [:]), terminal: nil, clock: ManualClock())
         await #expect(throws: HarnessSetupError.unresolvedTarget(HarnessTargets.testHostAlias)) {
-            try await unresolved.perform(.init(action: .launch), for: makeScenario(target: HarnessTargets.testHostAlias))
+            try await unresolved.perform(
+                .init(action: .launch), for: makeScenario(target: HarnessTargets.testHostAlias))
         }
     }
 
@@ -154,7 +167,8 @@ private let targets = HarnessTargets(
 @Suite struct WebDriverClientTests {
     @Test func onlyLoopbackEndpointsAreAccepted() {
         #expect(throws: WebDriverError.nonLoopbackEndpoint("http://example.com:4444")) {
-            _ = try WebDriverClient(transport: FakeTransport(responses: [:]), endpoint: URL(string: "http://example.com:4444")!)
+            _ = try WebDriverClient(
+                transport: FakeTransport(responses: [:]), endpoint: URL(string: "http://example.com:4444")!)
         }
         #expect(throws: WebDriverError.noEndpoint(target: "com.example.Browser")) {
             _ = try WebDriverClients(clients: [:]).client(for: bundle("com.example.Browser"))
@@ -177,13 +191,16 @@ private let targets = HarnessTargets(
 
     @Test func httpAndShapeErrors() async throws {
         let failing = try WebDriverClient(
-            transport: FakeTransport(responses: ["/session": (500, "{}")]), endpoint: URL(string: "http://127.0.0.1:1")!)
+            transport: FakeTransport(responses: ["/session": (500, "{}")]), endpoint: URL(string: "http://127.0.0.1:1")!
+        )
         await #expect(throws: WebDriverError.http(status: 500)) { try await failing.startSession() }
         let malformed = try WebDriverClient(
-            transport: FakeTransport(responses: ["/session": (200, #"{"value":{}}"#)]), endpoint: URL(string: "http://127.0.0.1:1")!)
+            transport: FakeTransport(responses: ["/session": (200, #"{"value":{}}"#)]),
+            endpoint: URL(string: "http://127.0.0.1:1")!)
         await #expect(throws: WebDriverError.malformedResponse) { try await malformed.startSession() }
         let notJSON = try WebDriverClient(
-            transport: FakeTransport(responses: ["/session": (200, "nope")]), endpoint: URL(string: "http://127.0.0.1:1")!)
+            transport: FakeTransport(responses: ["/session": (200, "nope")]),
+            endpoint: URL(string: "http://127.0.0.1:1")!)
         await #expect(throws: WebDriverError.malformedResponse) { try await notJSON.startSession() }
         let transport = FakeTransport(responses: [
             "/session": (200, #"{"value":{"sessionId":"S"}}"#), "/element": (200, #"{"value":{}}"#),
@@ -200,7 +217,8 @@ private let targets = HarnessTargets(
     private let capture = URL(fileURLWithPath: "/out/capture.txt")
 
     private func router(
-        ax: (any AXFieldReader)? = FixedAXReader(text: "ax text"), fileSystem: InMemoryFileSystem = InMemoryFileSystem(),
+        ax: (any AXFieldReader)? = FixedAXReader(text: "ax text"),
+        fileSystem: InMemoryFileSystem = InMemoryFileSystem(),
         human: HumanConfirmationReadback? = nil, webDrivers: WebDriverClients = WebDriverClients(clients: [:])
     ) -> ReadbackRouter {
         ReadbackRouter(
@@ -230,12 +248,15 @@ private let targets = HarnessTargets(
     @Test func humanReadbackConfirmsOrTakesTheTypedText() async throws {
         let scenario = makeScenario(readback: .human)
         let confirming = FakeLineReader(answer: "")
-        #expect(try await router(human: HumanConfirmationReadback(reader: confirming)).currentText(of: scenario) == "đi")
+        #expect(
+            try await router(human: HumanConfirmationReadback(reader: confirming)).currentText(of: scenario) == "đi")
         #expect(confirming.prompts.all.first?.contains("[sample.scenario]") == true)
         let typed = HumanConfirmationReadback(reader: FakeLineReader(answer: "ddi"))
         #expect(try await router(human: typed).currentText(of: scenario) == "ddi")
         let absent = HumanConfirmationReadback(reader: FakeLineReader(answer: nil))
-        await #expect(throws: HumanReadbackRequired.self) { _ = try await router(human: absent).currentText(of: scenario) }
+        await #expect(throws: HumanReadbackRequired.self) {
+            _ = try await router(human: absent).currentText(of: scenario)
+        }
         await #expect(throws: HumanReadbackRequired.self) { _ = try await router().currentText(of: scenario) }
     }
 
@@ -247,7 +268,8 @@ private let targets = HarnessTargets(
         let client = try WebDriverClient(transport: transport, endpoint: URL(string: "http://127.0.0.1:4444")!)
         try await client.startSession()
         let scenario = makeScenario(
-            target: browser.rawValue, setup: [.init(action: .openURL, value: "file:///p"), .init(action: .focusField, value: "#a")],
+            target: browser.rawValue,
+            setup: [.init(action: .openURL, value: "file:///p"), .init(action: .focusField, value: "#a")],
             readback: .webdriver)
         let text = try await router(webDrivers: WebDriverClients(clients: [browser: client])).currentText(of: scenario)
         #expect(text == "đi")
@@ -256,7 +278,8 @@ private let targets = HarnessTargets(
 
     @Test func unresolvedTargetThrows() async {
         let router = ReadbackRouter(
-            targets: HarnessTargets(testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/")),
+            targets: HarnessTargets(
+                testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/")),
             ax: nil, webDrivers: WebDriverClients(clients: [:]), terminal: nil, human: nil)
         await #expect(throws: HarnessSetupError.self) {
             _ = try await router.currentText(of: makeScenario(target: HarnessTargets.testHostAlias))

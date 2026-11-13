@@ -17,7 +17,9 @@ public enum BrandEnvironment {
             guard !line.hasPrefix("#"), let equals = line.firstIndex(of: "=") else { continue }
             let key = String(line[..<equals]).trimmingCharacters(in: .whitespaces)
             var value = String(line[line.index(after: equals)...]).trimmingCharacters(in: .whitespaces)
-            if value.count >= 2, value.hasPrefix("\""), value.hasSuffix("\"") { value = String(value.dropFirst().dropLast()) }
+            if value.count >= 2, value.hasPrefix("\""), value.hasSuffix("\"") {
+                value = String(value.dropFirst().dropLast())
+            }
             if !key.isEmpty { values[key] = value }
         }
         return values

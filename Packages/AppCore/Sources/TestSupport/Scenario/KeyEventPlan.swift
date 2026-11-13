@@ -97,7 +97,8 @@ public struct KeyEventPlan: Sendable, Hashable {
         let steps = UInt64(max(0, keystrokes - 1))
         let range = profile.intervalRange
         let hold = profile.hold(forInterval: range.lowerBound)
-        return (steps * range.lowerBound + hold)...(steps * range.upperBound + profile.hold(forInterval: range.upperBound))
+        return
+            (steps * range.lowerBound + hold)...(steps * range.upperBound + profile.hold(forInterval: range.upperBound))
     }
 
     /// How long a key stays down: half the interval, at most 40 ms, so every event of a keystroke is posted
@@ -127,7 +128,8 @@ public struct KeyEventPlan: Sendable, Hashable {
             PlannedKeyEvent(
                 offset: start + 2 * step, keyCode: stroke.keyCode, phase: .up, isFlagsChanged: stroke.keyIsModifier,
                 flags: held),
-            PlannedKeyEvent(offset: start + hold, keyCode: modifier.keyCode, phase: .up, isFlagsChanged: true, flags: 0),
+            PlannedKeyEvent(
+                offset: start + hold, keyCode: modifier.keyCode, phase: .up, isFlagsChanged: true, flags: 0),
         ]
     }
 

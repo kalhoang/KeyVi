@@ -8,12 +8,15 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Synchronization
+
 @testable import TestSupport
 
 final class FakeSystemActions: SystemActions, Sendable {
     let calls = Recorder<String>()
     func launch(_ bundle: BundleKey) async throws { calls.append("launch " + bundle.rawValue) }
-    func open(_ url: String, in bundle: BundleKey) async throws { calls.append("open " + url + " in " + bundle.rawValue) }
+    func open(_ url: String, in bundle: BundleKey) async throws {
+        calls.append("open " + url + " in " + bundle.rawValue)
+    }
     func seedHistory(_ url: String, in bundle: BundleKey) async throws {
         calls.append("seed " + url + " in " + bundle.rawValue)
     }
@@ -43,7 +46,8 @@ final class FakeTransport: HTTPTransport, Sendable {
     init(responses: [String: (Int, String)]) { self.responses = responses }
 
     func send(method: String, url: URL, body: Data?) async throws -> (status: Int, body: Data) {
-        requests.append(Request(method: method, path: url.path, body: body.map { String(decoding: $0, as: UTF8.self) } ?? ""))
+        requests.append(
+            Request(method: method, path: url.path, body: body.map { String(decoding: $0, as: UTF8.self) } ?? ""))
         let match = responses.first { url.path.hasSuffix($0.key) }?.value ?? (404, "{}")
         return (match.0, Data(match.1.utf8))
     }

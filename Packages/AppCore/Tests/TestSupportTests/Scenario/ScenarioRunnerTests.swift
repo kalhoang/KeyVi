@@ -6,11 +6,13 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Testing
+
 @testable import TestSupport
 
 @Suite struct ScenarioRunnerTests {
     private func runner(
-        driver: any KeyboardDriver = FakeDriver(), readback: any ScenarioReadback = FakeReadback(result: .success("đi")),
+        driver: any KeyboardDriver = FakeDriver(),
+        readback: any ScenarioReadback = FakeReadback(result: .success("đi")),
         setup: any ScenarioSetupPerformer = FakeSetup(), probe: (any ScenarioStateProbe)? = nil,
         clock: any MonotonicClock = ManualClock()
     ) -> ScenarioRunner {
@@ -22,7 +24,9 @@ import Testing
         let setup = FakeSetup()
         let scenario = makeScenario(setup: [.init(action: .launch), .init(action: .focusField, value: "f")])
         let result = await runner(driver: driver, setup: setup).run(scenario)
-        #expect(result == ScenarioResult(scenario: "sample.scenario", outcome: .pass, observedText: "đi", durationSeconds: 0))
+        #expect(
+            result
+                == ScenarioResult(scenario: "sample.scenario", outcome: .pass, observedText: "đi", durationSeconds: 0))
         #expect(driver.typed.all == [["d", "d", "i"]])
         #expect(setup.steps.all.map(\.action) == [.launch, .focusField])
     }
@@ -73,7 +77,8 @@ import Testing
         let expect = Scenario.Expectation(
             text: "đi", paused: true, holderBundleId: bundle("com.example.Holder"), firstKeyAfterReleaseComposed: true)
         let matching = FakeProbe(
-            observation: .init(paused: true, holderBundleId: bundle("com.example.Holder"), firstKeyAfterReleaseComposed: true))
+            observation: .init(
+                paused: true, holderBundleId: bundle("com.example.Holder"), firstKeyAfterReleaseComposed: true))
         #expect(await runner(probe: matching).run(makeScenario(expect: expect)).outcome == .pass)
         let otherHolder = FakeProbe(observation: .init(paused: true, holderBundleId: bundle("com.example.Other")))
         #expect(await runner(probe: otherHolder).run(makeScenario(expect: expect)).outcome == .fail)
@@ -104,11 +109,13 @@ import Testing
         #expect(ScenarioVerdict.outcome(expect: .init(paused: true), text: nil, observation: observed) == .fail)
         #expect(
             ScenarioVerdict.outcome(
-                expect: .init(holderBundleId: bundle("com.example.Holder")), text: nil, observation: observed) == .needsHuman)
+                expect: .init(holderBundleId: bundle("com.example.Holder")), text: nil, observation: observed)
+                == .needsHuman)
         // A mismatch wins over an unobservable expectation.
         #expect(
             ScenarioVerdict.outcome(
-                expect: .init(paused: true, holderBundleId: bundle("com.example.Holder")), text: nil, observation: observed)
+                expect: .init(paused: true, holderBundleId: bundle("com.example.Holder")), text: nil,
+                observation: observed)
                 == .fail)
     }
 }

@@ -22,7 +22,9 @@ final class CGEventKeySink: KeyEventSink, @unchecked Sendable {
     }
 
     func post(_ event: PlannedKeyEvent) throws {
-        guard let cgEvent = CGEvent(keyboardEventSource: source, virtualKey: event.keyCode.rawValue, keyDown: event.phase == .down)
+        guard
+            let cgEvent = CGEvent(
+                keyboardEventSource: source, virtualKey: event.keyCode.rawValue, keyDown: event.phase == .down)
         else { throw LiveError.eventCreationFailed }
         if event.isFlagsChanged { cgEvent.type = .flagsChanged }
         cgEvent.flags = CGEventFlags(rawValue: event.flags)

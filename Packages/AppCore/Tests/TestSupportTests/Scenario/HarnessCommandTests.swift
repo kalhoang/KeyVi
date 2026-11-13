@@ -7,6 +7,7 @@ import AppModel
 import Foundation
 import RealtimeSupport
 import Testing
+
 @testable import TestSupport
 
 @Suite struct HarnessCommandLineTests {
@@ -22,17 +23,21 @@ import Testing
 
     @Test func everyOptionParses() throws {
         let options = try HarnessCommandLine.parse([
-            "run", "--repository", "/r", "--rules", "r.json", "--report", "x.json", "--profile", "burst", "--only", "a, b",
+            "run", "--repository", "/r", "--rules", "r.json", "--report", "x.json", "--profile", "burst", "--only",
+            "a, b",
             "--seed", "9", "--testhost-bundle-id", "a.b", "--app-bundle-id", "c.d", "--terminal-capture", "/t",
             "--webdriver", "com.example.Browser=http://127.0.0.1:4444", "--targets", "x,y", "--chunk", "20",
-            "--metrics", "C1.cpuPercent,M1.footprintMB", "--idle-seconds", "2", "--typing-seconds", "3", "--keystrokes", "16",
+            "--metrics", "C1.cpuPercent,M1.footprintMB", "--idle-seconds", "2", "--typing-seconds", "3", "--keystrokes",
+            "16",
         ])
         #expect(options.repository == "/r" && options.rules == "r.json" && options.report == "x.json")
         #expect(options.profile == .burst && options.only == ["a", "b"] && options.seed == 9)
         #expect(options.testHostBundleID == "a.b" && options.appBundleID == "c.d" && options.terminalCapture == "/t")
         #expect(options.webDrivers == [bundle("com.example.Browser"): URL(string: "http://127.0.0.1:4444")!])
         #expect(options.targets == ["x", "y"] && options.chunkKeystrokes == 20 && options.keystrokes == 16)
-        #expect(options.metrics == ["C1.cpuPercent", "M1.footprintMB"] && options.idleSeconds == 2 && options.typingSeconds == 3)
+        #expect(
+            options.metrics == ["C1.cpuPercent", "M1.footprintMB"] && options.idleSeconds == 2
+                && options.typingSeconds == 3)
     }
 
     @Test func helpForms() throws {
@@ -43,9 +48,12 @@ import Testing
     }
 
     @Test(arguments: [
-        ["launch"], ["run", "--output"], ["run", "--bogus", "x"], ["run", "--profile", "slow"], ["soak", "--keystrokes", "15"],
-        ["bench", "--runs", "0"], ["bench", "--metrics", "T9.p99"], ["run", "--app-bundle-id", "sha256:" + String(repeating: "a", count: 64)],
-        ["run", "--testhost-bundle-id", "not valid"], ["run", "--webdriver", "nobundle"], ["run", "--webdriver", "a.b=nourl"],
+        ["launch"], ["run", "--output"], ["run", "--bogus", "x"], ["run", "--profile", "slow"],
+        ["soak", "--keystrokes", "15"],
+        ["bench", "--runs", "0"], ["bench", "--metrics", "T9.p99"],
+        ["run", "--app-bundle-id", "sha256:" + String(repeating: "a", count: 64)],
+        ["run", "--testhost-bundle-id", "not valid"], ["run", "--webdriver", "nobundle"],
+        ["run", "--webdriver", "a.b=nourl"],
         ["run", "--seed", "-1"],
     ])
     func usageErrors(arguments: [String]) {
@@ -86,7 +94,8 @@ private let rulesJSON = """
             "a.json": scenarioJSON(id: "a", target: HarnessTargets.testHostAlias),
             "b.json": scenarioJSON(id: "b", setup: #"[{"action":"openURL","value":"{pages}/fields.html"}]"#),
         ])
-        let (harness, console) = try harness(["run", "--dry-run", "--profile", "fast"], fileSystem: fileSystem, live: live)
+        let (harness, console) = try harness(
+            ["run", "--dry-run", "--profile", "fast"], fileSystem: fileSystem, live: live)
         #expect(await harness.execute() == .success)
         let text = console.output.joined(separator: "\n")
         #expect(text.contains("2 scenario(s)"))
@@ -133,7 +142,8 @@ private let rulesJSON = """
             "term.json": scenarioJSON(id: "term", target: "com.example.Terminal", readback: "terminalCapture"),
         ])
         let (harness, console) = try harness(
-            ["soak", "--dry-run", "--keystrokes", "1000", "--targets", "t,term", "--chunk", "100"], fileSystem: fileSystem,
+            ["soak", "--dry-run", "--keystrokes", "1000", "--targets", "t,term", "--chunk", "100"],
+            fileSystem: fileSystem,
             live: live)
         #expect(await harness.execute() == .success)
         let text = console.output.joined(separator: "\n")
@@ -146,7 +156,7 @@ private let rulesJSON = """
 
     @Test func soakNeedsExistingTelexTargets() async throws {
         let fileSystem = try makeCheckout(scenarios: [
-            "v.json": scenarioJSON(id: "v").replacingOccurrences(of: #""telex""#, with: #""vni""#),
+            "v.json": scenarioJSON(id: "v").replacingOccurrences(of: #""telex""#, with: #""vni""#)
         ])
         let (missing, console) = try harness(["soak", "--dry-run", "--targets", "nope"], fileSystem: fileSystem)
         #expect(await missing.execute() == .failure)
@@ -161,7 +171,8 @@ private let rulesJSON = """
     @Test func benchDryRunListsTheGates() async throws {
         let live = RecordingLiveServices(clock: ManualClock())
         let (harness, console) = try harness(
-            ["bench", "--dry-run", "--runs", "5", "--output", "/o/b.json"], fileSystem: try makeCheckout(scenarios: [:]),
+            ["bench", "--dry-run", "--runs", "5", "--output", "/o/b.json"],
+            fileSystem: try makeCheckout(scenarios: [:]),
             live: live)
         #expect(await harness.execute() == .success)
         let text = console.output.joined(separator: "\n")
@@ -186,7 +197,8 @@ private let rulesJSON = """
         #expect(
             console.output == [
                 "Rule coverage (compat/rules.json): 2 of 3 rule(s) have no scenario file",
-                "  missing: r.two -> missing compat/scenarios/missing.one.json", "  missing: r.three -> no test.scenario",
+                "  missing: r.two -> missing compat/scenarios/missing.one.json",
+                "  missing: r.three -> no test.scenario",
             ])
     }
 
@@ -210,7 +222,11 @@ private let rulesJSON = """
 
     @Test func gapDescriptions() throws {
         let gaps = try RuleScenarioCoverage.gaps(rulesData: Data(rulesJSON.utf8), scenarioIDs: ["a"])
-        #expect(gaps == [RuleScenarioGap(ruleID: "r.two", scenario: "missing.one"), RuleScenarioGap(ruleID: "r.three", scenario: nil)])
+        #expect(
+            gaps == [
+                RuleScenarioGap(ruleID: "r.two", scenario: "missing.one"),
+                RuleScenarioGap(ruleID: "r.three", scenario: nil),
+            ])
         #expect(throws: RuleScenarioCoverage.Failure.notARulesDocument) {
             try RuleScenarioCoverage.gaps(rulesData: Data("[]".utf8), scenarioIDs: [])
         }
@@ -231,19 +247,25 @@ private let rulesJSON = """
         let clock = ManualClock()
         let live = RecordingLiveServices(clock: clock, axText: "đi")
         let fileSystem = try makeCheckout(scenarios: [
-            "a.json": scenarioJSON(id: "a", target: HarnessTargets.testHostAlias,
+            "a.json": scenarioJSON(
+                id: "a", target: HarnessTargets.testHostAlias,
                 setup: #"[{"action":"launch"},{"action":"focusField","value":"testhost.native.textField"}]"#),
             "b.json": scenarioJSON(id: "b").replacingOccurrences(of: #""đi""#, with: #""other""#),
             "h.json": scenarioJSON(id: "h", readback: "human"),
         ])
-        let (harness, console) = try harness(["run", "--output", "/out", "--profile", "burst"], fileSystem: fileSystem, live: live, clock: clock)
+        let (harness, console) = try harness(
+            ["run", "--output", "/out", "--profile", "burst"], fileSystem: fileSystem, live: live, clock: clock)
         #expect(await harness.execute() == .failure)  // b expects other text
         #expect(console.output.contains { $0.hasPrefix("pass a") })
         #expect(console.output.contains { $0.hasPrefix("fail b") })
         #expect(console.output.contains { $0.hasPrefix("needsHuman h") })
         #expect(console.output.last == "compat-harness run: 1 passed, 1 failed, 1 need a person")
         #expect(live.sink.records.count == 18)  // 3 scenarios x 3 keys x down/up, recorded in memory only
-        #expect(live.system.calls.all == ["launch org.example.product.dev.testhost", "focus testhost.native.textField in org.example.product.dev.testhost"])
+        #expect(
+            live.system.calls.all == [
+                "launch org.example.product.dev.testhost",
+                "focus testhost.native.textField in org.example.product.dev.testhost",
+            ])
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20)
         let report = try JSONDecoder().decode(ScenarioRunReport.self, from: data)
         #expect(report.passed == 1 && report.failed == 1 && report.needsHuman == 1 && report.profile == .burst)
@@ -263,9 +285,12 @@ private let rulesJSON = """
         let clock = ManualClock()
         let monitor = ScriptedSoakMonitor(footprints: [30, 30.5, 31], clock: clock, stepMicroseconds: 3_600_000_000)
         let live = RecordingLiveServices(clock: clock, axText: "unused", monitor: monitor)
-        let fileSystem = try makeCheckout(scenarios: ["t.json": scenarioJSON(id: "t", target: HarnessTargets.testHostAlias)])
+        let fileSystem = try makeCheckout(scenarios: [
+            "t.json": scenarioJSON(id: "t", target: HarnessTargets.testHostAlias)
+        ])
         let (harness, console) = try harness(
-            ["soak", "--keystrokes", "48", "--chunk", "16", "--targets", "t", "--output", "/out/soak"], fileSystem: fileSystem,
+            ["soak", "--keystrokes", "48", "--chunk", "16", "--targets", "t", "--output", "/out/soak"],
+            fileSystem: fileSystem,
             live: live, clock: clock)
         #expect(await harness.execute() == .failure)  // the fake AX text never matches the corpus
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/soak/soak-summary.json"), maxBytes: 1 << 20)
@@ -278,7 +303,8 @@ private let rulesJSON = """
     @Test func soakWithoutAMonitorFails() async throws {
         let live = RecordingLiveServices(clock: ManualClock())
         let fileSystem = try makeCheckout(scenarios: ["t.json": scenarioJSON(id: "t")])
-        let (harness, console) = try harness(["soak", "--targets", "t", "--keystrokes", "16"], fileSystem: fileSystem, live: live)
+        let (harness, console) = try harness(
+            ["soak", "--targets", "t", "--keystrokes", "16"], fileSystem: fileSystem, live: live)
         #expect(await harness.execute() == .failure)
         #expect(console.errors.first?.hasPrefix("compat-harness soak:") == true)
     }
@@ -292,7 +318,8 @@ private let rulesJSON = """
             fileSystem: fileSystem, live: live)
         #expect(await harness.execute() == .success)
         let median = try JSONDecoder().decode(
-            BenchmarkDocument.self, from: fileSystem.readData(at: URL(fileURLWithPath: "/out/b.json"), maxBytes: 1 << 20))
+            BenchmarkDocument.self,
+            from: fileSystem.readData(at: URL(fileURLWithPath: "/out/b.json"), maxBytes: 1 << 20))
         #expect(median.metrics["C1.cpuPercent"]?.value == 0.2)
         #expect(median.metrics["M1.footprintMB"]?.value == 45)
         #expect(median.runs == 3)
@@ -301,12 +328,15 @@ private let rulesJSON = """
     }
 
     @Test func benchOverGateFailsAndUnmeasuredIsIncomplete() async throws {
-        let over = RecordingLiveServices(clock: ManualClock(), metrics: ScriptedMetricSource(values: ["C2.cpuPercent": [3.5]]))
+        let over = RecordingLiveServices(
+            clock: ManualClock(), metrics: ScriptedMetricSource(values: ["C2.cpuPercent": [3.5]]))
         let (overHarness, overConsole) = try harness(
-            ["bench", "--runs", "1", "--metrics", "C2.cpuPercent"], fileSystem: try makeCheckout(scenarios: [:]), live: over)
+            ["bench", "--runs", "1", "--metrics", "C2.cpuPercent"], fileSystem: try makeCheckout(scenarios: [:]),
+            live: over)
         #expect(await overHarness.execute() == .failure)  // PLT-R822: above the gate, no tolerance
         #expect(overConsole.output.contains { $0.hasSuffix("OVER GATE") })
-        let partial = RecordingLiveServices(clock: ManualClock(), metrics: ScriptedMetricSource(values: ["C1.cpuPercent": [0.1]]))
+        let partial = RecordingLiveServices(
+            clock: ManualClock(), metrics: ScriptedMetricSource(values: ["C1.cpuPercent": [0.1]]))
         let (partialHarness, partialConsole) = try harness(
             ["bench", "--runs", "2", "--metrics", "C1.cpuPercent,T2.p99"], fileSystem: try makeCheckout(scenarios: [:]),
             live: partial)

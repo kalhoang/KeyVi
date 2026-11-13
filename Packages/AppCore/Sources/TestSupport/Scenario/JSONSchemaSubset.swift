@@ -51,7 +51,9 @@ public struct JSONSchemaSubset: Sendable {
         }
     }
 
-    private func checkGeneric(_ value: JSONValue, _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]) {
+    private func checkGeneric(
+        _ value: JSONValue, _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]
+    ) {
         if let type = keywords["type"] {
             let allowed = type.stringValue.map { [$0] } ?? Self.strings(type)
             if !allowed.contains(where: { Self.matches(value, type: $0) }) {
@@ -115,7 +117,9 @@ public struct JSONSchemaSubset: Sendable {
         }
     }
 
-    private func checkArray(_ array: [JSONValue], _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]) {
+    private func checkArray(
+        _ array: [JSONValue], _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]
+    ) {
         if let minimum = keywords["minItems"]?.intValue, array.count < minimum {
             out.append(Violation(path: path, message: "fewer than \(minimum) items"))
         }
@@ -132,7 +136,9 @@ public struct JSONSchemaSubset: Sendable {
         }
     }
 
-    private func checkString(_ string: String, _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]) {
+    private func checkString(
+        _ string: String, _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]
+    ) {
         let length = string.unicodeScalars.count
         if let minimum = keywords["minLength"]?.intValue, length < minimum {
             out.append(Violation(path: path, message: "shorter than \(minimum)"))
@@ -153,7 +159,9 @@ public struct JSONSchemaSubset: Sendable {
         }
     }
 
-    private func checkNumber(_ number: Double, _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]) {
+    private func checkNumber(
+        _ number: Double, _ keywords: [String: JSONValue], _ path: String, _ out: inout [Violation]
+    ) {
         if case .number(let minimum)? = keywords["minimum"], number < minimum {
             out.append(Violation(path: path, message: "below minimum"))
         }

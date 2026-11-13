@@ -5,6 +5,7 @@
 import AppModel
 import Foundation
 import Testing
+
 @testable import TestSupport
 
 @Suite struct ScenarioLoadingTests {
@@ -25,7 +26,9 @@ import Testing
     @Test func roundTripsThroughJSONEncoder() throws {
         let scenario = makeScenario(
             setup: [.init(action: .launch), .init(action: .wait, value: "200")],
-            expect: .init(text: "x", paused: true, holderBundleId: bundle("com.example.Holder"), firstKeyAfterReleaseComposed: false))
+            expect: .init(
+                text: "x", paused: true, holderBundleId: bundle("com.example.Holder"),
+                firstKeyAfterReleaseComposed: false))
         let data = try JSONEncoder().encode(scenario)
         #expect(try ScenarioLoader.decode(data, fileName: "sample.scenario.json") == scenario)
     }
@@ -93,14 +96,16 @@ import Testing
         let fileSystem = try makeCheckout(scenarios: [
             "b.json": scenarioJSON(id: "b"), "a.json": scenarioJSON(id: "a"), "README.md": "not a scenario",
         ])
-        let loaded = try ScenarioLoader(fileSystem: fileSystem).load(directory: URL(fileURLWithPath: "/repo/compat/scenarios"))
+        let loaded = try ScenarioLoader(fileSystem: fileSystem).load(
+            directory: URL(fileURLWithPath: "/repo/compat/scenarios"))
         #expect(loaded.map(\.id) == ["a", "b"])
     }
 
     @Test func loadStopsAtTheFirstInvalidFileAndNamesIt() throws {
         let fileSystem = try makeCheckout(scenarios: ["a.json": scenarioJSON(id: "a"), "b.json": scenarioJSON(id: "c")])
         do {
-            _ = try ScenarioLoader(fileSystem: fileSystem).load(directory: URL(fileURLWithPath: "/repo/compat/scenarios"))
+            _ = try ScenarioLoader(fileSystem: fileSystem).load(
+                directory: URL(fileURLWithPath: "/repo/compat/scenarios"))
             Issue.record("expected a load error")
         } catch let error as ScenarioLoadError {
             #expect(error.file == "b.json")
@@ -148,7 +153,9 @@ import Testing
 
     @Test func keysMustBePhysicalKeyNames() {
         #expect(ScenarioValidator.problems(in: makeScenario(keys: [])) == ["keys must not be empty"])
-        #expect(ScenarioValidator.problems(in: makeScenario(keys: ["a", "đ"])) == ["keys[1] 'đ' is not a physical key name"])
+        #expect(
+            ScenarioValidator.problems(in: makeScenario(keys: ["a", "đ"])) == ["keys[1] 'đ' is not a physical key name"]
+        )
     }
 
     @Test func expectationMustNotBeEmpty() {
@@ -162,7 +169,10 @@ import Testing
         (Scenario.SetupStep(action: .openURL), "setup[0] openURL needs a value"),
         (Scenario.SetupStep(action: .seedHistory, value: ""), "setup[0] seedHistory needs a value"),
         (Scenario.SetupStep(action: .focusField), "setup[0] focusField needs a value"),
-        (Scenario.SetupStep(action: .selectInputSource, value: "sha256:x"), "setup[0] selectInputSource needs an input source id"),
+        (
+            Scenario.SetupStep(action: .selectInputSource, value: "sha256:x"),
+            "setup[0] selectInputSource needs an input source id"
+        ),
         (Scenario.SetupStep(action: .setSecureInput, value: "yes"), "setup[0] setSecureInput value must be on or off"),
         (Scenario.SetupStep(action: .wait, value: "0"), "setup[0] wait value must be 1 to 60000 milliseconds"),
         (Scenario.SetupStep(action: .wait, value: "soon"), "setup[0] wait value must be 1 to 60000 milliseconds"),
@@ -176,7 +186,8 @@ import Testing
             .init(action: .launch), .init(action: .launch, value: "com.example.Other"),
             .init(action: .openURL, value: "{pages}/fields.html"), .init(action: .seedHistory, value: "file:///x"),
             .init(action: .focusField, value: "testhost.native.textField"),
-            .init(action: .selectInputSource, value: "com.apple.keylayout.ABC"), .init(action: .setSecureInput, value: "off"),
+            .init(action: .selectInputSource, value: "com.apple.keylayout.ABC"),
+            .init(action: .setSecureInput, value: "off"),
             .init(action: .wait, value: "60000"),
         ]
         #expect(ScenarioValidator.problems(in: makeScenario(setup: steps)) == [])
@@ -184,7 +195,9 @@ import Testing
 
     @Test func webdriverReadbackNeedsAPage() {
         #expect(
-            ScenarioValidator.problems(in: makeScenario(readback: .webdriver)) == ["webdriver readback needs an openURL step"])
+            ScenarioValidator.problems(in: makeScenario(readback: .webdriver)) == [
+                "webdriver readback needs an openURL step"
+            ])
     }
 
     @Test func unknownKeysOnNonObjects() {

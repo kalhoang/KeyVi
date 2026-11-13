@@ -82,7 +82,8 @@ public actor WebDriverClient {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.withoutEscapingSlashes]
         let encoded = try encoder.encode(body)
-        let response = try await transport.send(method: method, url: endpoint.appendingPathComponent(path), body: encoded)
+        let response = try await transport.send(
+            method: method, url: endpoint.appendingPathComponent(path), body: encoded)
         guard (200..<300).contains(response.status) else { throw WebDriverError.http(status: response.status) }
         guard let value = try? JSONDecoder().decode(JSONValue.self, from: response.body)["value"] else {
             throw WebDriverError.malformedResponse

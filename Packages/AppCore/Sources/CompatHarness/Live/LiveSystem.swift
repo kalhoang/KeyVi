@@ -36,7 +36,8 @@ struct LiveSystemActions: SystemActions {
         guard let target = URL(string: url) else { throw LiveError.unsupported("URL " + url) }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
-        _ = try await NSWorkspace.shared.open([target], withApplicationAt: try applicationURL(bundle), configuration: configuration)
+        _ = try await NSWorkspace.shared.open(
+            [target], withApplicationAt: try applicationURL(bundle), configuration: configuration)
     }
 
     func seedHistory(_ url: String, in bundle: BundleKey) async throws {
@@ -59,7 +60,9 @@ struct LiveSystemActions: SystemActions {
     /// TestHost: presses its "Hold secure input" checkbox when its state differs. Other apps (iTerm2's and
     /// Terminal's "Secure Keyboard Entry", PLT-R398C) are left to W2-E2 and reported as unsupported.
     func setSecureInput(_ enabled: Bool, in bundle: BundleKey) async throws {
-        guard bundle == targets.testHostBundleID else { throw LiveError.unsupported("secure input toggle in " + bundle.rawValue) }
+        guard bundle == targets.testHostBundleID else {
+            throw LiveError.unsupported("secure input toggle in " + bundle.rawValue)
+        }
         let toggle = try AX.element(TestHostControls.secureInputToggle, in: bundle)
         let isOn = (AX.attribute(toggle, kAXValueAttribute) as? NSNumber)?.boolValue ?? false
         guard isOn != enabled else { return }
@@ -72,9 +75,11 @@ struct LiveSystemActions: SystemActions {
     func startTerminalCapture(in bundle: BundleKey, script: URL, captureFile: URL) async throws {
         let wrapper = script.deletingPathExtension().appendingPathExtension("command")
         let body = "#!/bin/sh\nexec /bin/zsh -f '" + script.path + "' '" + captureFile.path + "'\n"
-        try LocalFileSystem().writeAtomically(Data(body.utf8), to: wrapper, permissions: FilePermissions(rawValue: 0o700))
+        try LocalFileSystem().writeAtomically(
+            Data(body.utf8), to: wrapper, permissions: FilePermissions(rawValue: 0o700))
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
-        _ = try await NSWorkspace.shared.open([wrapper], withApplicationAt: try applicationURL(bundle), configuration: configuration)
+        _ = try await NSWorkspace.shared.open(
+            [wrapper], withApplicationAt: try applicationURL(bundle), configuration: configuration)
     }
 }

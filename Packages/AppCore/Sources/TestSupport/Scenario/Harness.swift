@@ -4,8 +4,8 @@
 // only parses arguments and supplies the live services; everything else is here so it is tested. Dry runs
 // and `coverage` never touch `environment.live`.
 
-internal import Foundation
 internal import AppModel
+internal import Foundation
 
 public struct Harness: Sendable {
     let options: HarnessOptions
@@ -57,7 +57,8 @@ public struct Harness: Sendable {
         guard !options.only.isEmpty else { return loaded }
         let unknown = Set(options.only).subtracting(loaded.map(\.id))
         guard unknown.isEmpty else {
-            environment.console.emitError("compat-harness: unknown scenario id(s) " + unknown.sorted().joined(separator: ", "))
+            environment.console.emitError(
+                "compat-harness: unknown scenario id(s) " + unknown.sorted().joined(separator: ", "))
             return nil
         }
         return loaded.filter { options.only.contains($0.id) }
@@ -114,7 +115,8 @@ public struct Harness: Sendable {
         guard targets.count == options.targets.count, !targets.isEmpty, targets.allSatisfy({ $0.method == .telex })
         else {
             environment.console.emitError(
-                "compat-harness soak: --targets must name existing Telex scenarios: " + options.targets.joined(separator: ", "))
+                "compat-harness soak: --targets must name existing Telex scenarios: "
+                    + options.targets.joined(separator: ", "))
             return nil
         }
         return targets
@@ -125,7 +127,8 @@ public struct Harness: Sendable {
     func planSoak() -> HarnessExit {
         guard let targets = soakTargets() else { return .failure }
         let plan = SoakPlan.make(
-            keystrokes: options.keystrokes, targets: targets, seed: options.seed, chunkKeystrokes: options.chunkKeystrokes)
+            keystrokes: options.keystrokes, targets: targets, seed: options.seed,
+            chunkKeystrokes: options.chunkKeystrokes)
         HarnessPlans.soakPlan(plan, targets: targets, resolved: self.targets, profile: soakProfile)
             .forEach(environment.console.emit)
         return unresolved(targets, self.targets).isEmpty ? .success : .failure
@@ -141,7 +144,8 @@ public struct Harness: Sendable {
 
     func write(_ data: Data, to path: String) throws {
         let file = url(path)
-        try environment.fileSystem.createDirectory(at: file.deletingLastPathComponent(), permissions: .ownerOnlyDirectory)
+        try environment.fileSystem.createDirectory(
+            at: file.deletingLastPathComponent(), permissions: .ownerOnlyDirectory)
         try environment.fileSystem.writeAtomically(data, to: file, permissions: .ownerOnlyFile)
     }
 

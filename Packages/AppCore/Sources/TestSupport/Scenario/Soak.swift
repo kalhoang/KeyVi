@@ -47,7 +47,8 @@ public struct SoakPlan: Sendable, Hashable {
             // The last chunk takes the remainder when another full chunk would leave too little behind.
             let budget = remaining - size < minimumKeystrokes ? remaining : size
             let target = chunks.count % targets.count
-            chunks.append(chunk(budget, target: target, terminal: targets[target].readback == .terminalCapture, &generator))
+            chunks.append(
+                chunk(budget, target: target, terminal: targets[target].readback == .terminalCapture, &generator))
             remaining -= budget
         }
         return SoakPlan(chunks: chunks)
