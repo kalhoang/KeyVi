@@ -29,7 +29,8 @@ extension MacroTable {
             let bytes = Array(entry.trigger.utf8)
             for length in 1..<bytes.count where isPunctuation(bytes[length]) {
                 if let key = MacroKey(lowercasing: bytes[0..<length]), let shorter = lookup[key] {
-                    throw ValidationError.shadowedByShorterTrigger(trigger: entry.trigger, shorter: entries[shorter].trigger)
+                    throw ValidationError.shadowedByShorterTrigger(
+                        trigger: entry.trigger, shorter: entries[shorter].trigger)
                 }
             }
         }

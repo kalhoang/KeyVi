@@ -86,7 +86,9 @@ extension Engine {
         // The span's tokens are no longer committed tokens of the run: the language window goes back to
         // what it was before the oldest of them.
         for _ in 0..<span.historyEntryCount {
-            if case .token(let committed)? = state.history.popLast() { state.recentLanguages = committed.languagesBefore }
+            if case .token(let committed)? = state.history.popLast() {
+                state.recentLanguages = committed.languagesBefore
+            }
         }
         state.active = nil
         let language = TokenLanguage.ofExpansion(expansion)

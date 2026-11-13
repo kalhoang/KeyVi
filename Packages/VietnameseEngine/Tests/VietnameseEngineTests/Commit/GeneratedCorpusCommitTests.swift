@@ -49,7 +49,9 @@ struct GeneratedCorpusCommitTests {
     }
 
     /// The text the case commits after the seed, with the decision; nil text on a contract violation.
-    private static func commit(_ generated: GeneratedCase, engines: SeededEngines) -> (text: String, decision: CommitDecision?)? {
+    private static func commit(_ generated: GeneratedCase, engines: SeededEngines) -> (
+        text: String, decision: CommitDecision?
+    )? {
         guard var session = engines.session(for: generated.configuration) else { return nil }
         var field = SimulatedTextField(text: "việt ")
         var decision: CommitDecision?
@@ -96,7 +98,9 @@ struct GeneratedCorpusCommitTests {
             }
         }
         #expect(cases > 0)
-        #expect(failures.isEmpty, "shard \(shard): \(failures.count) failures\n\(failures.prefix(25).joined(separator: "\n"))")
+        #expect(
+            failures.isEmpty,
+            "shard \(shard): \(failures.count) failures\n\(failures.prefix(25).joined(separator: "\n"))")
         if !excluded.isEmpty {
             print("[ENG-R870] shard \(shard): excluded en rows \(excluded.sorted().joined(separator: " "))")
         }
@@ -119,12 +123,15 @@ struct GeneratedCorpusCommitTests {
             {
                 restoredByL8.insert(generated.keys)
             } else {
-                failures.append("\(generated.keys): \(result.text.debugDescription) \(result.decision.map { "\($0)" } ?? "")")
+                failures.append(
+                    "\(generated.keys): \(result.text.debugDescription) \(result.decision.map { "\($0)" } ?? "")")
             }
         }
         #expect(failures.isEmpty, "shard \(shard):\n\(failures.prefix(25).joined(separator: "\n"))")
         if !restoredByL8.isEmpty {
-            print("[ENG-R870] shard \(shard): L8 restores with the 13.9 unattested list \(restoredByL8.sorted().joined(separator: " "))")
+            print(
+                "[ENG-R870] shard \(shard): L8 restores with the 13.9 unattested list \(restoredByL8.sorted().joined(separator: " "))"
+            )
         }
     }
 }

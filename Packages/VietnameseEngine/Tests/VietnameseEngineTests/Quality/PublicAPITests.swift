@@ -45,7 +45,8 @@ struct PublicAPITests {
     @Test("Defaults: Telex with standalone w on and brackets off, traditional, auto restore on, history 16")
     func defaults() {
         let configuration = EngineConfiguration()
-        #expect(configuration.inputMethod == .telex(TelexOptions(standaloneW: true, bracketKeys: false)))  // ENG-R103, ENG-R104
+        // ENG-R103, ENG-R104.
+        #expect(configuration.inputMethod == .telex(TelexOptions(standaloneW: true, bracketKeys: false)))
         #expect(configuration.toneStyle == .traditional)  // ENG-R105, ENG-R510
         #expect(configuration.autoRestore)  // ENG-R106
         #expect(configuration.appContext == .general)  // ENG-R850

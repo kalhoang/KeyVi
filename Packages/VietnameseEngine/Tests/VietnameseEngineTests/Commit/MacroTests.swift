@@ -71,7 +71,8 @@ struct MacroValidationTests {
 
     @Test func firstProblemInEntryOrder() {
         let entries = [
-            Entry(trigger: "ok", expansion: "x"), Entry(trigger: "a b", expansion: "x"), Entry(trigger: "", expansion: "x"),
+            Entry(trigger: "ok", expansion: "x"), Entry(trigger: "a b", expansion: "x"),
+            Entry(trigger: "", expansion: "x"),
         ]
         #expect(error(entries) == .invalidTriggerCharacter("a b"))
     }
@@ -95,7 +96,8 @@ struct MacroExpansionTests {
             return try MacroTable([
                 .init(trigger: "vn", expansion: "Việt Nam"), .init(trigger: "@@", expansion: "kal@example.com"),
                 .init(trigger: "dc", expansion: "được"), .init(trigger: "k1", expansion: "khu 1"),
-                .init(trigger: "ad.", expansion: "địa chỉ"), .init(trigger: "ttt", expansion: "Thân thiện", adaptCase: false),
+                .init(trigger: "ad.", expansion: "địa chỉ"),
+                .init(trigger: "ttt", expansion: "Thân thiện", adaptCase: false),
                 .init(trigger: "hcm", expansion: "Hồ Chí Minh"), .init(trigger: "sig", expansion: "Trân trọng,\nKal"),
                 .init(trigger: "zz", expansion: ""), .init(trigger: "ddc", expansion: "đặc"),
                 .init(trigger: "smile", expansion: "\u{1F600}"), .init(trigger: "1st", expansion: "first"),
@@ -150,7 +152,9 @@ struct MacroExpansionTests {
 
     @Test func spanOfMoreThan32CharactersIsNotLookedUp() throws {
         let trigger = String(repeating: "q", count: 32)
-        let table = try MacroTable([.init(trigger: trigger, expansion: "!"), .init(trigger: "x" + trigger.dropFirst(), expansion: "?")])
+        let table = try MacroTable([
+            .init(trigger: trigger, expansion: "!"), .init(trigger: "x" + trigger.dropFirst(), expansion: "?"),
+        ])
         let resources = SpecFixtures.commitResources(macros: table)
         #expect(try Committing.text(trigger + " ", resources: resources) == "! ")
         #expect(try Committing.text("." + trigger + " ", resources: resources) == "." + trigger + " ")
@@ -176,7 +180,8 @@ struct MacroExpansionTests {
         var driver = try Committing.driver("ban vn ", resources: Self.resources)
         #expect(driver.state.historyCount == 2)
         try driver.send(.backspace)
-        #expect(driver.state.activeDisplay == "Việt Nam" && driver.state.activeRawKeys == "vn" && driver.state.isLiteral)
+        #expect(
+            driver.state.activeDisplay == "Việt Nam" && driver.state.activeRawKeys == "vn" && driver.state.isLiteral)
         // Backspace into it deletes one character at a time.
         try driver.send(KeyNotation.events("⌫⌫"))
         #expect(driver.field.string == "ban Việt N")
@@ -223,7 +228,9 @@ struct MacroExpansionTests {
         _ = session.handle(.backspace)
         #expect(session.state.activeDisplay == "\u{1F600}")
         let output = session.handle(.restoreToggle)
-        #expect(output.action == .edit(TextEdit(deleteCount: 1, deleteUTF16Count: 2, insert: "smile"), thenPassThrough: false))
+        #expect(
+            output.action
+                == .edit(TextEdit(deleteCount: 1, deleteUTF16Count: 2, insert: "smile"), thenPassThrough: false))
     }
 
     @Test func emptyTableNeverMatches() throws {

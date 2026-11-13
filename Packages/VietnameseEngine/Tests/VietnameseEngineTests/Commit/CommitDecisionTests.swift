@@ -54,7 +54,9 @@ struct CommitDecisionTests {
 
     /// Types the seed token of the row (13.9 "Previous token"), the keys and `boundary`; returns the text
     /// the token and the boundary left and the boundary's output.
-    static func run(_ row: CommitDecisionExample, boundary: KeyInput) throws -> (text: String, output: EngineOutput, driver: EngineDriver) {
+    static func run(_ row: CommitDecisionExample, boundary: KeyInput) throws -> (
+        text: String, output: EngineOutput, driver: EngineDriver
+    ) {
         var driver = EngineDriver(configuration: row.configuration, resources: resources)
         if let seed = row.previous.seedKeys { try driver.type(seed + " ") }
         let prefix = driver.field.string

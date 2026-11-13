@@ -73,9 +73,9 @@ struct EngineBenchmarkTests {
         }
         #expect(!samples.isEmpty && !commitSamples.isEmpty && sink >= 0)
         #if DEBUG
-            let mode = "debug build: numbers are not comparable with the budget"
+        let mode = "debug build: numbers are not comparable with the budget"
         #else
-            let mode = "release build"
+        let mode = "release build"
         #endif
         print("[ENG-R1230] \(Self.summary(samples, "events")) (\(mode); budget p50 5, p99 25, p99.9 100)")
         print("[ENG-R1230] \(Self.summary(commitSamples, "commits and macro expansions")) (\(mode))")
