@@ -42,21 +42,17 @@ public enum ReportAssembler {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
         let storedOverride = ReportedOverrideSource.override(for: reportedApp, in: settings.ruleOverrides)
         let decisionOverride = host.focus.app?.bundle == reportedApp ? host.decision?.userOverride : nil
-        let mirror = ReportMirror(
-            formatVersion: DiagnosticsReport.formatVersion, generatedAt: now, app: identity, system: system,
-            hostState: host.state.code, keyboard: ReportSections.keyboard(host),
-            permissions: ReportSections.permissions(host), tap: ReportSections.tap(host, health: health, now: now),
-            secureInput: ReportSections.secureInput(host), focus: ReportSections.focus(host),
+        return DiagnosticsReport(
+            generatedAt: now, app: identity, system: system, hostState: host.state.code,
+            keyboard: ReportSections.keyboard(host), permissions: ReportSections.permissions(host),
+            tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
+            focus: ReportSections.focus(host),
             rule: ReportSections.rule(host.decision, userOverride: storedOverride ?? decisionOverride),
             settings: ReportSections.settings(settings),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
-            latency: ReportMirror.Latency(metrics: metrics, probe: probe),
+            latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
             healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),
-            userReport: draft.map {
-                ReportMirror.UserReport(
-                    symptom: $0.symptom, reportedApp: $0.app, reproducesInPracticeField: $0.reproducesInPracticeField)
-            })
-        return mirror.decode()
+            userReport: ReportSections.userReport(draft))
     }
 
     /// Typed projection of the reported app's user override (PLT-R541, ADR 0312): copies strategy, params,
