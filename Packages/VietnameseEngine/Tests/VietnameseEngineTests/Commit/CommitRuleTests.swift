@@ -128,8 +128,10 @@ struct CommitRuleTests {
         // ENG-R802: L3b to L11 never restore; the rule that matched still names itself.
         let off = EngineConfiguration(autoRestore: false)
         for (keys, text, rule) in [
-            ("text ", "tẽt ", CommitRule.invalid), ("test ", "tét ", .ambiguityTable), ("password ", "pasword ", .escape),
-            ("useState ", "ueState ", .camelCase), ("zoom ", "zôm ", .extendedSpelling), ("does ", "dóe ", .notAttested),
+            ("text ", "tẽt ", CommitRule.invalid), ("test ", "tét ", .ambiguityTable),
+            ("password ", "pasword ", .escape),
+            ("useState ", "ueState ", .camelCase), ("zoom ", "zôm ", .extendedSpelling),
+            ("does ", "dóe ", .notAttested),
         ] {
             let driver = try Committing.driver(keys, off)
             #expect(driver.field.string == text, "\(keys)")
@@ -147,7 +149,8 @@ struct CommitRuleTests {
         let driver = try Committing.driver("text")
         var session = driver.session
         let output = session.handle(.key(KeyInput(";")))
-        #expect(output.action == .edit(TextEdit(deleteCount: 2, deleteUTF16Count: 2, insert: "ext"), thenPassThrough: true))
+        #expect(
+            output.action == .edit(TextEdit(deleteCount: 2, deleteUTF16Count: 2, insert: "ext"), thenPassThrough: true))
         #expect(output.composingText.isEmpty && session.state.activeDisplay.isEmpty)
     }
 
@@ -157,7 +160,8 @@ struct CommitRuleTests {
         #expect(driver.field.string == "thưở")
         let output = try driver.send(.key(KeyInput(" ")))
         #expect(driver.field.string == "thuở ")
-        #expect(output.action == .edit(TextEdit(deleteCount: 2, deleteUTF16Count: 2, insert: "uở"), thenPassThrough: true))
+        #expect(
+            output.action == .edit(TextEdit(deleteCount: 2, deleteUTF16Count: 2, insert: "uở"), thenPassThrough: true))
         #expect(try Committing.text("huow,") == "huơ,")
         #expect(try Committing.text("HUOW ") == "HUƠ ")
         // A reset commits nothing, so no edit is made (ENG-R532, ENG-R831).
@@ -179,6 +183,17 @@ struct CommitRuleTests {
         try driver.send(.reset(.focusChanged))
         try driver.send(KeyNotation.events("verbose "))
         #expect(driver.field.string == "việt verbose ")
+    }
+
+    @Test func apostropheAndHyphenAreBoundaries() throws {
+        // ENG-R911, ENG-R333: `don't` is `don`, `'`, `t`; `M'Đrắk` is `M`, `'`, `Đrắk`, each composed alone.
+        #expect(try Committing.text("don't ") == "don't ")
+        #expect(try Committing.text("M'DDrawsk ") == "M'Đrắk ")
+        #expect(try Committing.text("DDawsk R'laaps ") == "Đắk R'lấp ")
+        // `gar` composes `gả` in Telex; doubling the tone key keeps the `r` (ENG-R440).
+        #expect(try Committing.text("Cuw M'gar ") == "Cư M'gả ")
+        #expect(try Committing.text("Cuw M'garr ") == "Cư M'gar ")
+        #expect(try Committing.text("vieejt-nam ") == "việt-nam ")
     }
 
     @Test func boundaryWithoutTokenHasNoDecision() throws {

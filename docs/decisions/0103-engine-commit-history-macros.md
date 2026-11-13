@@ -85,6 +85,10 @@
 | Empty expansion | Allowed; its history token has no text and is dropped when re-opened | No error case exists for it and deleting a trigger is a plausible use. |
 | QA-R4 "editing after newline must be recoverable" (conflict with ENG-R912) | ENG-R912 wins: Return and Tab clear the history, so the word before a newline is not re-opened | 01-engine.md is normative for engine behaviour and gives the reason (chat apps send on Return). `editing.tsv` records it (ED011, ED012, ED022). |
 
+Out of scope as the spec says: retroactive correction of an earlier token once a later one reveals
+English (ENG-R824, candidate for v1.1). The engine never edits a committed token except when Backspace
+re-opens it or a macro span includes it.
+
 ## ENG-R870 and the 13.9 fixtures
 
 ENG-R870 allows only `en` ambiguity rows as exclusions. With the 13.9 fixture list of unattested syllables,
