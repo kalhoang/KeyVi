@@ -91,11 +91,10 @@ public enum ScenarioValidator {
     public static let expectKeys: Set<String> = ["text", "paused", "holderBundleId", "firstKeyAfterReleaseComposed"]
     /// Longest `wait` step accepted, in milliseconds.
     public static let maximumWaitMilliseconds = 60_000
-    /// Setup actions the Swift model accepts that compat/schema/scenario.schema.json does not list yet. The
-    /// schema file is outside this workstream; the exact patch is requested from the integrator (ADR 0502,
-    /// "Integration hooks"). `ScenarioFilesTests` keeps the difference to exactly this set, and no scenario file
-    /// may use these actions until the schema lists them.
-    public static let pendingSchemaActions: Set<Scenario.SetupStep.Action> = [.testHook]
+    /// Setup actions the Swift model accepts that compat/schema/scenario.schema.json does not list yet.
+    /// `ScenarioFilesTests` keeps the difference to exactly this set, and no scenario file may use these actions
+    /// until the schema lists them. Empty since W3-A added `testHook` to the schema (ADR 0502, "Integration hooks").
+    public static let pendingSchemaActions: Set<Scenario.SetupStep.Action> = []
 
     public static func problems(in scenario: Scenario) -> [String] {
         var problems: [String] = []

@@ -7,6 +7,7 @@
 
 import AppModel
 import Foundation
+import InputHost
 import RealtimeSupport
 import Testing
 
@@ -72,8 +73,8 @@ private func scenarioFiles() throws -> [URL] {
     }
 
     /// The Swift model may run ahead of compat/schema/scenario.schema.json only by the actions requested from the
-    /// schema owner (`pendingSchemaActions`), and no scenario file uses them until the schema lists them. Once the
-    /// integrator applies the requested patch, the pending set becomes empty here and in ScenarioValidator.
+    /// schema owner (`pendingSchemaActions`), and no scenario file uses them until the schema lists them. The set is
+    /// empty since W3-A listed `testHook` in the schema; the two QA-R11 hook scenarios use it.
     @Test func swiftActionsDifferFromTheSchemaOnlyByPendingRequests() throws {
         let schema = try JSONDecoder().decode(
             JSONValue.self,
@@ -92,6 +93,31 @@ private func scenarioFiles() throws -> [URL] {
             let used = scenario.setup.map(\.action.rawValue).filter { !schemaActions.contains($0) }
             #expect(used.isEmpty, "\(scenario.id) uses \(used), not in the schema yet")
         }
+    }
+
+    /// PLT-R398B scenarios read the app's "first key after the release" through the hooks. The app learns that
+    /// secure input was on only from its poll (every 2 s, 10 % leeway, SecureInputMonitor), so the episode must
+    /// last longer than one poll interval with leeway, or the app never saw a release and reports nil (W3-A).
+    @Test func secureInputEpisodesOutlastOnePoll() throws {
+        let interval = SecureInputMonitor.pollInterval + SecureInputMonitor.pollLeeway
+        let minimum = Int(interval.components.seconds) * 1_000 + Int(interval.components.attoseconds / 1_000_000_000_000_000)
+        var checked = 0
+        for scenario in try ScenarioRunner.load(directory: scenariosDirectory)
+        where scenario.expect.firstKeyAfterReleaseComposed != nil {
+            var onFor: Int?
+            for step in scenario.setup {
+                switch (step.action, step.value) {
+                case (.setSecureInput, "on"): onFor = 0
+                case (.setSecureInput, "off"):
+                    #expect((onFor ?? 0) > minimum, "\(scenario.id): secure input on for \(onFor ?? 0) ms")
+                    onFor = nil
+                case (.wait, let value?): onFor = onFor.map { $0 + (Int(value) ?? 0) }
+                default: break
+                }
+            }
+            checked += 1
+        }
+        #expect(checked >= 2)
     }
 
     /// Every rule id of the 02-platform.md 5.6 examples has its scenario (test.scenario equals the rule id there).

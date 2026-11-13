@@ -59,7 +59,6 @@ enum OracleFields {
         guard scenario.targetBundleId.rawValue == HarnessTargets.testHostAlias, scenario.readback == .ax,
             scenario.expect.text != nil, scenario.layout?.rawValue == "com.apple.keylayout.ABC",
             scenario.setup.last(where: { $0.action == .setSecureInput })?.value != "on",
-            !scenario.setup.contains(where: { $0.action == .testHook }),
             let field = scenario.setup.last(where: { $0.action == .focusField })?.value, plain.contains(field)
         else { return nil }
         return field
@@ -74,7 +73,17 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
     var oracle = try ScenarioTextOracle(
         settings: settings, focused: field, passThroughFields: OracleFields.passThrough(configuration.profile),
         focusShortcuts: OracleFields.focusShortcuts)
-    oracle.type(scenario.keys)
+    // Hooks fire where the harness fires them (ScenarioSchedule): setup-order hooks before typing, `@n` hooks
+    // after the first n keys.
+    let schedule = ScenarioSchedule(scenario)
+    for step in schedule.setup { if let hook = ScenarioHookStep.of(step)?.hook { oracle.trigger(hook) } }
+    var typed = 0
+    for deferred in schedule.deferred {
+        oracle.type(Array(scenario.keys[typed..<deferred.afterKeys]))
+        typed = deferred.afterKeys
+        if let hook = ScenarioHookStep.of(deferred.step)?.hook { oracle.trigger(hook) }
+    }
+    oracle.type(Array(scenario.keys[typed...]))
     return (oracle.text(of: field), oracle.mode)
 }
 
@@ -96,7 +105,7 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
             "testhost.backspace.punctuation", "testhost.fastTyping", "testhost.toggleHotkey",
             "testhost.perWindowRule.mainWindow", "testhost.perWindowRule.secondWindow", "testhost.macro.letters",
             "testhost.macro.punctuation", "testhost.restoreHotkey.twice", "testhost.password.noTransform",
-            "testhost.privacyCanary.paste",
+            "testhost.privacyCanary.paste", "testhost.tapTimeout.recovery", "testhost.failOpen.permissionRevoked",
         ] {
             #expect(checked.contains(id), "\(id) is not checked by the oracle")
         }

@@ -17,7 +17,7 @@
         "additionalProperties": false,
         "required": ["action"],
         "properties": {
-          "action": { "enum": ["launch", "openURL", "seedHistory", "focusField", "selectInputSource", "setSecureInput", "wait"] },
+          "action": { "enum": ["launch", "openURL", "seedHistory", "focusField", "selectInputSource", "setSecureInput", "wait", "testHook"] },
           "value": { "type": "string" }
         }
       }
