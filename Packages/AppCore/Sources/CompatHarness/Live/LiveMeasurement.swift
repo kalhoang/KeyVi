@@ -72,7 +72,10 @@ struct LiveMetricSource: PlatformMetricSource {
         case "C1.cpuPercent": return try await cpuPercent { self.wait(seconds: idleSeconds) }
         case "C2.cpuPercent": return try await cpuPercent { try await self.typeForC2() }
         case "M1.footprintMB": return Double(try ProcessSampler.sample(app).footprintBytes) / 1_048_576
-        default: throw LiveError.notAvailable(metric.name)
+        default:
+            // T2, T3, T5, T6 come from the app's histograms (PLT-R801) and T4 from a probe text view; both need
+            // W2-E2. Until then `bench` skips them with a warning.
+            throw PlatformMetricUnavailable(reason: "not measurable from the harness yet")
         }
     }
 

@@ -117,15 +117,27 @@ public struct BenchmarkDocument: Sendable, Hashable, Codable {
 }
 
 public protocol PlatformMetricSource: Sendable {
-    /// One measurement of `metric` in its unit. Throws when the metric cannot be measured on this machine.
+    /// One measurement of `metric` in its unit. Throws `PlatformMetricUnavailable` when this source has no way
+    /// to measure the metric yet, any other error when a measurement it supports failed.
     func measure(_ metric: PlatformMetric) async throws -> Double
+}
+
+/// The source cannot measure this metric at all yet (for example an app histogram before the app exports it,
+/// PLT-R801). `bench` skips such metrics with a warning instead of failing the job; a later W2-E2 export turns
+/// them into measured, gated values.
+public struct PlatformMetricUnavailable: Error, Sendable, Hashable, CustomStringConvertible {
+    public var reason: String
+    public init(reason: String) { self.reason = reason }
+    public var description: String { reason }
 }
 
 public struct PlatformBenchmarkReport: Sendable, Hashable {
     public var median: BenchmarkDocument
     public var perRun: [BenchmarkDocument]
-    /// Metrics that could not be measured, with the reason.
+    /// Metrics whose measurement failed, with the reason.
     public var unmeasured: [String: String]
+    /// Metrics the source cannot measure yet (`PlatformMetricUnavailable`), with the reason.
+    public var skipped: [String: String] = [:]
 }
 
 public struct PlatformBenchmarkRunner: Sendable {
@@ -141,12 +153,15 @@ public struct PlatformBenchmarkRunner: Sendable {
     public func run(metrics: [PlatformMetric], runs: Int) async -> PlatformBenchmarkReport {
         var perRun: [BenchmarkDocument] = []
         var unmeasured: [String: String] = [:]
+        var skipped: [String: String] = [:]
         for _ in 0..<max(1, runs) {
             var values: [String: BenchmarkDocument.Metric] = [:]
-            for metric in metrics where unmeasured[metric.name] == nil {
+            for metric in metrics where unmeasured[metric.name] == nil && skipped[metric.name] == nil {
                 do {
                     let value = try await source.measure(metric)
                     values[metric.name] = .init(value: value, unit: metric.unit, budget: metric.gate, calibrated: false)
+                } catch let unavailable as PlatformMetricUnavailable {
+                    skipped[metric.name] = unavailable.reason
                 } catch {
                     unmeasured[metric.name] = String(describing: error)
                 }
@@ -157,8 +172,11 @@ public struct PlatformBenchmarkRunner: Sendable {
                     formatVersion: 1, benchmark: "platform", runs: 1, calibration: calibration, metrics: values))
         }
         for name in unmeasured.keys { for index in perRun.indices { perRun[index].metrics[name] = nil } }
-        let median = BenchmarkDocument.median(of: perRun) ?? perRun[0]
-        return PlatformBenchmarkReport(median: median, perRun: perRun, unmeasured: unmeasured)
+        var median = BenchmarkDocument.median(of: perRun) ?? perRun[0]
+        if !skipped.isEmpty {
+            median.note = "skipped, not measurable on this runner yet: " + skipped.keys.sorted().joined(separator: ", ")
+        }
+        return PlatformBenchmarkReport(median: median, perRun: perRun, unmeasured: unmeasured, skipped: skipped)
     }
 
     /// Fixed reference workload (ADR 0502 `calibration`); informational because every metric is uncalibrated.

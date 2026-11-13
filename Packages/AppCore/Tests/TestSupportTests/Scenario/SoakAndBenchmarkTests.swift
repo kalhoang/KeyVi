@@ -210,6 +210,18 @@ private struct EchoReadback: ScenarioReadback {
         #expect(metric?["budget"] as? Double == 3)
     }
 
+    @Test func unavailableMetricsAreSkippedAndNamedInTheNote() async throws {
+        let source = ScriptedMetricSource(values: ["C1.cpuPercent": [0.1]], unavailable: ["T2.p99"])
+        let metrics = ["C1.cpuPercent", "T2.p99"].compactMap(PlatformGates.metric(named:))
+        let report = await PlatformBenchmarkRunner(source: source, clock: ManualClock()).run(metrics: metrics, runs: 3)
+        #expect(report.skipped == ["T2.p99": "needs the app export"])
+        #expect(report.unmeasured.isEmpty)
+        #expect(report.median.metrics.keys.sorted() == ["C1.cpuPercent"])
+        #expect(report.median.note == "skipped, not measurable on this runner yet: T2.p99")
+        #expect(source.calls.all.filter { $0 == "T2.p99" }.count == 1)  // not retried in later runs
+        #expect(PlatformMetricUnavailable(reason: "x").description == "x")
+    }
+
     @Test func medianOfEvenAndOddCounts() {
         #expect(BenchmarkDocument.median([3, 1, 2]) == 2)
         #expect(BenchmarkDocument.median([4, 1, 3, 2]) == 2.5)

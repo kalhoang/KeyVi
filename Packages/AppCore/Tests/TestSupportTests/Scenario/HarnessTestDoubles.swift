@@ -170,10 +170,13 @@ final class ScriptedSoakMonitor: SoakMonitor, Sendable {
 
 struct ScriptedMetricSource: PlatformMetricSource {
     var values: [String: [Double]]
+    /// Metrics this source has no way to measure yet (`PlatformMetricUnavailable`).
+    var unavailable: Set<String> = []
     let calls = Recorder<String>()
 
     func measure(_ metric: PlatformMetric) async throws -> Double {
         calls.append(metric.name)
+        if unavailable.contains(metric.name) { throw PlatformMetricUnavailable(reason: "needs the app export") }
         guard let series = values[metric.name] else { throw TestFailure.injected }
         let index = calls.all.filter { $0 == metric.name }.count - 1
         return series[min(index, series.count - 1)]

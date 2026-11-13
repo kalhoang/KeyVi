@@ -166,10 +166,15 @@ extension Harness {
     }
 
     /// PLT-R822: a gated metric above its gate fails here, with no tolerance; the baseline comparison at 25 %
-    /// is scripts/bench-compare.sh's job. Unmeasured metrics make the run incomplete.
+    /// is scripts/bench-compare.sh's job. Metrics whose measurement failed make the run incomplete; metrics the
+    /// source cannot measure yet (app histograms before W2-E2's export) are skipped with a warning.
     func benchVerdict(_ report: PlatformBenchmarkReport, metrics: [PlatformMetric]) -> HarnessExit {
         var overGate = false
         for metric in metrics {
+            if let reason = report.skipped[metric.name] {
+                environment.console.emitError("skipped: " + metric.name + " (" + reason + ")")
+                continue
+            }
             guard let value = report.median.metrics[metric.name]?.value else {
                 environment.console.emitError(
                     "not measured: " + metric.name + " (" + (report.unmeasured[metric.name] ?? "no value") + ")")

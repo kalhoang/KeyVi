@@ -421,6 +421,19 @@ private let rulesJSON = """
             live: partial)
         #expect(await partialHarness.execute() == .incomplete)
         #expect(partialConsole.errors.first?.hasPrefix("not measured: T2.p99") == true)
+        // PLT-R821: app-histogram metrics the runner cannot read yet are skipped (warned, recorded in the note),
+        // so `run-integration.sh bench` measures C1/C2/M1 today; a real measuring error stays incomplete.
+        let skipping = RecordingLiveServices(
+            clock: ManualClock(),
+            metrics: ScriptedMetricSource(values: ["C1.cpuPercent": [0.1]], unavailable: ["T2.p99", "T5.flushes"]))
+        let (skippingHarness, skippingConsole) = try harness(
+            ["bench", "--runs", "2", "--metrics", "C1.cpuPercent,T2.p99,T5.flushes", "--output", "/out/s.json"],
+            fileSystem: try makeCheckout(scenarios: [:]), live: skipping)
+        #expect(await skippingHarness.execute() == .success)
+        #expect(
+            skippingConsole.errors == [
+                "skipped: T2.p99 (needs the app export)", "skipped: T5.flushes (needs the app export)",
+            ])
         let broken = RecordingLiveServices(clock: ManualClock(), metrics: nil)
         let (brokenHarness, _) = try harness(["bench"], fileSystem: try makeCheckout(scenarios: [:]), live: broken)
         #expect(await brokenHarness.execute() == .failure)

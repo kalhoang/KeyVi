@@ -25,7 +25,6 @@ enum LiveError: Error, CustomStringConvertible {
     case axFailure(String, Int32)
     case inputSourceNotFound(String)
     case unsupported(String)
-    case notAvailable(String)
 
     var description: String {
         switch self {
@@ -36,7 +35,6 @@ enum LiveError: Error, CustomStringConvertible {
         case .axFailure(let call, let code): call + " failed with AXError \(code)"
         case .inputSourceNotFound(let source): "input source not enabled: " + source
         case .unsupported(let what): "not supported yet: " + what
-        case .notAvailable(let what): "not measurable from the harness yet: " + what
         }
     }
 }
