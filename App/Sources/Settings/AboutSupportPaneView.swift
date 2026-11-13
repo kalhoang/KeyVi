@@ -2,7 +2,8 @@
 //
 // "Giới thiệu & Hỗ trợ / About & Support" (PRD-R24): version and channel, update controls (D19-D21, PRD-R53),
 // diagnostics (D26), report a problem, export, import and reset, privacy summary, licences and acknowledgements
-// (ENG-R811, Sparkle), and the donation block (PRD-R57 to PRD-R59, the bundled bank VietQR code of Pa's decision S8).
+// (the app's own GPL-3.0-or-later licence of ADR 0006, ENG-R811, Sparkle), and the donation block (PRD-R57 to
+// PRD-R59, the bundled bank VietQR code of Pa's decision S8).
 
 import AppKit
 import AppModel
@@ -200,6 +201,7 @@ struct LicencesSheet: View {
             PaneHeading(text: localizer.string(SupportText.licencesTitle))
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    AppLicenceRow(appName: model.appName, localizer: localizer)
                     ForEach(acknowledgements.sections) { section in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(verbatim: localizer.string(section.title)).font(.headline)
@@ -220,5 +222,41 @@ struct LicencesSheet: View {
         }
         .padding(20)
         .frame(width: 620, height: 520)
+    }
+}
+
+/// ADR 0006 (GPL-3.0 section 0, Appropriate Legal Notices): the app's own licence, "<app name>: GPL-3.0-or-later",
+/// which shows the full text of the LICENSE file the bundle carries (project.yml). The file (35 KB) is read once
+/// when the row appears and kept in view state, not on every render of the sheet or of the disclosure. No
+/// disclosure animation with Reduce Motion (PRD-R67).
+struct AppLicenceRow: View {
+    let appName: String
+    let localizer: Localizer
+    @State private var text: String?
+    @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let title = localizer.format(SupportText.licencesApp, appName)
+        DisclosureGroup(isExpanded: $expanded) {
+            // Empty only in a broken bundle, which BuiltBundleTests.licenceIsBundled rejects.
+            Text(verbatim: text ?? "")
+                .font(.caption.monospaced()).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Text(verbatim: title).font(.headline)
+        }
+        .settingsAccessibility(
+            SupportControl.appLicence, localizer,
+            label: localizer.accessibilityLabel(SupportControl.appLicence) + ": " + title
+        )
+        .transaction { if reduceMotion { $0.animation = nil } }  // PRD-R67
+        .task { if text == nil { text = Self.bundledText() } }
+    }
+
+    /// Contents/Resources/LICENSE; nil only in a broken bundle (BuiltBundleTests checks the built app).
+    static func bundledText(bundle: Bundle = .main) -> String? {
+        guard let url = bundle.url(forResource: "LICENSE", withExtension: nil) else { return nil }
+        return try? String(contentsOf: url, encoding: .utf8)
     }
 }

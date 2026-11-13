@@ -163,6 +163,42 @@
         }
       }
     },
+    "support.control.appLicence.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows or hides the full text of the GNU GPL version 3."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện hoặc ẩn toàn văn giấy phép GNU GPL phiên bản 3."
+          }
+        }
+      }
+    },
+    "support.control.appLicence.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App licence"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giấy phép của ứng dụng"
+          }
+        }
+      }
+    },
     "support.control.autoCheck.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -879,6 +915,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Giấy phép và ghi công..."
+          }
+        }
+      }
+    },
+    "support.licences.app" : {
+      "comment" : "App licence row (ADR 0006, GPL-3.0 section 0). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: GPL-3.0-or-later"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: GPL-3.0-or-later"
           }
         }
       }

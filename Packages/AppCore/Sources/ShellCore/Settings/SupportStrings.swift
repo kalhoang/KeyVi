@@ -32,6 +32,8 @@ public enum SupportText: String, LocalizationKey {
     case privacyBody = "support.privacy.body"
     case licences = "support.licences"
     case licencesTitle = "support.licences.title"
+    /// ADR 0006: "<app name>: GPL-3.0-or-later", the app's own licence row.
+    case licencesApp = "support.licences.app"
     case licencesData = "support.licences.data"
     case licencesSparkle = "support.licences.sparkle"
     case licencesUnavailable = "support.licences.unavailable"
@@ -62,6 +64,7 @@ public enum SupportControl: String, AccessibleControl {
     case importSettings
     case resetAll
     case licences
+    case appLicence
     case licencesClose
     case sponsorsLink
 }
