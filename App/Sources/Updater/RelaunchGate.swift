@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// The automatic relaunch rule (PLT-R1105, PRD-R50): a downloaded update installs at quit, or earlier only after
-// 60 s without a key press while secure input is off, so no update ever installs in the middle of a word.
-
-import RealtimeSupport
+// The automatic relaunch rule (PLT-R1105, PRD-R50): a downloaded update installs at quit, or earlier only when
+// no key was pressed for 60 s and secure input is off, so no update ever installs in the middle of a word.
+//
+// The rule is evaluated once, at the moment Sparkle offers the immediate install. It never waits: in Sparkle
+// 2.10.1, taking over `updater(_:willInstallUpdateOnQuit:immediateInstallationBlock:)` stalls the whole update
+// cycle until the handler runs (no manual check, no scheduled check, no critical-update window), so holding the
+// handler while the keyboard is busy would freeze the updater for the rest of the session.
 
 /// Keyboard state the rule reads, supplied by the composition root.
 struct KeyboardIdleState: Sendable, Hashable {
@@ -12,70 +15,22 @@ struct KeyboardIdleState: Sendable, Hashable {
     var secureInputOn: Bool
 }
 
-/// Holds Sparkle's immediate-install handler until the keyboard has been idle long enough. One-shot timers only,
-/// at most one pending, never faster than once a second (PLT-R803).
-@MainActor
-final class RelaunchGate {
+/// Decides whether the updater takes Sparkle's immediate install now, or leaves the update to install at quit.
+enum RelaunchGate {
     enum Decision: Sendable, Hashable {
+        /// Install and relaunch right away: the keyboard is idle and the update is an ordinary one.
         case installNow
-        case recheck(after: Duration)
+        /// Hand the update back to Sparkle, which installs it at quit and keeps its scheduler running.
+        case installOnQuit
     }
 
-    nonisolated static let requiredIdle: Duration = .seconds(60)
-    /// Secure input usually ends when a password field closes; checking every 30 s is cheap and soon enough.
-    nonisolated static let secureInputRecheck: Duration = .seconds(30)
-    nonisolated static let minimumRecheck: Duration = .seconds(1)
-    nonisolated static let leeway: Duration = .seconds(1)
+    static let requiredIdle: Duration = .seconds(60)
 
-    private let idleState: @MainActor () -> KeyboardIdleState
-    private let scheduler: any TimerScheduler
-    private var pendingInstall: (() -> Void)?
-    private var timer: (any ScheduledTimer)?
-
-    /// `scheduler` must deliver on the main queue (production: `DispatchTimerScheduler(queue: .main)`).
-    init(idleState: @escaping @MainActor () -> KeyboardIdleState, scheduler: any TimerScheduler) {
-        self.idleState = idleState
-        self.scheduler = scheduler
-    }
-
-    var isArmed: Bool { pendingInstall != nil }
-
-    /// Takes Sparkle's `immediateInstallHandler`. A second call (Sparkle may offer the handler again) replaces it.
-    func arm(_ install: @escaping () -> Void) {
-        pendingInstall = install
-        evaluate()
-    }
-
-    func disarm() {
-        pendingInstall = nil
-        cancelTimer()
-    }
-
-    /// The pure rule. A NaN idle time counts as "a key was just pressed".
-    nonisolated static func decision(for state: KeyboardIdleState) -> Decision {
-        if state.secureInputOn { return .recheck(after: secureInputRecheck) }
+    /// The pure rule. A NaN or negative idle time counts as "a key was just pressed". Critical updates are always
+    /// handed back, because Sparkle shows their window immediately only when it keeps the update (PRD-R54).
+    static func decision(for state: KeyboardIdleState, isCritical: Bool) -> Decision {
+        guard !isCritical, !state.secureInputOn else { return .installOnQuit }
         let idle = state.secondsSinceLastKey.isNaN ? 0 : max(state.secondsSinceLastKey, 0)
-        let required = Double(requiredIdle.components.seconds)
-        guard idle < required else { return .installNow }
-        return .recheck(after: max(.seconds(required - idle), minimumRecheck))
-    }
-
-    private func evaluate() {
-        cancelTimer()
-        guard let install = pendingInstall else { return }
-        switch Self.decision(for: idleState()) {
-        case .installNow:
-            pendingInstall = nil
-            install()
-        case .recheck(let delay):
-            timer = scheduler.schedule(after: delay, leeway: Self.leeway) { [weak self] in
-                MainActor.assumeIsolated { self?.evaluate() }
-            }
-        }
-    }
-
-    private func cancelTimer() {
-        timer?.cancel()
-        timer = nil
+        return idle >= Double(requiredIdle.components.seconds) ? .installNow : .installOnQuit
     }
 }

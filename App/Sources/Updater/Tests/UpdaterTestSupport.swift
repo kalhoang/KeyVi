@@ -12,6 +12,7 @@ import RealtimeSupport
 import ShellCore
 import Sparkle
 import TestSupport
+import Testing
 
 /// Resources compiled into this test bundle by project.yml: the shipped Updates catalog (as `vi.lproj` and
 /// `en.lproj` tables) and the site's `routes.mjs`. Tests never open repository files at run time: `xctest` does not
@@ -69,6 +70,17 @@ enum UpdaterFixtures {
         return info
     }
 
+    /// A real `SPUUserUpdateState`, only to pass to `updater(_:userDidMake:forUpdate:state:)`.
+    static func userUpdateState() throws -> SPUUserUpdateState {
+        let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+        archiver.setClassName(NSStringFromClass(SPUUserUpdateState.self), for: UserUpdateStateArchive.self)
+        archiver.encode(UserUpdateStateArchive(), forKey: NSKeyedArchiveRootObjectKey)
+        archiver.finishEncoding()
+        let state = try NSKeyedUnarchiver.unarchivedObject(
+            ofClass: SPUUserUpdateState.self, from: archiver.encodedData)
+        return try #require(state)
+    }
+
     /// A real, never started `SPUUpdater`, only to pass to the delegate methods.
     @MainActor
     static func unstartedUpdater() -> SPUUpdater {
@@ -79,6 +91,16 @@ enum UpdaterFixtures {
     }
 }
 
+/// Stands in for `SPUUserUpdateState` in a keyed archive: Sparkle offers no public initializer, so the fixture
+/// decodes a real instance (stage 0, not user initiated) from an archive that names Sparkle's class.
+@objc(UpdaterTestsUserUpdateStateArchive)
+private final class UserUpdateStateArchive: NSObject, NSSecureCoding {
+    static let supportsSecureCoding = true
+    override init() {}
+    init?(coder: NSCoder) {}
+    func encode(with coder: NSCoder) {}
+}
+
 /// Records what the controller asks of Sparkle.
 @MainActor
 final class FakeUpdateDriver: UpdateDriving {
@@ -86,9 +108,17 @@ final class FakeUpdateDriver: UpdateDriving {
     var automaticallyChecksForUpdates = true {
         didSet { checkWrites += 1 }
     }
-    var automaticallyDownloadsUpdates = true {
-        didSet { downloadWrites += 1 }
+    /// Sparkle's setter is a silent no-op while the bundle disallows automatic updates (`SUAllowsAutomaticUpdates`
+    /// off); `ignoresDownloadWrites` reproduces that.
+    var automaticallyDownloadsUpdates: Bool {
+        get { storedDownloads }
+        set {
+            downloadWrites += 1
+            if !ignoresDownloadWrites { storedDownloads = newValue }
+        }
     }
+    var ignoresDownloadWrites = false
+    private var storedDownloads = true
     var sendsSystemProfile = true
     var startError: NSError?
     private(set) var startCount = 0
@@ -107,16 +137,25 @@ final class FakeUpdateDriver: UpdateDriving {
 
     /// What Sparkle's update window does when the user flips its "automatically download" checkbox.
     func simulateWindowCheckbox(automaticallyDownloads: Bool) {
-        automaticallyDownloadsUpdates = automaticallyDownloads
+        storedDownloads = automaticallyDownloads
+    }
+
+    /// What Sparkle reads back when automatic updates are disallowed: always false, whatever was written.
+    func disallowAutomaticUpdates() {
+        ignoresDownloadWrites = true
+        storedDownloads = false
     }
 }
 
 @MainActor
 final class FakeFailurePresenter: UpdateFailurePresenting {
     var choice: UpdateFailureChoice = .close
+    /// Runs when the alert would appear, so a test can check what had already happened by then.
+    var onPresent: (@MainActor () -> Void)?
     private(set) var presented: [UpdateFailureContent] = []
 
     func present(_ content: UpdateFailureContent) -> UpdateFailureChoice {
+        onPresent?()
         presented.append(content)
         return choice
     }
@@ -142,11 +181,10 @@ final class IdleSimulator {
     }
 }
 
-/// A controller wired to fakes: manual time, recorded logs, a fake Sparkle and a fake alert.
+/// A controller wired to fakes: a manual main queue, recorded logs, a fake Sparkle and a fake alert.
 @MainActor
 final class UpdaterHarness {
     let clock = ManualClock()
-    let scheduler: ManualScheduler
     let logger = RecordingLogger()
     let driver = FakeUpdateDriver()
     let presenter = FakeFailurePresenter()
@@ -156,13 +194,15 @@ final class UpdaterHarness {
     private(set) var changes: [UpdatePreferenceChange] = []
     private(set) var factoryCalls = 0
     private(set) var reportError: UpdaterErrorHandler?
+    /// Work handed to `onNextMainTurn`, run by `runMainTurn()` in order.
+    private(set) var mainTurns: [@MainActor () -> Void] = []
 
     init(info: [String: Any] = UpdaterFixtures.info(), language: InterfaceLanguage = .vietnamese) {
-        scheduler = ManualScheduler(clock: clock)
         idle = IdleSimulator(clock: clock)
         let localizer = TestResources.localizer(language)
         let dependencies = UpdaterDependencies(
-            info: info, scheduler: scheduler, logger: logger, localizer: { localizer }, presenter: presenter,
+            info: info, onNextMainTurn: { [unowned self] in mainTurns.append($0) }, logger: logger,
+            localizer: { localizer }, presenter: presenter,
             openURL: { [unowned self] in openedURLs.append($0) },
             makeDriver: { [unowned self] _, onError in
                 factoryCalls += 1
@@ -184,6 +224,14 @@ final class UpdaterHarness {
         }
     }
 
-    func advance(seconds: Int) { scheduler.advance(by: .seconds(seconds)) }
+    /// Lets virtual time pass for the keyboard idle state; the controller holds no timers.
+    func advance(seconds: Int) { clock.advance(byMicroseconds: UInt64(seconds) * 1_000_000) }
+
+    /// Runs the work queued for the next main-queue turn, as the main queue would.
+    func runMainTurn() {
+        let turns = mainTurns
+        mainTurns = []
+        for work in turns { work() }
+    }
 }
 #endif

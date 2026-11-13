@@ -11,7 +11,6 @@
 import AppKit
 import AppModel
 import Diagnostics
-import RealtimeSupport
 import ShellCore
 import Sparkle
 
@@ -20,8 +19,9 @@ import Sparkle
 struct UpdaterDependencies {
     /// The app's Info.plist: brand keys, and the Sparkle keys checked before start.
     var info: [String: Any]
-    /// Must deliver on the main queue (relaunch gate, retry after a failure).
-    var scheduler: any TimerScheduler
+    /// Runs work on a later turn of the main queue, after blocks already queued there (production:
+    /// `DispatchQueue.main.async`). Sparkle ends a failed session on such a turn once it is acknowledged.
+    var onNextMainTurn: @MainActor (_ work: @escaping @MainActor () -> Void) -> Void
     var logger: (any DiagnosticsLogging)?
     /// The interface language of the moment (D18): the update-failed alert follows it, not the macOS language.
     var localizer: @MainActor () -> Localizer
@@ -34,25 +34,29 @@ struct UpdaterDependencies {
     ) -> UpdaterDependencies {
         let fallback = Localizer(language: .vietnamese, appBundle: bundle)
         return UpdaterDependencies(
-            info: bundle.infoDictionary ?? [:], scheduler: DispatchTimerScheduler(queue: .main), logger: logger,
+            info: bundle.infoDictionary ?? [:], onNextMainTurn: Self.mainQueueAsync, logger: logger,
             localizer: { language?.localizer ?? fallback }, presenter: AlertUpdateFailurePresenter(),
             openURL: { _ = NSWorkspace.shared.open($0) }, makeDriver: SparkleDriver.factory(bundle: bundle))
+    }
+
+    private static func mainQueueAsync(_ work: @escaping @MainActor () -> Void) {
+        DispatchQueue.main.async { MainActor.assumeIsolated { work() } }
     }
 }
 
 @MainActor
 final class UpdaterController: NSObject, UpdaterControlling {
-    /// Delay between acknowledging a failed session and the retry check, so Sparkle has ended the session.
-    static let retryDelay: Duration = .seconds(1)
-
     /// User changes of D19-D21 made through this controller; the composition root persists them with
     /// `change.apply(to:)` inside `SettingsStore.updateSettings` (PRD-R6: only the changed key becomes explicit).
     var onPreferenceChange: (@MainActor (UpdatePreferenceChange) -> Void)?
 
     private let dependencies: UpdaterDependencies
     private let brand: Brand
-    private let relaunchGate: RelaunchGate
+    private let idleState: @MainActor () -> KeyboardIdleState
     private var preferences = UpdatePreferences.shipped
+    /// What Sparkle reported right after the last push. A later read-back that differs is a choice the user made
+    /// in Sparkle's own window; one that never moved (a setter Sparkle ignored) is not (PRD-R6).
+    private var sparkleBaseline: SparkleChoices?
     private var driver: (any UpdateDriving)?
     private var startAttempted = false
 
@@ -64,12 +68,10 @@ final class UpdaterController: NSObject, UpdaterControlling {
     ) {
         self.dependencies = dependencies
         brand = Brand.from(info: dependencies.info)
-        relaunchGate = RelaunchGate(
-            idleState: {
-                let state = idleState()
-                return KeyboardIdleState(
-                    secondsSinceLastKey: state.secondsSinceLastKey, secureInputOn: state.secureInputOn)
-            }, scheduler: dependencies.scheduler)
+        self.idleState = {
+            let state = idleState()
+            return KeyboardIdleState(secondsSinceLastKey: state.secondsSinceLastKey, secureInputOn: state.secureInputOn)
+        }
         super.init()
     }
 
@@ -101,8 +103,6 @@ final class UpdaterController: NSObject, UpdaterControlling {
     func apply(_ next: UpdatePreferences) {
         let previous = preferences
         preferences = next
-        // Turning automatic installation off also cancels a pending automatic relaunch (PLT-R1105).
-        if !next.automaticallyInstall { relaunchGate.disarm() }
         guard let driver else { return }
         push(next, to: driver)
         // Sparkle's documented call after a channel change, so the new channel is used without waiting a day.
@@ -152,28 +152,42 @@ final class UpdaterController: NSObject, UpdaterControlling {
         if driver.automaticallyDownloadsUpdates != preferences.automaticallyInstall {
             driver.automaticallyDownloadsUpdates = preferences.automaticallyInstall
         }
+        sparkleBaseline = SparkleChoices(of: driver)
     }
 
     /// Sparkle's update window has an "automatically download and install" checkbox that writes Sparkle's own
-    /// defaults. Adopting it at the end of a session keeps settings.json the single source (PLT-R1001).
+    /// defaults. Adopting it at the end of a session keeps settings.json the single source (PLT-R1001). Only a
+    /// value that moved since the last push counts: Sparkle silently ignores `automaticallyDownloadsUpdates` when
+    /// the bundle disallows automatic updates, and that must never turn into an explicit D20 (PRD-R6).
     private func adoptSparkleChoices() {
-        guard let driver else { return }
-        userChanged(.automaticallyCheck(driver.automaticallyChecksForUpdates))
-        userChanged(.automaticallyInstall(driver.automaticallyDownloadsUpdates))
+        guard let driver, let baseline = sparkleBaseline else { return }
+        let current = SparkleChoices(of: driver)
+        if current.automaticallyCheck != baseline.automaticallyCheck {
+            userChanged(.automaticallyCheck(current.automaticallyCheck))
+        }
+        if current.automaticallyDownload != baseline.automaticallyDownload {
+            userChanged(.automaticallyInstall(current.automaticallyDownload))
+        }
+        sparkleBaseline = SparkleChoices(of: driver)
     }
 
     /// PRD-R43 update-failed alert. The failure itself is logged by `updater(_:didAbortWithError:)`.
+    ///
+    /// Sparkle closes its "Checking for updates" and progress windows only when the session ends, which happens on
+    /// the main-queue turn after the acknowledgement. So the session is acknowledged first and the alert is shown
+    /// on a later turn: it never sits on top of a frozen progress window, and "Thử lại" can start a new check.
     private func presentFailure(_ error: NSError, acknowledgement: @escaping () -> Void) {
+        acknowledgement()
+        dependencies.onNextMainTurn { [weak self] in self?.showFailureAlert() }
+    }
+
+    private func showFailureAlert() {
         let content = UpdateFailureContent(
             localizer: dependencies.localizer(), appName: brand.displayName, version: brand.version,
             siteHost: brand.siteHost)
-        let choice = dependencies.presenter.present(content)
-        acknowledgement()
-        switch choice {
+        switch dependencies.presenter.present(content) {
         case .retry:
-            _ = dependencies.scheduler.schedule(after: Self.retryDelay, leeway: .milliseconds(100)) { [weak self] in
-                MainActor.assumeIsolated { self?.checkForUpdates() }
-            }
+            checkForUpdates()
         case .download:
             dependencies.openURL(content.downloadURL)
         case .close:
@@ -184,10 +198,17 @@ final class UpdaterController: NSObject, UpdaterControlling {
     private func log(_ event: LogEvent.UpdateEvent, level: LogLevel) {
         dependencies.logger?.log(.update(event), level: level)
     }
+}
 
-    private func armRelaunch(_ install: @escaping () -> Void) {
-        log(.installScheduledOnQuit, level: .info)
-        relaunchGate.arm(install)
+/// The two Sparkle settings the user can flip in Sparkle's own windows.
+private struct SparkleChoices: Equatable {
+    var automaticallyCheck: Bool
+    var automaticallyDownload: Bool
+
+    @MainActor
+    init(of driver: any UpdateDriving) {
+        automaticallyCheck = driver.automaticallyChecksForUpdates
+        automaticallyDownload = driver.automaticallyDownloadsUpdates
     }
 }
 
@@ -201,15 +222,24 @@ extension UpdaterController: SPUUpdaterDelegate {
         UpdateChannelPolicy.allowedChannels(for: preferences.channel)
     }
 
-    /// Install on quit by default; call `immediateInstallHandler` only after 60 s without a key press and with
-    /// secure input off (PLT-R1105). Returning true takes over the immediate install; Sparkle still installs at
-    /// quit if the keyboard never goes idle.
+    /// Install on quit by default (PLT-R1105). The handler is taken, and run at once, only when the keyboard has
+    /// been idle for 60 s with secure input off and the update is not critical. Otherwise this returns false:
+    /// returning true stalls Sparkle's update cycle until the handler runs, which would disable "Check for
+    /// updates", stop the 24 h schedule and hide critical updates (PRD-R54) while the keyboard stays busy.
     func updater(
         _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
         immediateInstallationBlock immediateInstallHandler: @escaping () -> Void
     ) -> Bool {
-        armRelaunch(immediateInstallHandler)
-        return true
+        // The installer is prepared for install at quit in both cases; the typed log has no separate event for
+        // the early relaunch.
+        log(.installScheduledOnQuit, level: .info)
+        switch RelaunchGate.decision(for: idleState(), isCritical: item.isCriticalUpdate) {
+        case .installNow:
+            immediateInstallHandler()
+            return true
+        case .installOnQuit:
+            return false
+        }
     }
 
     func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {

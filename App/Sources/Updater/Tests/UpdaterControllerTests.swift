@@ -113,6 +113,33 @@ import Testing
         harness.delegate.updater?(UpdaterFixtures.unstartedUpdater(), didFinishUpdateCycleFor: .updates, error: nil)
         #expect(!harness.controller.automaticallyDownloadsUpdates)
         #expect(harness.changes == [.automaticallyInstall(false)])
+        harness.delegate.updater?(UpdaterFixtures.unstartedUpdater(), didFinishUpdateCycleFor: .updates, error: nil)
+        #expect(harness.changes == [.automaticallyInstall(false)], "an adopted choice is reported once")
+    }
+
+    @Test("PRD-R6: a value Sparkle ignored is never adopted as a user choice, cycle after cycle")
+    func ignoredSparkleWriteIsNotAdopted() throws {
+        let harness = UpdaterHarness()
+        harness.driver.disallowAutomaticUpdates()
+        harness.controller.start()
+        #expect(harness.driver.downloadWrites == 1, "the shipped D20 was pushed and Sparkle ignored it")
+        for _ in 0..<3 {
+            harness.delegate.updater?(
+                UpdaterFixtures.unstartedUpdater(), didFinishUpdateCycleFor: .updatesInBackground, error: nil)
+        }
+        #expect(harness.changes.isEmpty)
+        #expect(harness.controller.automaticallyDownloadsUpdates)
+    }
+
+    @Test("A choice made in Sparkle's update window is adopted when the user answers it")
+    func adoptsChoiceOnUserAnswer() throws {
+        let harness = UpdaterHarness()
+        harness.controller.start()
+        harness.driver.automaticallyChecksForUpdates = false
+        harness.delegate.updater?(
+            UpdaterFixtures.unstartedUpdater(), userDidMake: .dismiss, forUpdate: SUAppcastItem.empty(),
+            state: try UpdaterFixtures.userUpdateState())
+        #expect(harness.changes == [.automaticallyCheck(false)])
     }
 }
 
@@ -216,53 +243,93 @@ import Testing
         #expect(parameters?.isEmpty == true)
     }
 
-    @Test("PLT-R1105: install on quit is taken over and runs only after 60 s idle with secure input off")
-    func installOnQuitWaitsForIdle() throws {
-        let harness = UpdaterHarness()
+    /// Offers Sparkle's immediate install to the delegate; returns whether it took over and how often it installed.
+    func offerInstall(_ harness: UpdaterHarness) -> (tookOver: Bool?, installs: Int) {
         var installs = 0
-        harness.idle.pressKey()
         let tookOver = harness.delegate.updater?(
             UpdaterFixtures.unstartedUpdater(), willInstallUpdateOnQuit: SUAppcastItem.empty(),
             immediateInstallationBlock: { installs += 1 })
-        #expect(tookOver == true)
-        #expect(harness.updateEvents == [.installScheduledOnQuit])
-        harness.advance(seconds: 59)
-        #expect(installs == 0)
-        harness.advance(seconds: 1)
-        #expect(installs == 1)
-        harness.advance(seconds: 600)
-        #expect(installs == 1)
+        return (tookOver, installs)
     }
 
-    @Test("PLT-R1105: turning automatic installation off cancels a pending automatic relaunch")
-    func disablingAutomaticInstallCancelsRelaunch() throws {
+    @Test("PLT-R1105: idle for 60 s with secure input off: the update installs and relaunches at once")
+    func idleKeyboardInstallsNow() throws {
         let harness = UpdaterHarness()
-        var installs = 0
         harness.idle.pressKey()
-        _ = harness.delegate.updater?(
-            UpdaterFixtures.unstartedUpdater(), willInstallUpdateOnQuit: SUAppcastItem.empty(),
-            immediateInstallationBlock: { installs += 1 })
-        harness.controller.automaticallyDownloadsUpdates = false
-        harness.advance(seconds: 600)
-        #expect(installs == 0)
-        #expect(harness.scheduler.pendingCount == 0)
+        harness.advance(seconds: 60)
+        let offer = offerInstall(harness)
+        #expect(offer.tookOver == true)
+        #expect(offer.installs == 1)
+        #expect(harness.updateEvents == [.installScheduledOnQuit])
+    }
+
+    @Test("PLT-R1105: no key since launch counts as idle")
+    func noKeySinceLaunchInstallsNow() throws {
+        let offer = offerInstall(UpdaterHarness())
+        #expect(offer.tookOver == true && offer.installs == 1)
+    }
+
+    @Test("PLT-R1105: a key pressed within 60 s leaves the update to Sparkle, which installs it at quit")
+    func recentKeyInstallsAtQuit() throws {
+        let harness = UpdaterHarness()
+        harness.idle.pressKey()
+        harness.advance(seconds: 59)
+        let offer = offerInstall(harness)
+        #expect(offer.tookOver == false, "returning true would stall Sparkle's update cycle")
+        #expect(offer.installs == 0)
+        #expect(harness.updateEvents == [.installScheduledOnQuit])
+    }
+
+    @Test("PLT-R1105: secure input on leaves the update to Sparkle, however long the keyboard was idle")
+    func secureInputInstallsAtQuit() throws {
+        let harness = UpdaterHarness()
+        harness.idle.secureInputOn = true
+        let offer = offerInstall(harness)
+        #expect(offer.tookOver == false && offer.installs == 0)
+    }
+
+    @Test("PLT-R1105, PRD-R54: while the update waits for quit, checks stay available and nothing is pending")
+    func updaterStaysUsableWhileWaitingForQuit() throws {
+        let harness = UpdaterHarness()
+        harness.controller.start()
+        harness.idle.secureInputOn = true
+        _ = offerInstall(harness)
+        #expect(harness.controller.canCheckForUpdates)
+        harness.controller.checkForUpdates()
+        #expect(harness.driver.checkCount == 1)
+        #expect(harness.mainTurns.isEmpty)
     }
 }
 
 @MainActor
 @Suite struct UpdaterFailureTests {
-    func failSession(_ harness: UpdaterHarness) throws -> Int {
+    /// Reports a Sparkle error and runs the next main-queue turn; returns the acknowledgements seen when the alert
+    /// appeared.
+    func failSession(_ harness: UpdaterHarness) throws -> Int? {
         harness.controller.start()
         let report = try #require(harness.reportError)
         var acknowledgements = 0
+        var acknowledgementsAtPresent: Int?
+        harness.presenter.onPresent = { acknowledgementsAtPresent = acknowledgements }
         report(NSError(domain: "SUSparkleErrorDomain", code: 2001)) { acknowledgements += 1 }
-        return acknowledgements
+        #expect(acknowledgements == 1, "Sparkle's session is acknowledged at once")
+        #expect(harness.presenter.presented.isEmpty, "the alert waits for the next main-queue turn")
+        harness.runMainTurn()
+        #expect(acknowledgements == 1)
+        return acknowledgementsAtPresent
     }
 
-    @Test("PRD-R43: Sparkle's error is shown with our copy in the interface language, then acknowledged")
+    @Test("PRD-R43: Sparkle's session is acknowledged before the alert, so its progress window is closed first")
+    func acknowledgesBeforePresenting() throws {
+        let harness = UpdaterHarness()
+        #expect(try failSession(harness) == 1)
+        #expect(harness.presenter.presented.count == 1)
+    }
+
+    @Test("PRD-R43: Sparkle's error is shown with our copy in the interface language")
     func showsLocalizedFailure() throws {
         let harness = UpdaterHarness(language: .english)
-        #expect(try failSession(harness) == 1)
+        _ = try failSession(harness)
         let content = try #require(harness.presenter.presented.first)
         #expect(content.title == "The update could not be downloaded.")
         #expect(content.message.contains(UpdaterFixtures.version))
@@ -274,8 +341,6 @@ import Testing
         let harness = UpdaterHarness()
         harness.presenter.choice = .retry
         _ = try failSession(harness)
-        #expect(harness.driver.checkCount == 0)
-        harness.advance(seconds: 1)
         #expect(harness.driver.checkCount == 1)
         #expect(harness.openedURLs.isEmpty)
     }
@@ -286,7 +351,6 @@ import Testing
         harness.presenter.choice = .download
         _ = try failSession(harness)
         #expect(harness.openedURLs == [URL(string: "https://\(UpdaterFixtures.siteHost)/tai-ve/")!])
-        harness.advance(seconds: 5)
         #expect(harness.driver.checkCount == 0)
     }
 
@@ -294,8 +358,8 @@ import Testing
     func closeDoesNothing() throws {
         let harness = UpdaterHarness()
         _ = try failSession(harness)
-        harness.advance(seconds: 5)
         #expect(harness.driver.checkCount == 0 && harness.openedURLs.isEmpty)
+        #expect(harness.mainTurns.isEmpty)
     }
 }
 #endif
