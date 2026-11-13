@@ -162,6 +162,39 @@ private let targets = HarnessTargets(
         #expect(sleeper.requests.all.last == ScenarioSetupRouter.focusSettleNanoseconds)
     }
 
+    /// An app that stops answering the hooks (it is relaunching, or it is gone) publishes no focus either: the
+    /// wait ends at the first failed request instead of asking again until the poll budget is spent, which with the
+    /// channel's 10 s timeout per request made one focus step last minutes (review of W6-B).
+    @Test func theFocusRefreshWaitEndsWhenTheHooksStopAnswering() async throws {
+        let sleeper = RecordingSleeper()
+        let clock = ManualClock()
+        let hooks = SlowHooks(count: 7, answered: 1, clock: clock, latencyNanoseconds: 10_000_000)
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks, clock: clock)
+        try await router.perform(.init(action: .focusField, value: "testhost.native.textField"), for: makeScenario())
+        #expect(hooks.requestCount == 2, "the count before the focus, then one failed state request")
+        #expect(sleeper.requests.all == [ScenarioSetupRouter.focusSettleNanoseconds])
+    }
+
+    /// The limit is measured on the clock, not by adding up the polls: requests that answer slowly count against
+    /// it too, so one focus step never waits much longer than `focusRefreshWaitNanoseconds`.
+    @Test func theFocusRefreshWaitIsMeasuredOnTheClock() async throws {
+        let sleeper = RecordingSleeper()
+        let clock = ManualClock()
+        let latency = ScenarioSetupRouter.focusRefreshWaitNanoseconds / 2
+        let hooks = SlowHooks(count: 7, answered: .max, clock: clock, latencyNanoseconds: latency)
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks, clock: clock)
+        let start = clock.now().nanoseconds
+        try await router.perform(.init(action: .focusField, value: "testhost.native.textField"), for: makeScenario())
+        #expect(hooks.requestCount == 3, "the count before the focus, then two slow polls use up the limit")
+        #expect(clock.now().nanoseconds - start <= ScenarioSetupRouter.focusRefreshWaitNanoseconds + latency)
+        let poll = ScenarioSetupRouter.focusRefreshPollNanoseconds
+        #expect(sleeper.requests.all == [poll, poll, ScenarioSetupRouter.focusSettleNanoseconds])
+    }
+
     @Test func taskSleeperSuspendsAndHonoursCancellation() async throws {
         let clock = MachClock()
         let start = clock.now().nanoseconds

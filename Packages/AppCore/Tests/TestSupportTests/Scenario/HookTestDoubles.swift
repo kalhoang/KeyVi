@@ -219,3 +219,33 @@ final class FocusRefreshHooks: AppHookClient, Sendable {
         return AppHookResponse(sequence: 0, state: state)
     }
 }
+
+/// Hooks that answer the first `answered` requests with `count` and then stop answering (`AppHookError.timeout`,
+/// as `FileDropHookChannel` does after its timeout when the app is relaunching or gone). Each request first moves
+/// `clock` on by `latencyNanoseconds`, the time the channel spent waiting for the answer.
+final class SlowHooks: AppHookClient, Sendable {
+    private let base: FocusRefreshHooks
+    private let answered: Int
+    private let clock: ManualClock
+    private let latencyNanoseconds: UInt64
+    private let requests = Mutex(0)
+
+    init(count: UInt64, answered: Int, clock: ManualClock, latencyNanoseconds: UInt64) {
+        base = FocusRefreshHooks([count])
+        self.answered = answered
+        self.clock = clock
+        self.latencyNanoseconds = latencyNanoseconds
+    }
+
+    var requestCount: Int { requests.withLock { $0 } }
+
+    func send(_ command: AppHookCommand) async throws -> AppHookResponse {
+        let number = requests.withLock { number -> Int in
+            defer { number += 1 }
+            return number
+        }
+        clock.advance(byMicroseconds: latencyNanoseconds / 1_000)
+        guard number < answered else { throw AppHookError.timeout(command: "state") }
+        return try await base.send(command)
+    }
+}

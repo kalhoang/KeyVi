@@ -52,7 +52,7 @@ extension Harness {
         let system = try live.systemActions(targets: targets)
         let setup = ScenarioSetupRouter(
             system: system, targets: targets, webDrivers: webDrivers,
-            terminal: terminal, sleeper: environment.sleeper, hooks: hooks)
+            terminal: terminal, sleeper: environment.sleeper, hooks: hooks, clock: environment.clock)
         let readback = ReadbackRouter(
             targets: targets, ax: live.axReader(), webDrivers: webDrivers,
             terminal: TerminalCaptureReadback(fileSystem: environment.fileSystem, captureFile: captureFile),
