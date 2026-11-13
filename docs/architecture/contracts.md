@@ -1695,13 +1695,24 @@ public struct HealthEvent: Sendable, Hashable, Codable {
 /// file so events from before a crash remain explainable (PRD-R46). Not used on the tap thread.
 /// Implemented in the skeleton (docs/decisions/0313-testability-seams.md); W1-A adds the log-file mirror.
 public final class HealthEventLog: Sendable {
+    /// The report lists the last 50 health events (PLT-R1202).
+    public static let reportedEventCount = 50
+
     private struct Ring {
         var events: [HealthEvent] = []
         var next = 0
     }
 
+    /// The secure-input episode in progress (PLT-R1206).
+    private struct Episode {
+        var holder: BundleKey?
+        var holderKind: SecureInputHolder.Kind?
+        var start: Date
+    }
+
     private let capacity: Int
     private let ring = Mutex(Ring())
+    private let episode = Mutex<Episode?>(nil)
     private let mirror: (any DiagnosticsLogging)?
 
     /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
@@ -1724,6 +1735,30 @@ public final class HealthEventLog: Sendable {
         mirror?.log(.health(event), level: event.kind.logLevel)
     }
 
+    /// Secure-input episodes (PLT-R1206): `active` with the likely holder starts an episode; the end of it, or a
+    /// different holder, records one `secureInputEpisode` event with the holder's bundle ID and kind and the
+    /// duration in milliseconds (never negative when the wall clock was set back). The holder's name is never
+    /// recorded (PLT-R901).
+    public func noteSecureInput(_ holder: SecureInputHolder?, active: Bool, at now: Date) {
+        let ended: Episode? = episode.withLock { current in
+            let next = active ? Episode(holder: holder?.bundle, holderKind: holder?.kind, start: now) : nil
+            if let running = current, let next, running.holder == next.holder, running.holderKind == next.holderKind {
+                return nil
+            }
+            let previous = current
+            current = next
+            return previous
+        }
+        guard let ended else { return }
+        let milliseconds = max(0, now.timeIntervalSince(ended.start)) * 1_000
+        record(
+            HealthEvent(
+                kind: .secureInputEpisode, at: now,
+                detail: .secureInput(
+                    holder: ended.holder, holderKind: ended.holderKind,
+                    durationMilliseconds: UInt64(milliseconds.rounded()))))
+    }
+
     /// Newest last, at most `limit` events.
     public func recent(limit: Int) -> [HealthEvent] {
         ring.withLock { ring in
@@ -1740,6 +1775,72 @@ public final class HealthEventLog: Sendable {
         return ring.withLock { ring in
             ring.events.reduce(0) { $0 + ($1.kind == kind && $1.at >= start && $1.at <= now ? 1 : 0) }
         }
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/Diagnostics/HealthEventRestore.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Health events of earlier sessions (PRD-R46): the log keeps every event as a `health.<kind>` record with the
+// metadata fields of `HealthEvent.logFields`, so a crash or a tap timeout from before this launch can be read
+// back and listed in the report's last 50 events (PLT-R1202). Metadata only (PLT-R1206).
+
+internal import AppModel
+internal import Foundation
+
+extension HealthEvent {
+    static let recordCodePrefix = "health."
+
+    /// The event a `health.<kind>` log record was written from, or nil for other records, unknown kinds and
+    /// records without a readable time. A detail field that does not parse leaves the detail empty.
+    public init?(record: LogRecord) {
+        guard record.code.hasPrefix(Self.recordCodePrefix),
+            let kind = Kind(rawValue: String(record.code.dropFirst(Self.recordCodePrefix.count)))
+        else { return nil }
+        let fields = record.fields.compactMapValues(\.stringValue)
+        guard let at = fields["eventAt"].flatMap({ try? Date($0, strategy: .iso8601) }) else { return nil }
+        self.init(
+            kind: kind, at: at, bundle: fields["bundle"].flatMap(BundleKey.init(rawValue:)),
+            rule: fields["rule"].flatMap(RuleID.init(rawValue:)), detail: Self.detail(fields))
+    }
+
+    /// The inverse of the detail part of `detailPairs`.
+    private static func detail(_ fields: [String: String]) -> Detail? {
+        if let count = fields["count"] { return Int(count).map(Detail.count) }
+        if let duration = fields["durationUs"] { return UInt64(duration).map(Detail.durationMicroseconds) }
+        if let permission = fields["permission"] {
+            guard let kind = PermissionKind(rawValue: permission),
+                let from = fields["from"].flatMap(PermissionState.init(rawValue:)),
+                let to = fields["to"].flatMap(PermissionState.init(rawValue:))
+            else { return nil }
+            return .permission(kind, from: from, to: to)
+        }
+        if let from = fields["fromStrategy"] {
+            guard let from = InjectionStrategy(rawValue: from),
+                let to = fields["toStrategy"].flatMap(InjectionStrategy.init(rawValue:))
+            else { return nil }
+            return .fallback(from: from, to: to)
+        }
+        if let duration = fields["durationMs"] {
+            guard let milliseconds = UInt64(duration) else { return nil }
+            return .secureInput(
+                holder: fields["holder"].flatMap(BundleKey.init(rawValue:)),
+                holderKind: fields["holderKind"].flatMap(SecureInputHolder.Kind.init(rawValue:)),
+                durationMilliseconds: milliseconds)
+        }
+        return fields["failOpen"].flatMap(FailOpenReason.init(rawValue:)).map(Detail.failOpen)
+    }
+
+    /// The report's health events (PLT-R1202 "last 50 health events", PRD-R46): earlier sessions' events read
+    /// from the log, then this session's from memory, newest last, at most `limit`. An earlier event that is
+    /// also among the current ones (the wall clock was set back) is listed once.
+    public static func reportList(earlier: [HealthEvent], current: [HealthEvent], limit: Int) -> [HealthEvent] {
+        let currentLines = Set(current.map(\.summaryLine))
+        let previous = earlier.filter { !currentLines.contains($0.summaryLine) }
+        return Array((previous + current).suffix(max(0, limit)))
     }
 }
 ```
@@ -1989,6 +2090,7 @@ public final class TapLogRing: Sendable {
 
 public import AppModel
 public import Foundation
+internal import Synchronization
 
 /// PLT-R903: `~/Library/Logs/<folder>/`, dir 0700, files 0600, JSON lines, 5 files of 1 MB, 14 days.
 public struct LogStorePolicy: Sendable, Hashable {
@@ -2038,12 +2140,33 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
     private let clock: any WallClock
     private let mirror: UnifiedLogMirror
     private let queue: DispatchQueue
+    /// When this logger was created, the start of this session's records.
+    public let sessionStart: Date
+    private let earlierHealth = Mutex<[HealthEvent]?>(nil)
 
     public init(policy: LogStorePolicy, fileSystem: any FileSystem, clock: any WallClock, subsystem: String) {
         files = LogFileStore(policy: policy, fileSystem: fileSystem)
         self.clock = clock
         mirror = UnifiedLogMirror(subsystem: subsystem)
         queue = DispatchQueue(label: subsystem + ".diagnostics-log", qos: .utility)
+        sessionStart = clock.now()
+    }
+
+    /// Health events of earlier sessions from the log files, newest last, at most `limit` (PRD-R46): a crash or
+    /// a tap timeout from before this launch still reaches the next report. The files are read once, on the
+    /// first call, after the records logged so far are written; later calls return the same events. Reads
+    /// files: never call it on the tap thread or from inside a logging call.
+    public func earlierSessionHealthEvents(limit: Int) -> [HealthEvent] {
+        let events = earlierHealth.withLock { cached in
+            if let cached { return cached }
+            let cutoff = sessionStart
+            let read = queue.sync { [files] in
+                files.healthEvents(before: cutoff, limit: HealthEventLog.reportedEventCount)
+            }
+            cached = read
+            return read
+        }
+        return Array(events.suffix(max(0, limit)))
     }
 
     /// Never blocks: the timestamp is taken here, rendering and writing happen on the logger's serial
@@ -9206,6 +9329,16 @@ Bug report paths (PRD-R47): GitHub uses `Brand.repositoryURL` (nil hides the but
 `MailDraft` that the App sends with `NSSharingService(named: .composeEmail)` including the JSON report as an
 attachment, falling back to `mailtoURL` (subject and body only) when no mail service exists.
 
+Report flows (W3-B): the menu's `Báo lỗi...`, the status line's `Báo lỗi...` and the safe-mode report choice
+open the bug report sheet (`DiagnosticsWindowController.openBugReport(preselected:)`); `Báo lỗi với ứng dụng
+này...` opens the misbehaves panel (PLT-R1205). The picker lists `RecentReportApps.choices` (the Apps pane's
+apps, most recent first, without this app, at most 20) and preselects the last frontmost app
+(`RecentReportApps.preselection`). The sheet reads the host context once when it opens
+(`DiagnosticsServices.reportSession`), so later choices never report the sheet's own window as the focus.
+Every preview shows exactly what its paths write (`ReportPreviewFormat`, PLT-R1204): the ADR 0501 block for
+Copy report and Open GitHub, the JSON file for Send by email and Save file. The report's health events are the
+earlier sessions' events from the log followed by this session's (`HealthEvent.reportList`, PRD-R46).
+
 <!-- include: Packages/AppCore/Sources/ShellCore/Brand.swift -->
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
@@ -10205,6 +10338,9 @@ public struct BugReportSheet: Sendable, Hashable {
     public var apps: [BugReportAppChoice]
     public private(set) var draft: BugReportDraft
     public var previewExpanded = false
+    /// Which output the preview shows (PLT-R1204); the copied block first, because "Copy report" is the
+    /// shortest path (section 12).
+    public var previewFormat: ReportPreviewFormat = .copiedBlock
     public let paths: [BugReportPath]
 
     /// `preselected` is the last frontmost app (PRD-R47 item 1); it is added to `apps` when missing.
@@ -10258,13 +10394,14 @@ public struct BugReportSheet: Sendable, Hashable {
         return override.match.bundleIds?.contains(app) == true
     }
 
-    /// PLT-R1204: the exact text shown in the preview is the plain-text rendering.
-    public func preview(_ report: DiagnosticsReport, language: InterfaceLanguage) -> String {
-        DiagnosticsRenderer.plainText(report, language: language)
-    }
+    /// PLT-R1204, PRD-R47 item 4: the preview shows exactly what the paths of `format` write.
+    public func preview(_ report: DiagnosticsReport, format: ReportPreviewFormat) -> String { format.text(report) }
+
+    /// The preview in the chosen `previewFormat`.
+    public func preview(_ report: DiagnosticsReport) -> String { preview(report, format: previewFormat) }
 
     /// The block written to the clipboard by "Copy report" and "Mở GitHub" (QA-R44), after the notice (PRD-R48).
-    public func clipboardText(_ report: DiagnosticsReport) -> String { DiagnosticsRenderer.issueBlock(report) }
+    public func clipboardText(_ report: DiagnosticsReport) -> String { ReportPreviewFormat.copiedBlock.text(report) }
 
     /// The JSON file for "Gửi qua email" and "Lưu tệp..." (PRD-R47).
     public func attachment(_ report: DiagnosticsReport) throws -> Data { try DiagnosticsRenderer.json(report) }
@@ -10338,6 +10475,224 @@ public enum DiagnosticsNavigation {
             return nil
         }
         return [.statusItem, .menu(.reportProblem), .sheet(.copyReport)]
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/ShellCore/BugReport/RecentReportApps.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Apps offered by the bug report sheet's picker (PRD-R47 item 1): the apps of the Apps pane, that is the apps the
+// user has typed in from the per-app memory, most recent first, plus apps with a compatibility override (PRD-R34).
+// Bundle IDs and display names only: nothing typed, no window titles, no paths (PLT-R1203).
+
+public import AppModel
+public import SettingsStore
+
+public enum RecentReportApps {
+    /// The picker lists at most this many apps.
+    public static let limit = 20
+    /// Display names are cut to this many characters.
+    public static let maximumNameLength = 80
+
+    /// The Apps pane's apps in its order (`AppsPaneModel.orderedBundles`), without this app (`own` is the running
+    /// bundle's identifier, compared without case as LaunchServices does) and without keys of processes that have
+    /// no bundle ID (`sha256:`), at most `limit`. `name` resolves the installed app's display name; a missing or
+    /// blank name falls back to the bundle ID.
+    public static func choices(
+        appModes: AppModesDocument, overrides: [StoredRuleOverride], excluding own: String?, limit: Int = limit,
+        name: (BundleKey) -> String?
+    ) -> [BugReportAppChoice] {
+        let bundles = AppsPaneModel.orderedBundles(appModes: appModes, overrides: overrides)
+            .filter { offerable($0, excluding: own) }
+            .prefix(max(0, limit))
+        return bundles.map { BugReportAppChoice(bundle: $0, name: displayName(name($0), fallback: $0)) }
+    }
+
+    /// The app to preselect, "the last frontmost app" (PRD-R47 item 1). From the status menu the focused app is the
+    /// app the user was typing in, because opening the menu does not activate this app. When the report starts in
+    /// one of this app's own windows (Settings, Diagnostics), the most recent other app of `recent` stands in.
+    public static func preselection(
+        focused: BundleKey?, recent: [BugReportAppChoice], excluding own: String?, name: (BundleKey) -> String?
+    ) -> BugReportAppChoice? {
+        guard let focused, offerable(focused, excluding: own) else { return recent.first }
+        return recent.first { $0.bundle == focused }
+            ?? BugReportAppChoice(bundle: focused, name: displayName(name(focused), fallback: focused))
+    }
+
+    static func offerable(_ bundle: BundleKey, excluding own: String?) -> Bool {
+        guard !bundle.isExecutableHash else { return false }
+        guard let own else { return true }
+        return bundle.rawValue.lowercased() != own.lowercased()
+    }
+
+    /// One line of at most `maximumNameLength` characters: control characters and line or paragraph separators
+    /// become spaces, runs of white space collapse, surrounding white space is trimmed.
+    static func displayName(_ raw: String?, fallback: BundleKey) -> String {
+        var scalars = String.UnicodeScalarView()
+        var lastWasSpace = true
+        for scalar in (raw ?? "").unicodeScalars {
+            let isSpace: Bool =
+                switch scalar.properties.generalCategory {
+                case .control, .lineSeparator, .paragraphSeparator, .spaceSeparator: true
+                default: false
+                }
+            if isSpace {
+                if !lastWasSpace { scalars.append(" ") }
+            } else {
+                scalars.append(scalar)
+            }
+            lastWasSpace = isSpace
+        }
+        var name = String(scalars)
+        if name.last == " " { name.removeLast() }
+        guard !name.isEmpty else { return fallback.rawValue }
+        return String(name.prefix(maximumNameLength))
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/ShellCore/BugReport/ReportPreview.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// What the report previews show (PLT-R1204, PRD-R47 item 4): byte for byte the text a path writes, never a
+// paraphrase. The Diagnostics window and the "This app misbehaves" panel copy only the block, so they show the
+// block; the bug report sheet also attaches or saves the JSON file, so its preview offers both.
+
+public import Diagnostics
+internal import Foundation
+
+public enum ReportPreviewFormat: String, Sendable, Hashable, CaseIterable {
+    /// The diagnostics block (ADR 0501) that "Copy report" and "Mở GitHub" put on the clipboard.
+    case copiedBlock
+    /// The JSON file that "Gửi qua email" attaches and "Lưu tệp..." saves (PLT-R1202 "plain text and JSON").
+    case attachedFile
+
+    /// Exactly the text the paths of this format write. The JSON is empty only when it cannot be encoded, in
+    /// which case those paths fail as well and say so.
+    public func text(_ report: DiagnosticsReport) -> String {
+        switch self {
+        case .copiedBlock: DiagnosticsRenderer.issueBlock(report)
+        case .attachedFile: (try? DiagnosticsRenderer.json(report)).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        }
+    }
+
+    /// The sheet buttons whose output this format shows.
+    public var paths: [BugReportAction] {
+        switch self {
+        case .copiedBlock: [.copyReport, .github]
+        case .attachedFile: [.email, .saveFile]
+        }
+    }
+
+    /// The segment title in the sheet's preview.
+    public var title: DiagnosticsText {
+        switch self {
+        case .copiedBlock: .previewCopied
+        case .attachedFile: .previewFile
+        }
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/ShellCore/BugReport/LatencyHistograms.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// The latency histograms of the Diagnostics window (PLT-R1201): one per 02-platform.md 8.1 metric that the report
+// carries (PLT-R801), drawn from the report's own histogram snapshots, so the window and the copied percentiles
+// always describe the same samples. Content-free: bucket bounds and counts only.
+
+public import Diagnostics
+public import Foundation
+
+/// The report's latency metrics in report order; raw values are the ADR 0501 `latency.<metric>` key segments.
+public enum LatencyMetric: String, Sendable, Hashable, CaseIterable {
+    case t1, t2, t3, echo, t5, t6
+
+    public func histogram(in metrics: MetricsSnapshot) -> HistogramSnapshot {
+        switch self {
+        case .t1: metrics.callbackDuration
+        case .t2: metrics.decideToPosted
+        case .t3: metrics.decideToPostedWithAX
+        case .echo: metrics.echoRoundTrip
+        case .t5: metrics.heldWait
+        case .t6: metrics.focusRefresh
+        }
+    }
+
+    /// Name and plain definition of the metric (02-platform.md 8.1).
+    public var title: DiagnosticsText {
+        switch self {
+        case .t1: .latencyT1
+        case .t2: .latencyT2
+        case .t3: .latencyT3
+        case .echo: .latencyEcho
+        case .t5: .latencyT5
+        case .t6: .latencyT6
+        }
+    }
+}
+
+public struct LatencyHistogram: Sendable, Hashable, Identifiable {
+    public struct Bin: Sendable, Hashable {
+        /// Every sample of the bin took at most this long; `UInt64.max` for the open-ended last bucket.
+        public var upperBoundNanoseconds: UInt64
+        public var count: UInt64
+        /// `count` relative to the fullest bin of this histogram (0...1), for the bar length.
+        public var fraction: Double
+    }
+
+    public var metric: LatencyMetric
+    public var samples: UInt64
+    /// From the first to the last non-empty bucket, empty buckets in between included; empty without samples.
+    public var bins: [Bin]
+    public var id: LatencyMetric { metric }
+}
+
+public enum LatencyHistograms {
+    public static func make(_ metrics: MetricsSnapshot) -> [LatencyHistogram] {
+        LatencyMetric.allCases.map { metric in
+            let snapshot = metric.histogram(in: metrics)
+            return LatencyHistogram(metric: metric, samples: snapshot.count, bins: bins(snapshot))
+        }
+    }
+
+    static func bins(_ snapshot: HistogramSnapshot) -> [LatencyHistogram.Bin] {
+        let buckets = snapshot.buckets
+        guard let first = buckets.firstIndex(where: { $0 > 0 }), let last = buckets.lastIndex(where: { $0 > 0 }),
+            let fullest = buckets.max(), fullest > 0
+        else { return [] }
+        return (first...last).map { index in
+            LatencyHistogram.Bin(
+                upperBoundNanoseconds: upperBound(ofBucket: index, bucketCount: buckets.count), count: buckets[index],
+                fraction: Double(buckets[index]) / Double(fullest))
+        }
+    }
+
+    /// The upper bound of a bucket as the snapshot's own `percentile` reports it, so the bins follow whatever
+    /// bucket layout `HistogramSnapshot` uses and agree with the percentiles of the copied report.
+    static func upperBound(ofBucket index: Int, bucketCount: Int) -> UInt64 {
+        var buckets = [UInt64](repeating: 0, count: bucketCount)
+        buckets[index] = 1
+        return HistogramSnapshot(buckets: buckets).percentile(1) ?? UInt64.max
+    }
+
+    /// A duration with its unit, at most two significant digits, in the interface locale: `511 ns`, `16 µs`,
+    /// `2,1 ms` (Vietnamese) or `2.1 ms` (English), `4.3 s`; `∞` for the open-ended bucket.
+    public static func label(nanoseconds: UInt64, locale: Locale) -> String {
+        guard nanoseconds != UInt64.max else { return "∞" }
+        let units: [(divisor: Double, symbol: String)] = [(1e9, "s"), (1e6, "ms"), (1e3, "µs")]
+        let value = Double(nanoseconds)
+        guard let unit = units.first(where: { value >= $0.divisor }) else { return String(nanoseconds) + " ns" }
+        let number = (value / unit.divisor).formatted(
+            FloatingPointFormatStyle<Double>(locale: locale).precision(.significantDigits(1...2)))
+        return number + " " + unit.symbol
     }
 }
 ```
@@ -10441,12 +10796,8 @@ public enum AppsPaneModel {
         appModes: AppModesDocument, overrides: [StoredRuleOverride], matrix: MatrixDocument?, today: Date
     ) -> [AppsPaneRow] {
         let modes = compatibilityModes(overrides)
-        var bundles = appModes.apps.map(\.bundle)
-        for bundle in modes.keys.sorted() where !bundles.contains(bundle) { bundles.append(bundle) }
         let entries = Dictionary(appModes.apps.map { ($0.bundle, $0) }, uniquingKeysWith: { first, _ in first })
-        var seen: Set<BundleKey> = []
-        return bundles.compactMap { bundle in
-            guard seen.insert(bundle).inserted else { return nil }
+        return orderedBundles(appModes: appModes, modes: modes).map { bundle in
             let entry = entries[bundle]
             let matrixEntry = matrix?.appEntry(for: bundle)
             return AppsPaneRow(
@@ -10455,6 +10806,22 @@ public enum AppsPaneModel {
                 note: matrixEntry?.note, compatibilityMode: modes[bundle]?.choice ?? .automatic,
                 matrixDisplayName: matrixEntry?.displayName, compatibilitySetOn: modes[bundle]?.createdAt)
         }
+    }
+
+    /// The apps of the pane in display order, each once: the per-app memory (most recently used first, PRD-R34),
+    /// then the apps that only have a compatibility override. The bug report picker lists the same apps
+    /// (PRD-R47 item 1, `RecentReportApps`).
+    public static func orderedBundles(appModes: AppModesDocument, overrides: [StoredRuleOverride]) -> [BundleKey] {
+        orderedBundles(appModes: appModes, modes: compatibilityModes(overrides))
+    }
+
+    private static func orderedBundles(
+        appModes: AppModesDocument, modes: [BundleKey: (choice: CompatibilityModeChoice, createdAt: Date)]
+    ) -> [BundleKey] {
+        var bundles = appModes.apps.map(\.bundle)
+        for bundle in modes.keys.sorted() where !bundles.contains(bundle) { bundles.append(bundle) }
+        var seen: Set<BundleKey> = []
+        return bundles.filter { seen.insert($0).inserted }
     }
 
     /// Newest compatibility override per app.
@@ -11463,6 +11830,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     private let services: DiagnosticsServices
     private let model: DiagnosticsWindowModel
     private var misbehaves: MisbehavesPanelController?
+    private var bugReport: BugReportController?
     private var trace: TypingTraceCoordinator?
     private var probe: LatencyProbeWindowController?
 
@@ -11491,13 +11859,46 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
         WindowTitles.follow(language, window: window) { $0.string(DiagnosticsText.windowTitle) }
     }
 
-    /// Opens the window with a freshly generated report (the text shown is the text copied, PLT-R1204).
-    func showReport() {
-        model.refresh()
+    /// Opens the window with a freshly generated report (the text shown is the text copied, PLT-R1204). The
+    /// report is built before this app activates, so the focus section names the field the user was in. `build`
+    /// replaces the live report, for example with the bug report sheet's report of the same moment.
+    func showReport(using build: (@MainActor () -> DiagnosticsReport)? = nil) {
+        model.refresh(using: build)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
+
+    /// "Báo lỗi..." (PRD-R11 item 6, PRD-R47): the sheet with the Apps pane's apps and the last frontmost app
+    /// chosen: `preselected` (the focused app when the menu item was chosen), or the most recent other app when that
+    /// is this app or unknown. The host context is read now, before the sheet takes the focus.
+    func openBugReport(preselected: BundleKey?) {
+        let apps = services.recentApps()
+        let choice = RecentReportApps.preselection(
+            focused: preselected, recent: apps, excluding: services.resolvedBrand.bundleIdentifier,
+            name: services.appName)
+        let draft = BugReportDraft(
+            app: choice?.bundle, appName: choice?.name, symptom: .other, userDescription: "",
+            reproducesInPracticeField: nil)
+        let build = reportBuilder()
+        bugReport?.close()
+        let controller = BugReportController(
+            draft: draft, apps: apps, build: build, language: language, services: services)
+        controller.openDiagnostics = { [weak self] in self?.showReport(using: { build(nil) }) }
+        bugReport = controller
+        controller.present()
+    }
+
+    /// The composition root's builder bound to the context of this moment; without it, the window's live report
+    /// of this moment, which the sheet projects onto the draft (`BugReportSheet.report(from:)`).
+    private func reportBuilder() -> DiagnosticsServices.ReportBuilder {
+        if let session = services.reportSession { return session() }
+        let base = model.freshReport()
+        return { _ in base }
+    }
+
+    /// The app the window's report flows name while this window has the focus (PRD-R47 item 1).
+    func lastFrontmostApp() -> BundleKey? { services.lastFrontmost(recent: services.recentApps())?.bundle }
 
     /// PLT-R1205 step 1: the user focused the problem field, then chose the menu item. The panel does not take
     /// focus away from that field; it reads the live focus snapshot, which belongs to `bundle` (the menu's
@@ -11536,7 +11937,7 @@ final class DiagnosticsWindowController: NSWindowController, NSWindowDelegate {
     private func perform(_ action: DiagnosticsWindowAction) {
         switch action {
         case .copyReport: model.copyReport()
-        case .misbehaves: startMisbehavesFlow(for: services.currentFocus?().app?.bundle)
+        case .misbehaves: startMisbehavesFlow(for: lastFrontmostApp())
         case .recordTrace: startTypingTrace()
         case .latencyTest: runLatencyProbe()
         case .openLogs: model.openLogs()
@@ -11554,13 +11955,14 @@ final class BugReportController: NSWindowController, NSWindowDelegate {
 
     required init?(coder: NSCoder) { nil }
 
-    /// Shows the exact redacted text before anything is copied or saved (PLT-R1204, PRD-R48).
+    /// Shows the exact redacted text before anything is copied or saved (PLT-R1204, PRD-R48). `apps` fill the
+    /// picker (PRD-R47 item 1); `build` makes the report for each change of the draft.
     init(
-        draft: BugReportDraft, report: DiagnosticsReport, language: InterfaceLanguageModel,
-        services: DiagnosticsServices = DiagnosticsServices()
+        draft: BugReportDraft, apps: [BugReportAppChoice], build: @escaping DiagnosticsServices.ReportBuilder,
+        language: InterfaceLanguageModel, services: DiagnosticsServices = DiagnosticsServices()
     ) {
         self.language = language
-        model = BugReportModel(draft: draft, report: report, language: language, services: services)
+        model = BugReportModel(draft: draft, apps: apps, build: build, language: language, services: services)
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.contentSize), styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: false)
@@ -11610,6 +12012,199 @@ enum WindowTitles {
                 guard let window else { return }
                 follow(language, window: window, title: title)
             }
+        }
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: App/Sources/Diagnostics/DiagnosticsServices.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// What the composition root (W2-A) hands to the Diagnostics controllers, and the AppKit side effects of the
+// report paths: clipboard (only after the PRD-R48 notice), save panel, mail draft with attachment, opening
+// URLs and the logs folder.
+
+import AppKit
+import AppModel
+import CompatRules
+import Diagnostics
+import InputHost
+import RealtimeSupport
+import ShellCore
+
+/// Services of the Diagnostics windows. Every member is optional: a missing service hides its feature.
+@MainActor
+struct DiagnosticsServices {
+    /// Builds the report of one report flow for the user's current choices (PLT-R1202).
+    typealias ReportBuilder = @MainActor (BugReportDraft?) -> DiagnosticsReport
+
+    var brand: Brand?
+    /// The report for a bug report draft with the host's live context (`ReportAssembler.report`). Used by the
+    /// non-activating misbehaves panel, where the live focus stays in the problem field.
+    var reportForDraft: ((BugReportDraft?) -> DiagnosticsReport)?
+    /// A builder bound to the host context read when it is called: the bug report sheet calls it once when it
+    /// opens, so a choice made later in the sheet (whose window then has the focus) still describes the field
+    /// the user was typing in.
+    var reportSession: (() -> ReportBuilder)?
+    /// The apps of the Apps pane for the sheet's picker, most recent first (PRD-R47 item 1, `RecentReportApps`).
+    var recentApps: () -> [BugReportAppChoice] = { [] }
+    /// Display name of an installed app; nil falls back to the bundle ID.
+    var appName: (BundleKey) -> String? = { _ in nil }
+    /// Focus snapshot of the field the user wants to test (PLT-R1205 step 1).
+    var currentFocus: (() -> FocusSnapshot)?
+    var guidedTest: GuidedTestServices?
+    var trace: TypingTraceServices?
+    var latency: LatencyProbeServices?
+    /// `~/Library/Logs/<folder>/` (PLT-R903).
+    var logsFolder: URL?
+    /// "Use this for me now": stores the user override; it applies on the next keystroke (PLT-R540).
+    var applyOverride: ((Rule) -> Void)?
+
+    init(
+        brand: Brand? = nil, reportForDraft: ((BugReportDraft?) -> DiagnosticsReport)? = nil,
+        reportSession: (() -> ReportBuilder)? = nil, recentApps: @escaping () -> [BugReportAppChoice] = { [] },
+        appName: @escaping (BundleKey) -> String? = { _ in nil }, currentFocus: (() -> FocusSnapshot)? = nil,
+        guidedTest: GuidedTestServices? = nil, trace: TypingTraceServices? = nil, latency: LatencyProbeServices? = nil,
+        logsFolder: URL? = nil, applyOverride: ((Rule) -> Void)? = nil
+    ) {
+        self.brand = brand
+        self.reportForDraft = reportForDraft
+        self.reportSession = reportSession
+        self.recentApps = recentApps
+        self.appName = appName
+        self.currentFocus = currentFocus
+        self.guidedTest = guidedTest
+        self.trace = trace
+        self.latency = latency
+        self.logsFolder = logsFolder
+        self.applyOverride = applyOverride
+    }
+
+    /// The bundle's brand when the composition root did not pass one.
+    var resolvedBrand: Brand { brand ?? Brand.from(.main) }
+
+    /// "The last frontmost app" (PRD-R47 item 1): the focused app, or the most recent other app of `recent` while
+    /// one of this app's windows has the focus.
+    func lastFrontmost(recent: [BugReportAppChoice]) -> BugReportAppChoice? {
+        RecentReportApps.preselection(
+            focused: currentFocus?().app?.bundle, recent: recent, excluding: resolvedBrand.bundleIdentifier,
+            name: appName)
+    }
+}
+
+/// PLT-R1205 step 3. The composition root provides this only when the host has a diagnostics pass-through;
+/// without it the guided test is never offered (`MisbehavesTarget.offersGuidedTest`).
+///
+/// `setPassThrough(true)` must make the pipeline pass every keyboard event unchanged while the runner types:
+/// the engine is not fed, no per-app memory or manual mode is written (English mode is not a substitute: it
+/// records a manual switch and still runs macros), and the composition is reset on entry and exit (PLT-R210).
+/// `setPassThrough(false)` restores the previous behaviour. Calls are balanced: one `false` follows every
+/// `true`. Requested from W2-A as `InputHostController.setDiagnosticsPassThrough(_:)`, backed by a pause
+/// reason such as `PauseCode.diagnosticsTest`.
+@MainActor
+struct GuidedTestServices {
+    var runner: GuidedTestRunner
+    var setPassThrough: (Bool) -> Void
+    var macOSVersion: String
+    /// Today as `YYYY-MM-DD` for the suggestion's provenance.
+    var today: () -> String
+    /// Bounded AX reads of the guided test's focus check, called on the typing thread (PLT-R342).
+    var focusAX: any AXProvider = SystemAXProvider()
+}
+
+/// PLT-R905. `captureStateChanged` switches the menu-bar icon (W2-A: `StatusIconState` capturing).
+@MainActor
+struct TypingTraceServices {
+    var capture: CaptureController
+    var scheduler: any TimerScheduler
+    var wallClock: any WallClock
+    var captureStateChanged: (Bool) -> Void
+}
+
+/// PLT-R810. The driver shares the per-launch event marker with the pipeline; `onResult` keeps the result for
+/// the next report (`ReportAssembler.report(probe:)`).
+@MainActor
+struct LatencyProbeServices {
+    var driver: LatencyProbeDriver
+    var metrics: PlatformMetrics
+    var clock: any MonotonicClock
+    var wallClock: any WallClock
+    var layout: () -> LayoutTable?
+    var method: () -> TypingMethod
+    var onResult: (LatencyProbeResult) -> Void
+}
+
+/// AppKit side effects of the report flows.
+@MainActor
+enum ReportActions {
+    /// PRD-R48: callers show the clipboard notice before this runs; the only intentional clipboard write.
+    static func copy(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
+    static func open(_ url: URL) { NSWorkspace.shared.open(url) }
+
+    static func openFolder(_ url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        NSWorkspace.shared.open(url)
+        return true
+    }
+
+    /// Save panel for the JSON report or an exported trace; `write` runs with the chosen URL.
+    static func save(
+        suggestedName: String, over window: NSWindow?, write: @escaping @MainActor (URL) -> Bool,
+        done: @escaping @MainActor (Bool?) -> Void
+    ) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = suggestedName
+        panel.canCreateDirectories = true
+        let handler: (NSApplication.ModalResponse) -> Void = { response in
+            MainActor.assumeIsolated {
+                guard response == .OK, let url = panel.url else { return done(nil) }
+                done(write(url))
+            }
+        }
+        if let window {
+            panel.beginSheetModal(for: window, completionHandler: handler)
+        } else {
+            panel.begin(completionHandler: handler)
+        }
+    }
+
+    enum MailOutcome { case composed, fallbackWithoutAttachment, unavailable }
+
+    /// "Gửi qua email" (PRD-R47): the system mail service with the JSON file attached; otherwise a `mailto:`
+    /// draft without the attachment (the sheet then points to "Lưu tệp...").
+    static func email(_ draft: MailDraft, attachment: Data) -> MailOutcome {
+        if let service = NSSharingService(named: .composeEmail), let file = temporaryFile(attachment, draft) {
+            service.recipients = draft.recipients
+            service.subject = draft.subject
+            let items: [Any] = [draft.body, file]
+            if service.canPerform(withItems: items) {
+                service.perform(withItems: items)
+                return .composed
+            }
+        }
+        guard let url = BugReportComposer.mailtoURL(draft), NSWorkspace.shared.open(url) else { return .unavailable }
+        return .fallbackWithoutAttachment
+    }
+
+    /// The attachment in a private temporary folder (0600): metadata only (PLT-R1203).
+    private static func temporaryFile(_ data: Data, _ draft: MailDraft) -> URL? {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let url = folder.appendingPathComponent(draft.attachmentFileName)
+        do {
+            try FileManager.default.createDirectory(
+                at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            try data.write(to: url, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            return url
+        } catch {
+            return nil
         }
     }
 }
