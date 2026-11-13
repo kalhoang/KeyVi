@@ -163,10 +163,13 @@ extension AppEnvironment: StatusMenuActions {
         Task { await settingsStore.setAppRule(rule, for: bundle) }
     }
 
-    /// The report flow. In safe mode the status line's own action offers reset and exit (PLT-R1009), so the
-    /// report item never has to stand in for them.
+    /// The report flow. In safe mode the report items lead to the safe-mode choices first, so reset and exit stay
+    /// reachable from the menu even while a host-state line hides the safe-mode line (PLT-R1009).
     func reportProblem(for bundle: BundleKey?) {
-        diagnosticsController().startMisbehavesFlow(for: bundle)
+        switch DiagnosticsNavigation.destination(reportProblemFor: bundle, lastFrontmost: nil, safeMode: safeMode) {
+        case .safeModeChoices: presentSafeMode()
+        case .misbehaves, .bugReport: diagnosticsController().startMisbehavesFlow(for: bundle)
+        }
     }
 
     func openMacros() { settingsController()?.show(.macros) }

@@ -168,6 +168,42 @@ enum SheetFixtures {
         #expect(DiagnosticsNavigation.destination(reportProblemFor: chat, lastFrontmost: nil) == .misbehaves(chat))
     }
 
+    /// PLT-R1009: in safe mode both report items lead to the safe-mode choices first (reset, use saved settings,
+    /// report, later), so reset and exit never depend on which status line is showing.
+    @Test func safeModeReportItemsOpenTheSafeModeChoices_PLTR1009() {
+        let chat = SheetFixtures.chat.bundle
+        #expect(
+            DiagnosticsNavigation.destination(reportProblemFor: nil, lastFrontmost: chat, safeMode: true)
+                == .safeModeChoices)
+        #expect(
+            DiagnosticsNavigation.destination(reportProblemFor: chat, lastFrontmost: nil, safeMode: true)
+                == .safeModeChoices)
+        #expect(
+            DiagnosticsNavigation.destination(reportProblemFor: chat, lastFrontmost: nil, safeMode: false)
+                == .misbehaves(chat))
+    }
+
+    /// PLT-R1009, PRD-R43: whatever host state wins the status line (no text focus when the menu is opened from
+    /// the desktop, secure input, missing permission, fail-open), the safe-mode choices are at most two clicks
+    /// away from the closed menu.
+    @Test(arguments: [
+        HostState.ready(.vietnamese), .paused(.noTextFocus), .paused(.secureInput(nil)), .paused(.userDisabled),
+        .paused(.builtInVietnameseSource), .paused(.nonLatinInputSource(name: "Kotoeri")), .noPermission,
+        .failOpen(.watchdog),
+    ])
+    func safeModeChoicesStayReachableUnderEveryHostState_PLTR1009(state: HostState) throws {
+        let status = StatusLine.forState(
+            state, holderHintKey: nil, appName: "Example", frontmostApp: nil, tapRecentlyReenabled: false,
+            safeMode: true)
+        let menu = MenuModel(
+            statusLine: status, mode: .vietnamese, toggleHotkeyDisplay: "", method: .telex, frontmostApp: nil,
+            appName: "Example", updateCheckEnabled: false)
+        let path = try #require(DiagnosticsNavigation.pathToSafeModeChoices(menu: menu, safeMode: true))
+        #expect(path.count <= 2)
+        #expect(path.first == .statusItem)
+        #expect(DiagnosticsNavigation.pathToSafeModeChoices(menu: menu, safeMode: false) == nil)
+    }
+
     @Test func diagnosticsWindowOffersThePLTR1201Buttons() {
         #expect(DiagnosticsWindowAction.allCases == [.copyReport, .misbehaves, .recordTrace, .latencyTest, .openLogs])
     }

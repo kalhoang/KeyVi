@@ -114,6 +114,8 @@ public struct StatusLine: Sendable, Hashable {
     /// Precedence: host state lines (permission, secure input with holder and hint, fail-open, non-Latin
     /// source, built-in Vietnamese source, no text focus with override action) > crash-loop safe mode
     /// (PLT-R1009) > tap re-enabled notice > "App in Known limitation list" for the frontmost app (PRD-R43) > nil.
+    /// While a host-state line hides the safe-mode line, the report item still opens the safe-mode choices
+    /// (`DiagnosticsNavigation.destination(reportProblemFor:lastFrontmost:safeMode:)`).
     /// `onboardingCompleted == false` turns the permission action into "resume onboarding at screen 2"
     /// (PRD-R41). `safeMode` is `SettingsState.safeMode`.
     public static func forState(
