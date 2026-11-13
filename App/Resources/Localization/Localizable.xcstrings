@@ -1,43 +1,562 @@
 {
   "sourceLanguage" : "vi",
   "strings" : {
-    "common.back" : {
+    "bugReport.mail.app" : {
+      "comment" : "Summary line. %@ is the reported app name and version.",
+      "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } },
-        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Quay lại" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App with the problem: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ứng dụng bị lỗi: %@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.attachment" : {
+      "comment" : "Last line of the mail. %@ is the attached file name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attached diagnostics file: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp chẩn đoán đính kèm: %@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.description" : {
+      "comment" : "Heading above the text the user wrote.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What did you type and what did you expect?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn gõ gì và mong ra gì?"
+          }
+        }
+      }
+    },
+    "bugReport.mail.macOS" : {
+      "comment" : "Summary line. %1$@ macOS version, %2$@ build, %3$@ architecture.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS: %1$@ (%2$@), %3$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS: %1$@ (%2$@), %3$@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.method" : {
+      "comment" : "Summary line. %@ is Telex or VNI.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typing method: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiểu gõ: %@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.noDescription" : {
+      "comment" : "Shown when the user wrote nothing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(No description)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Chưa có mô tả)"
+          }
+        }
+      }
+    },
+    "bugReport.mail.practiceField" : {
+      "comment" : "Summary line. %@ is the practice field answer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice field: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ô gõ thử: %@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.practiceField.no" : {
+      "comment" : "Practice field answer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Does not happen there"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không bị lỗi"
+          }
+        }
+      }
+    },
+    "bugReport.mail.practiceField.unknown" : {
+      "comment" : "Practice field answer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not tried"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa thử"
+          }
+        }
+      }
+    },
+    "bugReport.mail.practiceField.yes" : {
+      "comment" : "Practice field answer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Also happens there"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cũng bị lỗi"
+          }
+        }
+      }
+    },
+    "bugReport.mail.subject" : {
+      "comment" : "Mail subject. %1$@ is the app name, %2$@ the reported app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: problem report for %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: báo lỗi với %2$@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.subject.noApp" : {
+      "comment" : "Mail subject without a reported app. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: problem report"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: báo lỗi"
+          }
+        }
+      }
+    },
+    "bugReport.mail.summary" : {
+      "comment" : "Heading of the summary lines.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summary"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tóm tắt"
+          }
+        }
+      }
+    },
+    "bugReport.mail.symptom" : {
+      "comment" : "Summary line. %@ is the symptom.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What happened: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuyện gì xảy ra: %@"
+          }
+        }
+      }
+    },
+    "bugReport.mail.version" : {
+      "comment" : "Summary line. %1$@ app name, %2$@ version, %3$@ build, %4$@ channel.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ version: %2$@ (%3$@, %4$@)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phiên bản %1$@: %2$@ (%3$@, %4$@)"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.cannotTypeVietnamese" : {
+      "comment" : "PRD-R47 chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cannot type Vietnamese"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không gõ được tiếng Việt"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.duplicatedLetters" : {
+      "comment" : "PRD-R47 chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicated letters"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lặp chữ"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.lag" : {
+      "comment" : "PRD-R47 chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lag or stutter"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chậm / giật"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.lettersOutOfOrder" : {
+      "comment" : "PLT-R1205 symptom.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letters out of order"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chữ bị đảo thứ tự"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.lostLetters" : {
+      "comment" : "PRD-R47 chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lost letters"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mất chữ"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.nothingTyped" : {
+      "comment" : "PLT-R1205 symptom.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing is typed"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không ra chữ nào"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.other" : {
+      "comment" : "PRD-R47 chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khác"
+          }
+        }
+      }
+    },
+    "bugReport.symptom.wrongTone" : {
+      "comment" : "PRD-R47 chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wrong tone or mark"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sai dấu"
+          }
+        }
+      }
+    },
+    "common.back" : {
+      "comment" : "PRD-R40 footer button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quay lại"
+          }
+        }
+      }
+    },
+    "common.cancel" : {
+      "comment" : "Dismisses a confirmation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "common.close" : {
+      "comment" : "Closes a sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        }
       }
     },
     "common.continue" : {
+      "comment" : "Primary button.",
+      "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue" } },
-        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tiếp tục" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếp tục"
+          }
+        }
       }
     },
     "common.skip" : {
+      "comment" : "PRD-R40 footer button (not on the permission screen).",
+      "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Skip" } },
-        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bỏ qua" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua"
+          }
+        }
       }
     },
     "menu.quit" : {
-      "comment" : "PRD-R11 item 8. %@ is the app name.",
+      "comment" : "Development skeleton menu (BootstrapStatusItem). %@ is the app name.",
+      "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit %@" } },
-        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thoát %@" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thoát %@"
+          }
+        }
       }
     },
     "skeleton.statusItem.accessibilityLabel" : {
       "comment" : "VoiceOver label of the menu bar icon in the development skeleton (PRD-R10 style). %@ is the app name.",
+      "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@: typing is not active yet" } },
-        "vi" : { "stringUnit" : { "state" : "translated", "value" : "%@: bộ gõ chưa hoạt động" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: typing is not active yet"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: bộ gõ chưa hoạt động"
+          }
+        }
       }
     },
     "skeleton.statusLine" : {
       "comment" : "Status line of the development skeleton menu (PRD-R11 item 1). No placeholder.",
+      "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Development build: typing is not active yet." } },
-        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bản dựng thử nghiệm: bộ gõ chưa hoạt động." } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Development build: typing is not active yet."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản dựng thử nghiệm: bộ gõ chưa hoạt động."
+          }
+        }
       }
     }
   },
