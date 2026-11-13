@@ -66,13 +66,14 @@ struct HostDecisionMapperTests {
         let offered = decision(strategy: .paste, fallback: [.paste, .selectReplace, .passThrough], optIn: true)
         let before = HostDecisionMapper.map(offered, engine: .native, optedIntoPaste: false)
         #expect(before.plan.strategy == .selectReplace)
-        #expect(before.plan.fallback == [.selectReplace, .passThrough])
+        #expect(before.plan.fallback == [.passThrough])  // the promoted strategy is not retried as a fallback
         let after = HostDecisionMapper.map(offered, engine: .native, optedIntoPaste: true)
         #expect(after.plan.strategy == .paste)
         #expect(after.plan.parameters.pasteOptedIn)
         let noFallback = HostDecisionMapper.map(
             decision(strategy: .paste, fallback: [], optIn: true), engine: .native, optedIntoPaste: false)
         #expect(noFallback.plan.strategy == .backspaceReplace)
+        #expect(noFallback.plan.fallback.isEmpty)
         // Long-text paste allowed by a rule without opt-in is kept (PLT-R460 b).
         let allowed = HostDecisionMapper.map(decision(strategy: .paste), engine: .native, optedIntoPaste: false)
         #expect(allowed.plan.strategy == .paste)

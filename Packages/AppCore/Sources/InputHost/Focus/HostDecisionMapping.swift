@@ -9,11 +9,15 @@ import Injection
 enum HostDecisionMapping {
     static func map(_ decision: ResolvedDecision, engine: EngineFingerprint, optedIntoPaste: Bool) -> HostDecision {
         // PLT-R460: a rule that offers `paste` behind an opt-in does not paste until the user opted in.
+        // The first non-paste fallback is then promoted to the primary and leaves the fallback chain, so the
+        // worker does not retry it.
         let pasteAllowed = !decision.requiresUserOptIn || optedIntoPaste
-        let fallback = pasteAllowed ? decision.fallback : decision.fallback.filter { $0 != .paste }
-        let strategy =
-            decision.strategy == .paste && !pasteAllowed
-            ? (fallback.first ?? .backspaceReplace) : decision.strategy
+        var fallback = pasteAllowed ? decision.fallback : decision.fallback.filter { $0 != .paste }
+        var strategy = decision.strategy
+        if strategy == .paste, !pasteAllowed {
+            strategy = fallback.first ?? .backspaceReplace
+            fallback = Array(fallback.dropFirst())
+        }
         let params = decision.params
         let parameters = InjectionParameters(
             unicodeChunk: params.unicodeChunk, interEventDelayUs: params.interEventDelayUs,

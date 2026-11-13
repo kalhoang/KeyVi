@@ -72,6 +72,5 @@ struct ProcessIdentityTests {
         #expect(!identity.processName.isEmpty)
         #expect(provider.identity(of: Int32.max) == nil)
         #expect(SystemProcessIdentityProvider.executablePath(of: pid) != nil)
-        _ = provider.runningApplications()
     }
 }
