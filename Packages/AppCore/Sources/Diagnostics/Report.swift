@@ -462,9 +462,9 @@ public enum DiagnosticsBlockKey: String, Sendable, CaseIterable {
     case reportBundle = "report.bundleId"
     case reportAppVersion = "report.appVersion"
     case reportSymptom = "report.symptom"
-    case appVersion = "app.version"
-    case appBuild = "app.build"
-    case appChannel = "app.channel"
+    case appVersion = "app.version"  // lint:allow-bundle-id ADR 0501 block key
+    case appBuild = "app.build"  // lint:allow-bundle-id ADR 0501 block key
+    case appChannel = "app.channel"  // lint:allow-bundle-id ADR 0501 block key
     case macOSVersion = "macos.version"
     case macOSBuild = "macos.build"
     case architecture = "hw.arch"
