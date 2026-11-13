@@ -29,6 +29,10 @@ enum TestPaths {
         if let explicit = ProcessInfo.processInfo.environment["LEXICON_BUILDER"] {
             candidates.append(URL(fileURLWithPath: explicit))
         }
+        // The test bundle's directory holds the products of the same build. `Bundle.allBundles` does not
+        // list the bundle when swiftpm-testing-helper loads it, so the bundle is found through a class.
+        let testBundle = Bundle(for: BundleToken.self).bundleURL
+        candidates.append(testBundle.deletingLastPathComponent().appendingPathComponent("lexicon-builder"))
         for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
             candidates.append(bundle.bundleURL.deletingLastPathComponent().appendingPathComponent("lexicon-builder"))
         }
@@ -40,6 +44,9 @@ enum TestPaths {
         throw TestFailure("lexicon-builder not found; build it first (swift build) or set LEXICON_BUILDER")
     }
 }
+
+/// Any class of the test target: `Bundle(for:)` resolves the test bundle from it.
+private final class BundleToken {}
 
 struct TestFailure: Error, CustomStringConvertible {
     let description: String
@@ -53,7 +60,7 @@ struct ProcessResult {
     var text: String { String(decoding: output, as: UTF8.self) }
 }
 
-enum Builder {
+enum BuilderProcess {
     /// Runs lexicon-builder with `arguments`, optional standard input, in `directory`.
     static func run(_ arguments: [String], input: String? = nil, in directory: URL? = nil) throws -> ProcessResult {
         let process = Process()
@@ -95,7 +102,7 @@ func write(_ text: String, to url: URL) throws {
 }
 
 func sha256Hex(_ data: Data) -> String {
-    SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    CryptoKit.SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
 }
 
 /// Writes a resource directory in the bundled format: the given files plus a manifest.json that
@@ -106,7 +113,8 @@ enum ResourceFixture {
         "tech-always.txt": "usb\nwifi\nwww\n",
         "tech-code-only.txt": "tar\n",
         "attested.txt": "hòa\nhoà\ná\nđi\n",
-        "ambiguity.tsv": "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tx\nis\ten\tunreviewed\tí\tx\ntest\ten\tproposed\ttét\tx\n",
+        "ambiguity.tsv":
+            "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tx\nis\ten\tunreviewed\tí\tx\ntest\ten\tproposed\ttét\tx\n",
         "NOTICES.txt": "notices\n",
     ]
 

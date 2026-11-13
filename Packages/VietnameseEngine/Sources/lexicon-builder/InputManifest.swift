@@ -108,7 +108,9 @@ struct DownloadSource {
     let issuer: String
     let page: String
 
-    static let columns = ["id", "file", "url", "sha256", "bytes", "retrieved", "title", "number", "issued", "issuer", "page"]
+    static let columns = [
+        "id", "file", "url", "sha256", "bytes", "retrieved", "title", "number", "issued", "issuer", "page",
+    ]
 
     static func load(_ url: URL) throws -> [DownloadSource] {
         let lines = try FileIO.readUTF8(url).split(separator: "\n").map(String.init).filter {

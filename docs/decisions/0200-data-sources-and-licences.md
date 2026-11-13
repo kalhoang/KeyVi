@@ -155,3 +155,19 @@ four files.
 - The ambiguity table needs `lexicon-builder ambiguity-candidates --merge` after the engine merge, then Pa's
   review of at least the 300 most frequent candidates (ENG-R821).
 - `data/NOTICES.md` is the input for the docs track's `THIRD_PARTY_NOTICES.md`.
+
+## Amendment, 2026-11-13 (engine integration, docs/decisions/0202)
+
+- **SCOWL level measured** (the VERIFY of section 1): Tier A collisions per cumulative level are 3.19 % (10),
+  2.52 % (10-20), 1.50 % (10-35), 1.42 % (10-40) and 1.16 % (10-50) of the words. Level 50 would add 23,210
+  rare words and 100 more English words whose unattested display rule L8 restores; levels 10, 20 and 35 stay.
+- **Lexicon**: one-letter entries other than `a` and `i` are dropped (SCOWL lists `m`, which Vietnamese uses as
+  a list marker and a chat abbreviation): **40,205 words**.
+- **Project lists now** (after the branch review of 0202): `tech-always.txt` 389 entries (six commands moved
+  from the code-only list because their typing gives no Vietnamese syllable, the Roman numeral `xix` added,
+  `a3` and `a5` removed because they type `ả` and `ạ` in VNI), `tech-code-only.txt` 223,
+  `attested-additions.txt` 272 (20 everyday syllables whose natural typing is an English word or a tech word,
+  such as `sên` typed `seen` and `ĩ` typed `ix`), `ambiguity.tsv` 619 rows. Every change carries a reason in
+  its file and waits for Pa's review.
+- The consequences above are done: `attested.txt` holds 1,954 syllables (1,678 from the legal texts) and the
+  ambiguity table holds the merged candidates.

@@ -4,6 +4,10 @@
 # status: proposed = ENG-R821 starting decision (applies as written until Pa confirms), reviewed = decided by Pa,
 # unreviewed = generated candidate nobody has decided yet; behaves as vi whatever the decision column says (ENG-R821).
 # Candidates come from `lexicon-builder ambiguity-candidates --merge` (ENG-R820). Pa reviews at least the 300 most frequent.
+# The merge adds vi/unreviewed rows, except en/proposed for English words whose display is not attested (rule L8
+# restores them before this table is read) and for tech-always words (rule L11 restores them without a row);
+# those generated en rows go to the last block, "# [generated en rows]", and `lexicon-builder build` fails when
+# the reason recorded in their note no longer holds. See docs/decisions/0202 and data/derived/ambiguity-candidates.tsv.
 # Columns are tab-separated. Lines starting with '#' are comments.
 raw	decision	status	display	note
 as	vi	proposed	á	Southern particle, very common in chat (ENG-R821)
@@ -26,8 +30,607 @@ theme	vi	proposed	thêm	very common Vietnamese (ENG-R821)
 max	vi	proposed	mã	very common Vietnamese (ENG-R821)
 us	vi	unreviewed	ú	spec 8.3 example, no ENG-R821 proposal
 of	vi	unreviewed	ò	spec 8.3 example, no ENG-R821 proposal
-or	vi	unreviewed	ỏ	spec 8.3 example, no ENG-R821 proposal
+or	en	proposed	ỏ	spec 8.3 example, no ENG-R821 proposal; display not attested (not an everyday word), so rule L8 restores it: proposed en to match (docs/decisions/0202)
 if	vi	unreviewed	ì	spec 8.3 example, no ENG-R821 proposal
 now	vi	unreviewed	nơ	spec 8.3 example, no ENG-R821 proposal
 how	vi	unreviewed	hơ	spec 8.3 example, no ENG-R821 proposal
 low	vi	unreviewed	lơ	spec 8.3 example, no ENG-R821 proposal
+hair	vi	unreviewed	hải	generated candidate (scowl-10, corpus count 163)
+sex	vi	unreviewed	sẽ	generated candidate (scowl-10, corpus count 61)
+thus	vi	unreviewed	thú	generated candidate (scowl-10, corpus count 55)
+six	vi	unreviewed	sĩ	generated candidate (scowl-10, corpus count 30)
+sorts	vi	unreviewed	sót	generated candidate (scowl-10, corpus count 24)
+refer	vi	unreviewed	rể	generated candidate (scowl-10, corpus count 12)
+bars	vi	unreviewed	bá	generated candidate (scowl-10, corpus count 10)
+too	vi	unreviewed	tô	generated candidate (scowl-10, corpus count 3)
+gas	vi	unreviewed	gá	generated candidate (scowl-10, corpus count 2)
+air	vi	unreviewed	ải	generated candidate (scowl-10, corpus count 0)
+arm	vi	unreviewed	ảm	generated candidate (scowl-10, corpus count 0)
+away	vi	unreviewed	ây	generated candidate (scowl-10, corpus count 0)
+bar	vi	unreviewed	bả	generated candidate (scowl-10, corpus count 0)
+bets	vi	unreviewed	bét	generated candidate (scowl-10, corpus count 0)
+bits	vi	unreviewed	bít	generated candidate (scowl-10, corpus count 0)
+box	vi	unreviewed	bõ	generated candidate (scowl-10, corpus count 0)
+bus	vi	unreviewed	bú	generated candidate (scowl-10, corpus count 0)
+chair	vi	unreviewed	chải	generated candidate (scowl-10, corpus count 0)
+chaos	vi	unreviewed	cháo	generated candidate (scowl-10, corpus count 0)
+char	vi	unreviewed	chả	generated candidate (scowl-10, corpus count 0)
+chips	vi	unreviewed	chíp	generated candidate (scowl-10, corpus count 0)
+chose	vi	unreviewed	chóe	generated candidate (scowl-10, corpus count 0)
+cums	vi	unreviewed	cúm	generated candidate (scowl-10, corpus count 0)
+cuts	vi	unreviewed	cút	generated candidate (scowl-10, corpus count 0)
+hangs	vi	unreviewed	háng	generated candidate (scowl-10, corpus count 0)
+here	vi	unreviewed	hể	generated candidate (scowl-10, corpus count 0)
+hes	vi	unreviewed	hé	generated candidate (scowl-10, corpus count 0)
+his	vi	unreviewed	hí	generated candidate (scowl-10, corpus count 0)
+hits	vi	unreviewed	hít	generated candidate (scowl-10, corpus count 0)
+host	vi	unreviewed	hót	generated candidate (scowl-10, corpus count 0)
+last	vi	unreviewed	lát	generated candidate (scowl-10, corpus count 0)
+lets	vi	unreviewed	lét	generated candidate (scowl-10, corpus count 0)
+lose	vi	unreviewed	lóe	generated candidate (scowl-10, corpus count 0)
+lost	vi	unreviewed	lót	generated candidate (scowl-10, corpus count 0)
+lots	vi	unreviewed	lót	generated candidate (scowl-10, corpus count 0)
+mix	vi	unreviewed	mĩ	generated candidate (scowl-10, corpus count 0)
+most	vi	unreviewed	mót	generated candidate (scowl-10, corpus count 0)
+must	vi	unreviewed	mút	generated candidate (scowl-10, corpus count 0)
+nor	vi	unreviewed	nỏ	generated candidate (scowl-10, corpus count 0)
+own	vi	unreviewed	ơn	generated candidate (scowl-10, corpus count 0)
+quits	vi	unreviewed	quít	generated candidate (scowl-10, corpus count 0)
+refers	vi	unreviewed	rế	generated candidate (scowl-10, corpus count 0)
+rest	vi	unreviewed	rét	generated candidate (scowl-10, corpus count 0)
+row	vi	unreviewed	rơ	generated candidate (scowl-10, corpus count 0)
+runs	vi	unreviewed	rún	generated candidate (scowl-10, corpus count 0)
+seen	vi	unreviewed	sên	generated candidate (scowl-10, corpus count 0)
+sense	vi	unreviewed	sến	generated candidate (scowl-10, corpus count 0)
+sets	vi	unreviewed	sét	generated candidate (scowl-10, corpus count 0)
+sits	vi	unreviewed	sít	generated candidate (scowl-10, corpus count 0)
+tax	vi	unreviewed	tã	generated candidate (scowl-10, corpus count 0)
+terms	vi	unreviewed	tém	generated candidate (scowl-10, corpus count 0)
+traps	vi	unreviewed	tráp	generated candidate (scowl-10, corpus count 0)
+tree	vi	unreviewed	trê	generated candidate (scowl-10, corpus count 0)
+trust	vi	unreviewed	trút	generated candidate (scowl-10, corpus count 0)
+turn	vi	unreviewed	tủn	generated candidate (scowl-10, corpus count 0)
+vans	vi	unreviewed	ván	generated candidate (scowl-10, corpus count 0)
+vary	vi	unreviewed	vảy	generated candidate (scowl-10, corpus count 0)
+vast	vi	unreviewed	vát	generated candidate (scowl-10, corpus count 0)
+won	vi	unreviewed	ươn	generated candidate (scowl-10, corpus count 0)
+worn	vi	unreviewed	ưởn	generated candidate (scowl-10, corpus count 0)
+worst	vi	unreviewed	ướt	generated candidate (scowl-10, corpus count 0)
+defends	vi	unreviewed	đến	generated candidate (scowl-20, corpus count 4143)
+cow	vi	unreviewed	cơ	generated candidate (scowl-20, corpus count 4072)
+cars	vi	unreviewed	cá	generated candidate (scowl-20, corpus count 1370)
+cheers	vi	unreviewed	chế	generated candidate (scowl-20, corpus count 953)
+terse	vi	unreviewed	tế	generated candidate (scowl-20, corpus count 753)
+bans	vi	unreviewed	bán	generated candidate (scowl-20, corpus count 751)
+tins	vi	unreviewed	tín	generated candidate (scowl-20, corpus count 158)
+moon	vi	unreviewed	môn	generated candidate (scowl-20, corpus count 107)
+songs	vi	unreviewed	sóng	generated candidate (scowl-20, corpus count 105)
+cans	vi	unreviewed	cán	generated candidate (scowl-20, corpus count 80)
+defend	vi	unreviewed	đền	generated candidate (scowl-20, corpus count 28)
+deed	vi	unreviewed	đê	generated candidate (scowl-20, corpus count 17)
+burst	vi	unreviewed	bút	generated candidate (scowl-20, corpus count 15)
+bust	vi	unreviewed	bút	generated candidate (scowl-20, corpus count 15)
+hurts	vi	unreviewed	hút	generated candidate (scowl-20, corpus count 11)
+caps	vi	unreviewed	cáp	generated candidate (scowl-20, corpus count 2)
+hats	vi	unreviewed	hát	generated candidate (scowl-20, corpus count 2)
+hero	vi	unreviewed	hẻo	generated candidate (scowl-20, corpus count 2)
+beef	vi	unreviewed	bề	generated candidate (scowl-20, corpus count 1)
+beers	vi	unreviewed	bế	generated candidate (scowl-20, corpus count 1)
+cast	vi	unreviewed	cát	generated candidate (scowl-20, corpus count 1)
+cats	vi	unreviewed	cát	generated candidate (scowl-20, corpus count 1)
+nest	vi	unreviewed	nét	generated candidate (scowl-20, corpus count 1)
+nets	vi	unreviewed	nét	generated candidate (scowl-20, corpus count 1)
+arms	vi	unreviewed	ám	generated candidate (scowl-20, corpus count 0)
+arts	vi	unreviewed	át	generated candidate (scowl-20, corpus count 0)
+axis	vi	unreviewed	ái	generated candidate (scowl-20, corpus count 0)
+beer	vi	unreviewed	bể	generated candidate (scowl-20, corpus count 0)
+boost	vi	unreviewed	bốt	generated candidate (scowl-20, corpus count 0)
+boots	vi	unreviewed	bốt	generated candidate (scowl-20, corpus count 0)
+born	vi	unreviewed	bỏn	generated candidate (scowl-20, corpus count 0)
+bow	vi	unreviewed	bơ	generated candidate (scowl-20, corpus count 0)
+burn	vi	unreviewed	bủn	generated candidate (scowl-20, corpus count 0)
+burns	vi	unreviewed	bún	generated candidate (scowl-20, corpus count 0)
+chairs	vi	unreviewed	chái	generated candidate (scowl-20, corpus count 0)
+charts	vi	unreviewed	chát	generated candidate (scowl-20, corpus count 0)
+chats	vi	unreviewed	chát	generated candidate (scowl-20, corpus count 0)
+chest	vi	unreviewed	chét	generated candidate (scowl-20, corpus count 0)
+chops	vi	unreviewed	chóp	generated candidate (scowl-20, corpus count 0)
+corn	vi	unreviewed	cỏn	generated candidate (scowl-20, corpus count 0)
+cows	vi	unreviewed	cớ	generated candidate (scowl-20, corpus count 0)
+cups	vi	unreviewed	cúp	generated candidate (scowl-20, corpus count 0)
+deeds	vi	unreviewed	đế	generated candidate (scowl-20, corpus count 0)
+guts	vi	unreviewed	gút	generated candidate (scowl-20, corpus count 0)
+hairs	vi	unreviewed	hái	generated candidate (scowl-20, corpus count 0)
+honor	vi	unreviewed	hổn	generated candidate (scowl-20, corpus count 0)
+horn	vi	unreviewed	hỏn	generated candidate (scowl-20, corpus count 0)
+kits	vi	unreviewed	kít	generated candidate (scowl-20, corpus count 0)
+lawn	vi	unreviewed	lăn	generated candidate (scowl-20, corpus count 0)
+lays	vi	unreviewed	láy	generated candidate (scowl-20, corpus count 0)
+lens	vi	unreviewed	lén	generated candidate (scowl-20, corpus count 0)
+lest	vi	unreviewed	lét	generated candidate (scowl-20, corpus count 0)
+lifts	vi	unreviewed	lít	generated candidate (scowl-20, corpus count 0)
+lips	vi	unreviewed	líp	generated candidate (scowl-20, corpus count 0)
+lisp	vi	unreviewed	líp	generated candidate (scowl-20, corpus count 0)
+loops	vi	unreviewed	lốp	generated candidate (scowl-20, corpus count 0)
+lungs	vi	unreviewed	lúng	generated candidate (scowl-20, corpus count 0)
+lust	vi	unreviewed	lút	generated candidate (scowl-20, corpus count 0)
+mist	vi	unreviewed	mít	generated candidate (scowl-20, corpus count 0)
+motors	vi	unreviewed	mốt	generated candidate (scowl-20, corpus count 0)
+noon	vi	unreviewed	nôn	generated candidate (scowl-20, corpus count 0)
+nuts	vi	unreviewed	nút	generated candidate (scowl-20, corpus count 0)
+owns	vi	unreviewed	ớn	generated candidate (scowl-20, corpus count 0)
+photos	vi	unreviewed	phốt	generated candidate (scowl-20, corpus count 0)
+queen	vi	unreviewed	quên	generated candidate (scowl-20, corpus count 0)
+quest	vi	unreviewed	quét	generated candidate (scowl-20, corpus count 0)
+rats	vi	unreviewed	rát	generated candidate (scowl-20, corpus count 0)
+reset	vi	unreviewed	rết	generated candidate (scowl-20, corpus count 0)
+roof	vi	unreviewed	rồ	generated candidate (scowl-20, corpus count 0)
+roots	vi	unreviewed	rốt	generated candidate (scowl-20, corpus count 0)
+rows	vi	unreviewed	rớ	generated candidate (scowl-20, corpus count 0)
+sir	vi	unreviewed	sỉ	generated candidate (scowl-20, corpus count 0)
+texts	vi	unreviewed	tét	generated candidate (scowl-20, corpus count 0)
+thee	vi	unreviewed	thê	generated candidate (scowl-20, corpus count 0)
+thirst	vi	unreviewed	thít	generated candidate (scowl-20, corpus count 0)
+tips	vi	unreviewed	típ	generated candidate (scowl-20, corpus count 0)
+toast	vi	unreviewed	toát	generated candidate (scowl-20, corpus count 0)
+toes	vi	unreviewed	tóe	generated candidate (scowl-20, corpus count 0)
+tops	vi	unreviewed	tóp	generated candidate (scowl-20, corpus count 0)
+tore	vi	unreviewed	tỏe	generated candidate (scowl-20, corpus count 0)
+ups	vi	unreviewed	úp	generated candidate (scowl-20, corpus count 0)
+verse	vi	unreviewed	vế	generated candidate (scowl-20, corpus count 0)
+virus	vi	unreviewed	víu	generated candidate (scowl-20, corpus count 0)
+wars	vi	unreviewed	ứa	generated candidate (scowl-20, corpus count 0)
+worms	vi	unreviewed	ướm	generated candidate (scowl-20, corpus count 0)
+barn	vi	unreviewed	bản	generated candidate (scowl-35, corpus count 3291)
+torso	vi	unreviewed	tố	generated candidate (scowl-35, corpus count 2144)
+sow	vi	unreviewed	sơ	generated candidate (scowl-35, corpus count 1203)
+turf	vi	unreviewed	tù	generated candidate (scowl-35, corpus count 1170)
+boor	vi	unreviewed	bổ	generated candidate (scowl-35, corpus count 1060)
+hoof	vi	unreviewed	hồ	generated candidate (scowl-35, corpus count 812)
+tees	vi	unreviewed	tế	generated candidate (scowl-35, corpus count 753)
+barns	vi	unreviewed	bán	generated candidate (scowl-35, corpus count 751)
+teen	vi	unreviewed	tên	generated candidate (scowl-35, corpus count 688)
+boors	vi	unreviewed	bố	generated candidate (scowl-35, corpus count 555)
+boos	vi	unreviewed	bố	generated candidate (scowl-35, corpus count 555)
+sangs	vi	unreviewed	sáng	generated candidate (scowl-35, corpus count 430)
+rust	vi	unreviewed	rút	generated candidate (scowl-35, corpus count 283)
+ruts	vi	unreviewed	rút	generated candidate (scowl-35, corpus count 283)
+taxis	vi	unreviewed	tái	generated candidate (scowl-35, corpus count 251)
+coos	vi	unreviewed	cố	generated candidate (scowl-35, corpus count 174)
+dad	vi	unreviewed	đa	generated candidate (scowl-35, corpus count 142)
+tans	vi	unreviewed	tán	generated candidate (scowl-35, corpus count 109)
+saps	vi	unreviewed	sáp	generated candidate (scowl-35, corpus count 70)
+moo	vi	unreviewed	mô	generated candidate (scowl-35, corpus count 60)
+tar	vi	unreviewed	tả	generated candidate (scowl-35, corpus count 40)
+toots	vi	unreviewed	tốt	generated candidate (scowl-35, corpus count 32)
+carats	vi	unreviewed	cất	generated candidate (scowl-35, corpus count 21)
+vex	vi	unreviewed	vẽ	generated candidate (scowl-35, corpus count 19)
+buts	vi	unreviewed	bút	generated candidate (scowl-35, corpus count 15)
+marts	vi	unreviewed	mát	generated candidate (scowl-35, corpus count 15)
+mast	vi	unreviewed	mát	generated candidate (scowl-35, corpus count 15)
+mats	vi	unreviewed	mát	generated candidate (scowl-35, corpus count 15)
+dads	vi	unreviewed	đá	generated candidate (scowl-35, corpus count 14)
+lairs	vi	unreviewed	lái	generated candidate (scowl-35, corpus count 13)
+chins	vi	unreviewed	chín	generated candidate (scowl-35, corpus count 12)
+boons	vi	unreviewed	bốn	generated candidate (scowl-35, corpus count 11)
+huts	vi	unreviewed	hút	generated candidate (scowl-35, corpus count 11)
+testers	vi	unreviewed	tết	generated candidate (scowl-35, corpus count 9)
+tee	vi	unreviewed	tê	generated candidate (scowl-35, corpus count 8)
+arcs	vi	unreviewed	ác	generated candidate (scowl-35, corpus count 6)
+coo	vi	unreviewed	cô	generated candidate (scowl-35, corpus count 6)
+chiefest	vi	unreviewed	chiết	generated candidate (scowl-35, corpus count 4)
+mar	vi	unreviewed	mả	generated candidate (scowl-35, corpus count 3)
+raps	vi	unreviewed	ráp	generated candidate (scowl-35, corpus count 3)
+rasp	vi	unreviewed	ráp	generated candidate (scowl-35, corpus count 3)
+bangs	vi	unreviewed	báng	generated candidate (scowl-35, corpus count 2)
+carps	vi	unreviewed	cáp	generated candidate (scowl-35, corpus count 2)
+darns	vi	unreviewed	dán	generated candidate (scowl-35, corpus count 2)
+harts	vi	unreviewed	hát	generated candidate (scowl-35, corpus count 2)
+beefs	vi	unreviewed	bế	generated candidate (scowl-35, corpus count 1)
+bees	vi	unreviewed	bế	generated candidate (scowl-35, corpus count 1)
+carts	vi	unreviewed	cát	generated candidate (scowl-35, corpus count 1)
+hoofs	vi	unreviewed	hố	generated candidate (scowl-35, corpus count 1)
+moor	vi	unreviewed	mổ	generated candidate (scowl-35, corpus count 1)
+quarts	vi	unreviewed	quát	generated candidate (scowl-35, corpus count 1)
+vest	vi	unreviewed	vét	generated candidate (scowl-35, corpus count 1)
+vets	vi	unreviewed	vét	generated candidate (scowl-35, corpus count 1)
+airs	vi	unreviewed	ái	generated candidate (scowl-35, corpus count 0)
+aura	vi	unreviewed	ẩu	generated candidate (scowl-35, corpus count 0)
+auras	vi	unreviewed	ấu	generated candidate (scowl-35, corpus count 0)
+bats	vi	unreviewed	bát	generated candidate (scowl-35, corpus count 0)
+bee	vi	unreviewed	bê	generated candidate (scowl-35, corpus count 0)
+beets	vi	unreviewed	bết	generated candidate (scowl-35, corpus count 0)
+berets	vi	unreviewed	bết	generated candidate (scowl-35, corpus count 0)
+beset	vi	unreviewed	bết	generated candidate (scowl-35, corpus count 0)
+boo	vi	unreviewed	bô	generated candidate (scowl-35, corpus count 0)
+boon	vi	unreviewed	bôn	generated candidate (scowl-35, corpus count 0)
+bows	vi	unreviewed	bớ	generated candidate (scowl-35, corpus count 0)
+buns	vi	unreviewed	bún	generated candidate (scowl-35, corpus count 0)
+burps	vi	unreviewed	búp	generated candidate (scowl-35, corpus count 0)
+bursar	vi	unreviewed	bủa	generated candidate (scowl-35, corpus count 0)
+chef	vi	unreviewed	chè	generated candidate (scowl-35, corpus count 0)
+chefs	vi	unreviewed	ché	generated candidate (scowl-35, corpus count 0)
+chirps	vi	unreviewed	chíp	generated candidate (scowl-35, corpus count 0)
+choirs	vi	unreviewed	chói	generated candidate (scowl-35, corpus count 0)
+chores	vi	unreviewed	chóe	generated candidate (scowl-35, corpus count 0)
+chow	vi	unreviewed	chơ	generated candidate (scowl-35, corpus count 0)
+chows	vi	unreviewed	chớ	generated candidate (scowl-35, corpus count 0)
+chums	vi	unreviewed	chúm	generated candidate (scowl-35, corpus count 0)
+churn	vi	unreviewed	chủn	generated candidate (scowl-35, corpus count 0)
+coops	vi	unreviewed	cốp	generated candidate (scowl-35, corpus count 0)
+cops	vi	unreviewed	cóp	generated candidate (scowl-35, corpus count 0)
+corps	vi	unreviewed	cóp	generated candidate (scowl-35, corpus count 0)
+cots	vi	unreviewed	cót	generated candidate (scowl-35, corpus count 0)
+cur	vi	unreviewed	củ	generated candidate (scowl-35, corpus count 0)
+dais	vi	unreviewed	dái	generated candidate (scowl-35, corpus count 0)
+dams	vi	unreviewed	dám	generated candidate (scowl-35, corpus count 0)
+darts	vi	unreviewed	dát	generated candidate (scowl-35, corpus count 0)
+deer	vi	unreviewed	dể	generated candidate (scowl-35, corpus count 0)
+defer	vi	unreviewed	dể	generated candidate (scowl-35, corpus count 0)
+defers	vi	unreviewed	dế	generated candidate (scowl-35, corpus count 0)
+dodo	vi	unreviewed	đô	generated candidate (scowl-35, corpus count 0)
+dos	vi	unreviewed	dó	generated candidate (scowl-35, corpus count 0)
+dud	vi	unreviewed	đu	generated candidate (scowl-35, corpus count 0)
+duds	vi	unreviewed	đú	generated candidate (scowl-35, corpus count 0)
+dwarf	vi	unreviewed	dừa	generated candidate (scowl-35, corpus count 0)
+dwarfs	vi	unreviewed	dứa	generated candidate (scowl-35, corpus count 0)
+gays	vi	unreviewed	gáy	generated candidate (scowl-35, corpus count 0)
+goo	vi	unreviewed	gô	generated candidate (scowl-35, corpus count 0)
+goof	vi	unreviewed	gồ	generated candidate (scowl-35, corpus count 0)
+goon	vi	unreviewed	gôn	generated candidate (scowl-35, corpus count 0)
+gust	vi	unreviewed	gút	generated candidate (scowl-35, corpus count 0)
+hams	vi	unreviewed	hám	generated candidate (scowl-35, corpus count 0)
+harms	vi	unreviewed	hám	generated candidate (scowl-35, corpus count 0)
+hens	vi	unreviewed	hén	generated candidate (scowl-35, corpus count 0)
+hers	vi	unreviewed	hé	generated candidate (scowl-35, corpus count 0)
+hips	vi	unreviewed	híp	generated candidate (scowl-35, corpus count 0)
+hoots	vi	unreviewed	hốt	generated candidate (scowl-35, corpus count 0)
+hops	vi	unreviewed	hóp	generated candidate (scowl-35, corpus count 0)
+hows	vi	unreviewed	hớ	generated candidate (scowl-35, corpus count 0)
+ifs	vi	unreviewed	í	generated candidate (scowl-35, corpus count 0)
+lair	vi	unreviewed	lải	generated candidate (scowl-35, corpus count 0)
+lax	vi	unreviewed	lã	generated candidate (scowl-35, corpus count 0)
+lee	vi	unreviewed	lê	generated candidate (scowl-35, corpus count 0)
+leer	vi	unreviewed	lể	generated candidate (scowl-35, corpus count 0)
+lefts	vi	unreviewed	lét	generated candidate (scowl-35, corpus count 0)
+loaf	vi	unreviewed	lòa	generated candidate (scowl-35, corpus count 0)
+loafs	vi	unreviewed	lóa	generated candidate (scowl-35, corpus count 0)
+lofts	vi	unreviewed	lót	generated candidate (scowl-35, corpus count 0)
+longs	vi	unreviewed	lóng	generated candidate (scowl-35, corpus count 0)
+loom	vi	unreviewed	lôm	generated candidate (scowl-35, corpus count 0)
+looms	vi	unreviewed	lốm	generated candidate (scowl-35, corpus count 0)
+loots	vi	unreviewed	lốt	generated candidate (scowl-35, corpus count 0)
+losers	vi	unreviewed	lóe	generated candidate (scowl-35, corpus count 0)
+lows	vi	unreviewed	lớ	generated candidate (scowl-35, corpus count 0)
+mama	vi	unreviewed	mâm	generated candidate (scowl-35, corpus count 0)
+mars	vi	unreviewed	má	generated candidate (scowl-35, corpus count 0)
+mas	vi	unreviewed	má	generated candidate (scowl-35, corpus count 0)
+mes	vi	unreviewed	mé	generated candidate (scowl-35, corpus count 0)
+moms	vi	unreviewed	móm	generated candidate (scowl-35, corpus count 0)
+moors	vi	unreviewed	mố	generated candidate (scowl-35, corpus count 0)
+moos	vi	unreviewed	mố	generated candidate (scowl-35, corpus count 0)
+moots	vi	unreviewed	mốt	generated candidate (scowl-35, corpus count 0)
+mops	vi	unreviewed	móp	generated candidate (scowl-35, corpus count 0)
+morns	vi	unreviewed	món	generated candidate (scowl-35, corpus count 0)
+mow	vi	unreviewed	mơ	generated candidate (scowl-35, corpus count 0)
+mows	vi	unreviewed	mớ	generated candidate (scowl-35, corpus count 0)
+nays	vi	unreviewed	náy	generated candidate (scowl-35, corpus count 0)
+nits	vi	unreviewed	nít	generated candidate (scowl-35, corpus count 0)
+oaf	vi	unreviewed	òa	generated candidate (scowl-35, corpus count 0)
+queers	vi	unreviewed	quế	generated candidate (scowl-35, corpus count 0)
+rafts	vi	unreviewed	rát	generated candidate (scowl-35, corpus count 0)
+rams	vi	unreviewed	rám	generated candidate (scowl-35, corpus count 0)
+rays	vi	unreviewed	ráy	generated candidate (scowl-35, corpus count 0)
+reef	vi	unreviewed	rề	generated candidate (scowl-35, corpus count 0)
+reefs	vi	unreviewed	rế	generated candidate (scowl-35, corpus count 0)
+rifts	vi	unreviewed	rít	generated candidate (scowl-35, corpus count 0)
+roost	vi	unreviewed	rốt	generated candidate (scowl-35, corpus count 0)
+rotors	vi	unreviewed	rốt	generated candidate (scowl-35, corpus count 0)
+rots	vi	unreviewed	rót	generated candidate (scowl-35, corpus count 0)
+rums	vi	unreviewed	rúm	generated candidate (scowl-35, corpus count 0)
+rungs	vi	unreviewed	rúng	generated candidate (scowl-35, corpus count 0)
+sacs	vi	unreviewed	sác	generated candidate (scowl-35, corpus count 0)
+sari	vi	unreviewed	sải	generated candidate (scowl-35, corpus count 0)
+saris	vi	unreviewed	sái	generated candidate (scowl-35, corpus count 0)
+seeps	vi	unreviewed	sếp	generated candidate (scowl-35, corpus count 0)
+sifts	vi	unreviewed	sít	generated candidate (scowl-35, corpus count 0)
+sown	vi	unreviewed	sơn	generated candidate (scowl-35, corpus count 0)
+sows	vi	unreviewed	sớ	generated candidate (scowl-35, corpus count 0)
+suns	vi	unreviewed	sún	generated candidate (scowl-35, corpus count 0)
+surf	vi	unreviewed	sù	generated candidate (scowl-35, corpus count 0)
+surfs	vi	unreviewed	sú	generated candidate (scowl-35, corpus count 0)
+swoon	vi	unreviewed	suôn	generated candidate (scowl-35, corpus count 0)
+tangs	vi	unreviewed	táng	generated candidate (scowl-35, corpus count 0)
+taps	vi	unreviewed	táp	generated candidate (scowl-35, corpus count 0)
+tars	vi	unreviewed	tá	generated candidate (scowl-35, corpus count 0)
+tarts	vi	unreviewed	tát	generated candidate (scowl-35, corpus count 0)
+teem	vi	unreviewed	têm	generated candidate (scowl-35, corpus count 0)
+terser	vi	unreviewed	tể	generated candidate (scowl-35, corpus count 0)
+thefts	vi	unreviewed	thét	generated candidate (scowl-35, corpus count 0)
+tits	vi	unreviewed	tít	generated candidate (scowl-35, corpus count 0)
+tots	vi	unreviewed	tót	generated candidate (scowl-35, corpus count 0)
+tow	vi	unreviewed	tơ	generated candidate (scowl-35, corpus count 0)
+tows	vi	unreviewed	tớ	generated candidate (scowl-35, corpus count 0)
+trots	vi	unreviewed	trót	generated candidate (scowl-35, corpus count 0)
+tufts	vi	unreviewed	tút	generated candidate (scowl-35, corpus count 0)
+turfs	vi	unreviewed	tú	generated candidate (scowl-35, corpus count 0)
+urn	vi	unreviewed	ủn	generated candidate (scowl-35, corpus count 0)
+vats	vi	unreviewed	vát	generated candidate (scowl-35, corpus count 0)
+veers	vi	unreviewed	vế	generated candidate (scowl-35, corpus count 0)
+vexes	vi	unreviewed	vế	generated candidate (scowl-35, corpus count 0)
+visa	vi	unreviewed	vía	generated candidate (scowl-35, corpus count 0)
+vow	vi	unreviewed	vơ	generated candidate (scowl-35, corpus count 0)
+vows	vi	unreviewed	vớ	generated candidate (scowl-35, corpus count 0)
+chown	vi	unreviewed	chơn	generated candidate (tech-code-only, corpus count 0)
+ef	vi	unreviewed	è	generated candidate (tech-code-only, corpus count 0)
+# [generated en rows] Added by `ambiguity-candidates --merge` (docs/decisions/0202); not decided by Pa.
+# Each note ends with [generated:unattested] (English raw keys whose display is not attested: rule L8 restores
+# the word whatever the row says) or [generated:tech-always] (a tech-always word, kept as typed by rule L11).
+# `lexicon-builder build` fails when that reason no longer holds (the display was attested, the word left the
+# lexicon or the tech-always list): delete the row, then merge again or decide it by hand.
+chars	en	proposed	chá	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+chosen	en	proposed	choén	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+days	en	proposed	dáy	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+deem	en	proposed	dêm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+deems	en	proposed	dếm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+does	en	proposed	dóe	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+door	en	proposed	dổ	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+doors	en	proposed	dố	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+down	en	proposed	dơn	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+goes	en	proposed	góe	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+harm	en	proposed	hảm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+her	en	proposed	hẻ	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+horse	en	proposed	hóe	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+keen	en	proposed	kên	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+keeps	en	proposed	kếp	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+major	en	proposed	mảo	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+meets	en	proposed	mết	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+mere	en	proposed	mể	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pair	en	proposed	pải	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pairs	en	proposed	pái	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+parts	en	proposed	pát	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+past	en	proposed	pát	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pays	en	proposed	páy	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+per	en	proposed	pẻ	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pieces	en	proposed	piếc	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+poor	en	proposed	pổ	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+post	en	proposed	pót	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+puts	en	proposed	pút	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+queue	en	proposed	quêu	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+refuse	en	proposed	rếu	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+rooms	en	proposed	rốm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+says	en	proposed	sáy	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+see	en	proposed	sê	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+seem	en	proposed	sêm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+seems	en	proposed	sếm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sees	en	proposed	sế	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+soon	en	proposed	sôn	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+term	en	proposed	tẻm	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+those	en	proposed	thóe	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+town	en	proposed	tơn	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+trees	en	proposed	trế	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+turns	en	proposed	tún	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+war	en	proposed	ửa	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+wrong	en	proposed	ưởng	generated candidate (scowl-10, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ax	en	proposed	ã	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+bias	en	proposed	bía	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+boom	en	proposed	bôm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+chaps	en	proposed	cháp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+charm	en	proposed	chảm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+charms	en	proposed	chám	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+cheer	en	proposed	chể	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+choir	en	proposed	chỏi	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dawn	en	proposed	dăn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dense	en	proposed	dến	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+deserts	en	proposed	dết	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dons	en	proposed	dón	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+doom	en	proposed	dôm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dooms	en	proposed	dốm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dose	en	proposed	dóe	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dots	en	proposed	dót	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dust	en	proposed	dút	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gaps	en	proposed	gáp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gasp	en	proposed	gáp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gifts	en	proposed	gít	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gown	en	proposed	gơn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+guns	en	proposed	gún	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+guys	en	proposed	gúy	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+honors	en	proposed	hốn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+loans	en	proposed	loán	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+mans	en	proposed	mán	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+maps	en	proposed	máp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+meters	en	proposed	mết	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+metres	en	proposed	mết	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+moons	en	proposed	mốn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+moron	en	proposed	mổn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+morons	en	proposed	mốn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+norm	en	proposed	nỏm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+nose	en	proposed	nóe	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+nuns	en	proposed	nún	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+oar	en	proposed	ỏa	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+par	en	proposed	pả	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+peer	en	proposed	pể	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+peers	en	proposed	pế	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pens	en	proposed	pén	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pins	en	proposed	pín	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pops	en	proposed	póp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ports	en	proposed	pót	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+puns	en	proposed	pún	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+queens	en	proposed	quến	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+queues	en	proposed	quếu	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+reuse	en	proposed	rếu	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+rips	en	proposed	ríp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+rose	en	proposed	róe	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sexes	en	proposed	sế	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sins	en	proposed	sín	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sons	en	proposed	són	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sore	en	proposed	sỏe	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sums	en	proposed	súm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sworn	en	proposed	sưởn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+taxi	en	proposed	tãi	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+tens	en	proposed	tén	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+tense	en	proposed	tến	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+themes	en	proposed	thếm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+tons	en	proposed	tón	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+torn	en	proposed	tỏn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+towns	en	proposed	tớn	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+trips	en	proposed	tríp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+troops	en	proposed	trốp	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+worm	en	proposed	ưởm	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+wrongs	en	proposed	ướng	generated candidate (scowl-20, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+bays	en	proposed	báy	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+bins	en	proposed	bín	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+booms	en	proposed	bốm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+bosom	en	proposed	bốm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+bums	en	proposed	búm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+chasm	en	proposed	chám	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+cheeps	en	proposed	chếp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+chore	en	proposed	chỏe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+churns	en	proposed	chún	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+cons	en	proposed	cón	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+corns	en	proposed	cón	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+cox	en	proposed	cõ	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+darn	en	proposed	dản	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dawns	en	proposed	dắn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+deeps	en	proposed	dếp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dens	en	proposed	dén	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+denser	en	proposed	dển	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+deters	en	proposed	dết	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dims	en	proposed	dím	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dins	en	proposed	dín	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dips	en	proposed	díp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+doer	en	proposed	dỏe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+doers	en	proposed	dóe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+donor	en	proposed	dổn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+donors	en	proposed	dốn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dosed	en	proposed	đóe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+downs	en	proposed	dớn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+dungs	en	proposed	dúng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+exerts	en	proposed	ết	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gangs	en	proposed	gáng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gins	en	proposed	gín	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gist	en	proposed	gít	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+goats	en	proposed	goát	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gongs	en	proposed	góng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+goofs	en	proposed	gố	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+goons	en	proposed	gốn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gore	en	proposed	gỏe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gores	en	proposed	góe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gowns	en	proposed	gớn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+gums	en	proposed	gúm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hangar	en	proposed	hẩng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hangars	en	proposed	hấng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+harps	en	proposed	háp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hays	en	proposed	háy	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hems	en	proposed	hém	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+herpes	en	proposed	hếp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hims	en	proposed	hím	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hoax	en	proposed	hõa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hoes	en	proposed	hóe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hoops	en	proposed	hốp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+horns	en	proposed	hón	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hose	en	proposed	hóe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+hums	en	proposed	húm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ins	en	proposed	ín	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+keens	en	proposed	kến	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+laps	en	proposed	láp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+lawns	en	proposed	lắn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+leers	en	proposed	lế	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+lepers	en	proposed	lếp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+liar	en	proposed	lỉa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+liars	en	proposed	lía	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+loon	en	proposed	lôn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+loons	en	proposed	lốn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+lops	en	proposed	lóp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+lore	en	proposed	lỏe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+loser	en	proposed	lỏe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+majors	en	proposed	máo	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+mamas	en	proposed	mấm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+meres	en	proposed	mế	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+merest	en	proposed	mết	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+metes	en	proposed	mết	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+morn	en	proposed	mỏn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+mums	en	proposed	múm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+mys	en	proposed	mý	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+naps	en	proposed	náp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+nieces	en	proposed	niếc	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+nips	en	proposed	níp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+noes	en	proposed	nóe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+norms	en	proposed	nóm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+oafs	en	proposed	óa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+oars	en	proposed	óa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ore	en	proposed	ỏe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ores	en	proposed	óe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ox	en	proposed	õ	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+oxen	en	proposed	oẽn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pangs	en	proposed	páng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pans	en	proposed	pán	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+papas	en	proposed	pấp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pars	en	proposed	pá	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pas	en	proposed	pá	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pasta	en	proposed	pất	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pats	en	proposed	pát	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pawn	en	proposed	păn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pawns	en	proposed	pắn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+peeps	en	proposed	pếp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+peps	en	proposed	pép	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+perches	en	proposed	pếch	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+perjure	en	proposed	pểu	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+perjures	en	proposed	pếu	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+peruse	en	proposed	pếu	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pest	en	proposed	pét	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pesters	en	proposed	pết	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+peters	en	proposed	pết	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pets	en	proposed	pét	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pierces	en	proposed	piếc	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pis	en	proposed	pí	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pits	en	proposed	pít	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+poops	en	proposed	pốp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pots	en	proposed	pót	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pups	en	proposed	púp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+pus	en	proposed	pú	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+quays	en	proposed	quáy	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+queer	en	proposed	quể	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+rims	en	proposed	rím	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+roams	en	proposed	roám	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+roar	en	proposed	rỏa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+roars	en	proposed	róa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+roast	en	proposed	roát	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+roes	en	proposed	róe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+roofs	en	proposed	rố	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+rosary	en	proposed	roảy	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+seer	en	proposed	sể	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sips	en	proposed	síp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sirs	en	proposed	sí	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+soar	en	proposed	sỏa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+soars	en	proposed	sóa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sofa	en	proposed	sòa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sofas	en	proposed	sóa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sops	en	proposed	sóp	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sores	en	proposed	sóe	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+sorest	en	proposed	soét	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+swoons	en	proposed	suốn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+teems	en	proposed	tếm	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+teens	en	proposed	tến	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+tenser	en	proposed	tển	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+thins	en	proposed	thín	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+thongs	en	proposed	thóng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+thorn	en	proposed	thỏn	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+thorns	en	proposed	thón	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+tongs	en	proposed	tóng	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+trays	en	proposed	tráy	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+trims	en	proposed	trím	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+urns	en	proposed	ún	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+veer	en	proposed	vể	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+wax	en	proposed	ữa	generated candidate (scowl-35, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+nextjs	en	proposed	nét	generated candidate (tech-always): proposed en so that the tech-always word stays as typed, as rule L11 does for tech-always words without a row [generated:tech-always]
+a4	en	proposed	ã	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+aux	en	proposed	ãu	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+auxf	en	proposed	àu	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+co2	en	proposed	cò	generated candidate (tech-always): proposed en so that the tech-always word stays as typed, as rule L11 does for tech-always words without a row [generated:tech-always]
+exe	en	proposed	ễ	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+momo	en	proposed	môm	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+o2	en	proposed	ò	generated candidate (tech-always): proposed en so that the tech-always word stays as typed, as rule L11 does for tech-always words without a row [generated:tech-always]
+tox	en	proposed	tõ	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+ux	en	proposed	ũ	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]
+xix	en	proposed	xĩ	generated candidate (tech-always, display not attested): rule L8 restores it; proposed en to match (attest the syllable with a reason and set vi to keep it) [generated:unattested]

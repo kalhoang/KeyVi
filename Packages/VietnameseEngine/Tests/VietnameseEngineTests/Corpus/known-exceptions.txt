@@ -1,4 +1,61 @@
 # ENG-T11 (spec/01-engine.md 13.3): English words that may change after commit in an English run, one per
 # line: word<TAB>display<TAB>rule<TAB>reason. Adding an exception requires review by Pa.
-# None yet: the 13.9 fixtures and the QA-R4 hand list restore every word. The data track's lexicon run
-# (ENG-T10 with the bundled resources) lists its exceptions here.
+# The fixture run (13.9 lists, QA-R4 hand list) restores every word. The entries below come from the run with
+# the bundled resources (VietnameseEngineDataTests, EnglishCorpusGateTests; docs/decisions/0202) and are PENDING
+# Pa's review. They change identically after a Vietnamese seed, because rules L4, L6 and L7 decide before the run
+# language (L10) or the ambiguity table (L11) is read; the ENG-R872 test accepts exactly these entries.
+# L4: a doubled tone key escapes (s, f, r, x, j: `pass` types `pá` then `pas`); when the escaped form is itself an
+# English word, L4 keeps it. Data cannot change this without dropping a common English word from the lexicon.
+ass	as	L4	the escape leaves the English word "as", which L4 keeps
+awk	ăk	L6	code-only command (spec 8.2 example), not English by 8.1: L6 keeps the Tier B display outside the code context; L9 restores it in the code context
+barred	bared	L4	the escape leaves the English word "bared", which L4 keeps
+barring	baring	L4	the escape leaves the English word "baring", which L4 keeps
+basses	bases	L4	the escape leaves the English word "bases", which L4 keeps
+bests	bets	L4	the escape leaves the English word "bets", which L4 keeps
+boasts	boats	L4	the escape leaves the English word "boats", which L4 keeps
+brass	bras	L4	the escape leaves the English word "bras", which L4 keeps
+bursts	buts	L4	the escape leaves the English word "buts", which L4 keeps
+busts	buts	L4	the escape leaves the English word "buts", which L4 keeps
+casts	cats	L4	the escape leaves the English word "cats", which L4 keeps
+chaffed	chafed	L4	the escape leaves the English word "chafed", which L4 keeps
+chaffing	chafing	L4	the escape leaves the English word "chafing", which L4 keeps
+chown	chơn	L7	code-only command, not English by 8.1: L7 keeps the Tier A display chơn (Chơn Thành, chơn chất) outside the code context; L9 restores it in the code context (review of docs/decisions/0202)
+corral	coral	L4	the escape leaves the English word "coral", which L4 keeps
+corrals	corals	L4	the escape leaves the English word "corals", which L4 keeps
+costs	cots	L4	the escape leaves the English word "cots", which L4 keeps
+dessert	desert	L4	the escape leaves the English word "desert", which L4 keeps
+desserts	deserts	L4	the escape leaves the English word "deserts", which L4 keeps
+doses	does	L4	the escape leaves the English word "does", which L4 keeps
+duress	dues	L4	the escape leaves the English word "dues", which L4 keeps
+ef	è	L7	code-only flag, not English by 8.1: L7 keeps the Tier A display è (è cổ) outside the code context; L9 restores it in the code context (review of docs/decisions/0202)
+gasps	gaps	L4	the escape leaves the English word "gaps", which L4 keeps
+gusts	guts	L4	the escape leaves the English word "guts", which L4 keeps
+hiss	his	L4	the escape leaves the English word "his", which L4 keeps
+horses	hoes	L4	the escape leaves the English word "hoes", which L4 keeps
+hoses	hoes	L4	the escape leaves the English word "hoes", which L4 keeps
+lisps	lips	L4	the escape leaves the English word "lips", which L4 keeps
+losses	loses	L4	the escape leaves the English word "loses", which L4 keeps
+mass	mas	L4	the escape leaves the English word "mas", which L4 keeps
+masts	mats	L4	the escape leaves the English word "mats", which L4 keeps
+mess	mes	L4	the escape leaves the English word "mes", which L4 keeps
+mussed	mused	L4	the escape leaves the English word "mused", which L4 keeps
+musses	muses	L4	the escape leaves the English word "muses", which L4 keeps
+mussing	musing	L4	the escape leaves the English word "musing", which L4 keeps
+nests	nets	L4	the escape leaves the English word "nets", which L4 keeps
+noses	noes	L4	the escape leaves the English word "noes", which L4 keeps
+off	of	L4	the escape leaves the English word "of", which L4 keeps
+parred	pared	L4	the escape leaves the English word "pared", which L4 keeps
+parring	paring	L4	the escape leaves the English word "paring", which L4 keeps
+pass	pas	L4	the escape leaves the English word "pas", which L4 keeps
+pasts	pats	L4	the escape leaves the English word "pats", which L4 keeps
+pests	pets	L4	the escape leaves the English word "pets", which L4 keeps
+posts	pots	L4	the escape leaves the English word "pots", which L4 keeps
+prises	pries	L4	the escape leaves the English word "pries", which L4 keeps
+puss	pus	L4	the escape leaves the English word "pus", which L4 keeps
+rasps	raps	L4	the escape leaves the English word "raps", which L4 keeps
+roses	roes	L4	the escape leaves the English word "roes", which L4 keeps
+ruses	rues	L4	the escape leaves the English word "rues", which L4 keeps
+rusts	ruts	L4	the escape leaves the English word "ruts", which L4 keeps
+vasts	vats	L4	the escape leaves the English word "vats", which L4 keeps
+vests	vets	L4	the escape leaves the English word "vets", which L4 keeps
+vises	vies	L4	the escape leaves the English word "vies", which L4 keeps

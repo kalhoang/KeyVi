@@ -46,6 +46,8 @@ enum Builder {
         let techCodeOnly = try TechList.load(layout.inputs.appendingPathComponent("tech-code-only.txt"))
         let ambiguity = try AmbiguityRow.load(layout.inputs.appendingPathComponent("ambiguity.tsv"))
         let attested = try attestedSyllables(layout)
+        try checkGeneratedRows(
+            ambiguity, english: english, techAlways: Set(techAlways), attested: attested.syllables)
 
         var output = BuildOutput()
         let lists: [(String, [String])] = [
@@ -60,7 +62,8 @@ enum Builder {
             entries[name] = words.count
         }
         let sortedRows = ambiguity.sorted { $0.raw.utf8.lexicographicallyPrecedes($1.raw.utf8) }
-        output.resources.append((ResourceName.ambiguity, Data(joinedLines([AmbiguityRow.header] + sortedRows.map(\.line)).utf8)))
+        output.resources.append(
+            (ResourceName.ambiguity, Data(joinedLines([AmbiguityRow.header] + sortedRows.map(\.line)).utf8)))
         entries[ResourceName.ambiguity] = sortedRows.count
         output.resources.append((ResourceName.notices, Data(try notices(layout).utf8)))
 
@@ -74,9 +77,40 @@ enum Builder {
         ]
         let inputsDigest = SHA256.hex(of: try FileIO.read(layout.manifestFile))
         output.resources.append(
-            (ResourceName.manifest, Data(manifestJSON(output.resources, entries: entries, stats: stats, inputsDigest: inputsDigest).utf8)))
+            (
+                ResourceName.manifest,
+                Data(manifestJSON(output.resources, entries: entries, stats: stats, inputsDigest: inputsDigest).utf8)
+            ))
         output.derived.append((ResourceName.attestedCandidates, Data(candidatesTSV(attested.counts).utf8)))
         return output
+    }
+
+    /// A generated `en` row (docs/decisions/0202) restates what rule L8 or the tech-always list does. When the
+    /// input it depends on changes (the display is attested, the word left the lexicon or the tech-always list),
+    /// the row would keep restoring the word on its own (rule L11) and nobody would notice: fail instead.
+    static func checkGeneratedRows(
+        _ rows: [AmbiguityRow], english: [String: Int], techAlways: Set<String>, attested: Set<String>
+    ) throws {
+        var stale: [String] = []
+        for row in rows {
+            switch row.generatedReason {
+            case .unattested:
+                if attested.contains(row.display) {
+                    stale.append("\(row.raw): display '\(row.display)' is now attested")
+                } else if english[row.raw] == nil && !techAlways.contains(row.raw) {
+                    stale.append("\(row.raw): no longer English (lexicon or tech-always), rule L8 does not apply")
+                }
+            case .techAlways:
+                if !techAlways.contains(row.raw) { stale.append("\(row.raw): no longer in tech-always.txt") }
+            case nil:
+                break
+            }
+        }
+        guard stale.isEmpty else {
+            throw BuilderError(
+                "ambiguity.tsv: generated rows whose reason no longer holds (delete each row, then merge again or "
+                    + "decide it by hand):\n" + stale.joined(separator: "\n"))
+        }
     }
 
     /// Attested set (spec/01-engine.md 8.2, used only by rule L8): legal-text tokens that are valid
@@ -129,9 +163,10 @@ enum Builder {
                 let name = line.dropFirst("@include ".count).trimmingCharacters(in: .whitespaces)
                 let data = try FileIO.read(layout.licenses.appendingPathComponent(name))
                 let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
-                lines.append(contentsOf: text.split(separator: "\n", omittingEmptySubsequences: false).map {
-                    $0.replacingOccurrences(of: " +$", with: "", options: .regularExpression)
-                })
+                lines.append(
+                    contentsOf: text.split(separator: "\n", omittingEmptySubsequences: false).map {
+                        $0.replacingOccurrences(of: " +$", with: "", options: .regularExpression)
+                    })
             } else {
                 lines.append(String(line))
             }
@@ -145,12 +180,16 @@ enum Builder {
     static func manifestJSON(
         _ files: [(name: String, data: Data)], entries: [String: Int], stats: [(String, Int)], inputsDigest: String
     ) -> String {
-        var lines = ["{", "  \"format\": 1,", "  \"generator\": \"lexicon-builder\",", "  \"inputsSHA256\": \"\(inputsDigest)\",", "  \"files\": ["]
+        var lines = [
+            "{", "  \"format\": 1,", "  \"generator\": \"lexicon-builder\",",
+            "  \"inputsSHA256\": \"\(inputsDigest)\",", "  \"files\": [",
+        ]
         for (index, file) in files.enumerated() {
             let comma = index == files.count - 1 ? "" : ","
             let count = entries[file.name].map { ", \"entries\": \($0)" } ?? ""
             lines.append(
-                "    {\"name\": \"\(file.name)\", \"bytes\": \(file.data.count)\(count), \"sha256\": \"\(SHA256.hex(of: file.data))\"}\(comma)")
+                "    {\"name\": \"\(file.name)\", \"bytes\": \(file.data.count)\(count), \"sha256\": \"\(SHA256.hex(of: file.data))\"}\(comma)"
+            )
         }
         lines.append("  ],")
         lines.append("  \"stats\": {")

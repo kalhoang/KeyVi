@@ -5,6 +5,12 @@
 import Foundation
 
 enum EnglishLexicon {
+    /// One-letter entries kept: the English words `a` and `I`. SCOWL also lists letters such as `m`;
+    /// Vietnamese text uses lone consonants as list markers (`m)`) and chat abbreviations (`m` for mày), and
+    /// rule ENG-R823 would make each of them an English token that turns the run English
+    /// (docs/decisions/0202).
+    static let oneLetterWords: Set<String> = ["a", "i"]
+
     /// Lowercase ASCII words of the selected SCOWL lists with their smallest size level, a legal
     /// frequency proxy (level 10 holds the most common words; spec/01-engine.md 8.2, ENG-R820).
     static func load(_ layout: Layout) throws -> [String: Int] {
@@ -19,6 +25,7 @@ enum EnglishLexicon {
                 for raw in text.split(whereSeparator: \.isNewline) {
                     let word = raw.trimmingCharacters(in: .whitespaces).lowercased()
                     guard !word.isEmpty, word.utf8.allSatisfy({ $0 >= 0x61 && $0 <= 0x7A }) else { continue }
+                    guard word.utf8.count > 1 || oneLetterWords.contains(word) else { continue }
                     levels[word] = min(levels[word] ?? level, level)
                 }
             }
@@ -34,7 +41,8 @@ enum TechList {
         var words: [String] = []
         for (number, word) in FileIO.contentLines(try FileIO.readUTF8(url)) {
             guard isValidEntry(word) else {
-                throw BuilderError("\(url.lastPathComponent) line \(number): '\(word)' must be lowercase a-z/0-9 with a letter")
+                throw BuilderError(
+                    "\(url.lastPathComponent) line \(number): '\(word)' must be lowercase a-z/0-9 with a letter")
             }
             guard seen.insert(word).inserted else {
                 throw BuilderError("\(url.lastPathComponent) line \(number): duplicate entry '\(word)'")
@@ -67,10 +75,13 @@ enum AttestedAdditions {
                 throw BuilderError("attested-additions.txt line \(number): expected 'syllable<TAB>reason'")
             }
             let syllable = fields[0]
-            guard syllable == VietnameseText.nfc(syllable).lowercased(), !syllable.isEmpty,
+            guard VietnameseText.isNFC(syllable),
+                syllable.unicodeScalars.elementsEqual(syllable.lowercased().unicodeScalars),
+                !syllable.isEmpty,
                 syllable.allSatisfy(VietnameseText.isVietnameseLetter)
             else {
-                throw BuilderError("attested-additions.txt line \(number): '\(syllable)' must be lowercase NFC Vietnamese letters")
+                throw BuilderError(
+                    "attested-additions.txt line \(number): '\(syllable)' must be lowercase NFC Vietnamese letters")
             }
             guard seen.insert(syllable).inserted else {
                 throw BuilderError("attested-additions.txt line \(number): duplicate '\(syllable)'")
@@ -92,7 +103,21 @@ struct AmbiguityRow: Equatable {
     let display: String
     let note: String
 
+    /// Why `ambiguity-candidates --merge` generated an `en` row (docs/decisions/0202), stored as a token in the
+    /// note so that `build` can fail when the reason no longer holds.
+    enum GeneratedReason: String, CaseIterable {
+        /// English raw keys whose display is not attested: rule L8 restores the word whatever the row says.
+        case unattested = "[generated:unattested]"
+        /// A tech-always word: rule L11 keeps it as typed without a row.
+        case techAlways = "[generated:tech-always]"
+    }
+
     static let header = "raw\tdecision\tstatus\tdisplay\tnote"
+
+    /// The generation reason recorded in the note, if any.
+    var generatedReason: GeneratedReason? {
+        GeneratedReason.allCases.first { note.contains($0.rawValue) }
+    }
 
     var line: String { "\(raw)\t\(decision.rawValue)\t\(status.rawValue)\t\(display)\t\(note)" }
 
@@ -120,7 +145,9 @@ struct AmbiguityRow: Equatable {
 
     static func parse(_ line: String, number: Int) throws -> AmbiguityRow {
         let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-        guard fields.count == 5 else { throw BuilderError("ambiguity.tsv line \(number): expected 5 tab-separated fields") }
+        guard fields.count == 5 else {
+            throw BuilderError("ambiguity.tsv line \(number): expected 5 tab-separated fields")
+        }
         guard TechList.isValidEntry(fields[0]) else {
             throw BuilderError("ambiguity.tsv line \(number): raw '\(fields[0])' must be lowercase a-z/0-9")
         }
@@ -130,7 +157,7 @@ struct AmbiguityRow: Equatable {
         guard let status = Status(rawValue: fields[2]) else {
             throw BuilderError("ambiguity.tsv line \(number): status must be proposed, reviewed or unreviewed")
         }
-        guard fields[3] == VietnameseText.nfc(fields[3]) else {
+        guard VietnameseText.isNFC(fields[3]) else {
             throw BuilderError("ambiguity.tsv line \(number): display must be NFC")
         }
         return AmbiguityRow(raw: fields[0], decision: decision, status: status, display: fields[3], note: fields[4])

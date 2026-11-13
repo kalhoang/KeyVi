@@ -66,7 +66,9 @@ struct LexiconBuilder {
         let output = try Builder.build(layout)
         if let directory = options.values["--output"] {
             let root = URL(fileURLWithPath: directory)
-            try Builder.write(output, resources: root.appendingPathComponent("Resources"), derived: root.appendingPathComponent("derived"))
+            try Builder.write(
+                output, resources: root.appendingPathComponent("Resources"),
+                derived: root.appendingPathComponent("derived"))
         } else {
             try Builder.write(output, resources: layout.resources, derived: layout.derived)
         }
@@ -78,7 +80,9 @@ struct LexiconBuilder {
     static func check(_ layout: Layout) throws {
         let output = try Builder.build(layout)
         let corpus = Data(try ProseCorpus.generate(layout, minimumTokens: ProseCorpus.defaultMinimumTokens).utf8)
-        var expected: [(URL, Data)] = output.resources.map { (layout.resources.appendingPathComponent($0.name), $0.data) }
+        var expected: [(URL, Data)] = output.resources.map {
+            (layout.resources.appendingPathComponent($0.name), $0.data)
+        }
         expected += output.derived.map { (layout.derived.appendingPathComponent($0.name), $0.data) }
         expected.append((layout.corpusFile, corpus))
         var stale: [String] = []
@@ -111,8 +115,10 @@ struct LexiconBuilder {
             default: layout.derived.appendingPathComponent("ambiguity-candidates.tsv"))
         FileHandle.standardError.write(Data("\(candidates.count) candidates\n".utf8))
         if options.flags.contains("--merge") {
-            let added = try AmbiguityCandidates.merge(candidates, into: layout.inputs.appendingPathComponent("ambiguity.tsv"))
-            FileHandle.standardError.write(Data("added \(added) unreviewed rows to inputs/ambiguity.tsv; run pin and build\n".utf8))
+            let added = try AmbiguityCandidates.merge(
+                candidates, into: layout.inputs.appendingPathComponent("ambiguity.tsv"))
+            FileHandle.standardError.write(
+                Data("added \(added) rows to inputs/ambiguity.tsv (see merge_as); run pin and build\n".utf8))
         }
     }
 
@@ -183,12 +189,15 @@ struct Options {
         let dataRoot: URL
         if let path = values["--data-root"] {
             dataRoot = URL(fileURLWithPath: path)
-        } else if let found = Layout.locateDataRoot(from: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)) {
+        } else if let found = Layout.locateDataRoot(
+            from: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+        {
             dataRoot = found
         } else {
             throw BuilderError("cannot find data/inputs/MANIFEST.sha256 above the working directory; pass --data-root")
         }
-        let resources = values["--resources"].map { URL(fileURLWithPath: $0) }
+        let resources =
+            values["--resources"].map { URL(fileURLWithPath: $0) }
             ?? dataRoot.deletingLastPathComponent().appendingPathComponent(Layout.defaultResourcesPath)
         return Layout(dataRoot: dataRoot, resources: resources)
     }

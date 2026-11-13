@@ -2,8 +2,6 @@ al
 alh
 alias
 apt
-aux
-auxf
 awk
 ax
 base64
@@ -38,7 +36,6 @@ date
 defaults
 deno
 df
-diff
 dig
 dnf
 docker
@@ -124,9 +121,7 @@ nslookup
 nvim
 open
 openssl
-otool
 pacman
-passwd
 patch
 perl
 pgrep
@@ -188,7 +183,6 @@ tee
 tmux
 top
 touch
-tox
 tr
 traceroute
 trap

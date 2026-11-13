@@ -37,6 +37,13 @@ def main():
     percent = 100.0 * covered / count
     print(f"engine core line coverage: {percent:.2f} % ({covered} of {count} lines, {len(files)} files); "
           f"regions {100.0 * regions_covered / regions:.2f} %; threshold {args.threshold:.0f} % (QA-R2)")
+    # Informational: the data target and lexicon-builder, unit-tested in-process by the data tests.
+    for label, marker in (("data target", "/Sources/VietnameseEngineData/"), ("lexicon-builder", "/Sources/lexicon-builder/")):
+        other = [f for f in data["data"][0]["files"] if marker in f["filename"]]
+        if other:
+            lines = sum(f["summary"]["lines"]["count"] for f in other)
+            hit = sum(f["summary"]["lines"]["covered"] for f in other)
+            print(f"{label} line coverage: {100.0 * hit / lines:.2f} % ({hit} of {lines} lines, {len(other)} files)")
     return 0 if percent >= args.threshold else 1
 
 

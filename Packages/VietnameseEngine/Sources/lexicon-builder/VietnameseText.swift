@@ -44,6 +44,10 @@ enum VietnameseText {
     /// NFC form (ENG-R102: output uses precomposed letters only).
     static func nfc(_ text: String) -> String { text.precomposedStringWithCanonicalMapping }
 
+    /// Whether `text` is already NFC, scalar for scalar. String `==` compares canonical equivalence, so
+    /// it cannot tell a decomposed string from its NFC form.
+    static func isNFC(_ text: String) -> Bool { text.unicodeScalars.elementsEqual(nfc(text).unicodeScalars) }
+
     /// Splits `text` into maximal runs of letters (`Character.isLetter`). Everything else is a boundary.
     static func letterRuns(_ text: String) -> [Substring] {
         text.split(whereSeparator: { !$0.isLetter })

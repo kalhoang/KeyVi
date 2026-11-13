@@ -6,9 +6,7 @@
 6g
 7z
 8k
-a3
 a4
-a5
 aab
 aac
 acer
@@ -25,6 +23,8 @@ archlinux
 asana
 asus
 atm
+aux
+auxf
 avi
 avif
 aws
@@ -58,6 +58,7 @@ debian
 dell
 deno
 dhcp
+diff
 discord
 django
 dll
@@ -230,8 +231,10 @@ onedrive
 openai
 oppo
 opus
+otool
 otp
 pandas
+passwd
 paypal
 pcr
 pdf
@@ -313,6 +316,7 @@ tiki
 tiktok
 tls
 toml
+tox
 tpu
 trello
 ts
@@ -370,6 +374,7 @@ xamarin
 xbox
 xcode
 xiaomi
+xix
 xls
 xlsx
 xml

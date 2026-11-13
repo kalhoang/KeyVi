@@ -57,7 +57,8 @@ struct MalformedResourceTests {
         try expectLoadError(
             .malformedResource("manifest.json: unsupported format 2"), manifest: "{\"format\": 2, \"files\": []}")
         try expectLoadError(
-            .malformedResource("manifest.json has no entry for english.txt"), manifest: "{\"format\": 1, \"files\": []}")
+            .malformedResource("manifest.json has no entry for english.txt"), manifest: "{\"format\": 1, \"files\": []}"
+        )
         let directory = try ResourceFixture.make(manifestOverride: "not json")
         defer { TempDirectory.remove(directory) }
         #expect {
@@ -84,27 +85,35 @@ struct MalformedResourceTests {
             try load(directory)
         }
         try expectLoadError(
-            .integrityMismatch(resource: "english.txt", detail: "4 entries, expected 5"), entryOverrides: ["english.txt": 5])
+            .integrityMismatch(resource: "english.txt", detail: "4 entries, expected 5"),
+            entryOverrides: ["english.txt": 5])
     }
 
     @Test func englishEntryProblems() throws {
         try expectLoadError(
-            .malformedEntry(resource: "english.txt", line: 2, reason: .invalidCharacter), replacing: ["english.txt": "as\nIs\n"])
+            .malformedEntry(resource: "english.txt", line: 2, reason: .invalidCharacter),
+            replacing: ["english.txt": "as\nIs\n"])
         try expectLoadError(
-            .malformedEntry(resource: "english.txt", line: 1, reason: .invalidCharacter), replacing: ["english.txt": "mp3\n"])
+            .malformedEntry(resource: "english.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["english.txt": "mp3\n"])
         try expectLoadError(
-            .malformedEntry(resource: "english.txt", line: 2, reason: .emptyLine), replacing: ["english.txt": "as\n\nis\n"])
+            .malformedEntry(resource: "english.txt", line: 2, reason: .emptyLine),
+            replacing: ["english.txt": "as\n\nis\n"])
         try expectLoadError(
-            .malformedEntry(resource: "english.txt", line: 2, reason: .missingFinalNewline), replacing: ["english.txt": "as\nis"])
+            .malformedEntry(resource: "english.txt", line: 2, reason: .missingFinalNewline),
+            replacing: ["english.txt": "as\nis"])
         try expectLoadError(
-            .malformedEntry(resource: "english.txt", line: 3, reason: .duplicate), replacing: ["english.txt": "as\nis\nas\n"])
+            .malformedEntry(resource: "english.txt", line: 3, reason: .duplicate),
+            replacing: ["english.txt": "as\nis\nas\n"])
         try expectLoadError(
-            .malformedEntry(resource: "english.txt", line: 1, reason: .invalidCharacter), replacing: ["english.txt": "as \n"])
+            .malformedEntry(resource: "english.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["english.txt": "as \n"])
     }
 
     @Test func techEntryProblems() throws {
         try expectLoadError(
-            .malformedEntry(resource: "tech-always.txt", line: 1, reason: .invalidCharacter), replacing: ["tech-always.txt": "123\n"])
+            .malformedEntry(resource: "tech-always.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["tech-always.txt": "123\n"])
         try expectLoadError(
             .malformedEntry(resource: "tech-code-only.txt", line: 1, reason: .invalidCharacter),
             replacing: ["tech-code-only.txt": "ssh-add\n"])
@@ -116,22 +125,30 @@ struct MalformedResourceTests {
             .malformedEntry(resource: "attested.txt", line: 1, reason: .notNormalized),
             replacing: ["attested.txt": "hoa\u{0300}\n"])
         try expectLoadError(
-            .malformedEntry(resource: "attested.txt", line: 1, reason: .invalidCharacter), replacing: ["attested.txt": "Hòa\n"])
+            .malformedEntry(resource: "attested.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["attested.txt": "Hòa\n"])
         try expectLoadError(
-            .malformedEntry(resource: "attested.txt", line: 1, reason: .invalidCharacter), replacing: ["attested.txt": "fax\n"])
+            .malformedEntry(resource: "attested.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["attested.txt": "fax\n"])
         try expectLoadError(
-            .malformedEntry(resource: "attested.txt", line: 2, reason: .emptyLine), replacing: ["attested.txt": "á\n\n"])
+            .malformedEntry(resource: "attested.txt", line: 2, reason: .emptyLine), replacing: ["attested.txt": "á\n\n"]
+        )
         try expectLoadError(
-            .malformedEntry(resource: "attested.txt", line: 2, reason: .duplicate), replacing: ["attested.txt": "á\ná\n"])
+            .malformedEntry(resource: "attested.txt", line: 2, reason: .duplicate),
+            replacing: ["attested.txt": "á\ná\n"])
         try expectLoadError(
-            .malformedEntry(resource: "attested.txt", line: 1, reason: .missingFinalNewline), replacing: ["attested.txt": "á"])
+            .malformedEntry(resource: "attested.txt", line: 1, reason: .missingFinalNewline),
+            replacing: ["attested.txt": "á"])
         let directory = try ResourceFixture.make()
         defer { TempDirectory.remove(directory) }
         try Data([0x61, 0xFF, 0x0A]).write(to: directory.appendingPathComponent("attested.txt"))
         let manifest = try String(contentsOf: directory.appendingPathComponent("manifest.json"), encoding: .utf8)
         let fixed = manifest.replacingOccurrences(
-            of: "\"name\": \"attested.txt\", \"bytes\": \(Data(ResourceFixture.valid["attested.txt"]!.utf8).count), \"entries\": 4, \"sha256\": \"\(sha256Hex(Data(ResourceFixture.valid["attested.txt"]!.utf8)))\"",
-            with: "\"name\": \"attested.txt\", \"bytes\": 3, \"entries\": 1, \"sha256\": \"\(sha256Hex(Data([0x61, 0xFF, 0x0A])))\"")
+            of:
+                "\"name\": \"attested.txt\", \"bytes\": \(Data(ResourceFixture.valid["attested.txt"]!.utf8).count), \"entries\": 4, \"sha256\": \"\(sha256Hex(Data(ResourceFixture.valid["attested.txt"]!.utf8)))\"",
+            with:
+                "\"name\": \"attested.txt\", \"bytes\": 3, \"entries\": 1, \"sha256\": \"\(sha256Hex(Data([0x61, 0xFF, 0x0A])))\""
+        )
         try Data(fixed.utf8).write(to: directory.appendingPathComponent("manifest.json"))
         #expect(throws: LoadError.malformedResource("attested.txt: not UTF-8")) { try load(directory) }
     }
@@ -163,6 +180,7 @@ struct MalformedResourceTests {
         #expect(error.description == "english.txt line 7: duplicate")
         #expect(LoadError.missingResource("x").description == "missing resource x")
         #expect(LoadError.malformedResource("y").description == "malformed resource: y")
-        #expect(LoadError.integrityMismatch(resource: "a", detail: "b").description == "a does not match manifest.json: b")
+        #expect(
+            LoadError.integrityMismatch(resource: "a", detail: "b").description == "a does not match manifest.json: b")
     }
 }

@@ -9,7 +9,7 @@ import Foundation
 import VietnameseEngine
 
 #if canImport(CryptoKit)
-    import CryptoKit
+import CryptoKit
 #endif
 
 /// The generated files and how their entries are validated.
@@ -45,7 +45,8 @@ struct ResourceDirectory {
 
     init(_ directory: URL) throws {
         self.directory = directory
-        let data = try Self.read(directory.appendingPathComponent(ResourceManifest.fileName), name: ResourceManifest.fileName)
+        let data = try Self.read(
+            directory.appendingPathComponent(ResourceManifest.fileName), name: ResourceManifest.fileName)
         let decoded: ResourceManifest
         do {
             decoded = try JSONDecoder().decode(ResourceManifest.self, from: data)
@@ -129,16 +130,18 @@ struct ResourceDirectory {
         }
         let data = try Self.read(directory.appendingPathComponent(file.rawValue), name: file.rawValue)
         guard data.count == expected.bytes else {
-            throw LoadError.integrityMismatch(resource: file.rawValue, detail: "\(data.count) bytes, expected \(expected.bytes)")
+            throw LoadError.integrityMismatch(
+                resource: file.rawValue, detail: "\(data.count) bytes, expected \(expected.bytes)")
         }
         #if canImport(CryptoKit)
-            let digest = SHA256.hash(data: data).map { byte in
-                let hex = String(byte, radix: 16)
-                return hex.count == 1 ? "0" + hex : hex
-            }.joined()
-            guard digest == expected.sha256 else {
-                throw LoadError.integrityMismatch(resource: file.rawValue, detail: "SHA-256 \(digest), expected \(expected.sha256)")
-            }
+        let digest = SHA256.hash(data: data).map { byte in
+            let hex = String(byte, radix: 16)
+            return hex.count == 1 ? "0" + hex : hex
+        }.joined()
+        guard digest == expected.sha256 else {
+            throw LoadError.integrityMismatch(
+                resource: file.rawValue, detail: "SHA-256 \(digest), expected \(expected.sha256)")
+        }
         #endif
         return data
     }
@@ -226,6 +229,16 @@ struct ResourceDirectory {
     }
 
     private static func checkUnique(_ words: [String], file: ResourceFile, firstLine: Int) throws {
+        // lexicon-builder writes every list sorted by UTF-8 bytes, so strictly ascending neighbours prove
+        // uniqueness without hashing (ENG-R1231). For NFC text String `<` follows code point order, which is
+        // UTF-8 byte order. Any other order falls back to the set below.
+        var ascending = true
+        var index = 1
+        while ascending, index < words.count {
+            ascending = words[index - 1] < words[index]
+            index += 1
+        }
+        if ascending { return }
         var seen = Set<String>(minimumCapacity: words.count)
         for (index, word) in words.enumerated() where !seen.insert(word).inserted {
             throw LoadError.malformedEntry(resource: file.rawValue, line: index + firstLine, reason: .duplicate)
@@ -242,7 +255,9 @@ struct ResourceDirectory {
 /// the Tier A consonants and `z` (spec/01-engine.md 3.2, 3.3).
 enum VietnameseLetters {
     static let letters: Set<Character> = {
-        var set: Set<Character> = ["b", "c", "d", "đ", "g", "h", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "x", "z"]
+        var set: Set<Character> = [
+            "b", "c", "d", "đ", "g", "h", "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "x", "z",
+        ]
         let marks = ["\u{0301}", "\u{0300}", "\u{0309}", "\u{0303}", "\u{0323}"]
         for vowel in ["a", "ă", "â", "e", "ê", "i", "o", "ô", "ơ", "u", "ư", "y"] {
             set.insert(Character(vowel))

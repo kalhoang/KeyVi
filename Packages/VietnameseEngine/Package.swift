@@ -46,9 +46,11 @@ let package = Package(
             resources: [.copy("Corpus")],
             swiftSettings: strict
         ),
+        // Depends on lexicon-builder so that its logic is unit-tested in-process (`@testable import
+        // lexicon_builder`, counted in coverage) and the executable is built before the CLI tests run it.
         .testTarget(
             name: "VietnameseEngineDataTests",
-            dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting"],
+            dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting", "lexicon-builder"],
             swiftSettings: strict
         ),
     ],

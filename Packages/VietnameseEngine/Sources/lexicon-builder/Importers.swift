@@ -60,15 +60,15 @@ enum LegalTexts {
     /// Converts every pinned legal document (Word .doc) to clean UTF-8 NFC text with macOS `textutil`.
     static func importDocuments(_ layout: Layout) throws {
         #if os(macOS)
-            for source in try sources(layout) {
-                _ = try source.verifiedData(layout)
-                let raw = layout.cache.appendingPathComponent(source.file).path
-                let output = try FileIO.run(
-                    "/usr/bin/textutil", ["-convert", "txt", "-encoding", "UTF-8", "-stdout", raw])
-                try FileIO.write(clean(String(decoding: output, as: UTF8.self)), to: textFile(layout, id: source.id))
-            }
+        for source in try sources(layout) {
+            _ = try source.verifiedData(layout)
+            let raw = layout.cache.appendingPathComponent(source.file).path
+            let output = try FileIO.run(
+                "/usr/bin/textutil", ["-convert", "txt", "-encoding", "UTF-8", "-stdout", raw])
+            try FileIO.write(clean(String(decoding: output, as: UTF8.self)), to: textFile(layout, id: source.id))
+        }
         #else
-            throw BuilderError("importing legal documents needs macOS textutil")
+        throw BuilderError("importing legal documents needs macOS textutil")
         #endif
     }
 

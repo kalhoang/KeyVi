@@ -58,3 +58,21 @@
   `lexicon-builder pin`, `lexicon-builder build` again, and commit; the `ambiguityCandidatesRunAgainstTheRealEngine`
   test then exercises real candidates.
 - Changing the resource format requires bumping `format` in both lexicon-builder and the loader.
+
+## Amendment, 2026-11-13 (engine integration, docs/decisions/0202)
+
+- **Decision 8 extended**: candidates also include English words whose display is a valid but unattested
+  Tier A syllable (rule L8 restores them, so ENG-R870 needs them as `en` rows) and words with a digit typed in
+  VNI; a word that a boundary splits into tokens is not a candidate. The candidate file gains the columns
+  `method`, `attested` and `merge_as`, and `--merge` adds `en / proposed` for English words with an unattested
+  display and for tech-always words, `vi / unreviewed` otherwise. The generated `en` rows go to a last block
+  (`# [generated en rows]`) and carry their reason as a token (`[generated:unattested]`,
+  `[generated:tech-always]`); `build`, and therefore `check`, fails when the reason no longer holds (the display
+  became attested, the word left the lexicon or the tech-always list).
+- **Decision 10 superseded**: `Package.swift` now makes `lexicon-builder` a dependency of
+  `VietnameseEngineDataTests`; its logic is unit-tested in-process (`@testable import lexicon_builder`) and the
+  CLI tests keep driving the executable, found through `Bundle(for:)`.
+- **Decision 3 numbers** with the real data: release cold load 17.8 to 31.9 ms, median 9 to 10 ms, resident
+  growth about 1.1 MB. The loader proves the uniqueness of a byte-sorted list by comparing neighbours instead
+  of building a second set (debug load about 21 ms to 15 ms).
+- **Validation fix**: the builder's NFC checks compare Unicode scalars (String `==` accepted decomposed text).

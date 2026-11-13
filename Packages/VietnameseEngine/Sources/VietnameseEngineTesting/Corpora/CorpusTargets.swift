@@ -19,8 +19,8 @@ public struct ChangedWord: Sendable, Hashable, CustomStringConvertible {
 /// 99.5 % unchanged, every failure a known exception) and (b) after a Vietnamese seed token (ENG-R872: at
 /// most 3 % changed, every change an ambiguity candidate of ENG-R820 whose row, if any, is `vi`).
 ///
-/// The words come from the data track's lexicon and tech lists; the tests run it with the 13.9 fixtures
-/// until those exist.
+/// `VietnameseEngineDataTests` runs it over the bundled lexicon and tech lists (`EnglishCorpusGateTests`);
+/// the engine tests run it with the 13.9 fixtures.
 public struct EnglishCorpusReport: Sendable {
     /// Number of words checked.
     public let words: Int
@@ -122,9 +122,13 @@ public enum ProseCorpusCheck {
     /// The three typists of ENG-T20, in the order canonical, tone at end, free order.
     public static let typists: [CorpusOrder] = [.o2, .o1, .o3]
 
-    /// Types `text` with `order` in `method` and compares each word with the source.
-    public static func run(text: String, method: CorpusMethod, order: CorpusOrder, resources: Resources) -> Report {
-        let engine = Engine(configuration: EngineConfiguration(inputMethod: method.inputMethod), resources: resources)
+    /// Types `text` with `order` in `method` and compares each word with the source. `style` is the typist's
+    /// tone-style setting (spec 5.2); the keys are the same in both styles, only the placement differs.
+    public static func run(
+        text: String, method: CorpusMethod, order: CorpusOrder, style: ToneStyle = .traditional, resources: Resources
+    ) -> Report {
+        let configuration = EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+        let engine = Engine(configuration: configuration, resources: resources)
         var session = Session(engine: engine)
         var tokens = 0
         var differences: [ChangedWord] = []

@@ -79,12 +79,14 @@ Swift Testing, organised by area under `Tests/VietnameseEngineTests`:
 | `Oracle` | the oracle (ENG-T01) and the generated O1 to O4 corpus and variants (ENG-T02, ENG-T03) |
 | `Composition` | worked examples W001-W253, the 6.2 edit traces, restore toggles E01-E08, the generated corpus against the oracle, rule tests, replay properties, a microbenchmark |
 | `Commit` | commit decisions B001-B064 at every boundary key, rules L0-L11, the English run, history, resets, macros, REG-01 to REG-30, the generated corpus committed (ENG-R870), the ENG-T12 spot list, commit properties, and the QA-R4 corpus loader |
-| `Quality` | the fuzz campaign (13.6), long tokens to 100,000 keys, keyboard layouts, the 8.8 targets with fixture data, the API contract (ENG-R1203, ENG-R450), the REG-23 source scan, documentation and traceability checks |
+| `Quality` | the fuzz campaign (13.6), long tokens to 100,000 keys, keyboard layouts, the 8.8 targets with fixture data (the bundled-data gates are in `VietnameseEngineDataTests/RealData`), the API contract (ENG-R1203, ENG-R450), the REG-23 source scan, documentation and traceability checks |
 | `Corpus` | data files: the QA-R4 categories (`README.txt` lists them), the spec fixtures, `prose-sample.txt`, `known-exceptions.txt` |
 
-Current figures (Apple M4, shared and loaded): core line coverage 99.6 %; per event, median of 5 runs,
-p50 0.125 to 0.167 µs, p99 0.8 to 1.5 µs, p99.9 2.1 to 11.8 µs; per-event minimum p50 0.084 µs, p99 0.75 µs,
-p99.9 1.67 µs; worst case 42 to 68 µs over 10,000,000 fuzz events (budget 5 / 25 / 100 µs and 1 ms).
+Current figures (Apple M4, shared and loaded): line coverage 99.5 % of the core, 98.9 % of the data target, 89.4 % of
+`lexicon-builder`. Benchmark (bundled resources, prose corpus, generated-corpus typists and
+fuzz, docs/decisions/0202): per event, median of 5 runs, p50 0.167 µs, p99 0.875 to 1.0 µs, p99.9 1.9 to
+4.8 µs; per-event minimum p50 0.166 µs, p99 0.75 µs, p99.9 1.54 µs; worst case 45 to 62 µs over 10,000,000
+fuzz events (budget 5 / 25 / 100 µs and 1 ms); `Resources.bundled` cold load 18 to 32 ms, about 1.1 MB.
 
 ## Decisions
 

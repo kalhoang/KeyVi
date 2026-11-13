@@ -1,21 +1,21 @@
 {
   "format": 1,
   "generator": "lexicon-builder",
-  "inputsSHA256": "0738387aa1a2bddd9be5cb287a6a0092becb3ecf3b2e30b4b4431c9ee5286539",
+  "inputsSHA256": "0fb8326d0d008215536f46ed3a85f133b593c3c09f80edff8d20b49ab90efe03",
   "files": [
-    {"name": "english.txt", "bytes": 359556, "entries": 40206, "sha256": "85a920ef5d0d870644e2bb1f61f7d26191145473baf56cb7605d5fe1dfdb900a"},
-    {"name": "tech-always.txt", "bytes": 2149, "entries": 384, "sha256": "a84a9252fa131ef57a031cffab2f0495fa30590a3a9712ca8e3087ed093a5d14"},
-    {"name": "tech-code-only.txt", "bytes": 1200, "entries": 229, "sha256": "bd45cc81c81d8b0bcb36cdbbd22df17481c7e2c667bce91db9c4493a98c83c69"},
-    {"name": "attested.txt", "bytes": 1320, "entries": 259, "sha256": "08ccc4ece3b3d4995c7c5d529b1b7b7f3970177cf698b9e845624a19a95aec2d"},
-    {"name": "ambiguity.tsv", "bytes": 1688, "entries": 25, "sha256": "4695f0b18b7c79ff3f0fd099e3fbde98e1b322e294866676c4eb9b4429eb37d1"},
+    {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
+    {"name": "tech-always.txt", "bytes": 2178, "entries": 389, "sha256": "9b9d52d64ab9d92c432279e85f488f8826310ac6ad247b3ae00d748ee64aaf5c"},
+    {"name": "tech-code-only.txt", "bytes": 1169, "entries": 223, "sha256": "1d718c72491e7eb1afe87922ed01cd8cc5788b416fe2b01eb4ffe82f36b905ba"},
+    {"name": "attested.txt", "bytes": 11445, "entries": 1954, "sha256": "cc55425a86553d4fd028f3d6f770e65ac4b8264354266605a8dbf7859d469009"},
+    {"name": "ambiguity.tsv", "bytes": 78537, "entries": 619, "sha256": "1632acae70b29224345437258951b055693ebd9be506c1267666bbfd3d9ebce8"},
     {"name": "NOTICES.txt", "bytes": 14007, "sha256": "a923779210633861bba3d07e57981c1f5158c3d706c2bf6241d76a0a34f9e80c"}
   ],
   "stats": {
-    "englishWords": 40206,
+    "englishWords": 40205,
     "legalTokens": 673599,
     "legalDistinctTokens": 1784,
-    "attestedFromCorpus": 0,
-    "attestedFromAdditions": 252,
-    "attestedStyleVariants": 7
+    "attestedFromCorpus": 1678,
+    "attestedFromAdditions": 263,
+    "attestedStyleVariants": 13
   }
 }

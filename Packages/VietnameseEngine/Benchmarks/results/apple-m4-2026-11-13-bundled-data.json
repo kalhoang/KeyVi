@@ -1,0 +1,215 @@
+{
+  "budget" : {
+    "max" : 1000000,
+    "p50" : 5000,
+    "p99" : 25000,
+    "p999" : 100000,
+    "resourcesLoadMilliseconds" : 50,
+    "resourcesResidentBytes" : 8388608
+  },
+  "clockOverheadNanoseconds" : 0,
+  "configuration" : "release",
+  "date" : "2026-11-13T02:22:05Z",
+  "engineColdInitMilliseconds" : 10.323417,
+  "latency" : {
+    "events" : 3352412,
+    "max" : 269459,
+    "p50" : 167,
+    "p99" : 1000,
+    "p999" : 4792
+  },
+  "latencyStable" : {
+    "events" : 3352412,
+    "max" : 33416,
+    "p50" : 166,
+    "p99" : 750,
+    "p999" : 1542
+  },
+  "longTokens" : [
+    {
+      "boundaryNanoseconds" : 583,
+      "keys" : "m",
+      "length" : 64,
+      "maxKeyNanoseconds" : 1833,
+      "toggleNanoseconds" : 125
+    },
+    {
+      "boundaryNanoseconds" : 708,
+      "keys" : "ddam",
+      "length" : 64,
+      "maxKeyNanoseconds" : 333,
+      "toggleNanoseconds" : 292
+    },
+    {
+      "boundaryNanoseconds" : 1292,
+      "keys" : "m",
+      "length" : 256,
+      "maxKeyNanoseconds" : 416,
+      "toggleNanoseconds" : 208
+    },
+    {
+      "boundaryNanoseconds" : 1167,
+      "keys" : "ddam",
+      "length" : 256,
+      "maxKeyNanoseconds" : 292,
+      "toggleNanoseconds" : 917
+    },
+    {
+      "boundaryNanoseconds" : 13292,
+      "keys" : "m",
+      "length" : 4096,
+      "maxKeyNanoseconds" : 666,
+      "toggleNanoseconds" : 1042
+    },
+    {
+      "boundaryNanoseconds" : 14583,
+      "keys" : "ddam",
+      "length" : 4096,
+      "maxKeyNanoseconds" : 16667,
+      "toggleNanoseconds" : 11459
+    },
+    {
+      "boundaryNanoseconds" : 294583,
+      "keys" : "m",
+      "length" : 100000,
+      "maxKeyNanoseconds" : 47417,
+      "toggleNanoseconds" : 7500
+    },
+    {
+      "boundaryNanoseconds" : 274541,
+      "keys" : "ddam",
+      "length" : 100000,
+      "maxKeyNanoseconds" : 25250,
+      "toggleNanoseconds" : 210167
+    }
+  ],
+  "machine" : {
+    "cpu" : "Apple M4",
+    "model" : "Mac16,10",
+    "operatingSystem" : "Version 27.2 (Build 26B123)",
+    "processors" : 10
+  },
+  "proseTokens" : 50000,
+  "referenceNanoseconds" : 10907958,
+  "resources" : {
+    "available" : true,
+    "coldLoadMilliseconds" : 17.792375,
+    "medianLoadMilliseconds" : 9.032541,
+    "residentBytes" : 1064984
+  },
+  "runs" : 5,
+  "schema" : 1,
+  "wordLists" : "bundled",
+  "workloads" : [
+    {
+      "latency" : {
+        "events" : 875556,
+        "max" : 66542,
+        "p50" : 208,
+        "p99" : 1208,
+        "p999" : 2500
+      },
+      "name" : "prose-telex",
+      "stable" : {
+        "events" : 875556,
+        "max" : 4458,
+        "p50" : 166,
+        "p99" : 791,
+        "p999" : 1542
+      }
+    },
+    {
+      "latency" : {
+        "events" : 875556,
+        "max" : 269459,
+        "p50" : 208,
+        "p99" : 1166,
+        "p999" : 3959
+      },
+      "name" : "prose-vni",
+      "stable" : {
+        "events" : 875556,
+        "max" : 4542,
+        "p50" : 166,
+        "p99" : 791,
+        "p999" : 1542
+      }
+    },
+    {
+      "latency" : {
+        "events" : 301001,
+        "max" : 66166,
+        "p50" : 167,
+        "p99" : 1000,
+        "p999" : 1709
+      },
+      "name" : "typists-telex",
+      "stable" : {
+        "events" : 301001,
+        "max" : 3875,
+        "p50" : 166,
+        "p99" : 792,
+        "p999" : 1417
+      }
+    },
+    {
+      "latency" : {
+        "events" : 300299,
+        "max" : 97667,
+        "p50" : 167,
+        "p99" : 916,
+        "p999" : 2000
+      },
+      "name" : "typists-vni",
+      "stable" : {
+        "events" : 300299,
+        "max" : 3208,
+        "p50" : 166,
+        "p99" : 709,
+        "p999" : 1708
+      }
+    },
+    {
+      "latency" : {
+        "events" : 500000,
+        "max" : 57417,
+        "p50" : 84,
+        "p99" : 875,
+        "p999" : 6333
+      },
+      "name" : "fuzz-telex",
+      "stable" : {
+        "events" : 500000,
+        "max" : 32083,
+        "p50" : 83,
+        "p99" : 708,
+        "p999" : 1917
+      }
+    },
+    {
+      "latency" : {
+        "events" : 500000,
+        "max" : 51250,
+        "p50" : 125,
+        "p99" : 791,
+        "p999" : 4667
+      },
+      "name" : "fuzz-vni",
+      "stable" : {
+        "events" : 500000,
+        "max" : 33416,
+        "p50" : 83,
+        "p99" : 666,
+        "p999" : 1041
+      }
+    }
+  ],
+  "worstCase" : {
+    "events" : 10000000,
+    "eventsOverBudgetRaw" : 1,
+    "eventsOverBudgetRemeasured" : 0,
+    "maxRawNanoseconds" : 4738125,
+    "maxRemeasuredNanoseconds" : 62250,
+    "slowestEvent" : "restore toggle; active token 3668 keys, display 3667 bytes, 0 history tokens"
+  }
+}

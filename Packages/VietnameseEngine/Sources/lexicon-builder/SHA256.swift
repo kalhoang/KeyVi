@@ -59,8 +59,14 @@ struct SHA256 {
             let s1 = rotate(schedule[index - 2], 17) ^ rotate(schedule[index - 2], 19) ^ (schedule[index - 2] >> 10)
             schedule[index] = schedule[index - 16] &+ s0 &+ schedule[index - 7] &+ s1
         }
-        var a = state[0], b = state[1], c = state[2], d = state[3]
-        var e = state[4], f = state[5], g = state[6], h = state[7]
+        var a = state[0]
+        var b = state[1]
+        var c = state[2]
+        var d = state[3]
+        var e = state[4]
+        var f = state[5]
+        var g = state[6]
+        var h = state[7]
         for index in 0..<64 {
             let sum1 = rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25)
             let choice = (e & f) ^ (~e & g)
