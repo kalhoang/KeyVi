@@ -2,7 +2,8 @@
 //
 // Settings -> `TapSettingsSnapshot` (PLT-R1008, PRD-R27, docs/decisions/0306-engine-bridge.md decision 1). Runs on
 // the utility queue, never on the tap: engines are built here (the first `Engine.init` builds tables) and the
-// bundled word lists are loaded once (ENG-R1231). Workstream W2-A.
+// bundled word lists are loaded once (ENG-R1231). The user lists are those of the focused app (ENG-R851,
+// ENG-R862, ADR 0320): a focus change republishes only when that app's lists differ. Workstreams W2-A, W5-B.
 
 public import AppModel
 public import Diagnostics
@@ -12,9 +13,9 @@ public import SettingsStore
 public import VietnameseEngine
 internal import VietnameseEngineData
 
-/// The engine-affecting part of the settings: D1, D2, D4, D5, D6, D9, the macros and the two user word lists.
-/// `EngineCatalog.revision` changes exactly when this value changes, so a hotkey, UI-language or update-channel
-/// change keeps the word being typed (PRD-R27, the W1-F1 contract on `EngineCatalog.revision`).
+/// The engine-affecting part of the settings: D1, D2, D4, D5, D6, D9, the macros and the two user word lists of the
+/// focused app. `EngineCatalog.revision` changes exactly when this value changes, so a hotkey, UI-language or
+/// update-channel change keeps the word being typed (PRD-R27, the W1-F1 contract on `EngineCatalog.revision`).
 public struct EngineInputs: Sendable, Hashable {
     public var typingMethod: TypingMethod
     public var tonePlacement: TonePlacement
@@ -24,10 +25,19 @@ public struct EngineInputs: Sendable, Hashable {
     public var macrosEnabled: Bool
     /// NFC-normalised (`MacroNormalization`). Content: never logged.
     public var macros: [StoredMacro]
+    /// The focused app's lists: the global entries plus the words learned in that app (ENG-R862). Content.
     public var keepAsTyped: Set<String>
     public var keepVietnamese: Set<String>
 
+    /// With the global lists only (no focused app).
     public init(settings: EffectiveSettings, macros: [StoredMacro]) {
+        self.init(
+            settings: settings, macros: macros,
+            wordLists: UserWordLists(keepAsTyped: settings.keepAsTyped, keepVietnamese: settings.keepVietnamese))
+    }
+
+    /// `wordLists` are the focused app's (`UserSettings.wordLists(for:)`, ENG-R851, ENG-R862).
+    public init(settings: EffectiveSettings, macros: [StoredMacro], wordLists: UserWordLists) {
         typingMethod = settings.typingMethod
         tonePlacement = settings.tonePlacement
         englishRestore = settings.englishRestore
@@ -35,9 +45,11 @@ public struct EngineInputs: Sendable, Hashable {
         telexBracketKeys = settings.telexBracketKeys
         macrosEnabled = settings.macrosEnabled
         self.macros = MacroNormalization.normalized(macros)
-        keepAsTyped = settings.keepAsTyped
-        keepVietnamese = settings.keepVietnamese
+        keepAsTyped = wordLists.keepAsTyped
+        keepVietnamese = wordLists.keepVietnamese
     }
+
+    var wordLists: UserWordLists { UserWordLists(keepAsTyped: keepAsTyped, keepVietnamese: keepVietnamese) }
 }
 
 public enum MacroNormalization {
@@ -88,7 +100,20 @@ public final class TapSettingsPublisher: Sendable {
         var revision: UInt64 = 0
         var inputs: EngineInputs?
         var catalog: EngineCatalog?
+        /// Built from `inputs.macros`; kept when only the word lists change (a focus change, ENG-R862).
+        var macroTable: MacroTable?
         var macroIssues: [MacroTableBuildIssue] = []
+        /// The last published settings and the focused app whose lists the engines carry (ENG-R851).
+        var settings: SettingsState?
+        var focusedApp: BundleKey?
+    }
+
+    private struct Built {
+        var snapshot: TapSettingsSnapshot
+        var rebuilt: Bool
+        /// The macro table was validated again (its problems are logged once per new table).
+        var rebuiltMacros = false
+        var issues: [MacroTableBuildIssue]
     }
 
     private let cell: SnapshotCell<TapSettingsSnapshot>
@@ -119,35 +144,76 @@ public final class TapSettingsPublisher: Sendable {
     }
 
     /// Builds the snapshot for `settings` and publishes it. The engine catalog is rebuilt, and its revision
-    /// bumped, only when `EngineInputs` changed (PRD-R27).
+    /// bumped, only when `EngineInputs` changed (PRD-R27). The word lists are those of the focused app.
     @discardableResult
     public func publish(_ settings: SettingsState) -> TapSettingsPublication {
-        let effective = settings.effective
-        let inputs = EngineInputs(settings: effective, macros: settings.macros)
-        let (snapshot, rebuilt, issues) = state.withLock { state in
-            var rebuilt = false
-            if state.inputs != inputs || state.catalog == nil {
-                state.revision &+= 1
-                let (table, issues) = EngineBridge.macroTable(from: inputs.macros)
-                let resources = bundledResources(&state)
-                let attached = EngineBridge.resources(settings: effective, macros: table) { resources }
-                state.catalog = EngineBridge.catalog(settings: effective, resources: attached, revision: state.revision)
-                state.inputs = inputs
-                state.macroIssues = issues
-                rebuilt = true
-            }
-            state.generation &+= 1
-            let snapshot = TapSettingsSnapshot(
-                generation: state.generation, engines: state.catalog!, toggleHotkey: effective.toggleHotkey,
-                restoreHotkey: effective.restoreHotkey, macrosInEnglishMode: EnglishModeMacros.effective(effective),
-                rememberPerApp: effective.rememberPerApp)
-            return (snapshot, rebuilt, state.macroIssues)
+        let built = state.withLock { state in
+            state.settings = settings
+            let inputs = EngineInputs(
+                settings: settings.effective, macros: settings.macros,
+                wordLists: settings.user.wordLists(for: state.focusedApp))
+            return build(&state, inputs: inputs, effective: settings.effective)
         }
-        cell.publish(snapshot)
-        if !issues.isEmpty && rebuilt {
+        return finish(built)
+    }
+
+    /// ENG-R851, ENG-R862: the focused app changed (`nil`: unknown). The engines get the global entries plus the
+    /// words learned in `app`; a snapshot is published only when those lists differ from the current ones, so
+    /// switching between apps without learned words never touches the word being typed. Utility queue only
+    /// (PLT-R304, PLT-R305). Returns nil when nothing was published.
+    @discardableResult
+    public func focusChanged(to app: BundleKey?) -> TapSettingsPublication? {
+        let built: Built? = state.withLock { state in
+            guard state.focusedApp != app else { return nil }
+            state.focusedApp = app
+            guard let settings = state.settings, var inputs = state.inputs else { return nil }
+            let lists = settings.user.wordLists(for: app)
+            guard lists != inputs.wordLists else { return nil }
+            inputs.keepAsTyped = lists.keepAsTyped
+            inputs.keepVietnamese = lists.keepVietnamese
+            return build(&state, inputs: inputs, effective: settings.effective)
+        }
+        return built.map(finish)
+    }
+
+    /// Rebuilds the catalog when `inputs` changed (the macro table only when the macros changed) and returns the
+    /// next snapshot. Called with the lock held.
+    private func build(_ state: inout State, inputs: EngineInputs, effective: EffectiveSettings) -> Built {
+        var rebuilt = false
+        var rebuiltMacros = false
+        if state.inputs != inputs || state.catalog == nil {
+            state.revision &+= 1
+            let table: MacroTable
+            if let cached = state.macroTable, state.inputs?.macros == inputs.macros {
+                table = cached
+            } else {
+                let (built, issues) = EngineBridge.macroTable(from: inputs.macros)
+                table = built
+                state.macroTable = built
+                state.macroIssues = issues
+                rebuiltMacros = true
+            }
+            let resources = bundledResources(&state)
+            let attached = EngineBridge.resources(wordLists: inputs.wordLists, macros: table) { resources }
+            state.catalog = EngineBridge.catalog(settings: effective, resources: attached, revision: state.revision)
+            state.inputs = inputs
+            rebuilt = true
+        }
+        state.generation &+= 1
+        let snapshot = TapSettingsSnapshot(
+            generation: state.generation, engines: state.catalog!, toggleHotkey: effective.toggleHotkey,
+            restoreHotkey: effective.restoreHotkey, macrosInEnglishMode: EnglishModeMacros.effective(effective),
+            rememberPerApp: effective.rememberPerApp)
+        return Built(snapshot: snapshot, rebuilt: rebuilt, rebuiltMacros: rebuiltMacros, issues: state.macroIssues)
+    }
+
+    private func finish(_ built: Built) -> TapSettingsPublication {
+        cell.publish(built.snapshot)
+        if !built.issues.isEmpty && built.rebuiltMacros {
             logger.log(.note("macros rejected by the engine", category: .settings), level: .notice)
         }
-        return TapSettingsPublication(snapshot: snapshot, rebuiltEngines: rebuilt, macroIssues: issues)
+        return TapSettingsPublication(
+            snapshot: built.snapshot, rebuiltEngines: built.rebuilt, macroIssues: built.issues)
     }
 
     private func bundledResources(_ state: inout State) -> Resources {

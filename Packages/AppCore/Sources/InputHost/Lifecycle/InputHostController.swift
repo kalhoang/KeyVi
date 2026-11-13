@@ -92,19 +92,23 @@ public enum HostEvent: Sendable {
     case tapInstabilityNotice
     case conflictsDetected([ConflictingInput])
     case permissionsChanged(PermissionStatus)
-    /// ENG-R861 learning signal seen twice: added to the user list (open decision 8, visible and removable in
-    /// Settings). The shell may mention it; it never logs the word.
+    /// ENG-R861 learning signal seen twice in the same app: added to that app's learned words (ENG-R862, visible,
+    /// removable and promotable to global in Settings). The shell may mention it; it never logs the word.
     case learningProposal(LearningProposal)
 }
 
+/// ENG-R862: a learning signal seen twice in one app, stored for that app only.
 public struct LearningProposal: Sendable, Hashable {
-    public enum List: Sendable, Hashable { case keepAsTyped, keepVietnamese }
+    public typealias List = RestoreList
     public var list: List
     public var rawKeys: String  // content: shown to the user in Settings, never logged
+    /// The app the signals came from; the learned word applies only there.
+    public var app: BundleKey
 
-    public init(list: List, rawKeys: String) {
+    public init(list: List, rawKeys: String, app: BundleKey) {
         self.list = list
         self.rawKeys = rawKeys
+        self.app = app
     }
 }
 

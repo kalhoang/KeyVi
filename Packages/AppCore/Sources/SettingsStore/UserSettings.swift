@@ -32,6 +32,9 @@ public struct UserSettings: Sendable, Hashable {
     /// settings, allowed on disk (PLT-R901 a).
     public var keepAsTyped: Set<String> = []
     public var keepVietnamese: Set<String> = []
+    /// ENG-R862: words learned from the user's toggles, each applying only in its app (`englishRestoreLists`
+    /// `learnedWords`). `keepAsTyped` and `keepVietnamese` above are the global entries.
+    public var learnedWords: Set<LearnedWord> = []
     /// Shipped rules with `requiresUserOptIn: true` that the user enabled (PLT-R460) ("optedInRules").
     public var optedInRules: Set<RuleID> = []
     /// "onboarding" object (PRD-R42).
@@ -40,13 +43,13 @@ public struct UserSettings: Sendable, Hashable {
     public init() {}
 
     /// Names of keys that are explicitly set, for the content-free diagnostics report: the JSON names of set
-    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `optedInRules` when
-    /// non-empty. Names only, never values (PLT-R901, PRD-R6).
+    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `learnedWords`, `optedInRules`
+    /// when non-empty. Names only, never values or apps (PLT-R901, PRD-R6, ADR 0314).
     public var explicitlySetKeys: [String] {
         let settings = SettingFields.all.filter { $0.isSet(self) }.map(\.key)
         let lists = [
             (SettingListKey.keepAsTyped, keepAsTyped.isEmpty), (SettingListKey.keepVietnamese, keepVietnamese.isEmpty),
-            (SettingListKey.optedInRules, optedInRules.isEmpty),
+            (SettingListKey.learnedWords, learnedWords.isEmpty), (SettingListKey.optedInRules, optedInRules.isEmpty),
         ]
         return settings + lists.filter { !$0.1 }.map(\.0)
     }

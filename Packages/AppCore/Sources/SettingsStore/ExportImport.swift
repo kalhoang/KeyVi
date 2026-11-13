@@ -210,6 +210,7 @@ struct SettingsImporter {
         var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
         if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
         if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
+        if current.learnedWords != imported.learnedWords { keys.append(SettingListKey.learnedWords) }
         if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
         return keys
     }

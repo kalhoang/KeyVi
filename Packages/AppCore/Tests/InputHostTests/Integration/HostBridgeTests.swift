@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The settings, rules and tap-log bridges of the host (PLT-R1008, PRD-R27, ENG-R1101, ENG-R1231, D10,
-// PLT-R503, PLT-R540, PLT-R903, PLT-R1206, ENG-R861). Workstream W2-A.
+// PLT-R503, PLT-R540, PLT-R903, PLT-R1206). Learning (ENG-R861, ENG-R862) is in PerAppLearningTests. Workstream W2-A.
 
 import AppModel
 import CompatRules
@@ -230,34 +230,4 @@ extension TapLogCode {
         .tapDisabledByTimeout, .tapDisabledByUserInput, .tapReenabled, .jobQueueFull, .flushRequested, .echoMissing,
         .secureInputResumedByKey, .layoutMismatch, .unknownEventType, .callbackOverBudget,
     ]
-}
-
-@Suite("Learning from restore toggles (ENG-R861, open decision 8)")
-struct LearningTrackerTests {
-    @Test func theSecondIdenticalSignalProposesAndTheCountStartsOver() {
-        var tracker = LearningTracker()
-        #expect(tracker.note(.preferredRaw(raw: "tar")) == nil)
-        #expect(tracker.note(.preferredVietnamese(raw: "tar")) == nil, "a different list is a different signal")
-        #expect(tracker.note(.preferredRaw(raw: "tar")) == LearningProposal(list: .keepAsTyped, rawKeys: "tar"))
-        #expect(tracker.note(.preferredRaw(raw: "tar")) == nil)
-        #expect(tracker.note(.preferredRaw(raw: "")) == nil)
-    }
-
-    @Test func pendingSignalsAreBounded() {
-        var tracker = LearningTracker()
-        for index in 0...LearningTracker.capacity { _ = tracker.note(.preferredRaw(raw: "w\(index)")) }
-        #expect(tracker.note(.preferredRaw(raw: "w0")) == nil, "the oldest pending signal was forgotten")
-        #expect(tracker.note(.preferredRaw(raw: "w\(LearningTracker.capacity)")) != nil)
-    }
-
-    @Test func applyingMovesTheWordBetweenLists() {
-        var settings = UserSettings()
-        settings.keepVietnamese = ["tar"]
-        LearningProposal(list: .keepAsTyped, rawKeys: "tar").apply(to: &settings)
-        #expect(settings.keepAsTyped == ["tar"])
-        #expect(settings.keepVietnamese.isEmpty)
-        LearningProposal(list: .keepVietnamese, rawKeys: "tar").apply(to: &settings)
-        #expect(settings.keepVietnamese == ["tar"])
-        #expect(settings.keepAsTyped.isEmpty)
-    }
 }
