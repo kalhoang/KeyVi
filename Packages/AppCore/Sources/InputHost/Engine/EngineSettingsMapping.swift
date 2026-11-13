@@ -50,14 +50,14 @@ enum EngineSettingsMapping {
         return withoutMacros
     }
 
-    static func catalog(settings: EffectiveSettings, resources: Resources) -> EngineCatalog {
+    static func catalog(settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil) -> EngineCatalog {
         var engines: [EngineVariant: Engine] = [:]
         for variant in EngineVariant.catalogOrder {
             engines[variant] = Engine(
                 configuration: configuration(for: settings, variant: variant),
                 resources: self.resources(resources, for: variant, settings: settings))
         }
-        return EngineCatalog(engines: engines)
+        return EngineCatalog(engines: engines, revision: revision)
     }
 }
 

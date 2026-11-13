@@ -90,6 +90,15 @@ import VietnameseEngine
         #expect(empty.engine(for: .default).configuration == EngineConfiguration())
     }
 
+    /// PRD-R27: the publisher's revision travels with the catalog; without one the tap treats every settings
+    /// generation as an engine change.
+    @Test func catalogCarriesThePublishersRevision() {
+        let settings = DefaultSettings.v1
+        #expect(EngineBridge.catalog(settings: settings, resources: .empty, revision: 3).revision == 3)
+        #expect(EngineBridge.catalog(settings: settings, resources: .empty).revision == nil)
+        #expect(EngineCatalog(engines: [:]).revision == nil)
+    }
+
     @Test func factoryBuildsTheEngineOfTheFocusedVariant() {
         let settings = DefaultSettings.v1
         let catalog = EngineBridge.catalog(settings: settings, resources: .empty)

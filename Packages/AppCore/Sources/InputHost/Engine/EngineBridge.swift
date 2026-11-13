@@ -44,13 +44,19 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
 /// array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
     private let slots: [VietnameseEngine.Engine]
+    /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
+    /// keeps it when a settings change leaves the engines alone (hotkeys, UI language, update channel), so the
+    /// tap rebuilds only the hotkeys and keeps the word being typed. `nil` means unknown: every new settings
+    /// generation builds a fresh engine, the safe default.
+    public let revision: UInt64?
 
     /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
-    public init(engines: [EngineVariant: VietnameseEngine.Engine]) {
+    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil) {
         let fallback =
             engines[.default] ?? engines.values.first
             ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
         slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
+        self.revision = revision
     }
 
     public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { slots[variant.catalogIndex] }
@@ -83,7 +89,11 @@ public enum EngineBridge {
         return resources
     }
 
-    public static func catalog(settings: EffectiveSettings, resources: Resources) -> EngineCatalog {
-        EngineSettingsMapping.catalog(settings: settings, resources: resources)
+    /// `revision` identifies the engine-affecting settings (see `EngineCatalog.revision`); the publisher bumps it
+    /// only when the catalog's inputs change.
+    public static func catalog(
+        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil
+    ) -> EngineCatalog {
+        EngineSettingsMapping.catalog(settings: settings, resources: resources, revision: revision)
     }
 }
