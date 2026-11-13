@@ -88,6 +88,61 @@ import Testing
         #expect(current.earlierSessionHealthEvents(limit: 0).isEmpty)
     }
 
+    static func logger(at date: Date, _ fileSystem: InMemoryFileSystem, maxFileBytes: Int = 1_000_000)
+        -> DiagnosticsLogger
+    {
+        DiagnosticsLogger(
+            policy: LogStorePolicy(directory: directory, maxFileBytes: maxFileBytes), fileSystem: fileSystem,
+            clock: FixedWallClock(date), subsystem: "test.diagnostics")
+    }
+
+    /// PLT-R1202: the 24-hour tap counters need more than the 50 listed events, so the earlier sessions' events
+    /// are kept up to the in-memory ring's capacity.
+    @Test func theEarlierSessionsKeepAsManyEventsAsTheRing() {
+        let fileSystem = InMemoryFileSystem(now: { Self.start })
+        let previous = Self.logger(at: Self.start.addingTimeInterval(-3_600), fileSystem)
+        let earlier = (0..<300).map {
+            HealthEvent(kind: .echoLoss, at: Self.start.addingTimeInterval(Double($0 - 400)))
+        }
+        for event in earlier { previous.log(.health(event), level: event.kind.logLevel) }
+        previous.flush()
+        let current = Self.logger(at: Self.start, fileSystem)
+        let restored = current.earlierSessionHealthEvents(limit: HealthEventLog.defaultCapacity)
+        #expect(restored == Array(earlier.suffix(HealthEventLog.defaultCapacity)))
+    }
+
+    /// Only health records are decoded; any number of other records in the files does not change the result.
+    @Test func otherRecordsInTheFilesAreSkipped() {
+        let fileSystem = InMemoryFileSystem(now: { Self.start })
+        let previous = Self.logger(at: Self.start.addingTimeInterval(-3_600), fileSystem, maxFileBytes: 4_000_000)
+        let events = (0..<3).map { HealthEvent(kind: .tapTimeout, at: Self.start.addingTimeInterval(Double($0 - 10))) }
+        for index in 0..<10_000 {
+            if index % 4_000 == 0 {
+                let event = events[index / 4_000]
+                previous.log(.health(event), level: event.kind.logLevel)
+            }
+            previous.log(.note("ready", category: .lifecycle), level: .info)
+        }
+        previous.flush()
+        let current = Self.logger(at: Self.start, fileSystem)
+        #expect(current.earlierSessionHealthEvents(limit: 50) == events)
+    }
+
+    /// PRD-R46 without a pause when a report opens: the launch's maintenance pass reads the earlier sessions'
+    /// events on the logger's queue, so the first report finds them already loaded.
+    @Test func maintenanceLoadsTheEarlierSessionsEventsAhead() throws {
+        let fileSystem = InMemoryFileSystem(now: { Self.start })
+        let previous = Self.logger(at: Self.start.addingTimeInterval(-3_600), fileSystem)
+        let event = HealthEvent(kind: .tapTimeout, at: Self.start.addingTimeInterval(-60))
+        previous.log(.health(event), level: .error)
+        previous.flush()
+        let current = Self.logger(at: Self.start, fileSystem)
+        current.maintain()
+        current.flush()
+        for url in try fileSystem.contentsOfDirectory(at: Self.directory) { try fileSystem.removeItem(at: url) }
+        #expect(current.earlierSessionHealthEvents(limit: 50) == [event], "read before the files went away")
+    }
+
     @Test func theReportListsEarlierThenCurrentEventsOnce() {
         let earlier = Self.samples(endingBefore: Self.start)
         let current = [

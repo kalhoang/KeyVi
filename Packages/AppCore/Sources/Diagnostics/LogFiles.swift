@@ -87,14 +87,19 @@ final class LogFileStore: Sendable {
                 guard fileSystem.fileExists(at: url),
                     let data = try? fileSystem.readData(at: url, maxBytes: Self.readLimit(policy))
                 else { continue }
-                let events = data.split(separator: 0x0A).compactMap { line in
-                    (try? decoder.decode(LogRecord.self, from: Data(line))).flatMap(HealthEvent.init(record:))
+                let events = data.split(separator: 0x0A).compactMap { line -> HealthEvent? in
+                    // Only lines that can hold a health record are decoded (most lines are other records).
+                    guard line.range(of: Self.healthMarker) != nil else { return nil }
+                    return (try? decoder.decode(LogRecord.self, from: Data(line))).flatMap(HealthEvent.init(record:))
                 }
                 newestFirst += events.filter { $0.at < cutoff }.reversed()
             }
             return Array(newestFirst.prefix(limit).reversed())
         }
     }
+
+    /// Every health record's code starts with this (`health.<kind>`); a line without it is not a health event.
+    private static let healthMarker = Data("\"health.".utf8)
 
     /// A file can exceed the rotation size by its last line; anything far larger is not a log file of ours.
     private static func readLimit(_ policy: LogStorePolicy) -> Int { max(policy.maxFileBytes, 1) * 2 }
