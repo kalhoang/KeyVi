@@ -19,9 +19,18 @@ public protocol BundleInspector: Sendable {
 }
 
 public struct EngineFingerprinter: Sendable {
-    public init(inspector: any BundleInspector, webkitBrowsers: Set<BundleKey>) { unimplemented() }
+    public init(inspector: any BundleInspector, webkitBrowsers: Set<BundleKey>) {
+        self.inspector = inspector
+        self.webkitBrowsers = webkitBrowsers
+    }
+
+    let inspector: any BundleInspector
+    let webkitBrowsers: Set<BundleKey>
 
     /// Order: webkitBrowser (rules group) > electron > cef > chromium > gecko > jvm > qt > ios > catalyst >
     /// native.
-    public func fingerprint(bundleURL: URL, bundle: BundleKey?) -> EngineFingerprint { unimplemented() }
+    public func fingerprint(bundleURL: URL, bundle: BundleKey?) -> EngineFingerprint {
+        if let bundle, webkitBrowsers.contains(bundle) { return .webkitBrowser }
+        return EngineHeuristics(inspector: inspector, bundleURL: bundleURL).classify()
+    }
 }
