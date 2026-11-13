@@ -68,6 +68,11 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
         self.hooks = hooks
     }
 
+    /// Pause after an AX focus before the keys: the target app moves focus on its next main-loop turn (TestHost's
+    /// web mirrors hand it to the page) and the app under test learns of the new field through AX notifications,
+    /// which its per-field and per-window rules depend on (keys typed at once were lost in the first VM run).
+    public static let focusSettleNanoseconds: UInt64 = 300_000_000
+
     public func prepare(_ scenario: Scenario) async throws {
         guard scenario.targetBundleId.rawValue == HarnessTargets.testHostAlias else { return }
         try await system.resetTestHostFields(in: try resolve(scenario.targetBundleId))
@@ -107,6 +112,7 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
                 try await webDrivers.client(for: target).click(selector: field)
             } else {
                 try await system.focusField(identifier: field, in: target)
+                try await sleeper.sleep(nanoseconds: Self.focusSettleNanoseconds)
             }
         case .selectInputSource:
             guard let source = value.flatMap(InputSourceID.init(rawValue:)) else {

@@ -117,6 +117,21 @@ private let targets = HarnessTargets(
         #expect(sleeper.requests.all == [1_500_000_000])
     }
 
+    /// Focus moves asynchronously: TestHost's web mirrors hand focus to the page on the next main-loop turn, and
+    /// the app under test learns of the new field through AX notifications (per-field and per-window rules). Keys
+    /// typed at once were lost or met the old rule in the first VM run, so an AX focus is followed by a settle.
+    @Test func anAXFocusIsFollowedByTheFocusSettle() async throws {
+        let sleeper = RecordingSleeper()
+        let system = FakeSystemActions()
+        let router = ScenarioSetupRouter(
+            system: system, targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper)
+        try await router.perform(.init(action: .focusField, value: "testhost.web.input"), for: makeScenario())
+        #expect(system.calls.all == ["focus testhost.web.input in com.example.Editor"])
+        #expect(sleeper.requests.all == [ScenarioSetupRouter.focusSettleNanoseconds])
+        #expect(ScenarioSetupRouter.focusSettleNanoseconds == 300_000_000)
+    }
+
     @Test func taskSleeperSuspendsAndHonoursCancellation() async throws {
         let clock = MachClock()
         let start = clock.now().nanoseconds

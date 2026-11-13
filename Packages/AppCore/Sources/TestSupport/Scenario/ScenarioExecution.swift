@@ -80,7 +80,7 @@ extension ScenarioRunner {
             }
             if scenario.expect.needsReadback {
                 stage = "readback " + scenario.readback.rawValue
-                observed = try await readback.currentText(of: scenario)
+                observed = try await settledText(of: scenario)
             }
             stage = "state probe"
             let observation = try await probe?.observe(after: scenario)
@@ -104,6 +104,28 @@ extension ScenarioRunner {
         return ScenarioResult(
             scenario: scenario.id, outcome: outcome, observedText: observed,
             durationSeconds: Double(elapsed) / 1_000_000_000, reason: reason)
+    }
+}
+
+extension ScenarioRunner {
+    /// Longest wait for the field to show the expected text after the last key. The app injects on its own worker
+    /// after the key events (PLT-R311), so on a slow machine (the tart VM) the first read can come before the last
+    /// replacement: the first VM run read "xin chào Việt Na" for "xin chào Việt Nam".
+    static let readbackSettleNanoseconds: UInt64 = 2_000_000_000
+    static let readbackPollNanoseconds: UInt64 = 100_000_000
+
+    /// The field's text, read again every poll while it differs from the expectation, until the settle time passed.
+    /// A scenario without an expected text, and a person's readback, are read once.
+    func settledText(of scenario: Scenario) async throws -> String {
+        var text = try await readback.currentText(of: scenario)
+        guard let expected = scenario.expect.text, scenario.readback != .human else { return text }
+        let deadline = clock.now().nanoseconds &+ Self.readbackSettleNanoseconds
+        while text != expected, clock.now().nanoseconds < deadline {
+            let next = min(deadline, clock.now().nanoseconds &+ Self.readbackPollNanoseconds)
+            clock.sleep(until: MonotonicInstant(nanoseconds: next))
+            text = try await readback.currentText(of: scenario)
+        }
+        return text
     }
 }
 

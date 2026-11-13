@@ -31,6 +31,37 @@ import Testing
         #expect(setup.steps.all.map(\.action) == [.launch, .focusField])
     }
 
+    /// The app injects after the last key on its own worker (PLT-R311): a read right after the keys can come
+    /// before the last replacement, as the first VM run showed ("xin chào Việt Na"). The field is read again until
+    /// it shows the expectation, for at most the settle time.
+    @Test func readsAgainUntilTheFieldShowsTheExpectedText() async {
+        let clock = ManualClock()
+        let field = ChangingReadback(["đ", "đi"])
+        let result = await runner(readback: field, clock: clock).run(makeScenario())
+        #expect(result.outcome == .pass && result.observedText == "đi")
+        #expect(field.readCount == 2)
+        #expect(result.durationSeconds == Double(ScenarioRunner.readbackPollNanoseconds) / 1_000_000_000)
+    }
+
+    @Test func aFieldThatNeverShowsTheExpectationFailsAfterTheSettleTime() async {
+        let clock = ManualClock()
+        let field = ChangingReadback(["ddi"])
+        let result = await runner(readback: field, clock: clock).run(makeScenario())
+        #expect(result.outcome == .fail && result.observedText == "ddi")
+        #expect(result.durationSeconds == Double(ScenarioRunner.readbackSettleNanoseconds) / 1_000_000_000)
+        #expect(
+            field.readCount
+                == 1 + Int(ScenarioRunner.readbackSettleNanoseconds / ScenarioRunner.readbackPollNanoseconds))
+    }
+
+    /// A person is asked once; only machine readbacks are polled.
+    @Test func aHumanReadbackIsAskedOnce() async {
+        let clock = ManualClock()
+        let field = ChangingReadback(["ddi", "đi"])
+        let result = await runner(readback: field, clock: clock).run(makeScenario(readback: .human))
+        #expect(result.outcome == .fail && field.readCount == 1 && result.durationSeconds == 0)
+    }
+
     @Test func comparesByCanonicalEquivalence() async {
         // A decomposed (NFD) spelling of "việt" matches the precomposed expectation; a different text does not.
         let nfd = FakeReadback(result: .success("vie\u{0323}\u{0302}t"))
