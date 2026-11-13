@@ -69,7 +69,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R104 | Sparkle only runtime dependency, exact pin, resolved file committed | `project.yml`, `Config/Package.resolved`; unit evidence: UpdaterTests `BuiltBundleTests` (run by `ci.yml` macos-app) | L, U | skeleton (done); W2-D |  |
 | PLT-R105 | Universal binary (arm64 + x86_64), Intel supported | `Config/Release.xcconfig`, `.github/workflows/ci.yml` job `macos-x86_64` (AppCore suite under Rosetta) | R, U, M | W4-A (ADR 0315); release track (`lipo` check) | **Pa** (Intel smoke test when hardware exists) |
 | PLT-R106 | macOS 12.0 minimum; newer APIs only behind `#available`; RealtimeSupport `Atomic`, `Mutex`, `TimeSpan` instead of `Synchronization` and `Duration` | `Package.swift` (AppCore, engine, fuzz), `project.yml`, `RealtimeSupport`, ADR 0315 | L, U | W4-A; every build fails on unguarded newer APIs; strong imports checked against the macOS 12.0 SDK (ADR 0315) |  |
-| PLT-R107 | Test matrix macOS 12, 15, 26, 27 plus next beta; macOS 12 smoke test in a tart VM | self-hosted runner, `compat/matrix.json`, ADR 0315 | M, V | W2-E2; W4-A (plan); Pa | **Pa** (approve the VM, run the smoke test) |
+| PLT-R107 | Test matrix macOS 12, 15, 26, 27 plus next beta; macOS 12 smoke test in a tart VM | self-hosted runner, `compat/matrix.json`, `scripts/vm/smoke-macos12.sh`, ADR 0315; macOS 12.7.6 smoke test PASS 2026-11-13 (arm64 + x86_64 under Rosetta), ADR 0315 | M, V | W2-E2; W4-A (plan); W5-E; Pa | **Pa** (per release candidate: the manual onboarding and typing pass of ADR 0315) |
 | PLT-R108 | Licence note for rules/injection reuse | `docs/decisions/` (Pa) | D | Pa decision |  |
 | PLT-R201 | One process, no daemons, extensions or IMKit bundle | `App` target | I, R | W2-A; release track (bundle check) |  |
 | PLT-R202 | Logical components | ARCHITECTURE.md section 2 | D | skeleton (done) |  |
@@ -112,7 +112,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R350 | Shift/Caps via table; Command/Control/Option chords | `KeyClassifier` | U | W1-F1 |  |
 | PLT-R351 | Autorepeat handling | `KeyPipeline` | U, P | W1-F1 |  |
 | PLT-R352 | User backspace reported to engine | `KeyPipeline` | P | W1-F1 |  |
-| PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline` | U, I | W1-E, W1-F1; W2-E2 |  |
+| PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline`; Escape off by rule (`features.restoreHotkey: false`) in terminals, code editors, games and remote desktop clients (`compat/rules.json`, D8) | U (`RestoreHotkeyExclusionTests`, `RestoreHotkeyDefaultTests`), I | W1-E, W1-F1; W2-E2; W5-A |  |
 | PLT-R354 | Dead keys pass and reset | `UCKeyTranslateLayoutBuilder`, `KeyClassifier` | U | W1-E, W1-F1 |  |
 | PLT-R355 | Keypad digits are not VNI tone keys | `KeyClassifier` (`fromKeypad`), engine | U, E | W1-F1; engine track |  |
 | PLT-R356 | Navigation keys never edit | `KeyPipeline` | P | W1-F1 |  |
@@ -143,7 +143,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R398 | Never call EnableSecureEventInput | all | L (grep) | W1-E |  |
 | PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F1, W1-E |  |
 | PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |
-| PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table | U, M, V | W1-C, W1-G; Pa | **Pa** |
+| PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table (one iTerm2 sentence, Q38) | U (`SecureInputHintCopyTests`), M, V | W1-C, W1-G; W5-C; Pa | **Pa** |
 | PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | skeleton (done, runnable spike); Pa runs it | **Pa** |
 | PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps`, source registry `compat/conflicting-apps.json` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring); W5-A (IDs) | The bundle IDs of XKey, PHTV and Gõ Nhanh come from public Homebrew cask metadata (Pa's delegation, 2026-11-13; ADR 0005), never from the installed apps |
 | PLT-R401 | EditJob contents | `Injection/Jobs.swift` | U | W1-D |  |
@@ -170,7 +170,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R505 | Provenance and test reference per shipped rule | `RulesLinter` | L | W1-C |  |
 | PLT-R506 | reviewBy within 12 months; release block after 30 days | `RulesLinter` | L | W1-C |  |
 | PLT-R510 | Engine fingerprinting | `EngineFingerprinter`, bundle inspector | U, V | W1-C, W1-E | **Pa** |
-| PLT-R520 | Specificity scoring | `RuleSet.resolve` | U | W1-C |  |
+| PLT-R520 | Specificity scoring; games (`appCategories` with `passThrough`) win over engine-only matches (Q48) | `RuleSet.resolve` | U (`GamesPrecedenceTests`) | W1-C; W5-A |  |
 | PLT-R521 | Identical signatures fail CI; runtime tie | `RulesLinter`, `RuleSet` | U, L | W1-C |  |
 | PLT-R522 | User overrides outrank shipped rules | `RuleSet` | U | W1-C |  |
 | PLT-R523 | Resolution on ax thread on focus change only | `FocusTracker` | U | W1-E |  |
@@ -206,7 +206,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R902 | Typed logging API; interpolation lint | `Diagnostics/LogEvent.swift`, `Redaction.swift` | U, L | W1-A; CI track (lint) |  |
 | PLT-R903 | Log location, permissions, rotation, retention | `DiagnosticsLogger`, `LogStorePolicy` | U | W1-A; W1-B (legacy folder move, ADR 0307) |  |
 | PLT-R904 | No verbose/debug content mode | Diagnostics | D, L | W1-A |  |
-| PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController`; key and engine records from `KeyPipeline+Capture.swift`, focus records from `FocusCore.recordFocusCapture` | U (`KeyPipelineCaptureTests`, HostRig `typingTraceRecordsKeysEngineDecisionsAndFocus_PLT_R905`), M | W1-A, W2-C; Pa | **Pa** |
+| PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController`; key and engine records from `KeyPipeline+Capture.swift`, focus records from `FocusCore.recordFocusCapture`; confirmation states the chosen duration (`TypingTraceConfirmation`) | U (`KeyPipelineCaptureTests`, HostRig `typingTraceRecordsKeysEngineDecisionsAndFocus_PLT_R905`, `TypingTraceConfirmationTests`), M | W1-A, W2-C; W5-C; Pa | **Pa** |
 | PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle; egress test: `TestSupport/Scenario/EgressCheck.swift` (`compat-harness egress`), hook `checkForUpdates`, [integration-suite.md](../runbooks/integration-suite.md) section 5 | L, I (13.7) | W2-D, W2-E2, W3-A; CI track |  |
 | PLT-R907 | No translation feature in v1 | n/a | D | n/a |  |
 | PLT-R908 | Hardened runtime, no entitlements, not sandboxed | `project.yml`, `Config/Release.xcconfig` | R | skeleton; release track |  |
@@ -241,9 +241,20 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1202 | Environment report contents | `DiagnosticsReport`, `ReportAssembler` | U | W1-A, W1-G |  |
 | PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |
 | PLT-R1204 | User sees exact report before copying | `BugReportController` | M | W2-C; Pa | **Pa** |
-| PLT-R1205 | "This app misbehaves" guided flow | `GuidedTestRunner`, diagnostics UI | U, M | W2-C; Pa | **Pa** |
+| PLT-R1205 | "This app misbehaves" guided flow; step 6 keyboard focus (Q43) | `GuidedTestRunner`, diagnostics UI; ShellCore `MisbehavesPanelFocus`, `MisbehavesFocusTracker`, `MisbehavesRetarget`; App `MisbehavesPanel` | U (`MisbehavesFocusTests`), M | W2-C; W5-C; Pa | **Pa** |
 | PLT-R1206 | Metadata-only health events | `HealthEventLog` | U | W1-A |  |
 | PLT-R1207 | Support guidance | `docs/support` | D | docs track |  |
+
+### Engine requirements with platform-side evidence
+
+The engine track traces every ENG-R in `Packages/VietnameseEngine/TRACEABILITY.md`. These rows add the AppCore
+evidence for engine requirements whose behaviour depends on the host (decision 0005, wave 5).
+
+| ID | Requirement (short) | Owner module / file | Verification | Workstream | Pa |
+|---|---|---|---|---|---|
+| ENG-R862 | Learned entries stored per app, typed entries global | `SettingsStore/LearnedWords.swift`, `InputHost/Integration/LearningTracker.swift`, `TapSettingsPublisher.focusChanged(to:)`; ADR 0320 | U (`PerAppLearningTests.swift`: `LearningTrackerTests`, `FocusedAppWordListTests`, `HostPerAppLearningTests`) | engine track; W5-B |  |
+| ENG-R906 | Bracket letters uppercase under Caps Lock | `KeyPipeline` reports `KeyInput.capsLock` from the event flags (PLT-R304) | E, U (`KeyPipelineCapsLockTests`) | engine track; W5-A |  |
+| ENG-R1103 | Shadowed macro triggers rejected, including a trailing digit | Macros pane editor and importer refuse the pair; ADR 0321 | E, U (`MacroEditorTests`) | engine track; W5-B |  |
 
 ## 03-product.md (PRD-R)
 
@@ -267,7 +278,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PRD-R15 | Recorder accepts listed chords in any press order | `HotkeyRecorder` | U | W1-E; W2-B (UI) |  |
 | PRD-R16 | Warn about macOS shortcuts, never refuse | `HotkeyRecorder.conflict`, Settings UI | U | W1-E, W2-B |  |
 | PRD-R17 | Globe/fn toggle only if reliable (VERIFY) | `HotkeyRecognizer` (deferred) | V | W1-E (deferred) | **Pa** |
-| PRD-R18 | Only two configurable hotkeys | `UserSettings`, `HotkeyRole` | U | W1-B, W1-E |  |
+| PRD-R18 | Only two configurable hotkeys; Escape is the default restore key (D8, Q14) | `UserSettings`, `HotkeyRole` | U (`RestoreHotkeyDefaultTests` in SettingsStoreTests and InputHostTests) | W1-B, W1-E; W5-A |  |
 | PRD-R19 | Remembered mode applies to the first key after activation | `FocusTracker`, `KeyPipeline` | P, I | W1-E, W1-F1; W2-E2 |  |
 | PRD-R20 | Manual toggle updates memory | `AppModeMemory.recordToggle` | U | W1-E |  |
 | PRD-R21 | Rule precedence ignore > EN > VI > memory > default | `AppModeMemory.resolve` | U | W1-E |  |

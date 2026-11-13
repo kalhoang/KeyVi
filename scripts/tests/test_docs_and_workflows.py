@@ -888,6 +888,50 @@ class SpecFollowUpTests(unittest.TestCase):
         self.assertNotIn("`Mở Cài đặt hệ thống`", button)
 
 
+class TraceabilityTests(unittest.TestCase):
+    """docs/architecture/traceability.md cites only tests that exist, and the wave 5 rows name their evidence
+    (decision 0005: Q14, Q16, Q38, Q43, Q48, ENG-R906, ENG-R1103; ADR 0315)."""
+
+    TEXT = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+
+    @classmethod
+    def row(cls, identifier: str) -> str:
+        return next(line for line in cls.TEXT.splitlines() if line.startswith(f"| {identifier} |"))
+
+    def test_every_cited_test_exists_in_the_tree(self):
+        listed = run("git", "-C", str(REPO), "ls-files", "*.swift", check=True).stdout.split()
+        names: set[str] = set()
+        for relative in listed:
+            path = REPO / relative
+            names.add(path.stem)
+            names |= set(re.findall(r"\b(?:struct|class|enum|extension)\s+([A-Z]\w*Tests)\b",
+                                    path.read_text(encoding="utf-8", errors="replace")))
+        cited = set(re.findall(r"`([A-Z][A-Za-z0-9]*Tests)(?:\.swift)?`", self.TEXT))
+        self.assertGreaterEqual(len(cited), 15, "the scan found too few cited tests")
+        self.assertEqual(sorted(cited - names), [], "traceability.md cites tests that do not exist")
+
+    def test_wave_5_rows_name_their_evidence(self):
+        expected = {
+            "PLT-R1205": ("MisbehavesPanelFocus", "MisbehavesFocusTracker", "MisbehavesRetarget", "`MisbehavesPanel`",
+                          "MisbehavesFocusTests"),
+            "PLT-R905": ("`TypingTraceConfirmation`", "TypingTraceConfirmationTests"),
+            "PLT-R398C": ("SecureInputHintCopyTests",),
+            "PLT-R107": ("scripts/vm/smoke-macos12.sh", "macOS 12.7.6 smoke test PASS 2026-11-13",
+                         "arm64 + x86_64 under Rosetta", "ADR 0315"),
+            "PLT-R520": ("GamesPrecedenceTests",),
+            "PLT-R353": ("RestoreHotkeyExclusionTests", "RestoreHotkeyDefaultTests"),
+            "PRD-R18": ("RestoreHotkeyDefaultTests",),
+            "ENG-R906": ("KeyPipelineCapsLockTests",),
+            "ENG-R862": ("PerAppLearningTests", "ADR 0320"),
+            "ENG-R1103": ("MacroEditorTests", "ADR 0321"),
+        }
+        for identifier, needles in expected.items():
+            row = self.row(identifier)
+            for needle in needles:
+                with self.subTest(identifier=identifier, needle=needle):
+                    self.assertIn(needle, row)
+
+
 class ScriptSuiteTests(unittest.TestCase):
     """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
     (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
