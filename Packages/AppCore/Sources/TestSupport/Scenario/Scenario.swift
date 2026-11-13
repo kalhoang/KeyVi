@@ -85,12 +85,18 @@ public struct ScenarioResult: Sendable, Hashable, Codable {
     public var outcome: Outcome
     public var observedText: String?
     public var durationSeconds: Double
+    /// Why the outcome is `fail` or `needsHuman` (failing stage and error description: bundle ids, identifiers,
+    /// error names, never typed text, PLT-R901); nil on `pass`. Optional in `results.json` (PLT-R530, QA-R21).
+    public var reason: String?
 
-    public init(scenario: String, outcome: Outcome, observedText: String?, durationSeconds: Double) {
+    public init(
+        scenario: String, outcome: Outcome, observedText: String?, durationSeconds: Double, reason: String? = nil
+    ) {
         self.scenario = scenario
         self.outcome = outcome
         self.observedText = observedText
         self.durationSeconds = durationSeconds
+        self.reason = reason
     }
 }
 

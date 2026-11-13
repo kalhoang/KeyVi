@@ -40,7 +40,8 @@ extension Harness {
     }
 
     func scenarioServices(_ live: any LiveHarnessServices, targets: HarnessTargets) throws -> LiveScenarioServices {
-        let webDrivers = try WebDriverClients(endpoints: options.webDrivers, transport: live.httpTransport())
+        let webDrivers = try WebDriverClients(
+            endpoints: options.webDrivers, transport: live.httpTransport(), fallback: options.webDriverFallback)
         let captureFile = url(
             options.terminalCapture ?? (options.output ?? ".build/integration") + "/terminal-capture.txt")
         let terminal = ScenarioSetupRouter.TerminalCapture(fileSystem: environment.fileSystem, captureFile: captureFile)
@@ -78,7 +79,8 @@ extension Harness {
                 let result = await runner(services, seed: SeededGenerator.seed(options.seed, scenario: scenario.id))
                     .run(scenario)
                 environment.console.emit(
-                    result.outcome.rawValue + " " + scenario.id + String(format: " (%.1f s)", result.durationSeconds))
+                    result.outcome.rawValue + " " + scenario.id + String(format: " (%.1f s)", result.durationSeconds)
+                        + (result.reason.map { ": " + $0 } ?? ""))
                 results.append(result)
             }
             await releaseSecureInput(after: scenarios, services: services, targets: targets)

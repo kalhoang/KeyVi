@@ -41,11 +41,23 @@ final class FakeTransport: HTTPTransport, Sendable {
     }
 
     let requests = Recorder<Request>()
+    /// Full request URLs (endpoint host and port included).
+    let urls = Recorder<URL>()
     private let responses: [String: (Int, String)]
 
     init(responses: [String: (Int, String)]) { self.responses = responses }
 
+    /// Answers a whole session: start, navigate, find, click and a field read returning `text`.
+    static func browser(text: String) -> FakeTransport {
+        FakeTransport(responses: [
+            "/session": (200, #"{"value":{"sessionId":"S1"}}"#), "/url": (200, #"{"value":null}"#),
+            "/element": (200, #"{"value":{"element-6066-11e4-a52e-4f735466cecf":"E7"}}"#),
+            "/click": (200, #"{"value":null}"#), "/execute/sync": (200, #"{"value":""# + text + #""}"#),
+        ])
+    }
+
     func send(method: String, url: URL, body: Data?) async throws -> (status: Int, body: Data) {
+        urls.append(url)
         requests.append(
             Request(method: method, path: url.path, body: body.map { String(decoding: $0, as: UTF8.self) } ?? ""))
         let match = responses.first { url.path.hasSuffix($0.key) }?.value ?? (404, "{}")
@@ -71,16 +83,19 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let monitor: (any SoakMonitor)?
     let metrics: (any PlatformMetricSource)?
     let probe: (any ScenarioStateProbe)?
+    let transport: FakeTransport
 
     init(
         clock: ManualClock, axText: String = "", monitor: (any SoakMonitor)? = nil,
-        metrics: (any PlatformMetricSource)? = nil, probe: (any ScenarioStateProbe)? = nil
+        metrics: (any PlatformMetricSource)? = nil, probe: (any ScenarioStateProbe)? = nil,
+        transport: FakeTransport = FakeTransport(responses: [:])
     ) {
         sink = RecordingKeyEventSink(clock: clock)
         self.axText = axText
         self.monitor = monitor
         self.metrics = metrics
         self.probe = probe
+        self.transport = transport
     }
 
     func keyEventSink() throws -> any KeyEventSink {
@@ -100,7 +115,7 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
 
     func httpTransport() -> any HTTPTransport {
         calls.append("http")
-        return FakeTransport(responses: [:])
+        return transport
     }
 
     func lineReader() -> (any LineReader)? {

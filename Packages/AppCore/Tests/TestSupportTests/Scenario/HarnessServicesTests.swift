@@ -183,6 +183,26 @@ private let targets = HarnessTargets(
         }
     }
 
+    /// 13.2 webdriver readback under the agreed CI command line (no `--webdriver`): targets without an explicit
+    /// endpoint use the loopback chromedriver default; explicit endpoints win.
+    @Test func targetsWithoutAnExplicitEndpointUseTheFallback() async throws {
+        let transport = FakeTransport.browser(text: "x")
+        let fallback = WebDriverClients.defaultEndpoint
+        #expect(fallback == URL(string: "http://127.0.0.1:9515"))
+        let clients = try WebDriverClients(
+            endpoints: [bundle("com.example.Other"): URL(string: "http://127.0.0.1:4444")!], transport: transport,
+            fallback: fallback)
+        try await clients.client(for: bundle("com.example.Browser")).startSession()
+        try await clients.client(for: bundle("com.example.Other")).startSession()
+        #expect(transport.urls.all.map { "\($0.host ?? ""):\($0.port ?? 0)" } == ["127.0.0.1:9515", "127.0.0.1:4444"])
+        // Several unmapped targets share the one fallback client (one session).
+        #expect(try await clients.client(for: bundle("com.example.Third")).hasSession)
+        #expect(throws: WebDriverError.nonLoopbackEndpoint("http://example.com:9515")) {
+            _ = try WebDriverClients(
+                endpoints: [:], transport: transport, fallback: URL(string: "http://example.com:9515")!)
+        }
+    }
+
     @Test func readsFieldTextWithAScript() async throws {
         let transport = FakeTransport(responses: [
             "/session": (200, #"{"value":{"sessionId":"S"}}"#), "/execute/sync": (200, #"{"value":"tiếng việt"}"#),

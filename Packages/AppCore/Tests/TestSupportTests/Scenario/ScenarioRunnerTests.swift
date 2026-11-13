@@ -59,6 +59,37 @@ import Testing
         let result = await runner(driver: driver, setup: setup).run(makeScenario(setup: [.init(action: .launch)]))
         #expect(result.outcome == .fail)
         #expect(driver.typed.all.isEmpty)
+        // PLT-R530, QA-R21: the report says why (error metadata only, never typed text).
+        #expect(result.reason == "setup launch: injected")
+    }
+
+    @Test func everyNonPassingOutcomeCarriesAReason() async {
+        var failing = FakeDriver()
+        failing.error = TestFailure.injected
+        #expect(await runner(driver: failing).run(makeScenario()).reason == "typing: injected")
+        let broken = FakeReadback(result: .failure(TestFailure.injected))
+        #expect(await runner(readback: broken).run(makeScenario()).reason == "readback ax: injected")
+        let wrong = FakeReadback(result: .success("ddi"))
+        #expect(await runner(readback: wrong).run(makeScenario()).reason == "observed state differs from expect")
+        let human = FakeReadback(result: .failure(HumanReadbackRequired()))
+        #expect(
+            await runner(readback: human).run(makeScenario(readback: .human)).reason
+                == "needs a person: no tester attached")
+        let toggle = FakeSetup(failOn: .setSecureInput, error: HumanReadbackRequired(reason: "toggle by hand"))
+        let manual = await runner(setup: toggle).run(makeScenario(setup: [.init(action: .setSecureInput, value: "on")]))
+        #expect(manual.outcome == .needsHuman)
+        #expect(manual.reason == "needs a person: toggle by hand")
+        let expect = Scenario.Expectation(paused: true)
+        #expect(
+            await runner(probe: nil).run(makeScenario(expect: expect)).reason
+                == "needs a person: expectation not observable here")
+        #expect(await runner().run(makeScenario()).reason == nil)
+    }
+
+    @Test func reasonIsOptionalInTheReportFormat() throws {
+        let old = #"{"scenario":"a","outcome":"fail","durationSeconds":1}"#
+        let decoded = try JSONDecoder().decode(ScenarioResult.self, from: Data(old.utf8))
+        #expect(decoded.reason == nil && decoded.outcome == .fail)
     }
 
     @Test func driverOrReadbackErrorsFail() async {

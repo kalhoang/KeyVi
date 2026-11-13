@@ -57,10 +57,14 @@ struct FakeReadback: ScenarioReadback {
 
 struct FakeSetup: ScenarioSetupPerformer {
     let steps = Recorder<Scenario.SetupStep>()
+    /// Scenario id of every performed step, in order.
+    let scenarios = Recorder<String>()
     var failOn: Scenario.SetupStep.Action?
+    var error: any Error = TestFailure.injected
     func perform(_ step: Scenario.SetupStep, for scenario: Scenario) async throws {
         steps.append(step)
-        if step.action == failOn { throw TestFailure.injected }
+        scenarios.append(scenario.id)
+        if step.action == failOn { throw error }
     }
 }
 

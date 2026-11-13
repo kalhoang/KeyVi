@@ -292,7 +292,7 @@ private let rulesJSON = """
             ["run", "--output", "/out", "--profile", "burst"], fileSystem: fileSystem, live: live, clock: clock)
         #expect(await harness.execute() == .failure)  // b expects other text
         #expect(console.output.contains { $0.hasPrefix("pass a") })
-        #expect(console.output.contains { $0.hasPrefix("fail b") })
+        #expect(console.output.contains("fail b (0.0 s): observed state differs from expect"))
         #expect(console.output.contains { $0.hasPrefix("needsHuman h") })
         #expect(console.output.last == "compat-harness run: 1 passed, 1 failed, 1 need a person")
         #expect(live.sink.records.count == 18)  // 3 scenarios x 3 keys x down/up, recorded in memory only
@@ -307,6 +307,28 @@ private let rulesJSON = """
         let report = try JSONDecoder().decode(ScenarioRunReport.self, from: data)
         #expect(report.passed == 1 && report.failed == 1 && report.needsHuman == 1 && report.profile == .burst)
         #expect(report.results.map(\.scenario) == ["a", "b", "h"])
+        #expect(
+            report.results.map(\.reason) == [
+                nil, "observed state differs from expect", "needs a person: no tester attached",
+            ])
+    }
+
+    /// The CI contract (`run --scenarios compat/scenarios --output DIR`) passes no `--webdriver`; a webdriver
+    /// scenario still reaches the loopback chromedriver default.
+    @Test func webdriverScenarioRunsWithoutTheWebdriverFlag() async throws {
+        let transport = FakeTransport.browser(text: "đi")
+        let live = RecordingLiveServices(clock: ManualClock(), transport: transport)
+        let fileSystem = try makeCheckout(scenarios: [
+            "w.json": scenarioJSON(
+                id: "w", target: "com.example.Browser", readback: "webdriver",
+                setup: ##"[{"action":"openURL","value":"{pages}/fields.html"},{"action":"focusField","value":"#t"}]"##)
+        ])
+        let (harness, console) = try harness(
+            ["run", "--scenarios", "compat/scenarios", "--output", "/out"], fileSystem: fileSystem, live: live)
+        #expect(await harness.execute() == .success)
+        #expect(console.output.contains { $0.hasPrefix("pass w") })
+        #expect(transport.urls.all.allSatisfy { $0.host == "127.0.0.1" && $0.port == 9515 })
+        #expect(!transport.urls.all.isEmpty)
     }
 
     @Test func runReportsServiceErrors() async throws {

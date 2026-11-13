@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // Minimal W3C WebDriver client for browser page readback (13.2: `safaridriver`, `chromedriver`). Talks only
-// to driver endpoints on the loopback interface given on the command line (`--webdriver <bundle>=<url>`).
+// to driver endpoints on the loopback interface: the ones given on the command line (`--webdriver
+// <bundle>=<url>`), and for every other webdriver target the chromedriver default `http://127.0.0.1:9515`, so
+// the agreed CI command line (ADR 0502, scripts/run-integration.sh) needs no extra flag.
 // The transport is a protocol: the live one is URLSession (CompatHarness/Live), tests use a fake.
 // VERIFY on the runner: Safari's automation window blocks physical input while a session is active, which
 // may rule out webdriver readback for Safari scenarios that type through the harness keyboard driver.
@@ -92,21 +94,34 @@ public actor WebDriverClient {
     }
 }
 
-/// WebDriver clients keyed by the real bundle ID of the browser a scenario targets.
+/// WebDriver clients keyed by the real bundle ID of the browser a scenario targets, plus one optional fallback
+/// client shared by every target without its own endpoint.
 public struct WebDriverClients: Sendable {
+    /// `chromedriver`'s default port on the loopback interface (chromedriver documentation).
+    public static let defaultEndpoint = URL(string: "http://127.0.0.1:9515")!
+
     private let clients: [BundleKey: WebDriverClient]
+    private let fallback: WebDriverClient?
 
-    public init(clients: [BundleKey: WebDriverClient]) { self.clients = clients }
+    public init(clients: [BundleKey: WebDriverClient], fallback: WebDriverClient? = nil) {
+        self.clients = clients
+        self.fallback = fallback
+    }
 
-    /// Builds clients from `--webdriver <bundle>=<url>` options.
-    public init(endpoints: [BundleKey: URL], transport: any HTTPTransport) throws(WebDriverError) {
+    /// Builds clients from `--webdriver <bundle>=<url>` options and the fallback endpoint.
+    public init(endpoints: [BundleKey: URL], transport: any HTTPTransport, fallback: URL? = nil)
+        throws(WebDriverError)
+    {
         var clients: [BundleKey: WebDriverClient] = [:]
         for (bundle, url) in endpoints { clients[bundle] = try WebDriverClient(transport: transport, endpoint: url) }
         self.clients = clients
+        self.fallback = try fallback.map { url throws(WebDriverError) in
+            try WebDriverClient(transport: transport, endpoint: url)
+        }
     }
 
     public func client(for bundle: BundleKey) throws(WebDriverError) -> WebDriverClient {
-        guard let client = clients[bundle] else { throw .noEndpoint(target: bundle.rawValue) }
+        guard let client = clients[bundle] ?? fallback else { throw .noEndpoint(target: bundle.rawValue) }
         return client
     }
 }

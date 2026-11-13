@@ -32,6 +32,8 @@ public struct HarnessOptions: Sendable, Hashable {
     public var appBundleID: String?
     public var terminalCapture: String?
     public var webDrivers: [BundleKey: URL] = [:]
+    /// Endpoint for webdriver targets without a `--webdriver` entry (13.2; CI passes no `--webdriver`).
+    public var webDriverFallback: URL? = WebDriverClients.defaultEndpoint
 
     public init(command: Command) { self.command = command }
 }
@@ -61,7 +63,8 @@ public enum HarnessCommandLine {
           --seed N                  timing and corpus seed
 
         run:      --output DIR | --report FILE, --profile normal|fast|burst, --only ID[,ID...],
-                  --rules FILE, --webdriver BUNDLE=URL (repeatable), --terminal-capture FILE
+                  --rules FILE, --webdriver BUNDLE=URL (repeatable; other browsers use
+                  http://127.0.0.1:9515), --terminal-capture FILE
         soak:     --keystrokes N (default 1000000), --targets ID[,ID...], --chunk N, --profile P, --output DIR
         bench:    --runs N (default 5), --output FILE, --metrics NAME[,NAME...], --idle-seconds N,
                   --typing-seconds N

@@ -37,31 +37,47 @@ public protocol ScenarioStateProbe: Sendable {
     func observe(after scenario: Scenario) async throws -> ScenarioObservation
 }
 
-/// Thrown by a readback that needs a person (no terminal attached, `human` readback in CI).
+/// Thrown by a step that needs a person: a `human` readback with no terminal attached (CI), or a setup action
+/// the runner cannot automate yet. The scenario then reports `needsHuman` with `reason`, not a failure.
 public struct HumanReadbackRequired: Error, Sendable, Hashable {
-    public init() {}
+    public var reason: String?
+    public init(reason: String? = nil) { self.reason = reason }
 }
 
 extension ScenarioRunner {
     func execute(_ scenario: Scenario) async -> ScenarioResult {
         let start = clock.now()
         var observed: String?
+        var stage = "setup"
         let outcome: ScenarioResult.Outcome
+        let reason: String?
         do {
-            for step in Self.steps(of: scenario) { try await setup.perform(step, for: scenario) }
+            for step in Self.steps(of: scenario) {
+                stage = "setup " + step.action.rawValue
+                try await setup.perform(step, for: scenario)
+            }
+            stage = "typing"
             try await driver.type(scenario.keys, profile: scenario.timing)
-            if scenario.expect.text != nil { observed = try await readback.currentText(of: scenario) }
+            if scenario.expect.text != nil {
+                stage = "readback " + scenario.readback.rawValue
+                observed = try await readback.currentText(of: scenario)
+            }
+            stage = "state probe"
             let observation = try await probe?.observe(after: scenario)
             outcome = ScenarioVerdict.outcome(expect: scenario.expect, text: observed, observation: observation)
-        } catch is HumanReadbackRequired {
+            reason = ScenarioVerdict.reason(for: outcome)
+        } catch let human as HumanReadbackRequired {
             outcome = .needsHuman
+            reason = "needs a person: " + (human.reason ?? "no tester attached")
         } catch {
+            // PLT-R530, QA-R21: the failing stage and the error's description (metadata only, PLT-R901).
             outcome = .fail
+            reason = stage + ": " + String(describing: error)
         }
         let elapsed = clock.now().nanoseconds &- start.nanoseconds
         return ScenarioResult(
             scenario: scenario.id, outcome: outcome, observedText: observed,
-            durationSeconds: Double(elapsed) / 1_000_000_000)
+            durationSeconds: Double(elapsed) / 1_000_000_000, reason: reason)
     }
 }
 
@@ -89,6 +105,15 @@ public enum ScenarioVerdict {
         ]
         if checks.contains(false) { return .fail }
         return checks.contains(nil) ? .needsHuman : .pass
+    }
+
+    /// Report text for a verdict outcome; nil for `pass`.
+    static func reason(for outcome: ScenarioResult.Outcome) -> String? {
+        switch outcome {
+        case .pass: nil
+        case .fail: "observed state differs from expect"
+        case .needsHuman: "needs a person: expectation not observable here"
+        }
     }
 
     /// `true` matches or nothing expected, `false` mismatch, `nil` expected but not observed.
