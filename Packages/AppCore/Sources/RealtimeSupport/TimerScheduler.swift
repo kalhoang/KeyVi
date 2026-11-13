@@ -45,10 +45,15 @@ public final class DispatchTimerScheduler: TimerScheduler {
     public func scheduleRepeating(
         every interval: Duration, leeway: Duration, _ handler: @escaping @Sendable () -> Void
     ) -> any ScheduledTimer {
+        // A zero or negative interval would make the source fire continuously (PLT-R803 "no busy waiting").
+        let period = max(interval, Self.minimumRepeatInterval)
         let timer = DispatchTimer(queue: queue)
-        timer.start(deadline: .now() + interval.dispatchInterval, repeating: interval, leeway: leeway, handler)
+        timer.start(deadline: .now() + period.dispatchInterval, repeating: period, leeway: leeway, handler)
         return timer
     }
+
+    /// Floor for repeating intervals; callers' own periods are at least 2 s at rest (PLT-R803).
+    static let minimumRepeatInterval: Duration = .milliseconds(1)
 }
 
 private final class DispatchTimer: ScheduledTimer {
@@ -77,10 +82,15 @@ private final class DispatchTimer: ScheduledTimer {
 }
 
 extension Duration {
-    /// Nanosecond-precision conversion for Dispatch APIs.
+    /// Nanosecond-precision conversion for Dispatch APIs. Negative durations become zero and durations
+    /// beyond `Int64.max` nanoseconds saturate instead of trapping on overflow.
     var dispatchInterval: DispatchTimeInterval {
         let (seconds, attoseconds) = components
-        let nanoseconds = seconds * 1_000_000_000 + attoseconds / 1_000_000_000
-        return .nanoseconds(Int(clamping: nanoseconds))
+        guard seconds >= 0, attoseconds >= 0 || seconds > 0 else { return .nanoseconds(0) }
+        let (scaled, overflow) = seconds.multipliedReportingOverflow(by: 1_000_000_000)
+        guard !overflow else { return .nanoseconds(Int.max) }
+        let (total, carry) = scaled.addingReportingOverflow(attoseconds / 1_000_000_000)
+        guard !carry else { return .nanoseconds(Int.max) }
+        return .nanoseconds(Int(clamping: max(0, total)))
     }
 }

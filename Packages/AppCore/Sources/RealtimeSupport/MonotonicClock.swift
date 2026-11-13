@@ -47,9 +47,12 @@ public struct MachClock: MonotonicClock {
     }
 
     public func sleep(until deadline: MonotonicInstant) {
+        // The kernel reads a deadline of 0 as "no deadline" and would block forever, so a deadline that has
+        // already passed returns at once instead of reaching mach_wait_until.
+        guard deadline > now() else { return }
         // Absolute deadline in mach ticks (PLT-R409).
         let ticks = deadline.nanoseconds.multipliedFullWidth(by: denominator)
         let (quotient, _) = numerator.dividingFullWidth(ticks)
-        mach_wait_until(quotient)
+        mach_wait_until(max(quotient, 1))
     }
 }
