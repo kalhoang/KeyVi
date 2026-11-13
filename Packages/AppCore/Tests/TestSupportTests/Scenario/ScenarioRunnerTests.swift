@@ -63,7 +63,7 @@ import Testing
         let scenario = makeScenario(keys: ["command+2", "v", "i", "command+1", "command+a", "space", "shift+d"])
         let result = await runner(driver: driver, readback: FakeReadback(result: .success("đi")), clock: clock)
             .run(scenario)
-        #expect(driver.typed.all == [["command+2"], ["v", "i", "command+1"], ["command+a", "space", "shift+d"]])
+        #expect(driver.typed.all == [["command+2"], ["v", "i"], ["command+1"], ["command+a", "space", "shift+d"]])
         #expect(result.durationSeconds == 2 * Double(ScenarioRunner.shortcutSettleNanoseconds) / 1_000_000_000)
         #expect(ScenarioRunner.isFocusShortcut("shift+command+1") && !ScenarioRunner.isFocusShortcut("command+a"))
         #expect(!ScenarioRunner.isFocusShortcut("shift+2") && !ScenarioRunner.isFocusShortcut("command+f10"))
@@ -84,6 +84,15 @@ import Testing
                 == "observed state differs from expect (text, holder expected org.example.product.dev.testhost, "
                 + "observed com.example.Other)")
         #expect(ScenarioVerdict.reason(for: .pass, expect: expect, text: "duyeetj", observation: nil) == nil)
+    }
+
+    /// Around a focus shortcut the runner asks the setup for the app's focus refresh count and waits for it to grow
+    /// before the shortcut settle (the per-window rule must be in force for the next key).
+    @Test func aFocusShortcutWaitsForTheAppsFocusRefresh() async {
+        let setup = FakeSetup()
+        let scenario = makeScenario(keys: ["command+2", "v", "command+1", "i"])
+        _ = await runner(setup: setup).run(scenario)
+        #expect(setup.focusWaits.all == [3, 3])
     }
 
     /// A person is asked once; only machine readbacks are polled.

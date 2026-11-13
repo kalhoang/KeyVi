@@ -73,6 +73,29 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     /// which its per-field and per-window rules depend on (keys typed at once were lost in the first VM run).
     public static let focusSettleNanoseconds: UInt64 = 300_000_000
 
+    /// Longest wait for the app under test to publish the snapshot of a new focus, and the poll interval.
+    public static let focusRefreshWaitNanoseconds: UInt64 = 2_000_000_000
+    public static let focusRefreshPollNanoseconds: UInt64 = 100_000_000
+
+    /// The app's T6 count (focus snapshots published since launch or the last metrics reset); nil without hooks.
+    public func focusRefreshCount() async -> UInt64? {
+        guard let hooks else { return nil }
+        return try? await hooks.state().metrics.focusRefresh.count
+    }
+
+    /// Polls the hooks until the T6 count grew past `count`, at most `focusRefreshWaitNanoseconds`: the first key
+    /// must be decided on the new field's rule (PLT-R382 processes a key with the current snapshot, it never waits;
+    /// the VM runs left the first word untransformed when the keys came first). Best effort.
+    public func awaitFocusRefresh(after count: UInt64?) async {
+        guard let hooks, let count else { return }
+        var waited: UInt64 = 0
+        while waited < Self.focusRefreshWaitNanoseconds {
+            if let state = try? await hooks.state(), state.metrics.focusRefresh.count > count { return }
+            guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil else { return }
+            waited += Self.focusRefreshPollNanoseconds
+        }
+    }
+
     public func prepare(_ scenario: Scenario) async throws {
         guard scenario.targetBundleId.rawValue == HarnessTargets.testHostAlias else { return }
         try await system.resetTestHostFields(in: try resolve(scenario.targetBundleId))
@@ -111,7 +134,9 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
             if scenario.readback == .webdriver {
                 try await webDrivers.client(for: target).click(selector: field)
             } else {
+                let before = await focusRefreshCount()
                 try await system.focusField(identifier: field, in: target)
+                await awaitFocusRefresh(after: before)
                 try await sleeper.sleep(nanoseconds: Self.focusSettleNanoseconds)
             }
         case .selectInputSource:

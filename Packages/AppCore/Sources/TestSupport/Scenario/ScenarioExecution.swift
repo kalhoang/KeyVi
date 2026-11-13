@@ -17,11 +17,18 @@ public protocol ScenarioSetupPerformer: Sendable {
     /// Called once after the scenario, also when it failed: undoes state the scenario changed on purpose (a
     /// revoked permission). Best effort; never fails the scenario.
     func finish(_ scenario: Scenario) async
+    /// How many focus snapshots the app under test has published (T6 count of its integration hooks); nil when it
+    /// cannot be asked. Taken before a focus change, for `awaitFocusRefresh(after:)`.
+    func focusRefreshCount() async -> UInt64?
+    /// Waits, bounded, until the app published a focus snapshot after `count` (nil: returns at once).
+    func awaitFocusRefresh(after count: UInt64?) async
 }
 
 extension ScenarioSetupPerformer {
     public func prepare(_ scenario: Scenario) async throws {}
     public func finish(_ scenario: Scenario) async {}
+    public func focusRefreshCount() async -> UInt64? { nil }
+    public func awaitFocusRefresh(after count: UInt64?) async {}
 }
 
 /// Does nothing: the scenario's preconditions are prepared by hand or by an outer script.
@@ -130,14 +137,20 @@ extension ScenarioRunner {
         return parts.dropLast().contains("command")
     }
 
-    /// Types `keys`, waiting `shortcutSettleNanoseconds` after every focus shortcut.
+    /// Types `keys`. A focus shortcut is typed on its own: the runner waits until the app under test published the
+    /// new focus snapshot (`awaitFocusRefresh`), then `shortcutSettleNanoseconds`, before the next key.
     func type(_ keys: [String], profile: Scenario.TimingProfile) async throws {
         var run: [String] = []
         for key in keys {
-            run.append(key)
-            guard Self.isFocusShortcut(key) else { continue }
-            try await driver.type(run, profile: profile)
+            guard Self.isFocusShortcut(key) else {
+                run.append(key)
+                continue
+            }
+            if !run.isEmpty { try await driver.type(run, profile: profile) }
             run = []
+            let before = await setup.focusRefreshCount()
+            try await driver.type([key], profile: profile)
+            await setup.awaitFocusRefresh(after: before)
             clock.sleep(until: MonotonicInstant(nanoseconds: clock.now().nanoseconds &+ Self.shortcutSettleNanoseconds))
         }
         if !run.isEmpty { try await driver.type(run, profile: profile) }

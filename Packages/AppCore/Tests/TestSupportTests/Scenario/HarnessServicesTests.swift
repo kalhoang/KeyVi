@@ -132,6 +132,38 @@ private let targets = HarnessTargets(
         #expect(ScenarioSetupRouter.focusSettleNanoseconds == 300_000_000)
     }
 
+    /// With the hooks, focusField waits until the app published a focus snapshot for the new field (its T6 count
+    /// grew), so the first key is decided on the new field's rule: the VM runs left the first word untransformed
+    /// when the keys came before the app's focus refresh.
+    @Test func focusFieldWaitsForTheAppsFocusRefresh() async throws {
+        let sleeper = RecordingSleeper()
+        let hooks = FocusRefreshHooks([4, 4, 4, 5])
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks)
+        try await router.perform(.init(action: .focusField, value: "testhost.web.textarea"), for: makeScenario())
+        #expect(hooks.requestCount == 4, "the count before the focus, then until it grew")
+        #expect(
+            sleeper.requests.all == [
+                ScenarioSetupRouter.focusRefreshPollNanoseconds, ScenarioSetupRouter.focusRefreshPollNanoseconds,
+                ScenarioSetupRouter.focusSettleNanoseconds,
+            ])
+    }
+
+    /// No refresh within the limit (the field was focused already, or the app missed the change): the wait ends
+    /// there and the scenario goes on.
+    @Test func theFocusRefreshWaitIsBounded() async throws {
+        let sleeper = RecordingSleeper()
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: FocusRefreshHooks([7]))
+        try await router.perform(.init(action: .focusField, value: "testhost.native.textField"), for: makeScenario())
+        let polls = Int(
+            ScenarioSetupRouter.focusRefreshWaitNanoseconds / ScenarioSetupRouter.focusRefreshPollNanoseconds)
+        #expect(sleeper.requests.all.count == polls + 1)
+        #expect(sleeper.requests.all.last == ScenarioSetupRouter.focusSettleNanoseconds)
+    }
+
     @Test func taskSleeperSuspendsAndHonoursCancellation() async throws {
         let clock = MachClock()
         let start = clock.now().nanoseconds

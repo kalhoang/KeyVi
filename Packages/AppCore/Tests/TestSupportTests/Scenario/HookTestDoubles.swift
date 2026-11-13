@@ -197,3 +197,25 @@ final class FakeProcessSampling: ProcessSampling, Sendable {
             }, footprintBytes: footprint)
     }
 }
+
+/// Hooks whose `state` reports the app's count of published focus snapshots (T6) from a script, one answer per
+/// request; the last answer repeats.
+final class FocusRefreshHooks: AppHookClient, Sendable {
+    private let counts: [UInt64]
+    private let requests = Mutex(0)
+    init(_ counts: [UInt64]) { self.counts = counts }
+    var requestCount: Int { requests.withLock { $0 } }
+
+    func send(_ command: AppHookCommand) async throws -> AppHookResponse {
+        let count = requests.withLock { number -> UInt64 in
+            defer { number += 1 }
+            return counts[min(number, counts.count - 1)]
+        }
+        var metrics = emptyMetrics()
+        var buckets = metrics.focusRefresh.buckets
+        buckets[0] = count
+        metrics.focusRefresh = HistogramSnapshot(buckets: buckets)
+        let state = AppStateSnapshot(processIdentifier: 100, state: .ready, mode: .vietnamese, metrics: metrics)
+        return AppHookResponse(sequence: 0, state: state)
+    }
+}

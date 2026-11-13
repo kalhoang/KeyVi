@@ -70,6 +70,10 @@ final class ChangingReadback: ScenarioReadback, Sendable {
 
 struct FakeSetup: ScenarioSetupPerformer {
     let steps = Recorder<Scenario.SetupStep>()
+    /// The counts `awaitFocusRefresh(after:)` received; `focusRefreshCount()` answers 3.
+    let focusWaits = Recorder<UInt64>()
+    func focusRefreshCount() async -> UInt64? { 3 }
+    func awaitFocusRefresh(after count: UInt64?) async { if let count { focusWaits.append(count) } }
     /// Scenario id of every performed step, in order.
     let scenarios = Recorder<String>()
     var failOn: Scenario.SetupStep.Action?
