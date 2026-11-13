@@ -152,6 +152,7 @@ public enum SettingsText: String, LocalizationKey {
     case nameFirstSeenAppMode = "settings.name.firstSeenAppMode"
     case nameMacrosInEnglishMode = "settings.name.macrosInEnglishMode"
     case nameOptedInRules = "settings.name.optedInRules"
+    case nameLearnedWords = "settings.name.learnedWords"
     case noticeRecovered = "settings.notice.recoveredFromBackup"
     case noticeCorrupt = "settings.notice.corruptFileUsingDefaults"
     case noticeNewerSchema = "settings.notice.newerSchemaReadOnly"

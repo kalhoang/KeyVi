@@ -3529,6 +3529,24 @@
         }
       }
     },
+    "settings.name.learnedWords" : {
+      "comment" : "ENG-R862 words learned per app, named in the import summary.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words learned per app"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ đã học theo ứng dụng"
+          }
+        }
+      }
+    },
     "settings.name.macrosInEnglishMode" : {
       "comment" : "D10 name (hidden, ADR 0306).",
       "extractionState" : "manual",

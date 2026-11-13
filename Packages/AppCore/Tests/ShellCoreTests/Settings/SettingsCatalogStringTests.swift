@@ -283,6 +283,13 @@ import Testing
         #expect(SettingNames.name(forKey: "macrosInEnglishMode", l.en) == "Expand macros in English mode")
         #expect(SettingNames.name(forKey: "optedInRules", l.en) == "Compatibility rules you turned on")
         #expect(SettingNames.name(forKey: "somethingNew", l.vi) == "somethingNew")
+        // PLT-R1010, PRD-R62: every list key the importer can report has a localized name, never the raw key.
+        for key in ["keepAsTyped", "keepVietnamese", "learnedWords", "optedInRules"] {
+            #expect(SettingNames.name(forKey: key, l.vi) != key)
+            #expect(SettingNames.name(forKey: key, l.en) != key)
+        }
+        #expect(SettingNames.name(forKey: "learnedWords", l.vi) == "Từ đã học theo ứng dụng")
+        #expect(SettingNames.name(forKey: "learnedWords", l.en) == "Words learned per app")
         #expect(ListFormat.join(["a", "b", "c"], l.en) == "a, b, and c")
     }
 }
