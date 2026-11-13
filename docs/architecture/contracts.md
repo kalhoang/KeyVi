@@ -1751,48 +1751,194 @@ public final class HealthEventLog: Sendable {
 //
 // Always-on, content-free, lock-free histograms (PLT-R801): fixed memory, log2 buckets, safe on the tap.
 // Implemented in the skeleton because the pipeline and the worker record into them on every event
-// (docs/decisions/0313-testability-seams.md); workstream W1-A owns, benchmarks and may optimise them.
+// (docs/decisions/0313-testability-seams.md); workstream W1-A owns, benchmarks and may optimise them. W3-A added
+// the gate-aligned sub-buckets of the decide-to-posted histograms and `PlatformMetrics.reset()` for the
+// integration hooks (ADR 0502).
 
 public import AppModel
 internal import RealtimeSupport
 internal import Synchronization
 
 /// 64 log2 buckets of nanoseconds (bucket i counts values in [2^i, 2^(i+1)); bucket 0 also counts 0), one
-/// `Atomic<UInt64>` each.
+/// `Atomic<UInt64>` each. A histogram created with `subBuckets: true` also counts every value up to
+/// `LatencySubBuckets.upperNanoseconds` in the fixed linear buckets of `LatencySubBuckets`, so a percentile
+/// decision against the 8.1 gates is exact (a log2 bucket from 2.1 to 4.2 ms straddles the 3 ms T2 gate).
 public final class Log2Histogram: Sendable {
     public static let bucketCount = 64
     private let buckets = AtomicUInt64Array(count: Log2Histogram.bucketCount)
+    private let subBuckets: AtomicUInt64Array?
 
-    public init() {}
+    public init(subBuckets: Bool = false) {
+        self.subBuckets = subBuckets ? AtomicUInt64Array(count: LatencySubBuckets.count) : nil
+    }
 
-    /// Lock-free, allocation-free; allowed on the tap thread (PLT-R304).
+    /// Lock-free, allocation-free; allowed on the tap thread (PLT-R304). Two relaxed increments at most.
     @inline(__always)
     public func record(nanoseconds: UInt64) {
         let index = nanoseconds == 0 ? 0 : (UInt64.bitWidth - 1 - nanoseconds.leadingZeroBitCount)
         buckets.increment(index)
+        if let subBuckets, let fine = LatencySubBuckets.index(nanoseconds: nanoseconds) { subBuckets.increment(fine) }
     }
 
-    public func snapshot() -> HistogramSnapshot { HistogramSnapshot(buckets: buckets.snapshot()) }
+    /// Zeroes every bucket with atomic stores. Safe while other threads record: an increment that races with
+    /// the store lands before it (and is cleared) or after it (and is kept); nothing tears.
+    public func reset() {
+        for index in 0..<Self.bucketCount { buckets.store(0, at: index) }
+        guard let subBuckets else { return }
+        for index in 0..<LatencySubBuckets.count { subBuckets.store(0, at: index) }
+    }
+
+    public func snapshot() -> HistogramSnapshot {
+        HistogramSnapshot(
+            buckets: buckets.snapshot(),
+            subBuckets: subBuckets.map { SubBucketSnapshot(segments: LatencySubBuckets.segments, counts: $0.snapshot()) }
+        )
+    }
+}
+
+/// Linear sub-buckets of the decide-to-posted histograms (T2, T3; 02-platform.md 8.1). Bucket i of a segment
+/// counts values in (start + i * width, start + (i + 1) * width], upper end included, so "p99 <= gate" is decided
+/// exactly whenever the gate is a bucket edge. Every 8.1 value up to 25 ms is one: the T2 target 0.5 and 2 ms and
+/// gate 3 ms, the T3 target 2 and 8 ms and gate 15 ms, the T4 gate 10 ms, and the Intel values (1.5 times) 4.5
+/// and 22.5 ms. Resolution: 10 us to 1 ms, 50 us to 5 ms, 250 us to 25 ms (260 buckets, 2 KiB per histogram).
+public enum LatencySubBuckets {
+    public struct Segment: Sendable, Hashable, Codable {
+        /// Inclusive upper end; the segment starts just above the previous segment's end (0 for the first).
+        public var upToNanoseconds: UInt64
+        public var widthNanoseconds: UInt64
+
+        public init(upToNanoseconds: UInt64, widthNanoseconds: UInt64) {
+            self.upToNanoseconds = upToNanoseconds
+            self.widthNanoseconds = widthNanoseconds
+        }
+    }
+
+    public static let segments: [Segment] = [
+        Segment(upToNanoseconds: 1_000_000, widthNanoseconds: 10_000),
+        Segment(upToNanoseconds: 5_000_000, widthNanoseconds: 50_000),
+        Segment(upToNanoseconds: 25_000_000, widthNanoseconds: 250_000),
+    ]
+    public static let count = 260
+    public static let upperNanoseconds: UInt64 = 25_000_000
+
+    /// The bucket of `nanoseconds` (0 counts in the first bucket), nil above `upperNanoseconds`. Constants only:
+    /// no array access, no allocation, safe on the tap thread. `LatencySubBucketTests` pins it to `segments`.
+    @inline(__always)
+    static func index(nanoseconds: UInt64) -> Int? {
+        if nanoseconds <= 1_000_000 { return nanoseconds == 0 ? 0 : Int((nanoseconds - 1) / 10_000) }
+        if nanoseconds <= 5_000_000 { return 100 + Int((nanoseconds - 1_000_001) / 50_000) }
+        if nanoseconds <= 25_000_000 { return 180 + Int((nanoseconds - 5_000_001) / 250_000) }
+        return nil
+    }
+}
+
+/// Counts of a histogram's linear sub-buckets with their layout, so a reader needs no knowledge of
+/// `LatencySubBuckets` (and reads a future layout too).
+public struct SubBucketSnapshot: Sendable, Hashable, Codable {
+    /// A reader refuses layouts with more buckets than this (the JSON may come from another process).
+    static let maximumBucketCount = 100_000
+
+    public var segments: [LatencySubBuckets.Segment]
+    public var counts: [UInt64]
+
+    public init(segments: [LatencySubBuckets.Segment], counts: [UInt64]) {
+        self.segments = segments
+        self.counts = counts
+    }
+
+    /// Where the rank-th smallest sample lies: the bucket's bounds (lower excluded, upper included), the samples
+    /// in earlier buckets and the samples in this one. Nil when the sub-buckets hold fewer than `rank` samples or
+    /// the layout does not match the counts.
+    public struct Position: Sendable, Hashable {
+        public var lower: UInt64
+        public var upper: UInt64
+        public var before: UInt64
+        public var count: UInt64
+    }
+
+    public func position(ofRank rank: UInt64) -> Position? {
+        guard rank > 0, isConsistent else { return nil }
+        var index = 0
+        var start: UInt64 = 0
+        var before: UInt64 = 0
+        for segment in segments {
+            var lower = start
+            while lower < segment.upToNanoseconds {
+                let count = counts[index]
+                if count > 0 && before + count >= rank {
+                    return Position(
+                        lower: lower, upper: lower + segment.widthNanoseconds, before: before, count: count)
+                }
+                before += count
+                lower += segment.widthNanoseconds
+                index += 1
+            }
+            start = segment.upToNanoseconds
+        }
+        return nil
+    }
+
+    /// Inclusive upper end of the last segment; 0 without segments.
+    public var upperNanoseconds: UInt64 { segments.last?.upToNanoseconds ?? 0 }
+
+    /// Segments ascend, every width divides its segment, and the bucket count matches `counts`.
+    public var isConsistent: Bool {
+        var start: UInt64 = 0
+        var total = 0
+        for segment in segments {
+            guard segment.widthNanoseconds > 0, segment.upToNanoseconds > start,
+                (segment.upToNanoseconds - start) % segment.widthNanoseconds == 0
+            else { return false }
+            let buckets = (segment.upToNanoseconds - start) / segment.widthNanoseconds
+            guard buckets <= UInt64(Self.maximumBucketCount - total) else { return false }
+            total += Int(buckets)
+            start = segment.upToNanoseconds
+        }
+        return !segments.isEmpty && total == counts.count
+    }
 }
 
 public struct HistogramSnapshot: Sendable, Hashable, Codable {
     public var buckets: [UInt64]
-    public init(buckets: [UInt64]) { self.buckets = buckets }
+    /// Linear sub-buckets (decide-to-posted histograms only). Nil for the other histograms and in JSON written
+    /// before W3-A, which still decodes; a nil value is left out of the JSON.
+    public var subBuckets: SubBucketSnapshot?
+
+    public init(buckets: [UInt64], subBuckets: SubBucketSnapshot? = nil) {
+        self.buckets = buckets
+        self.subBuckets = subBuckets
+    }
+
     public static let empty = HistogramSnapshot(buckets: Array(repeating: 0, count: Log2Histogram.bucketCount))
     public var count: UInt64 { buckets.reduce(0, +) }
 
-    /// Upper bound (ns) of the bucket containing the given fraction (0.5 = p50, 0.99 = p99). Nil when empty or
-    /// when `fraction` is outside 0...1.
+    /// Upper bound (ns) of the log2 bucket containing the given fraction (0.5 = p50, 0.99 = p99). Nil when empty
+    /// or when `fraction` is outside 0...1. Ignores the sub-buckets (the issue block keeps its log2 values);
+    /// `precisePercentile` uses them.
     public func percentile(_ fraction: Double) -> UInt64? {
-        let total = count
-        guard total > 0, (0.0...1.0).contains(fraction) else { return nil }
-        let rank = max(1, UInt64((Double(total) * fraction).rounded(.up)))
+        guard let rank = rank(fraction) else { return nil }
         var seen: UInt64 = 0
         for (index, value) in buckets.enumerated() {
             seen += value
             if seen >= rank { return index >= 63 ? UInt64.max : (UInt64(1) << UInt64(index + 1)) - 1 }
         }
         return UInt64.max
+    }
+
+    /// Upper bound (ns) of the finest bucket containing the given fraction: the sub-bucket when the value lies in
+    /// their range, so the answer is at most one sub-bucket width above the true value and never on the wrong side
+    /// of an 8.1 gate; otherwise the log2 bucket (`percentile`).
+    public func precisePercentile(_ fraction: Double) -> UInt64? {
+        guard let rank = rank(fraction) else { return nil }
+        if let position = subBuckets?.position(ofRank: rank) { return position.upper }
+        return percentile(fraction)
+    }
+
+    /// Nearest rank of a fraction among the recorded samples (1-based); nil when empty or outside 0...1.
+    public func rank(_ fraction: Double) -> UInt64? {
+        let total = count
+        guard total > 0, (0.0...1.0).contains(fraction) else { return nil }
+        return max(1, UInt64((Double(total) * fraction).rounded(.up)))
     }
 }
 
@@ -1803,18 +1949,20 @@ public final class AtomicCounter: Sendable {
     @inline(__always)
     public func increment(by amount: UInt64 = 1) { storage.wrappingAdd(amount, ordering: .relaxed) }
     public var value: UInt64 { storage.load(ordering: .relaxed) }
+    /// Atomic store of zero; an increment racing with it is kept or cleared, never torn.
+    public func reset() { storage.store(0, ordering: .relaxed) }
 }
 
 /// Platform budget metrics of 02-platform.md 8.1. Probe-tagged events (PLT-R810) go to `probe*` only, so user
 /// metrics exclude them.
 public final class PlatformMetrics: Sendable {
     public let callbackDuration = Log2Histogram()  // T1
-    public let decideToPosted = Log2Histogram()  // T2
-    public let decideToPostedWithAX = Log2Histogram()  // T3
+    public let decideToPosted = Log2Histogram(subBuckets: true)  // T2
+    public let decideToPostedWithAX = Log2Histogram(subBuckets: true)  // T3
     public let echoRoundTrip = Log2Histogram()
     public let heldWait = Log2Histogram()  // T5
     public let focusRefresh = Log2Histogram()  // T6
-    public let probeDecideToPosted = Log2Histogram()  // T2 for latency-probe events only
+    public let probeDecideToPosted = Log2Histogram(subBuckets: true)  // T2 for latency-probe events only
     public let flushes = AtomicCounter()
     public let tapTimeouts = AtomicCounter()
     public let fallbackActivations = AtomicCounter()
@@ -1826,6 +1974,26 @@ public final class PlatformMetrics: Sendable {
     public let axCallDurations = PerBundleHistograms()
 
     public init() {}
+
+    /// Zeroes every histogram and counter (the integration hooks' `resetMetrics`, so a measured workload starts
+    /// clean, ADR 0502). Atomic stores only, safe while the tap and the worker record: an event recorded during
+    /// the reset is either cleared or kept, never half-counted. The per-bundle AX histograms are emptied too.
+    public func reset() {
+        for histogram in histograms { histogram.reset() }
+        for counter in counters { counter.reset() }
+        axCallDurations.reset()
+    }
+
+    private var histograms: [Log2Histogram] {
+        [
+            callbackDuration, decideToPosted, decideToPostedWithAX, echoRoundTrip, heldWait, focusRefresh,
+            probeDecideToPosted,
+        ]
+    }
+
+    private var counters: [AtomicCounter] {
+        [flushes, tapTimeouts, fallbackActivations, echoLosses, watchdogTrips, lostWhilePostingBroken]
+    }
 
     public func snapshot() -> MetricsSnapshot {
         MetricsSnapshot(
@@ -1875,6 +2043,14 @@ public final class PerBundleHistograms: Sendable {
 
     public func snapshot() -> [BundleKey: HistogramSnapshot] {
         state.withLock { $0.histograms.mapValues { $0.snapshot() } }
+    }
+
+    /// Forgets every bundle (`PlatformMetrics.reset()`).
+    public func reset() {
+        state.withLock { state in
+            state.histograms = [:]
+            state.order = []
+        }
     }
 }
 
@@ -6826,11 +7002,14 @@ public struct PipelineContext: Sendable {
     public var tapLog: TapLogRing
     public var capture: CaptureController?
     public var watchdog: CallbackWatchdog
+    /// Since-launch observations for the integration hooks (tap recoveries, first key after a secure-input
+    /// release). The controller passes its own; other callers get a private one.
+    public var counters: HostCounters
 
     public init(
         snapshots: TapSnapshots, queue: JobQueue, feedback: WorkerFeedback, echo: EchoTracker, marker: EventMarker,
         outbox: TapOutbox, metrics: PlatformMetrics, tapLog: TapLogRing, capture: CaptureController?,
-        watchdog: CallbackWatchdog
+        watchdog: CallbackWatchdog, counters: HostCounters = HostCounters()
     ) {
         self.snapshots = snapshots
         self.queue = queue
@@ -6842,6 +7021,7 @@ public struct PipelineContext: Sendable {
         self.tapLog = tapLog
         self.capture = capture
         self.watchdog = watchdog
+        self.counters = counters
     }
 }
 
@@ -7966,6 +8146,9 @@ public final class InputHostController {
     /// False only in tests that drive the worker step by step (`InjectionWorker.runUntilIdle`).
     let runsWorkerThread: Bool
     let ruleBox = RuleSetBox()
+    /// Since-launch observations the integration hooks report (tap recoveries, first key after a secure-input
+    /// release); shared with every tap session's pipeline.
+    public let counters = HostCounters()
     let refresh: RefreshRequests
     var inputSourceMonitor: InputSourceMonitor
     var permissionMonitor: PermissionMonitor?
@@ -10745,6 +10928,10 @@ final class AppEnvironment {
     /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
     var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
+    #if INTEGRATION_HOOKS
+    /// The self-hosted runner's test build only: answers the integration hooks (ADR 0502).
+    let integrationHooks: IntegrationHooksApp
+    #endif
     /// QA-R42: the first launch after an update checks the host once it left `starting`.
     var selfCheckPending = false
     /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
@@ -10768,9 +10955,12 @@ final class AppEnvironment {
             location: StorageLocation(directory: paths.applicationSupport), fileSystem: LocalFileSystem(),
             wallClock: SystemWallClock(), writtenBy: brand.version, queue: utility, launchGuard: launchGuard,
             onChange: { relay.send($0) })
-        host = InputHostController(
-            dependencies: .production(diagnostics: diagnostics, keyValues: keyValues, utility: utility),
-            settingsStore: settingsStore)
+        var hostDependencies = InputHostDependencies.production(
+            diagnostics: diagnostics, keyValues: keyValues, utility: utility)
+        #if INTEGRATION_HOOKS
+        integrationHooks = IntegrationHooksApp(instrumenting: &hostDependencies)
+        #endif
+        host = InputHostController(dependencies: hostDependencies, settingsStore: settingsStore)
         settingsChanges.connect { [weak self] state in self?.settingsChanged(state) }
         host.onEvent = { [weak self] event in self?.hostEvent(event) }
     }
@@ -10793,6 +10983,9 @@ final class AppEnvironment {
     func terminate(completion: @escaping @MainActor () -> Void) {
         diagnostics.logger.log(.lifecycle(.terminating), level: .notice)
         launch?.terminate()
+        #if INTEGRATION_HOOKS
+        integrationHooks.stop()
+        #endif
         host.stop()
         let store = settingsStore
         let diagnostics = self.diagnostics
@@ -10933,6 +11126,9 @@ extension AppEnvironment: LaunchSteps {
 
     func startHost(rules: RulesLoadResult, settings: SettingsState) {
         host.start(rules: rules, settings: settings)
+        #if INTEGRATION_HOOKS
+        startIntegrationHooks()
+        #endif
     }
 
     func showShell(settings: SettingsState, safeMode: Bool) {
@@ -11938,15 +12134,381 @@ W2-E2 additions (`Sources/TestSupport/Scenario/`, ADR 0502 "Integration hooks" a
   after the run) and restarts it through `AppUnderTestControl`.
 - **Integration hooks** (`AppHooks.swift`, `FileDropHookChannel.swift`, below): the harness side of the test
   build's hooks; `HookStateProbe` answers the `paused`, `holderBundleId` and `firstKeyAfterReleaseComposed`
-  expectations; the `testHook` setup step (`ScenarioHookStep.swift`) is pending in the scenario schema.
+  expectations; the `testHook` setup step (`ScenarioHookStep.swift`) is in the scenario schema since W3-A.
 - **Measurements** (`AppMetrics.swift`, `ProcessMetrics.swift`, `RegressionGate.swift`, `Soak.swift`): T2, T3, T5,
   T6 from the app's histograms after the `BenchWorkload`, T4 from its latency probe, C1, C2, M1 from
   `ProcessSampling`, M2 from the soak; the PLT-R822 gate against `perf/platform-baseline.json`.
 - **Privacy and egress** (`PrivacyCanary.swift`, `EgressCheck.swift`): canary scan after canary scenarios over
   `PrivacyEvidenceSource`; `compat-harness egress` over `ConnectionSampler`.
 
-The App does not link TestSupport: the test build answers the hooks with its own types that encode the same JSON
-(`AppHookRequest`, `AppHookResponse`, `AppStateSnapshot`), compiled only under the `INTEGRATION_HOOKS` condition.
+The App does not link TestSupport: both sides share the Codable wire types of `Diagnostics/IntegrationHooks.swift`.
+W3-A added the app side (ADR 0502 "Integration hooks"): the testable core in `InputHost/IntegrationHooks/`
+(`IntegrationHookServer`, `PosixHookDirectory`, `VnodeDirectoryWatcher`, `IntegrationHookInstruments` with
+`TimeoutSimulatingTapFactory` and `RevocablePermissionProbe`, `InputHostHookActions`) and `HostCounters` in the
+pipeline, started only by `App/Sources/IntegrationHooks/` under the `INTEGRATION_HOOKS` condition, which only the
+`Integration` configuration (`Config/Integration.xcconfig`) sets. `scripts/verify-release.sh` fails a release that
+carries the hooks' marker.
+
+<!-- include: Packages/AppCore/Sources/Diagnostics/IntegrationHooks.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Wire format of the integration hooks (ADR 0502, "Integration hooks"; QA-R11, PLT-R821, 13.2 "tap timeout
+// injection (test hook)"). One Codable definition shared by the harness (TestSupport, FileDropHookChannel) and the
+// app's INTEGRATION_HOOKS test build (InputHost `IntegrationHookServer`, App/Sources/IntegrationHooks). Release
+// builds link these value types but never answer a request: the watcher exists only under the compilation
+// condition. Metadata only (PLT-R901): no typed text, window titles, URLs or app names ever reach a response.
+
+public import AppModel
+
+/// A test hook a scenario triggers (`testHook` setup step).
+public enum AppTestHook: String, Sendable, Hashable, Codable, CaseIterable {
+    /// The app disables its event tap as macOS does after a callback timeout, then runs its normal recovery
+    /// (PLT-R330). QA-R11: the engine state MUST be reset after recovery.
+    case tapTimeout
+    /// The app's trust check reports Accessibility as revoked (PLT-R730 fail-open, PRD-R44).
+    case revokePermission
+    /// Ends `revokePermission`: the trust check reports the real value again, so the app re-creates its tap
+    /// without a relaunch (7.3).
+    case restorePermission
+}
+
+/// One request to the app under test.
+public enum AppHookCommand: Sendable, Hashable {
+    /// Host state, secure-input holder and the PLT-R801 metrics.
+    case state
+    /// Zeroes every histogram and counter of `PlatformMetrics`, so a measured workload starts clean.
+    case resetMetrics
+    case trigger(AppTestHook)
+    /// Runs the built-in latency probe (PLT-R810) with one profile and returns its T2 and T4 percentiles.
+    case latencyProbe(LatencyProbeResult.Profile)
+    /// Starts an update check now, as "Check for Updates" does (13.7 egress test).
+    case checkForUpdates
+
+    /// Wire name of the command.
+    public var name: String {
+        switch self {
+        case .state: "state"
+        case .resetMetrics: "resetMetrics"
+        case .trigger(let hook): hook.rawValue
+        case .latencyProbe: "latencyProbe"
+        case .checkForUpdates: "checkForUpdates"
+        }
+    }
+
+    /// The command a request names. `unknownCommand` for a name outside the contract, `unsupported` for
+    /// `latencyProbe` without its profile.
+    public static func parse(name: String, profile: LatencyProbeResult.Profile?) -> Result<
+        AppHookCommand, AppHookErrorCode
+    > {
+        switch name {
+        case "state": return .success(.state)
+        case "resetMetrics": return .success(.resetMetrics)
+        case "checkForUpdates": return .success(.checkForUpdates)
+        case "latencyProbe":
+            guard let profile else { return .failure(.unsupported) }
+            return .success(.latencyProbe(profile))
+        default:
+            guard let hook = AppTestHook(rawValue: name) else { return .failure(.unknownCommand) }
+            return .success(.trigger(hook))
+        }
+    }
+}
+
+/// Why the app refused a request. The wire carries the raw value in `AppHookResponse.error`, never content.
+public enum AppHookErrorCode: String, Error, Sendable, Hashable, Codable, CaseIterable {
+    /// The command name is not part of the contract.
+    case unknownCommand
+    /// The request cannot be served by this build or right now: an unknown `formatVersion`, a malformed or
+    /// oversized request, `latencyProbe` without a profile or without a Latin layout, no tap to time out, no
+    /// updater yet.
+    case unsupported
+    /// Another request is still running (one at a time), or the latency probe window lost focus.
+    case busy
+}
+
+/// `request-<sequence>.json`.
+public struct AppHookRequest: Sendable, Hashable, Codable {
+    public static let formatVersion = 1
+    public var formatVersion: Int
+    public var sequence: UInt64
+    public var command: String
+    public var profile: LatencyProbeResult.Profile?
+
+    public init(sequence: UInt64, command: AppHookCommand) {
+        formatVersion = Self.formatVersion
+        self.sequence = sequence
+        self.command = command.name
+        if case .latencyProbe(let profile) = command { self.profile = profile }
+    }
+}
+
+/// App state for scenario expectations and soak counters. Metadata only (PLT-R901): no text, no titles.
+public struct AppStateSnapshot: Sendable, Hashable, Codable {
+    public enum State: String, Sendable, Hashable, Codable { case noPermission, starting, ready, paused, failOpen }
+
+    public var processIdentifier: Int32
+    public var state: State
+    /// The mode while `ready`.
+    public var mode: TypingMode?
+    public var pauseReason: PauseCode?
+    public var failOpenReason: FailOpenReason?
+    /// Likely holder of Secure Event Input while paused for it (PLT-R396).
+    public var secureInputHolderBundleId: BundleKey?
+    /// PLT-R398B: whether the first key-down after the most recent secure-input release was composed; nil before
+    /// the first release of this process.
+    public var firstKeyAfterSecureInputReleaseComposed: Bool?
+    /// Tap re-enables after a timeout (system or `tapTimeout` hook) since launch.
+    public var tapRecoveries: UInt64
+    /// Of those, recoveries after which the engine state was reset (QA-R11 expects every one).
+    public var engineResetsAfterTapRecovery: UInt64
+    public var metrics: MetricsSnapshot
+
+    public init(
+        processIdentifier: Int32, state: State, mode: TypingMode? = nil, pauseReason: PauseCode? = nil,
+        failOpenReason: FailOpenReason? = nil, secureInputHolderBundleId: BundleKey? = nil,
+        firstKeyAfterSecureInputReleaseComposed: Bool? = nil, tapRecoveries: UInt64 = 0,
+        engineResetsAfterTapRecovery: UInt64 = 0, metrics: MetricsSnapshot
+    ) {
+        self.processIdentifier = processIdentifier
+        self.state = state
+        self.mode = mode
+        self.pauseReason = pauseReason
+        self.failOpenReason = failOpenReason
+        self.secureInputHolderBundleId = secureInputHolderBundleId
+        self.firstKeyAfterSecureInputReleaseComposed = firstKeyAfterSecureInputReleaseComposed
+        self.tapRecoveries = tapRecoveries
+        self.engineResetsAfterTapRecovery = engineResetsAfterTapRecovery
+        self.metrics = metrics
+    }
+
+    /// The snapshot of a host state (02-platform.md 2.1). Only codes cross the wire: the input source name of
+    /// `nonLatinInputSource`, the rule of `passThroughRule` and the holder's display name are dropped (PLT-R901);
+    /// the holder appears as its bundle ID only, and only while paused for secure input.
+    public init(
+        processIdentifier: Int32, hostState: HostState, firstKeyAfterSecureInputReleaseComposed: Bool?,
+        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, metrics: MetricsSnapshot
+    ) {
+        self.init(
+            processIdentifier: processIdentifier, state: .starting,
+            firstKeyAfterSecureInputReleaseComposed: firstKeyAfterSecureInputReleaseComposed,
+            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery, metrics: metrics)
+        switch hostState {
+        case .noPermission: state = .noPermission
+        case .starting: state = .starting
+        case .ready(let typingMode):
+            state = .ready
+            mode = typingMode
+        case .paused(let reason):
+            state = .paused
+            pauseReason = reason.code
+            if case .secureInput(let holder) = reason { secureInputHolderBundleId = holder?.bundle }
+        case .failOpen(let reason):
+            state = .failOpen
+            failOpenReason = reason
+        }
+    }
+
+    /// Keys pass through untransformed: paused (any reason) or failed open.
+    public var passesKeysThrough: Bool { state == .paused || state == .failOpen || state == .noPermission }
+}
+
+/// `response-<sequence>.json`.
+public struct AppHookResponse: Sendable, Hashable, Codable {
+    public var formatVersion: Int
+    public var sequence: UInt64
+    public var ok: Bool
+    /// Error code when `ok` is false (`AppHookErrorCode` raw value), never content. A string on the wire, so a
+    /// harness also reads a code a newer build adds.
+    public var error: String?
+    public var state: AppStateSnapshot?
+    public var latencyProbe: LatencyProbeResult?
+
+    public init(
+        sequence: UInt64, ok: Bool = true, error: String? = nil, state: AppStateSnapshot? = nil,
+        latencyProbe: LatencyProbeResult? = nil
+    ) {
+        formatVersion = AppHookRequest.formatVersion
+        self.sequence = sequence
+        self.ok = ok
+        self.error = error
+        self.state = state
+        self.latencyProbe = latencyProbe
+    }
+
+    /// A refusal carrying the request's sequence number.
+    public static func refused(sequence: UInt64, _ code: AppHookErrorCode) -> AppHookResponse {
+        AppHookResponse(sequence: sequence, ok: false, error: code.rawValue)
+    }
+
+    /// The error as a known code; nil when `ok` or when the code is unknown to this build.
+    public var errorCode: AppHookErrorCode? { error.flatMap(AppHookErrorCode.init(rawValue:)) }
+}
+
+/// File names of the hooks directory (`~/Library/Application Support/<storage folder>/IntegrationHooks/`).
+public enum IntegrationHookFiles {
+    /// Directory name below the app's Application Support folder.
+    public static let directoryName = "IntegrationHooks"
+    static let requestPrefix = "request-"
+    static let responsePrefix = "response-"
+    static let suffix = ".json"
+
+    public static func requestName(_ sequence: UInt64) -> String { requestPrefix + String(sequence) + suffix }
+    public static func responseName(_ sequence: UInt64) -> String { responsePrefix + String(sequence) + suffix }
+
+    /// The sequence of `request-<n>.json` (decimal digits only, no sign, no leading `+`, fits UInt64); nil for
+    /// every other name, including the harness's temporary files.
+    public static func requestSequence(fileName name: String) -> UInt64? {
+        guard name.hasPrefix(requestPrefix), name.hasSuffix(suffix) else { return nil }
+        let digits = name.dropFirst(requestPrefix.count).dropLast(suffix.count)
+        guard !digits.isEmpty, digits.count <= 20, digits.utf8.allSatisfy({ $0 >= 0x30 && $0 <= 0x39 }) else {
+            return nil
+        }
+        return UInt64(digits)
+    }
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/InputHost/IntegrationHooks/IntegrationHookServer.swift until="public actor IntegrationHookServer" -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// The app side of the integration hooks (ADR 0502, "Integration hooks"; W3-A): for every `request-<n>.json` in
+// the hooks directory, run the command and answer `response-<n>.json` carrying the request's own sequence number.
+// Only the INTEGRATION_HOOKS test build creates a server (App/Sources/IntegrationHooks); it starts with one scan, so
+// a request written before the watcher began is answered too, then scans again on every directory change. One
+// command runs at a time: a request arriving meanwhile is answered `busy`. Responses carry codes and numbers only
+// (PLT-R901); requests are never deleted and never answered twice.
+
+public import Diagnostics
+internal import Foundation
+
+/// What the hooks can do to the running app. Production: `InputHostHookActions`; tests: fakes.
+public protocol IntegrationHookActions: Sendable {
+    func state() async -> AppStateSnapshot
+    func resetMetrics() async
+    /// The tap timed out and recovered (PLT-R330), or why not.
+    func simulateTapTimeout() async -> HookActionOutcome
+    /// Revokes (`true`) or restores the Accessibility answer of the trust check and waits until the host acted on
+    /// it (PLT-R730 fail-open, 7.3 re-grant).
+    func setAccessibilityRevoked(_ revoked: Bool) async -> HookActionOutcome
+    func runLatencyProbe(_ profile: LatencyProbeResult.Profile) async -> LatencyProbeOutcome
+    func checkForUpdates() async -> HookActionOutcome
+}
+
+public enum HookActionOutcome: Sendable, Hashable {
+    case done
+    /// Not possible in this state: no tap to time out, no updater yet (`unsupported`).
+    case unavailable
+    /// The host did not reach the expected state in time (`busy`).
+    case timedOut
+}
+
+public enum LatencyProbeOutcome: Sendable, Hashable {
+    case result(LatencyProbeResult)
+    /// No Latin layout for the probe script (`unsupported`).
+    case unavailable
+    /// The probe window lost focus, so the run stopped (`busy`).
+    case interrupted
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/InputHost/IntegrationHooks/IntegrationHookDirectory.swift until="/// POSIX implementation" -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// The hooks directory of the INTEGRATION_HOOKS test build (ADR 0502, "Integration hooks"):
+// `~/Library/Application Support/<storage folder>/IntegrationHooks/`, 0700, requests and responses 0600. The app
+// reads `request-<n>.json` and writes `response-<n>.json` atomically (temporary file, fsync, rename); it never
+// deletes either file (the harness does). Symbolic links, files of another user and non-regular files are refused
+// without being opened for reading content; requests are capped in size. File I/O on the hooks queue only, never
+// on the tap, inject or ax threads (PLT-R203, PLT-R305).
+
+internal import Diagnostics
+public import Foundation
+
+/// Why a request file was not read.
+public enum HookFileRefusal: Error, Sendable, Hashable {
+    /// Gone between the listing and the read (the harness removed it).
+    case missing
+    case symbolicLink
+    case notRegularFile
+    /// Owned by another user.
+    case foreignOwner
+    case tooLarge
+    case unreadable(errno: Int32)
+}
+
+/// Why the hooks directory cannot be used; the app then does not answer hooks at all.
+public enum HookDirectoryError: Error, Sendable, Hashable {
+    case symbolicLink
+    case notDirectory
+    case foreignOwner
+    case io(errno: Int32)
+}
+
+/// What the hooks server needs from the directory. Production: `PosixHookDirectory`; tests: an in-memory fake.
+public protocol IntegrationHookFileAccess: Sendable {
+    /// Creates the directory (0700) or checks the existing one: a real directory of the current user, tightened to
+    /// 0700.
+    func prepare() throws(HookDirectoryError)
+    /// Sequence numbers of the `request-<n>.json` files present, ascending.
+    func requestSequences() -> [UInt64]
+    /// The request's bytes: a regular file of the current user, at most `maxBytes`.
+    func readRequest(_ sequence: UInt64, maxBytes: Int) -> Result<Data, HookFileRefusal>
+    func responseExists(_ sequence: UInt64) -> Bool
+    /// `response-<n>.json`, 0600, written atomically.
+    func writeResponse(_ data: Data, sequence: UInt64) throws(HookDirectoryError)
+}
+```
+<!-- /include -->
+
+<!-- include: Packages/AppCore/Sources/InputHost/Pipeline/HostCounters.swift -->
+```swift
+// SPDX-License-Identifier: LicenseRef-App-Pending
+//
+// Content-free observations of the host since launch that the integration hooks report in `AppStateSnapshot`
+// (ADR 0502, "Integration hooks"): tap recoveries after a timeout and the engine resets that came with them
+// (PLT-R330, QA-R11), and whether the first key-down after a secure-input release was composed (PLT-R398B). Always
+// on in every build (two counters and one byte); written on the tap thread with relaxed atomics only, no lock and
+// no allocation (PLT-R304, PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
+
+internal import Diagnostics
+internal import Synchronization
+
+public final class HostCounters: Sendable {
+    /// The main thread re-enabled the tap after a `tapDisabledByTimeout` (system or the `tapTimeout` hook).
+    let tapRecoveries = AtomicCounter()
+    /// The pipeline handled a `tapDisabledByTimeout` and its engine was left reset (QA-R11).
+    let engineResetsAfterTapRecovery = AtomicCounter()
+    /// 0: no secure-input release seen yet; 1: the first key-down after the latest release passed uncomposed;
+    /// 2: it was composed.
+    private let firstKeyAfterRelease = Atomic<UInt8>(0)
+
+    public init() {}
+
+    public var tapRecoveryCount: UInt64 { tapRecoveries.value }
+    public var engineResetsAfterTapRecoveryCount: UInt64 { engineResetsAfterTapRecovery.value }
+
+    /// PLT-R398B: nil before the first release of this process.
+    public var firstKeyAfterSecureInputReleaseComposed: Bool? {
+        switch firstKeyAfterRelease.load(ordering: .relaxed) {
+        case 0: nil
+        case 1: false
+        default: true
+        }
+    }
+
+    /// Tap thread, once per release (the first key-down after it).
+    @inline(__always)
+    func recordFirstKeyAfterSecureInputRelease(composed: Bool) {
+        firstKeyAfterRelease.store(composed ? 2 : 1, ordering: .relaxed)
+    }
+}
+```
+<!-- /include -->
 
 <!-- include: Packages/AppCore/Sources/TestSupport/Fakes/Common/SimulatedTextField.swift until="    // MARK: Decoding" -->
 ```swift
@@ -13344,8 +13906,8 @@ public struct Scenario: Sendable, Hashable, Codable {
         public enum Action: String, Sendable, Hashable, Codable, CaseIterable {
             case launch, openURL, seedHistory, focusField, selectInputSource, setSecureInput, wait
             /// Triggers an integration hook of the app under test: `tapTimeout`, `revokePermission` or
-            /// `restorePermission`, optionally `@N` to fire after the first N entries of `keys` (QA-R11).
-            /// Requested addition to compat/schema/scenario.schema.json (`ScenarioValidator.pendingSchemaActions`).
+            /// `restorePermission`, optionally `@N` to fire after the first N entries of `keys` (QA-R11). Answered
+            /// only by the app's INTEGRATION_HOOKS test build (ADR 0502).
             case testHook
         }
 
@@ -13473,131 +14035,14 @@ public struct ScenarioRunner: Sendable {
 //
 // Harness side of the app under test's integration hooks (QA-R11, PLT-R821, 13.2 "tap timeout injection (test
 // hook)", "permission revocation during typing"). The app answers only in the test build that the self-hosted
-// runner installs (compiled with the INTEGRATION_HOOKS condition, never in a release); the wire format below is
-// the contract (ADR 0502, "Integration hooks"). The harness reaches the app through `AppHookClient`; the
-// file-drop transport is FileDropHookChannel.swift, tests use an in-memory app.
+// runner installs (compiled with the INTEGRATION_HOOKS condition, never in a release). The wire format is one
+// shared Codable definition, Diagnostics/IntegrationHooks.swift (ADR 0502, "Integration hooks"), which the app's
+// hooks server decodes and encodes too. The harness reaches the app through `AppHookClient`; the file-drop
+// transport is FileDropHookChannel.swift, tests use an in-memory app.
 
-public import AppModel
+internal import AppModel
 public import Diagnostics
 internal import Foundation
-
-/// A test hook a scenario triggers (`testHook` setup step).
-public enum AppTestHook: String, Sendable, Hashable, Codable, CaseIterable {
-    /// The app disables its event tap as macOS does after a callback timeout, then runs its normal recovery
-    /// (PLT-R330). QA-R11: the engine state MUST be reset after recovery.
-    case tapTimeout
-    /// The app's trust check reports Accessibility as revoked (PLT-R730 fail-open, PRD-R44).
-    case revokePermission
-    /// Ends `revokePermission`: the trust check reports the real value again, so the app re-creates its tap
-    /// without a relaunch (7.3).
-    case restorePermission
-}
-
-/// One request to the app under test.
-public enum AppHookCommand: Sendable, Hashable {
-    /// Host state, secure-input holder and the PLT-R801 metrics.
-    case state
-    /// Zeroes every histogram and counter of `PlatformMetrics`, so a measured workload starts clean.
-    case resetMetrics
-    case trigger(AppTestHook)
-    /// Runs the built-in latency probe (PLT-R810) with one profile and returns its T2 and T4 percentiles.
-    case latencyProbe(LatencyProbeResult.Profile)
-    /// Starts an update check now, as "Check for Updates" does (13.7 egress test).
-    case checkForUpdates
-
-    /// Wire name of the command.
-    public var name: String {
-        switch self {
-        case .state: "state"
-        case .resetMetrics: "resetMetrics"
-        case .trigger(let hook): hook.rawValue
-        case .latencyProbe: "latencyProbe"
-        case .checkForUpdates: "checkForUpdates"
-        }
-    }
-}
-
-/// `request-<sequence>.json`.
-public struct AppHookRequest: Sendable, Hashable, Codable {
-    public static let formatVersion = 1
-    public var formatVersion: Int
-    public var sequence: UInt64
-    public var command: String
-    public var profile: LatencyProbeResult.Profile?
-
-    public init(sequence: UInt64, command: AppHookCommand) {
-        formatVersion = Self.formatVersion
-        self.sequence = sequence
-        self.command = command.name
-        if case .latencyProbe(let profile) = command { self.profile = profile }
-    }
-}
-
-/// App state for scenario expectations and soak counters. Metadata only (PLT-R901): no text, no titles.
-public struct AppStateSnapshot: Sendable, Hashable, Codable {
-    public enum State: String, Sendable, Hashable, Codable { case noPermission, starting, ready, paused, failOpen }
-
-    public var processIdentifier: Int32
-    public var state: State
-    /// The mode while `ready`.
-    public var mode: TypingMode?
-    public var pauseReason: PauseCode?
-    public var failOpenReason: FailOpenReason?
-    /// Likely holder of Secure Event Input while paused for it (PLT-R396).
-    public var secureInputHolderBundleId: BundleKey?
-    /// PLT-R398B: whether the first key-down after the most recent secure-input release was composed; nil before
-    /// the first release of this process.
-    public var firstKeyAfterSecureInputReleaseComposed: Bool?
-    /// Tap re-enables after a timeout (system or `tapTimeout` hook) since launch.
-    public var tapRecoveries: UInt64
-    /// Of those, recoveries after which the engine state was reset (QA-R11 expects every one).
-    public var engineResetsAfterTapRecovery: UInt64
-    public var metrics: MetricsSnapshot
-
-    public init(
-        processIdentifier: Int32, state: State, mode: TypingMode? = nil, pauseReason: PauseCode? = nil,
-        failOpenReason: FailOpenReason? = nil, secureInputHolderBundleId: BundleKey? = nil,
-        firstKeyAfterSecureInputReleaseComposed: Bool? = nil, tapRecoveries: UInt64 = 0,
-        engineResetsAfterTapRecovery: UInt64 = 0, metrics: MetricsSnapshot
-    ) {
-        self.processIdentifier = processIdentifier
-        self.state = state
-        self.mode = mode
-        self.pauseReason = pauseReason
-        self.failOpenReason = failOpenReason
-        self.secureInputHolderBundleId = secureInputHolderBundleId
-        self.firstKeyAfterSecureInputReleaseComposed = firstKeyAfterSecureInputReleaseComposed
-        self.tapRecoveries = tapRecoveries
-        self.engineResetsAfterTapRecovery = engineResetsAfterTapRecovery
-        self.metrics = metrics
-    }
-
-    /// Keys pass through untransformed: paused (any reason) or failed open.
-    public var passesKeysThrough: Bool { state == .paused || state == .failOpen || state == .noPermission }
-}
-
-/// `response-<sequence>.json`.
-public struct AppHookResponse: Sendable, Hashable, Codable {
-    public var formatVersion: Int
-    public var sequence: UInt64
-    public var ok: Bool
-    /// Error code when `ok` is false (`unknownCommand`, `unsupported`, `busy`), never content.
-    public var error: String?
-    public var state: AppStateSnapshot?
-    public var latencyProbe: LatencyProbeResult?
-
-    public init(
-        sequence: UInt64, ok: Bool = true, error: String? = nil, state: AppStateSnapshot? = nil,
-        latencyProbe: LatencyProbeResult? = nil
-    ) {
-        formatVersion = AppHookRequest.formatVersion
-        self.sequence = sequence
-        self.ok = ok
-        self.error = error
-        self.state = state
-        self.latencyProbe = latencyProbe
-    }
-}
 
 public enum AppHookError: Error, Sendable, Hashable, CustomStringConvertible {
     /// No answer within the timeout: the app is not running, or it is not the hooks build.

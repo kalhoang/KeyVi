@@ -29,7 +29,7 @@ Single source of the numbers: `spec/02-platform.md` section 8.1 (the "Gate" colu
 
 | Name in the file | 8.1 | Unit | Gate | Measured by | Procedure |
 |---|---|---|---|---|---|
-| `T2.p99` | T2 decide to posted | ms | 3 | `bench`, app histogram `decideToPosted` | Reset the app's metrics (hook `resetMetrics`), type the workload (below) at the normal profile, read the histogram (hook `state`), p99 interpolated inside its log2 bucket |
+| `T2.p99` | T2 decide to posted | ms | 3 | `bench`, app histogram `decideToPosted` | Reset the app's metrics (hook `resetMetrics`), type the workload (below) at the normal profile, read the histogram (hook `state`), p99 interpolated inside its gate-aligned sub-bucket |
 | `T3.p99` | T3 with `axSelection` | ms | 15 | `bench`, histogram `decideToPostedWithAX` | Same run; the workload's address-bar words use `axSelection` (profile `bench-workload`) |
 | `T4.p99` | T4 end-to-end delta | ms | 10 | `bench`, the app's latency probe (PLT-R810) | Hook `latencyProbe` with the normal profile; `endToEndDeltaP99Microseconds` |
 | `T5.flushes` | T5 held wait | count | 0 | `bench`, counter `flushes` | Same run as T2: flushes during the normal-profile workload |
@@ -44,9 +44,12 @@ TestHost's main field, second-window field and address bar, with a focus change 
 need the app's integration hooks (the INTEGRATION_HOOKS test build); without them `bench` skips those metrics with a
 warning and still gates C1, C2 and M1. A `bench` run takes about 18 minutes per run (5 runs by default).
 
-Log2 buckets (PLT-R801) give a percentile only to within a factor of two; the harness interpolates linearly inside
-the bucket, which is an estimate. If a gate decision ever hinges on that resolution, finer buckets are an app-side
-change (W1-A).
+Log2 buckets (PLT-R801) give a percentile only to within a factor of two (the bucket from 2.1 to 4.2 ms straddles
+the 3 ms T2 gate). The decide-to-posted histograms (T2, T3) therefore also count values up to 25 ms in fixed linear
+sub-buckets (10 µs to 1 ms, 50 µs to 5 ms, 250 µs to 25 ms, upper end included) whose edges include every 8.1 gate
+and target, so "p99 over the gate" is decided exactly; the harness interpolates inside the sub-bucket, and only above
+25 ms falls back to the log2 estimate (ADR 0502, "Platform baseline and measurements"). T6 (gate 60 ms) still uses
+the log2 estimate.
 
 ## Updating the baseline (QA-R15)
 
