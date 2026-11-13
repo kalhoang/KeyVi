@@ -8,6 +8,7 @@ import AppModel
 import CompatRules
 import Foundation
 import Injection
+import SettingsStore
 import Testing
 
 @testable import InputHost
@@ -186,7 +187,7 @@ struct GuidedTestSuggestionTests {
         let rule = GuidedTestRunner.suggestion(
             context: Self.context, best: GuidedFixture.axSelection, appVersion: "131.0", macOS: "27.1",
             date: "2026-11-13", includeURLPrefix: nil)
-        #expect(rule.id.rawValue == "user.guided.com.example.Browser")
+        #expect(rule.id.rawValue.hasPrefix("user.guided.com.example.Browser."))
         #expect(rule.match.bundleIds == [GuidedFixture.browser])
         #expect(rule.match.engines == nil && rule.match.bundleGroup == nil && rule.match.titlePattern == nil)
         #expect(rule.match.ax?.roles == ["AXTextField"] && rule.match.ax?.subroles == ["AXSearchField"])
@@ -201,6 +202,41 @@ struct GuidedTestSuggestionTests {
         let json = String(decoding: try JSONEncoder().encode(rule), as: UTF8.self)
         #expect(!json.contains("zqxkanary"))
         #expect(try GuidedFixture.schemaErrors(rule).isEmpty)
+    }
+
+    /// PLT-R540 "only this kind of field": each field kind of an app has its own override ID, so a guided test
+    /// in the address bar and one in a web editor coexist; the same kind of field keeps the same ID.
+    @Test func eachFieldKindGetsItsOwnOverrideID() {
+        var editor = Self.context
+        editor.role = "AXTextArea"
+        editor.subrole = nil
+        editor.domClasses = ["editor"]
+        func id(_ context: MatchContext) -> String {
+            GuidedTestRunner.suggestion(
+                context: context, best: GuidedFixture.plain, appVersion: nil, macOS: "27.1", date: "2026-11-13",
+                includeURLPrefix: nil
+            ).id.rawValue
+        }
+        #expect(id(Self.context) != id(editor))
+        #expect(id(Self.context) == id(Self.context))
+        #expect(id(editor).hasPrefix("user.guided.com.example.Browser."))
+    }
+
+    /// PLT-R540, SettingsStore replaces an override with the same ID: two field kinds must both stay stored.
+    @Test func twoFieldKindsOfOneAppAreBothStored() async throws {
+        var editor = Self.context
+        editor.role = "AXTextArea"
+        editor.subrole = nil
+        let store = SettingsStoreHarness()
+        _ = await store.store.load()
+        for context in [Self.context, editor] {
+            let rule = GuidedTestRunner.suggestion(
+                context: context, best: GuidedFixture.plain, appVersion: nil, macOS: "27.1", date: "2026-11-13",
+                includeURLPrefix: nil)
+            let stored = try #require(GuidedTestOverride.stored(rule, at: Date(timeIntervalSince1970: 0)))
+            await store.store.addRuleOverride(stored)
+        }
+        #expect(await store.store.state.ruleOverrides.count == 2)
     }
 
     @Test func identifierWinsOverDOMClassesAndPacingIsKept() {
@@ -222,7 +258,7 @@ struct GuidedTestSuggestionTests {
         let rule = GuidedTestRunner.suggestion(
             context: context, best: GuidedFixture.plain, appVersion: nil, macOS: "27.1", date: "2026-11-13",
             includeURLPrefix: "https://zqx.example/path")
-        #expect(rule.id.rawValue == "user.guided.app")
+        #expect(rule.id.rawValue.hasPrefix("user.guided.app.") && rule.id.rawValue.utf8.count == 24)
         #expect(rule.action.params == nil)
         #expect(rule.match.engines == [.chromium] && rule.match.ax == nil)
         #expect(rule.match.web?.urlPrefixes == ["https://zqx.example/"])
@@ -242,15 +278,21 @@ struct GuidedTestSuggestionTests {
         #expect(GuidedTestSuggestion.hostLevelPrefix(input) == nil)
     }
 
-    @Test func ruleIDsStayWithinTheGrammar() {
+    @Test func ruleIDsStayWithinTheGrammar() throws {
+        let match = GuidedTestSuggestion.match(Self.context, urlPrefix: nil)
+        let suffix = "." + GuidedTestSuggestion.signatureHash(RuleSet.signature(of: match))
+        #expect(suffix.utf8.count == 9)
         let hashed = BundleKey.executable(sha256Hex: String(repeating: "ab", count: 32))
         #expect(
-            GuidedTestSuggestion.ruleID(for: hashed).rawValue == "user.guided.sha256_"
-                + String(repeating: "ab", count: 32))
+            GuidedTestSuggestion.ruleID(for: hashed, match: match).rawValue == "user.guided.sha256_"
+                + String(repeating: "ab", count: 32) + suffix)
         let dotted = BundleKey(rawValue: "com..example-1_x")
-        #expect(GuidedTestSuggestion.ruleID(for: dotted).rawValue == "user.guided.com.example-1_x")
+        #expect(
+            GuidedTestSuggestion.ruleID(for: dotted, match: match).rawValue == "user.guided.com.example-1_x" + suffix)
         let long = BundleKey(rawValue: "com." + String(repeating: "a", count: 200))
         #expect(long != nil)
-        #expect(GuidedTestSuggestion.ruleID(for: long).rawValue.utf8.count == 128)
+        let longID = GuidedTestSuggestion.ruleID(for: long, match: match).rawValue
+        #expect(longID.utf8.count == 128)
+        #expect(longID.hasSuffix(suffix))
     }
 }
