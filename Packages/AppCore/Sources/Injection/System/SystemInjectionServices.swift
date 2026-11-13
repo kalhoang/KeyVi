@@ -2,36 +2,53 @@
 //
 // Production implementations of the injection services. They need granted permissions and are exercised by
 // the self-hosted integration suite (13.2), never by hosted CI or on the maintainer's everyday Mac.
+// Each is a thin wrapper: the logic lives in `CGEventFactory`, `AXFieldCalls` and `PasteboardIO`, which are
+// unit-tested without posting, AX trust or the general pasteboard.
 
 internal import AppModel
+internal import ApplicationServices
 
 /// CoreGraphics poster (PLT-R320-R322, PLT-R324).
 public final class CGEventPoster: EventPoster {
-    public init() { unimplemented() }
-    public func post(_ event: SyntheticKeyEvent, userData: Int64) throws(PostError) { unimplemented() }
-    public func replay(_ record: KeyEventRecord, userData: Int64) throws(PostError) { unimplemented() }
+    private let factory: CGEventFactory
+
+    public init() { factory = CGEventFactory() }
+
+    public func post(_ event: SyntheticKeyEvent, userData: Int64) throws(PostError) {
+        try factory.makeEvent(event, userData: userData).post(tap: .cgSessionEventTap)
+    }
+
+    public func replay(_ record: KeyEventRecord, userData: Int64) throws(PostError) {
+        try factory.makeReplay(record, userData: userData).post(tap: .cgSessionEventTap)
+    }
 }
 
 /// Bounded AX field access (PLT-R343).
 public final class AXFocusedFieldAccess: FocusedFieldAccess {
-    public init() { unimplemented() }
-    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange> { unimplemented() }
+    public init() {}
+    public func selectedRange(_ field: FieldHandle, timeout: Duration) -> AXCallResult<TextRange> {
+        AXFieldCalls.selectedRange(field.element?.element, timeout: timeout)
+    }
     public func text(_ field: FieldHandle, in range: TextRange, timeout: Duration) -> AXCallResult<String> {
-        unimplemented()
+        AXFieldCalls.text(field.element?.element, in: range, timeout: timeout)
     }
     public func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: Duration) -> AXCallResult<Void> {
-        unimplemented()
+        AXFieldCalls.setSelectedRange(field.element?.element, to: range, timeout: timeout)
     }
     public func setSelectedText(_ field: FieldHandle, to text: String, timeout: Duration) -> AXCallResult<Void> {
-        unimplemented()
+        AXFieldCalls.setSelectedText(field.element?.element, to: text, timeout: timeout)
     }
 }
 
 /// AppKit pasteboard (PLT-R461). `pasteboardName` nil = general pasteboard.
 public final class NSPasteboardAccess: PasteboardAccess {
-    public init(pasteboardName: String?) { unimplemented() }
-    public var changeCount: Int { unimplemented() }
-    public func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot { unimplemented() }
-    public func writeTransient(_ text: String) throws(PasteboardError) -> Int { unimplemented() }
-    public func restore(_ snapshot: PasteboardSnapshot) throws(PasteboardError) { unimplemented() }
+    private let io: PasteboardIO
+
+    public init(pasteboardName: String?) { io = PasteboardIO(name: pasteboardName) }
+    public var changeCount: Int { io.changeCount }
+    public func snapshot(limits: PasteboardLimits) throws(PasteboardError) -> PasteboardSnapshot {
+        try io.snapshot(limits: limits)
+    }
+    public func writeTransient(_ text: String) throws(PasteboardError) -> Int { try io.writeTransient(text) }
+    public func restore(_ snapshot: PasteboardSnapshot) throws(PasteboardError) { try io.restore(snapshot) }
 }

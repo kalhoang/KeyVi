@@ -40,7 +40,9 @@ public protocol StrategyExecutor: Sendable {
 /// `backspaceReplace` (4.2, with 4.3 inline completion), `selectReplace` (4.4), `axReplace` (4.5),
 /// `paste` (4.6 with `PasteboardPreserver`). `passThrough` jobs are never built.
 public enum StrategyCatalog {
-    public static func executor(for strategy: InjectionStrategy) -> any StrategyExecutor { unimplemented() }
+    public static func executor(for strategy: InjectionStrategy) -> any StrategyExecutor {
+        BuiltInExecutors.executor(for: strategy, limits: StrategyLimits())
+    }
 }
 
 /// PLT-R402: trims the common grapheme prefix of the replaced text and the insertion. With unknown replaced
@@ -48,26 +50,39 @@ public enum StrategyCatalog {
 public enum EditMinimizer {
     public static func minimize(deleteCount: Int, replaced: String?, insertion: String)
         -> (deleteCount: Int, insertion: String)
-    { unimplemented() }
+    {
+        let edit = MinimalEdit(deleteCount: deleteCount, deleteUTF16Count: 0, replaced: replaced, insertion: insertion)
+        return (edit.deleteCount, edit.insertion)
+    }
 }
 
 /// PLT-R404/PLT-R480: one grapheme per event by default; up to `maxUTF16` units per event when allowed;
 /// never splits a grapheme cluster.
 public enum UnicodeChunker {
     public static func chunks(of text: String, maxUTF16: Int, oneGraphemePerEvent: Bool) -> [InlineUTF16] {
-        unimplemented()
+        GraphemeChunking.chunks(of: text, maxUTF16: maxUTF16, oneGraphemePerEvent: oneGraphemePerEvent)
     }
 }
 
 /// Full clipboard preservation for `paste` (PLT-R461): snapshot every item and type (abort on file promises,
 /// unmaterialisable lazy data, > 10 MB or > 100 ms), write the transient item, paste, restore after
 /// `restoreDelayMs` only if `changeCount` is unchanged, coalesce consecutive pastes within the window.
+/// Inject thread only. The restore window starts at the first `restoreIfDue` call after `beginPaste` (the worker
+/// arms it right after Command+V); a further `beginPaste` inside the window keeps the first snapshot.
 public final class PasteboardPreserver {
-    public init(pasteboard: any PasteboardAccess, limits: PasteboardLimits = PasteboardLimits()) { unimplemented() }
+    var session: PasteSession
+
+    public init(pasteboard: any PasteboardAccess, limits: PasteboardLimits = PasteboardLimits()) {
+        session = PasteSession(pasteboard: pasteboard, limits: limits)
+    }
+
     /// Step 1-2. Throws when the clipboard cannot be fully preserved: never destroy what cannot be restored.
-    public func beginPaste(_ text: String) throws(PasteboardError) { unimplemented() }
+    public func beginPaste(_ text: String) throws(PasteboardError) { try session.begin(text) }
+
     /// Steps 4-6, driven by the worker's deadlines.
-    public func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> RestoreResult { unimplemented() }
+    public func restoreIfDue(now: MonotonicInstant, restoreDelay: Duration) -> RestoreResult {
+        session.restoreIfDue(now: now, restoreDelay: restoreDelay)
+    }
 
     public enum RestoreResult: Sendable, Hashable { case notDue, restored, skippedUserCopied, nothingPending }
 }
