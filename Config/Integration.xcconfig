@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: LicenseRef-App-Pending
+#include "Brand.xcconfig"
+#include "Signing.xcconfig"
+#include "Sparkle.xcconfig"
+
+// The self-hosted runner's test build (ADR 0502, "Integration hooks"; runbook docs/runbooks/integration-suite.md).
+// Release-like code generation, so T2 to T6 measure what ships (PLT-R821), with the development bundle ID and the
+// stable Apple Development identity the runner's TCC grants are tied to (PLT-R751, QA-R12). INTEGRATION_HOOKS
+// compiles App/Sources/IntegrationHooks; Release.xcconfig never sets it and scripts/verify-release.sh fails a
+// release app that carries the hooks' marker.
+APP_BUNDLE_ID = $(APP_BUNDLE_ID_DEV)
+CODE_SIGN_IDENTITY = $(CODE_SIGN_IDENTITY_DEV)
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = INTEGRATION_HOOKS
+ONLY_ACTIVE_ARCH = YES
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule

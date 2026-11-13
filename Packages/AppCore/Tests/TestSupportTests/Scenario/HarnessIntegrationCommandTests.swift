@@ -132,7 +132,8 @@ private let profileJSON = """
         #expect(live.calls.all.isEmpty)
     }
 
-    @Test func runPlanFailsOnPendingSchemaActionsAndBadProfiles() async throws {
+    /// Bad profiles fail the plan. A `testHook` step is part of the schema since W3-A, so it plans cleanly.
+    @Test func runPlanFailsOnBadProfilesButAcceptsTestHooks() async throws {
         let hooked = scenarioJSON(id: "h", setup: #"[{"action":"testHook","value":"tapTimeout@1"}]"#)
         let fileSystem = try makeCheckout(scenarios: ["h.json": hooked])
         try write(
@@ -143,7 +144,8 @@ private let profileJSON = """
         #expect(await subject.execute() == .failure)
         #expect(console.errors.contains("compat-harness: bad: no scenario nope"))
         #expect(console.errors.contains("compat-harness: bad: no shipped rule none"))
-        #expect(console.errors.contains { $0.contains("h uses testHook, which compat/schema/scenario.schema.json") })
+        #expect(!console.errors.contains { $0.contains("h uses testHook") })
+        #expect(ScenarioValidator.pendingSchemaActions.isEmpty)
         // An invalid profile file stops the dry run before planning.
         try write("[]", to: "/repo/compat/scenarios/profiles/bad.json", in: fileSystem)
         let (broken, brokenConsole) = try harness(

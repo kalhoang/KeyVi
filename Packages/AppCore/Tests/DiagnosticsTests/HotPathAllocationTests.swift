@@ -102,6 +102,19 @@ private func expectNoAllocations(_ count: Int?, sourceLocation: SourceLocation =
         #expect(histogram.snapshot().count == 10_001)
     }
 
+    /// W3-A: the decide-to-posted histograms also count into their gate-aligned sub-buckets (T2, T3).
+    @Test func subBucketRecordAllocatesNothing() {
+        let histogram = Log2Histogram(subBuckets: true)
+        var value: UInt64 = 1
+        let count = allocations {
+            histogram.record(nanoseconds: value % 30_000_000)
+            value = value &* 3 &+ 1
+        }
+        expectNoAllocations(count)
+        #expect(histogram.snapshot().count == 10_001)
+        #expect((histogram.snapshot().subBuckets?.counts.reduce(0, +) ?? 0) > 0)
+    }
+
     @Test func tapLogPushAllocatesNothingEvenWhenFull() {
         let ring = TapLogRing(capacity: 16)
         let record = TapLogRecord(code: .flushRequested, at: .zero, a: 3)

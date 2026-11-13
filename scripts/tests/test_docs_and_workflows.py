@@ -294,6 +294,113 @@ class WorkflowCoverageTests(unittest.TestCase):
         self.assertIn('swift test --package-path "$ENGINE" -c release --filter "$ENGINE_PROPERTY_FILTER"', body)
         self.assertRegex(body, r'ENGINE_PROPERTY_FILTER: "[^"]*Fuzz[^"]*"')  # selects FuzzTests
 
+    def test_integration_jobs_build_the_hooks_test_build_first(self):
+        """W3-A: every self-hosted job installs the INTEGRATION_HOOKS build of the checked-out commit before the
+        harness runs; the push job runs one bench run, the nightly job five (QA-R14, ADR 0502)."""
+        for job_id in ("integration", "nightly"):
+            body = self.job("integration.yml", job_id)
+            with self.subTest(job=job_id):
+                build = body.index("scripts/run-integration.sh build --out .build/integration")
+                self.assertLess(build, body.index("scripts/run-integration.sh tests --out .build/integration"))
+                self.assertNotIn("COMPAT_HARNESS_LIVE", body)  # the opt-in comes from the runner's .env only
+        self.assertIn('COMPAT_HARNESS_BENCH_RUNS: "1"', self.job("integration.yml", "integration"))
+        self.assertNotIn("COMPAT_HARNESS_BENCH_RUNS", self.job("integration.yml", "nightly"))
+        self.assertIn("scripts/run-integration.sh soak --out .build/integration", self.job("integration.yml", "nightly"))
+
+    BUDGET = re.compile(r"# Budget in minutes \([^)]*\): ((?:[a-z]+ \d+ \+ )*[a-z]+ \d+) = (\d+)\.")
+
+    def test_integration_jobs_fit_their_step_budget(self):
+        """W3-A review: each self-hosted job states its step budget, the terms add up, and the timeout leaves at
+        least 10 % on top, so the nightly five-run bench (QA-R14) is never killed by the job timeout."""
+        for job_id in ("integration", "nightly"):
+            body = self.job("integration.yml", job_id)
+            with self.subTest(job=job_id):
+                budget = self.BUDGET.search(body)
+                self.assertIsNotNone(budget, "budget comment missing")
+                terms = [int(term.split()[1]) for term in budget.group(1).split(" + ")]
+                self.assertEqual(sum(terms), int(budget.group(2)))
+                timeout = int(re.search(r"^\s*timeout-minutes: (\d+)$", body, re.M).group(1))
+                self.assertGreaterEqual(timeout, int(budget.group(2)) * 1.1)
+        nightly = self.job("integration.yml", "nightly")
+        self.assertIn("soak 498", nightly)  # docs/runbooks/integration-suite.md: about 8.3 hours
+        self.assertLess(
+            nightly.index("scripts/run-integration.sh bench --out .build/integration"),
+            nightly.index("scripts/run-integration.sh soak --out .build/integration"),
+            "the bench runs before the soak, so an overrunning soak never loses it")
+
+
+class IntegrationHooksBuildTests(unittest.TestCase):
+    """The INTEGRATION_HOOKS code exists only in the runner's test build (ADR 0502, "Integration hooks"): one
+    configuration sets the condition, every hooks file compiles only under it, and the marker verify-release.sh
+    looks for is the one the code carries."""
+
+    HOOKS = REPO / "App" / "Sources" / "IntegrationHooks"
+    MARKER_LINE = re.compile(r'^HOOKS_MARKER="(.+)"$', re.M)
+
+    def swift_marker(self) -> str:
+        source = (self.HOOKS / "IntegrationHooksApp.swift").read_text(encoding="utf-8")
+        return re.search(r'static let marker = "([^"]+)"', source).group(1)
+
+    def test_scripts_look_for_the_marker_the_code_carries(self):
+        marker = self.swift_marker()
+        self.assertGreater(len(marker.encode()), 15)  # longer strings live in __TEXT, never inline in a register
+        for script in ("verify-release.sh", "run-integration.sh"):
+            with self.subTest(script=script):
+                text = (REPO / "scripts" / script).read_text(encoding="utf-8")
+                self.assertEqual(self.MARKER_LINE.search(text).group(1), marker)
+
+    def test_the_marker_appears_only_in_the_hooks_code(self):
+        marker = self.swift_marker()
+        roots = [REPO / "App", REPO / "Packages", REPO / "TestHost", REPO / "SpikeIMK"]
+        found = sorted(
+            str(path.relative_to(REPO)) for root in roots for path in root.rglob("*.swift")
+            if ".build" not in path.parts and marker in path.read_text(encoding="utf-8"))
+        self.assertEqual(found, ["App/Sources/IntegrationHooks/IntegrationHooksApp.swift"])
+
+    def test_every_hooks_file_compiles_only_under_the_condition(self):
+        files = sorted(self.HOOKS.glob("*.swift"))
+        self.assertTrue(files)
+        for path in files:
+            lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            code = [line for line in lines if not line.startswith("//")]
+            with self.subTest(file=path.name):
+                self.assertEqual(code[0], "#if INTEGRATION_HOOKS")
+                self.assertEqual(code[-1], "#endif")
+
+    def test_composition_uses_the_hooks_only_under_the_condition(self):
+        for path in sorted((REPO / "App" / "Sources" / "Composition").glob("*.swift")):
+            depth = []
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                stripped = line.strip()
+                if stripped.startswith("#if"):
+                    depth.append(stripped == "#if INTEGRATION_HOOKS")
+                elif stripped.startswith("#endif"):
+                    depth.pop()
+                elif stripped.startswith("#else"):
+                    depth[-1] = False
+                elif re.search(r"\b(integrationHooks|IntegrationHooksApp|startIntegrationHooks)\b", stripped):
+                    with self.subTest(file=path.name, line=number):
+                        self.assertIn(True, depth, stripped)
+
+    def test_only_the_integration_configuration_sets_the_condition(self):
+        config = REPO / "Config"
+        integration = (config / "Integration.xcconfig").read_text(encoding="utf-8")
+        self.assertRegex(integration, r"(?m)^SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*\bINTEGRATION_HOOKS\b")
+        self.assertRegex(integration, r"(?m)^APP_BUNDLE_ID = \$\(APP_BUNDLE_ID_DEV\)$")
+        self.assertRegex(integration, r"(?m)^CODE_SIGN_IDENTITY = \$\(CODE_SIGN_IDENTITY_DEV\)$")
+        for name in sorted(path.name for path in config.glob("*.xcconfig")):
+            if name == "Integration.xcconfig":
+                continue
+            with self.subTest(config=name):
+                self.assertNotIn("INTEGRATION_HOOKS", (config / name).read_text(encoding="utf-8"))
+        project = (REPO / "project.yml").read_text(encoding="utf-8")
+        self.assertIn("  Integration: Config/Integration.xcconfig", project)
+        self.assertIn("  Release: Config/Release.xcconfig", project)
+        settings = "\n".join(line for line in project.splitlines() if not line.lstrip().startswith("#"))
+        self.assertNotIn("INTEGRATION_HOOKS", settings)  # set by the xcconfig only, never per target
+        build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        self.assertNotIn("Integration", build)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)

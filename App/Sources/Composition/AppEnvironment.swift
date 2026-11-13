@@ -48,6 +48,10 @@ final class AppEnvironment {
     /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
     var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
+    #if INTEGRATION_HOOKS
+    /// The self-hosted runner's test build only: answers the integration hooks (ADR 0502).
+    let integrationHooks: IntegrationHooksApp
+    #endif
     /// QA-R42: the first launch after an update checks the host once it left `starting`.
     var selfCheckPending = false
     /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
@@ -71,9 +75,12 @@ final class AppEnvironment {
             location: StorageLocation(directory: paths.applicationSupport), fileSystem: LocalFileSystem(),
             wallClock: SystemWallClock(), writtenBy: brand.version, queue: utility, launchGuard: launchGuard,
             onChange: { relay.send($0) })
-        host = InputHostController(
-            dependencies: .production(diagnostics: diagnostics, keyValues: keyValues, utility: utility),
-            settingsStore: settingsStore)
+        var hostDependencies = InputHostDependencies.production(
+            diagnostics: diagnostics, keyValues: keyValues, utility: utility)
+        #if INTEGRATION_HOOKS
+        integrationHooks = IntegrationHooksApp(instrumenting: &hostDependencies)
+        #endif
+        host = InputHostController(dependencies: hostDependencies, settingsStore: settingsStore)
         settingsChanges.connect { [weak self] state in self?.settingsChanged(state) }
         host.onEvent = { [weak self] event in self?.hostEvent(event) }
     }
@@ -96,6 +103,9 @@ final class AppEnvironment {
     func terminate(completion: @escaping @MainActor () -> Void) {
         diagnostics.logger.log(.lifecycle(.terminating), level: .notice)
         launch?.terminate()
+        #if INTEGRATION_HOOKS
+        integrationHooks.stop()
+        #endif
         host.stop()
         let store = settingsStore
         let diagnostics = self.diagnostics
@@ -236,6 +246,9 @@ extension AppEnvironment: LaunchSteps {
 
     func startHost(rules: RulesLoadResult, settings: SettingsState) {
         host.start(rules: rules, settings: settings)
+        #if INTEGRATION_HOOKS
+        startIntegrationHooks()
+        #endif
     }
 
     func showShell(settings: SettingsState, safeMode: Bool) {

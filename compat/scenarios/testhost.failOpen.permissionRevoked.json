@@ -11,23 +11,15 @@
       "value": "off"
     },
     {
-      "action": "wait",
-      "value": "15000"
-    },
-    {
       "action": "focusField",
       "value": "testhost.native.textField"
+    },
+    {
+      "action": "testHook",
+      "value": "revokePermission@4"
     }
   ],
   "keys": [
-    "t",
-    "i",
-    "e",
-    "e",
-    "n",
-    "g",
-    "s",
-    "space",
     "v",
     "i",
     "e",
@@ -39,8 +31,8 @@
   "method": "telex",
   "layout": "com.apple.keylayout.ABC",
   "expect": {
-    "text": "tieengs vieetj",
+    "text": "viêtj",
     "paused": true
   },
-  "readback": "human"
+  "readback": "ax"
 }

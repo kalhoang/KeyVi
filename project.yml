@@ -19,9 +19,16 @@ options:
     mkdir -p App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm &&
     cp Config/Package.resolved App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
+# Integration: the self-hosted runner's test build with the INTEGRATION_HOOKS condition (ADR 0502); never shipped.
+configs:
+  Debug: debug
+  Release: release
+  Integration: release
+
 configFiles:
   Debug: Config/Debug.xcconfig
   Release: Config/Release.xcconfig
+  Integration: Config/Integration.xcconfig
 
 settings:
   base:

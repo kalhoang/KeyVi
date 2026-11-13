@@ -40,7 +40,7 @@ The runner MUST only run workflows from `main` and from release tags of this rep
 
 ### 3.1 Runner environment: the live harness opt-in
 
-`compat-harness` posts synthetic events, launches apps and switches input sources only on a machine that opts in. Its `run`, `soak` and `bench` commands build their live services only when the environment contains `COMPAT_HARNESS_LIVE=1` (exactly `1`); otherwise they exit with status 3 before touching anything. `--dry-run` never needs the opt-in. `scripts/run-integration.sh compat|soak|bench` checks the variable before the release build and stops with a pointer to this section.
+`compat-harness` posts synthetic events, launches apps and switches input sources only on a machine that opts in. Its `run`, `soak` and `bench` commands build their live services only when the environment contains `COMPAT_HARNESS_LIVE=1` (exactly `1`); otherwise they exit with status 3 before touching anything. `--dry-run` never needs the opt-in. `scripts/run-integration.sh build|tests|compat|soak|bench` checks the variable first (`build` because it replaces the installed test build) and stops with a pointer to this section.
 
 Export the variable **only on this runner**, in the `.env` file of the runner application. The runner reads that file when its service starts, so the opt-in belongs to the machine rather than to a workflow: a job that lands on any other runner, or a copied command line on a development Mac, cannot post events. Do not set it in a workflow `env:` block, a repository or organisation variable, or the shell profile of a development Mac.
 
@@ -50,7 +50,7 @@ Export the variable **only on this runner**, in the `.env` file of the runner ap
    COMPAT_HARNESS_LIVE=1
    ```
 
-   One `NAME=value` per line, without `export` or quotes. The file holds no secret; keep it readable only by the runner user (`chmod 600 .env`). Until `scripts/run-integration.sh` defaults to the new baseline path, add `PLATFORM_BASELINE=perf/platform-baseline.json` on its own line (ADR 0502, "Platform baseline and measurements").
+   One `NAME=value` per line, without `export` or quotes. The file holds no secret; keep it readable only by the runner user (`chmod 600 .env`). `scripts/run-integration.sh` compares with `perf/platform-baseline.json` by default; a `PLATFORM_BASELINE=...` line is needed only to test another baseline (ADR 0502, "Platform baseline and measurements").
 2. Restart the service so the runner reads it: `./svc.sh stop`, then `./svc.sh start`.
 3. Check it: run `integration.yml` with `workflow_dispatch` on `main`. If the file was not read, the compatibility step stops at once with "COMPAT_HARNESS_LIVE=1 is not set".
 
@@ -63,6 +63,8 @@ The harness command lines that `scripts/run-integration.sh` runs (contract: [ADR
 ```sh
 # Environment: COMPAT_HARNESS_LIVE=1 from the runner's .env (section 3.1), never set by a workflow.
 # WebDriver readback: chromedriver on its default endpoint http://127.0.0.1:9515 (no flag needed).
+scripts/run-integration.sh build   # Integration configuration (INTEGRATION_HOOKS) and TestHost into ~/Applications
+swift run --package-path Packages/AppCore -c release compat-harness run --scenarios compat/scenarios --only 'testhost.*' --output <dir>
 swift run --package-path Packages/AppCore -c release compat-harness run --scenarios compat/scenarios --output <dir>
 swift run --package-path Packages/AppCore -c release compat-harness soak --keystrokes 1000000 --output <dir>
 swift run --package-path Packages/AppCore -c release compat-harness bench --runs 5 --output <file.json>
@@ -70,7 +72,7 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
 
 - **chromedriver** listening on its default endpoint `http://127.0.0.1:9515`. Every `webdriver` scenario without a `--webdriver BUNDLE=URL` entry reads the page back through that endpoint, and CI passes no `--webdriver`. Install the chromedriver that matches the installed Chrome and keep it running as the runner user before `compat` and `soak` start (for example as a LaunchAgent of the runner user). Other drivers, such as `safaridriver --port N`, need an explicit `--webdriver BUNDLE=URL` passed through `COMPAT_HARNESS_RUN_ARGS` or `COMPAT_HARNESS_SOAK_ARGS`. The harness talks only to loopback endpoints.
 - A loopback HTTP server on port 8000 for the `seedHistory` scenarios, plus the enabled input sources, text-substitution settings and app states listed in [compat/scenarios/README.md](../../compat/scenarios/README.md).
-- English as the runner user's language (the harness presses the "Secure Keyboard Entry" item of the Terminal and iTerm2 app menus by its title), onboarding of the test build finished once by hand, and, when available, the test build compiled with `INTEGRATION_HOOKS` so the harness can read the app's state, trigger the tap-timeout and permission hooks and read its histograms. The complete list: [integration-suite.md](integration-suite.md) section 2.
+- English as the runner user's language (the harness presses the "Secure Keyboard Entry" item of the Terminal and iTerm2 app menus by its title), onboarding of the test build finished once by hand, and the test build of `scripts/run-integration.sh build` (configuration `Integration`, compiled with `INTEGRATION_HOOKS`) so the harness can read the app's state, trigger the tap-timeout and permission hooks and read its histograms. The Apple Development certificate of `Config/Signing.xcconfig` must be in the runner user's login keychain for that build. The complete list: [integration-suite.md](integration-suite.md) section 2.
 - The harness rewrites the test build's settings files for each scenario's configuration (`compat/scenarios/profiles/`) and restores them after the run; it touches nothing else of the runner user.
 
 ## 4. Pre-grant permissions to the stable-signed test build (TCC)
@@ -79,7 +81,7 @@ The test build must be signed with a **stable** signing identity (an Apple Devel
 
 Grant once, by hand, as the runner user:
 
-1. Build the test version of the app and the test runner once on the runner machine, signed with the stable identity. Put the app in a fixed path, for example `~/Applications/`, and always rebuild to the same path.
+1. Build the test version of the app and the test runner once on the runner machine, signed with the stable identity: `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh build` installs the `Integration` build into `~/Applications/` (or `$INTEGRATION_APP_DIR`) and the workflows always rebuild to the same path. Build the harness with `swift build --package-path Packages/AppCore -c release --product compat-harness`.
 2. Open System Settings, Privacy & Security, **Accessibility** (called "Device Control and Data Access" on macOS 27; VERIFY the names on each installed macOS) and switch on:
    - the app under test (the dev-signed menu-bar app), and
    - the compatibility harness `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads fields through AX and presses menu items (VERIFY whether macOS holds the runner's `Runner.Worker` responsible instead; grant it too if the harness grant does not take). TestHost needs no permission.
@@ -93,7 +95,7 @@ When a grant goes stale (after a macOS update, a changed signing identity, or a 
 
 | Workflow | Trigger | Content |
 |---|---|---|
-| `integration.yml` | push to `main`, release tags, manual | Platform integration tests (QA-R11) with the privacy canary scan, compatibility scenarios (13.2), end-to-end benchmarks (QA-R14, nightly), soak of 1,000,000 keystrokes (QA-R16, nightly) |
+| `integration.yml` | push to `main`, release tags, manual | The test build with the integration hooks, platform integration tests (QA-R11) with the privacy canary scan, compatibility scenarios (13.2), end-to-end benchmarks (one run per merge, five nightly, QA-R14), soak of 1,000,000 keystrokes (QA-R16, nightly) |
 | Release gate | before every release | Upgrade test (QA-R40, [release](release.md) section 5), egress test (`compat-harness egress`, [integration-suite.md](integration-suite.md) section 5), fresh-install checks |
 
 The integration test list is in QA-R11: the 200 most common Vietnamese words in both methods, English restore, backspace across punctuation, fast typing at 15 keys per second, toggle hotkey, per-app rule switching, macro expansion, restore hotkey rules, Secure Input on and off, tap disable and recovery, and permission revoked mid-session (must fail open).
@@ -102,7 +104,7 @@ Only synthetic events targeted at the test host and the app under test are poste
 
 ## 6. Maintenance
 
-- Weekly: check the nightly results; free disk space (DerivedData, old artefacts); confirm the runner is online in the repository's Runners page.
+- Weekly: check the nightly results; free disk space (DerivedData, `.build/integration-build` of the checkout, old artefacts); confirm the runner is online in the repository's Runners page.
 - After every macOS point release: run the preflight; re-verify the grants (section 4); re-run the Tier 1 compatibility script (QA-R19).
 - After every Xcode change: update the pin in the workflow and on the machine together.
 - After every Chrome update: update chromedriver to the matching version (section 3.2).

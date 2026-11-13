@@ -101,6 +101,7 @@ extension KeyPipeline {
         }
         let output = engine.handle(input)
         engineDirty = true
+        keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
         if let learning = output.learning { notifyMain(.learning(learning)) }  // ENG-R861, memory only
         return apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)

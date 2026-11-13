@@ -7,6 +7,7 @@
 // (13.6; flushes are gated in the normal profile, T5). 1,000,000 keys at the fast profile (30 ms) take 8.3 hours,
 // the 13.6 duration. The live monitor (proc_pid_rusage, CGEventSource flags, hooks) runs on the runner.
 
+public import Diagnostics
 internal import Foundation
 public import RealtimeSupport
 

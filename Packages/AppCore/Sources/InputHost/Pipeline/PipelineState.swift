@@ -136,6 +136,9 @@ struct ObservedState {
     var pasteKeyCode: KeyCode?
     /// `EngineCatalog.revision` of the engine in use (nil: unknown, every settings generation rebuilds).
     var engineRevision: UInt64?
+    /// PLT-R398B: a secure-input release was seen (key evidence, or a new generation with the OS flag off) and the
+    /// next key-down is the first one after it (`HostCounters`).
+    var awaitingKeyAfterSecureRelease = false
 }
 
 /// Per-key bookkeeping that is not a snapshot generation.
@@ -153,4 +156,7 @@ struct KeyState {
     var lastKeyboardEventAt: MonotonicInstant?
     /// Keyboard type already reported to the main thread (`MainNotice.keyboardTypeSeen`).
     var reportedKeyboardType: UInt32?
+    /// PLT-R398B: the key being processed was fed to the engine (`compose`). Cleared before the first key-down
+    /// after a secure-input release and read when that key's verdict is ready (`HostCounters`).
+    var engineFedByThisKey = false
 }

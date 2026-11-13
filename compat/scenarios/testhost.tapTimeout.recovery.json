@@ -11,12 +11,12 @@
       "value": "off"
     },
     {
-      "action": "wait",
-      "value": "15000"
-    },
-    {
       "action": "focusField",
       "value": "testhost.native.textField"
+    },
+    {
+      "action": "testHook",
+      "value": "tapTimeout@4"
     }
   ],
   "keys": [
@@ -32,7 +32,8 @@
   "method": "telex",
   "layout": "com.apple.keylayout.ABC",
   "expect": {
-    "text": "duyệt"
+    "text": "duyeẹt",
+    "paused": false
   },
-  "readback": "human"
+  "readback": "ax"
 }

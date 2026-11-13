@@ -101,7 +101,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R322 | Post at kCGSessionEventTap | `CGEventPoster` | I | W1-D |  |
 | PLT-R323 | Echo liveness, posting broken after 3 misses | `EchoTracker`, `KeyPipeline`, ADR 0311 | U, I, V | W1-D (skeleton seam), W1-F1; VERIFY echo delivery (else `InFlightPolicy.untilPosted`) | **Pa** |
 | PLT-R324 | Replays copy keycode, flags, autorepeat, keyboard type, Unicode | `KeyEventRecord`, `CGEventPoster.replay` | U, I | W1-D |  |
-| PLT-R330 | Tap disabled by system: re-enable, reset, replay, notice | `KeyPipeline`, `InputHostController` | P, I (test hook) | W1-F2 |  |
+| PLT-R330 | Tap disabled by system: re-enable, reset, replay, notice | `KeyPipeline`, `InputHostController`; hook `tapTimeout` (`InputHost/IntegrationHooks/IntegrationHookInstruments.swift`), `compat/scenarios/testhost.tapTimeout.recovery.json` | P, U (`HostHookActionsTests`), I (test hook) | W1-F2; W3-A |  |
 | PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
 | PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F2 |  |
 | PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
@@ -142,7 +142,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R397 | Paused(secureInput) with holder hint, no modals | `SecureInputMonitor`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R398 | Never call EnableSecureEventInput | all | L (grep) | W1-E |  |
 | PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F1, W1-E |  |
-| PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline` | P, I, C | W1-F1; W2-E2; Pa (iTerm2) | **Pa** |
+| PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |
 | PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table | U, M, V | W1-C, W1-G; Pa | **Pa** |
 | PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | skeleton (done, runnable spike); Pa runs it | **Pa** |
 | PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring) |  |
@@ -187,7 +187,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R712 | Relaunch offer for Input Monitoring | `OnboardingWindowController` | M | W1-G; Pa | **Pa** |
 | PLT-R720 | Permission states and stale detection | `PermissionMonitor` | U | W1-E |  |
 | PLT-R721 | Polling cadence 2 s / 30 s / on events | `PermissionMonitor` | U | W1-E |  |
-| PLT-R730 | Fail-open within the same callback | `KeyPipeline`, `InputHostController`, `InjectionWorker` | P, I (revocation on runner), M | W1-F1, W1-F2; W2-E2; Pa | **Pa** |
+| PLT-R730 | Fail-open within the same callback | `KeyPipeline`, `InputHostController`, `InjectionWorker`; hook `revokePermission` (`RevocablePermissionProbe`), `compat/scenarios/testhost.failOpen.permissionRevoked.json` | P, U (`HostHookActionsTests`), I (revocation on runner), M | W1-F1, W1-F2; W2-E2; W3-A; Pa | **Pa** |
 | PLT-R731 | Recreate tap when permission returns | `InputHostController` | U, M | W1-F2; Pa | **Pa** |
 | PLT-R740 | Re-grant guidance, tccutil reset for own bundle | `PermissionResetting`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R741 | Never suggest sudo or bundle-less tccutil | `Status`/`Onboarding` copy | D | W1-G |  |
@@ -195,22 +195,22 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R751 | Dev builds use .dev bundle ID and Apple Development | `Config/Debug.xcconfig` | L | skeleton (done) |  |
 | PLT-R752 | Updates in place keep identity and trust | Sparkle, release scripts | R, M (13.5) | W2-D; release track; Pa | **Pa** |
 | PLT-R760 | MDM / PPPC documentation | docs | D | docs track |  |
-| PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` | U | W1-A |  |
+| PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` (log2 buckets plus gate-aligned sub-buckets for T2 and T3, `PlatformMetrics.reset()`) | U (`MetricsPrecisionTests`, `HotPathAllocationTests`) | W1-A; W3-A |  |
 | PLT-R802 | Signposts around callback, job, AX | `PlatformSignposts` | U, I | W1-A |  |
 | PLT-R803 | No steady-state timer faster than 2 s | `TapWatchdog`, monitors, ADR 0309 | U, I (wakeups) | W1-F2, W1-E |  |
 | PLT-R810 | Built-in latency probe | `LatencyProbeDriver`, `DiagnosticsWindowController` | U, M | W2-C; Pa runs it | **Pa** |
 | PLT-R820 | Hosted CI microbenchmarks with fakes | pipeline benchmark in `Tests/InputHostTests/Pipeline` | L | W1-F1; CI track |  |
-| PLT-R821 | Self-hosted metrics T2-T6, C1, C2, M1, M2 | `compat-harness` | I | W2-E2 |  |
-| PLT-R822 | Regression gate and baselines | CI, baselines file | L | CI track; W2-E2 |  |
-| PLT-R901 | Data classes; content never in logs | Diagnostics, all modules | L (canary) | W1-A; W2-E2 |  |
+| PLT-R821 | Self-hosted metrics T2-T6, C1, C2, M1, M2 | `compat-harness` (`TestSupport/Scenario/AppMetrics.swift`, `PlatformBenchmark.swift`, `Soak.swift`), the app's hooks (`InputHost/IntegrationHooks/`, `App/Sources/IntegrationHooks/`), `perf/platform-baseline.json`, [integration-suite.md](../runbooks/integration-suite.md) sections 3 and 4, ADR 0502 | U (`AppMetricsTests`, `IntegrationHookServerTests`), I | W2-E2; W3-A |  |
+| PLT-R822 | Regression gate and baselines | `perf/platform-baseline.json`, `perf/README.md`, `RegressionGate`, `scripts/bench-compare.sh` from `scripts/run-integration.sh bench` and `soak`, [integration-suite.md](../runbooks/integration-suite.md) section 7 | L, U (`RegressionGateTests`, scripts/tests) | CI track; W2-E2; W3-A |  |
+| PLT-R901 | Data classes; content never in logs | Diagnostics, all modules; canary: `TestSupport/Scenario/PrivacyCanary.swift`, `compat/scenarios/testhost.privacyCanary.*`, `compat/scenarios/profiles/privacy-canary.json`, [integration-suite.md](../runbooks/integration-suite.md) section 4; hook responses carry codes only (`AppStateSnapshotMappingTests`) | L (canary), U, I | W1-A; W2-E2; W3-A |  |
 | PLT-R902 | Typed logging API; interpolation lint | `Diagnostics/LogEvent.swift`, `Redaction.swift` | U, L | W1-A; CI track (lint) |  |
 | PLT-R903 | Log location, permissions, rotation, retention | `DiagnosticsLogger`, `LogStorePolicy` | U | W1-A; W1-B (legacy folder move, ADR 0307) |  |
 | PLT-R904 | No verbose/debug content mode | Diagnostics | D, L | W1-A |  |
 | PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController` | U, M | W1-A, W2-C; Pa | **Pa** |
-| PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle | L, I (13.7) | W2-D, W2-E2; CI track |  |
+| PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle; egress test: `TestSupport/Scenario/EgressCheck.swift` (`compat-harness egress`), hook `checkForUpdates`, [integration-suite.md](../runbooks/integration-suite.md) section 5 | L, I (13.7) | W2-D, W2-E2, W3-A; CI track |  |
 | PLT-R907 | No translation feature in v1 | n/a | D | n/a |  |
 | PLT-R908 | Hardened runtime, no entitlements, not sandboxed | `project.yml`, `Config/Release.xcconfig` | R | skeleton; release track |  |
-| PLT-R909 | No unauthenticated IPC; URL scheme opens Settings only | `URLSchemeRouter`, `AppEnvironment.handle(url:)` | U | W1-G, W2-A |  |
+| PLT-R909 | No unauthenticated IPC; URL scheme opens Settings only | `URLSchemeRouter`, `AppEnvironment.handle(url:)`; the test build's hooks are owner-only files watched with a vnode source, no socket (`IntegrationHookServer`, ADR 0502), absent from releases (`scripts/verify-release.sh`) | U, R | W1-G, W2-A; W3-A |  |
 | PLT-R910 | Supply chain: resolved file, pins, SHA-256 | `Config/Package.resolved`, workflows | L | skeleton; CI track |  |
 | PLT-R911 | No retained engine state or raw keys | `KeyPipeline` | U, review | W1-F1 |  |
 | PLT-R912 | Settings import treated as untrusted | `SettingsStore.previewImport` | U (malformed and fuzzed files) | W1-B |  |
@@ -342,17 +342,17 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | QA-R8 | Fuzzing per PR and nightly | CI | E, L | engine track; CI track |  |
 | QA-R9 | Fuzz seed corpus stored and minimised | engine package | E | engine track |  |
 | QA-R10 | Test host app with listed fields | `TestHost/**` | I | W2-E1 |  |
-| QA-R11 | Integration tests through the real pipeline | `compat/scenarios/testhost.*`, `compat-harness` | I | W2-E2 |  |
+| QA-R11 | Integration tests through the real pipeline | `compat/scenarios/testhost.*` (with `profiles/qa-r11.json`), `compat-harness` (`scripts/run-integration.sh tests`), the hooks test build (`scripts/run-integration.sh build`), [integration-suite.md](../runbooks/integration-suite.md) sections 3 and 6 | U (`ScenarioOracleTests`, `HostHookActionsTests`), I | W2-E2; W3-A |  |
 | QA-R12 | Integration tests on a self-hosted runner | self-hosted runner | I, M | W2-E2; CI track; Pa (runner) | **Pa** |
 | QA-R13 | Self-hosted runner only for main and tags | workflows | L | CI track |  |
 | QA-R14 | Performance gates and baselines | CI, pipeline benchmark | L | CI track; W1-F1; W2-E2 |  |
 | QA-R15 | perf-baseline label | process | D | CI track |  |
-| QA-R16 | Nightly 1,000,000-keystroke soak | `compat-harness` | I | W2-E2 |  |
+| QA-R16 | Nightly 1,000,000-keystroke soak | `compat-harness soak` (`TestSupport/Scenario/Soak.swift`), `perf/platform-baseline.json` (M2), `integration.yml` nightly job, [integration-suite.md](../runbooks/integration-suite.md) section 3 | U (`SoakRunnerTests`, `SoakCountersTests`), I | W2-E2; W3-A |  |
 | QA-R17 | Two compatibility files, matrix fields | `compat/rules.json`, `compat/matrix.json` | L | W1-C |  |
 | QA-R18 | Standard compatibility script | `compat/SCRIPT.md` | D | docs track |  |
 | QA-R19 | Verification cadence; 120-day expiry | `MatrixStatusResolver` | U | W1-C |  |
 | QA-R20 | Community verifications via issue form | issue forms | D | docs track |  |
-| QA-R21 | New profile needs a test-host reproduction | `TestHost`, `compat/scenarios` | C | W2-E1, W2-E2 |  |
+| QA-R21 | New profile needs a test-host reproduction | `TestHost`, `compat/scenarios`, `compat/scenarios/profiles/testhost-reproductions.json`, [integration-suite.md](../runbooks/integration-suite.md) section 3 | C, U (`ScenarioFilesTests` rule coverage) | W2-E1, W2-E2 |  |
 | QA-R22 | Workflows | `.github/workflows` | L | CI track |  |
 | QA-R23 | Pinned Xcode, newest macOS tested | CI | L, M | CI track; Pa (self-hosted) | **Pa** |
 | QA-R24 | Supply-chain hygiene | `Config/Package.resolved`, workflows | L | skeleton; CI track |  |

@@ -32,6 +32,7 @@ extension InputHostController {
         case .tapDisabled(let byTimeout):
             feedFreshPermissions()  // PLT-R330 step 1 re-enables only with valid permissions
             feed(.tapDisabledBySystem(byTimeout: byTimeout))
+            if byTimeout, session?.thread.isEnabled == true { counters.tapRecoveries.increment() }
         case .learning(let signal):
             noteLearning(signal)
         case .echoMissed:

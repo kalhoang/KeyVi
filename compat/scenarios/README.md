@@ -122,11 +122,13 @@ tester to select a shape and then click into a text frame of the app. The harnes
 applied the app stays in EN mode, so the frame shows "dd" (no "đ"), and the tester also confirms the shape was
 not deleted by a backspace.
 
-### Waiting for the schema and the app's hooks
+## Integration hooks (automated since W3-A)
 
-`testhost.failOpen.permissionRevoked` (revoke Accessibility during the wait) and `testhost.tapTimeout.recovery`
-(trigger the tap timeout during the wait) stay `human` scenarios. The harness already runs the `testHook` setup step
-(`tapTimeout`, `revokePermission`, `restorePermission`, optionally `@<n>` to fire after the first n keys, so the hook
-lands mid-word); the scenario schema does not list it yet (requested from its owner, `pendingSchemaActions`), and the
-app must answer the hooks (INTEGRATION_HOOKS test build). The automated versions of both files are in
-[docs/runbooks/integration-suite.md](../../docs/runbooks/integration-suite.md), section 6.
+`testhost.tapTimeout.recovery` (`tapTimeout@4`, expects "duyeẹt": the engine is reset after the recovery, QA-R11)
+and `testhost.failOpen.permissionRevoked` (`revokePermission@4` on `v i e e t j`, expects "viêtj" and paused:
+PLT-R730 fail-open) use the `testHook` setup step (`tapTimeout`, `revokePermission`, `restorePermission`, optionally
+`@<n>` to fire after the first n keys, so the hook lands mid-word), listed in the scenario schema since W3-A. The app
+answers the hooks only in the `Integration` test build (`scripts/run-integration.sh build`, ADR 0502); the harness
+restores a revoked permission after the scenario. The PLT-R398B release scenarios keep secure input on for 2.5 s,
+longer than one 2 s secure-input poll with leeway, so the app sees the release it reports
+(`ScenarioFilesTests.secureInputEpisodesOutlastOnePoll`).

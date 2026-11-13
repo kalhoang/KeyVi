@@ -21,11 +21,14 @@ public struct PipelineContext: Sendable {
     public var tapLog: TapLogRing
     public var capture: CaptureController?
     public var watchdog: CallbackWatchdog
+    /// Since-launch observations for the integration hooks (tap recoveries, first key after a secure-input
+    /// release). The controller passes its own; other callers get a private one.
+    public var counters: HostCounters
 
     public init(
         snapshots: TapSnapshots, queue: JobQueue, feedback: WorkerFeedback, echo: EchoTracker, marker: EventMarker,
         outbox: TapOutbox, metrics: PlatformMetrics, tapLog: TapLogRing, capture: CaptureController?,
-        watchdog: CallbackWatchdog
+        watchdog: CallbackWatchdog, counters: HostCounters = HostCounters()
     ) {
         self.snapshots = snapshots
         self.queue = queue
@@ -37,6 +40,7 @@ public struct PipelineContext: Sendable {
         self.tapLog = tapLog
         self.capture = capture
         self.watchdog = watchdog
+        self.counters = counters
     }
 }
 

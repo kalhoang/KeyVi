@@ -7,6 +7,7 @@
 // profile changes, ScenarioOracleTests names the scenario whose expectation went stale.
 
 import AppModel
+import Diagnostics
 import Foundation
 import InputHost
 import SettingsStore
@@ -32,6 +33,8 @@ struct ScenarioTextOracle {
     private let passThroughFields: Set<String>
     private var focused: String
     private let focusShortcuts: [String: String]
+    /// `revokePermission` fired: the host failed open, keys pass untouched until `restorePermission` (PLT-R730).
+    private var failedOpen = false
 
     /// `focusShortcuts`: key name -> field it focuses (TestHost's Command+1 and Command+2).
     init(
@@ -62,6 +65,18 @@ struct ScenarioTextOracle {
         for key in keys { press(key) }
     }
 
+    /// What the app's integration hooks do to the text (ADR 0502): a tap timeout resets the engine (PLT-R330,
+    /// ENG-R1010 `eventTapReenabled`); a revoked permission fails open and resets (PLT-R730) until restored.
+    mutating func trigger(_ hook: AppTestHook) {
+        switch hook {
+        case .tapTimeout: _ = session.handle(.reset(.eventTapReenabled))
+        case .revokePermission:
+            failedOpen = true
+            _ = session.handle(.reset(.unknown))
+        case .restorePermission: failedOpen = false
+        }
+    }
+
     private mutating func press(_ key: String) {
         if let field = focusShortcuts[key] {
             _ = session.handle(.reset(.focusChanged))
@@ -81,7 +96,7 @@ struct ScenarioTextOracle {
         }
     }
 
-    private var transforms: Bool { mode == .vietnamese && !passThroughFields.contains(focused) }
+    private var transforms: Bool { mode == .vietnamese && !failedOpen && !passThroughFields.contains(focused) }
 
     private mutating func insert(_ character: Character) {
         guard transforms else { return append(String(character)) }

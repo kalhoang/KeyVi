@@ -479,9 +479,8 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
   macros, restore hotkey twice), privacy canary scenarios for every strategy, app profiles with per-scenario
   configuration of the test build, the harness side of the integration hooks (`testHook` steps, state probe, app
   histograms, latency probe, soak counters), `compat-harness egress`, the PLT-R822 gate and
-  `perf/platform-baseline.json` (placeholders). Runbook: `docs/runbooks/integration-suite.md`. Still open outside
-  W2-E2: the app-side hooks (INTEGRATION_HOOKS build), `testHook` in the scenario schema, and the
-  `scripts/run-integration.sh` changes listed in ADR 0502 ("Integration harness").
+  `perf/platform-baseline.json` (placeholders). Runbook: `docs/runbooks/integration-suite.md`. The open items
+  (app-side hooks, `testHook` in the scenario schema, `scripts/run-integration.sh`) were delivered by W3-A.
 
 ### W2-F Localisation completion and accessibility audit
 
@@ -498,6 +497,27 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
   - Catalog test green for all tables.
   - Accessibility audit checklist per window in the report, with the items Pa must check with VoiceOver;
     every finding outside labels and hints is filed for its owner, not fixed here.
+
+## Wave 3 (3 workstreams)
+
+### W3-A Integration hooks in the test build, end to end
+
+- **Owned paths:** `App/Sources/IntegrationHooks/**`, the hook wiring in `App/Sources/Composition/**`,
+  `Packages/AppCore/Sources/{Diagnostics,InputHost,AppModel}/**` (in Diagnostics: metrics, histograms, counters and
+  `IntegrationHooks.swift`), `TestSupport/Scenario/**`, `CompatHarness/**`, `project.yml`, `Config/*.xcconfig`
+  except Brand and Sparkle, the scenario schema and scenarios, `scripts/run-integration.sh`,
+  `scripts/verify-release.sh`, `scripts/tests/**`, `integration.yml`, `perf/**`, ADR 0502, the integration and
+  runner runbooks, traceability.
+- **Scope:** QA-R11, QA-R16, PLT-R330, PLT-R398B, PLT-R730, PLT-R801, PLT-R821, PLT-R822, PLT-R901, PLT-R909
+- **Delivered (2026-11-13):** the `Integration` xcodegen configuration (`INTEGRATION_HOOKS`, release-like code
+  generation, dev bundle ID, Apple Development identity) and the release check on the hooks' marker; one shared
+  Codable wire definition (`Diagnostics/IntegrationHooks.swift`); the hooks server, directory rules, instruments
+  (tap timeout, revocable trust check) and host actions in `InputHost/IntegrationHooks/` with a thin App adapter;
+  `HostCounters` (tap recoveries, engine resets, first key after a secure-input release); `PlatformMetrics.reset()`
+  and gate-aligned sub-buckets for T2 and T3; `testHook` in the scenario schema and the two automated QA-R11 hook
+  scenarios; `scripts/run-integration.sh build` and `tests` through the harness, the default platform baseline, the
+  soak comparison and one bench run per merge; traceability for the integration rows. Everything that needs the
+  runner is listed in the runbook (sections 2 and 8).
 
 ## Interim verification before the self-hosted runner exists
 

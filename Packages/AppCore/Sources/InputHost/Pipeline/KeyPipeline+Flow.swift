@@ -67,6 +67,13 @@ extension KeyPipeline {
             lifecycle: lifecycle, secureInput: secureInput, secureResumedGeneration: seen.secureResumedGeneration,
             inputSource: inputSource, focus: focus, effectiveMode: mode)
         noteStateTransition(state, generation: focus.generation)
+        // PLT-R398B: the first key-down after a release reports whether it reached the engine; `compose` marks it.
+        let firstAfterRelease = event.kind == .keyDown && seen.awaitingKeyAfterSecureRelease
+        if firstAfterRelease {
+            seen.awaitingKeyAfterSecureRelease = false
+            keyState.engineFedByThisKey = false
+        }
+        defer { if firstAfterRelease { noteFirstKeyAfterSecureRelease() } }
         let hotkey = feedHotkeys(event, now: now)
         if seen.postingBroken || !state.allowsSwallowing { return failOpenPass(event) }  // PLT-R730
         // PRD-R15: the recorder is capturing keys. PLT-R1205: the guided test types; a toggle would write
@@ -97,6 +104,8 @@ extension KeyPipeline {
         notifyMain(.tapDisabled(byTimeout: byTimeout))
         let generation = context.snapshots.focus.read { $0.generation }
         hardBoundary(.eventTapReenabled, job: .tapReenabled, generation: generation)
+        // QA-R11: the integration hooks report how many timeouts left the engine reset (all of them).
+        if byTimeout && !engineDirty { context.counters.engineResetsAfterTapRecovery.increment() }
     }
 
     /// ADR 0311: settle echoed and timed-out jobs; three consecutive misses fail open in this callback.
@@ -153,9 +162,18 @@ extension KeyPipeline {
         guard event.kind == .keyDown, secureInput.enabled, seen.secureResumedGeneration != secureInput.generation
         else { return }
         seen.secureResumedGeneration = secureInput.generation
+        seen.awaitingKeyAfterSecureRelease = true  // this key is the first after the release
         notifyMain(.secureInputResumedByKey(generation: secureInput.generation))
         context.tapLog.push(TapLogRecord(code: .secureInputResumedByKey, at: now, a: secureInput.generation))
         hardBoundary(.secureInputChanged, job: .secureInputChanged, generation: generation)
+    }
+
+    /// PLT-R398B acceptance, reported through the integration hooks: whether the first key-down after a
+    /// secure-input release reached the engine, decided from what the key actually did (a hotkey, a fail-open
+    /// pass, English mode, a passThrough strategy or a navigation key is not composed). One relaxed store; no
+    /// lock, no allocation (PLT-R304).
+    func noteFirstKeyAfterSecureRelease() {
+        context.counters.recordFirstKeyAfterSecureInputRelease(composed: keyState.engineFedByThisKey)
     }
 
     /// PLT-R210: every transition into or out of paused or fail-open (and VI/EN changes) resets.
@@ -239,8 +257,7 @@ extension KeyPipeline {
             change.note(.inputSourceChanged, job: .inputSourceChanged)
         }
         if secureInput.generation != seen.secureGeneration {
-            seen.secureGeneration = secureInput.generation
-            change.note(.secureInputChanged, job: .secureInputChanged)
+            reconcileSecureInput(secureInput, into: &change)
         }
         if lifecycle.generation != seen.lifecycleGeneration {
             seen.lifecycleGeneration = lifecycle.generation
@@ -252,6 +269,22 @@ extension KeyPipeline {
             seen.engineVariant = focus.decision.variant
         }
         if let reset = change.reset { hardBoundary(reset, job: change.job, generation: focus.generation) }
+    }
+
+    /// The generation moves only on OS transitions (and on a re-pause after key evidence, with the flag on), so a
+    /// new generation with the flag off ends an episode, even one this pipeline never saw begin. One exception
+    /// (PLT-R398B): the poll that follows key evidence publishes the "off" generation of the episode the evidence
+    /// key already ended. That is the same release: no second boundary in the middle of the word being typed and
+    /// no second "first key". A skipped generation means another episode happened in between, so it counts.
+    private func reconcileSecureInput(_ secureInput: SecureInputSnapshot, into change: inout BoundaryAccumulator) {
+        let previous = seen.secureGeneration
+        seen.secureGeneration = secureInput.generation
+        let endsResumedEpisode =
+            !secureInput.enabled && seen.secureResumedGeneration == previous
+            && secureInput.generation == previous &+ 1
+        guard !endsResumedEpisode else { return }
+        change.note(.secureInputChanged, job: .secureInputChanged)
+        if !secureInput.enabled { seen.awaitingKeyAfterSecureRelease = true }
     }
 
     private func reconcileFocus(_ focus: FocusSnapshot, into change: inout BoundaryAccumulator, rebuild: inout Bool) {

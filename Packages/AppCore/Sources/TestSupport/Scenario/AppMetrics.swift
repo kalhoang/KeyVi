@@ -8,23 +8,34 @@
 public import Diagnostics
 internal import Foundation
 
-/// Value of a percentile from log2 buckets, interpolated linearly inside the bucket that holds it. The bucket
-/// upper bound alone overstates a p99 by up to a factor of two, which would fail the 3 ms T2 gate for a real p99
-/// of 2.2 ms (bucket 2.1 to 4.2 ms). Still an estimate: the true value lies in the same bucket.
+/// Value of a percentile from the app's histogram, interpolated linearly inside the bucket that holds it. The
+/// decide-to-posted histograms (T2, T3) carry gate-aligned linear sub-buckets up to 25 ms (`LatencySubBuckets`):
+/// a bucket (lower, upper] yields a value in that interval, and every 8.1 gate is a bucket edge, so "over the gate"
+/// is decided exactly (ADR 0502). Elsewhere the log2 bucket is used: its upper bound alone overstates a p99 by up to
+/// a factor of two (2.2 ms read as 4.2 ms), so the interpolation is an estimate inside the right bucket.
 public enum HistogramPercentile {
     public static func nanoseconds(_ snapshot: HistogramSnapshot, _ fraction: Double) -> Double? {
-        let total = snapshot.count
-        guard total > 0, (0.0...1.0).contains(fraction) else { return nil }
-        let rank = max(1, (Double(total) * fraction).rounded(.up))
-        var before = 0.0
+        guard let rank = snapshot.rank(fraction) else { return nil }
+        if let fine = snapshot.subBuckets, fine.isConsistent {
+            if let position = fine.position(ofRank: rank) {
+                let width = Double(position.upper - position.lower)
+                return Double(position.lower) + width * Double(rank - position.before) / Double(position.count)
+            }
+            // Above the sub-bucket range: the log2 estimate, never below the range's end.
+            return log2Estimate(snapshot, rank: rank).map { max($0, Double(fine.upperNanoseconds)) }
+        }
+        return log2Estimate(snapshot, rank: rank)
+    }
+
+    private static func log2Estimate(_ snapshot: HistogramSnapshot, rank: UInt64) -> Double? {
+        var before: UInt64 = 0
         for (index, count) in snapshot.buckets.enumerated() where count > 0 {
-            let inBucket = Double(count)
-            if before + inBucket >= rank {
+            if before + count >= rank {
                 let lower = index == 0 ? 0 : pow(2.0, Double(index))
                 let upper = pow(2.0, Double(index + 1))
-                return lower + (upper - lower) * (rank - before) / inBucket
+                return lower + (upper - lower) * Double(rank - before) / Double(count)
             }
-            before += inBucket
+            before += count
         }
         return nil
     }

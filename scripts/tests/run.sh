@@ -524,6 +524,159 @@ expect 0 "a dry run needs no opt-in" env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PA
   COMPAT_HARNESS_RUN_ARGS="run --scenarios compat/scenarios --dry-run" "$S/run-integration.sh" compat --out "$I/out"
 contains "dry-run arguments passed through" "compat-harness run --scenarios compat/scenarios --dry-run"
 
+echo "== run-integration.sh: TestHost suite, bench, soak and the hooks test build (W3-A, ADR 0502)"
+# The fake swift writes formatVersion 1 results where the harness would, so the real bench-compare.sh runs.
+cat >"$I/bin/swift" <<'EOF'
+#!/bin/sh
+printf 'swift %s\n' "$*"
+out=""
+prev=""
+for arg in "$@"; do
+  [ "$prev" = "--output" ] && out="$arg"
+  prev="$arg"
+done
+metric='"calibrated":false,"unit":"ms","budget":100,"value":'"${FAKE_T2:-2}"
+case " $* " in
+  *" bench "*) printf '{"formatVersion":1,"benchmark":"platform","calibration":{"name":"r","nanoseconds":1},"metrics":{"T2.p99":{%s}}}\n' "$metric" >"$out" ;;
+  *" soak "*)
+    mkdir -p "$out"
+    if [ -n "${FAKE_SOAK_METRICS:-}" ]; then
+      printf '{"formatVersion":1,"benchmark":"platform-soak","calibration":{"name":"r","nanoseconds":1},"metrics":{"M2.growthMBPerHour":{"calibrated":false,"unit":"MB/h","budget":5,"value":%s}}}\n' \
+        "$FAKE_SOAK_METRICS" >"$out/soak-metrics.json"
+    fi ;;
+esac
+EOF
+chmod +x "$I/bin/swift"
+expect 0 "tests runs the TestHost suite through the harness" \
+  env COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" tests --out "$I/out"
+contains "TestHost command line" "compat-harness run --scenarios compat/scenarios --only testhost.* --output $I/out/tests"
+if grep -Fq "xcodebuild" "$T/out"; then ko "tests no longer runs xcodebuild test"; else ok "tests no longer runs xcodebuild test"; fi
+expect 1 "tests needs the opt-in" env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" "$S/run-integration.sh" tests --out "$I/out"
+expect 0 "bench defaults to five runs and perf/platform-baseline.json" \
+  env COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" bench --out "$I/out"
+contains "five runs by default (QA-R14)" "compat-harness bench --runs 5 --output $I/out/platform-bench.json"
+if [[ -f "$I/out/platform-bench-median.json" ]]; then ok "bench writes the median"; else ko "bench writes the median"; fi
+# 4 ms against the 3 ms placeholder baseline is 33 % slower: only perf/platform-baseline.json makes this fail.
+expect 1 "bench compares with perf/platform-baseline.json" \
+  env COMPAT_HARNESS_LIVE=1 FAKE_T2=4 PATH="$I/bin:$PATH" "$S/run-integration.sh" bench --out "$I/out"
+contains "regression against the platform baseline" "T2.p99"
+printf '{"formatVersion":1,"benchmark":"platform","calibration":{"name":"r","nanoseconds":1},"metrics":{"T2.p99":{"calibrated":false,"unit":"ms","value":4}}}\n' >"$I/baseline.json"
+expect 0 "PLATFORM_BASELINE overrides the default" env COMPAT_HARNESS_LIVE=1 FAKE_T2=4 PLATFORM_BASELINE="$I/baseline.json" \
+  COMPAT_HARNESS_BENCH_RUNS=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" bench --out "$I/out"
+contains "COMPAT_HARNESS_BENCH_RUNS sets the runs" "compat-harness bench --runs 1 --output"
+expect 1 "COMPAT_HARNESS_BENCH_RUNS must be a positive integer" \
+  env COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_BENCH_RUNS=0 PATH="$I/bin:$PATH" "$S/run-integration.sh" bench --out "$I/out"
+expect 0 "soak without M2 skips the comparison" \
+  env COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" soak --out "$I/out"
+if [[ -f "$I/out/soak/soak-metrics-median.json" ]]; then ko "no soak comparison without M2"; else ok "no soak comparison without M2"; fi
+expect 0 "soak compares M2 with the baseline" \
+  env COMPAT_HARNESS_LIVE=1 FAKE_SOAK_METRICS=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" soak --out "$I/out"
+if [[ -f "$I/out/soak/soak-metrics-median.json" ]]; then ok "soak writes the M2 median"; else ko "soak writes the M2 median"; fi
+expect 1 "soak fails on M2 growth over the baseline" \
+  env COMPAT_HARNESS_LIVE=1 FAKE_SOAK_METRICS=9 PATH="$I/bin:$PATH" "$S/run-integration.sh" soak --out "$I/out"
+
+# build: fake xcodegen, xcodebuild and ditto record their arguments and lay out the products xcodebuild would.
+cat >"$I/bin/xcodegen" <<'EOF'
+#!/bin/sh
+printf 'xcodegen %s\n' "$*"
+EOF
+cat >"$I/bin/xcodebuild" <<'EOF'
+#!/bin/sh
+printf 'xcodebuild %s\n' "$*"
+. "$FAKE_BRAND_ENV"
+derived=""
+config=""
+scheme=""
+prev=""
+for arg in "$@"; do
+  case "$prev" in
+    -derivedDataPath) derived="$arg" ;;
+    -configuration) config="$arg" ;;
+    -scheme) scheme="$arg" ;;
+  esac
+  prev="$arg"
+done
+name="TestHost"
+[ "$scheme" = "App" ] && name="$APP_DISPLAY_NAME"
+dir="$derived/Build/Products/$config/$name.app/Contents/MacOS"
+mkdir -p "$dir"
+printf 'binary %s\n' "${FAKE_BINARY_TEXT:-}" >"$dir/$name"
+chmod +x "$dir/$name"
+EOF
+cat >"$I/bin/ditto" <<'EOF'
+#!/bin/sh
+cp -R "$1" "$2"
+EOF
+# Fake process table: $FAKE_PROCESS_FILE holds the executable path of one running process (absent: none). pgrep
+# matches its pattern against that path; pkill -TERM ends it unless FAKE_IGNORES_TERM is set, pkill -KILL unless
+# FAKE_UNKILLABLE is set.
+cat >"$I/bin/pgrep" <<'EOF'
+#!/bin/sh
+for last; do :; done
+[ -f "${FAKE_PROCESS_FILE:-/nonexistent}" ] && grep -Eq -- "$last" "$FAKE_PROCESS_FILE"
+EOF
+cat >"$I/bin/pkill" <<'EOF'
+#!/bin/sh
+printf 'pkill %s\n' "$*"
+for last; do :; done
+{ [ -f "${FAKE_PROCESS_FILE:-/nonexistent}" ] && grep -Eq -- "$last" "$FAKE_PROCESS_FILE"; } || exit 1
+case "$1" in
+  -TERM) [ -n "${FAKE_IGNORES_TERM:-}" ] && exit 0 ;;
+  -KILL) [ -n "${FAKE_UNKILLABLE:-}" ] && exit 0 ;;
+esac
+[ -d "${FAKE_INSTALLED_APP:-/nonexistent}" ] && printf 'ended while the old copy was installed\n'
+rm -f "$FAKE_PROCESS_FILE"
+EOF
+chmod +x "$I/bin/xcodegen" "$I/bin/xcodebuild" "$I/bin/ditto" "$I/bin/pgrep" "$I/bin/pkill"
+marker="$(sed -n 's/^HOOKS_MARKER="\(.*\)"$/\1/p' "$S/run-integration.sh")"
+display_name="$(. "$S/brand.env" && printf '%s' "$APP_DISPLAY_NAME")"
+expect 1 "build needs the opt-in" env -u COMPAT_HARNESS_LIVE FAKE_BRAND_ENV="$S/brand.env" PATH="$I/bin:$PATH" \
+  INTEGRATION_APP_DIR="$I/apps" INTEGRATION_DERIVED_DATA="$I/dd" "$S/run-integration.sh" build --out "$I/out"
+if grep -Fq "xcodebuild " "$T/out"; then ko "build stops before xcodebuild without the opt-in"; else ok "build stops before xcodebuild without the opt-in"; fi
+expect 0 "build installs the hooks test build and TestHost" env COMPAT_HARNESS_LIVE=1 FAKE_BRAND_ENV="$S/brand.env" \
+  FAKE_BINARY_TEXT="$marker" PATH="$I/bin:$PATH" INTEGRATION_APP_DIR="$I/apps" INTEGRATION_DERIVED_DATA="$I/dd" \
+  "$S/run-integration.sh" build --out "$I/out"
+contains "the app uses the Integration configuration" "-scheme App -configuration Integration -derivedDataPath $I/dd"
+if [[ -e "$I/out/DerivedData" || -e "$I/out/Build" ]]; then ko "derived data stays out of the uploaded output"; else ok "derived data stays out of the uploaded output"; fi
+contains "TestHost is built too" "-scheme TestHost -configuration Debug"
+contains "package targets build for the active architecture only" \
+  "-disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build"
+if grep -Fq "pkill" "$T/out"; then ko "nothing is terminated when no copy runs"; else ok "nothing is terminated when no copy runs"; fi
+contains "package versions stay pinned (PLT-R910)" "-disableAutomaticPackageResolution"
+if [[ -x "$I/apps/$display_name.app/Contents/MacOS/$display_name" && -d "$I/apps/TestHost.app" ]]; then
+  ok "both apps installed at the fixed path"
+else
+  ko "both apps installed at the fixed path"
+fi
+build_with_running() { # build_with_running <expected exit> <name> <running executable> [VAR=value...]
+  local want="$1" name="$2" running="$3"
+  shift 3
+  printf '%s\n' "$running" >"$I/running"
+  expect "$want" "$name" env COMPAT_HARNESS_LIVE=1 FAKE_BRAND_ENV="$S/brand.env" FAKE_BINARY_TEXT="$marker" \
+    FAKE_PROCESS_FILE="$I/running" INTEGRATION_QUIT_TIMEOUT=1 "$@" PATH="$I/bin:$PATH" INTEGRATION_APP_DIR="$I/apps" \
+    INTEGRATION_DERIVED_DATA="$I/dd" "$S/run-integration.sh" build --out "$I/out"
+}
+build_with_running 0 "build ends the copy still running from the installed path" \
+  "$I/apps/$display_name.app/Contents/MacOS/$display_name" FAKE_INSTALLED_APP="$I/apps/$display_name.app"
+contains "SIGTERM by a pattern anchored on the path" "pkill -TERM -f -- ^"
+contains "metacharacters of the installed path escaped" "/apps/$display_name\.app/Contents/MacOS/"
+contains "ended before the replacement" "ended while the old copy was installed"
+if [[ -f "$I/running" ]]; then ko "the stale copy is gone"; else ok "the stale copy is gone"; fi
+build_with_running 0 "a copy that ignores SIGTERM is killed after the wait" \
+  "$I/apps/TestHost.app/Contents/MacOS/TestHost" FAKE_IGNORES_TERM=1
+contains "SIGKILL after the bounded wait" "pkill -KILL -f -- ^"
+contains "SIGKILL for the TestHost path" "/apps/TestHost\.app/Contents/MacOS/"
+build_with_running 1 "build stops when the stale copy survives" \
+  "$I/apps/$display_name.app/Contents/MacOS/$display_name" FAKE_IGNORES_TERM=1 FAKE_UNKILLABLE=1
+contains "names the surviving copy" "is still running"
+build_with_running 0 "a process elsewhere is left alone" "/Applications/$display_name.app/Contents/MacOS/$display_name"
+if grep -Fq "pkill" "$T/out"; then ko "only the installed path is matched"; else ok "only the installed path is matched"; fi
+rm -f "$I/running"
+expect 1 "build refuses a test build without the hooks" env COMPAT_HARNESS_LIVE=1 FAKE_BRAND_ENV="$S/brand.env" \
+  PATH="$I/bin:$PATH" INTEGRATION_APP_DIR="$I/apps" INTEGRATION_DERIVED_DATA="$I/dd" \
+  "$S/run-integration.sh" build --out "$I/out"
+contains "names the missing condition" "INTEGRATION_HOOKS missing"
+
 if [[ $no_macos -eq 0 ]]; then
   echo "== macOS release tooling (ad-hoc signed fake app)"
   M="$T/mac"
@@ -637,6 +790,17 @@ EOF
   contains "missing previous requirement named" "previous designated requirement file not found"
   expect 1 "verify-release on an ad-hoc test app" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization
   contains "public key present passes" "ok: Sparkle public EdDSA key (SUPublicEDKey)"
+  contains "a build without the hooks passes the hooks check" "ok: no integration hooks code (INTEGRATION_HOOKS)"
+  # W3-A, ADR 0502: an app built with the INTEGRATION_HOOKS condition carries the marker; a release must not.
+  hooked="$M/hooked/$(basename "$app")"
+  mkdir -p "$M/hooked"
+  cp -R "$app" "$hooked"
+  printf '# %s\n' "$(sed -n 's/^HOOKS_MARKER="\(.*\)"$/\1/p' "$M/scripts/verify-release.sh")" \
+    >>"$hooked/Contents/MacOS/Test"
+  codesign --force --sign - "$hooked" >/dev/null 2>&1
+  expect 1 "verify-release fails on integration hooks code" "$M/scripts/verify-release.sh" --app "$hooked" --pre-notarization
+  contains "hooks code reported" "FAILED: no integration hooks code (INTEGRATION_HOOKS)"
+  contains "names the file" "integration hooks code found in: $hooked/Contents/MacOS/Test"
   /usr/libexec/PlistBuddy -c 'Set :SUPublicEDKey ""' "$app/Contents/Info.plist"
   codesign --force --sign - "$app" >/dev/null 2>&1
   expect 1 "verify-release fails without SUPublicEDKey" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization

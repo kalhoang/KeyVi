@@ -12,7 +12,7 @@
     },
     {
       "action": "wait",
-      "value": "500"
+      "value": "2500"
     },
     {
       "action": "setSecureInput",

@@ -126,6 +126,9 @@ public final class InputHostController {
     /// False only in tests that drive the worker step by step (`InjectionWorker.runUntilIdle`).
     let runsWorkerThread: Bool
     let ruleBox = RuleSetBox()
+    /// Since-launch observations the integration hooks report (tap recoveries, first key after a secure-input
+    /// release); shared with every tap session's pipeline.
+    public let counters = HostCounters()
     let refresh: RefreshRequests
     var inputSourceMonitor: InputSourceMonitor
     var permissionMonitor: PermissionMonitor?

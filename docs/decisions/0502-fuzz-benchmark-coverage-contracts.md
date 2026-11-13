@@ -3,9 +3,11 @@
 - Status: accepted, 2026-11-13; amended 2026-11-13 after the engine and wave-1 merges (fuzz product,
   nightly seed, engine benchmark gate, pipeline benchmark, harness environment); amended 2026-11-13 by W2-E2
   (platform baseline in `perf/`, M2 from the soak, integration hooks, app profiles, privacy canary, egress
-  command); where each gate runs: [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
+  command); amended 2026-11-13 by W3-A (the app side of the hooks in the `Integration` configuration, the release
+  check, `testHook` in the scenario schema, gate-aligned histogram sub-buckets, the `build` and `tests` subcommands);
+  where each gate runs: [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
 - Requirements: QA-R2, QA-R8, QA-R9, QA-R11, QA-R14, QA-R15, QA-R16, ENG-R1230, ENG-R1231, ENG-R1233, ENG
-  section 13.6, PLT-R820 to PLT-R822, PLT-R901, PLT-R906
+  section 13.6, PLT-R330, PLT-R398B, PLT-R730, PLT-R801, PLT-R820 to PLT-R822, PLT-R901, PLT-R906, PLT-R909
 
 The CI scripts call code that other tracks write. These are the names and formats the scripts expect.
 
@@ -132,9 +134,11 @@ runner (`compat-harness bench`, below).
 
 ## Integration harness (`scripts/run-integration.sh`, platform track)
 
-Default command lines (overridable with `COMPAT_HARNESS_RUN_ARGS`, `COMPAT_HARNESS_SOAK_ARGS`,
-`COMPAT_HARNESS_BENCH_ARGS`). The executable product is `compat-harness` (target `CompatHarness`);
-`swift run` needs the product name. The live commands (`run` without `--dry-run`, `soak`, `bench`) need:
+Default command lines (overridable with `COMPAT_HARNESS_TESTS_ARGS`, `COMPAT_HARNESS_RUN_ARGS`,
+`COMPAT_HARNESS_SOAK_ARGS`, `COMPAT_HARNESS_BENCH_ARGS`; `COMPAT_HARNESS_BENCH_RUNS` sets the bench runs, default 5).
+The executable product is `compat-harness` (target `CompatHarness`); `swift run` needs the product name. The live
+commands (`run` without `--dry-run`, `soak`, `bench`) and the `build` subcommand of `scripts/run-integration.sh`
+need:
 
 - `COMPAT_HARNESS_LIVE=1` in the environment, exported only on the self-hosted macOS runner and preferably
   from the runner's own `.env` file, never from a workflow (runner runbook section 3.1). It ties the opt-in to
@@ -162,10 +166,22 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
   `02-platform.md` section 8.1, `budget` = the "Gate" column, `calibrated: false`. Compared at 25 % (PLT-R822)
   against `perf/platform-baseline.json` (the harness itself and `scripts/bench-compare.sh`).
 - TestHost integration tests (QA-R11): `compat-harness run --scenarios compat/scenarios --only 'testhost.*'
-  --output <dir>` (amended by W2-E2). The TestHost scheme has no test action, so the earlier
-  `xcodebuild test -scheme TestHost` cannot run; the `tests` subcommand of `scripts/run-integration.sh` is to
-  switch to the harness command (requested from the CI track; `INTEGRATION_SCHEME` stays for a future UI-test
-  target).
+  --output <dir>`, the `tests` subcommand of `scripts/run-integration.sh` since W3-A (the TestHost scheme has no
+  test action, so the earlier `xcodebuild test -scheme TestHost` could not run).
+- The test build (W3-A): `scripts/run-integration.sh build` runs `xcodegen generate`, then
+  `xcodebuild -scheme App -configuration Integration` and `xcodebuild -scheme TestHost -configuration Debug`
+  (both `-disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES`: on the command line the setting also reaches the
+  SwiftPM package targets, which the xcconfig line does not; derived data in `$INTEGRATION_DERIVED_DATA`, default
+  `.build/integration-build`, outside the uploaded artefact), terminates a copy still running from the install path
+  (SIGTERM, a bounded wait, then SIGKILL; a signal rather than an Apple Event, which would need an Automation grant),
+  installs both into `$INTEGRATION_APP_DIR` (default `~/Applications`) at the same path every time, and fails when
+  the installed executable lacks the hooks marker.
+  Both `integration.yml` jobs run it before the TestHost suite, so the runner always tests the checked-out commit.
+- `bench` compares with `PLATFORM_BASELINE`, default `perf/platform-baseline.json`; `soak` repeats the M2
+  comparison with `bench-compare.sh` when `soak-metrics.json` exists. The push-to-`main` job runs one bench run
+  (`COMPAT_HARNESS_BENCH_RUNS=1`, 120-minute timeout for a 78-minute budget); the nightly job runs five (QA-R14)
+  before the soak, so an overrunning soak never costs the bench result, with a 720-minute timeout for a 618-minute
+  budget (build 15, tests 15, bench 90, soak 498). The soak still runs when the bench step fails a regression.
 - `compat-harness egress --phase local|production --minutes 10 --output <file.json>`: the 13.7 egress test
   (below). Live only with `COMPAT_HARNESS_LIVE=1`, like `run`, `soak` and `bench`.
 
@@ -182,38 +198,80 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
   switch, not 12 s). After the run it restores the backup, also when the run stops on an error or the factory
   configuration fails. `--no-configure` turns this off.
 
-## Integration hooks (W2-E2)
+## Integration hooks (W2-E2, app side W3-A)
 
 The harness reads app state and triggers test hooks through files, so the app needs no listening socket, XPC
 listener or distributed notification (PLT-R909). Only the test build that the self-hosted runner installs answers
 them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Release configuration never sets.
 
+- Condition (W3-A decision): a third xcodegen configuration, `Integration` (`project.yml` `configs`,
+  `Config/Integration.xcconfig`), sets `SWIFT_ACTIVE_COMPILATION_CONDITIONS = INTEGRATION_HOOKS` with release-like
+  code generation (`-O`, whole module, so T2 to T6 measure what ships, PLT-R821), the development bundle ID and the
+  Apple Development identity the runner's TCC grants are tied to (PLT-R751, QA-R12). Chosen over a command-line
+  setting on Debug because Debug is unoptimised and a command-line `SWIFT_ACTIVE_COMPILATION_CONDITIONS` would also
+  replace `DEBUG` in every package target. Release and Debug never mention the condition (checked by
+  `scripts/tests/test_docs_and_workflows.py`), every file under `App/Sources/IntegrationHooks/` is wrapped in
+  `#if INTEGRATION_HOOKS`, and so is the composition root's hook wiring.
+- Release check: the hooks' dispatch queue is labelled `IntegrationHooksBuild.marker` ("INTEGRATION_HOOKS test
+  build: file-drop integration hooks"), a string no other code carries and which a release therefore never
+  contains; `scripts/verify-release.sh` greps the app's executables and frameworks for it and fails ("no integration
+  hooks code"). `scripts/run-integration.sh build` requires it in the installed test build.
+- Shared definition: `AppTestHook`, `AppHookCommand`, `AppHookErrorCode`, `AppHookRequest`, `AppHookResponse`,
+  `AppStateSnapshot` and `IntegrationHookFiles` live in `Diagnostics/IntegrationHooks.swift`; the harness
+  (TestSupport) and the app use the same Codable types, and `IntegrationHooksWireTests` pins the JSON byte for byte.
 - Directory: `~/Library/Application Support/<storage folder>/IntegrationHooks/` (0700). The harness writes
   `request-<n>.json` atomically (0600); the app watches the directory with a vnode `DispatchSource` (no polling),
-  answers with `response-<n>.json` written atomically (temporary file and rename, 0600) and never deletes either
-  file; the harness polls every 50 ms (10 s timeout, 120 s for `latencyProbe`) and removes both. Sequence numbers
-  start at a random multiple of 2^20 per harness process, the harness removes a `response-<n>.json` already present
-  before it writes `request-<n>.json`, and it clears leftover `request-*` and `response-*` files when a run starts,
-  so an answer written after a killed run is never taken for the current one (PLT-R821). The app must answer by
-  the number in the request, not assume numbers start at 1.
+  scans it once when the watcher starts (a request written before is answered too), answers with
+  `response-<n>.json` written atomically (temporary file, `fsync`, rename, 0600) and never deletes either file; the
+  harness polls every 50 ms (10 s timeout, 120 s for `latencyProbe`) and removes both. Sequence numbers start at a
+  random multiple of 2^20 per harness process, the harness removes a `response-<n>.json` already present before it
+  writes `request-<n>.json`, and it clears leftover `request-*` and `response-*` files when a run starts, so an
+  answer written after a killed run is never taken for the current one (PLT-R821). The app answers with the number
+  in the file name, which must equal the request's `sequence`, and never answers a number twice (a response file
+  already present, or one of the last 256 numbers it handled). A number counts as handled only once its answer is
+  on disk: an answer whose write failed is kept and written again by the next scan, without running the command a
+  second time. An unusable directory and a failed write are logged with a fixed reason message (symbolic link, not a
+  directory, another user, permission denied, disk full, I/O error; no path, PLT-R902).
+- App-side file rules (`PosixHookDirectory`): an existing directory must be a real directory of the current user
+  (a link or another user's directory disables the hooks for the run) and is tightened to 0700; a request is opened
+  with `O_NOFOLLOW | O_NONBLOCK` and checked with `fstat` on the descriptor, so links, other users' files, FIFOs and
+  directories are refused without an answer; requests above 4 KiB are answered `unsupported`. A deleted or renamed
+  directory is created and watched again.
 - Request: `{"formatVersion": 1, "sequence": <n>, "command": "<name>", "profile": "normal"}` (`profile` only for
-  `latencyProbe`). Commands: `state`; `resetMetrics` (zero every histogram and counter of `PlatformMetrics`);
-  `tapTimeout` (disable the event tap as macOS does after a callback timeout, then run the normal recovery, which
-  resets the engine, PLT-R330, QA-R11); `revokePermission` (the trust check reports Accessibility revoked until
-  `restorePermission`, so the fail-open path runs, PLT-R730); `restorePermission`; `latencyProbe` (run the built-in
-  latency probe, PLT-R810, with that profile); `checkForUpdates` (start an update check now, 13.7).
+  `latencyProbe`). Commands: `state`; `resetMetrics` (`PlatformMetrics.reset()`: atomic stores of zero into every
+  histogram, sub-bucket and counter, safe while the tap records; the per-bundle AX histograms are emptied);
+  `tapTimeout` (the instrumented tap factory disables the tap as macOS does after a callback timeout and delivers
+  `tapDisabledByTimeout` to the tap callback on the tap thread, so the normal recovery runs and resets the engine,
+  PLT-R330, QA-R11; answered once the main thread re-enabled the tap); `revokePermission` (the instrumented trust
+  check reports Accessibility and posting as denied until `restorePermission`, the host is asked to check at once,
+  and the answer comes once it failed open, PLT-R730); `restorePermission` (answered once the host runs again, 7.3);
+  `latencyProbe` (the built-in latency probe, PLT-R810, with that profile, in a plain text view of its own);
+  `checkForUpdates` (the updater's check, 13.7). One command runs at a time.
 - Response: `{"formatVersion": 1, "sequence": <n>, "ok": true|false, "error": "<code>", "state": {...},
   "latencyProbe": {...}}`. `latencyProbe` is `LatencyProbeResult` (Diagnostics) as JSON. `state`:
-  `processIdentifier`, `state` (`noPermission`, `starting`, `ready`, `paused`, `failOpen`), `mode` (`vi`, `en`),
-  `pauseReason` (`PauseCode`), `failOpenReason` (`FailOpenReason`), `secureInputHolderBundleId`,
-  `firstKeyAfterSecureInputReleaseComposed` (PLT-R398B, nil before the first release), `tapRecoveries`,
-  `engineResetsAfterTapRecovery`, `metrics` (`MetricsSnapshot` as JSON). Metadata only: no text, titles or URLs
-  (PLT-R901). Error codes: `unknownCommand`, `unsupported`, `busy`.
+  `processIdentifier`, `state` (`noPermission`, `starting`, `ready`, `paused`, `failOpen`), `mode` (`vi`, `en`, only
+  while `ready`), `pauseReason` (`PauseCode`), `failOpenReason` (`FailOpenReason`), `secureInputHolderBundleId`
+  (only while paused for secure input), `firstKeyAfterSecureInputReleaseComposed` (PLT-R398B, nil before the first
+  release: set by the pipeline on the first key-down after a release, which is key evidence or a new secure-input
+  generation with the flag off; composed means the key was fed to the engine, so a hotkey, a navigation key, English
+  mode, a passThrough strategy or a fail-open pass is not composed. The poll that publishes the "off" generation
+  right after key evidence belongs to the same release: no second boundary, no second first key),
+  `tapRecoveries` (main-thread re-enables after a timeout), `engineResetsAfterTapRecovery` (timeouts after which the
+  pipeline's engine was reset), `metrics` (`MetricsSnapshot` as JSON). Metadata only: no text, titles or URLs; the
+  input source name and the holder's display name of `HostState` are dropped (PLT-R901). Error codes:
+  `unknownCommand` (a name outside the contract); `unsupported` (another `formatVersion`, a malformed, mismatched or
+  oversized request, `latencyProbe` without a profile or without a Latin layout, no tap to time out, no updater
+  yet); `busy` (another command is running, the host did not reach the expected state within 2 s, or the probe
+  window lost focus).
 - Scenario side: the `testHook` setup step (`tapTimeout`, `revokePermission`, `restorePermission`, optionally
-  `@<n>` to fire after the first n keys) is in the Swift model; its addition to
-  `compat/schema/scenario.schema.json` (`"testHook"` in the `setup[].action` enum) is requested from the schema
-  owner. Until then no scenario file uses it (`ScenarioValidator.pendingSchemaActions`, checked by
-  `ScenarioFilesTests` and the dry run). A scenario that revoked the permission gets it restored afterwards.
+  `@<n>` to fire after the first n keys) is in `compat/schema/scenario.schema.json` since W3-A
+  (`ScenarioValidator.pendingSchemaActions` is empty). `testhost.tapTimeout.recovery` (`tapTimeout@4`, expects
+  "duyeẹt") and `testhost.failOpen.permissionRevoked` (`revokePermission@4` on `v i e e t j`, expects "viêtj" and
+  paused) use it; the text oracle models both hooks against the real engine. A scenario that revoked the permission
+  gets it restored afterwards.
+- Code: `InputHost/IntegrationHooks/` (server, directory, instruments, host actions; `swift test` covers them,
+  including both scenarios end to end on `HostRig`) and `App/Sources/IntegrationHooks/` (thin adapter: composition,
+  probe window).
 
 ## Platform baseline and measurements (W2-E2)
 
@@ -227,10 +285,20 @@ them: the code is compiled under the `INTEGRATION_HOOKS` condition, which the Re
 - T2, T3, T5, T6 come from the app's histograms after a TestHost workload typed under profile `bench-workload`;
   T4 from the latency probe; C1 and M1 share one 10-minute window after a restart; C2 types 10 keys per second for
   5 minutes. Without the hooks the app metrics are skipped with a warning.
+- Histogram precision (W3-A, the W1-A request): the decide-to-posted histograms (`decideToPosted`,
+  `decideToPostedWithAX`, `probeDecideToPosted`) also count values up to 25 ms in fixed linear sub-buckets
+  (`LatencySubBuckets`: 10 µs to 1 ms, 50 µs to 5 ms, 250 µs to 25 ms; bucket (lower, upper], upper end included),
+  so every 8.1 value below 25 ms (T2 0.5, 2 and 3 ms, T3 2, 8 and 15 ms, T4 10 ms, the Intel 4.5 and 22.5 ms) is a
+  bucket edge and "p99 over the gate" is decided exactly. Recording stays two relaxed atomic increments, no lock, no
+  allocation, fixed memory. `HistogramSnapshot` carries them as an optional, self-describing `subBuckets` field
+  (`segments` with `upToNanoseconds` and `widthNanoseconds`, `counts`): JSON written before still decodes, and a
+  histogram without sub-buckets encodes as before, so `MetricsSnapshot` keeps no version field. The harness
+  (`HistogramPercentile`) interpolates inside the sub-bucket (a value in (lower, upper]) and falls back to the log2
+  estimate, never below 25 ms, above that range; the latency probe reports the sub-bucket's upper end; the issue
+  block keeps its log2 values (`HistogramSnapshot.percentile`).
 - The harness applies the gate itself (`RegressionGate`: over the gate, or more than 25 % above the baseline);
-  `scripts/run-integration.sh bench` repeats the baseline comparison with `bench-compare.sh`. Its default
-  `PLATFORM_BASELINE` is to change to `perf/platform-baseline.json` (requested from the CI track); until then the
-  runner's `.env` sets `PLATFORM_BASELINE=perf/platform-baseline.json`.
+  `scripts/run-integration.sh bench` repeats the baseline comparison with `bench-compare.sh` against
+  `PLATFORM_BASELINE`, default `perf/platform-baseline.json` (W3-A), and `soak` does the same for M2.
 
 ## Privacy canary and egress (W2-E2)
 
