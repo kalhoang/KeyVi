@@ -180,7 +180,7 @@ struct PermissionIllustration: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        IllustrationSwitch(animates: !reduceMotion)
+        IllustrationSwitch()
             .id(reduceMotion)
             .frame(width: 52, height: 30)
             .accessibilityElement()
@@ -188,9 +188,10 @@ struct PermissionIllustration: View {
     }
 }
 
-/// The drawn switch: shape and position carry the state; the outline keeps it visible in Increase Contrast.
+/// The drawn switch: shape and position carry the state; the outline keeps it visible in Increase Contrast. It loops
+/// only while Reduce Motion is off; the parent rebuilds it when the setting changes.
 private struct IllustrationSwitch: View {
-    let animates: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isOn = false
 
     var body: some View {
@@ -200,7 +201,7 @@ private struct IllustrationSwitch: View {
         }
         .overlay(Capsule().strokeBorder(.separator))
         .onAppear {
-            guard animates else {
+            guard !reduceMotion else {
                 isOn = true
                 return
             }

@@ -4,7 +4,7 @@
 // - model level: the status item's VoiceOver label is truthful for every host state, every menu entry has a hint,
 //   the switch HUD announces "Tiếng Việt" / "Tiếng Anh";
 // - source level, over every UI folder of the App target: each SwiftUI control carries a label and a hint, each
-//   AppKit alert button a hint, each animation sits next to a Reduce Motion check, no hue is hard-coded (state is
+//   AppKit alert button a hint, each animation call site checks Reduce Motion in its own declaration, no hue is hard-coded (state is
 //   never colour alone), plain-style buttons draw their own focus ring, and every titled window follows a
 //   language change. The source checks are heuristics on purpose; docs/runbooks/accessibility-audit.md lists what
 //   Pa verifies with VoiceOver, Increase Contrast and Reduce Motion.
@@ -200,16 +200,78 @@ import Testing
         }
     }
 
-    @Test func everyAnimationRespectsReduceMotion() throws {
-        // PRD-R67, PRD-R12: a file that animates (explicitly or through a disclosure group) checks Reduce Motion.
-        let animation =
-            /withAnimation\(|\.animation\(|NSAnimationContext|\.animator\(\)|\.transition\(|repeatForever|symbolEffect\(|DisclosureGroup\(/
-        let guardCheck = /accessibilityReduceMotion|accessibilityDisplayShouldReduceMotion|respectsReduceMotion\(\)/
-        for (path, lines) in try CatalogInventory.uiSources() {
-            let code = lines.filter { !Self.isComment($0) }.joined(separator: "\n")
-            guard code.contains(animation) else { continue }
-            #expect(code.contains(guardCheck), "\(path) animates without a Reduce Motion check")
+    static var animation: Regex<(Substring)> {
+        /withAnimation\b|\.animation\(|NSAnimationContext|\.animator\(\)|\.transition\(|repeatForever|symbolEffect\(|DisclosureGroup\(/
+    }
+
+    /// Animation call sites that run without a Reduce Motion check on purpose, keyed `path#declaration`.
+    static let unguardedAnimations: [String: String] = [
+        "App/Sources/Shell/HUDPanels.swift#dismiss": "PRD-R12 allows a plain fade off under Reduce Motion"
+    ]
+
+    /// Animation call sites whose innermost declaration (function, initialiser or computed property) neither
+    /// checks Reduce Motion nor is allowlisted, as `path:line declaration`.
+    static func unguardedAnimationSites(path: String, source: String) -> [String] {
+        let code = SwiftCodeText.strip(source)
+        let scopes = DeclarationScopes(code: code)
+        // A Reduce Motion token, or a name bound to one in this file (`@Environment(...) var reduceMotion`).
+        var tokens = ["accessibilityReduceMotion", "accessibilityDisplayShouldReduceMotion", "respectsReduceMotion()"]
+        tokens += code.matches(of: /accessibilityReduceMotion\)\s*(?:private\s+)?var\s+(\w+)/).map {
+            String($0.output.1)
         }
+        tokens += code.matches(of: /let\s+(\w+)\s*=[^\n]*accessibilityDisplayShouldReduceMotion/).map {
+            String($0.output.1)
+        }
+        var result: [String] = []
+        for match in code.matches(of: animation) {
+            let offset = code.distance(from: code.startIndex, to: match.range.lowerBound)
+            let scope = scopes.enclosing(offset)
+            let name = scope?.name ?? "(file scope)"
+            if unguardedAnimations["\(path)#\(name)"] != nil { continue }
+            let body = scope.map(scopes.text(of:)) ?? ""
+            let words = Set(body.split { !($0.isLetter || $0.isNumber || $0 == "_") }.map(String.init))
+            let guarded = tokens.contains { $0.hasSuffix("()") ? body.contains($0) : words.contains($0) }
+            if !guarded { result.append("\(path):\(scopes.line(of: offset)) \(name)") }
+        }
+        return result
+    }
+
+    @Test func everyAnimationRespectsReduceMotion() throws {
+        // PRD-R67, PRD-R12: each animation call site (explicit, or implicit through a disclosure group) checks
+        // Reduce Motion within its own function or computed property; deliberate exceptions are allowlisted.
+        for (path, lines) in try CatalogInventory.uiSources() {
+            let sites = Self.unguardedAnimationSites(path: path, source: lines.joined(separator: "\n"))
+            #expect(sites == [], "animates without a Reduce Motion check")
+        }
+    }
+
+    @Test func animationScanChecksEachCallSite() {
+        let source = """
+            struct A: View {
+                @Environment(\\.accessibilityReduceMotion) private var reduceMotion
+                var body: some View {
+                    Toggle(isOn: $on) { Text(verbatim: t) }
+                        .onChange(of: on) { if !reduceMotion { withAnimation { x = 1 } } }
+                }
+                func later() {
+                    withAnimation { x = 2 }
+                }
+            }
+            enum HUD {
+                static func present(_ p: NSPanel) {
+                    guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+                    NSAnimationContext.runAnimationGroup { _ in p.animator().alphaValue = 1 }
+                }
+                static func dismiss(_ p: NSPanel) {
+                    NSAnimationContext.runAnimationGroup { _ in p.animator().alphaValue = 0 }
+                }
+            }
+            """
+        #expect(
+            Self.unguardedAnimationSites(path: "X.swift", source: source)
+                == ["X.swift:8 later", "X.swift:17 dismiss", "X.swift:17 dismiss"])
+        let allowlisted = Self.unguardedAnimationSites(path: "App/Sources/Shell/HUDPanels.swift", source: source)
+        #expect(allowlisted == ["App/Sources/Shell/HUDPanels.swift:8 later"])
     }
 
     @Test func everyWindowRootAndSheetDisablesImplicitAnimationsUnderReduceMotion() throws {
