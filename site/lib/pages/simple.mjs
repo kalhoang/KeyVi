@@ -8,7 +8,7 @@ import { esc } from "../util.mjs";
 // A release heading of Keep a Changelog: `## [1.2.0] - 2026-12-01`, `## [1.3.0-beta.1] - ...`.
 const RELEASE_HEADING = /^\[?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)\]?(?:\s|$)/;
 
-/** Release headings get the id `v<version>`: appcast release notes link to #v<version> (ADR 0504). */
+/** Release headings get the id `v<version>`: each release-notes page links to #v<version> (ADR 0504). */
 export function changelogHeadingId(depth, text) {
   const match = depth === 2 ? RELEASE_HEADING.exec(text.trim()) : null;
   return match ? `v${match[1]}` : undefined;
