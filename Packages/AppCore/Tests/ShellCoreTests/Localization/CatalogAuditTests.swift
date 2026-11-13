@@ -31,11 +31,12 @@ import Testing
         StatusText.hintTerminal.rawValue: "data-driven (PLT-R397): compat-rules.json secureInputHints maps Terminal",
         StatusText.hintITerm2.rawValue: "data-driven (PLT-R397): compat-rules.json secureInputHints maps iTerm2",
         StatusText.hintBrowser.rawValue:
-            "data-driven (PLT-R397): no rule maps a browser yet; the browser hint rows are requested from W1-C",
+            "data-driven (PLT-R397): compat-rules.json secureInputHints maps the browsers (decision 0005 Q40)",
     ]
 
-    /// Secure-input hint copy that no compat rule uses yet (see `unusedTypedKeyAllowlist`).
-    static let hintsWithoutRule: Set<String> = ["browser.passwordField"]
+    /// Secure-input hint copy that no compat rule uses yet. Empty since the browser rows of decision 0005 Q40
+    /// (Cốc Cốc's since 2026-11-14): every hint the catalog has is reachable from a rule.
+    static let hintsWithoutRule: Set<String> = []
 
     @Test func catalogFilesAreExactlyTheStringTables() throws {
         let onDisk = try CatalogInventory.tablesOnDisk()

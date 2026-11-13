@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.2",
+  "rulesetVersion": "2026.11.3",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -34,7 +34,8 @@
     { "bundleId": "com.microsoft.edgemac", "hintKey": "browser.passwordField" },
     { "bundleId": "org.mozilla.firefox", "hintKey": "browser.passwordField" },
     { "bundleId": "company.thebrowser.Browser", "hintKey": "browser.passwordField" },
-    { "bundleId": "com.brave.Browser", "hintKey": "browser.passwordField" }
+    { "bundleId": "com.brave.Browser", "hintKey": "browser.passwordField" },
+    { "bundleId": "com.coccoc.Coccoc", "hintKey": "browser.passwordField" }
   ],
   "rules": [
     {
@@ -50,7 +51,7 @@
         "reason": "Selected inline suggestion absorbs the first backspace: 'a'+'s' gives 'aá', 'd'+'d' gives 'dđ'.",
         "evidence": [{ "type": "scenario", "ref": "compat/inline-completion-local-page" }],
         "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY that the omnibox is exposed to AX without enabling renderer accessibility; VERIFY Arc and Dia command bar roles. The tested entry is a placeholder until the scenario passes.",
+        "notes": "VERIFY that the omnibox is exposed to AX without enabling renderer accessibility; VERIFY Arc and Dia command bar roles. The tested entry is a placeholder until the scenario passes. Cốc Cốc (com.coccoc.Coccoc: CFBundleIdentifier and code signature of CocCoc.app 152.0.7977.124 in the vendor installer https://files.coccoc.com/browser/mac/coccoc.dmg, read 2026-11-14 without running it) is Chromium based and matches this rule by the engine fingerprint (PLT-R510); VERIFY its address bar like Chrome's.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-11-01"
       },
