@@ -198,7 +198,9 @@ try {
     assert.deepEqual(value(server, "listen"), ["8080", "default_server"]);
     assert.deepEqual(value(server, "include"), ["/etc/nginx/site/locations.conf"]);
     assert.deepEqual(value(server, "absolute_redirect"), ["off"]);
-    assert.deepEqual(value(server, "error_page"), ["404", "/404.html"]);
+    // A bare directory such as /assets/ (autoindex off) would answer 403 from inside its location, with that
+    // location's year-long Cache-Control; it is answered by the 404 page through the site-wide location instead.
+    assert.deepEqual(server.filter((d) => d.name === "error_page").map((d) => d.args), [["404", "/404.html"], ["403", "=404", "/404.html"]]);
     assert.deepEqual(value(server, "root"), ["/srv/site"]);
     assert.ok(!server.some((d) => d.name === "add_header" || d.name === "location"), "headers and locations come only from the generated file");
     assert.deepEqual(value(http, "server_tokens"), ["off"]);
@@ -217,18 +219,21 @@ try {
     const locations = parseNginx(nginxLocations(rules)).filter((d) => d.name === "location");
     const files = ["/index.html", "/appcast.xml", "/assets/style.css", "/release-notes/1.0.0/index.html"];
     const { samples, skipped } = samplePaths(rules, files);
-    assert.deepEqual(samples.map((s) => s.path), ["/", MISSING_PATH, "/appcast.xml", "/assets/style.css", "/release-notes/1.0.0/"]);
+    assert.deepEqual(samples.map((s) => s.path), ["/", MISSING_PATH, "/appcast.xml", "/assets/style.css", "/assets/", "/download/", "/release-notes/1.0.0/", "/release-notes/"]);
+    assert.deepEqual(samples.filter((s) => s.status === 404).map((s) => s.path), [MISSING_PATH, "/assets/", "/download/", "/release-notes/"], "bare directories answer the 404 page");
     assert.deepEqual(skipped, ["/download/*"]);
     let broken = false;
+    let forbidden = false; // nginx without `error_page 403`: a bare directory answers 403 from its own location
     const server = createServer((request, response) => {
       const path = new URL(request.url, "http://x").pathname;
       const known = path === "/" || files.includes(path) || files.includes(`${path}index.html`);
-      const location = known ? chooseLocation(locations, path) : chooseLocation(locations, "/404.html");
+      const directory = !known && path === "/assets/";
+      const location = known || (forbidden && directory) ? chooseLocation(locations, path) : chooseLocation(locations, "/404.html");
       for (const [name, value] of locationHeaders(location)) {
-        if (broken && path.startsWith("/assets/") && name === "Strict-Transport-Security") continue;
+        if (broken && known && path.startsWith("/assets/") && name === "Strict-Transport-Security") continue;
         response.appendHeader(name, value);
       }
-      response.statusCode = known ? 200 : 404;
+      response.statusCode = known ? 200 : forbidden && directory ? 403 : 404;
       response.end("x");
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));
@@ -236,10 +241,14 @@ try {
       const base = `http://127.0.0.1:${server.address().port}`;
       const good = await checkLive(base, rules, files);
       assert.deepEqual(good.problems, []);
-      assert.equal(good.checked, 5);
+      assert.equal(good.checked, 8);
       broken = true;
       const bad = await checkLive(base, rules, files);
       assert.deepEqual(bad.problems, ["/assets/style.css (200): missing Strict-Transport-Security"]);
+      broken = false;
+      forbidden = true;
+      const directory = await checkLive(base, rules, files);
+      assert.deepEqual(directory.problems, ["/assets/ (403): expected status 404"]);
     } finally {
       server.close();
     }

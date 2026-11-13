@@ -5,8 +5,8 @@
 // built image before anything is pushed.
 //   node deploy/site/check-live-headers.mjs --base http://127.0.0.1:8080 --headers _headers --files files.txt
 // --files lists the paths the image serves, one per line (`/index.html`, `/assets/style.css`, ...); a pattern with
-// no served file is reported and skipped. A path that does not exist is also asked for: it must answer 404 with the
-// site-wide headers. Exit status 0 when every header matches, 1 otherwise.
+// no served file is reported and skipped. A path that does not exist and the bare directory of each prefix pattern are
+// also asked for: they must answer 404 with the site-wide headers. Exit status 0 when every header matches, 1 otherwise.
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +19,10 @@ function requestPath(file) {
   return file.endsWith("/index.html") ? file.slice(0, -"index.html".length) : file;
 }
 
-/** One request per pattern (the first served file it matches), the site root, and a missing page. */
+/**
+ * One request per pattern (the first served file it matches), the site root, a missing page, and the bare directory
+ * of every prefix pattern without an index page, which must answer the 404 page (nginx.conf maps 403 to it).
+ */
 export function samplePaths(rules, files) {
   const served = files.map((f) => f.trim()).filter((f) => f.startsWith("/")).sort();
   const samples = [{ path: "/", status: 200 }, { path: MISSING_PATH, status: 404 }];
@@ -28,6 +31,8 @@ export function samplePaths(rules, files) {
     const file = served.find((f) => patternMatches(rule.pattern, f));
     if (file) samples.push({ path: requestPath(file), status: 200 });
     else skipped.push(rule.pattern);
+    const directory = rule.pattern.endsWith("/*") ? rule.pattern.slice(0, -1) : null;
+    if (directory && !served.includes(`${directory}index.html`)) samples.push({ path: directory, status: 404 });
   }
   return { samples, skipped };
 }
