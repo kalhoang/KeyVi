@@ -223,7 +223,7 @@ final class AXReadTable {
         requestedAttributes = []
         let functions = AXReadFunctions(
             copy: { element, attribute in self.copy(element, attribute) },
-            isSettable: { _, _ in self.settable })
+            isValueSettable: { _ in self.settable })
         return AXAttributeReader(element: field, functions: functions)
     }
 

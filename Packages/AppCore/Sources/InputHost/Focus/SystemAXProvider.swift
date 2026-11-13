@@ -123,9 +123,10 @@ final class SystemAXObservation: AXObservation {
 /// (no Accessibility permission needed).
 struct AXReadFunctions {
     var copy: (AXUIElement, String) -> AXRead.Outcome<CFTypeRef>
-    var isSettable: (AXUIElement, String) -> (error: AXError, settable: Bool)
+    /// Whether `kAXValueAttribute` is settable; the value itself is never read (PLT-R343).
+    var isValueSettable: (AXUIElement) -> (error: AXError, settable: Bool)
 
-    static var system: AXReadFunctions { AXReadFunctions(copy: AXRead.copy, isSettable: AXRead.isSettable) }
+    static var system: AXReadFunctions { AXReadFunctions(copy: AXRead.copy, isValueSettable: AXRead.isValueSettable) }
 }
 
 /// Bounded attribute reads of one focused element (5.2, PLT-R383).
@@ -142,7 +143,7 @@ struct AXAttributeReader {
     /// the first timeout, so one refresh spends at most one messaging timeout here.
     func read(request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
         AXRead.map(functions.copy(element, kAXRoleAttribute)) { $0 as? String }.flatMap { role in
-            let settable = functions.isSettable(element, kAXValueAttribute)
+            let settable = functions.isValueSettable(element)
             if settable.error == .cannotComplete { return .timedOut }
             var session = AXReadSession(copy: functions.copy)
             let attributes = session.attributes(
@@ -269,9 +270,9 @@ enum AXRead {
         }
     }
 
-    static func isSettable(_ element: AXUIElement, _ attribute: String) -> (error: AXError, settable: Bool) {
+    static func isValueSettable(_ element: AXUIElement) -> (error: AXError, settable: Bool) {
         var settable = DarwinBoolean(false)
-        let error = AXUIElementIsAttributeSettable(element, attribute as CFString, &settable)
+        let error = AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
         return (error, settable.boolValue)
     }
 
