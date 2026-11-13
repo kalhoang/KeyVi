@@ -309,6 +309,18 @@ try {
     assert.match(d, /sponsors/i);
   });
 
+  await check("populated: favicon, touch icon and header logo come from the app icon (CLR-R7)", async () => {
+    for (const file of ["favicon.svg", "favicon.ico", "apple-touch-icon.png", "assets/brand/app-icon-64.png", "assets/brand/app-icon-128.png"]) {
+      assert.ok(existsSync(join(populated, file)), `${file} shipped`);
+    }
+    const favicon = await readFile(join(populated, "favicon.svg"), "utf8");
+    assert.match(favicon, /Source: derived from Pa's own artwork/);
+    assert.match(read("index.html"), /<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml">/);
+    const css = await readFile(join(populated, "assets", "style.css"), "utf8");
+    assert.match(css, /\.brand::before\s*\{[^}]*url\("\/assets\/brand\/app-icon-64\.png"\)/, "header logo");
+    for (const [, src] of css.matchAll(/url\("([^"]+)"\)/g)) assert.ok(existsSync(join(populated, src)), `${src} exists`);
+  });
+
   await check("populated: privacy page covers storage, network, diagnostics, analytics none", () => {
     const p = read("rieng-tu", "index.html");
     for (const id of ["luu-tren-may", "gui-di", "chan-doan", "ban-ghi", "trang-web", "xoa-du-lieu"]) assert.ok(p.includes(`id="${id}"`), id);
