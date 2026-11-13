@@ -124,6 +124,8 @@ import Testing
         let integrated = try Build.seededRuleSet().resolve(
             Build.context(bundle: "com.vscodium", engine: .electron, domClasses: ["xterm-helper-textarea"]))
         #expect(integrated.rule == ruleID("editor.vscode.integratedTerminal"))
+        // The more specific rule decides Escape in the shell and in Vim inside the editor.
+        #expect(integrated.features.restoreHotkey == false)
     }
 
     /// Every bundle ID a restore exclusion lists records where it came from in the rule's notes (the task's

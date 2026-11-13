@@ -76,11 +76,25 @@ struct RestoreHotkeyDefaultTests {
         ("com.apple.TextEdit", .native, true),
     ])
     func shippedRulesReachTheTapDecision(bundle: String, engine: EngineFingerprint, enabled: Bool) throws {
+        try expectTapDecision(bundle: bundle, engine: engine, domClasses: [], enabled: enabled)
+    }
+
+    /// The integrated terminal of a VS Code family editor resolves to its own, more specific rule
+    /// (`editor.vscode.integratedTerminal`), which must switch the binding off as well.
+    @Test(arguments: ["com.microsoft.VSCode", "com.vscodium", "com.todesktop.230313mzl4w4u92"])
+    func vscodeIntegratedTerminalSwitchesTheBindingOff(bundle: String) throws {
+        try expectTapDecision(bundle: bundle, engine: .electron, domClasses: ["xterm-helper-textarea"], enabled: false)
+    }
+
+    private func expectTapDecision(bundle: String, engine: EngineFingerprint, domClasses: [String], enabled: Bool)
+        throws
+    {
         let loaded = HostRig.shippedRules
         #expect(!loaded.usedEmbeddedDefaults)
         let rules = try RuleSet(document: loaded.document, overrides: [], optedIn: [])
-        let context = MatchContext(
+        var context = MatchContext(
             bundle: BundleKey(rawValue: bundle), appVersion: nil, macOS: LooseVersion("27.1")!, engine: engine)
+        context.domClasses = domClasses
         let decision = HostDecisionMapping.map(rules.resolve(context), engine: engine, optedIntoPaste: false)
         #expect(decision.restoreHotkeyEnabled == enabled)
     }

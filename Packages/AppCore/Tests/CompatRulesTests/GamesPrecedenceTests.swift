@@ -103,6 +103,22 @@ import Testing
         #expect(solo.tieLoser == nil)
     }
 
+    /// The exception only removes the engine-only candidates: what remains resolves exactly as it would with no
+    /// engine rule at all. Another category rule of the same score is a PLT-R521 tie with the games rule (smaller
+    /// id wins, the tie is recorded), with or without an engine rule for the game's engine; the engine rule's
+    /// presence never decides between two category rules.
+    @Test func categoryTiesResolveAsWithoutTheEngineRule() throws {
+        let typing = Build.rule(
+            "category.aaa", match: RuleMatch(appCategories: [Self.gameCategory]),
+            action: RuleAction(strategy: .backspaceReplace))
+        let withEngine = try Build.ruleSet([Self.engineRule(.electron), typing, Self.gamesRule()])
+            .resolve(Self.game(.electron))
+        let withoutEngine = try Build.ruleSet([typing, Self.gamesRule()]).resolve(Self.game(.electron))
+        #expect(withEngine == withoutEngine)
+        #expect(withEngine.rule == ruleID("category.aaa"))
+        #expect(withEngine.tieLoser == ruleID("games.passThrough"))
+    }
+
     /// PLT-R522: a user override outranks every shipped rule, the games rule included; within the user's own
     /// overrides the exception applies the same way.
     @Test func userOverridesStillOutrankShippedRules() throws {
