@@ -62,7 +62,7 @@ Chi tiết: [spec/03-product.md](spec/03-product.md) nguyên tắc 4 và mục 1
 
 Không xin quyền nào khác: không Automation, không Ghi màn hình, không Toàn quyền truy cập đĩa, không Danh bạ, không camera, không truy cập mạng ngoài việc kiểm tra cập nhật. Ô mật khẩu luôn được bỏ qua. Nếu thiếu quyền hoặc quyền bị thu hồi, bàn phím vẫn dùng bình thường và menu chỉ cho bạn cách khắc phục (fail open).
 
-Chi tiết: [spec/02-platform.md](spec/02-platform.md) mục 7. Tên các mục trong Cài đặt hệ thống theo từng phiên bản macOS sẽ được kiểm tra lại trên máy dùng tiếng Việt trước khi phát hành (VERIFY).
+Chi tiết: [spec/02-platform.md](spec/02-platform.md) mục 7. Quản trị viên CNTT muốn cấp sẵn các quyền này bằng hồ sơ quản lý thiết bị (MDM): xem [Managed Macs](docs/support/managed-macs.md) (tiếng Anh). Tên các mục trong Cài đặt hệ thống theo từng phiên bản macOS sẽ được kiểm tra lại trên máy dùng tiếng Việt trước khi phát hành (VERIFY).
 
 ## Tự biên dịch
 

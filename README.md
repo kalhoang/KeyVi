@@ -62,7 +62,7 @@ Details: [spec/03-product.md](spec/03-product.md) principle 4 and section 11, [s
 
 No other permission is requested: no Automation, Screen Recording, Full Disk Access, Contacts, camera or network access beyond the update check. Password fields are always passed through untouched. If a permission is missing or revoked, the keyboard keeps working normally and the menu shows what to do (fail open).
 
-Details: [spec/02-platform.md](spec/02-platform.md) section 7.
+Details: [spec/02-platform.md](spec/02-platform.md) section 7. IT administrators who pre-approve the permissions with a device management profile: see [Managed Macs](docs/support/managed-macs.md).
 
 ## Build from source
 
@@ -95,7 +95,7 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 | `compat/` | Per-app behaviour rules, verification matrix, [compatibility script](compat/SCRIPT.md) |
 | `data/` | Pinned inputs for bundled word lists |
 | `site/` | The website (Vietnamese at `/`, English at `/en/`) |
-| `docs/` | [Decisions](docs/decisions/), [architecture](docs/architecture/), [runbooks](docs/runbooks/release.md), [support replies](docs/support/replies.md), [provenance](docs/provenance/README.md) |
+| `docs/` | [Decisions](docs/decisions/), [architecture](docs/architecture/), [runbooks](docs/runbooks/release.md), [support replies](docs/support/replies.md), [managed Macs](docs/support/managed-macs.md), [provenance](docs/provenance/README.md) |
 | `spec/` | The specification, the single source of truth |
 
 ## Licence and provenance

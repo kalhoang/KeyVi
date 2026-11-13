@@ -194,7 +194,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R750 | Developer ID signing, hardened runtime, notarized | `Config/Signing.xcconfig`, `Config/Release.xcconfig`, release scripts | R, M | release track; Pa (credentials) | **Pa** |
 | PLT-R751 | Dev builds use .dev bundle ID and Apple Development | `Config/Debug.xcconfig` | L | skeleton (done) |  |
 | PLT-R752 | Updates in place keep identity and trust | Sparkle, release scripts | R, M (13.5) | W2-D; release track; Pa | **Pa** |
-| PLT-R760 | MDM / PPPC documentation | docs | D | docs track |  |
+| PLT-R760 | MDM / PPPC documentation | `docs/support/managed-macs.md` | D, V | docs track (done; macOS 27 DDM note VERIFY) |  |
 | PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` (log2 buckets plus gate-aligned sub-buckets for T2 and T3, `PlatformMetrics.reset()`) | U (`MetricsPrecisionTests`, `HotPathAllocationTests`) | W1-A; W3-A |  |
 | PLT-R802 | Signposts around callback, job, AX | `PlatformSignposts` | U, I | W1-A |  |
 | PLT-R803 | No steady-state timer faster than 2 s | `TapWatchdog`, monitors, ADR 0309 | U, I (wakeups) | W1-F2, W1-E |  |
