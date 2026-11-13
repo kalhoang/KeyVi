@@ -58,11 +58,13 @@ struct AppOverrideState {
 }
 
 extension CompatibilityModeChoice {
-    /// `.automatic` removes the compatibility fields; the others write `user.compat.<bundle>` dated today. A
+    /// `.automatic` removes the compatibility fields; the modes write `user.compat.<bundle>` dated today. A
     /// "type here anyway" already in force for the app is kept in the same rule (PLT-R540, PLT-R520).
+    /// `.guidedTest` writes nothing: it is the result already in force, not a mode the pane can write.
     public func commands(
         for bundle: BundleKey, overrides: [StoredRuleOverride], at date: Date, timeZone: TimeZone = .current
     ) -> [CompatibilityModeCommand] {
+        guard self != .guidedTest else { return [] }
         let state = AppOverrideState(bundle: bundle, overrides: overrides)
         let day = Self.day(date, timeZone: timeZone)
         var commands: [CompatibilityModeCommand] = []

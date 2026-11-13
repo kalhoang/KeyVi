@@ -17,7 +17,8 @@ public struct AppsPaneRow: Sendable, Hashable, Identifiable {
     public var compatibilityMode: CompatibilityModeChoice
     /// Name from the matrix row, for apps that are not installed (the App prefers the installed app's name).
     public var matrixDisplayName: String?
-    /// When the user chose `compatibilityMode` ("set by you on <date>", PLT-R541); nil for automatic.
+    /// When the user chose `compatibilityMode` or applied the guided test's result ("set by you on <date>",
+    /// PLT-R541): the stored override's `createdAt`. Nil for automatic.
     public var compatibilitySetOn: Date?
 }
 
@@ -28,12 +29,25 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
     case typeSlower  // backspaceReplace with 5 ms pacing
     case selectThenType  // selectReplace
     case pasteText  // paste, requiresUserOptIn, clipboard explanation (PLT-R460, PLT-R462)
+    /// Not a choice: the app's slot holds a guided test result (PLT-R1205 step 5) whose action is none of the
+    /// modes above, for example `backspaceReplace` with `axSelection`, `axReplace` or `passThrough` (PLT-R540).
+    /// Shown so the pane never says "automatic" while that override is in force; "Tự động" removes it.
+    case guidedTest
+
+    /// PRD-R36: what the pane offers, automatic plus at most three plain choices.
+    public static let choices: [CompatibilityModeChoice] = [.automatic, .typeSlower, .selectThenType, .pasteText]
+
+    /// The radio group of the app detail sheet: the choices, plus the guided test's result while it is in force.
+    public static func options(current: CompatibilityModeChoice) -> [CompatibilityModeChoice] {
+        current == .guidedTest ? choices + [.guidedTest] : choices
+    }
 
     /// PLT-R408: 5 ms between synthetic events.
     static let slowerPacingMicroseconds = 5_000
 
     /// Rule JSON for `rule-overrides.json` (02-platform.md 5.4 shape, `id` prefixed `user.`), or nil for
-    /// `.automatic`, which means "remove this app's compatibility override". `date` is `YYYY-MM-DD`.
+    /// `.automatic`, which means "remove this app's compatibility override", and for `.guidedTest`, which the pane
+    /// never writes. `date` is `YYYY-MM-DD`.
     /// `.pasteText` carries no `requiresUserOptIn` gate: the Apps pane shows the clipboard explanation before the
     /// user picks it, and that choice is the user's opt-in for this app (PLT-R460, PLT-R462).
     public func overrideRule(for bundle: BundleKey, date: String) -> JSONValue? {
@@ -49,7 +63,7 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
 
     private var action: [String: JSONValue]? {
         switch self {
-        case .automatic: nil
+        case .automatic, .guidedTest: nil
         case .typeSlower:
             [
                 "strategy": .string(InjectionStrategy.backspaceReplace.rawValue),
@@ -65,17 +79,17 @@ public enum CompatibilityModeChoice: String, Sendable, Hashable, CaseIterable {
     /// (`PerAppOverrideSlot.compat`, PLT-R540).
     public static func ruleID(for bundle: BundleKey) -> RuleID { PerAppOverrideSlot.compat.ruleID(for: bundle) }
 
-    /// Reads the choice back from a stored override (the inverse of `overrideRule`).
+    /// Reads the state back from the app's slot (the inverse of `overrideRule`): a mode only when the rule does
+    /// exactly what the pane writes for it, "type here anyway" aside (it rides along with any mode, PLT-R540);
+    /// any other action there is a guided test result (`.guidedTest`). Nil for other rules and for a slot rule
+    /// without a known strategy, which the rule loader rejects (it is not in force).
     init?(overrideRule rule: JSONValue) {
         guard let id = rule["id"]?.stringValue, id.hasPrefix(PerAppOverrideSlot.compat.prefix),
-            let strategy = rule["action"]?["strategy"]?.stringValue
+            var action = rule["action"]?.objectValue,
+            let strategy = action["strategy"]?.stringValue, InjectionStrategy(rawValue: strategy) != nil
         else { return nil }
-        switch InjectionStrategy(rawValue: strategy) {
-        case .backspaceReplace where rule["action"]?["params"]?["interEventDelayUs"] != nil: self = .typeSlower
-        case .selectReplace: self = .selectThenType
-        case .paste: self = .pasteText
-        default: return nil
-        }
+        action["requireTextFocus"] = nil
+        self = Self.choices.first { $0.action == action } ?? .guidedTest
     }
 }
 
@@ -174,16 +188,18 @@ extension CompatibilityModeChoice {
         case .typeSlower: .compatTypeSlower
         case .selectThenType: .compatSelectThenType
         case .pasteText: .compatPasteText
+        case .guidedTest: .compatGuidedTest
         }
     }
 
-    /// PRD-R36: one sentence per choice.
+    /// PRD-R36: one sentence per choice (and for the guided test's state).
     public var explanation: AppsText {
         switch self {
         case .automatic: .compatAutomaticExplanation
         case .typeSlower: .compatTypeSlowerExplanation
         case .selectThenType: .compatSelectThenTypeExplanation
         case .pasteText: .compatPasteTextExplanation
+        case .guidedTest: .compatGuidedTestExplanation
         }
     }
 }

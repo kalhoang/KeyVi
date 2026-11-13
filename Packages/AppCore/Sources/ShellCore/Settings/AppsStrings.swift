@@ -45,6 +45,8 @@ public enum AppsText: String, LocalizationKey {
     case compatSelectThenTypeExplanation = "apps.compat.selectThenType.explanation"
     case compatPasteText = "apps.compat.pasteText"
     case compatPasteTextExplanation = "apps.compat.pasteText.explanation"
+    case compatGuidedTest = "apps.compat.guidedTest"
+    case compatGuidedTestExplanation = "apps.compat.guidedTest.explanation"
     case compatSetOn = "apps.compat.setOn"
     case pasteTitle = "apps.paste.title"
     case pasteBody = "apps.paste.body"
@@ -62,6 +64,9 @@ public enum AppsControl: String, AccessibleControl {
     case rowDetails
     case rowReport
     case detailCompatibility
+    /// The guided test's result in the compatibility radio group (`CompatibilityModeChoice.guidedTest`): not one
+    /// of the PRD-R36 choices, so its row has its own label and a hint on how to remove it.
+    case detailCompatibilityGuided
     case detailAdvanced
     case detailReport
     case detailClose

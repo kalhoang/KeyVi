@@ -34,7 +34,7 @@ import Testing
     }
 
     @Test func overridesDecodeAsRulesOfTheSchema() throws {
-        for choice in CompatibilityModeChoice.allCases where choice != .automatic {
+        for choice in CompatibilityModeChoice.choices where choice != .automatic {
             var json = try #require(choice.overrideRule(for: bundle, date: "2026-11-13"))
             #expect(CompatibilityModeChoice(overrideRule: json) == choice)
             json = .object(json.objectValue!.filter { $0.key != "provenance" })  // provenance coding is W1-C's
@@ -59,14 +59,36 @@ import Testing
 
     @Test func foreignOverridesAreNotCompatibilityModes() {
         #expect(CompatibilityModeChoice(overrideRule: .object(["id": .string("user.ignore.1")])) == nil)
-        let plain = JSONValue.object([
-            "id": .string("user.compat.x"), "action": .object(["strategy": .string("backspaceReplace")]),
+        let textFocus = JSONValue.object([
+            "id": .string("user.textfocus.x"), "action": .object(["strategy": .string("selectReplace")]),
         ])
-        #expect(CompatibilityModeChoice(overrideRule: plain) == nil)
-        let ax = JSONValue.object([
-            "id": .string("user.compat.x"), "action": .object(["strategy": .string("axReplace")]),
+        #expect(CompatibilityModeChoice(overrideRule: textFocus) == nil)
+        let noStrategy = JSONValue.object(["id": .string("user.compat.x"), "action": .object([:])])
+        #expect(CompatibilityModeChoice(overrideRule: noStrategy) == nil)
+        let unknown = JSONValue.object([
+            "id": .string("user.compat.x"), "action": .object(["strategy": .string("teleport")]),
         ])
-        #expect(CompatibilityModeChoice(overrideRule: ax) == nil)
+        #expect(CompatibilityModeChoice(overrideRule: unknown) == nil)
+    }
+
+    /// The app's slot holds either a pane mode or a guided test result (PLT-R540): any other action there is the
+    /// guided test's, shown as such rather than as "automatic".
+    @Test func otherActionsInTheAppsSlotAreSetByTheGuidedTest() {
+        for strategy in ["backspaceReplace", "axReplace", "passThrough"] {
+            let rule = JSONValue.object([
+                "id": .string("user.compat.x"), "action": .object(["strategy": .string(strategy)]),
+            ])
+            #expect(CompatibilityModeChoice(overrideRule: rule) == .guidedTest, "\(strategy)")
+        }
+        // "Type here anyway" rides along with a mode in the same rule (PLT-R540).
+        let slower = JSONValue.object([
+            "id": .string("user.compat.x"),
+            "action": .object([
+                "strategy": .string("backspaceReplace"), "params": .object(["interEventDelayUs": .number(5_000)]),
+                "requireTextFocus": .string("never"),
+            ]),
+        ])
+        #expect(CompatibilityModeChoice(overrideRule: slower) == .typeSlower)
     }
 }
 
@@ -196,15 +218,17 @@ import Testing
         #expect(english.rememberedModeTitle == .modeEnglish)
         #expect(
             CompatibilityModeChoice.allCases.map(\.title) == [
-                .compatAutomatic, .compatTypeSlower, .compatSelectThenType, .compatPasteText,
+                .compatAutomatic, .compatTypeSlower, .compatSelectThenType, .compatPasteText, .compatGuidedTest,
             ])
         #expect(
             CompatibilityModeChoice.allCases.map(\.explanation) == [
                 .compatAutomaticExplanation, .compatTypeSlowerExplanation, .compatSelectThenTypeExplanation,
-                .compatPasteTextExplanation,
+                .compatPasteTextExplanation, .compatGuidedTestExplanation,
             ])
-        // PRD-R36: at most three plain choices besides automatic; only paste needs the clipboard explanation.
-        #expect(CompatibilityModeChoice.allCases.filter { $0 != .automatic }.count <= 3)
+        // PRD-R36: at most three plain choices besides automatic; only paste needs the clipboard explanation. The
+        // guided test's state is shown, never offered as a choice.
+        #expect(CompatibilityModeChoice.choices.filter { $0 != .automatic }.count <= 3)
+        #expect(!CompatibilityModeChoice.choices.contains(.guidedTest))
         #expect(CompatibilityModeChoice.allCases.filter(\.needsClipboardExplanation) == [.pasteText])
     }
 
