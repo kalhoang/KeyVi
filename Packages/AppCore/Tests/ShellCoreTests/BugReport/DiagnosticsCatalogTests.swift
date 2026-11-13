@@ -80,6 +80,31 @@ import Testing
     }
 }
 
+@Suite struct ClipboardNoticeTests {
+    /// PRD-R48: each surface says, before any clipboard write, which of its buttons write to the clipboard; the
+    /// notice names them with their visible titles, so a renamed button cannot leave the notice behind.
+    @Test(arguments: [InterfaceLanguage.vietnamese, .english])
+    func noticesNameEveryButtonThatWritesTheClipboard(_ language: InterfaceLanguage) throws {
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let localizer = Localizer(language: language, appBundle: app.bundle)
+        let surfaces: [(DiagnosticsText, [DiagnosticsControl])] = [
+            (.clipboardNotice, [.copyReport, .github]),
+            (.misbehavesClipboardNotice, [.copyReport, .copySuggestion, .openGitHubIssue]),
+        ]
+        for (notice, buttons) in surfaces {
+            let text = localizer.format(notice, "Example")
+            #expect(text.contains("Example"), "\(notice) names the app")
+            for button in buttons {
+                let title = localizer.string(button.labelKey)
+                #expect(text.contains(title), "\(notice) does not name \(title)")
+            }
+        }
+        // The sheet's clipboard buttons, the ones whose output the copied-block preview shows, are exactly the
+        // ones the shared notice names.
+        #expect(ReportPreviewFormat.copiedBlock.paths.map(\.control) == [.copyReport, .github])
+    }
+}
+
 @Suite struct DiagnosticsCopyTests {
     static let states: [HostStateCode] =
         [.noPermission, .starting, .readyVietnamese, .readyEnglish]
