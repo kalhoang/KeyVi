@@ -46,7 +46,8 @@ public enum StatusPresentation {
             return mode == .vietnamese ? .secureInputVietnamese : .secureInputEnglish
         case .passThroughRule:
             return .ignoredApp
-        case .nonLatinInputSource, .builtInVietnameseSource, .sessionInactive, .userDisabled, .noTextFocus:
+        case .nonLatinInputSource, .builtInVietnameseSource, .sessionInactive, .userDisabled, .noTextFocus,
+            .diagnosticsTest:
             return .paused
         }
     }
@@ -60,7 +61,8 @@ public enum StatusPresentation {
             return MenuText.iconStarting.rawValue
         case (.paused, .paused(.noTextFocus)):
             return MenuText.iconPausedNoTextFocus.rawValue
-        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)):
+        case (.paused, .paused(.sessionInactive)), (.paused, .paused(.userDisabled)),
+            (.paused, .paused(.diagnosticsTest)):
             return MenuText.iconPausedOther.rawValue
         case (.notWorking, .failOpen(let reason)) where reason != .permissionRevoked:
             return MenuText.iconNotWorkingFailOpen.rawValue

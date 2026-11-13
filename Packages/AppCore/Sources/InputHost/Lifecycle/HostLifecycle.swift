@@ -26,6 +26,10 @@ public enum LifecycleInput: Sendable, Hashable {
     case tapDisabledBySystem(byTimeout: Bool)
     case sessionActive(Bool)
     case userDisabled(Bool)
+    /// The guided test of "This app misbehaves" starts (`true`) or ends (`false`) typing with its own strategy
+    /// (PLT-R1205 steps 3-5). Calls nest: only the first start and the matching last end change the state, and
+    /// an end without a start is ignored.
+    case diagnosticsPassThrough(Bool)
 }
 
 public enum LifecycleEffect: Sendable, Hashable {
@@ -45,6 +49,9 @@ public enum LifecycleEffect: Sendable, Hashable {
     case recordHealth(HealthEventKindCode)
     /// More than 3 system disables within 10 minutes (PLT-R330 step 5).
     case showTapInstabilityNotice
+    /// The phase is unchanged but a flag the tap reads changed (diagnostics pass-through): publish the snapshot
+    /// again with the current phase.
+    case publishFlags
 }
 
 /// Health kinds the lifecycle records (mirrors the Diagnostics `HealthEvent.Kind` cases it uses, so this
@@ -85,6 +92,11 @@ public struct HostLifecycle: Sendable, Hashable {
     public private(set) var phase: LifecycleSnapshot.Phase = .starting
     /// The user's "turn off" switch: a pause reason (`paused(userDisabled)`), not a lifecycle phase.
     public private(set) var userDisabled = false
+    /// The guided test is typing: a pause reason (`paused(diagnosticsTest)`), not a lifecycle phase.
+    public var diagnosticsPassThrough: Bool { passThroughDepth > 0 }
+
+    /// Nesting depth of `.diagnosticsPassThrough` calls.
+    private var passThroughDepth = 0
 
     private var launched = false
     /// nil until the first status arrives.
@@ -111,6 +123,7 @@ public struct HostLifecycle: Sendable, Hashable {
         case .permissionsChanged(let status): return permissionsChanged(granted: Self.looksGranted(status))
         case .sessionActive(let active): return sessionChanged(active: active)
         case .userDisabled(let disabled): return userDisabledChanged(disabled)
+        case .diagnosticsPassThrough(let on): return passThroughChanged(on)
         default: break
         }
         guard launched else { return [] }
@@ -123,7 +136,7 @@ public struct HostLifecycle: Sendable, Hashable {
         case .postingBroken: return postingBroken(at: now)
         case .tapDisabledBySystem(let byTimeout):
             return systemDisabled(reason: byTimeout ? .tapTimeout : .tapDisabledByUserInput, at: now)
-        case .launched, .permissionsChanged, .sessionActive, .userDisabled: return []
+        case .launched, .permissionsChanged, .sessionActive, .userDisabled, .diagnosticsPassThrough: return []
         }
     }
 
@@ -279,6 +292,20 @@ public struct HostLifecycle: Sendable, Hashable {
         guard disabled != userDisabled else { return [] }
         userDisabled = disabled
         return launched ? [.resetComposition] : []
+    }
+
+    /// PLT-R1205, PLT-R210: entering stops transforming in the tap's next callback (publish), then resets;
+    /// leaving resets first, so the tap never transforms with a stale composition, then publishes.
+    private mutating func passThroughChanged(_ on: Bool) -> [LifecycleEffect] {
+        let wasOn = diagnosticsPassThrough
+        if on {
+            passThroughDepth += 1
+        } else {
+            guard passThroughDepth > 0 else { return [] }
+            passThroughDepth -= 1
+        }
+        guard diagnosticsPassThrough != wasOn, launched else { return [] }
+        return on ? [.publishFlags, .resetComposition] : [.resetComposition, .publishFlags]
     }
 
     // MARK: - Helpers

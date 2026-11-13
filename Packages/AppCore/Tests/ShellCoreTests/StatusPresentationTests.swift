@@ -16,7 +16,7 @@ enum AllHostStates {
         hintKey: nil)
     static let pauseReasons: [PauseReason] = [
         .secureInput(holder), .secureInput(nil), .nonLatinInputSource(name: "Kotoeri"), .builtInVietnameseSource,
-        .passThroughRule(rule), .secureField, .sessionInactive, .userDisabled, .noTextFocus,
+        .passThroughRule(rule), .secureField, .sessionInactive, .userDisabled, .noTextFocus, .diagnosticsTest,
     ]
     static let failOpenReasons: [FailOpenReason] = [
         .permissionRevoked, .postingBroken, .tapUnavailable, .watchdog, .callbackStuck,
@@ -42,6 +42,7 @@ enum AllHostStates {
             .paused(.sessionInactive): .paused,
             .paused(.userDisabled): .paused,
             .paused(.noTextFocus): .paused,
+            .paused(.diagnosticsTest): .paused,
             .failOpen(.permissionRevoked): .notWorking,
             .failOpen(.postingBroken): .notWorking,
             .failOpen(.tapUnavailable): .notWorking,
@@ -95,6 +96,7 @@ enum AllHostStates {
         #expect(key(.paused(.noTextFocus)) == MenuText.iconPausedNoTextFocus.rawValue)
         #expect(key(.paused(.userDisabled)) == MenuText.iconPausedOther.rawValue)
         #expect(key(.paused(.sessionInactive)) == MenuText.iconPausedOther.rawValue)
+        #expect(key(.paused(.diagnosticsTest)) == MenuText.iconPausedOther.rawValue)
         #expect(key(.noPermission) == MenuText.iconNotWorking.rawValue)
         #expect(key(.failOpen(.permissionRevoked)) == MenuText.iconNotWorking.rawValue)
         #expect(key(.failOpen(.watchdog)) == MenuText.iconNotWorkingFailOpen.rawValue)

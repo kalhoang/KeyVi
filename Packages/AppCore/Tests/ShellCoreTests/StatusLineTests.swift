@@ -195,6 +195,7 @@ import Testing
             .paused(.sessionInactive): nil,
             .paused(.userDisabled): (.userDisabled, .none),
             .paused(.noTextFocus): (.noTextFocus, .overrideTextFocus(bundle: frontmost.bundle)),
+            .paused(.diagnosticsTest): nil,  // the guided test's own pause: its panel says what happens
             .failOpen(.permissionRevoked): (.noPermission, .grantPermission),
             .failOpen(.postingBroken): (.postingBroken, .reportProblem),
             .failOpen(.tapUnavailable): (.tapUnavailable, .reportProblem),
@@ -218,7 +219,7 @@ import Testing
     @Test func expectedPausesAndHealthyStatesShowNoLine() {
         for state: HostState in [
             .starting, .ready(.vietnamese), .ready(.english), .paused(.secureField), .paused(.sessionInactive),
-            .paused(.passThroughRule(AllHostStates.rule)),
+            .paused(.passThroughRule(AllHostStates.rule)), .paused(.diagnosticsTest),
         ] {
             #expect(line(state) == nil, "\(state)")
         }

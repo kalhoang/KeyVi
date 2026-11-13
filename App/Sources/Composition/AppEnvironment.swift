@@ -42,6 +42,8 @@ final class AppEnvironment {
     var importCandidates: [ImportCandidate] = []
     var settingsWindow: SettingsWindowController?
     var diagnosticsWindow: DiagnosticsWindowController?
+    /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
+    var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
     /// QA-R42: the first launch after an update checks the host once it left `starting`.
     var selfCheckPending = false

@@ -971,6 +971,24 @@
         }
       }
     },
+    "diagnostics.state.paused.diagnosticsTest" : {
+      "comment" : "PLT-R1201 state explanation while the guided test of PLT-R1205 types into the selected field with its own method.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused while the guided test types into the selected field."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang tạm dừng trong lúc gõ thử tự động vào ô đang chọn."
+          }
+        }
+      }
+    },
     "diagnostics.state.paused.noTextFocus" : {
       "extractionState" : "manual",
       "localizations" : {

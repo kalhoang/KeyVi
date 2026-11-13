@@ -26,6 +26,7 @@ public enum DiagnosticsText: String, LocalizationKey {
     case statePausedSession = "diagnostics.state.paused.sessionInactive"
     case statePausedUser = "diagnostics.state.paused.userDisabled"
     case statePausedNoText = "diagnostics.state.paused.noTextFocus"
+    case statePausedDiagnosticsTest = "diagnostics.state.paused.diagnosticsTest"
     case stateFailPermission = "diagnostics.state.failOpen.permissionRevoked"
     case stateFailPosting = "diagnostics.state.failOpen.postingBroken"
     case stateFailTap = "diagnostics.state.failOpen.tapUnavailable"
@@ -292,6 +293,7 @@ public enum DiagnosticsCopy {
         case .sessionInactive: .statePausedSession
         case .userDisabled: .statePausedUser
         case .noTextFocus: .statePausedNoText
+        case .diagnosticsTest: .statePausedDiagnosticsTest
         }
     }
 

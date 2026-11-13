@@ -267,6 +267,12 @@ public final class InputHostController {
     /// Status for the menu "Với <App>" submenu and diagnostics.
     public func currentFocus() -> FocusSnapshot { channels.snapshots.focus.load() }
 
+    /// The current layout's key table (PLT-R360), for the hotkey recorder and the latency probe.
+    public func currentLayoutTable() -> LayoutTable? { channels.snapshots.inputSource.load().table }
+
+    /// Enabled input sources (IDs and names), for the layout binding in Settings (PLT-R373).
+    public func enabledInputSources() -> [InputSourceInfo] { dependencies.inputSources.enabledSources() }
+
     /// Immediate secure-input poll when the menu opens (PLT-R395).
     public func refreshSecureInput() -> SecureInputSnapshot {
         secureInputMonitor?.pollNow() ?? channels.snapshots.secureInput.load()
@@ -290,6 +296,16 @@ public final class InputHostController {
         guard active != recorderActive else { return }
         recorderActive = active
         publishLifecycle(lifecycle.phase)
+    }
+
+    /// The guided test of "This app misbehaves" is about to type (`true`) or has finished (`false`)
+    /// (PLT-R1205 steps 3-5). While on, the tap passes every keyboard event unchanged without feeding the engine,
+    /// hotkeys are suspended so nothing is written to per-app memory and the manual mode stays as it is, and the
+    /// composition is reset on entry and exit (PLT-R210). Calls nest; each `true` needs one `false`. The tap reads
+    /// the flag from the lifecycle snapshot (PLT-R304: no lock, no allocation).
+    public func setDiagnosticsPassThrough(_ on: Bool) {
+        guard !stopped else { return }
+        feed(.diagnosticsPassThrough(on))
     }
 
     /// Data for the diagnostics report (PLT-R1202), metadata only.

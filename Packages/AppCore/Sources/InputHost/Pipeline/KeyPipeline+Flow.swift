@@ -69,7 +69,9 @@ extension KeyPipeline {
         noteStateTransition(state, generation: focus.generation)
         let hotkey = feedHotkeys(event, now: now)
         if seen.postingBroken || !state.allowsSwallowing { return failOpenPass(event) }  // PLT-R730
-        let hotkeysActive = !lifecycle.recorderActive  // PRD-R15: the recorder is capturing keys
+        // PRD-R15: the recorder is capturing keys. PLT-R1205: the guided test types; a toggle would write
+        // per-app memory and change the manual mode.
+        let hotkeysActive = !lifecycle.recorderActive && !lifecycle.diagnosticsPassThrough
         // PRD-R14: autorepeat never toggles, whatever the recogniser reports; the repeat is consumed below.
         if hotkeysActive && !event.autorepeat && (hotkey == .toggleTap || hotkey == .toggleCombo) {
             toggleMode(from: mode, state: state, focus: focus)

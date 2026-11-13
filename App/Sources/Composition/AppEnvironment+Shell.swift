@@ -225,19 +225,20 @@ extension AppEnvironment: StatusMenuActions {
 
     func diagnosticsController() -> DiagnosticsWindowController {
         if let diagnosticsWindow { return diagnosticsWindow }
-        let controller = DiagnosticsWindowController(language: language) { [unowned self] in diagnosticsReport() }
+        let controller = DiagnosticsWindowController(
+            language: language, report: { [unowned self] in diagnosticsReport() }, services: diagnosticsServices())
         diagnosticsWindow = controller
         return controller
     }
 
     /// PLT-R1202: metadata only, assembled by ShellCore from the live host; conflicts are rescanned so the report
-    /// does not show an app the user has quit since launch.
-    func diagnosticsReport() -> DiagnosticsReport {
+    /// does not show an app the user has quit since launch. The draft adds only the user's choices (PRD-R47).
+    func diagnosticsReport(draft: BugReportDraft? = nil) -> DiagnosticsReport {
         host.rescanConflicts()
         return ReportAssembler.report(
             identity: appIdentity, system: SystemInfoReader.current(uiLanguage: language.localizer.language),
             host: host.reportContext(), settings: settings, metrics: diagnostics.metrics.snapshot(),
-            health: diagnostics.health.recent(limit: 50), probe: nil, draft: nil, now: Date())
+            health: diagnostics.health.recent(limit: 50), probe: latencyProbeResult, draft: draft, now: Date())
     }
 
     // MARK: Safe mode (PLT-R1009)

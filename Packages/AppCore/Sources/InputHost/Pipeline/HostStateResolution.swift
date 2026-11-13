@@ -17,6 +17,7 @@ enum HostStateResolution {
         case .sessionInactive: return .paused(.sessionInactive)
         case .running: break
         }
+        if lifecycle.diagnosticsPassThrough { return .paused(.diagnosticsTest) }  // PLT-R1205 guided test
         if lifecycle.userDisabled { return .paused(.userDisabled) }
         // PLT-R398A: only two signals pause for security, the OS secure-input state and a secure field.
         // PLT-R398B: key evidence for this generation means the OS flag no longer blocks the tap.

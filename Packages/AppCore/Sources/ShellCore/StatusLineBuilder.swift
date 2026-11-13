@@ -72,8 +72,9 @@ struct StatusLineBuilder {
         case .noTextFocus: noTextFocusLine()
         case .userDisabled: line(.userDisabled, [appName], action: .none)
         // Expected pauses that are not problems: a password field, an ignored app (the icon says so), a
-        // locked session. PRD-R11 shows a status line only for a problem.
-        case .secureField, .passThroughRule, .sessionInactive: nil
+        // locked session, the guided test typing (its panel says so). PRD-R11 shows a status line only for a
+        // problem.
+        case .secureField, .passThroughRule, .sessionInactive, .diagnosticsTest: nil
         }
     }
 
