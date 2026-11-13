@@ -29,10 +29,23 @@ public enum HotkeyResult: Sendable, Hashable {
 
 /// Toggle tap: cancels on any other key, mouse button or scroll during the hold, on holds longer than 500 ms,
 /// and ignores autorepeat (PRD-R14).
+///
+/// Auto-repeat events never fire a hotkey and never cancel a tap: they belong to a key pressed before the chord
+/// started. A restore binding is recognised only as a key or key combo (it must be a key the pipeline can
+/// consume, PRD-R18, PLT-R353); a modifier-only restore binding is ignored. Logic: `HotkeyRecognition.swift`.
 public struct HotkeyRecognizer: Sendable {
     public static let maximumTapDuration: Duration = .milliseconds(500)
-    public init(toggle: HotkeyBinding, restore: HotkeyBinding?) { unimplemented() }
-    public mutating func handle(_ input: HotkeyInput) -> HotkeyResult { unimplemented() }
+    let toggle: HotkeyBinding
+    let restore: HotkeyBinding?
+    var toggleTap: HotkeyChordTracker?
+
+    public init(toggle: HotkeyBinding, restore: HotkeyBinding?) {
+        self.toggle = toggle
+        self.restore = restore
+        toggleTap = HotkeyChordTracker(binding: toggle)
+    }
+
+    public mutating func handle(_ input: HotkeyInput) -> HotkeyResult { recognize(input) }
 }
 
 public enum RecorderState: Sendable, Hashable {
@@ -43,7 +56,8 @@ public enum RecorderState: Sendable, Hashable {
 }
 
 public enum RecorderRejection: String, Sendable, Hashable {
-    case unsupportedModifierTap  // modifier-only chord outside the PRD-R15 list
+    /// Modifier-only chord outside the PRD-R15 list; for the restore role every modifier-only chord (PRD-R18).
+    case unsupportedModifierTap
     case keyWithoutModifierForToggle
 }
 
@@ -58,9 +72,31 @@ public enum SystemShortcutConflict: String, Sendable, Hashable, CaseIterable {
     case closeWindow  // Command+W
 }
 
-/// Captures a binding in any press order and finishes when every key is released (PRD-R15).
+/// Captures a binding in any press order and finishes when every key is released (PRD-R15). Logic:
+/// `HotkeyRecording.swift`.
 public struct HotkeyRecorder: Sendable {
-    public init(role: HotkeyRole) { unimplemented() }
-    public mutating func handle(_ input: HotkeyInput) -> RecorderState { unimplemented() }
-    public static func conflict(for binding: HotkeyBinding) -> SystemShortcutConflict? { unimplemented() }
+    let role: HotkeyRole
+    let layout: LayoutTable?
+    var session = HotkeyRecordingSession()
+    var state = RecorderState.idle
+
+    public init(role: HotkeyRole) { self.init(role: role, layout: nil) }
+
+    /// `layout` names the conflicts that depend on the typed character (Command+Q, Command+W) on non-US layouts
+    /// such as AZERTY or Dvorak; without it the ABC key positions are used.
+    public init(role: HotkeyRole, layout: LayoutTable?) {
+        self.role = role
+        self.layout = layout
+    }
+
+    public mutating func handle(_ input: HotkeyInput) -> RecorderState { record(input) }
+
+    public static func conflict(for binding: HotkeyBinding) -> SystemShortcutConflict? {
+        conflict(for: binding, layout: nil)
+    }
+
+    /// PRD-R16 conflict, resolving letter keys through `layout` when given.
+    public static func conflict(for binding: HotkeyBinding, layout: LayoutTable?) -> SystemShortcutConflict? {
+        SystemShortcutCatalog.conflict(for: binding, layout: layout)
+    }
 }
