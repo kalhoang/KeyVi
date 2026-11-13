@@ -51,12 +51,29 @@ struct Percentiles: Codable, Equatable {
 }
 
 enum Timing {
-    static let clock = ContinuousClock()
+    /// Monotonic clock with the `ContinuousClock` call shape (`now`, `duration(to:)`). `ContinuousClock` needs
+    /// macOS 13 and the package floor is macOS 12 (PLT-R106); durations are nanoseconds.
+    struct UptimeClock {
+        struct Instant {
+            let nanoseconds: UInt64
 
-    static func nanoseconds(_ duration: Duration) -> Int64 {
-        let (seconds, attoseconds) = duration.components
-        return seconds * 1_000_000_000 + attoseconds / 1_000_000_000
+            func duration(to later: Instant) -> Int64 { Int64(bitPattern: later.nanoseconds &- nanoseconds) }
+        }
+
+        var now: Instant {
+            #if canImport(Darwin)
+            return Instant(nanoseconds: clock_gettime_nsec_np(CLOCK_UPTIME_RAW))
+            #else
+            var time = timespec()
+            clock_gettime(CLOCK_MONOTONIC, &time)
+            return Instant(nanoseconds: UInt64(time.tv_sec) &* 1_000_000_000 &+ UInt64(time.tv_nsec))
+            #endif
+        }
     }
+
+    static let clock = UptimeClock()
+
+    static func nanoseconds(_ duration: Int64) -> Int64 { duration }
 
     /// The median cost of reading the clock twice, which every per-event sample includes.
     static func clockOverhead() -> Int64 {
