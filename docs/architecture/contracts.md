@@ -12094,6 +12094,8 @@ final class AppEnvironment {
     /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
     var tapReenabledUntil: Date?
     var lastMenuRefresh: Date?
+    /// The quit under way (AppEnvironment+Quit.swift): settings flushed off the main actor, reply through the run loop.
+    var quit: QuitCoordinator?
 
     /// Launch order (S1 target 300 ms to tap active): LaunchGuard -> AppLocationCheck (move offer before any
     /// permission request, PLT-R710) -> LegacyStorageMigrator -> SettingsStore.load ->
@@ -12133,23 +12135,6 @@ final class AppEnvironment {
             case .running(let safeMode): self.launched(safeMode: safeMode)
             case .relocating, .quit: NSApp.terminate(nil)
             }
-        }
-    }
-
-    /// Quit: flush settings (PLT-R1003), stop the host (tap removed), let Sparkle install on quit (D20).
-    func terminate(completion: @escaping @MainActor () -> Void) {
-        diagnostics.logger.log(.lifecycle(.terminating), level: .notice)
-        launch?.terminate()
-        #if INTEGRATION_HOOKS
-        integrationHooks.stop()
-        #endif
-        host.stop()
-        let store = settingsStore
-        let diagnostics = self.diagnostics
-        Task {
-            await store.flush()
-            diagnostics.flush()
-            completion()
         }
     }
 
@@ -12243,8 +12228,10 @@ final class AppEnvironment {
 
 extension AppEnvironment: LaunchSteps {
     func resolveLocation() async -> LaunchLocationDecision {
-        #if DEBUG
-        // Development builds run from DerivedData; the move offer is a shipped-app behaviour (PLT-R710).
+        #if DEBUG || INTEGRATION_HOOKS
+        // Development builds run from DerivedData; the move offer is a shipped-app behaviour (PLT-R710). The
+        // runner's test build is installed at one fixed path whose TCC grants a move would lose, and it never
+        // shows a modal offer (scripts/run-integration.sh build).
         return .proceed
         #else
         let bundleURL = Bundle.main.bundleURL
@@ -15676,9 +15663,15 @@ final class TestHostWindowController: NSWindowController {
         return button
     }
 
+    /// Clears both windows, shows `fields.html` again and leaves no field focused, like a fresh launch: the next
+    /// scenario's `focusField` is then a real focus change, which the app under test treats as a word boundary.
+    /// Without it, a scenario that focused the field the previous one used continued the previous word (the
+    /// cleared text is invisible to the app's tap), and its first word stayed untransformed in the VM runs.
     @objc private func resetFields(_ sender: Any?) {
         resetAll()
+        web.resetPage()
         onReset?()
+        window?.makeFirstResponder(nil)
     }
 
     /// Clears every field of this window, native and web.
