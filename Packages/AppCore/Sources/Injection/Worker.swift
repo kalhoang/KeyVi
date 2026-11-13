@@ -5,6 +5,7 @@
 internal import AppModel
 public import Diagnostics
 public import RealtimeSupport
+internal import Synchronization
 
 public struct WorkerConfiguration: Sendable, Hashable {
     /// Oldest held event may wait this long before a flush (PLT-R314, VERIFY tuning).
@@ -61,23 +62,42 @@ public enum FlushReason: UInt8, Sendable, Hashable {
 /// delivered are counted in `PlatformMetrics.lostWhilePostingBroken` and one `postingBroken` health event
 /// with `.count(n)` (ADR 0308, ADR 0311); conservation (PLT-R312) is guaranteed only while posting works.
 public final class InjectionWorker: Sendable {
+    private let core: Mutex<WorkerCore>
+    private let control: WorkerControl
+
     public init(
         queue: JobQueue, signal: WorkerSignal, feedback: WorkerFeedback, marker: EventMarker,
         focusGeneration: CurrentFocusGeneration, services: InjectionServices,
         configuration: WorkerConfiguration = WorkerConfiguration()
-    ) { unimplemented() }
+    ) {
+        let control = WorkerControl(signal: signal)
+        self.control = control
+        core = Mutex(
+            WorkerCore(
+                queue: queue, feedback: feedback, marker: marker, focusGeneration: focusGeneration,
+                services: services, configuration: configuration, control: control))
+    }
 
     /// Spawns the `inject` thread (QoS user-interactive). The loop drains jobs, executes them FIFO, sleeps
     /// only on its own signal with absolute deadlines (pacing, liveness), and never waits on the main or tap
     /// thread (PLT-R315).
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
+    public func start() { control.start { [self] in runThreadLoop() } }
+    public func stop() { control.stop() }
 
     /// Asynchronous request (atomic flag + signal): abandon unstarted edit jobs (replaying their triggers),
     /// replay every held event in order, request a composition reset, record a `flush` health event.
-    public func requestFlush(_ reason: FlushReason) { unimplemented() }
+    public func requestFlush(_ reason: FlushReason) { control.requestFlush(reason) }
 
     /// Deterministic mode for tests and the pipeline harness: runs the loop body on the caller's thread until
     /// the queue is empty and no deadline is pending, using the injected (fake) clock.
-    public func runUntilIdle() { unimplemented() }
+    public func runUntilIdle() { core.withLock { $0.runUntilIdle() } }
+
+    /// Body of the `inject` thread: process, then wait on the worker signal until the next deadline.
+    private func runThreadLoop() {
+        while !control.isStopRequested {
+            let idle = core.withLock { $0.runAvailable() }
+            guard !control.isStopRequested else { return }
+            if idle.isIdle { _ = control.signal.wait(until: idle.deadline) }
+        }
+    }
 }

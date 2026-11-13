@@ -95,7 +95,8 @@ public struct KeyEventRecord: Sendable, Hashable, BitwiseCopyable {
     public var unicode: InlineUTF16
     /// Time the tap received the original (T5 held-wait metric, PLT-R314 liveness).
     public var receivedAt: MonotonicInstant
-    /// Latency-probe event (PLT-R810): replayed with the probe marker so metrics stay separated.
+    /// Latency-probe event (PLT-R810). Replayed with the ordinary echo marker (a probe-kind marker would make the
+    /// tap treat the replay as a new physical probe and hold it again); the worker routes metrics by this flag.
     public var isProbe: Bool
 
     public init(
@@ -189,8 +190,8 @@ public enum BoundaryReason: UInt8, Sendable, Hashable {
         secureInputChanged, tapReenabled, settingsChanged, ruleChanged, sessionChanged
 }
 
-/// Marks a hard boundary in FIFO order so the worker can end paste coalescing windows and first-edit timing
-/// (PLT-R340, PLT-R461 step 6).
+/// Marks a hard boundary in FIFO order (PLT-R340). The worker resets first-edit timing (PLT-R408); paste
+/// coalescing (PLT-R461 step 6) is bounded by `restoreDelayMs` and the `changeCount` guard, not by boundaries.
 public struct BoundaryJob: Sendable, Hashable {
     public var sequence: JobSequence
     public var reason: BoundaryReason
