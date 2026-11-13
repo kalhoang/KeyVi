@@ -275,11 +275,25 @@ def keycap_box(image) -> tuple[int, int, int, int]:
     background = gray.getpixel((width // 2, 2))
 
     def first_edge(values: list[int]) -> int:
-        return next(i for i, value in enumerate(values) if background - value > EDGE_THRESHOLD)
+        edge = next((i for i, value in enumerate(values) if background - value > EDGE_THRESHOLD), None)
+        if edge is None:
+            raise ValueError("keycap edge not found in the artwork")
+        return edge
 
     left = first_edge([gray.getpixel((x, height // 2)) for x in range(width // 2)])
     top = first_edge([gray.getpixel((width // 2, y)) for y in range(height // 2)])
     return left, top, width - left, height - top
+
+
+def touch_crop_box(box: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    """A square around the keycap with an eighth of its side as margin, centred on the keycap even when the box
+    is not square, so resizing to the touch icon never distorts it."""
+    left, top, right, bottom = box
+    width, height = right - left, bottom - top
+    side = max(width, height)
+    pad = side // 8
+    x0, y0 = left + (width - side) // 2 - pad, top + (height - side) // 2 - pad
+    return x0, y0, x0 + side + 2 * pad, y0 + side + 2 * pad
 
 
 def rounded_mask(side: int, radius: float, supersample: int = 4):
@@ -304,11 +318,10 @@ def app_icon_master(source):
     """The keycap on a transparent 1024 px canvas: opaque crop, scaled to the grid body, then masked."""
     Image, _, _ = _pillow()
     box = keycap_box(source)
-    side = box[2] - box[0]
+    if box[2] - box[0] <= 0 or box[3] - box[1] <= 0:
+        raise ValueError("keycap not found in the artwork")
     body = source.convert("RGB").crop(box).resize((BODY, BODY), Image.Resampling.LANCZOS).convert("RGBA")
     body.putalpha(rounded_mask(BODY, BODY * KEYCAP_CORNER_RATIO))
-    if side <= 0:
-        raise ValueError("keycap not found in the artwork")
     canvas = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
     for offset, blur, opacity in SHADOWS:
         canvas.alpha_composite(_shadow(body.getchannel("A"), offset, blur, opacity))
@@ -391,9 +404,7 @@ def write_site_icons(source_path: Path = LOGO, static: Path = SITE_STATIC, asset
     tight.resize((256, 256), Image.Resampling.LANCZOS).save(
         static / "favicon.ico", format="ICO", sizes=[(16, 16), (32, 32), (48, 48)])
     # Home-screen icons must be opaque (iOS fills transparency with black): Pa's photo, centred on the keycap.
-    left, top, right, _ = keycap_box(source)
-    pad = (right - left) // 8
-    touch = source.convert("RGB").crop((left - pad, top - pad, right + pad, right + pad))
+    touch = source.convert("RGB").crop(touch_crop_box(keycap_box(source)))
     touch.resize((180, 180), Image.Resampling.LANCZOS).save(static / "apple-touch-icon.png", optimize=True)
     brand = static / "assets" / "brand"
     brand.mkdir(parents=True, exist_ok=True)

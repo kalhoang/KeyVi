@@ -236,6 +236,45 @@ class SiteIconTests(unittest.TestCase):
         self.assertEqual(sizes, {16, 32, 48})
 
 
+class FakeGrayImage:
+    """Just enough of a Pillow image for keycap_box: convert("L"), size and getpixel."""
+
+    def __init__(self, width: int, height: int, background: int, keycap: tuple[int, int, int, int] | None = None):
+        self.size, self.background, self.keycap = (width, height), background, keycap
+
+    def convert(self, mode: str) -> FakeGrayImage:
+        return self
+
+    def getpixel(self, point: tuple[int, int]) -> int:
+        if self.keycap is None:
+            return self.background
+        left, top, right, bottom = self.keycap
+        inside = left <= point[0] < right and top <= point[1] < bottom
+        return self.background - 80 if inside else self.background
+
+
+class GeometryTests(unittest.TestCase):
+    def test_keycap_box_reports_a_missing_keycap_clearly(self):
+        with self.assertRaisesRegex(ValueError, "keycap edge not found"):
+            icons.keycap_box(FakeGrayImage(64, 64, background=240))
+
+    def test_keycap_box_mirrors_the_left_and_top_edges(self):
+        self.assertEqual(icons.keycap_box(FakeGrayImage(100, 80, 240, keycap=(20, 10, 80, 70))), (20, 10, 80, 70))
+
+    def test_touch_crop_is_a_square_centred_on_the_keycap(self):
+        # Pa's current artwork (left == top) and boxes where the keycap is not equidistant from both edges.
+        for box in ((228, 228, 796, 796), (20, 10, 80, 70), (40, 10, 80, 90), (5, 30, 105, 70)):
+            with self.subTest(box=box):
+                x0, y0, x1, y1 = icons.touch_crop_box(box)
+                self.assertEqual(x1 - x0, y1 - y0)
+                self.assertEqual((x0 + x1, y0 + y1), (box[0] + box[2], box[1] + box[3]))
+                self.assertLessEqual((x0, y0), (box[0], box[1]))
+                self.assertGreaterEqual((x1, y1), (box[2], box[3]))
+        side = 796 - 228
+        self.assertEqual(icons.touch_crop_box((228, 228, 796, 796)),
+                         (228 - side // 8, 228 - side // 8, 796 + side // 8, 796 + side // 8))
+
+
 class CommandLineTests(unittest.TestCase):
     def test_help_and_check_need_no_imaging_library(self):
         self.assertEqual(py("make-app-icon.py", "--help").returncode, 0)
