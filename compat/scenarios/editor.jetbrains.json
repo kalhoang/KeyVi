@@ -1,0 +1,31 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "editor.jetbrains",
+  "targetBundleId": "com.jetbrains.intellij",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "wait",
+      "value": "20000"
+    }
+  ],
+  "keys": [
+    "n",
+    "g",
+    "u",
+    "w",
+    "o",
+    "w",
+    "i",
+    "f"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "người"
+  },
+  "readback": "human"
+}

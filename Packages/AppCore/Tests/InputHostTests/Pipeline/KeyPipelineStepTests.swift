@@ -115,7 +115,8 @@ import VietnameseEngine
         let fixture = PipelineFixture()
         fixture.press(Key.a, flags: Flag.capsLock)
         fixture.press(Key.s, flags: Flag.shift)
-        #expect(fixture.log.feeds == [.key(KeyInput("A")), .key(KeyInput("S"))])
+        // ENG-R906: the Caps Lock state travels with the key.
+        #expect(fixture.log.feeds == [.key(KeyInput("A", capsLock: true)), .key(KeyInput("S"))])
     }
 }
 

@@ -5,32 +5,38 @@
     {
       "name": "GoTiengViet",
       "bundleIds": ["com.trankynam.GoTiengViet"],
-      "note": "Seeded in commit d3852b3 (2026-11-13) without a recorded source; the product owner confirms it."
+      "source": "Homebrew cask metadata, formulae.brew.sh/api/cask.json (cask gotiengviet, uninstall quit and zap entries), retrieved 2026-11-13.",
+      "checked": "2026-11-13"
     },
     {
       "name": "OpenKey",
       "bundleIds": ["com.tuyenmai.openkey"],
-      "note": "Seeded in commit d3852b3 (2026-11-13) without a recorded source; the product owner confirms it."
+      "source": "Homebrew cask metadata, formulae.brew.sh/api/cask.json (cask openkey, uninstall quit and zap entries), retrieved 2026-11-13.",
+      "checked": "2026-11-13"
     },
     {
       "name": "EVKey",
-      "bundleIds": ["com.lamquangminh.evkey"],
-      "note": "Seeded in commit d3852b3 (2026-11-13) without a recorded source; the product owner confirms it."
+      "bundleIds": ["com.lamquangminh.evkey", "com.lamquangminh.evkeyhelper"],
+      "source": "Homebrew cask metadata, formulae.brew.sh/api/cask.json (cask evkey, uninstall quit and zap entries: the app and its helper), retrieved 2026-11-13.",
+      "checked": "2026-11-13"
     },
     {
       "name": "XKey",
-      "bundleIds": [],
-      "note": "Bundle ID to be read by the product owner from the running app; contributors must not inspect it."
+      "bundleIds": ["com.codetay.XKey", "com.codetay.inputmethod.XKey"],
+      "source": "Homebrew cask metadata, formulae.brew.sh/api/cask.json (cask xkey: the app in uninstall quit, the input method group in zap), retrieved 2026-11-13.",
+      "checked": "2026-11-13"
     },
     {
       "name": "PHTV",
-      "bundleIds": [],
-      "note": "Bundle ID to be read by the product owner from the running app or public vendor documentation."
+      "bundleIds": ["com.phamhungtien.phtv"],
+      "source": "Homebrew cask metadata, formulae.brew.sh/api/cask.json (cask phtv, uninstall quit and zap entries), retrieved 2026-11-13.",
+      "checked": "2026-11-13"
     },
     {
       "name": "Gõ Nhanh",
-      "bundleIds": [],
-      "note": "Bundle ID to be read by the product owner from the running app or public vendor documentation."
+      "bundleIds": ["org.gonhanh.GoNhanh", "space.khaphan.gonhanh"],
+      "source": "Homebrew cask metadata, formulae.brew.sh/api/cask.json (cask gonhanh: the current ID and the older one in its zap entries), retrieved 2026-11-13.",
+      "checked": "2026-11-13"
     }
   ]
 }

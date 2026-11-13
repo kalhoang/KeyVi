@@ -20,8 +20,9 @@ enum GuidedTestSuggestion {
         includeURLPrefix: String?
     ) -> Rule {
         let match = match(context, urlPrefix: includeURLPrefix)
+        let id = isAppScope(match) ? context.bundle.map(appSlotID) : nil
         return Rule(
-            id: ruleID(for: context.bundle, match: match), summary: summary, match: match, action: action(best),
+            id: id ?? ruleID(for: context.bundle, match: match), summary: summary, match: match, action: action(best),
             provenance: .userSuggestion(
                 UserProvenance(source: source, appVersion: appVersion, macOS: macOS, date: date)))
     }
@@ -44,6 +45,26 @@ enum GuidedTestSuggestion {
         return RuleID(rawValue: base + suffix) ?? RuleID(rawValue: idPrefix + ".app" + suffix)!
     }
 
+    /// The app's one "this app" override slot, `user.compat.<bundle>`: the id the Apps pane writes, shows,
+    /// replaces and removes with "reset to automatic" (PRD-R36, PLT-R540; `CompatibilityModeChoice.ruleID` in
+    /// ShellCore, kept equal by ShellCoreTests/Settings/GuidedOverrideSlotTests.swift). Characters outside the
+    /// rule ID alphabet become `-` (`sha256:` keys become `sha256-`).
+    static func appSlotID(for bundle: BundleKey) -> RuleID {
+        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+        let cleaned = String(bundle.rawValue.map { allowed.contains($0) ? $0 : "-" })
+        let segments = cleaned.split(separator: ".", omittingEmptySubsequences: true).joined(separator: ".")
+        let candidate = String((appSlotIDPrefix + segments).prefix(maximumIDBytes))
+        let trimmed = candidate.hasSuffix(".") ? String(candidate.dropLast()) : candidate
+        return RuleID(rawValue: trimmed) ?? RuleID(rawValue: appSlotIDPrefix + "app")!
+    }
+
+    static let appSlotIDPrefix = "user.compat."
+
+    /// Bundle-only: no field terms, no page address, no engine.
+    static func isAppScope(_ match: RuleMatch) -> Bool {
+        match.bundleIds != nil && match.ax == nil && match.web == nil && match.engines == nil
+    }
+
     /// Rule ID grammar limit.
     static let maximumIDBytes = 128
 
@@ -60,6 +81,12 @@ enum GuidedTestSuggestion {
 
     /// "This app" plus "only this kind of field" (PLT-R540): role and subrole, then the identifier when AX
     /// exposes one, else the DOM classes. No bundle group (one app only) and no title pattern.
+    ///
+    /// Without AX field terms or a page address the suggestion is a "this app" override and takes the app's
+    /// override slot (`appSlotID`): a second bundle-only rule for the app would tie with the Apps pane's rule
+    /// (score 4, smaller id wins, a tie recorded on every focus change, PLT-R521), and a rule outranking it would
+    /// leave the Apps pane's choice and "reset to automatic" without effect (PLT-R540). Without a bundle ID the
+    /// engine fingerprint the test ran on is the only identity.
     static func match(_ context: MatchContext, urlPrefix: String?) -> RuleMatch {
         let ax = AXMatch(
             roles: list(context.role), subroles: list(context.subrole), identifiers: list(context.identifier),
@@ -67,7 +94,8 @@ enum GuidedTestSuggestion {
         let hasAX = ax.roles != nil || ax.subroles != nil || ax.identifiers != nil || ax.domClasses != nil
         let prefix = urlPrefix.flatMap(hostLevelPrefix)
         return RuleMatch(
-            bundleIds: context.bundle.map { [$0] }, engines: context.bundle == nil ? [context.engine] : nil,
+            bundleIds: context.bundle.map { [$0] },
+            engines: context.bundle == nil ? [context.engine] : nil,
             ax: hasAX ? ax : nil, web: prefix.map { WebMatch(urlPrefixes: [$0]) })
     }
 

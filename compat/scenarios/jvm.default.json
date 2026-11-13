@@ -1,7 +1,7 @@
 {
   "$schema": "../schema/scenario.schema.json",
   "id": "jvm.default",
-  "targetBundleId": "com.jetbrains.intellij",
+  "targetBundleId": "org.freeplane.launcher",
   "setup": [
     {
       "action": "launch"

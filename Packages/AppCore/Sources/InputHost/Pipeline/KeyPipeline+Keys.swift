@@ -44,8 +44,10 @@ extension KeyPipeline {
                 hardBoundary(.unknown, job: .navigation, generation: generation)
                 return passOrHold(key.event, now: key.now, probe: key.probe)
             }
-            // PLT-R355: `fromKeypad` lets the engine keep keypad digits out of VNI tone handling.
-            let input = EngineEvent.key(KeyInput(character, fromKeypad: fromKeypad))
+            // PLT-R355: `fromKeypad` lets the engine keep keypad digits out of VNI tone handling. ENG-R906: the
+            // key's own Caps Lock state, so a Telex bracket key (no case) gives `Ơ` or `Ư` under Caps Lock.
+            let capsLock = key.event.flags & EventFlags.capsLock != 0
+            let input = EngineEvent.key(KeyInput(character, fromKeypad: fromKeypad, capsLock: capsLock))
             return compose(input, kind: .compose, key, focus: focus, inputSource: inputSource)
         case .backspace:  // PLT-R351, PLT-R352: reported one by one, autorepeat included
             return compose(.backspace, kind: .backspaceRecompose, key, focus: focus, inputSource: inputSource)

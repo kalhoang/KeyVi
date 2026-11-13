@@ -51,7 +51,6 @@ public enum SettingsText: String, LocalizationKey {
     case hotkeyCancel = "settings.hotkey.cancel"
     case hotkeyUseDefault = "settings.hotkey.useDefault"
     case hotkeyUseEscape = "settings.hotkey.useEscape"
-    case hotkeyClear = "settings.hotkey.clear"
     case hotkeyNotSet = "settings.hotkey.notSet"
     case hotkeyRejectedModifierTap = "settings.hotkey.rejected.modifierTap"
     case hotkeyRejectedRestoreModifierTap = "settings.hotkey.rejected.restoreModifierTap"
@@ -93,6 +92,7 @@ public enum SettingsText: String, LocalizationKey {
     case bracketsExplanation = "settings.typing.brackets.explanation"
     case restoreHotkeyTitle = "settings.typing.restoreHotkey.title"
     case restoreHotkeyExplanation = "settings.typing.restoreHotkey.explanation"
+    case restoreHotkeySwitch = "settings.typing.restoreHotkey.switch"
     case resetTitlePane = "settings.reset.title.pane"
     case resetTitleAll = "settings.reset.title.all"
     case resetBodyGeneral = "settings.reset.body.general"
@@ -173,7 +173,7 @@ public enum SettingsControl: String, AccessibleControl {
     case restoreHotkeyChange
     case restoreHotkeyCancel
     case restoreHotkeyEscape
-    case restoreHotkeyClear
+    case restoreHotkeySwitch
     case hotkeyConflictHelp
     case rememberPerApp
     case switchIndicator

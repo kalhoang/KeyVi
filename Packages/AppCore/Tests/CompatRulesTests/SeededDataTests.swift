@@ -139,10 +139,18 @@ import Testing
             $0.params.interEventDelayUs == 1_500 && !$0.features.restoreHotkey
         },
         .init(
-            label: "JetBrains through the jvm engine",
-            context: Build.context(bundle: "com.jetbrains.intellij", engine: .jvm), rule: "jvm.default"
+            label: "other Java apps through the jvm engine",
+            context: Build.context(bundle: "com.example.javaapp", engine: .jvm), rule: "jvm.default"
         ) {
             $0.requireTextFocus == .never && $0.engineContext == .code && $0.params.interEventDelayUs == 1_000
+                && $0.features.restoreHotkey
+        },
+        .init(
+            label: "JetBrains IDEs: the jvm action without the restore hotkey (PLT-R353)",
+            context: Build.context(bundle: "com.jetbrains.intellij", engine: .jvm), rule: "editor.jetbrains"
+        ) {
+            $0.requireTextFocus == .never && $0.engineContext == .code && $0.params.interEventDelayUs == 1_000
+                && !$0.features.restoreHotkey
         },
         .init(
             label: "custom text views never gate", context: Build.context(bundle: "org.gnu.Emacs", role: "AXGroup"),

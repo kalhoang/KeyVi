@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.1",
+  "rulesetVersion": "2026.11.2",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -15,9 +15,17 @@
       "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty", "dev.warp.Warp-Stable",
       "com.github.wez.wezterm", "net.kovidgoyal.kitty", "org.alacritty"
     ],
+    "vscodeFamily": [
+      "com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium", "com.todesktop.230313mzl4w4u92",
+      "dev.kiro.desktop", "com.trae.app", "com.voideditor.Void"
+    ],
     "webkitBrowsers": ["com.apple.Safari", "com.apple.SafariTechnologyPreview"]
   },
-  "conflictingInputApps": ["com.trankynam.GoTiengViet", "com.tuyenmai.openkey", "com.lamquangminh.evkey"],
+  "conflictingInputApps": [
+    "com.trankynam.GoTiengViet", "com.tuyenmai.openkey", "com.lamquangminh.evkey", "com.lamquangminh.evkeyhelper",
+    "com.codetay.XKey", "com.codetay.inputmethod.XKey", "com.phamhungtien.phtv", "org.gonhanh.GoNhanh",
+    "space.khaphan.gonhanh"
+  ],
   "secureInputHints": [
     { "bundleId": "com.apple.Terminal", "hintKey": "terminal.secureKeyboardEntry" },
     { "bundleId": "com.googlecode.iterm2", "hintKey": "iterm2.secureKeyboardEntry" },
@@ -232,14 +240,14 @@
     },
     {
       "id": "editor.vscodeFamily",
-      "summary": "VS Code and Cursor editors: engine code context",
-      "match": { "bundleIds": ["com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92"] },
-      "action": { "strategy": "backspaceReplace", "engineContext": "code" },
+      "summary": "VS Code and its forks: engine code context, Escape keeps its editor meaning",
+      "match": { "bundleGroup": "vscodeFamily" },
+      "action": { "strategy": "backspaceReplace", "engineContext": "code", "features": { "restoreHotkey": false } },
       "provenance": {
-        "reason": "Code editors need the engine's code context so words such as 'tar' or 'less' are restored instead of transformed.",
+        "reason": "Code editors need the engine's code context so words such as 'tar' or 'less' are restored instead of transformed, and Escape closes suggestions and leaves Vim modes there, so it never restores a word (PLT-R353).",
         "evidence": [{ "type": "scenario", "ref": "compat/electron-editors" }],
         "tested": [{ "app": "Visual Studio Code", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY Cursor's bundle ID; VERIFY burst typing in the editor. The tested entry is a placeholder until the scenario passes.",
+        "notes": "Bundle IDs of the vscodeFamily group from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): visual-studio-code com.microsoft.VSCode, visual-studio-code@insiders com.microsoft.VSCodeInsiders, vscodium com.vscodium, cursor com.todesktop.230313mzl4w4u92, kiro dev.kiro.desktop, trae com.trae.app, void com.voideditor.Void. Windsurf has no cask any more and Positron's cask names two IDs, so both wait for a source. VERIFY burst typing in the editor. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -247,11 +255,8 @@
     },
     {
       "id": "editor.vscode.integratedTerminal",
-      "summary": "VS Code and Cursor integrated terminal: terminal pacing and code context",
-      "match": {
-        "bundleIds": ["com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92"],
-        "ax": { "domClasses": ["xterm-helper-textarea"] }
-      },
+      "summary": "Integrated terminal of VS Code and its forks: terminal pacing and code context",
+      "match": { "bundleGroup": "vscodeFamily", "ax": { "domClasses": ["xterm-helper-textarea"] } },
       "action": {
         "strategy": "backspaceReplace",
         "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
@@ -283,7 +288,7 @@
         "reason": "TUIs (Claude Code, Kiro CLI) lost or appended letters when backspaces and UTF-8 arrived in one read.",
         "evidence": [{ "type": "scenario", "ref": "compat/terminal-tui" }],
         "tested": [{ "app": "Terminal", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Initial pacing values are hypotheses. VERIFY with an Ink-based TUI, zsh-autosuggestions, tmux over ssh. Warp reports caret 0, so no AX gating. The tested entry is a placeholder until the scenario passes.",
+        "notes": "Initial pacing values are hypotheses. VERIFY with an Ink-based TUI, zsh-autosuggestions, tmux over ssh. Warp reports caret 0, so no AX gating. Escape belongs to the shell and TUIs, so the restore hotkey is off (PLT-R353). Bundle IDs of the terminals group: Terminal com.apple.Terminal (Apple, the macOS Terminal preferences domain); the others from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): iterm2 com.googlecode.iterm2, ghostty com.mitchellh.ghostty, warp dev.warp.Warp-Stable, wezterm com.github.wez.wezterm, kitty net.kovidgoyal.kitty, alacritty org.alacritty. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -291,7 +296,7 @@
     },
     {
       "id": "jvm.default",
-      "summary": "Java apps such as JetBrains IDEs: paced events, no AX gating, code context",
+      "summary": "Other Java apps: paced events, no AX gating, code context (JetBrains IDEs: editor.jetbrains)",
       "match": { "engines": ["jvm"] },
       "action": {
         "strategy": "backspaceReplace",
@@ -303,26 +308,74 @@
         "reason": "JetBrains IDEs duplicated vowels with unpaced events, and slow Java AX froze the prior art's main thread.",
         "evidence": [{ "type": "scenario", "ref": "compat/jetbrains-editor" }],
         "tested": [{ "app": "IntelliJ IDEA", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Pacing values are hypotheses. VERIFY in the editor and the integrated terminal; the AX circuit breaker (PLT-R384) bounds slow AX. The tested entry is a placeholder until the scenario passes.",
+        "notes": "Pacing values are hypotheses. VERIFY in a Java text field (Freeplane) and in a JetBrains editor and terminal through editor.jetbrains, which repeats this action; the AX circuit breaker (PLT-R384) bounds slow AX. A game built on Java passes keys through by games.passThrough (PLT-R520). The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
       "test": { "scenario": "jvm.default", "automation": "manual" }
     },
     {
-      "id": "editor.customTextViews",
-      "summary": "Editors with custom text views: no text-focus gating",
-      "match": { "bundleIds": ["com.sublimetext.4", "org.gnu.Emacs", "org.vim.MacVim"] },
-      "action": { "strategy": "backspaceReplace", "requireTextFocus": "never" },
+      "id": "editor.jetbrains",
+      "summary": "JetBrains IDEs and Android Studio: JVM pacing, code context, Escape keeps its IDE meaning",
+      "match": {
+        "bundleIds": [
+          "com.jetbrains.intellij", "com.jetbrains.intellij.ce", "com.jetbrains.pycharm", "com.jetbrains.pycharm.ce",
+          "com.jetbrains.WebStorm", "com.jetbrains.goland", "com.jetbrains.CLion", "com.jetbrains.rider",
+          "com.jetbrains.PhpStorm", "com.jetbrains.rubymine", "com.jetbrains.datagrip", "com.jetbrains.rustrover",
+          "com.jetbrains.dataspell", "com.google.android.studio"
+        ]
+      },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "interEventDelayUs": 1000, "postDeleteSettleUs": 2000 },
+        "requireTextFocus": "never",
+        "engineContext": "code",
+        "features": { "restoreHotkey": false }
+      },
       "provenance": {
-        "reason": "Custom text views may not expose an editable AX role, so whenKnown gating could pause typing in a working editor.",
+        "reason": "Escape closes completion popups and tool windows in IDEs, so it never restores a word there (PLT-R353); the rest repeats jvm.default because rules do not merge (PLT-R520).",
+        "evidence": [{ "type": "scenario", "ref": "compat/jetbrains-editor" }],
+        "tested": [{ "app": "IntelliJ IDEA", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Keep the action in step with jvm.default. Bundle IDs from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): intellij-idea, intellij-idea-ce, pycharm, pycharm-ce, webstorm, goland, clion, rider, phpstorm, rubymine, datagrip, rustrover, dataspell (zap only) and android-studio. Fleet's cask names no ID. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "editor.jetbrains", "automation": "manual" }
+    },
+    {
+      "id": "editor.customTextViews",
+      "summary": "Code editors with custom text views: no text-focus gating, code context, no restore hotkey",
+      "match": { "bundleIds": ["com.sublimetext.4", "org.gnu.Emacs", "org.vim.MacVim", "dev.zed.Zed"] },
+      "action": {
+        "strategy": "backspaceReplace",
+        "requireTextFocus": "never",
+        "engineContext": "code",
+        "features": { "restoreHotkey": false }
+      },
+      "provenance": {
+        "reason": "Custom text views may not expose an editable AX role, so whenKnown gating could pause typing in a working editor; Escape leaves Vim modes and is a prefix key in Emacs, so it never restores a word there (PLT-R353).",
         "evidence": [{ "type": "scenario", "ref": "compat/custom-text-views" }],
         "tested": [{ "app": "Sublime Text", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "A risk of this design rather than a reported symptom. VERIFY each editor's AX role; the menu offers a one-click override when typing pauses. The tested entry is a placeholder until the scenario passes.",
+        "notes": "The gating is a risk of this design rather than a reported symptom. VERIFY each editor's AX role; the menu offers a one-click override when typing pauses. Code context per ENG-R850 (code editors). Bundle IDs from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): sublime-text com.sublimetext.4, emacs-app org.gnu.Emacs, macvim-app org.vim.MacVim, zed dev.zed.Zed. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
       "test": { "scenario": "editor.customTextViews", "automation": "manual" }
+    },
+    {
+      "id": "editor.nativeCodeEditors",
+      "summary": "Xcode, Nova and BBEdit: code context, Escape keeps its editor meaning",
+      "match": { "bundleIds": ["com.apple.dt.Xcode", "com.panic.Nova", "com.barebones.bbedit"] },
+      "action": { "strategy": "backspaceReplace", "engineContext": "code", "features": { "restoreHotkey": false } },
+      "provenance": {
+        "reason": "Escape opens or closes code completion in these editors, so it never restores a word there (PLT-R353), and code editors get the engine's code context (ENG-R850).",
+        "evidence": [{ "type": "scenario", "ref": "compat/native-code-editors" }],
+        "tested": [{ "app": "Xcode", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
+        "notes": "Xcode com.apple.dt.Xcode from Apple's Xcode release notes (the defaults write com.apple.dt.Xcode commands, developer.apple.com, retrieved 2026-11-13). Nova com.panic.Nova and BBEdit com.barebones.bbedit from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json for nova and bbedit, zap and uninstall quit entries, retrieved 2026-11-13). VERIFY that each editor exposes an editable AX role, otherwise move it to editor.customTextViews. The tested entry is a placeholder until the scenario passes.",
+        "addedIn": "1.0.0",
+        "reviewBy": "2027-05-01"
+      },
+      "test": { "scenario": "editor.nativeCodeEditors", "automation": "manual" }
     },
     {
       "id": "design.shortcutHeavy",
@@ -352,7 +405,8 @@
         "bundleIds": [
           "com.microsoft.rdc.macos", "com.apple.ScreenSharing", "com.apple.ScreenContinuity",
           "com.parallels.desktop.console", "com.vmware.fusion", "com.utmapp.UTM", "com.philandro.anydesk",
-          "com.teamviewer.TeamViewer"
+          "com.teamviewer.TeamViewer", "com.p5sys.jump.mac.viewer.web", "com.realvnc.vncviewer",
+          "com.realvnc.rvncconnect", "tv.parsec.www"
         ]
       },
       "action": {
@@ -365,7 +419,7 @@
         "reason": "Clients translate keycodes; injected text arrives as wrong letters ('a' for everything) or nothing.",
         "evidence": [{ "type": "scenario", "ref": "compat/remote-clients" }],
         "tested": [{ "app": "Screen Sharing", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY bundle IDs (iPhone Mirroring, Windows App). Users may opt into the 'paste' strategy per app. The tested entry is a placeholder until the scenario passes.",
+        "notes": "VERIFY the iPhone Mirroring bundle ID. Users may opt into the 'paste' strategy per app. Escape belongs to the remote session, so the restore hotkey is off (PLT-R353). Bundle IDs from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): windows-app com.microsoft.rdc.macos (Microsoft Remote Desktop kept the ID when it became Windows App), jump-desktop com.p5sys.jump.mac.viewer.web, realvnc-connect-viewer com.realvnc.rvncconnect and the older VNC Viewer com.realvnc.vncviewer, parsec tv.parsec.www, teamviewer com.teamviewer.TeamViewer, anydesk com.philandro.anydesk. Screens 5 (Edovia) is App Store only with no public bundle ID yet, so it is not listed (VERIFY). The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-11-01"
       },
