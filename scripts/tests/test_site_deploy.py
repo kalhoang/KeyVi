@@ -152,6 +152,17 @@ class SiteImageWorkflowTests(unittest.TestCase):
         self.assertIn('deploy/site/stack-env.sh --tag prod | tee -a "$GITHUB_ENV"', self.TEXT)
         self.assertIn("SITE_STRICT: ${{ vars.SITE_STRICT == 'false' && 'false' || 'true' }}", self.TEXT)
 
+    def test_the_image_owner_must_be_the_repository_owner(self):
+        """GITHUB_TOKEN publishes packages only in the repository's own namespace: another IMAGE_OWNER would fail at
+        docker push after the whole build, so the first step refuses it (and the runbook says so)."""
+        steps = self.steps()
+        guard = steps.index("REPOSITORY_OWNER: ${{ github.repository_owner }}")
+        self.assertLess(guard, steps.index("node site/test.mjs"))
+        self.assertIn('[ "$(lower "$IMAGE_OWNER")" != "$(lower "$REPOSITORY_OWNER")" ]', steps)
+        self.assertIn("IMAGE_OWNER must equal the repository owner", steps)
+        runbook = (REPO / "docs" / "runbooks" / "site-deploy.md").read_text(encoding="utf-8")
+        self.assertIn("`IMAGE_OWNER` must equal the repository owner", runbook)
+
     def test_tests_build_live_check_push_then_webhook_in_that_order(self):
         steps = self.steps()
         order = ["node site/test.mjs", "node deploy/site/test.mjs", "deploy/site/fetch-downloads.py",

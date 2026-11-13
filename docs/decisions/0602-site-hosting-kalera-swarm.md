@@ -38,7 +38,8 @@ that is empty until Pa provides one (Q7); until the first public release a previ
    never on `main` or pull requests: tests, release files, build, live header check, push of `sha-<commit>` and
    `prod`, then the Portainer service webhook. `site.yml` keeps testing and building on pull requests and `main` and
    no longer has a deploy job. The repository owner (`IMAGE_OWNER`) and the image name (`SITE_IMAGE_NAME`, default
-   `<slug>-site`) are repository variables.
+   `<slug>-site`) are repository variables; `IMAGE_OWNER` must equal the repository owner, because the push uses
+   `GITHUB_TOKEN`, which publishes packages only in the repository's own namespace.
 4. **Strict unless it is a preview.** The image build is strict (`--strict`) unless the variable `SITE_STRICT` is
    `false`; a non-strict build always sends `noindex` unless `SITE_NOINDEX=false` is passed by hand.
 5. **Stack.** `deploy/site/stack.yml`: two replicas, rolling start-first updates with automatic rollback, healthcheck
