@@ -38,7 +38,7 @@
       }
     },
     "secureInputHint.terminal.secureKeyboardEntry" : {
-      "comment" : "PLT-R397 Terminal hint. VERIFY the menu item name.",
+      "comment" : "PLT-R397 Terminal hint. The menu item is quoted by its English name, as on the website and in the support replies; VERIFY the name Terminal shows on a Vietnamese system.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -50,7 +50,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminal: tắt mục Nhập bàn phím bảo mật trong menu Terminal."
+            "value" : "Terminal: tắt mục Secure Keyboard Entry trong menu Terminal."
           }
         }
       }
