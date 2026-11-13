@@ -46,6 +46,14 @@ public struct MisbehavesTarget: Sendable, Hashable {
     /// password field).
     public var canRunGuidedTest: Bool { app != nil && !field.secure }
 
+    /// Whether the panel may offer the guided test. The runner's events must reach the field unchanged, so the
+    /// test needs the host's diagnostics pass-through (no engine, no per-app memory write, no manual mode
+    /// change, composition reset on entry and exit, PLT-R210); without that hook it is never offered and the
+    /// runner never types (PLT-R1205 step 3).
+    public func offersGuidedTest(hostPassThroughAvailable: Bool) -> Bool {
+        hostPassThroughAvailable && canRunGuidedTest
+    }
+
     /// Match context for the suggestion: snapshot metadata only; the page address comes from the user.
     public func matchContext(macOS: String) -> MatchContext {
         MatchContext(
@@ -132,6 +140,8 @@ public struct MisbehavesFlow: Sendable, Hashable {
         switch result {
         case .needsHumanAnswer: step = .askHuman(index)
         case .fieldNotEmpty: step = .interrupted(.fieldNotEmpty)
+        // A user stop interrupts the flow before the result arrives, so a stop seen here is a focus change.
+        case .stopped: step = .interrupted(.focusChanged)
         default: advance(after: index, passed: result.passed)
         }
     }
@@ -157,6 +167,14 @@ public struct MisbehavesFlow: Sendable, Hashable {
 
     public var best: GuidedTestCandidate? { GuidedTestRunner.best(of: candidates, results: results) }
 
+    /// The current plan itself passed: the symptom did not reproduce, so there is nothing to fix. A user
+    /// override equal to the shipped decision would only shadow later shipped improvements (PLT-R540), so the
+    /// panel offers the report instead of "Use this for me now".
+    public var couldNotReproduce: Bool {
+        step == .finished && results.first??.passed == true
+            && candidates.first == GuidedTestCandidate(plan: target.plan)
+    }
+
     /// The host-level prefix that the suggestion will carry, for the panel to show before applying.
     public var pageAddressPrefix: String? {
         includePageAddress ? GuidedTestSuggestion.hostLevelPrefix(pageAddress) : nil
@@ -172,7 +190,7 @@ public struct MisbehavesFlow: Sendable, Hashable {
     public func offers(hasRepository: Bool) -> [MisbehavesOffer] {
         MisbehavesOffer.allCases.filter { offer in
             switch offer {
-            case .useForMe, .copySuggestion: step == .finished && best != nil
+            case .useForMe, .copySuggestion: step == .finished && best != nil && !couldNotReproduce
             case .copyReport: true
             case .openGitHubIssue: hasRepository
             }

@@ -17,7 +17,10 @@ import Testing
 @testable import TestSupport
 
 /// A fake probe window: every delivered keyDown changes the text `delay` later on the shared clock; edit keys
-/// change it twice (deletion then insertion) and record a decide-to-posted sample like the worker would.
+/// change it twice (deletion, then the insertion that shows the composed character) and record a
+/// decide-to-posted sample like the worker would. A synchronous window applies the change inside the post (the
+/// clock advances); an asynchronous one reports it at a later instant while the driver keeps typing, like a real
+/// app whose edit lands after the next burst key was posted.
 final class ProbeWindowModel: Sendable {
     let clock = ManualClock()
     let metrics = PlatformMetrics()
@@ -25,11 +28,14 @@ final class ProbeWindowModel: Sendable {
     private let editKeys: Set<KeyCode>
     private let passDelayMicroseconds: UInt64
     private let editDelayMicroseconds: UInt64
+    private let asynchronous: Bool
 
-    init(editKeys: Set<KeyCode> = [], passDelay: UInt64 = 1_000, editDelay: UInt64 = 3_000) {
+    init(editKeys: Set<KeyCode> = [], passDelay: UInt64 = 1_000, editDelay: UInt64 = 3_000, asynchronous: Bool = false)
+    {
         self.editKeys = editKeys
         passDelayMicroseconds = passDelay
         editDelayMicroseconds = editDelay
+        self.asynchronous = asynchronous
     }
 
     func attach(_ driver: LatencyProbeDriver) { driverBox.withLock { $0 = driver } }
@@ -38,16 +44,22 @@ final class ProbeWindowModel: Sendable {
         guard case .synthetic(let event, _) = posted, event.isKeyDown,
             let driver = driverBox.withLock({ $0 })
         else { return }
+        let start = clock.now()
         if editKeys.contains(event.keyCode) {
             metrics.probeDecideToPosted.record(nanoseconds: 400_000)
-            clock.advance(byMicroseconds: editDelayMicroseconds / 2)
-            driver.textChanged(at: clock.now())  // deletion
-            clock.advance(byMicroseconds: editDelayMicroseconds / 2)
-            driver.textChanged(at: clock.now())  // insertion: the visible result
+            change(driver, start: start, after: editDelayMicroseconds / 2, kind: .plain)  // deletion
+            change(driver, start: start, after: editDelayMicroseconds, kind: .composed)  // the visible result
         } else {
-            clock.advance(byMicroseconds: passDelayMicroseconds)
-            driver.textChanged(at: clock.now())
+            change(driver, start: start, after: passDelayMicroseconds, kind: .plain)
         }
+    }
+
+    private func change(
+        _ driver: LatencyProbeDriver, start: MonotonicInstant, after microseconds: UInt64, kind: LatencyProbeChange
+    ) {
+        let instant = start.advanced(byMicroseconds: microseconds)
+        if !asynchronous { clock.sleep(until: instant) }
+        driver.textChanged(at: instant, kind: kind)
     }
 }
 
@@ -74,14 +86,23 @@ struct LatencyProbeMathTests {
         #expect(LatencyProbeResult.Profile.burst.keyInterval == .milliseconds(5))
     }
 
-    @Test func eachKeyTakesTheLastChangeBeforeTheNextKey() {
-        let posted = [0, 120_000, 240_000].map(ProbeFixture.instant)
-        let changes = [1_000, 2_000, 121_500, 400_000, 239_000].map(ProbeFixture.instant)
-        let samples = LatencyProbeMath.correlate(posted: posted, changes: changes, settle: .milliseconds(150))
-        #expect(samples.map(\.latencyNanoseconds) == [2_000_000, 119_000_000, nil])
-        let settled = LatencyProbeMath.correlate(
-            posted: posted, changes: changes + [ProbeFixture.instant(250_000)], settle: .milliseconds(150))
-        #expect(settled.last?.latencyNanoseconds == 10_000_000)
+    @Test func changesAreMatchedToKeysInOrder() {
+        // FIFO: the second key's change arrives after the third key was posted and still belongs to it.
+        func key(_ microseconds: UInt64, delivered: Bool = true) -> LatencyProbePostedKey {
+            LatencyProbePostedKey(instant: ProbeFixture.instant(microseconds), delivered: delivered)
+        }
+        let keys = [key(5_000), key(10_000), key(15_000), key(20_000, delivered: false), key(25_000)]
+        let changes = [1_000, 7_000, 16_000, 18_000].map(ProbeFixture.instant)  // 1,000: left over, skipped
+        let samples = LatencyProbeMath.correlate(keys, changes: changes)
+        #expect(samples.map(\.latencyNanoseconds) == [2_000_000, 6_000_000, 3_000_000, nil, nil])
+        #expect(samples.map(\.posted) == keys.map(\.instant))
+    }
+
+    @Test func changeKindFollowsTheComposedCharacter() {
+        #expect(LatencyProbeChange(text: "bc a\u{1EA1}") == .composed)
+        #expect(LatencyProbeChange(text: "a\u{0323}") == .composed)  // canonically equivalent
+        #expect(LatencyProbeChange(text: "\u{1EA1} ") == .plain)
+        #expect(LatencyProbeChange(text: "") == .plain)
     }
 
     @Test func nearestRankPercentiles() {
@@ -172,6 +193,37 @@ struct LatencyProbeDriverTests {
         #expect(samples.count == 2 && samples.allSatisfy { $0.changed == nil })
     }
 
+    @Test(arguments: [LatencyProbeResult.Profile.fast, .burst])
+    func editsSlowerThanTheKeyIntervalKeepEverySample(profile: LatencyProbeResult.Profile) async {
+        // PLT-R810: an edit that lands 45 ms after its key (after the next key in both profiles) is still
+        // credited to the tone key with its insertion time, not to the space that follows.
+        let tone = KeyCode(rawValue: 0x26)
+        let window = ProbeWindowModel(editKeys: [tone], passDelay: 2_000, editDelay: 45_000, asynchronous: true)
+        let (driver, _) = ProbeFixture.driver(window: window)
+        let word = [KeyCode(rawValue: 0x00), tone, KeyCode(rawValue: 0x31)]
+        let keys = Array(repeating: word, count: 12).flatMap { $0 }
+        let edits = (0..<12).map { $0 * 3 + 1 }
+        let samples = await driver.run(profile: profile, keys: keys, edits: edits)
+        #expect(samples.count == 12)
+        #expect(samples.allSatisfy { $0.latencyNanoseconds == 45_000_000 })
+        let baseline = await driver.run(profile: profile, keys: [KeyCode(rawValue: 0x0B), KeyCode(rawValue: 0x08)])
+        #expect(baseline.map(\.latencyNanoseconds) == [2_000_000, 2_000_000])
+    }
+
+    @Test func aStopEndsPostingAtOnce() async {
+        let window = ProbeWindowModel()
+        let (driver, poster) = ProbeFixture.driver(window: window)
+        let remaining = Mutex(2)
+        let samples = await driver.run(profile: .normal, keys: Array(repeating: KeyCode(rawValue: 0x0B), count: 6)) {
+            remaining.withLock { count in
+                defer { count -= 1 }
+                return count > 0
+            }
+        }
+        #expect(samples.count == 2)
+        #expect(poster.posted.count == 4)  // two keys, keyDown and keyUp each
+    }
+
     @Test func changesFromAnEarlierRunAreForgotten() async {
         let window = ProbeWindowModel()
         let (driver, _) = ProbeFixture.driver(window: window)
@@ -186,7 +238,10 @@ struct LatencyProbeSessionTests {
     @Test func standardScriptNeedsTheLayoutKeys() throws {
         let layout = InjectionTestLayouts.qwerty()
         let telex = try #require(LatencyProbeScript.standard(layout: layout, method: .telex))
-        #expect(telex.baseline.count == 12)
+        #expect(telex.baseline.count == 13)
+        // The measured run starts at a word boundary: the baseline ends with the space key.
+        #expect(telex.baseline.last == InjectionTestLayouts.keyCode(for: " "))
+        #expect(telex.measured[2] == InjectionTestLayouts.keyCode(for: " "))
         #expect(telex.measured.count == 36)
         #expect(telex.measuredIndices.first == 1 && telex.measuredIndices.count == 12)
         #expect(telex.measured[1] == InjectionTestLayouts.keyCode(for: "j"))
@@ -207,7 +262,8 @@ struct LatencyProbeSessionTests {
         let wallClock = FixedWallClock()
         let session = LatencyProbeSession(driver: driver, metrics: window.metrics, wallClock: wallClock)
         let started = Mutex<[LatencyProbeResult.Profile]>([])
-        let result = await session.run(script: script) { profile in started.withLock { $0.append(profile) } }
+        let result = try #require(
+            await session.run(script: script) { profile in started.withLock { $0.append(profile) } })
         #expect(started.withLock { $0 } == LatencyProbeResult.Profile.allCases)
         #expect(result.ranAt == wallClock.now())
         #expect(result.results.map(\.profile) == LatencyProbeResult.Profile.allCases)
@@ -218,5 +274,26 @@ struct LatencyProbeSessionTests {
         }
         let eventsPerProfile = 2 * (script.baseline.count + script.measured.count)
         #expect(poster.posted.count == 3 * eventsPerProfile)
+    }
+
+    @Test func aStopAfterTheFirstProfileYieldsNoResult() async throws {
+        let layout = InjectionTestLayouts.qwerty()
+        let script = try #require(LatencyProbeScript.standard(layout: layout, method: .telex))
+        let window = ProbeWindowModel(editKeys: [InjectionTestLayouts.keyCode(for: "j")])
+        let (driver, poster) = ProbeFixture.driver(window: window)
+        let session = LatencyProbeSession(driver: driver, metrics: window.metrics, wallClock: FixedWallClock())
+        let started = Mutex<[LatencyProbeResult.Profile]>([])
+        let keepGoing = Atomic<Bool>(true)
+        let result = await session.run(
+            script: script,
+            progress: { profile in
+                started.withLock { $0.append(profile) }
+                if profile == .fast { keepGoing.store(false, ordering: .relaxed) }
+            },
+            shouldContinue: { keepGoing.load(ordering: .relaxed) })
+        #expect(result == nil)
+        #expect(started.withLock { $0 } == [.normal, .fast])
+        // Only the normal profile typed; the stop during "fast" prevented every further key.
+        #expect(poster.posted.count == 2 * (script.baseline.count + script.measured.count))
     }
 }

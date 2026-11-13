@@ -7,6 +7,7 @@
 // resulting override fixes the symptom.
 
 import AppModel
+import ApplicationServices
 import CompatRules
 import Foundation
 import Injection
@@ -226,11 +227,152 @@ struct GuidedTestRunnerTests {
         #expect(bench.clock.now().nanoseconds(since: start) > 7 * 30_000_000)
     }
 
+    @Test func textAfterTheCaretCountsAsContent() async {
+        // PLT-R1205 step 3: a caret parked at the start of a non-empty field is not an empty field.
+        let bench = GuidedBench(text: "draft")
+        bench.field.axSetSelectedRange(Injection.TextRange(location: 0, length: 0))
+        #expect(await bench.run(GuidedFixture.plain) == .fieldNotEmpty)
+        #expect(bench.poster.posted.isEmpty && bench.field.text == "draft")
+    }
+
+    @Test func aStopBeforeTheRunTypesNothing() async {
+        let bench = GuidedBench()
+        let stop = ProbeStopSignal()
+        stop.stop()
+        #expect(await bench.runner.run(GuidedFixture.plain, field: bench.handle, stop: stop) == .stopped)
+        #expect(bench.poster.posted.isEmpty)
+        #expect(await bench.runner.removeTestText(GuidedFixture.plain, field: bench.handle, stop: stop) == nil)
+        #expect(bench.poster.posted.isEmpty)
+    }
+
+    /// The focus check answers true `checks` times, then false; the poster count at that moment is kept.
+    final class FocusFlip: Sendable {
+        private let state: Mutex<(left: Int, postedAtFlip: Int?)>
+        private let poster: FakeEventPoster
+        init(after checks: Int, poster: FakeEventPoster) {
+            state = Mutex((checks, nil))
+            self.poster = poster
+        }
+        var postedAtFlip: Int? { state.withLock { $0.postedAtFlip } }
+        func stillFocused() -> Bool {
+            state.withLock { state in
+                guard state.left > 0 else {
+                    if state.postedAtFlip == nil { state.postedAtFlip = poster.posted.count }
+                    return false
+                }
+                state.left -= 1
+                return true
+            }
+        }
+    }
+
+    @Test(arguments: [3, 5, 8])
+    func focusMovingMidCandidateStopsTypingAtOnce(checks: Int) async throws {
+        // PLT-R1205 step 3, PLT-R387: one check before the run, one before each of the 7 steps and one before
+        // the removal. After the flip not a single event (canary key or removal backspace) is posted.
+        let bench = GuidedBench()
+        let flip = FocusFlip(after: checks, poster: bench.poster)
+        let stop = ProbeStopSignal { flip.stillFocused() }
+        #expect(await bench.runner.run(GuidedFixture.plain, field: bench.handle, stop: stop) == .stopped)
+        let atFlip = try #require(flip.postedAtFlip)
+        #expect(bench.poster.posted.count == atFlip)
+        #expect(stop.isStopped)
+        #expect(!bench.field.text.isEmpty)  // the partial canary stays: no blind backspaces
+    }
+
+    @Test func focusLostBeforeTheRemovalPostsNoBackspace() async throws {
+        let bench = GuidedBench()
+        let flip = FocusFlip(after: 8, poster: bench.poster)  // the whole canary, then the removal check fails
+        let stop = ProbeStopSignal { flip.stillFocused() }
+        #expect(await bench.runner.run(GuidedFixture.plain, field: bench.handle, stop: stop) == .stopped)
+        #expect(bench.poster.posted.count == (try #require(flip.postedAtFlip)))
+        #expect(bench.field.text == "đá â")
+    }
+
+    @Test func removalAfterTheHumanAnswerNeedsTheFocus() async {
+        let bench = GuidedBench(ax: .unavailable)
+        #expect(await bench.run(GuidedFixture.plain) == .needsHumanAnswer)
+        let before = bench.poster.posted.count
+        let stop = ProbeStopSignal { false }
+        #expect(await bench.runner.removeTestText(GuidedFixture.plain, field: bench.handle, stop: stop) == nil)
+        #expect(bench.poster.posted.count == before)
+        #expect(bench.field.text == "đá â")
+    }
+
+    @Test func aStopSetDuringAnEditEndsItBeforeTheNextEvent() async {
+        // The flag is read before every event, so a stop from the main thread cuts an executor short.
+        let stop = ProbeStopSignal()
+        let poster = FakeEventPoster { _ in stop.stop() }
+        let runner = GuidedTestRunner(
+            poster: poster, fieldAccess: ScriptedFieldAccess(readings: [""]), marker: ProbeFixture.marker,
+            clock: ManualClock())
+        let result = await runner.run(
+            GuidedFixture.plain, field: FieldHandle(pid: 1, token: 1, element: nil), stop: stop)
+        #expect(result == .stopped)
+        #expect(poster.posted.count == 1)
+    }
+
     @Test func keyCodesComeFromTheLayoutOrTheUSPositions() {
         let layout = InjectionTestLayouts.qwerty()
         #expect(GuidedTestKeys(layout: layout).code("s") == InjectionTestLayouts.keyCode(for: "s"))
         #expect(GuidedTestKeys(layout: nil).code(" ") == KeyCode(rawValue: 0x31))
         #expect(GuidedTestKeys(layout: nil).code("x") == KeyCode(rawValue: 0))
+    }
+}
+
+@Suite("Guided test focus check (PLT-R1205 step 3, PLT-R387)")
+struct GuidedTestFocusTests {
+    static let attributes = FocusAttributes(
+        role: "AXTextField", subrole: nil, identifier: nil, domClasses: [], editable: true, ancestorRoles: [],
+        documentURL: nil, windowTitle: nil)
+
+    @Test func theTargetAppMustKeepTheFocus() {
+        let ax = FakeAXProvider()
+        ax.focusWithoutElement(pid: 42, notify: nil)
+        let check = GuidedTestFocus.check(ax: ax, pid: 42, field: FieldHandle(pid: 42, token: 7, element: nil))
+        #expect(check())
+        ax.focusWithoutElement(pid: 43, notify: nil)  // the user switched apps
+        #expect(!check())
+    }
+
+    @Test func theConfirmedElementMustKeepTheFocus() {
+        // The fake's focused element of pid N is N's application element, so a handle for another element fails.
+        let ax = FakeAXProvider()
+        ax.focus(pid: 42, attributes: Self.attributes, notify: nil)
+        let same = FieldHandle(pid: 42, token: 7, element: AXElementReference(AXUIElementCreateApplication(42)))
+        let other = FieldHandle(pid: 42, token: 8, element: AXElementReference(AXUIElementCreateApplication(99)))
+        #expect(GuidedTestFocus.check(ax: ax, pid: 42, field: same)())
+        #expect(!GuidedTestFocus.check(ax: ax, pid: 42, field: other)())
+        ax.focusWithoutElement(pid: 42, notify: nil)  // focus left every element of the app
+        #expect(!GuidedTestFocus.check(ax: ax, pid: 42, field: same)())
+    }
+
+    @Test func doubtCountsAsMovedFocus() {
+        let ax = FakeAXProvider()
+        ax.focus(pid: 42, attributes: Self.attributes, notify: nil)
+        ax.setTimingOut(pid: 42, true)
+        let handle = FieldHandle(pid: 42, token: 7, element: AXElementReference(AXUIElementCreateApplication(42)))
+        #expect(!GuidedTestFocus.check(ax: ax, pid: 42, field: handle)())
+    }
+
+    @Test func aSwitchMidCandidateStopsTheRunnerThroughTheSignal() async {
+        let bench = GuidedBench()
+        let ax = FakeAXProvider()
+        ax.focusWithoutElement(pid: 42, notify: nil)
+        let poster = bench.poster
+        let posts = Mutex(0)
+        let check = GuidedTestFocus.check(ax: ax, pid: 42, field: bench.handle)
+        let stop = ProbeStopSignal {
+            // After the third step the user clicks into another app.
+            posts.withLock { count in
+                count += 1
+                if count == 4 { ax.focusWithoutElement(pid: 43, notify: nil) }
+            }
+            return check()
+        }
+        #expect(await bench.runner.run(GuidedFixture.plain, field: bench.handle, stop: stop) == .stopped)
+        let typed = poster.posted.count
+        #expect(typed > 0 && bench.field.text == "đ")  // "d", then the edit to "đ"; nothing after the switch
     }
 }
 
@@ -298,7 +440,8 @@ final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
     }
 
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: Duration) -> AXCallResult<String> {
-        .success(current)
+        let text = current
+        return .success(range.location >= text.utf16.count ? "" : text)  // nothing after the caret
     }
 
     func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: Duration) -> AXCallResult<Void>

@@ -22,7 +22,7 @@ public final class LatencyProbeDriver: Sendable {
     let marker: EventMarker
     let clock: any MonotonicClock
     let sequence = ProbeSequence()
-    let changes = Mutex<[MonotonicInstant]>([])
+    let changes = Mutex<[LatencyProbeObservedChange]>([])
     /// How long after the last key the driver keeps collecting text changes.
     let settle: Duration
 
@@ -37,19 +37,46 @@ public final class LatencyProbeDriver: Sendable {
         self.settle = settle
     }
 
-    /// Types `keys` (key codes from the current layout) with `profile` spacing and returns one sample per key:
-    /// when it was posted and when the probe window last reported a text change before the next key (the
-    /// window reports text changes through `textChanged(at:)`).
-    public func run(profile: LatencyProbeResult.Profile, keys: [KeyCode]) async -> [LatencyProbeSample] {
-        changes.withLock { $0.removeAll() }
-        let posted = await DedicatedThread.run(name: "latency-probe") { self.postAll(keys, every: profile.keyInterval) }
-        let observed = changes.withLock { $0 }
-        return LatencyProbeMath.correlate(posted: posted, changes: observed, settle: settle)
+    /// Pass-through run: types `keys` (key codes from the current layout) with `profile` spacing and returns one
+    /// sample per key. Every key changes the text once and the window applies keys in order, so the k-th text
+    /// change belongs to the k-th delivered key, however late it arrives (a time window would credit a late
+    /// change to the next key in the burst profile). `shouldContinue` is read before every key on the typing
+    /// thread; once it returns false nothing more is posted.
+    public func run(
+        profile: LatencyProbeResult.Profile, keys: [KeyCode],
+        shouldContinue: @escaping @Sendable () -> Bool = { true }
+    ) async -> [LatencyProbeSample] {
+        let (posted, observed) = await type(keys, profile: profile, shouldContinue: shouldContinue)
+        return LatencyProbeMath.correlate(posted, changes: observed.map(\.instant))
     }
 
-    /// Called by the probe window (main thread) for every text change of its text view.
-    public func textChanged(at instant: MonotonicInstant) {
-        changes.withLock { $0.append(instant) }
+    /// Measured run: returns the samples of the keys at `edits` (indices into `keys`), each matched in order to
+    /// a change that shows the composed character (`LatencyProbeChange.composed`). The deletion half of an
+    /// edit and the plain keys around it are not counted (PLT-R810 T4).
+    public func run(
+        profile: LatencyProbeResult.Profile, keys: [KeyCode], edits: [Int],
+        shouldContinue: @escaping @Sendable () -> Bool = { true }
+    ) async -> [LatencyProbeSample] {
+        let (posted, observed) = await type(keys, profile: profile, shouldContinue: shouldContinue)
+        let editKeys = edits.compactMap { posted.indices.contains($0) ? posted[$0] : nil }
+        let composed = observed.filter { $0.kind == .composed }.map(\.instant)
+        return LatencyProbeMath.correlate(editKeys, changes: composed)
+    }
+
+    private func type(
+        _ keys: [KeyCode], profile: LatencyProbeResult.Profile, shouldContinue: @escaping @Sendable () -> Bool
+    ) async -> ([LatencyProbePostedKey], [LatencyProbeObservedChange]) {
+        changes.withLock { $0.removeAll() }
+        let posted = await DedicatedThread.run(name: "latency-probe") {
+            self.postAll(keys, every: profile.keyInterval, shouldContinue: shouldContinue)
+        }
+        return (posted, changes.withLock { $0 })
+    }
+
+    /// Called by the probe window (main thread) for every text change of its text view; `kind` tells whether
+    /// the text now ends with the composed character of the measured run (`LatencyProbeScript.composed`).
+    public func textChanged(at instant: MonotonicInstant, kind: LatencyProbeChange = .plain) {
+        changes.withLock { $0.append(LatencyProbeObservedChange(instant: instant, kind: kind)) }
     }
 
     /// T2 from the probe decide-to-posted histogram recorded during the measured run (`decideToPosted`), T4 as
@@ -61,6 +88,57 @@ public final class LatencyProbeDriver: Sendable {
     ) -> LatencyProbeResult.ProfileResult {
         LatencyProbeMath.result(
             profile: profile, baseline: baseline, measured: measured, decideToPosted: decideToPosted)
+    }
+}
+
+/// What a text change of the probe window shows: the composed character of the measured run (the visible
+/// result of an edit) or anything else (a pass-through key, the deletion half of an edit, a space).
+public enum LatencyProbeChange: Sendable, Hashable {
+    case plain
+    case composed
+
+    /// Classifies the probe text view's content after a change.
+    public init(text: String) {
+        self = text.last == LatencyProbeScript.composed ? .composed : .plain
+    }
+}
+
+struct LatencyProbeObservedChange: Sendable, Hashable {
+    var instant: MonotonicInstant
+    var kind: LatencyProbeChange
+}
+
+/// A key the driver typed: when, and whether the poster accepted it (an undelivered key has no change).
+struct LatencyProbePostedKey: Sendable, Hashable {
+    var instant: MonotonicInstant
+    var delivered: Bool
+}
+
+/// Stop request for a driver that types into the user's Mac (PLT-R1205, PLT-R810, PLT-R387). The main thread
+/// sets it (Stop, window closed, app switched); the dedicated typing thread reads the flag before every event
+/// and runs the focus check before every step. A failed focus check latches the stop.
+public final class ProbeStopSignal: Sendable {
+    private let stopped = Atomic<Bool>(false)
+    private let stillFocused: @Sendable () -> Bool
+
+    /// `stillFocused` answers whether the field under test still has keyboard focus (bounded AX call,
+    /// PLT-R342); it runs on the typing thread, never on the main thread.
+    public init(stillFocused: @escaping @Sendable () -> Bool = { true }) {
+        self.stillFocused = stillFocused
+    }
+
+    public func stop() { stopped.store(true, ordering: .releasing) }
+
+    public var isStopped: Bool { stopped.load(ordering: .acquiring) }
+
+    /// False once stopped; otherwise runs the focus check and stops when it fails.
+    public func shouldContinue() -> Bool {
+        guard !isStopped else { return false }
+        guard stillFocused() else {
+            stop()
+            return false
+        }
+        return true
     }
 }
 
@@ -84,6 +162,9 @@ public enum GuidedTestCandidateResult: Sendable, Hashable {
     /// The readable field was not empty before typing (for example residue of an earlier candidate): nothing
     /// was typed. The test never types into a field with content.
     case fieldNotEmpty
+    /// The stop signal fired (Stop, panel closed, focus moved) before the candidate finished: typing ended at
+    /// once and nothing was removed, so no backspace can reach another field (PLT-R1205 step 3, PLT-R387).
+    case stopped
 }
 
 public final class GuidedTestRunner: Sendable {
@@ -127,15 +208,20 @@ public final class GuidedTestRunner: Sendable {
     /// Types the canary "đá â" with `candidate`, reads it back through AX when possible and removes it again
     /// with the same strategy, reporting residue (PLT-R1205 step 3, PLT-R410). When the field cannot be read the
     /// text stays for the user to judge: the result is `.needsHumanAnswer` and `removeTestText` follows the
-    /// answer.
-    public func run(_ candidate: GuidedTestCandidate, field: FieldHandle?) async -> GuidedTestCandidateResult {
-        await DedicatedThread.run(name: "guided-test") { self.typeAndVerify(candidate, field: field) }
+    /// answer. `stop` is checked before every event and its focus check before every step and before the
+    /// removal; once it fires the result is `.stopped` and nothing more is posted.
+    public func run(
+        _ candidate: GuidedTestCandidate, field: FieldHandle?, stop: ProbeStopSignal = ProbeStopSignal()
+    ) async -> GuidedTestCandidateResult {
+        await DedicatedThread.run(name: "guided-test") { self.typeAndVerify(candidate, field: field, stop: stop) }
     }
 
     /// Removes the canary after a human answer. Returns whether text remained (nil when the field cannot be
-    /// read).
-    public func removeTestText(_ candidate: GuidedTestCandidate, field: FieldHandle?) async -> Bool? {
-        await DedicatedThread.run(name: "guided-test") { self.remove(candidate, field: field) }
+    /// read, or when `stop` fired and nothing was removed).
+    public func removeTestText(
+        _ candidate: GuidedTestCandidate, field: FieldHandle?, stop: ProbeStopSignal = ProbeStopSignal()
+    ) async -> Bool? {
+        await DedicatedThread.run(name: "guided-test") { self.remove(candidate, field: field, stop: stop) }
     }
 
     /// Rule suggestion in the 5.4 schema (PLT-R1205 step 4); a URL prefix only if the user ticked "include page

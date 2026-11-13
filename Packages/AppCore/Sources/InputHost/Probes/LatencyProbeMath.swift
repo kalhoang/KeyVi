@@ -9,8 +9,8 @@ internal import Foundation
 internal import Injection
 public import RealtimeSupport
 
-/// One probe key: when the driver posted it and when the probe window last reported a text change before the
-/// next key (nil when the text did not change).
+/// One probe key: when the driver posted it and when the probe window showed its result (nil when no change
+/// could be matched to it).
 public struct LatencyProbeSample: Sendable, Hashable {
     public var posted: MonotonicInstant
     public var changed: MonotonicInstant?
@@ -36,19 +36,18 @@ extension LatencyProbeResult.Profile {
 }
 
 enum LatencyProbeMath {
-    /// For key i, the last change in [posted(i), posted(i+1)); for the last key, in [posted, posted + settle].
-    /// An edit changes the text twice (deletion, insertion); the last change is the visible result (T4).
-    static func correlate(posted: [MonotonicInstant], changes: [MonotonicInstant], settle: Duration)
-        -> [LatencyProbeSample]
-    {
+    /// In-order matching (the window applies keys first in, first out): the k-th change at or after its key's
+    /// post belongs to the k-th delivered key. Changes older than the key they would match are leftovers and
+    /// skipped; an undelivered key consumes no change. Keys left without a change have none (nil).
+    static func correlate(_ keys: [LatencyProbePostedKey], changes: [MonotonicInstant]) -> [LatencyProbeSample] {
         let sorted = changes.sorted()
-        return posted.indices.map { index in
-            let start = posted[index]
-            let end =
-                index + 1 < posted.count
-                ? posted[index + 1] : start.advanced(byMicroseconds: microseconds(settle))
-            let last = sorted.last { $0 >= start && $0 < end }
-            return LatencyProbeSample(posted: start, changed: last)
+        var next = sorted.startIndex
+        return keys.map { key in
+            guard key.delivered else { return LatencyProbeSample(posted: key.instant, changed: nil) }
+            while next < sorted.endIndex, sorted[next] < key.instant { next += 1 }
+            guard next < sorted.endIndex else { return LatencyProbeSample(posted: key.instant, changed: nil) }
+            defer { next += 1 }
+            return LatencyProbeSample(posted: key.instant, changed: sorted[next])
         }
     }
 
@@ -100,29 +99,39 @@ enum LatencyProbeMath {
 
 extension LatencyProbeDriver {
     /// Dedicated thread: absolute-deadline pacing on `clock`, one keyDown and keyUp per key, then the settle
-    /// window. Returns the post instants of the keyDowns.
-    func postAll(_ keys: [KeyCode], every interval: Duration) -> [MonotonicInstant] {
+    /// window. Returns the post instants of the keyDowns. Once `shouldContinue` returns false the loop ends at
+    /// once: no further key is posted and there is no settle wait.
+    func postAll(
+        _ keys: [KeyCode], every interval: Duration, shouldContinue: @Sendable () -> Bool = { true }
+    ) -> [LatencyProbePostedKey] {
         let start = clock.now()
         let step = LatencyProbeMath.microseconds(interval)
-        var posted: [MonotonicInstant] = []
+        var posted: [LatencyProbePostedKey] = []
         posted.reserveCapacity(keys.count)
         for (index, key) in keys.enumerated() {
             clock.sleep(until: start.advanced(byMicroseconds: step * UInt64(index)))
-            posted.append(clock.now())
-            post(key, down: true)
-            post(key, down: false)
+            guard shouldContinue() else { return posted }
+            let instant = clock.now()
+            let delivered = post(key, down: true)
+            if delivered { _ = post(key, down: false) }
+            posted.append(LatencyProbePostedKey(instant: instant, delivered: delivered))
         }
         if let last = posted.last {
-            clock.sleep(until: last.advanced(byMicroseconds: LatencyProbeMath.microseconds(settle)))
+            clock.sleep(until: last.instant.advanced(byMicroseconds: LatencyProbeMath.microseconds(settle)))
         }
         return posted
     }
 
-    /// Physical-like: no Unicode payload (the system derives it from the layout), no flags.
-    private func post(_ key: KeyCode, down: Bool) {
+    /// Physical-like: no Unicode payload (the system derives it from the layout), no flags. A failed creation
+    /// loses one sample (its change stays nil); the probe never retries or blocks.
+    private func post(_ key: KeyCode, down: Bool) -> Bool {
         let event = SyntheticKeyEvent(keyCode: key, isKeyDown: down, flags: 0, unicode: .empty)
-        // A failed creation loses one sample (its change stays nil); the probe never retries or blocks.
-        try? poster.post(event, userData: marker.userData(sequence: sequence.next(), probe: true))
+        do {
+            try poster.post(event, userData: marker.userData(sequence: sequence.next(), probe: true))
+            return true
+        } catch {
+            return false
+        }
     }
 }
 

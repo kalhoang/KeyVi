@@ -126,9 +126,44 @@ struct MisbehavesFlowTests {
     @Test func offersFollowTheResult() {
         var flow = started()
         #expect(flow.offers(hasRepository: true) == [.copyReport, .openGitHubIssue])
+        flow.record(.failedByReadback(residue: false))
         flow.record(.passedByReadback)
+        #expect(!flow.couldNotReproduce)
         #expect(flow.offers(hasRepository: true) == MisbehavesOffer.allCases)
         #expect(flow.offers(hasRepository: false) == [.useForMe, .copySuggestion, .copyReport])
+    }
+
+    @Test func aPassingCurrentPlanIsNotOfferedAsAnOverride() {
+        // PLT-R540: an override equal to the shipped decision fixes nothing and shadows later shipped rules.
+        var flow = started()
+        flow.record(.passedByReadback)
+        #expect(flow.step == .finished && flow.couldNotReproduce)
+        #expect(flow.offers(hasRepository: true) == [.copyReport, .openGitHubIssue])
+        // When the current plan cannot type (pass-through), the default plan standing in for it is a real change.
+        var passThrough = MisbehavesFlow(
+            target: GuidedFixture.target(
+                plan: InjectionPlan(strategy: .passThrough, parameters: .defaults, fallback: [])))
+        passThrough.requestGuidedTest()
+        passThrough.confirmFieldIsEmptyAndSafe()
+        passThrough.record(.humanSaidYes)
+        #expect(passThrough.step == .finished && !passThrough.couldNotReproduce)
+        #expect(passThrough.offers(hasRepository: false) == [.useForMe, .copySuggestion, .copyReport])
+    }
+
+    @Test func aStoppedCandidateMeansTheFocusMoved() {
+        var flow = started()
+        flow.record(.stopped)
+        #expect(flow.step == .interrupted(.focusChanged))
+        #expect(flow.results[0] == .stopped && flow.pendingCandidate == nil)
+        #expect(!flow.couldNotReproduce && flow.best == nil)
+    }
+
+    @Test func theGuidedTestNeedsTheHostPassThrough() {
+        // PLT-R1205 step 3: without the host hook the runner's events would be transformed, so no offer.
+        let target = GuidedFixture.target()
+        #expect(target.offersGuidedTest(hostPassThroughAvailable: true))
+        #expect(!target.offersGuidedTest(hostPassThroughAvailable: false))
+        #expect(!GuidedFixture.target(secure: true).offersGuidedTest(hostPassThroughAvailable: true))
     }
 
     private func started() -> MisbehavesFlow {

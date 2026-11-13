@@ -53,20 +53,30 @@ enum GuidedTestCanary {
 }
 
 extension GuidedTestRunner {
-    /// Dedicated thread. Never types into a readable field that already holds text.
-    func typeAndVerify(_ candidate: GuidedTestCandidate, field: FieldHandle?) -> GuidedTestCandidateResult {
+    /// Dedicated thread. Never types into a readable field that already holds text. The stop signal's focus
+    /// check runs before every step and before the removal, its flag before every event: if focus moves to
+    /// another field mid-candidate, the remaining keys and the removal backspaces are never posted
+    /// (PLT-R1205 step 3, PLT-R387).
+    func typeAndVerify(_ candidate: GuidedTestCandidate, field: FieldHandle?, stop: ProbeStopSignal)
+        -> GuidedTestCandidateResult
+    {
+        guard stop.shouldContinue() else { return .stopped }
         if let before = readField(field), !before.isEmpty { return .fieldNotEmpty }
-        let environment = GuidedTestEnvironment(runner: self)
+        let environment = GuidedTestEnvironment(runner: self, stop: stop)
         var typedAll = true
         for step in GuidedTestCanary.steps where typedAll {
+            guard stop.shouldContinue() else { return .stopped }
             typedAll = perform(step, candidate: candidate, field: field, in: environment)
         }
+        guard !stop.isStopped else { return .stopped }
         environment.pause(GuidedTestCanary.settle)
         guard let reading = readField(field) else {
             // No readback: the user judges what is on screen, removal follows the answer.
             return .needsHumanAnswer
         }
+        guard stop.shouldContinue() else { return .stopped }
         let residue = removeText(reading.typed, candidate: candidate, field: field, in: environment)
+        guard !stop.isStopped else { return .stopped }
         guard typedAll, reading.typed == GuidedTestCanary.text, residue == false else {
             return .failedByReadback(residue: residue ?? false)
         }
@@ -74,15 +84,16 @@ extension GuidedTestRunner {
     }
 
     /// After a human answer: removes the canary length (the field cannot be read) and reports residue if a
-    /// readback became possible.
-    func remove(_ candidate: GuidedTestCandidate, field: FieldHandle?) -> Bool? {
-        let environment = GuidedTestEnvironment(runner: self)
+    /// readback became possible. Nothing is removed once `stop` fired or focus moved (nil).
+    func remove(_ candidate: GuidedTestCandidate, field: FieldHandle?, stop: ProbeStopSignal) -> Bool? {
+        guard stop.shouldContinue() else { return nil }
+        let environment = GuidedTestEnvironment(runner: self, stop: stop)
         let known = readField(field)?.typed ?? GuidedTestCanary.text
         return removeText(known, candidate: candidate, field: field, in: environment)
     }
 
     /// Deletes `text` with the candidate's strategy and returns whether anything (letters or placeholder
-    /// residue, PLT-R1206) remains before the caret; nil when unreadable.
+    /// residue, PLT-R1206) remains around the caret; nil when unreadable.
     private func removeText(
         _ text: String, candidate: GuidedTestCandidate, field: FieldHandle?, in environment: GuidedTestEnvironment
     ) -> Bool? {
@@ -131,42 +142,59 @@ extension GuidedTestRunner {
             trigger: nil, verifyBeforeApply: false, wordStartedNearFocusChange: false, createdAt: now, isProbe: true)
     }
 
-    /// The field before the caret (or before a selected suggestion), at most 64 UTF-16 units (PLT-R343); nil
-    /// when the field cannot be read.
+    /// The field around the caret: at most 64 UTF-16 units before it (the typed text, PLT-R343), the length of
+    /// the selection after it (an inline-completion suggestion, 4.3) and whether any text follows the caret
+    /// (one more bounded read). Nil when the field cannot be read.
     func readField(_ field: FieldHandle?) -> FieldReading? {
         guard let field else { return nil }
         guard case .success(let range) = fieldAccess.selectedRange(field, timeout: GuidedTestCanary.axTimeout) else {
             return nil
         }
-        let length = min(max(range.location, 0), GuidedTestCanary.maximumAXTextUnits)
-        guard length > 0 else { return FieldReading(typed: "", selectionLength: range.length) }
-        let window = TextRange(location: range.location - length, length: length)
-        guard case .success(let text) = fieldAccess.text(field, in: window, timeout: GuidedTestCanary.axTimeout) else {
-            return nil
+        let caret = max(range.location, 0)
+        let length = min(caret, GuidedTestCanary.maximumAXTextUnits)
+        var typed = ""
+        if length > 0 {
+            let window = TextRange(location: caret - length, length: length)
+            guard case .success(let text) = fieldAccess.text(field, in: window, timeout: GuidedTestCanary.axTimeout)
+            else { return nil }
+            typed = text
         }
-        return FieldReading(typed: text, selectionLength: range.length)
+        let afterStart = caret + max(range.length, 0)
+        let after = TextRange(location: afterStart, length: GuidedTestCanary.maximumAXTextUnits)
+        let trailing = fieldAccess.text(field, in: after, timeout: GuidedTestCanary.axTimeout)
+        // A field that cannot answer the read after the caret is judged on what precedes it.
+        let hasTextAfter = if case .success(let text) = trailing { !text.isEmpty } else { false }
+        return FieldReading(typed: typed, selectionLength: range.length, hasTextAfterCaret: hasTextAfter)
     }
 }
 
-/// What AX shows of the field: the text before the caret and the length of the selection after it (an
-/// inline-completion suggestion, 4.3).
+/// What AX shows of the field: the text before the caret, the length of the selection after it (an
+/// inline-completion suggestion, 4.3) and whether text follows the selection.
 struct FieldReading: Sendable, Hashable {
     var typed: String
     var selectionLength: Int
-    var isEmpty: Bool { typed.isEmpty && selectionLength == 0 }
+    var hasTextAfterCaret = false
+    var isEmpty: Bool { typed.isEmpty && selectionLength == 0 && !hasTextAfterCaret }
 }
 
 /// The runner's injection environment: probe-kind marker on every event, absolute-deadline pacing on the
-/// runner's clock, no pasteboard (candidates never paste) and no held events to release.
+/// runner's clock, no pasteboard (candidates never paste) and no held events to release. Once the stop signal
+/// is set every post fails before reaching the poster, so the executor ends at its next event.
 final class GuidedTestEnvironment: InjectionEnvironment {
     private let runner: GuidedTestRunner
+    private let stop: ProbeStopSignal
 
-    init(runner: GuidedTestRunner) { self.runner = runner }
+    init(runner: GuidedTestRunner, stop: ProbeStopSignal) {
+        self.runner = runner
+        self.stop = stop
+    }
 
     var now: MonotonicInstant { runner.clock.now() }
     func sleep(until deadline: MonotonicInstant) { runner.clock.sleep(until: deadline) }
 
     func post(_ event: SyntheticKeyEvent) throws(PostError) -> UInt32 {
+        // `PostError` has a single case; the executor treats it as "posting failed" and stops at once.
+        guard !stop.isStopped else { throw .eventCreationFailed }
         let sequence = runner.sequence.next()
         try runner.poster.post(event, userData: runner.marker.userData(sequence: sequence, probe: true))
         return sequence
