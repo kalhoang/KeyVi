@@ -20,8 +20,10 @@
   (`https://<site host>/nhat-ky-thay-doi/#v<version>` and `https://<site host>/en/changelog/#v<version>`;
   the site gives each release heading the id `v<version>`). It has no site navigation and no donation line,
   because Sparkle shows it in the in-app update window (PRD-R57). The helper escapes the notes, fills
-  `{{AppName}}`, refuses en and em dashes and unfilled tokens (the site build would reject the page), warns
-  above five visible lines (PRD-R51) and never overwrites a published page. With `--apply`, Vietnamese
+  `{{AppName}}`, refuses en and em dashes and unfilled tokens (the site build would reject the page), refuses
+  more than five visible lines per language (PRD-R51 is a MUST; `###` headings do not count) and never
+  overwrites a published page. `publish-release` runs the same checks (`release-notes-page --check`) before
+  it downloads, verifies or signs anything, so bad notes fail before the keychain prompt. With `--apply`, Vietnamese
   notes are required (PRD-R51); a dry run falls back to the English notes with a warning.
 - **`site/data/releases.json`**: `{"schemaVersion": 1, "releases": [...]}`, newest first; each entry has
   `version`, `build`, `channel` (`stable` or `beta`), `date` (UTC, `YYYY-MM-DD`), `dmgUrl`, `sha256` (of

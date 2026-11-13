@@ -4,6 +4,8 @@
 # Final release step, run on Pa's Mac (QA-R32, QA-R37, PLT-R1103): the Sparkle EdDSA private key
 # stays in the login keychain and never reaches CI.
 #
+#   0. Read the release notes and check them (both languages with --apply, at most five visible lines,
+#      PRD-R51) before anything is downloaded or the keychain is touched.
 #   1. Take the notarised update archive (.zip) and DMG built by .github/workflows/release.yml
 #      (downloaded from the draft GitHub Release with --from-github, or local files), verify the
 #      SHA-256 sums, the GitHub build provenance attestation, the code signature, the stapled ticket
@@ -154,6 +156,28 @@ mkdir -p "$out_root/site/static" "$out_root/site/data"
 notes_page_rel="site/static/release-notes/$version/index.html"
 [[ ! -e "$REPO_ROOT/$notes_page_rel" ]] || die "$notes_page_rel exists: $version has been published"
 
+# --- 0. Release notes (before any download or keychain access) --------------------------------
+# PRD-R51: checked first, so a missing or over-long section fails before sign_update asks for the key.
+notes_for() {
+  local file="$1" changelog="$2"
+  if [[ -n "$file" ]]; then
+    cat "$file"
+  else
+    py scripts/lib/publish_helpers.py changelog-notes --file "$changelog" --version "$version"
+  fi
+}
+notes_vi="$(notes_for "$notes_vi_file" CHANGELOG.vi.md)"
+notes_en="$(notes_for "$notes_en_file" CHANGELOG.md)"
+[[ -n "$notes_en" ]] || warn "no English notes for $version (CHANGELOG.md)"
+if [[ -z "$notes_vi" ]]; then
+  # PRD-R51: the update window shows the notes in the interface language, so a release needs both.
+  [[ $apply -eq 0 ]] || die "no Vietnamese notes for $version: add a CHANGELOG.vi.md section or pass --notes-vi"
+  warn "no Vietnamese notes for $version (CHANGELOG.vi.md); the dry run uses the English notes"
+fi
+notes_vi="${notes_vi:-$notes_en}"
+py scripts/lib/publish_helpers.py release-notes-page --check --app-name "$APP_DISPLAY_NAME" --version "$version" \
+  --notes-vi "$notes_vi" --notes-en "$notes_en" || die "the release notes for $version are not publishable"
+
 gh_repo_args=()
 if [[ $from_github -eq 1 || $github_release -eq 1 || $skip_attestation -eq 0 ]]; then
   require_cmd gh
@@ -277,23 +301,6 @@ changelog_url_vi="$site_url/nhat-ky-thay-doi/#$anchor"
 changelog_url_en="$site_url/en/changelog/#$anchor"
 notes_url="$site_url/release-notes/$version/"
 
-notes_for() {
-  local file="$1" changelog="$2"
-  if [[ -n "$file" ]]; then
-    cat "$file"
-  else
-    py scripts/lib/publish_helpers.py changelog-notes --file "$changelog" --version "$version"
-  fi
-}
-notes_vi="$(notes_for "$notes_vi_file" CHANGELOG.vi.md)"
-notes_en="$(notes_for "$notes_en_file" CHANGELOG.md)"
-[[ -n "$notes_en" ]] || warn "no English notes for $version (CHANGELOG.md)"
-if [[ -z "$notes_vi" ]]; then
-  # PRD-R51: the update window shows the notes in the interface language, so a release needs both.
-  [[ $apply -eq 0 ]] || die "no Vietnamese notes for $version: add a CHANGELOG.vi.md section or pass --notes-vi"
-  warn "no Vietnamese notes for $version (CHANGELOG.vi.md); the dry run uses the English notes"
-fi
-notes_vi="${notes_vi:-$notes_en}"
 today="$(date -u +%Y-%m-%d)"
 
 # --- 4. Appcast and releases.json -------------------------------------------------------------

@@ -402,10 +402,32 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertEqual(self.notes_page(out).returncode, 0)
         self.assertEqual(self.notes_page(out).returncode, 1, "a published page is never overwritten")
 
-    def test_release_notes_page_warns_over_five_lines(self):
-        result = self.notes_page(self.tmp / "long.html", "\n".join(f"- dòng {i}" for i in range(7)))
-        self.assertEqual(result.returncode, 0, result.stderr)
+    def test_release_notes_page_refuses_more_than_five_lines_prd_r51(self):
+        # PRD-R51 is a MUST: at most five visible lines, the rest stays behind the changelog link.
+        out = self.tmp / "long.html"
+        result = self.notes_page(out, "\n".join(f"- dòng {i}" for i in range(7)))
+        self.assertEqual(result.returncode, 1)
         self.assertIn("PRD-R51", result.stderr)
+        self.assertFalse(out.exists())
+        five = "### Đã sửa\n" + "\n".join(f"- dòng {i}" for i in range(5))
+        self.assertEqual(self.notes_page(out, five).returncode, 0, "headings do not count as visible lines")
+        english = self.notes_page(self.tmp / "long-en.html", "- một dòng", "\n".join(f"- line {i}" for i in range(6)))
+        self.assertEqual(english.returncode, 1)
+        self.assertIn("en notes", english.stderr)
+
+    def test_release_notes_page_check_validates_without_writing(self):
+        # publish-release runs --check before signing, so bad notes fail before the keychain prompt.
+        def check(notes_vi):
+            return self.helper("release-notes-page", "--check", "--app-name", "Test App", "--version", "1.2.3",
+                               "--notes-vi", notes_vi, "--notes-en", "- Fixed")
+        self.assertEqual(check("- Sửa lỗi").returncode, 0)
+        self.assertEqual(check("\n".join(f"- dòng {i}" for i in range(6))).returncode, 1)
+        self.assertEqual(check("- Sửa lỗi \u2013 Chrome").returncode, 1)
+        self.assertEqual(check("- {{Unknown}}").returncode, 1)
+        self.assertEqual(list(self.tmp.iterdir()), [])
+        no_out = self.helper("release-notes-page", "--app-name", "Test App", "--version", "1.2.3",
+                             "--notes-vi", "- a", "--notes-en", "- b")
+        self.assertNotEqual(no_out.returncode, 0, "--out is required unless --check")
 
     def test_render_cask_and_zap(self):
         out = self.tmp / "cask.rb"

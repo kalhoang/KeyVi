@@ -472,6 +472,20 @@ EOF
   fi
   expect 1 "--skip-gatekeeper refused with --apply" "$M/scripts/publish-release" 1.2.3 --apply --skip-gatekeeper --skip-attestation
   expect 1 "beta version needs --beta" "$M/scripts/publish-release" 1.3.0-beta.1 --skip-attestation --skip-gatekeeper
+  # PRD-R51 and QA-R32: release notes are checked before sign_update can prompt for the keychain.
+  printf '#!/bin/sh\n: >"%s"\nexit 1\n' "$T/sign-called" >"$T/fake-sign-update"
+  chmod +x "$T/fake-sign-update"
+  expect 1 "--apply without Vietnamese notes fails" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --apply --skip-attestation
+  contains "missing Vietnamese notes named" "no Vietnamese notes for 1.2.3"
+  if [[ -e "$T/sign-called" ]]; then ko "missing notes fail before sign_update"; else ok "missing notes fail before sign_update"; fi
+  cp "$M/CHANGELOG.md" "$T/changelog-short.md"
+  printf '## [1.2.3] - 2026-11-13\n- a\n- b\n- c\n- d\n- e\n- f\n' >"$M/CHANGELOG.md"
+  expect 1 "notes above five visible lines are refused" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --sign-in-dry-run --skip-attestation --skip-gatekeeper
+  contains "long notes cite PRD-R51" "PRD-R51 allows at most 5"
+  if [[ -e "$T/sign-called" ]]; then ko "long notes fail before sign_update"; else ok "long notes fail before sign_update"; fi
+  cp "$T/changelog-short.md" "$M/CHANGELOG.md"
   expect 0 "build-release dry run" bash -c "cd '$M' && touch project.yml && scripts/build-release.sh 1.2.3 1020399 --dry-run"
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"

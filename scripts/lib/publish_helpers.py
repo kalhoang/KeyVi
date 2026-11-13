@@ -4,7 +4,8 @@
 Subcommands:
   appcast-insert     add one item to the Sparkle appcast (QA-R34, QA-R35, PLT-R1101, PLT-R1106, PLT-R1109)
   releases-add       add one entry to site/data/releases.json (QA-R37)
-  release-notes-page write the bilingual release-notes page the appcast links to (PRD-R51, ADR 0304)
+  release-notes-page write (or, with --check, only validate) the bilingual release-notes page the appcast
+                     links to (PRD-R51, ADR 0304)
   render-cask      render packaging/homebrew/Casks/cask.rb.template (QA-R36, PLT-R1110)
   render-zap       print the zap paths with brand values (PLT-R1012)
   changelog-notes  extract the notes of one version from a Keep a Changelog file
@@ -210,10 +211,7 @@ def notes_html(notes: str) -> tuple[str, int]:
 
 def notes_section(lang: str, notes: str, changelog_url: str) -> str:
     copy = PAGE_COPY[lang]
-    body, visible = notes_html(notes)
-    if visible > NOTES_MAX_VISIBLE_LINES:
-        print(f"release-notes-page: the {lang} notes have {visible} lines; PRD-R51 asks for at most "
-              f"{NOTES_MAX_VISIBLE_LINES} (the page links the changelog for the rest)", file=sys.stderr)
+    body, _ = notes_html(notes)
     url = html.escape(changelog_url, quote=True)
     return (f'<section lang="{lang}" aria-labelledby="notes-{lang}">\n'
             f'<h2 id="notes-{lang}">{copy["heading"]}</h2>\n'
@@ -221,14 +219,10 @@ def notes_section(lang: str, notes: str, changelog_url: str) -> str:
             + f'<p class="more"><a href="{url}">{copy["more"]}</a></p>\n</section>')
 
 
-def cmd_release_notes_page(args) -> int:
-    """One bilingual page per release (ADR 0304 amendment): Vietnamese first, then English. It is what the
-    in-app update window shows, so it carries no donation line (PRD-R57) and no site navigation."""
+def checked_notes(args) -> dict[str, str]:
+    """Fills {{AppName}} and refuses notes the site build or the update window would reject."""
     if not VERSION_RE.match(args.version):
         raise SystemExit(f"invalid version {args.version}")
-    for url in (args.changelog_url_vi, args.changelog_url_en):
-        if not url.startswith("https://"):
-            raise SystemExit(f"changelog links must be HTTPS: {url}")
     notes = {"vi": fill_brand(args.notes_vi, args.app_name), "en": fill_brand(args.notes_en, args.app_name)}
     for lang, value in notes.items():
         if any(dash in value for dash in DASHES):
@@ -236,6 +230,25 @@ def cmd_release_notes_page(args) -> int:
                              "(the site build rejects them)")
         if "{{" in value:
             raise SystemExit(f"the {lang} notes contain an unfilled {{{{token}}}}")
+        _, visible = notes_html(value)
+        if visible > NOTES_MAX_VISIBLE_LINES:
+            # PRD-R51 is a MUST: the update window shows at most five lines, then the changelog link.
+            raise SystemExit(f"the {lang} notes have {visible} visible lines; PRD-R51 allows at most "
+                             f"{NOTES_MAX_VISIBLE_LINES} (keep the rest in the changelog, which the page links)")
+    return notes
+
+
+def cmd_release_notes_page(args) -> int:
+    """One bilingual page per release (ADR 0304 amendment): Vietnamese first, then English. It is what the
+    in-app update window shows, so it carries no donation line (PRD-R57) and no site navigation."""
+    notes = checked_notes(args)
+    if args.check:
+        return 0
+    if not args.out:
+        raise SystemExit("--out is required unless --check")
+    for url in (args.changelog_url_vi, args.changelog_url_en):
+        if not url.startswith("https://"):
+            raise SystemExit(f"changelog links must be HTTPS: {url}")
     if os.path.exists(args.out) and not args.force:
         raise SystemExit(f"{args.out} already exists: version {args.version} has been published")
     title = html.escape(f"{args.app_name} {args.version}")
@@ -376,13 +389,14 @@ def main(argv: list[str]) -> int:
     p.set_defaults(func=cmd_releases_add)
 
     p = sub.add_parser("release-notes-page")
-    p.add_argument("--out", required=True, help="site/static/release-notes/<version>/index.html")
+    p.add_argument("--out", help="site/static/release-notes/<version>/index.html (required unless --check)")
+    p.add_argument("--check", action="store_true", help="validate the notes only; write nothing")
     p.add_argument("--app-name", required=True)
     p.add_argument("--version", required=True)
     p.add_argument("--notes-vi", default="")
     p.add_argument("--notes-en", default="")
-    p.add_argument("--changelog-url-vi", required=True)
-    p.add_argument("--changelog-url-en", required=True)
+    p.add_argument("--changelog-url-vi", default="")
+    p.add_argument("--changelog-url-en", default="")
     p.add_argument("--force", action="store_true", help="overwrite an existing page")
     p.set_defaults(func=cmd_release_notes_page)
 
