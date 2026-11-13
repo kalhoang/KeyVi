@@ -262,6 +262,32 @@ input.method: telex
         body = "```\ntestapp-diagnostics v1\nhw.arch: arm64\n```\ninput.method: vni\n"
         self.assertEqual(self.labels(body)["labels"], ["arch:arm64"])
 
+    def test_unfenced_paste_still_parses(self):
+        # ADR 0501 "Issue forms": no render: option, so a paste of the inner lines arrives without a fence.
+        body = ("### Khối chẩn đoán\n\ntestapp-diagnostics v1\nhw.arch: arm64\ninput.method: telex\n\n"
+                "### Có lỗi trong ô gõ thử không?\n\nNo, only in the app above\n")
+        self.assertEqual(self.labels(body)["labels"], ["arch:arm64", "method:telex"])
+
+
+class IssueFormTests(unittest.TestCase):
+    """QA-R43 and ADR 0501: the diagnostics textarea keeps the pasted fence (no render:) and names the header."""
+
+    @staticmethod
+    def field(form: str, field_id: str) -> str:
+        text = (REPO / ".github" / "ISSUE_TEMPLATE" / form).read_text(encoding="utf-8")
+        items = text.split("\n  - type: ")
+        matches = [item for item in items if f"\n    id: {field_id}\n" in item]
+        assert len(matches) == 1, f"{form}: expected one field with id {field_id}"
+        return matches[0]
+
+    def test_diagnostics_field_has_no_render_and_names_the_header(self):
+        for form in ("bug.yml", "compatibility.yml"):
+            with self.subTest(form=form):
+                field = self.field(form, "diagnostics")
+                self.assertTrue(field.startswith("textarea\n"), field[:40])
+                self.assertNotIn("render:", field)
+                self.assertIn("`<slug>-diagnostics v1`", field)
+
 
 class PublishHelpersTests(TempDirTestCase):
     SIG = "A" * 86 + "=="
