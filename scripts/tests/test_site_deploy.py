@@ -5,6 +5,7 @@ The header equivalence of the container itself is tested by `node deploy/site/te
 Run: python3 -I scripts/tests/test_site_deploy.py"""
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import os
@@ -266,6 +267,26 @@ class SiteImageWorkflowTests(unittest.TestCase):
         self.assertNotIn("SITE_DEPLOY_TARGET", site)
         self.assertIn("run: node deploy/site/test.mjs", site)
         self.assertEqual(site.count('- "deploy/site/**"'), 2, "push and pull_request paths")
+
+    def test_site_yml_runs_when_any_input_of_the_site_image_changes(self):
+        """A pull request that edits only a file the Dockerfile copies (scripts/url-hosts.allow decides which analytics
+        host the site build accepts) must run the site tests, or the first failure appears at image build on prod."""
+        site = (WORKFLOWS / "site.yml").read_text(encoding="utf-8")
+        triggers = site.split("\non:\n", 1)[1].split("\npermissions:", 1)[0]
+        lists = {event: re.findall(r'^      - "([^"]+)"$', block.split("\n  workflow_dispatch:", 1)[0], re.M)
+                 for event, block in (("push", triggers.split("  pull_request:", 1)[0]),
+                                      ("pull_request", triggers.split("  pull_request:", 1)[1]))}
+        dockerfile = (DEPLOY / "Dockerfile").read_text(encoding="utf-8")
+        sources = re.findall(r"^COPY (?!--from)(\S+)", dockerfile, re.M)
+        self.assertIn("scripts/url-hosts.allow", sources)
+        for source in sources:
+            files = [str(path.relative_to(REPO)) + ("/x" if path.is_dir() else "") for path in REPO.glob(source.rstrip("/"))]
+            self.assertTrue(files, f"{source} matches no file")
+            for event, patterns in lists.items():
+                for name in files:
+                    with self.subTest(event=event, file=name):
+                        self.assertTrue(any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns),
+                                        f"{name} (Dockerfile COPY {source}) is missing from the {event} paths of site.yml")
 
 
 class StackEnvTests(unittest.TestCase):

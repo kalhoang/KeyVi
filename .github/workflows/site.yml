@@ -22,6 +22,7 @@ on:
       - "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"
       - "Packages/AppCore/Sources/SettingsStore/Documents.swift"
       - "scripts/brand.env"
+      - "scripts/url-hosts.allow"
       - "deploy/site/**"
   pull_request:
     paths:
@@ -36,6 +37,7 @@ on:
       - "Packages/AppCore/Sources/SettingsStore/ExportImport.swift"
       - "Packages/AppCore/Sources/SettingsStore/Documents.swift"
       - "scripts/brand.env"
+      - "scripts/url-hosts.allow"
       - "deploy/site/**"
   workflow_dispatch:
 
