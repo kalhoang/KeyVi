@@ -18,6 +18,9 @@ public protocol CompositionEngine {
 
 public protocol CompositionEngineFactory {
     associatedtype Engine: CompositionEngine
+    /// The PLT-R310 step 5 recogniser the pipeline builds from the hotkey bindings of each settings generation.
+    /// Production uses `HotkeyRecognizer` (the default); test factories may name a reference recogniser.
+    associatedtype Hotkeys: HotkeyRecognizing = HotkeyRecognizer
     /// Called on the tap thread at a hard boundary; MUST NOT allocate beyond copying prebuilt values.
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> Engine
 }
@@ -30,17 +33,33 @@ public struct VietnameseCompositionEngine: CompositionEngine {
     public var activeDisplay: String { session.state.activeDisplay }
 }
 
-public struct VietnameseCompositionEngineFactory: CompositionEngineFactory {
+public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Sendable {
     public init() {}
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> VietnameseCompositionEngine {
         VietnameseCompositionEngine(engine: settings.engines.engine(for: variant))
     }
 }
 
-/// Eight prebuilt engines: appContext x englishRestore x macros (ENG-R850, `features`, ENG-R1107).
+/// Eight prebuilt engines: appContext x englishRestore x macros (ENG-R850, `features`, ENG-R1107). Lookup is an
+/// array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
-    public init(engines: [EngineVariant: VietnameseEngine.Engine]) { unimplemented() }
-    public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { unimplemented() }
+    private let slots: [VietnameseEngine.Engine]
+    /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
+    /// keeps it when a settings change leaves the engines alone (hotkeys, UI language, update channel), so the
+    /// tap rebuilds only the hotkeys and keeps the word being typed. `nil` means unknown: every new settings
+    /// generation builds a fresh engine, the safe default.
+    public let revision: UInt64?
+
+    /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
+    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil) {
+        let fallback =
+            engines[.default] ?? engines.values.first
+            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
+        slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
+        self.revision = revision
+    }
+
+    public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { slots[variant.catalogIndex] }
 }
 
 public enum MacroTableBuildIssue: Sendable, Hashable {
@@ -51,18 +70,30 @@ public enum MacroTableBuildIssue: Sendable, Hashable {
 public enum EngineBridge {
     /// D1, D2, D4, D5, D6 plus the variant.
     public static func configuration(for settings: EffectiveSettings, variant: EngineVariant) -> EngineConfiguration {
-        unimplemented()
+        EngineSettingsMapping.configuration(for: settings, variant: variant)
     }
 
     /// Enabled macros only; invalid entries are skipped and reported (the editor prevents them, PRD-R29).
     public static func macroTable(from macros: [StoredMacro]) -> (MacroTable, [MacroTableBuildIssue]) {
-        unimplemented()
+        MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
     /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches user lists and macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
-    ) rethrows -> Resources { unimplemented() }
+    ) rethrows -> Resources {
+        var resources = try bundledLoader()
+        resources.userKeepRaw = WordSet(settings.keepAsTyped)
+        resources.userKeepVietnamese = WordSet(settings.keepVietnamese)
+        resources.macros = macros
+        return resources
+    }
 
-    public static func catalog(settings: EffectiveSettings, resources: Resources) -> EngineCatalog { unimplemented() }
+    /// `revision` identifies the engine-affecting settings (see `EngineCatalog.revision`); the publisher bumps it
+    /// only when the catalog's inputs change.
+    public static func catalog(
+        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil
+    ) -> EngineCatalog {
+        EngineSettingsMapping.catalog(settings: settings, resources: resources, revision: revision)
+    }
 }
