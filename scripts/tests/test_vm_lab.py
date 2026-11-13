@@ -84,6 +84,11 @@ case "$cmd" in
     rm -f "$d/vms/$1" ;;
   exec)
     [ -z "${FAKE_NO_AGENT:-}" ] || { echo "Failed to connect to the guest agent" >&2; exit 1; }
+    if [ -n "${FAKE_AGENT_AFTER:-}" ]; then  # the agent answers only after this many failed tries
+      tries=$(( $(cat "$d/agent-tries" 2>/dev/null || echo 0) + 1 ))
+      echo "$tries" >"$d/agent-tries"
+      [ "$tries" -gt "$FAKE_AGENT_AFTER" ] || { echo "Failed to connect to the guest agent" >&2; exit 1; }
+    fi
     shift; "$@" ;;
   *) echo "fake tart: unsupported $cmd" >&2; exit 64 ;;
 esac
@@ -162,6 +167,7 @@ class LabTestCase(unittest.TestCase):
             "VM_BOOT_TIMEOUT": "5",
             "VM_STOP_TIMEOUT": "2",
             "VM_LAB_POLL": "0.1",
+            "VM_AGENT_TIMEOUT": "1",
             "LC_ALL": "C",
         }
         for name in ("TMPDIR",):
@@ -621,10 +627,23 @@ class IntegrationDevArgumentTests(LabTestCase):
         result = self.integration("--output", str(self.tmp / "run"), FAKE_NO_AGENT="1")
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("RESULT: FAIL", result.stdout)
+        self.assertIn("guest agent of", result.stderr)
+        self.assertIn("did not answer within 1s", result.stderr)
+        self.assertFalse(any("integration-guest.sh" in call for call in self.tart_calls("exec")))
         self.assertIn(f"clone {DEV} {DEV}-suite", "\n".join(self.calls()))
         self.assertIn(f"set {DEV}-suite --memory 6144 --cpu 4", "\n".join(self.tart_calls("set")))
         self.assertFalse((self.fake / "vms" / f"{DEV}-suite").exists())
         self.assertTrue((self.fake / "vms" / DEV).exists())
+        self.assertEqual(self.running(), set())
+
+    def test_it_waits_for_the_guest_agent_before_running_the_guest_script(self):
+        """The agent starts after SSH is up: an exec right after boot failed on 2026-11-13."""
+        result = self.integration("--output", str(self.tmp / "run"), FAKE_AGENT_AFTER="2", VM_AGENT_TIMEOUT="5")
+        execs = self.tart_calls("exec")
+        self.assertGreaterEqual(len(execs), 4, execs)  # two refused probes, the answering one, the guest script
+        self.assertIn("/usr/bin/true", execs[0])
+        self.assertIn("integration-guest.sh", execs[-1])
+        self.assertNotIn("did not answer", result.stderr)
         self.assertEqual(self.running(), set())
 
 

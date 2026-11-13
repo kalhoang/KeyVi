@@ -84,11 +84,12 @@ git -C "$REPO_ROOT" archive --format=tar HEAD | lab_ssh "$vm" "rm -rf src && mkd
 }
 lab_log "building, granting and running the TestHost suite in $vm (about 20 to 40 minutes)"
 rc=0
+lab_wait_agent "$vm" || rc=$?
 # shellcheck disable=SC2016 # expanded by the guest's shell
-lab_tart exec "$vm" /bin/bash -c 'cd "$HOME/src" && bash scripts/vm/guest/integration-guest.sh --out "$HOME/integration-out"' \
+((rc != 0)) || lab_tart exec "$vm" /bin/bash -c 'cd "$HOME/src" && bash scripts/vm/guest/integration-guest.sh --out "$HOME/integration-out"' \
   >"$run_dir/guest.log" 2>&1 || rc=$?
 lab_pull "$vm" integration-out "$run_dir" || lab_log "warning: could not copy the guest logs back"
-cat "$run_dir/integration-out/summary.txt" 2>/dev/null || tail -n 20 "$run_dir/guest.log"
+cat "$run_dir/integration-out/summary.txt" 2>/dev/null || tail -n 20 "$run_dir/guest.log" 2>/dev/null || true
 if ((rc == 0)); then
   printf 'RESULT: PASS (logs: %s)\n' "$run_dir"
   exit 0
