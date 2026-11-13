@@ -143,12 +143,14 @@ final class TestHostWindowController: NSWindowController {
         for field in access.values { field.reset() }
     }
 
-    /// Brings this window forward and focuses a native field (Window menu, Command+1 and Command+3).
+    /// Brings this window forward and focuses a native field (Window menu, Command+1 and Command+3), caret at the
+    /// end (`placeCaretAtEnd`).
     func focus(_ field: TestHostField) {
         guard let view = views[field] else { return }
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         window?.makeFirstResponder(view)
+        placeCaretAtEnd(of: view)
     }
 
     static func scrolling(_ textView: NSTextView, height: CGFloat) -> NSScrollView {
