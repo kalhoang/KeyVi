@@ -1,0 +1,35 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.restoreHotkey.twice",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.second.escapeField"
+    }
+  ],
+  "keys": [
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j",
+    "escape",
+    "escape"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "vieetj<esc>"
+  },
+  "readback": "ax"
+}

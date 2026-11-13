@@ -1,0 +1,37 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.privacyCanary.backspaceReplace",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textField"
+    }
+  ],
+  "keys": [
+    "k",
+    "a",
+    "n",
+    "a",
+    "r",
+    "y",
+    "z",
+    "q",
+    "x",
+    "space"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "kanaryzqx "
+  },
+  "readback": "ax"
+}

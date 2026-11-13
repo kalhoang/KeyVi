@@ -1,0 +1,62 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.fastTyping",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textField"
+    }
+  ],
+  "keys": [
+    "n",
+    "g",
+    "u",
+    "w",
+    "o",
+    "w",
+    "i",
+    "f",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j",
+    "space",
+    "n",
+    "o",
+    "i",
+    "s",
+    "space",
+    "t",
+    "i",
+    "e",
+    "e",
+    "n",
+    "g",
+    "s",
+    "space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j"
+  ],
+  "timing": "fast",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "người việt nói tiếng việt"
+  },
+  "readback": "ax"
+}

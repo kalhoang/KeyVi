@@ -1,0 +1,58 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.backspace.punctuation",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.native.textView"
+    }
+  ],
+  "keys": [
+    "v",
+    "i",
+    "e",
+    "e",
+    "t",
+    "j",
+    "comma",
+    "space",
+    "backspace",
+    "backspace",
+    "s",
+    "space",
+    "t",
+    "o",
+    "o",
+    "i",
+    "period",
+    "space",
+    "backspace",
+    "backspace",
+    "f",
+    "space",
+    "n",
+    "h",
+    "a",
+    "f",
+    "space",
+    "space",
+    "backspace",
+    "backspace",
+    "s"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "viết tồi nhá"
+  },
+  "readback": "ax"
+}

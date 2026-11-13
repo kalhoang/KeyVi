@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
-// W2-E1 acceptance over the repository's compat/scenarios: every file decodes and validates against
+// W2-E1 and W2-E2 acceptance over the repository's compat/scenarios: every file decodes and validates against
 // compat/schema/scenario.schema.json, the 02-platform.md 13.2 minimum set and the 5.6 example rules are present,
 // `compat-harness run --dry-run` loads them all and plans without touching live services, and every rule in
 // compat/rules.json has a scenario file (PLT-R505, PLT-R530, QA-R21).
@@ -52,6 +52,46 @@ private func scenarioFiles() throws -> [URL] {
             "testhost.web.inlineAutocomplete", "testhost.web.editModeTransition", "testhost.web.composer",
         ]
         #expect(Set(required).subtracting(ids).isEmpty, "missing: \(Set(required).subtracting(ids).sorted())")
+    }
+
+    /// QA-R11 list against TestHost (the 200 words in both methods, English restore, backspace across punctuation,
+    /// 15 keys per second, toggle, per-window rule, macros `vn` and `@@`, restore hotkey twice, secure input on and
+    /// off, tap recovery, permission revoked) and the privacy canary (section 9).
+    @Test func qaR11SuiteIsPresent() throws {
+        let ids = Set(try scenarioFiles().map { $0.deletingPathExtension().lastPathComponent })
+        let required = [
+            "testhost.commonWords.telex", "testhost.commonWords.vni", "testhost.englishRestore.samples",
+            "testhost.backspace.punctuation", "testhost.fastTyping", "testhost.toggleHotkey",
+            "testhost.perWindowRule.mainWindow", "testhost.perWindowRule.secondWindow", "testhost.macro.letters",
+            "testhost.macro.punctuation", "testhost.restoreHotkey.twice", "testhost.secureInput.pause",
+            "testhost.secureInput.release", "testhost.tapTimeout.recovery", "testhost.failOpen.permissionRevoked",
+            "testhost.privacyCanary.backspaceReplace", "testhost.privacyCanary.selectReplace",
+            "testhost.privacyCanary.axReplace", "testhost.privacyCanary.paste", "testhost.privacyCanary.passThrough",
+        ]
+        #expect(Set(required).subtracting(ids).isEmpty, "missing: \(Set(required).subtracting(ids).sorted())")
+    }
+
+    /// The Swift model may run ahead of compat/schema/scenario.schema.json only by the actions requested from the
+    /// schema owner (`pendingSchemaActions`), and no scenario file uses them until the schema lists them. Once the
+    /// integrator applies the requested patch, the pending set becomes empty here and in ScenarioValidator.
+    @Test func swiftActionsDifferFromTheSchemaOnlyByPendingRequests() throws {
+        let schema = try JSONDecoder().decode(
+            JSONValue.self,
+            from: Data(contentsOf: repositoryRoot.appendingPathComponent("compat/schema/scenario.schema.json")))
+        guard case .array(let listed)? = schema["properties"]?["setup"]?["items"]?["properties"]?["action"]?["enum"]
+        else {
+            Issue.record("setup action enum not found in the scenario schema")
+            return
+        }
+        let schemaActions = Set(listed.compactMap(\.stringValue))
+        let swiftActions = Set(Scenario.SetupStep.Action.allCases.map(\.rawValue))
+        #expect(schemaActions.isSubset(of: swiftActions))
+        let pending = Set(ScenarioValidator.pendingSchemaActions.map(\.rawValue))
+        #expect(swiftActions.subtracting(schemaActions).isSubset(of: pending))
+        for scenario in try ScenarioRunner.load(directory: scenariosDirectory) {
+            let used = scenario.setup.map(\.action.rawValue).filter { !schemaActions.contains($0) }
+            #expect(used.isEmpty, "\(scenario.id) uses \(used), not in the schema yet")
+        }
     }
 
     /// Every rule id of the 02-platform.md 5.6 examples has its scenario (test.scenario equals the rule id there).

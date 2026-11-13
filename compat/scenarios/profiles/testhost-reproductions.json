@@ -1,0 +1,46 @@
+{
+  "$schema": "profile.schema.json",
+  "id": "testhost-reproductions",
+  "summary": "QA-R21 TestHost reproductions: each simulated field gets the action of the shipped rule whose app behaviour it reproduces",
+  "scenarios": [
+    "testhost.addressBar.telexStroke",
+    "testhost.addressBar.telexTone",
+    "testhost.addressBar.vni",
+    "testhost.sheetCell.columnAutocomplete",
+    "testhost.web.composer",
+    "testhost.web.editModeTransition",
+    "testhost.web.inlineAutocomplete"
+  ],
+  "ruleOverrides": [
+    {
+      "id": "user.testhost.addressBar",
+      "summary": "TestHost simulated address bar reproduces Chromium address bars (inline completion)",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.sim.addressBar"] } },
+      "actionFromRule": "browser.chromium.addressBar"
+    },
+    {
+      "id": "user.testhost.sheetCell",
+      "summary": "TestHost simulated spreadsheet cell reproduces the Google Sheets cell editor in WebKit browsers",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.sim.sheetCell"] } },
+      "actionFromRule": "web.googleSheets.cellEditor.webkit"
+    },
+    {
+      "id": "user.testhost.webInlineAutocomplete",
+      "summary": "TestHost local page with inline autocomplete reproduces WebKit address bars",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "domClasses": ["testhost-inline-autocomplete"] } },
+      "actionFromRule": "browser.webkit.addressBar"
+    },
+    {
+      "id": "user.testhost.webEditModeCell",
+      "summary": "TestHost local page with an edit-mode transition reproduces the Google Sheets cell editor",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "domClasses": ["testhost-edit-mode-cell"] } },
+      "actionFromRule": "web.googleSheets.cellEditor.webkit"
+    },
+    {
+      "id": "user.testhost.webComposer",
+      "summary": "TestHost local contenteditable composer reproduces the Telegram Web composer",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "domClasses": ["testhost-composer"] } },
+      "actionFromRule": "web.telegram.composer"
+    }
+  ]
+}
