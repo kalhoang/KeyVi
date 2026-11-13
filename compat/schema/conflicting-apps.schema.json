@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compat/schema/conflicting-apps.schema.json",
+  "title": "Sources of the conflicting input apps (compat/conflicting-apps.json)",
+  "description": "PLT-R399, PRD-R40 screen 5, CLR-R5. One entry per other Vietnamese input method: the bundle IDs that compat/rules.json lists in conflictingInputApps and where each was read (the running app, for example `lsappinfo info -only bundleid`, or public vendor documentation), never from another input method's source or bundle internals. Not shipped. License: LicenseRef-App-Pending.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "apps"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "apps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/app" }
+    }
+  },
+  "$defs": {
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "bundleIds"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "bundleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$" }
+        },
+        "source": { "type": "string", "minLength": 10, "description": "How the bundle IDs were read, for example 'lsappinfo on the running app, version 1.2'." },
+        "checked": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

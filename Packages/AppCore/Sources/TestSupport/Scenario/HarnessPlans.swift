@@ -26,6 +26,15 @@ enum HarnessPlans {
             totalKeys += keys
             totalRange = (totalRange.lowerBound + range.lowerBound)...(totalRange.upperBound + range.upperBound)
             lines += describe(scenario, targets: targets, duration: range)
+            // The repeat block keeps its own timing: the PLT-R422 gate is defined at burst speed.
+            if let repetition = scenario.repetition {
+                let repeatKeys = ScenarioRepetitionPlan.keystrokes(for: repetition)
+                let repeatRange = KeyEventPlan.estimatedDuration(keystrokes: repeatKeys, profile: repetition.timing)
+                totalKeys += repeatKeys
+                totalRange =
+                    (totalRange.lowerBound + repeatRange.lowerBound)...(totalRange.upperBound + repeatRange.upperBound)
+                lines.append(describe(repetition, keystrokes: repeatKeys, duration: repeatRange, of: scenario))
+            }
             if options.configureApp {
                 lines.append("    app: " + AppConfiguration.of(scenario, profiles: profiles).label)
             }
@@ -66,6 +75,15 @@ enum HarnessPlans {
         ]
     }
 
+    static func describe(
+        _ repetition: Scenario.Repetition, keystrokes: Int, duration: ClosedRange<UInt64>, of scenario: Scenario
+    ) -> String {
+        "    repeat: \(repetition.words) corpus word(s), seed \(repetition.seed), timing " + repetition.timing.rawValue
+            + ", prefix " + repetition.prefix.joined(separator: " ") + ", \(keystrokes) keystroke(s), "
+            + seconds(duration) + ", read back after every word"
+            + (scenario.declaresPlaceholderGate ? ", PLT-R422 placeholder gate" : "")
+    }
+
     static func expectation(_ expect: Scenario.Expectation) -> String {
         var parts: [String] = []
         if let text = expect.text { parts.append("text \u{201C}" + text + "\u{201D}") }
@@ -74,6 +92,7 @@ enum HarnessPlans {
         if let composed = expect.firstKeyAfterReleaseComposed {
             parts.append("first key after release composed \(composed)")
         }
+        if expect.noPlaceholderResidue == true { parts.append("no placeholder residue (U+200B)") }
         return parts.joined(separator: ", ")
     }
 

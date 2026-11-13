@@ -33,7 +33,8 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         #expect(written["settings"]?["tonePlacement"] == .string("modern"))
         #expect(harness.memory.nodes[harness.url(.settings).path]?.permissions == .ownerOnlyFile)
         #expect(harness.memory.nodes[SettingsStoreHarness.directory.path]?.permissions == .ownerOnlyDirectory)
-        #expect(harness.spy.mutatingCalls.filter { $0.operation == .writeAtomically }.count == 1)
+        let writes = harness.spy.mutatingCalls.filter { $0.operation == .writeAtomically }.map(\.path)
+        #expect(writes.filter { $0 == harness.url(.settings).path }.count == 1)
     }
 
     /// PLT-R392: app-mode memory is written after 5 s; an explicit rule shortens a pending write to 1 s.
@@ -83,7 +84,8 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
             harness.object(.macros) != nil && harness.object(.ruleOverrides) != nil && harness.object(.appModes) != nil)
         #expect(harness.scheduler.pendingCount == 0)
         await harness.advance(by: .seconds(10))
-        #expect(harness.spy.mutatingCalls.filter { $0.operation == .writeAtomically }.count == 3)
+        let writes = harness.spy.mutatingCalls.filter { $0.operation == .writeAtomically }.map(\.path)
+        #expect(writes.filter { !$0.contains("/backups/") }.count == 3)
     }
 
     @Test func nothingIsWrittenBeforeLoad() async {
@@ -163,13 +165,16 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         #expect(await next.store.load().appModes == document)
     }
 
-    /// Rotation backups: the file as found at launch is backed up before the first rewrite; newest five kept.
-    @Test func firstRewriteOfASessionBacksUpAndPrunesToFive() async throws {
+    /// Rotation backups (PLT-R1006, section 10 acceptance): every complete write leaves its bytes as the newest
+    /// backup, also the first write of a fresh install; newest five kept.
+    @Test func everyWriteLeavesItsBytesAsTheNewestBackupAndPrunesToFive() async throws {
         var harness = SettingsStoreHarness()
         _ = await harness.store.load()
         await harness.store.updateSettings { $0.typingMethod = .set(.vni) }
         await harness.store.flush()
-        #expect(!harness.paths.contains { $0.hasPrefix("backups/") })
+        let firstBackup = try #require(harness.paths.first { $0.hasPrefix("backups/settings.json.v1.") })
+        #expect(harness.memory.nodes["/Settings/" + firstBackup]?.data == harness.data(.settings))
+        #expect(harness.memory.nodes["/Settings/" + firstBackup]?.permissions == .ownerOnlyFile)
         for launch in 0..<7 {
             harness.wallClock.advance(by: 3_600)
             harness = SettingsStoreHarness(reusing: harness)
@@ -186,6 +191,8 @@ private func override(_ id: String, at seconds: Double = 1_800_000_000.4) -> Sto
         let dates = storage.backups(of: .settings).map(\.date)
         #expect(dates == dates.sorted(by: >))
         #expect(dates.first == harness.wallClock.now())
+        let newest = try #require(storage.backups(of: .settings).first)
+        #expect(harness.memory.nodes[newest.url.path]?.data == harness.data(.settings))
     }
 
     /// PLT-R1005: rotation backups of the current schema never push out the pre-migration copies of an older

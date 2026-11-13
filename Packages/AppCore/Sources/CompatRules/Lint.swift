@@ -45,11 +45,15 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
 }
 
 public struct RulesLinter: Sendable {
+    /// `placeholderGateScenarioIDs`: the scenarios whose file declares the PLT-R422 gate (`PlaceholderGate`).
     public init(
-        rules: RulesDocument, matrix: MatrixDocument?, scenarioIDs: Set<String>, today: Date, releaseMode: Bool
+        rules: RulesDocument, matrix: MatrixDocument?, scenarioIDs: Set<String>,
+        placeholderGateScenarioIDs: Set<String> = [], today: Date, releaseMode: Bool
     ) {
         context = LintContext(
-            rules: rules, matrix: matrix, scenarioIDs: scenarioIDs, today: ISODay(today), releaseMode: releaseMode)
+            rules: rules, matrix: matrix, scenarioIDs: scenarioIDs,
+            placeholderGateScenarioIDs: placeholderGateScenarioIDs,
+            today: ISODay(today), releaseMode: releaseMode)
     }
 
     let context: LintContext

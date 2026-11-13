@@ -77,7 +77,7 @@ extension SettingsStore {
         guard let migrated = try? migrations.migrate(object, file: file, from: version, to: current) else {
             return recover(codec, quarantined: storage.quarantine(file))
         }
-        var status = FileStatus(raw: migrated, dirty: true, backedUpThisSession: true)
+        var status = FileStatus(raw: migrated, dirty: true)
         do {
             try storage.writeBackup(data, of: file, schemaVersion: version)
         } catch {
@@ -104,7 +104,7 @@ extension SettingsStore {
         }
         // PLT-R1006 asks for confirmation only before defaults replace the user's data; a restored backup is the
         // user's data, so it is written back now (the backup itself is already on disk).
-        files[file] = FileStatus(raw: backup.object, writeBlocked: !quarantined, dirty: true, backedUpThisSession: true)
+        files[file] = FileStatus(raw: backup.object, writeBlocked: !quarantined, dirty: true)
         addNotice(.recoveredFromBackup(file, backupDate: backup.date))
         return Codec.decode(backup.object)
     }

@@ -5403,11 +5403,15 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
 }
 
 public struct RulesLinter: Sendable {
+    /// `placeholderGateScenarioIDs`: the scenarios whose file declares the PLT-R422 gate (`PlaceholderGate`).
     public init(
-        rules: RulesDocument, matrix: MatrixDocument?, scenarioIDs: Set<String>, today: Date, releaseMode: Bool
+        rules: RulesDocument, matrix: MatrixDocument?, scenarioIDs: Set<String>,
+        placeholderGateScenarioIDs: Set<String> = [], today: Date, releaseMode: Bool
     ) {
         context = LintContext(
-            rules: rules, matrix: matrix, scenarioIDs: scenarioIDs, today: ISODay(today), releaseMode: releaseMode)
+            rules: rules, matrix: matrix, scenarioIDs: scenarioIDs,
+            placeholderGateScenarioIDs: placeholderGateScenarioIDs,
+            today: ISODay(today), releaseMode: releaseMode)
     }
 
     let context: LintContext
@@ -14625,15 +14629,37 @@ public struct Scenario: Sendable, Hashable, Codable {
         public var paused: Bool?
         public var holderBundleId: BundleKey?
         public var firstKeyAfterReleaseComposed: Bool?
+        /// PLT-R422: no read-back text (the key script's, and every `repeat` word's) holds the placeholder U+200B.
+        public var noPlaceholderResidue: Bool?
 
         public init(
             text: String? = nil, paused: Bool? = nil, holderBundleId: BundleKey? = nil,
-            firstKeyAfterReleaseComposed: Bool? = nil
+            firstKeyAfterReleaseComposed: Bool? = nil, noPlaceholderResidue: Bool? = nil
         ) {
             self.text = text
             self.paused = paused
             self.holderBundleId = holderBundleId
             self.firstKeyAfterReleaseComposed = firstKeyAfterReleaseComposed
+            self.noPlaceholderResidue = noPlaceholderResidue
+        }
+    }
+
+    /// `repeat` in the file (PLT-R422 gate, section 4 acceptance): after the key script passes, `words`
+    /// randomised words of the Telex soak corpus drawn with `seed`, each typed after `prefix` at `timing` and
+    /// read back on its own; every word must read back as exactly its corpus text.
+    public struct Repetition: Sendable, Hashable, Codable {
+        public var words: Int
+        public var seed: UInt64
+        public var timing: TimingProfile
+        /// Typed before every word; must leave the field empty or its content selected, so the word replaces it
+        /// (`command+l` in an address bar).
+        public var prefix: [String]
+
+        public init(words: Int, seed: UInt64, timing: TimingProfile, prefix: [String]) {
+            self.words = words
+            self.seed = seed
+            self.timing = timing
+            self.prefix = prefix
         }
     }
 
@@ -14647,10 +14673,12 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var layout: InputSourceID?
     public var expect: Expectation
     public var readback: Readback
+    public var repetition: Repetition?
 
     public init(
         id: String, targetBundleId: BundleKey, setup: [SetupStep], keys: [String], timing: TimingProfile,
-        method: Method, layout: InputSourceID? = nil, expect: Expectation, readback: Readback
+        method: Method, layout: InputSourceID? = nil, expect: Expectation, readback: Readback,
+        repetition: Repetition? = nil
     ) {
         self.id = id
         self.targetBundleId = targetBundleId
@@ -14661,6 +14689,12 @@ public struct Scenario: Sendable, Hashable, Codable {
         self.layout = layout
         self.expect = expect
         self.readback = readback
+        self.repetition = repetition
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback
+        case repetition = "repeat"
     }
 }
 

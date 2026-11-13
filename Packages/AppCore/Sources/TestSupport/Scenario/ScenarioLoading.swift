@@ -6,6 +6,7 @@
 // checked by `ScenarioValidator`.
 
 public import AppModel
+internal import CompatRules
 internal import Diagnostics
 public import Foundation
 
@@ -86,11 +87,17 @@ public struct ScenarioLoader: Sendable {
 public enum ScenarioValidator {
     public static let topLevelKeys: Set<String> = [
         "$schema", "id", "targetBundleId", "setup", "keys", "timing", "method", "layout", "expect", "readback",
+        "repeat",
     ]
     public static let setupKeys: Set<String> = ["action", "value"]
-    public static let expectKeys: Set<String> = ["text", "paused", "holderBundleId", "firstKeyAfterReleaseComposed"]
+    public static let expectKeys: Set<String> = [
+        "text", "paused", "holderBundleId", "firstKeyAfterReleaseComposed", "noPlaceholderResidue",
+    ]
+    public static let repeatKeys: Set<String> = ["words", "seed", "timing", "prefix"]
     /// Longest `wait` step accepted, in milliseconds.
     public static let maximumWaitMilliseconds = 60_000
+    /// Most words a `repeat` block may type (schema `maximum`): ten times the PLT-R422 gate.
+    public static let maximumRepeatWords = 10_000
     /// Setup actions the Swift model accepts that compat/schema/scenario.schema.json does not list yet.
     /// `ScenarioFilesTests` keeps the difference to exactly this set, and no scenario file may use these actions
     /// until the schema lists them. Empty since W3-A added `testHook` to the schema (ADR 0502, "Integration hooks").
@@ -106,10 +113,11 @@ public enum ScenarioValidator {
         }
         let expect = scenario.expect
         if expect.text == nil, expect.paused == nil, expect.holderBundleId == nil,
-            expect.firstKeyAfterReleaseComposed == nil
+            expect.firstKeyAfterReleaseComposed == nil, expect.noPlaceholderResidue == nil
         {
             problems.append("expect needs at least one expectation")
         }
+        if let repetition = scenario.repetition { problems += repetitionProblems(repetition, in: scenario) }
         for (index, step) in scenario.setup.enumerated() {
             if let problem = problem(in: step, keyCount: scenario.keys.count) {
                 problems.append("setup[\(index)] " + problem)
@@ -133,6 +141,27 @@ public enum ScenarioValidator {
         }
         let expectExtra = (object["expect"]?.objectValue?.keys).map { $0.filter { !expectKeys.contains($0) } } ?? []
         problems += expectExtra.sorted().map { "unknown key expect." + $0 }
+        let repeatExtra = (object["repeat"]?.objectValue?.keys).map { $0.filter { !repeatKeys.contains($0) } } ?? []
+        problems += repeatExtra.sorted().map { "unknown key repeat." + $0 }
+        return problems
+    }
+
+    /// PLT-R422 gate shape: Telex words (the soak corpus), a readback that checks every word without a person,
+    /// a bounded word count and a valid, non-empty prefix.
+    static func repetitionProblems(_ repetition: Scenario.Repetition, in scenario: Scenario) -> [String] {
+        var problems: [String] = []
+        if !(1...maximumRepeatWords).contains(repetition.words) {
+            problems.append("repeat.words must be 1 to \(maximumRepeatWords)")
+        }
+        if scenario.method != .telex { problems.append("repeat needs method telex (Telex soak corpus words)") }
+        if !PlaceholderGate.automaticReadbacks.contains(scenario.readback.rawValue) {
+            problems.append("repeat needs an ax or webdriver readback")
+        }
+        do throws(KeyScriptError) {
+            _ = try ScenarioKeys.strokes(repetition.prefix)
+        } catch {
+            problems.append(keyProblem(error, field: "repeat.prefix"))
+        }
         return problems
     }
 
@@ -144,10 +173,10 @@ public enum ScenarioValidator {
             }
     }
 
-    static func keyProblem(_ error: KeyScriptError) -> String {
+    static func keyProblem(_ error: KeyScriptError, field: String = "keys") -> String {
         switch error {
-        case .emptyScript: "keys must not be empty"
-        case .unknownKey(let index, let name): "keys[\(index)] '" + name + "' is not a physical key name"
+        case .emptyScript: field + " must not be empty"
+        case .unknownKey(let index, let name): field + "[\(index)] '" + name + "' is not a physical key name"
         }
     }
 

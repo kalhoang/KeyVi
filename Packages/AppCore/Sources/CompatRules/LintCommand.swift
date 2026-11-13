@@ -57,9 +57,10 @@ public enum CompatLintCommand {
             return report.render(findings: [DocumentChecks.finding(for: error)], notes: [], counts: (0, 0))
         }
         let (matrix, matrixFindings, matrixNotes) = loadMatrix(options, fileSystem: fileSystem)
-        let (scenarioIDs, scenarioNotes) = scenarioIDs(options, fileSystem: fileSystem)
+        let (scenarios, scenarioNotes) = scenarioIndex(options, fileSystem: fileSystem)
         let linter = RulesLinter(
-            rules: document, matrix: matrix, scenarioIDs: scenarioIDs, today: options.today ?? today,
+            rules: document, matrix: matrix, scenarioIDs: scenarios.ids,
+            placeholderGateScenarioIDs: scenarios.placeholderGates, today: options.today ?? today,
             releaseMode: options.releaseMode)
         return report.render(
             findings: matrixFindings + linter.run(), notes: matrixNotes + scenarioNotes,
@@ -84,14 +85,34 @@ public enum CompatLintCommand {
         }
     }
 
-    /// Scenario IDs are file names: `compat/scenarios/<id>.json` (PLT-R530).
-    private static func scenarioIDs(_ options: LintOptions, fileSystem: any FileSystem) -> (Set<String>, [String]) {
+    /// Scenario IDs are file names: `compat/scenarios/<id>.json` (PLT-R530). A file that cannot be read or parsed
+    /// still counts as present (the scenario tests report it) but never as a placeholder gate (PLT-R422).
+    private static func scenarioIndex(
+        _ options: LintOptions, fileSystem: any FileSystem
+    ) -> (ScenarioIndex, [String]) {
         guard let files = try? fileSystem.contentsOfDirectory(at: options.scenariosURL) else {
-            return ([], ["scenario folder " + options.scenariosPath + " not found"])
+            return (ScenarioIndex(), ["scenario folder " + options.scenariosPath + " not found"])
         }
-        let ids = files.filter { $0.pathExtension == "json" }.map { $0.deletingPathExtension().lastPathComponent }
-        return (Set(ids), [])
+        var index = ScenarioIndex()
+        for file in files where file.pathExtension == "json" {
+            let id = file.deletingPathExtension().lastPathComponent
+            index.ids.insert(id)
+            guard let data = try? fileSystem.readData(at: file, maxBytes: maximumScenarioBytes),
+                let document = try? JSONDecoder().decode(JSONValue.self, from: data),
+                PlaceholderGate.isDeclared(in: document)
+            else { continue }
+            index.placeholderGates.insert(id)
+        }
+        return (index, [])
     }
+
+    /// Same cap as TestSupport's scenario loader.
+    static let maximumScenarioBytes = 256 * 1024
+}
+
+struct ScenarioIndex {
+    var ids: Set<String> = []
+    var placeholderGates: Set<String> = []
 }
 
 struct LintUsageError: Error {

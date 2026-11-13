@@ -12,6 +12,7 @@ struct LintContext: Sendable {
     let rules: RulesDocument
     let matrix: MatrixDocument?
     let scenarioIDs: Set<String>
+    let placeholderGateScenarioIDs: Set<String>
     let today: ISODay
     let releaseMode: Bool
 
@@ -186,10 +187,24 @@ struct RuleChecks {
         return []
     }
 
+    /// PLT-R422: release-gated, because the gate is only real once its scenario passes on the runner. A missing
+    /// test is reported by `testFindings`, a broad rule by the validator (an error whatever its test).
     private func placeholderFindings() -> [LintFinding] {
-        guard PlaceholderScope.usesPlaceholder(rule.action.params), rule.test?.automation == .manual else { return [] }
-        let detail = "the 1,000-edit placeholder gate needs an automated test"
-        return [finding(.warning, .placeholderWithoutGateTest, detail)]
+        guard PlaceholderScope.usesPlaceholder(rule.action.params), !PlaceholderScope.isBroad(rule.match),
+            let test = rule.test
+        else { return [] }
+        guard test.automation == .automated else {
+            let detail = "the 1,000-edit placeholder gate needs an automated test"
+            return [finding(context.releaseGated, .placeholderWithoutGateTest, detail)]
+        }
+        guard context.placeholderGateScenarioIDs.contains(test.scenario) else {
+            let detail =
+                "scenario " + test.scenario + " does not declare the gate: repeat of at least "
+                + String(PlaceholderGate.minimumWords) + " words at " + PlaceholderGate.timing
+                + " timing with expect.noPlaceholderResidue and an automatic readback"
+            return [finding(context.releaseGated, .placeholderWithoutGateTest, detail)]
+        }
+        return []
     }
 
     private func pasteFindings() -> [LintFinding] {

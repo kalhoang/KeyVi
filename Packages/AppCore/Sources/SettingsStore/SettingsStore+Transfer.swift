@@ -86,7 +86,6 @@ extension SettingsStore {
                 $0.readOnly = false
                 $0.awaitingConfirmation = false
                 $0.writeBlocked = !secured
-                $0.backedUpThisSession = true
                 $0.dirty = true
             }
             cancelPendingWrite(file)

@@ -57,9 +57,11 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         #expect(state.user.typingMethod == .set(.vni))
         #expect(state.user.englishRestore == .set(false))
         let writes = harness.spy.mutatingCalls.filter { $0.operation == .writeAtomically }.map(\.path)
-        #expect(writes.count == 2)
+        // The v0 original first, then the migrated file, then the copy of what was just written.
+        #expect(writes.count == 3)
         #expect(writes.first?.contains("/backups/settings.json.v0.") == true)
-        #expect(writes.last == harness.url(.settings).path)
+        #expect(writes.dropFirst().first == harness.url(.settings).path)
+        #expect(writes.last?.contains("/backups/settings.json.v1.") == true)
         let backupPath = try #require(harness.paths.first { $0.hasPrefix("backups/settings.json.v0.") })
         #expect(harness.memory.nodes["/Settings/" + backupPath]?.data == original)
         #expect(harness.memory.nodes["/Settings/" + backupPath]?.permissions == .ownerOnlyFile)
@@ -99,14 +101,27 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
 @Suite struct SettingsStoreRecoveryTests {
     private let truncated = #"{"schemaVersion": 1, "settings": {"typingMethod": "vn"#
 
+    private func recoveredFromBackup(_ notices: [StoreNotice]) -> Bool {
+        guard notices.count == 1, case .recoveredFromBackup(.settings, _) = notices[0] else { return false }
+        return true
+    }
+
+    /// Replaces `file` with its first half, the section 10 acceptance case.
+    private func truncateToHalf(_ file: SettingsFile, in harness: SettingsStoreHarness) throws {
+        let bytes = try #require(harness.data(file))
+        try harness.memory.writeAtomically(
+            bytes.prefix(bytes.count / 2), to: harness.url(file), permissions: .ownerOnlyFile)
+    }
+
     /// PLT-R1006 with a backup: quarantine, newest valid backup loaded and written back at once (the corrupt
-    /// file is safe under its new name), notice until confirmed, and every later change persists.
+    /// file is safe under its new name), notice until confirmed, and every later change persists. Section 10
+    /// acceptance: every change already written in the last session survives the recovery.
     @Test func truncatedFileRecoversFromTheNewestValidBackup() async throws {
         let harness = SettingsStoreHarness()
         harness.seed(.settings, #"{"schemaVersion":1,"writtenBy":"0.1.0","settings":{"typingMethod":"vni"}}"#)
         _ = await harness.store.load()
         await harness.store.updateSettings { $0.tonePlacement = .set(.modern) }
-        await harness.advance(by: .seconds(1))  // first write of the session backs up the vni file
+        await harness.advance(by: .seconds(1))
         harness.wallClock.advance(by: 60)
         await harness.store.updateSettings { $0.soundOnSwitch = .set(true) }
         await harness.store.flush()
@@ -121,12 +136,13 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         let next = SettingsStoreHarness(reusing: harness)
         let state = await next.store.load()
         #expect(state.user.typingMethod == .set(.vni))
-        #expect(state.user.tonePlacement == .unset)
+        #expect(state.user.tonePlacement == .set(.modern))
+        #expect(state.user.soundOnSwitch == .set(true))
         guard case .recoveredFromBackup(.settings, let date)? = state.notices.first else {
             Issue.record("expected a recovery notice, got \(state.notices)")
             return
         }
-        #expect(date == harness.wallClock.now().addingTimeInterval(-120))
+        #expect(date == harness.wallClock.now().addingTimeInterval(-60))  // the last write of the session
         let quarantined = try #require(next.paths.first { $0.hasPrefix("settings.json.corrupt-") })
         #expect(next.memory.nodes["/Settings/" + quarantined]?.data == corruptBytes)
         #expect(next.object(.settings)?["settings"]?["typingMethod"] == .string("vni"))
@@ -144,6 +160,51 @@ private func seedRelease(_ release: SchemaFixtures.Release, in harness: Settings
         let relaunch = SettingsStoreHarness(reusing: next)
         let again = await relaunch.store.load()
         #expect(again.notices.isEmpty && again.user.soundOnSwitch == .set(false))
+    }
+
+    /// Section 10 acceptance on a fresh install: no earlier file existed, yet the first written state is what a
+    /// truncated settings.json recovers to.
+    @Test func truncationAfterTheFirstWriteOfAFreshInstallRecoversIt() async throws {
+        let harness = SettingsStoreHarness()
+        _ = await harness.store.load()
+        await harness.store.updateSettings {
+            $0.typingMethod = .set(.vni)
+            $0.tonePlacement = .set(.modern)
+        }
+        await harness.advance(by: .seconds(1))
+        try truncateToHalf(.settings, in: harness)
+
+        let next = SettingsStoreHarness(reusing: harness)
+        let state = await next.store.load()
+        #expect(recoveredFromBackup(state.notices))
+        #expect(state.user.typingMethod == .set(.vni))
+        #expect(state.user.tonePlacement == .set(.modern))
+    }
+
+    /// Section 10 acceptance in a later session: two changes written 2 s apart both survive the truncation.
+    @Test func truncationAfterLaterSessionWritesKeepsEveryWrittenChange() async throws {
+        let first = SettingsStoreHarness()
+        _ = await first.store.load()
+        await first.store.updateSettings { $0.typingMethod = .set(.vni) }
+        await first.store.flush()
+
+        first.wallClock.advance(by: 3_600)
+        let second = SettingsStoreHarness(reusing: first)
+        _ = await second.store.load()
+        await second.store.updateSettings { $0.tonePlacement = .set(.modern) }
+        await second.advance(by: .seconds(1))
+        second.wallClock.advance(by: 2)
+        await second.store.updateSettings { $0.soundOnSwitch = .set(true) }
+        await second.advance(by: .seconds(1))
+        try truncateToHalf(.settings, in: second)
+
+        second.wallClock.advance(by: 60)
+        let third = SettingsStoreHarness(reusing: second)
+        let state = await third.store.load()
+        #expect(recoveredFromBackup(state.notices))
+        #expect(state.user.typingMethod == .set(.vni))
+        #expect(state.user.tonePlacement == .set(.modern))
+        #expect(state.user.soundOnSwitch == .set(true))
     }
 
     /// PLT-R1006 "never wipe": when the corrupt file cannot be renamed, nothing writes over it, not even after

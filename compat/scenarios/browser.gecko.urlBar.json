@@ -25,7 +25,16 @@
   "method": "telex",
   "layout": "com.apple.keylayout.ABC",
   "expect": {
-    "text": "Có"
+    "text": "Có",
+    "noPlaceholderResidue": true
   },
-  "readback": "ax"
+  "readback": "ax",
+  "repeat": {
+    "words": 1000,
+    "seed": 2,
+    "timing": "burst",
+    "prefix": [
+      "command+l"
+    ]
+  }
 }

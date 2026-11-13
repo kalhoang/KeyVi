@@ -13,12 +13,12 @@ import Testing
 
     private func lint(
         _ rules: [Rule], matrix: MatrixDocument? = MatrixDocument(schemaVersion: 1, entries: []),
-        scenarios: Set<String> = LinterTests.scenarios, today: Date = LinterTests.today, release: Bool = false,
-        defaults: RuleDefaults = Build.defaults
+        scenarios: Set<String> = LinterTests.scenarios, gated: Set<String> = [], today: Date = LinterTests.today,
+        release: Bool = false, defaults: RuleDefaults = Build.defaults
     ) -> [LintFinding] {
         RulesLinter(
-            rules: Build.document(rules, defaults: defaults), matrix: matrix, scenarioIDs: scenarios, today: today,
-            releaseMode: release
+            rules: Build.document(rules, defaults: defaults), matrix: matrix, scenarioIDs: scenarios,
+            placeholderGateScenarioIDs: gated, today: today, releaseMode: release
         ).run()
     }
 
@@ -127,16 +127,63 @@ import Testing
         #expect(codes(lint([Self.clean], defaults: defaults), .error) == [.placeholderWithoutGateTest])
     }
 
-    @Test func scopedPlaceholderWithManualTestWarns() {
+    /// PLT-R422: a manual test can never show 1,000 randomised edits, so the release gate blocks the rule.
+    @Test func scopedPlaceholderWithManualTestIsReleaseGated() {
         let rule = Build.rule(
             "manual.rule",
             match: RuleMatch(engines: [.chromium], web: WebMatch(urlPrefixes: ["https://sheet.example/"])),
             action: RuleAction(strategy: .backspaceReplace, params: StrategyParams(inlineCompletion: .placeholder)),
             automation: .manual)
         let matrix = MatrixDocument(schemaVersion: 1, entries: [verifiedRow(for: "manual.rule")])
-        let findings = lint([rule], matrix: matrix)
+        let findings = lint([rule], matrix: matrix, gated: ["manual.rule"])
         #expect(codes(findings) == [.placeholderWithoutGateTest])
         #expect(findings.first?.severity == .warning)
+        let release = lint([rule], matrix: matrix, gated: ["manual.rule"], release: true)
+        #expect(codes(release, .error) == [.placeholderWithoutGateTest])
+        #expect(release.first?.detail == "the 1,000-edit placeholder gate needs an automated test")
+    }
+
+    /// PLT-R422, section 4 acceptance: an automated test only counts when its scenario declares the gate
+    /// (`PlaceholderGate`); both placeholder values are covered.
+    @Test func automatedPlaceholderNeedsAScenarioThatDeclaresTheGate() {
+        let match = RuleMatch(engines: [.chromium], ax: AXMatch(roles: ["AXTextField"]))
+        for value in [InlineCompletionMode.placeholder, .axSelectionThenPlaceholder] {
+            let rule = Build.rule(
+                "clean.rule", match: match,
+                action: RuleAction(strategy: .backspaceReplace, params: StrategyParams(inlineCompletion: value)))
+            let ungated = lint([rule])
+            #expect(codes(ungated) == [.placeholderWithoutGateTest] && ungated.first?.severity == .warning)
+            let release = lint([rule], release: true)
+            #expect(codes(release, .error) == [.placeholderWithoutGateTest])
+            #expect(release.first?.detail?.hasPrefix("scenario clean.rule does not declare the gate") == true)
+            #expect(lint([rule], gated: ["clean.rule"], release: true).isEmpty)
+        }
+        let axOnly = Build.rule(
+            "clean.rule", match: match,
+            action: RuleAction(strategy: .backspaceReplace, params: StrategyParams(inlineCompletion: .axSelection)))
+        #expect(lint([axOnly], release: true).isEmpty)
+    }
+
+    /// The scenario shape that counts as the PLT-R422 gate (twin of compat/schema/scenario.schema.json).
+    @Test func placeholderGateDeclaration() throws {
+        func scenario(_ repeatBlock: String, expect: String = #""noPlaceholderResidue":true"#, readback: String = "ax")
+            throws -> JSONValue
+        {
+            let text =
+                #"{"id":"s","timing":"normal","readback":""# + readback + #"","expect":{"# + expect + "}"
+                + (repeatBlock.isEmpty ? "" : #","repeat":"# + repeatBlock) + "}"
+            return try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8))
+        }
+        let gate = #"{"words":1000,"seed":1,"timing":"burst","prefix":["command+l"]}"#
+        #expect(PlaceholderGate.isDeclared(in: try scenario(gate)))
+        #expect(PlaceholderGate.isDeclared(in: try scenario(gate, readback: "webdriver")))
+        #expect(!PlaceholderGate.isDeclared(in: try scenario("")))
+        #expect(!PlaceholderGate.isDeclared(in: try scenario(gate.replacingOccurrences(of: "1000", with: "999"))))
+        #expect(!PlaceholderGate.isDeclared(in: try scenario(gate.replacingOccurrences(of: "burst", with: "fast"))))
+        #expect(!PlaceholderGate.isDeclared(in: try scenario(gate, expect: #""noPlaceholderResidue":false"#)))
+        #expect(!PlaceholderGate.isDeclared(in: try scenario(gate, expect: #""text":"a""#)))
+        #expect(!PlaceholderGate.isDeclared(in: try scenario(gate, readback: "human")))
+        #expect(!PlaceholderGate.isDeclared(in: .array([])))
     }
 
     @Test func pasteNeedsOptIn() {
