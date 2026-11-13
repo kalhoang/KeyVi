@@ -86,7 +86,7 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let metrics: (any PlatformMetricSource)?
     let probe: (any ScenarioStateProbe)?
     let transport: FakeTransport
-    let control = FakeAppControl()
+    let control: FakeAppControl
     let evidence: FakePrivacyEvidence
     let sampler: FakeConnectionSampler
     /// Factory calls (`evidence`, `sink`, `system`) that throw `TestFailure.injected`.
@@ -98,8 +98,10 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
         metrics: (any PlatformMetricSource)? = nil, probe: (any ScenarioStateProbe)? = nil,
         transport: FakeTransport = FakeTransport(responses: [:]),
         evidence: FakePrivacyEvidence = FakePrivacyEvidence(files: [], log: ""),
-        sampler: FakeConnectionSampler = FakeConnectionSampler(samples: []), failing: Set<String> = []
+        sampler: FakeConnectionSampler = FakeConnectionSampler(samples: []), failing: Set<String> = [],
+        control: FakeAppControl = FakeAppControl()
     ) {
+        self.control = control
         sink = RecordingKeyEventSink(clock: clock)
         self.axText = axText
         self.monitor = monitor

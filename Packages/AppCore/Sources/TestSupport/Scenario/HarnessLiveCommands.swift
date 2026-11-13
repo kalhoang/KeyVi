@@ -106,7 +106,21 @@ extension Harness {
         }
         await releaseSecureInput(after: scenarios, services: services, targets: targets)
         guard let evidence else { return (results, nil) }
+        await quitBeforeScan(live: live, targets: targets)
         return (results, try await privacyScan(evidence))
+    }
+
+    /// The app keeps writing its folder until it exits (debounced settings writes, backup rotation, the flush on
+    /// quit, PLT-R1003): the scan reads the folder once the app has quit, so nothing changes or vanishes while it
+    /// is read, and what the quit wrote is scanned too. Restoring the settings starts the app again. A failed quit
+    /// is reported and the scan runs anyway.
+    func quitBeforeScan(live: any LiveHarnessServices, targets: HarnessTargets) async {
+        do {
+            try await live.appControl(targets: targets).quit()
+        } catch {
+            environment.console.emitError(
+                "compat-harness: the app did not quit before the privacy scan: " + String(describing: error))
+        }
     }
 
     /// Configures the app for the scenario, then runs it. A configuration failure fails only this scenario.
@@ -139,6 +153,7 @@ extension Harness {
                 environment.console.emitError("canary in " + finding.location + " (" + finding.encoding + ")")
             }
             for file in privacy.unreadable { environment.console.emitError("not scanned: " + file) }
+            for file in privacy.vanished { environment.console.emit("gone before it was read: " + file) }
         }
         return report.failed == 0 && privacy?.passed != false ? .success : .failure
     }

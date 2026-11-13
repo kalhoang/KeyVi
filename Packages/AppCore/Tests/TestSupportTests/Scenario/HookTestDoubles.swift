@@ -112,7 +112,11 @@ final class FakeHookClient: AppHookClient, Sendable {
 
 final class FakeAppControl: AppUnderTestControl, Sendable {
     let events = Recorder<String>()
-    private let state = Mutex<(running: Bool, pid: Int32)>((false, 100))
+    private let state = Mutex<(running: Bool, pid: Int32, quits: Int)>((false, 100, 0))
+    /// The quit with this number (1 = first) times out and leaves the app running.
+    private let failingQuit: Int?
+
+    init(failingQuit: Int? = nil) { self.failingQuit = failingQuit }
 
     func setRunning(_ running: Bool) { state.withLock { $0.running = running } }
     func isRunning() -> Bool { state.withLock { $0.running } }
@@ -120,6 +124,11 @@ final class FakeAppControl: AppUnderTestControl, Sendable {
 
     func quit() async throws {
         events.append("quit")
+        let number = state.withLock { state -> Int in
+            state.quits += 1
+            return state.quits
+        }
+        if number == failingQuit { throw AppQuitTimeout(bundle: "org.example.product.dev", seconds: 10) }
         state.withLock { $0.running = false }
     }
 
@@ -135,7 +144,13 @@ final class FakeAppControl: AppUnderTestControl, Sendable {
 struct FakePrivacyEvidence: PrivacyEvidenceSource {
     var files: [URL]
     var log: String
-    func appWrittenFiles() throws -> [URL] { files }
+    /// Asked when the files are listed; `listedWhileRunning` records the answers.
+    var appRunning: @Sendable () -> Bool = { false }
+    let listedWhileRunning = Recorder<Bool>()
+    func appWrittenFiles() throws -> [URL] {
+        listedWhileRunning.append(appRunning())
+        return files
+    }
     func unifiedLog() async throws -> String { log }
 }
 

@@ -206,9 +206,11 @@ private let profileJSON = """
         try write(#"{"event":"kanaryzqx"}"#, to: "/library/Logs/Example App/app.jsonl", in: fileSystem)
         let clock = ManualClock()
         let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
+        let control = FakeAppControl()
         let evidence = FakePrivacyEvidence(
-            files: [URL(fileURLWithPath: "/library/Logs/Example App/app.jsonl")], log: "")
-        let live = RecordingLiveServices(clock: clock, axText: "đi", evidence: evidence)
+            files: [URL(fileURLWithPath: "/library/Logs/Example App/app.jsonl")], log: "",
+            appRunning: { control.isRunning() })
+        let live = RecordingLiveServices(clock: clock, axText: "đi", evidence: evidence, control: control)
         let (subject, console) = try harness(
             ["run", "--output", "/out"], fileSystem: fileSystem, live: live, clock: clock, app: app)
         #expect(await subject.execute() == .failure)
@@ -221,10 +223,38 @@ private let profileJSON = """
             from: fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20))
         #expect(report.privacy?.passed == false && report.passed == 1)
         #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/privacy-report.json")))
-        // factory, then the canary profile, then the restore; each a quit and a launch after the first.
+        // factory, then the canary profile, then a quit before the scan, then the restore.
         #expect(live.control.events.all == ["launch", "quit", "launch", "quit", "launch"])
+        // The scan lists the files once the app has quit: no write or backup rotation runs while they are read.
+        #expect(evidence.listedWhileRunning.all == [false])
         #expect(app.commands.all.filter { $0 == "state" }.count >= 3)
         #expect(!fileSystem.fileExists(at: support.appendingPathComponent("settings.json")))  // restored: none before
+    }
+
+    /// A quit that times out before the scan is reported with its own message; the scan and the restore still run.
+    @Test func aFailedQuitBeforeTheScanIsReportedAndTheScanStillRuns() async throws {
+        let id = "testhost.privacyCanary.backspaceReplace"
+        let fileSystem = try makeCheckout(scenarios: [
+            id + ".json": scenarioJSON(
+                id: id, target: HarnessTargets.testHostAlias,
+                setup: #"[{"action":"focusField","value":"testhost.native.textField"}]"#)
+        ])
+        try write(profileJSON, to: "/repo/compat/scenarios/profiles/canary.json", in: fileSystem)
+        let clock = ManualClock()
+        let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
+        let control = FakeAppControl(failingQuit: 2)
+        let evidence = FakePrivacyEvidence(files: [], log: "", appRunning: { control.isRunning() })
+        let live = RecordingLiveServices(clock: clock, axText: "đi", evidence: evidence, control: control)
+        let (subject, console) = try harness(
+            ["run", "--output", "/out"], fileSystem: fileSystem, live: live, clock: clock, app: app)
+        #expect(await subject.execute() == .success)
+        #expect(
+            console.errors.contains {
+                $0.hasPrefix("compat-harness: the app did not quit before the privacy scan: quit timed out: ")
+            })
+        #expect(evidence.listedWhileRunning.all == [true])
+        #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/privacy-report.json")))
+        #expect(control.events.all == ["launch", "quit", "launch", "quit", "quit", "launch"])
     }
 
     /// A configuration that cannot be written fails only its scenario, with the reason.
