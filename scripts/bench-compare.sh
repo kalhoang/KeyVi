@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: LicenseRef-App-Pending
 #
-# Engine performance gate (QA-R14, ENG-R1230, ENG-R1233). Runs the engine benchmark executable
-# 5 times (median of 5 runs), then compares with the baseline file in the repository:
-#   - regression: fail when a metric is more than 20 % slower than baseline after calibration
-#     (both runs measure the same fixed reference workload; values are scaled by the ratio)
-#   - budget: fail when a metric exceeds its ENG-R1230 budget by more than 20 % after scaling the
-#     budget from the reference machine (M1) to this machine with the calibration ratio
-# Result format: docs/decisions/0502-fuzz-benchmark-coverage-contracts.md.
+# Benchmark gate for results in formatVersion 1 (QA-R14, PLT-R822; format in
+# docs/decisions/0502-fuzz-benchmark-coverage-contracts.md). Takes the median of several result files
+# (--results, or --run builds a product and runs it 5 times) and compares it with the baseline file:
+#   - regression: fail when a metric is more than --threshold percent slower than the baseline, after
+#     calibration for calibrated metrics (both runs time the same fixed reference workload)
+#   - budget: fail when a metric exceeds its budget by more than --threshold percent, after scaling the
+#     budget from the reference machine to this one for calibrated metrics
+# Users: the PLT-R820 pipeline benchmark on hosted CI (`swift test -c release --filter PipelineBenchmark`
+# with PIPELINE_BENCH_OUTPUT, threshold 25 %) and the platform benchmarks of scripts/run-integration.sh.
+# The engine benchmark (ENG-T40) writes its own format and has its own calibrated gate:
+# Packages/VietnameseEngine/Scripts/benchmark.sh.
 set -euo pipefail
 
 usage() {
@@ -15,15 +19,17 @@ usage() {
 Usage: scripts/bench-compare.sh [--run | --results FILE...] [options]
 
 Modes:
-  --run                 build and run the benchmark product (default when no --results is given)
-  --results FILE        use existing result JSON files (repeatable; the median is taken)
+  --results FILE        use existing formatVersion 1 result files (repeatable; the median is taken)
+  --run                 build and run --product of --package (default when no --results is given); the
+                        product must write formatVersion 1 with `--output FILE`
 
 Options:
-  --package DIR         engine package (default Packages/VietnameseEngine)
-  --product NAME        benchmark executable product (default engine-benchmark, env BENCH_PRODUCT)
+  --package DIR         SwiftPM package of the benchmark product (needed by --run)
+  --product NAME        executable product that writes formatVersion 1 (needed by --run, env BENCH_PRODUCT).
+                        The engine benchmark is not one: use Packages/VietnameseEngine/Scripts/benchmark.sh
   --runs N              runs for the median (default 5, QA-R14)
-  --baseline FILE       baseline JSON (default <package>/Benchmarks/baseline.json)
-  --threshold PERCENT   allowed regression and budget overshoot (default 20, ENG-R1233)
+  --baseline FILE       baseline JSON (default <package>/Benchmarks/baseline.json; required without --package)
+  --threshold PERCENT   allowed regression and budget overshoot (default 20; PLT-R822 uses 25)
   --output FILE         write the median result here (default .build/bench/median.json)
   --update-baseline     write the median as the new baseline (only in a perf-baseline PR, QA-R15)
   --require             fail instead of skipping when the product or baseline is missing
@@ -33,8 +39,8 @@ EOF
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
-package="$REPO_ROOT/Packages/VietnameseEngine"
-product="${BENCH_PRODUCT:-engine-benchmark}"
+package=""
+product="${BENCH_PRODUCT:-}"
 runs=5
 baseline=""
 threshold=20
@@ -59,7 +65,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ "$runs" =~ ^[1-9][0-9]*$ ]] || die "--runs must be a positive integer"
-baseline="${baseline:-$package/Benchmarks/baseline.json}"
+usage_error() {
+  log "bench-compare: $1"
+  exit 2
+}
+if [[ -z "$baseline" ]]; then
+  [[ -n "$package" ]] || usage_error "--baseline is required without --package"
+  baseline="$package/Benchmarks/baseline.json"
+fi
 output="${output:-$REPO_ROOT/.build/bench/median.json}"
 mkdir -p "$(dirname "$output")"
 
@@ -70,7 +83,9 @@ skip_or_die() {
 }
 
 if [[ ${#results[@]} -eq 0 ]]; then
-  [[ -f "$package/Package.swift" ]] || skip_or_die "engine package not found at $package"
+  [[ -f "$package/Package.swift" ]] || skip_or_die "benchmark package not found at ${package:-(no --package)}"
+  [[ -n "$product" ]] || usage_error "--run needs --product, a product that writes formatVersion 1 results \
+(the engine benchmark has its own gate: Packages/VietnameseEngine/Scripts/benchmark.sh)"
   products="$(swift package --package-path "$package" describe --type json 2>/dev/null \
     | py -c 'import json,sys; print("\n".join(p["name"] for p in json.load(sys.stdin).get("products", [])))' \
     || true)"
@@ -118,7 +133,7 @@ runs = [load(path) for path in result_files]
 names = sorted(set().union(*(run["metrics"].keys() for run in runs)))
 median = {
     "formatVersion": 1,
-    "benchmark": runs[0].get("benchmark", "engine"),
+    "benchmark": runs[0].get("benchmark") or "unnamed",
     "runs": len(runs),
     "calibration": {
         "name": runs[0].get("calibration", {}).get("name", "reference"),
@@ -188,11 +203,12 @@ for name, metric in median["metrics"].items():
         if value > scaled_budget * (1.0 + threshold):
             verdict = "OVER BUDGET"
             failures.append(f"{name}: {value:.0f} {metric['unit']} exceeds the scaled budget "
-                            f"{scaled_budget:.0f} by more than {threshold:.0%} (ENG-R1230)")
+                            f"{scaled_budget:.0f} by more than {threshold:.0%}")
     rows.append(f"| `{name}` | {value:.1f} {metric['unit']} | {fmt(scaled_base)} | "
                 f"{'n/a' if change is None else f'{change:+.1%}'} | {fmt(scaled_budget)} | {verdict} |")
 
-text = (f"### Engine benchmark (median of {len(runs)} runs)\n\n"
+title = str(median["benchmark"]).capitalize()
+text = (f"### {title} benchmark (median of {len(runs)} runs)\n\n"
         f"Calibration: {current_cal:.0f} ns (baseline {fmt(base_cal)} ns, reference {fmt(ref_cal)} ns).\n\n"
         + "\n".join(rows) + "\n")
 print(text)

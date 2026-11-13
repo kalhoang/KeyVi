@@ -44,7 +44,9 @@ contains() { # contains <name> <needle> (in the last command's output)
 }
 
 echo "== Python unit tests"
-if python3 -I "$S/tests/test_scripts.py" >"$T/py.log" 2>&1; then ok "python unit tests"; else ko "python unit tests"; tail -n 40 "$T/py.log"; fi
+for suite in test_scripts test_docs_and_workflows; do
+  if python3 -I "$S/tests/$suite.py" >"$T/py.log" 2>&1; then ok "python $suite"; else ko "python $suite"; tail -n 40 "$T/py.log"; fi
+done
 
 echo "== --help of every script"
 for script in "$S"/*.sh "$S"/publish-release "$S"/*.py; do
@@ -324,15 +326,65 @@ expect 1 "invalid label file rejected" "$S/sync-labels.sh" --file "$T/bad-labels
 
 echo "== fuzz-report-issue.sh (dry run)"
 printf 'crash' >"$T/minimized-crash-1"
-printf 'fuzz-telex\t%s\n' "$T/minimized-crash-1" >"$T/findings.txt"
+printf 'engine-fuzz-telex\t%s\n' "$T/minimized-crash-1" >"$T/findings.txt"
 expect 0 "fuzz issue dry run" "$S/fuzz-report-issue.sh" "$T/findings.txt" --dry-run
-contains "issue title" "Fuzzing finding in fuzz-telex"
+contains "issue title" "Fuzzing finding in engine-fuzz-telex"
 contains "hex dump" "63 72 61 73 68"
 
 echo "== bench-compare.sh / fuzz.sh skip cleanly when targets are missing"
 expect 0 "bench skips without product" "$S/bench-compare.sh" --package "$T/nopkg" --output "$T/bench.json"
 expect 1 "bench --require fails without product" "$S/bench-compare.sh" --package "$T/nopkg" --require --output "$T/bench.json"
 expect 0 "fuzz skips without package" "$S/fuzz.sh" --package "$T/nopkg" --out "$T/fuzz"
+expect 1 "fuzz --require fails without package" "$S/fuzz.sh" --package "$T/nopkg" --require --out "$T/fuzz"
+mkdir -p "$T/benchpkg"
+printf '// fake package\n' >"$T/benchpkg/Package.swift"
+expect 2 "bench --run needs a formatVersion 1 product" "$S/bench-compare.sh" --package "$T/benchpkg" --output "$T/bench.json"
+contains "points the engine at its own gate" "Packages/VietnameseEngine/Scripts/benchmark.sh"
+expect 2 "bench needs a baseline without a package" "$S/bench-compare.sh" --results "$T/bench.json" --output "$T/b2.json"
+
+echo "== fuzz.sh builds engine-fuzz for libFuzzer and pins the method (ADR 0502)"
+F="$T/fz"
+mkdir -p "$F/pkg/Corpus" "$F/bin" "$F/build"
+printf '// fake package\n' >"$F/pkg/Package.swift"
+printf '@abc\n' >"$F/pkg/Corpus/seed.txt"
+# A fake swift records the build command and points at a fake fuzzer that records its own arguments.
+cat >"$F/bin/swift" <<EOF
+#!/bin/sh
+case "\$*" in
+  *--show-bin-path*) printf '%s\n' "$F/build" ;;
+  *) printf 'swift %s\n' "\$*" ;;
+esac
+EOF
+cat >"$F/build/engine-fuzz" <<'EOF'
+#!/bin/sh
+printf 'fuzzer method=%s args=%s\n' "${ENGINE_FUZZ_METHOD:-mixed}" "$*"
+[ -n "${FAKE_FUZZ_CRASH:-}" ] || exit 0
+for arg in "$@"; do
+  case "$arg" in -artifact_prefix=*) printf 'boom' >"${arg#-artifact_prefix=}crash-1" ;; esac
+done
+exit 1
+EOF
+chmod +x "$F/bin/swift" "$F/build/engine-fuzz"
+expect 0 "PR fuzzing builds engine-fuzz with the libFuzzer flags" \
+  env PATH="$F/bin:$PATH" "$S/fuzz.sh" --package "$F/pkg" --out "$F/out"
+contains "build command" "--product engine-fuzz -Xswiftc -sanitize=fuzzer,address -Xswiftc -parse-as-library -Xswiftc -DLIBFUZZER"
+contains "both methods by default" "fuzzer method=mixed"
+contains "seed corpus read from Corpus/" "$F/pkg/Corpus"
+contains "60 s by default" "-max_total_time=60"
+contains "engine README limits" "-max_len=8192 -timeout=10"
+expect 0 "nightly run pins the method" \
+  env PATH="$F/bin:$PATH" "$S/fuzz.sh" --package "$F/pkg" --method telex --seconds 5 \
+  --sanitizers fuzzer,address,undefined --out "$F/out"
+contains "ENGINE_FUZZ_METHOD=telex" "fuzzer method=telex"
+contains "nightly sanitizers" "-sanitize=fuzzer,address,undefined"
+expect 1 "an unknown method is refused" env PATH="$F/bin:$PATH" "$S/fuzz.sh" --package "$F/pkg" --method qwerty
+expect 1 "a crash fails and is listed" env PATH="$F/bin:$PATH" FAKE_FUZZ_CRASH=1 \
+  "$S/fuzz.sh" --package "$F/pkg" --method vni --out "$F/out"
+if grep -Fq "engine-fuzz-vni	$F/out/engine-fuzz-vni/minimized-crash-1" "$F/out/findings.txt"; then
+  ok "findings.txt names the run and the minimised input"
+else
+  ko "findings.txt names the run and the minimised input"; sed 's/^/     /' "$F/out/findings.txt"
+fi
 
 echo "== rename-app.sh in a scratch copy"
 R="$T/repo"
@@ -417,6 +469,39 @@ fi
 mkdir -p "$R/site/data"
 printf '{"releases":[{"version":"0.1.0"}]}\n' >"$R/site/data/releases.json"
 expect 1 "rename refused after a release" "$R/scripts/rename-app.sh" "Other" other
+
+echo "== run-integration.sh: live harness commands need the runner opt-in (ADR 0502)"
+I="$T/ri"
+mkdir -p "$I/bin"
+# Runs on every host, including the Linux CI job (--no-macos). A fake swift records its arguments, so nothing
+# is built and no event is ever posted.
+cat >"$I/bin/swift" <<'EOF'
+#!/bin/sh
+printf 'swift %s\n' "$*"
+EOF
+chmod +x "$I/bin/swift"
+# A fake uname lets the Darwin check pass on the Linux CI runner; the opt-in gate needs no macOS tool.
+cat >"$I/bin/uname" <<'EOF'
+#!/bin/sh
+printf '%s\n' "${FAKE_UNAME:-Darwin}"
+EOF
+chmod +x "$I/bin/uname"
+expect 1 "integration layers refuse to run off macOS" \
+  env FAKE_UNAME=Linux COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
+contains "names the macOS requirement" "integration layers need macOS"
+expect 1 "compat stops before the build without COMPAT_HARNESS_LIVE" \
+  env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
+contains "names the missing opt-in" "COMPAT_HARNESS_LIVE=1 is not set"
+contains "points at the runner runbook" "self-hosted-runner.md"
+if grep -Fq "swift " "$T/out"; then ko "nothing is built without the opt-in"; else ok "nothing is built without the opt-in"; fi
+expect 1 "soak stops without COMPAT_HARNESS_LIVE=1 exactly" \
+  env COMPAT_HARNESS_LIVE=yes PATH="$I/bin:$PATH" "$S/run-integration.sh" soak --out "$I/out"
+expect 0 "compat runs the harness by product name with the opt-in" \
+  env COMPAT_HARNESS_LIVE=1 PATH="$I/bin:$PATH" "$S/run-integration.sh" compat --out "$I/out"
+contains "agreed command line" "compat-harness run --scenarios compat/scenarios --output $I/out/compat"
+expect 0 "a dry run needs no opt-in" env -u COMPAT_HARNESS_LIVE PATH="$I/bin:$PATH" \
+  COMPAT_HARNESS_RUN_ARGS="run --scenarios compat/scenarios --dry-run" "$S/run-integration.sh" compat --out "$I/out"
+contains "dry-run arguments passed through" "compat-harness run --scenarios compat/scenarios --dry-run"
 
 if [[ $no_macos -eq 0 ]]; then
   echo "== macOS release tooling (ad-hoc signed fake app)"

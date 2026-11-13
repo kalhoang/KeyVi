@@ -4,31 +4,19 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import os
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-SCRIPTS = REPO / "scripts"
-sys.dont_write_bytecode = True  # keep scripts/lib free of __pycache__
+sys.dont_write_bytecode = True  # keep scripts/lib and scripts/tests free of __pycache__
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from support import REPO, SCRIPTS, py, run  # noqa: E402
+
 sys.path.insert(0, str(SCRIPTS / "lib"))
 
 import jsonschema_lite  # noqa: E402
-
-
-def run(*args: str, env: dict | None = None, check: bool = False) -> subprocess.CompletedProcess:
-    merged = dict(os.environ)
-    merged.pop("GITHUB_ACTIONS", None)
-    merged.pop("GITHUB_STEP_SUMMARY", None)
-    merged.update(env or {})
-    return subprocess.run(list(args), capture_output=True, text=True, env=merged, check=check)
-
-
-def py(script: str, *args: str, env: dict | None = None) -> subprocess.CompletedProcess:
-    return run(sys.executable, "-I", str(SCRIPTS / script), *args, env=env)
 
 
 def good_rule(rule_id: str = "terminal.default", **overrides) -> dict:
@@ -466,9 +454,9 @@ class BenchCompareTests(TempDirTestCase):
                                       "calibration": {"name": "ref", "nanoseconds": calibration},
                                       "metrics": metrics})
 
-    def compare(self, baseline, *results):
+    def compare(self, baseline, *results, extra=()):
         args = ["bash", str(SCRIPTS / "bench-compare.sh"), "--baseline", str(baseline),
-                "--output", str(self.tmp / "median.json")]
+                "--output", str(self.tmp / "median.json"), *extra]
         for item in results:
             args += ["--results", str(item)]
         return run(*args)
@@ -499,6 +487,39 @@ class BenchCompareTests(TempDirTestCase):
         runs = [self.result("a.json", 1000, 1000, 5000), self.result("b.json", 1000, 9000, 5000),
                 self.result("c.json", 1000, 1050, 5000)]
         self.assertEqual(self.compare(baseline, *runs).returncode, 0)
+
+    def pipeline_run(self, name, t1_p99, calibration=1000):
+        # PLT-R820 pipeline benchmark: platform metrics are not calibrated, T1.p99 has the 100 us gate.
+        return self.write_json(name, {"formatVersion": 1, "benchmark": "pipeline",
+                                      "calibration": {"name": "reference-loop", "nanoseconds": calibration},
+                                      "metrics": {"T1.p99": {"value": t1_p99, "unit": "ns", "budget": 100000,
+                                                             "calibrated": False}}})
+
+    def test_summary_names_the_benchmark(self):
+        baseline = self.pipeline_run("baseline.json", 40000)
+        result = self.compare(baseline, *[self.pipeline_run(f"r{i}.json", 41000) for i in range(3)])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("### Pipeline benchmark (median of 3 runs)", result.stdout)
+        self.assertNotIn("Engine benchmark", result.stdout)
+
+    def test_pipeline_gate_at_25_percent_plt_r822(self):
+        baseline = self.pipeline_run("baseline.json", 40000)
+        args = ["--threshold", "25"]
+        ok = self.compare(baseline, *[self.pipeline_run(f"a{i}.json", 49000) for i in range(5)], extra=args)
+        self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)  # +22.5 %, uncalibrated
+        slow = self.compare(baseline, *[self.pipeline_run(f"b{i}.json", 51000) for i in range(5)], extra=args)
+        self.assertEqual(slow.returncode, 1)
+        self.assertIn("REGRESSION", slow.stdout)
+
+    def test_without_a_baseline_the_budget_still_gates(self):
+        missing = self.tmp / "no-baseline.json"
+        within = self.compare(missing, self.pipeline_run("w.json", 120000), extra=["--threshold", "25"])
+        self.assertEqual(within.returncode, 0, within.stdout + within.stderr)
+        self.assertIn("baseline not found", within.stderr)
+        over = self.compare(missing, self.pipeline_run("o.json", 130000), extra=["--threshold", "25"])
+        self.assertEqual(over.returncode, 1)
+        self.assertIn("OVER BUDGET", over.stdout)
+        self.assertIn("exceeds the scaled budget", over.stderr)
 
     def test_update_baseline(self):
         baseline = self.tmp / "Benchmarks" / "baseline.json"

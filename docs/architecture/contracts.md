@@ -1386,6 +1386,15 @@ patterns, [0312](../decisions/0312-report-override-projection.md)); the typing t
 characters. `Log2Histogram`, `AtomicCounter`, `PlatformMetrics`, `PerBundleHistograms`, `HealthEventLog`
 (memory part) and `TapLogRing` are implemented in the skeleton.
 
+Draining the tap log: Diagnostics provides `TapLogRing` and the record format, not the drainer. The drainer
+is not implemented yet: today `InputHostController` only holds the `tapLog` ring, and nothing in
+`Packages/AppCore/Sources/InputHost` calls `TapLogRing.drain`. It is to be implemented by the composition root
+(W2-A) in `InputHost/Lifecycle/InputHostController.swift`. It must run on the utility queue, call
+`TapLogRing.drain`, turn each `TapLogRecord` (a code and two integers, never characters) into a `HealthEvent`
+or a `LogEvent`, and convert `TapLogRecord.at`, a `MonotonicInstant`, to wall-clock time with an offset
+sampled from the injected `MonotonicClock` and `WallClock`. A growing `droppedCount` (records lost while the
+ring was full) must be reported the same way. The tap thread only calls `push` (PLT-R304).
+
 ### 6.1 The issue block (QA-R44)
 
 `DiagnosticsRenderer.issueBlock` produces the block defined by
@@ -1396,7 +1405,10 @@ without newlines, lists comma-separated, at most 200 lines. The labeller reads `
 `focus.bundleId`) -> `app:<bundle>`, the major of `macos.version` -> `macos:<major>`, `hw.arch` ->
 `arch:arm64|x86_64`, `input.method` -> `method:telex|vni`. Keys in `DiagnosticsBlockKey` never change within a
 format version; new keys may be added; a breaking change bumps the version. The full key list and an example
-are in ADR 0501.
+are in ADR 0501, including the keys added in wave 1 (`report.symptomDetail`, `ui.locale`, `permission.*`,
+`tap.*`, `focus.*`, `rule.*`, `settings.*`, `appMode.*`, `latency.*`, `counters.*`, `probe.*`, `conflicts`,
+`health.*`). `report.symptom` keeps the six PRD-R47 chip values: `lettersOutOfOrder` maps to `other` and
+`nothingTyped` to `cannotType`, and `report.symptomDetail` carries the exact `DiagnosticsReport.Symptom`.
 
 <!-- include: Packages/AppCore/Sources/Diagnostics/Identity.swift -->
 ```swift
@@ -4233,6 +4245,34 @@ optionality (`match.*`, `action.*`, `provenance.*`, `test.*`); enums use the spe
 provenance shape of PLT-R1205. The JSON Schema twin is `compat/schema/rules.schema.json`; it accepts the
 spec's 5.4 and 5.6 examples unchanged (checked 2026-11-13).
 
+### 8.1 MatchContext: what the focus tracker fills in
+
+The focus tracker (W1-E, `InputHost/Focus/`) builds one `MatchContext` per focus change on the ax thread and
+passes it to `RuleSet.resolve` (02-platform.md 5.2, 5.5). `documentURL` is "the document URL of the focused web
+area" (5.5): the `AXURL` of the nearest `AXWebArea` ancestor of the focused element, read only for the browser
+engines (`chromium`, `webkitBrowser`, `gecko`). It is therefore set only while the focused element is inside
+the web area, and it is `nil` whenever browser chrome has focus (the omnibox or address bar, the find bar, the
+tab strip), even when the visible tab shows a page that a web rule matches. Chrome rules match on `ax` fields
+and web-app rules on `web.urlPrefixes`; if the host filled `documentURL` for the omnibox, the seeded Sheets
+rules (engines + web, score 10) would tie with the address-bar rules (engines + ax, score 10).
+`Tests/CompatRulesTests/SeededDataTests.swift` pins the omnibox-over-Sheets context to
+`browser.chromium.addressBar` with no tie. `documentURL` and `windowTitle` are used in memory for matching only
+and never stored (PLT-R383).
+
+### 8.2 Compatibility matrix and the Apps pane
+
+`compat/matrix.json` (shipped as `compat-matrix.json`, decoded by `MatrixLoader`) has one `MatrixEntry` per
+row. `MatrixEntry.scope` (`MatrixScope`) is absent or `app` for the row that stands for the whole app, `webApp`
+for a web app used in that browser, and `inApp` for a tool or mode inside the app. A bundle ID has at most one
+app-level row and any number of scoped rows: `compat-lint` reports a second app-level row as `schemaInvalid`,
+and `scripts/check-matrix.py` also rejects two scoped rows with the same bundle ID, scope and display name.
+
+Selection rule for the Apps pane (PRD-R34, PRD-R35): `MatrixDocument.appEntry(for:)` returns the app-level row
+(the first one if a hand-edited file has more), and its `MatrixStatusResolver.displayStatus` (not verified
+after 120 days, QA-R19) is the one status the pane shows for that app. `MatrixDocument.scopedEntries(for:)`
+returns the `webApp` and `inApp` rows in file order for a detail view; they never decide the app's status. A
+missing or invalid file shows every app as not verified.
+
 <!-- include: Packages/AppCore/Sources/CompatRules/Schema.swift -->
 ```swift
 // SPDX-License-Identifier: LicenseRef-App-Pending
@@ -6036,6 +6076,16 @@ keyDowns awaiting their keyUp (keycode -> job sequence), the last seen worker re
 toggle override (sequence, bundle, mode), the secure-input "resumed" generation and the idle timestamp for
 PLT-R382. Steps of PLT-R310 are in ARCHITECTURE.md section 4.
 
+Engine catalog revision (PRD-R27, PLT-R340): the settings publisher (W2-A, utility queue) builds the
+`EngineCatalog` with `EngineBridge.catalog(settings:resources:revision:)` and sets `EngineCatalog.revision`. It
+gives a new value when an input of the catalog changes (anything `EngineBridge.configuration` or
+`EngineBridge.resources` reads, the user word lists and the macro table) and passes the previous value
+unchanged when a settings change leaves the engines alone (hotkeys, interface language, update channel). On a
+new `TapSettingsSnapshot.generation` the pipeline compares the revision with the one its engine was built for:
+a different or `nil` revision builds a fresh engine and is a boundary (`configurationChanged`); the same
+revision only rebuilds the hotkey recogniser and keeps the word being typed. `nil` means unknown, so a publisher
+that never sets a revision gets the safe behaviour (every generation rebuilds).
+
 ### 10.2 Hotkey recogniser (PRD-R14, PRD-R15)
 
 `HotkeyRecognizer` is a value-type state machine fed with `HotkeyInput` built from tap events:
@@ -6073,8 +6123,25 @@ PLT-R382. Steps of PLT-R310 are in ARCHITECTURE.md section 4.
 - `HostLifecycle` is the 2.1 state machine as a value: `handle(_ input:) -> [LifecycleEffect]`. Inputs are
   permission changes, tap created or failed, retry timer fired, watchdog trips, callback exited, posting broken,
   system disables, session and user-disable changes; effects are publish, create/remove/disable/re-enable tap,
-  flush, reset composition, schedule/cancel retry (1, 2, 5, 10 s), health records and the instability notice.
-  `InputHostController` (W2-A) performs the effects with real services.
+  flush, reset composition, schedule/cancel retry (1, 2, 5, 10 s after a failed tap creation, PLT-R332; the
+  posting-broken backoff below), health records and the instability notice. `InputHostController` (W2-A)
+  performs the effects with real services.
+- Posting broken (PLT-R323, PLT-R730, [0311](../decisions/0311-in-flight-until-echo.md) amendment).
+  `.postingBroken` (three echo misses, or a false post preflight) returns the fail-open effects (publish
+  `failOpen(postingBroken)`, flush, reset composition, remove the tap), then `.recordHealth(.postingBroken)` and
+  `.scheduleRetry(after: delay)`. Echo loss and OS policy leave the permission status `ready`, so no permission
+  transition would ever recreate the tap: the lifecycle retries on its own. A later `.retryTimerFired` returns
+  `[.createTap]` while the phase stays `failOpen(postingBroken)` (the menu does not flicker); a successful
+  creation moves to `running`, a failed one to `failOpen(tapUnavailable)` with the PLT-R332 backoff. The delay
+  comes from `HostLifecycle.postingBrokenBackoff` (30 s, 60 s, 120 s, 240 s, then 300 s, the 5-minute cap). A new
+  break within the previous delay plus `HostLifecycle.postingBrokenStableInterval` (600 s) of the previous break
+  moves one step up; otherwise the backoff restarts at 30 s. A path that stays broken therefore cannot cause a
+  create-and-break loop, and a recreated tap that posted for 10 minutes starts over. A permission loss in this
+  phase moves to `failOpen(permissionRevoked)` and cancels the retry.
+- System disables (PLT-R330, PLT-R331): every report re-enables the tap, resets and flushes. The OS disable
+  event and the watchdog's enabled check can both report one disable, so reports closer than
+  `HostLifecycle.disableCoalescingWindow` (1 s) count once toward the instability notice (more than 3 within
+  `instabilityWindow`, 10 minutes, at most one notice per window).
 - Secure-input episodes: `SecureInputMonitor.keyEvidence(generation:)` ends episode N; the next poll that still
   sees the OS flag on starts a new generation, so the tap pauses again instead of staying "resumed" while the
   OS blocks keys (PLT-R398B).
@@ -6087,6 +6154,43 @@ inbox before resolving any focus change, applies the toggle to memory (PRD-R20) 
 `FocusSnapshot` with `appliedToggleSequence`. The tap's effective mode is its own override when
 `override.sequence > snapshot.appliedToggleSequence` and the bundle matches, otherwise `snapshot.mode`. A
 focus change resolved concurrently with a toggle therefore never flips the mode back (PLT-R391, PRD-R19).
+
+Field-token rule (PLT-R210, PLT-R340, ENG-R1010): on a new `FocusSnapshot.generation` the pipeline keeps the
+composition only when the new snapshot has the same pid and the same `fieldHandle` token as the last one. A
+generation without a `fieldHandle` (AX unavailable or timed out) always counts as a focus change, because the
+host cannot vouch for the text before the caret: boundary `applicationChanged` when the pid differs, otherwise
+`focusChanged`. With the same owner, a changed decision (strategy, parameters, engine variant, text-focus
+requirement or pause) is a `configurationChanged` boundary (`ruleChanged`); a republication with the same
+owner and decision, such as the restamp after the ax thread applied a toggle, is not a boundary.
+
+### 10.5 Engine behaviour the host relies on
+
+Notes from the engine track (`Packages/VietnameseEngine`, public API in `Sources/VietnameseEngine/PublicAPI.swift`).
+None of them changes a public signature.
+
+- Engines are built off the tap thread. `Engine.init` does the one-time table work: the first engine of a
+  process builds the generated tables (about 12 ms on an Apple M4 in a release build: ADR 0104,
+  `PublicAPI.swift`). The settings publisher (W2-A) must create engines at launch and on configuration changes,
+  on the utility queue, through `EngineBridge.catalog`; the tap only indexes the prebuilt `EngineCatalog`
+  (PLT-R304, PLT-R305). `Orthography` is `Sendable`, so tables built on one thread are safe to read on another.
+- Every commit carries a decision. When an event commits a token or expands a macro,
+  `EngineOutput.decision` is non-nil: `kept(rule)`, `restored(rule)` or `macro` (ENG-R801). Tokens decided by
+  rule L0 (the display equals the keys typed) report `kept(.unchanged)`. Hosts and diagnostics never need a
+  "committed without a decision" case.
+- `LearningSignal` values (`preferredRaw(raw:)`, `preferredVietnamese(raw:)`) carry the lowercased raw keys of
+  the token, the same form the engine uses for every word-list lookup, so the host can add the value to the
+  keep-as-typed or keep-Vietnamese list as is (ENG-R861). The engine never stores it; the pipeline forwards it
+  in memory only.
+- Return and Tab end Backspace re-opening: they clear the history (ENG-R912), so Backspace after them cannot
+  re-open a word typed before them. They do not end the run's English context: the languages of the last three
+  committed tokens survive Return and Tab, and only a reset clears them (ENG-R823).
+- `TextEdit.deleteCount` counts grapheme clusters and `deleteUTF16Count` counts UTF-16 code units (ENG-R630,
+  ENG-R631). They are equal for every engine-produced span, but differ when an edit removes a macro expansion
+  that contains characters outside the Basic Multilingual Plane (an emoji is 1 cluster and 2 units). The host
+  uses `deleteCount` for Backspace events (one per cluster) and `deleteUTF16Count` for UTF-16 ranges (AX
+  selection replacement, marked text) (ENG-R632); `EditJob` carries both (section 9).
+- Macro expansions are byte-exact: the engine does not normalise them, so the host normalises each expansion
+  to NFC before building the `MacroTable` (ENG-R1101).
 
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift

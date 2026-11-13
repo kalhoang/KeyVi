@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-App-Pending
-# Continuous integration (QA-R22, QA-R2, QA-R5, QA-R8 per PR, QA-R14, QA-R24, PLT-R820).
+# Continuous integration (QA-R22, QA-R2, QA-R5, QA-R8 per PR, QA-R14, QA-R24, PLT-R820, PLT-R822).
 # Runner labels, Xcode and Swift pins were verified on 2026-11-13: docs/decisions/0500.
 name: CI
 
@@ -35,12 +35,20 @@ jobs:
           persist-credentials: false
       - name: Install python3 for the repository scripts
         run: command -v python3 >/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends python3)
-      - name: Build engine
+      - name: Generated engine sources and corpus files match their generators (ENG-R301, QA-R4)
+        run: |
+          python3 -I "$ENGINE/Scripts/generate-letter-table.py" --check
+          python3 -I "$ENGINE/Scripts/extract-spec-examples.py" --check
+          python3 -I "$ENGINE/Scripts/generate-layout-corpus.py" --check
+      - name: Every engine requirement has a traceability row (spec/01-engine.md)
+        run: python3 -I "$ENGINE/Scripts/check-traceability.py"
+      - name: Build engine (ENG-R1201, Linux)
         run: swift build --package-path "$ENGINE"
       - name: Engine tests, corpus and property tests (QA-R5, QA-R8)
         run: swift test --package-path "$ENGINE" --parallel
-      - name: Coverage-guided fuzzing, 60 s per target (QA-R8)
-        run: scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out
+      - name: Coverage-guided fuzzing of engine-fuzz, 60 s, both methods (QA-R8)
+        # libFuzzer flags from Packages/VietnameseEngineFuzz/README.md (VERIFY on the first Linux run, ADR 0502).
+        run: scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out --require
       - name: Upload fuzz findings
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -146,21 +154,29 @@ jobs:
           scripts/coverage.sh --package "$ENGINE" --min 95 \
             --exclude '^Sources/(lexicon-builder|engine-benchmark|VietnameseEngineTesting)/' \
             --baseline .build/coverage-baseline/engine.json --summary-out .build/coverage/engine.json
+      - name: Engine core target coverage, at least 95 % (QA-R2)
+        # The gate of Packages/VietnameseEngine/Scripts/coverage.sh (Sources/VietnameseEngine only), read from
+        # the export the step above wrote, so the engine tests run once. Both steps use the default scratch path
+        # (.build); give them the same --scratch-path if one ever changes, or this reads a stale or missing file.
+        run: python3 -I "$ENGINE/Scripts/coverage.py" "$(swift test --package-path "$ENGINE" --show-codecov-path)"
       - name: AppCore tests with coverage (at least 80 %, QA-R2)
         if: hashFiles('Packages/AppCore/Package.swift') != ''
         run: |
           scripts/coverage.sh --package "$APPCORE" --min 80 \
             --exclude '^Sources/(CompatHarness|TestSupport)/' \
             --baseline .build/coverage-baseline/appcore.json --summary-out .build/coverage/appcore.json
+      - name: Compatibility rules and matrix lint (compat-lint, PLT-R505, PLT-R506, PLT-R521, PLT-R531)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: swift run --package-path "$APPCORE" compat-lint
       - name: Compatibility scenarios, plan only (compat-harness --dry-run, no events posted)
         # Skipped until compat/scenarios exists (W2-E1); the script also skips while the product is missing.
         if: hashFiles('compat/scenarios/**') != ''
         run: scripts/compat-dry-run.sh --out .build/compat-dry-run.txt
+      - name: Pinned data inputs match their manifest (ENG-R810)
+        run: (cd data && shasum -a 256 -c inputs/MANIFEST.sha256)
       - name: Bundled data is reproducible (ENG-R810)
         run: swift run --package-path "$ENGINE" lexicon-builder check
-      - name: Engine benchmark gate (ENG-R1230, ENG-R1233, QA-R14)
-        run: scripts/bench-compare.sh --output .build/bench/median.json
-      - name: Upload coverage and benchmark results
+      - name: Upload coverage summary
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -168,11 +184,44 @@ jobs:
           path: .build/coverage/
           if-no-files-found: ignore
           retention-days: 90
+
+  benchmarks:
+    name: macOS benchmarks (engine ENG-T40, pipeline PLT-R820)
+    # QA-R14: the same runner class every time (the xcode-27 image with Xcode 27.2, ADR 0500 and 0506), in a job
+    # of its own so no other step competes for the CPU while it measures.
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/select-xcode
+      - name: Engine benchmark and calibrated gate (ENG-R1230, ENG-R1233, QA-R14)
+        # Median of 5 release runs compared with Packages/VietnameseEngine/Benchmarks/baseline.json; exit 1 fails.
+        run: |
+          mkdir -p .build/bench
+          "$ENGINE/Scripts/benchmark.sh" "$PWD/.build/bench/engine.json"
+      - name: Pipeline benchmark, 5 release runs (PLT-R820, T1 with fakes)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: |
+          mkdir -p .build/bench/pipeline
+          for run in 1 2 3 4 5; do
+            PIPELINE_BENCH_OUTPUT="$PWD/.build/bench/pipeline/run-$run.json" \
+              swift test --package-path "$APPCORE" -c release --filter PipelineBenchmark
+          done
+      - name: Pipeline benchmark gate, 25 % against the baseline and the T1 gate (PLT-R822)
+        if: hashFiles('Packages/AppCore/Package.swift') != ''
+        run: |
+          results=()
+          for file in .build/bench/pipeline/run-*.json; do results+=(--results "$file"); done
+          scripts/bench-compare.sh "${results[@]}" --threshold 25 \
+            --baseline Packages/AppCore/Benchmarks/pipeline-baseline.json \
+            --output .build/bench/pipeline-median.json
       - name: Upload benchmark results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: engine-benchmark
+          name: benchmarks
           path: .build/bench/
           if-no-files-found: ignore
           retention-days: 90
