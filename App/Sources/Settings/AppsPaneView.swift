@@ -227,7 +227,9 @@ struct ScopedRows: View {
     }
 }
 
-/// PRD-R36: automatic plus at most three plain choices, each explained in one sentence; paste asks first.
+/// PRD-R36: automatic plus at most three plain choices, each explained in one sentence; paste asks first. While a
+/// guided test result is in force it is listed too, selected but disabled (a state, not a choice), so the pane never
+/// shows "automatic" for it (PLT-R540).
 struct CompatibilityChoices: View {
     @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
@@ -238,8 +240,9 @@ struct CompatibilityChoices: View {
             Text(verbatim: localizer.string(AppsText.compatTitle)).font(.headline)
             Text(verbatim: localizer.string(AppsText.compatExplanation)).font(.callout).foregroundStyle(.secondary)
             Picker(selection: choice) {
-                ForEach(CompatibilityModeChoice.allCases, id: \.self) { choice in
+                ForEach(CompatibilityModeChoice.options(current: row.compatibilityMode), id: \.self) { choice in
                     CompatibilityChoiceLabel(localizer: localizer, choice: choice).tag(choice)
+                        .disabled(!choice.isSelectable)
                 }
             } label: {
                 Text(verbatim: localizer.string(AppsText.compatTitle))
@@ -263,9 +266,15 @@ struct CompatibilityChoiceLabel: View {
     let choice: CompatibilityModeChoice
 
     var body: some View {
-        VStack(alignment: .leading) {
+        let label = VStack(alignment: .leading) {
             Text(verbatim: localizer.string(choice.title))
             Text(verbatim: localizer.string(choice.explanation)).font(.caption).foregroundStyle(.secondary)
+        }
+        if choice == .guidedTest {
+            // PRD-R66: the guided test's result is a state, not one of the choices; VoiceOver says how to remove it.
+            label.settingsAccessibility(AppsControl.detailCompatibilityGuided, localizer)
+        } else {
+            label
         }
     }
 }

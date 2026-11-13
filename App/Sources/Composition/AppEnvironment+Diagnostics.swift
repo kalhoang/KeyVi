@@ -27,8 +27,10 @@ extension AppEnvironment {
             currentFocus: { host.currentFocus() }, guidedTest: guidedTestServices(), trace: typingTraceServices(),
             latency: latencyProbeServices(), logsFolder: paths.logs,
             applyOverride: { rule in
-                guard let stored = GuidedTestOverride.stored(rule, at: Date()) else { return }
-                Task { await store.addRuleOverride(stored) }
+                // PLT-R540: a "this app" result keeps the app's "type here anyway" (`UseThisForMeNow`).
+                let commands = SettingsCommands(store: store)
+                let now = Date()
+                Task { _ = await commands.useGuidedTestResult(rule, at: now) }
             })
     }
 

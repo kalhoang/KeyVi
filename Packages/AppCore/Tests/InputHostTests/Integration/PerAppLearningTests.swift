@@ -164,13 +164,13 @@ struct FocusedAppWordListTests {
 @Suite("Per-app learning through the host (ENG-R862)")
 @MainActor
 struct HostPerAppLearningTests {
-    @Test func theSecondIdenticalSignalStoresTheWordForTheFocusedApp() async {
+    @Test func theSecondIdenticalSignalStoresTheWordForItsApp() async {
         let rig = HostRig()
         await rig.start()
         defer { rig.stop() }
-        rig.controller.handle(MainNotice.learning(.preferredRaw(raw: "qzxwk")))
+        rig.controller.handle(MainNotice.learning(.preferredRaw(raw: "qzxwk"), bundle: editor))
         #expect(!rig.events.contains { if case .learningProposal = $0 { true } else { false } })
-        rig.controller.handle(MainNotice.learning(.preferredRaw(raw: "qzxwk")))
+        rig.controller.handle(MainNotice.learning(.preferredRaw(raw: "qzxwk"), bundle: editor))
         #expect(
             rig.events.contains {
                 if case .learningProposal(let proposal) = $0 {
@@ -184,6 +184,39 @@ struct HostPerAppLearningTests {
         #expect(user.learnedWords == [LearnedWord(list: .keepAsTyped, raw: "qzxwk", app: editor)])
         #expect(user.keepAsTyped.isEmpty, "learning never adds a global entry")
         #expect(!rig.logger.entries.contains { "\($0.event)".contains("qzxwk") }, "PLT-R901: content is never logged")
+    }
+
+    /// ENG-R862, PLT-R304: the tap stamps each learning notice with the app of the focus snapshot it typed into,
+    /// so the word belongs to that app even when the focus moved before the main thread drained the outbox.
+    /// Through the real tap, engine and resources: `vieejt` restored with Escape and committed, twice.
+    @Test func aWordTypedBeforeTheFocusMovesBelongsToTheAppWhereItWasTyped() async {
+        let rig = HostRig(realResources: true)
+        let chatPID: Int32 = 4_343
+        rig.processes.add(FakeProcessIdentityProvider.process(pid: chatPID, bundle: chat.rawValue))
+        await rig.start()
+        defer { rig.stop() }
+        for _ in 0..<2 {
+            rig.type("vieejt")
+            rig.send(.keyDown, keyCode: Key.escape)
+            rig.send(.keyUp, keyCode: Key.escape)
+            rig.type(" ")
+        }
+        #expect(rig.field.text == "vieejt vieejt ")
+        // The notices wait in the outbox (the main hop has not run); the chat app takes the focus first.
+        rig.ax.focus(
+            pid: chatPID,
+            attributes: FocusAttributes(
+                role: "AXTextArea", subrole: nil, identifier: nil, domClasses: [], editable: true, ancestorRoles: [],
+                documentURL: nil, windowTitle: nil),
+            notify: nil)
+        rig.workspace.send(.applicationActivated(pid: chatPID))
+        rig.settle()
+        #expect(rig.controller.currentFocus().app?.bundle == chat)
+        let proposals = rig.events.compactMap { if case .learningProposal(let proposal) = $0 { proposal } else { nil } }
+        #expect(proposals == [LearningProposal(list: .keepAsTyped, rawKeys: "vieejt", app: editor)])
+        for _ in 0..<20 where await rig.store.store.state.user.learnedWords.isEmpty { await Task.yield() }
+        let user = await rig.store.store.state.user
+        #expect(user.learnedWords == [LearnedWord(list: .keepAsTyped, raw: "vieejt", app: editor)])
     }
 
     /// At launch the engines get the focused app's learned words once focus is known.

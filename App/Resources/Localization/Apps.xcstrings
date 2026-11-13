@@ -145,6 +145,42 @@
         }
       }
     },
+    "apps.compat.guidedTest" : {
+      "comment" : "PRD-R36, PLT-R540: shown instead of a choice while a guided test result is in force for the app.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set by the guided test"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theo kết quả kiểm tra có hướng dẫn"
+          }
+        }
+      }
+    },
+    "apps.compat.guidedTest.explanation" : {
+      "comment" : "PRD-R36 one sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uses the method the guided test found for this app; choose “Automatic” to remove it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng cách gửi chữ mà bài kiểm tra có hướng dẫn đã tìm ra cho ứng dụng này; chọn “Tự động” để bỏ."
+          }
+        }
+      }
+    },
     "apps.compat.pasteText" : {
       "comment" : "PRD-R36 choice.",
       "extractionState" : "manual",
@@ -393,6 +429,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chế độ tương thích"
+          }
+        }
+      }
+    },
+    "apps.control.detailCompatibilityGuided.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The method the guided test chose is in use. Choose Automatic to remove it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cách gửi chữ do bài kiểm tra có hướng dẫn chọn đang được dùng. Chọn Tự động để bỏ."
+          }
+        }
+      }
+    },
+    "apps.control.detailCompatibilityGuided.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set by the guided test"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theo kết quả kiểm tra có hướng dẫn"
           }
         }
       }

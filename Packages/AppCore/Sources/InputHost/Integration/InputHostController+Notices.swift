@@ -33,8 +33,8 @@ extension InputHostController {
             feedFreshPermissions()  // PLT-R330 step 1 re-enables only with valid permissions
             feed(.tapDisabledBySystem(byTimeout: byTimeout))
             if byTimeout, session?.thread.isEnabled == true { counters.tapRecoveries.increment() }
-        case .learning(let signal):
-            noteLearning(signal)
+        case .learning(let signal, let bundle):
+            noteLearning(signal, in: bundle)
         case .echoMissed:
             checkPostAccessAfterEchoMiss()
         case .postingBroken:
@@ -57,10 +57,11 @@ extension InputHostController {
         }
     }
 
-    /// ENG-R862: the second identical signal in the focused app adds the word for that app (visible, removable and
-    /// promotable in Settings). The word is content: it goes to the settings store only, never to a log.
-    func noteLearning(_ signal: LearningSignal) {
-        guard let proposal = learning.note(signal, in: currentFocus().app?.bundle) else { return }
+    /// ENG-R862: the second identical signal in the same app adds the word for that app (visible, removable and
+    /// promotable in Settings). `app` is the app the tap saw the token committed in, not the focus at drain time.
+    /// The word is content: it goes to the settings store only, never to a log.
+    func noteLearning(_ signal: LearningSignal, in app: BundleKey?) {
+        guard let proposal = learning.note(signal, in: app) else { return }
         let store = settingsStore
         Task { await store.updateSettings { proposal.apply(to: &$0) } }
         onEvent?(.learningProposal(proposal))

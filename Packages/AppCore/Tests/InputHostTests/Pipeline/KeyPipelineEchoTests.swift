@@ -288,17 +288,18 @@ private func taplogCodes(_ fixture: PipelineFixture) -> [TapLogRecord] {
         #expect(fixture.popJobs().isEmpty)
     }
 
-    /// ENG-R861: learning signals go to main, in memory only.
-    @Test func learningSignalsGoToMain() {
+    /// ENG-R861: learning signals go to main, in memory only. ENG-R862: each carries the app of the focus snapshot
+    /// the key was handled with.
+    @Test func learningSignalsGoToMainWithTheirApp() {
         let fixture = PipelineFixture()
         let output = EngineOutput(action: .passThrough, composingText: "", learning: .preferredRaw(raw: "abc"))
         let pipeline = stubPipeline(fixture, [output])
         _ = pipeline.handle(key(.keyDown, Key.a, fixture))
-        let learned = fixture.mainNotices().contains {
-            if case .learning(.preferredRaw(raw: "abc")) = $0 { return true }
-            return false
+        let apps = fixture.mainNotices().compactMap { notice -> BundleKey?? in
+            if case .learning(.preferredRaw(raw: "abc"), let bundle) = notice { return bundle }
+            return nil
         }
-        #expect(learned)
+        #expect(apps == [PipelineFixtures.editorBundle])
     }
 
     /// PLT-R405: a macro expansion types with the keycode of its first character in the current layout.

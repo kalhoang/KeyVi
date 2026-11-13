@@ -46,19 +46,9 @@ enum GuidedTestSuggestion {
     }
 
     /// The app's one "this app" override slot, `user.compat.<bundle>`: the id the Apps pane writes, shows,
-    /// replaces and removes with "reset to automatic" (PRD-R36, PLT-R540; `CompatibilityModeChoice.ruleID` in
-    /// ShellCore, kept equal by ShellCoreTests/Settings/GuidedOverrideSlotTests.swift). Characters outside the
-    /// rule ID alphabet become `-` (`sha256:` keys become `sha256-`).
-    static func appSlotID(for bundle: BundleKey) -> RuleID {
-        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
-        let cleaned = String(bundle.rawValue.map { allowed.contains($0) ? $0 : "-" })
-        let segments = cleaned.split(separator: ".", omittingEmptySubsequences: true).joined(separator: ".")
-        let candidate = String((appSlotIDPrefix + segments).prefix(maximumIDBytes))
-        let trimmed = candidate.hasSuffix(".") ? String(candidate.dropLast()) : candidate
-        return RuleID(rawValue: trimmed) ?? RuleID(rawValue: appSlotIDPrefix + "app")!
-    }
-
-    static let appSlotIDPrefix = "user.compat."
+    /// replaces and removes with "reset to automatic" (PRD-R36, PLT-R540). One algorithm for both writers
+    /// (`PerAppOverrideSlot.compat`, also behind `CompatibilityModeChoice.ruleID` in ShellCore).
+    static func appSlotID(for bundle: BundleKey) -> RuleID { PerAppOverrideSlot.compat.ruleID(for: bundle) }
 
     /// Bundle-only: no field terms, no page address, no engine.
     static func isAppScope(_ match: RuleMatch) -> Bool {
