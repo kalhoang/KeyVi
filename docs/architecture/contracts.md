@@ -15663,13 +15663,12 @@ final class TestHostWindowController: NSWindowController {
         return button
     }
 
-    /// Clears both windows, shows `fields.html` again and leaves no field focused, like a fresh launch: the next
+    /// Clears both windows, loads `fields.html` afresh and leaves no field focused, like a fresh launch: the next
     /// scenario's `focusField` is then a real focus change, which the app under test treats as a word boundary.
     /// Without it, a scenario that focused the field the previous one used continued the previous word (the
     /// cleared text is invisible to the app's tap), and its first word stayed untransformed in the VM runs.
     @objc private func resetFields(_ sender: Any?) {
         resetAll()
-        web.blurPage()
         web.resetPage()
         onReset?()
         window?.makeFirstResponder(nil)
