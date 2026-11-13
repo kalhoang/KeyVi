@@ -95,7 +95,8 @@ public struct KeyEventRecord: Sendable, Hashable, BitwiseCopyable {
     public var unicode: InlineUTF16
     /// Time the tap received the original (T5 held-wait metric, PLT-R314 liveness).
     public var receivedAt: MonotonicInstant
-    /// Latency-probe event (PLT-R810): replayed with the probe marker so metrics stay separated.
+    /// Latency-probe event (PLT-R810). Replayed with the ordinary echo marker (a probe-kind marker would make the
+    /// tap treat the replay as a new physical probe and hold it again); the worker routes metrics by this flag.
     public var isProbe: Bool
 
     public init(
