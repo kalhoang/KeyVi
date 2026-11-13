@@ -230,12 +230,16 @@ public struct Engine: Sendable {
     package let rules: ComposerRules
     /// The restore policy of 8.1 for this configuration and these resources (Commit/CommitRules.swift).
     package let commitPolicy: CommitPolicy
+    /// A value read from every generated table (Engine/Reducer.swift `prepareSharedTables`), stored so
+    /// that the tables' one-time construction cannot be optimised away from `init`.
+    package let preparedTables: Int
 
     public init(configuration: EngineConfiguration, resources: Resources) {
         self.configuration = configuration
         self.resources = resources
         self.rules = ComposerRules(configuration)
         self.commitPolicy = CommitPolicy(resources: resources, configuration: configuration)
+        self.preparedTables = Self.prepareSharedTables(rules)
     }
 
     /// The pure reducer of section 2 (ENG-R1210). The work is done by `process(_:_:)`.

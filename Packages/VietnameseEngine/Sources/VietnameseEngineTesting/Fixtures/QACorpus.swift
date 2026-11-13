@@ -33,6 +33,31 @@ public enum KeyNotation {
         }
         return events
     }
+
+    /// The notation of `events` with the TSV escapes applied (`\s`, `\n`, `\r`, `\t`, `\\`), so that a
+    /// failing fuzz stream can be pasted into a corpus file. Reset reasons are not kept (`⟲`).
+    public static func render(_ events: [EngineEvent]) -> String {
+        var text = ""
+        for event in events {
+            switch event {
+            case .backspace: text.append(backspace)
+            case .restoreToggle: text.append(toggle)
+            case .reset: text.append(reset)
+            case .key(let input):
+                if input.fromKeypad { text.append(keypad) }
+                switch input.character {
+                case " ": text += "\\s"
+                case "\n": text += "\\n"
+                case "\r": text += "\\r"
+                case "\r\n": text += "\\r\\n"
+                case "\t": text += "\\t"
+                case "\\": text += "\\\\"
+                default: text.append(input.character)
+                }
+            }
+        }
+        return text
+    }
 }
 
 /// One case of a QA-R4 corpus file: method, options, keystrokes, expected output and expected restore
@@ -137,7 +162,8 @@ public enum QACorpus {
     /// Runs one case through an engine driver (simulated field, ENG-T31 checks after every event) and
     /// returns the field text and, if the row checks it, the field after one more restore toggle.
     public static func run(_ corpusCase: QACorpusCase, macros: MacroTable) throws -> (text: String, restore: String?) {
-        var driver = EngineDriver(configuration: corpusCase.configuration, resources: corpusCase.resources(macros: macros))
+        var driver = EngineDriver(
+            configuration: corpusCase.configuration, resources: corpusCase.resources(macros: macros))
         try driver.send(corpusCase.events)
         let text = driver.field.string
         guard corpusCase.expectedRestore != nil else { return (text, nil) }

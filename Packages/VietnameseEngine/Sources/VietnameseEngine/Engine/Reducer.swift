@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 
 extension Engine {
+    /// Builds the generated tables that composition and commit read (the viability automaton of 3.14,
+    /// the syllable tables of section 3, the letter table of ENG-R301) by composing and committing one
+    /// word. Their construction runs once per process; doing it when an engine is created keeps it off
+    /// the first keystroke, which must stay within the per-event budget (ENG-R1230; the host creates
+    /// engines at launch and on configuration changes, ENG-R1211). Returns a value derived from every
+    /// table so the work is not optimised away.
+    package static func prepareSharedTables(_ rules: ComposerRules) -> Int {
+        let composition = Composition(replaying: Array("Dduwowngf".utf8), rules: rules)
+        let facts = CommittedTextFacts(composition.committedText(style: rules.toneStyle))
+        return ViabilityAutomaton.shared.stateCount &+ facts.lowercased.utf8.count
+            &+ (facts.validity == .standard ? 1 : 0)
+    }
+
     /// `reduce` working in place: `Session` calls this so that the state's buffers stay uniquely
     /// referenced and grow without copies (ENG-R1230, ENG-R640). Deterministic and side-effect free
     /// (ENG-R1210).

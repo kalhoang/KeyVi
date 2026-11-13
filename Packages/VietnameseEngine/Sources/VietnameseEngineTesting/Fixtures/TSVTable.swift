@@ -17,7 +17,7 @@ public struct FixtureError: Error, Sendable, Hashable, CustomStringConvertible {
 
 /// A parsed tab-separated corpus file as written by `Scripts/extract-spec-examples.py`: lines
 /// starting with `#` are comments, the first other line is the header, fields use the escapes
-/// `\t`, `\n`, `\\` and `\s` (a space).
+/// `\t`, `\n`, `\r`, `\\` and `\s` (a space).
 public struct TSVTable: Sendable {
     public struct Row: Sendable {
         /// 1-based line number in the file.
@@ -73,6 +73,7 @@ public struct TSVTable: Sendable {
             switch iterator.next() {
             case "t": result.append("\t")
             case "n": result.append("\n")
+            case "r": result.append("\r")
             case "s": result.append(" ")
             case "\\": result.append("\\")
             default: throw FixtureError(file: file, line: line, reason: "bad escape in \(field)")
