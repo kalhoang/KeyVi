@@ -140,7 +140,7 @@ private func taplogCodes(_ fixture: PipelineFixture) -> [TapLogRecord] {
         fixture.keyDown(Key.d)
         #expect(!fixture.feedback.isPostingBroken)
         #expect(fixture.metrics.echoLosses.value == 0)
-        #expect(fixture.queue.inFlight == 0)
+        #expect(fixture.echo.consecutiveMisses == 0)
     }
 
     /// PLT-R323: forgiveness covers only what was posted up to the re-enable; a new run of three misses on the

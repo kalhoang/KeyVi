@@ -218,11 +218,11 @@ public final class EchoTracker: @unchecked Sendable {
             if hasSeenEcho && Self.isAtOrBefore(front.finalEventSequence, highestEcho) {
                 misses = 0
                 roundTrip?.record(nanoseconds: highestEchoAt.nanoseconds(since: front.postedAt))
-            } else if front.postedAt.nanoseconds < forgiven {
-                // PLT-R330, PLT-R306: posted before the tap was re-enabled, so its echo bypassed the disabled
-                // tap and will never come. Settled at once without counting a miss: the posting path is fine.
             } else if now.nanoseconds(since: front.postedAt) > timeoutNanoseconds {
-                misses += 1
+                // PLT-R330, PLT-R306: posted before the tap was re-enabled, so its echo bypassed the disabled
+                // tap and never comes; not a posting failure. It still settles only at the timeout, so keys stay
+                // held behind it exactly as long as before (PLT-R311, ADR 0311).
+                if front.postedAt.nanoseconds >= forgiven { misses += 1 }
             } else {
                 break
             }
@@ -249,10 +249,9 @@ public final class EchoTracker: @unchecked Sendable {
 
     /// Any thread: the tap was disabled (a tap-disabled event, a watchdog trip) and is being re-enabled.
     /// Synthetic events posted while it was disabled, or queued behind a stuck callback and released by the
-    /// disable, never pass through it, so their echoes never arrive. Every expectation posted at or before
-    /// `instant` that has not echoed is settled at the next settlement without counting a miss (PLT-R330,
-    /// PLT-R306, PLT-R323: only a run of misses on an enabled tap means posting is broken). One atomic max; the
-    /// bound never moves backwards.
+    /// disable, never pass through it, so their echoes never arrive. An expectation posted at or before `instant`
+    /// whose echo times out does not count as a miss (PLT-R330, PLT-R306, PLT-R323: only a run of misses on an
+    /// enabled tap means posting is broken). One atomic max; the bound never moves backwards.
     public func forgiveLostEchoes(postedAtOrBefore instant: MonotonicInstant) {
         let bound = instant.nanoseconds == .max ? UInt64.max : instant.nanoseconds + 1
         forgivenBound.max(bound, ordering: .sequentiallyConsistent)
