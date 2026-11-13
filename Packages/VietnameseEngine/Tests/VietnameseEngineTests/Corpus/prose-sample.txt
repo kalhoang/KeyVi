@@ -1,0 +1,13 @@
+# Vietnamese prose sample for ENG-T20 / ENG-R873 (spec/01-engine.md 13.4). Written for this project and
+# licensed with the engine (MPL-2.0); it stands in for the 200,000-syllable corpus of legally safe text that
+# the data track builds (8.2). Traditional tone placement. Lines starting with # are comments.
+Hôm nay trời trong xanh, gió nhẹ thổi qua những hàng cây ven hồ. Chúng tôi dậy sớm, uống một ly cà phê sữa đá rồi đi bộ quanh phố cổ.
+Người bán hàng rong gánh xôi, bánh mì và trái cây tươi; tiếng rao vang lên khắp các con hẻm nhỏ.
+Ở miền Nam, mùa mưa thường kéo dài từ tháng năm đến tháng mười một, nhưng sau mỗi cơn mưa trời lại nắng ráo.
+Bà ngoại kể rằng ngày xưa cả xóm cùng nhau nấu bánh tét vào dịp Tết, ai cũng vui vẻ và thân thiết.
+Thằng bé học lớp ba đã biết đọc báo, viết thư cho ông bà ở quê và tự giải những bài toán khó.
+Khi hoàng hôn buông xuống, ánh đèn đường bật sáng, quán ăn đông nghẹt người; mùi phở, hủ tiếu và cơm tấm thơm lừng.
+Đất nước Việt Nam có nhiều dân tộc anh em, mỗi dân tộc giữ gìn tiếng nói, trang phục và phong tục riêng.
+Thủy thủ trên chiếc tàu đánh cá khỏe mạnh, rắn rỏi; họ ra khơi từ khuya và trở về khi mặt trời vừa ló dạng.
+Huế nổi tiếng với chùa chiền, lăng tẩm và những món ăn cung đình tinh tế.
+Chúc bạn một ngày làm việc hiệu quả, nhiều niềm vui và sức khỏe dồi dào.

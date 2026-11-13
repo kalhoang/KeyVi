@@ -1,0 +1,22 @@
+# QA-R4 category "no-shortcuts" (spec/04-quality-release.md): sequences that "Quick Telex" products rewrite
+# MUST stay as typed (spec/01-engine.md ENG-R121, REG-04). Hand curated; resources: the 13.9 fixtures.
+# Rows without a boundary also check that the restore toggle passes through (display equals the keys).
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+NS001	Telex	-	cc\s	cc\s	-	not ch
+NS002	Telex	-	kkk\s	kkk\s	-	not khk
+NS003	Telex	-	nn\s	nn\s	-	not ng
+NS004	Telex	-	tt\s	tt\s	-	not th
+NS005	Telex	-	gg\s	gg\s	-	not gi
+NS006	Telex	-	TT\s	TT\s	-	capitals
+NS007	Telex	-	pp\s	pp\s	-	not ph
+NS008	Telex	-	qq\s	qq\s	-	not qu
+NS009	Telex	-	uu\s	uu\s	-	not ươ / ưu
+NS010	Telex	-	cc	cc	cc	the toggle passes through (ENG-R703)
+NS011	Telex	-	kkk	kkk	kkk	ENG-R703
+NS012	Telex	-	uu	uu	uu	ENG-R703
+NS013	Telex	-	cc\stt\snn\sgg\skkk\s	cc\stt\snn\sgg\skkk\s	-	in a sentence
+NS014	Telex	-	ccs\s	ccs\s	-	a tone key with no vowel is a letter (ENG-R432)
+NS015	VNI	-	cc\skkk\snn\stt\sgg\sTT\spp\sqq\suu\s	cc\skkk\snn\stt\sgg\sTT\spp\sqq\suu\s	-	VNI: letters are plain
+NS016	Telex	no-standalone-w	cc\stt\s	cc\stt\s	-	option off changes nothing here

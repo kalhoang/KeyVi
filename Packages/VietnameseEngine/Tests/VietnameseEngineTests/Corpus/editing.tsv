@@ -1,0 +1,42 @@
+# QA-R4 category "editing" (spec/04-quality-release.md), hand curated: Backspace sequences, editing after
+# ", ", ". ", double space and newline, tone changes on a finished word, removing marks with z / 0
+# (spec/01-engine.md sections 7.4 and 10). Resources: the 13.9 fixtures. One case per line.
+# Columns: id, method, options (- or flags, see QACorpusCase), keys, expected (the whole text field after
+# the keys), restore (the field after one more restore toggle, - when not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset,
+# ⌨ keypad digit (KeyNotation).
+# Newline: Return clears the history (ENG-R912), so the word before a newline is not re-opened; QA-R4's
+# "previous word edit context must be recoverable" holds for ", ", ". " and double spaces.
+id	method	options	keys	expected	restore	note
+ED001	Telex	-	vieejt⌫	việ	vieej	W236
+ED002	Telex	-	vieejt⌫⌫	vi	-	W237: the tone goes with ệ
+ED003	Telex	-	hoafn⌫	hòa	hoaf	W240: tone relocates
+ED004	Telex	modern	hoaf⌫	ho	-	W239
+ED005	Telex	-	duwowngf⌫⌫⌫	dư	duw	W243
+ED006	Telex	-	nhaamff⌫	nhầm	nhaamf	W241, REG-24
+ED007	Telex	-	chao\s⌫f	chào	chaof	REG-07: re-open after a space
+ED008	Telex	-	chao,\s⌫⌫f	chào	chaof	REG-07: after ", "
+ED009	Telex	-	chao.\s⌫⌫f	chào	chaof	REG-07: after ". "
+ED010	Telex	-	chao\s\s⌫⌫f	chào	chaof	REG-07: after a double space
+ED011	Telex	-	chao\n⌫f	chaof	-	newline: history cleared, f starts a new token
+ED012	Telex	-	chao\t⌫f	chaof	-	Tab: same as Return
+ED013	Telex	-	vieejt\s⌫f	viềt	vieejtf	tone change on a finished word
+ED014	Telex	-	vieejt\s⌫z	viêt	vieejtz	tone removed with z on a finished word
+ED015	VNI	-	vie65t\s⌫0	viêt	vie65t0	tone removed with 0 on a finished word
+ED016	VNI	-	vie65t\s⌫2	viềt	vie65t2	tone change in VNI
+ED017	Telex	-	hoaf\s⌫n\s	hoàn\s	-	the re-opened word keeps composing
+ED018	Telex	-	text\s⌫	text	tẽt	ENG-R704: re-opened in its restored state, the toggle composes it
+ED019	Telex	-	test\s⌫⎋\s	tét\s	-	E04 then commit: user-kept (L1)
+ED020	Telex	-	ban\snam\s⌫⌫⌫⌫⌫	ban	-	Backspace past a token's start re-opens the previous token
+ED021	Telex	-	ban\snam\s⌫⌫⌫⌫⌫⌫	ba	ba	then edits it by 7.4; nothing to restore
+ED022	Telex	-	ban\nnam\s⌫⌫⌫⌫⌫	ban	-	the history before Return is gone: the last Backspace deletes the newline only
+ED023	Telex	-	thuowr\s⌫	thuở	thuowr	the ENG-R532 spelling is what re-opens
+ED024	Telex	-	asz\s	a\s	-	z removed the tone: kept (L7)
+ED025	Telex	-	ddd\s	dd\s	-	stroke removed by doubling
+ED026	Telex	-	dd\s⌫d	dd	-	re-opened đ, the third d escapes the stroke
+ED027	Telex	history=1	ba\snam\s⌫⌫⌫⌫⌫⌫	b	-	history limit 1: the oldest token was dropped
+ED028	Telex	-	vieejt\s⌫⎋	vieejt	vieejt	toggle on a re-opened word; a second, consecutive toggle passes through (ENG-R702)
+ED029	Telex	-	a⌨1	a1	-	keypad digit is a boundary
+ED030	VNI	-	a⌨1	a1	-	keypad digit is a boundary in VNI too
+ED031	Telex	-	Vieetj,\s⌫⌫s	Viết	Vieetjs	tone replaced on a re-opened capitalised word
+ED032	Telex	-	vieejt\s⟲⌫	việt	-	after a reset Backspace re-opens nothing (the app deletes the space)

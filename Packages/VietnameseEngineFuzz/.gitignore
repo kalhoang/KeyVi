@@ -1,0 +1,7 @@
+# Working corpus and artefacts of fuzz runs (the committed seeds live in Corpus/).
+.fuzz-corpus/
+engine-fuzz-failure.bin
+crash-*
+leak-*
+timeout-*
+oom-*

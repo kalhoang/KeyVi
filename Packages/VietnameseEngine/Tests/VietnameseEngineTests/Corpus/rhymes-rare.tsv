@@ -1,0 +1,57 @@
+# QA-R4 category "rhymes-rare" (spec/04-quality-release.md): rare and edge rhymes of spec/01-engine.md
+# sections 3.7 to 3.10 and 3.12 (orthography references): uych, uơ, oong, ooc, uyu, oeo, quởn, gi + vowel,
+# qu + vowel, open y after th, and Tier B rhymes. Hand curated; resources: the 13.9 fixtures. Each word is
+# committed by a space in Vietnamese context unless the row checks the display (no boundary) and its
+# restore toggle (the raw keys, ENG-R705).
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+RR001	Telex	-	huychs\s	huých\s	-	uych (REG-08), Tier A
+RR002	Telex	-	huychj\s	huỵch\s	-	uych with nặng
+RR003	VNI	-	huych1\s	huých\s	-	uych in VNI
+RR004	Telex	-	huow\s	huơ\s	-	uơ after h (ENG-R315), open ươ written uơ at commit (ENG-R532)
+RR005	Telex	-	huow	hươ	huow	open pair shown ươ while typing (ENG-R531); the toggle gives the keys
+RR006	Telex	-	thuowr\s	thuở\s	-	uơ after th, tone on ơ (B042)
+RR007	VNI	-	thuo73\s	thuở\s	-	VNI thuở
+RR008	Telex	-	booong\s	boong\s	-	oong: the literal oo is typed ooo in Telex (ENG-T02)
+RR009	VNI	-	boong\s	boong\s	-	VNI: oo is two letters
+RR010	Telex	-	sooocs\s	soóc\s	-	ooc with tone on the second o (5.3)
+RR011	VNI	-	sooc1\s	soóc\s	-	VNI soóc
+RR012	Telex	-	khuyur\s	khuỷu\s	-	uyu, tone on the middle letter (5.1)
+RR013	VNI	-	khuyu3\s	khuỷu\s	-	VNI uyu
+RR014	Telex	-	ngoeoj\s	ngoẹo\s	-	oeo
+RR015	VNI	-	ngoeo5\s	ngoẹo\s	-	VNI oeo
+RR016	Telex	-	quowrn\s	quởn\s	-	qu + ơn, Tier B (3.8): kept (ENG-R843)
+RR017	VNI	-	quo73n\s	quởn\s	-	VNI quởn
+RR018	Telex	-	ginf\s	gìn\s	-	g + in: the i is the nucleus (ENG-R306)
+RR019	Telex	-	giuwx\s	giữ\s	-	gi onset + ư
+RR020	Telex	-	gieengs\s	giếng\s	-	gi absorbs the i of iê (ENG-R305)
+RR021	Telex	-	gieecs\s	giếc\s	-	gi + êc (ENG-R305 review note)
+RR022	Telex	-	giuoocj\s	giuộc\s	-	gi + uôc
+RR023	VNI	-	gie6c1\s	giếc\s	-	VNI giếc
+RR024	Telex	-	quys\s	quý\s	-	qu + y (ENG-R304)
+RR025	Telex	-	quis\s	quí\s	-	qu + i kept as typed (ENG-R304)
+RR026	Telex	-	quowf\s	quờ\s	-	qu + ơ: the u of qu is not part of a u o pair (ENG-R530)
+RR027	Telex	-	quauj\s	quạu\s	-	qu + au
+RR028	Telex	-	Thy\s	Thy\s	-	open y after th is Tier A (ENG-R314); nothing to transform
+RR029	Telex	-	Thyr\s	Thỷ\s	-	open y after th with a tone
+RR030	Telex	-	kyx\s	kỹ\s	-	open y after k
+RR031	Telex	-	kix\s	kĩ\s	-	the i spelling is kept too (ENG-R314)
+RR032	Telex	-	giuwax\s	giữa\s	-	gi + ưa (5.3)
+RR033	Telex	-	quoj\s	quọ\s	-	qu + o, Tier B (3.8)
+RR034	Telex	-	gioawng\s	gioăng\s	-	medial rhyme after gi, Tier B (3.9)
+RR035	Telex	-	ngoao\s	ngoao\s	-	oao, Tier B; nothing to transform
+RR036	Telex	-	uwmf\s	ừm\s	-	ưm, Tier B interjection (3.12)
+RR037	Telex	-	hoawcj\s	hoặc\s	-	oăc
+RR038	Telex	-	khuaays\s	khuấy\s	-	uây
+RR039	Telex	-	huaan\s	huân\s	-	uân
+RR040	Telex	-	khuyeenr\s	khuyển\s	-	uyê (5.3)
+RR041	Telex	-	khuyas\s	khuýa\s	-	uya with the tone on y (5.1 three letters)
+RR042	Telex	-	ruwowuj\s	rượu\s	-	ươu, tone on the last modified letter
+RR043	Telex	-	yeeus\s	yếu\s	-	yêu with no onset (ENG-R313)
+RR044	Telex	-	iar\s	ỉa\s	-	ia with no onset is valid (ENG-R313)
+RR045	Telex	-	hoafng\s	hoàng\s	-	oang, tone moved by the coda (5.4)
+RR046	Telex	-	tuyts\s	tuýt\s	-	uyt
+RR047	Telex	-	DDawsk\s	Đắk\s	-	k coda, Tier B (3.6)
+RR048	Telex	-	dzoo\s	dzô\s	-	dz onset, Tier B (P0-2)
+RR049	Telex	-	giwx\s	giwx\s	-	standalone w needs an empty vowel group (ENG-R413); after g + i the i is the vowel (ENG-R306), so w is a letter and the token goes literal: type giuwx

@@ -32,6 +32,14 @@ let package = Package(
         .target(name: "VietnameseEngineTesting", dependencies: ["VietnameseEngine"], swiftSettings: strict),
         // Builds resource files from pinned inputs (ENG-R810, ENG-R820).
         .executableTarget(name: "lexicon-builder", dependencies: ["VietnameseEngine"], swiftSettings: strict),
+        // ENG-T40 benchmark (ENG-R1230 to ENG-R1233, QA-R14). Not a product: a development tool that
+        // replays the generated corpus and a fuzz stream in a release build and writes JSON.
+        .executableTarget(
+            name: "engine-benchmark",
+            dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting"],
+            path: "Benchmarks/EngineBenchmark",
+            swiftSettings: strict
+        ),
         .testTarget(
             name: "VietnameseEngineTests",
             dependencies: ["VietnameseEngine", "VietnameseEngineTesting"],

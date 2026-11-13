@@ -1,0 +1,152 @@
+// SPDX-License-Identifier: MPL-2.0
+
+/// A token after its commit, kept so that Backspace can re-open it (ENG-R1001).
+package struct CommittedToken: Sendable, Hashable {
+    /// The token as it was at commit: raw keys, composition (escape-used, camel case) and flags. For a
+    /// macro expansion (ENG-R1104) a literal token whose raw keys are the span as typed.
+    package var token: ActiveToken
+    /// The text the commit left on screen for the token.
+    package var committedText: String
+    /// The reason code of the commit (ENG-R801) or `.macro` (ENG-R1104).
+    package var decision: CommitDecision
+    /// ENG-R823: the language of the token.
+    package var language: TokenLanguage
+    /// The run's language window before this token was committed; restored when the token is re-opened
+    /// or folded into a macro expansion.
+    package var languagesBefore: RecentLanguages
+
+    package init(
+        token: ActiveToken, committedText: String, decision: CommitDecision, language: TokenLanguage,
+        languagesBefore: RecentLanguages
+    ) {
+        self.token = token
+        self.committedText = committedText
+        self.decision = decision
+        self.language = language
+        self.languagesBefore = languagesBefore
+    }
+
+    /// ENG-R1002: the token re-opened as the active token "with all its raw keys and flags". Its display
+    /// is what the commit left on screen. A token that a commit rule restored shows its raw keys and the
+    /// toggle can bring the composed form back (ENG-R701, ENG-R704); the user's own choice (L1) is kept
+    /// in `userChoice`.
+    package var reopened: ActiveToken {
+        var restoredByRule = false
+        if case .restored(let rule) = decision, rule != .userChoice { restoredByRule = true }
+        return token.reopened(display: committedText, restoredByRule: restoredByRule)
+    }
+}
+
+/// One entry of the run (spec 0 "Run", 10.1): a committed token or a boundary character typed after it.
+package enum HistoryEntry: Sendable, Hashable {
+    case token(CommittedToken)
+    case boundary(Character)
+
+    /// The text the entry occupies on screen.
+    package var text: String {
+        switch self {
+        case .token(let token): return token.committedText
+        case .boundary(let character): return String(character)
+        }
+    }
+}
+
+/// The committed tokens of the current run and the boundary characters between them, oldest first
+/// (ENG-R1001, ENG-R910).
+///
+/// Storage is an array with a head offset: dropping the oldest entries only moves the head, and the
+/// array is compacted when more than half of it is dropped, so trimming is amortised O(1) (ENG-R1232).
+package struct History: Sendable {
+    /// Upper bound on entries per allowed token, so that runs of boundary characters (thousands of
+    /// spaces) cannot grow the history without bound (ENG-T30). Only the oldest entries are dropped.
+    package static let entriesPerToken = 64
+
+    private var storage: [HistoryEntry] = []
+    private var head = 0
+    package private(set) var tokenCount = 0
+    /// Trimming dropped entries in the middle of a macro span (ENG-R1102): the characters typed before
+    /// the first kept entry are unknown, so a span that reaches the start cannot be matched.
+    package private(set) var startsMidSpan = false
+
+    package init() {}
+
+    /// The entries, oldest first.
+    package var entries: ArraySlice<HistoryEntry> { storage[head...] }
+
+    package var isEmpty: Bool { head == storage.count }
+
+    package var last: HistoryEntry? { isEmpty ? nil : storage[storage.count - 1] }
+
+    /// ENG-R1001: keeps at most `limit` tokens (`EngineConfiguration.historyLimit`, minimum 1); older
+    /// entries are dropped, never a crash.
+    package mutating func record(_ token: CommittedToken, limit: Int) {
+        storage.append(.token(token))
+        tokenCount += 1
+        trim(limit: limit)
+    }
+
+    /// ENG-R910: boundary characters are recorded so Backspace can walk back over them and macro spans
+    /// can include them.
+    package mutating func record(boundary: Character, limit: Int) {
+        storage.append(.boundary(boundary))
+        trim(limit: limit)
+    }
+
+    /// Removes the newest entry (Backspace re-opening, ENG-R1002; macro expansion, ENG-R1103).
+    @discardableResult
+    package mutating func popLast() -> HistoryEntry? {
+        guard !isEmpty else { return nil }
+        let entry = storage.removeLast()
+        if case .token = entry { tokenCount -= 1 }
+        if isEmpty {
+            storage.removeAll(keepingCapacity: true)
+            head = 0
+        }
+        return entry
+    }
+
+    /// ENG-R912 (Return, Tab) and ENG-R1011 (reset). The span starts afresh.
+    package mutating func clear() {
+        storage.removeAll(keepingCapacity: true)
+        head = 0
+        tokenCount = 0
+        startsMidSpan = false
+    }
+
+    private mutating func trim(limit: Int) {
+        let tokenLimit = max(1, limit)
+        let entryLimit = tokenLimit * Self.entriesPerToken
+        var droppedLast: HistoryEntry?
+        while tokenCount > tokenLimit || storage.count - head > entryLimit {
+            let entry = storage[head]
+            if case .token = entry { tokenCount -= 1 }
+            droppedLast = entry
+            head += 1
+        }
+        guard let droppedLast else { return }
+        // The span start is known only if the last dropped entry was whitespace (ENG-R1102).
+        if case .boundary(let character) = droppedLast, character.isWhitespace {
+            startsMidSpan = false
+        } else {
+            startsMidSpan = true
+        }
+        if head > 32, head * 2 > storage.count {
+            storage.removeFirst(head)
+            head = 0
+        }
+    }
+}
+
+extension History: Hashable {
+    /// Two histories are equal when they hold the same entries, whatever the head offset.
+    package static func == (lhs: History, rhs: History) -> Bool {
+        lhs.tokenCount == rhs.tokenCount && lhs.startsMidSpan == rhs.startsMidSpan && lhs.entries == rhs.entries
+    }
+
+    package func hash(into hasher: inout Hasher) {
+        hasher.combine(tokenCount)
+        hasher.combine(startsMidSpan)
+        hasher.combine(entries.count)
+        for entry in entries { hasher.combine(entry) }
+    }
+}

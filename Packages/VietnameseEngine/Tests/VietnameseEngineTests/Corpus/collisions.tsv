@@ -1,0 +1,42 @@
+# QA-R4 category "collisions" (spec/04-quality-release.md): strings that are both valid Vietnamese and
+# English, with the expected policy outcome (spec/01-engine.md 8.3, ENG-R821 to ENG-R823). Hand curated;
+# resources: the 13.9 fixtures (ambiguity table = the ENG-R821 proposal). A row that starts with "vieejt "
+# is in Vietnamese context, one that starts with "and " is in an English run.
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+CO001	Telex	-	ma\s	ma\s	-	no transform key: never an issue (8.3)
+CO002	Telex	-	me\s	me\s	-	8.3
+CO003	Telex	-	to\s	to\s	-	8.3
+CO004	Telex	-	an\s	an\s	-	8.3
+CO005	Telex	-	hai\s	hai\s	-	8.3
+CO006	Telex	-	and\sma\sme\sto\san\shai\s	and\sma\sme\sto\san\shai\s	-	in an English run too
+CO007	Telex	-	as\s	á\s	-	ambiguity row vi (B032)
+CO008	Telex	-	is\s	is\s	-	ambiguity row en (B031)
+CO009	Telex	-	was\s	was\s	-	ambiguity row en
+CO010	Telex	-	has\s	há\s	-	row vi
+CO011	Telex	-	its\s	ít\s	-	row vi
+CO012	Telex	-	vieejt\sthis\s	việt\sthí\s	-	row vi in Vietnamese context (B027)
+CO013	Telex	-	and\sthis\s	and\sthis\s	-	English run restores (B028, L10)
+CO014	Telex	-	these\s	thế\s	-	row vi
+CO015	Telex	-	there\s	thể\s	-	row vi
+CO016	Telex	-	been\s	bên\s	-	row vi
+CO017	Telex	-	vieejt\scar\s	việt\scả\s	-	row vi (B029)
+CO018	Telex	-	and\scar\s	and\scar\s	-	English run (B030)
+CO019	Telex	-	test\s	test\s	-	row en (B024)
+CO020	Telex	-	tets\s	tét\s	-	the Vietnamese word typed in another order (ENG-R822, B026)
+CO021	Telex	-	best\s	best\s	-	row en
+CO022	Telex	-	list\s	list\s	-	row en
+CO023	Telex	-	cost\s	cost\s	-	row en
+CO024	Telex	-	room\s	room\s	-	row en
+CO025	Telex	-	did\s	đi\s	-	row vi (B033)
+CO026	Telex	-	theme\s	thêm\s	-	row vi
+CO027	Telex	-	max\s	mã\s	-	row vi
+CO028	Telex	-	tar\s	tả\s	-	no row: default Vietnamese (B034)
+CO029	Telex	code	tar\s	tar\s	-	code context restores code-only words (B035, L9)
+CO030	Telex	-	and\sthis\sis\sthe\sbest\scar\s	and\sthis\sis\sthe\sbest\scar\s	-	ENG-R823 example: an English run restores every collision
+CO031	Telex	-	vieejt\sa\sthe\sas\s	việt\sa\sthe\sá\s	-	neutral tokens (a, the) do not start an English run
+CO032	Telex	-	and\s1\s2\s3\sthis\s	and\s1\s2\s3\sthis\s	-	digits are neutral: the run reaches past them
+CO033	Telex	-	and\sa\sb\svieejt\sthis\s	and\sa\sb\sviệt\sthí\s	-	the nearest non-neutral token decides (vi)
+CO034	Telex	no-auto-restore	test\s	tét\s	-	auto restore off: L11 does not restore (ENG-R802)
+CO035	VNI	-	as\sis\sthis\s	as\sis\sthis\s	-	VNI: letters are plain, nothing collides (ENG-R874)

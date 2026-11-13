@@ -1,0 +1,268 @@
+# QA-R4 category "proper-nouns" (spec/04-quality-release.md): names and place names of Viet Nam, including
+# ethnic-minority and loan forms (spec/01-engine.md 3.3, 3.12, ENG-R331, ENG-R333, ENG-R843, REG-08), each
+# typed word by word and committed by a space, with the 13.9 fixture resources.
+# Source and licence (CLR-R6): the names are those of provinces, cities and districts in the official
+# register of administrative units of Viet Nam (General Statistics Office, danhmuchanhchinh.gso.gov.vn).
+# The register is a state administrative document, which Article 15 of the Law on Intellectual Property
+# (2005) excludes from copyright protection, and place names are facts: public domain. The spellings were
+# typed by hand for this file; no word list was copied.
+# Keys: the canonical order of ENG-T02 O1, produced with Scripts/vietnamese-keys.py and then reviewed.
+# Rows PN2xx were written by hand: names whose Telex spelling has a transform letter where the name has a
+# plain letter need the escape of 4.7 (`Kar` is typed `Karr`, VNI needs nothing), and names outside Tier B
+# (`Păh`, `Tẻh`: coda h) commit as typed unless the user keep-Vietnamese list holds them (ENG-R334). Names
+# with the onsets f, j, w (for example Cư Jút) cannot compose by the decision in 3.3 and are not listed.
+# Columns: id, method, options, keys, expected (whole field), restore (- not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset.
+id	method	options	keys	expected	restore	note
+PN001T	Telex	-	Buoon\sMa\sThuootj\s	Buôn\sMa\sThuột\s	-	
+PN001V	VNI	-	Buo6n\sMa\sThuo6t5\s	Buôn\sMa\sThuột\s	-	
+PN002T	Telex	-	Kroong\sPawcs\s	Krông\sPắc\s	-	
+PN002V	VNI	-	Kro6ng\sPa8c1\s	Krông\sPắc\s	-	
+PN003T	Telex	-	DDawks\sLawks\s	Đắk\sLắk\s	-	
+PN003V	VNI	-	D9a8k1\sLa8k1\s	Đắk\sLắk\s	-	
+PN004T	Telex	-	Pleiku\s	Pleiku\s	-	
+PN004V	VNI	-	Pleiku\s	Pleiku\s	-	
+PN005T	Telex	-	Kon\sTum\s	Kon\sTum\s	-	
+PN005V	VNI	-	Kon\sTum\s	Kon\sTum\s	-	
+PN006T	Telex	-	Muf\sCang\sChair\s	Mù\sCang\sChải\s	-	
+PN006V	VNI	-	Mu2\sCang\sChai3\s	Mù\sCang\sChải\s	-	
+PN007T	Telex	-	Haf\sNooij\s	Hà\sNội\s	-	
+PN007V	VNI	-	Ha2\sNo6i5\s	Hà\sNội\s	-	
+PN008T	Telex	-	Hoof\sChis\sMinh\s	Hồ\sChí\sMinh\s	-	
+PN008V	VNI	-	Ho62\sChi1\sMinh\s	Hồ\sChí\sMinh\s	-	
+PN009T	Telex	-	Hair\sPhongf\s	Hải\sPhòng\s	-	
+PN009V	VNI	-	Hai3\sPhong2\s	Hải\sPhòng\s	-	
+PN010T	Telex	-	DDaf\sNawngx\s	Đà\sNẵng\s	-	
+PN010V	VNI	-	D9a2\sNa8ng4\s	Đà\sNẵng\s	-	
+PN011T	Telex	-	Caanf\sThow\s	Cần\sThơ\s	-	
+PN011V	VNI	-	Ca6n2\sTho7\s	Cần\sThơ\s	-	
+PN012T	Telex	-	Huees\s	Huế\s	-	
+PN012V	VNI	-	Hue61\s	Huế\s	-	
+PN013T	Telex	-	Nha\sTrang\s	Nha\sTrang\s	-	
+PN013V	VNI	-	Nha\sTrang\s	Nha\sTrang\s	-	
+PN014T	Telex	-	DDaf\sLatj\s	Đà\sLạt\s	-	
+PN014V	VNI	-	D9a2\sLat5\s	Đà\sLạt\s	-	
+PN015T	Telex	-	Vungx\sTauf\s	Vũng\sTàu\s	-	
+PN015V	VNI	-	Vung4\sTau2\s	Vũng\sTàu\s	-	
+PN016T	Telex	-	Quy\sNhown\s	Quy\sNhơn\s	-	
+PN016V	VNI	-	Quy\sNho7n\s	Quy\sNhơn\s	-	
+PN017T	Telex	-	Phan\sThieets\s	Phan\sThiết\s	-	
+PN017V	VNI	-	Phan\sThie6t1\s	Phan\sThiết\s	-	
+PN018T	Telex	-	Long\sXuyeen\s	Long\sXuyên\s	-	
+PN018V	VNI	-	Long\sXuye6n\s	Long\sXuyên\s	-	
+PN019T	Telex	-	Rachj\sGias\s	Rạch\sGiá\s	-	
+PN019V	VNI	-	Rach5\sGia1\s	Rạch\sGiá\s	-	
+PN020T	Telex	-	Caf\sMau\s	Cà\sMau\s	-	
+PN020V	VNI	-	Ca2\sMau\s	Cà\sMau\s	-	
+PN021T	Telex	-	Bacj\sLieeu\s	Bạc\sLiêu\s	-	
+PN021V	VNI	-	Bac5\sLie6u\s	Bạc\sLiêu\s	-	
+PN022T	Telex	-	Socs\sTrawng\s	Sóc\sTrăng\s	-	
+PN022V	VNI	-	Soc1\sTra8ng\s	Sóc\sTrăng\s	-	
+PN023T	Telex	-	Vinhx\sLong\s	Vĩnh\sLong\s	-	
+PN023V	VNI	-	Vinh4\sLong\s	Vĩnh\sLong\s	-	
+PN024T	Telex	-	Myx\sTho\s	Mỹ\sTho\s	-	
+PN024V	VNI	-	My4\sTho\s	Mỹ\sTho\s	-	
+PN025T	Telex	-	Bieen\sHoaf\s	Biên\sHòa\s	-	
+PN025V	VNI	-	Bie6n\sHoa2\s	Biên\sHòa\s	-	
+PN026T	Telex	-	Thur\sDaauf\sMootj\s	Thủ\sDầu\sMột\s	-	
+PN026V	VNI	-	Thu3\sDa6u2\sMo6t5\s	Thủ\sDầu\sMột\s	-	
+PN027T	Telex	-	Taay\sNinh\s	Tây\sNinh\s	-	
+PN027V	VNI	-	Ta6y\sNinh\s	Tây\sNinh\s	-	
+PN028T	Telex	-	Laof\sCai\s	Lào\sCai\s	-	
+PN028V	VNI	-	Lao2\sCai\s	Lào\sCai\s	-	
+PN029T	Telex	-	DDieenj\sBieen\sPhur\s	Điện\sBiên\sPhủ\s	-	
+PN029V	VNI	-	D9ie6n5\sBie6n\sPhu3\s	Điện\sBiên\sPhủ\s	-	
+PN030T	Telex	-	Sown\sLa\s	Sơn\sLa\s	-	
+PN030V	VNI	-	So7n\sLa\s	Sơn\sLa\s	-	
+PN031T	Telex	-	Haj\sLong\s	Hạ\sLong\s	-	
+PN031V	VNI	-	Ha5\sLong\s	Hạ\sLong\s	-	
+PN032T	Telex	-	Mongs\sCais\s	Móng\sCái\s	-	
+PN032V	VNI	-	Mong1\sCai1\s	Móng\sCái\s	-	
+PN033T	Telex	-	Uoong\sBis\s	Uông\sBí\s	-	
+PN033V	VNI	-	Uo6ng\sBi1\s	Uông\sBí\s	-	
+PN034T	Telex	-	Thais\sNguyeen\s	Thái\sNguyên\s	-	
+PN034V	VNI	-	Thai1\sNguye6n\s	Thái\sNguyên\s	-	
+PN035T	Telex	-	Vieetj\sTrif\s	Việt\sTrì\s	-	
+PN035V	VNI	-	Vie6t5\sTri2\s	Việt\sTrì\s	-	
+PN036T	Telex	-	Tuyeen\sQuang\s	Tuyên\sQuang\s	-	
+PN036V	VNI	-	Tuye6n\sQuang\s	Tuyên\sQuang\s	-	
+PN037T	Telex	-	Yeen\sBais\s	Yên\sBái\s	-	
+PN037V	VNI	-	Ye6n\sBai1\s	Yên\sBái\s	-	
+PN038T	Telex	-	Hoaf\sBinhf\s	Hòa\sBình\s	-	
+PN038V	VNI	-	Hoa2\sBinh2\s	Hòa\sBình\s	-	
+PN039T	Telex	-	Ninh\sBinhf\s	Ninh\sBình\s	-	
+PN039V	VNI	-	Ninh\sBinh2\s	Ninh\sBình\s	-	
+PN040T	Telex	-	Nam\sDDinhj\s	Nam\sĐịnh\s	-	
+PN040V	VNI	-	Nam\sD9inh5\s	Nam\sĐịnh\s	-	
+PN041T	Telex	-	Thanh\sHoas\s	Thanh\sHóa\s	-	
+PN041V	VNI	-	Thanh\sHoa1\s	Thanh\sHóa\s	-	
+PN042T	Telex	-	Vinh\s	Vinh\s	-	
+PN042V	VNI	-	Vinh\s	Vinh\s	-	
+PN043T	Telex	-	Haf\sTinhx\s	Hà\sTĩnh\s	-	
+PN043V	VNI	-	Ha2\sTinh4\s	Hà\sTĩnh\s	-	
+PN044T	Telex	-	DDoongf\sHowis\s	Đồng\sHới\s	-	
+PN044V	VNI	-	D9o6ng2\sHo7i1\s	Đồng\sHới\s	-	
+PN045T	Telex	-	DDoong\sHaf\s	Đông\sHà\s	-	
+PN045V	VNI	-	D9o6ng\sHa2\s	Đông\sHà\s	-	
+PN046T	Telex	-	Tam\sKyf\s	Tam\sKỳ\s	-	
+PN046V	VNI	-	Tam\sKy2\s	Tam\sKỳ\s	-	
+PN047T	Telex	-	Quangr\sNgaix\s	Quảng\sNgãi\s	-	
+PN047V	VNI	-	Quang3\sNgai4\s	Quảng\sNgãi\s	-	
+PN048T	Telex	-	Tuy\sHoaf\s	Tuy\sHòa\s	-	
+PN048V	VNI	-	Tuy\sHoa2\s	Tuy\sHòa\s	-	
+PN049T	Telex	-	Phan\sRang\s	Phan\sRang\s	-	
+PN049V	VNI	-	Phan\sRang\s	Phan\sRang\s	-	
+PN050T	Telex	-	Gia\sNghiax\s	Gia\sNghĩa\s	-	
+PN050V	VNI	-	Gia\sNghia4\s	Gia\sNghĩa\s	-	
+PN051T	Telex	-	Baor\sLoocj\s	Bảo\sLộc\s	-	
+PN051V	VNI	-	Bao3\sLo6c5\s	Bảo\sLộc\s	-	
+PN052T	Telex	-	Khanhs\sHoaf\s	Khánh\sHòa\s	-	
+PN052V	VNI	-	Khanh1\sHoa2\s	Khánh\sHòa\s	-	
+PN053T	Telex	-	Thuwaf\sThieen\sHuees\s	Thừa\sThiên\sHuế\s	-	
+PN053V	VNI	-	Thu7a2\sThie6n\sHue61\s	Thừa\sThiên\sHuế\s	-	
+PN054T	Telex	-	Baf\sRiaj\s	Bà\sRịa\s	-	
+PN054V	VNI	-	Ba2\sRia5\s	Bà\sRịa\s	-	
+PN055T	Telex	-	Kieen\sGiang\s	Kiên\sGiang\s	-	
+PN055V	VNI	-	Kie6n\sGiang\s	Kiên\sGiang\s	-	
+PN056T	Telex	-	Haauj\sGiang\s	Hậu\sGiang\s	-	
+PN056V	VNI	-	Ha6u5\sGiang\s	Hậu\sGiang\s	-	
+PN057T	Telex	-	Bawcs\sNinh\s	Bắc\sNinh\s	-	
+PN057V	VNI	-	Ba8c1\sNinh\s	Bắc\sNinh\s	-	
+PN058T	Telex	-	Bawcs\sKanj\s	Bắc\sKạn\s	-	
+PN058V	VNI	-	Ba8c1\sKan5\s	Bắc\sKạn\s	-	
+PN059T	Telex	-	Cao\sBawngf\s	Cao\sBằng\s	-	
+PN059V	VNI	-	Cao\sBa8ng2\s	Cao\sBằng\s	-	
+PN060T	Telex	-	Langj\sSown\s	Lạng\sSơn\s	-	
+PN060V	VNI	-	Lang5\sSo7n\s	Lạng\sSơn\s	-	
+PN061T	Telex	-	Quangr\sNinh\s	Quảng\sNinh\s	-	
+PN061V	VNI	-	Quang3\sNinh\s	Quảng\sNinh\s	-	
+PN062T	Telex	-	Huwng\sYeen\s	Hưng\sYên\s	-	
+PN062V	VNI	-	Hu7ng\sYe6n\s	Hưng\sYên\s	-	
+PN063T	Telex	-	Phus\sThoj\s	Phú\sThọ\s	-	
+PN063V	VNI	-	Phu1\sTho5\s	Phú\sThọ\s	-	
+PN064T	Telex	-	DDawks\sNoong\s	Đắk\sNông\s	-	
+PN064V	VNI	-	D9a8k1\sNo6ng\s	Đắk\sNông\s	-	
+PN065T	Telex	-	Gia\sLai\s	Gia\sLai\s	-	
+PN065V	VNI	-	Gia\sLai\s	Gia\sLai\s	-	
+PN066T	Telex	-	Laam\sDDoongf\s	Lâm\sĐồng\s	-	
+PN066V	VNI	-	La6m\sD9o6ng2\s	Lâm\sĐồng\s	-	
+PN067T	Telex	-	Binhf\sDuowng\s	Bình\sDương\s	-	
+PN067V	VNI	-	Binh2\sDuo7ng\s	Bình\sDương\s	-	
+PN068T	Telex	-	DDoongf\sNai\s	Đồng\sNai\s	-	
+PN068V	VNI	-	D9o6ng2\sNai\s	Đồng\sNai\s	-	
+PN069T	Telex	-	Tieenf\sGiang\s	Tiền\sGiang\s	-	
+PN069V	VNI	-	Tie6n2\sGiang\s	Tiền\sGiang\s	-	
+PN070T	Telex	-	Beens\sTre\s	Bến\sTre\s	-	
+PN070V	VNI	-	Be6n1\sTre\s	Bến\sTre\s	-	
+PN071T	Telex	-	Traf\sVinh\s	Trà\sVinh\s	-	
+PN071V	VNI	-	Tra2\sVinh\s	Trà\sVinh\s	-	
+PN072T	Telex	-	DDoongf\sThaps\s	Đồng\sTháp\s	-	
+PN072V	VNI	-	D9o6ng2\sThap1\s	Đồng\sTháp\s	-	
+PN073T	Telex	-	An\sGiang\s	An\sGiang\s	-	
+PN073V	VNI	-	An\sGiang\s	An\sGiang\s	-	
+PN074T	Telex	-	Kroong\sBoong\s	Krông\sBông\s	-	
+PN074V	VNI	-	Kro6ng\sBo6ng\s	Krông\sBông\s	-	
+PN075T	Telex	-	Kroong\sNawng\s	Krông\sNăng\s	-	
+PN075V	VNI	-	Kro6ng\sNa8ng\s	Krông\sNăng\s	-	
+PN076T	Telex	-	Kroong\sBuks\s	Krông\sBúk\s	-	
+PN076V	VNI	-	Kro6ng\sBuk1\s	Krông\sBúk\s	-	
+PN077T	Telex	-	Buoon\sDDoon\s	Buôn\sĐôn\s	-	
+PN077V	VNI	-	Buo6n\sD9o6n\s	Buôn\sĐôn\s	-	
+PN078T	Telex	-	Buoon\sHoof\s	Buôn\sHồ\s	-	
+PN078V	VNI	-	Buo6n\sHo62\s	Buôn\sHồ\s	-	
+PN079T	Telex	-	DDawks\sMil\s	Đắk\sMil\s	-	
+PN079V	VNI	-	D9a8k1\sMil\s	Đắk\sMil\s	-	
+PN080T	Telex	-	DDawks\sSong\s	Đắk\sSong\s	-	
+PN080V	VNI	-	D9a8k1\sSong\s	Đắk\sSong\s	-	
+PN081T	Telex	-	DDawks\sGlei\s	Đắk\sGlei\s	-	
+PN081V	VNI	-	D9a8k1\sGlei\s	Đắk\sGlei\s	-	
+PN082T	Telex	-	DDawks\sToo\s	Đắk\sTô\s	-	
+PN082V	VNI	-	D9a8k1\sTo6\s	Đắk\sTô\s	-	
+PN083T	Telex	-	DDawks\sHaf\s	Đắk\sHà\s	-	
+PN083V	VNI	-	D9a8k1\sHa2\s	Đắk\sHà\s	-	
+PN084T	Telex	-	Kon\sPloong\s	Kon\sPlông\s	-	
+PN084V	VNI	-	Kon\sPlo6ng\s	Kon\sPlông\s	-	
+PN085T	Telex	-	Kon\sRaayx\s	Kon\sRẫy\s	-	
+PN085V	VNI	-	Kon\sRa6y4\s	Kon\sRẫy\s	-	
+PN086T	Telex	-	Ia\sGrai\s	Ia\sGrai\s	-	
+PN086V	VNI	-	Ia\sGrai\s	Ia\sGrai\s	-	
+PN087T	Telex	-	Chuw\sProong\s	Chư\sPrông\s	-	
+PN087V	VNI	-	Chu7\sPro6ng\s	Chư\sPrông\s	-	
+PN088T	Telex	-	Chuw\sSee\s	Chư\sSê\s	-	
+PN088V	VNI	-	Chu7\sSe6\s	Chư\sSê\s	-	
+PN089T	Telex	-	Mang\sYang\s	Mang\sYang\s	-	
+PN089V	VNI	-	Mang\sYang\s	Mang\sYang\s	-	
+PN090T	Telex	-	DDawks\sDDoa\s	Đắk\sĐoa\s	-	
+PN090V	VNI	-	D9a8k1\sD9oa\s	Đắk\sĐoa\s	-	
+PN091T	Telex	-	Ea\sSups\s	Ea\sSúp\s	-	
+PN091V	VNI	-	Ea\sSup1\s	Ea\sSúp\s	-	
+PN092T	Telex	-	DDam\sRoong\s	Đam\sRông\s	-	
+PN092V	VNI	-	D9am\sRo6ng\s	Đam\sRông\s	-	
+PN093T	Telex	-	Lacj\sDuowng\s	Lạc\sDương\s	-	
+PN093V	VNI	-	Lac5\sDuo7ng\s	Lạc\sDương\s	-	
+PN094T	Telex	-	DDown\sDuowng\s	Đơn\sDương\s	-	
+PN094V	VNI	-	D9o7n\sDuo7ng\s	Đơn\sDương\s	-	
+PN095T	Telex	-	Di\sLinh\s	Di\sLinh\s	-	
+PN095V	VNI	-	Di\sLinh\s	Di\sLinh\s	-	
+PN096T	Telex	-	Muowngf\sLats\s	Mường\sLát\s	-	
+PN096V	VNI	-	Muo7ng2\sLat1\s	Mường\sLát\s	-	
+PN097T	Telex	-	Sinf\sHoof\s	Sìn\sHồ\s	-	
+PN097V	VNI	-	Sin2\sHo62\s	Sìn\sHồ\s	-	
+PN098T	Telex	-	Bats\sXats\s	Bát\sXát\s	-	
+PN098V	VNI	-	Bat1\sXat1\s	Bát\sXát\s	-	
+PN099T	Telex	-	Si\sMa\sCai\s	Si\sMa\sCai\s	-	
+PN099V	VNI	-	Si\sMa\sCai\s	Si\sMa\sCai\s	-	
+PN100T	Telex	-	Meof\sVacj\s	Mèo\sVạc\s	-	
+PN100V	VNI	-	Meo2\sVac5\s	Mèo\sVạc\s	-	
+PN101T	Telex	-	DDoongf\sVawn\s	Đồng\sVăn\s	-	
+PN101V	VNI	-	D9o6ng2\sVa8n\s	Đồng\sVăn\s	-	
+PN102T	Telex	-	Phong\sThoor\s	Phong\sThổ\s	-	
+PN102V	VNI	-	Phong\sTho63\s	Phong\sThổ\s	-	
+PN103T	Telex	-	Tuar\sChuaf\s	Tủa\sChùa\s	-	
+PN103V	VNI	-	Tua3\sChua2\s	Tủa\sChùa\s	-	
+PN104T	Telex	-	Naamj\sNhunf\s	Nậm\sNhùn\s	-	
+PN104V	VNI	-	Na6m5\sNhun2\s	Nậm\sNhùn\s	-	
+PN105T	Telex	-	Muowngf\sTef\s	Mường\sTè\s	-	
+PN105V	VNI	-	Muo7ng2\sTe2\s	Mường\sTè\s	-	
+PN106T	Telex	-	Bawcs\sYeen\s	Bắc\sYên\s	-	
+PN106V	VNI	-	Ba8c1\sYe6n\s	Bắc\sYên\s	-	
+PN107T	Telex	-	Moocj\sChaau\s	Mộc\sChâu\s	-	
+PN107V	VNI	-	Mo6c5\sCha6u\s	Mộc\sChâu\s	-	
+PN108T	Telex	-	Quynhf\sNhai\s	Quỳnh\sNhai\s	-	
+PN108V	VNI	-	Quynh2\sNhai\s	Quỳnh\sNhai\s	-	
+PN109T	Telex	-	Mai\sChaau\s	Mai\sChâu\s	-	
+PN109V	VNI	-	Mai\sCha6u\s	Mai\sChâu\s	-	
+PN110T	Telex	-	Tam\sDDaor\s	Tam\sĐảo\s	-	
+PN110V	VNI	-	Tam\sD9ao3\s	Tam\sĐảo\s	-	
+PN111T	Telex	-	Ba\sBeer\s	Ba\sBể\s	-	
+PN111V	VNI	-	Ba\sBe63\s	Ba\sBể\s	-	
+PN112T	Telex	-	Chowj\sDDoonf\s	Chợ\sĐồn\s	-	
+PN112V	VNI	-	Cho75\sD9o6n2\s	Chợ\sĐồn\s	-	
+PN113T	Telex	-	Pacs\sNawmj\s	Pác\sNặm\s	-	
+PN113V	VNI	-	Pac1\sNa8m5\s	Pác\sNặm\s	-	
+PN114T	Telex	-	Trungf\sKhanhs\s	Trùng\sKhánh\s	-	
+PN114V	VNI	-	Trung2\sKhanh1\s	Trùng\sKhánh\s	-	
+PN115T	Telex	-	Baor\sLacj\s	Bảo\sLạc\s	-	
+PN115V	VNI	-	Bao3\sLac5\s	Bảo\sLạc\s	-	
+PN116T	Telex	-	Na\sRif\s	Na\sRì\s	-	
+PN116V	VNI	-	Na\sRi2\s	Na\sRì\s	-	
+PN117T	Telex	-	Lucj\sNganj\s	Lục\sNgạn\s	-	
+PN117V	VNI	-	Luc5\sNgan5\s	Lục\sNgạn\s	-	
+PN201T	Telex	-	Ea\sKarr\s	Ea\sKar\s	-	Kar: the r is a tone key in Telex, doubled to escape (4.7, L4 keeps the escaped form)
+PN201V	VNI	-	Ea\sKar\s	Ea\sKar\s	-	VNI letters are plain letters (ENG-R403): no escape
+PN202T	Telex	-	Cuw\sM'garr\s	Cư\sM'gar\s	-	apostrophe is a boundary (ENG-R333); gar needs the escape
+PN202V	VNI	-	Cu7\sM'gar\s	Cư\sM'gar\s	-	ENG-R333
+PN203T	Telex	-	Kroong\sAnaa\s	Krông\sAna\s	-	Ana: a circumflex key after the coda (ENG-R431) is escaped by doubling
+PN203V	VNI	-	Kro6ng\sAna\s	Krông\sAna\s	-	VNI: no escape
+PN204T	Telex	-	M'DDrawks\s	M'Đrắk\s	-	ENG-R333: M and Đrắk compose on their own; đr cluster and k coda are Tier B (L6 keeps)
+PN204V	VNI	-	M'D9ra8k1\s	M'Đrắk\s	-	ENG-R333
+PN205T	Telex	-	Ea\sH'leo\s	Ea\sH'leo\s	-	nothing to transform
+PN206T	Telex	-	DDawks\sR'laaps\s	Đắk\sR'lấp\s	-	ENG-R333
+PN206V	VNI	-	D9a8k1\sR'la6p1\s	Đắk\sR'lấp\s	-	ENG-R333
+PN207T	Telex	-	Ia\sH'Drai\s	Ia\sH'Drai\s	-	dr cluster, Tier B
+PN208T	Telex	keep-vi=pawh	Chuw\sPawh\s	Chư\sPăh\s	-	Păh is outside Tier B (coda h): kept by the user list (L2, ENG-R334)
+PN208V	VNI	keep-vi=pa8h	Chu7\sPa8h\s	Chư\sPăh\s	-	ENG-R334
+PN209T	Telex	-	Chuw\sPawh\s	Chư\sPawh\s	-	without the user list, Păh is invalid and restored (L5)
+PN210T	Telex	keep-vi=terh	DDaj\sTerh\s	Đạ\sTẻh\s	-	Tẻh: coda h, user list (ENG-R334)
+PN211T	Telex	-	DDAWKS\sLAWKS\s	ĐẮK\sLẮK\s	-	all capitals (ENG-R332: case carries no signal)
+PN212T	Telex	-	buoon\sma\sthuootj\s	buôn\sma\sthuột\s	-	lowercase: same decisions as capitalised (ENG-R332)

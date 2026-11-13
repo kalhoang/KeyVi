@@ -1,0 +1,42 @@
+# QA-R4 category "macros" (spec/04-quality-release.md), hand curated: macro matching with the fixture
+# table macro-table.tsv over the 13.9 fixture resources (spec/01-engine.md section 11, ENG-R1101 to
+# ENG-R1105). One case per line.
+# Columns: id, method, options (- or flags, see QACorpusCase), keys, expected (the whole text field after
+# the keys), restore (the field after one more restore toggle, - when not checked), note.
+# Keys: TSV escapes \s space, \n Return, \t Tab; markers ⌫ Backspace, ⎋ restore toggle, ⟲ reset,
+# ⌨ keypad digit (KeyNotation).
+id	method	options	keys	expected	restore	note
+M001	Telex	-	vn\s	Việt Nam\s	-	letters-only trigger, terminator kept
+M002	Telex	-	Vn\s	Việt Nam\s	-	first letter capital
+M003	Telex	-	VN\s	VIỆT NAM\s	-	all capitals: expansion uppercased
+M004	Telex	-	vn.	Việt Nam.	-	punctuation terminator kept
+M005	Telex	-	@@\n	kal@example.com\n	-	punctuation-only trigger, Return delivered after the edit
+M006	Telex	-	dc\s	được\s	-	matched before any restore decision
+M007	Telex	-	vnd\s	vnd\s	-	span vnd: no macro
+M008	Telex	-	k1\s	khu 1\s	-	digit in the span (Telex: the digit is a boundary)
+M009	VNI	-	k1\s	khu 1\s	-	digit in the span (VNI: the digit is a key of the token)
+M010	Telex	-	ad.\s	địa chỉ\s	-	punctuation inside the trigger
+M011	Telex	-	hc\s	hc\s	-	prefix of a longer trigger: no expansion
+M012	Telex	-	hcmc\s	hcmc\s	-	longer than the trigger: no expansion
+M013	Telex	-	hcm,	Hồ Chí Minh,	-	comma terminator
+M014	Telex	-	vn\s⌫	Việt Nam	vn	Backspace re-opens the expansion, restore brings the shortcut back
+M015	Telex	-	VN\s⌫	VIỆT NAM	VN	restore keeps the case typed
+M016	Telex	-	ad.\s⌫	địa chỉ	ad.	restore of a trigger with punctuation
+M017	Telex	-	@@\s⌫	kal@example.com	@@	restore of a punctuation-only trigger
+M018	Telex	-	vn\s⌫⌫⌫	Việt N	vn	Backspace deletes one character at a time, restore still gives the span
+M019	Telex	-	ttt\s	Thân thiện\s	-	adapt_case no: as stored
+M020	Telex	-	TTT\s	Thân thiện\s	-	adapt_case no: capitals ignored
+M021	Telex	-	sig\s	Trân trọng,\nKal\s	-	expansion with a newline
+M022	Telex	-	x\svn\s	x Việt Nam\s	-	the span starts after whitespace
+M023	Telex	-	xvn\s	xvn\s	-	span xvn: no macro
+M024	Telex	-	vn\tvn\s	Việt Nam\tViệt Nam\s	-	Tab ends the first span
+M025	Telex	-	v⟲n\s	vn\s	-	a reset ends the span
+M026	Telex	no-macros	vn\s	vn\s	-	empty table (host turned macros off, ENG-R1107)
+M027	Telex	-	!!\s	(quan trọng)\s	-	punctuation-only trigger, no letters: no case adaptation
+M028	Telex	-	1st\s	đầu tiên\s	-	digit then letters
+M029	Telex	-	1ST\s	ĐẦU TIÊN\s	-	all capitals
+M030	VNI	-	vn\s	Việt Nam\s	-	VNI matches on raw keys too
+M031	Telex	-	dc\s⌫\s	được\s	-	committing a re-opened expansion keeps it, never expands twice
+M032	Telex	-	vn\s⌫⎋\s	vn\s	-	the restored span is not expanded again at the next boundary
+M033	Telex	-	vn,dc\s	Việt Nam,dc\s	-	the span after an expansion contains it: no second match before whitespace
+M034	Telex	modern	vn\s	Việt Nam\s	-	tone style does not matter
