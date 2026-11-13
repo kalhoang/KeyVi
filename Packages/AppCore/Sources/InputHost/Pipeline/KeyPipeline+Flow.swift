@@ -100,6 +100,9 @@ extension KeyPipeline {
         // PLT-R330: the lifecycle owner re-enables the tap and flushes held events; the tap resets, logs, counts.
         let byTimeout = event.kind == .tapDisabledByTimeout
         if byTimeout { context.metrics.tapTimeouts.increment() }
+        // ADR 0311: what was posted until now may have bypassed the disabled tap; its missing echoes are not
+        // posting failures. The lifecycle owner extends this up to the re-enable (`TapSession.reenable`).
+        context.echo.forgiveLostEchoes(postedAtOrBefore: now)
         context.tapLog.push(TapLogRecord(code: byTimeout ? .tapDisabledByTimeout : .tapDisabledByUserInput, at: now))
         notifyMain(.tapDisabled(byTimeout: byTimeout))
         let generation = context.snapshots.focus.read { $0.generation }

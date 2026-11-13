@@ -95,6 +95,46 @@ private func taplogCodes(_ fixture: PipelineFixture) -> [TapLogRecord] {
         #expect(taplogCodes(fixture).contains { $0.code == .echoMissing })
     }
 
+    /// PLT-R330, ADR 0311: jobs posted before a tap-disabled event bypassed the disabled tap; their missing
+    /// echoes are not posting failures, so the first key after the re-enable does not fail open.
+    @Test func echoesLostWhileTheTapWasDisabledDoNotBreakPosting() {
+        let fixture = PipelineFixture()
+        threeUnechoedEdits(fixture)
+        fixture.send(PipelineFixtures.keyEvent(.tapDisabledByTimeout, 0))
+        fixture.clock.advance(byMicroseconds: 300_000)
+        fixture.keyDown(Key.d)
+        #expect(!fixture.feedback.isPostingBroken)
+        #expect(fixture.metrics.echoLosses.value == 0)
+        #expect(fixture.echo.consecutiveMisses == 0)
+        #expect(!fixture.mainNotices().contains { if case .postingBroken = $0 { true } else { false } })
+    }
+
+    /// PLT-R306, ADR 0309: during a watchdog trip the tap receives no event at all; the lifecycle owner's
+    /// re-enable forgives what was posted until then (a stalled callback is already past the echo timeout).
+    @Test func reenableForgivesWhatWasPostedWhileTheTapWasDisabled() {
+        let fixture = PipelineFixture()
+        threeUnechoedEdits(fixture)
+        fixture.clock.advance(byMicroseconds: 300_000)
+        fixture.echo.forgiveLostEchoes(postedAtOrBefore: fixture.clock.now())
+        fixture.keyDown(Key.d)
+        #expect(!fixture.feedback.isPostingBroken)
+        #expect(fixture.metrics.echoLosses.value == 0)
+        #expect(fixture.queue.inFlight == 0)
+    }
+
+    /// PLT-R323: forgiveness covers only what was posted up to the re-enable; a new run of three misses on the
+    /// enabled tap still breaks posting.
+    @Test func missesAfterTheReenableStillBreakPosting() {
+        let fixture = PipelineFixture()
+        fixture.echo.forgiveLostEchoes(postedAtOrBefore: fixture.clock.now())
+        fixture.clock.advance(byMicroseconds: 1_000)
+        threeUnechoedEdits(fixture)
+        fixture.clock.advance(byMicroseconds: 201_000)
+        #expect(fixture.keyDown(Key.e) == .pass)
+        #expect(fixture.feedback.isPostingBroken)
+        #expect(fixture.metrics.echoLosses.value == 3)
+    }
+
     /// PLT-R731: after the lifecycle owner clears posting broken, old misses do not break it again.
     @Test func recoveryDoesNotReuseOldMisses() {
         let fixture = PipelineFixture()

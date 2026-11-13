@@ -216,6 +216,42 @@ struct HostControllerLifecycleTests {
         #expect(rig.liveHandles.count == 1, "ADR 0309: the same tap, never a second one")
     }
 
+    /// PLT-R306, PLT-R323, ADR 0311: jobs posted while the watchdog held the tap disabled (the flush replays
+    /// included) never echo. The returned callback re-enables the same tap, and the next key must not mistake
+    /// those missing echoes for broken posting (which would remove the tap for 30 s).
+    @Test func jobsPostedAroundAWatchdogTripDoNotBreakPosting_PLT_R306() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let route = try #require(rig.echoLoop.route.current)
+        let table = PipelineFixtures.qwertyTable()
+        func press(_ character: Character) throws {
+            let (code, flags) = try #require(HostRig.key(producing: character, in: table))
+            for kind in [RawKeyEvent.Kind.keyDown, .keyUp] {
+                let event = RawKeyEvent(
+                    kind: kind, keyCode: code, flags: flags, autorepeat: false,
+                    keyboardType: PipelineFixtures.keyboardType, unicode: .empty, userData: 0,
+                    receivedAt: MachClock().now())
+                _ = HostRig.deliverOnTap(event, handle: route.handle, userInfo: route.userInfo)
+                rig.controller.worker.runUntilIdle()
+            }
+        }
+        // The callback is stuck: what the worker posts from now on bypasses the tap.
+        rig.echoLoop.route.set(nil, userInfo: 0)
+        for character in "aasf" { try press(character) }  // three edits, each waiting for its echo
+        rig.controller.feed(.watchdogTripped(.callbackOverLimit(microseconds: 300_000)))
+        rig.controller.worker.runUntilIdle()  // the trip's flush
+        try await Task.sleep(for: .milliseconds(250))  // the stall outlasts the 200 ms echo timeout
+        rig.controller.feed(.callbackExited)
+        rig.echoLoop.route.set(route.handle, userInfo: route.userInfo)
+        rig.type("d")
+        rig.settle()
+        #expect(!rig.controller.channels.feedback.isPostingBroken)
+        #expect(rig.metrics.echoLosses.value == 0)
+        #expect(rig.lifecyclePhase == .running)
+        #expect(rig.liveHandles.count == 1)
+    }
+
     @Test func sleepLockAndUserSwitchPauseUntilEveryReasonCleared_PLT_R333() async {
         let rig = HostRig()
         await rig.start()

@@ -178,6 +178,9 @@ public final class EchoTracker: @unchecked Sendable {
     private var hasSeenEcho = false
     private var misses = 0
     private let missesMirror = Atomic<Int>(0)
+    /// One past the latest instant (monotonic nanoseconds) up to which unechoed expectations were lost while the
+    /// tap was disabled (0: none). Written by the tap or the lifecycle owner, read by the tap at settlement.
+    private let forgivenBound = Atomic<UInt64>(0)
 
     public init(queue: JobQueue, timeout: Duration = .milliseconds(200), missesForBroken: Int = 3) {
         self.queue = queue
@@ -200,10 +203,14 @@ public final class EchoTracker: @unchecked Sendable {
         let timeoutNanoseconds =
             UInt64(timeout.components.seconds) * 1_000_000_000
             + UInt64(timeout.components.attoseconds / 1_000_000_000)
+        let forgiven = forgivenBound.load(ordering: .sequentiallyConsistent)
         while count > 0 {
             let front = pending[head]
             if hasSeenEcho && Self.isAtOrBefore(front.finalEventSequence, highestEcho) {
                 misses = 0
+            } else if front.postedAt.nanoseconds < forgiven {
+                // PLT-R330, PLT-R306: posted before the tap was re-enabled, so its echo bypassed the disabled
+                // tap and will never come. Settled at once without counting a miss: the posting path is fine.
             } else if now.nanoseconds(since: front.postedAt) > timeoutNanoseconds {
                 misses += 1
             } else {
@@ -225,6 +232,17 @@ public final class EchoTracker: @unchecked Sendable {
         if !hasSeenEcho || Self.isAtOrBefore(highestEcho, sequence) { highestEcho = sequence }
         hasSeenEcho = true
         _ = settle(now: now)
+    }
+
+    /// Any thread: the tap was disabled (a tap-disabled event, a watchdog trip) and is being re-enabled.
+    /// Synthetic events posted while it was disabled, or queued behind a stuck callback and released by the
+    /// disable, never pass through it, so their echoes never arrive. Every expectation posted at or before
+    /// `instant` that has not echoed is settled at the next settlement without counting a miss (PLT-R330,
+    /// PLT-R306, PLT-R323: only a run of misses on an enabled tap means posting is broken). One atomic max; the
+    /// bound never moves backwards.
+    public func forgiveLostEchoes(postedAtOrBefore instant: MonotonicInstant) {
+        let bound = instant.nanoseconds == .max ? UInt64.max : instant.nanoseconds + 1
+        forgivenBound.max(bound, ordering: .sequentiallyConsistent)
     }
 
     /// Any thread (diagnostics).

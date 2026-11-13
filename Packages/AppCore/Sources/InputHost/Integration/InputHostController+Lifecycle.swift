@@ -30,7 +30,7 @@ extension InputHostController {
         case .createTap: createTap()
         case .removeTap: removeTap()
         case .disableTap: session?.thread.setEnabled(false)
-        case .reenableTap: session?.thread.setEnabled(true)
+        case .reenableTap: session?.reenable(at: tapClock)  // the worker stamps posts with `tapClock`
         case .requestFlush(let reason): worker.requestFlush(reason)
         case .resetComposition: channels.feedback.requestCompositionReset()
         case .scheduleRetry(let delay): scheduleRetry(after: delay)
