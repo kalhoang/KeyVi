@@ -3,6 +3,7 @@
 Run: python3 -I scripts/tests/test_docs_and_workflows.py"""
 from __future__ import annotations
 
+import hashlib
 import json
 import plistlib
 import re
@@ -469,31 +470,50 @@ class AssetRecordTests(unittest.TestCase):
                 self.assertIn(f"`{key}`", self.provenance_section(), "record it in docs/provenance section 7")
 
     def test_placeholder_images_are_recorded_as_placeholders(self):
+        # Every placeholder image was replaced by final artwork on 2026-11-13 (W4-B), so the set may be empty; an
+        # image that still calls itself a placeholder must be recorded as one.
         placeholders = sorted({asset_key(p) for p in tracked_images() if "placeholder" in self.header(p).lower()
                                or p.stem == "placeholder"})
-        self.assertGreaterEqual(len(placeholders), 4)
         entries = self.assets_section().split("\n### ")[1:]  # one subsection per asset group
         for key in placeholders:
             with self.subTest(asset=key):
                 records = [entry for entry in entries if f"`{key}`" in entry]
                 self.assertTrue(records and all("placeholder" in entry.lower() for entry in records),
                                 f"THIRD_PARTY_NOTICES.md section 4 must call {key} a placeholder")
-        self.assertNotIn("generated from the maintainer's own accounts", self.assets_section(),
-                         "the bundled donation images are placeholders, not account QR codes")
 
-    # Website SVGs that the artwork workstream (W4-B) replaces in parallel: the favicon derived from the logo and the
-    # donation QR images. Their source comments arrive with that change; empty this set once it is merged.
-    PENDING_SOURCE_COMMENT = frozenset({"site/static/favicon.svg", "site/static/assets/qr/vietqr.svg",
-                                        "site/static/assets/qr/momo.svg"})
+    # Pa's own artwork as supplied on 2026-11-13 (decision S7, commit 51d7e9e), by SHA-256. These files are the
+    # product owner's originals: the project never edits them, so they cannot carry the source comment that every
+    # other SVG has. Their record is THIRD_PARTY_NOTICES.md section 4 and docs/provenance section 7. The exemption
+    # holds only while a file is byte-identical to the original; an edited copy is project work and needs the comment.
+    PA_ORIGINALS = {
+        "assets/keyvi_menubar_on_light.svg": "08659e8153c5e8b39c84514e40de56b6cbeb5300ef0f7ac9e265bf1cab01b115",
+        "assets/keyvi_menubar_on_dark.svg": "b5633ee09b67ab8b88b1c2ee344f9ea765e2e7859c53014ba8f9c1e300635385",
+        "assets/keyvi_menubar_off_light.svg": "3d7151fb9a1af9efc2bbb209f8e90bf8f8cc8065e11f94a7a98178cbf1cfad4d",
+        "assets/keyvi_menubar_off_dark.svg": "d03e3d8ce33ac4541161a1533b8dcc4a0f5384200c013332e6c2da2f2e07fbfd",
+    }
+
+    @classmethod
+    def is_pa_original(cls, rel: str, content: bytes) -> bool:
+        digest = cls.PA_ORIGINALS.get(rel)
+        return digest is not None and hashlib.sha256(content).hexdigest() == digest
 
     def test_every_svg_carries_a_source_comment(self):
         for path in (p for p in tracked_images() if p.suffix.lower() == ".svg"):
-            if path.relative_to(REPO).as_posix() in self.PENDING_SOURCE_COMMENT:
+            if self.is_pa_original(path.relative_to(REPO).as_posix(), path.read_bytes()):
                 continue
             with self.subTest(svg=path.relative_to(REPO).as_posix()):
                 header = self.header(path)
                 self.assertIn("Source:", header, "add a source comment (CLR-R7)")
                 self.assertIn("CLR-R7", header)
+
+    def test_pa_originals_are_exempt_only_while_byte_identical(self):
+        for rel in self.PA_ORIGINALS:
+            with self.subTest(original=rel):
+                original = (REPO / rel).read_bytes()
+                self.assertTrue(self.is_pa_original(rel, original), f"{rel} changed: add a source comment or restore it")
+                self.assertFalse(self.is_pa_original(rel, original + b"\n"), "an edited copy loses the exemption")
+                self.assertFalse(self.is_pa_original("site/static/" + Path(rel).name, original),
+                                 "a copy elsewhere is project work and needs the comment")
 
     @staticmethod
     def header(path: Path) -> str:
@@ -683,6 +703,37 @@ class IntegrationHooksBuildTests(unittest.TestCase):
         self.assertNotIn("INTEGRATION_HOOKS", settings)  # set by the xcconfig only, never per target
         build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
         self.assertNotIn("Integration", build)
+
+
+class ScriptSuiteTests(unittest.TestCase):
+    """scripts/tests/run.sh runs every Python suite, and every runner label of the workflows is one actionlint knows
+    (GitHub-hosted) or one scripts/actionlint.yaml declares (ci.yml runs actionlint with that file)."""
+
+    RUN_SH = (REPO / "scripts" / "tests" / "run.sh").read_text(encoding="utf-8")
+    HOSTED = re.compile(r"^(ubuntu|macos|windows)-[\w.-]+$|^(self-hosted|linux|macos|macOS|windows|x64|arm|arm64|ARM64)$")
+
+    def test_the_suite_loop_runs_every_python_test_file(self):
+        loop = re.search(r"^for suite in ([^;]+); do$", self.RUN_SH, re.M)
+        self.assertIsNotNone(loop, "run.sh no longer has the Python suite loop")
+        listed = set(loop.group(1).split())
+        files = {path.stem for path in (REPO / "scripts" / "tests").glob("test_*.py")}
+        self.assertGreaterEqual(listed, {"test_make_vietqr", "test_make_app_icon"})
+        self.assertEqual(sorted(files - listed), [], "add these suites to the loop of scripts/tests/run.sh")
+        self.assertEqual(sorted(listed - files), [], "the loop names a suite that does not exist")
+
+    def test_every_runner_label_is_declared_for_actionlint(self):
+        config = (REPO / "scripts" / "actionlint.yaml").read_text(encoding="utf-8")
+        declared = set(re.findall(r"^\s+- ([\w.-]+)$", config.split("self-hosted-runner:", 1)[1], re.M))
+        self.assertGreaterEqual(declared, {"xcode-27", "tcc-granted"})
+        labels = set()
+        for workflow in sorted((REPO / ".github" / "workflows").glob("*.yml")):
+            for value in re.findall(r"^\s+runs-on: (.+)$", workflow.read_text(encoding="utf-8"), re.M):
+                if "${{" in value:
+                    continue
+                labels |= {label.strip() for label in value.strip("[] ").split(",")}
+        custom = {label for label in labels if not self.HOSTED.match(label)}
+        self.assertGreaterEqual(custom, {"xcode-27", "tcc-granted"}, "the label scan found too little")
+        self.assertEqual(sorted(custom - declared), [], "declare these labels in scripts/actionlint.yaml")
 
 
 if __name__ == "__main__":

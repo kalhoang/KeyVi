@@ -187,7 +187,7 @@ Every asset is original work created for this project unless a row below says ot
 
 ### App icon
 
-- Files: `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_<points>x<points>.png` and `icon_<points>x<points>@2x.png` for 16, 32, 128, 256 and 512 pt, plus the set's `Contents.json`.
+- Files: `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_16x16.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_16x16@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_32x32.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_128x128.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256@2x.png`, `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512.png` and `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png` (16, 32, 128, 256 and 512 pt at 1x and 2x), plus the set's `Contents.json`.
 - Source: `assets/keyvi_logo.png`, by `scripts/make-app-icon.py app-icon` on 2026-11-13: the keycap is cut out of the off-white background with a rounded-square mask, given a soft shadow and placed on Apple's macOS icon grid (an 824 px body on a 1024 px canvas).
 - Source record: this entry, the provenance table and the header of `scripts/make-app-icon.py`.
 - Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
@@ -211,7 +211,7 @@ Every asset is original work created for this project unless a row below says ot
 
 ### Website icons
 
-- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the header logo `site/static/assets/brand/app-icon-64.png` and `app-icon-128.png`.
+- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the header logo `site/static/assets/brand/app-icon-64.png` and `site/static/assets/brand/app-icon-128.png`.
 - Source: `scripts/make-app-icon.py site` on 2026-11-13, from Pa's artwork.
 - Source record: an XML comment in `favicon.svg`, and this entry.
 - Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
