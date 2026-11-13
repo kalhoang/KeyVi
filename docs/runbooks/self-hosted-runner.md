@@ -16,7 +16,7 @@ This runbook does not change any system setting by itself. Steps that change set
 
 The runner MUST only run workflows from `main` and from release tags of this repository, never from pull requests from forks.
 
-1. Register the runner at the repository level (Settings, Actions, Runners, New self-hosted runner), not at an organisation or user level that other repositories can use. Give it dedicated labels, for example `self-hosted`, `macOS`, `ARM64`, `ime-integration`.
+1. Register the runner at the repository level (Settings, Actions, Runners, New self-hosted runner), not at an organisation or user level that other repositories can use. Give it exactly the labels `integration.yml` asks for: `self-hosted`, `macOS`, `ARM64`, `tcc-granted` ([ADR 0503](../decisions/0503-release-pipeline.md); `scripts/actionlint.yaml` declares `tcc-granted`).
 2. In `integration.yml`, trigger only on `push` to `main`, release tags (`v*`) and `workflow_dispatch`. Never on `pull_request` or `pull_request_target`. Add a guard on every job:
 
    ```yaml
@@ -34,7 +34,41 @@ The runner MUST only run workflows from `main` and from release tags of this rep
 2. Download the runner package from the repository's "New self-hosted runner" page and verify its SHA-256 as shown there, then configure it as shown there with the repository URL and the registration token (a short-lived token; never commit it).
 3. Install it as a service so that it starts at login (`./svc.sh install` and `./svc.sh start` in the runner directory). Event posting needs a logged-in GUI session, so run it as a LaunchAgent of the logged-in runner user, not as a system daemon.
 4. For unattended use (Pa's decision, these are system settings on the runner machine): enable automatic login for the runner user, keep the display awake while a job runs, and avoid lock and screen saver during test runs. A locked screen stops synthetic events from reaching the test host.
-5. Confirm the workflow `integration.yml` picks up the runner by running it manually with `workflow_dispatch` on `main`.
+5. Set the runner environment (section 3.1) and start the helper services (section 3.2).
+6. Confirm the workflow `integration.yml` picks up the runner by running it manually with `workflow_dispatch` on `main`.
+
+### 3.1 Runner environment: the live harness opt-in
+
+`compat-harness` posts synthetic events, launches apps and switches input sources only on a machine that opts in. Its `run`, `soak` and `bench` commands build their live services only when the environment contains `COMPAT_HARNESS_LIVE=1` (exactly `1`); otherwise they exit with status 3 before touching anything. `--dry-run` never needs the opt-in. `scripts/run-integration.sh compat|soak|bench` checks the variable before the release build and stops with a pointer to this section.
+
+Export the variable **only on this runner**, in the `.env` file of the runner application. The runner reads that file when its service starts, so the opt-in belongs to the machine rather than to a workflow: a job that lands on any other runner, or a copied command line on a development Mac, cannot post events. Do not set it in a workflow `env:` block, a repository or organisation variable, or the shell profile of a development Mac.
+
+1. In the runner directory (the one that contains `config.sh` and `svc.sh`), create or edit `.env` with this line:
+
+   ```sh
+   COMPAT_HARNESS_LIVE=1
+   ```
+
+   One `NAME=value` per line, without `export` or quotes. The file holds no secret; keep it readable only by the runner user (`chmod 600 .env`).
+2. Restart the service so the runner reads it: `./svc.sh stop`, then `./svc.sh start`.
+3. Check it: run `integration.yml` with `workflow_dispatch` on `main`. If the file was not read, the compatibility step stops at once with "COMPAT_HARNESS_LIVE=1 is not set".
+
+GitHub documents the runner's `.env` file in "Running scripts before or after a job" (self-hosted runners). VERIFY on the runner that the variable reaches the job steps (step 3 shows it).
+
+### 3.2 Helper services for compatibility scenarios
+
+The harness command lines that `scripts/run-integration.sh` runs (contract: [ADR 0502](../decisions/0502-fuzz-benchmark-coverage-contracts.md)), with what each needs from this machine:
+
+```sh
+# Environment: COMPAT_HARNESS_LIVE=1 from the runner's .env (section 3.1), never set by a workflow.
+# WebDriver readback: chromedriver on its default endpoint http://127.0.0.1:9515 (no flag needed).
+swift run --package-path Packages/AppCore -c release compat-harness run --scenarios compat/scenarios --output <dir>
+swift run --package-path Packages/AppCore -c release compat-harness soak --keystrokes 1000000 --output <dir>
+swift run --package-path Packages/AppCore -c release compat-harness bench --runs 5 --output <file.json>
+```
+
+- **chromedriver** listening on its default endpoint `http://127.0.0.1:9515`. Every `webdriver` scenario without a `--webdriver BUNDLE=URL` entry reads the page back through that endpoint, and CI passes no `--webdriver`. Install the chromedriver that matches the installed Chrome and keep it running as the runner user before `compat` and `soak` start (for example as a LaunchAgent of the runner user). Other drivers, such as `safaridriver --port N`, need an explicit `--webdriver BUNDLE=URL` passed through `COMPAT_HARNESS_RUN_ARGS` or `COMPAT_HARNESS_SOAK_ARGS`. The harness talks only to loopback endpoints.
+- A loopback HTTP server on port 8000 for the `seedHistory` scenarios, plus the enabled input sources, text-substitution settings and app states listed in [compat/scenarios/README.md](../../compat/scenarios/README.md).
 
 ## 4. Pre-grant permissions to the stable-signed test build (TCC)
 
@@ -68,6 +102,8 @@ Only synthetic events targeted at the test host and the app under test are poste
 - Weekly: check the nightly results; free disk space (DerivedData, old artefacts); confirm the runner is online in the repository's Runners page.
 - After every macOS point release: run the preflight; re-verify the grants (section 4); re-run the Tier 1 compatibility script (QA-R19).
 - After every Xcode change: update the pin in the workflow and on the machine together.
+- After every Chrome update: update chromedriver to the matching version (section 3.2).
+- After reinstalling or re-registering the runner: recreate `.env` with `COMPAT_HARNESS_LIVE=1` and restart the service (section 3.1).
 - If the runner is compromised or its owner changes: remove it from the repository's Runners page, rotate nothing else on it (it holds no release secrets), wipe and rebuild.
 
 ## 7. GitHub-hosted runners (QA-R12 VERIFY)

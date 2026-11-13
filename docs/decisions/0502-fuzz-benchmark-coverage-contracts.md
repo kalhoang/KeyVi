@@ -70,7 +70,23 @@ The CI scripts call code that other tracks write. These are the names and format
 
 Default command lines (overridable with `COMPAT_HARNESS_RUN_ARGS`, `COMPAT_HARNESS_SOAK_ARGS`,
 `COMPAT_HARNESS_BENCH_ARGS`). The executable product is `compat-harness` (target `CompatHarness`);
-`swift run` needs the product name:
+`swift run` needs the product name. The live commands (`run` without `--dry-run`, `soak`, `bench`) need:
+
+- `COMPAT_HARNESS_LIVE=1` in the environment, exported only on the self-hosted macOS runner and preferably
+  from the runner's own `.env` file, never from a workflow (runner runbook section 3.1). It ties the opt-in to
+  the machine: without it the harness exits 3 before it posts an event, launches an app or changes an input
+  source, and `scripts/run-integration.sh` stops before the release build.
+- chromedriver on its default endpoint `http://127.0.0.1:9515`: every `webdriver` scenario without a
+  `--webdriver BUNDLE=URL` entry uses it, and the command lines below pass no `--webdriver`. Other drivers
+  need `--webdriver` through the override variables (runner runbook section 3.2,
+  `compat/scenarios/README.md`).
+
+```sh
+# Self-hosted runner only. Environment: COMPAT_HARNESS_LIVE=1 (runner .env). WebDriver: http://127.0.0.1:9515.
+swift run --package-path Packages/AppCore -c release compat-harness run --scenarios compat/scenarios --output <dir>
+swift run --package-path Packages/AppCore -c release compat-harness soak --keystrokes 1000000 --output <dir>
+swift run --package-path Packages/AppCore -c release compat-harness bench --runs 5 --output <file.json>
+```
 
 - `compat-harness run --scenarios compat/scenarios --output <dir>`
 - `compat-harness run --scenarios compat/scenarios --dry-run`: hosted CI (`scripts/compat-dry-run.sh`,
