@@ -15,7 +15,7 @@ import SwiftUI
 protocol OnboardingActions: AnyObject {
     func openPermissionPane()  // deep link from SystemPanes.json (PLT-R704)
     func openInputMonitoringPane()  // PLT-R702, only when macOS demands Input Monitoring
-    func resetPermission()  // PLT-R740, after confirmation
+    func resetPermission() -> PermissionReset.Outcome  // PLT-R740, after confirmation
     func relaunch()  // PLT-R712
     func setTypingMethod(_ method: TypingMethod)
     func openHotkeyRecorder()  // PRD-R40 screen 4 "Đổi phím chuyển"

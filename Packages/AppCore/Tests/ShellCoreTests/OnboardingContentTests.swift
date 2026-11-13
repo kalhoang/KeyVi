@@ -5,6 +5,7 @@
 
 import AppModel
 import Foundation
+import InputHost
 import Testing
 
 @testable import ShellCore
@@ -131,6 +132,25 @@ import Testing
             #expect(!text.contains("%"))
         }
         #expect(help.fallback.contains("Tiếng Việt"))  // PLT-R206
+    }
+
+    /// PLT-R740, PRD-R43: a failed reset is said with the next step (remove and add again), never silently.
+    @Test func aFailedPermissionResetIsExplained_PLTR740() {
+        struct Failing: PermissionResetting {
+            func resetAccessibility(bundleIdentifier: String) throws {
+                throw PermissionResetError.commandFailed(status: 1)
+            }
+        }
+        struct Succeeding: PermissionResetting {
+            func resetAccessibility(bundleIdentifier: String) throws {}
+        }
+        #expect(PermissionReset.run(Failing(), bundleIdentifier: "com.example.app") == .failed)
+        #expect(PermissionReset.run(Succeeding(), bundleIdentifier: "com.example.app") == .reset)
+        let help = PermissionHelpContent(localizer: vi, appName: "Example", panes: viPanes27)
+        #expect(help.resetFailed.contains("Example") && !help.resetFailed.contains("%"))
+        #expect(!help.resetFailed.lowercased().contains("sudo"))  // PLT-R741
+        let english = PermissionHelpContent(localizer: en, appName: "Example", panes: viPanes27)
+        #expect(english.resetFailed != help.resetFailed && english.resetFailed.contains("Example"))
     }
 
     @Test func moveOfferExplainsEachReason() {

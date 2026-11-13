@@ -110,6 +110,8 @@ public struct PermissionHelpContent: Sendable, Hashable {
     public var confirmButton: String
     /// PLT-R206: the built-in Vietnamese input source is the honest fallback without permission.
     public var fallback: String
+    /// PLT-R740, PRD-R43: the reset did not run; the steps above (remove and add again) are the way on.
+    public var resetFailed: String
 
     public init(localizer: Localizer, appName: String, panes: SystemPaneNames) {
         title = localizer.format(OnboardingText.helpTitle, appName)
@@ -125,6 +127,23 @@ public struct PermissionHelpContent: Sendable, Hashable {
         confirmBody = localizer.format(OnboardingText.helpConfirmBody, appName)
         confirmButton = localizer.string(OnboardingText.helpConfirm)
         fallback = localizer.string(OnboardingText.helpFallback)
+        resetFailed = localizer.format(OnboardingText.helpResetFailed, appName)
+    }
+}
+
+/// "Đặt lại quyền" after the user confirmed (PLT-R740): runs the reset scoped to the app's own bundle ID. A
+/// failure (missing tool, refused bundle ID, non-zero exit, for example a renamed TCC service on a newer macOS)
+/// is returned, never swallowed, so the sheet can say so (PRD-R43).
+public enum PermissionReset {
+    public enum Outcome: Sendable, Hashable { case reset, failed }
+
+    public static func run(_ resetter: any PermissionResetting, bundleIdentifier: String) -> Outcome {
+        do {
+            try resetter.resetAccessibility(bundleIdentifier: bundleIdentifier)
+            return .reset
+        } catch {
+            return .failed
+        }
     }
 }
 

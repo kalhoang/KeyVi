@@ -26,6 +26,8 @@ final class OnboardingModel {
     /// PRD-R40 screen 6, PRD-R32: the import preview or the reason a file was refused (PRD-R43), shown as a sheet.
     var macroImport: OnboardingImport?
     var confirmPermissionReset = false
+    /// PLT-R740, PRD-R43: the last reset failed; the help sheet says so with the remove-and-add-again steps.
+    private(set) var permissionResetFailed = false
 
     let appName: String
     let panes: SystemPaneNames
@@ -127,7 +129,7 @@ final class OnboardingModel {
     /// PLT-R740: runs only after the user confirmed in the sheet.
     func resetPermission() {
         confirmPermissionReset = false
-        actions?.resetPermission()
+        permissionResetFailed = actions?.resetPermission() == .failed
     }
 
     /// "Kiểm tra lại" on the conflicts screen: moves on once nothing conflicts any more.

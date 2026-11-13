@@ -5,6 +5,7 @@
 
 import AppKit
 import AppModel
+import Diagnostics
 import InputHost
 import SettingsStore
 import ShellCore
@@ -99,11 +100,21 @@ extension AppEnvironment: OnboardingActions {
         openPane(.inputMonitoring)
     }
 
-    /// PLT-R740: after the user confirmed in the sheet; never automatic, never without the own bundle ID.
-    func resetPermission() {
-        try? TCCPermissionResetter(ownBundleIdentifier: brand.bundleIdentifier)
-            .resetAccessibility(bundleIdentifier: brand.bundleIdentifier)
+    /// PLT-R740: after the user confirmed in the sheet; never automatic, never without the own bundle ID. After a
+    /// reset macOS is asked to prompt again, which adds the app back to the list; a failure is logged and the
+    /// sheet says so (PRD-R43).
+    func resetPermission() -> PermissionReset.Outcome {
+        let outcome = PermissionReset.run(
+            TCCPermissionResetter(ownBundleIdentifier: brand.bundleIdentifier),
+            bundleIdentifier: brand.bundleIdentifier)
+        switch outcome {
+        case .reset: SystemPermissionProbe().promptForAccessibility()
+        case .failed:
+            diagnostics.logger.log(
+                .note("Accessibility permission reset failed", category: .permissions), level: .error)
+        }
         _ = host.refreshPermissions()
+        return outcome
     }
 
     func relaunch() { relaunchSelf() }

@@ -194,6 +194,7 @@ public enum OnboardingText: String, LocalizationKey {
     case helpStep3 = "onboarding.permissionHelp.step3"
     case helpResetIntro = "onboarding.permissionHelp.resetIntro"
     case helpReset = "onboarding.permissionHelp.reset"
+    case helpResetFailed = "onboarding.permissionHelp.resetFailed"
     case helpConfirmTitle = "onboarding.permissionHelp.confirmTitle"
     case helpConfirmBody = "onboarding.permissionHelp.confirmBody"
     case helpConfirm = "onboarding.permissionHelp.confirm"

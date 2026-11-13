@@ -180,6 +180,13 @@ struct PermissionHelpSheet: View {
                     .keyboardShortcut(.cancelAction)
                     .onboardingAccessibility(.closeHelp, localizer, label: close)
             }
+            if model.permissionResetFailed {
+                Label {
+                    Text(verbatim: help.resetFailed).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle").accessibilityHidden(true)
+                }
+            }
             Divider()
             Text(verbatim: help.fallback).font(.footnote).foregroundStyle(.secondary)  // PLT-R206
         }
