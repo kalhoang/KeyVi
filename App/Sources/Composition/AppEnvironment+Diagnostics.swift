@@ -52,8 +52,17 @@ extension AppEnvironment {
     private func diagnosticsReport(context: HostReportContext, draft: BugReportDraft?) -> DiagnosticsReport {
         ReportAssembler.report(
             identity: appIdentity, system: SystemInfoReader.current(uiLanguage: language.localizer.language),
-            host: context, settings: settings, metrics: diagnostics.metrics.snapshot(),
-            health: diagnostics.health.recent(limit: 50), probe: latencyProbeResult, draft: draft, now: Date())
+            host: context, settings: settings, metrics: diagnostics.metrics.snapshot(), health: reportHealthEvents(),
+            probe: latencyProbeResult, draft: draft, now: Date())
+    }
+
+    /// PLT-R1202 "last 50 health events", PRD-R46: this session's events from memory after the earlier sessions'
+    /// events from the log, so a crash or tap timeout from before this launch is still in the report.
+    private func reportHealthEvents() -> [HealthEvent] {
+        let limit = HealthEventLog.reportedEventCount
+        return HealthEvent.reportList(
+            earlier: diagnostics.logger.earlierSessionHealthEvents(limit: limit),
+            current: diagnostics.health.recent(limit: limit), limit: limit)
     }
 
     /// PRD-R47 item 1: the apps of the Apps pane (PRD-R34), most recent first, without this app. Names are

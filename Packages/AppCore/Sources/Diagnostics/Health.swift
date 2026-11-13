@@ -41,6 +41,9 @@ public struct HealthEvent: Sendable, Hashable, Codable {
 /// file so events from before a crash remain explainable (PRD-R46). Not used on the tap thread.
 /// Implemented in the skeleton (docs/decisions/0313-testability-seams.md); W1-A adds the log-file mirror.
 public final class HealthEventLog: Sendable {
+    /// The report lists the last 50 health events (PLT-R1202).
+    public static let reportedEventCount = 50
+
     private struct Ring {
         var events: [HealthEvent] = []
         var next = 0

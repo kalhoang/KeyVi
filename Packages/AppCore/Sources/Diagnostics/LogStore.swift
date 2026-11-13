@@ -2,6 +2,7 @@
 
 public import AppModel
 public import Foundation
+internal import Synchronization
 
 /// PLT-R903: `~/Library/Logs/<folder>/`, dir 0700, files 0600, JSON lines, 5 files of 1 MB, 14 days.
 public struct LogStorePolicy: Sendable, Hashable {
@@ -51,12 +52,33 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
     private let clock: any WallClock
     private let mirror: UnifiedLogMirror
     private let queue: DispatchQueue
+    /// When this logger was created, the start of this session's records.
+    public let sessionStart: Date
+    private let earlierHealth = Mutex<[HealthEvent]?>(nil)
 
     public init(policy: LogStorePolicy, fileSystem: any FileSystem, clock: any WallClock, subsystem: String) {
         files = LogFileStore(policy: policy, fileSystem: fileSystem)
         self.clock = clock
         mirror = UnifiedLogMirror(subsystem: subsystem)
         queue = DispatchQueue(label: subsystem + ".diagnostics-log", qos: .utility)
+        sessionStart = clock.now()
+    }
+
+    /// Health events of earlier sessions from the log files, newest last, at most `limit` (PRD-R46): a crash or
+    /// a tap timeout from before this launch still reaches the next report. The files are read once, on the
+    /// first call, after the records logged so far are written; later calls return the same events. Reads
+    /// files: never call it on the tap thread or from inside a logging call.
+    public func earlierSessionHealthEvents(limit: Int) -> [HealthEvent] {
+        let events = earlierHealth.withLock { cached in
+            if let cached { return cached }
+            let cutoff = sessionStart
+            let read = queue.sync { [files] in
+                files.healthEvents(before: cutoff, limit: HealthEventLog.reportedEventCount)
+            }
+            cached = read
+            return read
+        }
+        return Array(events.suffix(max(0, limit)))
     }
 
     /// Never blocks: the timestamp is taken here, rendering and writing happen on the logger's serial
