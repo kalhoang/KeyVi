@@ -18,11 +18,61 @@ struct SwitchingScreen: View {
             Text(verbatim: localizer.string(OnboardingText.switchingBody))
             Text(verbatim: localizer.format(OnboardingText.switchingPerApp, model.appName))
             Text(verbatim: localizer.string(OnboardingText.switchingEnglishWords))
-            let change = localizer.string(OnboardingText.switchingChangeKey)
-            Button(action: model.openHotkeyRecorder) { Text(verbatim: change) }
-                .buttonStyle(.link)
-                .onboardingAccessibility(.changeToggleKey, localizer, label: change)
+            OnboardingHotkeyRecorder(model: model)
         }
+    }
+}
+
+/// PRD-R40 screen 4 "Đổi phím chuyển opens the recorder inline": the current toggle key, the recorder with the
+/// Settings window's capture lifecycle (ADR 0305) and its status line (PRD-R15, PRD-R16).
+struct OnboardingHotkeyRecorder: View {
+    let model: OnboardingModel
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let localizer = model.localizer
+        let recording = model.isRecordingHotkey
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(verbatim: localizer.string(SettingsText.toggleHotkeyTitle))
+                Text(
+                    verbatim: recording
+                        ? localizer.string(SettingsText.hotkeyRecording)
+                        : HotkeyRecorderText.display(model.toggleHotkey, localizer: localizer)
+                )
+                .font(.body.monospaced())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5).strokeBorder(
+                        recording ? Color.accentColor : .secondary, lineWidth: recording ? 2 : 1))
+                if recording {
+                    Button(action: model.cancelHotkeyRecording) {
+                        Text(verbatim: localizer.string(SettingsText.hotkeyCancel))
+                    }
+                    .focused($focused)
+                    .settingsAccessibility(SettingsControl.toggleHotkeyCancel, localizer)
+                } else {
+                    let change = localizer.string(OnboardingText.switchingChangeKey)
+                    Button(action: model.startHotkeyRecording) { Text(verbatim: change) }
+                        .focused($focused)
+                        .onboardingAccessibility(.changeToggleKey, localizer, label: change)
+                }
+                Button(action: model.useDefaultToggleHotkey) {
+                    Text(verbatim: localizer.string(SettingsText.hotkeyUseDefault))
+                }
+                .settingsAccessibility(SettingsControl.toggleHotkeyDefault, localizer)
+            }
+            if let status = model.hotkeyStatus {
+                Label {
+                    Text(verbatim: status).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "keyboard").accessibilityHidden(true)
+                }
+                .font(.callout)
+            }
+        }
+        .onChange(of: recording) { focused = true }
     }
 }
 

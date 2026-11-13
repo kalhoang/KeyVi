@@ -85,9 +85,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         present()
     }
 
-    /// Onboarding's "Đổi phím chuyển" (PRD-R40 screen 4, `OnboardingActions.openHotkeyRecorder()`): opens the
-    /// General pane with the toggle recorder already recording and focused. `role: .restoreLastWord` opens the
-    /// Typing pane's restore recorder instead.
+    /// Opens the General pane with the toggle recorder already recording and focused. `role: .restoreLastWord`
+    /// opens the Typing pane's restore recorder instead. Onboarding screen 4 records inline (PRD-R40).
     func showHotkeyRecorder(role: HotkeyRole = .toggleMode) {
         model.select(role == .toggleMode ? .general : .typing)
         if role == .restoreLastWord { model.setAdvancedExpanded(true, for: .typing) }

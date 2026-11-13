@@ -29,6 +29,11 @@ final class OnboardingModel {
     /// PLT-R740, PRD-R43: the last reset failed; the help sheet says so with the remove-and-add-again steps.
     private(set) var permissionResetFailed = false
 
+    /// D11, shown on screen 4 and updated after an inline recording (PRD-R40).
+    private(set) var toggleHotkey: HotkeyBinding
+    /// PRD-R40 screen 4: the inline recorder, with the Settings window's capture lifecycle (ADR 0305).
+    @ObservationIgnored let hotkeyCapture: HotkeyCaptureController
+
     let appName: String
     let panes: SystemPaneNames
     let language: InterfaceLanguageModel
@@ -40,7 +45,7 @@ final class OnboardingModel {
     init(
         flow: OnboardingFlow, language: InterfaceLanguageModel, actions: any OnboardingActions,
         inputs: @escaping @MainActor () -> OnboardingInputs, appName: String, panes: SystemPaneNames,
-        method: TypingMethod, mode: TypingMode
+        method: TypingMethod, mode: TypingMode, toggleHotkey: HotkeyBinding
     ) {
         self.flow = flow
         self.language = language
@@ -51,6 +56,14 @@ final class OnboardingModel {
         self.panes = panes
         self.method = method
         currentMode = mode
+        self.toggleHotkey = toggleHotkey
+        let relay = OnboardingCaptureRelay()
+        hotkeyCapture = HotkeyCaptureController(
+            monitor: LocalKeyMonitor(),
+            setHotkeysSuspended: { relay.model?.actions?.setHotkeyRecorderActive($0) },
+            onFinished: { _, binding in relay.model?.saveToggleHotkey(binding) },
+            readLayout: { relay.model?.actions?.currentLayout() })
+        relay.model = self
     }
 
     var localizer: Localizer { language.localizer }
@@ -122,7 +135,29 @@ final class OnboardingModel {
 
     func openInputMonitoringPane() { actions?.openInputMonitoringPane() }
     func relaunch() { actions?.relaunch() }
-    func openHotkeyRecorder() { actions?.openHotkeyRecorder() }
+    /// PRD-R40 screen 4 "Đổi phím chuyển": records inline in this window.
+    func startHotkeyRecording() { hotkeyCapture.start(.toggleMode) }
+    func cancelHotkeyRecording() { hotkeyCapture.cancel() }
+    func interruptHotkeyRecording() { hotkeyCapture.interrupt() }
+    var isRecordingHotkey: Bool { hotkeyCapture.recordingRole == .toggleMode }
+
+    /// Live keys, a rejection reason or the PRD-R16 conflict warning under the recorder.
+    var hotkeyStatus: String? {
+        hotkeyCapture.session.flatMap {
+            HotkeyRecorderText.status($0.state, role: .toggleMode, appName: appName, localizer: localizer)
+        }
+    }
+
+    /// "Dùng mặc định" (Control + Shift, D11).
+    func useDefaultToggleHotkey() {
+        hotkeyCapture.cancel()
+        saveToggleHotkey(.defaultToggle)
+    }
+
+    private func saveToggleHotkey(_ binding: HotkeyBinding) {
+        toggleHotkey = binding
+        actions?.saveToggleHotkey(binding)
+    }
     func openConflictHelp(_ conflict: ConflictingInput) { actions?.openConflictHelp(conflict) }
     func openKeyboardPane() { actions?.openKeyboardPane() }
 
@@ -148,6 +183,7 @@ final class OnboardingModel {
 
     /// PRD-R41: closing before the end leaves the slashed icon and a "resume" status line (App side).
     func windowClosed() {
+        hotkeyCapture.cancel()
         actions?.onboardingClosed(completed: flow.isFinished)
     }
 
@@ -159,6 +195,7 @@ final class OnboardingModel {
     // MARK: - Private
 
     private func move(_ transition: (inout OnboardingFlow, OnboardingInputs) -> Void) {
+        hotkeyCapture.cancel()  // a recorder off screen never keeps the tap's hotkeys suspended (ADR 0305)
         inputs = readInputs()
         transition(&flow, inputs)
         enteredScreen()
@@ -205,4 +242,10 @@ final class OnboardingModel {
 
     /// "Hủy": nothing is imported and the flow stays on screen 6 ("Để sau" moves on).
     func cancelImport() { macroImport = nil }
+}
+
+/// Lets the capture controller's closures reach the model without a retain cycle.
+@MainActor
+private final class OnboardingCaptureRelay {
+    weak var model: OnboardingModel?
 }

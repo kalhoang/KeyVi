@@ -24,7 +24,7 @@ extension AppEnvironment {
         let controller = OnboardingWindowController(
             flow: flow, language: language, actions: self, inputs: { [unowned self] in onboardingInputs() },
             appName: brand.displayName, panes: paneNames(), method: settings.effective.typingMethod,
-            mode: host.currentFocus().mode)
+            mode: host.currentFocus().mode, toggleHotkey: settings.effective.toggleHotkey)
         onboarding = controller
         host.setPermissionFastPolling(true)
         controller.showWindow(nil)
@@ -121,8 +121,13 @@ extension AppEnvironment: OnboardingActions {
 
     func setTypingMethod(_ method: TypingMethod) { setMethod(method) }
 
-    /// PRD-R40 screen 4 "Đổi phím chuyển": the Hotkeys recorder in Settings, already recording and focused.
-    func openHotkeyRecorder() { settingsController()?.showHotkeyRecorder(role: .toggleMode) }
+    /// PRD-R40 screen 4 "Đổi phím chuyển", recorded inline: an explicit D11 choice (PRD-R6).
+    func saveToggleHotkey(_ binding: HotkeyBinding) {
+        let commands = SettingsCommands(store: settingsStore)
+        Task { _ = await commands.apply(.toggleHotkey(binding)) }
+    }
+
+    func currentLayout() -> LayoutTable? { host.currentLayoutTable() }
 
     /// PRD-R40 screen 5: a help page; the app never quits or changes the other app.
     func openConflictHelp(_ conflict: ConflictingInput) { openSupport(.conflicts) }
