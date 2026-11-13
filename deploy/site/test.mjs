@@ -133,9 +133,15 @@ try {
     assertEquivalent(rules, await readFile(join(plain, "nginx", "locations.conf"), "utf8"), "preview");
   });
 
-  await check("every request path gets exactly the headers of _headers (Umami analytics of site/config.json, indexable)", async () => {
+  // A fixture config, so the check keeps covering the CSP with analytics even while site/config.json ships without
+  // it (site/test.mjs asserts what the shipped config holds).
+  await check("every request path gets exactly the headers of _headers (Umami analytics, indexable)", async () => {
+    const configPath = join(tmp, "analytics.json");
+    const base = JSON.parse(await readFile(join(HERE, "..", "..", "site", "config.json"), "utf8"));
+    const analytics = { provider: "umami", scriptUrl: "https://stats.kal.vn/script.js", websiteId: "00000000-0000-4000-8000-000000000000" };
+    await writeFile(configPath, JSON.stringify({ ...base, analytics }));
     const out = join(tmp, "analytics");
-    const result = await buildImageContent({ outDir: out, strict: "false", noindex: "false", today: "2026-11-13" });
+    const result = await buildImageContent({ outDir: out, strict: "false", noindex: "false", today: "2026-11-13", configPath });
     assert.equal(result.noindex, false);
     const rules = parseHeaders(await readFile(join(out, "nginx", "_headers"), "utf8"));
     assert.ok(!headersForPath(rules, "/").some(([name]) => name === "X-Robots-Tag"));
