@@ -100,6 +100,19 @@ private let profileJSON = """
         #expect(HarnessTargets.secureKeyboardEntryApps(rulesData: rules) == [bundle("com.example.Term")])
         #expect(HarnessTargets.secureKeyboardEntryApps(rulesData: Data("x".utf8)).isEmpty)
     }
+
+    /// PLT-R398C: the targets of a live command carry the Secure Keyboard Entry apps of the repository's
+    /// compat/rules.json, so the live system actions press the app menu item instead of asking a person.
+    @Test func repositoryTargetsListTheSecureKeyboardEntryApps() throws {
+        var options = try HarnessCommandLine.parse(["run"])
+        options.repository = repositoryRoot.path
+        let environment = HarnessEnvironment(
+            fileSystem: LocalFileSystem(), console: BufferedConsole(), clock: ManualClock(), live: nil)
+        let apps = Harness(options: options, environment: environment).targets.secureKeyboardEntryApps
+        #expect(apps.isSuperset(of: [bundle("com.apple.Terminal"), bundle("com.googlecode.iterm2")]))
+        options.rules = "missing.json"
+        #expect(Harness(options: options, environment: environment).targets.secureKeyboardEntryApps.isEmpty)
+    }
 }
 
 @Suite struct HarnessW2E2DryRunTests {
@@ -248,6 +261,11 @@ private let profileJSON = """
         let fileSystem = try makeCheckout(scenarios: [
             "a.json": scenarioJSON(id: "a", setup: #"[{"action":"testHook","value":"revokePermission@1"}]"#)
         ])
+        // Files a killed run left behind are cleared when the session opens (PLT-R821).
+        let stale = hooksDirectory.path
+        try write(
+            #"{"formatVersion":1,"sequence":5,"command":"tapTimeout"}"#, to: stale + "/request-5.json", in: fileSystem)
+        try write(#"{"formatVersion":1,"sequence":5,"ok":true}"#, to: stale + "/response-5.json", in: fileSystem)
         let clock = ManualClock()
         let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
         let live = RecordingLiveServices(clock: clock, axText: "đi")
@@ -256,6 +274,69 @@ private let profileJSON = """
         let commands = app.commands.all.filter { $0 != "state" }
         #expect(commands == ["revokePermission", "restorePermission"])
         #expect(live.sink.records.count == 6)
+        #expect(try fileSystem.contentsOfDirectory(at: hooksDirectory).isEmpty)
+    }
+
+    /// ADR 0502 (app profiles): an error after the session opened still restores the app's own settings, so the
+    /// runner never keeps the harness configuration and the next run never backs it up as the original.
+    @Test(arguments: [
+        ["run", "--output", "/out"], ["soak", "--keystrokes", "32", "--targets", "a", "--output", "/out/soak"],
+        ["bench", "--runs", "1", "--metrics", "C1.cpuPercent", "--output", "/out/b.json"],
+    ])
+    func settingsAreRestoredWhenALiveCommandFails(_ arguments: [String]) async throws {
+        let fileSystem = try makeCheckout(scenarios: ["a.json": scenarioJSON(id: "a")])
+        let original = Data(#"{"original":true}"#.utf8)
+        try fileSystem.createDirectory(at: support, permissions: .ownerOnlyDirectory)
+        try fileSystem.writeAtomically(
+            original, to: support.appendingPathComponent("settings.json"), permissions: .ownerOnlyFile)
+        let clock = ManualClock()
+        let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory)
+        // run: the key sink cannot be created; soak: no soak monitor; bench: no metric source.
+        let live = RecordingLiveServices(clock: clock, axText: "đi", failing: ["sink"])
+        let (subject, console) = try harness(arguments, fileSystem: fileSystem, live: live, clock: clock, app: app)
+        #expect(await subject.execute() == .failure)
+        #expect(console.errors.contains { $0.contains("injected") })
+        #expect(live.control.events.all == ["launch", "quit", "launch"])  // factory, then the restore
+        let restored = try fileSystem.readData(at: support.appendingPathComponent("settings.json"), maxBytes: 1 << 20)
+        #expect(restored == original)
+        #expect(!fileSystem.fileExists(at: support.appendingPathComponent("rule-overrides.json")))
+    }
+
+    /// A factory configuration whose app never becomes ready puts the original settings back before failing.
+    @Test func settingsAreRestoredWhenTheFactoryConfigurationFails() async throws {
+        let fileSystem = try makeCheckout(scenarios: ["a.json": scenarioJSON(id: "a")])
+        let original = Data(#"{"original":true}"#.utf8)
+        try fileSystem.createDirectory(at: support, permissions: .ownerOnlyDirectory)
+        try fileSystem.writeAtomically(
+            original, to: support.appendingPathComponent("settings.json"), permissions: .ownerOnlyFile)
+        let clock = ManualClock()
+        let app = FakeHookApp(fileSystem: fileSystem, directory: hooksDirectory, state: snapshot(.starting))
+        let live = RecordingLiveServices(clock: clock, axText: "đi")
+        let (subject, console) = try harness(["run"], fileSystem: fileSystem, live: live, clock: clock, app: app)
+        #expect(await subject.execute() == .failure)
+        #expect(console.errors.contains { $0.hasPrefix("compat-harness run: ") })
+        #expect(live.control.events.all == ["launch", "quit", "launch"])
+        let restored = try fileSystem.readData(at: support.appendingPathComponent("settings.json"), maxBytes: 1 << 20)
+        #expect(restored == original)
+    }
+
+    /// PLT-R398C: a setSecureInput step on a Secure Keyboard Entry app reaches the live system actions with
+    /// targets that name the app, so `LiveSystemActions` presses its menu item (no needsHuman).
+    @Test func secureKeyboardEntryAppsReachTheSystemActions() async throws {
+        let rules = #"{"secureInputHints":[{"bundleId":"com.example.Term","hintKey":"term.secureKeyboardEntry"}]}"#
+        let fileSystem = try makeCheckout(
+            scenarios: [
+                "a.json": scenarioJSON(
+                    id: "a", target: "com.example.Term", setup: #"[{"action":"setSecureInput","value":"on"}]"#)
+            ], rules: rules)
+        let clock = ManualClock()
+        let live = RecordingLiveServices(clock: clock, axText: "đi")
+        let (subject, console) = try harness(
+            ["run", "--no-configure"], fileSystem: fileSystem, live: live, clock: clock)
+        #expect(await subject.execute() == .success)
+        #expect(live.systemTargets.all.map(\.secureKeyboardEntryApps) == [[bundle("com.example.Term")]])
+        #expect(live.system.calls.all.contains("secure true in com.example.Term"))
+        #expect(console.output.contains { $0.hasPrefix("pass a") })
     }
 
     @Test func egressSamplesTheRunningApp() async throws {
@@ -273,6 +354,9 @@ private let profileJSON = """
         #expect(await subject.execute() == .success)
         #expect(app.commands.all == ["checkForUpdates"])
         #expect(console.output.last == "compat-harness egress: 1 sample(s), 1 endpoint(s), passed")
+        // A live run never prints the dry-run plan (QA-R13: the artefact log tells the two apart).
+        #expect(console.output.first == "compat-harness egress: phase production, 1 minute(s), sampling pid 100")
+        #expect(!console.output.contains { $0.contains("plan only") })
         let report = try JSONDecoder().decode(
             EgressReport.self, from: fileSystem.readData(at: URL(fileURLWithPath: "/out/e.json"), maxBytes: 1 << 20))
         #expect(report.passed && report.allowedHosts == ["updates.example.org"])

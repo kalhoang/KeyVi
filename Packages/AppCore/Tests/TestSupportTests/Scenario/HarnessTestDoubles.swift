@@ -78,6 +78,8 @@ struct FakeLineReader: LineReader {
 /// Live services that record every factory call; `harnessDryRunNeverTouchesLiveServices` asserts none happen.
 final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let calls = Recorder<String>()
+    /// The targets each `systemActions(targets:)` call received (PLT-R398C: the Secure Keyboard Entry apps).
+    let systemTargets = Recorder<HarnessTargets>()
     let sink: RecordingKeyEventSink
     let system = FakeSystemActions()
     let axText: String
@@ -88,6 +90,8 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     let control = FakeAppControl()
     let evidence: FakePrivacyEvidence
     let sampler: FakeConnectionSampler
+    /// Factory calls (`evidence`, `sink`, `system`) that throw `TestFailure.injected`.
+    let failing: Set<String>
     static let library = URL(fileURLWithPath: "/library", isDirectory: true)
 
     init(
@@ -95,7 +99,7 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
         metrics: (any PlatformMetricSource)? = nil, probe: (any ScenarioStateProbe)? = nil,
         transport: FakeTransport = FakeTransport(responses: [:]),
         evidence: FakePrivacyEvidence = FakePrivacyEvidence(files: [], log: ""),
-        sampler: FakeConnectionSampler = FakeConnectionSampler(samples: [])
+        sampler: FakeConnectionSampler = FakeConnectionSampler(samples: []), failing: Set<String> = []
     ) {
         sink = RecordingKeyEventSink(clock: clock)
         self.axText = axText
@@ -105,6 +109,12 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
         self.transport = transport
         self.evidence = evidence
         self.sampler = sampler
+        self.failing = failing
+    }
+
+    private func call(_ name: String) throws {
+        calls.append(name)
+        if failing.contains(name) { throw TestFailure.injected }
     }
 
     func libraryDirectory() -> URL {
@@ -118,7 +128,7 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     }
 
     func privacyEvidence(targets: HarnessTargets, library: URL) throws -> any PrivacyEvidenceSource {
-        calls.append("evidence")
+        try call("evidence")
         return evidence
     }
 
@@ -128,12 +138,13 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
     }
 
     func keyEventSink() throws -> any KeyEventSink {
-        calls.append("sink")
+        try call("sink")
         return sink
     }
 
     func systemActions(targets: HarnessTargets) throws -> any SystemActions {
-        calls.append("system")
+        try call("system")
+        systemTargets.append(targets)
         return system
     }
 

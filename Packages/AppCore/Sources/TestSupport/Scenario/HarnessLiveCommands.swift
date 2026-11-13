@@ -75,30 +75,38 @@ extension Harness {
         }
         let targets = targets
         do {
-            let session = try await openSession(live, targets: targets)
-            let evidence =
-                scenarios.contains { PrivacyCanary.isCanaryScenario($0.id) }
-                ? try live.privacyEvidence(targets: targets, library: session.library) : nil
-            let services = try scenarioServices(live, targets: targets, hooks: session.hooks)
-            var results: [ScenarioResult] = []
-            for original in scenarios {
-                var scenario = targets.resolvingExpectation(of: original)
-                if let profile = options.profile { scenario.timing = profile }
-                let result = await run(scenario, services: services, session: session)
-                environment.console.emit(
-                    result.outcome.rawValue + " " + scenario.id + String(format: " (%.1f s)", result.durationSeconds)
-                        + (result.reason.map { ": " + $0 } ?? ""))
-                results.append(result)
+            let (results, privacy) = try await withSession(live, targets: targets) { session in
+                try await runAll(scenarios, live: live, targets: targets, session: session)
             }
-            await releaseSecureInput(after: scenarios, services: services, targets: targets)
-            var privacy: PrivacyReport?
-            if let evidence { privacy = try await privacyScan(evidence) }
-            await close(session)
             return try finishRun(results, privacy: privacy)
         } catch {
             environment.console.emitError("compat-harness run: " + String(describing: error))
             return .failure
         }
+    }
+
+    /// Every selected scenario on its configuration, then the privacy canary scan when canary scenarios ran.
+    func runAll(
+        _ scenarios: [Scenario], live: any LiveHarnessServices, targets: HarnessTargets, session: HarnessSession
+    ) async throws -> ([ScenarioResult], PrivacyReport?) {
+        let evidence =
+            scenarios.contains { PrivacyCanary.isCanaryScenario($0.id) }
+            ? try live.privacyEvidence(targets: targets, library: session.library) : nil
+        let services = try scenarioServices(live, targets: targets, hooks: session.hooks)
+        var results: [ScenarioResult] = []
+        for original in scenarios {
+            var scenario = targets.resolvingExpectation(of: original)
+            if let profile = options.profile { scenario.timing = profile }
+            let result = await run(scenario, services: services, session: session)
+            environment.console.emit(
+                result.outcome.rawValue + " " + scenario.id
+                    + String(format: " (%.1f s)", result.durationSeconds)
+                    + (result.reason.map { ": " + $0 } ?? ""))
+            results.append(result)
+        }
+        await releaseSecureInput(after: scenarios, services: services, targets: targets)
+        guard let evidence else { return (results, nil) }
+        return (results, try await privacyScan(evidence))
     }
 
     /// Configures the app for the scenario, then runs it. A configuration failure fails only this scenario.
@@ -152,26 +160,26 @@ extension Harness {
         }
         let resolved = self.targets
         do {
-            let session = try await openSession(live, targets: resolved)
-            let services = try scenarioServices(live, targets: resolved, hooks: session.hooks)
-            var timed = targets
-            for index in timed.indices { timed[index].timing = soakProfile }
-            let plan = SoakPlan.make(
-                keystrokes: options.keystrokes, targets: timed, seed: options.seed,
-                chunkKeystrokes: options.chunkKeystrokes)
-            let system = services.system
-            let monitor = HookedSoakMonitor(base: try live.soakMonitor(targets: resolved), hooks: session.hooks)
-            let soak = SoakRunner(
-                targets: timed, runner: runner(services, seed: options.seed), monitor: monitor,
-                clock: environment.clock,
-                activate: { target in
-                    guard let bundle = resolved.resolve(target.targetBundleId) else {
-                        throw HarnessSetupError.unresolvedTarget(target.targetBundleId.rawValue)
-                    }
-                    try await system.launch(bundle)
-                })
-            let summary = await soak.run(plan)
-            await close(session)
+            let summary = try await withSession(live, targets: resolved) { session in
+                let services = try scenarioServices(live, targets: resolved, hooks: session.hooks)
+                var timed = targets
+                for index in timed.indices { timed[index].timing = soakProfile }
+                let plan = SoakPlan.make(
+                    keystrokes: options.keystrokes, targets: timed, seed: options.seed,
+                    chunkKeystrokes: options.chunkKeystrokes)
+                let system = services.system
+                let monitor = HookedSoakMonitor(base: try live.soakMonitor(targets: resolved), hooks: session.hooks)
+                let soak = SoakRunner(
+                    targets: timed, runner: runner(services, seed: options.seed), monitor: monitor,
+                    clock: environment.clock,
+                    activate: { target in
+                        guard let bundle = resolved.resolve(target.targetBundleId) else {
+                            throw HarnessSetupError.unresolvedTarget(target.targetBundleId.rawValue)
+                        }
+                        try await system.launch(bundle)
+                    })
+                return await soak.run(plan)
+            }
             return try finishSoak(summary)
         } catch {
             environment.console.emitError("compat-harness soak: " + String(describing: error))
@@ -199,11 +207,11 @@ extension Harness {
         let metrics = options.metrics.compactMap(PlatformGates.metric(named:))
         let targets = targets
         do {
-            let session = try await openSession(live, targets: targets)
-            let source = try benchSource(live, targets: targets, session: session)
-            let report = await PlatformBenchmarkRunner(source: source, clock: environment.clock)
-                .run(metrics: metrics, runs: options.runs)
-            await close(session)
+            let report = try await withSession(live, targets: targets) { session in
+                let source = try benchSource(live, targets: targets, session: session)
+                return await PlatformBenchmarkRunner(source: source, clock: environment.clock)
+                    .run(metrics: metrics, runs: options.runs)
+            }
             let output = options.output ?? ".build/integration/platform-bench.json"
             try write(try report.median.encoded(), to: output)
             for (index, run) in report.perRun.enumerated() {

@@ -52,6 +52,7 @@ extension Harness {
         let channel = FileDropHookChannel(
             directory: FileDropHookChannel.directory(applicationSupport: support), fileSystem: environment.fileSystem,
             clock: environment.clock, sleeper: environment.sleeper)
+        channel.removeStaleFiles()
         var configurator: (any AppConfigurator)?
         if options.configureApp {
             let documents = AppSettingsDocuments(
@@ -61,7 +62,13 @@ extension Harness {
                 backupDirectory: url(outputDirectory + "/app-settings-backup"), fileSystem: environment.fileSystem,
                 control: try live.appControl(targets: targets), documents: documents, hooks: channel,
                 clock: environment.clock, sleeper: environment.sleeper)
-            try await configured.apply(.factory)
+            do {
+                try await configured.apply(.factory)
+            } catch {
+                // The files may already be the harness's: put the originals back before giving up.
+                await close(HarnessSession(profiles: profiles, configurator: configured, hooks: nil, library: library))
+                throw error
+            }
             configurator = configured
         }
         let answers = (try? await channel.state()) != nil
@@ -79,6 +86,24 @@ extension Harness {
         default:
             options.output.map { URL(fileURLWithPath: $0).deletingLastPathComponent().path } ?? ".build/integration"
         }
+    }
+
+    /// Opens the session, runs `body`, then restores the app's settings whether `body` returned or threw (ADR 0502:
+    /// the runner keeps its own settings; a run that left the harness's files behind would back them up as the
+    /// originals next time). `defer` cannot await, hence the explicit catch.
+    func withSession<Value>(
+        _ live: any LiveHarnessServices, targets: HarnessTargets, _ body: (HarnessSession) async throws -> Value
+    ) async throws -> Value {
+        let session = try await openSession(live, targets: targets)
+        let value: Value
+        do {
+            value = try await body(session)
+        } catch {
+            await close(session)
+            throw error
+        }
+        await close(session)
+        return value
     }
 
     /// Puts the app's settings back; a failure is reported, never fatal.

@@ -42,9 +42,12 @@ public struct Harness: Sendable {
         let brandFile = repository.appendingPathComponent("scripts/brand.env")
         let brand = (try? environment.fileSystem.readData(at: brandFile, maxBytes: 64 * 1024))
             .map { String(decoding: $0, as: UTF8.self) }
-        return HarnessTargets.resolve(
+        var targets = HarnessTargets.resolve(
             repository: repository, brandEnvironment: brand, testHost: options.testHostBundleID,
             appUnderTest: options.appBundleID)
+        // PLT-R398C: the live system actions toggle Secure Keyboard Entry through the app menu of these apps.
+        targets.secureKeyboardEntryApps = rulesData().map(HarnessTargets.secureKeyboardEntryApps(rulesData:)) ?? []
+        return targets
     }
 
     /// Loaded scenarios filtered by `--only`; nil (after printing why) when loading fails.

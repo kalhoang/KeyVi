@@ -83,6 +83,12 @@ extension Harness {
         let hosts = options.phase == .production ? egressHosts.joined(separator: ", ") : "none (loopback only)"
         HarnessPlans.egressPlan(options: options, hosts: hosts, appUnderTest: targets.appUnderTestBundleID)
             .forEach(environment.console.emit)
+        return checkEgressHosts()
+    }
+
+    /// Production allows the site host only; without one (no APP_SITE_HOST, no --allow-hosts) there is nothing
+    /// to compare with.
+    func checkEgressHosts() -> HarnessExit {
         guard options.phase == .local || !egressHosts.isEmpty else {
             environment.console.emitError("compat-harness egress: no allowed host (scripts/brand.env APP_SITE_HOST)")
             return .failure
@@ -92,12 +98,15 @@ extension Harness {
 
     func runEgress() async -> HarnessExit {
         guard let live = requireLive("egress") else { return .incomplete }
-        guard planEgress() == .success else { return .failure }
+        guard checkEgressHosts() == .success else { return .failure }
         do {
             guard let pid = try live.appControl(targets: targets).processIdentifier() else {
                 environment.console.emitError("compat-harness egress: the app under test is not running")
                 return .failure
             }
+            environment.console.emit(
+                "compat-harness egress: phase " + options.phase.rawValue + ", \(options.minutes) minute(s), "
+                    + "sampling pid " + String(pid))
             await requestUpdateCheck(live)
             let report = await EgressMonitor(sampler: live.connectionSampler(), sleeper: environment.sleeper).run(
                 processIdentifier: pid, phase: options.phase, allowedHosts: egressHosts,
@@ -126,6 +135,7 @@ extension Harness {
         let channel = FileDropHookChannel(
             directory: FileDropHookChannel.directory(applicationSupport: folder), fileSystem: environment.fileSystem,
             clock: environment.clock, sleeper: environment.sleeper)
+        channel.removeStaleFiles()
         do {
             _ = try await channel.accepted(.checkForUpdates)
         } catch {
