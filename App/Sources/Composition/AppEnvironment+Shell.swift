@@ -134,11 +134,12 @@ extension AppEnvironment {
             bundle: app.bundle, displayName: displayName(of: app), rule: frontmostRule(focus) ?? .remember)
     }
 
+    /// PRD-R43 "App in Known limitation list": the frontmost app's matrix row.
     private func frontmostStatus() -> FrontmostAppStatus? {
         guard let app = host.currentFocus().app else { return nil }
         return FrontmostAppStatus(
-            bundle: app.bundle, displayName: displayName(of: app), matrixStatus: nil, limitationNote: nil,
-            learnMore: nil)
+            bundle: app.bundle, displayName: displayName(of: app), matrix: matrix, today: Date(),
+            language: language.localizer.language, siteURL: brand.siteURL)
     }
 
     func frontmostRule(_ focus: FocusSnapshot) -> PerAppRule? {

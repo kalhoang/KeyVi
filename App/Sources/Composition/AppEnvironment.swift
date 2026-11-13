@@ -48,6 +48,8 @@ final class AppEnvironment {
     /// The latest latency probe result (PLT-R810), included in the next diagnostics report.
     var latencyProbeResult: LatencyProbeResult?
     lazy var paneTable: SystemPaneTable? = Self.loadPaneTable()
+    /// The bundled compatibility matrix, read the first time the menu opens (PRD-R43 known-limitation line).
+    lazy var matrix: MatrixDocument? = SettingsResources.bundledMatrix()
     #if INTEGRATION_HOOKS
     /// The self-hosted runner's test build only: answers the integration hooks (ADR 0502).
     let integrationHooks: IntegrationHooksApp

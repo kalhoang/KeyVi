@@ -162,6 +162,30 @@ public struct FrontmostAppStatus: Sendable, Hashable {
         self.limitationNote = limitationNote
         self.learnMore = learnMore
     }
+
+    /// PRD-R43 "App in Known limitation list", PRD-R35: the matrix row that stands for the whole app, after the
+    /// 120-day rule (QA-R19); its note in the interface language; "Tìm hiểu thêm" opens the site's compatibility
+    /// page, which lists the app with its note (the matrix has no per-entry link).
+    public init(
+        bundle: BundleKey, displayName: String, matrix: MatrixDocument?, today: Date, language: InterfaceLanguage,
+        siteURL: URL
+    ) {
+        let entry = matrix?.appEntry(for: bundle)
+        self.init(
+            bundle: bundle, displayName: displayName,
+            matrixStatus: entry.map { MatrixStatusResolver.displayStatus($0, today: today) },
+            limitationNote: entry?.note.map { language == .vietnamese ? $0.vi : $0.en },
+            learnMore: entry == nil ? nil : CompatibilityPage.url(siteURL: siteURL, language: language))
+    }
+}
+
+/// The site's compatibility matrix page; the paths are those of site/lib/routes.mjs (`compat`), the host comes
+/// from the brand.
+public enum CompatibilityPage {
+    public static func url(siteURL: URL, language: InterfaceLanguage) -> URL {
+        let path = language == .vietnamese ? "tuong-thich/" : "en/compatibility/"
+        return URL(string: path, relativeTo: siteURL)?.absoluteURL ?? siteURL
+    }
 }
 
 /// PRD-R11 menu, top to bottom. Built when the menu opens (within 100 ms, PRD-R13).
