@@ -10,6 +10,19 @@ Brand values never appear in the stack file or the workflow. `deploy/site/stack-
 deploy/site/stack-env.sh --owner <github owner>    # SITE_HOST, SITE_SLUG, IMAGE_OWNER, IMAGE_NAME, IMAGE_TAG, IMAGE
 ```
 
+## 0. Current deployment (2026-11-14)
+
+The preview is live at the site host. State on 2026-11-14, so the next maintainer does not redo it:
+
+| Item | State |
+|---|---|
+| Repository | `kalhoang/{{app-slug}}`, private. Branch protection for `prod` is not available on a private repository of a free account (GitHub answers 403); until the repository is public or on a paid plan, only Pa pushes `prod` by convention |
+| GHCR package | `{{app-slug}}-site`, **public** (Pa, 2026-11-14), so the Swarm pulls it without a registry entry |
+| Actions | Only `Site` and `Site image` (and Dependabot) are enabled; `CI`, `Diagnostics labels`, `Integration`, `Nightly`, `PR labels` and `Release` are disabled by hand until macOS runners exist (ADR 0602, S6/Q12). Re-enable one with `gh workflow enable <name>` |
+| Variables and secrets | Repository variable `SITE_STRICT=false`; `IMAGE_OWNER` is unset, so the repository owner is used. Environment `site` limits deployments to `prod` and holds the secret `PORTAINER_WEBHOOK_URL` |
+| Portainer | Stack `{{app-slug}}-site`, id 73, environment 7 (Swarm). Stack variables: `SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER=kalhoang`, `IMAGE_NAME`, `IMAGE_TAG=prod`. Service `{{app-slug}}-site_site`, 2 replicas |
+| Redeploy | A push to `prod` runs `site-image.yml`, which builds and pushes the image and calls the service webhook; verified end to end on 2026-11-14 |
+
 ## 1. What is where
 
 | File | Role |
@@ -71,7 +84,12 @@ docker logout ghcr.io
 1. Portainer, environment `F3D`, **Stacks**, **Add stack**. Name: `{{app-slug}}-site`. Build method: Web editor; paste `deploy/site/stack.yml`.
 2. **Environment variables**: add each line printed by `deploy/site/stack-env.sh --owner kalhoang` (`SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER`, `IMAGE_NAME`, `IMAGE_TAG`; `IMAGE` is not used by the stack). `TRAEFIK_CERT_RESOLVER` is not needed: the shared Traefik's resolver is `cloudflare`, confirmed by the Umami stack on 2026-11-13 (its certificate for `stats.kal.vn` comes from that resolver). Set it only if traefik2's static configuration (`certificatesResolvers.<name>.acme.dnsChallenge.provider: cloudflare`) is ever renamed.
 3. **Deploy the stack**. Confirm with the Swarm itself, not with Portainer's status column (it has shown stale states before): `docker service ls` lists `{{app-slug}}-site_site` with `2/2`, and `docker service ps {{app-slug}}-site_site` shows both tasks `Running` and healthy.
-4. **Service webhook**: Services, `{{app-slug}}-site_site`, turn on "Service webhook", copy the URL into the GitHub secret `PORTAINER_WEBHOOK_URL` of the environment `site`. The URL redeploys the service; treat it as a secret.
+4. **Service webhook**: Services, `{{app-slug}}-site_site`, turn on "Service webhook", copy the URL into the GitHub secret `PORTAINER_WEBHOOK_URL` of the environment `site`. The URL redeploys the service; treat it as a secret: pipe it into `gh secret set PORTAINER_WEBHOOK_URL --env site` on standard input, never as a command-line argument.
+
+Two Swarm traps, both met on the first deploy and both covered by `scripts/tests/test_site_deploy.py` (`StackTests`) and the comment at the top of `stack.yml`:
+
+- **Variable interpolation follows docker/cli, not POSIX sh.** Portainer and `docker stack deploy` read `${VAR:?message}` by trying the separators in the order `:-`, `-`, `:?`, `?`, so a dash anywhere in the message turns the rest into a default value. The braced form is also greedy up to the last `}` on the line, so two `${...:?...}` forms on one line swallow each other. Symptom: `invalid reference format`, or an image name that contains part of a message. Rule: at most one default or required form per line, placed last on the line, and no dash in its message. `docker stack config -c deploy/site/stack.yml` (it needs only the CLI, no daemon) shows the rendered stack before deploying.
+- **Swarm ignores the short `tmpfs:` key.** `docker compose` honours it, `docker stack deploy` drops it silently, so with `read_only: true` nginx cannot create `/tmp/client_temp` and every task exits with code 1 (`Read-only file system`). Use the long form, `volumes: - type: tmpfs, target: /tmp`, which Swarm applies.
 
 ## 5. DNS and TLS (Cloudflare)
 
@@ -131,7 +149,9 @@ The website counts page views with Umami, self-hosted on the Kalera Swarm at `ht
 | Symptom | Cause and fix |
 |---|---|
 | `404 page not found` from Traefik, or its default certificate | The router does not match: check `SITE_HOST`, and that the service is on `traefik_public`. A service with both `traefik.docker.*` and `traefik.swarm.*` labels is skipped by Traefik ("both Docker and Swarm labels are defined" in the Traefik log): keep `traefik.swarm.*` only |
-| 502 or 503 | No healthy task: `docker service ps --no-trunc {{app-slug}}-site_site`; the container listens on 8080 and answers `/healthz` |
+| 502 or 503 | No healthy task: `docker service ps --no-trunc {{app-slug}}-site_site`; the container listens on 8080 and answers `/healthz`. A short 502 while the tasks roll over after a deploy is expected and clears once the new task is healthy |
+| Portainer: `invalid reference format` | docker/cli interpolation broke the image or a label (section 4, first trap): check the stack with `docker stack config` |
+| Tasks exit with code 1, `mkdir() "/tmp/client_temp" failed (30: Read-only file system)` | `/tmp` is not a tmpfs mount: use the long `volumes` form (section 4, second trap) |
 | Certificate error | Resolver name (`TRAEFIK_CERT_RESOLVER`) or the DNS challenge token's zones |
 | Image pull fails on the nodes | GHCR package private without a Portainer registry entry (section 2) |
 | Image build fails with `--strict` | VERIFY markers or placeholders remain; for the preview keep `SITE_STRICT=false` |
@@ -140,4 +160,4 @@ The website counts page views with Umami, self-hosted on the Kalera Swarm at `ht
 
 ## 11. What stays with Pa
 
-Creating the repository and the `prod` branch protection, the `site` environment, its secret and the variables, the GHCR visibility, the Portainer stack and its webhook, the Cloudflare token and DNS record, and the first build and push. Nobody else pushes images, calls webhooks or changes Cloudflare, Portainer or GHCR.
+Creating the repository and the `prod` branch protection, the `site` environment, its secret and the variables, the GHCR visibility, the Cloudflare token and DNS record. Nobody else pushes images by hand, calls webhooks or changes Cloudflare or GHCR. Exception recorded on 2026-11-14: at Pa's request the integrator created the Portainer stack (id 73) and its service webhook, stored the webhook in the `site` environment and pushed `prod`; any later change to the stack or the webhook goes through Pa again.
