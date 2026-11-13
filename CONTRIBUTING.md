@@ -72,6 +72,11 @@ swift run --package-path Packages/VietnameseEngine lexicon-builder check
 # Engine benchmark compared with the stored baseline
 scripts/bench-compare.sh
 
+# Engine API documentation (DocC, QA-R66, ADR 0402), macOS with Xcode; open the archive in Xcode
+(cd Packages/VietnameseEngine && xcodebuild docbuild -scheme VietnameseEngine \
+  -destination 'generic/platform=macOS' -derivedDataPath .build/docc)
+# output: Packages/VietnameseEngine/.build/docc/Build/Products/Debug/VietnameseEngine.doccarchive
+
 # Website
 node site/build.mjs   # output in site/dist
 ```

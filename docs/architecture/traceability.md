@@ -397,7 +397,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | QA-R63 | PR rules | process | D | all |  |
 | QA-R64 | AI-assisted contributions | process | D | all |  |
 | QA-R65 | Code of conduct | `CODE_OF_CONDUCT.md` | D | docs track |  |
-| QA-R66 | Required documents incl. ARCHITECTURE.md | `ARCHITECTURE.md` (this track), others | D | platform design (done); docs track |  |
+| QA-R66 | Required documents incl. ARCHITECTURE.md | `ARCHITECTURE.md` (this track), others; engine API docs (DocC) per ADR 0402 | D | platform design (done); docs track; CI and release (nightly DocC artifact) |  |
 | QA-R67 | Docs are part of done | process | D | all |  |
 
 ## 05-clean-room.md (CLR-R)
