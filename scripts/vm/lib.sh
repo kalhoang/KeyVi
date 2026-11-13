@@ -495,6 +495,52 @@ lab_delete() {
   lab_log "deleted the throwaway clone $vm"
 }
 
+# lab_prepare_target <base VM> <in place 0|1> <clone suffix>: preflight of a script that works in a throwaway
+# clone <base>-<suffix> (or in the base itself): the base exists, a VM with the clone name that the lab did not
+# create is never replaced, and no VM runs. Sets LAB_TARGET. Nothing is cloned or booted here.
+lab_prepare_target() {
+  local base="$1" in_place="$2" suffix="$3" vm rc=0
+  LAB_TARGET=""
+  lab_validate_name "$base" || return
+  lab_check_paths || return
+  if ! lab_vm_exists "$base"; then
+    lab_err_ret 2 "no local VM named $base (scripts/vm/lab.sh status)"
+    return
+  fi
+  vm="$base"
+  if ((in_place == 0)); then
+    vm="$base-$suffix"
+    lab_validate_name "$vm" || return
+    if lab_vm_exists "$vm" && ! lab_is_lab_clone "$vm"; then
+      lab_err_ret 3 "a VM named $vm exists that was not created by scripts/vm/lab.sh clone; refusing to replace it"
+      return
+    fi
+  fi
+  lab_refuse_if_busy "$vm" || rc=$?
+  if ((rc == 4)); then
+    lab_err_ret 3 "$vm is already running; stop it first (scripts/vm/lab.sh down $vm)"
+    return
+  elif ((rc != 0)); then
+    return "$rc"
+  fi
+  LAB_TARGET="$vm"
+}
+
+# lab_start_target <base VM> <target> <memory> <cpus>: clones the base when the target is a clone (replacing a
+# stale clone of the lab from an earlier run), registers the clone for deletion on exit and boots the target.
+lab_start_target() {
+  local base="$1" vm="$2" memory="$3" cpus="$4"
+  if [[ "$vm" != "$base" ]]; then
+    if lab_vm_exists "$vm"; then
+      lab_log "removing the stale throwaway clone $vm from an earlier run"
+      lab_delete "$vm" || return
+    fi
+    lab_clone "$base" "$vm" || return
+    VM_LAB_CLONES="$VM_LAB_CLONES $vm"
+  fi
+  lab_up "$vm" "$memory" "$cpus"
+}
+
 # Stops every VM this process started and deletes every clone it created. Installed as the EXIT trap.
 lab_cleanup() {
   local rc=$? vm

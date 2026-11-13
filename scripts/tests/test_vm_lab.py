@@ -42,6 +42,7 @@ SMOKE = SCRIPTS / "vm" / "smoke-macos12.sh"
 GRANT = SCRIPTS / "vm" / "grant-tcc.sh"
 MACHO = SCRIPTS / "vm" / "macho-info.pl"
 GUEST = SCRIPTS / "vm" / "guest" / "smoke-guest.sh"
+INTEGRATION = SCRIPTS / "vm" / "integration-dev.sh"
 
 FAKE_TART = r"""#!/bin/bash
 # Fake tart: VMs are files in $FAKE_DIR/vms, running VMs have a pid file in $FAKE_DIR/running.
@@ -534,6 +535,133 @@ class SmokeArgumentTests(LabTestCase):
         self.assertEqual(self.tart_calls("clone"), [])
         self.assertEqual(self.running(), {DEV})
         self.lab("down", DEV)
+
+
+class IntegrationDevArgumentTests(LabTestCase):
+    def integration(self, *args: str, **env: str) -> subprocess.CompletedProcess:
+        return self.script(INTEGRATION, *args, **env)
+
+    def test_help_and_usage_errors(self):
+        self.assertEqual(self.integration("--help").returncode, 0)
+        for args in (("--bogus",), ("--vm",), ("--vm", "../x"), ("--memory", "99999"), ("--cpus", "0")):
+            with self.subTest(args=args):
+                self.assertEqual(self.integration(*args).returncode, 2)
+        self.assertEqual(self.tart_calls("run"), [])
+
+    def test_it_refuses_while_another_vm_runs_and_never_replaces_a_foreign_clone(self):
+        self.assertEqual(self.lab("up", MONTEREY).returncode, 0)
+        busy = self.integration()
+        self.assertEqual(busy.returncode, 3, busy.stderr)
+        self.assertIn(f"{MONTEREY} is running", busy.stderr)
+        self.lab("down", MONTEREY)
+        (self.fake / "vms" / f"{DEV}-suite").touch()
+        foreign = self.integration()
+        self.assertEqual(foreign.returncode, 3, foreign.stderr)
+        self.assertIn("not created by", foreign.stderr)
+        self.assertTrue((self.fake / "vms" / f"{DEV}-suite").exists())
+        self.assertEqual(self.tart_calls("clone"), [])
+        self.assertEqual(len(self.tart_calls("run")), 1)  # only the VM this test started itself
+
+    def test_a_failing_guest_run_stops_and_deletes_the_clone(self):
+        result = self.integration("--output", str(self.tmp / "run"), FAKE_NO_AGENT="1")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("RESULT: FAIL", result.stdout)
+        self.assertIn(f"clone {DEV} {DEV}-suite", "\n".join(self.calls()))
+        self.assertIn(f"set {DEV}-suite --memory 6144 --cpu 4", "\n".join(self.tart_calls("set")))
+        self.assertFalse((self.fake / "vms" / f"{DEV}-suite").exists())
+        self.assertTrue((self.fake / "vms" / DEV).exists())
+        self.assertEqual(self.running(), set())
+
+
+TCC_SCHEMA = """CREATE TABLE access (service TEXT NOT NULL, client TEXT NOT NULL, client_type INTEGER NOT NULL,
+  auth_value INTEGER NOT NULL, auth_reason INTEGER NOT NULL, auth_version INTEGER NOT NULL, csreq BLOB,
+  policy_id INTEGER, indirect_object_identifier_type INTEGER,
+  indirect_object_identifier TEXT NOT NULL DEFAULT 'UNUSED', indirect_object_code_identity BLOB, flags INTEGER,
+  last_modified INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER)), pid INTEGER, pid_version INTEGER,
+  boot_uuid TEXT NOT NULL DEFAULT 'UNUSED', last_reminded INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (service, client, client_type, indirect_object_identifier));"""
+
+
+@unittest.skipUnless(sys.platform == "darwin" and Path("/usr/bin/sqlite3").exists(), "needs macOS tools")
+class GrantTccTests(unittest.TestCase):
+    """grant-tcc.sh against a temporary database; fake sysctl, csrutil, codesign and pkill on PATH."""
+
+    def setUp(self) -> None:
+        import sqlite3
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.bin = self.tmp / "bin"
+        self.bin.mkdir()
+        write_exe(self.bin / "sysctl", '#!/bin/sh\necho "${FAKE_VMM:-1}"\n')
+        write_exe(self.bin / "csrutil", '#!/bin/sh\necho "System Integrity Protection status: ${FAKE_SIP:-disabled}."\n')
+        write_exe(self.bin / "codesign", '#!/bin/sh\necho "Executable=$4" >&2\n'
+                                         'echo \'designated => identifier "test.example.fake" and anchor apple\'\n')
+        write_exe(self.bin / "pkill", '#!/bin/sh\necho "pkill $*" >>"$FAKE_LOG"\n')
+        self.db = self.tmp / "TCC.db"
+        with sqlite3.connect(self.db) as connection:
+            connection.executescript(TCC_SCHEMA)
+        self.app = self.tmp / "Fake.app"
+        (self.app / "Contents").mkdir(parents=True)
+        (self.app / "Contents" / "Info.plist").write_text(
+            '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleIdentifier</key>'
+            "<string>test.example.fake</string></dict></plist>", encoding="utf-8")
+        self.tool = self.tmp / "compat-harness"
+        write_exe(self.tool, "#!/bin/sh\n")
+        self.env = {"PATH": f"{self.bin}:/usr/bin:/bin:/usr/sbin:/sbin", "TCC_DB": str(self.db),
+                    "FAKE_LOG": str(self.tmp / "calls.log"), "HOME": str(self.tmp)}
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def grant(self, *args: str, **env: str) -> subprocess.CompletedProcess:
+        merged = dict(self.env)
+        merged.update(env)
+        return subprocess.run(["bash", str(GRANT), *args], capture_output=True, text=True, env=merged,
+                              stdin=subprocess.DEVNULL, timeout=60)
+
+    def rows(self) -> list[tuple]:
+        import sqlite3
+        with sqlite3.connect(self.db) as connection:
+            return connection.execute("SELECT service, client, client_type, auth_value, length(csreq) FROM access "
+                                      "ORDER BY service, client").fetchall()
+
+    def test_it_refuses_a_real_mac_and_an_enabled_sip(self):
+        clients = ("--bundle", str(self.app), "--binary", str(self.tool))
+        host = self.grant(*clients, FAKE_VMM="0")
+        self.assertEqual(host.returncode, 3)
+        self.assertIn("not a virtual machine", host.stderr)
+        sip = self.grant(*clients, FAKE_SIP="enabled")
+        self.assertEqual(sip.returncode, 3)
+        self.assertIn("System Integrity Protection is enabled", sip.stderr)
+        self.assertEqual(self.rows(), [])
+
+    def test_usage_errors(self):
+        for args in ((), ("--bogus",), ("--binary", "relative/tool"), ("--bundle", str(self.tool)),
+                     ("--service", "Accessibility", "--binary", str(self.tool)), ("--binary",)):
+            with self.subTest(args=args):
+                self.assertEqual(self.grant(*args).returncode, 2)
+        self.assertEqual(self.rows(), [])
+
+    def test_bundles_and_binaries_get_the_three_services_with_their_code_requirement(self):
+        for _ in range(2):  # idempotent
+            result = self.grant("--bundle", str(self.app), "--binary", str(self.tool))
+            self.assertEqual(result.returncode, 0, result.stderr)
+        rows = self.rows()
+        self.assertEqual(len(rows), 6, rows)
+        services = {row[0] for row in rows}
+        self.assertEqual(services, {"kTCCServiceAccessibility", "kTCCServiceListenEvent", "kTCCServicePostEvent"})
+        self.assertEqual({(row[1], row[2]) for row in rows}, {("test.example.fake", 0), (str(self.tool), 1)})
+        self.assertTrue(all(row[3] == 2 and row[4] and row[4] > 0 for row in rows), rows)
+        log = self.tmp / "calls.log"
+        self.assertFalse(log.exists() and "tccd" in log.read_text(), "tccd is restarted only for the real database")
+
+    def test_dry_run_prints_the_sql_and_writes_nothing(self):
+        result = self.grant("--dry-run", "--service", "kTCCServiceAccessibility", "--binary", str(self.tool))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("INSERT OR REPLACE INTO access", result.stdout)
+        self.assertIn("'kTCCServiceAccessibility'", result.stdout)
+        self.assertNotIn("kTCCServiceListenEvent", result.stdout)
+        self.assertEqual(self.rows(), [])
 
 
 class GuestScriptTests(unittest.TestCase):

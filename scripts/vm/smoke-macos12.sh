@@ -102,25 +102,8 @@ if [[ -n "$app" ]]; then
   read_bundle "$app"
 fi
 
-lab_check_paths || exit
-if ! lab_vm_exists "$base_vm"; then
-  lab_err "no local VM named $base_vm (scripts/vm/lab.sh status)"
-  exit 2
-fi
-vm="$base_vm"
-((in_place)) || vm="$base_vm-smoke"
-if ((!in_place)) && lab_vm_exists "$vm" && ! lab_is_lab_clone "$vm"; then
-  lab_err "a VM named $vm exists that was not created by scripts/vm/lab.sh clone; refusing to replace it"
-  exit 3
-fi
-busy=0
-lab_refuse_if_busy "$vm" || busy=$?
-if ((busy == 4)); then
-  lab_err "$vm is already running; stop it first (scripts/vm/lab.sh down $vm)"
-  exit 3
-elif ((busy != 0)); then
-  exit "$busy"
-fi
+lab_prepare_target "$base_vm" "$in_place" smoke || exit
+vm="$LAB_TARGET"
 
 run_dir="${run_dir:-$VM_LAB_RUNS/$(date -u +%Y%m%dT%H%M%SZ)-macos12}"
 mkdir -p "$run_dir"
@@ -188,15 +171,7 @@ record "PASS host slices: $(tr '\n' ';' <"$run_dir/host-macho.txt" | sed 's/;$//
 
 # --- VM ---------------------------------------------------------------------------------------------------------
 lab_install_trap
-if ((!in_place)); then
-  if lab_vm_exists "$vm"; then
-    say "removing the stale throwaway clone $vm from an earlier run"
-    lab_delete "$vm" || exit
-  fi
-  lab_clone "$base_vm" "$vm" || exit
-  VM_LAB_CLONES="$VM_LAB_CLONES $vm"
-fi
-lab_up "$vm" "$memory" "$cpus" || {
+lab_start_target "$base_vm" "$vm" "$memory" "$cpus" || {
   record "FAIL vm: $vm did not come up"
   finish FAIL
 }
