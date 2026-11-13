@@ -308,6 +308,18 @@ struct HostControllerLifecycleTests {
         #expect(driver.marker == rig.controller.channels.marker)
     }
 
+    /// The Settings window's recorder and layout binding read the host's layout table and enabled sources
+    /// (PLT-R360, PLT-R373) through these queries, never per render from TIS.
+    @Test func layoutAndEnabledSourcesComeFromTheHost() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let table = rig.controller.currentLayoutTable()
+        #expect(table?.source == rig.controller.channels.snapshots.inputSource.load().table?.source)
+        #expect(table?.source == HostRig.abc.id)
+        #expect(rig.controller.enabledInputSources() == rig.inputSources.enabledSources())
+    }
+
     @Test func stopRemovesTheTapAndLeavesNothingRunning() async throws {
         let rig = HostRig()
         await rig.start()
