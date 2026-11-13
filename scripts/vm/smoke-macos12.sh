@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# macOS 12 smoke test of the universal app in a throwaway clone of the keyvi-monterey tart VM
+# macOS 12 smoke test of the universal app in a throwaway clone of the macOS 12 tart VM (VM_MONTEREY)
 # (ADR 0315 "macOS 12 smoke test"; PLT-R105 universal binary, PLT-R106 macOS 12 floor).
 #
 # Builds the app (Release, arm64 + x86_64, ad-hoc signed so it can run) or takes --app, checks the slices on
@@ -15,7 +15,7 @@ usage() {
 Usage: scripts/vm/smoke-macos12.sh [options]
 
   --app PATH           test this .app instead of building one
-  --vm NAME            base VM (default keyvi-monterey)
+  --vm NAME            base VM (default VM_MONTEREY, <slug>-monterey)
   --in-place           run in the base VM itself instead of a throwaway clone (keeps what the run installs,
                        for example Rosetta)
   --alive-seconds N    how long each slice must stay up (default 20, at least 20)
@@ -36,7 +36,7 @@ source "$HERE/../lib/common.sh"
 source "$HERE/lib.sh"
 
 app=""
-base_vm="keyvi-monterey"
+base_vm="$VM_MONTEREY"
 in_place=0
 alive=20
 derived="${SMOKE_DERIVED_DATA:-/tmp/vm-smoke-dd}"
@@ -146,10 +146,15 @@ if [[ -z "$app" ]]; then
   case "$derived" in /Volumes/Data/*) bad_usage "--derived-data must not be on /Volumes/Data (xcodebuild times out there)" ;; esac
   require_cmd xcodegen xcodebuild
   load_brand
-  say "building the universal Release app, ad-hoc signed (log $run_dir/build.log)"
+  say "building the universal Release app, ad-hoc signed, hardened runtime off (log $run_dir/build.log)"
+  # ENABLE_HARDENED_RUNTIME=NO: an ad-hoc signature has no Team ID, and the hardened runtime's library
+  # validation then refuses the embedded Sparkle.framework (the first run on 2026-11-13: dyld "mapped file has
+  # no Team ID and is not a platform binary" for the x86_64 slice). Release builds are signed with the
+  # Developer ID (one Team ID for the app and its frameworks) and keep the hardened runtime (PLT-R750).
   if ! (cd "$REPO_ROOT" && xcodegen generate && xcodebuild -project App.xcodeproj -scheme App \
     -configuration Release ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY=- \
-    CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= OTHER_CODE_SIGN_FLAGS= -derivedDataPath "$derived" -jobs 3 build) \
+    CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= OTHER_CODE_SIGN_FLAGS= ENABLE_HARDENED_RUNTIME=NO \
+    -derivedDataPath "$derived" -jobs 3 build) \
     >"$run_dir/build.log" 2>&1; then
     record "FAIL build: xcodebuild failed (build.log)"
     finish FAIL
@@ -196,7 +201,7 @@ lab_up "$vm" "$memory" "$cpus" || {
   finish FAIL
 }
 
-remote="keyvi-smoke"
+remote="vm-smoke"
 lab_ssh "$vm" "rm -rf $remote && mkdir -p $remote/tools" </dev/null || true
 tools="$(mktemp -d)"
 cp "$HERE/guest/smoke-guest.sh" "$HERE/macho-info.pl" "$tools/"

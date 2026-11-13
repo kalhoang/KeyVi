@@ -11,7 +11,7 @@ usage() {
 Usage: scripts/vm/lab.sh <command> [arguments]
 
   up <vm> [--memory MB] [--cpus N]   boot headless, wait for the IP and SSH, install the lab key once
-                                     (defaults: keyvi-dev* 6144 MB / 4 CPUs, others 4096 MB / 2 CPUs)
+                                     (defaults: VM_DEV and its clones 6144 MB / 4 CPUs, others 4096 MB / 2 CPUs)
   down <vm> [--timeout S]            guest shutdown, then tart stop, then kill tart run
   status                             local VMs, which one runs, disk use
   ip <vm>                            print the VM's IP address
@@ -28,6 +28,9 @@ Usage: scripts/vm/lab.sh <command> [arguments]
 Only one VM runs at a time. `up` leaves the VM running for interactive work: stop it with `down`.
 Exit status: 0 success, 1 failure, 2 usage error, 3 refused by a safety rule (another VM runs, not a clone,
 VM not running, keys folder inside ~/.ssh).
+
+VM names: VM_MONTEREY (macOS 12, default <slug>-monterey) and VM_DEV (macOS 27 with Xcode, default <slug>-dev),
+<slug> being APP_SLUG of scripts/brand.env.
 
 Environment: VM_LAB_ROOT (/Volumes/Data/tart), TART_BIN, TART_HOME, VM_LAB_KEYS, VM_SSH_USER,
 VM_SSH_PASSWORD, VM_BOOT_TIMEOUT (420), VM_STOP_TIMEOUT (60), VM_LAB_MAX_MEMORY_MB (8192), VM_LAB_MAX_CPUS (6).

@@ -67,7 +67,7 @@ note "system: macOS $(sw_vers -productVersion) ($(sw_vers -buildVersion)) on $(u
 
 # 2. Install into /Applications (the admin group may write there), replacing an earlier copy.
 dest="/Applications/$(basename "$app")"
-pkill -f "$dest/Contents/MacOS/$exec_name" 2>/dev/null
+pkill -x "$exec_name" 2>/dev/null
 sleep 1
 rm -rf "$dest"
 if ! ditto "$app" "$dest"; then
@@ -131,23 +131,46 @@ else
   fi
 fi
 
-app_pid() { pgrep -n -f "$bin" 2>/dev/null; }
+# The app's own process, matched by its exact process name: a full command line match would also find the
+# sudo, launchctl and arch wrappers of the Rosetta launch (the first real run watched such a wrapper).
+app_pid() { pgrep -n -x "$exec_name" 2>/dev/null; }
+quit_app() {
+  local pid
+  for pid in $(pgrep -x "$exec_name" 2>/dev/null); do kill -TERM "$pid" 2>/dev/null; done
+  sleep 1
+}
+
+# `open --arch` exists only on newer systems (macOS 12's open rejects it). arm64 starts through LaunchServices,
+# as a user launch does (a universal app runs natively on Apple silicon); x86_64 starts with `arch -x86_64` in
+# this user's GUI session (launchctl asuser), which runs the slice under Rosetta.
+open_has_arch=no
+if open 2>&1 | grep -q -- '--arch'; then open_has_arch=yes; fi
+
+# start_slice <arch> <dir>: prints the launch method.
+start_slice() {
+  local arch="$1" dir="$2"
+  if [ "$open_has_arch" = yes ]; then
+    open -n -g --arch "$arch" --stdout "$dir/stdout.txt" --stderr "$dir/stderr.txt" "$dest" >"$dir/open.txt" 2>&1
+    echo "open --arch $arch"
+  elif [ "$arch" = arm64 ]; then
+    open -n -g --stdout "$dir/stdout.txt" --stderr "$dir/stderr.txt" "$dest" >"$dir/open.txt" 2>&1
+    echo "open (LaunchServices)"
+  else
+    # shellcheck disable=SC2024 # the log files belong to this user on purpose
+    sudo -n launchctl asuser "$(id -u)" sudo -n -u "$(id -un)" /usr/bin/arch "-$arch" "$bin" \
+      >"$dir/stdout.txt" 2>"$dir/stderr.txt" </dev/null &
+    echo "launchctl asuser + arch -$arch"
+  fi
+}
 
 # launch_slice <arch>: launches, watches, collects and quits one slice.
 launch_slice() {
-  local arch="$1" dir="$out/$1" pid="" seconds=0 translated=no start reasons=""
+  local arch="$1" dir="$out/$1" pid="" seconds=0 translated=no frameworks=no start reasons="" method waited
   mkdir -p "$dir/crash"
-  pkill -f "$bin" 2>/dev/null
-  sleep 1
+  quit_app
   touch "$dir/.started"
   start="$(date '+%Y-%m-%d %H:%M:%S')"
-  if ! open -n -g --arch "$arch" --stdout "$dir/stdout.txt" --stderr "$dir/stderr.txt" "$dest" >"$dir/open.txt" 2>&1; then
-    # Fallback when open cannot pick the slice: start the binary in the GUI session of this user.
-    echo "open --arch failed, falling back to launchctl asuser" >>"$dir/open.txt"
-    # shellcheck disable=SC2024 # the log files belong to this user on purpose
-    sudo -n launchctl asuser "$(id -u)" sudo -n -u "$(id -un)" /usr/bin/arch "-$arch" "$bin" \
-      >"$dir/stdout.txt" 2>"$dir/stderr.txt" &
-  fi
+  method="$(start_slice "$arch" "$dir")"
   while [ $seconds -lt 15 ]; do
     pid="$(app_pid)"
     [ -n "$pid" ] && break
@@ -157,26 +180,30 @@ launch_slice() {
   if [ -z "$pid" ]; then
     reasons="did not start within 15 s"
   else
+    sleep 2 # let dyld finish mapping before lsof looks
     lsof -p "$pid" >"$dir/lsof.txt" 2>&1
     if grep -Eq 'libRosettaRuntime|/oah/' "$dir/lsof.txt"; then translated=yes; fi
+    # Sparkle is linked at launch, so it is mapped once dyld bound every library of the app.
+    if grep -q 'Sparkle.framework' "$dir/lsof.txt"; then frameworks=yes; fi
     if [ "$arch" = x86_64 ] && [ "$translated" != yes ]; then reasons="$reasons; not running under Rosetta"; fi
     if [ "$arch" = arm64 ] && [ "$translated" = yes ]; then reasons="$reasons; translated although arm64 was asked for"; fi
-    seconds=0
+    seconds=2
     while [ $seconds -lt "$alive" ] && kill -0 "$pid" 2>/dev/null; do
       sleep 1
       seconds=$((seconds + 1))
     done
-    ps -o pid,etime,rss,command -p "$pid" >"$dir/ps.txt" 2>&1
+    ps -o pid,ppid,etime,rss,command -p "$pid" >"$dir/ps.txt" 2>&1
     if kill -0 "$pid" 2>/dev/null; then
+      if [ "$frameworks" != yes ]; then reasons="$reasons; Sparkle.framework not mapped (lsof.txt)"; fi
       kill -TERM "$pid" 2>/dev/null
-      local waited=0
+      waited=0
       while kill -0 "$pid" 2>/dev/null && [ $waited -lt 10 ]; do
         sleep 1
         waited=$((waited + 1))
       done
       kill -KILL "$pid" 2>/dev/null
     else
-      reasons="$reasons; exited after $seconds s (window ${alive} s)"
+      reasons="$reasons; exited after about $seconds s (window ${alive} s)"
     fi
   fi
   sleep 3 # crash reports and log lines land a little later
@@ -185,6 +212,9 @@ launch_slice() {
     >"$dir/unified.log" 2>&1
   if grep -Eiq 'dyld|Symbol not found|Library not loaded|image not found' "$dir/stderr.txt" 2>/dev/null; then
     reasons="$reasons; dyld error on stderr"
+    if grep -q 'mapped file has no Team ID' "$dir/stderr.txt"; then
+      reasons="$reasons (library validation rejected an ad-hoc signed framework: an ad-hoc build needs ENABLE_HARDENED_RUNTIME=NO, a hardened build a Team ID signature)"
+    fi
   fi
   if grep -Eq 'Symbol not found|Library not loaded|dyld\[[0-9]+\]|DYLD, ' "$dir/unified.log"; then
     reasons="$reasons; dyld error in the unified log"
@@ -194,9 +224,9 @@ launch_slice() {
   if [ -n "$(ls -A "$dir/crash" 2>/dev/null)" ]; then reasons="$reasons; crash report written"; fi
   reasons="${reasons#; }"
   if [ -z "$reasons" ]; then
-    pass "launch $arch: alive ${alive} s, translated=$translated, no dyld errors, no crash report"
+    pass "launch $arch ($method): pid $pid alive ${alive} s, translated=$translated, frameworks mapped, no dyld errors, no crash report, $(grep -c . "$dir/unified.log") unified log lines"
   else
-    fail "launch $arch: $reasons (translated=$translated)"
+    fail "launch $arch ($method): $reasons (translated=$translated)"
   fi
 }
 

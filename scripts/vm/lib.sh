@@ -23,6 +23,15 @@ if [[ -n "${_VM_LAB_SH_LOADED:-}" ]]; then
 fi
 _VM_LAB_SH_LOADED=1
 
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
+load_brand
+
+# VM names follow the slug of scripts/brand.env (after scripts/rename-app.sh, rename the VMs with `tart rename`):
+# VM_MONTEREY is the macOS 12 guest of the smoke test, VM_DEV the macOS 27 + Xcode guest of the integration suite.
+VM_MONTEREY="${VM_MONTEREY:-$APP_SLUG-monterey}"
+VM_DEV="${VM_DEV:-$APP_SLUG-dev}"
+
 VM_LAB_ROOT="${VM_LAB_ROOT:-/Volumes/Data/tart}"
 TART_BIN="${TART_BIN:-$VM_LAB_ROOT/tart.app/Contents/MacOS/tart}"
 TART_HOME="${TART_HOME:-$VM_LAB_ROOT/home}"
@@ -84,17 +93,17 @@ lab_validate_remote_path() {
   fi
 }
 
-# Default size per VM (16 GB host shared with other jobs): keyvi-dev and its clones 6144 MB and 4 CPUs,
-# everything else (keyvi-monterey and its clones) 4096 MB and 2 CPUs.
+# Default size per VM (16 GB host shared with other jobs): VM_DEV and its clones 6144 MB and 4 CPUs,
+# everything else (VM_MONTEREY and its clones) 4096 MB and 2 CPUs.
 lab_default_memory() {
   case "$1" in
-    keyvi-dev | keyvi-dev-*) echo 6144 ;;
+    "$VM_DEV" | "$VM_DEV"-*) echo 6144 ;;
     *) echo 4096 ;;
   esac
 }
 lab_default_cpus() {
   case "$1" in
-    keyvi-dev | keyvi-dev-*) echo 4 ;;
+    "$VM_DEV" | "$VM_DEV"-*) echo 4 ;;
     *) echo 2 ;;
   esac
 }
@@ -167,7 +176,7 @@ lab_ensure_key() {
   local key="$VM_LAB_KEYS/id_ed25519"
   if [[ ! -f "$key" || ! -f "$key.pub" ]]; then
     lab_log "creating the lab SSH key $key"
-    ssh-keygen -q -t ed25519 -N '' -C keyvi-vm-lab -f "$key" </dev/null >/dev/null || return 1
+    ssh-keygen -q -t ed25519 -N '' -C "$APP_SLUG-vm-lab" -f "$key" </dev/null >/dev/null || return 1
   fi
   chmod 600 "$key" || return 1
 }
