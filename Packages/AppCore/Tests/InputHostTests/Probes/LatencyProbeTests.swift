@@ -146,6 +146,23 @@ struct LatencyProbeMathTests {
         #expect(result.decideToPostedP99Microseconds == 524)
     }
 
+    /// W3-A: the probe's own histogram has gate-aligned sub-buckets, so T2 is the 10 us bucket's upper end, not
+    /// the log2 bucket's; the difference keeps only the run's samples in both layers.
+    @Test func t2UsesTheSubBucketsOfTheProbeHistogram() {
+        let histogram = Log2Histogram(subBuckets: true)
+        histogram.record(nanoseconds: 2_000_000)  // before the run: must not count
+        let before = histogram.snapshot()
+        for _ in 0..<9 { histogram.record(nanoseconds: 400_000) }  // sub-bucket (390 us, 400 us]
+        histogram.record(nanoseconds: 2_999_999)  // (2.95 ms, 3 ms]
+        let run = LatencyProbeMath.difference(histogram.snapshot(), before)
+        #expect(run.count == 10 && run.subBuckets?.counts.reduce(0, +) == 10)
+        let result = LatencyProbeMath.result(profile: .normal, baseline: [], measured: [], decideToPosted: run)
+        #expect(result.decideToPostedP50Microseconds == 400)
+        #expect(result.decideToPostedP99Microseconds == 3_000)
+        let mismatched = LatencyProbeMath.difference(run, Log2Histogram().snapshot())
+        #expect(mismatched.subBuckets == nil && mismatched.count == 10)
+    }
+
     @Test func durationsConvertToMicroseconds() {
         #expect(LatencyProbeMath.microseconds(.milliseconds(120)) == 120_000)
         #expect(LatencyProbeMath.microseconds(.seconds(2)) == 2_000_000)
@@ -270,7 +287,7 @@ struct LatencyProbeSessionTests {
         for profile in result.results {
             #expect(profile.samples == 12)
             #expect(profile.endToEndDeltaP50Microseconds == 2_000)  // 3 ms edit minus 1 ms pass-through
-            #expect(profile.decideToPostedP99Microseconds == 524)  // only the run's own 400 µs samples
+            #expect(profile.decideToPostedP99Microseconds == 400)  // only the run's own 400 µs samples
         }
         let eventsPerProfile = 2 * (script.baseline.count + script.measured.count)
         #expect(poster.posted.count == 3 * eventsPerProfile)

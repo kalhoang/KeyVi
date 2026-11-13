@@ -96,6 +96,32 @@ private func gate(_ name: String, _ value: Double) -> PlatformMetric {
         #expect(HistogramPercentile.nanoseconds(HistogramSnapshot(buckets: zero), 0.5) == 1)
     }
 
+    /// W3-A: T2 and T3 read the gate-aligned sub-buckets of the app's decide-to-posted histograms, so the gate
+    /// decision is exact at 3 ms (T2), 10 ms and 15 ms (T3): a p99 at the gate passes, one nanosecond above fails.
+    @Test func gateDecisionsAreExactWithSubBuckets() throws {
+        func value(_ name: String, slow: UInt64) throws -> Double {
+            let metrics = PlatformMetrics()
+            let histogram = name == "T2.p99" ? metrics.decideToPosted : metrics.decideToPostedWithAX
+            for _ in 0..<99 { histogram.record(nanoseconds: 500_000) }
+            for _ in 0..<2 { histogram.record(nanoseconds: slow) }
+            let metric = try #require(PlatformGates.all.first { $0.name == name })
+            return try AppMetricSource.value(metric, from: metrics.snapshot()).get()
+        }
+        #expect(try value("T2.p99", slow: 3_000_000) <= 3)
+        #expect(try value("T2.p99", slow: 3_000_001) > 3)
+        #expect(try value("T3.p99", slow: 10_000_000) <= 10)
+        #expect(try value("T3.p99", slow: 10_000_001) > 10)
+        #expect(try value("T3.p99", slow: 15_000_000) <= 15)
+        #expect(try value("T3.p99", slow: 15_000_001) > 15)
+        // Above the sub-bucket range the log2 estimate never reads below 25 ms.
+        #expect(try value("T3.p99", slow: 26_000_000) >= 25)
+        var inconsistent = HistogramSnapshot.empty
+        inconsistent.buckets[21] = 100
+        inconsistent.subBuckets = SubBucketSnapshot(segments: LatencySubBuckets.segments, counts: [1])
+        let plain = HistogramPercentile.nanoseconds(HistogramSnapshot(buckets: inconsistent.buckets), 0.99)
+        #expect(HistogramPercentile.nanoseconds(inconsistent, 0.99) == plain)
+    }
+
     @Test func workloadKeysSwitchFocusEveryFewWords() {
         let keys = BenchWorkload.keys(keystrokes: 200, seed: 3)
         #expect(keys.count >= 200 && keys.first == "command+1")

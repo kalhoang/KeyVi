@@ -59,8 +59,8 @@ enum LatencyProbeMath {
         let edits = measured.compactMap(\.latencyNanoseconds)
         return LatencyProbeResult.ProfileResult(
             profile: profile,
-            decideToPostedP50Microseconds: (decideToPosted.percentile(0.5) ?? 0) / 1_000,
-            decideToPostedP99Microseconds: (decideToPosted.percentile(0.99) ?? 0) / 1_000,
+            decideToPostedP50Microseconds: (decideToPosted.precisePercentile(0.5) ?? 0) / 1_000,
+            decideToPostedP99Microseconds: (decideToPosted.precisePercentile(0.99) ?? 0) / 1_000,
             endToEndDeltaP50Microseconds: delta(edits, base, 0.5) / 1_000,
             endToEndDeltaP99Microseconds: delta(edits, base, 0.99) / 1_000,
             samples: edits.count)
@@ -81,13 +81,21 @@ enum LatencyProbeMath {
         return sorted[min(rank, sorted.count) - 1]
     }
 
-    /// Per-bucket difference of two snapshots of the same histogram (the run's own samples).
+    /// Per-bucket difference of two snapshots of the same histogram (the run's own samples), sub-buckets
+    /// included when both snapshots have the same layout.
     static func difference(_ after: HistogramSnapshot, _ before: HistogramSnapshot) -> HistogramSnapshot {
-        let buckets = after.buckets.indices.map { index in
-            let earlier = index < before.buckets.count ? before.buckets[index] : 0
-            return after.buckets[index] > earlier ? after.buckets[index] - earlier : 0
+        var subBuckets: SubBucketSnapshot?
+        if let later = after.subBuckets, let earlier = before.subBuckets, later.segments == earlier.segments {
+            subBuckets = SubBucketSnapshot(segments: later.segments, counts: subtract(later.counts, earlier.counts))
         }
-        return HistogramSnapshot(buckets: buckets)
+        return HistogramSnapshot(buckets: subtract(after.buckets, before.buckets), subBuckets: subBuckets)
+    }
+
+    private static func subtract(_ after: [UInt64], _ before: [UInt64]) -> [UInt64] {
+        after.indices.map { index in
+            let earlier = index < before.count ? before[index] : 0
+            return after[index] > earlier ? after[index] - earlier : 0
+        }
     }
 
     static func microseconds(_ duration: Duration) -> UInt64 {
