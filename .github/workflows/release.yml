@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-App-Pending
 # Release pipeline (QA-R30, QA-R31, PLT-R1103), triggered by a v* tag. In order:
+#   0. the tag names a commit on main or release/x.y, and no unimplemented() call is left in product code
 #   1. re-run the full CI suite on the tagged commit and require a green integration run on it
 #   2. build the universal Release app, signed with Developer ID in a temporary keychain
 #   3. verify the signature and that the designated requirement is unchanged against the previous
@@ -62,6 +63,8 @@ jobs:
             echo "::error::$GITHUB_SHA is not on origin/main or origin/release/x.y"
             exit 1
           fi
+      - name: No unimplemented() left in AppCore or App sources (release-build guard)
+        run: scripts/check-unimplemented.sh
 
   ci:
     name: CI suite on the tag

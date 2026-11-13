@@ -188,6 +188,82 @@ expect 1 "different values fail" \
   python3 -I "$S/check-brand-sync.py" --xcconfig "$T/sync.xcconfig" --env "$T/sync.env"
 contains "difference named" "APP_SUPPORT_EMAIL differs"
 
+echo "== check-unimplemented.sh (release-build guard)"
+mkdir -p "$T/x/Packages/AppCore/Sources/AppModel" "$T/x/Packages/AppCore/Sources/Diagnostics" "$T/x/App/Sources"
+cat >"$T/x/Packages/AppCore/Sources/AppModel/Unimplemented.swift" <<'EOF'
+public func unimplemented(_ function: StaticString = #function) -> Never { fatalError() }
+EOF
+cat >"$T/x/Packages/AppCore/Sources/Diagnostics/Done.swift" <<'EOF'
+// Replaced the old unimplemented() body.
+func ready() -> Int { 1 }  // was: unimplemented()
+let label = "notunimplemented(x)".count
+EOF
+expect 0 "definition, comments and longer identifiers are not calls" "$S/check-unimplemented.sh" --root "$T/x"
+cat >"$T/x/App/Sources/Left.swift" <<'EOF'
+func later() -> Int { unimplemented() }
+EOF
+expect 1 "a remaining call fails the guard" "$S/check-unimplemented.sh" --root "$T/x"
+contains "finding names file and line" "App/Sources/Left.swift:1:"
+expect 0 "--report lists without failing" "$S/check-unimplemented.sh" --root "$T/x" --report
+contains "report counts the calls" "1 call(s) left"
+
+echo "== compat-dry-run.sh (no events, skipped until the product exists)"
+D="$T/d"
+mkdir -p "$D/Packages/AppCore" "$D/bin"
+expect 0 "skipped without the compat-harness product" "$S/compat-dry-run.sh" --root "$D"
+contains "skip reason: product" "no compat-harness product"
+printf '.executable(name: "compat-harness", targets: ["CompatHarness"]),\n' >"$D/Packages/AppCore/Package.swift"
+expect 0 "skipped without scenario files" "$S/compat-dry-run.sh" --root "$D"
+contains "skip reason: scenarios" "no scenario files"
+mkdir -p "$D/compat/scenarios"
+printf '{"id": "x"}\n' >"$D/compat/scenarios/x.json"
+# A fake swift records its arguments, so the test proves the harness gets --dry-run and nothing is built.
+cat >"$D/bin/swift" <<'EOF'
+#!/bin/sh
+printf 'args: %s\n' "$*"
+printf '%s\n' "${FAKE_HARNESS_OUTPUT:-plan: 1 scenario}"
+exit "${FAKE_HARNESS_STATUS:-0}"
+EOF
+chmod +x "$D/bin/swift"
+expect 0 "dry run passes when the harness plans every scenario" env PATH="$D/bin:$PATH" "$S/compat-dry-run.sh" --root "$D"
+contains "harness invoked by product name with --dry-run" "compat-harness run --scenarios $D/compat/scenarios --dry-run"
+expect 1 "a stub harness fails once scenarios exist" \
+  env PATH="$D/bin:$PATH" FAKE_HARNESS_OUTPUT="compat-harness: not implemented" "$S/compat-dry-run.sh" --root "$D"
+expect 1 "a failing harness fails" env PATH="$D/bin:$PATH" FAKE_HARNESS_STATUS=3 "$S/compat-dry-run.sh" --root "$D"
+expect 1 "argument override without --dry-run is refused" \
+  env PATH="$D/bin:$PATH" COMPAT_HARNESS_DRY_RUN_ARGS="run --scenarios x" "$S/compat-dry-run.sh" --root "$D"
+
+echo "== check-dco.sh (ADR 0401)"
+G="$T/g"
+mkdir -p "$G/Packages/VietnameseEngine" "$G/docs"
+git -C "$G" init -q
+git -C "$G" config user.name "Ada Contributor"
+git -C "$G" config user.email "ada@example.org"
+git -C "$G" config commit.gpgsign false
+printf 'base\n' >"$G/docs/a.md"
+git -C "$G" add -A && git -C "$G" commit -q -m "chore: base"
+dco_base="$(git -C "$G" rev-parse HEAD)"
+printf 'doc\n' >>"$G/docs/a.md"
+git -C "$G" commit -q -am "docs: unsigned change outside the engine"
+printf 'x\n' >"$G/Packages/VietnameseEngine/E.swift"
+git -C "$G" add -A && git -C "$G" commit -q -s -m "feat: signed engine change"
+expect 0 "signed engine commits pass; other paths are not checked" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "one engine commit checked" "1 commit(s) touching Packages/VietnameseEngine Packages/VietnameseEngineFuzz"
+printf 'y\n' >>"$G/Packages/VietnameseEngine/E.swift"
+git -C "$G" commit -q -am "fix: engine change" -m "Signed-off-by: Someone Else <else@example.org>"
+expect 1 "a sign-off by someone else fails" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "expected sign-off named" "expected: Signed-off-by: Ada Contributor <ada@example.org>"
+git -C "$G" commit -q --amend -s --no-edit
+expect 0 "an added matching sign-off passes" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+expect 1 "unknown revisions are rejected" "$S/check-dco.sh" --repo "$G" --base nope --head HEAD
+mkdir -p "$G/Packages/VietnameseEngineFuzz"
+printf 'z\n' >"$G/Packages/VietnameseEngineFuzz/F.swift"
+git -C "$G" add -A && git -C "$G" commit -q -m "test: unsigned fuzz change"
+expect 1 "the MPL-2.0 fuzz package is checked by default" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD
+contains "unsigned fuzz commit named" "test: unsigned fuzz change"
+expect 0 "--path limits the check" "$S/check-dco.sh" --repo "$G" --base "$dco_base" --head HEAD \
+  --path Packages/VietnameseEngine
+
 echo "== check-rules / forward delete on a missing rules file"
 expect 0 "check-rules passes when compat/rules.json is absent" python3 -I "$S/check-rules.py" --rules "$T/none.json"
 expect 0 "forward-delete passes when absent" python3 -I "$S/check-no-forward-delete.py" "$T/none.json"

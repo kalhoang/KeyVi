@@ -32,7 +32,9 @@
    beta 1 to 98. The appcast helper rejects a duplicate build and a build lower than the newest build of
    the same channel.
 
-5. **Release gates** in `release.yml`: tag commit on `main` or `release/x.y`; the full `ci.yml` suite
+5. **Release gates** in `release.yml`: tag commit on `main` or `release/x.y`; no `unimplemented(` call left
+   in `Packages/AppCore/Sources` or `App/Sources` (`scripts/check-unimplemented.sh`, the definition in
+   `AppModel` excluded; `ci.yml` only reports the count); the full `ci.yml` suite
    (reusable workflow); the latest `integration.yml` run on the commit green (waits for a running one,
    `scripts/require-integration-green.sh`); rules `reviewBy` not more than 30 days overdue (PLT-R506);
    for stable releases, Tier 1 compatibility rows verified within 90 days (section 13.8).
@@ -49,8 +51,10 @@
   `ASC_API_ISSUER_ID` stored in the environment only. The App Store Connect key needs the Developer role.
 - Tag ruleset: only Pa may create or delete `v*` tags.
 - Branch protection on `main` (QA-R25): required checks from `ci.yml` (`Engine on Linux`, `Scripts and
-  workflows`, `macOS lint, tests and coverage`, `macOS universal Debug build (unsigned)`), linear history,
-  signed commits, no force push.
+  workflows`, `Architecture contracts in sync`, `macOS lint, tests and coverage`, `macOS universal Debug
+  build (unsigned)`, and `DCO sign-off on engine commits (external pull requests)`, which reports
+  "skipped", and therefore passes, on pull requests that do not come from a fork; ADR 0401), linear
+  history, signed commits, no force push.
 - Self-hosted runner (QA-R13): register the integration Mac with labels `self-hosted, macOS, ARM64,
   tcc-granted` in a runner group limited to this repository and to the workflow `integration.yml`; in
   Actions settings require approval for all outside collaborators and keep "Run workflows from fork pull

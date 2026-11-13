@@ -14,6 +14,17 @@ QA-R61 says sign-off depends on the app licence. If the app is permissive or GPL
 3. The clean-room attestation in the pull request template (QA-R62) applies to all pull requests, including those from the maintainer.
 4. AI-assisted contributions follow the same rules (QA-R64).
 
+## Enforcement (added 2026-11-13)
+
+- `scripts/check-dco.sh` checks every non-merge commit of a pull request that touches
+  `Packages/VietnameseEngine/` or `Packages/VietnameseEngineFuzz/` (both MPL-2.0, CONTRIBUTING.md section 3): it
+  needs a `Signed-off-by:` trailer whose e-mail equals the commit author's e-mail. Commits that touch
+  neither package are not checked.
+- The `dco` job of `.github/workflows/ci.yml` runs it on pull requests from forks, which is what "external"
+  means here. Branches pushed to this repository by the maintainer are not checked, so the existing
+  history never has to be rewritten to add sign-offs (CLR-R12). When item 2 is superseded, widen the job's
+  paths or condition in the same change as the new ADR.
+
 ## Consequences
 
 - No contributor can be locked into terms that the app licence decision might later change.
