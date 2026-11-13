@@ -782,6 +782,24 @@ if [[ -x "$I/apps/$display_name.app/Contents/MacOS/$display_name" && -d "$I/apps
 else
   ko "both apps installed at the fixed path"
 fi
+if grep -Fq "CODE_SIGN_IDENTITY=" "$T/out"; then
+  ko "the default build keeps the identity of Config/Integration.xcconfig"
+else
+  ok "the default build keeps the identity of Config/Integration.xcconfig"
+fi
+# INTEGRATION_CODE_SIGN_IDENTITY=- (the tart VM, integration-suite.md section 10): ad hoc, hardened runtime off.
+expect 0 "an ad-hoc test build needs no Apple Development identity" env COMPAT_HARNESS_LIVE=1 \
+  INTEGRATION_CODE_SIGN_IDENTITY=- FAKE_BRAND_ENV="$S/brand.env" FAKE_BINARY_TEXT="$marker" PATH="$I/bin:$PATH" \
+  INTEGRATION_APP_DIR="$I/apps" INTEGRATION_DERIVED_DATA="$I/dd" "$S/run-integration.sh" build --out "$I/out"
+contains "ad hoc without the hardened runtime for the app" "-scheme App -configuration Integration -derivedDataPath $I/dd -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= OTHER_CODE_SIGN_FLAGS= ENABLE_HARDENED_RUNTIME=NO build"
+contains "TestHost stays as it is" "-scheme TestHost -configuration Debug -derivedDataPath $I/dd -disableAutomaticPackageResolution ONLY_ACTIVE_ARCH=YES build"
+contains "the ad-hoc build is named" "ad hoc"
+expect 1 "only - is accepted as an override identity" env COMPAT_HARNESS_LIVE=1 \
+  INTEGRATION_CODE_SIGN_IDENTITY="Apple Development" FAKE_BRAND_ENV="$S/brand.env" FAKE_BINARY_TEXT="$marker" \
+  PATH="$I/bin:$PATH" INTEGRATION_APP_DIR="$I/apps" INTEGRATION_DERIVED_DATA="$I/dd" "$S/run-integration.sh" build \
+  --out "$I/out"
+contains "names the accepted value" "INTEGRATION_CODE_SIGN_IDENTITY accepts only -"
+if grep -Fq "xcodebuild " "$T/out"; then ko "a bad identity stops before xcodebuild"; else ok "a bad identity stops before xcodebuild"; fi
 build_with_running() { # build_with_running <expected exit> <name> <running executable> [VAR=value...]
   local want="$1" name="$2" running="$3"
   shift 3

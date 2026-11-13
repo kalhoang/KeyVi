@@ -39,9 +39,9 @@ import VietnameseEngine
             try fileSystem.writeAtomically(
                 data, to: directory.appendingPathComponent(name), permissions: .ownerOnlyFile)
         }
-        let urls = files.map { directory.appendingPathComponent($0.0) } + [directory.appendingPathComponent("missing")]
+        let urls = files.map { directory.appendingPathComponent($0.0) }
         let report = PrivacyScanner().scan(files: urls, fileSystem: fileSystem, log: "typed kanaryzqx here")
-        #expect(report.scannedFiles == 4 && report.unreadable == ["/app/missing"] && !report.passed)
+        #expect(report.scannedFiles == 4 && report.unreadable.isEmpty && report.vanished.isEmpty && !report.passed)
         #expect(
             Set(report.findings.map(\.location)) == [
                 "/app/log.jsonl", "/app/prefs.plist", "/app/nfd.txt", "unified log",
@@ -49,6 +49,27 @@ import VietnameseEngine
         #expect(report.findings.first { $0.location == "/app/prefs.plist" }?.encoding == "utf16be-nfc-upper")
         let clean = PrivacyScanner().scan(files: [urls[0]], fileSystem: fileSystem, log: "nothing")
         #expect(clean.passed && clean.findings.isEmpty && clean.scannedLogBytes == 7)
+    }
+
+    /// A listed file that is gone when it is read (the app pruned a settings backup meanwhile, the first VM run's
+    /// `backups/app-modes.json.v1.<timestamp>.json`) left nothing on disk: it is reported, but it does not fail the
+    /// scan. A file that is still there but cannot be read does.
+    @Test func aFileGoneBeforeItIsReadIsVanishedAndOnlyAnUnreadableFileFails() throws {
+        let fileSystem = InMemoryFileSystem()
+        let directory = URL(fileURLWithPath: "/app")
+        try fileSystem.createDirectory(at: directory, permissions: .ownerOnlyDirectory)
+        let settings = directory.appendingPathComponent("settings.json")
+        try fileSystem.writeAtomically(Data("{}".utf8), to: settings, permissions: .ownerOnlyFile)
+        let pruned = directory.appendingPathComponent("backups/app-modes.json.v1.20261113T150834Z.json")
+        let vanished = PrivacyScanner().scan(files: [settings, pruned], fileSystem: fileSystem, log: "")
+        #expect(vanished.vanished == [pruned.path] && vanished.unreadable.isEmpty)
+        #expect(vanished.scannedFiles == 1 && vanished.passed)
+        // A directory where a file was listed exists but has no bytes to read: unreadable, so not checked.
+        let folder = directory.appendingPathComponent("backups")
+        try fileSystem.createDirectory(at: folder, permissions: .ownerOnlyDirectory)
+        let unreadable = PrivacyScanner().scan(files: [settings, folder], fileSystem: fileSystem, log: "")
+        #expect(unreadable.unreadable == [folder.path] && unreadable.vanished.isEmpty)
+        #expect(unreadable.scannedFiles == 1 && !unreadable.passed)
     }
 
     /// `PrivacyCanary.canaries` lists the key script and every display the engine shows once the unique tail

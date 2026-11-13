@@ -36,6 +36,7 @@ final class CGEventKeySink: KeyEventSink, @unchecked Sendable {
 enum AX {
     static let timeout: Float = 1
     static let maximumDepth = 24
+    static let elementWaitNanoseconds: UInt64 = 5_000_000_000
 
     static func application(_ bundle: BundleKey) throws -> AXUIElement {
         guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first else {
@@ -72,6 +73,76 @@ enum AX {
         guard let focused = attribute(app, kAXFocusedUIElementAttribute), CFGetTypeID(focused) == AXUIElementGetTypeID()
         else { throw LiveError.elementNotFound("focused element") }
         return focused as! AXUIElement  // type ID checked on the line above
+    }
+
+    /// Lookup by identifier, retried for up to `elementWaitNanoseconds` while the app starts or builds its window:
+    /// `launch` returns once the process runs, before its controls exist (the first VM run failed `setSecureInput`
+    /// right after TestHost's launch, integration-suite.md section 10).
+    static func element(_ identifier: String, in bundle: BundleKey, sleeper: any HarnessSleeper) async throws
+        -> AXUIElement
+    {
+        let found = try await HarnessPolling.firstValue(timeoutNanoseconds: elementWaitNanoseconds, sleeper: sleeper) {
+            try? element(identifier, in: bundle)
+        }
+        guard let found else { throw LiveError.elementNotFound(identifier) }
+        return found
+    }
+
+    /// Brings the element's window to the front and makes it the main window, so the keys go there: a field of a
+    /// window behind takes AX focus without its window becoming key (the first VM runs typed the second window's
+    /// scenarios into TestHost's main window). Best effort: an app without AX windows keeps its own order.
+    static func raiseWindow(of element: AXUIElement) {
+        guard let window = attribute(element, kAXWindowAttribute), CFGetTypeID(window) == AXUIElementGetTypeID()
+        else { return }
+        let axWindow = window as! AXUIElement  // type ID checked on the line above
+        _ = AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+        _ = AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, kCFBooleanTrue)
+    }
+
+    /// Frontmost app and the system-wide focused element (role, subrole, identifier, its window's identifier), never
+    /// a value and never a window title: titles are content (ARCHITECTURE.md, PLT-R901), and the report is written
+    /// to the evidence directory whichever app the scenario targets.
+    static func focusReport() -> [String] {
+        let systemWide = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(systemWide, timeout)
+        var lines = ["frontmost: " + (NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "none")]
+        if let app = attribute(systemWide, kAXFocusedApplicationAttribute),
+            CFGetTypeID(app) == AXUIElementGetTypeID()
+        {
+            var pid: pid_t = 0
+            AXUIElementGetPid(app as! AXUIElement, &pid)  // type ID checked above
+            lines.append(
+                "focused application: " + (NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? "?"))
+        }
+        guard let focused = attribute(systemWide, kAXFocusedUIElementAttribute),
+            CFGetTypeID(focused) == AXUIElementGetTypeID()
+        else { return lines + ["focused element: none"] }
+        let element = focused as! AXUIElement  // type ID checked above
+        for (label, name) in [
+            ("role", kAXRoleAttribute), ("subrole", kAXSubroleAttribute), ("identifier", kAXIdentifierAttribute),
+        ] {
+            lines.append("focused " + label + ": " + (attribute(element, name) as? String ?? "none"))
+        }
+        if let window = attribute(element, kAXWindowAttribute), CFGetTypeID(window) == AXUIElementGetTypeID() {
+            lines.append(
+                "focused window identifier: "
+                    + (attribute(window as! AXUIElement, kAXIdentifierAttribute) as? String ?? "none"))
+        }
+        var settable: DarwinBoolean = false
+        AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
+        lines.append("focused value settable: " + String(settable.boolValue))
+        return lines
+    }
+
+    /// Whether the app's focused element takes text (its value is settable): a web mirror hands focus to the page
+    /// a moment after the AX focus request.
+    static func focusedElementIsEditable(in bundle: BundleKey) -> Bool {
+        guard let app = try? application(bundle), let focused = attribute(app, kAXFocusedUIElementAttribute),
+            CFGetTypeID(focused) == AXUIElementGetTypeID()
+        else { return false }
+        var settable: DarwinBoolean = false
+        let result = AXUIElementIsAttributeSettable(focused as! AXUIElement, kAXValueAttribute as CFString, &settable)
+        return result == .success && settable.boolValue
     }
 
     static func set(_ element: AXUIElement, _ name: String, _ value: CFTypeRef) throws {

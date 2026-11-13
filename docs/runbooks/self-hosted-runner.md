@@ -197,11 +197,12 @@ LaunchAgent of Pa's user runs every 5 minutes, asks
 a time (`lab.sh` refuses a second), so a smoke test and a job never overlap.
 
 Inside the job, `scripts/run-integration.sh build` builds the test build with the Apple Development identity of
-`Config/Integration.xcconfig`. The VM holds no identity, so either (a) Pa imports the Apple Development
-certificate into the base image's login keychain (allowed by section 2 rule 4: it is not a release secret), which
-also keeps the grants valid across builds (section 4), or (b) the build takes an ad-hoc override and the job runs
-`grant-tcc.sh` after every build, as `scripts/vm/integration-dev.sh` does today. Pa decides; (b) needs
-`scripts/run-integration.sh` to accept the override (a request to the scripts owner).
+`Config/Integration.xcconfig`. The VM holds no identity. Decision of 2026-11-13 (integrator, under Pa's delegation,
+Q9): the identity stays in the host keychain only, so the job builds with the ad-hoc override
+`INTEGRATION_CODE_SIGN_IDENTITY=- scripts/run-integration.sh build` (hardened runtime off, integration-suite.md
+section 2 step 6) and runs `grant-tcc.sh` after every build, exactly as `scripts/vm/guest/integration-guest.sh`
+does. Importing the certificate into the base image's login keychain instead (it is not a release secret) would
+keep the grants valid across builds (section 4); that stays Pa's option.
 
 ### 8.5 Security
 

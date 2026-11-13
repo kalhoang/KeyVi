@@ -6,6 +6,7 @@
 
 public import AppModel
 public import Foundation
+public import RealtimeSupport
 
 /// Operating-system actions behind the setup steps. Runner only.
 public protocol SystemActions: Sendable {
@@ -54,11 +55,13 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     private let terminal: TerminalCapture?
     private let sleeper: any HarnessSleeper
     private let hooks: (any AppHookClient)?
+    /// Measures the focus refresh wait, so slow hook requests count against its limit.
+    private let clock: any MonotonicClock
 
     /// `hooks` nil: `testHook` steps report `needsHuman` (the app under test is not the hooks build).
     public init(
         system: any SystemActions, targets: HarnessTargets, webDrivers: WebDriverClients, terminal: TerminalCapture?,
-        sleeper: any HarnessSleeper, hooks: (any AppHookClient)? = nil
+        sleeper: any HarnessSleeper, hooks: (any AppHookClient)? = nil, clock: any MonotonicClock = MachClock()
     ) {
         self.system = system
         self.targets = targets
@@ -66,6 +69,52 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
         self.terminal = terminal
         self.sleeper = sleeper
         self.hooks = hooks
+        self.clock = clock
+    }
+
+    /// Pause after an AX focus before the keys: the target app moves focus on its next main-loop turn (TestHost's
+    /// web mirrors hand it to the page) and the app under test learns of the new field through AX notifications,
+    /// which its per-field and per-window rules depend on (keys typed at once were lost in the first VM run).
+    public static let focusSettleNanoseconds: UInt64 = 300_000_000
+
+    /// Longest wait for the app under test to publish the snapshot of a new focus, and the poll interval.
+    public static let focusRefreshWaitNanoseconds: UInt64 = 2_000_000_000
+    public static let focusRefreshPollNanoseconds: UInt64 = 100_000_000
+    public static let focusRefreshQuietNanoseconds: UInt64 = 300_000_000
+
+    /// The app's T6 count (focus snapshots published since launch or the last metrics reset); nil without hooks.
+    public func focusRefreshCount() async -> UInt64? {
+        guard let hooks else { return nil }
+        return try? await hooks.state().metrics.focusRefresh.count
+    }
+
+    /// Polls the hooks until the T6 count grew past `count` and then held still for `focusRefreshQuietNanoseconds`,
+    /// at most `focusRefreshWaitNanoseconds`: the first key must be decided on the new field's rule (PLT-R382
+    /// processes a key with the current snapshot, it never waits; the VM runs left the first word untransformed
+    /// when the keys came first), and one focus request can publish more than one snapshot (a web view first,
+    /// then the element in its page). Best effort and bounded (QA-R11): the limit is measured on `clock` as well as
+    /// by the polls, so slow requests count against it, and a failed request ends the wait (an app that does not
+    /// answer the hooks publishes no focus either; each failure already cost the channel's timeout).
+    public func awaitFocusRefresh(after count: UInt64?) async {
+        guard let hooks, let count else { return }
+        let start = clock.now().nanoseconds
+        var waited: UInt64 = 0
+        var last = count
+        var quiet: UInt64 = 0
+        while waited < Self.focusRefreshWaitNanoseconds,
+            clock.now().nanoseconds &- start < Self.focusRefreshWaitNanoseconds
+        {
+            guard let current = try? await hooks.state().metrics.focusRefresh.count else { return }
+            if current != last {
+                last = current
+                quiet = 0
+            } else if current > count, quiet >= Self.focusRefreshQuietNanoseconds {
+                return
+            }
+            guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil else { return }
+            waited += Self.focusRefreshPollNanoseconds
+            quiet += Self.focusRefreshPollNanoseconds
+        }
     }
 
     public func prepare(_ scenario: Scenario) async throws {
@@ -106,7 +155,10 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
             if scenario.readback == .webdriver {
                 try await webDrivers.client(for: target).click(selector: field)
             } else {
+                let before = await focusRefreshCount()
                 try await system.focusField(identifier: field, in: target)
+                await awaitFocusRefresh(after: before)
+                try await sleeper.sleep(nanoseconds: Self.focusSettleNanoseconds)
             }
         case .selectInputSource:
             guard let source = value.flatMap(InputSourceID.init(rawValue:)) else {

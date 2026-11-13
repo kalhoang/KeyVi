@@ -54,8 +54,26 @@ struct FakeReadback: ScenarioReadback {
     }
 }
 
+/// A field the app is still writing to: each read returns the next text, then the last one again.
+final class ChangingReadback: ScenarioReadback, Sendable {
+    private let texts: [String]
+    private let reads = Mutex(0)
+    init(_ texts: [String]) { self.texts = texts }
+    var readCount: Int { reads.withLock { $0 } }
+    func currentText(of scenario: Scenario) async throws -> String {
+        reads.withLock { count in
+            defer { count += 1 }
+            return texts[min(count, texts.count - 1)]
+        }
+    }
+}
+
 struct FakeSetup: ScenarioSetupPerformer {
     let steps = Recorder<Scenario.SetupStep>()
+    /// The counts `awaitFocusRefresh(after:)` received; `focusRefreshCount()` answers 3.
+    let focusWaits = Recorder<UInt64>()
+    func focusRefreshCount() async -> UInt64? { 3 }
+    func awaitFocusRefresh(after count: UInt64?) async { if let count { focusWaits.append(count) } }
     /// Scenario id of every performed step, in order.
     let scenarios = Recorder<String>()
     var failOn: Scenario.SetupStep.Action?

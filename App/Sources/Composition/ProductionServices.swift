@@ -73,10 +73,12 @@ final class DiagnosticsWiring {
         timers = maintenance.start(on: scheduler)
     }
 
-    /// Quit: write what is buffered (PRD-R46: events before a crash or quit stay explainable).
-    func flush() {
+    /// Quit: writes what is buffered (PRD-R46: events before a crash or quit stay explainable). Returned as an
+    /// operation so the quit runs it off the main actor (AppEnvironment+Quit.swift).
+    func flushOperation() -> @Sendable () -> Void {
         let logger = self.logger
-        utility.sync { logger.flush() }
+        let utility = self.utility
+        return { utility.sync { logger.flush() } }
     }
 }
 

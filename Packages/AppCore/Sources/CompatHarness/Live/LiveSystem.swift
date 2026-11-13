@@ -15,6 +15,8 @@ import TestSupport
 struct LiveSystemActions: SystemActions {
     /// Time a seeded history page gets to load before the next step.
     static let historySettleNanoseconds: UInt64 = 2_000_000_000
+    /// Longest wait for the focused element to take text after `focusField`.
+    static let editableFocusWaitNanoseconds: UInt64 = 2_000_000_000
 
     let targets: HarnessTargets
     let sleeper: any HarnessSleeper
@@ -47,7 +49,15 @@ struct LiveSystemActions: SystemActions {
 
     func focusField(identifier: String, in bundle: BundleKey) async throws {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first?.activate()
-        try AX.set(try AX.element(identifier, in: bundle), kAXFocusedAttribute, kCFBooleanTrue)
+        let element = try await AX.element(identifier, in: bundle, sleeper: sleeper)
+        AX.raiseWindow(of: element)
+        try AX.set(element, kAXFocusedAttribute, kCFBooleanTrue)
+        // A web mirror hands focus to the page on a later turn: wait (best effort) until the focused element takes
+        // text, so the keys do not reach the element focused before (the first VM runs left the first word raw).
+        _ = try await HarnessPolling.firstValue(timeoutNanoseconds: Self.editableFocusWaitNanoseconds, sleeper: sleeper)
+        {
+            AX.focusedElementIsEditable(in: bundle) ? true : nil
+        }
     }
 
     func selectInputSource(_ source: InputSourceID) async throws {
@@ -69,7 +79,7 @@ struct LiveSystemActions: SystemActions {
                 reason: "switch secure keyboard entry " + (enabled ? "on" : "off") + " in " + bundle.rawValue
                     + " by hand")
         }
-        let toggle = try AX.element(TestHostControls.secureInputToggle, in: bundle)
+        let toggle = try await AX.element(TestHostControls.secureInputToggle, in: bundle, sleeper: sleeper)
         let isOn = (AX.attribute(toggle, kAXValueAttribute) as? NSNumber)?.boolValue ?? false
         guard isOn != enabled else { return }
         let result = AXUIElementPerformAction(toggle, kAXPressAction as CFString)
@@ -81,10 +91,19 @@ struct LiveSystemActions: SystemActions {
         guard NSRunningApplication.runningApplications(withBundleIdentifier: bundle.rawValue).first != nil else {
             return
         }
-        let button = try AX.element(TestHostControls.resetFields, in: bundle)
-        let result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        let button = try await AX.element(TestHostControls.resetFields, in: bundle, sleeper: sleeper)
+        // A busy TestHost (just back from the Japanese input source, a page still loading) can miss the 1 s AX
+        // messaging timeout once (`cannotComplete`, seen in the VM): the press is retried before it fails.
+        var result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        for _ in 0..<Self.pressRetries where result == .cannotComplete {
+            try await sleeper.sleep(nanoseconds: Self.pressRetryNanoseconds)
+            result = AXUIElementPerformAction(button, kAXPressAction as CFString)
+        }
         guard result == .success else { throw LiveError.axFailure("press", result.rawValue) }
     }
+
+    static let pressRetries = 3
+    static let pressRetryNanoseconds: UInt64 = 500_000_000
 
     /// Opens a `.command` wrapper (`zsh -f <script> <capture>`) with the terminal app. VERIFY on the runner that
     /// iTerm2 and Ghostty run `.command` files like Terminal does.

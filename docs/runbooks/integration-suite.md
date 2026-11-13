@@ -61,7 +61,10 @@ These steps change system settings, so they are Pa's to do on the runner machine
    SIGKILL after `$INTEGRATION_QUIT_TIMEOUT` seconds, default 10). It passes `ONLY_ACTIVE_ARCH=YES` on the command
    line so the package targets build for the runner's architecture only. It refuses a build that does not answer the
    hooks (ADR 0502, "Integration hooks"). The workflows run the same step before every
-   job, so the runner always tests the commit it checked out. By hand, the build alone is
+   job, so the runner always tests the commit it checked out. A machine without the Apple Development identity
+   whose grants are renewed after every build (the tart VM, section 10) sets `INTEGRATION_CODE_SIGN_IDENTITY=-`:
+   the test build is then signed ad hoc with the hardened runtime off (an ad-hoc signature has no Team ID, so
+   library validation would refuse Sparkle); any other value stops before the build. By hand, the build alone is
    `xcodebuild -project App.xcodeproj -scheme App -configuration Integration build` after `xcodegen generate`.
    Never ship this build: `scripts/verify-release.sh` fails any app that contains the hooks.
 7. The same `build` step builds TestHost (Debug, ad hoc) into the same folder. It needs no permission.
@@ -89,7 +92,8 @@ These steps change system settings, so they are Pa's to do on the runner machine
       killed harness process skips the restore, see section 8);
    2. presses TestHost's Reset fields button, then runs the setup steps, types the keys at the scenario's timing
       profile, reads the field back through AX and asks the app for its state;
-   3. after the last scenario, scans the app's files and unified log for the canary tokens (section 4).
+   3. after the last scenario, quits the app (so its last flush is on disk and nothing is written while the scan
+      reads), then scans the app's files and unified log for the canary tokens (section 4).
 4. **Compatibility scenarios:** `compat-harness run --scenarios compat/scenarios --output .build/integration/compat`
    runs every scenario the same way, including the third-party apps.
 5. **Benchmarks:** `scripts/run-integration.sh bench`: `compat-harness bench --runs 5 --output
@@ -112,7 +116,7 @@ These steps change system settings, so they are Pa's to do on the runner machine
 | File | Content | Fails the run when |
 |---|---|---|
 | `tests/results.json`, `compat/results.json` | One entry per scenario: `pass`, `fail` or `needsHuman`, duration, `observedText`, `reason` (stage and error, never typed text) | Any `fail`, or a privacy finding |
-| `tests/privacy-report.json` (also `privacy` in `results.json`) | Files and log bytes scanned, files that could not be read, findings (location, canary token, encoding) | Any finding or unreadable file |
+| `tests/privacy-report.json` (also `privacy` in `results.json`) | Files and log bytes scanned, files that could not be read, files listed but gone before they were read (`vanished`), findings (location, canary token, encoding) | Any finding or unreadable file (a vanished file left nothing on disk and does not fail) |
 | `tests/app-settings-backup/` | The test build's settings files before the run | Never (restored automatically) |
 | `soak/soak-summary.json` | Keystrokes, failed chunks, footprint samples, M2 growth, stuck modifiers, watchdog trips, flushes, app restarted | Failed chunk, M2 over 5 MB/h or 25 % over the baseline, stuck modifier, crash, watchdog trip, flush in the normal profile |
 | `soak/soak-metrics.json` | M2 in the ADR 0502 format | (compared by the harness) |
@@ -165,6 +169,8 @@ baseline in a pull request labelled `perf-baseline` with the reason (QA-R15), as
 
 | Symptom | Cause and fix |
 |---|---|
+| `configure app: quit timed out: <bundle> was still running 10 s after the quit request` | The test build did not exit within 10 s of the quit request. The harness asks the process itself, so this is a real slow quit: look at the screen for a modal panel (the hooks build shows none, section 10) and at the app's diagnostics log for the `lifecycle.terminating` event; the app replies to AppKit at the latest 5 s after it, even when its settings flush hangs |
+| `compat-harness: the app did not quit before the privacy scan: ...` | Same cause as the row above; the scan still runs, and a file the app pruned meanwhile shows as `gone before it was read` |
 | Every live command exits 3 at once | `COMPAT_HARNESS_LIVE=1` missing from the runner's `.env`, or the service was not restarted after editing it |
 | `Integration hooks: not answering` | The test build is not the INTEGRATION_HOOKS build, or it is not running. Rebuild with `scripts/run-integration.sh build` (section 2 step 6). If it still does not answer, look in the app's diagnostics log for `integration hooks disabled: ...` (the reason: symbolic link, not a directory, another user, permission denied, disk full, I/O error) and fix `~/Library/Application Support/<storage folder>/IntegrationHooks` accordingly: it must be a real directory owned by the runner user. `a response could not be written` means a full disk or a replaced directory; the next directory change retries the answer |
 | `the installed test build does not answer the integration hooks` (from `build`) | The `Integration` configuration lost its `INTEGRATION_HOOKS` condition: check `Config/Integration.xcconfig` and `project.yml` |
@@ -195,6 +201,7 @@ suite possible without a dedicated Mac and without touching Pa's Mac:
 
 ```sh
 scripts/vm/integration-dev.sh    # throwaway clone of {{app-slug}}-dev (6144 MB, 4 CPUs), deleted afterwards
+scripts/vm/integration-dev.sh --only testhost.web.textarea    # control run of chosen scenarios (IDs, PREFIX*)
 ```
 
 It copies the committed checkout (`git archive HEAD`) into the clone and runs
@@ -202,22 +209,26 @@ It copies the committed checkout (`git archive HEAD`) into the clone and runs
 `admin`:
 
 1. turns text substitutions off (section 2 step 3); English is the first language of the image;
-2. installs XcodeGen with `scripts/install-xcodegen.sh` and generates the project;
-3. builds the `Integration` configuration (INTEGRATION_HOOKS) and TestHost like `scripts/run-integration.sh build`,
-   but **ad-hoc signed with the hardened runtime off**, because the VM has no Apple Development identity (an
-   ad-hoc signature has no Team ID, and library validation would refuse Sparkle), installs both into
-   `~/Applications` and checks the hooks marker;
+2. enables every input source a TestHost scenario names (section 2 step 4: ABC, French, German, Dvorak, Japanese
+   Romaji), read from `compat/scenarios/testhost.*.json` and enabled through the Text Input Sources API by
+   `scripts/vm/guest/enable-input-sources.swift`, which the guest compiles and runs (it refuses a real Mac);
+3. runs `scripts/run-integration.sh build` itself with `INTEGRATION_CODE_SIGN_IDENTITY=-` (section 2 step 6):
+   XcodeGen, the `Integration` configuration (INTEGRATION_HOOKS) **ad-hoc signed with the hardened runtime off**,
+   because the VM has no Apple Development identity (an ad-hoc signature has no Team ID, and library validation
+   would refuse Sparkle), TestHost, the install into `~/Applications` and the hooks marker check;
 4. builds `compat-harness` (release);
 5. grants Accessibility, Input Monitoring and event posting with `sudo scripts/vm/grant-tcc.sh` to the test build,
    TestHost, `compat-harness`, the tart guest agent (which starts the harness) and `sshd-keygen-wrapper` (for runs
-   started over SSH); each row carries the client's compiled code requirement;
+   started over SSH); each row carries the client's compiled code requirement, so the grant follows each new
+   cdhash;
 6. marks onboarding as finished in the test build's settings file (section 2 step 9);
 7. runs the plan check (`compat-harness run --dry-run`), then `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh
-   tests`, and copies `.build/integration/tests` back.
+   tests`, and copies `.build/integration/tests`, the app's diagnostics log (event codes only, PLT-R901) and a
+   screenshot of the end of the run back.
 
 The run folder is `/Volumes/Data/tart/runs/<timestamp>-integration/` (`integration.log`, `guest.log`,
-`integration-out/` with `summary.txt`, the build logs, `grant.log`, `tcc-rows.txt`, `dry-run.log`, `tests.log`
-and `results/`).
+`integration-out/` with `summary.txt`, `system.txt`, `input-sources.log`, `build.log`, `build-harness.log`,
+`grant.log`, `tcc-rows.txt`, `dry-run.log`, `tests.log`, `results/`, `app-diagnostics.jsonl` and `screen.png`).
 
 ### 10.1 First attempt, 2026-11-13
 
@@ -272,3 +283,71 @@ keychain (Pa's decision; it is not a release secret), or create a self-signed co
 VM and sign the test build and the harness with it (the requirement is anchored on that certificate; the hardened
 runtime must stay off, because a self-signed certificate has no Team ID). With SIP disabled none of this is
 needed: `grant-tcc.sh` simply grants the new cdhash after each build.
+
+### 10.3 Triage of the first attempt (W6-B, 2026-11-13)
+
+Every row of 10.1 was reproduced in a clone of `{{app-slug}}-dev` and traced to its cause:
+
+| First-attempt symptom | Root cause | Fix |
+|---|---|---|
+| 9 x `quit of <dev bundle ID>` timed out | Not the app: it exits 0.2 s after the quit request (measured in the VM). `LiveAppControl.quit()` polled a cached `NSRunningApplication`, whose `isTerminated` refreshes only when the harness's main run loop turns, which it never does in `compat-harness` | The harness asks the process itself (`kill(pid, 0)`); a real timeout is `AppQuitTimeout` (`quit timed out: <bundle> was still running 10 s after the quit request`) |
+| 9 x hook `state`, `tapTimeout`, `revokePermission` timed out | Follow-on of the row above: the next scenario started the app again while the harness still believed it was quitting | Same fix |
+| `no accessibility element with identifier testhost.secureInput.toggle` | `launch` returns once the process runs, before TestHost's window exists | Setup lookups by identifier retry for up to 5 s |
+| 4 x `input source not enabled` | The image enables only ABC | The guest enables every layout a TestHost scenario names (`scripts/vm/guest/enable-input-sources.swift`) |
+| Privacy scan: `backups/app-modes.json.v1.<timestamp>.json` unreadable | Not a file mode or format problem: the app was still running and a debounced `app-modes.json` write rotated the backups (newest five kept, PLT-R1005) between the scan's listing and its read, so the file was gone | The harness quits the app before the scan (its last flush is scanned too and nothing changes while the scan reads); a file listed but gone is reported as `vanished`, not as unreadable |
+| 12 x `observed state differs from expect` | Several harness and TestHost causes: a scenario that focused the field the previous one used continued the previous word (the reset is invisible to the app's tap); TestHost's web mirrors did not forward an AX focus request into the page, so web scenarios typed into the native field; a field of the second window took AX focus without its window becoming key; a shortcut that focused a text field selected all its text; the readback raced the last replacement | Reset fields leaves no field focused and reloads `fields.html`; mirrors forward AX focus; `focusField` raises the field's window and waits until the focused element takes text, then 300 ms; 300 ms after Command plus a digit; caret at the end after a focus shortcut; the readback is repeated for up to 2 s while it differs from the expectation |
+
+While reproducing the quit, a real defect of the app showed up: the quit reply came from a main-actor task, so a quit
+requested from inside a main-queue job (`NSApp.terminate` from a task, the relaunch after a stuck callback, the launch
+sequence's quit) or while a modal alert opened from `DispatchQueue.main.async` was up (safe mode, the conflict notice)
+never completed (with the safe-mode alert up, the app was still running 30 s after `terminate()`). The flush now runs
+off the main actor and the reply goes through the main run loop, at the latest 5 s after the request
+(`QuitCoordinator`, PLT-R1003). The integration hooks build never opens those modal notices or the move offer.
+
+### 10.4 Runs after the fixes (W6-B, 2026-11-13)
+
+Each run is `scripts/vm/integration-dev.sh` in a throwaway clone of `{{app-slug}}-dev` (6144 MB, 4 CPUs), about 25 to
+35 minutes in all, on the commits of branch `fix/w6b-lifecycle-vm-suite`. Run folders under
+`/Volumes/Data/tart/runs/`.
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| `20261113T145511Z-integration` | `4553435` | 5 | 35 | First attempt (10.1) |
+| `20261113T172115Z-integration` | `dbb6872` | 23 | 17 | Quit, hooks, input sources and the privacy scan fixed (no quit timeout, no unreadable file); web scenarios typed into the native field; the second window's fields never became key; first words untransformed |
+| `20261113T175822Z-integration` | `8e4cd51` | 32 | 8 | TestHost focus and reset fixed. The screenshot evidence of this run raised Screen Recording's consent prompt, which covered the windows of the following scenarios (replaced by a text focus report) |
+| `20261113T182546Z-integration` | `c4b2adc` | 33 | 7 | Focus reports per failure; a focus shortcut no longer selects the field's text |
+| `20261113T185210Z-integration` | `5527e61` | 35 | 5 | The harness waits until the app published the new focus (its T6 count, through the hooks) before the first key |
+| `20261113T191620Z-integration` | `9be7e9e` | - | - | Did not start: `tart exec` right after boot found no guest agent yet; `integration-dev.sh` now waits for it (`VM_AGENT_TIMEOUT`, default 180 s) |
+| `20261113T192215Z-integration` | `e875936` | 35 | 5 | TestHost moves the page focus before the web view becomes first responder (web edit-mode transition passes); one transient `prepare: press failed with AXError -25204` on Reset fields (now retried) |
+| `20261113T194227Z-integration` | `bdb803c` | 34 | 6 | Last run of W6-B. The Reset fields retry held (`testhost.layout.abc` passes); `testhost.perWindowRule.mainWindow` and `testhost.web.editModeTransition` failed again after passing in earlier runs (intermittent, see below) |
+| `20261113T204207Z-integration` | `02613e3` | 1 | 0 | Control run, `--only testhost.web.textarea`: on a freshly launched TestHost the scenario passes |
+| `20261113T205703Z-integration` | `abbf586` | 35 | 5 | Trial: Reset fields reloaded `fields.html` every time. `testhost.web.textarea` still failed; `testhost.web.inlineAutocomplete` failed (`asia.example`) for the first time since run 3 |
+| `20261113T211740Z-integration` | `abbf586` | 1 | 2 | Control run, `--only testhost.web.inlineAutocomplete,testhost.web.input,testhost.web.textarea`: `web.input` passes, `web.textarea` fails right after it on a freshly loaded page; `web.inlineAutocomplete` as the first scenario gives `aá` |
+| `20261113T212628Z-integration` | `065e076` | 1 | 2 | The same control run with the reload reverted: `web.textarea` fails after `web.input` in the same way; `web.inlineAutocomplete` as the first scenario of a fresh TestHost found no `testhost.web.input` element at readback (a first-scenario effect, not seen in a full run) |
+| `20261113T213424Z-integration` | `065e076` | 35 | 5 | Final run of W6-B (harness: bounded focus refresh wait, no window title in focus reports). `testhost.web.inlineAutocomplete` passes again; `testhost.web.editModeTransition` failed (`Dd`, intermittent) |
+
+Result: from 5 of 40 to **35 of 40** (`20261113T185210Z-integration`, `20261113T192215Z-integration`,
+`20261113T205703Z-integration` and the final run `20261113T213424Z-integration` on `065e076`); one run passed 34
+because timing-dependent scenarios failed again. Not all 40 are green yet: what is left is in the app's input
+pipeline (W6-A), not in the harness, TestHost or the VM.
+
+Control runs (`scripts/vm/integration-dev.sh --only ...`) separated TestHost state from the app for
+`testhost.web.textarea`: alone on a fresh TestHost it passes; right after `testhost.web.input` it fails, with or without
+a fresh load of `fields.html` on Reset fields (the reload was tried and reverted, `065e076`). TestHost's state before
+`web.input` (after another web scenario) and before `web.textarea` (after `web.input`) is the same, and `web.input`
+passes, so the difference lies in what the app remembers from the previous field of the same page.
+
+Remaining failures and their next step:
+
+| Scenario | Observed | Root cause (as far as the VM shows) | Next step |
+|---|---|---|---|
+| `testhost.addressBar.telexStroke` | `dđ` for `đ` | Product, inline completion: after `d` TestHost's simulated address bar completes to `dd.example` with `d.example` selected (Chromium behaviour); on the second `d` the app's edit deletes only the selected completion and inserts `đ`, so the first `d` stays. The focus report shows the right field (`testhost.sim.addressBar`, rule `user.testhost.addressBar` -> `browser.chromium.addressBar`) | Owner of `InputHost`/`Injection` (W6-A): reproduce with a typing trace of this scenario in the dev VM and check how the `inlineCompletion` handling of `browser.chromium.addressBar` counts deletions when a completion is selected (one deletion clears the selection, the base letter needs another) |
+| `testhost.addressBar.telexTone` | `aá` for `á` (earlier runs `asia.example`) | Same field and the same missing deletion (`a` completes to `asia.example`; the tone edit clears the selection and appends `á`) | Same as the row above |
+| `testhost.privacyCanary.paste` | a space only, for `kanaryzqx ` | Product or VM: the user rule's `paste` strategy runs (user rules count as opted in, `FocusCore`), but nothing reaches TestHost's plain field, so the composed letters disappear and only the space passes. Either the pasteboard is restored before TestHost reads it on the synthetic Command+V (`restoreDelayMs` 400) or macOS 27's pasteboard privacy blocks a paste a synthetic key triggers | In the dev VM: run the scenario alone with `log stream --predicate 'subsystem == "com.apple.pasteboard"'` open; try a profile with a larger `restoreDelayMs`; owner of `Injection` (W6-A) |
+| `testhost.perWindowRule.mainWindow`, `testhost.web.editModeTransition` (intermittent: passed in runs 4, 5 and 7 and in `20261113T205703Z`; `web.editModeTransition` failed in run 8 and in `20261113T213424Z`, `perWindowRule.mainWindow` in run 8) | first word after the focus change untransformed (`vieetj việt`, `Dd`) | Same cause as the `web.textarea` row below, but only sometimes: the app's T6 count did not grow within the harness's 2 s wait after Command+1 (back from the second window's pass-through field) or after the page's editor took focus, so the first keys met the previous field's rule | Same as the row below; the harness can only wait for the refresh, not cause it |
+| `testhost.web.textarea` | first word untransformed (`tieengs việt`) | Product, focus refresh for web content: after the focus moves from the page's input (previous scenario) to its textarea the app publishes no new focus snapshot within 2 s (the harness waits for its T6 count, the waits time out), so the first word is decided on the previous snapshot; the PLT-R382 idle revalidation on the first key catches up for the second word. Not TestHost: the scenario passes alone on a fresh TestHost and fails after `testhost.web.input` also on a freshly loaded page (control runs above) | Owner of `InputHost` (W6-A): reproduce with `scripts/vm/integration-dev.sh --only testhost.web.input,testhost.web.textarea` and a typing trace; check whether `FocusCore` receives `AXFocusedUIElementChanged` from WebKit, or treats the new element as the same field, when focus moves from one element of a `WKWebView` page to another after a blur (T6 counts in the hooks `state`) |
+| `testhost.web.inlineAutocomplete` (intermittent: failed in `20261113T205703Z`, passed in the runs before and after) | `asia.example` or `aá` for `á` | Same inline completion edit as the `addressBar` rows: when the page's simulated completion is selected at the time of the tone key, the edit is one deletion short | Same as the `addressBar` rows |
+
+None of these needs the Apple Development identity or Pa's Mac. The privacy scan has passed (no finding, no unreadable
+or vanished file) in every run since the second.
+

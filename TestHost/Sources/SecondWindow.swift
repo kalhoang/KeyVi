@@ -72,15 +72,27 @@ final class TestHostSecondWindowController: NSWindowController {
 
     func text(of field: TestHostField) -> String { access[field]?.get() ?? "" }
 
+    /// Clears every field and leaves none focused (see `TestHostWindowController.resetFields`).
     func resetAll() {
         for field in access.values { field.reset() }
+        window?.makeFirstResponder(nil)
     }
 
-    /// Brings this window forward and focuses `field` (Window menu, Command+2).
+    /// Brings this window forward and focuses `field` (Window menu, Command+2), caret at the end.
     func focus(_ field: TestHostField) {
         guard let view = access[field]?.view else { return }
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         window?.makeFirstResponder(view)
+        placeCaretAtEnd(of: view)
     }
+}
+
+/// A text field selects all its text when it becomes first responder, so the keys after a Window menu shortcut
+/// replaced what the field held (the per-window scenarios read only their last word in the VM runs). Moving focus
+/// back to a field with a shortcut keeps its text, caret at the end, as a person expects when switching windows.
+@MainActor
+func placeCaretAtEnd(of view: NSView) {
+    guard let field = view as? NSTextField, let editor = field.currentEditor() else { return }
+    editor.selectedRange = NSRange(location: (editor.string as NSString).length, length: 0)
 }

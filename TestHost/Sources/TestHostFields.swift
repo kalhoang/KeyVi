@@ -127,9 +127,16 @@ final class TestHostWindowController: NSWindowController {
         return button
     }
 
+    /// Clears both windows, shows `fields.html` again and leaves no field focused, like a fresh launch: the next
+    /// scenario's `focusField` is then a real focus change, which the app under test treats as a word boundary.
+    /// Without it, a scenario that focused the field the previous one used continued the previous word (the
+    /// cleared text is invisible to the app's tap), and its first word stayed untransformed in the VM runs.
     @objc private func resetFields(_ sender: Any?) {
         resetAll()
+        web.blurPage()
+        web.resetPage()
         onReset?()
+        window?.makeFirstResponder(nil)
     }
 
     /// Clears every field of this window, native and web.
@@ -137,12 +144,14 @@ final class TestHostWindowController: NSWindowController {
         for field in access.values { field.reset() }
     }
 
-    /// Brings this window forward and focuses a native field (Window menu, Command+1 and Command+3).
+    /// Brings this window forward and focuses a native field (Window menu, Command+1 and Command+3), caret at the
+    /// end (`placeCaretAtEnd`).
     func focus(_ field: TestHostField) {
         guard let view = views[field] else { return }
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         window?.makeFirstResponder(view)
+        placeCaretAtEnd(of: view)
     }
 
     static func scrolling(_ textView: NSTextView, height: CGFloat) -> NSScrollView {

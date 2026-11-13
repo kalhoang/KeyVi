@@ -117,6 +117,84 @@ private let targets = HarnessTargets(
         #expect(sleeper.requests.all == [1_500_000_000])
     }
 
+    /// Focus moves asynchronously: TestHost's web mirrors hand focus to the page on the next main-loop turn, and
+    /// the app under test learns of the new field through AX notifications (per-field and per-window rules). Keys
+    /// typed at once were lost or met the old rule in the first VM run, so an AX focus is followed by a settle.
+    @Test func anAXFocusIsFollowedByTheFocusSettle() async throws {
+        let sleeper = RecordingSleeper()
+        let system = FakeSystemActions()
+        let router = ScenarioSetupRouter(
+            system: system, targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper)
+        try await router.perform(.init(action: .focusField, value: "testhost.web.input"), for: makeScenario())
+        #expect(system.calls.all == ["focus testhost.web.input in com.example.Editor"])
+        #expect(sleeper.requests.all == [ScenarioSetupRouter.focusSettleNanoseconds])
+        #expect(ScenarioSetupRouter.focusSettleNanoseconds == 300_000_000)
+    }
+
+    /// With the hooks, focusField waits until the app published a focus snapshot for the new field (its T6 count
+    /// grew), so the first key is decided on the new field's rule: the VM runs left the first word untransformed
+    /// when the keys came before the app's focus refresh.
+    @Test func focusFieldWaitsForTheAppsFocusRefresh() async throws {
+        let sleeper = RecordingSleeper()
+        // Before the focus: 4. The web view's snapshot (5), then its page element's (6), then quiet.
+        let hooks = FocusRefreshHooks([4, 4, 5, 6, 6, 6, 6])
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks)
+        try await router.perform(.init(action: .focusField, value: "testhost.web.textarea"), for: makeScenario())
+        #expect(hooks.requestCount == 7, "the count before the focus, then until it grew and held still")
+        let poll = ScenarioSetupRouter.focusRefreshPollNanoseconds
+        #expect(sleeper.requests.all == Array(repeating: poll, count: 5) + [ScenarioSetupRouter.focusSettleNanoseconds])
+    }
+
+    /// No refresh within the limit (the field was focused already, or the app missed the change): the wait ends
+    /// there and the scenario goes on.
+    @Test func theFocusRefreshWaitIsBounded() async throws {
+        let sleeper = RecordingSleeper()
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: FocusRefreshHooks([7]))
+        try await router.perform(.init(action: .focusField, value: "testhost.native.textField"), for: makeScenario())
+        let polls = Int(
+            ScenarioSetupRouter.focusRefreshWaitNanoseconds / ScenarioSetupRouter.focusRefreshPollNanoseconds)
+        #expect(sleeper.requests.all.count == polls + 1)
+        #expect(sleeper.requests.all.last == ScenarioSetupRouter.focusSettleNanoseconds)
+    }
+
+    /// An app that stops answering the hooks (it is relaunching, or it is gone) publishes no focus either: the
+    /// wait ends at the first failed request instead of asking again until the poll budget is spent, which with the
+    /// channel's 10 s timeout per request made one focus step last minutes (review of W6-B).
+    @Test func theFocusRefreshWaitEndsWhenTheHooksStopAnswering() async throws {
+        let sleeper = RecordingSleeper()
+        let clock = ManualClock()
+        let hooks = SlowHooks(count: 7, answered: 1, clock: clock, latencyNanoseconds: 10_000_000)
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks, clock: clock)
+        try await router.perform(.init(action: .focusField, value: "testhost.native.textField"), for: makeScenario())
+        #expect(hooks.requestCount == 2, "the count before the focus, then one failed state request")
+        #expect(sleeper.requests.all == [ScenarioSetupRouter.focusSettleNanoseconds])
+    }
+
+    /// The limit is measured on the clock, not by adding up the polls: requests that answer slowly count against
+    /// it too, so one focus step never waits much longer than `focusRefreshWaitNanoseconds`.
+    @Test func theFocusRefreshWaitIsMeasuredOnTheClock() async throws {
+        let sleeper = RecordingSleeper()
+        let clock = ManualClock()
+        let latency = ScenarioSetupRouter.focusRefreshWaitNanoseconds / 2
+        let hooks = SlowHooks(count: 7, answered: .max, clock: clock, latencyNanoseconds: latency)
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks, clock: clock)
+        let start = clock.now().nanoseconds
+        try await router.perform(.init(action: .focusField, value: "testhost.native.textField"), for: makeScenario())
+        #expect(hooks.requestCount == 3, "the count before the focus, then two slow polls use up the limit")
+        #expect(clock.now().nanoseconds - start <= ScenarioSetupRouter.focusRefreshWaitNanoseconds + latency)
+        let poll = ScenarioSetupRouter.focusRefreshPollNanoseconds
+        #expect(sleeper.requests.all == [poll, poll, ScenarioSetupRouter.focusSettleNanoseconds])
+    }
+
     @Test func taskSleeperSuspendsAndHonoursCancellation() async throws {
         let clock = MachClock()
         let start = clock.now().nanoseconds

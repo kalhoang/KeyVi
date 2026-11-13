@@ -292,9 +292,13 @@ private let rulesJSON = """
             ["run", "--output", "/out", "--profile", "burst"], fileSystem: fileSystem, live: live, clock: clock)
         #expect(await harness.execute() == .failure)  // b expects other text
         #expect(console.output.contains { $0.hasPrefix("pass a") })
-        #expect(console.output.contains("fail b (0.0 s): observed state differs from expect"))
+        // b never shows its text: it is read again for the settle time before it fails.
+        #expect(console.output.contains("fail b (2.0 s): observed state differs from expect (text)"))
         #expect(console.output.contains { $0.hasPrefix("needsHuman h") })
         #expect(console.output.last == "compat-harness run: 1 passed, 1 failed, 1 need a person")
+        // Each result reaches the live services, which keep evidence of failures in the VM lab.
+        #expect(live.endedScenarios.all.map(\.scenario) == ["a", "b", "h"])
+        #expect(live.endedScenarios.all.map(\.outcome) == [.pass, .fail, .needsHuman])
         #expect(live.sink.records.count == 18)  // 3 scenarios x 3 keys x down/up, recorded in memory only
         let host = "org.example.product.dev.testhost"
         // The run ends by releasing TestHost's secure-input holder (no stuck secure input for the next job).
@@ -312,7 +316,7 @@ private let rulesJSON = """
         #expect(report.results.map(\.scenario) == ["a", "b", "h"])
         #expect(
             report.results.map(\.reason) == [
-                nil, "observed state differs from expect", "needs a person: no tester attached",
+                nil, "observed state differs from expect (text)", "needs a person: no tester attached",
             ])
     }
 
@@ -359,7 +363,10 @@ private let rulesJSON = """
         let summary = try JSONDecoder().decode(SoakSummary.self, from: data)
         #expect(summary.keystrokes == 48 && summary.chunks == 3 && summary.failures.count == 3)
         #expect(console.output.contains { $0.contains("48 keystrokes, 3 failed chunk(s)") })
-        #expect(console.output.contains { $0.hasPrefix("M2.growthMBPerHour 0.500, gate 5.000") })
+        // Every failed chunk waits the readback settle time, so the samples are a few seconds apart from 1 h.
+        let growth = try #require(summary.growthMegabytesPerHour)
+        #expect(abs(growth - 0.5) < 0.002)
+        #expect(console.output.contains { $0.hasPrefix(String(format: "M2.growthMBPerHour %.3f, gate 5.000", growth)) })
         #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/soak/soak-metrics.json")))
         #expect(live.sink.records.filter { $0.event.phase == .down }.count >= 48)
     }

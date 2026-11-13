@@ -91,6 +91,22 @@ struct LiveServices: LiveHarnessServices {
 
     func connectionSampler() -> any ConnectionSampler { LiveConnectionSampler() }
 
+    /// VM lab only (scripts/vm/guest/integration-guest.sh sets the variable): when a scenario failed, a short focus
+    /// report named after it, for the triage of integration-suite.md section 10: the frontmost app and the role,
+    /// subrole and AX identifier of the system-wide focused element (what the app under test resolves its rules
+    /// from). Never a field's value. A screenshot would need Screen Recording, whose consent prompt then covered
+    /// the windows of the following scenarios. Never set on the self-hosted runner.
+    func scenarioEnded(_ result: ScenarioResult) async {
+        guard result.outcome == .fail,
+            let directory = ProcessInfo.processInfo.environment[Self.evidenceVariable], !directory.isEmpty
+        else { return }
+        let file = URL(fileURLWithPath: directory, isDirectory: true).appendingPathComponent(result.scenario + ".txt")
+        let report = Data((AX.focusReport().joined(separator: "\n") + "\n").utf8)
+        try? LocalFileSystem().writeAtomically(report, to: file, permissions: .ownerOnlyFile)
+    }
+
+    static let evidenceVariable = "COMPAT_HARNESS_EVIDENCE_DIR"
+
     private func appUnderTest(_ targets: HarnessTargets) throws -> BundleKey {
         guard let app = targets.appUnderTestBundleID else { throw LiveError.appNotFound("app under test") }
         return app

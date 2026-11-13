@@ -70,6 +70,9 @@ public struct PrivacyReport: Sendable, Hashable, Codable {
     public var scannedLogBytes: Int
     /// Files that could not be read completely (too large or unreadable): a failure, since they were not checked.
     public var unreadable: [String]
+    /// Files listed but gone when they were read (a settings backup the app pruned meanwhile, PLT-R1005). They left
+    /// nothing on disk to leak, so they do not fail the scan; the harness quits the app first, so normally none.
+    public var vanished: [String]
     public var findings: [PrivacyFinding]
     public var passed: Bool { findings.isEmpty && unreadable.isEmpty }
 }
@@ -108,9 +111,10 @@ public struct PrivacyScanner: Sendable {
     public func scan(files: [URL], fileSystem: any FileSystem, log: String) -> PrivacyReport {
         var findings: [PrivacyFinding] = []
         var unreadable: [String] = []
+        var vanished: [String] = []
         for file in files {
             guard let data = try? fileSystem.readData(at: file, maxBytes: Self.maximumFileBytes) else {
-                unreadable.append(file.path)
+                if fileSystem.fileExists(at: file) { unreadable.append(file.path) } else { vanished.append(file.path) }
                 continue
             }
             findings += self.findings(in: data, location: file.path)
@@ -118,7 +122,7 @@ public struct PrivacyScanner: Sendable {
         let logData = Data(log.utf8)
         findings += self.findings(in: logData, location: "unified log")
         return PrivacyReport(
-            scannedFiles: files.count - unreadable.count, scannedLogBytes: logData.count, unreadable: unreadable,
-            findings: findings)
+            scannedFiles: files.count - unreadable.count - vanished.count, scannedLogBytes: logData.count,
+            unreadable: unreadable, vanished: vanished, findings: findings)
     }
 }

@@ -104,7 +104,7 @@ private func runner(driver: FakeDriver = FakeDriver(), readback: any ScenarioRea
         let driver = FakeDriver()
         let readback = ScriptedReadback(texts: ["dđi"])
         let result = await runner(driver: driver, readback: readback).run(repeatingScenario())
-        #expect(result.outcome == .fail && result.reason == "observed state differs from expect")
+        #expect(result.outcome == .fail && result.reason == "observed state differs from expect (text)")
         #expect(driver.typed.all.count == 1)
     }
 

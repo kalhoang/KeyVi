@@ -45,6 +45,7 @@ VM_SSH_PASSWORD="${VM_SSH_PASSWORD:-admin}"
 VM_BOOT_TIMEOUT="${VM_BOOT_TIMEOUT:-420}"
 VM_STOP_TIMEOUT="${VM_STOP_TIMEOUT:-60}"
 VM_LAB_POLL="${VM_LAB_POLL:-2}"
+VM_AGENT_TIMEOUT="${VM_AGENT_TIMEOUT:-180}"
 VM_LAB_MAX_MEMORY_MB="${VM_LAB_MAX_MEMORY_MB:-8192}"
 VM_LAB_MAX_CPUS="${VM_LAB_MAX_CPUS:-6}"
 
@@ -233,6 +234,20 @@ lab_wait_ssh() {
     esac
     if ((SECONDS >= deadline)); then
       lab_err_ret 1 "no SSH answer from $ip within ${VM_BOOT_TIMEOUT}s"
+      return
+    fi
+    lab_sleep
+  done
+}
+
+# lab_wait_agent <vm>: waits until the tart guest agent answers (`tart exec`), at most VM_AGENT_TIMEOUT seconds.
+# The agent starts in the user session after SSH is already up, so an exec right after boot can fail with
+# "is the Tart Guest Agent running?" (seen on 2026-11-13).
+lab_wait_agent() {
+  local vm="$1" deadline=$((SECONDS + VM_AGENT_TIMEOUT))
+  until lab_tart exec "$vm" /usr/bin/true >/dev/null 2>&1; do
+    if ((SECONDS >= deadline)); then
+      lab_err_ret 1 "the tart guest agent of $vm did not answer within ${VM_AGENT_TIMEOUT}s"
       return
     fi
     lab_sleep

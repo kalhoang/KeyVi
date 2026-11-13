@@ -112,7 +112,11 @@ final class FakeHookClient: AppHookClient, Sendable {
 
 final class FakeAppControl: AppUnderTestControl, Sendable {
     let events = Recorder<String>()
-    private let state = Mutex<(running: Bool, pid: Int32)>((false, 100))
+    private let state = Mutex<(running: Bool, pid: Int32, quits: Int)>((false, 100, 0))
+    /// The quit with this number (1 = first) times out and leaves the app running.
+    private let failingQuit: Int?
+
+    init(failingQuit: Int? = nil) { self.failingQuit = failingQuit }
 
     func setRunning(_ running: Bool) { state.withLock { $0.running = running } }
     func isRunning() -> Bool { state.withLock { $0.running } }
@@ -120,6 +124,11 @@ final class FakeAppControl: AppUnderTestControl, Sendable {
 
     func quit() async throws {
         events.append("quit")
+        let number = state.withLock { state -> Int in
+            state.quits += 1
+            return state.quits
+        }
+        if number == failingQuit { throw AppQuitTimeout(bundle: "org.example.product.dev", seconds: 10) }
         state.withLock { $0.running = false }
     }
 
@@ -135,7 +144,13 @@ final class FakeAppControl: AppUnderTestControl, Sendable {
 struct FakePrivacyEvidence: PrivacyEvidenceSource {
     var files: [URL]
     var log: String
-    func appWrittenFiles() throws -> [URL] { files }
+    /// Asked when the files are listed; `listedWhileRunning` records the answers.
+    var appRunning: @Sendable () -> Bool = { false }
+    let listedWhileRunning = Recorder<Bool>()
+    func appWrittenFiles() throws -> [URL] {
+        listedWhileRunning.append(appRunning())
+        return files
+    }
     func unifiedLog() async throws -> String { log }
 }
 
@@ -180,5 +195,57 @@ final class FakeProcessSampling: ProcessSampling, Sendable {
                 $0 += cpuStep
                 return $0
             }, footprintBytes: footprint)
+    }
+}
+
+/// Hooks whose `state` reports the app's count of published focus snapshots (T6) from a script, one answer per
+/// request; the last answer repeats.
+final class FocusRefreshHooks: AppHookClient, Sendable {
+    private let counts: [UInt64]
+    private let requests = Mutex(0)
+    init(_ counts: [UInt64]) { self.counts = counts }
+    var requestCount: Int { requests.withLock { $0 } }
+
+    func send(_ command: AppHookCommand) async throws -> AppHookResponse {
+        let count = requests.withLock { number -> UInt64 in
+            defer { number += 1 }
+            return counts[min(number, counts.count - 1)]
+        }
+        var metrics = emptyMetrics()
+        var buckets = metrics.focusRefresh.buckets
+        buckets[0] = count
+        metrics.focusRefresh = HistogramSnapshot(buckets: buckets)
+        let state = AppStateSnapshot(processIdentifier: 100, state: .ready, mode: .vietnamese, metrics: metrics)
+        return AppHookResponse(sequence: 0, state: state)
+    }
+}
+
+/// Hooks that answer the first `answered` requests with `count` and then stop answering (`AppHookError.timeout`,
+/// as `FileDropHookChannel` does after its timeout when the app is relaunching or gone). Each request first moves
+/// `clock` on by `latencyNanoseconds`, the time the channel spent waiting for the answer.
+final class SlowHooks: AppHookClient, Sendable {
+    private let base: FocusRefreshHooks
+    private let answered: Int
+    private let clock: ManualClock
+    private let latencyNanoseconds: UInt64
+    private let requests = Mutex(0)
+
+    init(count: UInt64, answered: Int, clock: ManualClock, latencyNanoseconds: UInt64) {
+        base = FocusRefreshHooks([count])
+        self.answered = answered
+        self.clock = clock
+        self.latencyNanoseconds = latencyNanoseconds
+    }
+
+    var requestCount: Int { requests.withLock { $0 } }
+
+    func send(_ command: AppHookCommand) async throws -> AppHookResponse {
+        let number = requests.withLock { number -> Int in
+            defer { number += 1 }
+            return number
+        }
+        clock.advance(byMicroseconds: latencyNanoseconds / 1_000)
+        guard number < answered else { throw AppHookError.timeout(command: "state") }
+        return try await base.send(command)
     }
 }
