@@ -6,6 +6,7 @@ public import AppModel
 internal import Foundation
 public import RealtimeSupport
 public import SettingsStore
+import Synchronization
 
 /// Production (`SystemPermissionProbe`): `AXIsProcessTrusted()`, `CGPreflightPostEventAccess()`,
 /// `CGPreflightListenEventAccess()`, `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])`,
@@ -45,20 +46,43 @@ public struct PermissionStatus: Sendable, Hashable {
 /// Every 2 s while not ready, every 30 s while ready (timers from the injected scheduler, utility queue in
 /// production), immediately on wake, session activation and menu open (PLT-R721). Remembers the identity digest
 /// of the last grant (key-value store) for `stale`.
+///
+/// `onChange` runs for the first check after `start()` and then whenever the status changes, in check order,
+/// one at a time and outside the check lock: it may call back into the monitor (`checkNow`, `setTapUnavailable`);
+/// a status produced meanwhile is delivered after it returns. Logic: `PermissionMonitor+Checks.swift`.
 public final class PermissionMonitor: Sendable {
     public static let notReadyInterval: Duration = .seconds(2)
     public static let readyInterval: Duration = .seconds(30)
     public static let onboardingInterval: Duration = .seconds(1)
+    /// PLT-R711: fast polling stops by itself after 5 minutes.
+    public static let onboardingLimit: Duration = .seconds(300)
+    /// `KeyValueStore` key of the last granted identity (a 52-bit hash of the designated requirement digest).
+    public static let lastGrantedDigestKey = "PermissionLastGrantedIdentity"
+
+    let probe: any PermissionProbe
+    let store: any KeyValueStore
+    let scheduler: any TimerScheduler
+    let delivery: OrderedDelivery<PermissionStatus>
+    let state = Mutex(PermissionMonitorState())
 
     public init(
         probe: any PermissionProbe, store: any KeyValueStore, scheduler: any TimerScheduler,
         onChange: @escaping @Sendable (PermissionStatus) -> Void
-    ) { unimplemented() }
-    public func start() { unimplemented() }
-    public func stop() { unimplemented() }
-    public func checkNow() -> PermissionStatus { unimplemented() }
+    ) {
+        self.probe = probe
+        self.store = store
+        self.scheduler = scheduler
+        self.delivery = OrderedDelivery(onChange)
+    }
+
+    public func start() { beginChecks() }
+    public func stop() { endChecks() }
+    public func checkNow() -> PermissionStatus { check() }
     /// Onboarding polls every 1 s for at most 5 minutes while visible (PLT-R711).
-    public func setFastPolling(_ enabled: Bool) { unimplemented() }
+    public func setFastPolling(_ enabled: Bool) { updateFastPolling(enabled) }
+    /// The lifecycle reports that the tap could not be created or receives no keys. With Accessibility granted
+    /// and `CGPreflightListenEventAccess()` false this sets `listenEventRequired` (PLT-R702).
+    public func setTapUnavailable(_ unavailable: Bool) { updateTapUnavailable(unavailable) }
 }
 
 /// "Đặt lại quyền" (PLT-R740): runs `/usr/bin/tccutil reset Accessibility <own bundle ID>` after the user
