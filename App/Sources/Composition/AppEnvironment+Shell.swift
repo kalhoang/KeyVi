@@ -198,13 +198,12 @@ extension AppEnvironment: StatusMenuActions {
         }
     }
 
-    /// PLT-R540: one click writes a user override with `requireTextFocus: never` for this app; it applies on the
-    /// next keystroke.
+    /// PLT-R540: one click adds `requireTextFocus: never` to this app's one user override (a compatibility mode
+    /// chosen in the Apps pane is kept, PLT-R520); it applies on the next keystroke.
     private func addTextFocusOverride(for bundle: BundleKey) {
         let strategy = host.currentFocus().decision.plan.strategy
-        guard let rule = TextFocusOverride.rule(for: bundle, strategy: strategy, date: TextFocusOverride.day(Date()))
-        else { return }
-        Task { await settingsStore.addRuleOverride(StoredRuleOverride(createdAt: Date(), rule: rule)) }
+        let commands = SettingsCommands(store: settingsStore)
+        Task { _ = await commands.typeHereAnyway(for: bundle, strategy: strategy, at: Date()) }
     }
 
     func openSupport(_ topic: SupportLinks.Topic) {

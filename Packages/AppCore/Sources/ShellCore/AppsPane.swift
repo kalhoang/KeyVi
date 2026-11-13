@@ -163,22 +163,7 @@ public struct AppDetail: Sendable, Hashable {
     }
 }
 
-/// What choosing a compatibility mode does to `rule-overrides.json` (PLT-R540).
-public enum CompatibilityModeCommand: Sendable, Hashable {
-    case add(StoredRuleOverride)
-    case remove(RuleID)
-}
-
 extension CompatibilityModeChoice {
-    /// `.automatic` removes this app's override; the others write `user.compat.<bundle>` dated today.
-    public func command(for bundle: BundleKey, at date: Date, timeZone: TimeZone = .current) -> CompatibilityModeCommand
-    {
-        guard let rule = overrideRule(for: bundle, date: Self.day(date, timeZone: timeZone)) else {
-            return .remove(Self.ruleID(for: bundle))
-        }
-        return .add(StoredRuleOverride(createdAt: date, rule: rule))
-    }
-
     /// `YYYY-MM-DD` in the user's calendar day.
     static func day(_ date: Date, timeZone: TimeZone) -> String {
         var calendar = Calendar(identifier: .gregorian)

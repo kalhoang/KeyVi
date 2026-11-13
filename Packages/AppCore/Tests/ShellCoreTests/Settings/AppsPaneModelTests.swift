@@ -210,16 +210,17 @@ import Testing
 
     @Test func choicesBecomeAddOrRemoveCommands_PLTR540() throws {
         let utc = TimeZone(identifier: "UTC")!
-        let added = CompatibilityModeChoice.typeSlower.command(for: term, at: now, timeZone: utc)
-        guard case .add(let stored) = added else {
-            Issue.record("expected an override")
+        let added = CompatibilityModeChoice.typeSlower.commands(for: term, overrides: [], at: now, timeZone: utc)
+        guard added.count == 1, case .add(let stored) = added[0] else {
+            Issue.record("expected one override")
             return
         }
         #expect(stored.createdAt == now)
         #expect(stored.rule["provenance"]?["date"] == .string("2026-11-13"))
         #expect(
-            CompatibilityModeChoice.automatic.command(for: term, at: now)
-                == .remove(CompatibilityModeChoice.ruleID(for: term)))
+            CompatibilityModeChoice.automatic.commands(for: term, overrides: [stored], at: now)
+                == [.remove(CompatibilityModeChoice.ruleID(for: term))])
+        #expect(CompatibilityModeChoice.automatic.commands(for: term, overrides: [], at: now).isEmpty)
         let tokyo = TimeZone(identifier: "Asia/Tokyo")!
         #expect(CompatibilityModeChoice.day(now.addingTimeInterval(-3_600), timeZone: tokyo) == "2026-11-13")
         #expect(CompatibilityModeChoice.day(now.addingTimeInterval(-3_600), timeZone: utc) == "2026-11-12")
