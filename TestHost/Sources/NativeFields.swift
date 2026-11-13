@@ -70,7 +70,7 @@ class SingleLineTextView: NSTextView {
 /// Browser address bar with inline autocomplete (4.3).
 final class InlineCompletionTextView: SingleLineTextView {
     /// Bare host-like strings (no scheme), chosen so common Telex and VNI first keystrokes hit a suggestion.
-    var suggestions = ["asia.example", "dd.example", "canh.example", "books.example", "co.example"]
+    var suggestions = ["asia.example", "dd.example", "canh.example", "books.example", "coffee.example"]
     private var typedLength = 0
 
     override func didChangeText() {

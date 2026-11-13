@@ -149,13 +149,16 @@ private func testHostFieldIDs() throws -> [String] {
         #expect(Set(listed) == Set(bundled))
     }
 
-    /// Brand and network rules for the app sources: no bundle-ID literal, no remote URL, no print.
+    /// Brand and network rules for the app sources: no bundle-ID-shaped literal (same pattern as
+    /// scripts/lint-bundle-ids.sh, PLT-R501), no remote URL, no print.
     @Test func sourcesStayBrandNeutralAndOffline() throws {
+        let tlds =
+            "com|org|net|io|dev|app|vn|me|co|ai|so|sh|tv|us|uk|de|fr|jp|cn|ru|ca|au|eu|nl|se|ch|info|biz|xyz|tech|cloud|edu|gov"
+        let bundleShaped = #""((?:"# + tlds + #")\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)""#
+        #expect(!matches(bundleShaped, in: #"let x = "co.example""#).isEmpty)  // the check is not vacuous
         for file in try files(in: sourcesDirectory) {
             let text = try read(file)
-            #expect(
-                matches(#""((?:com|org|net|io|dev|app|vn)\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]+)""#, in: text).isEmpty,
-                "\(file.lastPathComponent)")
+            #expect(matches(bundleShaped, in: text).isEmpty, "\(file.lastPathComponent)")
             #expect(text.range(of: "http", options: .caseInsensitive) == nil, "\(file.lastPathComponent)")
             #expect(!text.contains("print("), "\(file.lastPathComponent)")
         }
