@@ -57,6 +57,26 @@ def site_file_name(url: str, host: str) -> str | None:
     return name
 
 
+def release_entries(data: object) -> list[dict]:
+    """The release objects of releases.json: a list, or an object with a `releases` (or `items`) list, the shapes
+    site/lib/data.mjs reads. Any other shape is an input error, never a traceback."""
+    if isinstance(data, list):
+        entries = data
+    elif isinstance(data, dict):
+        key = next((name for name in ("releases", "items") if name in data), None)
+        if key is None:
+            return []
+        entries = data[key]
+        if not isinstance(entries, list):
+            raise InputError(f"releases.json: `{key}` is not a list")
+    else:
+        raise InputError("releases.json: expected an object with `releases` or a list")
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise InputError(f"releases.json: entry {index} is not an object")
+    return entries
+
+
 def wanted_files(root: Path, host: str, slug: str) -> dict[str, dict]:
     """name -> {version, sha256?, size?} for every release file on the site host."""
     pattern = re.compile(rf"{re.escape(slug)}-({VERSION})\.(dmg|zip)")
@@ -75,7 +95,7 @@ def wanted_files(root: Path, host: str, slug: str) -> dict[str, dict]:
     releases_path = root / "site" / "data" / "releases.json"
     if releases_path.is_file():
         data = json.loads(releases_path.read_text(encoding="utf-8"))
-        for release in data.get("releases", []) if isinstance(data, dict) else data:
+        for release in release_entries(data):
             name = site_file_name(release.get("dmgUrl"), host)
             if name is None:
                 continue

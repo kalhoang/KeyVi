@@ -303,6 +303,37 @@ class FetchDownloadsTests(unittest.TestCase):
                           [])
         self.assertEqual(self.fetch().returncode, 2)
 
+    def test_a_malformed_releases_json_is_an_input_error_not_a_traceback(self):
+        """Fail fast at the boundary: releases.json comes from publish-release but is still external input."""
+        path = self.root / "site" / "data" / "releases.json"
+        for document, message in [
+            ({"releases": ["1.0.0"]}, "releases.json: entry 0 is not an object"),
+            ([{"dmgUrl": "https://app.example.test/download/app-1.0.0.dmg", "sha256": "a" * 64}, 42],
+             "releases.json: entry 1 is not an object"),
+            ({"releases": {"version": "1.0.0"}}, "releases.json: `releases` is not a list"),
+            ("1.0.0", "releases.json: expected an object with `releases` or a list"),
+        ]:
+            with self.subTest(document=document):
+                path.write_text(json.dumps(document), encoding="utf-8")
+                result = self.fetch()
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_releases_json_shapes_match_the_site_reader(self):
+        """site/lib/data.mjs renders a top-level list or an object with `releases` or `items`; the same entries are
+        fetched, so no download link of the site can point at a file the image lacks."""
+        sha, size = self.asset("1.0.0", "app-1.0.0.dmg", b"disk image")
+        entry = {"version": "1.0.0", "dmgUrl": "https://app.example.test/download/app-1.0.0.dmg", "sha256": sha,
+                 "size": size}
+        path = self.root / "site" / "data" / "releases.json"
+        for document in ([entry], {"items": [entry]}, {"releases": [entry]}):
+            with self.subTest(document=list(document) if isinstance(document, dict) else "list"):
+                path.write_text(json.dumps(document), encoding="utf-8")
+                result = self.fetch()
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("1 file(s) on the site host", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
