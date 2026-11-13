@@ -104,11 +104,10 @@ export const donate = {
   h1: "Ủng hộ {{AppName}}",
   thanks: "{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.",
   promise: "Ủng hộ chỉ là tấm lòng. Không có tính năng nào bị khoá, và ứng dụng không bao giờ hiện lời nhắc ủng hộ.",
-  vietqr: { h: "VietQR (Napas)", alt: "Mã QR VietQR tới tài khoản ngân hàng của Kal (ảnh giữ chỗ)", accountLabel: "Tên tài khoản", bankLabel: "Ngân hàng", accountValue: "Tên chủ tài khoản sẽ được ghi ở đây", bankValue: "Ngân hàng sẽ được ghi ở đây", how: "Mở ứng dụng ngân hàng, chọn quét mã QR và kiểm tra tên tài khoản hiện ra trước khi xác nhận." },
-  momo: { h: "MoMo", alt: "Mã QR MoMo của Kal (ảnh giữ chỗ)", how: "Mở MoMo, chọn Quét mã và kiểm tra tên người nhận trước khi xác nhận." },
+  // Pa's decision S8: a bank VietQR code only; the bank name and the account number are shown, never the holder's name.
+  vietqr: { h: "VietQR (Napas)", alt: "Mã QR VietQR để chuyển khoản ủng hộ tới tài khoản LioBank 688688678", bankLabel: "Ngân hàng", bankValue: "LioBank", accountLabel: "Số tài khoản", accountValue: "688688678", how: "Mở ứng dụng ngân hàng và chọn quét mã QR. Ứng dụng sẽ hiện tên người nhận để bạn kiểm tra trước khi xác nhận." },
   sponsors: { h: "GitHub Sponsors", body: "Nếu bạn dùng GitHub, có thể ủng hộ định kỳ hoặc một lần.", link: "Mở trang GitHub Sponsors" },
-  placeholderNote: "Ảnh QR và thông tin tài khoản là chỗ giữ trước, sẽ được thay bằng thông tin thật đã xác nhận với Kal trước bản công bố đầu tiên.",
-  privacy: "Ứng dụng không lưu thông tin người ủng hộ. Việc chuyển tiền diễn ra hoàn toàn giữa bạn và ngân hàng, MoMo hoặc GitHub.",
+  privacy: "Ứng dụng không lưu thông tin người ủng hộ. Tiền đi thẳng từ tài khoản của bạn tới tài khoản nhận, không qua bên trung gian nào.",
 };
 
 export const privacy = {

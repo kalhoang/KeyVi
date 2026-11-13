@@ -178,38 +178,44 @@ Rules (CLR-R6): every list needs a recorded permissive licence (MIT, BSD, Apache
 
 Every asset is original work created for this project unless a row below says otherwise. No third-party icon set, font glyph or traced image is included. Each asset records its author, date and source file here and in [docs/provenance](docs/provenance/README.md) section 7 (CLR-R7). This covers every image file in the repository, shipped or not: asset catalogs, website files and test targets.
 
-### Menu-bar status icons (placeholders)
+### Source artwork (Pa)
 
-- Files: eight monochrome template images, 18 x 18 pt, one per `StatusIconState` (PRD-R10): `App/Resources/Assets.xcassets/StatusIcon-<state>.imageset/icon.svg` for the states `vietnamese`, `english`, `paused`, `notWorking`, `ignoredApp`, `secureInputVietnamese`, `secureInputEnglish` and `capturing` (asset names `StatusIcon-vietnamese`, `StatusIcon-english`, `StatusIcon-paused`, `StatusIcon-notWorking`, `StatusIcon-ignoredApp`, `StatusIcon-secureInputVietnamese`, `StatusIcon-secureInputEnglish`, `StatusIcon-capturing`).
-- The same glyphs drawn in code: `App/Sources/Shell/StatusGlyph.swift` (the geometry source of the SVG files).
-- Author and date: drawn for this repository by the project's shell workstream on 2026-11-13 (commit `6c21873` for `StatusGlyph.swift`, commit `fab7dbb` for the SVG files), from the PRD-R10 glyph table in `spec/03-product.md`.
-- Source record: an XML comment at the top of each SVG and the header comment of `StatusGlyph.swift`.
-- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
-- Status: placeholder artwork. VERIFY with Pa or a designer before 1.0; designed replacements get their own entry here when they land.
+- Files: `assets/keyvi_logo.png` (1024 x 1024 px: a photographed keycap with the "KV" mark and an emerald dot on an off-white background) and four 22 x 22 menu bar SVGs: `assets/keyvi_menubar_on_light.svg`, `assets/keyvi_menubar_on_dark.svg`, `assets/keyvi_menubar_off_light.svg` and `assets/keyvi_menubar_off_dark.svg` (on: solid letters and an emerald dot; off: letters at 55 % opacity and a grey dot; light and dark: the menu bar's appearance).
+- Author and date: Pa, the product owner, supplied on 2026-11-13 (decision S7) and committed in `51d7e9e`.
+- Licence: the app's licence (`LicenseRef-App-Pending`); Pa's own artwork, no third-party material.
+- Use: not shipped as they are. Every icon below is generated from these files by a committed script, so a change to the artwork is a change here and a re-run of the script.
 
-### Donation QR codes in the app (placeholders)
+### App icon
 
-- Files: `App/Resources/Donation.xcassets/DonationVietQR.imageset/placeholder.svg` and `App/Resources/Donation.xcassets/DonationMoMo.imageset/placeholder.svg` (asset names `DonationVietQR` and `DonationMoMo`), shown in the donation block of About & Support (PRD-R59).
-- Author and date: drawn for this repository by the project's support workstream on 2026-11-13 (commit `25afa53`).
-- Source record: an XML comment at the top of each SVG.
-- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
-- Status: placeholder artwork, deliberately not a scannable QR code, so no payment can be misdirected. Pa supplies the real QR images, generated from Pa's own accounts ([donation setup](docs/runbooks/donation-setup.md)); they replace these files, are bundled as image files and never fetched at runtime, and get their source recorded here before the first public build.
+- Files: `App/Resources/Assets.xcassets/AppIcon.appiconset/icon_<points>x<points>.png` and `icon_<points>x<points>@2x.png` for 16, 32, 128, 256 and 512 pt, plus the set's `Contents.json`.
+- Source: `assets/keyvi_logo.png`, by `scripts/make-app-icon.py app-icon` on 2026-11-13: the keycap is cut out of the off-white background with a rounded-square mask, given a soft shadow and placed on Apple's macOS icon grid (an 824 px body on a 1024 px canvas).
+- Source record: this entry, the provenance table and the header of `scripts/make-app-icon.py`.
+- Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
 
-### Donation QR codes on the website (placeholders)
+### Menu-bar status icons
 
-- Files: `site/static/assets/qr/vietqr.svg` and `site/static/assets/qr/momo.svg`, shown on the website's donation page.
-- Author and date: drawn for this repository by the project's site workstream on 2026-11-13 (commit `bb65d7c`).
-- Source record: this entry and [docs/provenance](docs/provenance/README.md) section 7.
-- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
-- Status: placeholder artwork, deliberately not a scannable QR code. Replaced by the same real images as the app (see above), with the same rule.
+- Files: four SVGs per `StatusIconState` (PRD-R10), 22 x 22 pt, in `App/Resources/Assets.xcassets/StatusIcon-<state>.imageset/<state>-<variant>.svg` with the variants `light`, `dark`, `light-hc` and `dark-hc` (the light, dark and Increase Contrast menu bars), for the asset names `StatusIcon-vietnamese`, `StatusIcon-english`, `StatusIcon-paused`, `StatusIcon-notWorking`, `StatusIcon-ignoredApp`, `StatusIcon-secureInputVietnamese`, `StatusIcon-secureInputEnglish` and `StatusIcon-capturing`. They are not template images, so the emerald dot keeps its colour.
+- Source: the `light` and `dark` files of `StatusIcon-vietnamese` and `StatusIcon-english` are Pa's `keyvi_menubar_on_*` and `keyvi_menubar_off_*` files, unchanged apart from an added source comment. The high-contrast variants and the other six states are derived from the same KV mark by `scripts/make-app-icon.py menu-bar` on 2026-11-13: a badge takes the dot's place (ring, lock, pause bars, slash or recording ring) so every state differs in shape as well as colour (PRD-R10, PRD-R67).
+- Source record: an XML comment at the top of each SVG, and this entry.
+- Loading code: `App/Sources/Shell/StatusGlyph.swift` loads these images and draws no artwork of its own. Its fallback for a missing image set is the operating system's "keyboard" SF Symbol, requested by name at run time and not bundled.
+- Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
+- Replaces: the monochrome placeholder glyphs drawn for this repository earlier on 2026-11-13 (commits `6c21873` and `fab7dbb`).
 
-### Website favicon
+### Donation VietQR code
 
-- File: `site/static/favicon.svg`: a white "V" stroke on a green rounded square.
-- Author and date: drawn for this repository by the project's site workstream on 2026-11-13 (commit `bb65d7c`).
-- Source record: this entry and [docs/provenance](docs/provenance/README.md) section 7.
-- Licence: the app's licence (`LicenseRef-App-Pending`); original artwork, no third-party material.
-- Status: interim. VERIFY with Pa: replace it with a favicon derived from the app icon once that exists, and record the replacement here.
+- Files: `App/Resources/Donation.xcassets/DonationVietQR.imageset/vietqr.png` (asset name `DonationVietQR`, shown in the donation block of About & Support, PRD-R59) and `site/static/assets/qr/vietqr.png` (the website's donation page). Both are the same 1024 x 1024 px file.
+- Source: generated on 2026-11-13 by `scripts/make-vietqr.py` from Pa's bank details (decision S8: LioBank through the NAPAS BIN 970448, account 688688678, purpose "Ung ho" followed by the app name). The payload follows the public EMVCo and NAPAS VietQR format and carries no account holder name. The keycap of `assets/keyvi_logo.png` sits in the centre on a light plate. The image was rendered with the `qrcode` (BSD licence) and Pillow (MIT-CMU licence) Python packages, which are generation tools only: no code of either is shipped.
+- Source record: this entry, the provenance table and [donation setup](docs/runbooks/donation-setup.md).
+- Licence: the app's licence (`LicenseRef-App-Pending`).
+- Replaces: the VietQR and MoMo placeholder images (commits `25afa53` and `bb65d7c`). MoMo is not used: there is no MoMo account (S8).
+
+### Website icons
+
+- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the header logo `site/static/assets/brand/app-icon-64.png` and `app-icon-128.png`.
+- Source: `scripts/make-app-icon.py site` on 2026-11-13, from Pa's artwork.
+- Source record: an XML comment in `favicon.svg`, and this entry.
+- Licence: the app's licence (`LicenseRef-App-Pending`); derived from Pa's artwork only.
+- Replaces: the interim favicon (a white "V" stroke on a green rounded square, commit `bb65d7c`).
 
 ### Input method spike icon (not shipped)
 
@@ -220,8 +226,7 @@ Every asset is original work created for this project unless a row below says ot
 
 ### Other assets
 
-- **App icon**: `App/Resources/Assets.xcassets/AppIcon.appiconset` holds no image yet (placeholder). Record the author, date and source file when it is added.
-- **DMG background**: not added yet (placeholder). Same rule.
+- **DMG background**: not added yet (placeholder). Record the author, date and source file when it is added.
 - **Fonts**: none bundled by the app. The website's fonts, if any, are listed by the site track (placeholder).
 - **Illustrations and screen recordings** on the website and in onboarding: created for this project (placeholder; list each item).
 

@@ -56,7 +56,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         observeLanguage()
     }
 
-    /// Template image `StatusIconState.templateImageName` plus `accessibilityLabel` from the Menu table.
+    /// Catalog image `StatusIconState.imageName` (via `StatusGlyph`) plus `accessibilityLabel` from the Menu table.
     func show(_ state: StatusIconState) {
         show(state, accessibilityLabelKey: nil)
     }
@@ -89,9 +89,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func applyIcon() {
         guard let button = statusItem.button else { return }
-        let image = NSImage(named: iconState.templateImageName) ?? StatusGlyph.image(for: iconState)
-        image.isTemplate = true
-        button.image = image
+        // Not a template: the variant follows the button's effective appearance (StatusGlyph).
+        button.image = StatusGlyph.image(for: iconState)
         let localizer = language.localizer
         button.setAccessibilityLabel(localizer.string(labelKey ?? iconState.accessibilityLabelKey, table: .menu))
         if let appName { button.setAccessibilityHelp(localizer.format(MenuText.statusItemHint, appName)) }

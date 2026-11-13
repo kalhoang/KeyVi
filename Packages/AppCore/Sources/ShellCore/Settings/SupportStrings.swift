@@ -39,11 +39,11 @@ public enum SupportText: String, LocalizationKey {
     case donateTitle = "support.donate.title"
     case donateBody = "support.donate.body"
     case donateVietQR = "support.donate.vietQR"
-    case donateMoMo = "support.donate.momo"
-    case donateAccountName = "support.donate.accountName"
+    case donateBank = "support.donate.bank"
+    case donateAccountNumber = "support.donate.accountNumber"
+    case donateScanHint = "support.donate.scanHint"
     case donateSponsors = "support.donate.sponsors"
     case donateVietQRImage = "support.donate.vietQR.image"
-    case donateMoMoImage = "support.donate.momo.image"
 }
 
 /// Every interactive control that uses the `Support` table, with its VoiceOver label and hint (PRD-R66).

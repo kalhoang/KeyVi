@@ -106,15 +106,29 @@ enum AllHostStates {
         #expect(key(.paused(.secureField)) == MenuText.iconSecureInputVietnamese.rawValue)
     }
 
-    @Test func templateImageNamesAreUniqueAndMatchTheAssetCatalog() throws {
-        let names = StatusIconState.allCases.map(\.templateImageName)
+    /// Pa's KV mark (S7): one image set per state with light, dark and high-contrast variants, not a template so
+    /// the emerald dot keeps its colour; AppKit picks the variant from the status button's effective appearance.
+    @Test func everyStateHasAnImageSetWithLightDarkAndHighContrastVariants_PRDR10() throws {
+        let names = StatusIconState.allCases.map(\.imageName)
         #expect(Set(names).count == names.count)
         for name in names {
-            let set = RepoPaths.url("App/Resources/Assets.xcassets/\(name).imageset/Contents.json")
-            let data = try Data(contentsOf: set)
+            let folder = RepoPaths.url("App/Resources/Assets.xcassets/\(name).imageset")
+            let data = try Data(contentsOf: folder.appendingPathComponent("Contents.json"))
             let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
             let properties = try #require(json["properties"] as? [String: Any])
-            #expect(properties["template-rendering-intent"] as? String == "template", "\(name) must be a template")
+            #expect(properties["template-rendering-intent"] as? String == "original", "\(name) keeps its colours")
+            #expect(properties["preserves-vector-representation"] as? Bool == true, "\(name) stays vector")
+            var appearances: Set<String> = []
+            for image in try #require(json["images"] as? [[String: Any]]) {
+                let file = try #require(image["filename"] as? String)
+                #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent(file).path), "\(file)")
+                let pairs = (image["appearances"] as? [[String: String]] ?? []).map {
+                    "\($0["appearance"] ?? "")=\($0["value"] ?? "")"
+                }
+                appearances.insert(pairs.sorted().joined(separator: ","))
+            }
+            let expected: Set<String> = ["", "luminosity=dark", "contrast=high", "contrast=high,luminosity=dark"]
+            #expect(appearances == expected, "\(name)")
         }
     }
 }

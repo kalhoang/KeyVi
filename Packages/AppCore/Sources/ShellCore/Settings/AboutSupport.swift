@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-App-Pending
 //
 // About & Support pane logic (PRD-R24, PRD-R53, PRD-R59, ENG-R811): version line, update settings applied to the
-// Sparkle wrapper, licences and acknowledgements, donation block. The "no downgrade" note when leaving Beta is the
-// updater's `UpdateChannelNote` (App/Sources/Updater, `Updates` table).
+// Sparkle wrapper, licences and acknowledgements, donation block (a bank VietQR code only, Pa's decision S8). The
+// "no downgrade" note when leaving Beta is the updater's `UpdateChannelNote` (App/Sources/Updater, `Updates`
+// table).
 
 public import AppModel
 
@@ -40,9 +41,14 @@ public struct Acknowledgements: Sendable, Hashable {
 }
 
 extension DonationInfo {
-    /// PRD-R59: the account name is shown in text next to the VietQR code.
-    public func accountLine(_ localizer: Localizer) -> String {
-        localizer.format(SupportText.donateAccountName, bankAccountName)
+    /// PRD-R59, S8: "Ngân hàng: LioBank" next to the VietQR code.
+    public func bankLine(_ localizer: Localizer) -> String {
+        localizer.format(SupportText.donateBank, bankName)
+    }
+
+    /// PRD-R59, S8: "Số tài khoản: 688688678"; the holder's name is never shown.
+    public func accountNumberLine(_ localizer: Localizer) -> String {
+        localizer.format(SupportText.donateAccountNumber, accountNumber)
     }
 
     /// PRD-R57: GitHub Sponsors is shown only once Pa has a sponsor URL (VERIFY).

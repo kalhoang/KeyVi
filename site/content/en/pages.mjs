@@ -103,11 +103,10 @@ export const donate = {
   h1: "Donate to {{AppName}}",
   thanks: "{{AppName}} is free and always will be. If you find it useful, you can chip in so Kal has more time to keep building it.",
   promise: "Donating is a tip jar, nothing more. No feature is locked, and the app never shows a donation prompt.",
-  vietqr: { h: "VietQR (Napas)", alt: "VietQR code for Kal's bank account (placeholder image)", accountLabel: "Account name", bankLabel: "Bank", accountValue: "The account holder name will be shown here", bankValue: "The bank will be shown here", how: "Open your banking app, choose scan QR, and check that the account name shown matches before you confirm." },
-  momo: { h: "MoMo", alt: "MoMo QR code for Kal (placeholder image)", how: "Open MoMo, choose Scan, and check the recipient name before you confirm." },
+  // Pa's decision S8: a bank VietQR code only; the bank name and the account number are shown, never the holder's name.
+  vietqr: { h: "VietQR (Napas)", alt: "VietQR code for a donation transfer to LioBank account 688688678", bankLabel: "Bank", bankValue: "LioBank", accountLabel: "Account number", accountValue: "688688678", how: "Open your banking app and choose scan QR. It shows the recipient's name so you can check it before you confirm." },
   sponsors: { h: "GitHub Sponsors", body: "If you use GitHub, you can sponsor monthly or once.", link: "Open GitHub Sponsors" },
-  placeholderNote: "The QR images and account details are placeholders. They will be replaced with real details confirmed with Kal before the first public release.",
-  privacy: "The app stores no donor information. The money moves only between you and your bank, MoMo or GitHub.",
+  privacy: "The app stores no donor information. The money goes straight from your account to the receiving account, with no one in between.",
 };
 
 export const privacy = {

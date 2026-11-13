@@ -667,20 +667,38 @@
         }
       }
     },
-    "support.donate.accountName" : {
-      "comment" : "PRD-R59 account name in text. %@ is the name.",
+    "support.donate.accountNumber" : {
+      "comment" : "PRD-R59, Pa's decision S8: account number in text; the holder's name is never shown. %@ is the number.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Account holder: %@"
+            "value" : "Account number: %@"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chủ tài khoản: %@"
+            "value" : "Số tài khoản: %@"
+          }
+        }
+      }
+    },
+    "support.donate.bank" : {
+      "comment" : "PRD-R59, Pa's decision S8: bank name next to the VietQR code. %@ is the bank name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bank: %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ngân hàng: %@"
           }
         }
       }
@@ -703,38 +721,20 @@
         }
       }
     },
-    "support.donate.momo" : {
-      "comment" : "PRD-R59.",
+    "support.donate.scanHint" : {
+      "comment" : "Below the VietQR code (S8): the payer's bank app shows the recipient's name after the scan.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MoMo"
+            "value" : "Scan the code with your banking app. It shows the recipient's name so you can check it before you send."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MoMo"
-          }
-        }
-      }
-    },
-    "support.donate.momo.image" : {
-      "comment" : "VoiceOver label of the QR image.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MoMo QR code for a donation"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mã QR MoMo để ủng hộ"
+            "value" : "Quét mã bằng ứng dụng ngân hàng. Ứng dụng sẽ hiện tên người nhận để bạn kiểm tra trước khi chuyển."
           }
         }
       }

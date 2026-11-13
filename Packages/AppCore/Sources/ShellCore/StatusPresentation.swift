@@ -9,19 +9,22 @@ public import Diagnostics
 public import Foundation
 public import SettingsStore
 
-/// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table.
+/// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table. The glyphs are Pa's KV mark
+/// (S7): the letters are solid or dimmed and a badge sits in the dot's place, so no state relies on colour alone
+/// (PRD-R67).
 public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
-    case vietnamese  // V in a rounded square
-    case english  // E in a rounded square
-    case ignoredApp  // E with a small dot
-    case secureInputVietnamese  // V with a lock badge
-    case secureInputEnglish  // E with a lock badge
-    case paused  // dimmed glyph (non-Latin source and other pauses)
-    case notWorking  // glyph with a slash (permission missing or tap failed)
-    case capturing  // changed icon while a typing trace records (PLT-R905)
+    case vietnamese  // solid KV, emerald dot
+    case english  // dimmed KV, grey dot
+    case ignoredApp  // dimmed KV, ring
+    case secureInputVietnamese  // solid KV, lock badge
+    case secureInputEnglish  // dimmed KV, lock badge
+    case paused  // faint KV, pause bars (non-Latin source and other pauses)
+    case notWorking  // faint KV with a slash (permission missing or tap failed)
+    case capturing  // solid KV, recording ring while a typing trace records (PLT-R905)
 
     public var accessibilityLabelKey: String { "icon.\(rawValue).accessibilityLabel" }
-    public var templateImageName: String { "StatusIcon-\(rawValue)" }
+    /// Asset catalog image set with light, dark and high-contrast variants; not a template.
+    public var imageName: String { "StatusIcon-\(rawValue)" }
 }
 
 public enum StatusPresentation {
