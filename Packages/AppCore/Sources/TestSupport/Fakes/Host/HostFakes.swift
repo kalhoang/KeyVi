@@ -93,10 +93,16 @@ public final class FakeAXProvider: AXProvider, Sendable {
         return .success(AXFocusedElement(pid: pid, element: Self.elementReference(pid: pid, element: element)))
     }
 
+    /// Fixture limits that keep every synthetic reference distinct and inside `Int32`.
+    static let maximumFakePID: Int32 = 99_999
+    static let maximumFakeElement: UInt16 = 20_000
+
     /// An application element is a local reference: creating it sends no AX message. Element 0 is the app's
-    /// own reference; other elements use unused pids above 1,000,000, one per (pid, element).
+    /// own reference; other elements use unused pids above 1,000,000, one per (pid, element) with the full pid.
     static func elementReference(pid: Int32, element: UInt16) -> AXElementReference {
-        let reference = element == 0 ? pid : 1_000_000 + Int32(element) * 10_000 + pid % 10_000
+        precondition((0...maximumFakePID).contains(pid), "fake pids stay below 100,000")
+        precondition(element <= maximumFakeElement, "fake element numbers stay at or below 20,000")
+        let reference = element == 0 ? pid : 1_000_000 + Int32(element) * (maximumFakePID + 1) + pid
         return AXElementReference(AXUIElementCreateApplication(reference))
     }
 
