@@ -119,6 +119,15 @@ final class SystemAXObservation: AXObservation {
     }
 }
 
+/// The two AX primitives the attribute reader needs; production sends real AX messages, tests inject a table
+/// (no Accessibility permission needed).
+struct AXReadFunctions {
+    var copy: (AXUIElement, String) -> AXRead.Outcome<CFTypeRef>
+    var isSettable: (AXUIElement, String) -> (error: AXError, settable: Bool)
+
+    static var system: AXReadFunctions { AXReadFunctions(copy: AXRead.copy, isSettable: AXRead.isSettable) }
+}
+
 /// Bounded attribute reads of one focused element (5.2, PLT-R383).
 struct AXAttributeReader {
     static let identifierAttribute = "AXIdentifier"
@@ -126,47 +135,88 @@ struct AXAttributeReader {
     static let webAreaRole = "AXWebArea"
 
     let element: AXUIElement
+    var functions = AXReadFunctions.system
 
+    /// PLT-R384: a timeout in any read (role, settable, subrole, identifier, classes, ancestors, window title,
+    /// URL) makes the whole read `.timedOut`, so the core counts it for the circuit breaker. Reading stops at
+    /// the first timeout, so one refresh spends at most one messaging timeout here.
     func read(request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
-        AXRead.string(element, kAXRoleAttribute).flatMap { role in
-            var editable = DarwinBoolean(false)
-            let settable = AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &editable)
-            if settable == .cannotComplete { return .timedOut }
-            let ancestors = ancestorChain()
-            let title = request.includeWindowTitle ? windowTitle() : nil
-            let url = request.includeDocumentURL ? documentURL(ancestors: ancestors) : nil
-            return .success(
-                FocusAttributes(
-                    role: role, subrole: AXRead.string(element, kAXSubroleAttribute).value ?? nil,
-                    identifier: AXRead.string(element, Self.identifierAttribute).value ?? nil,
-                    domClasses: AXRead.strings(element, Self.domClassListAttribute),
-                    editable: settable == .success ? editable.boolValue : nil,
-                    ancestorRoles: ancestors.map(\.role), documentURL: url, windowTitle: title))
+        AXRead.map(functions.copy(element, kAXRoleAttribute)) { $0 as? String }.flatMap { role in
+            let settable = functions.isSettable(element, kAXValueAttribute)
+            if settable.error == .cannotComplete { return .timedOut }
+            var session = AXReadSession(copy: functions.copy)
+            let attributes = session.attributes(
+                of: element, role: role, editable: settable.error == .success ? settable.settable : nil,
+                request: request)
+            return session.timedOut ? .timedOut : .success(attributes)
+        }
+    }
+}
+
+/// Optional attribute reads that remember a timeout and send nothing after it (PLT-R384).
+struct AXReadSession {
+    let copy: (AXUIElement, String) -> AXRead.Outcome<CFTypeRef>
+    private(set) var timedOut = false
+
+    init(copy: @escaping (AXUIElement, String) -> AXRead.Outcome<CFTypeRef>) { self.copy = copy }
+
+    mutating func attributes(
+        of element: AXUIElement, role: String?, editable: Bool?, request: AXAttributeRequest
+    ) -> FocusAttributes {
+        let subrole = string(element, kAXSubroleAttribute)
+        let identifier = string(element, AXAttributeReader.identifierAttribute)
+        let domClasses = strings(element, AXAttributeReader.domClassListAttribute)
+        let ancestors = ancestorChain(of: element)
+        let title = request.includeWindowTitle ? windowTitle(of: element) : nil
+        let url = request.includeDocumentURL ? documentURL(ancestors: ancestors) : nil
+        return FocusAttributes(
+            role: role, subrole: subrole, identifier: identifier, domClasses: domClasses, editable: editable,
+            ancestorRoles: ancestors.map(\.role), documentURL: url, windowTitle: title)
+    }
+
+    private mutating func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
+        guard !timedOut else { return nil }
+        switch copy(element, attribute) {
+        case .success(let value): return value
+        case .timedOut:
+            timedOut = true
+            return nil
+        case .unavailable, .failed: return nil
         }
     }
 
-    private func ancestorChain() -> [(element: AXUIElement, role: String)] {
+    private mutating func element(_ element: AXUIElement, _ attribute: String) -> AXUIElement? {
+        guard let value = value(element, attribute), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return (value as! AXUIElement)
+    }
+
+    private mutating func string(_ element: AXUIElement, _ attribute: String) -> String? {
+        value(element, attribute) as? String
+    }
+
+    private mutating func strings(_ element: AXUIElement, _ attribute: String) -> [String] {
+        (value(element, attribute) as? [String]) ?? []
+    }
+
+    private mutating func ancestorChain(of start: AXUIElement) -> [(element: AXUIElement, role: String)] {
         var chain: [(element: AXUIElement, role: String)] = []
-        var cursor = element
-        while chain.count < SystemAXProvider.maximumAncestors,
-            case .success(let parent?) = AXRead.element(cursor, kAXParentAttribute)
-        {
-            chain.append((parent, AXRead.string(parent, kAXRoleAttribute).value.flatMap { $0 } ?? ""))
+        var cursor = start
+        while chain.count < SystemAXProvider.maximumAncestors, let parent = element(cursor, kAXParentAttribute) {
+            chain.append((parent, string(parent, kAXRoleAttribute) ?? ""))
             cursor = parent
         }
         return chain
     }
 
-    private func windowTitle() -> String? {
-        guard case .success(let window?) = AXRead.element(element, kAXWindowAttribute) else { return nil }
-        return AXRead.string(window, kAXTitleAttribute).value ?? nil
+    private mutating func windowTitle(of start: AXUIElement) -> String? {
+        guard let window = element(start, kAXWindowAttribute) else { return nil }
+        return string(window, kAXTitleAttribute)
     }
 
     /// The nearest web area's `AXURL`, kept in memory for matching only (PLT-R383).
-    private func documentURL(ancestors: [(element: AXUIElement, role: String)]) -> String? {
-        guard let webArea = ancestors.first(where: { $0.role == Self.webAreaRole })?.element else { return nil }
-        guard case .success(let value?) = AXRead.copy(webArea, kAXURLAttribute),
-            CFGetTypeID(value) == CFURLGetTypeID()
+    private mutating func documentURL(ancestors: [(element: AXUIElement, role: String)]) -> String? {
+        guard let webArea = ancestors.first(where: { $0.role == AXAttributeReader.webAreaRole })?.element,
+            let value = value(webArea, kAXURLAttribute), CFGetTypeID(value) == CFURLGetTypeID()
         else { return nil }
         return (value as! CFURL as URL).absoluteString
     }
@@ -219,21 +269,17 @@ enum AXRead {
         }
     }
 
-    static func string(_ element: AXUIElement, _ attribute: String) -> Outcome<String> {
-        map(copy(element, attribute)) { $0 as? String }
-    }
-
-    static func strings(_ element: AXUIElement, _ attribute: String) -> [String] {
-        guard case .success(let value?) = copy(element, attribute) else { return [] }
-        return (value as? [String]) ?? []
+    static func isSettable(_ element: AXUIElement, _ attribute: String) -> (error: AXError, settable: Bool) {
+        var settable = DarwinBoolean(false)
+        let error = AXUIElementIsAttributeSettable(element, attribute as CFString, &settable)
+        return (error, settable.boolValue)
     }
 
     static func failure<Value: Sendable>(_ error: AXError) -> AXCallResult<Value> {
         error == .cannotComplete ? .timedOut : .failed(code: error.rawValue)
     }
 
-    private static func map<Value>(_ outcome: Outcome<CFTypeRef>, _ transform: (CFTypeRef) -> Value?) -> Outcome<Value>
-    {
+    static func map<Value>(_ outcome: Outcome<CFTypeRef>, _ transform: (CFTypeRef) -> Value?) -> Outcome<Value> {
         switch outcome {
         case .success(let value): .success(value.flatMap(transform))
         case .timedOut: .timedOut
