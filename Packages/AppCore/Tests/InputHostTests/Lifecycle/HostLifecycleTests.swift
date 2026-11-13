@@ -251,9 +251,13 @@ import Testing
 
     @Test func noticeCountsUnexpectedDisablesToo_PLT_R331() {
         var script = LifecycleScript.running()
+        let gap = Duration.seconds(20)  // distinct disables, outside the coalescing window
         script.send(.tapDisabledBySystem(byTimeout: true))
+        script.advance(by: gap)
         script.send(.watchdogTripped(.unexpectedlyDisabled))
+        script.advance(by: gap)
         script.send(.tapDisabledBySystem(byTimeout: false))
+        script.advance(by: gap)
         #expect(script.send(.watchdogTripped(.unexpectedlyDisabled)).last == .showTapInstabilityNotice)
     }
 
@@ -267,10 +271,14 @@ import Testing
 
     @Test func noticeCanReturnOnceTheCooldownHasPassed() {
         var script = LifecycleScript.running()
-        for _ in 0..<4 { script.send(.tapDisabledBySystem(byTimeout: true)) }
+        for _ in 0..<4 {
+            script.send(.tapDisabledBySystem(byTimeout: true))
+            script.advance(by: .seconds(2))
+        }
         script.advance(by: .seconds(601))
         for _ in 0..<3 {
             #expect(!script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
+            script.advance(by: .seconds(2))
         }
         #expect(script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
     }

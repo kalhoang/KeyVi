@@ -67,6 +67,9 @@ public struct HostLifecycle: Sendable, Hashable {
     /// this window, at most once per window.
     public static let instabilityWindow: Duration = .seconds(600)
     public static let instabilityThreshold = 3
+    /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
+    /// report one disable; reports closer than this count once toward the notice (both still run the procedure).
+    public static let disableCoalescingWindow: Duration = .seconds(1)
 
     /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
     private enum TapPresence: Sendable, Hashable { case none, creating, alive }
@@ -234,6 +237,8 @@ public struct HostLifecycle: Sendable, Hashable {
 
     /// PLT-R330: re-enable (permissions are valid while a tap is installed: a revocation already removed it),
     /// reset, replay held events, record the reason, and the notice after more than 3 within 10 minutes.
+    /// Every report runs the whole procedure (a second disable within the coalescing window is possible and needs
+    /// the reset), but reports within `disableCoalescingWindow` of the last counted one count once (PLT-R331).
     private mutating func systemDisabled(reason: HealthEventKindCode, at now: MonotonicInstant) -> [LifecycleEffect] {
         guard tapIsInstalled else { return [] }
         var effects: [LifecycleEffect] = [
@@ -320,6 +325,11 @@ public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R330 step 5: true when this disable makes more than `instabilityThreshold` within the window and no
     /// notice was shown during the last window.
     private mutating func noteSystemDisable(at now: MonotonicInstant) -> Bool {
+        if let last = recentDisables.last,
+            now.nanoseconds(since: MonotonicInstant(nanoseconds: last)) < Self.disableCoalescingWindow.nanoseconds
+        {
+            return false
+        }
         let window = Self.instabilityWindow.nanoseconds
         recentDisables.append(now.nanoseconds)
         recentDisables.removeAll { now.nanoseconds(since: MonotonicInstant(nanoseconds: $0)) > window }
