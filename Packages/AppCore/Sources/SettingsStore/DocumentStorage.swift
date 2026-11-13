@@ -50,10 +50,13 @@ struct DocumentStorage: Sendable {
 
     // MARK: Writing
 
-    func write(_ object: [String: JSONValue], to file: SettingsFile) throws {
+    /// Writes `object` atomically and returns the bytes now on disk.
+    @discardableResult
+    func write(_ object: [String: JSONValue], to file: SettingsFile) throws -> Data {
         try ensureDirectory(location.directory)
         let data = try JSONSupport.serialize(.object(object))
         try fileSystem.writeAtomically(data, to: location.url(for: file), permissions: .ownerOnlyFile)
+        return data
     }
 
     private func ensureDirectory(_ url: URL) throws {
@@ -91,15 +94,6 @@ struct DocumentStorage: Sendable {
         }
         try fileSystem.writeAtomically(data, to: target, permissions: .ownerOnlyFile)
         pruneBackups(of: file)
-    }
-
-    /// Backs up the file as it is on disk now, when it is a readable document. Missing or corrupt files are
-    /// left alone (a corrupt file is quarantined instead). Returns true when a backup was written.
-    @discardableResult
-    func backUpCurrent(_ file: SettingsFile) throws -> Bool {
-        guard case .document(_, let version, let data) = read(file) else { return false }
-        try writeBackup(data, of: file, schemaVersion: version)
-        return true
     }
 
     /// Backups of `file`, newest first.

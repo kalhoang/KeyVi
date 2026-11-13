@@ -20,8 +20,6 @@ struct FileStatus: Sendable {
     /// corrupt and could not be renamed (PLT-R1006).
     var writeBlocked = false
     var dirty = false
-    /// The file as found at launch was copied to backups before the first rewrite of this session.
-    var backedUpThisSession = false
     var pending: PendingWrite?
 }
 
@@ -100,22 +98,25 @@ extension SettingsStore {
     // MARK: Writing
 
     /// Writes `file` when it is dirty and writable. Returns true when the notices changed (the caller publishes).
+    ///
+    /// Every complete write also leaves its bytes as the newest backup, so a later corruption recovers the last
+    /// written state and loses at most the changes still waiting for the debounce (PLT-R1006, section 10
+    /// acceptance "no data loss beyond the last 1 s debounce window"). Pruning keeps five per schema version,
+    /// so these rotation copies never push out the pre-migration `v<N>` copies (PLT-R1005).
     @discardableResult
     func writeNow(_ file: SettingsFile) -> Bool {
         guard status(file).dirty, canWrite(file) else { return false }
-        if !status(file).backedUpThisSession {
-            // Best effort: a failed rotation backup must not stop the user's change from being saved.
-            _ = try? storage.backUpCurrent(file)
-            updateStatus(file) { $0.backedUpThisSession = true }
-        }
         var object = encodedPayload(file, over: status(file).raw)
         object[EnvelopeKey.schemaVersion] = .number(Double(file.currentSchemaVersion))
         object[EnvelopeKey.writtenBy] = .string(writtenBy)
+        let written: Data
         do {
-            try storage.write(object, to: file)
+            written = try storage.write(object, to: file)
         } catch {
             return addNotice(.writeFailed(file))
         }
+        // Best effort: the user's change is already saved; a failed backup only narrows what recovery can offer.
+        try? storage.writeBackup(written, of: file, schemaVersion: file.currentSchemaVersion)
         updateStatus(file) {
             $0.raw = object
             $0.dirty = false
