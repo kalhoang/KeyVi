@@ -9007,7 +9007,9 @@ public final class InputHostController {
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
             health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
-            capture: dependencies.capture, signposts: dependencies.signposts)
+            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler)
+        // A settle re-read or an observer retry publishes without a notification: wake the main thread the same way.
+        focusTracker.setDeferredPublicationObserver { refresh.request() }
         worker = InjectionWorker(
             queue: channels.queue, signal: channels.workerSignal, feedback: channels.feedback,
             marker: channels.marker, focusGeneration: channels.focusGeneration,
@@ -9612,13 +9614,13 @@ public final class FocusTracker: Sendable {
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
         metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
-        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil
+        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
             metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture,
-            signposts: signposts)
+            signposts: signposts, scheduler: scheduler)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 
@@ -9647,6 +9649,12 @@ public final class FocusTracker: Sendable {
     /// `SettingsStore.recordAppModes` (PLT-R392, PRD-R23).
     public func setMemoryObserver(_ observer: (@Sendable (AppModesDocument) -> Void)?) {
         perform { $0.memoryObserver = observer }
+    }
+
+    /// Called on the ax thread after a settle re-read or an observer retry published a snapshot (PLT-R391), so the
+    /// main thread follows like it does after a notification (`FocusChangeSignalingAXProvider`). Must not block.
+    public func setDeferredPublicationObserver(_ observer: (@Sendable () -> Void)?) {
+        perform { $0.deferred.publicationObserver = observer }
     }
 
     /// Rule decision behind the last published snapshot, for the diagnostics report (any thread).
@@ -14429,6 +14437,8 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var manualRequests: [Int32] = []
         var elementQueries: [Int32: Int] = [:]
         var lastRequest: AXAttributeRequest?
+        var refusedObservers: [Int32: Int] = [:]
+        var observeAttempts: [Int32: Int] = [:]
     }
 
     private let state = Mutex(State())
@@ -14469,6 +14479,15 @@ public final class FakeAXProvider: AXProvider, Sendable {
             if timingOut { $0.timingOut.insert(pid) } else { $0.timingOut.remove(pid) }
         }
     }
+
+    /// The next `times` observer requests for `pid` fail, like an app that has just launched and answers
+    /// `AXObserverAddNotification` with `kAXErrorCannotComplete` (seen in the macOS 27 VM).
+    public func refuseObservers(pid: Int32, times: Int) {
+        state.withLock { $0.refusedObservers[pid] = max(0, times) }
+    }
+
+    /// Observer requests for `pid` so far, refused ones included.
+    public func observeAttempts(pid: Int32) -> Int { state.withLock { $0.observeAttempts[pid, default: 0] } }
 
     public func setUnavailable(pid: Int32, _ unavailable: Bool) {
         state.withLock {
@@ -14520,12 +14539,18 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func observe(
         pid: Int32, notifications: Set<AXNotificationKind>, handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
-        let id = state.withLock { state -> UInt64 in
+        let id = state.withLock { state -> UInt64? in
+            state.observeAttempts[pid, default: 0] += 1
+            if let refused = state.refusedObservers[pid], refused > 0 {
+                state.refusedObservers[pid] = refused - 1
+                return nil
+            }
             defer { state.nextObserverID += 1 }
             state.observers.append(
                 Observer(id: state.nextObserverID, pid: pid, notifications: notifications, handler: handler))
             return state.nextObserverID
         }
+        guard let id else { return nil }
         return FakeAXObservation { [weak self] in self?.removeObserver(id) }
     }
 
