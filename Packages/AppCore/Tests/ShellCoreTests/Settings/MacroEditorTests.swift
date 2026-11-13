@@ -139,6 +139,24 @@ import VietnameseEngine
         )
     }
 
+    /// ENG-R1103, PLT-R1005 (ADR 0321): a `k` + `k1` pair saved by an earlier build still loads; both rows are
+    /// flagged, and a later save is refused with the row to fix named until one of the pair is deleted or renamed.
+    @Test func aPairSavedBeforeTheDigitRuleStillLoadsAndNamesTheRowToFix_ENGR1103() throws {
+        let k = StoredMacro(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000B1")!, trigger: "k", expansion: "a")
+        let k1 = StoredMacro(
+            id: UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!, trigger: "k1", expansion: "b")
+        var state = MacroListState(macros: [k, k1, vn])
+        #expect(state.macros == [k, k1, vn])
+        #expect(state.rowIssues == [k.id: .shadows(longer: "k1"), k1.id: .shadowedBy(shorter: "k")])
+        let problem = MacroTableProblem(trigger: "k1", issue: .shadowedBy(shorter: "k"))
+        #expect(state.save(MacroDraft(shortcut: "btw", expansion: "x")) == .failure(.rejectedByEngine(problem)))
+        let l = try Localizers()
+        #expect(MacroIssueText.entryText(problem, localizer: l.en).contains("\"k1\""))
+        state.delete(k1.id)
+        #expect(state.rowIssues.isEmpty)
+        #expect(throws: Never.self) { try state.save(MacroDraft(shortcut: "btw", expansion: "x")).get() }
+    }
+
     @Test func engineErrorsMapToRowReasons_ENGR1103() {
         let macros = [vn, StoredMacro(trigger: "VN", expansion: "x"), StoredMacro(trigger: "ad", expansion: "y")]
         #expect(
