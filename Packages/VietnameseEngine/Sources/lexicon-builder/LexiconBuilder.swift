@@ -118,7 +118,7 @@ struct LexiconBuilder {
             let added = try AmbiguityCandidates.merge(
                 candidates, into: layout.inputs.appendingPathComponent("ambiguity.tsv"))
             FileHandle.standardError.write(
-                Data("added \(added) unreviewed rows to inputs/ambiguity.tsv; run pin and build\n".utf8))
+                Data("added \(added) rows to inputs/ambiguity.tsv (see merge_as); run pin and build\n".utf8))
         }
     }
 
