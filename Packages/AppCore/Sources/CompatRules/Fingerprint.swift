@@ -12,9 +12,11 @@ public protocol BundleInspector: Sendable {
     func frameworkNames(in bundle: URL) -> [String]
     /// Names of nested helper apps (for example `Google Chrome Helper (Renderer).app`).
     func helperAppNames(in bundle: URL) -> [String]
-    /// True if a file with this name exists anywhere under `Contents` (bounded depth, for example
-    /// `libxul.dylib`, `libjvm.dylib`).
-    func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool
+    /// True if a file with this name is at most `maxDepth` levels below `directory` (1 = directly inside), for
+    /// example `libjvm.dylib` under `<bundle>/Contents/jbr`. `directory` is a folder inside the bundle chosen by
+    /// the caller; a missing folder yields false. The fingerprinter only passes known library folders and
+    /// depths up to 6, so implementations walk a bounded subtree on the ax thread (PLT-R510, PLT-R384).
+    func containsFile(named name: String, in directory: URL, maxDepth: Int) -> Bool
     func infoDictionary(of bundle: URL) -> [String: JSONValue]?
 }
 

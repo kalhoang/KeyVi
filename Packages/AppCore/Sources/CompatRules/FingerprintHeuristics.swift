@@ -16,9 +16,16 @@ struct EngineHeuristics {
         static let chromiumFrameworkSuffix = " Framework.framework"
         static let chromiumRendererSuffix = " Helper (Renderer).app"
         static let geckoLibrary = "libxul.dylib"
-        static let geckoDepth = 3  // Contents/MacOS/libxul.dylib
+        /// Contents/MacOS/libxul.dylib (depth 1); Frameworks for embedders.
+        static let geckoRoots = ["Contents/MacOS", "Contents/Frameworks"]
+        static let geckoDepth = 2
         static let javaLibrary = "libjvm.dylib"
-        static let javaDepth = 7  // Contents/jbr/Contents/Home/lib/server/libjvm.dylib
+        /// Where a bundled Java runtime lives: jbr/Contents/Home/lib/server/libjvm.dylib (depth 5), jpackage
+        /// `runtime`, a JDK in PlugIns or Frameworks, a JRE in Resources (`jre/Contents/Home/...`, depth 6).
+        static let javaRoots = [
+            "Contents/jbr", "Contents/runtime", "Contents/PlugIns", "Contents/Frameworks", "Contents/Resources",
+        ]
+        static let javaDepth = 6
         static let qtFramework = "QtCore.framework"
         static let supportedPlatformsKey = "CFBundleSupportedPlatforms"
         static let iOSPlatform = "iPhoneOS"
@@ -33,10 +40,10 @@ struct EngineHeuristics {
         if frameworks.contains(Marker.electronFramework) { return .electron }
         if frameworks.contains(Marker.cefFramework) { return .cef }
         if isChromium(frameworks) { return .chromium }
-        if inspector.containsFile(named: Marker.geckoLibrary, in: bundleURL, maxDepth: Marker.geckoDepth) {
+        if containsFile(Marker.geckoLibrary, under: Marker.geckoRoots, maxDepth: Marker.geckoDepth) {
             return .gecko
         }
-        if inspector.containsFile(named: Marker.javaLibrary, in: bundleURL, maxDepth: Marker.javaDepth) {
+        if containsFile(Marker.javaLibrary, under: Marker.javaRoots, maxDepth: Marker.javaDepth) {
             return .jvm
         }
         if frameworks.contains(Marker.qtFramework) { return .qt }
@@ -46,22 +53,34 @@ struct EngineHeuristics {
         return .native
     }
 
+    /// PLT-R510 on the ax thread (PLT-R384): search only the folders where the library lives, never the whole
+    /// bundle, so the first fingerprint of a large app (an IDE, a game) stays cheap.
+    private func containsFile(_ name: String, under roots: [String], maxDepth: Int) -> Bool {
+        roots.contains { root in
+            inspector.containsFile(
+                named: name, in: bundleURL.appending(path: root, directoryHint: .isDirectory), maxDepth: maxDepth)
+        }
+    }
+
     /// A `* Framework.framework` together with a `* Helper (Renderer).app` helper.
     private func isChromium(_ frameworks: [String]) -> Bool {
         guard frameworks.contains(where: { $0.hasSuffix(Marker.chromiumFrameworkSuffix) }) else { return false }
         return inspector.helperAppNames(in: bundleURL).contains { $0.hasSuffix(Marker.chromiumRendererSuffix) }
     }
 
-    /// An iOS app running on Apple silicon declares the iPhoneOS platform (VERIFY).
+    /// An iOS app running on Apple silicon declares the iPhoneOS platform (VERIFY). The platform list decides
+    /// when present: a Catalyst build of an iOS target often keeps `LSRequiresIPhoneOS` but lists only MacOSX.
     static func isIOS(_ info: [String: JSONValue]) -> Bool {
-        if info[Marker.requiresIPhoneOSKey] == .bool(true) { return true }
-        guard case .array(let platforms) = info[Marker.supportedPlatformsKey] else { return false }
-        return platforms.contains(.string(Marker.iOSPlatform))
+        if case .array(let platforms) = info[Marker.supportedPlatformsKey] {
+            return platforms.contains(.string(Marker.iOSPlatform))
+        }
+        return info[Marker.requiresIPhoneOSKey] == .bool(true)
     }
 
-    /// A Mac Catalyst app keeps UIKit's device family key in a macOS bundle (VERIFY).
+    /// A Mac Catalyst app keeps UIKit keys (device family, `LSRequiresIPhoneOS`) in a macOS bundle (VERIFY).
+    /// Checked after `isIOS`, so these keys only mean Catalyst when the platform list is not iPhoneOS.
     static func isCatalyst(_ info: [String: JSONValue]) -> Bool {
-        info[Marker.deviceFamilyKey] != nil
+        info[Marker.deviceFamilyKey] != nil || info[Marker.requiresIPhoneOSKey] == .bool(true)
     }
 }
 

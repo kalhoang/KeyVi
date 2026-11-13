@@ -10,16 +10,16 @@ public import Foundation
 internal import Synchronization
 
 public final class ScriptedBundleInspector: BundleInspector, Sendable {
-    /// What a bundle looks like from the outside: framework and helper names, files with their depth below
-    /// `Contents`, and the Info.plist.
+    /// What a bundle looks like from the outside: framework and helper names, files as paths relative to the
+    /// bundle (for example `Contents/MacOS/libxul.dylib`), and the Info.plist.
     public struct FakeBundle: Sendable, Hashable {
         public var frameworks: [String]
         public var helpers: [String]
-        public var files: [String: Int]
+        public var files: [String]
         public var info: [String: JSONValue]?
 
         public init(
-            frameworks: [String] = [], helpers: [String] = [], files: [String: Int] = [:],
+            frameworks: [String] = [], helpers: [String] = [], files: [String] = [],
             info: [String: JSONValue]? = nil
         ) {
             self.frameworks = frameworks
@@ -29,8 +29,16 @@ public final class ScriptedBundleInspector: BundleInspector, Sendable {
         }
     }
 
+    /// One `containsFile` call: the searched folder relative to the bundle, the file name and the depth bound.
+    public struct FileSearch: Sendable, Hashable {
+        public var directory: String
+        public var name: String
+        public var maxDepth: Int
+    }
+
     private let bundles: Mutex<[String: FakeBundle]>
     private let calls = Mutex<Int>(0)
+    private let searches = Mutex<[FileSearch]>([])
 
     public init(bundles: [URL: FakeBundle] = [:]) {
         self.bundles = Mutex(Dictionary(uniqueKeysWithValues: bundles.map { ($0.key.path, $0.value) }))
@@ -50,9 +58,26 @@ public final class ScriptedBundleInspector: BundleInspector, Sendable {
     public func frameworkNames(in bundle: URL) -> [String] { self.bundle(at: bundle)?.frameworks ?? [] }
     public func helperAppNames(in bundle: URL) -> [String] { self.bundle(at: bundle)?.helpers ?? [] }
 
-    public func containsFile(named name: String, in bundle: URL, maxDepth: Int) -> Bool {
-        guard let depth = self.bundle(at: bundle)?.files[name] else { return false }
-        return depth <= maxDepth
+    /// Every `containsFile` call so far, in order.
+    public var fileSearches: [FileSearch] { searches.withLock { $0 } }
+
+    public func containsFile(named name: String, in directory: URL, maxDepth: Int) -> Bool {
+        calls.withLock { $0 += 1 }
+        let target = directory.path
+        guard
+            let (root, bundle) = bundles.withLock({ all in
+                all.first { target == $0.key || target.hasPrefix($0.key + "/") }
+            })
+        else { return false }
+        let relative = target.dropFirst(root.count).split(separator: "/")
+        searches.withLock {
+            $0.append(FileSearch(directory: relative.joined(separator: "/"), name: name, maxDepth: maxDepth))
+        }
+        return bundle.files.contains { path in
+            let components = path.split(separator: "/")
+            guard components.last.map(String.init) == name, components.starts(with: relative) else { return false }
+            return components.count - relative.count <= maxDepth
+        }
     }
 
     public func infoDictionary(of bundle: URL) -> [String: JSONValue]? { self.bundle(at: bundle, counted: false)?.info }

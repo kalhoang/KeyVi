@@ -11,6 +11,7 @@ import Testing
     typealias FakeBundle = ScriptedBundleInspector.FakeBundle
 
     static let app = URL(fileURLWithPath: "/Applications/Under Test.app")
+    static let jbrJVM = "Contents/jbr/Contents/Home/lib/server/libjvm.dylib"
 
     struct EngineCase: Sendable, CustomTestStringConvertible {
         let label: String
@@ -33,9 +34,24 @@ import Testing
             label: "framework without renderer helper is not chromium",
             bundle: FakeBundle(frameworks: ["Sparkle Framework.framework"], helpers: ["Updater.app"]), expected: .native
         ),
-        .init(label: "gecko", bundle: FakeBundle(files: ["libxul.dylib": 2]), expected: .gecko),
-        .init(label: "gecko too deep", bundle: FakeBundle(files: ["libxul.dylib": 9]), expected: .native),
-        .init(label: "jvm", bundle: FakeBundle(files: ["libjvm.dylib": 6]), expected: .jvm),
+        .init(label: "gecko", bundle: FakeBundle(files: ["Contents/MacOS/libxul.dylib"]), expected: .gecko),
+        .init(
+            label: "gecko outside the searched folders",
+            bundle: FakeBundle(files: ["Contents/Resources/extra/libxul.dylib"]), expected: .native),
+        .init(label: "jvm (JetBrains runtime)", bundle: FakeBundle(files: [jbrJVM]), expected: .jvm),
+        .init(
+            label: "jvm (jpackage runtime)",
+            bundle: FakeBundle(files: ["Contents/runtime/Contents/Home/lib/server/libjvm.dylib"]), expected: .jvm),
+        .init(
+            label: "jvm (bundled JDK plug-in)",
+            bundle: FakeBundle(files: ["Contents/PlugIns/jdk-21.jdk/Contents/Home/lib/server/libjvm.dylib"]),
+            expected: .jvm),
+        .init(
+            label: "jvm too deep below a Java root",
+            bundle: FakeBundle(files: ["Contents/Resources/a/b/c/d/e/f/libjvm.dylib"]), expected: .native),
+        .init(
+            label: "jvm outside the Java roots is not searched",
+            bundle: FakeBundle(files: ["Contents/Developer/Tools/jre/lib/server/libjvm.dylib"]), expected: .native),
         .init(label: "qt", bundle: FakeBundle(frameworks: ["QtCore.framework", "QtGui.framework"]), expected: .qt),
         .init(
             label: "ios by platform",
@@ -43,6 +59,11 @@ import Testing
         .init(
             label: "ios by LSRequiresIPhoneOS", bundle: FakeBundle(info: ["LSRequiresIPhoneOS": .bool(true)]),
             expected: .ios),
+        .init(
+            label: "catalyst keeping LSRequiresIPhoneOS from its iOS target",
+            bundle: FakeBundle(info: [
+                "CFBundleSupportedPlatforms": .array([.string("MacOSX")]), "LSRequiresIPhoneOS": .bool(true),
+            ]), expected: .catalyst),
         .init(
             label: "catalyst",
             bundle: FakeBundle(info: [
@@ -62,9 +83,9 @@ import Testing
             label: "chromium beats gecko and jvm",
             bundle: FakeBundle(
                 frameworks: ["X Framework.framework"], helpers: ["X Helper (Renderer).app"],
-                files: ["libxul.dylib": 1, "libjvm.dylib": 1]), expected: .chromium),
+                files: ["Contents/MacOS/libxul.dylib", jbrJVM]), expected: .chromium),
         .init(
-            label: "jvm beats qt", bundle: FakeBundle(frameworks: ["QtCore.framework"], files: ["libjvm.dylib": 3]),
+            label: "jvm beats qt", bundle: FakeBundle(frameworks: ["QtCore.framework"], files: [jbrJVM]),
             expected: .jvm),
         .init(
             label: "qt beats ios",
@@ -79,6 +100,21 @@ import Testing
         let fingerprinter = EngineFingerprinter(inspector: inspector, webkitBrowsers: [])
         #expect(
             fingerprinter.fingerprint(bundleURL: Self.app, bundle: bundleKey("com.example.app")) == testCase.expected)
+    }
+
+    /// PLT-R510, PLT-R384: the first fingerprint of a large bundle (an IDE, a game) runs on the ax thread, so
+    /// file searches stay in the folders where the library lives and never walk the whole bundle.
+    @Test func fileSearchesAreBoundedToKnownFoldersPLTR510() {
+        let inspector = ScriptedBundleInspector(bundles: [Self.app: FakeBundle()])
+        let fingerprinter = EngineFingerprinter(inspector: inspector, webkitBrowsers: [])
+        #expect(fingerprinter.fingerprint(bundleURL: Self.app, bundle: nil) == .native)
+        let searches = inspector.fileSearches
+        #expect(Set(searches.map(\.name)) == ["libxul.dylib", "libjvm.dylib"])
+        for search in searches {
+            #expect(search.directory.hasPrefix("Contents/"), "searched \(search.directory)")
+            #expect(!["", "Contents", "Contents/Developer"].contains(search.directory))
+            #expect(search.maxDepth <= 6)
+        }
     }
 
     @Test func webkitBrowserComesFromTheRulesGroupAndWinsOverEverything() {
@@ -128,7 +164,7 @@ import Testing
         let afterFirst = inspector.inspectionCount
         #expect(cache.fingerprint(bundleURL: Self.app, bundle: nil) == .electron)
         #expect(inspector.inspectionCount == afterFirst)
-        inspector.set(FakeBundle(files: ["libjvm.dylib": 4], info: ["CFBundleVersion": .string("2")]), at: Self.app)
+        inspector.set(FakeBundle(files: [Self.jbrJVM], info: ["CFBundleVersion": .string("2")]), at: Self.app)
         #expect(cache.fingerprint(bundleURL: Self.app, bundle: nil) == .jvm)
         #expect(inspector.inspectionCount > afterFirst)
         #expect(cache.count == 2)
