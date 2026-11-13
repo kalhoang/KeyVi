@@ -17,7 +17,7 @@ The project is pre-alpha and has no public release yet. Until the first stable r
 Please report privately. Do not open a public issue, a Discussion or a pull request for a vulnerability.
 
 1. **GitHub private vulnerability reporting (preferred).** Use the "Report a vulnerability" button on the repository's Security tab, or go to `https://github.com/OWNER/REPO/security/advisories/new` (repository path: VERIFY; private vulnerability reporting must be enabled in the repository settings before the repository becomes public).
-2. **Email.** `security@kal.vn` (VERIFY: address to be created or confirmed by the maintainer). Encrypt only if the maintainer has published a key; otherwise send a short description and ask for a secure channel.
+2. **Email.** `keyvi@kal.vn` (the project mailbox, confirmed by the maintainer on 2026-11-13; put "Security" in the subject). Encrypt only if the maintainer has published a key; otherwise send a short description and ask for a secure channel.
 
 Please include:
 

@@ -5,8 +5,7 @@
 // must be exactly https://<APP_SITE_HOST>/appcast.xml and the key a 32-byte ed25519 public key, otherwise Sparkle
 // is never started and "Check for updates" stays disabled.
 SPARKLE_FEED_URL = https:/$()/$(APP_SITE_HOST)/appcast.xml
-// EdDSA public key generated on Pa's Mac with Sparkle's `generate_keys` (QA-R32, QA-R33). VERIFY: fill in
-// before the first public build; it never changes afterwards except through the rotation runbook. While it is
-// empty, builds never contact the appcast (ADR 0304 runbook note: `bin/generate_keys` from the Sparkle 2.10.1
-// distribution prints the public key to paste here; the private key stays in Pa's login Keychain).
-SPARKLE_PUBLIC_ED_KEY =
+// EdDSA public key from Pa's Mac (Sparkle `generate_keys`, QA-R32, QA-R33), filled in on 2026-11-13. It never
+// changes except through docs/runbooks/key-rotation.md; the private key stays in Pa's login Keychain and in Pa's
+// offline backups, never in the repository or in CI.
+SPARKLE_PUBLIC_ED_KEY = jIZaEhJfVl7E2zRDhifAO3ZXxLvpX7vLy0SIfUbwEVI=

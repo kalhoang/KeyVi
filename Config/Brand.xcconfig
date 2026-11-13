@@ -3,16 +3,16 @@
 // name later (spec/00-overview.md section 4). Rename with: scripts/rename-app.sh "<Display Name>" <slug>
 // Never hard-code the display name, slug or bundle ID anywhere else in code or UI strings.
 
-APP_DISPLAY_NAME = Kal Key
-APP_SLUG = kalkey
-APP_BUNDLE_ID_RELEASE = vn.kal.kalkey
-APP_BUNDLE_ID_DEV = vn.kal.kalkey.dev
-APP_SITE_HOST = kalkey.kal.vn
+APP_DISPLAY_NAME = KeyVi
+APP_SLUG = keyvi
+APP_BUNDLE_ID_RELEASE = vn.kal.keyvi
+APP_BUNDLE_ID_DEV = vn.kal.keyvi.dev
+APP_SITE_HOST = keyvi.kal.vn
 
 // Added 2026-11-13 by the platform design (review findings on PRD-R47, QA-R51, QA-R60 and the temporary
 // name). The values above are unchanged. Empty means "not decided yet"; Pa fills them (VERIFY).
 // Support address for "Gửi qua email" (PRD-R47). Empty hides the email button.
-APP_SUPPORT_EMAIL =
+APP_SUPPORT_EMAIL = keyvi@kal.vn
 // Public GitHub repository for issue forms (PRD-R47) and the URL host allowlist (QA-R60). Write it as
 // https:/$()/github.com/<owner>/<repo> because `//` starts an xcconfig comment. Empty hides the GitHub button.
 APP_REPOSITORY_URL =

@@ -18,8 +18,8 @@ A Vietnamese input method for macOS (menu-bar app with an event tap), written fr
 Requirement IDs (ENG-R, PLT-R, PRD-R, QA-R, CLR-R) must be cited in code comments and tests where a
 requirement drives a non-obvious behaviour.
 
-## Name (temporary)
-The display name "Kal Key" and slug `kalkey` are TEMPORARY. The only source is `Config/Brand.xcconfig`
+## Name
+The product name is "KeyVi" (slug `keyvi`), chosen by Pa on 2026-11-13. The only source is `Config/Brand.xcconfig`
 (and `scripts/brand.env` for scripts). Never hard-code the display name, slug, bundle ID or site host in Swift,
 UI strings, docs templates or scripts; read them from the bundle (`Brand` helper) or the brand files.
 UI strings take the app name as a format argument. `scripts/rename-app.sh` must keep working.
