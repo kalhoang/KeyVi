@@ -1697,6 +1697,8 @@ public struct HealthEvent: Sendable, Hashable, Codable {
 public final class HealthEventLog: Sendable {
     /// The report lists the last 50 health events (PLT-R1202).
     public static let reportedEventCount = 50
+    /// Events kept in memory, and read back from earlier sessions' logs, for the report's 24-hour counters.
+    public static let defaultCapacity = 256
 
     private struct Ring {
         var events: [HealthEvent] = []
@@ -1717,7 +1719,7 @@ public final class HealthEventLog: Sendable {
 
     /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
     /// level for events that lose or risk losing keys and notice level otherwise (PRD-R46, PLT-R1206).
-    public init(capacity: Int = 256, mirror: (any DiagnosticsLogging)? = nil) {
+    public init(capacity: Int = HealthEventLog.defaultCapacity, mirror: (any DiagnosticsLogging)? = nil) {
         precondition(capacity > 0)
         self.capacity = capacity
         self.mirror = mirror
@@ -1767,6 +1769,13 @@ public final class HealthEventLog: Sendable {
                 ? ring.events : Array(ring.events[ring.next...] + ring.events[..<ring.next])
             return Array(ordered.suffix(max(0, limit)))
         }
+    }
+
+    /// The events a report is assembled from (PLT-R1202, PRD-R46): the earlier sessions' events (`earlier`, asked
+    /// for at most this ring's capacity) then this session's, newest last. The report lists the last 50 of them;
+    /// its 24-hour tap counters see all of them, so many later events do not hide a recent tap timeout.
+    public func reportSource(earlier: (Int) -> [HealthEvent]) -> [HealthEvent] {
+        HealthEvent.reportList(earlier: earlier(capacity), current: recent(limit: capacity), limit: 2 * capacity)
     }
 
     /// Count of events of `kind` within `window` before `now` (PLT-R330 "more than 3 within 10 minutes").
@@ -2154,19 +2163,20 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
 
     /// Health events of earlier sessions from the log files, newest last, at most `limit` (PRD-R46): a crash or
     /// a tap timeout from before this launch still reaches the next report. The files are read once, on the
-    /// first call, after the records logged so far are written; later calls return the same events. Reads
-    /// files: never call it on the tap thread or from inside a logging call.
+    /// logger's queue after the records logged so far are written (ahead of time by `maintain()`, or on the
+    /// first call); later calls return the same events. Waits for the queue: never call it on the tap thread or
+    /// from inside a logging call.
     public func earlierSessionHealthEvents(limit: Int) -> [HealthEvent] {
-        let events = earlierHealth.withLock { cached in
-            if let cached { return cached }
-            let cutoff = sessionStart
-            let read = queue.sync { [files] in
-                files.healthEvents(before: cutoff, limit: HealthEventLog.reportedEventCount)
-            }
-            cached = read
-            return read
-        }
+        let events = earlierHealth.withLock { $0 } ?? queue.sync { loadEarlierHealth() }
         return Array(events.suffix(max(0, limit)))
+    }
+
+    /// Runs on `queue` only, which serialises the single read; the mutex is never held while waiting for it.
+    private func loadEarlierHealth() -> [HealthEvent] {
+        if let cached = earlierHealth.withLock({ $0 }) { return cached }
+        let read = files.healthEvents(before: sessionStart, limit: HealthEventLog.defaultCapacity)
+        earlierHealth.withLock { $0 = read }
+        return read
     }
 
     /// Never blocks: the timestamp is taken here, rendering and writing happen on the logger's serial
@@ -2180,10 +2190,14 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
         }
     }
 
-    /// Rotation and 14-day retention; scheduled by the utility queue at launch and every 6 hours.
+    /// Rotation and 14-day retention; scheduled by the utility queue at launch and every 6 hours. The first pass
+    /// also reads the earlier sessions' health events, so the first report does not wait for the files.
     public func maintain() {
         let now = clock.now()
-        queue.async { [files] in files.maintain(now: now) }
+        queue.async { [self] in
+            files.maintain(now: now)
+            _ = loadEarlierHealth()
+        }
     }
 
     /// Waits until every record logged before this call is written. For shutdown and tests; never call it on
@@ -10561,8 +10575,10 @@ public enum RecentReportApps {
 //
 // What the report previews show (PLT-R1204, PRD-R47 item 4): byte for byte the text a path writes, never a
 // paraphrase. The Diagnostics window and the "This app misbehaves" panel copy only the block, so they show the
-// block; the bug report sheet also attaches or saves the JSON file, so its preview offers both.
+// block; the bug report sheet also attaches or saves the JSON file, so its preview offers both. The Diagnostics
+// window also shows the same report in the interface language (PLT-R1201, PRD-R62).
 
+public import AppModel
 public import Diagnostics
 internal import Foundation
 
@@ -10588,13 +10604,19 @@ public enum ReportPreviewFormat: String, Sendable, Hashable, CaseIterable {
         case .attachedFile: [.email, .saveFile]
         }
     }
+}
 
-    /// The segment title in the sheet's preview.
-    public var title: DiagnosticsText {
-        switch self {
-        case .copiedBlock: .previewCopied
-        case .attachedFile: .previewFile
-        }
+/// What the Diagnostics window shows of one report: the PLT-R1201 information in the interface language (the
+/// plain-text report, PLT-R1202), the exact text "Copy report" writes (PLT-R1204) and the latency histograms.
+public struct ReportDisplay: Sendable, Hashable {
+    public let information: String
+    public let copyPreview: String
+    public let histograms: [LatencyHistogram]
+
+    public init(report: DiagnosticsReport, language: InterfaceLanguage) {
+        information = DiagnosticsRenderer.plainText(report, language: language)
+        copyPreview = ReportPreviewFormat.copiedBlock.text(report)
+        histograms = LatencyHistograms.make(report.latency.metrics)
     }
 }
 ```
