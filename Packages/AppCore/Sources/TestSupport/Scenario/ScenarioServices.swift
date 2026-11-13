@@ -6,7 +6,6 @@
 
 public import AppModel
 public import Foundation
-public import RealtimeSupport
 
 /// Operating-system actions behind the setup steps. Runner only.
 public protocol SystemActions: Sendable {
@@ -30,7 +29,7 @@ public enum HarnessSetupError: Error, Sendable, Hashable {
 
 /// Routes setup steps: resolves `local.testhost`, expands `{pages}`, sends page navigation and field focus to
 /// WebDriver for `webdriver` scenarios, starts the capture shell for `terminalCapture` scenarios and sends
-/// everything else to `SystemActions`; `wait` sleeps on the clock.
+/// everything else to `SystemActions`; `wait` suspends through the injected `HarnessSleeper`.
 public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     public struct TerminalCapture: Sendable {
         public var fileSystem: any FileSystem
@@ -47,17 +46,17 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     private let targets: HarnessTargets
     private let webDrivers: WebDriverClients
     private let terminal: TerminalCapture?
-    private let clock: any MonotonicClock
+    private let sleeper: any HarnessSleeper
 
     public init(
         system: any SystemActions, targets: HarnessTargets, webDrivers: WebDriverClients, terminal: TerminalCapture?,
-        clock: any MonotonicClock
+        sleeper: any HarnessSleeper
     ) {
         self.system = system
         self.targets = targets
         self.webDrivers = webDrivers
         self.terminal = terminal
-        self.clock = clock
+        self.sleeper = sleeper
     }
 
     public func perform(_ step: Scenario.SetupStep, for scenario: Scenario) async throws {
@@ -98,7 +97,7 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
             guard let milliseconds = value.flatMap(UInt64.init) else {
                 throw HarnessSetupError.invalidValue(action: step.action.rawValue)
             }
-            clock.sleep(until: MonotonicInstant(nanoseconds: clock.now().nanoseconds &+ milliseconds * 1_000_000))
+            try await sleeper.sleep(nanoseconds: milliseconds * 1_000_000)
         }
     }
 

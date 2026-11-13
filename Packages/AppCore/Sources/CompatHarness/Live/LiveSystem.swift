@@ -17,7 +17,7 @@ struct LiveSystemActions: SystemActions {
     static let historySettleNanoseconds: UInt64 = 2_000_000_000
 
     let targets: HarnessTargets
-    let clock: any MonotonicClock
+    let sleeper: any HarnessSleeper
 
     private func applicationURL(_ bundle: BundleKey) throws -> URL {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle.rawValue) else {
@@ -42,7 +42,7 @@ struct LiveSystemActions: SystemActions {
 
     func seedHistory(_ url: String, in bundle: BundleKey) async throws {
         try await open(url, in: bundle)
-        clock.sleep(until: MonotonicInstant(nanoseconds: clock.now().nanoseconds &+ Self.historySettleNanoseconds))
+        try await sleeper.sleep(nanoseconds: Self.historySettleNanoseconds)
     }
 
     func focusField(identifier: String, in bundle: BundleKey) async throws {

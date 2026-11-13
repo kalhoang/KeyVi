@@ -182,3 +182,9 @@ struct ScriptedMetricSource: PlatformMetricSource {
         return series[min(index, series.count - 1)]
     }
 }
+
+/// Records requested sleeps without waiting.
+struct RecordingSleeper: HarnessSleeper {
+    let requests = Recorder<UInt64>()
+    func sleep(nanoseconds: UInt64) async throws { requests.append(nanoseconds) }
+}

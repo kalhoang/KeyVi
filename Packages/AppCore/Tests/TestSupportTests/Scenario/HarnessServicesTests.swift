@@ -70,8 +70,8 @@ private let targets = HarnessTargets(
         let drivers = try WebDriverClients(endpoints: endpoints, transport: transport ?? FakeTransport(responses: [:]))
         return ScenarioSetupRouter(
             system: system, targets: targets, webDrivers: drivers,
-            terminal: .init(fileSystem: fileSystem, captureFile: URL(fileURLWithPath: "/out/capture.txt")), clock: clock
-        )
+            terminal: .init(fileSystem: fileSystem, captureFile: URL(fileURLWithPath: "/out/capture.txt")),
+            sleeper: ClockSleeper(clock: clock))
     }
 
     @Test func nativeStepsGoToTheSystemWithAliasesResolved() async throws {
@@ -106,6 +106,27 @@ private let targets = HarnessTargets(
         #expect(clock.now().nanoseconds - before == 250_000_000)
     }
 
+    /// workstreams.md rule 4: `wait` suspends through the injected sleeper (Task.sleep on the runner), it does not
+    /// block a cooperative-pool thread for up to a minute.
+    @Test func waitGoesThroughTheSleeper() async throws {
+        let sleeper = RecordingSleeper()
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper)
+        try await router.perform(.init(action: .wait, value: "1500"), for: makeScenario())
+        #expect(sleeper.requests.all == [1_500_000_000])
+    }
+
+    @Test func taskSleeperSuspendsAndHonoursCancellation() async throws {
+        let clock = MachClock()
+        let start = clock.now().nanoseconds
+        try await TaskSleeper().sleep(nanoseconds: 2_000_000)
+        #expect(clock.now().nanoseconds - start >= 2_000_000)
+        let task = Task { try await TaskSleeper().sleep(nanoseconds: 60_000_000_000) }
+        task.cancel()
+        await #expect(throws: CancellationError.self) { try await task.value }
+    }
+
     @Test func invalidValuesAndUnresolvedTargetsThrow() async throws {
         let router = try router(FakeSystemActions())
         await #expect(throws: HarnessSetupError.invalidValue(action: "wait")) {
@@ -121,7 +142,7 @@ private let targets = HarnessTargets(
             system: FakeSystemActions(),
             targets: HarnessTargets(
                 testHostBundleID: nil, appUnderTestBundleID: nil, pagesDirectory: URL(fileURLWithPath: "/")),
-            webDrivers: WebDriverClients(clients: [:]), terminal: nil, clock: ManualClock())
+            webDrivers: WebDriverClients(clients: [:]), terminal: nil, sleeper: ClockSleeper(clock: ManualClock()))
         await #expect(throws: HarnessSetupError.unresolvedTarget(HarnessTargets.testHostAlias)) {
             try await unresolved.perform(
                 .init(action: .launch), for: makeScenario(target: HarnessTargets.testHostAlias))
@@ -144,7 +165,7 @@ private let targets = HarnessTargets(
     @Test func terminalLaunchWithoutCaptureConfigurationFails() async {
         let router = ScenarioSetupRouter(
             system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
-            clock: ManualClock())
+            sleeper: ClockSleeper(clock: ManualClock()))
         await #expect(throws: HarnessReadbackError.unavailable(.terminalCapture)) {
             try await router.perform(.init(action: .launch), for: makeScenario(readback: .terminalCapture))
         }

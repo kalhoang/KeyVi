@@ -45,15 +45,18 @@ public struct HarnessEnvironment: Sendable {
     public var fileSystem: any FileSystem
     public var console: any HarnessConsole
     public var clock: any MonotonicClock
+    /// Long waits (setup `wait` steps). Defaults to sleeping on `clock`; the executable passes `TaskSleeper`.
+    public var sleeper: any HarnessSleeper
     public var live: (any LiveHarnessServices)?
 
     public init(
         fileSystem: any FileSystem, console: any HarnessConsole, clock: any MonotonicClock,
-        live: (any LiveHarnessServices)?
+        sleeper: (any HarnessSleeper)? = nil, live: (any LiveHarnessServices)?
     ) {
         self.fileSystem = fileSystem
         self.console = console
         self.clock = clock
+        self.sleeper = sleeper ?? ClockSleeper(clock: clock)
         self.live = live
     }
 }

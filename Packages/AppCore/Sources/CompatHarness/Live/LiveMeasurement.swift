@@ -62,6 +62,7 @@ struct LiveMetricSource: PlatformMetricSource {
     let targets: HarnessTargets
     let sink: any KeyEventSink
     let system: any SystemActions
+    let sleeper: any HarnessSleeper
     let clock: any MonotonicClock
     let idleSeconds: Int
     let typingSeconds: Int
@@ -69,7 +70,8 @@ struct LiveMetricSource: PlatformMetricSource {
 
     func measure(_ metric: PlatformMetric) async throws -> Double {
         switch metric.name {
-        case "C1.cpuPercent": return try await cpuPercent { self.wait(seconds: idleSeconds) }
+        case "C1.cpuPercent":
+            return try await cpuPercent { try await sleeper.sleep(nanoseconds: UInt64(idleSeconds) * 1_000_000_000) }
         case "C2.cpuPercent": return try await cpuPercent { try await self.typeForC2() }
         case "M1.footprintMB": return Double(try ProcessSampler.sample(app).footprintBytes) / 1_048_576
         default:
@@ -86,10 +88,6 @@ struct LiveMetricSource: PlatformMetricSource {
         let after = try ProcessSampler.sample(app)
         let wall = Double(max(1, clock.now().nanoseconds &- start))
         return Double(after.cpuNanoseconds &- before.cpuNanoseconds) / wall * 100
-    }
-
-    private func wait(seconds: Int) {
-        clock.sleep(until: MonotonicInstant(nanoseconds: clock.now().nanoseconds &+ UInt64(seconds) * 1_000_000_000))
     }
 
     /// 10 keys per second of Telex words into TestHost's native field (8.1 C2).

@@ -45,7 +45,7 @@ struct LiveServices: LiveHarnessServices {
     func keyEventSink() throws -> any KeyEventSink { try CGEventKeySink() }
 
     func systemActions(targets: HarnessTargets) throws -> any SystemActions {
-        LiveSystemActions(targets: targets, clock: clock)
+        LiveSystemActions(targets: targets, sleeper: TaskSleeper())
     }
 
     func axReader() -> any AXFieldReader { LiveAXFieldReader() }
@@ -66,7 +66,7 @@ struct LiveServices: LiveHarnessServices {
         guard let app = targets.appUnderTestBundleID else { throw LiveError.appNotFound("app under test") }
         return LiveMetricSource(
             app: app, targets: targets, sink: try CGEventKeySink(),
-            system: LiveSystemActions(targets: targets, clock: clock),
+            system: LiveSystemActions(targets: targets, sleeper: TaskSleeper()), sleeper: TaskSleeper(),
             clock: clock, idleSeconds: options.idleSeconds, typingSeconds: options.typingSeconds, seed: options.seed)
     }
 }

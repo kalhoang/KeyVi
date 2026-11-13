@@ -24,7 +24,7 @@ do {
 
 let allowsLive = HarnessEnvironment.allowsLive(options: options, environment: ProcessInfo.processInfo.environment)
 let environment = HarnessEnvironment(
-    fileSystem: LocalFileSystem(), console: StandardConsole(), clock: MachClock(),
+    fileSystem: LocalFileSystem(), console: StandardConsole(), clock: MachClock(), sleeper: TaskSleeper(),
     live: allowsLive ? LiveServices() : nil)
 let status = await Harness(options: options, environment: environment).execute()
 exit(status.rawValue)
