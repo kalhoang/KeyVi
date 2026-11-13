@@ -35,6 +35,40 @@ def brand() -> dict[str, str]:
     return values
 
 
+# docker/cli's compose interpolation (cli/compose/template/template.go), which `docker stack deploy` and Portainer's
+# Swarm stacks use. Its braced form ends in `(.*}|[^}]*)`, a greedy `.*}`: a `${VAR:?message}` or `${VAR:-default}`
+# runs to the LAST `}` of the line, so two such forms on one line merge into one broken substitution (the site stack
+# failed in Portainer with "invalid reference format" on 2026-11-13 because of it).
+DOCKER_CLI_PATTERN = re.compile(
+    r"\$(?i:(?P<escaped>\$)|(?P<named>[_a-z][_a-z0-9]*)|\{(?P<braced>[_a-z][_a-z0-9]*(?::?[-?](?:.*\}|[^}]*))?)\}"
+    r"|(?P<invalid>))")
+
+
+def docker_cli_interpolate(text: str, env: dict[str, str]) -> str:
+    def substitute(match: re.Match) -> str:
+        if match.group("escaped"):
+            return "$"
+        if match.group("named"):
+            return env.get(match.group("named"), "")
+        braced = match.group("braced")
+        if braced is None:
+            raise ValueError(f"invalid interpolation format near {match.string[match.start():match.start() + 40]!r}")
+        for separator in (":-", "-", ":?", "?"):
+            if separator in braced:
+                name, rest = braced.split(separator, 1)
+                value = env.get(name)
+                if separator == ":-":
+                    return value if value else rest
+                if separator == "-":
+                    return value if value is not None else rest
+                if not value if separator == ":?" else value is None:
+                    raise ValueError(f"required variable {name} is missing: {rest}")
+                return value
+        return env.get(braced, "")
+
+    return DOCKER_CLI_PATTERN.sub(substitute, text)
+
+
 class DockerfileTests(unittest.TestCase):
     TEXT = (DEPLOY / "Dockerfile").read_text(encoding="utf-8")
 
@@ -91,6 +125,55 @@ class StackTests(unittest.TestCase):
     def labels(self) -> list[str]:
         return re.findall(r"^\s+- (traefik\.[^\n]+)$", self.TEXT, re.M)
 
+    # docker/cli interpolates values after the YAML parse, so comments never reach it.
+    VALUES = "\n".join(line for line in TEXT.splitlines() if not line.lstrip().startswith("#"))
+    STACK_ENV = {"SITE_HOST": "site.example.org", "SITE_SLUG": "demo", "IMAGE_OWNER": "owner",
+                 "IMAGE_NAME": "demo-site", "IMAGE_TAG": "prod"}
+
+    def test_docker_interpolation_renders_the_image_and_the_host_rule(self):
+        rendered = docker_cli_interpolate(self.VALUES, self.STACK_ENV)
+        self.assertIn("image: ghcr.io/owner/demo-site:prod\n", rendered)
+        self.assertIn("traefik.http.routers.demo-site.rule=Host(`site.example.org`)\n", rendered)
+        self.assertIn("traefik.http.routers.demo-site-web.rule=Host(`site.example.org`)\n", rendered)
+        self.assertIn("traefik.http.routers.demo-site.tls.certresolver=cloudflare\n", rendered)
+        self.assertNotIn("${", rendered)
+
+    def test_docker_interpolation_names_each_missing_required_variable(self):
+        for name in ("SITE_HOST", "SITE_SLUG"):
+            with self.subTest(missing=name):
+                env = {key: value for key, value in self.STACK_ENV.items() if key != name}
+                with self.assertRaisesRegex(ValueError, rf"required variable {name} is missing"):
+                    docker_cli_interpolate(self.VALUES, env)
+
+    def test_at_most_one_default_or_required_form_per_line_and_no_dash_in_messages(self):
+        for number, line in enumerate(self.VALUES.splitlines(), 1):
+            forms = list(re.finditer(r"\$\{[A-Za-z_][A-Za-z0-9_]*(:?[-?])([^}]*)\}", line))
+            with self.subTest(line=number):
+                self.assertLessEqual(len(forms), 1, line)
+                if forms:
+                    self.assertNotIn("}", line[forms[0].end():], f"a closing brace follows the form: {line}")
+                    separator, argument = forms[0].groups()
+                    if separator.endswith("?"):
+                        self.assertNotIn("-", argument, f"docker/cli reads a dash as a default: {line}")
+
+    def test_docker_stack_config_renders_the_stack_when_docker_is_installed(self):
+        import shutil
+        import subprocess
+        docker = shutil.which("docker")
+        if not docker:
+            self.skipTest("docker is not installed")
+        probe = subprocess.run([docker, "stack", "config", "--help"], capture_output=True, text=True)
+        if probe.returncode != 0:
+            self.skipTest("this docker CLI has no `stack config`")
+        env = {**os.environ, **self.STACK_ENV}
+        result = subprocess.run([docker, "stack", "config", "-c", str(DEPLOY / "stack.yml")], capture_output=True,
+                                text=True, env=env, cwd=tempfile.gettempdir())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("image: ghcr.io/owner/demo-site:prod", result.stdout)
+        self.assertIn("Host(`site.example.org`)", result.stdout)
+        self.assertIn("traefik.http.routers.demo-site.entrypoints: websecure", result.stdout)
+        self.assertNotIn("env", result.stdout.replace("environment", ""))
+
     def test_two_replicas_on_traefik_public_with_a_healthcheck_and_rolling_updates(self):
         self.assertRegex(self.TEXT, r"\n      replicas: 2\n")
         self.assertRegex(self.TEXT, r"networks:\n  traefik_public:\n    external: true\n    name: traefik_public")
@@ -100,9 +183,7 @@ class StackTests(unittest.TestCase):
         self.assertIn("read_only: true", self.TEXT)
 
     def test_image_and_names_come_from_variables_never_from_brand_literals(self):
-        self.assertIn("image: ghcr.io/${IMAGE_OWNER:?", self.TEXT)
-        self.assertIn("/${IMAGE_NAME:?", self.TEXT)
-        self.assertIn(":${IMAGE_TAG:-prod}", self.TEXT)
+        self.assertIn("image: ghcr.io/${IMAGE_OWNER}/${IMAGE_NAME}:${IMAGE_TAG:-prod}\n", self.TEXT)
         values = brand()
         for key in ("APP_SITE_HOST", "APP_SLUG", "APP_DISPLAY_NAME"):
             with self.subTest(brand=key):
@@ -114,7 +195,6 @@ class StackTests(unittest.TestCase):
         expected = [
             "traefik.enable=true",
             "traefik.swarm.network=traefik_public",
-            f"{router}.entrypoints=websecure",
             f"{router}.tls=true",
             f"{router}.tls.certresolver=${{TRAEFIK_CERT_RESOLVER:-cloudflare}}",
             "traefik.http.services.${SITE_SLUG}-site.loadbalancer.server.port=8080",
@@ -124,8 +204,10 @@ class StackTests(unittest.TestCase):
         for label in expected:
             with self.subTest(label=label):
                 self.assertIn(label, labels)
-        self.assertIn("traefik.http.routers.${SITE_SLUG:?set SITE_SLUG (deploy/site/stack-env.sh)}-site.rule="
-                      "Host(`${SITE_HOST:?set SITE_HOST (deploy/site/stack-env.sh)}`)", labels)
+        self.assertIn("traefik.http.routers.${SITE_SLUG}-site.rule="
+                      "Host(`${SITE_HOST:?SITE_HOST is not set, see the stack env script}`)", labels)
+        self.assertIn("traefik.http.routers.${SITE_SLUG:?SITE_SLUG is not set, see the stack env script}-site.entrypoints="
+                      "websecure", labels)
         self.assertEqual([label for label in labels if label.startswith("traefik.docker.")], [],
                          "Traefik skips a service with both Docker and Swarm labels (ADR 0602 decision 5)")
         self.assertIn("both Docker and Swarm labels are defined", self.TEXT.split("services:", 1)[0])

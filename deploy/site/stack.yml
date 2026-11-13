@@ -9,12 +9,18 @@
 # stack). The shared traefik2 runs the v3 Swarm provider and skips a service whose labels mix traefik.docker.* and
 # traefik.swarm.* ("both Docker and Swarm labels are defined"), so only traefik.swarm.network is set. Both facts were
 # confirmed by the analytics stack (deploy/umami/stack.yml) on 2026-11-13 (ADR 0602 decision 5).
+# Interpolation is docker/cli's (`docker stack deploy`, Portainer Swarm stacks), which is stricter than Compose: a
+# braced form with a default or a required message runs to the last closing brace of its line, and it is split at the
+# first `-` before `:?` is tried, so a message with a dash becomes a default value. Each line therefore holds at most
+# one such form, last on the line, and required messages carry no dash (scripts/tests/test_site_deploy.py renders
+# this file the way docker/cli does). An empty IMAGE_OWNER or IMAGE_NAME still fails the deploy with "invalid
+# reference format".
 # `version` is obsolete for Compose but older `docker stack deploy` releases still require it.
 version: "3.8"
 
 services:
   site:
-    image: ghcr.io/${IMAGE_OWNER:?set IMAGE_OWNER (deploy/site/stack-env.sh)}/${IMAGE_NAME:?set IMAGE_NAME (deploy/site/stack-env.sh)}:${IMAGE_TAG:-prod}
+    image: ghcr.io/${IMAGE_OWNER}/${IMAGE_NAME}:${IMAGE_TAG:-prod}
     networks:
       - traefik_public
     read_only: true
@@ -47,8 +53,8 @@ services:
       labels:
         - traefik.enable=true
         - traefik.swarm.network=traefik_public
-        - traefik.http.routers.${SITE_SLUG:?set SITE_SLUG (deploy/site/stack-env.sh)}-site.rule=Host(`${SITE_HOST:?set SITE_HOST (deploy/site/stack-env.sh)}`)
-        - traefik.http.routers.${SITE_SLUG}-site.entrypoints=websecure
+        - traefik.http.routers.${SITE_SLUG}-site.rule=Host(`${SITE_HOST:?SITE_HOST is not set, see the stack env script}`)
+        - traefik.http.routers.${SITE_SLUG:?SITE_SLUG is not set, see the stack env script}-site.entrypoints=websecure
         - traefik.http.routers.${SITE_SLUG}-site.tls=true
         - traefik.http.routers.${SITE_SLUG}-site.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-cloudflare}
         - traefik.http.routers.${SITE_SLUG}-site.service=${SITE_SLUG}-site
