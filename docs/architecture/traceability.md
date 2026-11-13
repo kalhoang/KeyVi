@@ -145,7 +145,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |
 | PLT-R398C | P0-1: terminal hints incl. iTerm2 automatic secure entry | `compat/rules.json` `secureInputHints`, `Status` table | U, M, V | W1-C, W1-G; Pa | **Pa** |
 | PLT-R398D | P0-1: spike S1, IMKit under secure keyboard entry | `SpikeIMK/**` | M | skeleton (done, runnable spike); Pa runs it | **Pa** |
-| PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps`, source registry `compat/conflicting-apps.json` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring) |  |
+| PLT-R399 | Warn about conflicting input software | `ConflictDetector`, rules `conflictingInputApps`, source registry `compat/conflicting-apps.json` | U | W1-E; W1-G (onboarding screen 5); W2-A (wiring); W5-A (IDs) | The bundle IDs of XKey, PHTV and Gõ Nhanh come from public Homebrew cask metadata (Pa's delegation, 2026-11-13; ADR 0005), never from the installed apps |
 | PLT-R401 | EditJob contents | `Injection/Jobs.swift` | U | W1-D |  |
 | PLT-R402 | Minimal edits (common prefix trim) | `EditMinimizer` | U | W1-D |  |
 | PLT-R403 | NFC insertions, grapheme delete counts | `InjectionWorker` | U | W1-D |  |
