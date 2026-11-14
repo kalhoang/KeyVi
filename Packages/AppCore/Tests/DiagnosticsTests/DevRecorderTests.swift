@@ -68,6 +68,14 @@ struct DevRecorderFixture {
                 at: clock.now()))
     }
 
+    static func focus(role: String, at instant: MonotonicInstant) -> DevFocusRecord {
+        DevFocusRecord(
+            generation: 4, bundle: "com.example.editor", role: role, subrole: nil, rule: "editor.sample",
+            strategy: "backspaceReplace", requireTextFocus: "whenKnown", axAvailability: "available", secure: false,
+            mode: "vietnamese", modeSource: "global", engineContext: "general", englishRestore: true, macros: true,
+            pause: nil, at: instant)
+    }
+
     var hour: String { DevTraceFiles.hourKey(for: wallClock.now(), timeZone: .current) }
 
     func file(_ hour: String) -> URL { DevTraceFiles.url(forHour: hour, in: Self.traces) }
@@ -127,6 +135,34 @@ struct DevRecorderFixture {
         #expect(lines[3].ins == "â" && lines[3].del == 1 && lines[3].comp == "â" && lines[3].act == "edit")
     }
 
+    /// Review W8-E finding 2: a key the tap pushes while a drain runs (after the dev rings were popped) is written
+    /// with the next drain, and its engine step, pushed after it, never ends up in a file before it.
+    @Test func aKeyRacingTheDrainIsNeverWrittenAfterItsEngineStep() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        fixture.advance(milliseconds: 100)
+        fixture.controller.drainNow(betweenRings: {
+            _ = fixture.controller.tapRecords.push(fixture.key("a", keyCode: 0))
+            fixture.dev.pushTap(fixture.engine(insert: "a", composing: "a"))
+        })
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour).filter { $0.type == .key || $0.type == .engine }
+        #expect(lines.map(\.type) == [.key, .engine])
+    }
+
+    /// Within one drain the key line leads the dev records of the same instant, whichever ring was popped first.
+    @Test func theKeyLineLeadsTheDevRecordsOfItsInstant() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        fixture.advance(milliseconds: 100)
+        fixture.dev.pushTap(fixture.engine(insert: "a", composing: "a"))
+        fixture.dev.pushTap(.boundary(reason: SampleDecision.kept(.notEnglish), job: nil, at: fixture.clock.now()))
+        _ = fixture.controller.tapRecords.push(fixture.key("a", keyCode: 0))
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour).filter { [.key, .engine, .boundary].contains($0.type) }
+        #expect(lines.map(\.type) == [.key, .engine, .boundary])
+    }
+
     /// One file per local hour; each new file starts with its header, the settings and the focus in effect.
     @Test func rotatesEveryHourWithAHeaderPerFile() throws {
         let fixture = DevRecorderFixture.make()
@@ -171,6 +207,38 @@ struct DevRecorderFixture {
         #expect(lines.map(\.type) == [.file, .start, .gap, .key])
         #expect(lines[2].reason == "secureField" && lines[2].end.map { $0 - lines[2].t } == 500_000)
         #expect(lines[3].ch == "x")
+    }
+
+    /// Review W8-E finding 3: focus changes inside a gap are not recorded, so the focus in effect when it ends is.
+    @Test func theFocusInEffectIsWrittenWhenASecureGapEnds() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        fixture.dev.setFocusSource { at in DevRecorderFixture.focus(role: "AXTextArea", at: at) }
+        fixture.advance(milliseconds: 100)
+        fixture.controller.beginGap(.secureField)
+        fixture.advance(milliseconds: 500)
+        fixture.controller.endGap()
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour)
+        #expect(lines.map(\.type) == [.file, .start, .gap, .focus])
+        #expect(lines[3].role == "AXTextArea" && lines[3].t == lines[2].end)
+    }
+
+    /// The same at the end of a pause; a gap that ends inside the pause writes nothing until the resume.
+    @Test func theFocusInEffectIsWrittenWhenAPauseEnds() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        fixture.dev.setFocusSource { at in DevRecorderFixture.focus(role: "AXTextField", at: at) }
+        fixture.dev.pause()
+        fixture.controller.beginGap(.secureField)
+        fixture.advance(seconds: 5)
+        fixture.controller.endGap()
+        fixture.advance(seconds: 5)
+        fixture.dev.resume()
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour)
+        #expect(lines.map(\.type).filter { $0 != .gap } == [.file, .start, .pause, .resume, .focus])
+        #expect(lines.last?.role == "AXTextField")
     }
 
     /// "Tạm dừng ghi 30 phút": nothing is recorded, then it resumes by itself.

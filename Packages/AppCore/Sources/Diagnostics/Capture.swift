@@ -254,6 +254,9 @@ public final class CaptureController: Sendable {
             for timer in current.timers { timer.cancel() }
             let now = clock.now()
             current.closeGap(at: now)
+            #if DEV_RECORDER
+            dev.stage()
+            #endif
             var lines = drainedLines(&current, now: now)
             lines.append(CaptureLine(type: .end, t: now.microseconds(since: current.start), reason: reason.rawValue))
             append(lines, to: current.info.file)
@@ -270,27 +273,41 @@ public final class CaptureController: Sendable {
     }
 
     private func drainNow() {
+        #if DEV_RECORDER
+        drainNow(betweenRings: {})
+        #else
         session.withLock { active in
-            #if DEV_RECORDER
-            guard var current = active else {
-                drainContinuousOnly()
-                return
-            }
-            append(drainedLines(&current, now: clock.now()), to: current.info.file)
-            active = current
-            dev.flush()
-            #else
             guard var current = active else { return }
             append(drainedLines(&current, now: clock.now()), to: current.info.file)
             active = current
-            #endif
         }
+        #endif
     }
 
     #if DEV_RECORDER
+    /// PLT-R904A trace order: the tap pushes a key into the shared ring before the dev records of the same key
+    /// (engine steps, boundaries), so the dev rings are popped first. A key that arrives between the two pops is
+    /// then written with or before its dev records, never after them. `betweenRings` runs between the two pops
+    /// (tests: a producer racing the drain).
+    func drainNow(betweenRings: () -> Void) {
+        session.withLock { active in
+            guard var current = active else {
+                drainContinuousOnly(betweenRings: betweenRings)
+                return
+            }
+            dev.stage()
+            betweenRings()
+            append(drainedLines(&current, now: clock.now()), to: current.info.file)
+            active = current
+            dev.flush()
+        }
+    }
+
     /// No time-boxed session: every queued record goes to the dev recorder only. Called with the session lock held,
     /// so the rings keep exactly one consumer at a time.
-    private func drainContinuousOnly() {
+    private func drainContinuousOnly(betweenRings: () -> Void = {}) {
+        dev.stage()
+        betweenRings()
         for ring in [tapRecords, injectRecords, focusRecords] {
             while let record = ring.pop() { dev.collect(record) }
         }

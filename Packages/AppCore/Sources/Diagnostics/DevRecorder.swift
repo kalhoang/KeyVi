@@ -39,6 +39,7 @@ public final class DevRecorder: Sendable {
     // reabstraction thunk on every call (the inout write-back), a chain that grows until it overflows the stack.
     private let attentionListeners = Mutex<[DevRecorderCallback<Set<DevReadbackReason>>]>([])
     private let drainHook = Mutex<DevRecorderCallback<Void>?>(nil)
+    private let focusSource = Mutex<DevFocusSource?>(nil)
     private let writeFailures = Atomic<Int>(0)
     private let state: Mutex<DevRecorderState>
 
@@ -123,7 +124,7 @@ public final class DevRecorder: Sendable {
             state.started = true
             state.appVersion = appVersion
             state.startedAt = clock.now()
-            state.append(at: state.startedAt, exempt: true) { [launch = state.launch] t in
+            state.append(at: state.startedAt, exempt: true, rank: .opening) { [launch = state.launch] t in
                 var line = DevTraceLine(type: .start, t: t)
                 line.launch = launch
                 line.app = appVersion
@@ -184,18 +185,20 @@ public final class DevRecorder: Sendable {
 
     /// "Tiếp tục ghi", or the end of the pause.
     public func resume() {
+        let now = clock.now()
         let resumed = state.withLock { state -> Bool in
             guard state.started, state.pausedUntil != nil else { return false }
-            let now = clock.now()
             state.pausedUntil = nil
             state.closeWindow(.paused, at: now)
             state.resumeTimer?.cancel()
             state.resumeTimer = nil
-            state.append(at: now, exempt: true) { DevTraceLine(type: .resume, t: $0) }
+            state.append(at: now, exempt: true, rank: .opening) { DevTraceLine(type: .resume, t: $0) }
             updateActive(state)
             return true
         }
-        if resumed { drain() }
+        guard resumed else { return }
+        noteCurrentFocus(at: now)
+        drain()
     }
 
     /// "Đánh dấu lỗi vừa gặp" from the menu; the chord's marker comes from the tap ring.
@@ -220,6 +223,19 @@ public final class DevRecorder: Sendable {
     /// A VI/EN change the main thread saw (menu, hotkey or per-app memory).
     public func noteMode(_ mode: TypingMode, manual: Bool, bundle: String?) {
         note(.mode(DevModeRecord(mode: mode, manual: manual, bundle: bundle, at: clock.now())))
+    }
+
+    /// The focus in effect at an instant, written when a pause or a secure gap ends: focus changes inside those
+    /// windows are not recorded, so without it the lines after them would carry the focus from before (review W8-E
+    /// finding 3).
+    public func setFocusSource(_ source: @escaping @Sendable (MonotonicInstant) -> DevFocusRecord) {
+        let box = DevFocusSource(source)
+        focusSource.withLock { $0 = box }
+    }
+
+    private func noteCurrentFocus(at instant: MonotonicInstant) {
+        guard let source = focusSource.withLock({ $0 }) else { return }
+        note(.focus(source.make(instant)))
     }
 
     public func addAttentionListener(_ listener: @escaping @Sendable (Set<DevReadbackReason>) -> Void) {
@@ -255,8 +271,8 @@ public final class DevRecorder: Sendable {
     }
 
     func endGap(at instant: MonotonicInstant) {
-        state.withLock { state in
-            guard let reason = state.secureGap else { return }
+        let ended = state.withLock { state -> Bool in
+            guard let reason = state.secureGap else { return false }
             state.secureGap = nil
             let from = state.closeWindow(.secure(reason), at: instant)
             if state.started, let from {
@@ -268,7 +284,9 @@ public final class DevRecorder: Sendable {
                 }
             }
             updateActive(state)
+            return state.started
         }
+        if ended { noteCurrentFocus(at: instant) }
     }
 
     /// A key record popped from the shared PLT-R905 ring.
@@ -276,22 +294,31 @@ public final class DevRecorder: Sendable {
         guard case .key(let key) = record else { return }  // engine, job and focus lines have richer dev records
         state.withLock { state in
             guard state.started else { return }
-            state.append(at: key.at, exempt: false) { DevTraceLine(key: key, t: $0) }
+            state.append(at: key.at, exempt: false, rank: .key) { DevTraceLine(key: key, t: $0) }
         }
     }
 
-    /// Pops the dev rings and writes everything pending, oldest first, into the file of each line's hour.
-    func flush() {
+    /// Pops the dev rings into the pending lines. The drain calls it before it pops the shared PLT-R905 rings
+    /// (`CaptureController.drainNow`), so a key is never written after the dev records of the same key.
+    func stage() {
         var popped: [DevTraceRecord] = []
         for ring in [tapRecords, injectRecords, focusRecords] {
             while let record = ring.pop() { popped.append(record) }
         }
+        guard !popped.isEmpty else { return }
+        state.withLock { state in
+            guard state.started || !state.pending.isEmpty else { return }
+            for record in popped { state.append(record) }
+        }
+    }
+
+    /// Writes everything pending, oldest first, into the file of each line's hour.
+    func flush() {
         let monoNow = clock.now()
         let wallNow = wallClock.now()
         let overflow = dropped.load(ordering: .relaxed)
         let batch = state.withLock { state -> [(hour: String, lines: [DevTraceLine])] in
             guard state.started || !state.pending.isEmpty else { return [] }
-            for record in popped { state.append(record) }
             if overflow != state.reportedOverflow {
                 let count = overflow &- state.reportedOverflow
                 state.reportedOverflow = overflow
@@ -367,6 +394,12 @@ final class DevRecorderCallback<Argument>: Sendable {
     init(_ run: @escaping @Sendable (Argument) -> Void) { self.run = run }
 }
 
+/// The focus source, held by reference for the same reason as `DevRecorderCallback`.
+final class DevFocusSource: Sendable {
+    let make: @Sendable (MonotonicInstant) -> DevFocusRecord
+    init(_ make: @escaping @Sendable (MonotonicInstant) -> DevFocusRecord) { self.make = make }
+}
+
 /// Mutable state of the recorder, guarded by its mutex.
 struct DevRecorderState {
     enum Window: Equatable {
@@ -374,8 +407,17 @@ struct DevRecorderState {
         case secure(PauseCode)
     }
 
+    /// Order of lines that share an instant: a start or resume line opens the recording, then the key line, then
+    /// the engine steps and boundaries of that key (runbook section 3), whatever ring each was popped from.
+    enum Rank: Int {
+        case opening = 0
+        case key = 1
+        case other = 2
+    }
+
     struct Pending {
         var at: MonotonicInstant
+        var rank: Rank
         var order: Int
         /// Control lines (start, pause, gaps) are written even though they sit at the edge of a window.
         var exempt: Bool
@@ -406,9 +448,10 @@ struct DevRecorderState {
     }
 
     mutating func append(
-        at instant: MonotonicInstant, exempt: Bool, _ make: @escaping @Sendable (Int64) -> DevTraceLine
+        at instant: MonotonicInstant, exempt: Bool, rank: Rank = .other,
+        _ make: @escaping @Sendable (Int64) -> DevTraceLine
     ) {
-        pending.append(Pending(at: instant, order: nextOrder, exempt: exempt, make: make))
+        pending.append(Pending(at: instant, rank: rank, order: nextOrder, exempt: exempt, make: make))
         nextOrder += 1
     }
 
@@ -440,7 +483,9 @@ struct DevRecorderState {
         hour: String, lines: [DevTraceLine]
     )] {
         let wallMicros = DevTraceFiles.microseconds(wallNow)
-        let ordered = pending.filter { $0.exempt || accepts($0.at) }.sorted { ($0.at, $0.order) < ($1.at, $1.order) }
+        let ordered = pending.filter { $0.exempt || accepts($0.at) }.sorted {
+            ($0.at, $0.rank.rawValue, $0.order) < ($1.at, $1.rank.rawValue, $1.order)
+        }
         pending.removeAll()
         // Windows closed well before this drain can no longer match a queued record.
         windows.removeAll { window in window.to.map { monoNow.nanoseconds(since: $0) > 10_000_000_000 } ?? false }
