@@ -48,6 +48,8 @@ enum FocusSettle {
 /// Timers of the deferred work and the host's observer, ax thread only.
 struct FocusDeferredState {
     var settleEpoch: UInt64 = 0
+    /// The running settle window is a PLT-R389 trigger window: its reads are moved-only reads.
+    var settleIfMoved = false
     var settleTimers: [any ScheduledTimer] = []
     var retryTimers: [Int32: any ScheduledTimer] = [:]
     /// The last focus read timed out (or met an open breaker, PLT-R384).
@@ -67,17 +69,22 @@ extension FocusCore {
     }
 
     /// PLT-R389: a trigger opens the trigger settle window without reading now (`FocusSettle.triggerDelays`). Its
-    /// reads are idle reads: an unchanged focus publishes nothing, a timeout ends the window (PLT-R384).
+    /// reads are idle, moved-only reads: an unchanged focus publishes nothing and costs no attribute walk, a
+    /// timeout ends the window (PLT-R384).
     func revalidateAfterTrigger() {
         guard running else { return }
-        guard services.scheduler != nil else { return revalidate(scanOverlays: false) }  // nothing can defer
-        scheduleSettle(delays: FocusSettle.triggerDelays)
+        guard services.scheduler != nil else {  // nothing can defer
+            refresh(force: false, idle: true, ifMoved: true)
+            return
+        }
+        scheduleSettle(delays: FocusSettle.triggerDelays, ifMoved: true)
     }
 
     /// Starts the settle window again (a later notification or trigger replaces the earlier window).
-    func scheduleSettle(delays: [TimeSpan] = FocusSettle.delays) {
+    func scheduleSettle(delays: [TimeSpan] = FocusSettle.delays, ifMoved: Bool = false) {
         guard let scheduler = services.scheduler else { return }
         cancelSettle()
+        deferred.settleIfMoved = ifMoved
         deferred.settleEpoch &+= 1
         let epoch = deferred.settleEpoch
         deferred.settleTimers = delays.map { delay in
@@ -125,7 +132,7 @@ extension FocusCore {
     /// again and again (each timeout counts towards its circuit breaker, PLT-R384). With the notification read
     /// itself timing out no window opens at all, so a focus change costs one count.
     private func settleReRead() {
-        switch refresh(force: false, idle: true) {
+        switch refresh(force: false, idle: true, ifMoved: deferred.settleIfMoved) {
         case .learnedNothing: cancelSettle()
         case .unchanged: break
         case .published: deferred.publicationObserver?()

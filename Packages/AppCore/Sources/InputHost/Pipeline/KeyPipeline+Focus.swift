@@ -47,7 +47,8 @@ extension KeyPipeline {
     /// PLT-R382 and PLT-R389, called for every keyboard event before reconciliation. A trigger asks for the read
     /// over the settle window, because the panel or sheet it opens takes the focus only after the tap returned the
     /// key; the next keyDown asks for one more read. While the focus owner's rule is an overlay rule, every keyDown
-    /// asks, because closing the panel (Escape, a click outside, Return) posts no activation. The first keyDown after
+    /// asks, because closing the panel (Escape, a click outside, Return) posts no activation. Those two reads ask
+    /// for the element's attributes only when the focused app or element moved (`.revalidateFocusIfMoved`). The first keyDown after
     /// start counts as idle: the pause before it has no known length, and a focus notification missed right after
     /// launch would otherwise leave the first word on a stale snapshot.
     func noteKeyboardActivity(_ event: RawKeyEvent, now: MonotonicInstant, focus: FocusSnapshot) {
@@ -63,7 +64,9 @@ extension KeyPipeline {
             keyState.lastKeyboardEventAt.map { now.nanoseconds(since: $0) >= FocusRevalidation.idleNanoseconds } ?? true
         guard idle || keyState.revalidateNextKey || focus.decision.overlay else { return }
         keyState.revalidateNextKey = false
-        requestFocusRevalidation(.revalidateFocus)
+        // The PLT-R382 read is a full one (the same element's attributes may have changed during the pause); the
+        // PLT-R389 reads only look further when the focused app or element moved.
+        requestFocusRevalidation(idle ? .revalidateFocus : .revalidateFocusIfMoved)
     }
 
     /// PLT-R389: a click may move the focus into or out of a non-activating panel.

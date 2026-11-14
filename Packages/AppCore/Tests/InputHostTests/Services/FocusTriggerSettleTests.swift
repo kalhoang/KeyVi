@@ -40,6 +40,13 @@ extension FocusHarness {
         tracker.drainInbox()
         sync()
     }
+
+    /// The tap's PLT-R389 read on the first key after a trigger and on every key inside an overlay.
+    fileprivate func movedCheck() {
+        _ = inbox.push(.revalidateFocusIfMoved)
+        tracker.drainInbox()
+        sync()
+    }
 }
 
 @Suite("Trigger revalidation (PLT-R389)", .serialized)
@@ -102,8 +109,8 @@ struct FocusTriggerSettleTests {
         }
     }
 
-    /// PLT-R389: while the overlay rule applies, each key's read (`.revalidateFocus`) sees a close that happened
-    /// without a trigger the tap could see (Spotlight closing by itself after Return opened a result).
+    /// PLT-R389: while the overlay rule applies, each key's read (`.revalidateFocusIfMoved`) sees a close that
+    /// happened without a trigger the tap could see (Spotlight closing by itself after Return opened a result).
     @Test func theKeyReadInsideAnOverlaySeesTheClosePLTR389() {
         let harness = FocusHarness(scheduled: true)
         defer { harness.finish() }
@@ -111,8 +118,54 @@ struct FocusTriggerSettleTests {
         harness.start(spotlightRules())
         #expect(harness.snapshot.decision.overlay)
         harness.ax.focus(pid: terminalPID, attributes: field("doc"), notify: nil, element: 1)
-        harness.idleRevalidation()
+        harness.movedCheck()
         #expect(harness.snapshot.app?.bundle == terminal)
+        #expect(!harness.snapshot.decision.overlay)
+    }
+
+    /// Review of W8-A: Command+C, Command+V, Command+Z and clicks are frequent. While the focused app and element
+    /// are the published ones, a trigger read asks for the app and the element only, never for the attribute walk
+    /// (role, ancestors, DOM classes, web area and URL), which the focus owner's main thread would serve.
+    @Test func triggerReadsOfTheSameElementSkipTheAttributesPLTR389() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field("doc"), notify: nil, element: 1)
+        harness.start(spotlightRules())
+        let elements = harness.ax.elementQueryCount(pid: terminalPID)
+        let attributes = harness.ax.attributeQueryCount(pid: terminalPID)
+        harness.trigger()
+        harness.advance(by: .seconds(1))
+        harness.movedCheck()
+        #expect(harness.ax.elementQueryCount(pid: terminalPID) == elements + FocusSettle.triggerDelays.count + 1)
+        #expect(harness.ax.attributeQueryCount(pid: terminalPID) == attributes)
+    }
+
+    /// A trigger read that finds another element of the same app (a save sheet's name field) reads it in full and
+    /// publishes it.
+    @Test func aMovedCheckThatFindsAnotherElementReadsItInFullPLTR389() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field("doc"), notify: nil, element: 1)
+        harness.start(spotlightRules())
+        let generation = harness.snapshot.generation
+        let attributes = harness.ax.attributeQueryCount(pid: terminalPID)
+        harness.ax.focus(pid: terminalPID, attributes: field("sheet.name"), notify: nil, element: 3)
+        harness.movedCheck()
+        #expect(harness.ax.attributeQueryCount(pid: terminalPID) == attributes + 1)
+        #expect(harness.snapshot.generation != generation)
+        #expect(harness.snapshot.field.identifier == "sheet.name")
+    }
+
+    /// PLT-R382 keeps the full read: the same element whose attributes changed (a page navigated in the same web
+    /// area) is seen on the first key after a pause.
+    @Test func theIdleReadStillReadsTheAttributesPLTR382() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field("doc"), notify: nil, element: 1)
+        harness.start(spotlightRules())
+        let attributes = harness.ax.attributeQueryCount(pid: terminalPID)
+        harness.idleRevalidation()
+        #expect(harness.ax.attributeQueryCount(pid: terminalPID) == attributes + 1)
     }
 
     /// Trigger reads of an unchanged focus publish nothing: a Command+B in the middle of a word keeps the word and

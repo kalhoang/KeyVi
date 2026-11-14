@@ -22,6 +22,11 @@ private func reads(_ notices: [AXNotice]) -> Int {
     notices.filter { if case .revalidateFocus = $0 { true } else { false } }.count
 }
 
+/// PLT-R389 reads that skip the attributes while the focused app and element are the published ones.
+private func movedChecks(_ notices: [AXNotice]) -> Int {
+    notices.filter { if case .revalidateFocusIfMoved = $0 { true } else { false } }.count
+}
+
 /// A fixture past its first key (which always revalidates, PLT-R382), so the counts below start at zero.
 private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (PipelineFixture, Int) {
     let fixture = PipelineFixture(focus: focus)
@@ -55,7 +60,8 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
     }
 
     /// PLT-R389: the panel may take the focus after the last settle read; the first keyDown after the trigger asks
-    /// for one more read, the keys after it do not (they are within the typing rhythm).
+    /// for one more read, the keys after it do not (they are within the typing rhythm). That read only checks
+    /// whether the focused app or element moved, so a Command+C in a document costs no attribute walk.
     @Test func theFirstKeyAfterATriggerReadsOnceMorePLTR389() {
         let (fixture, before) = typingFixture()
         fixture.clock.advance(byMicroseconds: 50_000)
@@ -66,7 +72,7 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
             fixture.completeJobs()
         }
         let notices = Array(fixture.axNotices().dropFirst(before))
-        #expect(triggers(notices) == 1 && reads(notices) == 1)
+        #expect(triggers(notices) == 1 && movedChecks(notices) == 1 && reads(notices) == 0)
         #expect(fixture.log.feeds.count == 4)  // the space of `typingFixture` and the three letters: nothing waits
     }
 
@@ -81,7 +87,21 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
             fixture.press(key)
             fixture.completeJobs()
         }
-        #expect(reads(Array(fixture.axNotices().dropFirst(before))) == 3)
+        let notices = Array(fixture.axNotices().dropFirst(before))
+        #expect(movedChecks(notices) == 3 && reads(notices) == 0)
+    }
+
+    /// PLT-R382 keeps the full read: the first key after a pause may follow a change of the same element's
+    /// attributes (a page navigated in the same web area), which a moved-only check would not see.
+    @Test func aKeyAfterAPauseReadsInFullEvenAfterATriggerPLTR382() {
+        let (fixture, before) = typingFixture()
+        fixture.clock.advance(byMicroseconds: 50_000)
+        fixture.press(Key.space, flags: Flag.command)
+        fixture.clock.advance(byMicroseconds: FocusRevalidation.idleNanoseconds / 1_000)
+        fixture.press(Key.d)
+        fixture.completeJobs()
+        let notices = Array(fixture.axNotices().dropFirst(before))
+        #expect(reads(notices) == 1 && movedChecks(notices) == 0)
     }
 
     /// PLT-R389: the focus can move while English mode, a pause or a passThrough rule applies; the request does not
@@ -114,7 +134,7 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         }
         let notices = Array(fixture.axNotices().dropFirst(before))
         #expect(triggers(notices) == 1)
-        #expect(reads(notices) == 1)  // the "a": an autorepeat is not the next key
+        #expect(movedChecks(notices) == 1)  // the "a": an autorepeat is not the next key
     }
 }
 

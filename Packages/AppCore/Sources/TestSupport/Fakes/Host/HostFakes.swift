@@ -29,6 +29,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var nextObserverID: UInt64 = 1
         var manualRequests: [Int32] = []
         var elementQueries: [Int32: Int] = [:]
+        var attributeQueries: [Int32: Int] = [:]
         var lastRequest: AXAttributeRequest?
         var refusedObservers: [Int32: Int] = [:]
         var refusedNotifications: [Int32: Set<AXNotificationKind>] = [:]
@@ -127,6 +128,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
         let (timingOut, stored) = state.withLock { state in
             state.lastRequest = request
+            state.attributeQueries[element.pid, default: 0] += 1
             return (state.timingOut.contains(element.pid), state.attributes[element.pid])
         }
         if timingOut { return .timedOut }
@@ -174,6 +176,8 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     /// Number of `focusedElement` queries per pid (circuit-breaker tests).
     public func elementQueryCount(pid: Int32) -> Int { state.withLock { $0.elementQueries[pid, default: 0] } }
+    /// Number of `attributes(of:)` reads per pid (PLT-R389: a moved-only check of an unchanged focus reads none).
+    public func attributeQueryCount(pid: Int32) -> Int { state.withLock { $0.attributeQueries[pid, default: 0] } }
     public var lastAttributeRequest: AXAttributeRequest? { state.withLock { $0.lastRequest } }
 
     private func removeObserver(_ id: UInt64) { state.withLock { $0.observers.removeAll { $0.id == id } } }

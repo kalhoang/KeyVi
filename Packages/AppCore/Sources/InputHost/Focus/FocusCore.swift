@@ -176,13 +176,19 @@ final class FocusCore {
     /// publishes nothing: a generation bump would reset the word in progress and make the worker discard edits
     /// in flight (PLT-R316). An AX timeout for the current owner teaches nothing about the focus, so the snapshot
     /// stays until the breaker opens (PLT-R384), which then publishes the `timedOut` context.
+    ///
+    /// `ifMoved` (PLT-R389 trigger and overlay reads): when the focused app and element are the published ones the
+    /// element's attributes are not read and nothing changes. A Command+C or a click then costs two AX messages
+    /// instead of the attribute walk; a change of the same element's attributes is left to notifications and to
+    /// the PLT-R382 read after a pause.
     @discardableResult
-    func refresh(force: Bool, idle: Bool = false) -> FocusRefreshOutcome {
+    func refresh(force: Bool, idle: Bool = false, ifMoved: Bool = false) -> FocusRefreshOutcome {
         guard running, let rules else { return .unchanged }
         let started = services.clock.now()
-        let reading = readFocus(rules: rules, at: started)
+        let reading = readFocus(rules: rules, at: started, ifMoved: ifMoved)
         deferred.lastReadTimedOut = reading.availability == .timedOut
         if idle, learnedNothing(from: reading, at: started) { return .learnedNothing }
+        if reading.elementUnmoved { return .unchanged }
         let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false
         if !force, sameElement, current?.match == match { return .unchanged }
