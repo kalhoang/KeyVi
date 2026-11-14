@@ -2,8 +2,10 @@
 //
 // What the scanner flags in a dev trace (PLT-R904A, ADR 0007): the moments worth reading around. Kinds a to i of
 // the workstream: markers, Backspace edits, correction bursts, readback mismatches, resets with a token open,
-// injection problems, restores and history re-opens, replay divergences and Command+Z after an edit. A finding
-// carries metadata only (time, app, rule, kind, a content-free detail); `show` renders the excerpt.
+// injection problems, restores and history re-opens, replay divergences and Command+Z after an edit; since the
+// incidents of 2026-11-14 also dropped keys, extra characters and slow readbacks. A finding carries metadata only
+// (time, app, rule, kind, a content-free detail); its note, which may name a typed character, and the excerpt are
+// printed by `show` only.
 
 internal import Foundation
 
@@ -13,6 +15,12 @@ public struct Finding: Sendable, Hashable {
         case backspaceEdit
         case correctionBurst
         case readbackMismatch
+        /// A readback mismatch that is exactly one passed key's character missing from the field.
+        case keyDropped
+        /// A readback mismatch that is exactly one character in the field KeyVi did not type.
+        case extraCharacter
+        /// A readback that timed out or whose AX calls took longer than `FindingLimits.slowReadback`.
+        case slowReadback
         case resetWithOpenToken
         case injectionProblem
         case restoreOrReopen
@@ -29,6 +37,8 @@ public struct Finding: Sendable, Hashable {
     public var rule: String?
     /// Names and numbers only, never typed content.
     public var detail: String
+    /// What `show` adds under the detail; may name a typed character (a dropped key), so never in the summary.
+    public var note: String? = nil
 }
 
 /// Thresholds of the detectors.
@@ -46,6 +56,17 @@ enum FindingLimits {
     static let undoAfterEdit: Int64 = 2_000_000
     /// (d) Characters of KeyVi's view compared with the field.
     static let readbackCompare = 32
+    /// (d) A readback this soon after a key may not show it yet, and is not compared.
+    static let readbackAfterKey: Int64 = 100_000
+    /// A readback whose AX calls took longer than one AX call of the inject worker may (`axCallTimeout`, 30 ms):
+    /// in that field KeyVi's own reads would time out.
+    static let slowReadback: UInt64 = 30_000
+    /// A key counts as still on its way to the app this long after it went down: normally a few milliseconds, tens
+    /// of milliseconds under the memory pressure of 2026-11-14 (incidents 1 and 10: readbacks 27 and 71 ms after
+    /// the lost key), with room to spare and below the first recorder's 300 ms readback delay.
+    static let deliveryWindow: Int64 = 200_000
+    /// The first recorder's readbacks have no duration; three AX calls of at most 50 ms each bound it.
+    static let unmeasuredReadback: Int64 = 150_000
 }
 
 /// The focus and settings in effect at each event, for findings and replay.

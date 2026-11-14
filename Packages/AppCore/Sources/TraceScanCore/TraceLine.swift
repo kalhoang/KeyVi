@@ -59,6 +59,12 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     public var text: String?
     public var selLoc: Int?
     public var selLen: Int?
+    /// Readback timing, format version 2: AX calls' duration, wait since the trigger, input idle time, and a key
+    /// down while the read was in flight.
+    public var durUs: UInt64?
+    public var waitUs: UInt64?
+    public var idleUs: UInt64?
+    public var overlap: Bool?
     public var s: [String: String]?
 
     public init(type: String, t: Int64) {

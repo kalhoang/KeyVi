@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R904A (ADR 0007): the committed sample trace (Fixtures/sample, sample words typed through the real engine)
-// and its summary, line for line. The fixture doubles as a folder to try `trace-scan` on by hand.
+// and its summary, line for line. The fixture doubles as a folder to try `trace-scan` on by hand. Its readback
+// shows the "ế" the three Backspaces should have removed: one character KeyVi did not type (finding 3).
 
 import Foundation
 import Testing
@@ -29,8 +30,8 @@ import Testing
             focusChanged / focusChanged, token of 3 characters open
               2  2026-11-14 09:00:03.220  com.example.chat  rule chat.sample  correctionBurst  \
             3 Backspaces after a transform, then retyping
-              3  2026-11-14 09:00:04.220  com.example.chat  rule chat.sample  readbackMismatch  \
-            field does not end with KeyVi's last 4 characters (commit)
+              3  2026-11-14 09:00:04.220  com.example.chat  rule chat.sample  extraCharacter  \
+            the field holds one character KeyVi did not type (commit readback)
               4  2026-11-14 09:00:04.220  com.example.chat  rule chat.sample  marker  chord
               5  2026-11-14 09:00:04.220  com.example.chat  rule chat.sample  injectionProblem  \
             job 3 compose backspaceReplace: outcome executedWithFallback; fallback axReplace -> backspaceReplace \
