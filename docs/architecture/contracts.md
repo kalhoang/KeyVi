@@ -6144,11 +6144,10 @@ public enum EditKind: UInt8, Sendable, Hashable {
 public struct JobKeyCodes: Sendable, Hashable {
     /// Keycode of the physical key that triggered the edit.
     public var trigger: KeyCode
-    /// For restores and macros: keycode producing the first inserted character in the current layout, if any.
-    /// For an edit an action key triggered (`isActionKey`: Backspace, PLT-R352; Return, Tab or Space at a commit;
-    /// Escape as the restore hotkey; PLT-R405): keycode of the first character of the insertion, or else of the
-    /// replaced text, that the current layout types on a key without an action, so the insertion never rides on
-    /// the trigger's keycode.
+    /// For restores, macros and an edit an action key triggered (`isActionKey`: Backspace, PLT-R352; Return, Tab or
+    /// Space at a commit; Escape as the restore hotkey; PLT-R405): keycode of the first character of the insertion,
+    /// or else of the replaced text, that the current layout types on a key without an action, so the insertion
+    /// never rides on an action key's keycode.
     public var firstCharacter: KeyCode?
     /// Keycode producing "v" in the current layout (Command+V for `paste`).
     public var paste: KeyCode?

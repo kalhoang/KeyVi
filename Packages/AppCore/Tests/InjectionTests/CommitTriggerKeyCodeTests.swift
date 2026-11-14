@@ -208,7 +208,8 @@ enum CommitTrigger: String, CaseIterable, Sendable {
                 keyCodes: JobKeyCodes(trigger: trigger, firstCharacter: first))
             #expect(SyntheticKeys.unicodeKeyCode(for: job) == SyntheticKeys.letterFallback, "\(trigger) \(first)")
         }
-        // With a character trigger, such a first character falls back to the trigger, as before.
+        // With a character trigger, such a first character falls back to the trigger (the pipeline never sets one,
+        // KeyPipeline.letterKeyCode skips action keys; this guards the injection side on its own).
         let period = KeyCode(rawValue: 0x2F)
         let job = Fixture.job(
             deleteCount: 0, insertion: " a", kind: .macro, trigger: nil,

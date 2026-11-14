@@ -204,16 +204,12 @@ extension KeyPipeline {
         focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> EditJob {
         // PLT-R405: an edit an action key triggered (Backspace, PLT-R352; Return, keypad Enter, Tab or Space at a
-        // commit; Escape as the restore hotkey) types with the keycode of a character of the edit, never with the
-        // trigger's; other restores and macros with the keycode producing their first character, if any.
-        let firstCharacter: KeyCode?
-        if JobKeyCodes.isActionKey(key.event.keyCode) {
-            firstCharacter = Self.letterKeyCode(insertion: edit.insert, replaced: replaced, table: inputSource.table)
-        } else if kind == .restore || kind == .macro {
-            firstCharacter = edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) }
-        } else {
-            firstCharacter = nil
-        }
+        // commit; Escape as the restore hotkey), and every restore and macro, types with the keycode of a character
+        // of the edit that a non-action key types; other edits with the trigger's.
+        let typesOnACharacter = JobKeyCodes.isActionKey(key.event.keyCode) || kind == .restore || kind == .macro
+        let firstCharacter =
+            typesOnACharacter
+            ? Self.letterKeyCode(insertion: edit.insert, replaced: replaced, table: inputSource.table) : nil
         return EditJob(
             sequence: context.queue.nextSequence(), generation: focus.generation, plan: focus.decision.plan,
             field: focus.fieldHandle, kind: kind, deleteCount: edit.deleteCount,
@@ -238,7 +234,7 @@ extension KeyPipeline {
         return edit.deleteCount > 0 || !edit.insert.isEmpty
     }
 
-    /// PLT-R405: for an edit an action key triggered, the keycode of the first character of the insertion, or else
+    /// PLT-R405: for an edit an action key triggered, a restore or a macro, the keycode of the first character of the insertion, or else
     /// of the replaced text, that the current layout types on a key without an action of its own (a space in a macro
     /// expansion would give `kVK_Space` back). Looks at most `letterSearchLimit` characters of each, so a long macro
     /// expansion costs no more than a word; table lookups only, no allocation.

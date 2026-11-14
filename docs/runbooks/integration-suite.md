@@ -449,7 +449,8 @@ selected, which is the completion the `axSelection` handling removes, not text t
 
 Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM lock taken:
 
-1. `scripts/vm/integration-dev.sh` (expect 44 of 44 and a clean privacy scan);
+1. `scripts/vm/integration-dev.sh` (expect 46 of 46 and a clean privacy scan; 44 before W8-F added the two key-code-first
+   composer scenarios of section 10.7);
 2. three times `scripts/vm/integration-dev.sh --probe --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition,testhost.web.editModeEditor`;
 3. five times `scripts/vm/integration-dev.sh --only testhost.web.editModeTransition,testhost.web.editModeEditor,testhost.sheet.commandS,testhost.panel.*`;
 4. Spotlight, macOS 27.2: `scripts/vm/integration-dev.sh --only launcher.spotlight` twice in a row in one clone is not
@@ -495,8 +496,7 @@ events (the page relies on `event.code` coming from the virtual keycode): the re
 
 Proof plan of W8-F, with Safari closed on the host (Pa's VM rule) and the VM lock taken:
 
-1. `scripts/vm/integration-dev.sh` from this branch (expect 46 of 46 and a clean privacy scan; step 1 of the 10.6 plan
-   now expects 46 as well);
+1. `scripts/vm/integration-dev.sh` from this branch (expect 46 of 46 and a clean privacy scan);
 2. the red run: from a throwaway worktree at the commit that adds the page and the scenarios, which comes before the
    PLT-R405 fix on this branch (`git log --oneline --reverse main..fix/w8f-integration-followups` lists it as
    `test(testhost): ...`), run `scripts/vm/integration-dev.sh --only 'testhost.web.keycodeFirst.*'` and expect
