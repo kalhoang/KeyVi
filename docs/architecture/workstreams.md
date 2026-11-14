@@ -381,7 +381,7 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
   - Compatibility mode choices write and remove the expected user override JSON (PLT-R540).
   - Every control has an accessibilityLabel and hint key in the four owned catalogs (catalog test); the tab
     order reaches every control.
-  - Catalog test for the four owned tables; no pane scrolls at default size except Apps and Macros (manual
+  - Catalog test for the four owned tables; no pane scrolls at default size except Apps, Macros and About & Support (manual
     check by Pa listed in the report).
 
 ### W2-C Diagnostics window, bug report, guided test, typing trace, latency probe

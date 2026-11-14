@@ -133,22 +133,24 @@ Legend: **Code** is what the code and tests guarantee; **Pa** is what Pa verifie
      System Settings shows them. Record the exact names; they are VERIFY entries of `App/Resources/SystemPanes.json`.
   6. Move-to-Applications alert (run the DMG copy): both buttons read their titles and hints.
 
-### 3.6 Settings window: pane picker and five panes (PRD-R24 to PRD-R28, PRD-R67)
+### 3.6 Settings window: sidebar and five panes (PRD-R24 to PRD-R28, PRD-R67)
 
-- Code: a segmented pane picker (label and hint); every toggle, picker, field, button and list has a label and a
-  hint from the Settings, Apps, Macros or Support table; explanations under every setting; warnings and statuses
-  carry a symbol; the Apps status column is a symbol plus text; the Apps table has a named actions column; the
-  last-verified day in the app details follows the interface language; implicit animations and the Advanced
+- Code: a sidebar list of the five panes (label and hint; the arrow keys and Command+1 to 5 change pane); every
+  toggle, picker, field, button and list has a label and a hint from the Settings, Apps, Macros or Support table;
+  explanations under every setting; warnings and statuses carry a symbol; the Apps status column is a symbol plus
+  text; the Apps Details and report buttons act on the selected row under the list (from macOS 13 also the row's
+  context menu and a double-click); the sidebar tiles are decoration beside the pane name (allowlisted in the hue
+  check); the last-verified day in the app details follows the interface language; implicit animations and the Advanced
   disclosures stop animating under Reduce Motion; the title follows a language change.
 - Pa:
-  1. Keyboard only: Command+, opens the window; Tab reaches the pane picker, arrows change pane; in each pane, Tab
-     reaches every control in reading order with a visible focus ring; the Apps and Macros tables take arrow keys,
-     and the row buttons (Details, report, edit, duplicate, delete) are reachable after selecting a row.
-  2. VoiceOver: each control reads label, value and hint; the Apps table reads the column headers including
-     "Thao tác"; the status cell reads the status words; the macro row checkbox reads "Bật gõ tắt này: <shortcut>".
+  1. Keyboard only: Command+, opens the window; Tab reaches the sidebar, the arrow keys or Command+1 to 5 change
+     pane; in each pane, Tab reaches every control in reading order with a visible focus ring; the Apps and Macros
+     tables take arrow keys, and the buttons under each list (Details and report for Apps; edit, duplicate and
+     delete for Macros) are reachable after selecting a row.
+  2. VoiceOver: each control reads label, value and hint; the Apps table reads the column headers; the status cell reads the status words; the macro row checkbox reads "Bật gõ tắt này: <shortcut>".
   3. Interface language: switch to English and back; every pane, the window title and open sheets switch at once,
      without reopening the window (PRD-R63).
-  4. Increase Contrast, light and dark: notices, the selected segment, the hotkey recorder box while recording and
+  4. Increase Contrast, light and dark: notices, the selected sidebar row, the sidebar tiles (outlined under Increase Contrast), the hotkey recorder box while recording and
      all secondary text stay readable (WCAG AA is a visual judgement here; note any faint text).
   5. Reduce Motion: expand "Tùy chọn nâng cao": it opens without animation.
 
@@ -271,7 +273,7 @@ Added (accessibility only): `icon.paused.userDisabled`, `icon.paused.sessionInac
 `common.close.accessibilityHint`; label and hint of `onboarding.control.confirmResetPermission` and
 `cancelResetPermission`. Removed: the unused skeleton keys, the duplicate `menu.quit` in `Localizable`,
 `icon.paused.other.accessibilityLabel`, and `settings.typing.practice.label` (never shown; the practice field is
-named by `settings.control.practiceField.accessibilityLabel`, which has the same text).
+named by `settings.control.practiceField.accessibilityLabel`, which has the same text). Removed in W8-D: `apps.column.actions.accessibilityLabel` (the Apps list has no actions column any more).
 
 Kept after review (named in the task): `status.safeMode`, `status.action.safeModeChoices`,
 `diagnostics.state.paused.diagnosticsTest`, `safeMode.later.hint` (vi), and the onboarding and Settings strings

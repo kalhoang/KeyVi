@@ -32,7 +32,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 
 | Area | Requirements | What Pa does |
 |---|---|---|
-| Permissions | PLT-R701, PLT-R702, PLT-R710, PLT-R711, PLT-R712, PLT-R730, PLT-R731, PLT-R740, PRD-R40 | Fresh install from the DMG: move offer, grant Accessibility (and Input Monitoring only if asked), typing within 2 s, revoke while typing (keys must pass untouched), re-grant, "Đặt lại quyền" |
+| Permissions | PLT-R701, PLT-R702, PLT-R705, PLT-R710, PLT-R711, PLT-R712, PLT-R730, PLT-R731, PLT-R740, PRD-R40 | Fresh install from the DMG: move offer, grant Accessibility (and Input Monitoring only if asked), typing within 2 s, revoke while typing (keys must pass untouched), re-grant, "Đặt lại quyền" |
 | Live typing in third-party apps | PRD-R1, PLT-R531, PLT-R381, PLT-R386, PRD-R22, PLT-R107 | Run `compat/SCRIPT.md` on Tier 1 apps (PRD-R39) on macOS 26 and 27, record rows in `compat/matrix.json`; Spotlight over Terminal; design apps |
 | Secure input in iTerm2 | PLT-R396, PLT-R397, PLT-R398B, PLT-R398C, PLT-R333 | Turn iTerm2 Secure Keyboard Entry on/off and trigger its automatic password-prompt mode: menu names iTerm2 with the right hint; first key after release is composed; sleep/lock/resume |
 | Spike S1 | PLT-R398D | Build and install `SpikeIMK`, enable it as an input source, test iTerm2 and Terminal with secure keyboard entry, record the result ADR |
@@ -105,13 +105,13 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
 | PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F2 |  |
 | PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
-| PLT-R340 | Hard boundaries list | `KeyPipeline` | P, U | W1-F1 |  |
+| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A; Pa | **Pa** |
 | PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F1; W2-E2 |  |
 | PLT-R342 | Re-entry verification with bounded AX read | `InjectionWorker` (`verifyBeforeApply`) | U | W1-D |  |
 | PLT-R343 | Bounded AX reads (64 characters) | `AXFocusedFieldAccess`, `SystemAXProvider` | U, L | W1-D, W1-E |  |
 | PLT-R350 | Shift/Caps via table; Command/Control/Option chords | `KeyClassifier` | U | W1-F1 |  |
 | PLT-R351 | Autorepeat handling | `KeyPipeline` | U, P | W1-F1 |  |
-| PLT-R352 | User backspace reported to engine | `KeyPipeline` | P | W1-F1 |  |
+| PLT-R352 | User backspace reported to engine; delete-key resets; a Backspace edit never exceeds the token | `KeyPipeline` | P, U (`KeyPipelineDeleteKeyTests`, `KeyPipelineBackspaceGuardTests`) | W1-F1, W8-B |  |
 | PLT-R353 | Restore hotkey semantics, per-app disable | `HotkeyRecognizer`, `KeyPipeline`; Escape off by rule (`features.restoreHotkey: false`) in terminals, code editors, games and remote desktop clients, and in launchers such as Spotlight, Raycast and Alfred (`compat/rules.json`, D8) | U (`RestoreHotkeyExclusionTests`, `RestoreHotkeyDefaultTests`), I | W1-E, W1-F1; W2-E2; W5-A |  |
 | PLT-R354 | Dead keys pass and reset | `UCKeyTranslateLayoutBuilder`, `KeyClassifier` | U | W1-E, W1-F1 |  |
 | PLT-R355 | Keypad digits are not VNI tone keys | `KeyClassifier` (`fromKeypad`), engine | U, E | W1-F1; engine track |  |
@@ -133,6 +133,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R386 | requireTextFocus gating | `HostDecisionMapper`, `HostStateResolver` | U, C (design apps) | W1-E, W1-F1; Pa | **Pa** |
 | PLT-R387 | Secure fields always pass through | `FocusTracker`, `HostStateResolver` | U, I (password field) | W1-E, W1-F1; W2-E2 |  |
 | PLT-R388 | Snapshot via one atomic reference | `RealtimeSupport/SnapshotCell.swift`, ADR 0303 | U, TSan | skeleton (done); W1-A |  |
+| PLT-R389 | Revalidation after shortcuts, Escape, Return, Tab, clicks and in overlays; moved-only reads | `KeyPipeline` (`KeyPipeline+Focus.swift`), `FocusTracker` (`FocusCore+Settle.swift`) | U (fake AX), C (`testhost.panel.*`, `testhost.sheet.commandS`, `launcher.spotlight.reopen`) | W8-A; Pa | **Pa** |
 | PLT-R390 | Per-app memory keyed by focus owner, precedence | `AppModeMemory` | U | W1-E |  |
 | PLT-R391 | Mode in effect before the next key | `FocusTracker`, `KeyPipeline` toggle sequence | P | W1-E, W1-F1 |  |
 | PLT-R392 | LRU 1,000, writes debounced 5 s, bundle and mode only | `AppModeMemory`, `SettingsStore.recordAppModes` | U | W1-E, W1-B |  |
@@ -150,7 +151,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R402 | Minimal edits (common prefix trim) | `EditMinimizer` | U | W1-D |  |
 | PLT-R403 | NFC insertions, grapheme delete counts | `InjectionWorker` | U | W1-D |  |
 | PLT-R404 | One grapheme per event; chunk up to 20 units | `UnicodeChunker` | U | W1-D |  |
-| PLT-R405 | Unicode events use the triggering keycode | `JobKeyCodes`, `KeyPipeline`, strategies | U | W1-F1, W1-D |  |
+| PLT-R405 | Unicode events use the triggering keycode, except a letter keycode for Backspace edits | `JobKeyCodes`, `KeyPipeline`, strategies | U (`BackspaceEditKeyCodeTests`, `KeyPipelineDeleteKeyTests`, `KeyPipelineRealEngineBackspaceTests`) | W1-F1, W1-D, W8-B |  |
 | PLT-R406 | No modifier flags except where required | strategies | U | W1-D |  |
 | PLT-R407 | Backspace key; forward delete banned | strategies, `RulesLinter` | U, L | W1-D, W1-C |  |
 | PLT-R408 | Timing parameters, caps, split | strategies, `ResolvedParams` | U | W1-D, W1-C |  |
@@ -178,10 +179,11 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R531 | Manual scenarios need fresh matrix rows | `RulesLinter`, `compat/matrix.json` | L, M | W1-C; Pa | **Pa** |
 | PLT-R540 | Override mechanism and scopes | `CompatibilityModeChoice`, `GuidedTestRunner`, rule import | U | W1-G, W2-B, W2-C |  |
 | PLT-R541 | rule-overrides.json listed, exported, in reports | `SettingsStore`, `ReportAssembler`, `ReportedOverride`, ADR 0312 | U | W1-B, W1-G |  |
-| PLT-R701 | Accessibility required; macOS 27 label VERIFY | `PermissionProbe`, `SystemPanes.json` | U, M, V | W1-E, W1-G; Pa | **Pa** |
-| PLT-R702 | Input Monitoring only if the OS demands it | `PermissionMonitor` | U, V | W1-E; Pa | **Pa** |
+| PLT-R701 | Accessibility required, decided by AXIsProcessTrusted() alone; macOS 27 label VERIFY | `PermissionProbe`, `PermissionMonitor`, `SystemPanes.json` | U, M, V | W1-E, W1-G, W8-C; Pa | **Pa** |
+| PLT-R702 | Input Monitoring only when the tap fails with Accessibility granted; live listen-only check | `PermissionMonitor`, `SystemPermissionProbe.canListenToEventsNow` | U, V | W1-E, W8-C; Pa | **Pa** |
 | PLT-R703 | No other permissions | `App/Info.plist`, no entitlements | R, L | skeleton; release track |  |
 | PLT-R704 | Pane names and deep links from an OS table | `SystemPaneTable`, `App/Resources/SystemPanes.json` | U, V | W1-G; Pa | **Pa** |
+| PLT-R705 | Permission screen: one row per needed permission with a live state, button opens the first missing pane | `PermissionScreenContent`, `PermissionNeed`, `OnboardingFlow`, App `PermissionRows` | U, M | W8-C; Pa | **Pa** |
 | PLT-R710 | Run from Applications, not translocated; move offer | `AppLocationCheck`, `AppEnvironment` | U, M (launch from DMG) | W1-G, W2-A; Pa | **Pa** |
 | PLT-R711 | Onboarding permission flow with 1 s polling | `OnboardingFlow`, `PermissionMonitor` | U, M | W1-G, W1-E; Pa | **Pa** |
 | PLT-R712 | Relaunch offer for Input Monitoring | `OnboardingWindowController` | M | W1-G; Pa | **Pa** |
@@ -297,7 +299,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R34 | Apps pane rows | `AppsPaneModel`, Apps pane | U, M | W1-G, W2-B |  |
 | PRD-R35 | Compatibility status from matrix | `MatrixStatusResolver` | U | W1-C, W1-G |  |
 | PRD-R36 | At most three compatibility choices under Advanced | `CompatibilityModeChoice` | U (`GuidedOverrideSlotTests.onlyThePlainChoicesAreSelectable`), M | W1-G, W2-B |  |
-| PRD-R37 | Report button per app row | Apps pane | M | W2-B |  |
+| PRD-R37 | Report command for every app row (context menu, button under the list) | Apps pane | M | W2-B, W8-D |  |
 | PRD-R38 | Both compatibility files ship in the app | `project.yml` copy phase | R | skeleton (done); W1-C |  |
 | PRD-R39 | Tier lists | `compat/matrix.json` `tier` | D | W1-C; Pa |  |
 | PRD-R40 | Onboarding screens 1-8 | `OnboardingFlow`, `OnboardingWindowController`, `Onboarding` table | U, M | W1-G; Pa (moderated test) | **Pa** |
