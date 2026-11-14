@@ -23,6 +23,9 @@ struct FocusReading {
     /// `.frontmostApplication`: AX named no focused application and the identity is NSWorkspace's frontmost
     /// application, without an element (PLT-R381 amendment).
     var source: FocusedAppSource = .accessibility
+
+    /// The source the published app will carry, nil when the read names no app.
+    var appSource: FocusedAppSource? { identity == nil ? nil : source }
 }
 
 extension FocusCore {

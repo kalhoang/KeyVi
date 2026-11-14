@@ -42,7 +42,9 @@ struct FocusContext {
 
 /// The parts of a snapshot whose change is a hard boundary (PLT-R340): app, field, decision, mode and pause.
 /// The mode's source is not one: an app's first focus records its mode, so the next resolution reports the same
-/// mode as `remembered` instead of `globalMode` or `ruleDefault`.
+/// mode as `remembered` instead of `globalMode` or `ruleDefault`. Nor is the app's source (PLT-R381 amendment): the
+/// same process, first taken from the frontmost application and then named by AX without a focused element (or the
+/// reverse), is the same app with the same missing field, so only the label is republished.
 struct FocusSnapshotContent: Hashable {
     var app: FocusedApp?
     var field: FieldContext
@@ -51,7 +53,9 @@ struct FocusSnapshotContent: Hashable {
     var pause: PauseReason?
 
     init(_ snapshot: FocusSnapshot) {
-        app = snapshot.app
+        app = snapshot.app.map {
+            FocusedApp(pid: $0.pid, bundle: $0.bundle, appVersion: $0.appVersion, engine: $0.engine)
+        }
         field = snapshot.field
         decision = snapshot.decision
         mode = snapshot.mode
@@ -191,7 +195,8 @@ final class FocusCore {
         if reading.elementUnmoved { return .unchanged }
         let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false
-        if !force, sameElement, current?.match == match { return .unchanged }
+        let sameSource = current?.snapshot.app?.source == reading.appSource
+        if !force, sameElement, sameSource, current?.match == match { return .unchanged }
         let decision = rules.resolve(match)
         recordSideEffects(of: decision, reading: reading)
         let published = resolveAndPublish(
@@ -236,8 +241,12 @@ final class FocusCore {
             changedAt: current?.snapshot.changedAt ?? instant,
             pause: TextFocusGate.pause(field: field, decision: hostDecision))
         if sameElement, let current, FocusSnapshotContent(current.snapshot) == FocusSnapshotContent(snapshot) {
-            let sourceChanged = snapshot.modeSource != current.snapshot.modeSource
+            let appRelabelled = snapshot.app?.source != current.snapshot.app?.source
+            let sourceChanged = appRelabelled || snapshot.modeSource != current.snapshot.modeSource
             if sourceChanged { services.output.publish(snapshot) }
+            #if DEV_RECORDER
+            if appRelabelled { recordDevFocus(snapshot, at: instant) }  // PLT-R904A: `bundle` or `front` follows
+            #endif
             self.current?.match = match
             self.current?.decision = decision
             self.current?.resolution = resolution

@@ -70,6 +70,8 @@ local time, app bundle ID, compat rule, finding kind and a detail made of names 
 could not name appears as the frontmost application in parentheses (`(com.example.app)`, format version 3) or `-`.
 Since the frontmost-app fallback of PLT-R381 (2026-11-15) such an app also gets its bundle-level compat rule and its
 per-app mode, so the finding names that rule; the parentheses still say that Accessibility did not name the app.
+When Accessibility starts or stops naming that same app (still without a focused field), a new focus line with the
+same `gen` switches between `bundle` and `front`.
 
 | Kind | Meaning |
 |---|---|

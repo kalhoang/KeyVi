@@ -170,6 +170,46 @@ struct FocusFrontmostFallbackTests {
         #expect(harness.snapshot.field.axAvailability == .timedOut)
     }
 
+    /// Review W14-P finding 1: the same frontmost app, first taken from NSWorkspace, then named by AX without a
+    /// focused element. The snapshot must say who named the app (Diagnostics and the dev recorder show it), but a
+    /// change of that label alone is no PLT-R340 boundary: same pid, still no field, so the generation stays.
+    @Test func axNamingTheFallbackAppRelabelsItWithoutABoundary() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.clearFocusedApplication()
+        harness.processes.setFrontmost(F.codePID)
+        harness.start(rules())
+        #expect(harness.snapshot.app?.source == .frontmostApplication)
+        let generation = harness.snapshot.generation
+        harness.ax.focusWithoutElement(pid: F.codePID, notify: nil)
+        harness.idleRevalidation()
+        let app = try #require(harness.snapshot.app)
+        #expect(app.bundle == F.code && app.source == .accessibility)
+        #expect(harness.snapshot.generation == generation)
+        #expect(harness.snapshot.decision.rule == RuleID(rawValue: Self.editorRule))
+    }
+
+    /// The reverse of the finding-1 scenario: AX named the app without an element, then stops naming any app while
+    /// the same app stays in front. The label follows, the generation does not move.
+    @Test func axDroppingTheAppRelabelsItAsFrontmostWithoutABoundary() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.processes.setFrontmost(F.codePID)
+        harness.ax.focusWithoutElement(pid: F.codePID, notify: nil)
+        harness.start(rules())
+        #expect(harness.snapshot.app?.source == .accessibility)
+        let generation = harness.snapshot.generation
+        harness.ax.clearFocusedApplication()
+        harness.idleRevalidation()
+        let app = try #require(harness.snapshot.app)
+        #expect(app.bundle == F.code && app.source == .frontmostApplication)
+        #expect(harness.snapshot.generation == generation)
+        // Once relabelled, further reads of the same fallback publish nothing more.
+        harness.idleRevalidation()
+        #expect(harness.snapshot.app?.source == .frontmostApplication)
+        #expect(harness.snapshot.generation == generation)
+    }
+
     /// PLT-R382 and T6: an unchanged fallback publishes nothing, and the owner's identity is read once.
     @Test func repeatedReadsOfTheSameFallbackPublishNothing() {
         let harness = FocusHarness()

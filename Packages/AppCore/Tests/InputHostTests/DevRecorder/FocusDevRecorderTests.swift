@@ -136,6 +136,53 @@ import Testing
         #expect(named.bundle == FocusFixtures.code.rawValue && named.frontmost == nil)
     }
 
+    /// Review W14-P finding 1: when AX starts naming the app that was taken from the frontmost application (no
+    /// element either way), the snapshot is relabelled without a new generation, and the focus line follows, so the
+    /// trace does not keep writing the app as `front`.
+    @Test func aRelabelledFallbackAppIsRecordedAgain() throws {
+        let clock = ManualClock()
+        let capture = CaptureController(
+            directory: URL(fileURLWithPath: "/logs/SampleApp/captures", isDirectory: true),
+            fileSystem: InMemoryFileSystem(), wallClock: FixedWallClock(), clock: clock,
+            scheduler: ManualScheduler(clock: clock))
+        try capture.dev.start(appVersion: "test")
+        let thread = RunLoopThread(name: "test.focus.dev.relabel", qualityOfService: .userInitiated)
+        thread.start()
+        defer { thread.stop() }
+        let ax = FakeAXProvider()
+        let processes = FakeProcessIdentityProvider(processes: FocusFixtures.processes)
+        processes.setFrontmost(FocusFixtures.zaloPID)
+        ax.clearFocusedApplication()
+        let initial = FocusSnapshot(
+            generation: .initial, app: nil, field: .unknown,
+            decision: HostDecisionMapper.map(FocusFixtures.decision(nil), engine: .native, optedIntoPaste: false),
+            mode: .vietnamese, modeSource: .globalMode, appliedToggleSequence: 0, fieldHandle: nil, changedAt: .zero,
+            pause: nil)
+        let tracker = FocusTracker(
+            thread: thread, ax: ax, processes: processes,
+            output: SnapshotCell(initial, epoch: ReaderEpoch()), generation: CurrentFocusGeneration(),
+            inbox: SPSCRing<AXNotice>(capacity: 64), metrics: PlatformMetrics(), health: HealthEventLog(),
+            clock: clock, macOSVersion: LooseVersion("27.2")!, capture: capture)
+        tracker.start(
+            rules: FocusFixtures.resolver([:]),
+            memory: AppModeMemory(document: AppModesDocument(), rememberPerApp: true, firstSeen: .inherit))
+        tracker.waitUntilIdle()
+        ax.focusWithoutElement(pid: FocusFixtures.zaloPID, notify: nil)
+        tracker.revalidate()
+        tracker.waitUntilIdle()
+        tracker.stop()
+        tracker.waitUntilIdle()
+        var focus: [DevFocusRecord] = []
+        while let record = capture.dev.focusRecords.pop() {
+            if case .focus(let value) = record { focus.append(value) }
+        }
+        let fallback = try #require(focus.first)
+        let named = try #require(focus.last)
+        #expect(fallback.bundle == nil && fallback.frontmost == FocusFixtures.zalo.rawValue)
+        #expect(named.bundle == FocusFixtures.zalo.rawValue && named.frontmost == nil)
+        #expect(named.generation == fallback.generation)
+    }
+
     /// Review W8-E finding 3: focus moves from a password field to a normal one while the secure gap is still open
     /// (the ax thread publishes before the main thread ends the gap); the normal field's focus line is written.
     @MainActor @Test func theFieldFocusedWhenASecureGapEndsIsRecorded() async throws {
