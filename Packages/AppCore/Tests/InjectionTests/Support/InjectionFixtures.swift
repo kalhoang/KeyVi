@@ -85,7 +85,8 @@ final class WorkerRig {
     init(
         field: SimulatedTextField = SimulatedTextField(), pasteboard: FakePasteboard = FakePasteboard(),
         policy: InFlightPolicy = .untilEcho, configuration: WorkerConfiguration = WorkerConfiguration(),
-        poster: FakeEventPoster? = nil, fieldAccessWrapper: ((FakeFocusedFieldAccess) -> any FocusedFieldAccess)? = nil
+        poster: FakeEventPoster? = nil, fieldAccessWrapper: ((FakeFocusedFieldAccess) -> any FocusedFieldAccess)? = nil,
+        capture: CaptureController? = nil
     ) {
         self.field = field
         self.pasteboard = pasteboard
@@ -96,7 +97,7 @@ final class WorkerRig {
         let services = InjectionServices(
             poster: self.poster, fieldAccess: fieldAccessWrapper?(fieldAccess) ?? fieldAccess, pasteboard: pasteboard,
             clock: clock, metrics: metrics,
-            health: health, logger: logger, capture: nil)
+            health: health, logger: logger, capture: capture)
         worker = InjectionWorker(
             queue: queue, signal: signal, feedback: feedback, marker: marker, focusGeneration: generation,
             services: services, configuration: configuration)

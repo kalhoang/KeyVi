@@ -21,6 +21,9 @@ extension WorkerCore {
     }
 
     func finishEdit(_ job: EditJob, outcome: JobOutcome) {
+        #if DEV_RECORDER
+        recordDevJob(job, outcome: outcome)  // PLT-R904A
+        #endif
         feedback.record(outcome, for: job.sequence)
         outcomes.record(outcome, for: job.sequence)
         if outcome.deliveredEdit {
@@ -147,6 +150,9 @@ extension WorkerCore {
     }
 
     func noteFallback(_ job: EditJob, from: InjectionStrategy, to: InjectionStrategy, reason: FallbackReason) {
+        #if DEV_RECORDER
+        recordDevFallback(job, from: from, to: to, reason: reason)  // PLT-R904A
+        #endif
         services.metrics.fallbackActivations.increment()
         notes.enter(job.generation)
         if reason.degradesSession { notes.degrade(field: job.field?.token, strategy: from) }

@@ -93,6 +93,9 @@ extension KeyPipeline {
         // PRD-R15: the recorder is capturing keys. PLT-R1205: the guided test types; a toggle would write
         // per-app memory and change the manual mode.
         let hotkeysActive = !lifecycle.recorderActive && !lifecycle.diagnosticsPassThrough
+        #if DEV_RECORDER
+        if hotkeysActive, let verdict = devMarkerVerdict(event, now: now) { return verdict }  // PLT-R904A
+        #endif
         // PRD-R14: autorepeat never toggles, whatever the recogniser reports; the repeat is consumed below.
         if hotkeysActive && !event.autorepeat && (hotkey == .toggleTap || hotkey == .toggleCombo) {
             toggleMode(from: mode, state: state, focus: focus, inputSource: inputSource)

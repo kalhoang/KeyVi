@@ -276,6 +276,9 @@ extension KeyPipeline {
 
     /// PLT-R340: reset the composition and, while jobs are in flight, mark the boundary in FIFO order.
     func hardBoundary(_ reason: ResetReason, job: BoundaryReason?, generation: FocusGeneration) {
+        #if DEV_RECORDER
+        recordDevBoundary(reason, job: job)  // PLT-R904A
+        #endif
         resetEngineIfDirty(reason)
         keyState.wordStartedAt = nil
         keyState.reopenedWord = false

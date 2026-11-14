@@ -15,6 +15,12 @@ internal import VietnameseEngine
 struct EngineCapture {
     var deleteCount: Int
     var insert: String
+    #if DEV_RECORDER
+    /// PLT-R904A: every engine call of the key for the dev recorder (two when a restore binding asked first).
+    var devSteps = DevEngineSteps()
+    /// The PLT-R905 engine line: an edit that changes something.
+    var isEdit = true
+    #endif
 }
 
 extension KeyPipeline {
@@ -27,6 +33,9 @@ extension KeyPipeline {
 
     /// Step 8 output worth a trace line: an edit that changes something.
     func noteEngineCapture(_ output: EngineOutput) {
+        #if DEV_RECORDER
+        if noteDevEngineStep(output) { return }
+        #endif
         guard capturingThisKey, case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty
         else { return }
         engineCapture = EngineCapture(deleteCount: edit.deleteCount, insert: edit.insert)
@@ -39,10 +48,20 @@ extension KeyPipeline {
         let record = KeyCaptureRecord(
             kind: kind, keyCode: event.keyCode.rawValue, flags: event.flags,
             character: Self.layoutCharacter(event, table: table), outcome: Self.captureOutcome(outcome), at: now)
+        #if DEV_RECORDER
+        pushCapture(.key(record), to: capture)
+        if let engine = engineCapture {
+            if engine.isEdit {
+                pushCapture(.engine(deleteCount: engine.deleteCount, insert: engine.insert, at: now), to: capture)
+            }
+            recordDevEngineSteps(engine.devSteps, keyCode: event.keyCode, at: now)
+        }
+        #else
         _ = capture.tapRecords.push(.key(record))
         if let engine = engineCapture {
             _ = capture.tapRecords.push(.engine(deleteCount: engine.deleteCount, insert: engine.insert, at: now))
         }
+        #endif
     }
 
     /// PLT-R905: a click is part of the trace (it moves the caret and ends the composition).
@@ -54,7 +73,11 @@ extension KeyPipeline {
         guard allowed else { return }
         let record = KeyCaptureRecord(
             kind: .mouseDown, keyCode: 0, flags: 0, character: .empty, outcome: .passed, at: now)
+        #if DEV_RECORDER
+        pushCapture(.key(record), to: capture)
+        #else
         _ = capture.tapRecords.push(.key(record))
+        #endif
     }
 
     static func captureKind(_ kind: RawKeyEvent.Kind) -> KeyCaptureRecord.Kind? {
