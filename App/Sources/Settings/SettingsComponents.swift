@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Building blocks shared by the panes: a setting with its one-line explanation (PRD-R25), the remembered
-// Advanced disclosure (PRD-R24), the per-pane reset button (PRD-R26) and the VoiceOver label and hint modifier
-// (PRD-R66). Copy is rendered with `Text(verbatim:)` from the selected language (ADR 0310).
+// Building blocks shared by the panes: a setting row with its one-line explanation (PRD-R25), a switch setting, the
+// remembered Advanced disclosure (PRD-R24), the per-pane reset section (PRD-R26), store notices and the VoiceOver
+// label and hint modifier (PRD-R66). Copy is rendered with `Text(verbatim:)` from the selected language (ADR 0310).
 
 import AppModel
 import ShellCore
@@ -19,7 +19,7 @@ extension View {
     }
 }
 
-/// A control with its one-line explanation underneath (PRD-R25).
+/// A setting's row: its title and explanation from the catalog, its control on the right (PRD-R25).
 struct SettingRow<Control: View>: View {
     let localizer: Localizer
     let item: SettingItem
@@ -27,17 +27,15 @@ struct SettingRow<Control: View>: View {
     @ViewBuilder var control: Control
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            control
-            Text(verbatim: localizer.format(item.explanation.key, table: item.explanation.table, arguments: arguments))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        SettingsFormRow(title: localizer.string(item.title), explanation: explanation) { control }
+    }
+
+    private var explanation: String {
+        localizer.format(item.explanation.key, table: item.explanation.table, arguments: arguments)
     }
 }
 
-/// A Bool setting as a checkbox-style toggle with its explanation.
+/// A Bool setting as a switch on the right of its title and explanation, like System Settings.
 struct ToggleSetting<Control: AccessibleControl>: View {
     let model: SettingsWindowModel
     let item: SettingItem
@@ -52,51 +50,72 @@ struct ToggleSetting<Control: AccessibleControl>: View {
                 Text(verbatim: localizer.string(item.title))
             }
             .settingsAccessibility(control, localizer)
+            .settingsSwitch()
         }
     }
 }
 
-/// "Tùy chọn nâng cao": collapsed by default, remembered once expanded (PRD-R24). No animation with Reduce
-/// Motion (PRD-R67).
-struct AdvancedSection<Content: View>: View {
+extension View {
+    /// The small switch of System Settings, without the visible label (the row shows the title).
+    func settingsSwitch() -> some View {
+        toggleStyle(.switch).controlSize(.small).labelsHidden()
+    }
+}
+
+/// "Tùy chọn nâng cao" as its own section: collapsed by default, remembered once expanded (PRD-R24). No animation
+/// with Reduce Motion (PRD-R67).
+struct AdvancedSection: View {
     let model: SettingsWindowModel
     let pane: SettingsPaneKind
-    @ViewBuilder var content: Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let expanded = Binding(
             get: { model.isAdvancedExpanded(pane) }, set: { model.setAdvancedExpanded($0, for: pane) })
-        DisclosureGroup(isExpanded: expanded) {
-            VStack(alignment: .leading, spacing: 12) { content }
-                .padding(.top, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } label: {
-            Text(verbatim: model.localizer.string(SettingsText.advanced)).font(.headline)
+        SettingsGroup {
+            DisclosureGroup(isExpanded: expanded) {
+                ForEach(SettingsCatalog.items(in: pane, advanced: true), id: \.self) { item in
+                    SettingItemRow(model: model, item: item)
+                }
+            } label: {
+                Text(verbatim: model.localizer.string(SettingsText.advanced)).font(.headline)
+            }
+            .settingsAccessibility(SettingsControl.advancedDisclosure, model.localizer)
+            .transaction { if reduceMotion { $0.animation = nil } }
         }
-        .settingsAccessibility(SettingsControl.advancedDisclosure, model.localizer)
-        .transaction { if reduceMotion { $0.animation = nil } }
     }
 }
 
-/// PRD-R26 per-pane reset (opens the confirmation with the export offer).
+/// PRD-R26 per-pane reset as the last section: what it does on the left, the button that opens the confirmation
+/// (with the export offer) on the right.
+struct PaneResetSection<Control: AccessibleControl>: View {
+    let model: SettingsWindowModel
+    let target: ResetTarget
+    let control: Control
+
+    var body: some View {
+        SettingsGroup {
+            SettingsFormRow(title: model.localizer.string(SettingsText.resetPaneExplanation)) {
+                PaneResetButton(model: model, target: target, control: control)
+            }
+        }
+    }
+}
+
 struct PaneResetButton<Control: AccessibleControl>: View {
     let model: SettingsWindowModel
     let target: ResetTarget
     let control: Control
 
     var body: some View {
-        HStack {
-            Spacer()
-            Button(action: { model.requestReset(target) }) {
-                Text(verbatim: model.localizer.string(SettingsText.resetPane))
-            }
-            .settingsAccessibility(control, model.localizer)
+        Button(action: { model.requestReset(target) }) {
+            Text(verbatim: model.localizer.string(SettingsText.resetPane))
         }
+        .settingsAccessibility(control, model.localizer)
     }
 }
 
-/// A section heading inside a pane.
+/// A heading inside a sheet.
 struct PaneHeading: View {
     let text: String
 
@@ -107,7 +126,7 @@ struct PaneHeading: View {
     }
 }
 
-/// Store notices at the top of the window (PLT-R1006, PLT-R1007, PLT-R1009). Warnings carry a symbol, not only a
+/// Store notices at the top of the pane (PLT-R1006, PLT-R1007, PLT-R1009). Warnings carry a symbol, not only a
 /// colour (PRD-R67).
 struct NoticeBanner: View {
     @ObservedObject var model: SettingsWindowModel
@@ -117,8 +136,9 @@ struct NoticeBanner: View {
         let localizer = model.localizer
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: notice.isWarning ? "exclamationmark.triangle.fill" : SettingsSymbol.infoFill)
+                .font(.title3)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(verbatim: notice.message).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     ForEach(notice.actions, id: \.self) { action in
@@ -129,8 +149,10 @@ struct NoticeBanner: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary))
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: SettingsMetrics.listCornerRadius, style: .continuous).fill(.quaternary)
+        )
         .accessibilityElement(children: .contain)
     }
 }

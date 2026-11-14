@@ -25,6 +25,8 @@ public enum SupportText: String, LocalizationKey {
     case diagnosticsExplanation = "support.diagnostics.explanation"
     case reopenOnboarding = "support.reopenOnboarding"
     case settingsTitle = "support.settings.title"
+    /// Under the export, import and reset buttons (W8-D grouped section).
+    case settingsExplanation = "support.settings.explanation"
     case exportSettings = "support.exportSettings"
     case importSettings = "support.importSettings"
     case resetAll = "support.resetAll"

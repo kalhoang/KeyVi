@@ -14,8 +14,6 @@ public enum AppsText: String, LocalizationKey {
     case columnRule = "apps.column.rule"
     case columnRemembered = "apps.column.remembered"
     case columnStatus = "apps.column.status"
-    /// Header of the column with the row buttons, also its VoiceOver name (PRD-R66).
-    case columnActions = "apps.column.actions.accessibilityLabel"
     case ruleRemember = "apps.rule.remember"
     case ruleAlwaysEnglish = "apps.rule.alwaysEnglish"
     case ruleAlwaysVietnamese = "apps.rule.alwaysVietnamese"

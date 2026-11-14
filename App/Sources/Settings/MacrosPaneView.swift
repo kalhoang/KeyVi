@@ -16,37 +16,43 @@ struct MacrosPaneView: View {
 
     var body: some View {
         let localizer = model.localizer
-        VStack(alignment: .leading, spacing: 10) {
-            ToggleSetting(
-                model: model, item: .macrosEnabled, control: MacrosControl.enabled, isOn: model.settings.macrosEnabled
-            ) {
-                .macrosEnabled($0)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            SettingsCard { SettingItemRow(model: model, item: .macrosEnabled) }
             MacrosToolbar(model: model)
-            if model.macroList.isEmpty {
-                MacrosEmptyState(model: model)
-            } else if model.macroList.visible.isEmpty {
-                Text(verbatim: localizer.format(MacrosText.noResults, model.macroList.searchText))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                MacrosTable(model: model, selection: $selection)
+            ListBox {
+                if model.macroList.isEmpty {
+                    MacrosEmptyState(model: model)
+                } else if model.macroList.visible.isEmpty {
+                    Text(verbatim: localizer.format(MacrosText.noResults, model.macroList.searchText))
+                        .foregroundStyle(.secondary)
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    MacrosTable(model: model, selection: $selection)
+                }
             }
             MacrosFooter(model: model, selection: $selection)
+            HStack {
+                Spacer()
+                PaneResetButton(model: model, target: .pane(.macros), control: MacrosControl.resetPane)
+            }
         }
+        .padding(.horizontal, SettingsMetrics.listPaneInset)
+        .padding(.vertical, SettingsMetrics.paneInset)
     }
 }
 
+/// Search and sort above the list; add, import and export under it (`MacrosFooter`).
 struct MacrosToolbar: View {
     @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
         HStack(spacing: 8) {
-            TextField(text: $model.macroList.searchText) {
-                Text(verbatim: localizer.string(MacrosText.searchPlaceholder))
-            }
-            .textFieldStyle(.roundedBorder)
-            .settingsAccessibility(MacrosControl.search, localizer)
+            TextField(settingsText: $model.macroList.searchText, prompt: localizer.string(MacrosText.searchPlaceholder))
+                .settingsAccessibility(MacrosControl.search, localizer)
+                .textFieldStyle(.roundedBorder)
+                .labelsHidden()
             Picker(selection: $model.macroList.sort) {
                 ForEach(MacroSortOrder.allCases, id: \.self) { order in
                     Text(verbatim: localizer.string(order.title)).tag(order)
@@ -54,26 +60,22 @@ struct MacrosToolbar: View {
             } label: {
                 Text(verbatim: localizer.string(MacrosText.sortTitle))
             }
-            .fixedSize()
             .settingsAccessibility(MacrosControl.sort, localizer)
-            Button(action: model.addMacro) { Text(verbatim: localizer.string(MacrosText.add)) }
-                .settingsAccessibility(MacrosControl.add, localizer)
-            Button(action: model.chooseMacroFile) { Text(verbatim: localizer.string(MacrosText.importFile)) }
-                .settingsAccessibility(MacrosControl.importFile, localizer)
-            Button(action: model.exportMacros) { Text(verbatim: localizer.string(MacrosText.exportFile)) }
-                .disabled(model.macroList.isEmpty)
-                .settingsAccessibility(MacrosControl.exportFile, localizer)
+            .pickerStyle(.menu)
+            .fixedSize()
         }
     }
 }
 
-/// PRD-R43: "Chưa có gõ tắt nào..." with "Thêm gõ tắt" and "Nhập từ tệp..." (the toolbar holds both buttons).
+/// PRD-R43: "Chưa có gõ tắt nào..." with "Thêm gõ tắt" and "Nhập từ tệp..." (both buttons are under the list).
 struct MacrosEmptyState: View {
     @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         Text(verbatim: model.localizer.string(MacrosText.empty))
+            .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
+            .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -104,6 +106,7 @@ struct MacrosTable: View {
                 Text(verbatim: macro.expansion.replacingOccurrences(of: "\n", with: " ")).lineLimit(1)
             }
         }
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
         .settingsAccessibility(MacrosControl.list, localizer)
         .rowMenu(model: model)
     }
@@ -161,7 +164,8 @@ struct MacroRowMenu: View {
     }
 }
 
-/// Selection actions (keyboard users select with the arrow keys, then Tab to these), bulk toggles, count, reset.
+/// Under the list: add, import, export and the count; then the selected macro's actions (keyboard users select with
+/// the arrow keys, then Tab to these) and the bulk switches.
 struct MacrosFooter: View {
     @ObservedObject var model: SettingsWindowModel
     @Binding var selection: UUID?
@@ -169,23 +173,34 @@ struct MacrosFooter: View {
     var body: some View {
         let localizer = model.localizer
         let list = model.macroList
-        HStack(spacing: 8) {
-            if let id = selection, list.macros.contains(where: { $0.id == id }) {
-                MacroRowMenu(model: model, id: id)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Button(action: model.addMacro) { Text(verbatim: localizer.string(MacrosText.add)) }
+                    .settingsAccessibility(MacrosControl.add, localizer)
+                Button(action: model.chooseMacroFile) { Text(verbatim: localizer.string(MacrosText.importFile)) }
+                    .settingsAccessibility(MacrosControl.importFile, localizer)
+                Button(action: model.exportMacros) { Text(verbatim: localizer.string(MacrosText.exportFile)) }
+                    .disabled(list.isEmpty)
+                    .settingsAccessibility(MacrosControl.exportFile, localizer)
+                Spacer(minLength: 8)
+                Text(verbatim: localizer.format(MacrosText.count, list.macros.count)).foregroundStyle(.secondary)
             }
-            Spacer()
-            Text(verbatim: localizer.format(MacrosText.count, list.macros.count)).foregroundStyle(.secondary)
-            Button(action: { model.setAllMacrosEnabled(true) }) {
-                Text(verbatim: localizer.string(MacrosText.enableAll))
+            HStack(spacing: 8) {
+                if let id = selection, list.macros.contains(where: { $0.id == id }) {
+                    MacroRowMenu(model: model, id: id)
+                }
+                Spacer(minLength: 8)
+                Button(action: { model.setAllMacrosEnabled(true) }) {
+                    Text(verbatim: localizer.string(MacrosText.enableAll))
+                }
+                .disabled(list.isEmpty || list.allEnabled)
+                .settingsAccessibility(MacrosControl.enableAll, localizer)
+                Button(action: { model.setAllMacrosEnabled(false) }) {
+                    Text(verbatim: localizer.string(MacrosText.disableAll))
+                }
+                .disabled(list.isEmpty || list.allDisabled)
+                .settingsAccessibility(MacrosControl.disableAll, localizer)
             }
-            .disabled(list.isEmpty || list.allEnabled)
-            .settingsAccessibility(MacrosControl.enableAll, localizer)
-            Button(action: { model.setAllMacrosEnabled(false) }) {
-                Text(verbatim: localizer.string(MacrosText.disableAll))
-            }
-            .disabled(list.isEmpty || list.allDisabled)
-            .settingsAccessibility(MacrosControl.disableAll, localizer)
-            PaneResetButton(model: model, target: .pane(.macros), control: MacrosControl.resetPane).fixedSize()
         }
     }
 }

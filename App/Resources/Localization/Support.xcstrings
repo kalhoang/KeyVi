@@ -1117,6 +1117,24 @@
         }
       }
     },
+    "support.settings.explanation" : {
+      "comment" : "About & Support, Settings section: above the export, import and reset buttons (W8-D).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save your settings to a file to use on another Mac, import them from a file, or put everything back to the defaults."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lưu cài đặt ra tệp để dùng trên máy khác, nhập lại từ tệp, hoặc đưa tất cả về mặc định."
+          }
+        }
+      }
+    },
     "support.settings.title" : {
       "comment" : "Section title.",
       "extractionState" : "manual",

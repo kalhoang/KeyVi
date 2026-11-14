@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings window with at most five panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
-// (PRD-R34-R38). Workstream W2-B. A normal window (not floating) whose size and position are remembered
-// (PRD-R28); SwiftUI content in an NSHostingController (ADR 0305).
+// (PRD-R34-R38). Workstream W2-B; System Settings style sidebar layout W8-D (Pa, 2026-11-14). A normal window (not
+// floating) whose size and position are remembered (PRD-R28); SwiftUI content in an NSHostingController (ADR 0305).
 
 import AppKit
 import AppModel
@@ -33,9 +33,13 @@ protocol SettingsActions: AnyObject {
 
 @MainActor
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    static let frameAutosaveName = "SettingsWindow"
-    static let defaultSize = NSSize(width: 700, height: 620)
-    static let minimumSize = NSSize(width: 640, height: 560)
+    /// A new name for the System Settings style layout (W8-D), so the window opens once at its new default size
+    /// instead of the frame saved for the old layout; from then on it is remembered again (PRD-R28).
+    static let frameAutosaveName = "SettingsWindow.sidebar"
+    static let defaultSize = NSSize(
+        width: SettingsWindowLayout.defaultWidth, height: SettingsWindowLayout.defaultHeight)
+    static let minimumSize = NSSize(
+        width: SettingsWindowLayout.minimumWidth, height: SettingsWindowLayout.minimumHeight)
 
     private let model: SettingsWindowModel
     private var languageObservation: AnyCancellable?
@@ -65,20 +69,39 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             commands: SettingsCommands(store: store), language: language, updater: updater, loginItem: loginItem,
             brand: brand, matrix: matrix, panes: panes, inputSources: inputSources, layout: layout,
             disclosures: AdvancedDisclosureMemory(store: keyValues))
-        let window = NSWindow(
+        let window = SettingsWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultSize),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.level = .normal  // PRD-R28: does not float above other apps
         window.isReleasedWhenClosed = false
-        window.contentMinSize = Self.minimumSize
         window.contentViewController = NSHostingController(rootView: SettingsRootView(model: model))
+        Self.configure(window)
         window.setContentSize(Self.defaultSize)
         window.center()
         window.setFrameAutosaveName(Self.frameAutosaveName)  // PRD-R28: size and position remembered
         super.init(window: window)
         window.delegate = self
+        window.selectPane = { [weak model] pane in model?.select(pane) }
         refreshTitle()
         observeLanguage()
+    }
+
+    /// Window traits of the layout, shared with the snapshot tool (scripts/snapshots): a normal window that does not
+    /// float above other apps (PRD-R28), resizable down to about the size System Settings allows. Like System
+    /// Settings, the content runs under a transparent, unified title bar (an empty toolbar gives it the taller
+    /// height): the sidebar fills the window's full height with the window buttons inside it, and the pane's name
+    /// sits in the title bar row (`SettingsRootView`). The window title stays set for VoiceOver and the Window menu,
+    /// only hidden.
+    static func configure(_ window: NSWindow) {
+        window.level = .normal
+        window.contentMinSize = minimumSize
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        let toolbar = NSToolbar(identifier: "SettingsWindow.toolbar")
+        toolbar.allowsUserCustomization = false
+        toolbar.showsBaselineSeparator = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unified
     }
 
     /// Shows the window on `pane` (menu "Cài đặt...", "Gõ tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
@@ -126,6 +149,25 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private func observeLanguage() {
         languageObservation = model.language.afterChange { [weak self] in self?.refreshTitle() }
+    }
+}
+
+/// Command+1 to Command+5 select the panes in sidebar order (PRD-R67), by the digit typed or, on layouts whose number
+/// row types other characters, by the number row key. Only plain Command digits are taken; the
+/// hotkey recorder sees every key first through its local monitor (ADR 0305), and a sheet has its own window.
+final class SettingsWindow: NSWindow {
+    var selectPane: (@MainActor (SettingsPaneKind) -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown, let selectPane,
+            let pane = SettingsPaneKind.forKeyEquivalent(
+                characters: event.charactersIgnoringModifiers, keyCode: event.keyCode,
+                modifierFlags: UInt64(event.modifierFlags.rawValue))
+        {
+            selectPane(pane)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }
 
