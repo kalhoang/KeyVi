@@ -43,6 +43,9 @@ FORBIDDEN = [
     "IOHIDRequestAccess", "IOHIDCheckAccess", "CGRequestListenEventAccess", "CGPreflightListenEventAccess",
     "CGRequestPostEventAccess", "makeKeyAndOrderFront", "orderFront", "orderFrontRegardless", "showWindow",
     "NSApp.run", ".run()", "activate(", "SMAppService", "NSWorkspace.shared.open", "TISSelectInputSource",
+    # Anything else that puts a window on screen or spins a modal loop.
+    "orderBack(", "orderWindow(", "makeKey()", "makeMain()", "runModal", "setIsVisible(true)", "beginSheet(",
+    "beginCriticalSheet(",
 ]
 
 
@@ -144,6 +147,13 @@ class SnapshotSafetyTests(unittest.TestCase):
             self.assertNotIn(token, code, f"the snapshot driver must not use {token}")
         self.assertIn("setActivationPolicy(.prohibited)", code)
         self.assertIn("cacheDisplay(", code)
+
+    def test_driver_removes_its_temporary_stores(self) -> None:
+        # Every variant's settings store lives in its own temporary folder; the run removes each one and checks at
+        # the end that none is left behind (hygiene on the developer's Mac).
+        code = self.driver_code()
+        self.assertIn("removeItem(at: store.folder)", code)
+        self.assertIn("SnapshotFixtures.leftoverStores()", code)
 
     def test_bundle_has_no_host_app_and_no_entry_point(self) -> None:
         text = PROJECT.read_text(encoding="utf-8")

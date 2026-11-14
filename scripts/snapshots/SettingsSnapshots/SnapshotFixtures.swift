@@ -19,11 +19,33 @@ final class SnapshotBundleMarker {}
 enum SnapshotFixtures {
     static var bundle: Bundle { Bundle(for: SnapshotBundleMarker.self) }
 
+    /// A variant's settings store and the temporary folder it lives in; the caller removes the folder once the
+    /// variant is drawn.
+    struct TemporaryStore {
+        let store: SettingsStore
+        let folder: URL
+    }
+
+    /// Prefix of the temporary store folders, so the run can check that it removed every one.
+    static let storePrefix = "settings-snapshots-store-"
+
+    /// Writes what the store still has pending, so nothing lands in the folder afterwards, then removes the folder.
+    static func discard(_ store: TemporaryStore) async {
+        await store.store.flush()
+        try? FileManager.default.removeItem(at: store.folder)
+    }
+
+    /// Store folders still in the temporary directory (an empty list at the end of a run).
+    static func leftoverStores() -> [String] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: FileManager.default.temporaryDirectory.path))
+        return (names ?? []).filter { $0.hasPrefix(storePrefix) }
+    }
+
     /// A store in a new temporary folder with sample word lists, learned words, macros and app modes, so the panes
     /// show their lists the way a user's would look. App rows use apps of the bundled matrix (no bundle ID here).
-    static func store(matrix: MatrixDocument?) async throws -> SettingsStore {
+    static func store(matrix: MatrixDocument?) async throws -> TemporaryStore {
         let folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent("settings-snapshots-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent(storePrefix + UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let store = SettingsStore(
             location: StorageLocation(directory: folder), fileSystem: LocalFileSystem(), wallClock: SystemWallClock(),
@@ -54,7 +76,7 @@ enum SnapshotFixtures {
             StoredMacro(trigger: "vn", expansion: "Việt Nam"),
             StoredMacro(trigger: "@@", expansion: "ten@example.com", enabled: false),
         ])
-        return store
+        return TemporaryStore(store: store, folder: folder)
     }
 
     /// The first apps of the bundled matrix that macOS ships, plus a few others, so the rows have real icons.

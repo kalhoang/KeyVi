@@ -10,6 +10,7 @@
 import AppKit
 import AppModel
 import CompatRules
+import SettingsStore
 import ShellCore
 import SwiftUI
 import TestSupport
@@ -100,21 +101,36 @@ import Testing
         var manifest: [String] = []
         let selected = Self.variants().filter { variant in Self.only.map(variant.fileName.contains) ?? true }
         for variant in selected {
-            let model = try await makeModel(variant, matrix: matrix)
-            let window = makeWindow(variant, model: model)
-            let data = try Self.render(window)
-            #expect(data.count > 10_000, "\(variant.fileName) rendered blank")
-            try data.write(to: folder.appendingPathComponent(variant.fileName))
+            let store = try await SnapshotFixtures.store(matrix: matrix)
+            do {
+                try await render(variant, store: store.store, matrix: matrix, into: folder)
+            } catch {
+                await SnapshotFixtures.discard(store)
+                throw error
+            }
+            await SnapshotFixtures.discard(store)
             manifest.append(variant.fileName)
-            window.contentView = nil
         }
         try manifest.joined(separator: "\n").write(
             to: folder.appendingPathComponent("manifest.txt"), atomically: true, encoding: .utf8)
         #expect(!manifest.isEmpty && manifest.count == selected.count)
+        #expect(SnapshotFixtures.leftoverStores().isEmpty, "temporary settings stores left behind")
     }
 
-    private func makeModel(_ variant: Variant, matrix: MatrixDocument?) async throws -> SettingsWindowModel {
-        let store = try await SnapshotFixtures.store(matrix: matrix)
+    private func render(
+        _ variant: Variant, store: SettingsStore, matrix: MatrixDocument?, into folder: URL
+    ) async throws {
+        let model = try await makeModel(variant, store: store, matrix: matrix)
+        let window = makeWindow(variant, model: model)
+        let data = try Self.render(window)
+        #expect(data.count > 10_000, "\(variant.fileName) rendered blank")
+        try data.write(to: folder.appendingPathComponent(variant.fileName))
+        window.contentView = nil
+    }
+
+    private func makeModel(
+        _ variant: Variant, store: SettingsStore, matrix: MatrixDocument?
+    ) async throws -> SettingsWindowModel {
         let bundle = SnapshotFixtures.bundle
         let language = InterfaceLanguageModel(language: variant.language, appBundle: bundle)
         let systemLanguage = variant.language == .vietnamese ? "vi" : "en"
