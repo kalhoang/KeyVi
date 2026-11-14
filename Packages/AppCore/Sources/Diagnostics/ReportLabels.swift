@@ -49,6 +49,7 @@ struct ReportLabels: Sendable {
     var domClasses: String
     var editable: String
     var secureField: String
+    var appSource: String
     var rule: String
     var ruleID: String
     var source: String

@@ -71,7 +71,16 @@ enum ReportSections {
         return DiagnosticsReport.FocusSection(
             bundle: app.bundle, appVersion: app.appVersion?.original, engine: app.engine,
             axAvailability: field.axAvailability, role: field.role, subrole: field.subrole,
-            identifier: field.identifier, domClasses: field.domClasses, editable: field.editable, secure: field.secure)
+            identifier: field.identifier, domClasses: field.domClasses, editable: field.editable, secure: field.secure,
+            appSource: appSource(app.source))
+    }
+
+    /// PLT-R381 amendment: whether the focused app is the AX focus or the frontmost-app fallback.
+    static func appSource(_ source: FocusedAppSource) -> DiagnosticsReport.FocusSection.AppSource {
+        switch source {
+        case .accessibility: .accessibility
+        case .frontmostApplication: .frontmostApplication
+        }
     }
 
     static func rule(_ decision: ResolvedDecision?, userOverride: Rule?) -> DiagnosticsReport.RuleSection? {

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reading the system-wide focus on the ax thread (PLT-R381, PLT-R383, PLT-R384, PLT-R510, 5.2). Every AX call
-// is bounded by the provider's 100 ms messaging timeout and skipped while the pid's breaker is open.
+// is bounded by the provider's 100 ms messaging timeout and skipped while the pid's breaker is open. When AX answers
+// but names no focused application, NSWorkspace's frontmost application stands in (PLT-R381 amendment).
 
 import AppModel
 import CompatRules
@@ -19,6 +20,9 @@ struct FocusReading {
     var availability: AXAvailability
     /// PLT-R389 moved-only read: the focused element is the published one, so its attributes were not read.
     var elementUnmoved = false
+    /// `.frontmostApplication`: AX named no focused application and the identity is NSWorkspace's frontmost
+    /// application, without an element (PLT-R381 amendment).
+    var source: FocusedAppSource = .accessibility
 }
 
 extension FocusCore {
@@ -32,7 +36,7 @@ extension FocusCore {
         let pid: Int32
         switch services.ax.focusedApplication() {
         case .success(let value?): pid = value
-        case .success(nil): return FocusReading(availability: .available)
+        case .success(nil): return frontmostReading(rules: rules)
         case .timedOut: return FocusReading(availability: .timedOut)
         case .unavailable, .failed: return FocusReading(availability: .unavailable)
         }
@@ -49,6 +53,25 @@ extension FocusCore {
         }
         readElement(into: &reading, rules: rules, at: instant, ifMoved: ifMoved)
         return reading
+    }
+
+    /// PLT-R381 amendment of 2026-11-15: AX answered but named no focused application (685 key downs of the product
+    /// owner's trace of 15/11/2026 went to such an app, most likely an Electron editor), so no per-app rule, mode or
+    /// setting applied. NSWorkspace's frontmost application stands in as a weaker identity: bundle-level rules and
+    /// per-app settings apply, but no AX call goes to its element, so the context has no role, subrole or other field
+    /// fact and no field-level rule matches. A timed-out or failed read never falls back: the focus is unknown there,
+    /// not empty (PLT-R340 late focus change, PLT-R384). The identity is read once per pid, like the AX owner's.
+    private func frontmostReading(rules: any FocusDecisionResolving) -> FocusReading {
+        guard let pid = services.processes.frontmostApplicationPID() else {
+            return FocusReading(availability: .available)
+        }
+        let cached = current?.pid == pid ? current?.identity : nil
+        guard let identity = cached ?? services.processes.identity(of: pid) else {
+            return FocusReading(availability: .available)
+        }
+        return FocusReading(
+            pid: pid, identity: identity, engine: engine(for: identity, rules: rules), availability: .available,
+            source: .frontmostApplication)
     }
 
     private func readElement(

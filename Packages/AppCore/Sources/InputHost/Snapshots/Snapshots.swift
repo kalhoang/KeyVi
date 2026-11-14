@@ -30,17 +30,33 @@ public struct TapSettingsSnapshot: Sendable {
     }
 }
 
-/// The focus owner (PLT-R381): the system-wide AX focused application, which can be a non-activating panel.
+/// Where the focus owner's identity came from (PLT-R381 and its amendment of 2026-11-15).
+public enum FocusedAppSource: String, Sendable, Hashable, Codable {
+    /// The system-wide AX focused application: authoritative, with the focused element.
+    case accessibility
+    /// NSWorkspace's frontmost application, taken because AX answered but named no focused application. A weaker
+    /// identity: bundle-level rules, the app's mode and its per-app settings apply; the snapshot has no element, so
+    /// no rule that needs an AX role, subrole or other field fact matches.
+    case frontmostApplication
+}
+
+/// The focus owner (PLT-R381): the system-wide AX focused application, which can be a non-activating panel, or the
+/// frontmost application when AX names none (`source`).
 public struct FocusedApp: Sendable, Hashable {
     public var pid: Int32
     public var bundle: BundleKey
     public var appVersion: LooseVersion?
     public var engine: EngineFingerprint
-    public init(pid: Int32, bundle: BundleKey, appVersion: LooseVersion?, engine: EngineFingerprint) {
+    public var source: FocusedAppSource
+    public init(
+        pid: Int32, bundle: BundleKey, appVersion: LooseVersion?, engine: EngineFingerprint,
+        source: FocusedAppSource = .accessibility
+    ) {
         self.pid = pid
         self.bundle = bundle
         self.appVersion = appVersion
         self.engine = engine
+        self.source = source
     }
 }
 

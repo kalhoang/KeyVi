@@ -82,6 +82,7 @@ struct PlainTextReport {
             field(labels.domClasses, joined(focus.domClasses))
             field(labels.editable, focus.editable.map(flag))
             field(labels.secureField, flag(focus.secure))
+            field(labels.appSource, focus.appSource.rawValue)  // PLT-R381 amendment
         }
         guard let rule = report.rule else { return }
         section(labels.rule)

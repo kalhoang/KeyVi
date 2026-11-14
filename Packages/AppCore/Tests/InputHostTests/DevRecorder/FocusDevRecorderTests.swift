@@ -112,6 +112,30 @@ import Testing
         #expect(unnamed.bundle == nil && unnamed.frontmost == FocusFixtures.zalo.rawValue)
     }
 
+    /// PLT-R381 amendment: a snapshot whose app was taken from the frontmost application is written like a focus line
+    /// AX could not name (format version 3: no `bundle`, the app in `front`), with the bundle-level rule it resolved
+    /// to, so the scanner keeps attributing it in parentheses.
+    @Test func aFrontmostFallbackSnapshotIsWrittenAsTheFrontmostApplication() {
+        var snapshot = FocusSnapshot(
+            generation: FocusGeneration(rawValue: 4),
+            app: FocusedApp(
+                pid: FocusFixtures.codePID, bundle: FocusFixtures.code, appVersion: nil, engine: .electron,
+                source: .frontmostApplication),
+            field: FieldContext(
+                axAvailability: .available, role: nil, subrole: nil, identifier: nil, domClasses: [], editable: nil,
+                secure: false),
+            decision: HostDecisionMapper.map(
+                FocusFixtures.decision("editor.sample", engine: .electron), engine: .electron, optedIntoPaste: false),
+            mode: .vietnamese, modeSource: .globalMode, appliedToggleSequence: 0, fieldHandle: nil, changedAt: .zero,
+            pause: nil)
+        let fallback = DevFocusRecord(snapshot, at: .zero)
+        #expect(fallback.bundle == nil && fallback.frontmost == FocusFixtures.code.rawValue)
+        #expect(fallback.rule == "editor.sample")
+        snapshot.app?.source = .accessibility
+        let named = DevFocusRecord(snapshot, frontmost: "com.example.other", at: .zero)
+        #expect(named.bundle == FocusFixtures.code.rawValue && named.frontmost == nil)
+    }
+
     /// Review W8-E finding 3: focus moves from a password field to a normal one while the secure gap is still open
     /// (the ax thread publishes before the main thread ends the gap); the normal field's focus line is written.
     @MainActor @Test func theFieldFocusedWhenASecureGapEndsIsRecorded() async throws {

@@ -3,7 +3,9 @@
 // The machine-parseable diagnostics block (QA-R44), format v1 of docs/decisions/0501-diagnostics-block-format.md:
 // a fenced block (info string `text`), the header `<slug>-diagnostics v1`, then `key: value` lines, at most 200
 // lines in total. Every `DiagnosticsBlockKey` is always present (empty value when unknown) so the shape is
-// stable; the other ADR 0501 keys follow. `scripts/parse-diagnostics.py` reads the same format.
+// stable; the other ADR 0501 keys follow. `#` lines close the block for the reader: when AX named no app, where the
+// focused app came from (PLT-R381 amendment); parsers ignore them (ADR 0501 rule 2). `scripts/parse-diagnostics.py`
+// reads the same format.
 
 internal import AppModel
 internal import Foundation
@@ -14,11 +16,23 @@ enum IssueBlock {
     private static let headerMarker = "-diagnostics v"
 
     static func render(_ report: DiagnosticsReport) -> String {
-        let fields = self.fields(report)
+        let comments = self.comments(report)
+        let fields = self.fields(report, reserving: comments.count)
         var lines = [fence + "text", header(slug: report.app.slug)]
         lines += fields.map { $0.value.isEmpty ? $0.key + ":" : $0.key + ": " + $0.value }
+        lines += comments
         lines.append(fence)
         return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// `#` lines for the reader, which parsers ignore (ADR 0501 rule 2): the focused app's source when it is the
+    /// frontmost-app fallback (no block key yet).
+    static func comments(_ report: DiagnosticsReport) -> [String] {
+        var lines: [String] = []
+        if let source = report.focus?.appSource, source != .accessibility {
+            lines.append("# focus.appSource: " + source.rawValue)
+        }
+        return lines
     }
 
     /// `<slug>-diagnostics v1`. The slug comes from the bundle (`AppIdentity.slug`); a value outside
@@ -29,8 +43,9 @@ enum IssueBlock {
         return usable + headerMarker + String(DiagnosticsReport.formatVersion)
     }
 
-    /// The ordered `key: value` pairs, health events last and trimmed so the block stays within 200 lines.
-    static func fields(_ report: DiagnosticsReport) -> [(key: String, value: String)] {
+    /// The ordered `key: value` pairs, health events last and trimmed so the block stays within 200 lines with
+    /// `reserved` more lines (the comments).
+    static func fields(_ report: DiagnosticsReport, reserving reserved: Int = 0) -> [(key: String, value: String)] {
         var list = BlockFieldList()
         BlockFields.addReportAndApp(report, to: &list)
         BlockFields.addHostAndInput(report, to: &list)
@@ -40,7 +55,7 @@ enum IssueBlock {
         list.add(
             "conflicts", report.conflictingInputApps.isEmpty ? "none" : BlockFields.list(report.conflictingInputApps))
         // Fences and header take three lines, `health.events` one more.
-        let budget = max(0, maximumLines - 4 - list.pairs.count)
+        let budget = max(0, maximumLines - 4 - reserved - list.pairs.count)
         let events = report.healthEvents.suffix(budget)
         list.add("health.events", String(events.count))
         for (offset, event) in events.enumerated() {

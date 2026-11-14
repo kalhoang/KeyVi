@@ -226,7 +226,9 @@ final class FocusCore {
         let field = fieldContext(for: reading)
         let (mode, source) = effectiveMode(resolution, bundle: bundle)
         let app = reading.identity.map {
-            FocusedApp(pid: $0.pid, bundle: $0.bundle, appVersion: match.appVersion, engine: reading.engine)
+            FocusedApp(
+                pid: $0.pid, bundle: $0.bundle, appVersion: match.appVersion, engine: reading.engine,
+                source: reading.source)
         }
         var snapshot = FocusSnapshot(
             generation: generation, app: app, field: field, decision: hostDecision, mode: mode, modeSource: source,

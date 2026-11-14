@@ -21,6 +21,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     private struct State {
         var focusedPID: Int32?
+        var systemWideTimingOut = false
         var attributes: [Int32: FocusAttributes] = [:]
         var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
@@ -54,6 +55,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     /// AX names no focused application (the system-wide element has none).
     public func clearFocusedApplication() { state.withLock { $0.focusedPID = nil } }
+
+    /// The system-wide focused-application read times out (PLT-R384): the focus is unknown, not empty.
+    public func setSystemWideTimingOut(_ timingOut: Bool) { state.withLock { $0.systemWideTimingOut = timingOut } }
 
     /// The focused application has no focused element.
     public func focusWithoutElement(pid: Int32, notify: AXNotificationKind?) {
@@ -99,7 +103,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
         }
     }
 
-    public func focusedApplication() -> AXCallResult<Int32?> { .success(state.withLock { $0.focusedPID }) }
+    public func focusedApplication() -> AXCallResult<Int32?> {
+        state.withLock { $0.systemWideTimingOut ? .timedOut : .success($0.focusedPID) }
+    }
 
     public func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?> {
         let (timingOut, unavailable, hasElement, element) = state.withLock { state in

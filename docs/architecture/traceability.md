@@ -125,9 +125,9 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R372 | Pause for a built-in Vietnamese source | `InputSourceMonitor` | U, M | W1-E; Pa | **Pa** |
 | PLT-R373 | Optional layout-to-mode binding | `InputSourceMonitor`, `LayoutModeBinding`, `HostStateResolution.effectiveMode` (a bound layout decides the mode; the toggle hotkey does nothing on a bound layout) | U (pipeline tests, HostRig `layoutBindingDecidesTheMode_PLT_R373`), M | W1-E; W2-B (UI) |  |
 | PLT-R380 | AX thread observers on focused and overlay apps | `FocusTracker` | U (fake AX) | W1-E |  |
-| PLT-R381 | System-wide AX focus is authoritative | `FocusTracker` | U, C (Spotlight, Raycast) | W1-E; Pa | **Pa** |
+| PLT-R381 | System-wide AX focus is authoritative; frontmost-app fallback when AX names no app (amendment of 2026-11-15) | `FocusTracker` (`FocusCore+Reading.swift` `frontmostReading`), `FocusedAppSource`, `ProcessIdentityProvider.frontmostApplicationPID` | U (`FocusFrontmostFallbackTests`, `LateFocusChangeTests`), C (Spotlight, Raycast, Antigravity) | W1-E, W14-P; Pa | **Pa** |
 | PLT-R382 | Idle revalidation flag | `KeyPipeline`, `FocusTracker` | U | W1-F1, W1-E |  |
-| PLT-R383 | Focus snapshot contents | `InputHost/Snapshots/Snapshots.swift` | U | W1-E |  |
+| PLT-R383 | Focus snapshot contents | `InputHost/Snapshots/Snapshots.swift` (`FocusedApp.source`) | U | W1-E, W14-P |  |
 | PLT-R384 | AX 100 ms timeout and circuit breaker | `AXCircuitBreaker`, `SystemAXProvider` | U | W1-E |  |
 | PLT-R385 | Never AXEnhancedUserInterface; AXManualAccessibility only by rule | `SystemAXProvider` | L, U, V | W1-E | **Pa** |
 | PLT-R386 | requireTextFocus gating | `HostDecisionMapper`, `HostStateResolver` | U, C (design apps) | W1-E, W1-F1; Pa | **Pa** |
@@ -243,7 +243,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1109 | minimumSystemVersion and minimumAutoupdateVersion | appcast scripts | R | release track |  |
 | PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew` | R | release track |  |
 | PLT-R1201 | Diagnostics window contents and buttons | `DiagnosticsWindowController` | U (view model), M | W2-C; Pa | **Pa** |
-| PLT-R1202 | Environment report contents | `DiagnosticsReport`, `ReportAssembler` | U | W1-A, W1-G |  |
+| PLT-R1202 | Environment report contents | `DiagnosticsReport` (`FocusSection.appSource`), `ReportAssembler` | U (`FocusedAppSourceReportTests`, `ReportAssemblerTests`) | W1-A, W1-G, W14-P |  |
 | PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |
 | PLT-R1204 | User sees exact report before copying | `BugReportController` | M | W2-C; Pa | **Pa** |
 | PLT-R1205 | "This app misbehaves" guided flow; step 6 keyboard focus (Q43) | `GuidedTestRunner`, diagnostics UI; ShellCore `MisbehavesPanelFocus`, `MisbehavesFocusTracker`, `MisbehavesRetarget`; App `MisbehavesPanel` | U (`MisbehavesFocusTests`), M | W2-C; W5-C; Pa | **Pa** |
