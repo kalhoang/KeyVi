@@ -1143,6 +1143,102 @@ class LicenceTests(unittest.TestCase):
         self.assertNotIn("paths=(Packages/VietnameseEngine Packages/VietnameseEngineFuzz)", script)
         self.assertIn("ADR 0006", script)
 
+    def test_the_changelog_announces_the_engine_licence(self):
+        changed = ChangelogTests().group("Changed")
+        self.assertIn("The typing engine packages, the word-list pipeline and the reference model are now under the "
+                      "Mozilla Public License 2.0 instead of MIT; the app stays GPL-3.0-or-later.", changed)
+        self.assertNotIn("the typing engine stays MIT", changed)
+
+
+class EngineLicenceWordingTests(unittest.TestCase):
+    """No document calls the project's own code MIT after the amendment of 2026-11-15 (ADR 0006): the engine
+    packages, the data pipeline and the reference model are MPL-2.0. MIT stays right for the inbound grant of every
+    contribution, for third-party material (SCOWL's MIT/X11-style notice, Sparkle), for the list of acceptable data
+    licences (CLR-R6) and for the licence label of another project in spec/05-clean-room.md. Decision records keep
+    their history and are not scanned; spec/03-product.md is owned by the Settings workstream until its licence line
+    follows."""
+
+    FILES = ("README.md", "README.vi.md", "CONTRIBUTING.md", "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "SECURITY.md",
+             "CHANGELOG.md", ".github/pull_request_template.md", "data/README.md", "data/NOTICES.md",
+             "data/licenses/bundled-notices.txt", "data/inputs/tech-always.txt", "data/inputs/tech-code-only.txt",
+             "Packages/VietnameseEngine/README.md", "Packages/VietnameseEngine/CHANGELOG.md",
+             "Packages/VietnameseEngine/TRACEABILITY.md", "Packages/VietnameseEngineFuzz/README.md",
+             "Packages/VietnameseEngine/Sources/VietnameseEngineData/Resources/NOTICES.txt",
+             "Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus/prose-sample.txt",
+             "spec/reference-model/README.md")
+    ALLOWED = re.compile(
+        # The inbound grant of every contribution, and the MIT text it uses (CONTRIBUTING.md section 3).
+        r"to the project under (the )?MIT|cho dự án theo giấy phép MIT|inbound MIT|MIT grant|under MIT terms|"
+        r"MIT licence text of the inbound grant|^MIT License$|"
+        # Third-party material and the licences CLR-R6 accepts for third-party data.
+        r"MIT/X11|MIT-CMU|\(MIT, BSD, Apache-2\.0|Licence: MIT, with additional licences for code bundled inside "
+        r"Sparkle|under an MIT label|"
+        # The question as first asked, and the history of the change itself.
+        r"Engine licence: MIT or Apache-2\.0|first version said MIT|instead of MIT")
+
+    def scanned(self) -> list[Path]:
+        paths = [REPO / rel for rel in self.FILES]
+        paths += sorted((REPO / "docs").rglob("*.md"))
+        paths += sorted(path for path in (REPO / "spec").glob("*.md") if path.name != "03-product.md")
+        return [path for path in paths if "decisions" not in path.relative_to(REPO).parts]
+
+    def test_no_document_calls_the_project_code_mit(self):
+        offenders = []
+        for path in self.scanned():
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if re.search(r"\bMIT\b", line) and not self.ALLOWED.search(line):
+                    offenders.append(f"{path.relative_to(REPO)}:{number}: {line.strip()[:120]}")
+        self.assertEqual(offenders, [], "the engine parts are MPL-2.0 (ADR 0006 amendment of 2026-11-15)")
+
+
+class DevelopmentWordingTests(unittest.TestCase):
+    """The documents state processes, not the tools the project is written with (decision of the product owner,
+    15/11/2026, decision 0005 "Decisions of 15/11/2026"). Kept on purpose: CLAUDE.md and AGENTS.md and the
+    sentences that cite them as the home of a rule, the acceptance of AI-assisted contributions (QA-R64), the
+    clean-room evidence of spec/05-clean-room.md and docs/provenance/ (not scanned), Claude Code as a terminal app
+    users type in (and the CLI agents of the terminal rules), and the technical senses of "agent" (user agent, guest
+    agent, launch agents, SSH agent)."""
+
+    PATTERN = re.compile(r"\bAI\b|\bLLMs?\b|\b[Aa]gents?\b|Claude|Anthropic")
+    # A match is kept only when one of these phrases covers it, so a line that also cites CLAUDE.md is still checked.
+    ALLOWED = re.compile(
+        r"Claude Code|AI-assisted|AI assistan|AI answers|AI attribution|AI rewriting|AI coding tools|"
+        r"AI session that worked on this repository|agent instructions|CLI agents|"
+        r"user agent|guest agent|launch agents|no agent,", re.I)
+
+    @staticmethod
+    def scanned() -> list[Path]:
+        paths = [REPO / rel for rel in ("ARCHITECTURE.md", "CONTRIBUTING.md", "README.md", "README.vi.md",
+                                        "data/README.md")]
+        paths += sorted(path for path in (REPO / "docs").rglob("*.md") if "provenance" not in path.parts)
+        paths += sorted(path for path in (REPO / "spec").glob("*.md") if path.name != "05-clean-room.md")
+        return paths
+
+    def offenders(self, named_texts) -> list[str]:
+        found = []
+        for name, text in named_texts:
+            for number, line in enumerate(text.splitlines(), 1):
+                kept = [allowed.span() for allowed in self.ALLOWED.finditer(line)]
+                for match in self.PATTERN.finditer(line):
+                    if not any(start <= match.start() and match.end() <= end for start, end in kept):
+                        found.append(f"{name}:{number}: {line.strip()[:120]}")
+                        break
+        return found
+
+    def test_no_document_says_the_project_is_built_by_agents(self):
+        texts = [(path.relative_to(REPO), path.read_text(encoding="utf-8")) for path in self.scanned()]
+        self.assertEqual(self.offenders(texts), [])
+
+    def test_the_guard_catches_the_wording_it_replaced(self):
+        old = ("The word AI on its own.\n"
+               "Agents, plural, at the start of a line.\n"
+               "An agent next to a cited file (CLAUDE.md \"Commands\").\n")
+        self.assertEqual(len(self.offenders([("old", old)])), 3)
+        kept = ("Agent instructions are in [CLAUDE.md](CLAUDE.md) and [AGENTS.md](AGENTS.md).\n"
+                "AI-assisted contributions are welcome under exactly the same rules.\n"
+                "TUIs (Claude Code, Kiro CLI) lost letters; the tart guest agent starts the harness.\n")
+        self.assertEqual(self.offenders([("kept", kept)]), [])
+
 
 class SpecFollowUpTests(unittest.TestCase):
     """Wave 4 cross-track requests applied to the spec and the decision records (Pa's answers S8, Q8, Q6, S7)."""

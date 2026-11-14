@@ -390,8 +390,8 @@ at runtime through per-language `.lproj` lookup, independent of the macOS langua
 | 6 Compatibility | `compat/scenarios/*.json` via `compat-harness`, manual rows in `compat/matrix.json` | Yes |
 | 7 Upgrade | Sparkle local appcast on the self-hosted runner or a VM (13.5) | Yes |
 
-Layers 5-7 never run automatically on the maintainer's everyday Mac: posting synthetic events, creating taps and changing
-input sources there is forbidden. Those items are listed for Pa in the traceability matrix. Until the
+Layers 5-7 never run automatically on the maintainer's everyday Mac: posting synthetic events, creating taps and
+changing input sources there is forbidden. Those items are listed for Pa in the traceability matrix. Until the
 self-hosted runner exists, layers 5-7 are covered by an interim plan (workstreams.md "Interim verification"):
 `compat-harness --dry-run` on hosted CI plus a short manual checklist Pa runs on Pa's own Mac.
 
