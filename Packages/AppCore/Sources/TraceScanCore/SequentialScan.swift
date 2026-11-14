@@ -2,41 +2,16 @@
 //
 // One pass over a dev trace in time order (PLT-R904A) for findings a to g and i. It follows the token the engine
 // shows (`comp` of the last engine step) and KeyVi's view of the text it produced since the last boundary, so a
-// boundary can say whether a token was open and a readback can be compared with what KeyVi believes it typed.
+// boundary can say whether a token was open and a readback can be compared with what KeyVi believes it typed
+// (`ReadbackCheck`: dropped keys, extra characters, slow readbacks).
 
 internal import Foundation
-
-/// The text KeyVi produced since the last boundary, as the engine and the passed keys say. Unknown once a
-/// Backspace reaches past it (the field then holds text KeyVi did not see typed).
-struct BelievedText {
-    private(set) var text = ""
-    private(set) var known = true
-
-    mutating func reset() {
-        text = ""
-        known = true
-    }
-
-    mutating func delete(_ count: Int) {
-        guard count > 0 else { return }
-        if text.count >= count {
-            text.removeLast(count)
-        } else {
-            text = ""
-            known = false
-        }
-    }
-
-    mutating func append(_ addition: String) {
-        text += addition
-        if text.count > 256 { text = String(text.suffix(128)) }
-    }
-}
 
 struct SequentialScan {
     private var context = TraceContext()
     private var composing = ""
     private var believed = BelievedText()
+    private var readbacks = ReadbackCheck()
     private var pendingKey: TraceEvent?
     private var pendingSteps = 0
     private var lastKeyT: Int64?
@@ -110,7 +85,7 @@ struct SequentialScan {
         }
         if line.isEdit {
             believed.delete(line.del ?? 0)
-            believed.append(line.ins ?? "")
+            believed.append(line.ins ?? "", origin: .edit(t: line.t))
             lastEditT = line.t
             if line.changesText && !isBackspace { lastTransformT = line.t }
         }
@@ -132,18 +107,7 @@ struct SequentialScan {
     }
 
     private mutating func readback(_ event: TraceEvent, into found: inout [Finding]) {
-        let line = event.line
-        guard line.status == "ok", let field = line.text, (line.selLen ?? 0) == 0, believed.known,
-            !believed.text.isEmpty, lastKeyT.map({ line.t - $0 >= 100_000 }) ?? true
-        else { return }
-        let expected = String(believed.text.suffix(FindingLimits.readbackCompare)).precomposedStringWithCanonicalMapping
-        let shown = field.precomposedStringWithCanonicalMapping
-        let matches = expected.count <= shown.count ? shown.hasSuffix(expected) : expected.hasSuffix(shown)
-        guard !matches else { return }
-        let detail =
-            "field does not end with KeyVi's last " + String(expected.count) + " characters ("
-            + (line.reason ?? "readback") + ")"
-        add(.readbackMismatch, event, detail: detail, into: &found)
+        readbacks.check(event, believed: &believed, lastKeyT: lastKeyT, context: context, into: &found)
     }
 
     private mutating func job(_ event: TraceEvent, into found: inout [Finding]) {
@@ -187,7 +151,7 @@ struct SequentialScan {
         guard !key.hasCommandOrControl, key.flags & TraceKeys.option == 0, let character = key.ch,
             !character.unicodeScalars.contains(where: { $0.properties.generalCategory == .control })
         else { return }
-        believed.append(character)
+        believed.append(character, origin: .passedKey(t: key.t))
     }
 
     /// (c) Three Backspaces within 1.5 s, starting within 2 s of a transform, then retyping within 2 s.

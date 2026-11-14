@@ -2,7 +2,9 @@
 //
 // Builds synthetic dev trace files for the scanner tests (PLT-R904A): sample words typed through the real engine,
 // so their engine lines are exactly what the app would record, plus boundaries, jobs, readbacks and markers. Times
-// advance in milliseconds from a fixed instant; files are named by UTC hour (the tests read them in UTC).
+// advance in milliseconds from a fixed instant; files are named by UTC hour (the tests read them in UTC). `field`
+// models what the app shows: passed keys and KeyVi's edits, minus keys a test drops (the incidents of 2026-11-14,
+// where a passed key never reached a WebKit field), so `readbackField` writes what a readback would have read.
 
 import Foundation
 import VietnameseEngine
@@ -22,6 +24,8 @@ struct TraceBuilder {
 
     private(set) var lines: [[String: Any]] = []
     private(set) var t: Int64
+    /// What the app's field shows before the caret.
+    private(set) var field: [Character] = []
     private var session: Session
     private let engine: Engine
 
@@ -78,9 +82,10 @@ struct TraceBuilder {
     }
 
     /// A key line and the engine line of the same instant; `engineLine` false for keys the engine never saw.
+    /// `dropped`: the tap passed the key but the app never received it (the field model leaves it out).
     mutating func press(
         _ character: String?, keyCode: UInt16 = 0, flags: UInt64 = 0, outcome: String? = nil,
-        event: EngineEvent? = nil
+        event: EngineEvent? = nil, dropped: Bool = false
     ) {
         var output: EngineOutput?
         if let event { output = session.handle(event) }
@@ -89,6 +94,7 @@ struct TraceBuilder {
         key["out"] = outcome ?? Self.outcome(of: output)
         line("key", key)
         if let output { engineLine(output) }
+        showInField(output, character: flags == 0 ? character : nil, keyCode: keyCode, dropped: dropped)
         var up = key
         up["ev"] = "keyUp"
         up["out"] = "passed"
@@ -96,6 +102,28 @@ struct TraceBuilder {
         line("key", up)
         advance(-30)
     }
+
+    /// The field after the key: KeyVi's edit first, then the key itself when it reaches the app.
+    private mutating func showInField(_ output: EngineOutput?, character: String?, keyCode: UInt16, dropped: Bool) {
+        var reachesApp = true
+        if let output, case .edit(let edit, let thenPassThrough) = output.action {
+            field.removeLast(min(edit.deleteCount, field.count))
+            field.append(contentsOf: edit.insert)
+            reachesApp = thenPassThrough
+        }
+        guard reachesApp, !dropped else { return }
+        if keyCode == 0x33 {
+            if !field.isEmpty { field.removeLast() }
+        } else if let character {
+            field.append(contentsOf: character)
+        }
+    }
+
+    /// The app changed its own text (autocorrect, completion): KeyVi never saw it.
+    mutating func appInserts(_ text: String) { field.append(contentsOf: text) }
+
+    /// Focus moved to another, empty field.
+    mutating func focusNewField() { field = [] }
 
     mutating func engineLine(_ output: EngineOutput, tamperedInsert: String? = nil) {
         var fields: [String: Any] = ["comp": output.composingText]
@@ -118,8 +146,28 @@ struct TraceBuilder {
         line("boundary", fields)
     }
 
-    mutating func readback(_ text: String, reason: String = "commit") {
-        line("readback", ["reason": reason, "status": "ok", "text": text, "selLoc": text.utf16.count, "selLen": 0])
+    /// A readback line. `durUs`, `maxCallUs`, `waitUs`, `idleUs` and `overlap` exist from format version 2 on;
+    /// leave them nil for a line of the first recorder (2026-11-14).
+    mutating func readback(
+        _ text: String, reason: String = "commit", status: String = "ok", durUs: Int? = nil, maxCallUs: Int? = nil,
+        waitUs: Int? = nil, idleUs: Int? = nil, overlap: Bool = false
+    ) {
+        var fields: [String: Any] = [
+            "reason": reason, "status": status, "text": text, "selLoc": text.utf16.count, "selLen": 0,
+        ]
+        if let durUs { fields["durUs"] = durUs }
+        if let maxCallUs { fields["maxCallUs"] = maxCallUs }
+        if let waitUs { fields["waitUs"] = waitUs }
+        if let idleUs { fields["idleUs"] = idleUs }
+        if overlap { fields["overlap"] = true }
+        line("readback", fields)
+    }
+
+    /// A readback of what the field model shows (at most 64 characters before the caret).
+    mutating func readbackField(
+        reason: String = "commit", durUs: Int? = nil, idleUs: Int? = nil, overlap: Bool = false
+    ) {
+        readback(String(field.suffix(64)), reason: reason, durUs: durUs, idleUs: idleUs, overlap: overlap)
     }
 
     mutating func job(

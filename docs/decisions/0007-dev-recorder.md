@@ -1,6 +1,7 @@
 # 0007. Dev recorder: an always-on typing log in development builds
 
-- Status: accepted, 2026-11-14 (Pa, the product owner, asked for it after the first day of manual tests)
+- Status: accepted, 2026-11-14 (Pa, the product owner, asked for it after the first day of manual tests); amended
+  the same day after the recorder's first evening on Pa's Mac (decisions 10 and 11, workstream W10-B)
 - Spec: PLT-R904A (new, `spec/02-platform.md` section 9, right after PLT-R904); exception to PLT-R901, PLT-R904 and
   PLT-R911 for development builds only. Related: PLT-R304, PLT-R305, PLT-R905, PLT-R903, PLT-R343, PLT-R386.
 - Runbook: [dev-recorder.md](../runbooks/dev-recorder.md).
@@ -41,17 +42,19 @@ into public issues.
    posted, durations) and fallback with its reason, VI/EN changes, a settings snapshot (engine-affecting values,
    word lists and macros as counts only) at the top of each file and on every change, focus snapshots with the
    compat rule and decision (never titles or URLs), and a field readback (64 UTF-16 units before the caret and the
-   selection) after a Backspace edit or a commit and at every marker.
+   selection) at the first typing pause after a Backspace edit, a commit or a marker (decision 10).
 5. **Observer rule.** The recorder must not change what {{AppName}} does or what the app sees. Apart from consuming
    its own marker chord it changes no verdict, job or setting. The tap side does no I/O, AX, blocking lock or
    allocation (measured: zero allocations per event with the recorder on). The readback runs on its own queue with
-   a 50 ms AX timeout, at most once per 300 ms, never where the compat rule keeps {{AppName}} off accessibility
+   a 50 ms AX timeout, only in a typing pause (decision 10), at most once per 300 ms, never where the compat rule
+   keeps {{AppName}} off accessibility
    (`requireTextFocus: never`, `electron.default`: reading AX attributes there can switch Chromium apps into their
    accessibility mode), never in a secure field or under secure input, and never sets `AXEnhancedUserInterface` or
    `AXManualAccessibility`. It never shares the inject worker's AX element: AX keeps the messaging timeout per
    element object, so the readback asks the app for its focused element again and reads through that new reference
-   only when it is still the snapshot's field. It never reads while an edit job is queued or in flight (it waits up
-   to 1 s, then records `skippedBusy`), so a worker read never queues behind it on the app's main thread.
+   only when it is still the snapshot's field. It never reads while an edit job is queued or in flight (a job
+   postpones it like a key, and a job starting between its AX calls stops it with `skippedBusy`), so a worker read
+   never queues behind it on the app's main thread.
 6. **Storage and retention.** `~/Library/Logs/{{AppName}}/dev-traces/YYYYMMDD-HH.jsonl`, one file per local hour,
    folder 0700, files 0600, both excluded from backups; deleted after 7 days and kept under 200 MB in total, oldest
    first; purged at launch and hourly.
@@ -70,6 +73,53 @@ into public issues.
    writes anywhere but standard output. Its `summary` prints metadata only (files, apps, counts, gaps, findings with
    time, app, rule and kind); `show N` prints the excerpt around one finding, which is the only typed content the
    integrator reads.
+
+10. **Readback only in a typing pause** (amendment, 2026-11-14 evening). The first recorder read about 300 ms after
+    a commit or a Backspace edit and at once for a marker, without holding keys. Its first evening on Pa's Mac gave
+    two incidents in a native app whose editor is a WKWebView (no compat rule matched, so AX was allowed): a key the
+    tap passed through never reached the field. In incident 1 the next word's first key went down 273 ms after the
+    commit and 27 ms before the commit readback started, which read the field without it; from then on the field
+    had one character fewer than {{AppName}} believed, and the scanner reported one mismatch and five follow-ons. In
+    incident 10 three keys passed 64 to 70 ms apart, the commit readback of the previous word started 71 ms after
+    the last of them, read the field without it, and the field never received it. The Mac was under heavy memory
+    pressure. The likely cause is an accessibility read of a large WebKit editor (its focused element, selection
+    and text) racing a keystroke WebKit is still handling. Production {{AppName}} holds keys while a job touches AX
+    (PLT-R311), so it never races this way; an observer must not hold keys. So:
+    - Every readback (commit, Backspace edit, marker; the marker chord counts as a key) waits until no key or
+      click has gone down and no edit job has run for **1 s** (`DevReadback.quietPeriod`): twice PLT-R382's
+      500 ms, the spec's bound of continuous typing, so a pause that long is neither between two keys of a word
+      nor between two words typed in a row (incident 10: 64 to 70 ms between keys, 95 ms from the space to the
+      next word, 300 ms commit delay), and a key the app was still handling has long arrived. It is short enough
+      that most pauses to read or think still get a read. Every trigger since the last read gives one read with the most specific reason; while Pa types
+      without such a pause there is none. The tap tells the recorder the time of every key and click down (two
+      atomic writes, no allocation); the inject thread the end of every job.
+    - A key or click that still goes down while the read is in flight is flagged on the line (`overlap`), and the
+      scanner does not compare such a read. Each line also records the AX calls' duration (`durUs`, timeouts
+      included) and the longest single call (`maxCallUs`), the wait since the first trigger (`waitUs`) and the
+      input's idle time when the read started (`idleUs`). File format version 2.
+    - The scanner explains a mismatch that is exactly one passed key missing from the field (`keyDropped`) or one
+      character more in the field (`extraCharacter`), says whether a readback was in flight when that key went down
+      or started within 200 ms after it, takes the field's text as its new baseline after any mismatch (one
+      divergence, one finding), and flags readbacks that timed out or one of whose AX calls took more than 30 ms,
+      the inject worker's per-call timeout (`slowReadback`). The summary names no character; `show` does, in the
+      finding's note.
+    The incidents are reproduced with sample words in `Packages/AppCore/Tests/TraceScanTests/Fixtures/incidents`.
+
+11. **WebKit editors keep their readback.** Skipping them until proven safe was considered and rejected:
+    - The evidence points at timing, not at reading WebKit as such: in both incidents the lost key went down 27 and
+      71 ms before a read started. {{AppName}} already reads WebKit fields while typing goes on, but with the keys
+      held (PLT-R311): the Safari address bar rule reads `AXSelectedTextRange` before it deletes (`inlineCompletion:
+      axSelection`), and the re-entry verification (PLT-R342) and the late focus check (PLT-R340) read a bounded
+      range before the caret. Decision 10 gives the observer the same condition without holding keys: no key is on
+      its way to the app when a read starts.
+    - The readback is what lets the trace explain a bug, and Pa wants the log to explain bugs. Both incidents came
+      from a web editor in a native app; without a readback there, the scanner would have seen nothing wrong.
+      Electron apps are already excluded by their rule.
+    - Telling a WebKit editor apart would take more AX traffic (a walk up to an `AXWebArea`): the focused element's
+      role alone (`AXTextArea`) does not distinguish it from an AppKit text view.
+    Revisit as soon as a version 2 trace shows a `keyDropped` whose detail names a readback in flight when the key
+    went down or started right after it: then skip the readback in fields inside a web area (the focus record
+    gains that flag) and amend this decision. A `keyDropped` with no readback near it is not the observer's doing.
 
 ## Why PLT-R904's rationale does not apply
 
@@ -92,6 +142,9 @@ into public issues.
   (reading a bare function value that way re-wraps it in a thunk on every call).
 - The scanner reads the format documented in the runbook; a round-trip test writes with the recorder and reads with
   the scanner, so the two cannot drift.
+- Since decision 10 a readback can come many seconds after its trigger (Pa typing on), and a fast typist gets fewer
+  readbacks than before. The scanner compares at the time of the read, so a late read is still compared with what
+  {{AppName}} believed at that moment.
 
 ## Alternatives considered
 

@@ -21,7 +21,8 @@ afterwards. Release builds do not contain the recorder at all; `scripts/verify-r
    how {{AppName}} changed the text in the app (and whether that worked, how long it took), focus changes (app ID and
    field type only, never window titles or web addresses), resets with their reason, VI/EN switches, the settings
    that change typing, and from time to time the text just before the cursor in the field (at most 64 characters),
-   to compare what the app shows with what {{AppName}} believes it typed.
+   to compare what the app shows with what {{AppName}} believes it typed. That text is read only when you have
+   stopped typing for a second, never while you type.
 4. **What it never records:** anything while a password field has focus or Secure Keyboard Entry is on, anything
    while paused, and the text of apps whose compatibility rule keeps {{AppName}} away from accessibility (Electron
    apps such as Slack or VS Code: there only keys and edits are recorded, never the field text).
@@ -67,7 +68,10 @@ local time, app bundle ID, compat rule, finding kind and a detail made of names 
 | `marker` | Pa pressed the chord or used the menu item |
 | `backspaceEdit` | a Backspace made the engine delete more than one character or insert something |
 | `correctionBurst` | three or more Backspaces within 1.5 s, within 2 s after the engine transformed a word, then retyping: Pa fixing a wrong word without a marker |
-| `readbackMismatch` | the field text before the caret does not end with what {{AppName}} typed since the last boundary |
+| `readbackMismatch` | the field text before the caret does not end with what {{AppName}} typed since the last boundary, and the difference is not one of the two kinds below; the scanner then takes the field's text as the new baseline, so one divergence gives one finding |
+| `keyDropped` | the same, explained: exactly one character of a key the tap passed is missing from the field. The detail says how long before the readback the key went down and whether a readback was in flight when it went down, started within 200 ms after it, or was nowhere near; `show` names the character |
+| `extraCharacter` | the same, explained: the field holds exactly one character {{AppName}} did not type (autocorrect, a Backspace the app ignored); `show` names it |
+| `slowReadback` | a readback timed out, or one of its AX calls took more than 30 ms (longer than one AX call of the inject worker may take, so {{AppName}}'s own reads would time out in that field; the scanner compares the longest single call, not the sum of the read's calls) |
 | `resetWithOpenToken` | a boundary the user did not cause (focus change, late focus, revalidation, configuration, an unknown reason) while a word was being composed |
 | `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included) or took more than 50 ms |
 | `restoreOrReopen` | an Escape restore or a Backspace that re-opened a committed word |
@@ -84,7 +88,15 @@ role, rule, strategy, requireTextFocus, mode), readbacks with the field text, ma
 
 Typical readings: a `resetWithOpenToken` just before the letters of a word went missing points at a focus or
 revalidation boundary (W8-A territory); a `backspaceEdit` followed by a `readbackMismatch` points at the Backspace
-path; an `injectionProblem` with `axTimedOut` in a given rule points at that app's compat rule.
+path; an `injectionProblem` with `axTimedOut` in a given rule points at that app's compat rule. A `keyDropped` whose
+detail says a readback was in flight when the key went down, or started a few tens of milliseconds after it, points
+at the recorder itself (section 5); one with no readback near it happened without the observer, in the app or the
+system. A `slowReadback` in an app tells how slowly it answers accessibility requests; repeated ones next to
+`injectionProblem` lines with `axTimedOut` say the app is busy, not the strategy wrong.
+
+`show` prints a finding's note under its detail: for `keyDropped`, `extraCharacter` and an explained
+`readbackMismatch` it names the character (`keyDropped: "c" passed at -1020 ms, absent from the field`). The note
+is typed content: it appears in `show` only, never in the summary.
 
 ### 2.3 Privacy while reading
 
@@ -100,7 +112,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 
 | `type` | Fields |
 |---|---|
-| `file` | `v` format version (1), `launch` ID, `app` version, `build` marker |
+| `file` | `v` format version (2 since the readback timing fields; files of the first day are 1), `launch` ID, `app` version, `build` marker |
 | `start`, `stop` | `launch`, `app` (start); the recorder started or the app quit |
 | `pause`, `resume` | `until` (pause end, microseconds) |
 | `settings` | `s`: name to value (typing method, tone placement, English restore, Telex options, macros on and counts, hotkeys, word-list counts, global mode, safe mode) |
@@ -110,7 +122,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `boundary` | `reason` (the engine's reset reason), `job` (the boundary job reason) |
 | `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
-| `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule` |
+| `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `maxCallUs` (the longest single AX call of the read), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
 | `marker` | `src` (chord, menu) |
 | `mode` | `mode`, `manual`, `bundle` |
 | `gap` | `reason` (secureInput, secureField, overflow), `end` (microseconds) or `dropped` (records lost) |
@@ -128,10 +140,36 @@ attributed to the right field.
   a `replayDivergence` right after a posting failure may come from that.
 - Replay uses the bundled word lists only. Commits decided by the user's own lists or by a macro stop the replay of
   that segment without a finding.
-- Readback findings skip fields with a selection and readbacks taken within 100 ms of a key.
-- The readback never runs beside an edit job: it waits while a job is queued or in flight (20 ms at a time, at most
-  1 s after its trigger, then `skippedBusy`) and stops between its reads if a job starts. It reads through its own
-  AX reference to the app's focused element (`skippedNoField` when that is no longer the field of the focus
-  snapshot), so the worker's AX element and its messaging timeout stay untouched.
+- Readback findings skip fields with a selection, readbacks taken within 100 ms of a key, and readbacks with
+  `overlap` (a key went down while they were in flight, so the text may show the field half way through it).
+- The readback reads only in a typing pause: 1 s without a key or click going down and without an edit job (a
+  queued or in-flight job postpones it like a key). Every trigger since the last read (commits, Backspace edits,
+  markers; the marker chord itself counts as a key) waits for the same pause and gives one read, recorded with the
+  most specific reason; while Pa types without a 1 s pause there is no read at all. At most one read per 300 ms. It
+  stops between its AX calls if a job starts (`skippedBusy`). It reads through its own AX reference to the app's
+  focused element (`skippedNoField` when that is no longer the field of the focus snapshot), so the worker's AX
+  element and its messaging timeout stay untouched.
+- The explanation of a mismatch names the one character whose absence (or presence) makes the texts agree. When
+  later edits deleted across the missing character, the texts may agree only without a neighbour, or not at all;
+  read the excerpt before trusting the name. Among equal neighbours (`cc`) the scanner names the key a readback was
+  near, else the last one.
+- When a Backspace reached past what the scanner saw typed, its view is unknown; the next readback it may compare
+  gives the baseline back, so later divergences are still found.
+- Files of the first day (format version 1) have no readback durations: a readback started before a key counts as
+  possibly in flight for up to 150 ms (three AX calls of at most 50 ms), and only `timedOut` readbacks are slow.
 - A trace can hold only what the tap and the ax thread saw; text changed by the app itself (autocorrect, completion)
-  shows up as a `readbackMismatch`, not as its own line.
+  shows up as an `extraCharacter` or a `readbackMismatch`, not as its own line.
+
+## 5. The readback and WebKit editors
+
+On 2026-11-14, the first day on Pa's Mac, the scanner found two incidents in a native app whose editor is a
+WKWebView (no compat rule matched it, so the readback ran): a key the tap passed through never reached the field,
+and in both the key went down 27 ms and 71 ms before a commit readback of the first recorder started (it read
+300 ms after a commit, that is while Pa typed the next word). The likely cause is the read racing WebKit's handling
+of that key, on a Mac under heavy memory pressure. {{AppName}} itself holds keys while a job reads accessibility, so
+it never races this way; the recorder cannot hold keys (observer rule), so since then it reads only in a pause.
+
+WebKit editors keep their readback (ADR 0007 decision 11): with the pause rule, a read no longer meets a key on its
+way to the app unless one goes down during the read itself, which the line flags. Revisit when a version 2 trace
+shows a `keyDropped` whose detail names a readback in flight or started right after the key: then skip the readback
+in fields inside a web area, and record the decision in ADR 0007.

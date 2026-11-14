@@ -111,7 +111,7 @@ struct DevRecorderFixture {
         #expect(file.permissions == .ownerOnlyFile && file.excludedFromBackup)
         let lines = fixture.lines(fixture.hour)
         #expect(lines.map(\.type) == [.file, .start])
-        #expect(lines[0].build == DevRecorder.buildMarker && lines[0].v == 1 && lines[0].app == "0.1.0 (7)")
+        #expect(lines[0].build == DevRecorder.buildMarker && lines[0].v == 2 && lines[0].app == "0.1.0 (7)")
         #expect(lines[1].launch == lines[0].launch)
         #expect(fixture.scheduler.repeatingIntervals.min() == .seconds(2))
     }
@@ -299,6 +299,52 @@ struct DevRecorderFixture {
         #expect(fixture.dev.takeAttention().isEmpty)
     }
 
+    /// PLT-R904A readback pause: the tap reports every key or click down, the inject thread every finished job.
+    @Test func inputAndJobsAreTrackedForTheReadbackPause() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        #expect(fixture.dev.inputActivity == DevInputActivity(count: 0, lastInput: nil, lastJob: nil))
+        fixture.advance(milliseconds: 40)
+        fixture.dev.noteInputDown(at: fixture.clock.now())
+        let keyAt = fixture.clock.now()
+        fixture.advance(milliseconds: 15)
+        fixture.dev.pushInject(
+            .job(
+                DevJobRecord(
+                    sequence: 1, generation: 1, kind: SampleRule.notEnglish, strategy: .backspaceReplace,
+                    outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 4, totalMicroseconds: 15_000,
+                    runMicroseconds: 2_000, at: fixture.clock.now())))
+        let activity = fixture.dev.inputActivity
+        #expect(activity == DevInputActivity(count: 1, lastInput: keyAt, lastJob: fixture.clock.now()))
+        #expect(activity.latest == fixture.clock.now())
+    }
+
+    /// The readback line carries the AX read's duration and its longest call, the wait since the trigger, the
+    /// input's idle time and the overlap flag (written only when a key went down during the read).
+    @Test func readbackLinesCarryTheirTiming() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        var record = DevReadbackRecord(
+            reason: .commit, status: .ok, textBeforeCaret: "máy co", selectionLocation: 6, selectionLength: 0,
+            bundle: "com.example.editor", rule: nil, at: fixture.clock.now())
+        record.durationMicroseconds = 12_300
+        record.longestCallMicroseconds = 9_100
+        record.waitMicroseconds = 1_250_000
+        record.idleMicroseconds = 1_000_000
+        record.overlap = true
+        fixture.dev.note(.readback(record))
+        record.overlap = false
+        record.durationMicroseconds = nil
+        record.longestCallMicroseconds = nil
+        fixture.dev.note(.readback(record))
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour).filter { $0.type == .readback }
+        #expect(lines.count == 2)
+        #expect(lines[0].durUs == 12_300 && lines[0].waitUs == 1_250_000 && lines[0].idleUs == 1_000_000)
+        #expect(lines[0].maxCallUs == 9_100 && lines[0].overlap == true)
+        #expect(lines[1].overlap == nil && lines[1].durUs == nil && lines[1].maxCallUs == nil)
+    }
+
     /// PLT-R904A retention: 7 days, then 200 MB (a small cap here) oldest first; the file in use and foreign files
     /// stay.
     @Test func purgeKeepsSevenDaysAndTwoHundredMegabytes() throws {
@@ -414,6 +460,7 @@ struct DevRecorderFixture {
             dev.pushTap(.engine(step))
             dev.pushTap(.boundary(reason: reason, job: nil, at: .zero))
             dev.requestAttention(.commit)
+            dev.noteInputDown(at: .zero)
             _ = dev.tapRecords.pop()
             _ = dev.tapRecords.pop()
         }

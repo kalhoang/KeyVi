@@ -2,8 +2,9 @@
 //
 // Text output of the scanner (PLT-R904A). `summary` prints metadata only: files, hours, launches, apps, counts, gaps
 // and the numbered findings, never typed content. `show` prints one finding's excerpt in order with times relative
-// to the finding: keys as typed, engine edits, jobs, boundaries, focus changes and readbacks. Keys, modifiers and
-// characters are written exactly as the PLT-R905 review window writes them (Diagnostics `TraceText`).
+// to the finding (and the finding's note, which may name a typed character): keys as typed, engine edits, jobs,
+// boundaries, focus changes and readbacks with their timing. Keys, modifiers and characters are written exactly as
+// the PLT-R905 review window writes them (Diagnostics `TraceText`).
 
 internal import Diagnostics
 public import Foundation
@@ -47,6 +48,7 @@ public enum TraceRendering {
                 + ", app " + (finding.bundle ?? "-") + ", rule " + (finding.rule ?? "-"),
             "  " + finding.detail,
         ]
+        if let note = finding.note { output.append("  " + note) }
         let window = events.filter { $0.t >= finding.t - before && $0.t <= finding.t + after }
         for event in window {
             let marker = event.index == finding.eventIndex ? ">" : " "
@@ -91,7 +93,7 @@ public enum TraceRendering {
             if let location = line.selLoc {
                 parts.append("selection " + String(location) + "+" + String(line.selLen ?? 0))
             }
-            return parts.joined(separator: "  ")
+            return (parts + readbackTiming(line)).joined(separator: "  ")
         case "marker": return "MARKER  " + (line.src ?? "")
         case "mode":
             return "mode  " + (line.mode ?? "?") + ((line.manual ?? false) ? " (manual)" : "") + "  "
@@ -109,6 +111,20 @@ public enum TraceRendering {
             return line.type + "  launch " + (line.launch ?? "?") + (line.app.map { "  app " + $0 } ?? "")
         default: return line.type
         }
+    }
+
+    /// Format version 2: how long the AX calls took (and the longest of them), the wait since the trigger, the
+    /// input's idle time, and a key that went down during the read.
+    private static func readbackTiming(_ line: TraceLine) -> [String] {
+        var parts: [String] = []
+        if let duration = line.durUs {
+            let longest = line.maxCallUs.map { " (longest call " + microseconds($0) + ")" } ?? ""
+            parts.append("read " + microseconds(duration) + longest)
+        }
+        if let wait = line.waitUs { parts.append("waited " + String(TraceText.seconds(wait).dropFirst())) }
+        if let idle = line.idleUs { parts.append("idle " + String(TraceText.seconds(idle).dropFirst())) }
+        if line.overlap == true { parts.append("key during read") }
+        return parts
     }
 
     private static func focus(_ line: TraceLine) -> String {

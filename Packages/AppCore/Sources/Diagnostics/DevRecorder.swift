@@ -34,6 +34,11 @@ public final class DevRecorder: Sendable {
     private let running = Atomic<Bool>(false)
     private let dropped = Atomic<Int>(0)
     private let attentionBits = Atomic<UInt32>(0)
+    // The readback's pause (PLT-R904A): the last key or click down, how many went down, the last job's end.
+    private let lastInputNanos = Atomic<UInt64>(0)
+    private let inputCount = Atomic<UInt64>(0)
+    private let lastJobNanos = Atomic<UInt64>(DevRecorder.noJob)
+    private static let noJob = UInt64.max
     private let attentionSignal: WakeSignal?
     // Closures sit in boxes: reading a bare function value through `Mutex.withLock { $0 }` re-wraps it in a
     // reabstraction thunk on every call (the inout write-back), a chain that grows until it overflows the stack.
@@ -78,14 +83,34 @@ public final class DevRecorder: Sendable {
         if !tapRecords.push(record) { noteOverflow() }
     }
 
+    /// Also notes the end of an edit job for the readback's pause (one atomic store).
     @inline(__always)
     public func pushInject(_ record: consuming DevTraceRecord) {
+        if let end = record.jobEnd { lastJobNanos.store(end.nanoseconds, ordering: .relaxed) }
         if !injectRecords.push(record) { noteOverflow() }
     }
 
     @inline(__always)
     public func pushFocus(_ record: consuming DevTraceRecord) {
         if !focusRecords.push(record) { noteOverflow() }
+    }
+
+    /// A key or click went down (tap, every one the capture may record). The readback waits for a pause in this
+    /// input (PLT-R904A): two atomic writes, no lock, no allocation (PLT-R304, PLT-R305).
+    @inline(__always)
+    public func noteInputDown(at instant: MonotonicInstant) {
+        lastInputNanos.store(instant.nanoseconds, ordering: .relaxed)
+        inputCount.wrappingAdd(1, ordering: .releasing)
+    }
+
+    /// Input and edit jobs as the readback's pause sees them (any thread).
+    public var inputActivity: DevInputActivity {
+        let count = inputCount.load(ordering: .acquiring)
+        let input = lastInputNanos.load(ordering: .relaxed)
+        let job = lastJobNanos.load(ordering: .relaxed)
+        return DevInputActivity(
+            count: count, lastInput: count == 0 ? nil : MonotonicInstant(nanoseconds: input),
+            lastJob: job == Self.noJob ? nil : MonotonicInstant(nanoseconds: job))
     }
 
     /// A record could not be queued (any producer, the PLT-R905 rings included). Lock-free.

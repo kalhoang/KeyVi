@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The tap's side of the dev recorder (PLT-R904A, ADR 0007). Debug configuration only. Every engine call with the
-// token's display after it, every hard boundary with its reasons, and the marker chord. Only when the recorder is
-// active and the key itself may be recorded (`capturingThisKey`, the PLT-R905 secure rules); one atomic load
-// otherwise. Pushes are lock-free into fixed rings and copy values the callback already holds (PLT-R304,
-// PLT-R305). The recorder observes: apart from consuming its own marker chord it never changes a verdict.
+// token's display after it, every hard boundary with its reasons, the marker chord, and the time of every key or
+// click down (the field readback reads only in a pause of that input). Only when the recorder is active and the
+// key itself may be recorded (`capturingThisKey`, the PLT-R905 secure rules); one atomic load otherwise. Pushes
+// are lock-free into fixed rings and copy values the callback already holds (PLT-R304, PLT-R305). The recorder
+// observes: apart from consuming its own marker chord it never changes a verdict.
 
 #if DEV_RECORDER
 public import AppModel
@@ -102,9 +103,11 @@ extension KeyPipeline {
         if backspaceEdit { dev.requestAttention(.backspaceEdit) }
     }
 
-    /// A PLT-R905 record into the shared ring; a full ring is counted for the dev recorder's gap line.
+    /// A PLT-R905 record into the shared ring; a full ring is counted for the dev recorder's gap line. A key down or
+    /// a click also tells the recorder when input last went down: its readback waits for a pause (PLT-R904A).
     @inline(__always)
     func pushCapture(_ record: consuming CaptureRecord, to capture: CaptureController) {
+        if let instant = record.inputDownAt { capture.dev.noteInputDown(at: instant) }
         if !capture.tapRecords.push(record) { capture.dev.noteOverflow() }
     }
 
@@ -115,11 +118,14 @@ extension KeyPipeline {
     }
 
     /// The marker chord (PLT-R904A): consumed like a hotkey (its keyUp too), a marker record when the key may be
-    /// recorded, and a confirmation request. Nil for every other key.
+    /// recorded, and a confirmation request. Nil for every other key. The chord notes its own key down before the
+    /// request (its key record notes it again later in this callback): the marker's read waits for the pause after
+    /// the chord (ADR 0007 decision 10) even when the attention queue runs before the key record is pushed.
     func devMarkerVerdict(_ event: RawKeyEvent, now: MonotonicInstant) -> TapVerdict? {
         guard DevMarkerChord.matches(event), let dev = context.capture?.dev, dev.isStarted else { return nil }
         if !event.autorepeat, capturingThisKey, dev.isActive {
             dev.pushTap(.marker(source: .chord, at: now))
+            dev.noteInputDown(at: now)
             dev.requestAttention(.marker)
         }
         return consumeAsHotkey(event)
@@ -131,6 +137,14 @@ extension KeyPipeline {
         var start = keyState.lastKeyboardEventAt ?? .zero
         if let click = keyState.lastPointerDownAt, click > start { start = click }
         return start <= now && now.nanoseconds(since: start) <= devEventWindowNanoseconds ? start : now
+    }
+}
+
+extension CaptureRecord {
+    /// The time of a key down or a click (a borrow, so a consuming push can still move the record).
+    fileprivate var inputDownAt: MonotonicInstant? {
+        guard case .key(let key) = self, key.kind == .keyDown || key.kind == .mouseDown else { return nil }
+        return key.at
     }
 }
 #endif
