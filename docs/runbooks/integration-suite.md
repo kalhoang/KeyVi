@@ -458,4 +458,4 @@ Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
 
 | Run | Commit | Pass | Fail | What it showed |
 |---|---|---|---|---|
-| none yet | | | | Safari stayed open on the host for the whole of W8-A's window (Pa's VM rule), so no VM was booted |
+| none yet | | | | Safari stayed open on the host from 17:07 to 18:56 host time on 2026-11-14 (checked before and during W8-A's 60-minute wait, Pa's VM rule), so no VM was booted and the lock was never taken; the four steps above are open |
