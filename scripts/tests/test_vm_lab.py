@@ -919,6 +919,32 @@ class IntegrationGuestTests(unittest.TestCase):
         self.assertEqual(set(sed.stdout.split()), layouts)
 
 
+class FocusProbeTests(unittest.TestCase):
+    """scripts/vm/guest/ax-focus-probe.swift, the triage aid of integration-suite.md section 10.5: VM only, and it
+    reads metadata, never a value (PLT-R901)."""
+
+    PROBE = SCRIPTS / "vm" / "guest" / "ax-focus-probe.swift"
+
+    def test_the_vm_guard_comes_before_any_accessibility_or_pasteboard_call(self):
+        text = self.PROBE.read_text(encoding="utf-8")
+        guard = text.index("guard insideVirtualMachine() else")
+        self.assertIn('"kern.hv_vmm_present"', text)
+        self.assertIn("exit(3)", text[guard:guard + 200])
+        body = text[guard:]
+        for call in ("AXObserverCreate", "AXUIElementCreateApplication", "NSPasteboard.general"):
+            self.assertGreater(text.index(call), guard, call)
+            self.assertNotIn(call, text[:guard])
+        self.assertIn("MainActor.assumeIsolated", body)
+
+    def test_it_never_reads_a_value(self):
+        text = self.PROBE.read_text(encoding="utf-8")
+        code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("//"))
+        self.assertNotIn("kAXValueAttribute", code)
+        self.assertNotIn("kAXSelectedTextAttribute", code)
+        self.assertNotIn("string(forType", code)
+        self.assertIn("data(forType: .string)?.count", code)
+
+
 class VmRunnerSigningDocsTests(unittest.TestCase):
     """ADR 0400 (decided under Pa's delegation, 2026-11-13): the VM integration runner signs the test build ad hoc
     and grants every new build again; the Apple Development identity stays in the keychain of Pa's Mac and is never
