@@ -6184,12 +6184,17 @@ public struct EditJob: Sendable {
     public var wordStartedNearFocusChange: Bool
     public var createdAt: MonotonicInstant
     public var isProbe: Bool
+    /// PLT-R340 amendment (2026-11-14): the first job after a focus change the tap discovered late, when it kept
+    /// the composition. The worker applies it only if `field` is readable and its text before the caret (before the
+    /// selection, when an inline completion is selected) ends with `replacedText`; otherwise the trigger passes
+    /// through and the composition is reset. Strict, unlike `verifyBeforeApply`: an unreadable field fails.
+    public var verifyLateFocus: Bool
 
     public init(
         sequence: JobSequence, generation: FocusGeneration, plan: InjectionPlan, field: FieldHandle?,
         kind: EditKind, deleteCount: Int, deleteUTF16Count: Int, replacedText: String?, insertion: String,
         keyCodes: JobKeyCodes, trigger: KeyEventRecord?, verifyBeforeApply: Bool,
-        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool
+        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -6206,6 +6211,7 @@ public struct EditJob: Sendable {
         self.wordStartedNearFocusChange = wordStartedNearFocusChange
         self.createdAt = createdAt
         self.isProbe = isProbe
+        self.verifyLateFocus = verifyLateFocus
     }
 }
 
@@ -7258,10 +7264,13 @@ public struct HostDecision: Sendable, Hashable {
     public var rule: RuleID?
     public var source: DecisionSource
     public var specificity: Int
+    /// The rule says `overlay: true` (Spotlight, Raycast, Alfred): while it applies, every keyDown asks the ax
+    /// thread to revalidate the focus, because the panel closes without an app activation (PLT-R389).
+    public var overlay: Bool
 
     public init(
         plan: InjectionPlan, variant: EngineVariant, requireTextFocus: RequireTextFocus, verifyReentry: VerifyReentry,
-        restoreHotkeyEnabled: Bool, rule: RuleID?, source: DecisionSource, specificity: Int
+        restoreHotkeyEnabled: Bool, rule: RuleID?, source: DecisionSource, specificity: Int, overlay: Bool = false
     ) {
         self.plan = plan
         self.variant = variant
@@ -7271,6 +7280,7 @@ public struct HostDecision: Sendable, Hashable {
         self.rule = rule
         self.source = source
         self.specificity = specificity
+        self.overlay = overlay
     }
 }
 
@@ -7714,7 +7724,13 @@ public enum MainNotice: Sendable {
 /// Tap -> ax notices.
 public enum AXNotice: Sendable {
     case modeToggled(sequence: UInt64, bundle: BundleKey?, mode: TypingMode)
-    case revalidateFocus  // PLT-R382
+    /// Read the system-wide focus now: the first key after a typing pause (PLT-R382), the first key after an event
+    /// that can move the focus, and every key while an overlay rule applies (PLT-R389).
+    case revalidateFocus
+    /// PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click may move the focus without an app
+    /// activation (a non-activating panel such as Spotlight opens or closes, a sheet takes the focus). The ax
+    /// thread reads the system-wide focus over the trigger settle window (`FocusSettle.triggerDelays`).
+    case revalidateFocusAfterTrigger
 }
 
 /// The two outboxes and their wake-ups.
@@ -15634,6 +15650,18 @@ enum TestHostField: String, CaseIterable {
     case secondPlainField = "testhost.second.plainField"
     /// Shows every Escape that reaches it as `<esc>` (PLT-R353).
     case escapeField = "testhost.second.escapeField"
+    /// Name field of the save sheet that Command+S attaches to the second window (SaveSheet.swift, PLT-R389 and the
+    /// PLT-R340 late focus change: Pa's T5.5 report of 2026-11-14).
+    case sheetName = "testhost.sheet.name"
+    /// Read-only mirror of the sheet's name field in the second window. An AX focus request focuses the second
+    /// window's text view, the "document" Command+S is typed in, so a scenario can read the sheet back.
+    case sheetMirror = "testhost.sheet.mirror"
+    /// Search field of the non-activating panel that Command+K opens, with inline completion like Spotlight's
+    /// (SearchPanel.swift, PLT-R389, Pa's items 7 and 9 of 2026-11-14).
+    case panelSearch = "testhost.panel.search"
+    /// Read-only transcript of the search panel in the main window: each closed search followed by `<esc>`, then
+    /// the current query. An AX focus request focuses the main window's text field.
+    case panelMirror = "testhost.panel.mirror"
 }
 
 /// Identifier of the button that clears every field of both windows (pressed by the harness before each
@@ -15646,6 +15674,8 @@ final class TestHostWindowController: NSWindowController {
     private var views: [TestHostField: NSView] = [:]
     let web = WebFieldsController()
     let secureInput = SecureInputHolder()
+    /// Window > Show Search Panel (Command+K), SearchPanel.swift.
+    let searchPanel = SearchPanelController()
     /// Called by the Reset fields button; the app delegate also clears the second window.
     var onReset: (() -> Void)?
 
@@ -15661,11 +15691,15 @@ final class TestHostWindowController: NSWindowController {
         let layout = TestHostLayout()
         buildNativeFields(into: layout)
         buildWebFields(into: layout)
+        let panelMirror = searchPanel.mirror
+        access[.panelMirror] = ({ panelMirror.stringValue }, { [searchPanel] in searchPanel.reset() })
+        layout.addRow("Search panel (mirror)", panelMirror)
         layout.addRow("Secure input", secureInput.checkbox)
         layout.addRow("", resetButton())
         window.contentView = layout.contentView()
         window.initialFirstResponder = layout.firstField
         web.loadPage(named: WebFieldsController.pages[0])
+        searchPanel.mirror.onFocusRequest = { @MainActor [weak self] in self?.focus(.nativeTextField) }
     }
 
     private func buildNativeFields(into layout: TestHostLayout) {
