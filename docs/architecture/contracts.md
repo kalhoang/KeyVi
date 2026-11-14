@@ -9556,12 +9556,32 @@ public protocol AXProvider: Sendable {
     func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?>
     func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes>
     /// Observer whose run-loop source the caller adds to the ax run loop. The handler runs on the ax thread.
+    /// nil when the app took none of the notifications, or (`.complete`) refused one it may take later.
     func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>,
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)?
     /// `AXManualAccessibility = true` when a rule says `axEnable: manual`; the caller records it (PLT-R385).
     func enableManualAccessibility(pid: Int32) -> Bool
+}
+
+extension AXProvider {
+    /// All the notifications or none (`AXObservationMode.complete`).
+    public func observe(
+        pid: Int32, notifications: Set<AXNotificationKind>,
+        handler: @escaping @Sendable (AXNotificationKind) -> Void
+    ) -> (any AXObservation)? {
+        observe(pid: pid, notifications: notifications, mode: .complete, handler: handler)
+    }
+}
+
+/// How an observer treats an app that cannot complete a notification registration yet (PLT-R380).
+public enum AXObservationMode: Sendable, Hashable {
+    /// All the notifications or none: a refusal (`kAXErrorCannotComplete`, an app still launching) gives nil so
+    /// the focus tracker tries again later.
+    case complete
+    /// Keep the notifications the app took and skip the refused ones: the focus tracker's last attempt.
+    case bestEffort
 }
 
 /// A registered AXObserver; `invalidate` removes notifications and its run-loop source.
@@ -14438,6 +14458,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var elementQueries: [Int32: Int] = [:]
         var lastRequest: AXAttributeRequest?
         var refusedObservers: [Int32: Int] = [:]
+        var refusedNotifications: [Int32: Set<AXNotificationKind>] = [:]
         var observeAttempts: [Int32: Int] = [:]
     }
 
@@ -14484,6 +14505,12 @@ public final class FakeAXProvider: AXProvider, Sendable {
     /// `AXObserverAddNotification` with `kAXErrorCannotComplete` (seen in the macOS 27 VM).
     public func refuseObservers(pid: Int32, times: Int) {
         state.withLock { $0.refusedObservers[pid] = max(0, times) }
+    }
+
+    /// `pid` refuses `kind` for good: a `.complete` request that includes it fails, a `.bestEffort` one gets the
+    /// other notifications.
+    public func refuseNotification(pid: Int32, _ kind: AXNotificationKind) {
+        _ = state.withLock { $0.refusedNotifications[pid, default: []].insert(kind) }
     }
 
     /// Observer requests for `pid` so far, refused ones included.
@@ -14537,7 +14564,8 @@ public final class FakeAXProvider: AXProvider, Sendable {
     }
 
     public func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>, handler: @escaping @Sendable (AXNotificationKind) -> Void
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
+        handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
         let id = state.withLock { state -> UInt64? in
             state.observeAttempts[pid, default: 0] += 1
@@ -14545,9 +14573,13 @@ public final class FakeAXProvider: AXProvider, Sendable {
                 state.refusedObservers[pid] = refused - 1
                 return nil
             }
+            let refused = notifications.intersection(state.refusedNotifications[pid] ?? [])
+            if mode == .complete, !refused.isEmpty { return nil }
+            let accepted = notifications.subtracting(refused)
+            guard !accepted.isEmpty else { return nil }
             defer { state.nextObserverID += 1 }
             state.observers.append(
-                Observer(id: state.nextObserverID, pid: pid, notifications: notifications, handler: handler))
+                Observer(id: state.nextObserverID, pid: pid, notifications: accepted, handler: handler))
             return state.nextObserverID
         }
         guard let id else { return nil }

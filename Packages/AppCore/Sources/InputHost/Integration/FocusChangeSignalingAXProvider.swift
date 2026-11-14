@@ -33,12 +33,12 @@ public struct FocusChangeSignalingAXProvider: AXProvider {
     }
 
     public func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>,
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
         let afterNotification = self.afterNotification
         let thread = self.thread
-        return base.observe(pid: pid, notifications: notifications) { kind in
+        return base.observe(pid: pid, notifications: notifications, mode: mode) { kind in
             handler(kind)
             thread.perform(afterNotification)
         }

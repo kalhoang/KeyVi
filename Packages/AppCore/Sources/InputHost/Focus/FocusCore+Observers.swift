@@ -68,7 +68,10 @@ extension FocusCore {
         let handler: @Sendable (AXNotificationKind) -> Void = { [weak sink] kind in
             sink?.axNotification(pid: pid, kind: kind)
         }
-        guard let observation = services.ax.observe(pid: pid, notifications: kinds, handler: handler) else {
+        // The last retry keeps what the app takes: one name refused for good must not cost the others.
+        let mode: AXObservationMode = attempt >= FocusSettle.observerRetryDelays.count ? .bestEffort : .complete
+        guard let observation = services.ax.observe(pid: pid, notifications: kinds, mode: mode, handler: handler)
+        else {
             scheduleObserverRetry(pid: pid, attempt: attempt)
             return false
         }

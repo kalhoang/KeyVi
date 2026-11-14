@@ -210,6 +210,28 @@ struct FocusSettleTests {
         #expect(harness.snapshot.field.identifier == "second")
     }
 
+    /// PLT-R380: an app that refuses one of the base notifications for good still gets an observer for the others
+    /// once the retries are used up, so its window and activation changes keep arriving.
+    @Test func theLastAttemptKeepsWhatAnAppThatRefusesOneNotificationForGoodAccepts() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseNotification(pid: zaloPID, .focusedWindowChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        #expect(harness.ax.observedNotifications[zaloPID] == nil)
+        harness.advance(by: .seconds(30))
+        var accepted = FocusCore.baseNotifications
+        accepted.remove(.focusedWindowChanged)
+        #expect(harness.ax.observedNotifications[zaloPID] == accepted)
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == FocusSettle.observerRetryDelays.count + 1)
+        #expect(harness.scheduler.pendingCount == 0)
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 5)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "second")
+    }
+
     @Test func aRetryThatRegistersReadsTheFocusItMissed() {
         // The retry falls between the first two settle re-reads, so only the retry can see the move.
         let firstSettle = FocusSettle.delays[0]

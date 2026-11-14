@@ -15,10 +15,12 @@ struct AXObserverRegistrationTests {
         var removed: [String] = []
     }
 
-    private func register(_ answers: [String: AXError], names: [String] = ["a", "b", "c"]) -> ([String]?, Calls) {
+    private func register(
+        _ answers: [String: AXError], names: [String] = ["a", "b", "c"], mode: AXObservationMode = .complete
+    ) -> ([String]?, Calls) {
         let calls = Calls()
         let result = AXObserverRegistration.register(
-            names,
+            names, mode: mode,
             add: { name in
                 calls.added.append(name)
                 return answers[name] ?? .success
@@ -53,6 +55,20 @@ struct AXObserverRegistrationTests {
 
     @Test func nothingAddedIsNil() {
         let (result, _) = register(["a": .notificationUnsupported, "b": .failure, "c": .notificationUnsupported])
+        #expect(result == nil)
+    }
+
+    /// The focus tracker's last retry: a name the app still cannot complete is skipped like an unsupported one.
+    @Test func bestEffortKeepsTheNamesAddedAroundARefusal() {
+        let (result, calls) = register(["b": .cannotComplete], mode: .bestEffort)
+        #expect(result == ["a", "c"])
+        #expect(calls.added == ["a", "b", "c"])
+        #expect(calls.removed.isEmpty)
+    }
+
+    @Test func bestEffortWithEveryNameRefusedIsNil() {
+        let (result, _) = register(
+            ["a": .cannotComplete, "b": .cannotComplete, "c": .cannotComplete], mode: .bestEffort)
         #expect(result == nil)
     }
 }

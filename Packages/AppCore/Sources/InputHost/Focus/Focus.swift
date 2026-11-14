@@ -82,12 +82,32 @@ public protocol AXProvider: Sendable {
     func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?>
     func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes>
     /// Observer whose run-loop source the caller adds to the ax run loop. The handler runs on the ax thread.
+    /// nil when the app took none of the notifications, or (`.complete`) refused one it may take later.
     func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>,
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)?
     /// `AXManualAccessibility = true` when a rule says `axEnable: manual`; the caller records it (PLT-R385).
     func enableManualAccessibility(pid: Int32) -> Bool
+}
+
+extension AXProvider {
+    /// All the notifications or none (`AXObservationMode.complete`).
+    public func observe(
+        pid: Int32, notifications: Set<AXNotificationKind>,
+        handler: @escaping @Sendable (AXNotificationKind) -> Void
+    ) -> (any AXObservation)? {
+        observe(pid: pid, notifications: notifications, mode: .complete, handler: handler)
+    }
+}
+
+/// How an observer treats an app that cannot complete a notification registration yet (PLT-R380).
+public enum AXObservationMode: Sendable, Hashable {
+    /// All the notifications or none: a refusal (`kAXErrorCannotComplete`, an app still launching) gives nil so
+    /// the focus tracker tries again later.
+    case complete
+    /// Keep the notifications the app took and skip the refused ones: the focus tracker's last attempt.
+    case bestEffort
 }
 
 /// A registered AXObserver; `invalidate` removes notifications and its run-loop source.
