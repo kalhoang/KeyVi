@@ -157,6 +157,8 @@ attributed to the right field.
   gives the baseline back, so later divergences are still found.
 - Files of the first day (format version 1) have no readback durations: a readback started before a key counts as
   possibly in flight for up to 150 ms (three AX calls of at most 50 ms), and only `timedOut` readbacks are slow.
+- A trace can hold only what the tap and the ax thread saw; text changed by the app itself (autocorrect, completion)
+  shows up as an `extraCharacter` or a `readbackMismatch`, not as its own line.
 
 ## 5. The readback and WebKit editors
 
@@ -171,5 +173,3 @@ WebKit editors keep their readback (ADR 0007 decision 11): with the pause rule, 
 way to the app unless one goes down during the read itself, which the line flags. Revisit when a version 2 trace
 shows a `keyDropped` whose detail names a readback in flight or started right after the key: then skip the readback
 in fields inside a web area, and record the decision in ADR 0007.
-- A trace can hold only what the tap and the ax thread saw; text changed by the app itself (autocorrect, completion)
-  shows up as a `readbackMismatch`, not as its own line.
