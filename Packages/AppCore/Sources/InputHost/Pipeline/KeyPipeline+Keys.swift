@@ -174,6 +174,7 @@ extension KeyPipeline {
         if thenPassThrough {
             // P0-3: punctuation and Return reach the app after the correction, as a replay of the original key.
             guard push(.replay(context.queue.nextSequence(), record)) else { return queueFull(key.event, now: key.now) }
+            notePairing(key.event, .heldDown)  // ADR 0322: its keyUp follows this replay
             outcome = .held
             return .swallow
         }

@@ -3,7 +3,7 @@
 // The app's engine identity for test targets that cannot import InputHost (the scanner's tests): the recorder and the
 // scanner must compute the same `DevEngineIdentity` for the same engine (ADR 0007 decision 13).
 
-public import Diagnostics
+internal import Diagnostics
 internal import InputHost
 
 public enum EngineIdentityProbe {

@@ -107,8 +107,9 @@ public final class TapLogDrainer: Sendable {
         case .unknownEventType: ("unknown event type", .debug)
         // The watchdog trip itself is recorded by the lifecycle (PLT-R306); this is the T1 budget note.
         case .callbackOverBudget: ("tap callback over budget", .notice)
-        // PLT-R397A: input reached the app without the tap (for example a secure-input burst); key code only.
-        case .unseenKeyUp: ("key released that the tap never saw pressed, composition reset", .notice)
+        // PLT-R397A: input reached the app without the tap (for example a secure-input burst); key code only. Info:
+        // the Return that ends a password in a secure field gives one too, usually with nothing composed.
+        case .unseenKeyUp: ("key released that the tap never saw pressed, input boundary", .info)
         case .echoMissing, .flushRequested: nil
         }
     }

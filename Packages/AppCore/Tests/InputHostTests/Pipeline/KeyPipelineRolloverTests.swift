@@ -106,6 +106,21 @@ import Testing
         #expect(fixture.lastOutcome == .passed)
     }
 
+    /// A separator replayed after its edit (P0-3, PLT-R405) is a keyDown queued as a replay: the table records it as
+    /// held (ADR 0322 decision 1), and its keyUp follows its own replay.
+    @Test func keyUpOfASeparatorReplayedAfterAnEditStaysHeldPLTR311() {
+        let fixture = PipelineFixture()
+        fixture.typeKeys([Key.a, Key.x, Key.s])
+        fixture.completeJobs()
+        #expect(fixture.keyDown(Key.space) == .swallow)
+        #expect(fixture.lastOutcome == .held)
+        #expect(fixture.pipeline.consumedKeys.entry(KeyCode(rawValue: Key.space)) == .heldDown)
+        #expect(fixture.keyUp(Key.space) == .swallow)
+        #expect(fixture.lastOutcome == .held)
+        let replays = fixture.popJobs().compactMap(\.replayed)
+        #expect(replays.map(\.kind) == [.keyDown, .keyUp])
+    }
+
     /// PLT-R313 is untouched: a keyDown consumed for an edit still consumes its keyUp.
     @Test func keyUpOfAConsumedKeyIsStillConsumedPLTR313() {
         let fixture = PipelineFixture()

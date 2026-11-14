@@ -219,6 +219,14 @@ struct TapLogDrainerTests {
         #expect((health != nil) != (TapLogDrainer.logLine(for: code) != nil))
     }
 
+    /// PLT-R397A: an unseen keyUp follows nearly every password typed in a secure field (the Return's keyUp arrives
+    /// after secure input ends), usually with nothing composed, so it is an info line that claims no reset.
+    @Test func anUnseenKeyUpIsAnInfoLinePLTR397A() throws {
+        let line = try #require(TapLogDrainer.logLine(for: .unseenKeyUp))
+        #expect(line.1 == .info)
+        #expect(!"\(line.0)".contains("reset"))
+    }
+
     @Test func aRecordFromTheFutureIsDatedNow() {
         let anchor = MonotonicToWallClock(monotonicNow: .zero, wallNow: Date(timeIntervalSince1970: 50))
         #expect(anchor.date(of: MonotonicInstant(nanoseconds: 5)) == Date(timeIntervalSince1970: 50))
