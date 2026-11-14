@@ -345,17 +345,49 @@ a fresh load of `fields.html` on Reset fields (the reload was tried and reverted
 `web.input` (after another web scenario) and before `web.textarea` (after `web.input`) is the same, and `web.input`
 passes, so the difference lies in what the app remembers from the previous field of the same page.
 
-Remaining failures and their next step:
-
-| Scenario | Observed | Root cause (as far as the VM shows) | Next step |
-|---|---|---|---|
-| `testhost.addressBar.telexStroke` | `dđ` for `đ` | Product, inline completion: after `d` TestHost's simulated address bar completes to `dd.example` with `d.example` selected (Chromium behaviour); on the second `d` the app's edit deletes only the selected completion and inserts `đ`, so the first `d` stays. The focus report shows the right field (`testhost.sim.addressBar`, rule `user.testhost.addressBar` -> `browser.chromium.addressBar`) | Owner of `InputHost`/`Injection` (W6-A): reproduce with a typing trace of this scenario in the dev VM and check how the `inlineCompletion` handling of `browser.chromium.addressBar` counts deletions when a completion is selected (one deletion clears the selection, the base letter needs another) |
-| `testhost.addressBar.telexTone` | `aá` for `á` (earlier runs `asia.example`) | Same field and the same missing deletion (`a` completes to `asia.example`; the tone edit clears the selection and appends `á`) | Same as the row above |
-| `testhost.privacyCanary.paste` | a space only, for `kanaryzqx ` | Product or VM: the user rule's `paste` strategy runs (user rules count as opted in, `FocusCore`), but nothing reaches TestHost's plain field, so the composed letters disappear and only the space passes. Either the pasteboard is restored before TestHost reads it on the synthetic Command+V (`restoreDelayMs` 400) or macOS 27's pasteboard privacy blocks a paste a synthetic key triggers | In the dev VM: run the scenario alone with `log stream --predicate 'subsystem == "com.apple.pasteboard"'` open; try a profile with a larger `restoreDelayMs`; owner of `Injection` (W6-A) |
-| `testhost.perWindowRule.mainWindow`, `testhost.web.editModeTransition` (intermittent: passed in runs 4, 5 and 7 and in `20261113T205703Z`; `web.editModeTransition` failed in run 8 and in `20261113T213424Z`, `perWindowRule.mainWindow` in run 8) | first word after the focus change untransformed (`vieetj việt`, `Dd`) | Same cause as the `web.textarea` row below, but only sometimes: the app's T6 count did not grow within the harness's 2 s wait after Command+1 (back from the second window's pass-through field) or after the page's editor took focus, so the first keys met the previous field's rule | Same as the row below; the harness can only wait for the refresh, not cause it |
-| `testhost.web.textarea` | first word untransformed (`tieengs việt`) | Product, focus refresh for web content: after the focus moves from the page's input (previous scenario) to its textarea the app publishes no new focus snapshot within 2 s (the harness waits for its T6 count, the waits time out), so the first word is decided on the previous snapshot; the PLT-R382 idle revalidation on the first key catches up for the second word. Not TestHost: the scenario passes alone on a fresh TestHost and fails after `testhost.web.input` also on a freshly loaded page (control runs above) | Owner of `InputHost` (W6-A): reproduce with `scripts/vm/integration-dev.sh --only testhost.web.input,testhost.web.textarea` and a typing trace; check whether `FocusCore` receives `AXFocusedUIElementChanged` from WebKit, or treats the new element as the same field, when focus moves from one element of a `WKWebView` page to another after a blur (T6 counts in the hooks `state`) |
-| `testhost.web.inlineAutocomplete` (intermittent: failed in `20261113T205703Z`, passed in the runs before and after) | `asia.example` or `aá` for `á` | Same inline completion edit as the `addressBar` rows: when the page's simulated completion is selected at the time of the tone key, the edit is one deletion short | Same as the `addressBar` rows |
-
-None of these needs the Apple Development identity or Pa's Mac. The privacy scan has passed (no finding, no unreadable
+Outcome: the five failures left after W6-B, and the two intermittent ones, were traced by W7-A to the app's focus
+tracking (an early WebKit focus notification, an observer refused by a just launched app) and to two TestHost
+fixtures (no Edit menu, a page that moved the focus between two keys). Root causes, fixes and runs: section 10.5.
+None of them needs the Apple Development identity or Pa's Mac. The privacy scan has passed (no finding, no unreadable
 or vanished file) in every run since the second.
 
+### 10.5 Root causes of the last failures (W7-A, 2026-11-14)
+
+Method: control runs in a throwaway clone of `{{app-slug}}-dev` with an AX probe running in the guest's session next
+to the harness (`scripts/vm/guest/ax-focus-probe.swift`, how to use it below). The probe logs every focus, window,
+selection and value notification of TestHost with the role, identifier and hash of the notified element and of the
+app's focused element at that moment, and every pasteboard change (types and byte count, never a value).
+
+| Scenario | Root cause | Fix | Test |
+|---|---|---|---|
+| `testhost.web.textarea`, and the intermittent `testhost.web.inlineAutocomplete` and `testhost.perWindowRule.mainWindow` | WebKit posts `AXFocusedUIElementChanged` for the page's textarea (the notification names a group of the WebContent process) while the app's `AXFocusedUIElement` still reads none; 13 ms later the textarea is the focused element, and no second notification follows (`20261113T222941Z-w7a-webpair/probe-1.log`, 7.043 s and 7.056 s). `FocusCore` read the focus once per notification, so it published "no text focus" and kept it until the PLT-R382 revalidation on the first key: the first word passed untransformed (`tieengs việt`; on the completion page `asia.example`, both keys passed). | Settle re-reads: 40, 120 and 400 ms after every focus notification and every activation, `FocusCore` reads the focus again and publishes only a change; a timeout ends the window, so a slow app does not trip its PLT-R384 breaker faster; a deferred publication wakes the main thread like a notification does (`FocusCore+Settle.swift`, PLT-R380, PLT-R391). | `FocusSettleTests` |
+| `testhost.addressBar.telexStroke` (`dđ`), `testhost.addressBar.telexTone` (`asia.example`, `aá`) | Not the deletion count: the inline-completion handling of the edit (`axSelectionThenPlaceholder`, one extra Backspace when a suggestion is selected, `KeyStrategies.swift`) is right whenever the snapshot carries the address bar's rule; `testhost.addressBar.vni` passes in every run with the same field and rule. These two scenarios are the first after TestHost's launch. A just launched app answers `AXObserverAddNotification` with `kAXErrorCannotComplete` (-25204) for about 400 ms (the probe's own observer, both runs below), and `FocusCore` never asked again, so no focus notification of TestHost arrived: the keys met a stale snapshot (another field's rule gives `dđ`, no text focus gives `asia.example`). Their 5 to 8 s durations (2 s of them the harness's focus-refresh wait timing out) match. | A refused observer is retried 100, 200, 400, 800, 1,600 and 3,200 ms later while the app owns the focus, and a late registration reads the focus it missed; `SystemAXProvider` adds an observer's notifications all together or not at all (`AXObserverRegistration`), so a refusal halfway is retried too. | `FocusSettleTests`, `AXObserverRegistrationTests` |
+| `testhost.privacyCanary.paste` (a space only) | TestHost had no Edit menu. AppKit turns Command+V into `paste:` only through a menu key equivalent, so the `paste` strategy's synthetic Command+V reached no field: every edit's deletions ran and its insertion never came, which left the space alone. The pasteboard side worked: the probe logged the transient item with the nspasteboard.org marker types and each restore (changes 2 to 6 in `20261113T222633Z-w7a-reproduction/probe-1.log`), so neither the 400 ms restore delay nor macOS 27 pasteboard privacy was involved, and nothing typed was logged or persisted (privacy scan clean). | TestHost gets the standard Edit menu (Cut, Copy, Paste, Select All). | `TestHostSourcesTests.editMenuHasTheStandardKeyEquivalents` |
+| `testhost.web.editModeTransition` (`Dd`, intermittent) | The local page moved the DOM focus from a grid cell (a `div`) to a hidden editor after the first key. A focus change is a hard boundary (PLT-R340), so with the host tracking it "D" and "d" are two compositions and give `Dd`; the scenario passed only when the app published the editor's focus after the second key had been decided, a race that the settle re-reads would end for good. Not a harness timing problem. | The cell is one input that keeps the focus from the first key on; it still drops the keys of its 20 ms edit-mode transition and autocompletes from its column. | `LocalPagesTests.editModeCellKeepsTheFocusFromTheFirstKey` |
+
+Runs of W7-A (clone `{{app-slug}}-dev-w7a`, 6144 MB, 4 CPUs; folders under `/Volumes/Data/tart/runs/`):
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| `20261113T222633Z-w7a-reproduction` (`--only` the five, plus `testhost.addressBar.vni`, `testhost.web.input`, `testhost.web.inlineAutocomplete`) | `877ed58` | 3 | 5 | Reproduction on the starting commit: `dđ`, `asia.example`, ` `, `Dd`, `tieengs việt`. The probe's observer on the just launched TestHost was refused (-25204) and, never retried, saw no notification at all; the paste strategy's pasteboard writes and restores were logged |
+| `20261113T222941Z-w7a-webpair` (`--only testhost.web.input,testhost.web.textarea`, probe retrying its observer) | `877ed58` | 1 | 1 | The probe's observer was refused for 390 ms after TestHost's launch, then registered; the early WebKit focus notification of the textarea (row 1 above) |
+
+VM verification of the fixes is **open**: a build with them was starting in the clone when the host's Safari guard
+stopped the VM (05:34 host time, `/Volumes/Data/tart/safari-guard.log`), and Safari then stayed open beyond the
+90-minute limit of Pa's VM rule, so the clone was deleted unverified. Next step, in this order:
+`scripts/vm/integration-dev.sh` (the full suite: expect 40 of 40 and a clean privacy scan); then three times
+`scripts/vm/integration-dev.sh --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition`
+(`testhost.web.input` runs before the textarea on purpose) and five times `--only testhost.web.editModeTransition`;
+record every run in this section. If a scenario still fails, run the probe next to it.
+
+The probe, inside the VM only (it refuses a real Mac), from the checkout in the guest:
+
+```sh
+xcrun swiftc -O -o "$HOME/ax-focus-probe" scripts/vm/guest/ax-focus-probe.swift
+sudo scripts/vm/grant-tcc.sh --binary "$HOME/ax-focus-probe"
+# One command in the guest's GUI session (scripts/vm/lab.sh exec <vm> /bin/bash -c '...'), so the probe ends with the run:
+"$HOME/ax-focus-probe" '<dev bundle ID>.testhost' >"$HOME/probe.log" 2>&1 & probe=$!
+COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_TESTS_ARGS="run --scenarios compat/scenarios --only <IDs> --output .build/integration/tests" \
+  scripts/run-integration.sh tests
+kill "$probe"
+```
