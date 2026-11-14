@@ -129,6 +129,41 @@ targets:
       - package: Sparkle
         product: Sparkle
 
+  # W8-D: render-only screenshots of the Settings window (scripts/snapshots/settings.sh), never shipped. The App's
+  # sources without its entry point (AppMain.swift), so nothing can start the app environment; no TEST_HOST, so a run
+  # never launches the app. The test draws offscreen windows with cacheDisplay and writes PNGs (SNAPSHOT_OUTPUT).
+  # SNAPSHOT_CONDITIONS=SETTINGS_SNAPSHOT_BASELINE builds the driver against an earlier commit's sources.
+  SettingsSnapshots:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: App/Sources
+        excludes:
+          - "Updater/Tests/**"
+          - "Composition/AppMain.swift"
+      - path: App/Resources
+      - path: compat/matrix.json
+        buildPhase: resources
+      - path: scripts/snapshots/SettingsSnapshots
+        excludes:
+          - "Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID_DEV).settingssnapshots
+        INFOPLIST_FILE: scripts/snapshots/SettingsSnapshots/Info.plist
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) $(SNAPSHOT_CONDITIONS)
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+    dependencies:
+      - package: AppCore
+        products: [AppModel, RealtimeSupport, Diagnostics, SettingsStore, CompatRules, Injection, InputHost, ShellCore,
+          TestSupport]
+      - package: VietnameseEngine
+        products: [VietnameseEngine, VietnameseEngineData]
+      - package: Sparkle
+        product: Sparkle
+
   # QA-R10 test host app for platform integration tests. Never shipped. Ad-hoc signed: it needs no
   # permissions and no stable signing identity (the app under test is the one that holds TCC grants).
   TestHost:
@@ -177,6 +212,13 @@ schemes:
       config: Debug
     archive:
       config: Release
+  SettingsSnapshots:
+    build:
+      targets:
+        SettingsSnapshots: [test]
+    test:
+      config: Debug
+      targets: [SettingsSnapshots]
   TestHost:
     build:
       targets:
