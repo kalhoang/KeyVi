@@ -475,7 +475,7 @@
           { "type": "report", "ref": "product owner manual tests T5.8 and items 7 and 9, 2026-11-14" }
         ],
         "tested": [{ "app": "Spotlight", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "axSelection stays: the reports show a completion selected after the caret absorbing exactly one deletion per edit, which is what axSelection removes first, and the stale focus snapshot explains why it was not used. VERIFY on macOS 27.2 that the redesigned field exposes that completion as AXSelectedTextRange (docs/runbooks/integration-suite.md section 10.6, step 4); if it does not, axSelectionThenPlaceholder is the fallback, which needs its 1,000-edit test first (PLT-R422). Also VERIFY macOS 26. The tested entry is a placeholder until the scenario passes.",
+        "notes": "axSelection stays: the reports show a completion after the caret absorbing exactly one deletion per edit, which is what axSelection removes first, and the stale focus snapshot explains why it was not used. Public descriptions of the redesigned Spotlight (Apple's macOS Tahoe 26 feature list; Spotlight articles of December 2025) say it autocompletes the query inline with the top hit; none says how Accessibility exposes that completion. VERIFY on macOS 27.2 that the redesigned field exposes that completion as AXSelectedTextRange (docs/runbooks/integration-suite.md section 10.6, step 4); if it does not, axSelectionThenPlaceholder is the fallback, which needs its 1,000-edit test first (PLT-R422). Also VERIFY macOS 26. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
