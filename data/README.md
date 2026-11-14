@@ -6,6 +6,10 @@ in this directory. The output is byte-reproducible (ENG-R810) and lands in
 Sources, licences and the reasoning behind every choice: `docs/decisions/0200-data-sources-and-licences.md`
 and `docs/decisions/0201-bundled-resource-format-and-build-policy.md`. Notices: `data/NOTICES.md`.
 
+Licence: what the project wrote here is under the Mozilla Public License 2.0, like the engine (`LICENSE`, the
+verbatim text; the copyright line and the MPL-2.0 Exhibit A notice are in `NOTICE`). The SCOWL lists and the
+legal texts keep their own terms (`NOTICES.md`).
+
 ## Layout
 
 | Path | Contents | Edited by |

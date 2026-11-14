@@ -5,7 +5,8 @@ characters typed on any keyboard layout into precomposed (NFC) Vietnamese text, 
 boundary whether a word should be restored to the keys as typed, and expands macros. It has no state
 outside the values it returns, performs no I/O and imports only the Swift standard library.
 
-Licence: MPL-2.0 (see `LICENSE`). Bundled word lists in `VietnameseEngineData` keep their own notices.
+Licence: Mozilla Public License 2.0 (`LICENSE`, the verbatim text; the copyright line and the MPL-2.0 Exhibit A
+notice are in `NOTICE`). Bundled word lists in `VietnameseEngineData` keep their own notices.
 Version: 0.1.0-dev (see `CHANGELOG.md`; the engine is versioned separately from the app, QA-R27).
 
 ## Targets

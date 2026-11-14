@@ -152,8 +152,11 @@ new_legacy = legacy_folders()
 print(f"legacy storage folders: {old_legacy or '(none)'} -> {new_legacy or '(none)'}", file=sys.stderr)
 
 BRAND_FILES = {"Config/Brand.xcconfig", "scripts/brand.env"}
-EXCLUDED = re.compile(r"^(spec/|docs/decisions/|\.git/|dist/|site/dist/|LICENSE$)|(^|/)(\.build[^/]*|node_modules)/|"
-                      r"\.(png|jpg|jpeg|gif|icns|ico|pdf|dmg|zip|car|ttf|otf|woff2?)$")
+# No LICENSE file is ever rewritten (ADR 0006): the root one is the verbatim GPL-3.0 text, those of the MPL-2.0
+# directories (the engine packages, data/, spec/reference-model/) the verbatim MPL-2.0 text. The copyright lines that
+# name the product live in the NOTICE files beside them, which step 2 rewrites like any other file.
+EXCLUDED = re.compile(r"^(spec/|docs/decisions/|\.git/|dist/|site/dist/)|(^|/)(\.build[^/]*|node_modules)/|"
+                      r"(^|/)LICENSE$|\.(png|jpg|jpeg|gif|icns|ico|pdf|dmg|zip|car|ttf|otf|woff2?)$")
 
 # Order matters: longest, most specific values first so a bundle ID is not half-rewritten by the slug.
 # The name with its sign goes before the bare name, so "Old™" becomes "New™" (or "New" once the sign is cleared).

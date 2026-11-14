@@ -846,7 +846,7 @@ A release is publishable only if: hosted CI green; nightly self-hosted green wit
 All answered on 13/11/2026; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (the app licence in `docs/decisions/0006-app-licence-and-pro-edition.md`).
 
 1. Minimum macOS: answered, macOS 12.0 with Intel support (universal binary kept); see `docs/decisions/0315-minimum-macos-12.md`.
-2. App licence: GPL-3.0-or-later for everything outside the engine packages, the `data/` pipeline and the reference model, which are MPL-2.0 (ADR 0006); consequences for the rules database and the injection layer in PLT-R108.
+2. App licence: GPL-3.0-or-later for everything outside the engine packages, the `data/` pipeline and the reference model, which are MPL-2.0 (ADR 0006, amended 15/11/2026); consequences for the rules database and the injection layer in PLT-R108.
 3. Release signing: Developer ID signing and notarization happen on Pa's Mac (keys never leave it); CI keeps producing unsigned builds. The EdDSA key stays on Pa's Mac (PLT-R1103, QA-R32).
 4. Archive hosting: DMG and update archives only on `{{app-slug}}.kal.vn` (no GitHub Releases, so PLT-R906 needs no extra host).
 5. Self-hosted Mac runner: proposed as a tart macOS virtual machine on Pa's Mac (awaiting Pa's confirmation); Linux jobs stay on GitHub-hosted runners.

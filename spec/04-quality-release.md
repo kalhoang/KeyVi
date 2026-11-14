@@ -284,9 +284,9 @@ QA-R60 Any new network endpoint in the app requires a decision record and an upd
 
 ## 7. Contribution rules
 
-QA-R61 Contribution sign-off follows the licence decision of the product owner (13/11/2026; `docs/decisions/0006-app-licence-and-pro-edition.md`): the engine packages, the `data/` pipeline and the reference model are MPL-2.0, everything else is GPL-3.0-or-later.
+QA-R61 Contribution sign-off follows the licence decision of the product owner (13/11/2026, amended 15/11/2026; `docs/decisions/0006-app-licence-and-pro-edition.md`): the engine packages, the `data/` pipeline and the reference model are MPL-2.0, everything else is GPL-3.0-or-later.
 - Every contribution, in every area: Developer Certificate of Origin (`Signed-off-by` on every commit, the e-mail matching the commit author), enforced by a DCO check on pull requests. Rationale: lightweight and familiar to contributors.
-- Inbound terms: a contribution to a GPL-3.0-or-later part is licensed under the GPL as part of the project and is also licensed to the project under MIT, so the copyright holder can change the licence later without asking every contributor again (the Pro edition this grant first served was withdrawn on 15/11/2026); the sign-off affirms this. There is no CLA. `CONTRIBUTING.md` states these terms.
+- Inbound terms: a contribution to an MPL-2.0 part is licensed under MPL-2.0 and a contribution to a GPL-3.0-or-later part under the GPL, as part of the project; either is also licensed to the project under MIT, so the copyright holder can change the licences later without asking every contributor again (the Pro edition this grant first served was withdrawn on 15/11/2026); the sign-off affirms this. There is no CLA. `CONTRIBUTING.md` states these terms.
 
 QA-R62 Every PR template includes a clean-room attestation checkbox: "I did not read or copy code from other Vietnamese input methods while writing this change (see spec/05-clean-room.md)." PRs from contributors who cannot tick it are declined politely.
 
@@ -336,7 +336,7 @@ QA-R67 Docs are part of the definition of done: a PR that changes user-visible b
 
 All answered on 13/11/2026; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (the app licence in `docs/decisions/0006-app-licence-and-pro-edition.md`).
 
-1. App licence, which decides DCO-only versus CLA (QA-R61): GPL-3.0-or-later for the app with MPL-2.0 for the engine packages, the `data/` pipeline and the reference model; DCO for every contribution plus an inbound MIT grant for GPL-covered parts, no CLA (ADR 0006).
+1. App licence, which decides DCO-only versus CLA (QA-R61): GPL-3.0-or-later for the app with MPL-2.0 for the engine packages, the `data/` pipeline and the reference model (amended 15/11/2026); DCO for every contribution plus an inbound MIT grant for every contribution, no CLA (ADR 0006).
 2. Sparkle signing: on Pa's Mac (QA-R32), together with Developer ID signing and notarisation (QA-R31).
 3. Self-hosted Mac for integration tests (QA-R12): a tart macOS virtual machine on Pa's Mac is proposed, awaiting Pa's confirmation.
 4. Support and security email addresses (QA-R51, QA-R56): one project mailbox on `kal.vn` (`APP_SUPPORT_EMAIL`).

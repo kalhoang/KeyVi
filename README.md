@@ -101,8 +101,8 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 ## Licence and provenance
 
 - KeyVi™ is free software under the GNU General Public License, version 3 or (at your option) any later version: [LICENSE](LICENSE). Copyright (c) 2026 the KeyVi authors.
-- The Vietnamese engine packages and the word-list pipeline are MPL-2.0-licensed, so other projects can embed them: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
-- Contributions are signed off (Developer Certificate of Origin); contributions to GPL-covered parts are also licensed to the project under MIT, with no CLA ([CONTRIBUTING.md](CONTRIBUTING.md) section 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
+- The Vietnamese engine packages, the word-list pipeline and the reference model are under the Mozilla Public License 2.0 (MPL-2.0): any app, open source or not, can embed them, while changes to their own files stay open: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE), [spec/reference-model/LICENSE](spec/reference-model/LICENSE). Their copyright lines are in the `NOTICE` files beside them.
+- Contributions are signed off (Developer Certificate of Origin); every contribution is also licensed to the project under MIT, with no CLA ([CONTRIBUTING.md](CONTRIBUTING.md) section 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
 - KeyVi™ is an independent implementation written under clean-room rules: [spec/05-clean-room.md](spec/05-clean-room.md). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Links

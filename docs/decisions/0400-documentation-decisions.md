@@ -69,7 +69,7 @@ Search the repository with `grep -rn VERIFY` to find them all. Each row names th
 | 23 | Sparkle pinned version | `THIRD_PARTY_NOTICES.md` | Fill after `Package.resolved` exists |
 | 24 | Data, asset and site entries | `THIRD_PARTY_NOTICES.md` sections 3 to 5 | Data, app and site tracks fill their parts (`data/NOTICES.md` is the data source) |
 | 25 | `compat/matrix.json` field names | `compat/SCRIPT.md` section 5 | The schema in `compat/schema/` wins; adjust the example if names differ |
-| 26 | App licence, DCO or CLA | `CONTRIBUTING.md` section 3 | Decided: GPL-3.0-or-later, DCO with inbound MIT, no CLA ([0006](0006-app-licence-and-pro-edition.md)) |
+| 26 | App licence, DCO or CLA | `CONTRIBUTING.md` section 3 | Decided: GPL-3.0-or-later, MPL-2.0 for the engine parts (amended 15/11/2026), DCO with inbound MIT, no CLA ([0006](0006-app-licence-and-pro-edition.md)) |
 | 27 | Rollback rehearsal log | `docs/runbooks/rollback.md` section 5 | Fill the table after the drill on the beta channel (QA-R39) |
 
 Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
@@ -88,7 +88,7 @@ Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
   `App/Resources/Localization/Status.xcstrings` (key `secureInputHint.iterm2.secureKeyboardEntry`, which
   `compat/rules.json` names through its `hintKey`); the page is `site/content/{vi,en}/support.mjs`, and
   `site/test.mjs` fails if the two differ. The support replies (`docs/support/replies.md`) give the same advice.
-- **19**: `Packages/VietnameseEngineFuzz/LICENSE` exists (MPL-2.0, like the engine; ADR 0006).
+- **19**: `Packages/VietnameseEngineFuzz/LICENSE` exists (MPL-2.0 since 15/11/2026, like the engine, with its copyright line in `NOTICE`; MIT before; ADR 0006).
 - **26**: [0006](0006-app-licence-and-pro-edition.md) decides the app licence and the contributor terms.
 - **24** is narrowed: the word-list rows of `THIRD_PARTY_NOTICES.md` section 3 point at `data/NOTICES.md`,
   which the data track fills; the asset and site rows remain open.

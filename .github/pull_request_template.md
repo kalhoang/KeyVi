@@ -24,7 +24,7 @@ If you used an AI assistant, tick this too:
 ## Sign-off and licence (QA-R61, ADR 0006)
 
 - [ ] Every commit has `Signed-off-by:` with the commit author's name and e-mail (`git commit -s`), certifying the Developer Certificate of Origin 1.1 (https://developercertificate.org).
-- [ ] I license this change under the licence of the files it touches (MPL-2.0 in the engine packages, `data/` and `spec/reference-model/`, GPL-3.0-or-later elsewhere) and, for GPL-3.0-or-later files, also to the project under the MIT licence (CONTRIBUTING.md section 3). No CLA is needed.
+- [ ] I license this change under the licence of the files it touches (MPL-2.0 in the engine packages, `data/` and `spec/reference-model/`, GPL-3.0-or-later elsewhere) and also to the project under the MIT licence (CONTRIBUTING.md section 3). No CLA is needed.
 
 ## Tests
 
@@ -43,7 +43,7 @@ Reason for `corpus-change` or `perf-baseline` (if applicable):
 - [ ] No new dependency (or a decision record in `docs/decisions/` and an entry in `THIRD_PARTY_NOTICES.md` are included).
 - [ ] No new setting (or a written justification against PRD principle 5 is included below).
 - [ ] No hard-coded product name, slug, bundle ID or site host in code; documentation follows CONTRIBUTING.md section 6 (brand placeholders in `docs/`, literal values in the front-door files).
-- [ ] Every new source file has an SPDX header (`MPL-2.0` in the engine packages and `data/`, `GPL-3.0-or-later` elsewhere) (CLR-R11).
+- [ ] Every new source file has an SPDX header (`MPL-2.0` in the engine packages, `data/` and `spec/reference-model/`, `GPL-3.0-or-later` elsewhere) (CLR-R11).
 
 ## Documentation and changelog (QA-R67)
 

@@ -97,7 +97,8 @@ preview is deployed with `SITE_STRICT=false` and `noindex`.
 ## Consequences
 
 - Pa's one-time steps (repository settings, GHCR visibility, Portainer stack and webhook, Cloudflare DNS and token)
-  are listed in the runbook and done by Pa by hand; the repository holds only the files. The Umami stack is already running (analytics runbook).
+  are listed in the runbook and done by Pa by hand; the repository holds only the files. The Umami stack is
+  already running (analytics runbook).
 - The image grows with every release; a later decision can move `/download/` elsewhere without touching the site.
 - VERIFY on the first deploy: the nodes' architecture (`linux/amd64` is built), the DNS record target, and whether
   `docker stack deploy` on this Swarm accepts `read_only` and `tmpfs`. The resolver name (`cloudflare`) and the

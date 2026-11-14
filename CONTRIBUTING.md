@@ -24,7 +24,7 @@ Every PR carries this attestation, and PRs from contributors who cannot tick it 
 
 If an AI assistant produced code that looks like it comes from a known input method (identifiers, comments, table layouts or bit layouts that were not designed here), discard it and rewrite it from the spec (CLR-R4).
 
-Word lists, dictionaries and test corpora need a recorded permissive licence (MIT, BSD, Apache-2.0, CC0, CC-BY or public domain). GPL or LGPL data must not be bundled or downloaded (CLR-R6). Icons, images and copy must be original or properly licensed, with the source recorded (CLR-R7).
+Third-party word lists, dictionaries and test corpora need a recorded permissive licence (MIT, BSD, Apache-2.0, CC0, CC-BY or public domain); lists and corpora written for this project carry the engine's MPL-2.0. GPL or LGPL data must not be bundled or downloaded (CLR-R6). Icons, images and copy must be original or properly licensed, with the source recorded (CLR-R7).
 
 Process details for the similarity review that the maintainer runs before public releases: [docs/provenance/README.md](docs/provenance/README.md).
 
@@ -32,14 +32,40 @@ Process details for the similarity review that the maintainer runs before public
 
 | Area | Licence |
 |---|---|
-| `Packages/VietnameseEngine/`, `Packages/VietnameseEngineFuzz/`, the `data/` pipeline and `spec/reference-model/` | MPL-2.0 (SPDX `MPL-2.0`). The three directories outside `spec/` have their own `LICENSE`; the reference model scripts carry the MPL-2.0 SPDX header. |
+| `Packages/VietnameseEngine/`, `Packages/VietnameseEngineFuzz/`, the `data/` pipeline and `spec/reference-model/` | Mozilla Public License 2.0, MPL-2.0 (SPDX `MPL-2.0`). Each of the four directories has its own `LICENSE` with the verbatim MPL-2.0 text; the copyright line and the MPL-2.0 Exhibit A notice are in the `NOTICE` file beside it (for `spec/reference-model/`, in its README). |
 | Everything else: the app, AppCore, TestHost, SpikeIMK, scripts, the website, `deploy/`, `compat/`, the docs | GPL-3.0-or-later (SPDX `GPL-3.0-or-later`), the root [LICENSE](LICENSE). |
 
 The decision and its reasons are recorded in [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md).
 
 **Sign-off for every contribution.** Every commit, in every area, carries a Developer Certificate of Origin sign-off: `Signed-off-by: Your Name <you@example.com>`, added with `git commit -s`. The e-mail must match the commit author. By signing off you certify the [Developer Certificate of Origin 1.1](https://developercertificate.org), confirm that you followed the clean-room rule above (CLR-R14) and accept the inbound terms below. A pull request with an unsigned commit is not merged, whatever area it touches. Check your branch before you open the pull request with `scripts/check-dco.sh --base origin/main --head HEAD` (CI runs the same script on pull requests from forks); fix a missing sign-off with `git commit --amend -s` or `git rebase --signoff <base>`.
 
-**Inbound terms.** A contribution to an MPL-2.0 part is licensed under MPL-2.0. A contribution to a GPL-3.0-or-later part is licensed under GPL-3.0-or-later as part of the project and is also licensed to the project under the MIT licence (the standard MIT licence text, with your own copyright notice). The MIT grant lets the project change its licence later without asking every contributor again (ADR 0006). There is no paid edition: every feature ships in the free app. Because an MIT licence is non-exclusive, the change you wrote is available under MIT terms while the app as a whole is distributed under the GPL. You keep your copyright.
+**Inbound terms.** A contribution to an MPL-2.0 part is licensed under MPL-2.0, and a contribution to a GPL-3.0-or-later part is licensed under GPL-3.0-or-later, as part of the project. Either way, the contribution is also licensed to the project under the MIT licence (the text below, with your own copyright notice). The MIT grant lets the project change its licences later without asking every contributor again (ADR 0006). There is no paid edition: every feature ships in the free app. Because an MIT licence is non-exclusive, the change you wrote is available under MIT terms while the engine stays MPL-2.0 and the app as a whole is distributed under the GPL. You keep your copyright.
+
+The MIT licence text of the inbound grant, where `<year>` and `<copyright holders>` are the year of your contribution and your name:
+
+```text
+MIT License
+
+Copyright (c) <year> <copyright holders>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 **No contributor licence agreement.** There is nothing to sign beyond the sign-off, and no CLA bot.
 

@@ -29,6 +29,11 @@ ns.adobe.com
 www.daemonology.net
 sites.google.com
 
+# Licence text that is never contacted: the Exhibit A URL of the Mozilla Public License 2.0. It is needed once the
+# engine's licence text is compiled into the app for the Licences pane (ShellCore/Settings/AboutSupport.swift,
+# EngineLicence) or quoted in a String Catalog (ADR 0006 amendment of 2026-11-15).
+mozilla.org
+
 # Website only, never inside the app (scripts/check-url-hosts.sh fails if the app contains one).
 # site/lib/analytics.mjs accepts an analytics script URL only on these hosts and adds exactly that origin
 # to the website's CSP (script-src, connect-src). Umami, self-hosted on the Kalera Swarm (Pa, 2026-11-13,

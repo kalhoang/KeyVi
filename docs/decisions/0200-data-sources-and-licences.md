@@ -131,7 +131,8 @@ is given in `data/NOTICES.md` as a courtesy (the portals ask for their name when
 
 `tech-always.txt` (384 entries), `tech-code-only.txt` (229 entries), `attested-additions.txt` (252 entries,
 each with a reason) and `ambiguity.tsv` (18 ENG-R821 proposals plus 7 unreviewed spec 8.3 examples) are
-original work licensed with the engine (MPL-2.0). Product names in `tech-always.txt` are used only so that typing
+original work licensed with the engine (MPL-2.0 since 15/11/2026, MIT before;
+[0006](0006-app-licence-and-pro-edition.md)). Product names in `tech-always.txt` are used only so that typing
 them is not altered.
 
 Every tech word was checked for collisions with the reference model in `spec/reference-model/`

@@ -9,7 +9,7 @@ QA-R61 says sign-off depends on the app licence. If the app is permissive or GPL
 
 ## Decision
 
-1. **Engine package** (`Packages/VietnameseEngine`, MPL-2.0): external pull requests are accepted with a Developer Certificate of Origin sign-off on every commit (`git commit -s`), enforced by a DCO check. The sign-off also covers the clean-room confirmation (CLR-R14).
+1. **Engine package** (`Packages/VietnameseEngine`, MIT at the time, MPL-2.0 since 15/11/2026): external pull requests are accepted with a Developer Certificate of Origin sign-off on every commit (`git commit -s`), enforced by a DCO check. The sign-off also covers the clean-room confirmation (CLR-R14).
 2. **Everything else** (app, AppCore, TestHost, scripts, site, docs): external pull requests are **not accepted** until Pa decides the app licence and the sign-off method (DCO or CLA) and `CONTRIBUTING.md` section 3 is updated. Issues, compatibility reports and discussion are welcome from the start.
 3. The clean-room attestation in the pull request template (QA-R62) applies to all pull requests, including those from the maintainer.
 4. AI-assisted contributions follow the same rules (QA-R64).
@@ -17,7 +17,7 @@ QA-R61 says sign-off depends on the app licence. If the app is permissive or GPL
 ## Enforcement (added 2026-11-13)
 
 - `scripts/check-dco.sh` checks every non-merge commit of a pull request that touches
-  `Packages/VietnameseEngine/` or `Packages/VietnameseEngineFuzz/` (both MPL-2.0, CONTRIBUTING.md section 3): it
+  `Packages/VietnameseEngine/` or `Packages/VietnameseEngineFuzz/` (both MIT until 15/11/2026, CONTRIBUTING.md section 3): it
   needs a `Signed-off-by:` trailer whose e-mail equals the commit author's e-mail. Commits that touch
   neither package are not checked.
 - The `dco` job of `.github/workflows/ci.yml` runs it on pull requests from forks, which is what "external"

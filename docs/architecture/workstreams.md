@@ -525,8 +525,8 @@ workstream asked for it). Wave-1 owned paths not listed below become read-only a
 
 The runner is open question 3/5 for Pa. Until it exists, every traceability row verified by I (TestHost
 integration) or C (compatibility scenario) is verified as **M** by Pa on Pa's Mac, with these reduced steps
-(traceability.md lists the affected rows). No workstream posts events, creates taps or changes input
-sources on that Mac.
+(traceability.md lists the affected rows). No workstream posts events, creates taps or changes input sources
+on that Mac.
 
 1. **Hosted CI, every PR:** `swift test` in `Packages/AppCore` (layer 4, including the 100,000-sequence
    property suites with both window-server modes), `compat-lint`, and `compat-harness --dry-run` over

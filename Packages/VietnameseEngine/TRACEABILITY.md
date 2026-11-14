@@ -23,7 +23,7 @@ Where the owner is another track, the row says so.
 | ENG-R106 | Auto restore on by default, no download | `PublicAPI.swift` (`EngineConfiguration.autoRestore`) | `PublicAPITests.defaults`, `CommitRuleTests.emptyResourcesNeedNoDownload` |
 | ENG-R107 | Free order always on, no setting | `Composition/Composition+Transforms.swift` | W033-W061, generated corpus O2-O4, `PublicAPITests.closedOptionSet` |
 | ENG-R108 | Restore toggle event | `PublicAPI.swift` (`EngineEvent.restoreToggle`), `Engine/ActiveToken.swift` (`toggleRestore`) | `RestoreToggleTests` (E01-E08, E02b) |
-| ENG-R109 | Standalone Swift package, MPL-2.0 | `Package.swift`, `LICENSE` | `StaticSourceTests.coreIsClean` (no imports) |
+| ENG-R109 | Standalone Swift package, MPL-2.0 | `Package.swift`, `LICENSE`, `NOTICE` | `StaticSourceTests.coreIsClean` (no imports) |
 | ENG-R110 | Macros at commit, empty table shipped | `Macros/`, `Engine/Reducer+Commit.swift` (`expandMacro`) | `MacroExpansionTests`, `macros.tsv`, `PublicAPITests.defaults` |
 | ENG-R120 | No legacy encodings | `PublicAPI.swift` (only NFC `TextEdit.insert`) | Fuzz (ENG-T34) |
 | ENG-R121 | No Quick Telex shortcuts | absence (no rule exists) | `no-shortcuts.tsv`, `OptionAndEscapeTests.noQuickTelexShortcuts`, `RegressionTests.reg04`, `CorpusTargetTests.nonGoals` |

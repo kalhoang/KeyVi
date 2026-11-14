@@ -4,6 +4,9 @@ Coverage-guided fuzzing of the engine (spec/04-quality-release.md QA-R8, QA-R9; 
 ENG-T30 to ENG-T37). A separate package with a path dependency on `../VietnameseEngine`, so the engine
 package itself never links libFuzzer.
 
+Licence: Mozilla Public License 2.0, like the engine (`LICENSE`, the verbatim text; the copyright line and the
+MPL-2.0 Exhibit A notice are in `NOTICE`).
+
 ## Input format
 
 One input is a configuration byte followed by events. The configuration byte selects the method and the

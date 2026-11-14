@@ -1,7 +1,8 @@
 # 0006. App licence and the Pro edition
 
 - Status: accepted, 2026-11-13 (Pa approved the recommendation in the evening follow-up answers to the checklist);
-  amended 2026-11-15: decision 4 (the Pro edition) is withdrawn, there is no paid edition (see the amendment below)
+  amended 2026-11-15: decision 4 (the Pro edition) is withdrawn, there is no paid edition; the parts that decision 1
+  made MIT are MPL-2.0 (see the two amendments below)
 - Supersedes: row 2 of [0001](0001-defaults-for-open-decisions.md) (the app licence working default), item 2 of
   [0401](0401-interim-contribution-policy.md) (no external pull requests outside the engine) and the Q2, Q3 row of
   [0005](0005-pa-decisions-2026-11-13.md) ("not decided").
@@ -11,7 +12,7 @@
 
 ## Context
 
-The engine package was MPL-2.0 from the start (ENG-R109); the licence of everything else stayed open, marked
+The engine package was MIT from the start (ENG-R109); the licence of everything else stayed open, marked
 `LicenseRef-App-Pending`. QA-R61 tied the contribution sign-off to that choice: DCO alone for a permissive or a
 GPL app with no relicensing plans, a CLA if Pa wanted to keep the option of a separately licensed edition. Pa
 wants both a free, open app and the option of a paid Pro edition later, without asking contributors to sign a CLA.
@@ -20,12 +21,12 @@ wants both a free, open app and the option of a paid Pro edition later, without 
 
 1. **Licences.**
    - `Packages/VietnameseEngine/`, `Packages/VietnameseEngineFuzz/`, the `data/` pipeline and
-     `spec/reference-model/` stay **MPL-2.0**. Each of the three directories outside `spec/` has its own `LICENSE`
-     with the verbatim MPL-2.0 text; the reference model scripts carry `SPDX-License-Identifier: MPL-2.0`.
+     `spec/reference-model/` stay **MIT**. Each of the three directories outside `spec/` has its own `LICENSE`
+     with the copyright line "the {{AppName}} authors"; the reference model scripts carry `SPDX-License-Identifier: MIT`.
    - Everything else (the app, AppCore, TestHost, SpikeIMK, scripts, the website, `deploy/`, `compat/`, the docs)
      is **GPL-3.0-or-later**. The root `LICENSE` is the verbatim GNU GPL version 3 text as published at
      `https://www.gnu.org/licenses/gpl-3.0.txt` (byte-exact, pinned by SHA-256 in
-     `scripts/tests/test_docs_and_workflows.py`); source files carry `SPDX-License-Identifier: GPL-3.0-or-later`
+     `scripts/tests/test_licences_and_wording.py`); source files carry `SPDX-License-Identifier: GPL-3.0-or-later`
      (`scripts/check-spdx.sh`, CLR-R11). "Or later" lets the project follow a future GPL version without asking
      every contributor again.
    - "The {{AppName}} authors" means Kal, the maintainer and copyright holder of the original work, and every
@@ -43,7 +44,7 @@ wants both a free, open app and the option of a paid Pro edition later, without 
      affirms the inbound terms below. `scripts/check-dco.sh` checks every commit of a pull request by default.
    - **Inbound MIT for GPL-covered parts.** A contribution to a GPL-3.0-or-later part is licensed under
      GPL-3.0-or-later as part of the project and is **also licensed to the project under the MIT licence**.
-     Contributions to the MPL-2.0 parts are MPL-2.0, as before. The MIT grant gives the copyright holder the rights a
+     Contributions to the MIT parts are MIT, as before. The MIT grant gives the copyright holder the rights a
      CLA would give for the purpose that matters here, shipping the code in a separately licensed edition,
      while contributors keep their copyright and sign nothing beyond the sign-off.
    - **No contributor licence agreement**, no CLA bot.
@@ -94,13 +95,52 @@ sponsorships, because sales would bring in little.
   contributors nothing and keeps the project able to change its licence later without asking every contributor again;
   for the same reason third-party GPL code is still not accepted.
 
+## Amendment, 15/11/2026: the engine parts are MPL-2.0
+
+The product owner moved the parts that decision 1 made MIT to the Mozilla Public License 2.0, before any release.
+
+- `Packages/VietnameseEngine/` (every target, source, test, script and the resources it writes itself),
+  `Packages/VietnameseEngineFuzz/`, the `data/` pipeline with the project's own data inputs, and
+  `spec/reference-model/` are **MPL-2.0**. Third-party inputs keep their own terms: the SCOWL lists their permission
+  notice, the legal texts what [0200](0200-data-sources-and-licences.md) records.
+- Reasons. Its file-level copyleft keeps changes to the engine's own files open, which MIT did not, while any app,
+  closed source or distributed through the App Store, can still embed the engine, because the copyleft stops at the
+  file. MPL-2.0 is compatible with the GPL app through its Secondary License clause (section 3.3): no file is marked
+  "Incompatible With Secondary Licenses" (Exhibit B), so the GPL-3.0-or-later app, and GPL-2.0, LGPL-2.1 or
+  AGPL-3.0 projects, can combine the engine into a Larger Work. It was decided before any release, so no MIT copy
+  was ever distributed.
+- Licence text. Each of the four directories has a `LICENSE` that is the verbatim text of
+  `https://www.mozilla.org/media/MPL/2.0/index.txt` as fetched on 2026-11-15 (16,726 bytes, SHA-256
+  `3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04`, pinned in
+  `scripts/tests/test_licences_and_wording.py`, never edited). The MPL text has no copyright line, so
+  "Copyright (c) 2026 the {{AppName}} authors" and the Exhibit A notice live in a `NOTICE` file beside it, with
+  the literal name that `scripts/rename-app.sh` rewrites; the reference model keeps them in its README, because
+  `spec/` keeps the brand placeholders and is never rewritten.
+- Source files carry `SPDX-License-Identifier: MPL-2.0` instead of `MIT`; Exhibit A allows its notice to live in a
+  file of the directory instead of every file. `scripts/check-spdx.sh` checks the four directories, the reference
+  model included now.
+- `scripts/rename-app.sh` never rewrites any `LICENSE` file, so the GPL and MPL texts stay byte-exact; it rewrites
+  the product name in the `NOTICE` files, as it did in the MIT `LICENSE` files before (`scripts/tests/run.sh`).
+- Inbound terms (decision 3): a contribution to an MPL-2.0 part is licensed under MPL-2.0 and, like a contribution
+  to a GPL-3.0-or-later part, also licensed to the project under the MIT licence, so the project stays free to
+  change licences later without asking every contributor again. No `LICENSE` of the repository is MIT any more, so
+  `CONTRIBUTING.md` section 3 carries the MIT text of the grant.
+- The MPL text cites `https://mozilla.org/MPL/2.0/` (Exhibit A). The Licences pane shows the engine's licence in
+  full, so `scripts/url-hosts.allow` lists `mozilla.org` as licence text that is never contacted, next to the hosts
+  quoted in Sparkle's licence (QA-R60; no network endpoint is added, so the privacy page does not change).
+- The rest of decision 1 stands. Decision 2's closing reason now reads: any project can embed the engine, GPL-2.0
+  ones included through section 3.3. The in-app Licences pane and the website name the engine licence in their own
+  workstreams.
+
 ## Consequences
 
 - `LicenseRef-App-Pending` is gone outside the decision records: spec, docs, `CONTRIBUTING.md`, the pull request
-  template, `THIRD_PARTY_NOTICES.md` and the README name GPL-3.0-or-later and MPL-2.0;
-  `scripts/tests/test_docs_and_workflows.py` (`LicenceTests`) fails if the old identifier returns.
+  template, `THIRD_PARTY_NOTICES.md` and the README name GPL-3.0-or-later and MIT (GPL-3.0-or-later and MPL-2.0
+  since the amendment of 15/11/2026); `scripts/tests/test_licences_and_wording.py` (`LicenceTests`) fails if the
+  old identifier returns.
 - `scripts/rename-app.sh` never rewrites the root `LICENSE`, so the GPL text stays byte-exact after a rename;
-  the `LICENSE` files of the engine parts name the product and follow a rename.
+  the MIT `LICENSE` files name the product and follow a rename (since the amendment of 15/11/2026: no `LICENSE` is
+  rewritten, and the `NOTICE` files carry the product name).
 - Every conveyed copy carries the licence (GPL-3.0 section 4): `scripts/make-dmg.sh` puts `LICENSE.txt` (the root
   `LICENSE`) and `THIRD_PARTY_NOTICES.txt` next to the app in the DMG and refuses to build without them
   (`scripts/tests/run.sh` checks the staging folder).

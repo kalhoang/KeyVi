@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # CLR-R11: every source file carries an SPDX licence header within its first 5 lines.
-#   - Engine packages (Packages/VietnameseEngine/, Packages/VietnameseEngineFuzz/) and the data pipeline
-#     that builds their bundled resources (data/, ENG-R810): MPL-2.0
+#   - Engine packages (Packages/VietnameseEngine/, Packages/VietnameseEngineFuzz/), the data pipeline
+#     that builds their bundled resources (data/, ENG-R810) and the reference model (spec/reference-model/):
+#     MPL-2.0 (ADR 0006 as amended on 2026-11-15; MIT until then, before any release)
 #   - Everything else: GPL-3.0-or-later (ADR 0006, chosen by Pa on 2026-11-13)
 # Source files: *.swift, *.sh, *.bash, *.py, *.mjs, *.js, *.ts, *.css, *.rb, *.template,
 # *.xcconfig, workflow YAML under .github/, and extensionless executables under scripts/ with a
-# shebang. Excluded: spec/ (the specification, imported as is), generated output (dist/, .build*/,
-# site/dist/, node_modules/), JSON and Markdown (no comment syntax or not source).
+# shebang. Excluded: spec/ (the specification, imported as is) except spec/reference-model/, generated
+# output (dist/, .build*/, site/dist/, node_modules/), JSON and Markdown (no comment syntax or not source).
 set -euo pipefail
 
 usage() {
@@ -53,9 +54,9 @@ import sys
 root, list_flag, file_list = sys.argv[1:]
 SOURCE_EXT = re.compile(r"\.(swift|sh|bash|py|mjs|cjs|js|ts|css|rb|template|xcconfig)$")
 WORKFLOW = re.compile(r"^\.github/.*\.ya?ml$")
-EXCLUDED = re.compile(r"^(spec/|dist/|site/dist/)|(^|/)(\.build[^/]*|node_modules|DerivedData)/|"
+EXCLUDED = re.compile(r"^(spec/(?!reference-model/)|dist/|site/dist/)|(^|/)(\.build[^/]*|node_modules|DerivedData)/|"
                       r"\.xcodeproj/|(^|/)__pycache__/")
-MIT_PATH = re.compile(r"^(Packages/VietnameseEngine(Fuzz)?|data)/")
+MPL_PATH = re.compile(r"^(Packages/VietnameseEngine(Fuzz)?|data|spec/reference-model)/")
 HEADER = re.compile(r"SPDX-License-Identifier:\s*([A-Za-z0-9.+-]+)")
 
 
@@ -80,7 +81,7 @@ for rel in sorted(set(files)):
     if EXCLUDED.search(rel) or not os.path.isfile(path) or not is_source(rel, path):
         continue
     checked += 1
-    expected = "MPL-2.0" if MIT_PATH.search(rel) else "GPL-3.0-or-later"
+    expected = "MPL-2.0" if MPL_PATH.search(rel) else "GPL-3.0-or-later"
     try:
         with open(path, encoding="utf-8", errors="replace") as source:
             head = "".join(source.readline() for _ in range(5))

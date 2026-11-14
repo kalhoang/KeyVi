@@ -302,8 +302,8 @@ Open for Pa:
 
 The engine corrects a word by sending Backspace events and the new text (or by selecting and replacing, pasting, or
 setting the value through Accessibility, depending on the app's compatibility rule). VoiceOver may read each
-deletion and each inserted character. This must be observed with real VoiceOver users before 1.0; no automated check can
-observe it.
+deletion and each inserted character. This must be observed with real VoiceOver users before 1.0; no automated
+check can observe it.
 
 Protocol, per app (TextEdit, Notes, Safari text field, Chrome address bar, Messenger or Zalo, Terminal):
 

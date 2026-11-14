@@ -88,8 +88,8 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 ## Giấy phép và nguồn gốc mã
 
 - KeyVi™ là phần mềm tự do theo Giấy phép Công cộng GNU (GNU GPL), phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn: [LICENSE](LICENSE). Bản quyền (c) 2026 thuộc các tác giả của KeyVi.
-- Các gói engine tiếng Việt và quy trình tạo danh sách từ dùng giấy phép MPL-2.0 để dự án khác có thể nhúng vào: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
-- Mọi đóng góp cần dòng ký xác nhận (Developer Certificate of Origin); đóng góp vào phần dùng GPL đồng thời được cấp cho dự án theo giấy phép MIT, không cần ký CLA ([CONTRIBUTING.md](CONTRIBUTING.md) mục 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
+- Các gói engine tiếng Việt, quy trình tạo danh sách từ và mô hình tham chiếu dùng Giấy phép Công cộng Mozilla 2.0 (MPL-2.0): mọi ứng dụng, mã nguồn mở hay không, đều có thể nhúng vào, còn thay đổi trên chính các file này vẫn phải công khai: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE), [spec/reference-model/LICENSE](spec/reference-model/LICENSE). Dòng bản quyền nằm trong các file `NOTICE` đi kèm.
+- Mọi đóng góp cần dòng ký xác nhận (Developer Certificate of Origin); mọi đóng góp đồng thời được cấp cho dự án theo giấy phép MIT, không cần ký CLA ([CONTRIBUTING.md](CONTRIBUTING.md) mục 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
 - KeyVi™ là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Liên kết

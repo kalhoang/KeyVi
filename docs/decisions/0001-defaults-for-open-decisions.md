@@ -9,7 +9,7 @@
 |---|---|---|
 | 1 | Product name | Temporary name **Kal Key**, slug `kalkey`, bundle ID `vn.kal.kalkey` (dev: `vn.kal.kalkey.dev`). Single source: `Config/Brand.xcconfig` + `scripts/brand.env`; rename with `scripts/rename-app.sh`. The spec's recommendation (Xuôi, `xuoi`) is not applied because Pa said the name is not chosen yet. |
 | 2 | App licence | Pending. Non-engine sources carry `SPDX-License-Identifier: GPL-3.0-or-later`; no top-level LICENSE until Pa decides. |
-| 3 | Engine licence | MPL-2.0 (`Packages/VietnameseEngine/LICENSE`). |
+| 3 | Engine licence | MIT (`Packages/VietnameseEngine/LICENSE`); MPL-2.0 since 15/11/2026 ([0006](0006-app-licence-and-pro-edition.md) amendment). |
 | 4 | Default tone placement | Traditional (`hòa`, `thủy`). |
 | 5 | Restore-last-word hotkey | Unset by default. |
 | 6 | Minimum macOS | 15.0; no API newer than macOS 14 outside the `Synchronization` module (PLT-R106). |
