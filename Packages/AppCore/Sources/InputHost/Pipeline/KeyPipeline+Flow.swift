@@ -9,9 +9,6 @@ internal import Injection
 internal import RealtimeSupport
 internal import VietnameseEngine
 
-/// PLT-R382: a keyDown after this much keyboard silence asks the ax thread to revalidate focus.
-private let idleRevalidationNanoseconds: UInt64 = 500_000_000
-
 extension KeyPipeline {
     /// Returns the verdict and whether the event was a latency-probe event.
     func process(_ event: RawKeyEvent, now: MonotonicInstant) -> (TapVerdict, Bool) {
@@ -58,7 +55,7 @@ extension KeyPipeline {
         focus: FocusSnapshot, inputSource: InputSourceSnapshot, secureInput: SecureInputSnapshot,
         lifecycle: LifecycleSnapshot
     ) -> TapVerdict {
-        noteKeyboardActivity(event, now: now)
+        noteKeyboardActivity(event, now: now, focus: focus)  // PLT-R382, PLT-R389
         reconcile(
             settings: settings, focus: focus, inputSource: inputSource, secureInput: secureInput, lifecycle: lifecycle)
         resumeSecureInputIfNeeded(event, secureInput: secureInput, generation: focus.generation, now: now)
@@ -159,20 +156,10 @@ extension KeyPipeline {
         keyState.deadKeyPending = false  // PLT-R354: the click moved the caret
         let generation = context.snapshots.focus.read { $0.generation }
         hardBoundary(.pointerClicked, job: .mouseDown, generation: generation)
+        notePointerDownForRevalidation()  // PLT-R389
     }
 
     // MARK: Steps 4 to 6
-
-    /// PLT-R382. The first keyDown after start counts as idle: the pause before it has no known length, and a
-    /// focus notification missed right after launch would otherwise leave the first word on a stale snapshot.
-    func noteKeyboardActivity(_ event: RawKeyEvent, now: MonotonicInstant) {
-        let idle =
-            keyState.lastKeyboardEventAt.map { now.nanoseconds(since: $0) >= idleRevalidationNanoseconds } ?? true
-        if event.kind == .keyDown, idle {
-            if context.outbox.toAX.push(.revalidateFocus) { context.outbox.axSignal.signal() }
-        }
-        keyState.lastKeyboardEventAt = now
-    }
 
     /// PLT-R398B: a keyDown that reaches the tap while the OS flag is on proves secure input no longer blocks
     /// it: leave the pause for this generation, start a fresh composition, tell main. Never waits for a poll.

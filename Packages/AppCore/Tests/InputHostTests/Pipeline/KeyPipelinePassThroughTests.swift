@@ -60,7 +60,10 @@ import Testing
         #expect(fixture.flags(Key.control, 0) == .pass)
         #expect(fixture.keyDown(Key.escape) == .pass, "the restore key is not consumed")
         #expect(fixture.mainNotices().allSatisfy { $0.toggledMode == nil }, "no VI/EN toggle reaches main")
-        #expect(fixture.axNotices().isEmpty, "no toggle reaches per-app memory")
+        // Escape still asks the ax thread to revalidate the focus (PLT-R389); no toggle reaches per-app memory.
+        #expect(
+            !fixture.axNotices().contains { if case .modeToggled = $0 { true } else { false } },
+            "no toggle reaches per-app memory")
         #expect(fixture.log.feeds.isEmpty)
     }
 

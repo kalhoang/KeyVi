@@ -33,7 +33,8 @@ enum HostDecisionMapping {
                 macros: decision.features.macros),
             requireTextFocus: concrete(decision.requireTextFocus, engine: engine),
             verifyReentry: decision.verifyReentry, restoreHotkeyEnabled: decision.features.restoreHotkey,
-            rule: decision.rule, source: decision.source, specificity: decision.specificity)
+            rule: decision.rule, source: decision.source, specificity: decision.specificity,
+            overlay: decision.overlay)
     }
 
     /// PLT-R386 default: `whenKnown` where AX is reliable (native, Catalyst), `never` elsewhere.

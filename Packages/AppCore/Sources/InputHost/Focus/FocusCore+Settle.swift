@@ -28,6 +28,13 @@ enum FocusSettle {
     /// focus that settles later is picked up by the next notification or the next key after a pause (PLT-R382).
     static let delays: [TimeSpan] = [.milliseconds(40), .milliseconds(120), .milliseconds(400)]
     static var window: TimeSpan { delays[delays.count - 1] }
+    /// PLT-R389: re-reads after a shortcut, Escape, Return, Tab or a click, measured from the trigger. No read at the
+    /// trigger itself: the tap is still holding the key, so the panel or sheet it opens cannot have the focus yet.
+    /// Spotlight's panel and a save sheet take the focus within tens of milliseconds to about 200 ms of the key,
+    /// and the next key typically follows 80 to 300 ms later (13.2 `normal` timing: 80 to 150 ms), so the reads are
+    /// dense over the first 200 ms; 400 ms ends the window like `delays`. The first keyDown after the trigger reads
+    /// once more (PLT-R389), whatever the window found.
+    static let triggerDelays: [TimeSpan] = [25, 60, 100, 150, 220, 400].map { .milliseconds($0) }
     /// Waits between observer attempts for a focus owner that refused one (about 6 s in all), each measured from
     /// the previous attempt.
     static let observerRetryDelays: [TimeSpan] = [100, 200, 400, 800, 1_600, 3_200].map { .milliseconds($0) }
@@ -59,13 +66,21 @@ extension FocusCore {
         scheduleSettle()
     }
 
-    /// Starts the settle window again (a later notification replaces the earlier window).
-    func scheduleSettle() {
+    /// PLT-R389: a trigger opens the trigger settle window without reading now (`FocusSettle.triggerDelays`). Its
+    /// reads are idle reads: an unchanged focus publishes nothing, a timeout ends the window (PLT-R384).
+    func revalidateAfterTrigger() {
+        guard running else { return }
+        guard services.scheduler != nil else { return revalidate(scanOverlays: false) }  // nothing can defer
+        scheduleSettle(delays: FocusSettle.triggerDelays)
+    }
+
+    /// Starts the settle window again (a later notification or trigger replaces the earlier window).
+    func scheduleSettle(delays: [TimeSpan] = FocusSettle.delays) {
         guard let scheduler = services.scheduler else { return }
         cancelSettle()
         deferred.settleEpoch &+= 1
         let epoch = deferred.settleEpoch
-        deferred.settleTimers = FocusSettle.delays.map { delay in
+        deferred.settleTimers = delays.map { delay in
             scheduler.schedule(after: delay, leeway: FocusSettle.leeway(for: delay)) { [weak sink] in
                 sink?.deferredWorkDue(.settle(epoch: epoch))
             }

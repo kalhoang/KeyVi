@@ -154,6 +154,8 @@ struct KeyState {
     var lastPointerDownAt: MonotonicInstant?
     /// PLT-R382 idle revalidation.
     var lastKeyboardEventAt: MonotonicInstant?
+    /// PLT-R389: an event that can move the focus was seen; the next keyDown asks for one more read.
+    var revalidateNextKey = false
     /// Keyboard type already reported to the main thread (`MainNotice.keyboardTypeSeen`).
     var reportedKeyboardType: UInt32?
     /// PLT-R398B: the key being processed was fed to the engine (`compose`). Cleared before the first key-down
