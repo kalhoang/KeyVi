@@ -7,6 +7,9 @@
 // change what KeyVi does or what the app sees, so it reads only where the app's compat rule lets KeyVi rely on
 // accessibility (never under `requireTextFocus: never`, as for `electron.default`), never sets
 // AXEnhancedUserInterface or AXManualAccessibility, and never reads a secure field or while secure input is on.
+// It never shares the inject worker's AX element (a private reference from `DevReadbackFieldResolver`, so AX's
+// per-element messaging timeout of the worker stays as the worker set it) and never reads beside an edit job: it
+// waits while the injection queue has a queued or in-flight job, and stops between its reads if one starts.
 
 #if DEV_RECORDER
 public import Diagnostics
@@ -25,6 +28,8 @@ public final class DevReadback: Sendable {
     public static let axTimeout: TimeSpan = .milliseconds(50)
     /// PLT-R343's bound on any read.
     public static let maximumUnits = 64
+    /// While an edit job is queued or in flight, the read is tried again after this (within `maximumDelay`).
+    public static let busyRetry: TimeSpan = .milliseconds(20)
 
     private struct State {
         var pending: Set<DevReadbackReason> = []
@@ -35,19 +40,26 @@ public final class DevReadback: Sendable {
 
     private let recorder: DevRecorder
     private let fieldAccess: any FocusedFieldAccess
+    private let fieldResolver: any DevReadbackFieldResolver
+    private let isInjectionIdle: @Sendable () -> Bool
     private let focus: @Sendable () -> FocusSnapshot
     private let secureInput: @Sendable () -> SecureInputSnapshot
     private let clock: any MonotonicClock
     private let scheduler: any TimerScheduler
     private let state = Mutex(State())
 
+    /// `fieldAccess` reads only, through the handles `fieldResolver` returns. `isInjectionIdle`: no edit job queued
+    /// or in flight (production: `JobQueue.inFlight == 0`, two atomic loads).
     public init(
-        recorder: DevRecorder, fieldAccess: any FocusedFieldAccess, focus: @escaping @Sendable () -> FocusSnapshot,
+        recorder: DevRecorder, fieldAccess: any FocusedFieldAccess, fieldResolver: any DevReadbackFieldResolver,
+        isInjectionIdle: @escaping @Sendable () -> Bool, focus: @escaping @Sendable () -> FocusSnapshot,
         secureInput: @escaping @Sendable () -> SecureInputSnapshot, clock: any MonotonicClock,
         scheduler: any TimerScheduler
     ) {
         self.recorder = recorder
         self.fieldAccess = fieldAccess
+        self.fieldResolver = fieldResolver
+        self.isInjectionIdle = isInjectionIdle
         self.focus = focus
         self.secureInput = secureInput
         self.clock = clock
@@ -76,18 +88,29 @@ public final class DevReadback: Sendable {
         }
     }
 
-    /// One read now, recorded with the most specific pending reason.
+    /// One read now, recorded with the most specific pending reason; later while an edit job is queued or in
+    /// flight, and recorded as skipped when the worker stays busy past `maximumDelay`.
     private func fire() {
-        let reasons = state.withLock { state -> Set<DevReadbackReason> in
+        let now = clock.now()
+        let reasons = state.withLock { state -> Set<DevReadbackReason>? in
+            if !isInjectionIdle(), let first = state.firstPendingAt,
+                now < first.advanced(byMicroseconds: Self.micros(Self.maximumDelay))
+            {
+                state.timer = scheduler.schedule(after: Self.busyRetry, leeway: .milliseconds(5)) { [weak self] in
+                    self?.fire()
+                }
+                return nil
+            }
             defer {
                 state.pending = []
                 state.firstPendingAt = nil
                 state.timer = nil
-                state.lastReadAt = clock.now()
+                state.lastReadAt = now
             }
             return state.pending
         }
-        guard let reason = [DevReadbackReason.marker, .backspaceEdit, .commit].first(where: reasons.contains),
+        guard let reasons,
+            let reason = [DevReadbackReason.marker, .backspaceEdit, .commit].first(where: reasons.contains),
             recorder.isActive
         else { return }
         recorder.note(.readback(read(reason)))
@@ -109,7 +132,17 @@ public final class DevReadback: Sendable {
         }
         if snapshot.decision.requireTextFocus == .never { return record(.skippedRule) }
         guard snapshot.field.axAvailability == .available else { return record(.unavailable) }
-        guard let field = snapshot.fieldHandle else { return record(.skippedNoField) }
+        guard let shared = snapshot.fieldHandle else { return record(.skippedNoField) }
+        guard isInjectionIdle() else { return record(.skippedBusy) }
+        let field: FieldHandle
+        switch fieldResolver.privateHandle(for: shared, timeout: Self.axTimeout) {
+        case .success(let resolved?): field = resolved
+        case .success(nil): return record(.skippedNoField)
+        case .timedOut: return record(.timedOut)
+        case .unavailable: return record(.unavailable)
+        case .failed: return record(.failed)
+        }
+        guard isInjectionIdle() else { return record(.skippedBusy) }
         let selection: TextRange
         switch fieldAccess.selectedRange(field, timeout: Self.axTimeout) {
         case .success(let range): selection = range
@@ -119,6 +152,7 @@ public final class DevReadback: Sendable {
         }
         let count = min(Self.maximumUnits, max(0, selection.location))
         guard count > 0 else { return record(.ok, text: "", selection: selection) }
+        guard isInjectionIdle() else { return record(.skippedBusy, selection: selection) }
         let range = TextRange(location: selection.location - count, length: count)
         switch fieldAccess.text(field, in: range, timeout: Self.axTimeout) {
         case .success(let text): return record(.ok, text: text, selection: selection)

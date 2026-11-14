@@ -110,13 +110,17 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `boundary` | `reason` (the engine's reset reason), `job` (the boundary job reason) |
 | `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
-| `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule` |
+| `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule` |
 | `marker` | `src` (chord, menu) |
 | `mode` | `mode`, `manual`, `bundle` |
 | `gap` | `reason` (secureInput, secureField, overflow), `end` (microseconds) or `dropped` (records lost) |
 
 A key line comes first; the engine step and any boundary of the same key carry the same `t`. A boundary found while
 reconciling (a focus change seen by the next key) is stamped with that key's time and comes before its engine step.
+The order holds across drains too: a drain pops the recorder's own rings before the shared key ring, so a key typed
+during a drain is never written after its engine step. Focus changes inside a gap or a pause are not recorded; when
+the gap ends or recording resumes, a `focus` line with the focus in effect follows, so the lines after it are
+attributed to the right field.
 
 ## 4. Limits
 
@@ -125,5 +129,9 @@ reconciling (a focus change seen by the next key) is stamped with that key's tim
 - Replay uses the bundled word lists only. Commits decided by the user's own lists or by a macro stop the replay of
   that segment without a finding.
 - Readback findings skip fields with a selection and readbacks taken within 100 ms of a key.
+- The readback never runs beside an edit job: it waits while a job is queued or in flight (20 ms at a time, at most
+  1 s after its trigger, then `skippedBusy`) and stops between its reads if a job starts. It reads through its own
+  AX reference to the app's focused element (`skippedNoField` when that is no longer the field of the focus
+  snapshot), so the worker's AX element and its messaging timeout stay untouched.
 - A trace can hold only what the tap and the ax thread saw; text changed by the app itself (autocorrect, completion)
   shows up as a `readbackMismatch`, not as its own line.

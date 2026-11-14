@@ -48,7 +48,10 @@ into public issues.
    a 50 ms AX timeout, at most once per 300 ms, never where the compat rule keeps {{AppName}} off accessibility
    (`requireTextFocus: never`, `electron.default`: reading AX attributes there can switch Chromium apps into their
    accessibility mode), never in a secure field or under secure input, and never sets `AXEnhancedUserInterface` or
-   `AXManualAccessibility`.
+   `AXManualAccessibility`. It never shares the inject worker's AX element: AX keeps the messaging timeout per
+   element object, so the readback asks the app for its focused element again and reads through that new reference
+   only when it is still the snapshot's field. It never reads while an edit job is queued or in flight (it waits up
+   to 1 s, then records `skippedBusy`), so a worker read never queues behind it on the app's main thread.
 6. **Storage and retention.** `~/Library/Logs/{{AppName}}/dev-traces/YYYYMMDD-HH.jsonl`, one file per local hour,
    folder 0700, files 0600, both excluded from backups; deleted after 7 days and kept under 200 MB in total, oldest
    first; purged at launch and hourly.

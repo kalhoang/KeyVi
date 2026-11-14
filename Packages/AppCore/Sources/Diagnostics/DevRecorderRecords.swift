@@ -176,6 +176,8 @@ public enum DevReadbackStatus: String, Sendable {
     case skippedRule
     case skippedSecure
     case skippedNoField
+    /// An edit job stayed queued or in flight for the whole wait: the observer never reads beside a job.
+    case skippedBusy
     case unavailable
     case timedOut
     case failed

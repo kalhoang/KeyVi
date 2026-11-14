@@ -17,12 +17,76 @@ import Testing
 @testable import Diagnostics
 @testable import InputHost
 
+/// Models AX's per-element messaging timeout: each call sets the timeout on the element (here: the handle's token)
+/// it is made on, as `AXFieldCalls` does. Records which elements were used.
+private final class ElementTimeoutFieldAccess: FocusedFieldAccess, Sendable {
+    private let base: FakeFocusedFieldAccess
+    private let state = Mutex<(timeouts: [UInt64: TimeSpan], tokens: [UInt64])>(([:], []))
+    /// Runs after every call (a job starting while the readback reads). Boxed: a bare closure read through a
+    /// mutex is re-wrapped on every read.
+    final class Hook: Sendable {
+        let run: @Sendable () -> Void
+        init(_ run: @escaping @Sendable () -> Void) { self.run = run }
+    }
+    let afterCall = Mutex<Hook?>(nil)
+
+    init(base: FakeFocusedFieldAccess) { self.base = base }
+
+    var timeouts: [UInt64: TimeSpan] { state.withLock { $0.timeouts } }
+    var tokens: [UInt64] { state.withLock { $0.tokens } }
+
+    private func note(_ field: FieldHandle, _ timeout: TimeSpan) {
+        state.withLock {
+            $0.timeouts[field.token] = timeout
+            $0.tokens.append(field.token)
+        }
+        afterCall.withLock { $0 }?.run()
+    }
+
+    func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
+        defer { note(field, timeout) }
+        return base.selectedRange(field, timeout: timeout)
+    }
+    func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
+        defer { note(field, timeout) }
+        return base.text(field, in: range, timeout: timeout)
+    }
+    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan)
+        -> AXCallResult<Void>
+    {
+        defer { note(field, timeout) }
+        return base.setSelectedRange(field, to: range, timeout: timeout)
+    }
+    func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
+        defer { note(field, timeout) }
+        return base.setSelectedText(field, to: text, timeout: timeout)
+    }
+}
+
+/// The app answers its focused element with a new reference (token + `privateOffset`), or reports that focus moved.
+private final class FakeReadbackFieldResolver: DevReadbackFieldResolver, Sendable {
+    static let privateOffset: UInt64 = 1_000
+    let focusMoved = Atomic<Bool>(false)
+    private let calls = Atomic<Int>(0)
+    var callCount: Int { calls.load(ordering: .relaxed) }
+
+    func privateHandle(for field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldHandle?> {
+        calls.wrappingAdd(1, ordering: .relaxed)
+        guard !focusMoved.load(ordering: .relaxed) else { return .success(nil) }
+        return .success(FieldHandle(pid: field.pid, token: field.token + Self.privateOffset, element: nil))
+    }
+}
+
 private struct ReadbackRig {
     let clock = ManualClock()
     let scheduler: ManualScheduler
     let capture: CaptureController
     let field: SimulatedTextField
     let access: FakeFocusedFieldAccess
+    let elements: ElementTimeoutFieldAccess
+    let resolver = FakeReadbackFieldResolver()
+    /// The injection queue has no queued or in-flight job.
+    let idle = Atomic<Bool>(true)
     let focus: SnapshotCell<FocusSnapshot>
     let secure: SnapshotCell<SecureInputSnapshot>
     let readback: DevReadback
@@ -35,13 +99,16 @@ private struct ReadbackRig {
         try capture.dev.start(appVersion: "test")
         field = SimulatedTextField(text: text)
         access = FakeFocusedFieldAccess(field: field)
+        elements = ElementTimeoutFieldAccess(base: access)
         let epoch = ReaderEpoch()
         focus = SnapshotCell(snapshot, epoch: epoch)
         secure = SnapshotCell(.initial, epoch: epoch)
         let focusCell = focus
         let secureCell = secure
+        let idleFlag = idle
         readback = DevReadback(
-            recorder: capture.dev, fieldAccess: access, focus: { focusCell.load() },
+            recorder: capture.dev, fieldAccess: elements, fieldResolver: resolver,
+            isInjectionIdle: { idleFlag.load(ordering: .relaxed) }, focus: { focusCell.load() },
             secureInput: { secureCell.load() }, clock: clock, scheduler: scheduler)
     }
 
@@ -154,6 +221,61 @@ private struct ReadbackRig {
             elapsed += 100
         }
         #expect(rig.readbacks().count == 1)
+    }
+
+    /// Review W8-E finding 1: the readback reads through its own element reference, so the timeout the worker set
+    /// on the shared field element is never changed by a readback.
+    @Test func readsThroughItsOwnElementAndLeavesTheWorkersTimeoutAlone() throws {
+        let rig = try ReadbackRig(text: "chào")
+        let shared = try #require(rig.focus.load().fieldHandle)
+        _ = rig.elements.selectedRange(shared, timeout: .milliseconds(15))  // the worker's axSelection read
+        let record = rig.readback.read(.marker)
+        #expect(record.status == .ok && record.textBeforeCaret == "chào")
+        #expect(rig.elements.timeouts[shared.token] == .milliseconds(15))
+        let own = shared.token + FakeReadbackFieldResolver.privateOffset
+        #expect(rig.elements.tokens.dropFirst().allSatisfy { $0 == own })
+        #expect(rig.elements.timeouts[own] == DevReadback.axTimeout)
+    }
+
+    /// Focus moved since the snapshot (the app's focused element is another one): nothing is read.
+    @Test func aMovedFocusSkipsTheRead() throws {
+        let rig = try ReadbackRig(text: "abc")
+        rig.resolver.focusMoved.store(true, ordering: .relaxed)
+        #expect(rig.readback.read(.marker).status == .skippedNoField)
+        #expect(rig.access.callCount == 0)
+    }
+
+    /// No readback call while an edit job is queued or in flight: the read waits, 20 ms at a time.
+    @Test func waitsWhileAJobIsInFlight() throws {
+        let rig = try ReadbackRig(text: "abc")
+        rig.idle.store(false, ordering: .relaxed)
+        rig.readback.handle([.commit])
+        rig.advance(milliseconds: 600)
+        #expect(rig.access.callCount == 0 && rig.resolver.callCount == 0)
+        #expect(rig.readbacks().isEmpty)
+        rig.idle.store(true, ordering: .relaxed)
+        rig.advance(milliseconds: 20)
+        #expect(rig.readbacks().map(\.status) == ["ok"])
+    }
+
+    /// A worker busy for the whole second: the read is recorded as skipped, without an AX call.
+    @Test func aWorkerBusyForOneSecondSkipsTheRead() throws {
+        let rig = try ReadbackRig(text: "abc")
+        rig.idle.store(false, ordering: .relaxed)
+        rig.readback.handle([.marker])
+        rig.advance(milliseconds: 1_100)
+        #expect(rig.readbacks().map(\.status) == ["skippedBusy"])
+        #expect(rig.access.callCount == 0 && rig.resolver.callCount == 0)
+    }
+
+    /// A job pushed between the two reads stops the readback before its second call.
+    @Test func aJobStartingMidReadStopsTheRead() throws {
+        let rig = try ReadbackRig(text: "abc")
+        let idle = rig.idle
+        rig.elements.afterCall.withLock { $0 = .init { idle.store(false, ordering: .relaxed) } }
+        let record = rig.readback.read(.commit)
+        #expect(record.status == .skippedBusy && record.textBeforeCaret == nil)
+        #expect(rig.access.callCount == 1)
     }
 
     /// Nothing is read while the recorder is paused.

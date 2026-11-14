@@ -6,13 +6,13 @@
 #if DEV_RECORDER
 import AppModel
 import CompatRules
-import Diagnostics
 import Foundation
 import Injection
 import RealtimeSupport
 import SettingsStore
 import Testing
 
+@testable import Diagnostics
 @testable import InputHost
 @testable import TestSupport
 
@@ -63,6 +63,46 @@ import Testing
         // The record type has no title or URL; its text fields never carry them.
         let text = [last.bundle, last.role, last.subrole, last.rule, last.modeSource].compactMap { $0 }.joined()
         #expect(!text.contains("Secret") && !text.contains("example.com/x"))
+    }
+
+    /// Review W8-E finding 3: focus moves from a password field to a normal one while the secure gap is still open
+    /// (the ax thread publishes before the main thread ends the gap); the normal field's focus line is written.
+    @MainActor @Test func theFieldFocusedWhenASecureGapEndsIsRecorded() async throws {
+        let clock = ManualClock()
+        let fileSystem = InMemoryFileSystem()
+        let capture = CaptureController(
+            directory: URL(fileURLWithPath: "/logs/SampleApp/captures", isDirectory: true), fileSystem: fileSystem,
+            wallClock: FixedWallClock(), clock: clock, scheduler: ManualScheduler(clock: clock))
+        let rig = HostRig(capture: capture)
+        await rig.start()
+        defer { rig.stop() }
+        try capture.dev.start(appVersion: "test")
+        rig.controller.startDevReadback(queue: DispatchQueue(label: "test.dev.attention"))
+        rig.ax.focus(
+            pid: HostRig.editorPID, attributes: Self.attributes(role: "AXTextField", subrole: "AXSecureTextField"),
+            notify: .focusedElementChanged)
+        rig.settle()
+        #expect(!capture.dev.isActive)
+        rig.ax.focus(
+            pid: HostRig.editorPID, attributes: Self.attributes(role: "AXTextArea", subrole: nil),
+            notify: .focusedElementChanged)
+        rig.settle()
+        #expect(capture.dev.isActive)
+        capture.dev.drain()
+        let folder = URL(fileURLWithPath: "/logs/SampleApp/dev-traces", isDirectory: true)
+        let lines = try fileSystem.contentsOfDirectory(at: folder).flatMap { url in
+            try fileSystem.readData(at: url, maxBytes: 1 << 20).split(separator: 0x0A).compactMap {
+                try? JSONDecoder().decode(DevTraceLine.self, from: Data($0))
+            }
+        }
+        let gap = try #require(lines.lastIndex { $0.type == .gap })
+        #expect(lines[gap...].contains { $0.type == .focus && $0.role == "AXTextArea" })
+    }
+
+    private static func attributes(role: String, subrole: String?) -> FocusAttributes {
+        FocusAttributes(
+            role: role, subrole: subrole, identifier: nil, domClasses: [], editable: true, ancestorRoles: [],
+            documentURL: nil, windowTitle: nil)
     }
 }
 #endif
