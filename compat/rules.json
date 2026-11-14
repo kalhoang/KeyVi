@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.3",
+  "rulesetVersion": "2026.11.4",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -17,7 +17,7 @@
     ],
     "vscodeFamily": [
       "com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium", "com.todesktop.230313mzl4w4u92",
-      "dev.kiro.desktop", "com.trae.app", "com.voideditor.Void"
+      "dev.kiro.desktop", "com.trae.app", "com.voideditor.Void", "com.google.antigravity"
     ],
     "webkitBrowsers": ["com.apple.Safari", "com.apple.SafariTechnologyPreview"]
   },
@@ -248,7 +248,7 @@
         "reason": "Code editors need the engine's code context so words such as 'tar' or 'less' are restored instead of transformed, and Escape closes suggestions and leaves Vim modes there, so it never restores a word (PLT-R353).",
         "evidence": [{ "type": "scenario", "ref": "compat/electron-editors" }],
         "tested": [{ "app": "Visual Studio Code", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Bundle IDs of the vscodeFamily group from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): visual-studio-code com.microsoft.VSCode, visual-studio-code@insiders com.microsoft.VSCodeInsiders, vscodium com.vscodium, cursor com.todesktop.230313mzl4w4u92, kiro dev.kiro.desktop, trae com.trae.app, void com.voideditor.Void. Windsurf has no cask any more and Positron's cask names two IDs, so both wait for a source. VERIFY burst typing in the editor. The tested entry is a placeholder until the scenario passes.",
+        "notes": "Bundle IDs of the vscodeFamily group from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): visual-studio-code com.microsoft.VSCode, visual-studio-code@insiders com.microsoft.VSCodeInsiders, vscodium com.vscodium, cursor com.todesktop.230313mzl4w4u92, kiro dev.kiro.desktop, trae com.trae.app, void com.voideditor.Void. Antigravity com.google.antigravity: CFBundleIdentifier in /Applications/Antigravity.app/Contents/Info.plist on the maintainer's Mac, read 2026-11-15; a VS Code fork on Electron that the product owner types in daily, and most likely the app the 685 key downs of the 2026-11-15 trace went to while Accessibility named no focused application (PLT-R381 amendment); VERIFY typing in its editor and in its built-in browser panes. Windsurf has no cask any more and Positron's cask names two IDs, so both wait for a source. VERIFY burst typing in the editor. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
