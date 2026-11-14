@@ -418,12 +418,13 @@ text it records would be a finding of the privacy scan.
 
 ### 10.6 Focus after panels, sheets and late focus changes (W8-A, 2026-11-14)
 
-Pa's manual tests of 2026-11-14 (`Kal-Key-wt/pa-feedback-2026-11-14.md`, items 7 to 9) found three focus bugs on macOS
-27.2, none of which the suite covered:
+Pa's manual tests of 2026-11-14 (items 7 to 9 of that day's feedback; the decision is recorded in
+`docs/decisions/0005-pa-decisions-2026-11-13.md`, and the symptoms are quoted in the table) found three focus bugs on
+macOS 27.2, none of which the suite covered:
 
 | Report | Root cause (from the code, with fakes) | Fix | Unit tests |
 |---|---|---|---|
-| Spotlight: `tex` gave `teẽ`, then `xt` gave `teẽext`; `vieejt` gave `vieêệt` (item 7) | Every first deletion was absorbed by Spotlight's selected inline completion, so the edits ran with the previous app's rule (no `axSelection`). Spotlight is a non-activating panel: Command+Space and Escape post no activation, and nothing made `FocusCore` read the system-wide focus before the first keys unless the pause before them reached the 500 ms of PLT-R382 | PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click asks for reads 25 to 400 ms later, the next key for one more, and every key reads while an overlay rule applies | `FocusTriggerSettleTests`, `FocusTriggerTests` |
+| Spotlight: `tex` gave `teẽ`, then `xt` gave `teẽext`; `vieejt` gave `vieêệt` (item 7) | Every first deletion was absorbed by Spotlight's selected inline completion, so the edits ran with the previous app's rule (no `axSelection`). Spotlight is a non-activating panel: Command+Space and Escape post no activation, and nothing made `FocusCore` read the system-wide focus before the first keys unless the pause before them reached the 500 ms of PLT-R382 | PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click asks for reads 25 to 400 ms later, the next key for one more, and every key reads while an overlay rule applies; these reads ask for the element's attributes only when the focused app or element moved | `FocusTriggerSettleTests`, `FocusTriggerTests` |
 | T5.8: on the second opening, Escape gave `vieêệeejt` (item 9) | The same stale snapshot: the previous app's rule has the restore hotkey, so Escape restored `việt` through the absorbed first deletion | The same; `launcher.spotlight` (`restoreHotkey: false`) applies on every opening and stops when Spotlight closes | `FocusTriggerSettleTests.spotlightAppliesOnEveryOpenAndStopsOnCloseT58` |
 | T5.5 step 3: Command+S, then `dduongwf` gave `ddường` (item 8) | The first `d` went into the sheet's name field on the document's snapshot; the field change was published after it (the PLT-R382 read that very key asked for) and PLT-R340 made it a hard boundary | PLT-R340 amendment: same process, readable element, observed within 500 ms of the token's last key: the word is kept; the first job checks the field's text before the caret (`EditJob.verifyLateFocus`) | `LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests` |
 
@@ -440,6 +441,11 @@ The panel lives in TestHost's own process, so its focus change reaches `FocusCor
 AXFocusedUIElementChanged as well: it proves that the overlay rule applies on every opening, that Escape passes there
 and that the word survives the inline completion twice, not that a panel of another process is found without a
 notification. That part is the unit tests' (fake AX posts nothing) and the Spotlight check below.
+
+`launcher.spotlight.reopen` (runner only, `targetBundleId` Spotlight) types `vieejt`, Escape twice, then opens Spotlight
+again and types `tex` then `xt`. Its `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
+completion that runs to its end (`AXReadbackText`): Spotlight with history shows `text` as `TextEdit` with `Edit`
+selected, which is the completion the `axSelection` handling removes, not text that was typed.
 
 Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM lock taken:
 
