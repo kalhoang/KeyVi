@@ -1239,6 +1239,16 @@ class DevelopmentWordingTests(unittest.TestCase):
                 "TUIs (Claude Code, Kiro CLI) lost letters; the tart guest agent starts the harness.\n")
         self.assertEqual(self.offenders([("kept", kept)]), [])
 
+    def test_decision_records_quote_no_chat_message(self):
+        """Decision records keep each decision, its date and its evidence, but state what the product owner asked or
+        decided in neutral English; Vietnamese stays only as product copy, test examples or quoted legal text."""
+        decisions = sorted((REPO / "docs" / "decisions").glob("*.md"))
+        chat = re.compile(r"\(Pa: \"|Pa: \"|asked by Pa: |, verbatim\)|\b(con|pa) (có thể|nghĩ|xài)\b|"
+                          r"được không\?|hông bao nhiêu|nhớ behavior")
+        found = [f"{path.name}:{number}" for path in decisions
+                 for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1) if chat.search(line)]
+        self.assertEqual(found, [])
+
 
 class SpecFollowUpTests(unittest.TestCase):
     """Wave 4 cross-track requests applied to the spec and the decision records (Pa's answers S8, Q8, Q6, S7)."""
