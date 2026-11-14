@@ -3,10 +3,11 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.9 and 13.9.1: every row B001-B064 with the 13.9 fixture resources, checking the committed text
-/// and the rule that decided (ENG-R801), then the same rows ended by every boundary key of section 9
-/// (P0-3: the decision must not depend on which boundary key ended the token).
-@Suite("Commit decisions B001-B064 (13.9, 13.9.1)")
+/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 with the 13.9 fixture resources, checking the committed
+/// text and the rule that decided (ENG-R801), then the same rows ended by every boundary key of section 9
+/// (P0-3: the decision must not depend on which boundary key ended the token). The 13.9.2 rows type a whole
+/// run of tokens (ENG-R823, REG-32); the rule is the one that decided the last token.
+@Suite("Commit decisions B001-B072 (13.9, 13.9.1, 13.9.2)")
 struct CommitDecisionTests {
     static let rows: [CommitDecisionExample] = {
         do {
@@ -67,7 +68,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 64)
+        #expect(Self.rows.count == 72)
     }
 
     @Test(arguments: rows)
@@ -98,7 +99,8 @@ struct CommitDecisionTests {
             if boundary.isHard {
                 #expect(driver.state.historyCount == 0, "\(row.id) + \(boundary)")
             } else {
-                #expect(driver.state.historyCount == (row.previous == .none ? 1 : 2), "\(row.id) + \(boundary)")
+                let tokens = row.keys.split(separator: " ").count + (row.previous == .none ? 0 : 1)
+                #expect(driver.state.historyCount == tokens, "\(row.id) + \(boundary)")
             }
         }
     }

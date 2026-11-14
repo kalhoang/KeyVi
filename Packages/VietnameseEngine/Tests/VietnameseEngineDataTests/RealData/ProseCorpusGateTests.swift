@@ -25,12 +25,14 @@ struct ProseCorpusGateTests {
         ProseCorpusCheck.typists.flatMap { order in [ToneStyle.traditional, .modern].map { (method, order, $0) } }
     }
 
-    /// Differences that the data cannot remove (docs/decisions/0202, open issues for Pa), Telex only:
-    /// - rule L10 restores a collision typed right after an English word of the source, which makes the run
-    ///   English (ENG-R823): `trên Internet. Cơ chế` commits `Cow` for the typists whose keys for `Cơ` are `Cow`;
-    /// - the Roman numeral `IX` composes `Ĩ`, the everyday syllable of `ầm ĩ`, which is attested so that Telex
-    ///   users can type it (ENG-R821 never damages Vietnamese by default); no other key order types `ĩ`.
-    static let knownEngineDifferences: Set<String> = ["Cơ -> Cow", "IX -> Ĩ"]
+    /// Differences that the data cannot remove (docs/decisions/0202, open issues for Pa), Telex only: the Roman
+    /// numeral `IX` composes `Ĩ`, the everyday syllable of `ầm ĩ`, which is attested so that Telex users can type
+    /// it (ENG-R821 never damages Vietnamese by default); no other key order types `ĩ`.
+    ///
+    /// `trên Internet. Cơ chế`, where rule L10 used to commit `Cow` after the English `Internet`, is no longer a
+    /// difference: `trên` is in the window, so the run is not English (ENG-R823 as amended on 14/11/2026, REG-32).
+    /// Should it come back, the typist test reports it as not attributable to an `en` row.
+    static let knownEngineDifferences: Set<String> = ["IX -> Ĩ"]
 
     @Test("ENG-R873: three typists, both methods, both tone styles", arguments: cases)
     func typist(_ method: CorpusMethod, _ order: CorpusOrder, _ style: ToneStyle) throws {
@@ -54,7 +56,7 @@ struct ProseCorpusGateTests {
         #expect(unknown.isEmpty, "\(method) \(order) not attributable to an en row:\n\(RealData.listing(unknown))")
         let known = unexplained.filter { Self.knownEngineDifferences.contains(Self.key($0)) }
         if method == .telex {
-            withKnownIssue("ENG-R873: L10 after an English word, IX types ĩ (docs/decisions/0202)") {
+            withKnownIssue("ENG-R873: IX types ĩ (docs/decisions/0202)") {
                 #expect(known.isEmpty, "\(RealData.listing(known))")
             }
         } else {

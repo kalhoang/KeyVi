@@ -2,7 +2,7 @@
 
 /// The language of a committed token (ENG-R823).
 package enum TokenLanguage: UInt8, Sendable, Hashable {
-    /// Digits, `a`, `the`, `I`: no evidence either way.
+    /// Digits, `a`, `the`, `I`, and a token kept Vietnamese by rule L11: no evidence either way.
     case neutral
     /// The committed text contains a Vietnamese-only letter (`ă â đ ê ô ơ ư` or a toned vowel).
     case vietnamese
@@ -15,8 +15,21 @@ package enum TokenLanguage: UInt8, Sendable, Hashable {
     /// "Unchanged ASCII word" is read as "the committed text is ASCII": a token kept by L4 as its
     /// escaped form (`ass` -> `as`, `ddid` -> `did`) is an English word on screen just like an L0 token
     /// (docs/decisions/0103-engine-commit-history-macros.md).
-    package static func of(committed facts: CommittedTextFacts, restored: Bool, resources: Resources) -> TokenLanguage {
-        if restored { return .english }
+    ///
+    /// A token kept by rule L11 (its ambiguity row is `vi`, or it has no row and is kept by default) is
+    /// neutral: its raw keys are an English word and its display an attested syllable, so it is evidence of
+    /// neither language (product owner, 14/11/2026, REG-32). The user's own choices (L1, L2) are evidence.
+    /// With auto restore off (ENG-R802) a token an `en` row would have restored is `kept(.ambiguityTable)`
+    /// as well, so it is neutral too and the later tokens name the same rule as with auto restore on
+    /// (`test and this` keeps `this` by `kept(.englishRun)`).
+    package static func of(committed facts: CommittedTextFacts, decision: CommitDecision, resources: Resources)
+        -> TokenLanguage
+    {
+        switch decision {
+        case .restored: return .english
+        case .kept(.ambiguityTable), .kept(.defaultVietnamese): return .neutral
+        case .kept, .macro: break
+        }
         if facts.hasVietnameseOnlyLetter { return .vietnamese }
         if facts.isASCII, facts.validity == .invalid, resources.english.contains(facts.lowercased) { return .english }
         return .neutral
@@ -36,8 +49,8 @@ package enum TokenLanguage: UInt8, Sendable, Hashable {
 
 /// The languages of the three most recent committed tokens of the run, newest first (ENG-R823).
 ///
-/// A missing token and a neutral token are equivalent for the rule "the nearest non-neutral token among
-/// the previous three", so the triple starts out neutral and needs no count. Committed tokens keep the
+/// A missing token and a neutral token are equivalent for the rule "an English token and no Vietnamese
+/// token among the previous three", so the triple starts out neutral and needs no count. Committed tokens keep the
 /// triple as it was before them (`CommittedToken.languagesBefore`), so re-opening a token by Backspace
 /// or folding tokens into a macro expansion restores the window in O(1).
 package struct RecentLanguages: Sendable, Hashable {
@@ -54,11 +67,11 @@ package struct RecentLanguages: Sendable, Hashable {
         newest = language
     }
 
-    /// ENG-R823: the run is in English when the nearest non-neutral token among the previous three
-    /// committed tokens is English.
+    /// ENG-R823 (product owner, 14/11/2026, REG-32): the run is in English when the previous three
+    /// committed tokens hold at least one English token and no Vietnamese token. One Vietnamese token
+    /// means the writer is in Vietnamese and an English one is a loanword (`cũng tricky á`).
     package var isEnglishRun: Bool {
-        if newest != .neutral { return newest == .english }
-        if middle != .neutral { return middle == .english }
-        return oldest == .english
+        guard newest != .vietnamese, middle != .vietnamese, oldest != .vietnamese else { return false }
+        return newest == .english || middle == .english || oldest == .english
     }
 }

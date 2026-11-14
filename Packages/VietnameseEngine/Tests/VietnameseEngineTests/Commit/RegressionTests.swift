@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-31, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-32, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-31 (13.5)")
+@Suite("Regressions REG-01 to REG-32 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni)
 
@@ -296,5 +296,19 @@ struct RegressionTests {
         #expect(try Committing.driver("duo7c5 ⌫⌫⌫", vni).field.string == "dư")
         // ENG-R532: a re-opened `thuở` shows `uơ`; its `u` shows no horn, so it stays `u`.
         #expect(try Committing.driver("thuowr ⌫⌫").field.string == "thu")
+    }
+
+    @Test("REG-32 an English loanword in a Vietnamese sentence does not turn á into as")
+    func reg32() throws {
+        // ENG-R823 as amended by the product owner on 14/11/2026: `cũng` is in the window of the previous three
+        // tokens, so the run is not English although `tricky` is; rule L11 keeps `á` (row `as` = vi).
+        let keys = "Khusc caif cacs app caafn thieest treen win cungx tricky as."
+        #expect(try text(keys) == "Khúc cài các app cần thiết trên win cũng tricky á.")
+        #expect(try Committing.decision(keys) == .kept(.ambiguityTable))
+        #expect(try text("dduwowcj as.") == "được á.")
+        #expect(try text("as.") == "á.")
+        // English stays English: only English in the window, or `Thí` (kept by L11, neutral) and then `is`.
+        #expect(try text("tricky as ") == "tricky as ")
+        #expect(try text("This is as ") == "Thí is as ")
     }
 }

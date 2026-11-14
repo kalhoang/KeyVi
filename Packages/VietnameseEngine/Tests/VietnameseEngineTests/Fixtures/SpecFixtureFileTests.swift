@@ -4,7 +4,7 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Integrity of the corpus files extracted from spec 13.8 to 13.10 by
-/// Scripts/extract-spec-examples.py (263 + 64 + 9 rows), and of the 13.9 fixture resources.
+/// Scripts/extract-spec-examples.py (263 + 72 + 9 rows), and of the 13.9 fixture resources.
 @Suite("Spec fixture files (13.8 to 13.10)")
 struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
@@ -39,11 +39,14 @@ struct SpecFixtureFileTests {
 
     @Test func commitDecisions() throws {
         let rows = try SpecExamples.commitDecisions(tsv: CorpusFiles.text(SpecExamples.commitDecisionsFile))
-        #expect(rows.count == 64)
+        #expect(rows.count == 72)
         #expect(
-            rows.map(\.id) == (1...64).map { "B" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
+            rows.map(\.id) == (1...72).map { "B" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
         #expect(rows.prefix(52).allSatisfy { $0.boundary == " " })
-        #expect(rows.suffix(12).map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n"])
+        #expect(rows[52..<64].map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n"])
+        // 13.9.2 (ENG-R823, REG-32): a whole run of tokens per row, from an empty field.
+        #expect(rows.suffix(8).map(\.boundary) == [".", ".", " ", " ", " ", " ", " ", " "])
+        #expect(rows.suffix(8).allSatisfy { $0.previous == .none && $0.keys.contains(" ") })
         for row in rows {
             #expect(row.expectedText == row.committed + String(row.boundary), "\(row.id)")
             #expect(row.expectedDecision != nil, "\(row.id)")
@@ -61,6 +64,9 @@ struct SpecFixtureFileTests {
         #expect(byID["B053"]?.expectedText == "dzậy ")
         #expect(byID["B056"]?.ruleCode == "L7" && byID["B056"]?.outcome == .kept)
         #expect(byID["B064"]?.expectedText == "text\n" && byID["B064"]?.outcome == .restored)
+        #expect(byID["B065"]?.committed == "Khúc cài các app cần thiết trên win cũng tricky á")
+        #expect(byID["B065"]?.expectedDecision == .kept(.ambiguityTable))
+        #expect(byID["B072"]?.expectedDecision == .restored(.englishRun))
     }
 
     @Test func restoreToggles() throws {

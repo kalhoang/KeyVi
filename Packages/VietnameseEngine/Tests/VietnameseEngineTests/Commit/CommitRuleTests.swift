@@ -202,16 +202,23 @@ struct CommitRuleTests {
     }
 }
 
-/// ENG-R823: the language of committed tokens and the English run.
+/// ENG-R823: the language of committed tokens and the English run. Amended by the product owner on
+/// 14/11/2026 (REG-32): the run is English when the previous three committed tokens of the run hold an
+/// English token and no Vietnamese one, and a token kept Vietnamese by rule L11 is neutral.
 @Suite("Commit: English run (8.3)")
 struct EnglishRunTests {
-    @Test func nearestNonNeutralOfThePreviousThree() throws {
+    @Test func englishTokenAndNoVietnameseTokenInThePreviousThree() throws {
         #expect(try Committing.text("and this ") == "and this ")  // en
         #expect(try Committing.text("vieejt this ") == "việt thí ")  // vi
-        #expect(try Committing.text("and vieejt this ") == "and việt thí ")  // vi is nearer
-        #expect(try Committing.text("vieejt and this ") == "việt and this ")
-        // Neutral tokens (`the`, `a`, digits, words outside the lexicon) are skipped.
+        #expect(try Committing.text("and vieejt this ") == "and việt thí ")
+        // REG-32: a Vietnamese token anywhere in the window keeps the run Vietnamese, also behind English ones.
+        #expect(try Committing.text("vieejt and this ") == "việt and thí ")
+        #expect(try Committing.text("vieejt text user this ") == "việt text user thí ")
+        // Three English tokens push it out of the window.
+        #expect(try Committing.text("vieejt and text user this ") == "việt and text user this ")
+        // Neutral tokens (`the`, `a`, digits, words outside the lexicon) are evidence of neither language.
         #expect(try Committing.text("and the a this ") == "and the a this ")
+        #expect(try Committing.text("the a this ") == "the a thí ")
         // Only the previous three tokens count.
         #expect(try Committing.text("and nam nam nam this ") == "and nam nam nam thí ")
         #expect(try Committing.text("and nam nam this ") == "and nam nam this ")
@@ -219,6 +226,95 @@ struct EnglishRunTests {
         #expect(try Committing.text("text this ") == "text this ")
         // The spec's example: `this is the best car` in an English run.
         #expect(try Committing.text("and this is the best car ") == "and this is the best car ")
+    }
+
+    @Test("REG-32: a collision after an English loanword in a Vietnamese sentence stays Vietnamese")
+    func loanwordInAVietnameseSentence() throws {
+        #expect(try Committing.text("dduwowcj as.") == "được á.")
+        #expect(try Committing.text("treen server been ") == "trên server bên ")
+        #expect(try Committing.text("guwir file car ") == "gửi file cả ")
+        #expect(try Committing.text("cungx tricky as.") == "cũng tricky á.")
+        #expect(try Committing.decision("cungx tricky as.") == .kept(.ambiguityTable))
+        // At the start of a message only English is in the window.
+        #expect(try Committing.text("tricky as ") == "tricky as ")
+        #expect(try Committing.decision("tricky as ") == .restored(.englishRun))
+    }
+
+    @Test("ENG-R823 known cost: a collision within three tokens after a switch to English stays Vietnamese")
+    func switchFromVietnameseToEnglish() throws {
+        // `nghĩ` is still in the window of `car`; the earlier rule (nearest non-neutral token) restored it.
+        #expect(try Committing.text("tooi nghix the best car ") == "tôi nghĩ the best cả ")
+        // One more English token and the Vietnamese one has left the window.
+        #expect(try Committing.text("tooi nghix the best text car ") == "tôi nghĩ the best text car ")
+    }
+
+    @Test func tokensKeptByTheAmbiguityTableAreNeutral() throws {
+        // `thí` kept by its `vi` row and `tả` kept by the unreviewed default (L11) are evidence of neither
+        // language, so the English `is` after them makes the run English.
+        #expect(try Committing.text("this is as ") == "thí is as ")
+        #expect(try Committing.text("This is as ") == "Thí is as ")
+        #expect(try Committing.text("tar is as ") == "tả is as ")
+        // ENG-R824: the first word is not corrected afterwards.
+        #expect(try Committing.text("this is the best car ") == "thí is the best car ")
+        #expect(try Committing.text("I think this is as ") == "I think this is as ")
+        // Cost of the neutrality (open question to the product owner): once `việt` leaves the window of
+        // `as`, only `and` is left, so `as` is restored although no new English evidence was typed.
+        #expect(try Committing.text("vieejt and nam this as ") == "việt and nam thí as ")
+        #expect(try Committing.decision("vieejt and nam this as ") == .restored(.englishRun))
+    }
+
+    @Test("ENG-R823, ENG-R802: with auto restore off a token an `en` row would restore is neutral as well")
+    func autoRestoreOffKeepsTheReasonCodesOfTheRun() throws {
+        // `test` is kept by L11 (`kept(.ambiguityTable)`, ENG-R802), so it is neutral and `and` makes the
+        // run English for `this`: the same rule names itself as with auto restore on.
+        let off = EngineConfiguration(autoRestore: false)
+        #expect(try Committing.text("test and this ", off) == "tét and thí ")
+        #expect(try Committing.decision("test and this ", off) == .kept(.englishRun))
+        #expect(try Committing.text("test and this ") == "test and this ")
+        #expect(try Committing.decision("test and this ") == .restored(.englishRun))
+    }
+
+    @Test func theUsersVietnameseChoicesAreVietnameseEvidence() throws {
+        // L2: the keep-Vietnamese list is the user's choice, not the ambiguity table.
+        let resources = SpecFixtures.commitResources(userKeepVietnamese: ["car"])
+        #expect(try Committing.text("car is as ", resources: resources) == "cả is á ")
+        // L1: `test` re-opened in its restored state and toggled to `tét` is user-kept (ENG-R704).
+        #expect(try Committing.text("test ⌫⎋ is as ") == "tét is á ")
+    }
+
+    @Test func languageOfACommittedToken() {
+        let resources = Committing.fixtures
+        func language(_ text: String, _ decision: CommitDecision) -> TokenLanguage {
+            TokenLanguage.of(committed: CommittedTextFacts(text), decision: decision, resources: resources)
+        }
+        #expect(language("thí", .kept(.ambiguityTable)) == .neutral)
+        #expect(language("tả", .kept(.defaultVietnamese)) == .neutral)
+        #expect(language("cả", .kept(.userList)) == .vietnamese)
+        #expect(language("tét", .kept(.userChoice)) == .vietnamese)
+        #expect(language("việt", .kept(.notEnglish)) == .vietnamese)
+        #expect(language("this", .restored(.englishRun)) == .english)
+        #expect(language("test", .restored(.ambiguityTable)) == .english)
+        #expect(language("and", .kept(.unchanged)) == .english)
+        #expect(language("the", .kept(.unchanged)) == .neutral)
+        #expect(language("nam", .kept(.unchanged)) == .neutral)
+    }
+
+    @Test func windowRule() {
+        func isEnglishRun(_ languages: [TokenLanguage]) -> Bool {
+            var window = RecentLanguages()
+            for language in languages { window.push(language) }
+            return window.isEnglishRun
+        }
+        #expect(!isEnglishRun([]))
+        #expect(isEnglishRun([.english]))
+        #expect(!isEnglishRun([.neutral, .neutral, .neutral]))
+        #expect(!isEnglishRun([.vietnamese, .english]))
+        #expect(!isEnglishRun([.english, .vietnamese]))
+        #expect(!isEnglishRun([.vietnamese, .english, .english]))
+        #expect(isEnglishRun([.english, .neutral, .neutral]))
+        #expect(!isEnglishRun([.english, .neutral, .neutral, .neutral]))
+        #expect(isEnglishRun([.vietnamese, .english, .english, .english]))
+        #expect(isEnglishRun([.vietnamese, .neutral, .english, .neutral]))
     }
 
     @Test func boundaryCharactersAreNotTokens() throws {
@@ -233,10 +329,10 @@ struct EnglishRunTests {
     }
 
     @Test func reopeningATokenRemovesItsLanguage() throws {
-        // `and` is re-opened and deleted: the run is Vietnamese again.
-        #expect(try Committing.text("vieejt and ⌫⌫⌫⌫this ") == "việt thí ")
+        // `and` is re-opened and deleted: only the neutral `nam` is left in the window.
+        #expect(try Committing.text("nam and ⌫⌫⌫⌫this ") == "nam thí ")
         // Re-committing the re-opened token restores its language.
-        #expect(try Committing.text("vieejt and ⌫ this ") == "việt and this ")
+        #expect(try Committing.text("nam and ⌫ this ") == "nam and this ")
     }
 
     @Test func macroExpansionsAreNeutralOrVietnamese() throws {

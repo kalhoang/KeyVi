@@ -73,6 +73,13 @@ separately from the app (spec/04-quality-release.md QA-R27).
 
 ### Fixed
 
+- English run (ENG-R823, REG-32, product owner 14/11/2026): an English loanword in a Vietnamese sentence no
+  longer makes the run English. The run is English only when the previous three committed tokens hold an
+  English token and no Vietnamese one, and a token kept by rule L11 is neutral, so `cũng tricky as` commits
+  `á` and `trên server been` commits `bên`. The rule only removes L10 restores, never adds one; the cost is
+  that a collision within three tokens after a switch from Vietnamese to English stays Vietnamese. The
+  prose-corpus difference `Cơ -> Cow` is gone. Spec rows B065-B072 (13.9.2), checked by
+  `spec/reference-model/boundary.py`.
 - `Orthography` is `Sendable`, as ENG-R1203 requires of every public type.
 - `lexicon-builder` checked NFC with String `==`, which accepted decomposed text; it compares scalars now.
 - Review of the integration branch: `ĩ` (ầm ĩ) is attested and `ix` is no longer a tech-always word, so
