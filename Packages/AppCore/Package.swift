@@ -33,6 +33,7 @@ let package = Package(
         .library(name: "TestSupport", targets: ["TestSupport"]),
         .executable(name: "compat-harness", targets: ["CompatHarness"]),
         .executable(name: "compat-lint", targets: ["CompatLint"]),
+        .executable(name: "trace-scan", targets: ["TraceScan"]),
     ],
     dependencies: [
         .package(path: "../VietnameseEngine")
@@ -87,6 +88,18 @@ let package = Package(
         .executableTarget(name: "CompatHarness", dependencies: ["TestSupport"], swiftSettings: strict),
         // Rules and matrix lint for CI (PLT-R505, PLT-R506, PLT-R521, PLT-R531).
         .executableTarget(name: "CompatLint", dependencies: ["CompatRules"], swiftSettings: strict),
+        // PLT-R904A, ADR 0007: offline reader of the dev recorder's trace files (summary, findings, excerpts). Runs on
+        // the host against a folder of files; never part of the app. The logic is a library so it is unit-tested.
+        .target(
+            name: "TraceScanCore",
+            dependencies: [
+                "Diagnostics",
+                .product(name: "VietnameseEngine", package: "VietnameseEngine"),
+                .product(name: "VietnameseEngineData", package: "VietnameseEngine"),
+            ],
+            swiftSettings: strict
+        ),
+        .executableTarget(name: "TraceScan", dependencies: ["TraceScanCore"], swiftSettings: strict),
 
         .testTarget(name: "AppModelTests", dependencies: ["AppModel", "TestSupport"], swiftSettings: strict),
         .testTarget(name: "RealtimeSupportTests", dependencies: ["RealtimeSupport"], swiftSettings: strict),
@@ -121,6 +134,15 @@ let package = Package(
             swiftSettings: devRecorder
         ),
         .testTarget(name: "TestSupportTests", dependencies: ["TestSupport", "RealtimeSupport"], swiftSettings: strict),
+        .testTarget(
+            name: "TraceScanTests",
+            dependencies: [
+                "TraceScanCore", "Diagnostics", "RealtimeSupport", "AppModel", "TestSupport",
+                .product(name: "VietnameseEngine", package: "VietnameseEngine"),
+            ],
+            exclude: ["Fixtures"],  // synthetic trace files read through #filePath
+            swiftSettings: devRecorder
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

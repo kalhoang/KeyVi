@@ -1,0 +1,91 @@
+{"app":"0.1.0 (1)","launch":"abc1","t":1794646800000000,"type":"file","v":1}
+{"app":"0.1.0 (1)","launch":"abc1","t":1794646800000000,"type":"start"}
+{"s":{"englishRestore":"true","keepAsTypedCount":"0","keepVietnameseCount":"0","telexBracketKeys":"false","telexStandaloneW":"true","tonePlacement":"traditional","typingMethod":"telex"},"t":1794646800000000,"type":"settings"}
+{"ax":"available","bundle":"com.example.editor","ctx":"general","er":true,"gen":1,"mac":true,"mode":"vietnamese","modeSrc":"globalMode","role":"AXTextArea","rtf":"whenKnown","rule":"editor.sample","secure":false,"strat":"backspaceReplace","t":1794646800000000,"type":"focus"}
+{"job":"focusChanged","reason":"focusChanged","t":1794646800000000,"type":"boundary"}
+{"ch":"x","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800000000,"type":"key"}
+{"act":"passThrough","comp":"x","t":1794646800000000,"type":"engine"}
+{"ch":"x","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800030000,"type":"key"}
+{"ch":"i","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800120000,"type":"key"}
+{"act":"passThrough","comp":"xi","t":1794646800120000,"type":"engine"}
+{"ch":"i","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800150000,"type":"key"}
+{"ch":"n","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800240000,"type":"key"}
+{"act":"passThrough","comp":"xin","t":1794646800240000,"type":"engine"}
+{"ch":"n","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800270000,"type":"key"}
+{"ch":" ","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800360000,"type":"key"}
+{"act":"passThrough","comp":"","dec":"kept(unchanged)","t":1794646800360000,"type":"engine"}
+{"ch":" ","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800390000,"type":"key"}
+{"ch":"c","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800480000,"type":"key"}
+{"act":"passThrough","comp":"c","t":1794646800480000,"type":"engine"}
+{"ch":"c","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800510000,"type":"key"}
+{"ch":"h","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800600000,"type":"key"}
+{"act":"passThrough","comp":"ch","t":1794646800600000,"type":"engine"}
+{"ch":"h","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800630000,"type":"key"}
+{"ch":"a","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800720000,"type":"key"}
+{"act":"passThrough","comp":"cha","t":1794646800720000,"type":"engine"}
+{"ch":"a","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800750000,"type":"key"}
+{"ch":"o","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646800840000,"type":"key"}
+{"act":"passThrough","comp":"chao","t":1794646800840000,"type":"engine"}
+{"ch":"o","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800870000,"type":"key"}
+{"ch":"f","ev":"keyDown","fl":0,"kc":0,"out":"consumedForEdit","t":1794646800960000,"type":"key"}
+{"act":"edit","comp":"chào","del":2,"ins":"ào","t":1794646800960000,"type":"engine"}
+{"ch":"f","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646800990000,"type":"key"}
+{"ch":" ","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646801080000,"type":"key"}
+{"act":"passThrough","comp":"","dec":"kept(notEnglish)","t":1794646801080000,"type":"engine"}
+{"ch":" ","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646801110000,"type":"key"}
+{"reason":"commit","selLen":0,"selLoc":9,"status":"ok","t":1794646801600000,"text":"xin chào ","type":"readback"}
+{"ch":"b","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646801600000,"type":"key"}
+{"act":"passThrough","comp":"b","t":1794646801600000,"type":"engine"}
+{"ch":"b","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646801630000,"type":"key"}
+{"ch":"a","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646801720000,"type":"key"}
+{"act":"passThrough","comp":"ba","t":1794646801720000,"type":"engine"}
+{"ch":"a","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646801750000,"type":"key"}
+{"ch":"j","ev":"keyDown","fl":0,"kc":0,"out":"consumedForEdit","t":1794646801840000,"type":"key"}
+{"act":"edit","comp":"bạ","del":1,"ins":"ạ","t":1794646801840000,"type":"engine"}
+{"ch":"j","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646801870000,"type":"key"}
+{"ch":"n","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646801960000,"type":"key"}
+{"act":"passThrough","comp":"bạn","t":1794646801960000,"type":"engine"}
+{"ch":"n","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646801990000,"type":"key"}
+{"job":"focusChanged","reason":"focusChanged","t":1794646802080000,"type":"boundary"}
+{"ax":"available","bundle":"com.example.chat","ctx":"general","er":true,"gen":1,"mac":true,"mode":"vietnamese","modeSrc":"globalMode","role":"AXTextArea","rtf":"whenKnown","rule":"chat.sample","secure":false,"strat":"backspaceReplace","t":1794646802080000,"type":"focus"}
+{"ch":"t","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646802080000,"type":"key"}
+{"act":"passThrough","comp":"t","t":1794646802080000,"type":"engine"}
+{"ch":"t","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802110000,"type":"key"}
+{"ch":"i","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646802200000,"type":"key"}
+{"act":"passThrough","comp":"ti","t":1794646802200000,"type":"engine"}
+{"ch":"i","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802230000,"type":"key"}
+{"ch":"e","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646802320000,"type":"key"}
+{"act":"passThrough","comp":"tie","t":1794646802320000,"type":"engine"}
+{"ch":"e","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802350000,"type":"key"}
+{"ch":"e","ev":"keyDown","fl":0,"kc":0,"out":"consumedForEdit","t":1794646802440000,"type":"key"}
+{"act":"edit","comp":"tiê","del":1,"ins":"ê","t":1794646802440000,"type":"engine"}
+{"ch":"e","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802470000,"type":"key"}
+{"ch":"s","ev":"keyDown","fl":0,"kc":0,"out":"consumedForEdit","t":1794646802560000,"type":"key"}
+{"act":"edit","comp":"tiế","del":1,"ins":"ế","t":1794646802560000,"type":"engine"}
+{"ch":"s","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802590000,"type":"key"}
+{"ch":"n","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646802680000,"type":"key"}
+{"act":"passThrough","comp":"tiến","t":1794646802680000,"type":"engine"}
+{"ch":"n","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802710000,"type":"key"}
+{"ch":"g","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646802800000,"type":"key"}
+{"act":"passThrough","comp":"tiếng","t":1794646802800000,"type":"engine"}
+{"ch":"g","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646802830000,"type":"key"}
+{"ev":"keyDown","fl":0,"kc":51,"out":"passed","t":1794646803220000,"type":"key"}
+{"act":"passThrough","comp":"tiến","t":1794646803220000,"type":"engine"}
+{"ev":"keyUp","fl":0,"kc":51,"out":"passed","t":1794646803250000,"type":"key"}
+{"ev":"keyDown","fl":0,"kc":51,"out":"passed","t":1794646803340000,"type":"key"}
+{"act":"passThrough","comp":"tiế","t":1794646803340000,"type":"engine"}
+{"ev":"keyUp","fl":0,"kc":51,"out":"passed","t":1794646803370000,"type":"key"}
+{"ev":"keyDown","fl":0,"kc":51,"out":"passed","t":1794646803460000,"type":"key"}
+{"act":"passThrough","comp":"ti","t":1794646803460000,"type":"engine"}
+{"ev":"keyUp","fl":0,"kc":51,"out":"passed","t":1794646803490000,"type":"key"}
+{"ch":"g","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646803580000,"type":"key"}
+{"act":"passThrough","comp":"tig","t":1794646803580000,"type":"engine"}
+{"ch":"g","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646803610000,"type":"key"}
+{"ch":" ","ev":"keyDown","fl":0,"kc":0,"out":"passed","t":1794646803700000,"type":"key"}
+{"act":"passThrough","comp":"","dec":"kept(unchanged)","t":1794646803700000,"type":"engine"}
+{"ch":" ","ev":"keyUp","fl":0,"kc":0,"out":"passed","t":1794646803730000,"type":"key"}
+{"reason":"commit","selLen":0,"selLoc":5,"status":"ok","t":1794646804220000,"text":"tiếg ","type":"readback"}
+{"src":"chord","t":1794646804220000,"type":"marker"}
+{"from":"axReplace","reason":"axTimedOut","seq":3,"t":1794646804220000,"to":"backspaceReplace","type":"fallback"}
+{"delN":1,"gen":1,"insN":1,"kind":"compose","out":"executedWithFallback","posted":4,"runUs":2000,"seq":3,"strat":"backspaceReplace","t":1794646804220000,"totalUs":4000,"type":"job"}
+{"delN":1,"gen":1,"insN":1,"kind":"restore","out":"executed","posted":4,"runUs":2000,"seq":4,"strat":"backspaceReplace","t":1794646804220000,"totalUs":4000,"type":"job"}
