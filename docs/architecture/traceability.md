@@ -3,7 +3,7 @@
 One row per requirement of `spec/02-platform.md` (PLT-R), `spec/03-product.md` (PRD-R),
 `spec/04-quality-release.md` (QA-R) and `spec/05-clean-room.md` (CLR-R): the owning module or file, how it is
 verified, and the workstream that implements it ([workstreams.md](workstreams.md)). Engine requirements
-(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows,
+(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (342 with PLT-R397A and PLT-R397B of 2026-11-15),
 no requirement missing, none duplicated.
 
 ## Legend
@@ -89,7 +89,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R306 | Callback watchdog 250 ms, fail-open, retry 2 s | `TapWatchdog`, `CallbackWatchdog`, ADR 0309 (recovery only after the callback returned); soak counter `InputHostController.recordHealth(.watchdogTrip)` increments `watchdogTrips`; echoes lost around the re-enable are forgiven (`EchoTracker.forgiveLostEchoes`, ADR 0311) | U (`watchdogTripDisablesAndTheReturnedCallbackReenables_PLT_R306`, `jobsPostedAroundAWatchdogTripDoNotBreakPosting_PLT_R306`), I (test hook) | W1-F2 |  |
 | PLT-R307 | Engine contract | `InputHost/Engine/EngineBridge.swift`, ADR 0306 | U, E | W1-F1; W2-A (catalog from bundled resources); engine track |  |
 | PLT-R310 | Decision pipeline steps 1-10 | `KeyPipeline` | P, U | W1-F1 |  |
-| PLT-R311 | FIFO worker, hold/replay while in flight | `KeyPipeline`, `Injection/Queue.swift`, `Worker.swift`, ADR 0311 | P | W1-F1, W1-D; W2-A (combined suite) |  |
+| PLT-R311 | FIFO worker, hold/replay while in flight; the keyUp of a passed keyDown passes (amendment 2026-11-15) | `KeyPipeline`, `ConsumedKeyTable`, `Injection/Queue.swift`, `Worker.swift`, ADR 0311, ADR 0322 | P (ledger: "replayed keyUp of a passed keyDown"), U (`KeyPipelineRolloverTests`), I (`testhost.web.rolloverKeyUp`) | W1-F1, W1-D; W2-A (combined suite); W14-H |  |
 | PLT-R312 | Event conservation invariant | `KeyPipeline`, `TestSupport/Pipeline` ledger, ADR 0308, ADR 0308, ADR 0311 | P (100,000 sequences) | W1-F1; W2-A (combined suite with the real worker) |  |
 | PLT-R313 | Consumed keyDown implies consumed keyUp | `KeyPipeline`, `WorkerFeedback` | P | W1-F1, W1-D |  |
 | PLT-R314 | Liveness ceiling 150 ms / 256 jobs, flush | `InjectionWorker` | P, U | W1-D; W2-A |  |
@@ -105,7 +105,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
 | PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F2 |  |
 | PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
-| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`, `KeyPipelineDeleteKeyBoundaryTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A; Pa | **Pa** |
+| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process or after a timed-out read without an app, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`, `FocusIdentity.appUnknownAfterTimeout`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`, `KeyPipelineDeleteKeyBoundaryTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A, W14-H; Pa | **Pa** |
 | PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F1; W2-E2 |  |
 | PLT-R342 | Re-entry verification with bounded AX read | `InjectionWorker` (`verifyBeforeApply`) | U | W1-D |  |
 | PLT-R343 | Bounded AX reads (64 characters) | `AXFocusedFieldAccess`, `SystemAXProvider` | U, L | W1-D, W1-E |  |
@@ -141,6 +141,8 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R395 | Poll IsSecureEventInputEnabled every 2 s and on menu open | `SecureInputMonitor` | U | W1-E |  |
 | PLT-R396 | Likely holder from IOConsoleUsers kCGSSessionSecureInputPID | `SystemSecureInputProbe` | U (parser), M | W1-E; Pa (iTerm2, browser) | **Pa** |
 | PLT-R397 | Paused(secureInput) with holder hint, no modals | `SecureInputMonitor`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
+| PLT-R397A | A keyUp the tap never saw go down is a hard boundary (input hidden from the tap) | `KeyPipeline+UnseenInput.swift` (`KeysDown`), `BoundaryReason.unseenInput`, `TapLogCode.unseenKeyUp` | U (`KeyPipelineUnseenInputTests`), P (`UnseenInputPropertyTests`) | W14-H |  |
+| PLT-R397B | Health signal for short secure-input episodes ended while typing; holder and duration in the dev gap line | `HealthEventLog` (`SecureInputBursts`, `secureInputBursts`), `DevRecorder` gap line | U (`SecureInputEpisodeTests`, `DevRecorderTests`) | W14-H |  |
 | PLT-R398 | Never call EnableSecureEventInput | all | L (grep) | W1-E |  |
 | PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F1, W1-E |  |
 | PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |

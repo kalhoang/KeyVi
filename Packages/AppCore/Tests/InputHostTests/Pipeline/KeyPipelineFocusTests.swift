@@ -195,6 +195,56 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(fixture.popJobs().compactMap(\.edit).isEmpty)  // "a" starts a new word
     }
 
+    /// A snapshot whose system-wide focus read timed out names no app (Pa's Safari trace, 15/11/2026). The first
+    /// real snapshot of the app right after it is not an application change: the composition is kept and the first
+    /// job verifies the field (PLT-R340 amendment of 2026-11-15).
+    private func publishTimedOutSnapshot(_ fixture: PipelineFixture, generation: UInt64 = 2, timedOut: Bool = true) {
+        var focus = PipelineFixtures.focus(generation: generation, changedAt: fixture.clock.now())
+        focus.app = nil
+        focus.fieldHandle = nil
+        focus.field.axAvailability = timedOut ? .timedOut : .available
+        fixture.publish(focus: focus)
+    }
+
+    @Test func aRealSnapshotAfterATimedOutReadKeepsTheCompositionPLTR340() throws {
+        let fixture = PipelineFixture()
+        publishTimedOutSnapshot(fixture)
+        fixture.press(Key.a)  // composed on the app-less snapshot (its boundary found a clean engine)
+        publishNewElement(fixture, generation: 3)
+        fixture.press(Key.a)  // "aa" -> "â" in the same word
+        #expect(fixture.log.resets.isEmpty)
+        let edit = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(edit.insertion == "â" && edit.verifyLateFocus && edit.replacedText == "a")
+    }
+
+    /// An app-less snapshot that did not time out (AX answered: no focused application) is a real change.
+    @Test func anAppLessSnapshotThatDidNotTimeOutIsAHardBoundaryPLTR340() {
+        let fixture = PipelineFixture()
+        publishTimedOutSnapshot(fixture, timedOut: false)
+        fixture.press(Key.a)
+        publishNewElement(fixture, generation: 3)
+        fixture.press(Key.a)
+        #expect(fixture.log.resets == [.applicationChanged])
+        #expect(fixture.popJobs().compactMap(\.edit).isEmpty)
+    }
+
+    /// The window and the readable-element conditions still apply after a timed-out read.
+    @Test func aTimedOutReadDoesNotWidenTheOtherConditionsPLTR340() {
+        let late = PipelineFixture()
+        publishTimedOutSnapshot(late)
+        late.press(Key.a)
+        publishNewElement(late, generation: 3, after: 600_000)
+        late.press(Key.a)
+        #expect(late.log.resets == [.applicationChanged])
+
+        let unreadable = PipelineFixture()
+        publishTimedOutSnapshot(unreadable)
+        unreadable.press(Key.a)
+        publishNewElement(unreadable, generation: 3) { $0.field.axAvailability = .timedOut }
+        unreadable.press(Key.a)
+        #expect(unreadable.log.resets == [.applicationChanged])
+    }
+
     /// 500 ms after the token's last key the change is no longer part of the word being typed.
     @Test func aChangeObservedTooLateIsAHardBoundaryPLTR340() {
         let fixture = PipelineFixture()

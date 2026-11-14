@@ -213,6 +213,8 @@ public struct EditJob: Sendable {
 public enum BoundaryReason: UInt8, Sendable, Hashable {
     case mouseDown, focusChanged, navigation, commandChord, returnOrTab, escape, modeToggled, inputSourceChanged,
         secureInputChanged, tapReenabled, settingsChanged, ruleChanged, sessionChanged
+    /// PLT-R397A: a keyUp whose keyDown the tap never saw: the app received input the engine did not see.
+    case unseenInput
 }
 
 /// Marks a hard boundary in FIFO order (PLT-R340). The worker resets first-edit timing (PLT-R408); paste

@@ -308,6 +308,59 @@ extension RandomEventGenerator {
         #expect(indices.contains(1) && indices.contains(3) && indices.contains(4))
     }
 
+    /// PLT-R311 amendment (ADR 0322): the keyUp of a passed keyDown passes at once, ahead of held keys and edits,
+    /// so it is out of the cross-key order; it must still follow its own keyDown.
+    @Test func aPassedKeyUpOfAPassedKeyDownIsExemptFromCrossKeyOrderingPLTR311() {
+        let ledger = ConservationLedger()
+        ledger.physical(0, down(Key.u), outcome: .passed)
+        ledger.passedThrough(0)
+        ledger.physical(1, down(Key.s), outcome: .consumedForEdit)
+        ledger.physical(2, down(Key.d), outcome: .held)
+        ledger.physical(3, up(Key.u), outcome: .passed)
+        ledger.passedThrough(3)  // overtakes the edit of event 1 and the replay of event 2
+        ledger.editDelivered(forEvent: 1)
+        ledger.delivered(record, asReplayOf: 2)
+        ledger.lostMetric(0)
+        #expect(ledger.violations().isEmpty)
+    }
+
+    /// A keyUp held although its keyDown passed is the WebKit hazard the amendment removes.
+    @Test func detectsAReplayedKeyUpOfAPassedKeyDownPLTR311() {
+        let ledger = ConservationLedger()
+        ledger.physical(0, down(Key.u), outcome: .passed)
+        ledger.passedThrough(0)
+        ledger.physical(1, down(Key.s), outcome: .consumedForEdit)
+        ledger.physical(2, up(Key.u), outcome: .held)
+        ledger.editDelivered(forEvent: 1)
+        ledger.delivered(record, asReplayOf: 2)
+        #expect(
+            ledger.violations().contains { $0.eventIndex == 2 && $0.reason == "replayed keyUp of a passed keyDown" })
+    }
+
+    /// The exemption is about cross-key order only: the keyUp may never reach the field before its own keyDown.
+    @Test func aPassedKeyUpStillComesAfterItsOwnKeyDownPLTR311() {
+        let ledger = ConservationLedger()
+        ledger.physical(0, down(Key.u), outcome: .passed)
+        ledger.physical(1, up(Key.u), outcome: .passed)
+        ledger.passedThrough(1)
+        ledger.passedThrough(0)
+        #expect(ledger.violations().contains { $0.eventIndex == 1 && $0.reason.hasPrefix("ordering") })
+    }
+
+    /// A held autorepeat after the passed press makes the keyUp follow the replayed repeat again.
+    @Test func aHeldAutorepeatRestoresOrderingForItsKeyUpPLTR311() {
+        let ledger = ConservationLedger()
+        ledger.physical(0, down(Key.d), outcome: .passed)
+        ledger.passedThrough(0)
+        ledger.physical(1, down(Key.s), outcome: .consumedForEdit)
+        ledger.physical(2, PipelineFixtures.keyEvent(.keyDown, Key.d, autorepeat: true), outcome: .held)
+        ledger.physical(3, up(Key.d), outcome: .passed)
+        ledger.passedThrough(3)  // overtakes the held repeat: not allowed
+        ledger.editDelivered(forEvent: 1)
+        ledger.delivered(record, asReplayOf: 2)
+        #expect(ledger.violations().contains { $0.reason.hasPrefix("ordering") })
+    }
+
     @Test func failOpenRelaxesPairingAndOrdering() {
         let ledger = ConservationLedger()
         ledger.physical(0, down(), outcome: .consumedForEdit)

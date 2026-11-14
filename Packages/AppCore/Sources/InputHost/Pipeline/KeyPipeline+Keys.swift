@@ -15,7 +15,9 @@ extension KeyPipeline {
         focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> TapVerdict {
         if event.autorepeat, consumedKeys.entry(event.keyCode) == .hotkey { return consumeAsHotkey(event) }
-        consumedKeys.set(event.keyCode, .none)  // a new keyDown ends any stale pairing for this key
+        // A new keyDown ends any stale pairing for this key; its own outcome sets the new one (passed or held in
+        // `passOrHold`, consumed in `apply`), so a held autorepeat after a passed press holds its keyUp again.
+        consumedKeys.set(event.keyCode, .none)
         let afterDeadKey = keyState.deadKeyPending
         keyState.deadKeyPending = false
         // Step 6: paused, EN mode or a passThrough strategy: do not feed the engine.
@@ -150,7 +152,7 @@ extension KeyPipeline {
         if keyState.lateFocusCheckPending, !Self.deliversEdit(output),
             !pushLateFocusCheck(replaced: replaced, key, focus: focus, inputSource: inputSource)
         {
-            return queueFull(now: key.now)
+            return queueFull(key.event, now: key.now)
         }
         guard case .edit(let edit, let thenPassThrough) = output.action else {
             return passOrHold(key.event, now: key.now, probe: key.probe)
@@ -168,10 +170,10 @@ extension KeyPipeline {
         let job = makeEditJob(
             edit, kind: editKind(kind, decision: output.decision), replaced: replaced,
             trigger: thenPassThrough ? nil : record, key, focus: focus, inputSource: inputSource)
-        guard push(.edit(job)) else { return queueFull(now: key.now) }
+        guard push(.edit(job)) else { return queueFull(key.event, now: key.now) }
         if thenPassThrough {
             // P0-3: punctuation and Return reach the app after the correction, as a replay of the original key.
-            guard push(.replay(context.queue.nextSequence(), record)) else { return queueFull(now: key.now) }
+            guard push(.replay(context.queue.nextSequence(), record)) else { return queueFull(key.event, now: key.now) }
             outcome = .held
             return .swallow
         }
@@ -195,7 +197,7 @@ extension KeyPipeline {
     ) -> TapVerdict {
         let job = makeEditJob(
             edit, kind: .restore, replaced: replaced, trigger: nil, key, focus: focus, inputSource: inputSource)
-        guard push(.edit(job)) else { return queueFull(now: key.now) }
+        guard push(.edit(job)) else { return queueFull(key.event, now: key.now) }
         return consumeAsHotkey(key.event)
     }
 
@@ -260,12 +262,18 @@ extension KeyPipeline {
         return start >= anchor && start.nanoseconds(since: anchor) <= 300_000_000
     }
 
-    // MARK: keyUp (PLT-R313, ADR 0308)
+    // MARK: keyUp (PLT-R313, ADR 0308, ADR 0322)
 
     func handleKeyUp(_ event: RawKeyEvent, now: MonotonicInstant, probe: Bool) -> TapVerdict {
         switch consumedKeys.take(event.keyCode) {
-        case .none:
-            return passOrHold(event, now: now, probe: probe)
+        case .none, .heldDown:
+            return passOrHold(event, now: now, probe: probe)  // a held keyDown keeps its keyUp behind its replay
+        case .passedDown:
+            // PLT-R311 amendment (ADR 0322): the app has the keyboard's own keyDown, so it gets the keyboard's own keyUp
+            // now, even while a job is in flight. A keyUp inserts nothing, so it cannot land inside an edit, while a
+            // keyUp rebuilt by the worker after a physical keyDown made a WebKit app lose the next press of the key.
+            outcome = .passed
+            return .pass
         case .hotkey, .withoutJob:
             outcome = .consumedPairedKeyUp
             return .swallow
@@ -279,7 +287,7 @@ extension KeyPipeline {
             case nil:  // still queued: the worker drops it if the job executes, replays it otherwise
                 let paired = InjectionJob.pairedKeyUp(
                     context.queue.nextSequence(), Self.record(event, probe: probe), forJob: job)
-                guard push(paired) else { return queueFull(now: now) }
+                guard push(paired) else { return queueFull(event, now: now) }
                 outcome = .consumedPairedKeyUp
                 return .swallow
             }
@@ -288,24 +296,36 @@ extension KeyPipeline {
 
     // MARK: Outcomes
 
-    /// Step 10: pass, unless jobs are in flight (until their echo, ADR 0311): then hold as a replay (PLT-R311).
+    /// Step 10: pass, unless jobs are in flight (until their echo, ADR 0311): then hold as a replay (PLT-R311). A
+    /// keyDown records which of the two it got, for its keyUp (ADR 0322).
     func passOrHold(_ event: RawKeyEvent, now: MonotonicInstant, probe: Bool) -> TapVerdict {
         guard context.queue.inFlight > 0 else {
+            notePairing(event, .passedDown)
             outcome = .passed
             return .pass
         }
         guard push(.replay(context.queue.nextSequence(), Self.record(event, probe: probe))) else {
-            return queueFull(now: now)
+            return queueFull(event, now: now)
         }
+        notePairing(event, .heldDown)
         outcome = .held
         return .swallow
     }
 
-    /// PLT-R730: fail-open passes everything in this very callback; a keyUp also forgets its pairing.
+    /// PLT-R730: fail-open passes everything in this very callback; a keyUp also forgets its pairing, a keyDown
+    /// records that it passed (its keyUp passes after the tap holds again, ADR 0322).
     func failOpenPass(_ event: RawKeyEvent) -> TapVerdict {
-        if event.kind != .flagsChanged { consumedKeys.set(event.keyCode, .none) }
+        if event.kind != .flagsChanged {
+            consumedKeys.set(event.keyCode, event.kind == .keyDown ? .passedDown : .none)
+        }
         outcome = .passed
         return .pass
+    }
+
+    /// The outcome of a keyDown that passed or was held, for its keyUp (ADR 0322). One store, no allocation.
+    @inline(__always)
+    private func notePairing(_ event: RawKeyEvent, _ entry: ConsumedKeyTable.Entry) {
+        if event.kind == .keyDown { consumedKeys.set(event.keyCode, entry) }
     }
 
     func consumeAsHotkey(_ event: RawKeyEvent) -> TapVerdict {
@@ -315,10 +335,11 @@ extension KeyPipeline {
     }
 
     /// The ring is full (the worker is far behind, PLT-R314): pass rather than block, and drop the composition
-    /// because the engine's view no longer matches the field.
-    private func queueFull(now: MonotonicInstant) -> TapVerdict {
+    /// because the engine's view no longer matches the field. A keyDown passed here reached the app unchanged.
+    private func queueFull(_ event: RawKeyEvent, now: MonotonicInstant) -> TapVerdict {
         context.tapLog.push(TapLogRecord(code: .jobQueueFull, at: now))
         resetEngineIfDirty(.unknown)
+        notePairing(event, .passedDown)
         outcome = .passed
         return .pass
     }

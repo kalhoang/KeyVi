@@ -1,7 +1,8 @@
 # 0311. "In flight" ends at the echo, not at the post
 
 - Status: accepted, 2026-11-13 (revises the hold rule of ARCHITECTURE.md section 4 and contracts.md 9);
-  amended 2026-11-13 after wave 1: recovery from posting broken (see the amendment at the end)
+  amended 2026-11-13 after wave 1: recovery from posting broken (see the amendment at the end); amended
+  2026-11-15: the keyUp of a passed keyDown is never held ([0322](0322-passed-keyup-is-never-held.md))
 - Requirements: PLT-R311, PLT-R312, PLT-R314, PLT-R323, PLT-R330, PLT-R331, PLT-R332, PLT-R730,
   PLT-R301 VERIFY (a)
 - Context: PLT-R311 says that while `inFlight > 0` ("jobs pushed but final event not yet posted") every
@@ -101,3 +102,10 @@ Decision:
 The constants are public on `HostLifecycle` (`Packages/AppCore/Sources/InputHost/Lifecycle/HostLifecycle.swift`)
 and pinned by `Tests/InputHostTests/Lifecycle/HostLifecycleRecoveryTests.swift`; contracts.md 10.3 describes
 the same behaviour.
+
+## Amendment 2026-11-15: the keyUp of a passed keyDown
+
+Holding until the echo applies to keyDowns and modifier changes only. The keyUp of a key whose keyDown the tap passed
+unchanged passes at once, even while a job is in flight: it inserts nothing, so it cannot land inside an edit, and a
+rebuilt keyUp after a physical keyDown made a WKWebView app lose the next press of that key (Pa's dev traces of 14 and
+15/11/2026). Details, the evidence and the amended ledger: [0322](0322-passed-keyup-is-never-held.md).

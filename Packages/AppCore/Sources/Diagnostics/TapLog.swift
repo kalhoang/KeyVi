@@ -17,6 +17,8 @@ public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case layoutMismatch  // debug cross-check, keycode + layout only (PLT-R363)
     case unknownEventType
     case callbackOverBudget
+    /// PLT-R397A: a keyUp whose keyDown the tap never saw (`a` = key code); the composition was reset.
+    case unseenKeyUp
 }
 
 public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {

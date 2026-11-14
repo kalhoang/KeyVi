@@ -510,3 +510,24 @@ Runs of W8-F (folders under `/Volumes/Data/tart/runs/`):
 | Run | Commit | Pass | Fail | What it showed |
 |---|---|---|---|---|
 | none yet | | | | Pa was using the Mac (wave 8 integration, 2026-11-14), so no VM was booted; the three steps above are open |
+
+### 10.8 A key released during the tone key's edit (W14-H, 2026-11-15)
+
+Pa's dev traces of 14 and 15/11/2026 showed keys lost in a WKWebView messenger: when a key went up within one or two
+milliseconds of the tone key, the tap held its keyUp while the tone key's edit was in flight and the worker replayed a
+rebuilt keyUp; the next press of that key never reached the field. PLT-R311 is amended so the keyUp of a passed keyDown
+always passes ([ADR 0322](../decisions/0322-passed-keyup-is-never-held.md)). `TestHost/Scenarios/rollover-keyup.json`
+(`testhost.web.rolloverKeyUp`) reproduces the timing in TestHost: `d`, `u` down, `f` down 30 ms later, `u` up 0.3 ms
+after `f` down, then `mucj` and Space, 50 trials, in the web textarea, the contenteditable and the native text view
+(control), with a test-only rule for `local.testhost` that sets `interEventDelayUs` to 10 ms so the release lands inside
+the edit on any machine.
+
+The scenario schema has no raw-event step yet (`KeyEventPlan` makes fixed holds only), so `compat-harness` cannot run
+it. Until it can, it is run by hand inside a test VM: post each event of the trial list from a `.hidSystemState` source at
+`.cghidEventTap` with `userData` 0, at the listed offsets, into the focused field; read the field through AX after the
+last trial; expect "dù mục " 50 times in each field. Run the build before ADR 0322 once (the red run: losses expected
+in the web fields only) and the fixed build three times. Record the runs here.
+
+| Run | Commit | Fields | Result | What it showed |
+|---|---|---|---|---|
+| none yet | | | | written by W14-H; not run (Pa was using the Mac, 2026-11-15) |
