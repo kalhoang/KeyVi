@@ -131,39 +131,15 @@ import Testing
     private func makeModel(
         _ variant: Variant, store: SettingsStore, matrix: MatrixDocument?
     ) async throws -> SettingsWindowModel {
-        let bundle = SnapshotFixtures.bundle
-        let language = InterfaceLanguageModel(language: variant.language, appBundle: bundle)
-        let systemLanguage = variant.language == .vietnamese ? "vi" : "en"
-        let panes = try #require(SnapshotFixtures.paneNames(systemLanguage: systemLanguage), "SystemPanes.json")
-        let model = SettingsWindowModel(
-            commands: SettingsCommands(store: store), language: language, updater: SnapshotUpdater(),
-            loginItem: SnapshotLoginItem(status: .enabled), brand: Brand.from(bundle), matrix: matrix, panes: panes,
-            inputSources: { [] }, layout: { nil }, disclosures: AdvancedDisclosureMemory(store: InMemoryKeyValueStore())
-        )
-        _ = await model.commands.apply(.interfaceLanguage(variant.language))
-        await model.refresh()
+        let model = try await SnapshotFixtures.model(language: variant.language, store: store, matrix: matrix)
         model.select(variant.pane)
         if variant.advanced { model.setAdvancedExpanded(true, for: variant.pane) }
         return model
     }
 
     private func makeWindow(_ variant: Variant, model: SettingsWindowModel) -> NSWindow {
-        let window = SnapshotWindow(
-            contentRect: NSRect(origin: .zero, size: variant.size),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: variant.dark ? .darkAqua : .aqua)
-        window.title = model.localizer.format(SettingsText.windowTitle, model.brand.displayName)
-        #if SETTINGS_SNAPSHOT_BASELINE
-        window.contentView = NSHostingView(rootView: SettingsRootView(model: model))
-        #else
-        let root = SettingsRootView(model: model)
-            .environment(\.settingsLayoutStyle, variant.legacyLayout ? .legacy : .automatic)
-        window.contentView = NSHostingView(rootView: root)
-        SettingsWindowController.configure(window)
-        #endif
-        window.setContentSize(variant.size)
-        return window
+        SnapshotFixtures.window(
+            size: variant.size, model: model, dark: variant.dark, legacyLayout: variant.legacyLayout)
     }
 
     /// Draws the window frame (title bar included) without ever putting the window on screen, at 2x.

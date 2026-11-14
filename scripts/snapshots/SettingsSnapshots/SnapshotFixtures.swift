@@ -11,7 +11,9 @@ import CompatRules
 import Foundation
 import SettingsStore
 import ShellCore
+import SwiftUI
 import TestSupport
+import Testing
 
 /// Locates the snapshot bundle (its catalogs, assets and Info.plist).
 final class SnapshotBundleMarker {}
@@ -86,6 +88,45 @@ enum SnapshotFixtures {
 
     static func matrix() -> MatrixDocument? {
         bundle.url(forResource: "matrix", withExtension: "json").flatMap(MatrixLoader.load(contentsOf:))
+    }
+
+    /// The window model of a variant, built from the test doubles and refreshed from `store`.
+    @MainActor
+    static func model(
+        language: InterfaceLanguage, store: SettingsStore, matrix: MatrixDocument?
+    ) async throws -> SettingsWindowModel {
+        let languageModel = InterfaceLanguageModel(language: language, appBundle: bundle)
+        let systemLanguage = language == .vietnamese ? "vi" : "en"
+        let panes = try #require(paneNames(systemLanguage: systemLanguage), "SystemPanes.json")
+        let model = SettingsWindowModel(
+            commands: SettingsCommands(store: store), language: languageModel, updater: SnapshotUpdater(),
+            loginItem: SnapshotLoginItem(status: .enabled), brand: Brand.from(bundle), matrix: matrix, panes: panes,
+            inputSources: { [] }, layout: { nil }, disclosures: AdvancedDisclosureMemory(store: InMemoryKeyValueStore())
+        )
+        _ = await model.commands.apply(.interfaceLanguage(language))
+        await model.refresh()
+        return model
+    }
+
+    /// The Settings window around `model`, built offscreen: it is never ordered on screen, made key or activated.
+    @MainActor
+    static func window(size: NSSize, model: SettingsWindowModel, dark: Bool, legacyLayout: Bool) -> NSWindow {
+        let window = SnapshotWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.title = model.localizer.format(SettingsText.windowTitle, model.brand.displayName)
+        #if SETTINGS_SNAPSHOT_BASELINE
+        window.contentView = NSHostingView(rootView: SettingsRootView(model: model))
+        #else
+        let root = SettingsRootView(model: model)
+            .environment(\.settingsLayoutStyle, legacyLayout ? .legacy : .automatic)
+        window.contentView = NSHostingView(rootView: root)
+        SettingsWindowController.configure(window)
+        #endif
+        window.setContentSize(size)
+        return window
     }
 
     static func paneNames(systemLanguage: String) -> SystemPaneNames? {

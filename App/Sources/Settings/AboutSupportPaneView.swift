@@ -241,30 +241,25 @@ struct LicencesSheet: View {
 
 /// ADR 0006 (GPL-3.0 section 0, Appropriate Legal Notices): the app's own licence, "<app name>: GPL-3.0-or-later",
 /// which shows the full text of the LICENSE file the bundle carries (project.yml). The file (35 KB) is read once
-/// when the row appears and kept in view state, not on every render of the sheet or of the disclosure. No
-/// disclosure animation with Reduce Motion (PRD-R67).
+/// when the row appears and kept in view state, not on every render of the sheet or of the disclosure.
 struct AppLicenceRow: View {
     let appName: String
     let localizer: Localizer
     @State private var text: String?
     @State private var expanded = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let title = localizer.format(SupportText.licencesApp, appName)
-        DisclosureGroup(isExpanded: $expanded) {
+        SettingsDisclosure(
+            title: title, isExpanded: $expanded,
+            accessibilityLabel: localizer.accessibilityLabel(SupportControl.appLicence) + ": " + title,
+            accessibilityHint: localizer.accessibilityHint(SupportControl.appLicence)
+        ) {
             // Empty only in a broken bundle, which BuiltBundleTests.licenceIsBundled rejects.
             Text(verbatim: text ?? "")
                 .font(.caption.monospaced()).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-        } label: {
-            Text(verbatim: title).font(.headline)
         }
-        .settingsAccessibility(
-            SupportControl.appLicence, localizer,
-            label: localizer.accessibilityLabel(SupportControl.appLicence) + ": " + title
-        )
-        .transaction { if reduceMotion { $0.animation = nil } }  // PRD-R67
         .task { if text == nil { text = Self.bundledText() } }
     }
 
