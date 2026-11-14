@@ -62,7 +62,7 @@ extension Engine {
         let action: KeyAction =
             text == token.display
             ? .passThrough : .edit(DisplayEdit.edit(from: token.display, to: text), thenPassThrough: true)
-        let language = TokenLanguage.of(committed: inputs.facts, restored: restored, resources: resources)
+        let language = TokenLanguage.of(committed: inputs.facts, decision: decision, resources: resources)
         return CommitResult(text: text, action: action, decision: decision, learning: learning, language: language)
     }
 

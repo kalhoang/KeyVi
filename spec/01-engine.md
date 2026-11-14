@@ -522,7 +522,7 @@ Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, t
 | L7 | `R` is not English | keep |
 | L8 | `C` is not in the attested-syllable list | restore |
 | L9 | app context is `code` and `R` is in the code-only tech list | restore (reached only when L6 and L7 did not decide, see ENG-R850) |
-| L10 | the run is in English (8.3) | restore |
+| L10 | the run is in English (8.3: an `en` token and no `vi` token among the previous three) | restore |
 | L11 | ambiguity table row for `R`: `en` -> restore, `vi` -> keep; no row: restore if `R` is in the tech-always list, else keep | as stated |
 
 - **ENG-R801** The engine MUST implement exactly this order, including the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)*
@@ -569,7 +569,7 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
   | did, theme, max | đi, thêm, mã | vi | very common Vietnamese |
 
 - **ENG-R822 Entry order matters.** The table is keyed by the exact raw keys, so a Vietnamese word blocked by an `en` row stays typable with another order: `tets` -> `tét` (L7, raw is not English).
-- **ENG-R823 English run.** The language of a committed token is: `vi` if its committed text contains a Vietnamese-only letter (`ă â đ ê ô ơ ư` or any toned vowel); `en` if it was restored (by the user or by a rule) or if it is an unchanged ASCII word that is in the English lexicon and is not a valid Vietnamese syllable (`the` is valid Vietnamese, `and` and `you` are not); `neutral` otherwise (digits, `a`, `the`, `I`). The run is in English when the nearest non-neutral token among the previous three committed tokens of the run is `en`. In an English run, rule L10 restores every remaining collision (`this is the best car`).
+- **ENG-R823 English run.** The language of a committed token is, first match wins: `en` if it was restored (by the user or by a rule); `neutral` if rule L11 kept it (its raw keys are an English word and its display an attested syllable, kept by a `vi` row or by the unreviewed default, for example `thí`, `cả`, `á`, `tả`): such a token is evidence of neither language; `vi` if its committed text contains a Vietnamese-only letter (`ă â đ ê ô ơ ư` or any toned vowel); `en` if it is an unchanged ASCII word that is in the English lexicon and is not a valid Vietnamese syllable (`the` is valid Vietnamese, `and` and `you` are not); `neutral` otherwise (digits, `a`, `the`, `I`). The user's own choices (L1, L2) are evidence like any other token. The run is in English when the previous three committed tokens of the run contain at least one `en` token and no `vi` token: one Vietnamese token in that window means the writer is in Vietnamese and the English token is a loanword, so L10 does not apply and L11 decides. In an English run, rule L10 restores every remaining collision. Examples, Telex from an empty field: `this is the best car` gives `thí is the best car` (`thí` is neutral, `is` is restored by its `en` row, then `best` and `car` are in an English run; ENG-R824 leaves the first word as it is); `I think this is as good as it gets` and `tricky as hell` stay as typed; `This is as good` gives `Thí is as good`; `Khusc caif cacs app caafn thieest treen win cungx tricky as.` gives `Khúc cài các app cần thiết trên win cũng tricky á.` (`cũng` is in the window of `as`); `dduwowcj as.` gives `được á.`; `treen server been kia` gives `trên server bên kia`. *(Amended by the product owner on 14/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, REG-32: the first version made the run English when the nearest non-neutral token of the window was `en` and counted L11 keeps as `vi`, so any collision right after an English loanword was restored, `cũng tricky á` became `cũng tricky as`. The amended rule only removes L10 restores, it never adds one. Known cost: an ambiguous word within three tokens after a switch from Vietnamese to English stays Vietnamese, `tôi nghĩ the best car` gives `cả`.)*
 - **ENG-R824** Retroactive correction of an earlier token (for example fixing the first word of `This is a test` after the second word reveals English) is out of scope for v1. Candidate for v1.1.
 
 ### 8.4 When restore happens
@@ -919,6 +919,7 @@ extension Resources {
 | REG-29 | (Product owner, P0-2) `hẹo` worked "sometimes": a dictionary without `hẹo` restored it to `heoj` at Space but not at a comma, because only Space triggered restore | ENG-R316, ENG-R910 | W253, B055-B056 |
 | REG-30 | (Product owner, P0-3) English restore fired only on Space; `, . ; : ! ?` and the like left `tẽt`, so the user had to type Space then Backspace | ENG-R910, 9 (boundary table), ENG-R803 | B057-B064 |
 | REG-31 | (Product owner, 14/11/2026) Backspace changed a letter it did not delete: one `w` on `uo` lost its horn on `ư` with the `ơ` (`thuowr` + Backspace -> `thu`) | ENG-R710, ENG-R714 | W243a-W243j, ENG-T38 |
+| REG-32 | (Product owner, 14/11/2026) An English loanword in a Vietnamese sentence made the run English, so the next collision was restored: `cũng tricky as` committed `as` instead of `á`, `trên server been` kept `been` | ENG-R823, L10 | B065-B072 |
 
 ### 13.6 Fuzz invariants
 
@@ -1210,9 +1211,9 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 
 Rows W249-W253 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
 
-### 13.9 Worked examples: commit decisions (52 rows, plus 13.9.1)
+### 13.9 Worked examples: commit decisions (52 rows, plus 13.9.1 and 13.9.2)
 
-Each row types the keys, then a space. Fixture data for this table only: the English lexicon contains `test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class`; the tech-always list contains `www wifi usb`; the code-only list contains `tar`; every Tier A syllable is attested except `dóe hẻ dổ pót sáy ửa tơn dơn`; the ambiguity table is the proposal in ENG-R821. "Previous token" is the language of the run (8.3).
+Each row types the keys, then a space. Fixture data for this table only: the English lexicon contains `test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky`; the tech-always list contains `www wifi usb`; the code-only list contains `tar`; every Tier A syllable is attested except `dóe hẻ dổ pót sáy ửa tơn dơn`; the ambiguity table is the proposal in ENG-R821. "Previous token" is the language of the run (8.3).
 
 | # | Keys typed, then Space | Method | Previous token | App context | Committed text | Rule that decided |
 |---|---|---|---|---|---|---|
@@ -1289,6 +1290,21 @@ Same fixtures as 13.9. The decision at commit MUST NOT depend on which boundary 
 | B064 | `text` | Return | Telex | none | general | `text` then a new line | L5 invalid: restore, then Return is delivered |
 
 Rows B053-B064 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
+
+#### 13.9.2 English run in a sentence (ENG-R823)
+
+Same fixtures as 13.9. Each row types the keys from an empty field, so every token before the last one is part of the run, and ends with the boundary key; the rule column names the rule that decided the last token. Rows B065-B072 were added with the product owner's report of 14/11/2026 (REG-32); `spec/reference-model/boundary.py` checks them.
+
+| # | Keys typed | Boundary key | Method | Previous token | App context | Text after the boundary | Rule that decided |
+|---|---|---|---|---|---|---|---|
+| B065 | `Khusc caif cacs app caafn thieest treen win cungx tricky as` | `.` | Telex | none | general | `Khúc cài các app cần thiết trên win cũng tricky á.` | L11 ambiguity row = vi: keep |
+| B066 | `dduwowcj as` | `.` | Telex | none | general | `được á.` | L11 ambiguity row = vi: keep |
+| B067 | `treen server been` | Space | Telex | none | general | `trên server bên ` | L11 ambiguity row = vi: keep |
+| B068 | `guwir file car` | Space | Telex | none | general | `gửi file cả ` | L11 ambiguity row = vi: keep |
+| B069 | `this is the best car` | Space | Telex | none | general | `thí is the best car ` | L10 English run: restore |
+| B070 | `I think this is as good as` | Space | Telex | none | general | `I think this is as good as ` | L10 English run: restore |
+| B071 | `This is as` | Space | Telex | none | general | `Thí is as ` | L10 English run: restore |
+| B072 | `tricky as` | Space | Telex | none | general | `tricky as ` | L10 English run: restore |
 
 ### 13.10 Worked examples: restore toggle
 

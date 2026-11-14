@@ -10,7 +10,7 @@ public enum SpecFixtures {
     public static let englishLexicon: [String] = """
         test this these there best max list been text user wifi usb case password traffic boss coffee as is was \
         has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard \
-        verbose startup data plans grows www less tomorrow the and you a i cost room tar class
+        verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky
         """.split(separator: " ").map(String.init)
 
     /// 13.9: the tech-always list.
