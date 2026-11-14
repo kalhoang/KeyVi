@@ -17,6 +17,15 @@ extension Composition {
         render(style: style, committed: true)
     }
 
+    /// Whether a commit that keeps the composed form writes it with the ENG-R532 spelling `uơ`, so that
+    /// `committedText(style:)` differs from `display(style:)` (the same test `render` applies).
+    package var writesOpenHornPairAtCommit: Bool {
+        guard literalStart == nil else { return false }
+        let view = LetterView(letters)
+        let parse = SyllableParser.parse(view)
+        return HornNormalisation.isOpenHornPair(DisplayLetterView(view, parse: parse), parse: parse)
+    }
+
     private func render(style: ToneStyle, committed: Bool) -> String {
         let view = LetterView(letters)
         let parse = SyllableParser.parse(view)
