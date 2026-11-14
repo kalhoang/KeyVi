@@ -226,6 +226,8 @@ PRD-R27 Settings changes MUST apply immediately without restart and without losi
 
 PRD-R28 The Settings window is a normal window: it does not float above other apps, and its size and position are remembered.
 
+Layout (Pa, 2026-11-14, manual-test feedback item 6): the window looks like macOS System Settings. A fixed sidebar on the left lists the five panes in the PRD-R24 order, each with an SF Symbol on a small coloured rounded tile (decoration only: the pane name is beside it, PRD-R67); the arrow keys and Command+1 to Command+5 move between panes. On the right are the pane title, the store notices, then rounded grouped sections: each setting is a row with its title and its PRD-R25 explanation on the left and its control on the right (a switch, a pop-up menu, or a segmented control where both values show side by side, such as `hòa`/`hoà`). `Tùy chọn nâng cao` and the pane's `Khôi phục mặc định...` are sections of their own; the Apps and Macros lists sit in rounded list boxes with their buttons under the list. The window can be resized down to about 715 x 470 points, like System Settings. macOS 12 has no grouped form style, so it shows the same sidebar with boxed sections.
+
 Acceptance: a new user finds and changes Telex to VNI in under 15 seconds in a moderated test; no pane scrolls on a 13-inch display at default text size except Apps and Macros lists.
 
 ---
