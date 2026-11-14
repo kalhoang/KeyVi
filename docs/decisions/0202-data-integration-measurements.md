@@ -87,7 +87,7 @@ Readings where the text allows more than one:
 | ENG-R870 generated corpus | 269,500 cases, 100 % equal to the oracle; 486 case variants of 194 raw strings excluded, all `en` rows (`GeneratedCorpusGateTests.exclusionTotal`), listed per shard | 100 %, only `en` rows excluded |
 | ENG-R871 English run | 40,698 words, 53 changed, 99.870 % unchanged, every change an ENG-T11 entry | at least 99.5 % |
 | ENG-R872 Vietnamese context | 395 changed (0.971 %): 342 `vi` rows, 53 ENG-T11 entries | at most 3 % (VERIFY: confirmed with margin) |
-| ENG-R873 prose | 250,006 tokens per typist, 3 typists x 2 methods x 2 tone styles: VNI 100 %, Telex 99.9988 % (3 tokens: `Cơ` -> `Cow` and twice `IX` -> `Ĩ`, open issues 2 and 3); tokens that are the source in the typist's own placement: 527 per traditional typist (strictly identical 99.788 %), 2,315 per modern typist (strictly identical 99.073 %) | at least 99.95 %, every difference an `en` row |
+| ENG-R873 prose | 250,006 tokens per typist, 3 typists x 2 methods x 2 tone styles: VNI 100 %, Telex 99.9992 % (2 tokens: twice `IX` -> `Ĩ`, open issue 3; 99.9988 % with a third token, `Cơ` -> `Cow`, before the amended ENG-R823 of 14/11/2026, open issue 2); tokens that are the source in the typist's own placement: 527 per traditional typist (strictly identical 99.788 %), 2,315 per modern typist (strictly identical 99.073 %) | at least 99.95 %, every difference an `en` row |
 | ENG-R1231 release (`engine-benchmark`) | cold 17.8 to 32.4 ms, median 9.0 to 14.0 ms, resident growth 1.06 to 1.6 MB | 50 ms, 8 MB |
 | ENG-R1231 debug test | thread CPU 14 to 31 ms, median wall time 34 to 75 ms with all suites in parallel, live heap growth 1.16 MB | |
 | ENG-T40 benchmark | 3,352,412 events per run (prose 50,000 words per typist in both methods, generated-corpus typists, 1,000,000 fuzz events), bundled resources and a 10,000-entry macro table: median-run p50 0.167 us, p99 0.875 to 1.0 us, p99.9 1.9 to 4.8 us; per-event minimum p50 0.166 us, p99 0.75 us, p99.9 1.54 us; worst case over 10,000,000 fuzz events 45 to 62 us | 5 / 25 / 100 us, 1 ms |
@@ -135,9 +135,12 @@ An independent review asked for these data changes, all made (tests first where 
    Dropping `of`, `as`, `his` or `pas` from the lexicon would break those words, so this is an engine or spec
    question (L4 order), not data.
 2. **Rule L10 after an English word of the source** (ENG-R873, 1 token per Telex typist): `trên Internet.
-   Cơ chế` makes the run English (ENG-R823), so `Cơ`, typed `Cow`, is restored. Recorded as a known issue in
-   `ProseCorpusGateTests`. Related, not measured by any gate: two-letter SCOWL words that Vietnamese chat uses
-   as abbreviations (`cs`, `ms`) turn the run English the same way.
+   Cơ chế` made the run English (ENG-R823), so `Cơ`, typed `Cow`, was restored. *Resolved on 14/11/2026* by
+   the amended ENG-R823 (Pa's report `cũng tricky á` -> `as`, [0005](0005-pa-decisions-2026-11-13.md)): the
+   run is English only when the previous three committed tokens hold an `en` token and no `vi` token, and an
+   L11 keep is neutral, so `trên` keeps `Cơ` Vietnamese; `ProseCorpusGateTests` no longer lists it. Two-letter
+   SCOWL words that Vietnamese chat uses as abbreviations (`cs`, `ms`) still turn the run English, but only
+   when no Vietnamese token is among the previous three.
 3. **`IX` in Telex types `Ĩ`** (ENG-R873, 2 tokens per Telex typist: `Chương IX`). `ĩ` is the everyday
    syllable of `ầm ĩ`, so it is attested and `ix` is not a tech-always word: the default never damages
    Vietnamese (ENG-R821), and no other key order types `ĩ`. Recorded as a known issue in

@@ -43,9 +43,10 @@
    or `passThrough` when nothing changes. The key only decides whether the history is cleared afterwards
    (Return, Tab, ENG-R912) and whether it ends a macro span (whitespace).
 4. **Language window in O(1).** `RecentLanguages` holds the languages of the last three committed tokens
-   (a neutral entry and a missing one behave the same). Each `CommittedToken` stores the window as it was
-   before it (`languagesBefore`), so Backspace re-opening a token and a macro folding tokens restore the
-   window without walking the history.
+   (a neutral entry and a missing one behave the same); the run is English when the window holds an `en` entry
+   and no `vi` entry, and a token kept by rule L11 is neutral (ENG-R823 as amended on 14/11/2026). Each
+   `CommittedToken` stores the window as it was before it (`languagesBefore`), so Backspace re-opening a token
+   and a macro folding tokens restore the window without walking the history.
 5. **History.** An array with a head offset (amortised O(1) trimming), at most `historyLimit` tokens and
    `historyLimit x 64` entries. Backspace with no active token pops the last boundary character
    (`passThrough`) and, when a committed token becomes the newest entry, re-opens it with its composition,
