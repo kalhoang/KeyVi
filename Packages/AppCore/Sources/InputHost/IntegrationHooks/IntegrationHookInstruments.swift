@@ -31,8 +31,8 @@ public struct IntegrationHookInstruments: Sendable {
 }
 
 /// `PermissionProbe` whose Accessibility and post-event answers read "denied" while revoked, as after the user
-/// removes the app from Privacy & Security > Accessibility (posting needs the same grant). Input Monitoring, the
-/// prompts and the signing identity come from the real probe.
+/// removes the app from Privacy & Security > Accessibility (posting needs the same grant). Input Monitoring (the
+/// launch-time preflight and the live check), the prompts and the signing identity come from the real probe.
 public final class RevocablePermissionProbe: PermissionProbe, Sendable {
     private let base: any PermissionProbe
     private let revoked = Atomic<Bool>(false)
@@ -45,6 +45,9 @@ public final class RevocablePermissionProbe: PermissionProbe, Sendable {
     public func isAccessibilityTrusted() -> Bool { !isRevoked && base.isAccessibilityTrusted() }
     public func canPostEvents() -> Bool { !isRevoked && base.canPostEvents() }
     public func canListenToEvents() -> Bool { base.canListenToEvents() }
+    /// PLT-R702, PLT-R731: the real probe's live check (the protocol default would answer with the launch-time
+    /// preflight, which never sees a grant made while the app runs).
+    public func canListenToEventsNow() -> Bool { base.canListenToEventsNow() }
     public func promptForAccessibility() { base.promptForAccessibility() }
     public func requestListenEventAccess() -> Bool { base.requestListenEventAccess() }
     public func requestPostEventAccess() -> Bool { !isRevoked && base.requestPostEventAccess() }

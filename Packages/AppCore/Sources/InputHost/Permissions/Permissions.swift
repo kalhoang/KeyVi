@@ -102,7 +102,8 @@ public final class PermissionMonitor: Sendable {
 }
 
 extension PermissionProbe {
-    /// Probes without a live check (fakes, wrappers) answer with the launch-time preflight.
+    /// A probe without a live check answers with the launch-time preflight. A wrapper forwards the live check
+    /// explicitly (`RevocablePermissionProbe`), or this default would hide the wrapped probe's.
     public func canListenToEventsNow() -> Bool { canListenToEvents() }
 }
 

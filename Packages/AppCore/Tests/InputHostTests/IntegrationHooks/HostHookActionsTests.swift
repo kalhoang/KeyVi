@@ -160,6 +160,24 @@ struct HostHookActionsTests {
         #expect(probe.isAccessibilityTrusted() && probe.canPostEvents())
     }
 
+    /// PLT-R702, PLT-R731: the live Input Monitoring check reaches the real probe, revoked or not (revoking
+    /// Accessibility does not touch Input Monitoring). The protocol's default would answer with the launch-time
+    /// preflight, which in production never sees a grant made after launch, so onboarding would stay on
+    /// `listenEventRequired` in the INTEGRATION_HOOKS build after the user turned Input Monitoring on.
+    @Test func theLiveInputMonitoringCheckIsForwarded() {
+        let base = FakePermissionProbe(trusted: true, post: true, listen: false)
+        base.setLiveListen(true)
+        let probe = RevocablePermissionProbe(base: base)
+        #expect(!probe.canListenToEvents(), "the launch-time preflight still says no")
+        #expect(probe.canListenToEventsNow())
+        #expect(base.liveListenCheckCount == 1)
+        probe.setRevoked(true)
+        #expect(probe.canListenToEventsNow())
+        base.setLiveListen(false)
+        #expect(!probe.canListenToEventsNow())
+        #expect(base.liveListenCheckCount == 3)
+    }
+
     @Test func aFactoryWithoutATapCannotTimeOut() {
         let factory = TimeoutSimulatingTapFactory(base: FakeEventTapFactory(failCreation: true))
         #expect(!factory.simulateTimeout())
