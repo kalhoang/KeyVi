@@ -30,6 +30,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var manualRequests: [Int32] = []
         var elementQueries: [Int32: Int] = [:]
         var lastRequest: AXAttributeRequest?
+        var refusedObservers: [Int32: Int] = [:]
+        var refusedNotifications: [Int32: Set<AXNotificationKind>] = [:]
+        var observeAttempts: [Int32: Int] = [:]
     }
 
     private let state = Mutex(State())
@@ -70,6 +73,21 @@ public final class FakeAXProvider: AXProvider, Sendable {
             if timingOut { $0.timingOut.insert(pid) } else { $0.timingOut.remove(pid) }
         }
     }
+
+    /// The next `times` observer requests for `pid` fail, like an app that has just launched and answers
+    /// `AXObserverAddNotification` with `kAXErrorCannotComplete` (seen in the macOS 27 VM).
+    public func refuseObservers(pid: Int32, times: Int) {
+        state.withLock { $0.refusedObservers[pid] = max(0, times) }
+    }
+
+    /// `pid` refuses `kind` for good: a `.complete` request that includes it fails, a `.bestEffort` one gets the
+    /// other notifications.
+    public func refuseNotification(pid: Int32, _ kind: AXNotificationKind) {
+        _ = state.withLock { $0.refusedNotifications[pid, default: []].insert(kind) }
+    }
+
+    /// Observer requests for `pid` so far, refused ones included.
+    public func observeAttempts(pid: Int32) -> Int { state.withLock { $0.observeAttempts[pid, default: 0] } }
 
     public func setUnavailable(pid: Int32, _ unavailable: Bool) {
         state.withLock {
@@ -119,14 +137,25 @@ public final class FakeAXProvider: AXProvider, Sendable {
     }
 
     public func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>, handler: @escaping @Sendable (AXNotificationKind) -> Void
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
+        handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
-        let id = state.withLock { state -> UInt64 in
+        let id = state.withLock { state -> UInt64? in
+            state.observeAttempts[pid, default: 0] += 1
+            if let refused = state.refusedObservers[pid], refused > 0 {
+                state.refusedObservers[pid] = refused - 1
+                return nil
+            }
+            let refused = notifications.intersection(state.refusedNotifications[pid] ?? [])
+            if mode == .complete, !refused.isEmpty { return nil }
+            let accepted = notifications.subtracting(refused)
+            guard !accepted.isEmpty else { return nil }
             defer { state.nextObserverID += 1 }
             state.observers.append(
-                Observer(id: state.nextObserverID, pid: pid, notifications: notifications, handler: handler))
+                Observer(id: state.nextObserverID, pid: pid, notifications: accepted, handler: handler))
             return state.nextObserverID
         }
+        guard let id else { return nil }
         return FakeAXObservation { [weak self] in self?.removeObserver(id) }
     }
 

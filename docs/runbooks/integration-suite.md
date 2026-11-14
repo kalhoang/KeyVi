@@ -14,7 +14,7 @@ anything.
 | Item | Who | When | Command (from the checkout root) | Needs |
 |---|---|---|---|---|
 | Plan check of every scenario, profile and rule | Hosted CI, any Mac | Every PR | `swift run --package-path Packages/AppCore compat-harness run --dry-run` (also `soak`, `bench`, `egress --dry-run`) | Nothing |
-| Test build with the integration hooks, and TestHost | Runner | Before every runner job | `scripts/run-integration.sh build` (configuration `Integration`, section 2 step 6) | Apple Development identity in the runner's keychain |
+| Test build with the integration hooks, and TestHost | Runner | Before every runner job | `scripts/run-integration.sh build` (configuration `Integration`, section 2 step 6) VM runner: `INTEGRATION_CODE_SIGN_IDENTITY=-` (ad hoc) and a fresh grant after every build (ADR 0400) |
 | Scenario expectations against the real engine | Hosted CI, any Mac | Every PR | `swift test` in `Packages/AppCore` (`ScenarioOracleTests`, `ScenarioFilesTests`) | Nothing |
 | QA-R11 TestHost suite and privacy canary | Runner | Every merge to `main`, nightly | `scripts/run-integration.sh tests` = `compat-harness run --only 'testhost.*' --output .build/integration/tests` | Test build, TestHost, grants (section 2) |
 | Compatibility scenarios (13.2 minimum set, every rule's scenario) | Runner | Every merge to `main` | `compat-harness run --scenarios compat/scenarios --output .build/integration/compat` | Third-party apps, chromedriver, loopback server |
@@ -55,23 +55,30 @@ These steps change system settings, so they are Pa's to do on the runner machine
 6. Build and install the test build once: `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh build` from the
    runner's checkout. It builds the xcodegen configuration `Integration` (`Config/Integration.xcconfig`: the
    `INTEGRATION_HOOKS` compilation condition, release-like code generation, `APP_BUNDLE_ID_DEV` of
-   `scripts/brand.env`, the Apple Development identity) and installs it into `~/Applications/` (or
-   `$INTEGRATION_APP_DIR`), always to the same path, so the grants of step 8 survive every rebuild. A copy still
+   `scripts/brand.env`, the Apple Development identity unless the ad-hoc override below is set) and installs it into
+   `~/Applications/` (or `$INTEGRATION_APP_DIR`), always to the same path. A copy still
    running from that path (an earlier job, a killed harness, a manual session) is terminated first (SIGTERM, then
    SIGKILL after `$INTEGRATION_QUIT_TIMEOUT` seconds, default 10). It passes `ONLY_ACTIVE_ARCH=YES` on the command
    line so the package targets build for the runner's architecture only. It refuses a build that does not answer the
    hooks (ADR 0502, "Integration hooks"). The workflows run the same step before every
-   job, so the runner always tests the commit it checked out. A machine without the Apple Development identity
-   whose grants are renewed after every build (the tart VM, section 10) sets `INTEGRATION_CODE_SIGN_IDENTITY=-`:
-   the test build is then signed ad hoc with the hardened runtime off (an ad-hoc signature has no Team ID, so
-   library validation would refuse Sparkle); any other value stops before the build. By hand, the build alone is
+   job, so the runner always tests the commit it checked out. The runner is the tart VM
+   ([self-hosted-runner.md](self-hosted-runner.md) section 8; by hand, section 10): it has no Apple Development
+   identity, which stays in the keychain of Pa's Mac and is never copied into the VM (ADR 0400, Q9), so it sets
+   `INTEGRATION_CODE_SIGN_IDENTITY=-` and grants every new build again (step 8). The test build is then signed ad
+   hoc with the hardened runtime off (an ad-hoc signature has no Team ID, so library validation would refuse
+   Sparkle); any other value stops before the build. Left unset, the build is signed with the Apple Development
+   identity of `Config/Integration.xcconfig` and one grant survives every rebuild: that fits only a physical Mac
+   runner, which was not chosen and would need its own signing decision (Q9). By hand, the build alone is
    `xcodebuild -project App.xcodeproj -scheme App -configuration Integration build` after `xcodegen generate`.
    Never ship this build: `scripts/verify-release.sh` fails any app that contains the hooks.
 7. The same `build` step builds TestHost (Debug, ad hoc) into the same folder. It needs no permission.
 8. Grant Accessibility (and Input Monitoring if macOS asks) to the test build, and Accessibility to the harness
    binary `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads
    fields and presses menu items. VERIFY which process macOS holds responsible when the runner service starts the
-   harness: if the grant does not take, grant the runner's `Runner.Worker` as well.
+   harness: if the grant does not take, grant the runner's `Runner.Worker` as well. On the VM runner this is
+   `sudo scripts/vm/grant-tcc.sh --bundle ... --binary ...` after **every** build (its image has SIP disabled, and the
+   grant of an ad-hoc build is tied to that build's cdhash); on a physical Mac it is done once by hand
+   ([self-hosted-runner.md](self-hosted-runner.md) section 4).
 9. Start the test build once by hand and finish its onboarding, so it never shows onboarding during a run (the
    harness keeps the onboarding state when it rewrites the settings).
 10. Run the plan check on the runner: `compat-harness run --dry-run`. It must print every scenario, an `app:` line
@@ -202,6 +209,7 @@ suite possible without a dedicated Mac and without touching Pa's Mac:
 ```sh
 scripts/vm/integration-dev.sh    # throwaway clone of {{app-slug}}-dev (6144 MB, 4 CPUs), deleted afterwards
 scripts/vm/integration-dev.sh --only testhost.web.textarea    # control run of chosen scenarios (IDs, PREFIX*)
+scripts/vm/integration-dev.sh --probe --only testhost.web.textarea    # the same with the AX focus probe (10.5)
 ```
 
 It copies the committed checkout (`git archive HEAD`) into the clone and runs
@@ -250,11 +258,12 @@ posted events into TestHost. **5 of 40 TestHost scenarios passed** (`testhost.ba
 | 1 | `no accessibility element with identifier testhost.secureInput.toggle` | The checkbox exists in `TestHost/Sources/TestHostLayout.swift`; not found at that moment, probably the same state problem. Recheck after the rows above |
 
 Also, the privacy report listed one unreadable file (`backups/app-modes.json.v1.<timestamp>.json` in the test
-build's folder), which by itself fails the run (section 4). Nothing in this list needs a signing identity from the
-host keychain: the VM builds and grants everything itself. What the VM lacks for a run identical to the runner's is
-only the Apple Development identity of `Config/Integration.xcconfig` (the script overrides it with ad-hoc
-signing) and the prerequisites of section 2 steps 4 and 5 (input sources, third-party apps, chromedriver, the
-loopback server), which the TestHost subset does not need except for the four input-source scenarios.
+build's folder), which by itself fails the run (section 4). Nothing in this list needs a signing identity: the VM
+builds the test build ad hoc and grants it itself, as the VM runner does by decision (ADR 0400: the Apple
+Development identity stays in the keychain of Pa's Mac and is never copied into the VM, Q9). What the VM lacks for
+a full runner job is only the prerequisites of section 2 steps 4 and 5 (input sources, third-party apps,
+chromedriver, the loopback server), which the TestHost subset does not need except for the four input-source
+scenarios.
 
 ### 10.2 Grants by hand, and why the signature must be stable
 
@@ -278,11 +287,11 @@ its requirement across builds: with the Apple Development certificate of `Config
 `identifier "<dev bundle ID>" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development:
 ..." and certificate 1[field.1.2.840.113635.100.6.2.1] exists`, the same for every build signed with that
 certificate, so one grant lasts until the certificate is replaced (PLT-R751, self-hosted-runner.md section 4).
-For a VM there are two ways to get such a signature: import the Apple Development certificate into the VM's login
-keychain (Pa's decision; it is not a release secret), or create a self-signed code-signing certificate inside the
-VM and sign the test build and the harness with it (the requirement is anchored on that certificate; the hardened
-runtime must stay off, because a self-signed certificate has no Team ID). With SIP disabled none of this is
-needed: `grant-tcc.sh` simply grants the new cdhash after each build.
+That identity stays in the keychain of Pa's Mac and is never imported into a VM (ADR 0400, Q9). A VM image with
+SIP enabled that needs a stable signature can use a self-signed code-signing certificate created inside the VM to
+sign the test build and the harness (the requirement is anchored on that certificate; the hardened runtime must
+stay off, because a self-signed certificate has no Team ID). With SIP disabled none of this is needed:
+`grant-tcc.sh` simply grants the new cdhash after each build.
 
 ### 10.3 Triage of the first attempt (W6-B, 2026-11-13)
 
@@ -337,17 +346,71 @@ a fresh load of `fields.html` on Reset fields (the reload was tried and reverted
 `web.input` (after another web scenario) and before `web.textarea` (after `web.input`) is the same, and `web.input`
 passes, so the difference lies in what the app remembers from the previous field of the same page.
 
-Remaining failures and their next step:
-
-| Scenario | Observed | Root cause (as far as the VM shows) | Next step |
-|---|---|---|---|
-| `testhost.addressBar.telexStroke` | `dđ` for `đ` | Product, inline completion: after `d` TestHost's simulated address bar completes to `dd.example` with `d.example` selected (Chromium behaviour); on the second `d` the app's edit deletes only the selected completion and inserts `đ`, so the first `d` stays. The focus report shows the right field (`testhost.sim.addressBar`, rule `user.testhost.addressBar` -> `browser.chromium.addressBar`) | Owner of `InputHost`/`Injection` (W6-A): reproduce with a typing trace of this scenario in the dev VM and check how the `inlineCompletion` handling of `browser.chromium.addressBar` counts deletions when a completion is selected (one deletion clears the selection, the base letter needs another) |
-| `testhost.addressBar.telexTone` | `aá` for `á` (earlier runs `asia.example`) | Same field and the same missing deletion (`a` completes to `asia.example`; the tone edit clears the selection and appends `á`) | Same as the row above |
-| `testhost.privacyCanary.paste` | a space only, for `kanaryzqx ` | Product or VM: the user rule's `paste` strategy runs (user rules count as opted in, `FocusCore`), but nothing reaches TestHost's plain field, so the composed letters disappear and only the space passes. Either the pasteboard is restored before TestHost reads it on the synthetic Command+V (`restoreDelayMs` 400) or macOS 27's pasteboard privacy blocks a paste a synthetic key triggers | In the dev VM: run the scenario alone with `log stream --predicate 'subsystem == "com.apple.pasteboard"'` open; try a profile with a larger `restoreDelayMs`; owner of `Injection` (W6-A) |
-| `testhost.perWindowRule.mainWindow`, `testhost.web.editModeTransition` (intermittent: passed in runs 4, 5 and 7 and in `20261113T205703Z`; `web.editModeTransition` failed in run 8 and in `20261113T213424Z`, `perWindowRule.mainWindow` in run 8) | first word after the focus change untransformed (`vieetj việt`, `Dd`) | Same cause as the `web.textarea` row below, but only sometimes: the app's T6 count did not grow within the harness's 2 s wait after Command+1 (back from the second window's pass-through field) or after the page's editor took focus, so the first keys met the previous field's rule | Same as the row below; the harness can only wait for the refresh, not cause it |
-| `testhost.web.textarea` | first word untransformed (`tieengs việt`) | Product, focus refresh for web content: after the focus moves from the page's input (previous scenario) to its textarea the app publishes no new focus snapshot within 2 s (the harness waits for its T6 count, the waits time out), so the first word is decided on the previous snapshot; the PLT-R382 idle revalidation on the first key catches up for the second word. Not TestHost: the scenario passes alone on a fresh TestHost and fails after `testhost.web.input` also on a freshly loaded page (control runs above) | Owner of `InputHost` (W6-A): reproduce with `scripts/vm/integration-dev.sh --only testhost.web.input,testhost.web.textarea` and a typing trace; check whether `FocusCore` receives `AXFocusedUIElementChanged` from WebKit, or treats the new element as the same field, when focus moves from one element of a `WKWebView` page to another after a blur (T6 counts in the hooks `state`) |
-| `testhost.web.inlineAutocomplete` (intermittent: failed in `20261113T205703Z`, passed in the runs before and after) | `asia.example` or `aá` for `á` | Same inline completion edit as the `addressBar` rows: when the page's simulated completion is selected at the time of the tone key, the edit is one deletion short | Same as the `addressBar` rows |
-
-None of these needs the Apple Development identity or Pa's Mac. The privacy scan has passed (no finding, no unreadable
+Outcome: the five failures left after W6-B, and the two intermittent ones, were traced by W7-A to the app's focus
+tracking (an early WebKit focus notification, an observer refused by a just launched app) and to two TestHost
+fixtures (no Edit menu, a page that moved the focus between two keys). Root causes, fixes and runs: section 10.5.
+None of them needs the Apple Development identity or Pa's Mac. The privacy scan has passed (no finding, no unreadable
 or vanished file) in every run since the second.
 
+### 10.5 Root causes of the last failures (W7-A, 2026-11-14)
+
+Method: control runs in a throwaway clone of `{{app-slug}}-dev` with an AX probe running in the guest's session next
+to the harness (`scripts/vm/guest/ax-focus-probe.swift`, how to use it below). The probe logs every focus, window,
+selection and value notification of TestHost with the role, identifier and hash of the notified element and of the
+app's focused element at that moment, and every pasteboard change (change count and types, never a value). The two
+probe logs cited in the table come from an earlier, uncommitted revision of the probe (`probe-source.swift` in the
+same run folders): its lines read `NOTE ... vsPrev=` and `PASTEBOARD ... len=` instead of `focus=same|changed` and
+`pasteboard change=... types=...`, and it counted the bytes of the pasteboard's text, which the committed probe does
+not read at all.
+
+| Scenario | Root cause | Fix | Test |
+|---|---|---|---|
+| `testhost.web.textarea`, and the intermittent `testhost.web.inlineAutocomplete` and `testhost.perWindowRule.mainWindow` | WebKit posts `AXFocusedUIElementChanged` for the page's textarea (the notification names a group of the WebContent process) while the app's `AXFocusedUIElement` still reads none; 13 ms later the textarea is the focused element, and no second notification follows (`20261113T222941Z-w7a-webpair/probe-1.log`, 7.043 s and 7.056 s). `FocusCore` read the focus once per notification, so it published "no text focus" and kept it until the PLT-R382 revalidation on the first key: the first word passed untransformed (`tieengs việt`; on the completion page `asia.example`, both keys passed). | Settle re-reads: 40, 120 and 400 ms after every focus notification and every activation, `FocusCore` reads the focus again and publishes only a change; a timeout ends the window, and a notification whose own read timed out opens none, so a focus change of a slow app
+costs one PLT-R384 breaker count as before; a deferred publication wakes the main thread like a notification does (`FocusCore+Settle.swift`, PLT-R380, PLT-R391). | `FocusSettleTests` |
+| `testhost.addressBar.telexStroke` (`dđ`), `testhost.addressBar.telexTone` (`asia.example`, `aá`) | Not the deletion count: the inline-completion handling of the edit (`axSelectionThenPlaceholder`, one extra Backspace when a suggestion is selected, `KeyStrategies.swift`) is right whenever the snapshot carries the address bar's rule; `testhost.addressBar.vni` passes in every run with the same field and rule. These two scenarios are the first after TestHost's launch. A just launched app answers `AXObserverAddNotification` with `kAXErrorCannotComplete` (-25204) for about 400 ms (the probe's own observer, both runs below), and `FocusCore` never asked again, so (inferred: the probe's observer was refused, and `FocusCore` registers the same
+way at the same moment) no focus notification of TestHost arrived: the keys met a stale snapshot (another field's rule gives `dđ`, no text focus gives `asia.example`). Their 5 to 8 s durations (2 s of them the harness's focus-refresh wait timing out) match. | A refused observer is retried 100, 200, 400, 800, 1,600 and 3,200 ms later while the app owns the focus, and a late registration reads the focus it missed; `SystemAXProvider` adds an observer's notifications all together or not at all (`AXObserverRegistration`), so a refusal halfway is retried too; the last retry keeps what the app accepts, so one name refused for good does not cost the others. The PLT-R382 revalidation also runs on the first key after the app starts: before, that key never counted as idle, which is why `telexStroke` composed both keys on the stale snapshot while `telexTone`, one scenario later, got the revalidation on its first key. | `FocusSettleTests`, `AXObserverRegistrationTests`, `KeyPipelineHostTests.firstKeyDownAfterStartRequestsRevalidation` |
+| `testhost.privacyCanary.paste` (a space only) | TestHost had no Edit menu. AppKit turns Command+V into `paste:` only through a menu key equivalent, so the `paste` strategy's synthetic Command+V reached no field: every edit's deletions ran and its insertion never came, which left the space alone. The pasteboard side worked: the probe logged the transient item with the nspasteboard.org marker types and each restore (changes 2 to 6 in `20261113T222633Z-w7a-reproduction/probe-1.log`), so neither the 400 ms restore delay nor macOS 27 pasteboard privacy was involved, and nothing typed was logged or persisted (privacy scan clean). | TestHost gets the standard Edit menu (Cut, Copy, Paste, Select All). | `TestHostSourcesTests.editMenuHasTheStandardKeyEquivalents` |
+| `testhost.web.editModeTransition` (`Dd`, intermittent) | The local page moved the DOM focus from a grid cell (a `div`) to a hidden editor after the first key. A focus change is a hard boundary (PLT-R340), so with the host tracking it "D" and "d" are two compositions and give `Dd`; the scenario passed only when the app published the editor's focus after the second key had been decided, a race that the settle re-reads would end for good. Not a harness timing problem. | The cell is one input that keeps the focus from the first key on; it still drops the keys of its 20 ms edit-mode transition and autocompletes from its column. | `LocalPagesTests.editModeCellKeepsTheFocusFromTheFirstKey` |
+
+**Limit of the edit-mode fix (open question to Pa).** The old page was the suite's only model of a grid whose first
+key opens a separate editor element. Under PLT-R340 as written, a focus change between the first two keys of a word is
+a hard boundary, so no input method that follows the spec can give `Đức` there: Telex `Dd` stays `Dd`. If Google
+Sheets or Excel on the web move the DOM focus to an editor on the first key (not verified: `compat/matrix.json` rows of
+`web.googleSheets.cellEditor` and `.webkit` are `notVerified`), the product will type `Dd` there and no scenario shows
+it. The notes of both rules in `compat/rules.json` say so. Whether a focus change inside the same window within
+`firstEditDelayUs` (or about 300 ms) of a word's first key should keep the composition is a spec decision
+(PLT-R340, PLT-R408) for Pa, not something to settle in TestHost.
+
+Runs of W7-A (clone `{{app-slug}}-dev-w7a`, 6144 MB, 4 CPUs; folders under `/Volumes/Data/tart/runs/`):
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| `20261113T222633Z-w7a-reproduction` (`--only` the five, plus `testhost.addressBar.vni`, `testhost.web.input`, `testhost.web.inlineAutocomplete`) | `877ed58` | 3 | 5 | Reproduction on the starting commit: `dđ`, `asia.example`, ` `, `Dd`, `tieengs việt`. The probe's observer on the just launched TestHost was refused (-25204) and, never retried, saw no notification at all; the paste strategy's pasteboard writes and restores were logged |
+| `20261113T222941Z-w7a-webpair` (`--only testhost.web.input,testhost.web.textarea`, probe retrying its observer) | `877ed58` | 1 | 1 | The probe's observer was refused for 390 ms after TestHost's launch, then registered; the early WebKit focus notification of the textarea (row 1 above) |
+
+VM verification of the fixes is **open**, and until it exists the table above is a diagnosis, not proof: no VM run
+contains any of the fixes. A first build with them was starting in the clone when the host's Safari guard stopped the
+VM (2026-11-14 05:34 host time, `/Volumes/Data/tart/safari-guard.log`), and Safari then stayed open beyond the
+90-minute limit of Pa's VM rule, so the clone was deleted unverified. The review follow-up waited again from 07:31 to
+09:02 with Safari open throughout and booted no VM. Next step, in this order, with Safari closed:
+
+1. `scripts/vm/integration-dev.sh` (the full suite: expect 40 of 40 and a clean privacy scan);
+2. three times `scripts/vm/integration-dev.sh --probe --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition`
+   (`testhost.web.input` runs before the textarea on purpose; the probe's log shows TestHost's observer refusals right
+   after launch next to the addressBar results, and is the first run of the committed probe);
+3. five times `scripts/vm/integration-dev.sh --only testhost.web.editModeTransition`.
+
+Record every run (folder, commit, pass and fail) in the table above. If a scenario still fails, read its focus report
+in `integration-out/evidence/` and the probe's log of the same run.
+
+The probe runs inside the VM only (it refuses a real Mac). `scripts/vm/integration-dev.sh --probe` (with or without
+`--only`) has the guest compile it, grant it with the other TCC clients, start it on TestHost's dev bundle ID right
+before the suite and end it after; its log is `integration-out/probe.log` in the run folder (`probe-build.log` if it
+did not compile):
+
+```sh
+scripts/vm/integration-dev.sh --probe --only testhost.web.input,testhost.web.textarea
+```
+
+The typing trace (PLT-R905) is not used in these runs: it starts only after the user confirms it in the app, and the
+text it records would be a finding of the privacy scan.

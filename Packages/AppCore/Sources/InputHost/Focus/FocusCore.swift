@@ -15,6 +15,17 @@ import SettingsStore
 /// Routes AX observer callbacks back onto the ax thread (implemented by `FocusTracker`).
 protocol FocusNotificationSink: AnyObject, Sendable {
     func axNotification(pid: Int32, kind: AXNotificationKind)
+    /// A settle re-read or an observer retry is due (`FocusCore+Settle.swift`); called on the scheduler's queue.
+    func deferredWorkDue(_ work: FocusDeferredWork)
+}
+
+/// What one `refresh` did.
+enum FocusRefreshOutcome: Equatable {
+    /// An idle or settle read timed out for the current owner: nothing was resolved or published.
+    case learnedNothing
+    /// The context is the one already published (nothing published, no T6 sample).
+    case unchanged
+    case published
 }
 
 /// What the last published snapshot was built from. `match` holds the transient title and URL for change
@@ -69,6 +80,8 @@ final class FocusCore {
         var capture: CaptureController?
         /// PLT-R802: an `axCall` interval around every focus-tracking AX call.
         var signposts: PlatformSignposts?
+        /// Settle re-reads and observer retries (`FocusCore+Settle.swift`); nil defers nothing.
+        var scheduler: (any TimerScheduler)?
     }
 
     let services: Services
@@ -90,6 +103,7 @@ final class FocusCore {
     var lastEmittedDocument: AppModesDocument?
     var emittedHistory = EmittedModeHistory()
     var manualAccessibilityPIDs: Set<Int32> = []
+    var deferred = FocusDeferredState()
     var running = false
 
     init(services: Services, mirror: FocusMirror) {
@@ -111,6 +125,7 @@ final class FocusCore {
 
     func stop() {
         running = false
+        cancelDeferredWork()
         for pid in Array(observed.keys) { removeObserver(pid) }
         overlayPIDs = [:]
         current = nil
@@ -139,15 +154,19 @@ final class FocusCore {
     /// `scanOverlays`: NSWorkspace activation and wake rescan running overlay apps (a full process scan in
     /// production). The PLT-R382 idle-key revalidation does not: it runs on the first key after every typing
     /// pause, competes with the T6 budget, and an overlay app that launches activates and triggers a scan.
+    /// An activation or wake also opens a settle window: the new owner's focused element may not be readable yet.
     func revalidate(scanOverlays: Bool) {
         guard running else { return }
         if scanOverlays { syncObservers(scanOverlays: true) }
         refresh(force: false, idle: !scanOverlays)
+        if scanOverlays { scheduleSettleUnlessTimedOut() }
     }
 
+    /// The read happens now; the settle window reads again in case the app posted before its focus was readable.
     func handleNotification(pid: Int32, kind: AXNotificationKind) {
         guard running else { return }
         refresh(force: false)
+        scheduleSettleUnlessTimedOut()
     }
 
     /// Reads the system-wide focus and, when the context changed (or `force`), resolves once and publishes
@@ -157,18 +176,22 @@ final class FocusCore {
     /// publishes nothing: a generation bump would reset the word in progress and make the worker discard edits
     /// in flight (PLT-R316). An AX timeout for the current owner teaches nothing about the focus, so the snapshot
     /// stays until the breaker opens (PLT-R384), which then publishes the `timedOut` context.
-    func refresh(force: Bool, idle: Bool = false) {
-        guard running, let rules else { return }
+    @discardableResult
+    func refresh(force: Bool, idle: Bool = false) -> FocusRefreshOutcome {
+        guard running, let rules else { return .unchanged }
         let started = services.clock.now()
         let reading = readFocus(rules: rules, at: started)
-        if idle, learnedNothing(from: reading, at: started) { return }
+        deferred.lastReadTimedOut = reading.availability == .timedOut
+        if idle, learnedNothing(from: reading, at: started) { return .learnedNothing }
         let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false
-        if !force, sameElement, current?.match == match { return }
+        if !force, sameElement, current?.match == match { return .unchanged }
         let decision = rules.resolve(match)
         recordSideEffects(of: decision, reading: reading)
-        resolveAndPublish(reading: reading, match: match, decision: decision, sameElement: sameElement, at: started)
+        let published = resolveAndPublish(
+            reading: reading, match: match, decision: decision, sameElement: sameElement, at: started)
         services.metrics.focusRefresh.record(nanoseconds: services.clock.now().nanoseconds(since: started))
+        return published ? .published : .unchanged
     }
 
     /// A timeout of the system-wide read (no pid), or of the current owner's element read while its breaker is
@@ -179,10 +202,11 @@ final class FocusCore {
         return pid == current?.pid && !breaker.isOpen(pid: pid, at: instant)
     }
 
+    /// True when a snapshot was published.
     private func resolveAndPublish(
         reading: FocusReading, match: MatchContext, decision: ResolvedDecision, sameElement: Bool,
         at instant: MonotonicInstant
-    ) {
+    ) -> Bool {
         let bundle = reading.identity?.bundle
         if reading.pid != current?.pid || bundle != current?.identity?.bundle {
             sessionMode = nil  // PRD-R21: rules and memory win on every activation
@@ -204,13 +228,14 @@ final class FocusCore {
             changedAt: current?.snapshot.changedAt ?? instant,
             pause: TextFocusGate.pause(field: field, decision: hostDecision))
         if sameElement, let current, FocusSnapshotContent(current.snapshot) == FocusSnapshotContent(snapshot) {
-            if snapshot.modeSource != current.snapshot.modeSource { services.output.publish(snapshot) }
+            let sourceChanged = snapshot.modeSource != current.snapshot.modeSource
+            if sourceChanged { services.output.publish(snapshot) }
             self.current?.match = match
             self.current?.decision = decision
             self.current?.resolution = resolution
             self.current?.snapshot = snapshot
             mirror.update(decision: decision)
-            return
+            return sourceChanged
         }
         stampNewGeneration(&snapshot, element: reading.element, sameElement: sameElement, at: instant)
         // The generation first: the worker discards edits built for an older one (PLT-R316).
@@ -221,6 +246,7 @@ final class FocusCore {
         current = FocusContext(
             pid: reading.pid, element: reading.element?.element, identity: reading.identity, match: match,
             decision: decision, resolution: resolution, snapshot: snapshot)
+        return true
     }
 
     /// PLT-R905: every focus change goes into a running typing trace with roles and the bundle ID only, never
@@ -274,6 +300,10 @@ final class FocusCore {
 extension FocusTracker: FocusNotificationSink {
     func axNotification(pid: Int32, kind: AXNotificationKind) {
         perform { $0.handleNotification(pid: pid, kind: kind) }
+    }
+
+    func deferredWorkDue(_ work: FocusDeferredWork) {
+        perform { $0.runDeferred(work) }
     }
 
     /// Always asynchronous, also from the ax thread itself, so a block never runs nested inside another.

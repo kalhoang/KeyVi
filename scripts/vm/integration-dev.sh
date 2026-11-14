@@ -20,6 +20,7 @@ Usage: scripts/vm/integration-dev.sh [options]
   --output DIR         run folder (default VM_LAB_RUNS/<UTC timestamp>-integration)
   --memory MB, --cpus N  VM size (default 6144 MB, 4 CPUs)
   --only ID[,ID...]    run only these TestHost scenarios (IDs or PREFIX* patterns), for a control run
+  --probe              run the AX focus probe on TestHost beside the suite (probe.log, integration-suite.md 10.5)
   -h, --help           this help
 
 Only committed files are copied (git archive HEAD). Exit status: 0 suite passed, 1 failed, 2 usage error,
@@ -37,6 +38,7 @@ run_dir=""
 memory=""
 cpus=""
 only=""
+probe=0
 bad_usage() {
   printf 'integration-dev: %s\n' "$*" >&2
   usage >&2
@@ -62,6 +64,7 @@ while (($#)); do
       shift 2
       ;;
     --in-place) in_place=1; shift ;;
+    --probe) probe=1; shift ;;
     *) bad_usage "unknown option: $1" ;;
   esac
 done
@@ -95,6 +98,7 @@ rc=0
 lab_wait_agent "$vm" || rc=$?
 guest_args=()
 [[ -z "$only" ]] || guest_args=(--only "$only")
+((probe == 0)) || guest_args+=(--probe)
 # shellcheck disable=SC2016 # expanded by the guest's shell; the extra arguments arrive as "$@"
 ((rc != 0)) || lab_tart exec "$vm" /bin/bash -c 'cd "$HOME/src" && bash scripts/vm/guest/integration-guest.sh --out "$HOME/integration-out" "$@"' \
   integration-guest ${guest_args[@]+"${guest_args[@]}"} >"$run_dir/guest.log" 2>&1 || rc=$?

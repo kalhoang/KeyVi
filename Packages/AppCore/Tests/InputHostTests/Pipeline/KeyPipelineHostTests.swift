@@ -302,14 +302,31 @@ import VietnameseEngine
     /// itself is processed at once.
     @Test func idleKeyDownRequestsRevalidation() {
         let fixture = PipelineFixture()
-        fixture.press(Key.a)
+        fixture.press(Key.a)  // the first key after start revalidates, covered below
         fixture.clock.advance(byMicroseconds: 400_000)
         fixture.press(Key.d)
-        #expect(fixture.axNotices().isEmpty)
+        #expect(fixture.axNotices().count == 1)
         fixture.clock.advance(byMicroseconds: 600_000)
         fixture.press(Key.e)
-        #expect(fixture.axNotices().count == 1)
+        #expect(fixture.axNotices().count == 2)
         #expect(fixture.log.feeds.count == 3)
+    }
+
+    /// PLT-R382: the first keyDown after start follows an idle period of unknown length, so it revalidates too.
+    /// Without it a focus notification missed right after launch left the first word on a stale snapshot
+    /// (docs/runbooks/integration-suite.md section 10.5, telexStroke typed "dđ").
+    @Test func firstKeyDownAfterStartRequestsRevalidation() {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        let notices = fixture.axNotices()
+        #expect(notices.count == 1)
+        guard case .revalidateFocus = notices.first else {
+            Issue.record("expected a focus revalidation, got \(notices)")
+            return
+        }
+        fixture.press(Key.d)
+        #expect(fixture.axNotices().count == 1)  // cumulative: the second key is not idle
+        #expect(fixture.log.feeds.count == 2)
     }
 
     /// Worker reset requests (ADR 0308) reset the composition at the next callback.

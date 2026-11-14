@@ -106,7 +106,7 @@
         "reason": "Column autocomplete selects the suggested remainder ('D'+'d' gives 'DĐức'); first letter lost when the cell enters edit mode.",
         "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
         "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. axSelection only (decision of 2026-11-13, docs/decisions/0005-pa-decisions-2026-11-13.md): the zero-width placeholder returns only with an automated 1,000-edit test (PLT-R422); until then a suggestion that AX cannot read may stay in the cell (matrix note). The tested entry is a placeholder until the scenario passes.",
+        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. axSelection only (decision of 2026-11-13, docs/decisions/0005-pa-decisions-2026-11-13.md): the zero-width placeholder returns only with an automated 1,000-edit test (PLT-R422); until then a suggestion that AX cannot read may stay in the cell (matrix note). The tested entry is a placeholder until the scenario passes. A page whose editor takes the DOM focus after the first key (a hidden editor element instead of the cell itself) is a hard boundary under PLT-R340: that key and the next become two words (Telex 'Dd' stays 'Dd' instead of 'Đ'), and no rule here can bridge it (open question to Pa, docs/runbooks/integration-suite.md section 10.5).",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -124,7 +124,7 @@
         "reason": "In Safari the first letter was lost while the cell was not yet in edit mode, and column autocomplete selected the suggested remainder.",
         "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
         "tested": [{ "app": "Safari", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Requires AX document URL. VERIFY firstEditDelayUs and that WebKit exposes the cell editor selection. The tested entry is a placeholder until the scenario passes.",
+        "notes": "Requires AX document URL. VERIFY firstEditDelayUs and that WebKit exposes the cell editor selection. The tested entry is a placeholder until the scenario passes. A page whose editor takes the DOM focus after the first key (a hidden editor element instead of the cell itself) is a hard boundary under PLT-R340: that key and the next become two words (Telex 'Dd' stays 'Dd' instead of 'Đ'), and no rule here can bridge it (open question to Pa, docs/runbooks/integration-suite.md section 10.5).",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },

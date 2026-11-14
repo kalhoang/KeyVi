@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The main thread shows what the tap does (PRD-R10, PRD-R11): when the focus tracker publishes a new snapshot
-// on the ax thread, the icon and the menu must follow. The tracker has no publication callback, so the host
-// wraps its AX provider: after the tracker's handler queued its resolution on the ax thread, the decorator queues
-// the main-thread wake-up behind it (run-loop blocks run in order), so the main thread reads the snapshot the
-// notification produced. Workstream W2-A.
+// on the ax thread, the icon and the menu must follow. For notifications the host wraps the tracker's AX
+// provider: after the tracker's handler queued its resolution on the ax thread, the decorator queues the
+// main-thread wake-up behind it (run-loop blocks run in order), so the main thread reads the snapshot the
+// notification produced. Workstream W2-A. Publications without a notification (settle re-reads, observer retries)
+// call the tracker's deferred publication observer instead (`FocusTracker.setDeferredPublicationObserver`).
 
 public import Injection
 public import RealtimeSupport
@@ -32,12 +33,12 @@ public struct FocusChangeSignalingAXProvider: AXProvider {
     }
 
     public func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>,
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
         let afterNotification = self.afterNotification
         let thread = self.thread
-        return base.observe(pid: pid, notifications: notifications) { kind in
+        return base.observe(pid: pid, notifications: notifications, mode: mode) { kind in
             handler(kind)
             thread.perform(afterNotification)
         }

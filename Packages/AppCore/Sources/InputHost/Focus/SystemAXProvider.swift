@@ -47,7 +47,8 @@ public final class SystemAXProvider: AXProvider {
     }
 
     public func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>, handler: @escaping @Sendable (AXNotificationKind) -> Void
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
+        handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
         var created: AXObserver?
         let callback: AXObserverCallback = { _, _, name, refcon in
@@ -58,10 +59,13 @@ public final class SystemAXProvider: AXProvider {
         let application = AXRead.application(pid)
         let box = AXObserverHandlerBox(handler: handler)
         let refcon = Unmanaged.passUnretained(box).toOpaque()
-        let names = notifications.map(AXNotificationNames.name(for:)).filter { name in
-            AXObserverAddNotification(observer, application, name as CFString, refcon) == .success
-        }
-        guard !names.isEmpty else { return nil }
+        let requested = notifications.map(AXNotificationNames.name(for:)).sorted()
+        guard
+            let names = AXObserverRegistration.register(
+                requested, mode: mode,
+                add: { AXObserverAddNotification(observer, application, $0 as CFString, refcon) },
+                remove: { _ = AXObserverRemoveNotification(observer, application, $0 as CFString) })
+        else { return nil }
         return SystemAXObservation(
             objects: AXObserverObjects(observer: observer, application: application), names: names, box: box)
     }
@@ -69,6 +73,32 @@ public final class SystemAXProvider: AXProvider {
     public func enableManualAccessibility(pid: Int32) -> Bool {
         AXUIElementSetAttributeValue(
             AXRead.application(pid), AXNotificationNames.manualAccessibility as CFString, kCFBooleanTrue) == .success
+    }
+}
+
+/// Adds an observer's notifications all together or not at all (PLT-R380). An app that is still launching answers
+/// `kAXErrorCannotComplete` (about 400 ms in the macOS 27 VM): the names added so far are removed and nil tells the
+/// focus tracker to try again later, instead of keeping an observer that misses some or all of the app's focus
+/// changes for good. A name the app does not support at all is skipped; nil when nothing could be added. In
+/// `.bestEffort` (the tracker's last attempt) a refused name is skipped too, so an app that refuses one name for
+/// good still reports the others.
+enum AXObserverRegistration {
+    static func register(
+        _ names: [String], mode: AXObservationMode, add: (String) -> AXError, remove: (String) -> Void
+    ) -> [String]? {
+        var registered: [String] = []
+        for name in names {
+            switch add(name) {
+            case .success, .notificationAlreadyRegistered:
+                registered.append(name)
+            case .cannotComplete where mode == .complete:
+                registered.forEach(remove)
+                return nil
+            default:
+                continue
+            }
+        }
+        return registered.isEmpty ? nil : registered
     }
 }
 

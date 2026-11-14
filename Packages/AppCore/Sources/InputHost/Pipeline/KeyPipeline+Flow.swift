@@ -163,10 +163,12 @@ extension KeyPipeline {
 
     // MARK: Steps 4 to 6
 
+    /// PLT-R382. The first keyDown after start counts as idle: the pause before it has no known length, and a
+    /// focus notification missed right after launch would otherwise leave the first word on a stale snapshot.
     func noteKeyboardActivity(_ event: RawKeyEvent, now: MonotonicInstant) {
-        if event.kind == .keyDown, let last = keyState.lastKeyboardEventAt,
-            now.nanoseconds(since: last) >= idleRevalidationNanoseconds
-        {
+        let idle =
+            keyState.lastKeyboardEventAt.map { now.nanoseconds(since: $0) >= idleRevalidationNanoseconds } ?? true
+        if event.kind == .keyDown, idle {
             if context.outbox.toAX.push(.revalidateFocus) { context.outbox.axSignal.signal() }
         }
         keyState.lastKeyboardEventAt = now

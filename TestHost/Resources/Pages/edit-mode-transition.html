@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- 13.2 local page: a spreadsheet-style cell (section 6). The cell starts in navigation mode; the first key
-     starts edit mode, and the editor appears only after a short transition, so keys typed during the
-     transition are lost (the "first letter lost" bug firstEditDelayUs addresses). The editor then
-     autocompletes from the column, ignoring case and diacritics ("D" + "d" -> "DĐức"). -->
+<!-- 13.2 local page: a spreadsheet-style cell (section 6). The cell is one text input that keeps the keyboard
+     focus, like a spreadsheet whose editor holds the focus while the grid shows the cell. It starts in navigation
+     mode; the first key starts edit mode, and the cell takes text only after a short transition, so keys typed
+     during the transition are lost (the "first letter lost" bug firstEditDelayUs addresses). The editor
+     then autocompletes from the column, ignoring case and diacritics ("D" + "d" -> "DĐức").
+     The focus never moves between the first key and the next ones: a focus change is a hard boundary
+     (02-platform.md PLT-R340), so a page that moved it from a grid cell to a separate editor after the first key
+     could never give "Đức" with any correct input method (integration-suite.md section 10.5). -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -13,9 +17,9 @@
 </head>
 <body>
   <p id="cell-label">Cell B2 (column: Đức, Dũng, Nguyễn, Hà Nội)</p>
-  <!-- class testhost-edit-mode-cell: the user rule override of profile testhost-reproductions matches both. -->
-  <div id="cell" class="cell testhost-edit-mode-cell" tabindex="0" role="gridcell" aria-labelledby="cell-label"></div>
-  <input id="cell-editor" class="testhost-edit-mode-cell" type="text" autocomplete="off" spellcheck="false" hidden aria-labelledby="cell-label"
+  <!-- class testhost-edit-mode-cell: the user rule override of profile testhost-reproductions matches it. -->
+  <input id="cell" class="cell testhost-edit-mode-cell" type="text" autocomplete="off" spellcheck="false"
+         aria-labelledby="cell-label"
          data-testhost-field="testhost.web.input" data-testhost-fold-diacritics
          data-testhost-completions="Đức|Dũng|Nguyễn|Hà Nội">
   <p>Dropped keys: <span id="dropped">0</span></p>
@@ -25,40 +29,32 @@
       "use strict";
       var transitionMilliseconds = 20; // longer than the 5 ms burst interval, shorter than normal typing
       var cell = document.getElementById("cell");
-      var editor = document.getElementById("cell-editor");
       var dropped = document.getElementById("dropped");
-      var entering = false;
+      var mode = "navigation"; // navigation, entering, editing
       cell.addEventListener("keydown", function (event) {
-        if (event.key.length !== 1 || event.metaKey || event.ctrlKey) {
+        if (mode === "editing" || event.key.length !== 1 || event.metaKey || event.ctrlKey) {
           return;
         }
         event.preventDefault();
-        if (entering) {
+        if (mode === "entering") {
           dropped.textContent = String(Number(dropped.textContent) + 1);
           return;
         }
-        entering = true;
+        mode = "entering";
         var first = event.key;
         setTimeout(function () {
-          cell.hidden = true;
-          editor.hidden = false;
-          editor.value = first;
-          editor.focus();
-          editor.setSelectionRange(first.length, first.length);
-          window.TestHost.mirror(editor);
+          cell.value = first;
+          cell.setSelectionRange(first.length, first.length);
+          mode = "editing";
+          window.TestHost.mirror(cell);
         }, transitionMilliseconds);
       });
-      // Focusing the mirrored field from TestHost focuses the cell in navigation mode.
-      editor.addEventListener("blur", function () {
-        if (editor.value === "") {
-          editor.hidden = true;
-          cell.hidden = false;
-          entering = false;
+      // Reset fields (empty value, then a blur) and leaving an empty cell return it to navigation mode.
+      cell.addEventListener("blur", function () {
+        if (cell.value === "") {
+          mode = "navigation";
         }
       });
-      window.TestHost.focus = function () {
-        (editor.hidden ? cell : editor).focus();
-      };
     })();
   </script>
 </body>

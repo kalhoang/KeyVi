@@ -11,9 +11,10 @@
 # Team ID, and library validation would refuse Sparkle). Its TCC grant is therefore tied to the cdhash and is
 # renewed by this script after every build.
 #
-# Usage: integration-guest.sh --out DIR [--only ID[,ID...]]   (from the checkout root, inside the VM only; it exits
-# 3 on a real Mac). --only runs these scenarios (IDs or PREFIX* patterns of compat-harness) instead of every
-# testhost.* one, for a control run (integration-suite.md 10.4). Exit 0 when the suite passed.
+# Usage: integration-guest.sh --out DIR [--only ID[,ID...]] [--probe]   (from the checkout root, inside the VM only;
+# it exits 3 on a real Mac). --only runs these scenarios (IDs or PREFIX* patterns of compat-harness) instead of every
+# testhost.* one, for a control run (integration-suite.md 10.4). --probe runs scripts/vm/guest/ax-focus-probe.swift
+# on TestHost beside the suite, into probe.log (integration-suite.md 10.5). Exit 0 when the suite passed.
 set -uo pipefail
 
 # Refuse to run anywhere but inside a virtual machine, before parsing arguments and before any side effect: this
@@ -25,16 +26,18 @@ set -uo pipefail
 }
 
 usage() {
-  echo "usage: integration-guest.sh --out DIR [--only ID[,ID...]]" >&2
+  echo "usage: integration-guest.sh --out DIR [--only ID[,ID...]] [--probe]" >&2
   exit 2
 }
 # Scenario IDs and PREFIX* patterns, comma separated: they become words of COMPAT_HARNESS_TESTS_ARGS.
 valid_only() { printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._*-]*(,[A-Za-z0-9_][A-Za-z0-9._*-]*)*$'; }
 out=""
 only=""
+probe=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) [ $# -ge 2 ] || usage; out="$2"; shift 2 ;;
+    --probe) probe=1; shift ;;
     --only)
       if [ $# -lt 2 ] || ! valid_only "$2"; then usage; fi
       only="$2"
@@ -112,6 +115,11 @@ agent=""
 [ -z "$agent_pid" ] || agent="$(ps -o comm= -p "$agent_pid")"
 clients=(--bundle "$app" --bundle "$apps/TestHost.app" --binary "$harness" --binary /usr/libexec/sshd-keygen-wrapper)
 if [ -n "$agent" ] && [ -x "$agent" ]; then clients+=(--binary "$agent"); fi
+if [ "$probe" = 1 ]; then
+  xcrun swiftc -O -o /tmp/ax-focus-probe scripts/vm/guest/ax-focus-probe.swift >"$out/probe-build.log" 2>&1 ||
+    stop "ax-focus-probe.swift did not compile (probe-build.log)"
+  clients+=(--binary /tmp/ax-focus-probe)
+fi
 # shellcheck disable=SC2024 # the log files belong to this user on purpose
 sudo -n bash scripts/vm/grant-tcc.sh "${clients[@]}" >"$out/grant.log" 2>&1 || stop "grant-tcc.sh failed (grant.log)"
 # shellcheck disable=SC2024
@@ -139,8 +147,16 @@ if [ -n "$only" ]; then
   export COMPAT_HARNESS_TESTS_ARGS="run --scenarios compat/scenarios --only $only --output .build/integration/tests"
   note "only: $only"
 fi
+probe_pid=""
+if [ "$probe" = 1 ]; then
+  # Metadata only (roles, identifiers, hashes, pasteboard change counts and types), never a value (PLT-R901).
+  /tmp/ax-focus-probe "$APP_BUNDLE_ID_DEV.testhost" >"$out/probe.log" 2>&1 &
+  probe_pid=$!
+  note "AX focus probe running (probe.log)"
+fi
 COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_EVIDENCE_DIR="$out/evidence" scripts/run-integration.sh tests >"$out/tests.log" 2>&1
 rc=$?
+[ -z "$probe_pid" ] || kill "$probe_pid" 2>/dev/null
 cp -R .build/integration/tests "$out/results" 2>/dev/null
 note "run-integration.sh tests exit $rc"
 grep -E '^(pass|fail|needsHuman) ' "$out/tests.log" | awk '{print $1}' | sort | uniq -c | while read -r count kind; do

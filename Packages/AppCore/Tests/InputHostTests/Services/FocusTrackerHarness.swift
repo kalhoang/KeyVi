@@ -113,9 +113,16 @@ final class FocusHarness {
     let health = HealthEventLog()
     let clock = ManualClock()
     let documents = Recorder<AppModesDocument>()
+    let scheduler: ManualScheduler
+    /// Every timer the tracker asked for (PLT-R803 leeway checks).
+    let timers: TimerRequestRecorder
     let tracker: FocusTracker
 
-    init() {
+    /// `scheduled`: the tracker gets the ManualScheduler for its settle re-reads and observer retries; otherwise
+    /// it defers nothing (the behaviour every other focus test pins).
+    init(scheduled: Bool = false) {
+        scheduler = ManualScheduler(clock: clock)
+        timers = TimerRequestRecorder(base: scheduler)
         thread.start()
         let initial = FocusSnapshot(
             generation: .initial, app: nil, field: .unknown,
@@ -125,7 +132,8 @@ final class FocusHarness {
         cell = SnapshotCell(initial, epoch: ReaderEpoch())
         tracker = FocusTracker(
             thread: thread, ax: ax, processes: processes, output: cell, generation: generation, inbox: inbox,
-            metrics: metrics, health: health, clock: clock, macOSVersion: LooseVersion("27.2")!)
+            metrics: metrics, health: health, clock: clock, macOSVersion: LooseVersion("27.2")!,
+            scheduler: scheduled ? timers : nil)
         let documents = self.documents
         tracker.setMemoryObserver { documents.append($0) }
     }
@@ -141,6 +149,18 @@ final class FocusHarness {
     }
 
     func sync() { tracker.waitUntilIdle() }
+
+    /// Advances virtual time timer by timer, letting the ax thread run what each one queued (a retry may schedule
+    /// the next one) before the next deadline.
+    func advance(by duration: TimeSpan) {
+        let target = clock.now().nanoseconds &+ duration.unsignedNanoseconds
+        while let next = scheduler.nextDeadline, next.nanoseconds <= target {
+            scheduler.advance(by: .nanoseconds(Int64(next.nanoseconds &- clock.now().nanoseconds)))
+            sync()
+        }
+        scheduler.advance(by: .nanoseconds(Int64(target &- clock.now().nanoseconds)))
+        sync()
+    }
 
     /// Focus moves to an app that has no observer: NSWorkspace activation makes the owner revalidate (PLT-R381).
     func activate(_ pid: Int32, _ focus: FocusAttributes = FocusFixtures.attributes()) {

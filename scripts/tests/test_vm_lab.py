@@ -598,9 +598,29 @@ class SmokeArgumentTests(LabTestCase):
         self.lab("down", DEV)
 
 
+FAKE_GIT = r"""#!/bin/bash
+# Fake git for integration-dev.sh: the real checkout is never read, so a run does not depend on the size of the
+# repository or the speed of its disk (63 s instead of 5 s at a host load of 18 on 2026-11-13).
+printf 'git %s\n' "$*" >>"$FAKE_DIR/calls.log"
+case " $* " in
+  *" status "*) exit 0 ;;
+  *" rev-parse "*) echo 1234abc ;;
+  *" archive "*) printf 'fake checkout archive\n' ;;
+  *) echo "fake git: unsupported $*" >&2; exit 64 ;;
+esac
+"""
+
+
 class IntegrationDevArgumentTests(LabTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        write_exe(self.bin / "git", FAKE_GIT)
+
     def integration(self, *args: str, **env: str) -> subprocess.CompletedProcess:
         return self.script(INTEGRATION, *args, **env)
+
+    def git_calls(self, verb: str) -> list[str]:
+        return [c for c in self.calls() if c.startswith("git ") and f" {verb} " in f"{c} "]
 
     def test_help_and_usage_errors(self):
         self.assertEqual(self.integration("--help").returncode, 0)
@@ -632,6 +652,7 @@ class IntegrationDevArgumentTests(LabTestCase):
         self.assertFalse(any("integration-guest.sh" in call for call in self.tart_calls("exec")))
         self.assertIn(f"clone {DEV} {DEV}-suite", "\n".join(self.calls()))
         self.assertIn(f"set {DEV}-suite --memory 6144 --cpu 4", "\n".join(self.tart_calls("set")))
+        self.assertEqual(len(self.git_calls("archive")), 1)  # the committed checkout was copied before the failure
         self.assertFalse((self.fake / "vms" / f"{DEV}-suite").exists())
         self.assertTrue((self.fake / "vms" / DEV).exists())
         self.assertEqual(self.running(), set())
@@ -661,6 +682,18 @@ class IntegrationDevArgumentTests(LabTestCase):
         self.integration("--output", str(self.tmp / "run2"))
         guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
         self.assertNotIn("--only", guest[-1])
+        self.assertEqual(self.running(), set())
+
+    def test_probe_asks_the_guest_to_run_the_ax_focus_probe(self):
+        """integration-suite.md 10.5: --probe runs the committed probe beside the suite, without by default."""
+        self.integration("--output", str(self.tmp / "run"), "--probe", "--only", "testhost.web.input")
+        guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
+        self.assertEqual(len(guest), 1, self.tart_calls("exec"))
+        self.assertIn(" --probe", guest[0])
+        self.assertIn(" --only testhost.web.input", guest[0])
+        self.integration("--output", str(self.tmp / "run2"))
+        guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
+        self.assertNotIn("--probe", guest[-1])
         self.assertEqual(self.running(), set())
 
 
@@ -896,6 +929,80 @@ class IntegrationGuestTests(unittest.TestCase):
             ["sh", "-c", "sed -n 's/.*\"layout\": *\"\\([^\"]*\\)\".*/\\1/p' compat/scenarios/testhost.*.json | sort -u"],
             capture_output=True, text=True, cwd=REPO, check=True)
         self.assertEqual(set(sed.stdout.split()), layouts)
+
+
+    def test_the_guest_runs_the_committed_probe_only_when_asked(self):
+        """--probe compiles scripts/vm/guest/ax-focus-probe.swift, grants it with the other clients, starts it on
+        TestHost's dev bundle ID before the suite and ends it after, keeping probe.log in the run folder."""
+        guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        self.assertIn("--probe) probe=1", guest)
+        build = guest.index("xcrun swiftc -O -o /tmp/ax-focus-probe scripts/vm/guest/ax-focus-probe.swift")
+        grant = guest.index("scripts/vm/grant-tcc.sh")
+        self.assertLess(build, grant)
+        self.assertIn("clients+=(--binary /tmp/ax-focus-probe)", guest[build:grant])
+        start = guest.index('/tmp/ax-focus-probe "$APP_BUNDLE_ID_DEV.testhost" >"$out/probe.log"')
+        tests = guest.index("scripts/run-integration.sh tests >")
+        self.assertLess(start, tests)
+        self.assertIn('kill "$probe_pid"', guest[tests:])
+
+
+class FocusProbeTests(unittest.TestCase):
+    """scripts/vm/guest/ax-focus-probe.swift, the triage aid of integration-suite.md section 10.5: VM only, and it
+    reads metadata, never a value (PLT-R901)."""
+
+    PROBE = SCRIPTS / "vm" / "guest" / "ax-focus-probe.swift"
+
+    def test_the_vm_guard_comes_before_any_accessibility_or_pasteboard_call(self):
+        text = self.PROBE.read_text(encoding="utf-8")
+        guard = text.index("guard insideVirtualMachine() else")
+        self.assertIn('"kern.hv_vmm_present"', text)
+        self.assertIn("exit(3)", text[guard:guard + 200])
+        body = text[guard:]
+        for call in ("AXObserverCreate", "AXUIElementCreateApplication", "NSPasteboard.general"):
+            self.assertGreater(text.index(call), guard, call)
+            self.assertNotIn(call, text[:guard])
+        self.assertIn("MainActor.assumeIsolated", body)
+
+    def test_it_never_reads_a_value(self):
+        text = self.PROBE.read_text(encoding="utf-8")
+        code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("//"))
+        self.assertNotIn("kAXValueAttribute", code)
+        self.assertNotIn("kAXSelectedTextAttribute", code)
+        # Not even a byte count of the pasteboard: reading its data can also raise macOS's paste consent prompt
+        # in the guest, which would cover the windows of the following scenarios.
+        for read in ("string(forType", "data(forType", "propertyList(forType", "readObjects"):
+            self.assertNotIn(read, code)
+        self.assertIn("pasteboard.types", code)
+
+
+class VmRunnerSigningDocsTests(unittest.TestCase):
+    """ADR 0400 (decided under Pa's delegation, 2026-11-13): the VM integration runner signs the test build ad hoc
+    and grants every new build again; the Apple Development identity stays in the keychain of Pa's Mac and is never
+    copied into the VM (Q9). The script and the two runbooks say the same."""
+
+    RUNBOOKS = REPO / "docs" / "runbooks"
+
+    def test_run_integration_names_the_ad_hoc_vm_runner(self):
+        header = (SCRIPTS / "run-integration.sh").read_text(encoding="utf-8").split("set -euo pipefail")[0]
+        self.assertIn("INTEGRATION_CODE_SIGN_IDENTITY=- for an ad-hoc test build", header)
+        self.assertIn("ADR 0400", header)
+        self.assertIn("never\n# copied into the VM (Q9)", header)
+
+    def test_the_runbooks_keep_the_identity_out_of_the_vm(self):
+        suite = (self.RUNBOOKS / "integration-suite.md").read_text(encoding="utf-8")
+        runner = (self.RUNBOOKS / "self-hosted-runner.md").read_text(encoding="utf-8")
+        for name, text in (("integration-suite.md", suite), ("self-hosted-runner.md", runner)):
+            with self.subTest(runbook=name):
+                flat = " ".join(text.split())
+                self.assertIn("ADR 0400", flat)
+                self.assertNotIn("Apple Development identity in the runner's keychain", flat)
+                self.assertNotIn("import the Apple Development certificate into the VM", flat)
+                self.assertNotIn("that stays Pa's option", flat)
+        self.assertIn("never copied into the VM", " ".join(runner.split()))
+        self.assertIn("never imported into a VM", " ".join(suite.split()))
+        # The registered VM runner gets the ad-hoc override from its .env, next to the live opt-in.
+        self.assertIn("`COMPAT_HARNESS_LIVE=1` and `INTEGRATION_CODE_SIGN_IDENTITY=-` into `~/actions-runner/.env`",
+                      " ".join(runner.split()))
 
 
 class RunShTests(unittest.TestCase):

@@ -28,7 +28,7 @@ The runner MUST only run workflows from `main` and from release tags of this rep
    ```
 
 3. Repository settings: Actions, General, "Fork pull request workflows from outside collaborators": require approval for all outside collaborators, and do not send secrets to workflows from forks.
-4. Run the runner service as a **non-administrator** macOS user. Do not store release secrets, the Sparkle key, notarization keys or signing certificates on this machine. It builds with the Apple Development identity and the `.dev` bundle ID (PLT-R751) only.
+4. Run the runner service as a **non-administrator** macOS user. Do not store release secrets, the Sparkle key, notarization keys or signing certificates on this machine. It builds the `.dev` bundle ID only (PLT-R751), ad hoc on the VM runner (section 8): the Apple Development identity stays in the keychain of Pa's Mac and is never copied to a runner (ADR 0400, Q9).
 5. Pin third-party actions by full commit SHA (QA-R24).
 6. Keep the machine patched; update the runner application when GitHub announces a new version.
 
@@ -75,16 +75,18 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
 
 - **chromedriver** listening on its default endpoint `http://127.0.0.1:9515`. Every `webdriver` scenario without a `--webdriver BUNDLE=URL` entry reads the page back through that endpoint, and CI passes no `--webdriver`. Install the chromedriver that matches the installed Chrome and keep it running as the runner user before `compat` and `soak` start (for example as a LaunchAgent of the runner user). Other drivers, such as `safaridriver --port N`, need an explicit `--webdriver BUNDLE=URL` passed through `COMPAT_HARNESS_RUN_ARGS` or `COMPAT_HARNESS_SOAK_ARGS`. The harness talks only to loopback endpoints.
 - A loopback HTTP server on port 8000 for the `seedHistory` scenarios, plus the enabled input sources, text-substitution settings and app states listed in [compat/scenarios/README.md](../../compat/scenarios/README.md).
-- English as the runner user's language (the harness presses the "Secure Keyboard Entry" item of the Terminal and iTerm2 app menus by its title), onboarding of the test build finished once by hand, and the test build of `scripts/run-integration.sh build` (configuration `Integration`, compiled with `INTEGRATION_HOOKS`) so the harness can read the app's state, trigger the tap-timeout and permission hooks and read its histograms. The Apple Development certificate of `Config/Signing.xcconfig` must be in the runner user's login keychain for that build. The complete list: [integration-suite.md](integration-suite.md) section 2.
+- English as the runner user's language (the harness presses the "Secure Keyboard Entry" item of the Terminal and iTerm2 app menus by its title), onboarding of the test build finished once by hand, and the test build of `scripts/run-integration.sh build` (configuration `Integration`, compiled with `INTEGRATION_HOOKS`) so the harness can read the app's state, trigger the tap-timeout and permission hooks and read its histograms. On the VM runner that build is ad hoc (`INTEGRATION_CODE_SIGN_IDENTITY=-` in the runner's `.env`, section 8.2) and needs no certificate; it is granted again after every build (section 4). The complete list: [integration-suite.md](integration-suite.md) section 2.
 - The harness rewrites the test build's settings files for each scenario's configuration (`compat/scenarios/profiles/`) and restores them after the run; it touches nothing else of the runner user.
 
-## 4. Pre-grant permissions to the stable-signed test build (TCC)
+## 4. Permissions for the test build (TCC)
 
-The test build must be signed with a **stable** signing identity (an Apple Development certificate and the dev bundle ID `vn.kal.<slug>.dev`, never ad-hoc). macOS ties a permission grant to the code's designated requirement; an ad-hoc signature changes with every build and would make the grant disappear after each build (PLT-R750, PLT-R751).
+macOS ties a permission grant to the code's designated requirement (PLT-R750, PLT-R751). An ad-hoc signature changes with every build, so its grant disappears after each build; a stable signing identity (an Apple Development certificate and the dev bundle ID `vn.kal.<slug>.dev`) keeps one grant across builds.
 
-Grant once, by hand, as the runner user:
+**The VM runner (section 8, the runner Pa chose)** signs the test build ad hoc and grants every new build again: its Cirrus Labs image has SIP disabled, so `sudo scripts/vm/grant-tcc.sh --bundle ... --binary ...` writes the grants after each `scripts/run-integration.sh build` (exactly as `scripts/vm/guest/integration-guest.sh` does). It holds no Apple Development identity: that identity stays in the keychain of Pa's Mac and is never copied into the VM (decision of 2026-11-13 under Pa's delegation, ADR 0400, Q9).
 
-1. Build the test version of the app and the test runner once on the runner machine, signed with the stable identity: `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh build` installs the `Integration` build into `~/Applications/` (or `$INTEGRATION_APP_DIR`) and the workflows always rebuild to the same path. Build the harness with `swift build --package-path Packages/AppCore -c release --product compat-harness`.
+**A physical Mac runner** (not chosen; it would need its own signing decision, Q9) cannot write the TCC database, so its test build must be signed with a stable identity and granted once, by hand, as the runner user:
+
+1. Build the test version of the app and the test runner once on the runner machine, signed with the stable identity (leave `INTEGRATION_CODE_SIGN_IDENTITY` unset): `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh build` installs the `Integration` build into `~/Applications/` (or `$INTEGRATION_APP_DIR`) and the workflows always rebuild to the same path. Build the harness with `swift build --package-path Packages/AppCore -c release --product compat-harness`.
 2. Open System Settings, Privacy & Security, **Accessibility** (called "Device Control and Data Access" on macOS 27; VERIFY the names on each installed macOS) and switch on:
    - the app under test (the dev-signed menu-bar app), and
    - the compatibility harness `Packages/AppCore/.build/release/compat-harness` of the runner's checkout, which posts the events, reads fields through AX and presses menu items (VERIFY whether macOS holds the runner's `Runner.Worker` responsible instead; grant it too if the harness grant does not take). TestHost needs no permission.
@@ -145,7 +147,8 @@ In the `{{app-slug}}-dev` VM (`scripts/vm/lab.sh up {{app-slug}}-dev`, then `lab
 
 1. Download the runner package for macOS ARM64 from the repository's "New self-hosted runner" page into
    `~/actions-runner` and check its SHA-256 as shown there. Do not configure it in the base image.
-2. Put `COMPAT_HARNESS_LIVE=1` into `~/actions-runner/.env` (section 3.1).
+2. Put `COMPAT_HARNESS_LIVE=1` and `INTEGRATION_CODE_SIGN_IDENTITY=-` into `~/actions-runner/.env` (section 3.1),
+   one per line: the second makes every `scripts/run-integration.sh build` of a job an ad-hoc build (section 8.4).
 3. Do the one-time preparation of [integration-suite.md](integration-suite.md) section 2 inside the VM (language,
    text substitutions, input sources, third-party apps, chromedriver and the loopback server as LaunchAgents of
    `admin`).
@@ -196,13 +199,13 @@ LaunchAgent of Pa's user runs every 5 minutes, asks
 (section 8.3) when one waits. The nightly schedule can start it directly at the scheduled time. Only one VM runs at
 a time (`lab.sh` refuses a second), so a smoke test and a job never overlap.
 
-Inside the job, `scripts/run-integration.sh build` builds the test build with the Apple Development identity of
-`Config/Integration.xcconfig`. The VM holds no identity. Decision of 2026-11-13 (integrator, under Pa's delegation,
-Q9): the identity stays in the host keychain only, so the job builds with the ad-hoc override
-`INTEGRATION_CODE_SIGN_IDENTITY=- scripts/run-integration.sh build` (hardened runtime off, integration-suite.md
-section 2 step 6) and runs `grant-tcc.sh` after every build, exactly as `scripts/vm/guest/integration-guest.sh`
-does. Importing the certificate into the base image's login keychain instead (it is not a release secret) would
-keep the grants valid across builds (section 4); that stays Pa's option.
+Inside the job, `scripts/run-integration.sh build` signs the test build ad hoc, because the runner's `.env` sets
+`INTEGRATION_CODE_SIGN_IDENTITY=-` (section 8.2; hardened runtime off, integration-suite.md section 2 step 6). The
+VM holds no signing identity. Decision of 2026-11-13 (integrator, under Pa's delegation, ADR 0400, Q9): the Apple
+Development identity stays in the keychain of Pa's Mac and is never copied into the VM, not even into the base
+image. Each ad-hoc build therefore needs a fresh grant: the job runs `sudo scripts/vm/grant-tcc.sh` for the test
+build, TestHost, `compat-harness` and the process that starts it right after the build, exactly as
+`scripts/vm/guest/integration-guest.sh` does (`integration.yml` needs that step when this runner is registered).
 
 ### 8.5 Security
 

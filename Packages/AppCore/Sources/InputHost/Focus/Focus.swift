@@ -82,12 +82,32 @@ public protocol AXProvider: Sendable {
     func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?>
     func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes>
     /// Observer whose run-loop source the caller adds to the ax run loop. The handler runs on the ax thread.
+    /// nil when the app took none of the notifications, or (`.complete`) refused one it may take later.
     func observe(
-        pid: Int32, notifications: Set<AXNotificationKind>,
+        pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)?
     /// `AXManualAccessibility = true` when a rule says `axEnable: manual`; the caller records it (PLT-R385).
     func enableManualAccessibility(pid: Int32) -> Bool
+}
+
+extension AXProvider {
+    /// All the notifications or none (`AXObservationMode.complete`).
+    public func observe(
+        pid: Int32, notifications: Set<AXNotificationKind>,
+        handler: @escaping @Sendable (AXNotificationKind) -> Void
+    ) -> (any AXObservation)? {
+        observe(pid: pid, notifications: notifications, mode: .complete, handler: handler)
+    }
+}
+
+/// How an observer treats an app that cannot complete a notification registration yet (PLT-R380).
+public enum AXObservationMode: Sendable, Hashable {
+    /// All the notifications or none: a refusal (`kAXErrorCannotComplete`, an app still launching) gives nil so
+    /// the focus tracker tries again later.
+    case complete
+    /// Keep the notifications the app took and skip the refused ones: the focus tracker's last attempt.
+    case bestEffort
 }
 
 /// A registered AXObserver; `invalidate` removes notifications and its run-loop source.
@@ -140,13 +160,13 @@ public final class FocusTracker: Sendable {
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
         metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
-        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil
+        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
             metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture,
-            signposts: signposts)
+            signposts: signposts, scheduler: scheduler)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 
@@ -175,6 +195,12 @@ public final class FocusTracker: Sendable {
     /// `SettingsStore.recordAppModes` (PLT-R392, PRD-R23).
     public func setMemoryObserver(_ observer: (@Sendable (AppModesDocument) -> Void)?) {
         perform { $0.memoryObserver = observer }
+    }
+
+    /// Called on the ax thread after a settle re-read or an observer retry published a snapshot (PLT-R391), so the
+    /// main thread follows like it does after a notification (`FocusChangeSignalingAXProvider`). Must not block.
+    public func setDeferredPublicationObserver(_ observer: (@Sendable () -> Void)?) {
+        perform { $0.deferred.publicationObserver = observer }
     }
 
     /// Rule decision behind the last published snapshot, for the diagnostics report (any thread).
