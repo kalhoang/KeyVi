@@ -64,6 +64,28 @@ private func lateFocusJob(
         #expect(rig.feedback.compositionResetCount == 1)
     }
 
+    /// Review of W8-A: the token begins after a separator or at the start of the text, so text that merely ends
+    /// with it ("Nova" for the token "a", a focus move the app made by itself) is not the word being typed: the edit
+    /// would delete a letter the user never typed ("Nová").
+    @Test func textEndingWithTheTokenInsideAWordPassesTheKeyAndResetsPLTR340() {
+        let rig = WorkerRig(field: SimulatedTextField(text: "Nova"))
+        let edit = rig.pushEdit { lateFocusJob($0, replaced: "a", insertion: "á") }
+        rig.run()
+        #expect(rig.outcome(edit) == .passedThroughByFallback)
+        #expect(rig.field.text == "Novad")
+        #expect(rig.feedback.compositionResetCount == 1)
+    }
+
+    /// A separator before the token (a composer that already holds earlier words) keeps the word.
+    @Test(arguments: ["hello d", "hello,d", "(d", "line\nd"])
+    func aSeparatorBeforeTheTokenKeepsTheWordPLTR340(_ text: String) {
+        let rig = WorkerRig(field: SimulatedTextField(text: text))
+        let edit = rig.pushEdit { lateFocusJob($0) }
+        rig.run()
+        #expect(rig.outcome(edit) == .executed)
+        #expect(rig.field.text == String(text.dropLast()) + "đ")
+    }
+
     /// Strict, unlike re-entry verification (`whenReadable`): an element that cannot be read is a hard boundary.
     @Test(arguments: [FakeFocusedFieldAccess.Behaviour.unavailable, .timeout])
     func anUnreadableFieldPassesTheKeyAndResetsPLTR340(_ behaviour: FakeFocusedFieldAccess.Behaviour) {
