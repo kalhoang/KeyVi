@@ -6145,8 +6145,10 @@ public struct JobKeyCodes: Sendable, Hashable {
     /// Keycode of the physical key that triggered the edit.
     public var trigger: KeyCode
     /// For restores and macros: keycode producing the first inserted character in the current layout, if any.
-    /// For a Backspace edit (PLT-R352, PLT-R405): keycode of the first character of the insertion, or else of
-    /// the replaced text, that the current layout types, so the insertion never rides on `kVK_Delete`.
+    /// For an edit an action key triggered (`isActionKey`: Backspace, PLT-R352; Return, Tab or Space at a commit;
+    /// Escape as the restore hotkey; PLT-R405): keycode of the first character of the insertion, or else of the
+    /// replaced text, that the current layout types on a key without an action, so the insertion never rides on
+    /// the trigger's keycode.
     public var firstCharacter: KeyCode?
     /// Keycode producing "v" in the current layout (Command+V for `paste`).
     public var paste: KeyCode?
@@ -6155,6 +6157,20 @@ public struct JobKeyCodes: Sendable, Hashable {
         self.trigger = trigger
         self.firstCharacter = firstCharacter
         self.paste = paste
+    }
+
+    /// PLT-R405: a key that can trigger an edit and whose keycode carries an action of its own in a text editor:
+    /// Backspace, Return and keypad Enter, Tab, Space and Escape. (The other deletion key never triggers an edit,
+    /// PLT-R340, and is never posted, PLT-R407.) Chromium (and so Electron) and WebKit derive the DOM `code` of a key
+    /// event, and for a non-ASCII character also the legacy `keyCode`, from the virtual keycode, so a Unicode event
+    /// posted on one of these keys reaches an editor that acts on `code` or `keyCode` as that key: it deletes, sends,
+    /// moves the focus or cancels instead of typing. No Unicode event rides on these keycodes. Tap-safe.
+    @inline(__always)
+    public static func isActionKey(_ keyCode: KeyCode) -> Bool {
+        switch keyCode {
+        case .delete, .returnKey, .keypadEnter, .tab, .space, .escape: true
+        default: false
+        }
     }
 }
 

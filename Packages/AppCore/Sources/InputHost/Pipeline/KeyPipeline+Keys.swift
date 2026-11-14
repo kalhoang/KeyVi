@@ -203,13 +203,14 @@ extension KeyPipeline {
         _ edit: TextEdit, kind: EditKind, replaced: String, trigger: KeyEventRecord?, _ key: KeyInputContext,
         focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> EditJob {
-        // PLT-R405: restores and macros type with the keycode producing their first character, if any; a Backspace
-        // edit with the keycode of a character of the edit, never with `kVK_Delete` (PLT-R352).
+        // PLT-R405: an edit an action key triggered (Backspace, PLT-R352; Return, keypad Enter, Tab or Space at a
+        // commit; Escape as the restore hotkey) types with the keycode of a character of the edit, never with the
+        // trigger's; other restores and macros with the keycode producing their first character, if any.
         let firstCharacter: KeyCode?
-        if kind == .restore || kind == .macro {
-            firstCharacter = edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) }
-        } else if VirtualKeyGroup.of(key.event.keyCode) == .backspace {
+        if JobKeyCodes.isActionKey(key.event.keyCode) {
             firstCharacter = Self.letterKeyCode(insertion: edit.insert, replaced: replaced, table: inputSource.table)
+        } else if kind == .restore || kind == .macro {
+            firstCharacter = edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) }
         } else {
             firstCharacter = nil
         }
@@ -237,18 +238,23 @@ extension KeyPipeline {
         return edit.deleteCount > 0 || !edit.insert.isEmpty
     }
 
-    /// PLT-R405, PLT-R352: for a Backspace edit, the keycode of the first character of the insertion, or else of
-    /// the replaced text, that the current layout types. Bounded by the token's length; table lookups only.
+    /// PLT-R405: for an edit an action key triggered, the keycode of the first character of the insertion, or else
+    /// of the replaced text, that the current layout types on a key without an action of its own (a space in a macro
+    /// expansion would give `kVK_Space` back). Looks at most `letterSearchLimit` characters of each, so a long macro
+    /// expansion costs no more than a word; table lookups only, no allocation.
     static func letterKeyCode(insertion: String, replaced: String, table: LayoutTable?) -> KeyCode? {
         guard let table else { return nil }
-        for character in insertion {
-            if let code = table.keyCode(producing: character) { return code }
+        for character in insertion.prefix(letterSearchLimit) {
+            if let code = table.keyCode(producing: character), !JobKeyCodes.isActionKey(code) { return code }
         }
-        for character in replaced {
-            if let code = table.keyCode(producing: character) { return code }
+        for character in replaced.prefix(letterSearchLimit) {
+            if let code = table.keyCode(producing: character), !JobKeyCodes.isActionKey(code) { return code }
         }
         return nil
     }
+
+    /// Characters `letterKeyCode` looks at in the insertion and in the replaced text.
+    static var letterSearchLimit: Int { 32 }
 
     /// PLT-R408: the word began within 300 ms of a focus change or click.
     private func wordStartedNearFocusChange(_ focus: FocusSnapshot) -> Bool {

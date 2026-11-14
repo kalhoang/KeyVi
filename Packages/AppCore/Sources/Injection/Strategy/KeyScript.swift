@@ -66,22 +66,24 @@ enum SyntheticKeys {
     }
 
     /// PLT-R405: the triggering keycode; restores and macros use the keycode of their first character if the
-    /// current layout has one. An edit triggered by Backspace (PLT-R352) never inserts on that key: it uses the
+    /// current layout has one. No Unicode event rides on an action key (`JobKeyCodes.isActionKey`: Backspace,
+    /// Return, keypad Enter, Tab, Space, Escape): an edit they trigger (a Backspace re-composition, PLT-R352; the
+    /// commit at a boundary, ENG-R532, ENG-R803, ENG-R1103; a restore on the Escape hotkey, PLT-R353) uses the
     /// keycode of a character of the edit (`JobKeyCodes.firstCharacter`, set by the pipeline) or, without one,
-    /// `letterFallback`. Chromium derives the DOM `code` (and, for a non-ASCII character, the legacy `keyCode`)
-    /// from the keycode, so a Unicode event on `kVK_Delete` reaches a web editor as one more Backspace. (The
-    /// other deletion key is a hard boundary and never triggers an edit, PLT-R340.)
+    /// `letterFallback`. Chromium and WebKit derive the DOM `code` (and, for a non-ASCII character, the legacy
+    /// `keyCode`) from the keycode, so a Unicode event on `kVK_Return` reaches a web chat composer as Return (it
+    /// sends), on `kVK_Delete` as Backspace. The trigger itself reaches the app afterwards as the replay of the
+    /// physical key (ADR 0308). A first-character keycode that is itself an action key is never used either.
     static func unicodeKeyCode(for job: EditJob) -> KeyCode {
-        let trigger = job.keyCodes.trigger
-        if trigger == .delete { return job.keyCodes.firstCharacter ?? letterFallback }
-        switch job.kind {
-        case .restore, .macro: return job.keyCodes.firstCharacter ?? trigger
-        case .compose, .backspaceRecompose, .reentry: return trigger
-        }
+        let codes = job.keyCodes
+        let triggerActs = JobKeyCodes.isActionKey(codes.trigger)
+        let typesFirstCharacter = triggerActs || job.kind == .restore || job.kind == .macro
+        if typesFirstCharacter, let first = codes.firstCharacter, !JobKeyCodes.isActionKey(first) { return first }
+        return triggerActs ? letterFallback : codes.trigger
     }
 
-    /// `kVK_ANSI_A`: a letter position for the insertion of a Backspace edit when the layout types no character
-    /// of the edit (practically never: the deleted text holds letters the user typed).
+    /// `kVK_ANSI_A`: a letter position for the insertion of an edit an action key triggered when the layout types
+    /// no character of the edit (practically never: the token holds letters the user typed).
     static let letterFallback = KeyCode(rawValue: 0x00)
 
     /// PLT-R404, PLT-R480: one grapheme per event unless the rule raises `unicodeChunk`, or the insertion is
