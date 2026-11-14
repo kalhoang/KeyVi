@@ -33,9 +33,9 @@ private func spotlightRules() -> FakeDecisionResolver {
     return FocusFixtures.resolver([spotlight: decision])
 }
 
-private extension FocusHarness {
+extension FocusHarness {
     /// The tap's PLT-R389 notice for a trigger key, drained on the ax thread.
-    func trigger() {
+    fileprivate func trigger() {
         _ = inbox.push(.revalidateFocusAfterTrigger)
         tracker.drainInbox()
         sync()
