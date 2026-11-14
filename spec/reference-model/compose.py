@@ -23,6 +23,7 @@ class St:
         self.free_order = False  # a modifier/stroke applied non-adjacently
         self.had_escape = False
         self.tone_src = []
+        self.shown = None  # re-opened word: the text the commit left on screen (ENG-R1002)
 
     def copy(self):
         n = St()
@@ -46,6 +47,8 @@ def run_span(ls):
 
 
 def display(st, cfg):
+    if st.shown is not None:
+        return st.shown
     if st.literal:
         return st.frozen
     return render(st.ls, st.tone, cfg.style)
@@ -231,18 +234,63 @@ def step(st, cfg, ch):
 
 
 def compose(keys, cfg):
+    """A space commits the word (kept as composed, ENG-R532 spelling); a Backspace with no active
+    token deletes the space and re-opens the word as the commit left it (ENG-R1002). The restore
+    decisions of section 8 are not modelled here (boundary.py)."""
     st = St()
+    history = []
     for ch in keys:
         if ch == "⌫":
+            if not st.raw and history:
+                st = history.pop()
+                continue
             st = backspace(st, cfg)
+        elif ch == " ":
+            reopened = st.copy()
+            reopened.shown = commit(st, cfg)
+            history.append(reopened)
+            st = St()
         else:
             st = step(st, cfg, ch)
     return st
 
 
+def mark_keys_going(st, last):
+    """ENG-R710: the modifier keys of the deleted letter that go with it. A remaining letter that
+    shows its mark, is not the letter of a standalone w or bracket key, and has no mark key outside
+    the deleted letter's keeps the newest shared key."""
+    needed = set()
+    for x in st.ls[:-1]:
+        if not (x.mod or x.stroke) or x.fromw:
+            continue
+        shared = set(x.msrc) & set(last.msrc)
+        if shared and not set(x.msrc) - set(last.msrc):
+            needed.add(max(shared))
+    return set(last.msrc) - needed
+
+
+def unshown_horn_before_last(st, cfg):
+    """ENG-R710: index of the u just before the last letter when it shows no horn: the last letter
+    is the circumflex o that replaced the horns (ENG-R533), or a re-opened word shows the commit
+    spelling of an open uo pair (ENG-R532)."""
+    if len(st.ls) < 2:
+        return None
+    k = len(st.ls) - 2
+    u, o = st.ls[k], st.ls[k + 1]
+    onset, i, j, coda = run_span(st.ls)
+    if u.base != "u" or o.base != "o" or not (i <= k and k + 1 < j):
+        return None
+    if o.mod == "circ" and u.mod == "":
+        return k
+    if st.shown is not None and st.shown != render(st.ls, st.tone, cfg.style):
+        return k
+    return None
+
+
 def backspace(st, cfg):
-    """spec rule: remove the key that produced the last visible character, plus the
-    modifier keys that targeted it, plus the tone keys if the tone is shown on it."""
+    """spec rule (ENG-R710): remove the key that produced the last visible character, the modifier
+    keys that go with it, the horn keys of a u that shows none, and the tone keys if the tone is
+    shown on it."""
     if not st.raw:
         return st
     if st.literal:
@@ -250,12 +298,15 @@ def backspace(st, cfg):
     if not st.ls:
         return compose(st.raw[:-1], cfg)
     last = st.ls[-1]
-    drop = {last.src} | set(last.msrc)
+    drop = {last.src} | mark_keys_going(st, last)
+    k = unshown_horn_before_last(st, cfg)
+    if k is not None:
+        drop |= set(st.ls[k].msrc)
     shown = render(st.ls, st.tone, cfg.style)
     from ortho import TONE_MARKS
     if st.tone and unicodedata.normalize("NFD", shown[-1]) != shown[-1].lower() and any(m in unicodedata.normalize("NFD", shown[-1]) for m in TONE_MARKS.values()):
         drop |= set(st.tone_src)
-    cand = [k for i, k in enumerate(st.raw) if i not in drop]
+    cand = [key for i, key in enumerate(st.raw) if i not in drop]
     return compose(cand, cfg)
 
 

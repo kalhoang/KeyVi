@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 import sys; sys.path.insert(0,'.')
+import json
 from compose import t, tc
 # (keys, im, style, opts, expected_display_before_boundary)
 EX = [
@@ -63,6 +64,8 @@ EX = [
 # L backspace
 ("vieejt⌫","telex","old",{},"việ"),("vieejt⌫⌫","telex","old",{},"vi"),("hoaf⌫","telex","old",{},"hò"),("hoaf⌫","telex","new",{},"ho"),("hoafn⌫","telex","old",{},"hòa"),
 ("nhaamff⌫","telex","old",{},"nhầm"),("ass⌫","telex","old",{},"á"),("duwowngf⌫⌫⌫","telex","old",{},"dư"),
+("thuowr⌫","telex","old",{},"thư"),("dduowcj⌫⌫","telex","old",{},"đư"),("truowngf⌫⌫⌫","telex","old",{},"trư"),("thuwor⌫","telex","old",{},"thư"),("thuwowr⌫","telex","old",{},"thư"),
+("thuo73⌫","vni","old",{},"thư"),("THUOWR⌫","telex","old",{},"THƯ"),("nguowif ⌫⌫⌫","telex","old",{},"ngư"),("thuowr ⌫⌫","telex","old",{},"thu"),("cuowios⌫⌫","telex","old",{},"cu"),
 # N options
 ("[","telex","old",{"brackets":True},"ơ"),("]","telex","old",{"brackets":True},"ư"),("w","telex","old",{"standalone_w":False},"w"),("tw","telex","old",{"standalone_w":False},"tw"),("tuw","telex","old",{"standalone_w":False},"tư"),
 ]
@@ -72,5 +75,13 @@ for keys,im,style,opts,exp in EX:
     if got!=exp:
         bad+=1; print('MISMATCH',keys,im,style,opts,'exp',exp,'got',got)
 print('total',len(EX),'mismatch',bad)
-import json
+# rows.json: the 13.8 rows as [group, keys, method, style, options, expected]
+OPTS={'-':{},'brackets=True':{'brackets':True},'standalone_w=False':{'standalone_w':False}}
+rows=json.load(open('rows.json'))
+row_bad=0
+for group,keys,im,style,opts,exp in rows:
+    got=t(keys,im,style,**OPTS[opts])
+    if got!=exp:
+        row_bad+=1; print('ROW MISMATCH',group,keys,im,style,opts,'exp',exp,'got',got)
+print('rows',len(rows),'mismatch',row_bad)
 json.dump([[k,im,st,o,exp] for k,im,st,o,exp in EX],open('examples.json','w'),ensure_ascii=False)
