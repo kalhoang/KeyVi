@@ -684,6 +684,18 @@ class IntegrationDevArgumentTests(LabTestCase):
         self.assertNotIn("--only", guest[-1])
         self.assertEqual(self.running(), set())
 
+    def test_probe_asks_the_guest_to_run_the_ax_focus_probe(self):
+        """integration-suite.md 10.5: --probe runs the committed probe beside the suite, without by default."""
+        self.integration("--output", str(self.tmp / "run"), "--probe", "--only", "testhost.web.input")
+        guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
+        self.assertEqual(len(guest), 1, self.tart_calls("exec"))
+        self.assertIn(" --probe", guest[0])
+        self.assertIn(" --only testhost.web.input", guest[0])
+        self.integration("--output", str(self.tmp / "run2"))
+        guest = [call for call in self.tart_calls("exec") if "integration-guest.sh" in call]
+        self.assertNotIn("--probe", guest[-1])
+        self.assertEqual(self.running(), set())
+
 
 TCC_SCHEMA = """CREATE TABLE access (service TEXT NOT NULL, client TEXT NOT NULL, client_type INTEGER NOT NULL,
   auth_value INTEGER NOT NULL, auth_reason INTEGER NOT NULL, auth_version INTEGER NOT NULL, csreq BLOB,
@@ -919,6 +931,21 @@ class IntegrationGuestTests(unittest.TestCase):
         self.assertEqual(set(sed.stdout.split()), layouts)
 
 
+    def test_the_guest_runs_the_committed_probe_only_when_asked(self):
+        """--probe compiles scripts/vm/guest/ax-focus-probe.swift, grants it with the other clients, starts it on
+        TestHost's dev bundle ID before the suite and ends it after, keeping probe.log in the run folder."""
+        guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        self.assertIn("--probe) probe=1", guest)
+        build = guest.index("xcrun swiftc -O -o /tmp/ax-focus-probe scripts/vm/guest/ax-focus-probe.swift")
+        grant = guest.index("scripts/vm/grant-tcc.sh")
+        self.assertLess(build, grant)
+        self.assertIn("clients+=(--binary /tmp/ax-focus-probe)", guest[build:grant])
+        start = guest.index('/tmp/ax-focus-probe "$APP_BUNDLE_ID_DEV.testhost" >"$out/probe.log"')
+        tests = guest.index("scripts/run-integration.sh tests >")
+        self.assertLess(start, tests)
+        self.assertIn('kill "$probe_pid"', guest[tests:])
+
+
 class FocusProbeTests(unittest.TestCase):
     """scripts/vm/guest/ax-focus-probe.swift, the triage aid of integration-suite.md section 10.5: VM only, and it
     reads metadata, never a value (PLT-R901)."""
@@ -941,8 +968,11 @@ class FocusProbeTests(unittest.TestCase):
         code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("//"))
         self.assertNotIn("kAXValueAttribute", code)
         self.assertNotIn("kAXSelectedTextAttribute", code)
-        self.assertNotIn("string(forType", code)
-        self.assertIn("data(forType: .string)?.count", code)
+        # Not even a byte count of the pasteboard: reading its data can also raise macOS's paste consent prompt
+        # in the guest, which would cover the windows of the following scenarios.
+        for read in ("string(forType", "data(forType", "propertyList(forType", "readObjects"):
+            self.assertNotIn(read, code)
+        self.assertIn("pasteboard.types", code)
 
 
 class VmRunnerSigningDocsTests(unittest.TestCase):

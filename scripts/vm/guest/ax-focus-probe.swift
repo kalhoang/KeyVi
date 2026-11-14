@@ -3,12 +3,14 @@
 // Triage aid of the VM integration runs (docs/runbooks/integration-suite.md section 10.5): logs, with a timestamp,
 // every focus, window, selection and value notification an app posts, with the role, AX identifier, DOM classes,
 // pid and hash of the element and of the app's focused element at that moment, plus every general pasteboard
-// change (types and byte count). This is how W7-A found that WebKit posts the focus notification of a page's
+// change (change count and types). This is how W7-A found that WebKit posts the focus notification of a page's
 // textarea before the textarea is the app's focused element, and that a just launched app refuses observers.
-// Never a value: no text of a field or of the pasteboard is read or printed (PLT-R901). Compiled and run INSIDE
-// the disposable VM only, in the logged-in session (tart exec); it refuses a real Mac.
+// Never a value: no text of a field is read and the pasteboard's data is never read at all (PLT-R901; reading it
+// could also raise macOS's paste consent prompt over the windows of the following scenarios). Compiled and run
+// INSIDE the disposable VM only, in the logged-in session (tart exec); it refuses a real Mac.
 //
 // Usage: ax-focus-probe <bundle ID>   Runs until killed; needs Accessibility (scripts/vm/grant-tcc.sh --binary).
+// scripts/vm/integration-dev.sh --probe compiles, grants and runs it beside the suite (integration-suite.md 10.5).
 
 import AppKit
 import ApplicationServices
@@ -146,8 +148,7 @@ final class FocusProbe {
         guard pasteboard.changeCount != pasteboardChange else { return }
         pasteboardChange = pasteboard.changeCount
         let types = pasteboard.types?.map(\.rawValue).joined(separator: ",") ?? "-"
-        let bytes = pasteboard.data(forType: .string)?.count ?? 0
-        log("pasteboard change=\(pasteboardChange) types=\(types) textBytes=\(bytes)")
+        log("pasteboard change=\(pasteboardChange) types=\(types)")
     }
 }
 
