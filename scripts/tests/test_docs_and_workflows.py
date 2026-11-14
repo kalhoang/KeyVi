@@ -4,12 +4,14 @@ Run: python3 -I scripts/tests/test_docs_and_workflows.py"""
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import plistlib
 import re
 import shutil
 import sys
 import tempfile
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -1112,18 +1114,19 @@ class AccessibilityAuditDocTests(unittest.TestCase):
                 self.assertNotIn("not reachable by keyboard focus", line)
 
     def test_the_browser_secure_input_hints_are_not_an_open_finding(self):
-        """Q40 (decision 0005) added the browser rows to `secureInputHints`; only Cốc Cốc waits for Pa."""
+        """Q40 (decision 0005) added the browser rows to `secureInputHints`, Cốc Cốc's on 2026-11-14 (W7-B)."""
         findings = self.TEXT.split("## 9. Findings for other owners", 1)[1]
         open_items = [line for line in findings.splitlines() if line.startswith("- ")]
         for line in open_items:
             with self.subTest(line=line):
                 self.assertNotIn("Browser rows for", line)
+                self.assertNotIn("Cốc Cốc", line)
         flat = " ".join(findings.split())
         self.assertIn("Q40", flat)
         rules = json.loads((REPO / "compat" / "rules.json").read_text(encoding="utf-8"))
         browsers = [hint for hint in rules["secureInputHints"] if hint["hintKey"] == "browser.passwordField"]
-        self.assertEqual(len(browsers), 6, "update section 9 when the browser rows change")
-        for name in ("Safari", "Google Chrome", "Microsoft Edge", "Firefox", "Arc", "Brave"):
+        self.assertEqual(len(browsers), 7, "update section 9 when the browser rows change")
+        for name in ("Safari", "Google Chrome", "Microsoft Edge", "Firefox", "Arc", "Brave", "Cốc Cốc"):
             with self.subTest(browser=name):
                 self.assertIn(name, flat)
 
@@ -1377,6 +1380,248 @@ class ScriptSuiteTests(unittest.TestCase):
         adr = " ".join((REPO / "docs" / "decisions" / "0503-release-pipeline.md").read_text(encoding="utf-8").split())
         self.assertIn(f"`{name}`", adr)
         self.assertNotIn("sign-off on engine commits", adr)
+
+
+def modern_tone_words(text: str) -> list[str]:
+    """Words written with the modern tone placement (decision 0005 Q13 makes the traditional one the default): the
+    cluster oa, oe or uy at the end of a word with the tone on its second vowel (`hoá`, `khoẻ`, `tuỳ`). A following
+    letter makes the syllable closed or a triphthong, where both styles mark the second vowel (`hoàn`, `xoắn`,
+    `ngoài`, `khuỷu`); after `q` the `u` belongs to the onset `qu`, so `quý` is right in both styles."""
+    found = []
+    for word in re.findall(r"[^\W\d_]+", unicodedata.normalize("NFC", text)):
+        lower = word.lower()
+        if len(lower) < 2 or lower[-1] not in MODERN_TONE_SECOND_VOWELS.get(lower[-2], ""):
+            continue
+        if lower[-2] == "u" and lower[:-2].endswith("q"):
+            continue
+        found.append(word)
+    return found
+
+
+MODERN_TONE_SECOND_VOWELS = {"o": "áàảãạéèẻẽẹ", "u": "ýỳỷỹỵ"}
+SWIFT_STRING_LITERAL = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+
+
+class TonePlacementTests(unittest.TestCase):
+    """The app catalogs and the replies users receive (docs/support) use the traditional tone placement of decision
+    0005 Q13 (`hòa`, `thủy`, `xóa`, `tùy`, `khóa`), like the website (`site/test.mjs` checks the site). Only the
+    tone placement setting shows the modern style, as its examples (integrator decision 2026-11-14, Q13 row)."""
+
+    CATALOGS = REPO / "App" / "Resources" / "Localization"
+    SUPPORT = REPO / "docs" / "support"
+    # The tone placement setting (PRD-R24, PRD-R25, D2) shows the modern style on purpose.
+    SETTING_EXAMPLES = {"hoà", "thuỷ", "khoẻ"}
+    SETTING_KEYS = {"settings.typing.tone.explanation", "settings.typing.tone.modern"}
+    SWIFT_ROOTS = ("Packages/AppCore/Sources", "App/Sources")
+    # Stragglers outside W7-B's paths, requested from the integrator: drop the entry with the fix.
+    SWIFT_PENDING_FIXES = {("Packages/AppCore/Sources/Diagnostics/CaptureRendering.swift", "xoá")}
+
+    def test_the_check_flags_modern_placement_only(self):
+        modern = "hoá hoà hoạ khoá khoẻ xoá Xoá loè toả tuỳ thuỷ huỷ luỹ Thuỵ HOÁ"
+        self.assertEqual(modern_tone_words(modern), modern.split())
+        legitimate = ("hòa hóa khóa khỏe xóa tùy thủy hủy hoàn xoắn khuyết hoặc khoảng toán ngoài loại xoáy ngoằn "
+                      "khuỷu huỳnh quý quỳ quỷ quỹ quỵ Quý quá quà của thuở huế giữa")
+        self.assertEqual(modern_tone_words(legitimate), [])
+        self.assertEqual(modern_tone_words(unicodedata.normalize("NFD", "tự xoá")), ["xoá"], "decomposed input")
+
+    def test_the_catalogs_use_traditional_placement(self):
+        offenders = []
+        examples_seen = set()
+        for path in sorted(self.CATALOGS.glob("*.xcstrings")):
+            strings = json.loads(path.read_text(encoding="utf-8"))["strings"]
+            for key, entry in strings.items():
+                for language, unit in entry.get("localizations", {}).items():
+                    words = modern_tone_words(unit.get("stringUnit", {}).get("value", ""))
+                    if key in self.SETTING_KEYS:
+                        examples_seen |= {word for word in words if word in self.SETTING_EXAMPLES}
+                        words = [word for word in words if word not in self.SETTING_EXAMPLES]
+                    offenders += [f"{path.name}: {key} [{language}]: {word}" for word in words]
+        self.assertEqual(offenders, [])
+        self.assertEqual(examples_seen, self.SETTING_EXAMPLES, "the setting's examples moved: update the allowlist")
+
+    def test_the_support_replies_use_traditional_placement(self):
+        files = sorted(path for path in self.SUPPORT.rglob("*") if path.is_file())
+        self.assertGreaterEqual(len(files), 2)
+        offenders = []
+        for path in files:
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                offenders += [f"{path.relative_to(REPO)}:{number}: {word}" for word in modern_tone_words(line)]
+        self.assertEqual(offenders, [])
+
+    def test_the_swift_string_literals_use_traditional_placement(self):
+        # Vietnamese text built in Swift (for example the readable typing trace of Diagnostics) reaches users without
+        # a catalog. Comments are skipped: they may name both styles on purpose.
+        offenders = []
+        for root in self.SWIFT_ROOTS:
+            for path in sorted((REPO / root).rglob("*.swift")):
+                relative = str(path.relative_to(REPO))
+                for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                    if line.lstrip().startswith("//"):
+                        continue
+                    for literal in SWIFT_STRING_LITERAL.findall(line):
+                        offenders += [f"{relative}:{number}: {word}" for word in modern_tone_words(literal)
+                                      if (relative, word) not in self.SWIFT_PENDING_FIXES]
+        self.assertEqual(offenders, [])
+
+    def test_the_decision_is_recorded_in_q13(self):
+        adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+        row = " ".join(next(line for line in adr.splitlines() if line.startswith("| Q13 |")).split())
+        for needle in ("2026-11-14", "website", "docs/support", "site/test.mjs", "TonePlacementTests"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, row)
+
+
+class EngineTraceabilityTests(unittest.TestCase):
+    """Packages/VietnameseEngine/TRACEABILITY.md and docs/architecture/traceability.md cite tests that exist, down to
+    the function where they name one, and the host halves of ENG-R906, ENG-R1103 and ENG-R862 and the PRD-R36 guided
+    slot name their AppCore evidence."""
+
+    ENGINE = (REPO / "Packages" / "VietnameseEngine" / "TRACEABILITY.md").read_text(encoding="utf-8")
+    PLATFORM = (REPO / "docs" / "architecture" / "traceability.md").read_text(encoding="utf-8")
+
+    @staticmethod
+    def row(text: str, identifier: str) -> str:
+        return next(line for line in text.splitlines() if line.startswith(f"| {identifier} |"))
+
+    @staticmethod
+    def suites() -> dict[str, list[str]]:
+        """Test suite name to the text of every tracked Swift file that declares or extends it."""
+        listed = run("git", "-C", str(REPO), "ls-files", "*.swift", check=True).stdout.split()
+        result: dict[str, list[str]] = {}
+        for relative in listed:
+            path = REPO / relative
+            text = path.read_text(encoding="utf-8", errors="replace")
+            names = set(re.findall(r"\b(?:struct|class|enum|extension)\s+([A-Z]\w*Tests)\b", text)) | {path.stem}
+            for name in names:
+                result.setdefault(name, []).append(text)
+        return result
+
+    def test_every_cited_suite_and_function_exists(self):
+        suites = self.suites()
+        for label, text in (("TRACEABILITY.md", self.ENGINE), ("traceability.md", self.PLATFORM)):
+            cited = set(re.findall(r"`([A-Z][A-Za-z0-9]*Tests)(?:\.swift)?(?:\.[A-Za-z_]\w*)?`", text))
+            self.assertEqual(sorted(cited - suites.keys()), [], f"{label} cites suites that do not exist")
+            missing = [
+                f"{suite}.{function}" for suite, function in re.findall(r"`([A-Z][A-Za-z0-9]*Tests)\.([a-z_]\w*)`", text)
+                if function != "swift"
+                and not any(re.search(rf"\bfunc\s+{function}\b", body) for body in suites.get(suite, []))
+            ]
+            self.assertEqual(missing, [], f"{label} cites test functions that do not exist")
+
+    def test_the_engine_rows_name_the_host_evidence(self):
+        expected = {
+            "ENG-R906": ("AppCore", "`KeyPipelineCapsLockTests`"),
+            "ENG-R1103": ("AppCore", "`MacroEditorTests`", "`MacroEngineAgreementTests`", "ADR 0321"),
+        }
+        for identifier, needles in expected.items():
+            row = self.row(self.ENGINE, identifier)
+            for needle in needles:
+                with self.subTest(identifier=identifier, needle=needle):
+                    self.assertIn(needle, row)
+
+    def test_the_platform_rows_name_the_test_functions(self):
+        expected = {
+            "ENG-R862": "`HostPerAppLearningTests.aWordTypedBeforeTheFocusMovesBelongsToTheAppWhereItWasTyped`",
+            "PRD-R36": "`GuidedOverrideSlotTests.onlyThePlainChoicesAreSelectable`",
+        }
+        for identifier, needle in expected.items():
+            with self.subTest(identifier=identifier):
+                self.assertIn(needle, self.row(self.PLATFORM, identifier))
+
+
+class CocCocTests(unittest.TestCase):
+    """Decision 0005 Q40: Cốc Cốc (Chromium based) gets the browser secure-input hint and a notVerified matrix row.
+    Its bundle identifier comes from the vendor's installer, read by the integrator on 2026-11-14 from the mounted
+    image without running the app."""
+
+    BUNDLE_ID = "com.coccoc.Coccoc"
+    SOURCE = ("files.coccoc.com/browser/mac/coccoc.dmg", "a3d0a7f2722bc0365646c9d72b4900e371311df6542da737fe5da4a5c6273c97",
+              "152.0.7977.124", "477H9TWJ76", "2026-11-14")
+    RULES = json.loads((REPO / "compat" / "rules.json").read_text(encoding="utf-8"))
+    ADR = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+
+    def test_the_secure_input_hint_row(self):
+        self.assertIn({"bundleId": self.BUNDLE_ID, "hintKey": "browser.passwordField"}, self.RULES["secureInputHints"])
+
+    def test_the_chromium_rule_notes_name_the_browser_and_its_source(self):
+        rule = next(rule for rule in self.RULES["rules"] if rule["id"] == "browser.chromium.addressBar")
+        notes = rule["provenance"]["notes"]
+        for needle in ("Cốc Cốc", self.BUNDLE_ID, "files.coccoc.com", "PLT-R510"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, notes)
+
+    def test_the_matrix_row_is_not_verified(self):
+        matrix = json.loads((REPO / "compat" / "matrix.json").read_text(encoding="utf-8"))
+        rows = [entry for entry in matrix["entries"] if entry["bundleId"] == self.BUNDLE_ID]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(
+            {key: rows[0].get(key) for key in ("displayName", "category", "ruleId", "status", "issues")},
+            {"displayName": "Cốc Cốc", "category": "browser", "ruleId": "browser.chromium.addressBar",
+             "status": "notVerified", "issues": []})
+
+    def test_decision_0005_records_the_identifier_and_its_source(self):
+        q40 = " ".join(next(line for line in self.ADR.splitlines() if line.startswith("| Q40 |")).split())
+        self.assertNotIn("not added yet", q40)
+        self.assertIn("Cốc Cốc", q40)
+        table_row = " ".join(next(line for line in self.ADR.splitlines() if line.startswith("| Cốc Cốc |")).split())
+        self.assertIn(f"`{self.BUNDLE_ID}`", table_row)
+        for needle in self.SOURCE:
+            with self.subTest(needle=needle):
+                self.assertIn(needle, table_row)
+        found = " ".join(self.ADR.split("## Found while applying the decisions", 1)[1].split("\n## ", 1)[0].split())
+        self.assertNotIn("Cốc Cốc", found, "the identifier is confirmed now")
+
+
+class SecureInputSupportPageTests(unittest.TestCase):
+    """Decision 0005 Q38 and Q40 (PLT-R397): the support page's Secure Input list quotes the sentences the menu shows
+    (Status.xcstrings) for iTerm2 and for browsers, word for word, so the two cannot drift apart again."""
+
+    STATUS = json.loads((REPO / "App" / "Resources" / "Localization" / "Status.xcstrings").read_text(encoding="utf-8"))
+    # Site language, the label the site puts in bold, the catalog key and the label the catalog sentence starts with.
+    CASES = (
+        ("vi", "Trình duyệt", "secureInputHint.browser.passwordField", "Trình duyệt: "),
+        ("en", "Browsers", "secureInputHint.browser.passwordField", "Browser: "),
+        ("vi", "iTerm2", "secureInputHint.iterm2.secureKeyboardEntry", ""),
+        ("en", "iTerm2", "secureInputHint.iterm2.secureKeyboardEntry", ""),
+    )
+
+    def page_sentence(self, language: str, label: str) -> str:
+        page = (REPO / "site" / "content" / language / "support.mjs").read_text(encoding="utf-8")
+        prefix = f"<li><strong>{label}</strong>: "
+        lines = [line.strip() for line in page.splitlines() if line.strip().startswith(prefix)]
+        self.assertEqual(len(lines), 1, f"one {label} item on the {language} support page")
+        item = lines[0].removeprefix(prefix).removesuffix("</li>")
+        return html.unescape(re.sub(r"</?(em|strong)>", "", item))
+
+    def test_the_page_quotes_the_menu_sentences(self):
+        for language, label, key, catalog_label in self.CASES:
+            with self.subTest(language=language, label=label):
+                catalog = self.STATUS["strings"][key]["localizations"][language]["stringUnit"]["value"]
+                self.assertTrue(catalog.startswith(catalog_label))
+                self.assertEqual(self.page_sentence(language, label), catalog.removeprefix(catalog_label))
+
+
+class W7bCopyTests(unittest.TestCase):
+    """The Apps pane names the guided test's state with the term of the menu and Diagnostics (integrator decision
+    2026-11-14, decision 0005 Q44 row; GuidedStateCopyTests checks the catalogs), and the changelog lists both
+    user-visible changes of W7-B with the literal name (front door, ADR 0400 decision 1)."""
+
+    def test_the_decision_is_recorded_in_q44(self):
+        adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
+        row = " ".join(next(line for line in adr.splitlines() if line.startswith("| Q44 |")).split())
+        for needle in ("2026-11-14", "Theo kết quả thử tự động", "Set by the guided test", "GuidedStateCopyTests"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, row)
+
+    def test_the_changelog_lists_the_changes(self):
+        log = ChangelogTests()
+        expected = {"Changed": ("Apps pane", "Theo kết quả thử tự động", "Set by the guided test"),
+                    "Added": ("Cốc Cốc", "Secure Input")}
+        for group, needles in expected.items():
+            text = log.group(group)
+            for needle in needles:
+                with self.subTest(group=group, needle=needle):
+                    self.assertIn(needle, text)
 
 
 if __name__ == "__main__":

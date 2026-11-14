@@ -158,7 +158,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Theo kết quả kiểm tra có hướng dẫn"
+            "value" : "Theo kết quả thử tự động"
           }
         }
       }
@@ -176,7 +176,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dùng cách gửi chữ mà bài kiểm tra có hướng dẫn đã tìm ra cho ứng dụng này; chọn “Tự động” để bỏ."
+            "value" : "Dùng cách gửi chữ mà lần thử tự động đã tìm ra cho ứng dụng này; chọn “Tự động” để bỏ."
           }
         }
       }
@@ -446,7 +446,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cách gửi chữ do bài kiểm tra có hướng dẫn chọn đang được dùng. Chọn Tự động để bỏ."
+            "value" : "Cách gửi chữ do lần thử tự động chọn đang được dùng. Chọn Tự động để bỏ."
           }
         }
       }
@@ -464,7 +464,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Theo kết quả kiểm tra có hướng dẫn"
+            "value" : "Theo kết quả thử tự động"
           }
         }
       }

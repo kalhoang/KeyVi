@@ -264,6 +264,7 @@ Changed:
 | `bugReport.description.hint` (en) | "Type an example here yourself. %@ never sends what you typed." | "Type the example again here yourself. %@ does not send what you typed on its own." |
 | `safeMode.later.hint` (en) | "... from Report a Problem in the menu." | "... from Report a problem in the menu." (as the menu shows it) |
 | `onboarding.window.title` (vi) | "Cài đặt %@" (same as the Settings window) | "Thiết lập %@" |
+| `apps.compat.guidedTest`, its explanation, `apps.control.detailCompatibilityGuided` label and hint (vi, 2026-11-14) | "Theo kết quả kiểm tra có hướng dẫn", "bài kiểm tra có hướng dẫn" | "Theo kết quả thử tự động", "lần thử tự động": the menu and Diagnostics name the guided test "thử tự động" (decision 0005 Q44 row, `GuidedStateCopyTests`) |
 
 Added (accessibility only): `icon.paused.userDisabled`, `icon.paused.sessionInactive` and
 `icon.paused.diagnosticsTest` labels; `apps.column.actions.accessibilityLabel`; `common.cancel.accessibilityHint`,
@@ -282,7 +283,6 @@ Open for Pa:
 - English capitalisation is mixed: menu items use sentence case ("Report a problem...", matching the website's
   support pages), Settings buttons use title case ("Restore Defaults..."). Apple's guidelines use title case for
   both; changing the menu also means changing the website text.
-- `secureInputHint.browser.passwordField` has copy but no rule in `compat/rules.json` uses it yet.
 - Ellipses are written as three periods, as in the spec drafts ("Báo lỗi..."); macOS itself uses the single
   ellipsis character. Kept as drafted.
 
@@ -320,6 +320,5 @@ wave 5 and removed from this list: the typing trace confirmation now states the 
 (`MisbehavesFocusTests`, section 3.8 step 3).
 
 The browser rows for `secureInputHints` in `compat/rules.json` were added under Q40 (decision 0005): Safari,
-Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
-
-- Cốc Cốc's `secureInputHints` row waits for its bundle identifier with its exact case (Q40, owner Pa).
+Google Chrome, Microsoft Edge, Firefox, Arc and Brave, then Cốc Cốc (`com.coccoc.Coccoc`) on 2026-11-14, with the
+identifier read from the vendor's installer (source in decision 0005, Q40 table). No finding is open.

@@ -15,6 +15,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Project scaffold, written specification and clean-room rules. No installable build exists yet (pre-alpha).
 - Project documentation: README (English and Vietnamese), contributing guide, security policy, code of conduct, third-party notices, maintainer runbooks, support replies, provenance review process, issue forms and pull request template.
 - Compatibility script for testing an app in under 3 minutes (`compat/SCRIPT.md`).
+- Cốc Cốc gets the browser hint when a password field turns on Secure Input: the menu suggests clicking outside the password field or switching tabs, as it does for Safari, Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
 
 ### Changed
 
@@ -22,6 +23,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Escape restores the last word by default: press it right after a word to get back the keys you typed, and press it again to send Escape as usual, so it still closes dialogs. It is off automatically in terminals, code editors, games and remote desktop apps, and in launchers such as Spotlight, Raycast and Alfred, where Escape has its own job. You can turn it off or choose another key in Settings > Typing.
 - Macro shortcuts that differ only by a trailing digit, for example `k` and `k1`, are now refused, because a digit ends a shortcut like punctuation does, so typing `k1` would always expand `k`. A pair saved by an earlier build still loads: the shorter shortcut keeps working, the longer one stops expanding and the Macros pane marks both. To unblock saving, delete or rename one of the pair.
 - KeyVi is now distributed under GPL-3.0-or-later; the typing engine stays MPL-2.0. The disk image includes the licence (`LICENSE.txt`) and the third-party notices (`THIRD_PARTY_NOTICES.txt`).
+- The Apps pane calls the compatibility mode chosen by a guided test "Set by the guided test" ("Theo kết quả thử tự động" in Vietnamese), the name the menu and the Diagnostics window use for that test, and VoiceOver reads the same name.
 
 ### Fixed
 

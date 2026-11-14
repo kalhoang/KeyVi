@@ -9,9 +9,9 @@ export const support = {
   toc: [["cau-hoi", "Câu hỏi thường gặp"], ["xu-ly", "Xử lý theo triệu chứng"], ["bao-loi", "Cách báo lỗi"], ["thoi-gian-phan-hoi", "Thời gian phản hồi"], ["chuyen-tu", "Chuyển từ bộ gõ khác"]],
   faqHeading: "Câu hỏi thường gặp",
   faq: [
-    ["Vì sao không có tuỳ chọn \"gõ dấu ở vị trí bất kỳ\"?", "Vì tính năng đó luôn bật và không phải cài đặt. Bạn gõ phím dấu sau phụ âm cuối (<code>vietj</code>, <code>tieengs</code>), ở giữa từ, hoặc phím <code>d</code> thứ hai ở cuối từ (<code>dangd</code>) đều ra đúng."],
+    ["Vì sao không có tùy chọn \"gõ dấu ở vị trí bất kỳ\"?", "Vì tính năng đó luôn bật và không phải cài đặt. Bạn gõ phím dấu sau phụ âm cuối (<code>vietj</code>, <code>tieengs</code>), ở giữa từ, hoặc phím <code>d</code> thứ hai ở cuối từ (<code>dangd</code>) đều ra đúng."],
     ["Từ tiếng Anh vẫn bị thêm dấu, hoặc từ tiếng Việt bị giữ nguyên thì sao?", "Mở Cài đặt, mục Gõ phím. Ở phần khôi phục tiếng Anh có hai danh sách: \"giữ nguyên như đã gõ\" và \"giữ là tiếng Việt\". Thêm từ đó vào danh sách tương ứng là xong. Bạn cũng có thể báo từ đó để được xem xét thêm vào dữ liệu."],
-    ["Vì sao không có gõ tắt phụ âm nhanh (cc thành ch, kk thành kh)?", "Vì tính năng này làm sai cả những từ bình thường (<code>cc</code> thành <code>ch</code>, <code>kkk</code> thành <code>khk</code>). {{AppName}} cố ý không có, kể cả dạng tuỳ chọn."],
+    ["Vì sao không có gõ tắt phụ âm nhanh (cc thành ch, kk thành kh)?", "Vì tính năng này làm sai cả những từ bình thường (<code>cc</code> thành <code>ch</code>, <code>kkk</code> thành <code>khk</code>). {{AppName}} cố ý không có, kể cả dạng tùy chọn."],
     ["Dấu thanh đặt kiểu <em>hòa</em> hay <em>hoà</em>?", "Mặc định là kiểu truyền thống (<em>hòa</em>, <em>thủy</em>, <em>khỏe</em>). Kiểu mới (<em>hoà</em>, <em>thuỷ</em>, <em>khoẻ</em>) chỉ cách một công tắc trong Cài đặt, mục Gõ phím."],
     ["Có hỗ trợ bảng mã TCVN3, VNI-Windows hay CP1258 không?", "Không. {{AppName}} chỉ xuất Unicode dựng sẵn (NFC), là định dạng mọi ứng dụng hiện nay đều đọc được."],
     ["Phím chuyển Việt/Anh là gì, đổi được không?", "Mặc định là nhấn rồi thả <kbd>Control</kbd> + <kbd>Shift</kbd>. Bạn đổi trong Cài đặt, mục Chung. Nếu bạn chọn tổ hợp macOS đã dùng (ví dụ Command+Space), ứng dụng vẫn cho chọn nhưng cảnh báo bạn tính năng nào của macOS đang dùng nó. Xem <a href=\"#phim-tat-macos\">cách tắt phím tắt đó của macOS</a>."],
@@ -21,7 +21,7 @@ export const support = {
     ["Tôi dùng bàn phím QWERTZ, AZERTY, Dvorak hay Colemak thì sao?", "Dùng được. {{AppName}} theo bố cục bàn phím macOS bạn đang chọn, không cần cài đặt thêm."],
     ["Ứng dụng có gửi nội dung tôi gõ đi đâu không?", "Không. Xem trang <a href=\"{{hrefPrivacy}}\">Riêng tư</a> để biết chính xác ứng dụng lưu và gửi gì."],
     ["Mac của tôi chạy macOS 11 hoặc cũ hơn?", "{{AppName}} yêu cầu macOS 12 Monterey trở lên, trên máy Apple silicon hoặc Intel. Xem trang <a href=\"{{hrefDownload}}\">Tải về</a> để biết con số hiện hành."],
-    ["Gỡ cài đặt thế nào?", "Thoát {{AppName}}, kéo ứng dụng vào Thùng rác. Để xoá cả dữ liệu, xem mục cuối trang <a href=\"{{hrefPrivacy}}#xoa-du-lieu\">Riêng tư</a>."],
+    ["Gỡ cài đặt thế nào?", "Thoát {{AppName}}, kéo ứng dụng vào Thùng rác. Để xóa cả dữ liệu, xem mục cuối trang <a href=\"{{hrefPrivacy}}#xoa-du-lieu\">Riêng tư</a>."],
   ],
   fixHeading: "Xử lý theo triệu chứng",
   fix: {
@@ -38,8 +38,8 @@ export const support = {
 <ol class="steps">
   <li>Bảo đảm {{AppName}} nằm trong thư mục <code>/Applications</code> (hoặc <code>~/Applications</code>), không chạy từ DMG.</li>
   <li>Bật công tắc của {{AppName}} trong mục trên. Ứng dụng tự nhận ra trong vòng vài giây.</li>
-  <li>Công tắc đã bật nhưng không có tác dụng (thường xảy ra sau khi cập nhật macOS): chọn {{AppName}} trong danh sách, bấm nút trừ (-) để xoá, rồi thêm lại. Hoặc dùng nút <em>Đặt lại quyền</em> trong ứng dụng, chỉ đặt lại quyền của riêng {{AppName}}.</li>
-  <li>Muốn tự làm trong Terminal: <code>tccutil reset Accessibility {{bundleId}}</code>. Luôn ghi kèm mã định danh ứng dụng. Đừng chạy <code>sudo tccutil reset Accessibility</code> không kèm mã định danh, vì lệnh đó xoá quyền của mọi ứng dụng. {{verifyHtml}} Tên dịch vụ có thể khác trên macOS 27.</li>
+  <li>Công tắc đã bật nhưng không có tác dụng (thường xảy ra sau khi cập nhật macOS): chọn {{AppName}} trong danh sách, bấm nút trừ (-) để xóa, rồi thêm lại. Hoặc dùng nút <em>Đặt lại quyền</em> trong ứng dụng, chỉ đặt lại quyền của riêng {{AppName}}.</li>
+  <li>Muốn tự làm trong Terminal: <code>tccutil reset Accessibility {{bundleId}}</code>. Luôn ghi kèm mã định danh ứng dụng. Đừng chạy <code>sudo tccutil reset Accessibility</code> không kèm mã định danh, vì lệnh đó xóa quyền của mọi ứng dụng. {{verifyHtml}} Tên dịch vụ có thể khác trên macOS 27.</li>
 </ol>
 <p>Trong lúc thiếu quyền, bàn phím vẫn gõ bình thường; {{AppName}} chỉ tạm dừng và không chặn phím.</p>`,
     },
@@ -52,9 +52,9 @@ export const support = {
 <ul>
   <li><strong>Terminal</strong>: trong menu Terminal, tắt <em>Secure Keyboard Entry</em>.</li>
   <li><strong>iTerm2</strong>: iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ.</li>
-  <li><strong>Trình duyệt</strong>: bấm ra ngoài ô mật khẩu hoặc đổi sang thẻ khác.</li>
+  <li><strong>Trình duyệt</strong>: bấm ra ngoài ô mật khẩu hoặc chuyển sang thẻ khác.</li>
   <li><strong>Trình quản lý mật khẩu</strong> hoặc ứng dụng khác: đóng cửa sổ nhập mật khẩu của nó.</li>
-  <li>Không biết ứng dụng nào, hoặc menu chỉ ra <code>loginwindow</code>: khoá màn hình rồi mở lại (<kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Q</kbd>), hoặc đăng xuất rồi đăng nhập lại.</li>
+  <li>Không biết ứng dụng nào, hoặc menu chỉ ra <code>loginwindow</code>: khóa màn hình rồi mở lại (<kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Q</kbd>), hoặc đăng xuất rồi đăng nhập lại.</li>
 </ul>`,
     },
     conflict: {
@@ -64,7 +64,7 @@ export const support = {
 <p>Hai bộ gõ chạy cùng lúc sẽ làm lặp hoặc mất chữ. Bạn nên thoát bộ gõ kia và tắt nó khi đăng nhập. {{AppName}} sẽ báo khi phát hiện, nhưng không tự thoát hay chỉnh ứng dụng khác.</p>
 <ol class="steps">
   <li>Thoát bộ gõ cũ (XKey, OpenKey, EVKey, Gõ Nhanh, PHTV hoặc tương tự) từ biểu tượng trên thanh menu.</li>
-  <li>Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; tiện ích mở rộng: xoá bộ gõ cũ khỏi danh sách mở khi đăng nhập. {{verifyHtml}}</li>
+  <li>Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; tiện ích mở rộng: xóa bộ gõ cũ khỏi danh sách mở khi đăng nhập. {{verifyHtml}}</li>
   <li>Nếu bạn đang bật bộ gõ <em>Tiếng Việt</em> có sẵn của macOS, hãy chọn bàn phím ABC hoặc U.S. khi dùng {{AppName}}.</li>
 </ol>
 <p>Hướng dẫn riêng cho từng ứng dụng nằm ở mục <a href="#chuyen-tu">chuyển từ bộ gõ khác</a>.</p>`,
@@ -153,10 +153,10 @@ export const migrate = {
   quitSteps: [
     "Bấm biểu tượng {{Other}} trên thanh menu và chọn thoát. {{verifyHtml}} Tên mục trong bản hiện tại.",
     "Mở Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; tiện ích mở rộng. Trong danh sách <em>Mở khi đăng nhập</em>, chọn {{Other}} rồi bấm nút trừ (-). {{verifyHtml}} Tên mục trên từng phiên bản macOS.",
-    "Nếu {{Other}} có tuỳ chọn tự khởi động riêng trong cài đặt của nó, hãy tắt luôn. {{verifyHtml}}",
+    "Nếu {{Other}} có tùy chọn tự khởi động riêng trong cài đặt của nó, hãy tắt luôn. {{verifyHtml}}",
   ],
   screenshotHolder: "Ảnh chụp màn hình sẽ được thêm sau khi từng bước được kiểm tra trên bản cài thật",
-  screenshotAlt: "Ảnh minh hoạ (giữ chỗ): các bước xuất dữ liệu từ {{Other}}",
+  screenshotAlt: "Ảnh minh họa (giữ chỗ): các bước xuất dữ liệu từ {{Other}}",
   verifyNote: "Các bước trên mô tả những gì bạn thấy trên màn hình của ứng dụng đó và chưa được kiểm tra trên bản mới nhất. Nếu tên mục khác, hãy làm theo mục gần nghĩa nhất và cho chúng tôi biết để sửa trang này.",
   pages: {
     xkey: {
@@ -164,7 +164,7 @@ export const migrate = {
       steps: [
         "Mở cài đặt của {{Other}} từ biểu tượng trên thanh menu và tìm danh sách gõ tắt (macro). {{verifyHtml}} Tên mục.",
         "Nếu {{Other}} có nút xuất danh sách gõ tắt, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Có nút xuất hay không, và định dạng tệp.",
-        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hóa UTF-8.",
         "Ghi lại kiểu gõ, kiểu đặt dấu và các ứng dụng bạn loại trừ trong {{Other}}. Chọn lại kiểu gõ và kiểu đặt dấu trong Cài đặt của {{AppName}}, mục Gõ phím; với mỗi ứng dụng cần loại trừ, dùng mục <em>Bỏ qua ứng dụng này</em> trong menu {{AppName}}.",
       ],
     },
@@ -173,7 +173,7 @@ export const migrate = {
       steps: [
         "Mở danh sách gõ tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
         "Nếu có nút xuất, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Tên nút và định dạng tệp.",
-        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hóa UTF-8.",
       ],
     },
     evkey: {
@@ -181,14 +181,14 @@ export const migrate = {
       steps: [
         "Mở danh sách gõ tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
         "Nếu có nút xuất, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Nút xuất có tồn tại trong bản của bạn hay không.",
-        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hóa UTF-8.",
       ],
     },
     gonhanh: {
       intro: "Khả năng xuất dữ liệu của {{Other}} cần được xác minh, và {{AppName}} chưa đọc được tệp xuất của {{Other}}. Bạn mang danh sách gõ tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, rồi đặt lại chế độ cho từng ứng dụng trong menu {{AppName}}.",
       steps: [
         "Mở cài đặt của {{Other}} và tìm danh sách gõ tắt, hoặc chức năng xuất hay sao lưu. {{verifyHtml}} Chức năng này có tồn tại hay không.",
-        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hóa UTF-8.",
       ],
     },
     phtv: {
@@ -196,7 +196,7 @@ export const migrate = {
       steps: [
         "Mở danh sách gõ tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
         "Nếu có nút xuất, lưu tệp ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Tên mục, nút và định dạng tệp.",
-        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hoá UTF-8.",
+        "Chép từng dòng (viết tắt, nội dung) sang một tệp văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu tệp văn bản</a>, lưu với mã hóa UTF-8.",
       ],
     },
     macos: {
@@ -209,7 +209,7 @@ export const migrate = {
       quitSteps: [
         "Mở Cài đặt hệ thống &gt; Bàn phím &gt; Nguồn nhập (hoặc Phương thức nhập). {{verifyHtml}} Tên mục trên từng phiên bản macOS.",
         "Bấm Sửa, thêm bàn phím <em>ABC</em> hoặc <em>U.S.</em> nếu chưa có.",
-        "Chọn nguồn <em>Tiếng Việt</em> có sẵn và bấm nút trừ (-) để gỡ nếu bạn không dùng nữa. Việc gỡ là tuỳ bạn; giữ lại không gây lỗi, miễn bạn chọn ABC hoặc U.S. khi gõ với {{AppName}}.",
+        "Chọn nguồn <em>Tiếng Việt</em> có sẵn và bấm nút trừ (-) để gỡ nếu bạn không dùng nữa. Việc gỡ là tùy bạn; giữ lại không gây lỗi, miễn bạn chọn ABC hoặc U.S. khi gõ với {{AppName}}.",
       ],
     },
     plaintext: {
@@ -225,7 +225,7 @@ tphcm&#9;Thành phố Hồ Chí Minh</code></pre>
 <pre><code>vn,Việt Nam
 dc,được
 "cam on","Cảm ơn bạn rất nhiều, hẹn gặp lại"</code></pre>
-<p>Mã hoá UTF-8. Đặt nội dung có dấu phẩy trong dấu ngoặc kép.</p>
+<p>Mã hóa UTF-8. Đặt nội dung có dấu phẩy trong dấu ngoặc kép.</p>
 <h2 id="xuat-nhap-rieng">Tệp xuất cài đặt của chính {{AppName}}</h2>
 <p>Trong Cài đặt &gt; Giới thiệu &amp; Hỗ trợ bạn xuất toàn bộ cài đặt ra một tệp JSON, UTF-8, tên dạng <code>{{slug}}-settings-NĂMTHÁNGNGÀY.json</code>. Trường <code>kind</code> luôn là <code>settings-export</code>; <code>schemaVersion</code> (số nguyên) là phiên bản định dạng; <code>writtenBy</code> là phiên bản ứng dụng đã ghi tệp; <code>exportedAt</code> là thời điểm xuất (ISO 8601, giờ UTC). Tiếp theo là <code>settings</code> (cài đặt), <code>appModes</code> (chế độ theo ứng dụng), <code>ruleOverrides</code> (quy tắc tương thích bạn tự đặt) và <code>macros</code> (gõ tắt: viết tắt <code>trigger</code>, nội dung <code>expansion</code>, theo chữ hoa <code>adaptCase</code>, đang bật <code>enabled</code>). Khi xuất, bạn có thể bỏ chọn gõ tắt và chế độ theo ứng dụng, vì gõ tắt có thể chứa chữ riêng tư; phần đã bỏ chọn sẽ không có trong tệp. Khi nhập tệp từ phiên bản mới hơn, {{AppName}} nhập các trường nó hiểu và liệt kê những trường bị bỏ qua.</p>
 <pre><code>{

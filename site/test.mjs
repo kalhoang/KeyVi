@@ -17,6 +17,7 @@ import { CATEGORIES, STATUSES } from "./lib/data.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "./lib/headers.mjs";
 import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile } from "./lib/routes.mjs";
+import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "./lib/tone.mjs";
 import { shortHash } from "./lib/util.mjs";
 
 const SITE_DIR = dirname(fileURLToPath(import.meta.url));
@@ -217,6 +218,10 @@ async function checkSite(label, dist, { allowedScriptTag = "" } = {}) {
       assert.ok(!html.includes("{{"), `${rel(file)}: unfilled token`);
       assert.ok(!/polar\.sh|buymeacoffee|buy me a coffee/i.test(html), `${rel(file)}: forbidden donation service (PRD-R60)`);
     }
+  });
+
+  await check(`${label}: traditional tone placement on every page, examples of the setting aside (decision 0005 Q13)`, () => {
+    for (const [file, html] of pages) assert.deepEqual(siteToneOffenders(html), [], `${rel(file)}: modern tone placement`);
   });
 
   await check(`${label}: donation entry points only where PRD-R57 allows`, () => {
@@ -770,6 +775,14 @@ try {
       const text = await readFile(file, "utf8");
       if (text.includes(brand.name) || text.includes(brand.host) || text.includes(brand.bundleId)) offenders.push(file.slice(SITE_DIR.length + 1));
     }
+    assert.deepEqual(offenders, []);
+  });
+
+  await check("tone placement: the check flags modern placement only; site sources and the matrix pass (Q13)", async () => {
+    assert.deepEqual(modernToneWords("hoá Xoá khoẻ tuỳ thuỷ huỷ hòa xóa tùy hoàn xoắn khuyết ngoài khuỷu quý quỳ"), ["hoá", "Xoá", "khoẻ", "tuỳ", "thuỷ", "huỷ"]);
+    assert.deepEqual(siteToneOffenders("<em>hoà</em> <em>xoá</em> hoà"), ["xoá", "hoà"], "only the setting's examples, only in <em>");
+    const files = (await walk(SITE_DIR)).filter((f) => !f.includes(`${SITE_DIR}/dist`) && /\.(mjs|json|md|txt|html|xml)$/.test(f) && !/\/(test|lib\/tone)\.mjs$/.test(f));
+    const offenders = await toneOffendersInFiles([...files, join(ROOT_DIR, "compat", "matrix.json")], (f) => f.slice(ROOT_DIR.length + 1));
     assert.deepEqual(offenders, []);
   });
 

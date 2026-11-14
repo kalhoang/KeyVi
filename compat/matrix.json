@@ -62,6 +62,7 @@
     { "bundleId": "org.gnu.Emacs", "displayName": "Emacs", "category": "developer", "ruleId": "editor.customTextViews", "status": "notVerified", "issues": [] },
     { "bundleId": "org.vim.MacVim", "displayName": "MacVim", "category": "developer", "ruleId": "editor.customTextViews", "status": "notVerified", "issues": [] },
     { "bundleId": "com.brave.Browser", "displayName": "Brave", "category": "browser", "ruleId": "browser.chromium.addressBar", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.coccoc.Coccoc", "displayName": "Cốc Cốc", "category": "browser", "ruleId": "browser.chromium.addressBar", "status": "notVerified", "issues": [] },
     { "bundleId": "com.microsoft.VSCodeInsiders", "displayName": "Visual Studio Code Insiders", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
     { "bundleId": "com.vscodium", "displayName": "VSCodium", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
     { "bundleId": "dev.kiro.desktop", "displayName": "Kiro", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
