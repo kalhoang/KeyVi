@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Focus revalidation requests from the tap (PLT-R382, PLT-R389). Tap-safe: integer tests, one ring push and a
-// wake-up; no AX, I/O, lock or allocation (PLT-R304, PLT-R305). The tap never waits for a read: what it asks for is
-// read on the ax thread, and a key that met a stale snapshot is protected by the worker's generation check
-// (PLT-R316).
+// Focus revalidation requests from the tap (PLT-R382, PLT-R389) and the late focus change (PLT-R340 amendment of
+// 2026-11-14). Tap-safe: integer tests, one ring push and a wake-up; no AX, I/O, lock or allocation (PLT-R304,
+// PLT-R305). The tap never waits for a read: what it asks for is read on the ax thread, and a key that met a stale
+// snapshot is protected by the worker's generation check (PLT-R316) and, after a late focus change, by the
+// bounded read of the first job (`EditJob.verifyLateFocus`).
 
 internal import AppModel
 internal import Diagnostics
@@ -27,6 +28,19 @@ enum FocusRevalidation {
         case .backspace, .forwardDelete, .navigation, .function, .other: return false
         }
     }
+}
+
+/// PLT-R340 amendment (product owner, 2026-11-14, T5.5): a focus change the tap discovers after keys of the active
+/// token were composed with the previous snapshot keeps the composition when the new element belongs to the same
+/// process and the change was observed at most `windowNanoseconds` after the token's last key. The first job after
+/// the discovery verifies the new element's text before the caret (`EditJob.verifyLateFocus`).
+enum LateFocusChange {
+    /// 500 ms: the ax thread observes a focus change that the typing caused (a sheet or an editor taking the key it
+    /// was opened by) or that the app reported late within its settle window (last re-read 400 ms after the
+    /// notification, `FocusSettle.delays`, PLT-R380) plus scheduling slack; it equals the PLT-R382 typing-pause
+    /// threshold, beyond which a key no longer belongs to continuous typing. A change observed later is not part of
+    /// the word and stays a hard boundary.
+    static let windowNanoseconds: UInt64 = 500_000_000
 }
 
 extension KeyPipeline {
@@ -62,5 +76,38 @@ extension KeyPipeline {
     @inline(__always)
     func requestFocusRevalidation(_ notice: AXNotice) {
         if context.outbox.toAX.push(notice) { context.outbox.axSignal.signal() }
+    }
+
+    /// PLT-R340 amendment: keep the composition across a focus change discovered after keys of the active token
+    /// were composed with the previous snapshot. Same process, an element the worker can read (a field handle and
+    /// AX available), no focus pause, the same engine variant, and the change observed at most
+    /// `LateFocusChange.windowNanoseconds` after the token's last key. Everything else stays a hard boundary. The
+    /// active-display read runs only on this rare path (a new element while a word is being typed).
+    func keepsCompositionAcrossLateFocusChange(_ focus: FocusSnapshot, identity: FocusIdentity) -> Bool {
+        guard engineDirty, identity.pid != ToggleOverride.noProcess, identity.pid == seen.focus.pid,
+            focus.fieldHandle != nil, focus.field.axAvailability == .available, focus.pause == nil,
+            identity.decision.variant == seen.focus.decision.variant, let lastKey = keyState.lastComposedKeyAt,
+            focus.changedAt.nanoseconds(since: lastKey) <= LateFocusChange.windowNanoseconds
+        else { return false }
+        return !engine.activeDisplay.isEmpty
+    }
+
+    /// The key that discovered a kept late focus change produced no edit to verify: a job without an edit carries
+    /// the check (the key itself is then held behind it as a replay, or was consumed by the engine), so a field
+    /// that does not match resets the composition one key late instead of keeping a wrong one.
+    func pushLateFocusCheck(
+        replaced: String, _ key: KeyInputContext, focus: FocusSnapshot, inputSource: InputSourceSnapshot
+    ) -> Bool {
+        keyState.lateFocusCheckPending = false
+        let job = EditJob(
+            sequence: context.queue.nextSequence(), generation: focus.generation, plan: focus.decision.plan,
+            field: focus.fieldHandle, kind: .compose, deleteCount: 0, deleteUTF16Count: 0,
+            replacedText: replaced.isEmpty ? nil : replaced, insertion: "",
+            keyCodes: JobKeyCodes(trigger: key.event.keyCode, paste: seen.pasteKeyCode), trigger: nil,
+            verifyBeforeApply: false, wordStartedNearFocusChange: false, createdAt: key.now, isProbe: key.probe,
+            verifyLateFocus: true)
+        guard context.queue.push(.edit(job)) else { return false }
+        lastPushWasBoundary = false
+        return true
     }
 }

@@ -162,12 +162,17 @@ public struct EditJob: Sendable {
     public var wordStartedNearFocusChange: Bool
     public var createdAt: MonotonicInstant
     public var isProbe: Bool
+    /// PLT-R340 amendment (2026-11-14): the first job after a focus change the tap discovered late, when it kept
+    /// the composition. The worker applies it only if `field` is readable and its text before the caret (before the
+    /// selection, when an inline completion is selected) ends with `replacedText`; otherwise the trigger passes
+    /// through and the composition is reset. Strict, unlike `verifyBeforeApply`: an unreadable field fails.
+    public var verifyLateFocus: Bool
 
     public init(
         sequence: JobSequence, generation: FocusGeneration, plan: InjectionPlan, field: FieldHandle?,
         kind: EditKind, deleteCount: Int, deleteUTF16Count: Int, replacedText: String?, insertion: String,
         keyCodes: JobKeyCodes, trigger: KeyEventRecord?, verifyBeforeApply: Bool,
-        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool
+        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -184,6 +189,7 @@ public struct EditJob: Sendable {
         self.wordStartedNearFocusChange = wordStartedNearFocusChange
         self.createdAt = createdAt
         self.isProbe = isProbe
+        self.verifyLateFocus = verifyLateFocus
     }
 }
 

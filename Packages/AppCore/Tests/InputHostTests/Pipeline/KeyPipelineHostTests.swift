@@ -236,7 +236,10 @@ import VietnameseEngine
         fixture.publish(focus: PipelineFixtures.focus(generation: 3, pid: 300))
         fixture.press(Key.a)
         #expect(fixture.log.resets == [.applicationChanged])
-        fixture.publish(focus: PipelineFixtures.focus(generation: 4, pid: 300))  // new element, same app
+        // A new element of the same app, observed long after the word's last key (PLT-R340; within 500 ms the
+        // composition is kept, KeyPipelineFocusTests).
+        fixture.clock.advance(byMicroseconds: 600_000)
+        fixture.publish(focus: PipelineFixtures.focus(generation: 4, pid: 300, changedAt: fixture.clock.now()))
         fixture.press(Key.a)
         #expect(fixture.log.resets == [.applicationChanged, .focusChanged])
     }

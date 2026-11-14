@@ -156,6 +156,11 @@ struct KeyState {
     var lastKeyboardEventAt: MonotonicInstant?
     /// PLT-R389: an event that can move the focus was seen; the next keyDown asks for one more read.
     var revalidateNextKey = false
+    /// Last key fed to the engine (`compose`): the late focus change window starts there (PLT-R340 amendment).
+    var lastComposedKeyAt: MonotonicInstant?
+    /// PLT-R340 amendment: a late focus change kept the composition; the next job verifies the new element's text
+    /// before the caret (`EditJob.verifyLateFocus`). Cleared by that job and by every engine reset.
+    var lateFocusCheckPending = false
     /// Keyboard type already reported to the main thread (`MainNotice.keyboardTypeSeen`).
     var reportedKeyboardType: UInt32?
     /// PLT-R398B: the key being processed was fed to the engine (`compose`). Cleared before the first key-down

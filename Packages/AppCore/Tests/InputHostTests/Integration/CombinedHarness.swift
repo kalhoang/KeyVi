@@ -218,11 +218,12 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
         }
     }
 
-    /// A new focus owner each time, cycling through secure, pass-through, English and composing decisions.
+    /// A new focus owner each time, cycling through secure, pass-through, English and composing decisions, observed
+    /// well after any key typed so far (outside the PLT-R340 late focus window): always a host transition.
     private func publishFocusChange() {
         focus += 1
         let pid = Int32(100 + focus % 3)
-        let snapshot: FocusSnapshot
+        var snapshot: FocusSnapshot
         switch focus % 6 {
         case 0:
             snapshot = PipelineFixtures.focus(generation: focus, pid: pid, field: PipelineFixtures.field(secure: true))
@@ -232,6 +233,7 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
         case 2: snapshot = PipelineFixtures.focus(generation: focus, pid: pid, mode: .english)
         default: snapshot = PipelineFixtures.focus(generation: focus, pid: pid)
         }
+        snapshot.changedAt = clock.now().advanced(byMicroseconds: LateFocusChange.windowNanoseconds / 1_000 + 100_000)
         snapshots.focus.publish(snapshot)
         focusGeneration.store(snapshot.generation)
         engineLog?.mark()

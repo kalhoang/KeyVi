@@ -300,7 +300,11 @@ extension KeyPipeline {
         guard focus.generation != seen.focus.generation else { return }
         let identity = FocusIdentity(focus)
         if !identity.sameOwner(as: seen.focus) {
-            change.note(identity.pid != seen.focus.pid ? .applicationChanged : .focusChanged, job: .focusChanged)
+            if keepsCompositionAcrossLateFocusChange(focus, identity: identity) {
+                keyState.lateFocusCheckPending = true  // PLT-R340 amendment: the next job verifies
+            } else {
+                change.note(identity.pid != seen.focus.pid ? .applicationChanged : .focusChanged, job: .focusChanged)
+            }
         } else if identity.decision != seen.focus.decision {
             change.note(.configurationChanged, job: .ruleChanged)
         }

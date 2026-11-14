@@ -84,6 +84,8 @@ extension KeyPipeline {
     private func restoreLastWord(
         _ key: KeyInputContext, focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> TapVerdict? {
+        // PLT-R340 amendment: until a late focus change is verified, the bound key passes (Escape may close a sheet).
+        guard !keyState.lateFocusCheckPending else { return nil }
         let replaced = engine.activeDisplay
         let output = engine.handle(.restoreToggle)
         engineDirty = true
@@ -104,6 +106,7 @@ extension KeyPipeline {
         }
         let output = engine.handle(input)
         engineDirty = true
+        keyState.lastComposedKeyAt = key.now  // PLT-R340 amendment: the late focus window starts here
         noteEngineCapture(output)
         keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
@@ -128,6 +131,13 @@ extension KeyPipeline {
         _ output: EngineOutput, kind: EditKind, replaced: String, _ key: KeyInputContext, focus: FocusSnapshot,
         inputSource: InputSourceSnapshot
     ) -> TapVerdict {
+        // PLT-R340 amendment: a key without an edit still verifies a kept late focus change; it is held behind the
+        // check (or consumed) like any key while a job is in flight.
+        if keyState.lateFocusCheckPending, !Self.deliversEdit(output),
+            !pushLateFocusCheck(replaced: replaced, key, focus: focus, inputSource: inputSource)
+        {
+            return queueFull(now: key.now)
+        }
         guard case .edit(let edit, let thenPassThrough) = output.action else {
             return passOrHold(key.event, now: key.now, probe: key.probe)
         }
@@ -191,7 +201,20 @@ extension KeyPipeline {
             keyCodes: JobKeyCodes(trigger: key.event.keyCode, firstCharacter: firstCharacter, paste: seen.pasteKeyCode),
             trigger: trigger,
             verifyBeforeApply: keyState.reopenedWord && focus.decision.verifyReentry != .never,
-            wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe)
+            wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe,
+            verifyLateFocus: takeLateFocusCheck())
+    }
+
+    /// PLT-R340 amendment: the first job after a kept late focus change carries the check.
+    private func takeLateFocusCheck() -> Bool {
+        defer { keyState.lateFocusCheckPending = false }
+        return keyState.lateFocusCheckPending
+    }
+
+    /// The engine answered with an edit that deletes or inserts something.
+    private static func deliversEdit(_ output: EngineOutput) -> Bool {
+        guard case .edit(let edit, _) = output.action else { return false }
+        return edit.deleteCount > 0 || !edit.insert.isEmpty
     }
 
     /// PLT-R408: the word began within 300 ms of a focus change or click.
@@ -286,6 +309,7 @@ extension KeyPipeline {
 
     /// A clean engine is in its initial state, so its reset is skipped (no observable difference).
     func resetEngineIfDirty(_ reason: ResetReason) {
+        keyState.lateFocusCheckPending = false  // nothing kept to verify
         guard engineDirty else { return }
         _ = engine.handle(.reset(reason))
         engineDirty = false

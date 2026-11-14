@@ -159,11 +159,12 @@ final class HarnessCore {
     // MARK: Host steps
 
     /// A new focus owner every time (new pid or element), cycling through decisions that pause, pass through,
-    /// type English or compose.
+    /// type English or compose. Observed well after any key typed so far (outside the 500 ms window of the PLT-R340
+    /// late focus change), so every random focus change is a host transition (PLT-R210).
     private func publishFocusChange() {
         focusGeneration += 1
         let pid = Int32(100 + focusGeneration % 3)
-        let focus: FocusSnapshot
+        var focus: FocusSnapshot
         switch focusGeneration % 6 {
         case 0:
             focus = PipelineFixtures.focus(
@@ -178,9 +179,13 @@ final class HarnessCore {
                 field: PipelineFixtures.field(editable: false))
         default: focus = PipelineFixtures.focus(generation: focusGeneration, pid: pid)
         }
+        focus.changedAt = clock.now().advanced(byMicroseconds: Self.lateFocusWindowMicroseconds + 100_000)
         fixture.publish(focus: focus)
         engineLog.mark()
     }
+
+    /// `LateFocusChange.windowNanoseconds` (InputHost, internal), in microseconds.
+    static let lateFocusWindowMicroseconds: UInt64 = 500_000
 
     private func publishLifecycle() {
         lifecycleGeneration += 1

@@ -44,6 +44,9 @@ extension WorkerCore {
             unreportedDiscards += 1
             return .discardedForGeneration
         }
+        // PLT-R340 amendment: a kept late focus change is confirmed before anything is posted, also for a job
+        // without an edit (the check of a key that only passes).
+        if !lateFocusMatches(job) { return passThrough(job) }
         let prepared = prepare(job)
         if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
         if !reentryMatches(prepared) { return passThrough(prepared) }
@@ -74,13 +77,31 @@ extension WorkerCore {
     func reentryMatches(_ job: EditJob) -> Bool {
         guard job.verifyBeforeApply, let expected = job.replacedText, !expected.isEmpty, let field = job.field
         else { return true }
+        return textBeforeCaret(of: field, endsWith: expected, allowingSelection: false) ?? true
+    }
+
+    /// PLT-R340 amendment (2026-11-14): after a focus change the tap discovered late and kept the composition, the
+    /// new element must be readable and its text before the caret must end with the token's display. A selected
+    /// inline completion after the caret is allowed (the text before the selection is compared). Strict: an
+    /// unreadable field, no field and no expected text all fail, which turns the kept composition into the hard
+    /// boundary it would have been.
+    func lateFocusMatches(_ job: EditJob) -> Bool {
+        guard job.verifyLateFocus else { return true }
+        guard let expected = job.replacedText, !expected.isEmpty, let field = job.field else { return false }
+        return textBeforeCaret(of: field, endsWith: expected, allowingSelection: true) ?? false
+    }
+
+    /// Bounded read (PLT-R343): the selected range, then at most 64 UTF-16 units before its start. Nil when the
+    /// field cannot be read, or when it has a selection and `allowingSelection` is false (no caret to compare at).
+    private func textBeforeCaret(of field: FieldHandle, endsWith expected: String, allowingSelection: Bool) -> Bool? {
         let timeout = InjectionTiming.axCallTimeout
-        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout), selection.length == 0
-        else { return true }
+        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout),
+            allowingSelection || selection.length == 0
+        else { return nil }
         let expectedUnits = Array(expected.utf16.suffix(InjectionTiming.maximumAXReadUnits))
         guard selection.location >= expectedUnits.count else { return false }
         let range = Injection.TextRange(location: selection.location - expectedUnits.count, length: expectedUnits.count)
-        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return true }
+        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return nil }
         return Array(text.utf16) == expectedUnits
     }
 
