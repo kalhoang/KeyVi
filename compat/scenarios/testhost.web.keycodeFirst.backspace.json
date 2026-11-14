@@ -1,0 +1,41 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.web.keycodeFirst.backspace",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "openURL",
+      "value": "{pages}/keycode-first-composer.html"
+    },
+    {
+      "action": "wait",
+      "value": "1000"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.web.textarea"
+    }
+  ],
+  "keys": [
+    "h",
+    "o",
+    "a",
+    "f",
+    "n",
+    "backspace"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "hòa"
+  },
+  "readback": "ax"
+}

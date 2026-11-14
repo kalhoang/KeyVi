@@ -193,3 +193,26 @@ private struct OverDeletingFactory: CompositionEngineFactory {
         if case .reset = events.last {} else { Issue.record("the composition was not reset: \(events)") }
     }
 }
+
+/// PLT-R340, PLT-R352, ENG-R1010: Option+Backspace (deletes a word), Command+Backspace, Control+Backspace and Forward
+/// Delete with or without modifiers are hard boundaries: while a job is in flight, the boundary is queued before the
+/// held key, so the worker resets behind the edit and before the deletion reaches the app.
+@Suite struct KeyPipelineDeleteKeyBoundaryTests {
+    @Test(arguments: [
+        (Key.backspace, Flag.option, BoundaryReason.navigation), (Key.backspace, Flag.option | Flag.shift, .navigation),
+        (Key.backspace, Flag.command, .commandChord), (Key.backspace, Flag.control, .commandChord),
+        (Key.forwardDelete, 0, .navigation), (Key.forwardDelete, Flag.option, .navigation),
+    ])
+    func aDeleteKeyResetMarksTheBoundaryInFIFOOrder(key: UInt16, flags: UInt64, reason: BoundaryReason) {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        fixture.keyDown(Key.a)  // edit in flight
+        #expect(fixture.keyDown(key, flags: flags) == .swallow, "held behind the edit (PLT-R311)")
+        let jobs = fixture.popJobs()
+        #expect(jobs.map(\.kind) == [.edit, .boundary, .replay])
+        #expect(jobs[1].boundaryReason == reason)
+        #expect(jobs[2].replayed?.keyCode == KeyCode(rawValue: key))
+        #expect(!fixture.log.feeds.contains(.backspace))
+        #expect(fixture.log.resets.count == 1)
+    }
+}

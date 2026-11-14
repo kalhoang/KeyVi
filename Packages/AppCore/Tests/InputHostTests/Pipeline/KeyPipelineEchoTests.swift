@@ -317,4 +317,20 @@ private func taplogCodes(_ fixture: PipelineFixture) -> [TapLogRecord] {
         #expect(edit.replacedText == "ab")
         #expect(jobs.map(\.kind) == [.edit, .replay])
     }
+
+    /// PLT-R405: a macro a character key triggers (a comma) whose expansion starts with a character typed by an
+    /// action key (a space, `kVK_Space`) types on the first character of the expansion that a non-action key types,
+    /// the same choice as for an edit an action key triggered, not on the trigger.
+    @Test func aMacroStartingWithASpaceTypesOnItsFirstLetter() throws {
+        let fixture = PipelineFixture()
+        let macro = EngineOutput(
+            action: .edit(TextEdit(deleteCount: 3, deleteUTF16Count: 3, insert: " by the way"), thenPassThrough: true),
+            composingText: "", decision: .macro)
+        let pipeline = stubPipeline(fixture, [macro])
+        #expect(pipeline.handle(key(.keyDown, Key.comma, fixture)) == .swallow)
+        let edit = try #require(fixture.popJobs().first?.edit)
+        #expect(edit.kind == .macro)
+        #expect(edit.keyCodes.trigger == KeyCode(rawValue: Key.comma))
+        #expect(edit.keyCodes.firstCharacter == KeyCode(rawValue: 0x0B))  // "b", never kVK_Space
+    }
 }

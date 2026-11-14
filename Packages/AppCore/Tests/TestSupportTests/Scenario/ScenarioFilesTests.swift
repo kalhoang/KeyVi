@@ -29,10 +29,11 @@ private func scenarioFiles() throws -> [URL] {
 
     /// The TestHost suite size (`scripts/run-integration.sh tests`, `--only 'testhost.*'`) is quoted by the VM
     /// runbook's proof plan; adding or removing a TestHost scenario updates both (W8-A added the save sheet, the
-    /// two search panel scenarios and the separate-editor page: 44).
+    /// two search panel scenarios and the separate-editor page: 44; W8-F the two key-code-first composer
+    /// scenarios: 46).
     @Test func theTestHostSuiteSizeIsPinnedInTheRunbook() throws {
         let testHost = try scenarioFiles().filter { $0.lastPathComponent.hasPrefix("testhost.") }
-        #expect(testHost.count == 44)
+        #expect(testHost.count == 46)
         let runbook = try String(
             contentsOf: repositoryRoot.appendingPathComponent("docs/runbooks/integration-suite.md"), encoding: .utf8)
         #expect(runbook.contains("expect \(testHost.count) of \(testHost.count)"))

@@ -160,10 +160,21 @@ extension InputHostController {
         let previous = latestPermissions
         latestPermissions = status
         feed(.permissionsChanged(status))
-        onEvent?(.permissionsChanged(status))
         // PLT-R331: a permission change is one of the watchdog's check points; a tap the system left disabled
-        // during the change (status still ready) runs the PLT-R330 procedure now, not at the next 5 s tick.
+        // during the change (status still ready) runs the PLT-R330 procedure now, not at the next 5 s tick. Checked
+        // before the guard below, so a status dropped there still counts as a change.
         if previous != nil, previous != status { session?.watchdog.checkNow() }
+        // PLT-R702, PRD-R40 screen 2: a status replaced during its own delivery is not forwarded. Typically the
+        // `ready` that Accessibility gave allowed a tap that failed at once, and the monitor already queued
+        // `noPermission` plus `listenEventRequired` behind it (or delivered it nested inside this call, when the
+        // replacement was produced on the main thread): forwarding the `ready` would show onboarding a finished step,
+        // or leave it there for good. The controller keeps the replacement as its latest status (the report reads it),
+        // so its own delivery is no change for the check above.
+        if let latest = permissionMonitor?.latest, latest != status {
+            latestPermissions = latest
+            return
+        }
+        onEvent?(.permissionsChanged(status))
     }
 
     /// Queues a state refresh behind the work already queued on the ax thread, so it reads the snapshot that

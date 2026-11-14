@@ -306,15 +306,20 @@ public final class FakeSecureInputProbe: SecureInputProbe, Sendable {
     public var pollCount: Int { state.withLock { $0.polls } }
 }
 
+/// `listen` is the launch-time Input Monitoring preflight; `setLiveListen` gives the live check its own answer, as in
+/// production, where the preflight keeps its launch answer after a grant (PLT-R701, PLT-R731).
 public final class FakePermissionProbe: PermissionProbe, Sendable {
     private struct State {
         var trusted: Bool
         var post: Bool
         var listen: Bool
+        /// The live Input Monitoring answer; nil follows `listen`.
+        var liveListen: Bool?
         var digest: String? = "fake-signing-identity"
         var accessibilityPrompts = 0
         var listenRequests = 0
         var postRequests = 0
+        var liveListenChecks = 0
     }
 
     private let state: Mutex<State>
@@ -334,9 +339,18 @@ public final class FakePermissionProbe: PermissionProbe, Sendable {
     /// Simulates another signing identity (a different build) or an unsigned build (`nil`).
     public func setSigningIdentityDigest(_ digest: String?) { state.withLock { $0.digest = digest } }
 
+    /// The answer of the live Input Monitoring check (`canListenToEventsNow`); nil makes it follow `listen` again.
+    public func setLiveListen(_ live: Bool?) { state.withLock { $0.liveListen = live } }
+
     public func isAccessibilityTrusted() -> Bool { state.withLock { $0.trusted } }
     public func canPostEvents() -> Bool { state.withLock { $0.post } }
     public func canListenToEvents() -> Bool { state.withLock { $0.listen } }
+    public func canListenToEventsNow() -> Bool {
+        state.withLock {
+            $0.liveListenChecks += 1
+            return $0.liveListen ?? $0.listen
+        }
+    }
     public func promptForAccessibility() { state.withLock { $0.accessibilityPrompts += 1 } }
     public func requestListenEventAccess() -> Bool {
         state.withLock {
@@ -357,6 +371,8 @@ public final class FakePermissionProbe: PermissionProbe, Sendable {
     public var accessibilityPromptCount: Int { state.withLock { $0.accessibilityPrompts } }
     public var listenRequestCount: Int { state.withLock { $0.listenRequests } }
     public var postRequestCount: Int { state.withLock { $0.postRequests } }
+    /// Number of live Input Monitoring checks (each creates a listen-only tap in production, PLT-R702).
+    public var liveListenCheckCount: Int { state.withLock { $0.liveListenChecks } }
 }
 
 @MainActor

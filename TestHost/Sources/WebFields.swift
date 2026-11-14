@@ -31,7 +31,7 @@ final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationD
     /// Bundled local pages, in picker order. `fields.html` holds the QA-R10 input, textarea and contenteditable.
     static let pages = [
         "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "edit-mode-editor.html",
-        "contenteditable-composer.html",
+        "contenteditable-composer.html", "keycode-first-composer.html",
     ]
     static let messageHandler = "testhost"
     static let mirroredFields: [TestHostField] = [.webInput, .webTextarea, .webContentEditable]

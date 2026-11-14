@@ -6144,9 +6144,10 @@ public enum EditKind: UInt8, Sendable, Hashable {
 public struct JobKeyCodes: Sendable, Hashable {
     /// Keycode of the physical key that triggered the edit.
     public var trigger: KeyCode
-    /// For restores and macros: keycode producing the first inserted character in the current layout, if any.
-    /// For a Backspace edit (PLT-R352, PLT-R405): keycode of the first character of the insertion, or else of
-    /// the replaced text, that the current layout types, so the insertion never rides on `kVK_Delete`.
+    /// For restores, macros and an edit an action key triggered (`isActionKey`: Backspace, PLT-R352; Return, Tab or
+    /// Space at a commit; Escape as the restore hotkey; PLT-R405): keycode of the first character of the insertion,
+    /// or else of the replaced text, that the current layout types on a key without an action, so the insertion
+    /// never rides on an action key's keycode.
     public var firstCharacter: KeyCode?
     /// Keycode producing "v" in the current layout (Command+V for `paste`).
     public var paste: KeyCode?
@@ -6155,6 +6156,20 @@ public struct JobKeyCodes: Sendable, Hashable {
         self.trigger = trigger
         self.firstCharacter = firstCharacter
         self.paste = paste
+    }
+
+    /// PLT-R405: a key that can trigger an edit and whose keycode carries an action of its own in a text editor:
+    /// Backspace, Return and keypad Enter, Tab, Space and Escape. (The other deletion key never triggers an edit,
+    /// PLT-R340, and is never posted, PLT-R407.) Chromium (and so Electron) and WebKit derive the DOM `code` of a key
+    /// event, and for a non-ASCII character also the legacy `keyCode`, from the virtual keycode, so a Unicode event
+    /// posted on one of these keys reaches an editor that acts on `code` or `keyCode` as that key: it deletes, sends,
+    /// moves the focus or cancels instead of typing. No Unicode event rides on these keycodes. Tap-safe.
+    @inline(__always)
+    public static func isActionKey(_ keyCode: KeyCode) -> Bool {
+        switch keyCode {
+        case .delete, .returnKey, .keypadEnter, .tab, .space, .escape: true
+        default: false
+        }
     }
 }
 
@@ -9871,7 +9886,14 @@ public final class PermissionMonitor: Sendable {
 
     public func start() { beginChecks() }
     public func stop() { endChecks() }
-    public func checkNow() -> PermissionStatus { check() }
+    /// Checks at once and returns the newest status. When the check runs on main its status is delivered inside the
+    /// call, and that delivery may already have replaced it (a `ready` whose tap failed, PLT-R702): the replacement
+    /// is returned then, never the replaced status, so a caller that records or feeds the result (menu open, wake,
+    /// PLT-R721) agrees with what the receivers were told.
+    public func checkNow() -> PermissionStatus {
+        let status = check()
+        return latest ?? status
+    }
     /// The status of the most recent check, already set while an older status is still being delivered. A receiver
     /// that forwards statuses compares the one in hand with this and drops it when a newer one is queued behind it,
     /// so a `ready` replaced during its own delivery (the tap it allowed failed, PLT-R702) never reaches the UI
@@ -9886,7 +9908,8 @@ public final class PermissionMonitor: Sendable {
 }
 
 extension PermissionProbe {
-    /// Probes without a live check (fakes, wrappers) answer with the launch-time preflight.
+    /// A probe without a live check answers with the launch-time preflight. A wrapper forwards the live check
+    /// explicitly (`RevocablePermissionProbe`), or this default would hide the wrapped probe's.
     public func canListenToEventsNow() -> Bool { canListenToEvents() }
 }
 
@@ -14853,15 +14876,20 @@ public final class FakeSecureInputProbe: SecureInputProbe, Sendable {
     public var pollCount: Int { state.withLock { $0.polls } }
 }
 
+/// `listen` is the launch-time Input Monitoring preflight; `setLiveListen` gives the live check its own answer, as in
+/// production, where the preflight keeps its launch answer after a grant (PLT-R701, PLT-R731).
 public final class FakePermissionProbe: PermissionProbe, Sendable {
     private struct State {
         var trusted: Bool
         var post: Bool
         var listen: Bool
+        /// The live Input Monitoring answer; nil follows `listen`.
+        var liveListen: Bool?
         var digest: String? = "fake-signing-identity"
         var accessibilityPrompts = 0
         var listenRequests = 0
         var postRequests = 0
+        var liveListenChecks = 0
     }
 
     private let state: Mutex<State>
@@ -14881,9 +14909,18 @@ public final class FakePermissionProbe: PermissionProbe, Sendable {
     /// Simulates another signing identity (a different build) or an unsigned build (`nil`).
     public func setSigningIdentityDigest(_ digest: String?) { state.withLock { $0.digest = digest } }
 
+    /// The answer of the live Input Monitoring check (`canListenToEventsNow`); nil makes it follow `listen` again.
+    public func setLiveListen(_ live: Bool?) { state.withLock { $0.liveListen = live } }
+
     public func isAccessibilityTrusted() -> Bool { state.withLock { $0.trusted } }
     public func canPostEvents() -> Bool { state.withLock { $0.post } }
     public func canListenToEvents() -> Bool { state.withLock { $0.listen } }
+    public func canListenToEventsNow() -> Bool {
+        state.withLock {
+            $0.liveListenChecks += 1
+            return $0.liveListen ?? $0.listen
+        }
+    }
     public func promptForAccessibility() { state.withLock { $0.accessibilityPrompts += 1 } }
     public func requestListenEventAccess() -> Bool {
         state.withLock {
@@ -14904,6 +14941,8 @@ public final class FakePermissionProbe: PermissionProbe, Sendable {
     public var accessibilityPromptCount: Int { state.withLock { $0.accessibilityPrompts } }
     public var listenRequestCount: Int { state.withLock { $0.listenRequests } }
     public var postRequestCount: Int { state.withLock { $0.postRequests } }
+    /// Number of live Input Monitoring checks (each creates a listen-only tap in production, PLT-R702).
+    public var liveListenCheckCount: Int { state.withLock { $0.liveListenChecks } }
 }
 
 @MainActor

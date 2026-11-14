@@ -311,3 +311,20 @@ struct PermissionMonitorTests {
         monitor.stop()
     }
 }
+
+/// W8-F: `FakePermissionProbe` answers the live check itself, apart from the launch-time preflight, so host tests see
+/// what production sees after a grant made while the app runs (PLT-R701, PLT-R731).
+@Suite struct FakePermissionProbeLiveCheckTests {
+    @Test func theLiveCheckHasItsOwnAnswer() {
+        let harness = Harness(trusted: true, post: true, listen: false)
+        harness.monitor.start()
+        harness.monitor.setTapUnavailable(true)
+        #expect(harness.changes.last?.listenEventRequired == true)
+        harness.probe.setLiveListen(true)  // granted after launch: the preflight keeps saying no
+        _ = harness.monitor.checkNow()
+        #expect(harness.probe.canListenToEvents() == false)
+        #expect(harness.changes.last?.health == .ready)
+        #expect(harness.changes.last?.listenEventRequired == false)
+        #expect(harness.probe.liveListenCheckCount >= 2)
+    }
+}

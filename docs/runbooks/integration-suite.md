@@ -449,7 +449,8 @@ selected, which is the completion the `axSelection` handling removes, not text t
 
 Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM lock taken:
 
-1. `scripts/vm/integration-dev.sh` (expect 44 of 44 and a clean privacy scan);
+1. `scripts/vm/integration-dev.sh` (expect 46 of 46 and a clean privacy scan; 44 before W8-F added the two key-code-first
+   composer scenarios of section 10.7);
 2. three times `scripts/vm/integration-dev.sh --probe --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition,testhost.web.editModeEditor`;
 3. five times `scripts/vm/integration-dev.sh --only testhost.web.editModeTransition,testhost.web.editModeEditor,testhost.sheet.commandS,testhost.panel.*`;
 4. Spotlight, macOS 27.2: `scripts/vm/integration-dev.sh --only launcher.spotlight` twice in a row in one clone is not
@@ -465,3 +466,47 @@ Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
 | Run | Commit | Pass | Fail | What it showed |
 |---|---|---|---|---|
 | none yet | | | | Safari stayed open on the host from 17:07 to 18:56 host time on 2026-11-14 (checked before and during W8-A's 60-minute wait, Pa's VM rule), so no VM was booted and the lock was never taken; the four steps above are open |
+
+### 10.7 Key-code-first composers (W8-F, 2026-11-14)
+
+Wave 8 changed which keycode an edit types on (PLT-R405, amended by W8-B and W8-F): no Unicode event rides on a key
+whose keycode carries an action of its own (Backspace, Return, keypad Enter, Tab, Space, Escape). An edit one of them
+triggers (a Backspace re-composition, the commit at Return, Tab or Space, a restore on the Escape hotkey) types on the
+keycode of a letter of the edit, and the trigger key follows once, as the replay of the physical key. The reason is
+Chromium's (and WebKit's) key conversion: the DOM `code`, and for a non-ASCII character also the legacy `keyCode`,
+come from the virtual keycode, so a chat composer that sends on `keyCode` 13 received the `ở` of an ENG-R532 commit at
+Return as one more Return and sent the message before the word was finished.
+
+`keycode-first-composer.html` models such a composer in TestHost's web view: its keydown listener deletes on
+`event.code === "Backspace"` and sends on `event.code === "Enter"` whatever character the event carries, it types on
+keypress, and it refuses every other edit. A send appends the marker `<send>` to the field (instead of clearing it), so
+the readback shows each send once, in order. Both scenarios run on the default rules (no profile).
+
+New TestHost scenarios (the suite goes from 44 to 46):
+
+| Scenario | Keys | Expect | What a regression shows |
+|---|---|---|---|
+| `testhost.web.keycodeFirst.backspace` | `hoafn`, Backspace | `hòa` | an empty field: the `òa` of the W240 tone relocation rode on `kVK_Delete` and deleted (fixed by W8-B) |
+| `testhost.web.keycodeFirst.returnCommit` | `thuowr`, Return | `thuở<send>` | `th<send><send><send>`: `u` and `ở` rode on `kVK_Return` (fixed by W8-F) |
+
+`KeyCodeFirstComposerOracleTests` checks the two expectations against the real engine on every `swift test`;
+`CommitTriggerKeyCodeTests` and `BackspaceEditKeyCodeTests` (Injection) model the same composer with fakes, per
+trigger and strategy. VERIFY in the first VM run that WebKit's event conversion behaves like Chromium's for these
+events (the page relies on `event.code` coming from the virtual keycode): the red run in step 2 below shows it.
+
+Proof plan of W8-F, with Safari closed on the host (Pa's VM rule) and the VM lock taken:
+
+1. `scripts/vm/integration-dev.sh` from this branch (expect 46 of 46 and a clean privacy scan);
+2. the red run: from a throwaway worktree at the commit that adds the page and the scenarios, which comes before the
+   PLT-R405 fix on this branch (`git log --oneline --reverse main..fix/w8f-integration-followups` lists it as
+   `test(testhost): ...`), run `scripts/vm/integration-dev.sh --only 'testhost.web.keycodeFirst.*'` and expect
+   `testhost.web.keycodeFirst.returnCommit` to fail with `th<send><send><send>` and the backspace scenario to pass
+   (W8-B's fix is already in that commit);
+3. three times `scripts/vm/integration-dev.sh --only 'testhost.web.keycodeFirst.*,testhost.web.composer'` from this
+   branch, all passing.
+
+Runs of W8-F (folders under `/Volumes/Data/tart/runs/`):
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| none yet | | | | Pa was using the Mac (wave 8 integration, 2026-11-14), so no VM was booted; the three steps above are open |
