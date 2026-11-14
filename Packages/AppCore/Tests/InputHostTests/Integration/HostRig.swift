@@ -105,6 +105,23 @@ enum PipelineHarnessEvents {
     }
 }
 
+/// Production's `DispatchMainHop` order without a run loop: a block posted from the main thread runs at once (so a
+/// monitor callback can nest inside the main-actor code that caused it), one posted from any other thread waits in
+/// `queue` for `drain()`.
+final class NestingMainHop: MainThreadHop {
+    let queue: ManualMainHop
+
+    init(queue: ManualMainHop) { self.queue = queue }
+
+    func hop(_ body: @escaping @MainActor @Sendable () -> Void) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { body() }
+        } else {
+            queue.hop(body)
+        }
+    }
+}
+
 /// The pipeline contexts the controller handed to its tap threads, newest last.
 final class ContextLog: Sendable {
     private let contexts = Mutex<[PipelineContext]>([])
@@ -184,7 +201,8 @@ final class HostRig {
         layout: LayoutTable = PipelineFixtures.qwertyTable(), source: InputSourceInfo = HostRig.abc,
         layoutData: [InputSourceID: KeyboardLayoutData]? = nil, builder: (any LayoutTableBuilding)? = nil,
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
-        capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil
+        capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil,
+        nestedHops: Bool = false
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -217,7 +235,8 @@ final class HostRig {
             instruments = nil
         }
         controller = InputHostController(
-            dependencies: dependencies, settingsStore: store.store, hop: hop,
+            dependencies: dependencies, settingsStore: store.store,
+            hop: nestedHops ? NestingMainHop(queue: hop) as any MainThreadHop : hop,
             makeTapThread: Self.gatedThreadMaker(
                 TapSession.productionThreadMaker(factory: dependencies.tapFactory), exitGate, contexts),
             tapClock: MachClock(),
