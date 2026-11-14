@@ -83,10 +83,10 @@ could not name appears as the frontmost application in parentheses (`(com.exampl
 | `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included) or took more than 50 ms |
 | `restoreOrReopen` | an Escape restore, a Backspace that re-opened a committed word, or a Backspace that re-opened a token a rule restored at its commit |
 | `replayDivergence` | replaying the keys since the last reset through the engine with the recorded settings gives another result than recorded: the host fed the engine something else, or kept state it should have dropped. Only for segments written by the scanner's engine build; a segment stops at a gap or a pause |
+| `undoAfterEdit` | Command+Z within 2 s after an engine edit |
 
 Not findings: app substitutions in a readback (curly quotes for straight ones, an ellipsis for three periods, an em
 or en dash for hyphens, a period for the first of two spaces); the field then becomes the baseline.
-| `undoAfterEdit` | Command+Z within 2 s after an engine edit |
 
 ### 2.2 Reading an excerpt
 

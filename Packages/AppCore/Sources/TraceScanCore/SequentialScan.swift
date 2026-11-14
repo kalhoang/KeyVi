@@ -46,7 +46,9 @@ struct SequentialScan {
             resolvePendingKey()
         }
         context.apply(line)
-        if windowEndT == nil { windowEndT = line.t }
+        // The context lines a `--since` window keeps from before its start carry their old times; the window
+        // starts at its first own line, so a key held across that start keeps its grace (PLT-R397A).
+        if windowEndT == nil, !TraceStore.contextTypes.contains(line.type) { windowEndT = line.t }
         switch line.type {
         case "start":
             composing = ""

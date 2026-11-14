@@ -248,4 +248,27 @@ extension TraceBuilder {
         #expect(result.output.contains("com.example.editor  rule editor.sample  replayDivergence"))
         #expect(!result.output.contains("Replay:"))
     }
+
+    /// A key held across the start of a `--since` window went down before it: its keyUp 100 ms into the window is
+    /// not an unseenKey (PLT-R397A). The context lines kept from before the window must not move the window's start
+    /// back, or the 1 s grace after it is lost.
+    @Test func aKeyHeldAcrossTheStartOfASinceWindowIsNotUnseen() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        trace.advance(35 * 60_000 - 100)
+        trace.line("key", ["ev": "keyDown", "kc": 0, "fl": 0, "ch": "a", "out": "passed"])
+        trace.advance(200)
+        trace.line("key", ["ev": "keyUp", "kc": 0, "fl": 0, "ch": "a", "out": "passed"])
+        trace.advance(2_000)
+        trace.keys("ha")
+        let folder = TraceBuilder.temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try trace.write(to: folder)
+        let result = TraceScanCommand.run(
+            ["summary", "--dir", folder.path, "--since", "10m", "--now", "2026-11-14T09:45:00Z", "--no-replay"],
+            now: Date(), timeZone: TraceBuilder.utc,
+            makeReplay: { ReplayEngineFactory(resources: TraceBuilder.resources) })
+        #expect(result.output.contains("Findings: 0"))
+        #expect(!result.output.contains("unseenKey"))
+    }
 }
