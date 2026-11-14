@@ -7724,9 +7724,12 @@ public enum MainNotice: Sendable {
 /// Tap -> ax notices.
 public enum AXNotice: Sendable {
     case modeToggled(sequence: UInt64, bundle: BundleKey?, mode: TypingMode)
-    /// Read the system-wide focus now: the first key after a typing pause (PLT-R382), the first key after an event
-    /// that can move the focus, and every key while an overlay rule applies (PLT-R389).
+    /// Read the system-wide focus now: the first key after a typing pause (PLT-R382).
     case revalidateFocus
+    /// PLT-R389: read the system-wide focused application and element now, and the element's attributes only when
+    /// either differs from the published one: the first key after an event that can move the focus, and every key
+    /// while an overlay rule applies.
+    case revalidateFocusIfMoved
     /// PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click may move the focus without an app
     /// activation (a non-activating panel such as Spotlight opens or closes, a sheet takes the focus). The ax
     /// thread reads the system-wide focus over the trigger settle window (`FocusSettle.triggerDelays`).
@@ -14472,6 +14475,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var nextObserverID: UInt64 = 1
         var manualRequests: [Int32] = []
         var elementQueries: [Int32: Int] = [:]
+        var attributeQueries: [Int32: Int] = [:]
         var lastRequest: AXAttributeRequest?
         var refusedObservers: [Int32: Int] = [:]
         var refusedNotifications: [Int32: Set<AXNotificationKind>] = [:]
@@ -14570,6 +14574,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func attributes(of element: AXFocusedElement, request: AXAttributeRequest) -> AXCallResult<FocusAttributes> {
         let (timingOut, stored) = state.withLock { state in
             state.lastRequest = request
+            state.attributeQueries[element.pid, default: 0] += 1
             return (state.timingOut.contains(element.pid), state.attributes[element.pid])
         }
         if timingOut { return .timedOut }
@@ -14617,6 +14622,8 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     /// Number of `focusedElement` queries per pid (circuit-breaker tests).
     public func elementQueryCount(pid: Int32) -> Int { state.withLock { $0.elementQueries[pid, default: 0] } }
+    /// Number of `attributes(of:)` reads per pid (PLT-R389: a moved-only check of an unchanged focus reads none).
+    public func attributeQueryCount(pid: Int32) -> Int { state.withLock { $0.attributeQueries[pid, default: 0] } }
     public var lastAttributeRequest: AXAttributeRequest? { state.withLock { $0.lastRequest } }
 
     private func removeObserver(_ id: UInt64) { state.withLock { $0.observers.removeAll { $0.id == id } } }
