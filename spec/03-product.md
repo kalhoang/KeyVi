@@ -503,7 +503,7 @@ PRD-R77 No in-app survey, rating prompt or usage counter.
 All answered on 13/11/2026; every answer and where it is implemented is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (the app licence in `docs/decisions/0006-app-licence-and-pro-edition.md`).
 
 1. Product name: decided; the display name and slug live only in `Config/Brand.xcconfig` and `scripts/brand.env`, and this spec keeps the placeholders.
-2. App licence: GPL-3.0-or-later for the app, MPL-2.0 for the engine packages, the `data/` pipeline and the reference model (ADR 0006). A paid Pro edition may follow after 1.0 at 99,000 VND for a lifetime licence; it never locks correct Vietnamese typing.
+2. App licence: GPL-3.0-or-later for the app, MPL-2.0 for the engine packages, the `data/` pipeline and the reference model (ADR 0006, amended 15/11/2026). There is no paid edition: every feature ships in the free app, which is supported by donations and sponsorships (ADR 0006 as amended on 15/11/2026; the Pro edition decided on 13/11 is withdrawn).
 3. Default tone placement: traditional, with the setting (D2).
 4. Restore-last-word hotkey: Escape by default, with an on/off setting and automatic exclusions through compatibility rules (D8, PRD-R18, PLT-R353).
 5. Website analytics: self-hosted Umami, cookieless (PRD-R74; first answer PostHog Cloud, replaced the same day).

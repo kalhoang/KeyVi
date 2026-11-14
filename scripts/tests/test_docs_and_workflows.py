@@ -1025,7 +1025,7 @@ class LicenceTests(unittest.TestCase):
         self.assertTrue(text.startswith("# 0006. App licence and the Pro edition"))
         for needle in ("Status: accepted", "GPL-3.0-or-later", "MIT", "Developer Certificate of Origin", "PLT-R108",
                        "compat-rules.json", "injection", "99,000 VND", "after 1.0", "lifetime", "private module",
-                       "signature", "offline", "Supersedes", "0401"):
+                       "signature", "offline", "Supersedes", "0401", "withdrawn", "no paid edition"):
             with self.subTest(needle=needle):
                 self.assertIn(needle, text)
         adr_0001 = (REPO / "docs" / "decisions" / "0001-defaults-for-open-decisions.md").read_text(encoding="utf-8")

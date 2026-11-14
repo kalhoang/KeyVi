@@ -286,7 +286,7 @@ QA-R60 Any new network endpoint in the app requires a decision record and an upd
 
 QA-R61 Contribution sign-off follows the licence decision of the product owner (13/11/2026; `docs/decisions/0006-app-licence-and-pro-edition.md`): the engine packages, the `data/` pipeline and the reference model are MPL-2.0, everything else is GPL-3.0-or-later.
 - Every contribution, in every area: Developer Certificate of Origin (`Signed-off-by` on every commit, the e-mail matching the commit author), enforced by a DCO check on pull requests. Rationale: lightweight and familiar to contributors.
-- Inbound terms: a contribution to a GPL-3.0-or-later part is licensed under the GPL as part of the project and is also licensed to the project under MIT, so the copyright holder can ship it in a separately licensed Pro edition later; the sign-off affirms this. There is no CLA. `CONTRIBUTING.md` states these terms.
+- Inbound terms: a contribution to a GPL-3.0-or-later part is licensed under the GPL as part of the project and is also licensed to the project under MIT, so the copyright holder can change the licence later without asking every contributor again (the Pro edition this grant first served was withdrawn on 15/11/2026); the sign-off affirms this. There is no CLA. `CONTRIBUTING.md` states these terms.
 
 QA-R62 Every PR template includes a clean-room attestation checkbox: "I did not read or copy code from other Vietnamese input methods while writing this change (see spec/05-clean-room.md)." PRs from contributors who cannot tick it are declined politely.
 

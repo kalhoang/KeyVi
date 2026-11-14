@@ -1,6 +1,7 @@
 # 0006. App licence and the Pro edition
 
-- Status: accepted, 2026-11-13 (Pa approved the recommendation in the evening follow-up answers to the checklist)
+- Status: accepted, 2026-11-13 (Pa approved the recommendation in the evening follow-up answers to the checklist);
+  amended 2026-11-15: decision 4 (the Pro edition) is withdrawn, there is no paid edition (see the amendment below)
 - Supersedes: row 2 of [0001](0001-defaults-for-open-decisions.md) (the app licence working default), item 2 of
   [0401](0401-interim-contribution-policy.md) (no external pull requests outside the engine) and the Q2, Q3 row of
   [0005](0005-pa-decisions-2026-11-13.md) ("not decided").
@@ -48,7 +49,7 @@ wants both a free, open app and the option of a paid Pro edition later, without 
    - **No contributor licence agreement**, no CLA bot.
    - Trade-off, stated plainly in `CONTRIBUTING.md`: an MIT licence is non-exclusive, so the individual change a
      contributor wrote is available under MIT terms, while the app as a whole is distributed under the GPL.
-4. **Pro edition.**
+4. **Pro edition** (withdrawn on 15/11/2026; kept here as it was decided, see the amendment below).
    - Only after 1.0, never before. Price: **99,000 VND** for a **lifetime** licence.
    - It never locks correct Vietnamese typing: the free GPL app always includes the complete engine, every
      typing method, the compatibility rules, the secure-input behaviour, diagnostics and updates. Pro may only
@@ -80,6 +81,19 @@ wants both a free, open app and the option of a paid Pro edition later, without 
    (CLR-R12). `CONTRIBUTING.md` states the merge rule (a pull request with an unsigned commit is not merged)
    rather than the CI scope.
 
+## Amendment, 15/11/2026: no paid edition
+
+On reflection, the product owner withdrew the paid edition: the app stays free and is funded by donations and
+sponsorships, because sales would bring in little.
+
+- Decision 4 is withdrawn: there is no paid edition, no Pro module, no licence key and no payment path. Every
+  feature, current and future, ships in the free GPL app.
+- The project is funded by donations and sponsorships only (the donation block of About & Support and the website,
+  PRD-R56 to PRD-R61; Polar.sh stays out because it does not allow donations).
+- The licences (decision 1), the DCO sign-off and the inbound MIT grant (decision 3) do not change. The grant costs
+  contributors nothing and keeps the project able to change its licence later without asking every contributor again;
+  for the same reason third-party GPL code is still not accepted.
+
 ## Consequences
 
 - `LicenseRef-App-Pending` is gone outside the decision records: spec, docs, `CONTRIBUTING.md`, the pull request
@@ -95,5 +109,5 @@ wants both a free, open app and the option of a paid Pro edition later, without 
   text, and the root `LICENSE` is copied into the app bundle as a resource. That row, its English translation and
   the resource belong to the App workstream (`App/`, `project.yml`); until they land the DMG files and the website
   carry the notice.
-- A future Pro edition needs its own decision record for the payment path, the key format and the module
-  boundary before any Pro code is written.
+- Decision 4 is withdrawn (amendment of 15/11/2026): no Pro code, payment path or licence key is planned. Bringing a
+  paid edition back would need a new decision record.
