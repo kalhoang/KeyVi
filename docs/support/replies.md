@@ -54,22 +54,22 @@ Use when the menu icon is slashed, the user says the app "does nothing", or typi
 
 ### Vietnamese
 
-Có vẻ {{AppNameTM}} chưa có quyền nhận phím gõ, hoặc macOS đã tắt quyền này (thường xảy ra sau khi cập nhật hệ điều hành). Trong lúc đó {{AppNameTM}} tự tạm dừng để bàn phím của bạn vẫn dùng bình thường. Bạn làm như sau:
+Có vẻ {{AppNameTM}} chưa có quyền nhận phím gõ, hoặc macOS đã tắt quyền này (thường xảy ra sau khi cập nhật hệ điều hành). Trong lúc đó {{AppName}} tự tạm dừng để bàn phím của bạn vẫn dùng bình thường. Bạn làm như sau:
 
-1. Bấm vào biểu tượng {{AppNameTM}} trên thanh menu. Dòng trạng thái ở đầu menu sẽ cho biết chính xác vấn đề, bấm vào đó để mở đúng chỗ cấp quyền.
-2. Hoặc mở **Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng** (trên macOS 27 mục này có tên **Điều khiển thiết bị và truy cập dữ liệu**) và bật {{AppNameTM}}.
-3. Nếu {{AppNameTM}} đã bật nhưng vẫn không gõ được: chọn {{AppNameTM}} trong danh sách, bấm dấu trừ (-) để xóa, rồi thêm lại. Hoặc dùng nút **Đặt lại quyền** trong phần hướng dẫn của {{AppNameTM}}, nút này chỉ đặt lại quyền của riêng {{AppNameTM}}.
+1. Bấm vào biểu tượng {{AppName}} trên thanh menu. Dòng trạng thái ở đầu menu sẽ cho biết chính xác vấn đề, bấm vào đó để mở đúng chỗ cấp quyền.
+2. Hoặc mở **Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng** (trên macOS 27 mục này có tên **Điều khiển thiết bị và truy cập dữ liệu**) và bật {{AppName}}.
+3. Nếu {{AppName}} đã bật nhưng vẫn không gõ được: chọn {{AppName}} trong danh sách, bấm dấu trừ (-) để xóa, rồi thêm lại. Hoặc dùng nút **Đặt lại quyền** trong phần hướng dẫn của {{AppName}}, nút này chỉ đặt lại quyền của riêng {{AppName}}.
 4. Hãy chắc rằng ứng dụng nằm trong thư mục **Ứng dụng** (/Applications), không chạy trực tiếp từ ổ DMG.
 
 Cho mình biết kết quả nhé. Nếu vẫn chưa được, bạn gửi giúp mình báo cáo từ mục **Báo lỗi...**, không cần nhật ký.
 
 ### English
 
-It looks like {{AppNameTM}} does not have permission to receive key presses, or macOS switched it off (this often happens after an OS update). While that is the case {{AppNameTM}} pauses itself so your keyboard keeps working normally. Please:
+It looks like {{AppNameTM}} does not have permission to receive key presses, or macOS switched it off (this often happens after an OS update). While that is the case {{AppName}} pauses itself so your keyboard keeps working normally. Please:
 
-1. Click the {{AppNameTM}} icon in the menu bar. The status line at the top of the menu says exactly what is wrong; click it to open the right place.
-2. Or open **System Settings > Privacy & Security > Accessibility** (on macOS 27 this pane is named **Device Control and Data Access**) and switch {{AppNameTM}} on.
-3. If it is already on but typing still does not work: select {{AppNameTM}} in the list, click the minus (-) button to remove it, then add it again. Or use the **Reset permission** button in {{AppNameTM}}'s guidance, which resets only {{AppNameTM}}'s entry.
+1. Click the {{AppName}} icon in the menu bar. The status line at the top of the menu says exactly what is wrong; click it to open the right place.
+2. Or open **System Settings > Privacy & Security > Accessibility** (on macOS 27 this pane is named **Device Control and Data Access**) and switch {{AppName}} on.
+3. If it is already on but typing still does not work: select {{AppName}} in the list, click the minus (-) button to remove it, then add it again. Or use the **Reset permission** button in {{AppName}}'s guidance, which resets only {{AppName}}'s entry.
 4. Make sure the app is in the **Applications** folder (/Applications) and not running directly from the DMG.
 
 Let us know how it goes. If it still fails, send a report from **Report a problem...**; no logs needed.
@@ -82,31 +82,31 @@ Internal note: never advise `sudo tccutil reset Accessibility` without a bundle 
 
 Use when the report says typing is blocked "at random", especially in iTerm2 or a terminal, or the menu shows a lock badge.
 
-Facts for the maintainer: while any app holds secure input, macOS stops delivering keys to every keyboard tool (Apple TN2150), so no event-tap input method can work. {{AppNameTM}} pauses only for the OS secure-input state or a real password field, never on guesses (PLT-R398A), and resumes on the first key after it is released (PLT-R398B). The menu names the likely holder, which can be wrong (PLT-R396). iTerm2 turns on secure keyboard entry by itself while it believes a password prompt is showing, in addition to its manual menu item (PLT-R398C).
+Facts for the maintainer: while any app holds secure input, macOS stops delivering keys to every keyboard tool (Apple TN2150), so no event-tap input method can work. {{AppName}} pauses only for the OS secure-input state or a real password field, never on guesses (PLT-R398A), and resumes on the first key after it is released (PLT-R398B). The menu names the likely holder, which can be wrong (PLT-R396). iTerm2 turns on secure keyboard entry by itself while it believes a password prompt is showing, in addition to its manual menu item (PLT-R398C).
 
 ### Vietnamese
 
 Đây không phải lỗi của bộ gõ: khi một ứng dụng bật **chế độ nhập bảo mật** (Secure Input), macOS chặn phím với mọi bộ gõ, và {{AppNameTM}} tạm dừng cho đến khi chế độ đó tắt. Bạn làm như sau:
 
-1. Bấm biểu tượng {{AppNameTM}} trên thanh menu. Nếu có biểu tượng khóa, dòng trạng thái sẽ nêu ứng dụng nhiều khả năng đang giữ chế độ này (tên này không phải lúc nào cũng chính xác).
+1. Bấm biểu tượng {{AppName}} trên thanh menu. Nếu có biểu tượng khóa, dòng trạng thái sẽ nêu ứng dụng nhiều khả năng đang giữ chế độ này (tên này không phải lúc nào cũng chính xác).
 2. **Terminal:** tắt mục **Nhập dùng Bàn phím An Toàn (Secure Keyboard Entry)** trong menu Terminal.
-3. **iTerm2:** tắt mục **iTerm2 > Secure Keyboard Entry**, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ. iTerm2 còn tự bật chế độ này khi nó cho rằng đang có lời nhắc mật khẩu (ví dụ sau lệnh `sudo` hoặc `ssh`): nhập xong rồi nhấn Return, hoặc nhấn Control+C để hủy; chế độ bảo mật sẽ tự tắt và {{AppNameTM}} gõ lại được ngay ở phím tiếp theo.
+3. **iTerm2:** tắt mục **iTerm2 > Secure Keyboard Entry**, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ. iTerm2 còn tự bật chế độ này khi nó cho rằng đang có lời nhắc mật khẩu (ví dụ sau lệnh `sudo` hoặc `ssh`): nhập xong rồi nhấn Return, hoặc nhấn Control+C để hủy; chế độ bảo mật sẽ tự tắt và {{AppName}} gõ lại được ngay ở phím tiếp theo.
 4. **Trình duyệt hoặc trình quản lý mật khẩu:** bấm ra ngoài ô mật khẩu, hoặc chuyển sang thẻ khác.
 5. Nếu không xác định được ứng dụng nào đang giữ, hoặc menu chỉ ra `loginwindow`: khóa màn hình rồi mở khóa (Control+Command+Q), hoặc đăng xuất rồi đăng nhập lại.
 
-{{AppNameTM}} chỉ tạm dừng theo trạng thái của hệ điều hành hoặc khi ô đang gõ là ô mật khẩu thật sự, không bao giờ đoán.
+{{AppName}} chỉ tạm dừng theo trạng thái của hệ điều hành hoặc khi ô đang gõ là ô mật khẩu thật sự, không bao giờ đoán.
 
 ### English
 
 This is not an input method bug: when an app turns on **Secure Input**, macOS blocks keys for every input method, and {{AppNameTM}} pauses until it is off. Please:
 
-1. Click the {{AppNameTM}} icon in the menu bar. If it shows a lock badge, the status line names the app that most likely holds secure input (the name is not always accurate).
+1. Click the {{AppName}} icon in the menu bar. If it shows a lock badge, the status line names the app that most likely holds secure input (the name is not always accurate).
 2. **Terminal:** in the Terminal menu, turn off **Secure Keyboard Entry**.
-3. **iTerm2:** turn off **iTerm2 > Secure Keyboard Entry**, or finish or cancel the password prompt it is waiting for. iTerm2 also turns secure input on by itself while it believes a password prompt is showing (for example after `sudo` or `ssh`): finish the prompt with Return or cancel it with Control+C; secure input then releases and {{AppNameTM}} types again from the very next key.
+3. **iTerm2:** turn off **iTerm2 > Secure Keyboard Entry**, or finish or cancel the password prompt it is waiting for. iTerm2 also turns secure input on by itself while it believes a password prompt is showing (for example after `sudo` or `ssh`): finish the prompt with Return or cancel it with Control+C; secure input then releases and {{AppName}} types again from the very next key.
 4. **Browser or password manager:** click outside the password field, or switch tabs.
 5. If the holder cannot be identified, or the menu points to `loginwindow`: lock and unlock the screen (Control+Command+Q), or log out and in.
 
-{{AppNameTM}} pauses only on the operating system's state or a real password field, and never guesses.
+{{AppName}} pauses only on the operating system's state or a real password field, and never guesses.
 
 ---
 
@@ -119,20 +119,20 @@ Use when letters are doubled or swallowed, or the menu or onboarding reports a c
 Hai bộ gõ chạy cùng lúc sẽ làm lặp hoặc mất chữ. Có vẻ máy bạn đang chạy {{OtherApp}} (hoặc nguồn nhập tiếng Việt có sẵn của macOS). Bạn thử như sau:
 
 1. Thoát {{OtherApp}} (bấm biểu tượng trên thanh menu và chọn Thoát), rồi tắt tùy chọn tự mở khi đăng nhập của nó. {{AppNameTM}} không tự thoát hay chỉnh sửa ứng dụng khác của bạn.
-2. Nếu bạn dùng nguồn nhập **Tiếng Việt** có sẵn của macOS: mở **Cài đặt hệ thống > Bàn phím > Nguồn nhập** và chọn bàn phím **ABC** hoặc **U.S.** khi dùng {{AppNameTM}}. Bạn có thể giữ hoặc gỡ nguồn nhập tiếng Việt của macOS.
-3. Mở lại {{AppNameTM}} rồi thử gõ trong ô gõ thử.
+2. Nếu bạn dùng nguồn nhập **Tiếng Việt** có sẵn của macOS: mở **Cài đặt hệ thống > Bàn phím > Nguồn nhập** và chọn bàn phím **ABC** hoặc **U.S.** khi dùng {{AppName}}. Bạn có thể giữ hoặc gỡ nguồn nhập tiếng Việt của macOS.
+3. Mở lại {{AppName}} rồi thử gõ trong ô gõ thử.
 
-Nếu vẫn lặp chữ, bạn gửi giúp mình báo cáo từ mục **Báo lỗi...** nhé, phần chẩn đoán có ghi những bộ gõ khác mà {{AppNameTM}} phát hiện được.
+Nếu vẫn lặp chữ, bạn gửi giúp mình báo cáo từ mục **Báo lỗi...** nhé, phần chẩn đoán có ghi những bộ gõ khác mà {{AppName}} phát hiện được.
 
 ### English
 
 Two input methods running at once cause doubled or lost letters. It looks like {{OtherApp}} (or macOS's built-in Vietnamese input source) is running. Please:
 
 1. Quit {{OtherApp}} (click its menu-bar icon and choose Quit) and turn off its open-at-login option. {{AppNameTM}} never quits or modifies other apps for you.
-2. If you use macOS's built-in **Vietnamese** input source: open **System Settings > Keyboard > Input Sources** and choose the **ABC** or **U.S.** keyboard while using {{AppNameTM}}. You may keep or remove the built-in Vietnamese source.
-3. Reopen {{AppNameTM}} and try the practice field.
+2. If you use macOS's built-in **Vietnamese** input source: open **System Settings > Keyboard > Input Sources** and choose the **ABC** or **U.S.** keyboard while using {{AppName}}. You may keep or remove the built-in Vietnamese source.
+3. Reopen {{AppName}} and try the practice field.
 
-If letters are still doubled, send a report from **Report a problem...**; the diagnostics list the other input apps that {{AppNameTM}} detected.
+If letters are still doubled, send a report from **Report a problem...**; the diagnostics list the other input apps that {{AppName}} detected.
 
 ---
 
@@ -166,7 +166,7 @@ Use when a fix is `fixed-in-beta` and you want the reporter to confirm it (QA-R4
 
 Bản sửa đã có trong bản beta **<phiên bản beta>**. Bạn thử giúp mình nhé:
 
-1. Mở {{AppNameTM}} > **Cài đặt...** > **Giới thiệu**.
+1. Mở {{AppName}} > **Cài đặt...** > **Giới thiệu**.
 2. Ở mục **Kênh cập nhật**, chọn **Beta**.
 3. Bấm **Kiểm tra cập nhật...** và cài bản beta mới nhất.
 4. Thử lại đúng trường hợp bị lỗi trước đây và cho mình biết kết quả.
@@ -177,7 +177,7 @@ Người dùng beta cũng nhận các bản ổn định mới hơn bản beta m
 
 The fix is in beta **<beta version>**. Please try it:
 
-1. Open {{AppNameTM}} > **Settings...** > **About**.
+1. Open {{AppName}} > **Settings...** > **About**.
 2. Under **Update channel**, choose **Beta**.
 3. Click **Check for Updates...** and install the latest beta.
 4. Retry the exact case that failed before and tell us the result.
