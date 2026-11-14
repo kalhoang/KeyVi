@@ -950,7 +950,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ theo danh sách bên dưới; mỗi mục sẽ được đánh dấu khi xong."
+            "value" : "Gõ theo danh sách bên dưới; mỗi mục được đánh dấu khi xong."
           }
         }
       }
@@ -1046,19 +1046,19 @@
       }
     },
     "onboarding.done.start" : {
-      "comment" : "PRD-R40 screen 8 button.",
+      "comment" : "PRD-R40 screen 8 button (Pa, 2026-11-14).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Start typing"
+            "value" : "Start"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bắt đầu gõ"
+            "value" : "Bắt đầu"
           }
         }
       }
@@ -1496,25 +1496,25 @@
       }
     },
     "onboarding.permission.inputMonitoring" : {
-      "comment" : "PLT-R702, PLT-R712. %1$@ the Input Monitoring pane name, %2$@ app name (used twice).",
+      "comment" : "PLT-R702, PLT-R712, under the Input Monitoring row (Pa, 2026-11-14). %1$@ the Input Monitoring pane name in the macOS language, %2$@ app name (used twice).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS also needs the %1$@ permission for %2$@. Turn on %2$@ in %1$@, then reopen %2$@."
+            "value" : "macOS also needs the %1$@ permission so %2$@ can receive keystrokes. If the switch is already on but this line still says it is needed, reopen %2$@."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS cần thêm quyền %1$@ cho %2$@. Bật %2$@ trong mục %1$@, sau đó mở lại %2$@."
+            "value" : "macOS cần thêm quyền %1$@ để %2$@ nhận phím gõ. Nếu công tắc đã bật mà dòng này vẫn báo cần bật, hãy mở lại %2$@."
           }
         }
       }
     },
     "onboarding.permission.instruction" : {
-      "comment" : "PRD-R40 dynamic instruction. %1$@ System Settings, %2$@ Privacy & Security, %3$@ the Accessibility pane (macOS 15/26) or Device Control and Data Access (macOS 27), all in the macOS language (PLT-R704); %4$@ app name.",
+      "comment" : "PRD-R40 dynamic instruction. %1$@ System Settings, %2$@ Privacy & Security, %3$@ the pane of the first permission still missing (Accessibility, Device Control and Data Access on macOS 27, or Input Monitoring), all in the macOS language (PLT-R704); %4$@ app name.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -1550,7 +1550,7 @@
       }
     },
     "onboarding.permission.openPane" : {
-      "comment" : "PRD-R40 button. %@ is a System Settings name in the macOS language.",
+      "comment" : "PRD-R40 screen 2 primary button (Pa, 2026-11-14). %@ is the pane of the first permission still missing (Device Control and Data Access, Accessibility or Input Monitoring) in the macOS language.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -1581,6 +1581,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mở lại %@"
+          }
+        }
+      }
+    },
+    "onboarding.permission.row.granted" : {
+      "comment" : "PRD-R40 screen 2: live state of a permission row whose switch is on (Pa, 2026-11-14).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turned on"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã bật"
+          }
+        }
+      }
+    },
+    "onboarding.permission.row.needed" : {
+      "comment" : "PRD-R40 screen 2: live state of a permission row still missing (Pa, 2026-11-14).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still needed"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cần bật"
           }
         }
       }
@@ -1945,6 +1981,60 @@
         }
       }
     },
+    "onboarding.tryIt.detail.english" : {
+      "comment" : "Second line of the English item (Pa, 2026-11-14). %@ the keys to press (the English words), shown in a distinct style.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys to press: %@. The words must stay as typed, with no marks added."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím cần gõ: %@. Chữ phải giữ nguyên, không bị thêm dấu."
+          }
+        }
+      }
+    },
+    "onboarding.tryIt.detail.toggle" : {
+      "comment" : "Second line of the toggle item (Pa, 2026-11-14). %1$@ the menu bar letter of the starting mode (V or E), %2$@ the other one.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The menu bar icon changes from %1$@ to %2$@, then back to %1$@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biểu tượng trên thanh menu đổi từ %1$@ sang %2$@, rồi về lại %1$@."
+          }
+        }
+      }
+    },
+    "onboarding.tryIt.detail.vietnamese" : {
+      "comment" : "Second line of the Vietnamese item (Pa, 2026-11-14). %1$@ the input method (Telex or VNI), %2$@ the keys to press, shown in a distinct style.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keys to press (%1$@): %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phím cần gõ (%1$@): %2$@"
+          }
+        }
+      }
+    },
     "onboarding.tryIt.done" : {
       "comment" : "PRD-R40 screen 7 button.",
       "extractionState" : "manual",
@@ -1963,56 +2053,92 @@
         }
       }
     },
-    "onboarding.tryIt.item.english" : {
-      "comment" : "Checklist item. %@ is the English target text.",
+    "onboarding.tryIt.intro" : {
+      "comment" : "PRD-R40 screen 7, under the title (Pa, 2026-11-14).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type %@ and see it stay unchanged"
+            "value" : "Type in the field below. Each item is ticked when you finish it."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ %@ và thấy chữ giữ nguyên"
+            "value" : "Gõ vào ô bên dưới. Mỗi mục được đánh dấu khi bạn làm xong."
+          }
+        }
+      }
+    },
+    "onboarding.tryIt.item.english" : {
+      "comment" : "Checklist item (Pa, 2026-11-14). %@ is the English target text, shown in a distinct style inside the quotes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the English words “%@”"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ các từ tiếng Anh “%@”"
           }
         }
       }
     },
     "onboarding.tryIt.item.toggle" : {
-      "comment" : "Checklist item.",
+      "comment" : "Checklist item when the window starts in Vietnamese (Pa, 2026-11-14). %@ is the switch shortcut from Settings in words (Control + Shift by default), shown in a distinct style.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Press the switch key once, then press it again"
+            "value" : "Press and release %@ to switch to English, then do it again to go back to Vietnamese"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhấn phím chuyển một lần rồi nhấn lại"
+            "value" : "Nhấn rồi thả %@ để chuyển sang tiếng Anh, rồi làm lại một lần nữa để về tiếng Việt"
+          }
+        }
+      }
+    },
+    "onboarding.tryIt.item.toggleFromEnglish" : {
+      "comment" : "Checklist item when the window starts in English (Pa, 2026-11-14). %@ is the switch shortcut from Settings in words, shown in a distinct style.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press and release %@ to switch to Vietnamese, then do it again to go back to English"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhấn rồi thả %@ để chuyển sang tiếng Việt, rồi làm lại một lần nữa để về tiếng Anh"
           }
         }
       }
     },
     "onboarding.tryIt.item.vietnamese" : {
-      "comment" : "Checklist item. %@ is the Vietnamese target text.",
+      "comment" : "Checklist item (Pa, 2026-11-14). %@ is the Vietnamese target text, shown in a distinct style inside the quotes.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type %@"
+            "value" : "Type the phrase “%@”"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ dòng chữ %@"
+            "value" : "Gõ cụm từ “%@”"
           }
         }
       }
@@ -2049,6 +2175,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chưa xong: %@"
+          }
+        }
+      }
+    },
+    "onboarding.tryIt.sequence.telex" : {
+      "comment" : "Telex keys that type the Vietnamese target text; identical in both languages.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tieengs Vieetj cos daaus"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tieengs Vieetj cos daaus"
+          }
+        }
+      }
+    },
+    "onboarding.tryIt.sequence.vni" : {
+      "comment" : "VNI keys that type the Vietnamese target text; identical in both languages.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tie61ng Vie65t co1 da61u"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tie61ng Vie65t co1 da61u"
           }
         }
       }

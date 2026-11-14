@@ -88,17 +88,24 @@ extension AppEnvironment {
 }
 
 extension AppEnvironment: OnboardingActions {
-    /// PLT-R701, PLT-R704: Accessibility only, through the deep link of SystemPanes.json; the system prompt
-    /// adds the app to the list so the user only flips the switch.
+    /// PLT-R701, PLT-R704: the Accessibility pane (Device Control and Data Access on macOS 27) through the deep
+    /// link of SystemPanes.json; the system prompt adds the app to the list so the user only flips the switch.
     func openPermissionPane() {
         SystemPermissionProbe().promptForAccessibility()
         openPane(.accessibility)
     }
 
-    /// PLT-R702: only when macOS demands Input Monitoring for the tap.
+    /// PLT-R702: only when the tap needs Input Monitoring; the primary button of screen 2 once it is the first
+    /// permission still missing. A repeated request returns the earlier answer without a new prompt.
     func openInputMonitoringPane() {
         _ = SystemPermissionProbe().requestListenEventAccess()
         openPane(.inputMonitoring)
+    }
+
+    /// PLT-R702: called once when screen 2 first shows Input Monitoring as needed, so macOS lists the app and shows
+    /// its prompt before the user goes looking for the switch.
+    func requestInputMonitoringAccess() {
+        _ = SystemPermissionProbe().requestListenEventAccess()
     }
 
     /// PLT-R740: after the user confirmed in the sheet; never automatic, never without the own bundle ID. After a

@@ -20,6 +20,8 @@ final class OnboardingModel: ObservableObject {
         didSet { checklist?.textChanged(tryItText) }
     }
     @Published private(set) var checklist: TryItChecklist?
+    /// The mode screen 7 opened in: the toggle item says which language comes first (PRD-R40 screen 7).
+    @Published private(set) var tryItStartMode: TypingMode = .vietnamese
     @Published var openAtLogin = true  // D17, shown pre-checked
     /// False on macOS 12 (ADR 0315): the done screen shows how to add the app to Login Items by hand.
     let canOpenAtLogin: Bool
@@ -69,6 +71,7 @@ final class OnboardingModel: ObservableObject {
             readLayout: { relay.model?.actions?.currentLayout() })
         relay.model = self
         relays = [relayChanges(of: language), relayChanges(of: hotkeyCapture)]
+        requestInputMonitoringIfNeeded()
     }
 
     var localizer: Localizer { language.localizer }
@@ -82,7 +85,12 @@ final class OnboardingModel: ObservableObject {
     var permissionContent: PermissionScreenContent {
         PermissionScreenContent(
             localizer: localizer, appName: appName, panes: panes, status: inputs.permission,
-            permissionLost: flow.permissionOnly)
+            permissionLost: flow.permissionOnly, inputMonitoringSeen: flow.inputMonitoringSeen)
+    }
+
+    /// PRD-R40 screen 7 with the selected method and the switch shortcut from Settings (Pa, 2026-11-14).
+    var tryItContent: TryItScreenContent {
+        TryItScreenContent(localizer: localizer, method: method, toggleHotkey: toggleHotkey, startMode: tryItStartMode)
     }
 
     var helpContent: PermissionHelpContent {
@@ -107,9 +115,13 @@ final class OnboardingModel: ObservableObject {
         }
     }
 
+    /// The pane of the first permission still missing (Pa, 2026-11-14, feedback item 1).
+    private var missingPermission: NeededPermission { permissionContent.firstMissing ?? .accessibility }
+
     var primaryControl: OnboardingControl {
         switch flow.screen {
-        case .permission where !flow.permissionGranted: .openPermissionPane
+        case .permission where !flow.permissionGranted:
+            missingPermission == .inputMonitoring ? .openInputMonitoringPane : .openPermissionPane
         case .importFrom: .chooseImportFile
         default: .primary
         }
@@ -124,7 +136,11 @@ final class OnboardingModel: ObservableObject {
 
     func primary() {
         switch flow.screen {
-        case .permission where !flow.permissionGranted: actions?.openPermissionPane()
+        case .permission where !flow.permissionGranted:
+            switch missingPermission {
+            case .accessibility: actions?.openPermissionPane()
+            case .inputMonitoring: actions?.openInputMonitoringPane()
+            }
         case .importFrom: chooseImportFile()
         case .done:
             if canOpenAtLogin { actions?.setOpenAtLogin(openAtLogin) }
@@ -144,7 +160,6 @@ final class OnboardingModel: ObservableObject {
         actions?.setTypingMethod(method)
     }
 
-    func openInputMonitoringPane() { actions?.openInputMonitoringPane() }
     func relaunch() { actions?.relaunch() }
     /// PRD-R40 screen 4 "Đổi phím chuyển": records inline in this window.
     func startHotkeyRecording() { hotkeyCapture.start(.toggleMode) }
@@ -217,11 +232,20 @@ final class OnboardingModel: ObservableObject {
             onFinish?()
             return
         }
+        requestInputMonitoringIfNeeded()
         if flow.screen == .tryIt, checklist == nil {
+            tryItStartMode = currentMode
             checklist = TryItChecklist(
                 vietnameseTarget: localizer.string(OnboardingText.tryItTargetVietnamese),
                 englishTarget: localizer.string(OnboardingText.tryItTargetEnglish), startMode: currentMode)
         }
+    }
+
+    /// PLT-R702: the first time screen 2 shows Input Monitoring as needed, macOS is asked once to list the app and
+    /// show its own prompt, so the switch is there when the user opens the pane.
+    private func requestInputMonitoringIfNeeded() {
+        guard flow.screen == .permission, flow.takeInputMonitoringRequest() else { return }
+        actions?.requestInputMonitoringAccess()
     }
 
     /// PRD-R40 screen 6 / PRD-R69: a file only from the user's explicit choice. The Macros pane's preview comes

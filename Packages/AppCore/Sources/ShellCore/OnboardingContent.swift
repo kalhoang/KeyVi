@@ -44,35 +44,35 @@ public struct TryItChecklist: Sendable, Hashable {
             completed.insert(.toggleAndBack)
         }
     }
-
-    public static func labelKey(_ item: Item) -> OnboardingText {
-        switch item {
-        case .typeVietnamese: .tryItItemVietnamese
-        case .typeEnglishWords: .tryItItemEnglish
-        case .toggleAndBack: .tryItItemToggle
-        }
-    }
 }
 
-/// Screen 2 text in the interface language with pane names in the macOS language (PRD-R64).
+/// Screen 2 text in the interface language with pane names in the macOS language (PRD-R64). One row per needed
+/// permission with its live state; the instruction and the primary button name the pane of the first permission
+/// still missing and open exactly that pane (Pa, 2026-11-14, feedback item 1; PLT-R701, PLT-R702, PLT-R704).
 public struct PermissionScreenContent: Sendable, Hashable {
     public var title: String
     public var body: String
     public var bullets: [String]
+    public var rows: [PermissionRowContent]
+    /// The permission the primary button opens; nil once every row is granted.
+    public var firstMissing: NeededPermission?
     public var instruction: String
     public var openPaneButton: String
     /// PRD-R42 line, shown in the permission-lost variant.
     public var lostNotice: String?
     /// PLT-R740 guidance when the grant went stale (typically after a macOS update).
     public var staleNotice: String?
-    /// PLT-R702, PLT-R712: Input Monitoring is needed, with the button that opens it and the relaunch offer.
+    /// PLT-R702, PLT-R712: why Input Monitoring is needed, with the relaunch offer for a switch that is on but not
+    /// yet effective.
     public var inputMonitoringNotice: String?
-    public var openInputMonitoringButton: String?
     public var relaunchButton: String?
     public var helpLink: String
 
+    /// `inputMonitoringSeen`: the Input Monitoring row was needed earlier on this screen (`OnboardingFlow`), so it
+    /// stays, as granted, once the need cleared.
     public init(
-        localizer: Localizer, appName: String, panes: SystemPaneNames, status: PermissionStatus, permissionLost: Bool
+        localizer: Localizer, appName: String, panes: SystemPaneNames, status: PermissionStatus, permissionLost: Bool,
+        inputMonitoringSeen: Bool = false
     ) {
         title = localizer.format(OnboardingText.permissionTitle, appName)
         body = localizer.format(OnboardingText.permissionBody, appName, panes.privacySecurity)
@@ -81,18 +81,19 @@ public struct PermissionScreenContent: Sendable, Hashable {
             localizer.string(OnboardingText.permissionBulletPasswords),
             localizer.string(OnboardingText.permissionBulletLocal),
         ]
+        let needs = PermissionNeed.needs(status, inputMonitoringSeen: inputMonitoringSeen)
+        rows = needs.map { PermissionRowContent($0, localizer: localizer, panes: panes) }
+        firstMissing = needs.first { !$0.granted }?.permission
+        let target = (firstMissing ?? .accessibility).paneName(panes)
         instruction = localizer.format(
-            OnboardingText.permissionInstruction, panes.systemSettings, panes.privacySecurity, panes.accessibility,
-            appName)
-        openPaneButton = localizer.format(OnboardingText.permissionOpenPane, panes.systemSettings)
+            OnboardingText.permissionInstruction, panes.systemSettings, panes.privacySecurity, target, appName)
+        openPaneButton = localizer.format(OnboardingText.permissionOpenPane, target)
         lostNotice = permissionLost ? localizer.format(OnboardingText.permissionLost, appName) : nil
         staleNotice = status.health == .stale ? localizer.format(OnboardingText.permissionStale, appName) : nil
-        let needsInputMonitoring = status.listenEventRequired && status.listenEvent != .granted
+        let needsInputMonitoring = needs.contains { $0.permission == .inputMonitoring && !$0.granted }
         inputMonitoringNotice =
             needsInputMonitoring
             ? localizer.format(OnboardingText.permissionInputMonitoring, panes.inputMonitoring, appName) : nil
-        openInputMonitoringButton =
-            needsInputMonitoring ? localizer.format(OnboardingText.permissionOpenPane, panes.inputMonitoring) : nil
         relaunchButton = needsInputMonitoring ? localizer.format(OnboardingText.permissionRelaunch, appName) : nil
         helpLink = localizer.format(OnboardingText.permissionHelpLink, appName)
     }

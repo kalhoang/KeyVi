@@ -49,6 +49,13 @@ public struct OnboardingFlow: Sendable, Hashable {
     public private(set) var permissionGranted: Bool
     /// Set when the grant advanced the flow by itself, so the next screen can confirm it; cleared on the next move.
     public private(set) var advancedByGrant = false
+    /// PLT-R702: the tap was seen to need Input Monitoring during this onboarding; its row then stays on screen 2,
+    /// as granted once the need cleared (`PermissionScreenContent`).
+    public private(set) var inputMonitoringSeen = false
+    /// PLT-R702: the latest status needs Input Monitoring, and whether `CGRequestListenEventAccess()` was already
+    /// called for this onboarding.
+    private var inputMonitoringNeeded = false
+    private var inputMonitoringRequested = false
     private var history: [OnboardingScreen] = []
 
     public init(inputs: OnboardingInputs) {
@@ -60,11 +67,13 @@ public struct OnboardingFlow: Sendable, Hashable {
         permissionOnly = inputs.permissionLostAfterCompletion
         screen = permissionOnly ? .permission : startAt
         permissionGranted = Self.isGranted(inputs.permission)
+        inputMonitoringSeen = inputs.permission.listenEventRequired
+        inputMonitoringNeeded = inputs.permission.listenEventRequired
     }
 
     /// Screens 5 and 6 are skipped when their condition is false; screen 2 has no "Bỏ qua".
     public mutating func next(inputs: OnboardingInputs) {
-        permissionGranted = Self.isGranted(inputs.permission)
+        observe(inputs.permission)
         // PRD-R40: screen 2 cannot be left forward until permission is granted.
         if screen == .permission && !permissionGranted { return }
         advance(inputs: inputs)
@@ -89,16 +98,40 @@ public struct OnboardingFlow: Sendable, Hashable {
     /// Permission granted while on screen 2: advance within 1 s (PRD-R40 "Live state"). The permission monitor
     /// polls every 1 s while onboarding is visible (PLT-R711), so the flow advances on the first poll after the
     /// grant. In the PRD-R42 variant the screen stays to show "Đã cấp quyền" until the user closes it.
+    ///
+    /// PRD-R40, PLT-R702: a grant that is withdrawn before the user moved on (typically a `ready` whose tap creation
+    /// failed in the same delivery, so the tap needs Input Monitoring) takes the flow back to screen 2, which then
+    /// shows what is missing; screen 2 is never left forward without permission.
     public mutating func permissionChanged(_ status: PermissionStatus, inputs: OnboardingInputs) {
         let wasGranted = permissionGranted
-        permissionGranted = Self.isGranted(status)
-        guard screen == .permission, permissionGranted, !wasGranted, !permissionOnly, !isFinished else { return }
+        observe(status)
+        guard !isFinished, !permissionOnly else { return }
+        if advancedByGrant, !permissionGranted, history.last == .permission {
+            advancedByGrant = false
+            screen = history.removeLast()
+            return
+        }
+        guard screen == .permission, permissionGranted, !wasGranted else { return }
         advance(inputs: inputs)
         advancedByGrant = true
     }
 
+    /// PLT-R702: true once, the first time the Input Monitoring row shows as needed, so the caller asks macOS
+    /// (`CGRequestListenEventAccess()`) to list the app and show its own prompt, without waiting for a click.
+    public mutating func takeInputMonitoringRequest() -> Bool {
+        guard inputMonitoringNeeded, !inputMonitoringRequested else { return false }
+        inputMonitoringRequested = true
+        return true
+    }
+
     /// Accessibility trusted and, when macOS demands it, Input Monitoring too (PLT-R701, PLT-R702).
     public static func isGranted(_ status: PermissionStatus) -> Bool { status.health == .ready }
+
+    private mutating func observe(_ status: PermissionStatus) {
+        permissionGranted = Self.isGranted(status)
+        inputMonitoringNeeded = status.listenEventRequired
+        if inputMonitoringNeeded { inputMonitoringSeen = true }
+    }
 
     private mutating func advance(inputs: OnboardingInputs) {
         advancedByGrant = false

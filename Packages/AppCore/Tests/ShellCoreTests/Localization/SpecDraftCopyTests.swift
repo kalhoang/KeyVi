@@ -209,9 +209,17 @@ import Testing
                 "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật {{AppName}}."
         ),
         Draft(
-            table: .onboarding, key: "onboarding.permission.openPane", arguments: ["Cài đặt hệ thống"],
-            vi: "Mở Cài đặt hệ thống"),
+            table: .onboarding, key: "onboarding.permission.openPane",
+            arguments: ["Điều khiển thiết bị và truy cập dữ liệu"], vi: "Mở Điều khiển thiết bị và truy cập dữ liệu"),
         Draft(table: .onboarding, key: "onboarding.permission.granted", vi: "Đã cấp quyền"),
+        // Screen 2 rows and the Input Monitoring line (Pa, 2026-11-14, feedback item 1).
+        Draft(table: .onboarding, key: "onboarding.permission.row.granted", vi: "Đã bật"),
+        Draft(table: .onboarding, key: "onboarding.permission.row.needed", vi: "Cần bật"),
+        Draft(
+            table: .onboarding, key: "onboarding.permission.inputMonitoring", arguments: ["Giám sát đầu vào", app],
+            vi:
+                "macOS cần thêm quyền Giám sát đầu vào để {{AppName}} nhận phím gõ. Nếu công tắc đã bật mà dòng này vẫn báo cần bật, hãy mở lại {{AppName}}."
+        ),
         Draft(table: .onboarding, key: "onboarding.permission.relaunch", arguments: [app], vi: "Mở lại {{AppName}}"),
         Draft(
             table: .onboarding, key: "onboarding.permission.helpLink", arguments: [app],
@@ -267,6 +275,30 @@ import Testing
         Draft(table: .onboarding, key: "onboarding.tryIt.title", vi: "Thử gõ một chút"),
         Draft(table: .onboarding, key: "onboarding.tryIt.target.vietnamese", vi: "Tiếng Việt có dấu"),
         Draft(table: .onboarding, key: "onboarding.tryIt.target.english", vi: "text user wifi"),
+        // Screen 7 items and their second lines (Pa, 2026-11-14, feedback item 4).
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.intro",
+            vi: "Gõ vào ô bên dưới. Mỗi mục được đánh dấu khi bạn làm xong."),
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.item.vietnamese", arguments: ["Tiếng Việt có dấu"],
+            vi: "Gõ cụm từ “Tiếng Việt có dấu”"),
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.detail.vietnamese",
+            arguments: ["Telex", "Tieengs Vieetj cos daaus"], vi: "Phím cần gõ (Telex): Tieengs Vieetj cos daaus"),
+        Draft(table: .onboarding, key: "onboarding.tryIt.sequence.telex", vi: "Tieengs Vieetj cos daaus"),
+        Draft(table: .onboarding, key: "onboarding.tryIt.sequence.vni", vi: "Tie61ng Vie65t co1 da61u"),
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.item.english", arguments: ["text user wifi"],
+            vi: "Gõ các từ tiếng Anh “text user wifi”"),
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.detail.english", arguments: ["text user wifi"],
+            vi: "Phím cần gõ: text user wifi. Chữ phải giữ nguyên, không bị thêm dấu."),
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.item.toggle", arguments: ["{{ToggleKey}}"],
+            vi: "Nhấn rồi thả {{ToggleKey}} để chuyển sang tiếng Anh, rồi làm lại một lần nữa để về tiếng Việt"),
+        Draft(
+            table: .onboarding, key: "onboarding.tryIt.detail.toggle", arguments: ["V", "E"],
+            vi: "Biểu tượng trên thanh menu đổi từ V sang E, rồi về lại V."),
         Draft(table: .onboarding, key: "onboarding.tryIt.done", vi: "Xong"),
         Draft(table: .onboarding, key: "onboarding.done.title", vi: "Xong rồi!"),
         Draft(
@@ -275,7 +307,8 @@ import Testing
         Draft(
             table: .onboarding, key: "onboarding.done.openAtLogin", arguments: [app], vi: "Mở {{AppName}} khi đăng nhập"
         ),
-        Draft(table: .onboarding, key: "onboarding.done.start", vi: "Bắt đầu gõ"),
+        // Pa, 2026-11-14 (feedback item 5).
+        Draft(table: .onboarding, key: "onboarding.done.start", vi: "Bắt đầu", en: "Start"),
     ]
 
     static let bugReport: [Draft] = [

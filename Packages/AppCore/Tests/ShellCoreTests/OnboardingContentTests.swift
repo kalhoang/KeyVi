@@ -47,9 +47,6 @@ import Testing
         #expect(list.completed.isEmpty)
         list.modeChanged(to: .english)
         #expect(list.completed == [.toggleAndBack])
-        #expect(TryItChecklist.labelKey(.toggleAndBack) == .tryItItemToggle)
-        #expect(TryItChecklist.labelKey(.typeVietnamese) == .tryItItemVietnamese)
-        #expect(TryItChecklist.labelKey(.typeEnglishWords) == .tryItItemEnglish)
     }
 }
 
@@ -85,9 +82,71 @@ import Testing
             content.instruction
                 == "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật Example."
         )
-        #expect(content.openPaneButton == "Mở Cài đặt hệ thống")
         #expect(content.lostNotice == nil && content.staleNotice == nil && content.inputMonitoringNotice == nil)
         #expect(content.relaunchButton == nil)
+    }
+
+    /// Pa, 2026-11-14 (feedback item 1): one row per permission with its live state, named as System Settings
+    /// names it, and a button that opens exactly the pane of the first permission still missing (PLT-R701,
+    /// PLT-R704). Up front only Accessibility is listed (PLT-R702).
+    @Test func oneRowPerPermissionAndTheButtonOpensTheFirstMissingPane_PLTR701() {
+        let content = PermissionScreenContent(
+            localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.missing, permissionLost: false)
+        #expect(
+            content.rows == [
+                PermissionRowContent(
+                    permission: .accessibility, title: "Điều khiển thiết bị và truy cập dữ liệu", state: "Cần bật",
+                    granted: false)
+            ])
+        #expect(content.firstMissing == .accessibility)
+        #expect(content.openPaneButton == "Mở Điều khiển thiết bị và truy cập dữ liệu")
+        let granted = PermissionScreenContent(
+            localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.granted, permissionLost: false)
+        #expect(granted.rows.map(\.state) == ["Đã bật"])
+        #expect(granted.rows.map(\.granted) == [true])
+        #expect(granted.firstMissing == nil)
+    }
+
+    /// PLT-R702, PLT-R712: once the tap needs Input Monitoring, its row appears below a granted Accessibility row,
+    /// the instruction and the button move to it, and macOS's relaunch is offered with it.
+    @Test func inputMonitoringGetsItsOwnRowAndTheButtonOpensItsPane_PLTR702() {
+        let content = PermissionScreenContent(
+            localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.needsInputMonitoring,
+            permissionLost: false)
+        #expect(content.rows.map(\.permission) == [.accessibility, .inputMonitoring])
+        #expect(content.rows.map(\.title) == ["Điều khiển thiết bị và truy cập dữ liệu", "Giám sát đầu vào"])
+        #expect(content.rows.map(\.state) == ["Đã bật", "Cần bật"])
+        #expect(content.firstMissing == .inputMonitoring)
+        #expect(content.openPaneButton == "Mở Giám sát đầu vào")
+        #expect(
+            content.instruction == "Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Giám sát đầu vào, rồi bật Example."
+        )
+        #expect(
+            content.inputMonitoringNotice
+                == "macOS cần thêm quyền Giám sát đầu vào để Example nhận phím gõ. Nếu công tắc đã bật mà dòng này vẫn báo cần bật, hãy mở lại Example."
+        )
+        #expect(content.relaunchButton == "Mở lại Example")
+        let english = PermissionScreenContent(
+            localizer: en, appName: "Example", panes: enPanes26, status: Permissions.needsInputMonitoring,
+            permissionLost: false)
+        #expect(english.rows.map(\.title) == ["Accessibility", "Input Monitoring"])
+        #expect(english.rows.map(\.state) == ["Turned on", "Still needed"])
+        #expect(english.openPaneButton == "Open Input Monitoring")
+    }
+
+    /// The Input Monitoring row stays, as granted, once the need cleared on this screen, so the switch the user just
+    /// turned on is confirmed instead of vanishing (PRD-R40 live state).
+    @Test func aClearedInputMonitoringNeedStaysAsAGrantedRow() {
+        let content = PermissionScreenContent(
+            localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.granted, permissionLost: false,
+            inputMonitoringSeen: true)
+        #expect(content.rows.map(\.state) == ["Đã bật", "Đã bật"])
+        #expect(content.firstMissing == nil)
+        #expect(content.inputMonitoringNotice == nil && content.relaunchButton == nil)
+        let both = PermissionScreenContent(
+            localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.missing, permissionLost: false,
+            inputMonitoringSeen: true)
+        #expect(both.firstMissing == .accessibility)  // Accessibility first: the tap needs it before anything else
     }
 
     @Test func englishInterfaceOnAnEnglishSystemBeforeMacOS27() {
@@ -108,7 +167,7 @@ import Testing
         #expect(
             english.instruction
                 == "Open System Preferences > Security & Privacy > Privacy > Accessibility, then turn on Example.")
-        #expect(english.openPaneButton == "Open System Preferences")
+        #expect(english.openPaneButton == "Open Accessibility")
         let viPanes12 = table.names(macOS: monterey, systemLanguage: "vi-VN")
         let vietnamese = PermissionScreenContent(
             localizer: vi, appName: "Example", panes: viPanes12, status: Permissions.missing, permissionLost: false)
@@ -123,7 +182,7 @@ import Testing
         // PRD-R64: pane names follow the macOS language, copy follows the interface language.
         let content = PermissionScreenContent(
             localizer: en, appName: "Example", panes: viPanes27, status: Permissions.missing, permissionLost: false)
-        #expect(content.openPaneButton == "Open Cài đặt hệ thống")
+        #expect(content.openPaneButton == "Open Điều khiển thiết bị và truy cập dữ liệu")
     }
 
     @Test func variantsAddLostStaleAndInputMonitoringNotices() {
@@ -137,7 +196,6 @@ import Testing
             localizer: vi, appName: "Example", panes: viPanes27, status: Permissions.needsInputMonitoring,
             permissionLost: false)
         #expect(monitoring.inputMonitoringNotice?.contains("Giám sát đầu vào") == true)
-        #expect(monitoring.openInputMonitoringButton == "Mở Giám sát đầu vào")
         #expect(monitoring.relaunchButton == "Mở lại Example")  // PLT-R712
     }
 
@@ -200,7 +258,8 @@ import Testing
         #expect(vi.string(OnboardingText.tryItTitle) == "Thử gõ một chút")
         #expect(vi.string(OnboardingText.doneTitle) == "Xong rồi!")
         #expect(vi.format(OnboardingText.doneOpenAtLogin, "Example") == "Mở Example khi đăng nhập")
-        #expect(vi.string(OnboardingText.doneStart) == "Bắt đầu gõ")
+        #expect(vi.string(OnboardingText.doneStart) == "Bắt đầu")  // Pa, 2026-11-14 (feedback item 5)
+        #expect(en.string(OnboardingText.doneStart) == "Start")
         #expect(vi.format(OnboardingText.permissionHelpLink, "Example") == "Không thấy Example trong danh sách?")
     }
 }
