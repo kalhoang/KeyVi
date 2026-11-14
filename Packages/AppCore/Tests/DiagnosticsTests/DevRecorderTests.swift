@@ -111,7 +111,7 @@ struct DevRecorderFixture {
         #expect(file.permissions == .ownerOnlyFile && file.excludedFromBackup)
         let lines = fixture.lines(fixture.hour)
         #expect(lines.map(\.type) == [.file, .start])
-        #expect(lines[0].build == DevRecorder.buildMarker && lines[0].v == 2 && lines[0].app == "0.1.0 (7)")
+        #expect(lines[0].build == DevRecorder.buildMarker && lines[0].v == 3 && lines[0].app == "0.1.0 (7)")
         #expect(lines[1].launch == lines[0].launch)
         #expect(fixture.scheduler.repeatingIntervals.min() == .seconds(2))
     }
@@ -207,6 +207,56 @@ struct DevRecorderFixture {
         #expect(lines.map(\.type) == [.file, .start, .gap, .key])
         #expect(lines[2].reason == "secureField" && lines[2].end.map { $0 - lines[2].t } == 500_000)
         #expect(lines[3].ch == "x")
+    }
+
+    /// PLT-R397B: a secure-input gap names the likely holder (PLT-R396, bundle ID and PID, never its name) and its
+    /// duration; a secure-field gap names none.
+    @Test func aSecureInputGapNamesTheHolderAndItsDurationPLTR397B() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        fixture.advance(milliseconds: 100)
+        let holder = SecureInputHolder(
+            pid: 4321, kind: .application, bundle: BundleKey(rawValue: "com.example.Vault"),
+            displayName: "zqxkanaryholder", hintKey: nil)
+        fixture.controller.beginGap(.secureInput, holder: holder)
+        fixture.advance(milliseconds: 220)
+        fixture.controller.endGap()
+        fixture.controller.beginGap(.secureField)
+        fixture.advance(milliseconds: 50)
+        fixture.controller.endGap()
+        fixture.advance(seconds: 2)
+        let gaps = fixture.lines(fixture.hour).filter { $0.type == .gap }
+        #expect(gaps.count == 2)
+        #expect(gaps[0].reason == "secureInput" && gaps[0].holder == "com.example.Vault" && gaps[0].pid == 4321)
+        #expect(gaps[0].durUs == 220_000 && gaps[0].end.map { $0 - gaps[0].t } == 220_000)
+        #expect(gaps[1].reason == "secureField" && gaps[1].holder == nil && gaps[1].pid == nil)
+        let data = fixture.fileSystem.nodes[fixture.file(fixture.hour).path]?.data ?? Data()
+        #expect(!String(decoding: data, as: UTF8.self).contains("zqxkanaryholder"))
+    }
+
+    /// ADR 0007 decision 13: every file line carries the engine identity once it is known.
+    @Test func fileLinesCarryTheEngineIdentity() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        fixture.dev.setEngineIdentity("p55-0123456789abcdef")
+        fixture.advance(seconds: 2)
+        #expect(fixture.lines(fixture.hour).first?.eng == "p55-0123456789abcdef")
+    }
+
+    /// A focus line without an app names the frontmost application; one with an app does not repeat it.
+    @Test func aFocusLineWithoutAnAppNamesTheFrontmostApplication() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        var unnamed = DevRecorderFixture.focus(role: "AXTextArea", at: fixture.clock.now())
+        unnamed.bundle = nil
+        unnamed.frontmost = "com.example.unnamed"
+        fixture.dev.pushFocus(.focus(unnamed))
+        var named = DevRecorderFixture.focus(role: "AXTextArea", at: fixture.clock.now())
+        named.frontmost = "com.example.other"
+        fixture.dev.pushFocus(.focus(named))
+        fixture.advance(seconds: 2)
+        let focus = fixture.lines(fixture.hour).filter { $0.type == .focus }
+        #expect(focus.map(\.front) == ["com.example.unnamed", nil])
     }
 
     /// Review W8-E finding 3: focus changes inside a gap are not recorded, so the focus in effect when it ends is.

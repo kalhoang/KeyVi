@@ -82,12 +82,14 @@ extension KeyPipeline {
     }
 
     /// PLT-R340 amendment: keep the composition across a focus change discovered after keys of the active token
-    /// were composed with the previous snapshot. Same process, an element the worker can read (a field handle and
-    /// AX available), no focus pause, the same engine variant, and the change observed at most
-    /// `LateFocusChange.windowNanoseconds` after the token's last key. Everything else stays a hard boundary. The
-    /// active-display read runs only on this rare path (a new element while a word is being typed).
+    /// were composed with the previous snapshot. Same process (or a previous snapshot that names no process because
+    /// its system-wide focus read timed out, amendment of 2026-11-15: Pa's Safari trace), an element the worker can
+    /// read (a field handle and AX available), no focus pause, the same engine variant, and the change observed at
+    /// most `LateFocusChange.windowNanoseconds` after the token's last key. Everything else stays a hard boundary.
+    /// The active-display read runs only on this rare path (a new element while a word is being typed).
     func keepsCompositionAcrossLateFocusChange(_ focus: FocusSnapshot, identity: FocusIdentity) -> Bool {
-        guard engineDirty, identity.pid != ToggleOverride.noProcess, identity.pid == seen.focus.pid,
+        let sameProcess = identity.pid == seen.focus.pid || seen.focus.appUnknownAfterTimeout
+        guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess,
             focus.fieldHandle != nil, focus.field.axAvailability == .available, focus.pause == nil,
             identity.decision.variant == seen.focus.decision.variant, let lastKey = keyState.lastComposedKeyAt,
             focus.changedAt.nanoseconds(since: lastKey) <= LateFocusChange.windowNanoseconds

@@ -187,9 +187,10 @@ public final class CaptureController: Sendable {
     }
 
     /// Secure input turned on or a secure field got focus: record nothing until `endGap` (PLT-R905).
-    public func beginGap(_ reason: PauseCode) {
+    /// `holder`: the likely holder of secure input (PLT-R396), for the dev recorder's gap line only.
+    public func beginGap(_ reason: PauseCode, holder: SecureInputHolder? = nil) {
         #if DEV_RECORDER
-        dev.beginGap(reason, at: clock.now())
+        dev.beginGap(reason, holder: holder, at: clock.now())
         #endif
         session.withLock { active in
             guard active != nil, active?.openGap == nil else { return }

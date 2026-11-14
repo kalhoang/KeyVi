@@ -32,6 +32,10 @@ public struct SystemProcessIdentityProvider: ProcessIdentityProvider {
         NSWorkspace.shared.runningApplications.compactMap { identity(of: $0.processIdentifier) }
     }
 
+    public func frontmostApplication() -> ProcessIdentity? {
+        NSWorkspace.shared.frontmostApplication.flatMap { identity(of: $0.processIdentifier) }
+    }
+
     static func executablePath(of pid: Int32) -> String? {
         var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
         let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))

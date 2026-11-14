@@ -55,28 +55,38 @@ scripts/dev/trace-scan.sh --print-dir                # where the dev build write
 Without the wrapper: `swift run --package-path Packages/AppCore -c release trace-scan summary --dir <folder>`. `show N`
 numbers findings exactly like the summary with the same selection, so repeat the `--since` or `--date` (with
 `--since`, run both commands close together, or pin the clock with `--now 2026-11-14T10:00:00Z`). `--no-replay` skips
-finding (h) for a faster scan.
+finding (h) for a faster scan. The replay runs only on segments written by the scanner's own engine build (the
+`eng` identity of format version 3, ADR 0007 decision 13); the summary ends with one `Replay:` line counting the
+segments it skipped, and `--replay-anyway` replays them too (expect divergences that are only rule changes). A
+`--since` window that starts inside a file keeps that file's last `file`, `settings` and `focus` lines from before
+the window as context (they make no findings), so findings name the app and the replay knows the settings and the
+engine build.
 
 ### 2.1 What a summary shows
 
 Metadata only: files and hours, launches, key downs per app, counts of engine steps, jobs, readbacks and markers,
 gaps (secure input, secure field, overflow) and pauses, unreadable lines, then one numbered line per finding:
-local time, app bundle ID, compat rule, finding kind and a detail made of names and numbers.
+local time, app bundle ID, compat rule, finding kind and a detail made of names and numbers. An app the focus reader
+could not name appears as the frontmost application in parentheses (`(com.example.app)`, format version 3) or `-`.
 
 | Kind | Meaning |
 |---|---|
 | `marker` | Pa pressed the chord or used the menu item |
 | `backspaceEdit` | a Backspace made the engine delete more than one character or insert something |
-| `correctionBurst` | three or more Backspaces within 1.5 s, within 2 s after the engine transformed a word, then retyping: Pa fixing a wrong word without a marker |
+| `correctionBurst` | three or more plain Backspaces within 1.5 s, within 2 s after an engine edit that changed letters of a word, then retyping: Pa fixing a wrong word without a marker. Option+Backspace and Command+Backspace end a burst |
 | `readbackMismatch` | the field text before the caret does not end with what {{AppName}} typed since the last boundary, and the difference is not one of the two kinds below; the scanner then takes the field's text as the new baseline, so one divergence gives one finding |
-| `keyDropped` | the same, explained: exactly one character of a key the tap passed is missing from the field. The detail says how long before the readback the key went down and whether a readback was in flight when it went down, started within 200 ms after it, or was nowhere near; `show` names the character |
+| `keyDropped` | the same, explained: exactly one character of a key the tap passed is missing from the field, possibly before a later edit that deleted by count around it ("mục" read back as "ục"). The detail says how many passed keys fit, names the first press of a key after its keyUp was held and replayed when one fits (ADR 0322), and whether a readback was in flight when the key went down, started within 200 ms after it, or was nowhere near; `show` names the character |
+| `unseenKey` | a keyUp whose keyDown the tap never saw: the app received a key {{AppName}} did not (secure input hid it, PLT-R397A). Not reported within 1 s after a gap, a pause or the start of the selection; a readback finding after it says so; `show` gives the key code |
 | `extraCharacter` | the same, explained: the field holds exactly one character {{AppName}} did not type (autocorrect, a Backspace the app ignored); `show` names it |
 | `slowReadback` | a readback timed out, or one of its AX calls took more than 30 ms (longer than one AX call of the inject worker may take, so {{AppName}}'s own reads would time out in that field; the scanner compares the longest single call, not the sum of the read's calls) |
 | `resetWithOpenToken` | a boundary the user did not cause (focus change, late focus, revalidation, configuration, an unknown reason) while a word was being composed |
 | `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included) or took more than 50 ms |
-| `restoreOrReopen` | an Escape restore or a Backspace that re-opened a committed word |
-| `replayDivergence` | replaying the keys since the last reset through the engine with the recorded settings gives another result than recorded: the host fed the engine something else, or kept state it should have dropped |
+| `restoreOrReopen` | an Escape restore, a Backspace that re-opened a committed word, or a Backspace that re-opened a token a rule restored at its commit |
+| `replayDivergence` | replaying the keys since the last reset through the engine with the recorded settings gives another result than recorded: the host fed the engine something else, or kept state it should have dropped. Only for segments written by the scanner's engine build; a segment stops at a gap or a pause |
 | `undoAfterEdit` | Command+Z within 2 s after an engine edit |
+
+Not findings: app substitutions in a readback (curly quotes for straight ones, an ellipsis for three periods, an em
+or en dash for hyphens, a period for the first of two spaces); the field then becomes the baseline.
 
 ### 2.2 Reading an excerpt
 
@@ -112,20 +122,20 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 
 | `type` | Fields |
 |---|---|
-| `file` | `v` format version (2 since the readback timing fields; files of the first day are 1), `launch` ID, `app` version, `build` marker |
-| `start`, `stop` | `launch`, `app` (start); the recorder started or the app quit |
+| `file` | `v` format version (3 since 2026-11-15; 2 since the readback timing fields; files of the first day are 1), `launch` ID, `app` version, `build` marker, from version 3 `eng` (engine identity, ADR 0007 decision 13) |
+| `start`, `stop` | `launch`, `app`, from version 3 `eng` (start); the recorder started or the app quit |
 | `pause`, `resume` | `until` (pause end, microseconds) |
 | `settings` | `s`: name to value (typing method, tone placement, English restore, Telex options, macros on and counts, hotkeys, word-list counts, global mode, safe mode) |
-| `focus` | `gen`, `bundle`, `role`, `subrole`, `rule`, `strat`, `rtf` (requireTextFocus), `ax`, `secure`, `mode`, `modeSrc`, `ctx` (engine context), `er` (English restore), `mac` (macros), `pause` |
+| `focus` | `gen`, `bundle`, `role`, `subrole`, `rule`, `strat`, `rtf` (requireTextFocus), `ax`, `secure`, `mode`, `modeSrc`, `ctx` (engine context), `er` (English restore), `mac` (macros), `pause`; from version 3 `front` (NSWorkspace's frontmost application, only when `bundle` is absent) |
 | `key` | `ev` (keyDown, keyUp, flagsChanged, mouseDown), `kc` key code, `fl` CGEventFlags, `ch` layout character, `out` (passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp) |
 | `engine` | `act` (passThrough, edit, editThenPassThrough), `del`, `ins`, `comp` token after the key, `dec` commit decision |
-| `boundary` | `reason` (the engine's reset reason), `job` (the boundary job reason) |
+| `boundary` | `reason` (the engine's reset reason), `job` (the boundary job reason; `unseenInput` for a keyUp the tap never saw go down, PLT-R397A) |
 | `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
 | `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `maxCallUs` (the longest single AX call of the read), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
 | `marker` | `src` (chord, menu) |
 | `mode` | `mode`, `manual`, `bundle` |
-| `gap` | `reason` (secureInput, secureField, overflow), `end` (microseconds) or `dropped` (records lost) |
+| `gap` | `reason` (secureInput, secureField, overflow), `end` (microseconds) or `dropped` (records lost); from version 3 `durUs` and, for secureInput, `holder` and `pid` (the likely holder, PLT-R396: the frontmost app may be named when a background process holds secure input) |
 
 A key line comes first; the engine step and any boundary of the same key carry the same `t`. A boundary found while
 reconciling (a focus change seen by the next key) is stamped with that key's time and comes before its engine step.
@@ -150,9 +160,14 @@ attributed to the right field.
   focused element (`skippedNoField` when that is no longer the field of the focus snapshot), so the worker's AX
   element and its messaging timeout stay untouched.
 - The explanation of a mismatch names the one character whose absence (or presence) makes the texts agree. When
-  later edits deleted across the missing character, the texts may agree only without a neighbour, or not at all;
-  read the excerpt before trusting the name. Among equal neighbours (`cc`) the scanner names the key a readback was
-  near, else the last one.
+  later edits deleted across the missing character, several passed keys may fit (the detail counts them); the
+  scanner names the first press of a key after its keyUp was held and replayed when one fits (the ADR 0322 hazard,
+  in traces written before the fix), else the key a readback was near, else the last one. Read the excerpt before
+  trusting the name.
+- The first key after a secure gap is not recorded (the gap ends when the main thread handles the resume, after the
+  key's tap time), so its keyUp looks orphaned; `unseenKey` ignores keyUps within 1 s after a gap ends.
+- Engine identity (format version 3) is a digest over fixed probes: a rule change no probe exercises keeps the same
+  identity, and its replay divergences are reported as before.
 - When a Backspace reached past what the scanner saw typed, its view is unknown; the next readback it may compare
   gives the baseline back, so later divergences are still found.
 - Files of the first day (format version 1) have no readback durations: a readback started before a key counts as
@@ -164,12 +179,12 @@ attributed to the right field.
 
 On 2026-11-14, the first day on Pa's Mac, the scanner found two incidents in a native app whose editor is a
 WKWebView (no compat rule matched it, so the readback ran): a key the tap passed through never reached the field,
-and in both the key went down 27 ms and 71 ms before a commit readback of the first recorder started (it read
-300 ms after a commit, that is while Pa typed the next word). The likely cause is the read racing WebKit's handling
-of that key, on a Mac under heavy memory pressure. {{AppName}} itself holds keys while a job reads accessibility, so
-it never races this way; the recorder cannot hold keys (observer rule), so since then it reads only in a pause.
+and in both the key went down 27 ms and 71 ms before a commit readback of the first recorder started. That first
+pointed at the read racing WebKit, so since then the recorder reads only in a pause.
 
-WebKit editors keep their readback (ADR 0007 decision 11): with the pause rule, a read no longer meets a key on its
-way to the app unless one goes down during the read itself, which the line flags. Revisit when a version 2 trace
-shows a `keyDropped` whose detail names a readback in flight or started right after the key: then skip the readback
-in fields inside a web area, and record the decision in ADR 0007.
+The traces of 15/11/2026 corrected this (ADR 0007, correction under decision 11): three more drops had no readback
+near them, and every lost key was the first press of a key whose previous keyUp the tap had held during an edit and
+the worker had replayed as a rebuilt event. The fix is in the pipeline (PLT-R311 amendment, ADR 0322: the keyUp of
+a passed keyDown always passes). The readbacks next to the first two drops were coincidence. WebKit editors keep
+their readback and the pause rule stays as noise reduction. In a trace written before the fix, a `keyDropped`
+whose detail names "the first press of a key after its keyUp was held and replayed" is that bug, not the recorder.

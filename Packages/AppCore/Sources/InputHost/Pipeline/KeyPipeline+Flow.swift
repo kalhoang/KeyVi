@@ -59,6 +59,7 @@ extension KeyPipeline {
         reconcile(
             settings: settings, focus: focus, inputSource: inputSource, secureInput: secureInput, lifecycle: lifecycle)
         resumeSecureInputIfNeeded(event, secureInput: secureInput, generation: focus.generation, now: now)
+        trackKeysDown(event, generation: focus.generation, now: now)  // PLT-R397A
         capturingThisKey = captureAllowed(focus: focus, secureInput: secureInput)  // PLT-R905
         let verdict = decideKeyboard(
             event, now: now, probe: probe, focus: focus, inputSource: inputSource, secureInput: secureInput,

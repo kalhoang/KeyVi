@@ -7,6 +7,10 @@
 // so a dropped key is named together with any readback that was in flight when it went down or started right
 // after it. After a mismatch the expected text is taken from the field, so one divergence is one finding. Summary
 // details hold names and numbers only; the character itself is in the finding's note, which only `show` prints.
+// Since 2026-11-15: app substitutions (smart quotes, the ellipsis, dashes, the double-space period) are not
+// mismatches; a dropped key is also found when later edits deleted by count around it, and of several candidates
+// the first press of a key after its keyUp was held and replayed is named (ADR 0322); a mismatch after a key the tap
+// never saw says so (unseenKey, PLT-R397A).
 
 internal import Diagnostics
 internal import Foundation
@@ -28,7 +32,44 @@ struct ReadbackWindow {
     }
 }
 
+/// What the sequential scan knows that explains a readback: keys pressed right after their own keyUp was held and
+/// replayed (ADR 0322, by key-down time) and a key the tap never saw since the last baseline (PLT-R397A).
+struct ReadbackHints {
+    var afterReplayedKeyUp: Set<Int64> = []
+    var unseenKeyT: Int64?
+}
+
 enum ReadbackComparison {
+    /// Typographic substitutions apps and macOS text substitution make: curly quotes for straight ones, an ellipsis
+    /// for three periods, an em or en dash for hyphens, and a period for the first of two spaces. Both texts are
+    /// normalised the same way, so text that agrees still agrees.
+    static func normalized(_ text: [Character]) -> [Character] {
+        var result: [Character] = []
+        result.reserveCapacity(text.count)
+        for character in text {
+            switch character {
+            case "\u{2018}", "\u{2019}": result.append("'")
+            case "\u{201C}", "\u{201D}": result.append("\"")
+            case "\u{2026}": result.append(contentsOf: "...")
+            case "\u{2014}": result.append(contentsOf: "--")
+            case "\u{2013}": result.append("-")
+            default: result.append(character)
+            }
+        }
+        // The double-space period: ". " where two spaces were typed.
+        for index in result.indices.dropLast() where result[index] == "." && result[index + 1] == " " {
+            result[index] = " "
+        }
+        return result
+    }
+
+    /// The texts agree once app substitutions are undone.
+    static func matchesAllowingSubstitutions(_ expected: [Character], _ field: [Character]) -> Bool {
+        let normalizedExpected = normalized(expected)
+        let normalizedField = normalized(field)
+        return matches(Array(normalizedExpected.suffix(FindingLimits.readbackCompare)), normalizedField)
+    }
+
     /// The field ends with the expected text (or, when the field holds fewer characters, the expected text ends
     /// with the field's).
     static func matches(_ expected: [Character], _ field: [Character]) -> Bool {
@@ -66,7 +107,7 @@ struct ReadbackCheck {
     /// One readback line. `lastKeyT`: the last key down before it.
     mutating func check(
         _ event: TraceEvent, believed: inout BelievedText, lastKeyT: Int64?, context: TraceContext,
-        into found: inout [Finding]
+        hints: ReadbackHints = ReadbackHints(), into found: inout [Finding]
     ) {
         let line = event.line
         remember(line)
@@ -80,7 +121,14 @@ struct ReadbackCheck {
         guard !believed.isEmpty else { return }
         let expected = Array(believed.characters.suffix(FindingLimits.readbackCompare))
         guard !ReadbackComparison.matches(expected, field) else { return }
-        found.append(explain(event, believed: believed, field: field, expected: expected, context: context))
+        guard !ReadbackComparison.matchesAllowingSubstitutions(expected, field) else {
+            return believed.rebaseline(field)  // the app's own substitution: the field is the new view
+        }
+        var finding = explain(event, believed: believed, field: field, expected: expected, context: context, hints)
+        if let unseen = hints.unseenKeyT {
+            finding.detail += "; a key the tap never saw went up " + Self.milliseconds(event.t - unseen) + " before it"
+        }
+        found.append(finding)
         believed.rebaseline(field)
     }
 
@@ -92,11 +140,15 @@ struct ReadbackCheck {
 
     /// keyDropped, extraCharacter, or a readbackMismatch with as much of an explanation as the texts give.
     private func explain(
-        _ event: TraceEvent, believed: BelievedText, field: [Character], expected: [Character], context: TraceContext
+        _ event: TraceEvent, believed: BelievedText, field: [Character], expected: [Character], context: TraceContext,
+        _ hints: ReadbackHints
     ) -> Finding {
         let line = event.line
         let readback = (line.reason ?? "?") + " readback"
         let compare = FindingLimits.readbackCompare
+        if let dropped = droppedKey(believed: believed, field: field, hints: hints, readback: readback, at: event.t) {
+            return Self.finding(.keyDropped, event, context, dropped.detail, note: dropped.note)
+        }
         let missing = ReadbackComparison.missing(believed: believed.characters, field: field, compare: compare)
         if let index = choose(missing, origins: believed.origins) {
             return missingFinding(
@@ -145,6 +197,37 @@ struct ReadbackCheck {
         }
     }
 
+    /// ADR 0322: the passed keys whose absence alone explains the field, later edits applied by count. Reported only
+    /// when the first press of a key after its keyUp was held and replayed is among them (the cause the pipeline no
+    /// longer has), or when the simple explanation (one character absent at the end) does not fit: the hole then
+    /// sits before a count-based edit.
+    private func droppedKey(
+        believed: BelievedText, field: [Character], hints: ReadbackHints, readback: String, at readbackT: Int64
+    ) -> (detail: String, note: String)? {
+        let compare = FindingLimits.readbackCompare
+        let candidates = believed.droppedKeyCandidates(limit: 2 * compare) { text in
+            let expected = Array(text.suffix(compare))
+            return field.count >= expected.count && ReadbackComparison.matches(expected, field)
+        }
+        guard let last = candidates.last else { return nil }
+        let replayed = candidates.last { hints.afterReplayedKeyUp.contains($0.t) }
+        let simpleFits = !ReadbackComparison.missing(believed: believed.characters, field: field, compare: compare)
+            .isEmpty
+        guard replayed != nil || !simpleFits else { return nil }
+        let chosen = replayed ?? last
+        let ago = Self.milliseconds(readbackT - chosen.t)
+        var detail = "a passed key never reached the field (" + readback + "; "
+        detail += candidates.count == 1 ? "one passed key fits" : String(candidates.count) + " passed keys fit"
+        if replayed != nil {
+            detail += ", most likely the first press of a key after its keyUp was held and replayed, ADR 0322"
+        }
+        detail += "); " + readbackNear(chosen.t)
+        let note =
+            "keyDropped: \"" + TraceText.visible(String(chosen.character)) + "\" passed " + ago
+            + " before the readback, absent from the field"
+        return (detail, note)
+    }
+
     /// Of equally good candidates (one run of equal characters), a passed key a readback was near, then the last
     /// passed key, then the last one.
     private func choose(_ indices: [Int], origins: [CharacterOrigin]) -> Int? {
@@ -191,10 +274,11 @@ struct ReadbackCheck {
     }
 
     private static func finding(
-        _ kind: Finding.Kind, _ event: TraceEvent, _ context: TraceContext, _ detail: String
+        _ kind: Finding.Kind, _ event: TraceEvent, _ context: TraceContext, _ detail: String, note: String? = nil
     ) -> Finding {
         Finding(
-            kind: kind, t: event.t, eventIndex: event.index, bundle: context.bundle, rule: context.rule, detail: detail)
+            kind: kind, t: event.t, eventIndex: event.index, bundle: context.bundle, rule: context.rule, detail: detail,
+            note: note)
     }
 
     private static func milliseconds(_ microseconds: Int64) -> String { String(microseconds / 1_000) + " ms" }

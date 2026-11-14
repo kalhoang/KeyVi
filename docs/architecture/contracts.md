@@ -2200,7 +2200,9 @@ public struct HealthEvent: Sendable, Hashable, Codable {
         case tapTimeout, tapDisabledByUserInput, tapReenabled, watchdogTrip, flush, fallbackActivated,
             axCircuitBreakerTrip, echoLoss, postingBroken, permissionTransition, secureInputEpisode,
             ruleLoadError, ruleTie, placeholderResidue, pasteRestoreSkipped, generationDiscard,
-            settingsRecovered, settingsNewerSchema, safeModeEntered
+            settingsRecovered, settingsNewerSchema, safeModeEntered,
+            /// PLT-R397B: short secure-input episodes keep ending while the user types (`.count`).
+            secureInputBursts
     }
 
     public enum Detail: Sendable, Hashable, Codable {
@@ -2227,6 +2229,17 @@ public struct HealthEvent: Sendable, Hashable, Codable {
     }
 }
 
+/// PLT-R397B thresholds. An episode shorter than `shortEpisode` that key evidence ended (PLT-R398B) happened while the
+/// user was typing: the 2 s poll (PLT-R395) saw it start less than a second before the next key reached the tap. A
+/// password typed into a secure field lasts longer, and an episode a poll ends lasts about a poll interval. In the
+/// product owner's trace of 14/11/2026 a background process produced three such episodes within 40 s. `threshold`
+/// of them ending within `window` record one `secureInputBursts` event; the next can follow one `window` later.
+public enum SecureInputBursts {
+    public static let shortEpisode: TimeInterval = 1
+    public static let threshold = 3
+    public static let window: TimeInterval = 600
+}
+
 /// In-memory ring of recent health events (the report shows the last 50, PLT-R1202), mirrored to the log
 /// file so events from before a crash remain explainable (PRD-R46). Not used on the tap thread.
 /// Implemented in the skeleton (docs/decisions/0313-testability-seams.md); W1-A adds the log-file mirror.
@@ -2246,11 +2259,20 @@ public final class HealthEventLog: Sendable {
         var holder: BundleKey?
         var holderKind: SecureInputHolder.Kind?
         var start: Date
+        /// Key evidence ended it (PLT-R398B): the user was typing.
+        var endedByKey = false
+    }
+
+    /// Ends of short episodes that typing ended, and the last burst event (PLT-R397B).
+    private struct Bursts {
+        var ends: [Date] = []
+        var reportedAt: Date?
     }
 
     private let capacity: Int
     private let ring = Mutex(Ring())
     private let episode = Mutex<Episode?>(nil)
+    private let bursts = Mutex(Bursts())
     private let mirror: (any DiagnosticsLogging)?
 
     /// `mirror` (production: the `DiagnosticsLogger`) receives every recorded event as `.health`, at error
@@ -2288,13 +2310,36 @@ public final class HealthEventLog: Sendable {
             return previous
         }
         guard let ended else { return }
-        let milliseconds = max(0, now.timeIntervalSince(ended.start)) * 1_000
+        let seconds = max(0, now.timeIntervalSince(ended.start))
         record(
             HealthEvent(
                 kind: .secureInputEpisode, at: now,
                 detail: .secureInput(
                     holder: ended.holder, holderKind: ended.holderKind,
-                    durationMilliseconds: UInt64(milliseconds.rounded()))))
+                    durationMilliseconds: UInt64((seconds * 1_000).rounded()))))
+        if ended.endedByKey && seconds < SecureInputBursts.shortEpisode { noteShortEpisode(endedAt: now) }
+    }
+
+    /// PLT-R398B: the tap processed a key while paused for secure input; the episode in progress ended while the
+    /// user typed. Called before the host state change that ends it.
+    public func noteSecureInputEndedByKey() {
+        episode.withLock { $0?.endedByKey = true }
+    }
+
+    /// PLT-R397B: `SecureInputBursts.threshold` short episodes that typing ended, within `window`, record one
+    /// content-free `secureInputBursts` event (no holder: PLT-R396 names whatever app was frontmost).
+    private func noteShortEpisode(endedAt now: Date) {
+        let count: Int? = bursts.withLock { state in
+            state.ends.removeAll { now.timeIntervalSince($0) > SecureInputBursts.window }
+            state.ends.append(now)
+            if let last = state.reportedAt, now.timeIntervalSince(last) < SecureInputBursts.window { return nil }
+            guard state.ends.count >= SecureInputBursts.threshold else { return nil }
+            state.reportedAt = now
+            let count = state.ends.count
+            state.ends.removeAll()
+            return count
+        }
+        if let count { record(HealthEvent(kind: .secureInputBursts, at: now, detail: .count(count))) }
     }
 
     /// Newest last, at most `limit` events.
@@ -2759,6 +2804,8 @@ public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case layoutMismatch  // debug cross-check, keycode + layout only (PLT-R363)
     case unknownEventType
     case callbackOverBudget
+    /// PLT-R397A: a keyUp whose keyDown the tap never saw (`a` = key code); the composition was reset.
+    case unseenKeyUp
 }
 
 public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {
@@ -3601,9 +3648,10 @@ public final class CaptureController: Sendable {
     }
 
     /// Secure input turned on or a secure field got focus: record nothing until `endGap` (PLT-R905).
-    public func beginGap(_ reason: PauseCode) {
+    /// `holder`: the likely holder of secure input (PLT-R396), for the dev recorder's gap line only.
+    public func beginGap(_ reason: PauseCode, holder: SecureInputHolder? = nil) {
         #if DEV_RECORDER
-        dev.beginGap(reason, at: clock.now())
+        dev.beginGap(reason, holder: holder, at: clock.now())
         #endif
         session.withLock { active in
             guard active != nil, active?.openGap == nil else { return }
@@ -6335,6 +6383,8 @@ public struct EditJob: Sendable {
 public enum BoundaryReason: UInt8, Sendable, Hashable {
     case mouseDown, focusChanged, navigation, commandChord, returnOrTab, escape, modeToggled, inputSourceChanged,
         secureInputChanged, tapReenabled, settingsChanged, ruleChanged, sessionChanged
+    /// PLT-R397A: a keyUp whose keyDown the tap never saw: the app received input the engine did not see.
+    case unseenInput
 }
 
 /// Marks a hard boundary in FIFO order (PLT-R340). The worker resets first-edit timing (PLT-R408); paste
@@ -9558,6 +9608,14 @@ public protocol ProcessIdentityProvider: Sendable {
     func identity(of pid: Int32) -> ProcessIdentity?
     func isAlive(_ pid: Int32) -> Bool  // kill(pid, 0) != ESRCH
     func runningApplications() -> [ProcessIdentity]
+    /// The application NSWorkspace calls frontmost (the dev recorder's attribution when AX names no focused
+    /// application, PLT-R904A). Never a focus source: PLT-R381 keeps the system-wide AX focus authoritative.
+    func frontmostApplication() -> ProcessIdentity?
+}
+
+extension ProcessIdentityProvider {
+    /// Providers without a frontmost application (fakes) report none.
+    public func frontmostApplication() -> ProcessIdentity? { nil }
 }
 
 /// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a
@@ -14773,6 +14831,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
         if let notify { post(notify, from: pid) }
     }
 
+    /// AX names no focused application (the system-wide element has none).
+    public func clearFocusedApplication() { state.withLock { $0.focusedPID = nil } }
+
     /// The focused application has no focused element.
     public func focusWithoutElement(pid: Int32, notify: AXNotificationKind?) {
         state.withLock {
@@ -14941,6 +15002,7 @@ public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendabl
         var dead: Set<Int32> = []
         var identityLookups: [Int32: Int] = [:]
         var runningApplicationScans = 0
+        var frontmost: Int32?
     }
 
     private let state: Mutex<State>
@@ -14971,6 +15033,13 @@ public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendabl
             state.runningApplicationScans += 1
             return state.order.filter { !state.dead.contains($0) }.compactMap { state.processes[$0] }
         }
+    }
+
+    /// The application NSWorkspace would call frontmost (the dev recorder's attribution, PLT-R904A).
+    public func setFrontmost(_ pid: Int32?) { state.withLock { $0.frontmost = pid } }
+
+    public func frontmostApplication() -> ProcessIdentity? {
+        state.withLock { state in state.frontmost.flatMap { state.processes[$0] } }
     }
 
     public func add(_ process: ProcessIdentity) {

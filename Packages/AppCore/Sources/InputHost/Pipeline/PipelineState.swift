@@ -8,7 +8,8 @@ internal import AppModel
 internal import Injection
 internal import RealtimeSupport
 
-/// Keycode -> how its consumed keyDown was handled, so the matching keyUp is consumed too (PLT-R313, ADR 0308).
+/// Keycode -> how its last keyDown was handled, so the matching keyUp follows it: consumed with a consumed keyDown
+/// (PLT-R313, ADR 0308), passed with a passed one (PLT-R311 amendment, ADR 0322), held behind a held one.
 /// One fixed allocation at creation; every operation is an index into it.
 final class ConsumedKeyTable {
     enum Entry: Equatable {
@@ -18,6 +19,11 @@ final class ConsumedKeyTable {
         /// Consumed by an empty edit: no job, nothing to deliver.
         case withoutJob
         case job(JobSequence)
+        /// The keyDown (or its last autorepeat) reached the app unchanged: its keyUp passes, even while a job is in
+        /// flight (ADR 0322).
+        case passedDown
+        /// The keyDown (or its last autorepeat) is queued as a replay: its keyUp is held behind it (PLT-R311).
+        case heldDown
     }
 
     /// Virtual key codes are below 128 on every Mac keyboard; 256 leaves room. Larger codes are not tracked.
@@ -58,24 +64,28 @@ final class ConsumedKeyTable {
         return index < capacity ? index : nil
     }
 
-    // 0 = none, 1 = hotkey, 2 = withoutJob, (sequence << 2) | 3 = job.
+    // 0 = none, 1 = hotkey, 2 = withoutJob, 4 = passedDown, 8 = heldDown, (sequence << 2) | 3 = job.
     @inline(__always)
     private static func encode(_ entry: Entry) -> UInt64 {
         switch entry {
         case .none: 0
         case .hotkey: 1
         case .withoutJob: 2
+        case .passedDown: 4
+        case .heldDown: 8
         case .job(let sequence): (sequence.rawValue << 2) | 3
         }
     }
 
     @inline(__always)
     private static func decode(_ value: UInt64) -> Entry {
-        switch value & 3 {
-        case 1: .hotkey
-        case 2: .withoutJob
-        case 3: .job(JobSequence(rawValue: value >> 2))
-        default: .none
+        if value & 3 == 3 { return .job(JobSequence(rawValue: value >> 2)) }
+        switch value {
+        case 1: return .hotkey
+        case 2: return .withoutJob
+        case 4: return .passedDown
+        case 8: return .heldDown
+        default: return .none
         }
     }
 }
@@ -96,10 +106,14 @@ struct FocusIdentity: Equatable {
     var pid: Int32
     var fieldToken: UInt64?
     var decision: Decision
+    /// No app, because the system-wide focus read timed out (not because AX named none): the app is unknown, not
+    /// changed (PLT-R340 late focus change, amendment of 2026-11-15).
+    var appUnknownAfterTimeout: Bool
 
     init(_ focus: FocusSnapshot) {
         generation = focus.generation
         pid = focus.app?.pid ?? ToggleOverride.noProcess
+        appUnknownAfterTimeout = focus.app == nil && focus.field.axAvailability == .timedOut
         fieldToken = focus.fieldHandle?.token
         decision = Decision(
             strategy: focus.decision.plan.strategy, parameters: focus.decision.plan.parameters,
@@ -166,4 +180,6 @@ struct KeyState {
     /// PLT-R398B: the key being processed was fed to the engine (`compose`). Cleared before the first key-down
     /// after a secure-input release and read when that key's verdict is ready (`HostCounters`).
     var engineFedByThisKey = false
+    /// PLT-R397A: key codes the tap saw go down and not yet up.
+    var keysDown = KeysDown()
 }

@@ -1,7 +1,8 @@
 # 0007. Dev recorder: an always-on typing log in development builds
 
 - Status: accepted, 2026-11-14 (Pa, the product owner, asked for it after the first day of manual tests); amended
-  the same day after the recorder's first evening on Pa's Mac (decisions 10 and 11, workstream W10-B)
+  the same day after the recorder's first evening on Pa's Mac (decisions 10 and 11, workstream W10-B); amended
+  2026-11-15 after Pa's version 2 traces (correction under decision 11, decisions 12 and 13, workstream W14-H)
 - Spec: PLT-R904A (new, `spec/02-platform.md` section 9, right after PLT-R904); exception to PLT-R901, PLT-R904 and
   PLT-R911 for development builds only. Related: PLT-R304, PLT-R305, PLT-R905, PLT-R903, PLT-R343, PLT-R386.
 - Runbook: [dev-recorder.md](../runbooks/dev-recorder.md).
@@ -120,6 +121,49 @@ into public issues.
     Revisit as soon as a version 2 trace shows a `keyDropped` whose detail names a readback in flight when the key
     went down or started right after it: then skip the readback in fields inside a web area (the focus record
     gains that flag) and amend this decision. A `keyDropped` with no readback near it is not the observer's doing.
+
+    **Correction, 2026-11-15.** The version 2 traces of 15/11/2026 showed three more drops in the same app with no
+    readback near them, and the analysis of all of them found the real cause in {{AppName}} itself: every lost key
+    was the first press of a key whose previous keyUp the tap had held while an edit was in flight and the worker
+    had replayed as a rebuilt event (5 of 5 checkable cases, 0 of 89 rollovers whose keyUp passed). PLT-R311 is
+    amended so that keyUp passes ([ADR 0322](0322-passed-keyup-is-never-held.md)). The readbacks next to the two
+    first-day drops were coincidence (21 % of all keys in that app had a readback start within 200 ms after them).
+    The pause rule of decision 10 stays: it costs nothing and keeps reads away from keys on their way to the app,
+    but its first reason is withdrawn, and the "revisit" condition above no longer applies.
+
+12. **Scanner rules from Pa's traces of 2026-11-15** (W14-H). The scanner (`TraceScanCore`) gains, each with a
+    fixture in `HostTraceRuleTests`:
+    - `keyDropped` behind a count-based edit: the scanner keeps the operations since its last baseline and tries the
+      field with each recent passed key left out, later edits applied by count, so a key lost before an edit that
+      deleted around the hole ("mục" read back as "ục") is still found. Of several keys that fit, it names the first
+      press of a key after that key's keyUp was held and replayed (the ADR 0322 hazard in traces written before the
+      fix), else the one a readback was near, else the last.
+    - `unseenKey`: a keyUp whose keyDown the trace never shows, the trace of input hidden from the tap
+      (PLT-R397A). Not reported within 1 s after a gap, a pause or the start of reading (the recorder may not have
+      written that keyDown), nor for modifier key codes. A readback finding after it, before the next baseline, says
+      so in its detail; the tap's own `unseenInput` boundary is not a `resetWithOpenToken`.
+    - `correctionBurst` counts plain (or Shift) Backspaces only: Option+Backspace and Command+Backspace delete a word
+      or a line and end a burst; "after a transform" means after an edit that changed letters of the word (deleted
+      something and inserted something else), not after an edit that only added a letter.
+    - App substitutions (curly quotes, the ellipsis, em and en dashes, the double-space period) are undone on both
+      texts before a readback is compared; when they explain the difference there is no finding and the field
+      becomes the baseline.
+    - `restoreOrReopen` also reports a Backspace that re-opens a token whose commit a rule restored.
+    - Replay stops at `gap` and `pause` lines (keys inside are not recorded and the host reset at the end).
+
+13. **Engine identity** (2026-11-15). The engine package has no version and dev builds and the scanner are often built
+    from different commits; on 15/11/2026 every replay of "cũng tricky as" diverged only because the scanner's
+    engine had the amended ENG-R823. Trace format version 3 writes an engine identity in every `file` and `start`
+    line: `DevEngineIdentity`, a digest of what the bundled engine produces for fixed Telex and VNI probes with the
+    default configuration and no user word lists (computed off the main thread at start, about 0.2 s in a debug
+    build). The scanner computes the same digest with its own engine (`ReplayEngineFactory.identity`; a test pins
+    that the app and the scanner agree) and replays only segments whose launch recorded the same identity. Other
+    segments, and those of versions 1 and 2 (no identity), are counted in one summary line instead of being reported
+    as `replayDivergence`; `--replay-anyway` replays them as before. A digest over probes misses a change no probe
+    exercises; the failure mode is a divergence reported as before, never a hidden one. Format version 3 also adds
+    the frontmost application (`front`) to focus lines whose snapshot names no app (685 key downs of 15/11/2026 went
+    to an app the trace could not name; NSWorkspace is only an attribution, PLT-R381 keeps the AX focus
+    authoritative) and the likely holder (`holder`, `pid`, PLT-R396) and `durUs` to secure gap lines (PLT-R397B).
 
 ## Why PLT-R904's rationale does not apply
 

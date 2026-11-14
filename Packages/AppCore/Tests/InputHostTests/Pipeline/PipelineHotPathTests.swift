@@ -103,6 +103,50 @@ private func completeJobs(_ fixture: PipelineFixture) -> Int {
         #expect(edits > 500)  // the stream really produced edit jobs
         #expect(held > 0 && pairedKeyUps > 0 && boundaries > 0)  // and the PLT-R311 jobs behind them
     }
+
+    /// PLT-R304 on the paths of 2026-11-15: a keyUp of a passed key while an edit is in flight (ADR 0322), a held
+    /// autorepeat, and a keyUp the tap never saw go down (PLT-R397A, a boundary and a tap-log record) allocate nothing.
+    @Test(.enabled(if: AllocationCounter.isAvailable, "sanitizer runtimes replace malloc and never call the hook"))
+    func rolloverAndUnseenKeyUpsAllocateNothing() {
+        let fixture = PipelineFixture()
+        let pipeline = KeyPipeline(
+            context: fixture.context, factory: AllocationExcludingFactory(ScriptedEngineFactory()), clock: fixture.clock
+        )
+        func event(_ kind: RawKeyEvent.Kind, _ code: UInt16, autorepeat: Bool = false) -> RawKeyEvent {
+            PipelineFixtures.keyEvent(kind, code, autorepeat: autorepeat)
+        }
+        let stream: [RawKeyEvent] = [
+            event(.keyDown, Key.d), event(.keyDown, Key.a), event(.keyUp, Key.a), event(.keyDown, Key.a),  // edit
+            event(.keyUp, Key.d),  // passed while the edit is in flight
+            event(.keyDown, Key.e), event(.keyDown, Key.e, autorepeat: true), event(.keyUp, Key.e),  // held
+            event(.keyUp, Key.a), event(.keyUp, Key.s),  // paired keyUp, then a keyUp never seen going down
+            event(.keyDown, Key.space), event(.keyUp, Key.space),
+        ]
+        var passedKeyUpsInFlight = 0
+        var unseen = 0
+        func step(_ index: Int) {
+            let next = stream[index % stream.count]
+            let inFlight = fixture.queue.inFlight > 0
+            let verdict = pipeline.handle(next)
+            if next.kind == .keyUp, inFlight, verdict == .pass { passedKeyUpsInFlight += 1 }
+            guard index % stream.count == stream.count - 1 else { return }
+            AllocationCounter.pause()
+            completeJobs(fixture)
+            fixture.tapLog.drain { if $0.code == .unseenKeyUp { unseen += 1 } }
+            AllocationCounter.resume()
+        }
+        for index in 0..<(stream.count * 4) { step(index) }  // warm-up
+        let counts = AllocationCounter.measure {
+            var index = 0
+            while index < 9_600 {
+                step(index)
+                index += 1
+            }
+        }
+        #expect(counts.allocations == 0, "the tap path allocated \(counts.allocations) times")
+        #expect(counts.deallocations == 0, "the tap path freed \(counts.deallocations) times")
+        #expect(passedKeyUpsInFlight > 500 && unseen > 500)
+    }
 }
 
 @Suite("PipelineBenchmarkTests") struct PipelineBenchmarkTests {

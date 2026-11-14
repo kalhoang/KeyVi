@@ -1,0 +1,52 @@
+{
+  "id": "testhost.web.rolloverKeyUp",
+  "requirements": ["PLT-R311", "ADR 0322"],
+  "purpose": "A key released 0.3 ms after the tone key, while the tone key's edit is in flight. Before ADR 0322 the tap held that keyUp and the worker replayed a rebuilt one; in a WKWebView field the next press of the same key was then lost (Pa's dev traces of 14 and 15/11/2026: 'dù mục' typed as 'dù mc'). With the fix the keyUp passes and nothing is lost.",
+  "targetBundleId": "local.testhost",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "fields": ["testhost.web.textarea", "testhost.web.contentEditable", "testhost.native.textView"],
+  "control": "testhost.native.textView",
+  "testOnlyRule": {
+    "why": "Widens the in-flight window of the tone key's edit so the 0.3 ms release lands inside it on any machine.",
+    "match": { "bundleId": "local.testhost" },
+    "params": { "interEventDelayUs": 10000 }
+  },
+  "events": {
+    "source": "CGEventSource(stateID: .hidSystemState), posted at .cghidEventTap, userData 0 (hardware-like, never the app's marker)",
+    "unit": "microseconds from the start of the trial",
+    "trial": [
+      { "at": 0, "key": "d", "kind": "down" },
+      { "at": 20000, "key": "d", "kind": "up" },
+      { "at": 40000, "key": "u", "kind": "down" },
+      { "at": 70000, "key": "f", "kind": "down" },
+      { "at": 70300, "key": "u", "kind": "up" },
+      { "at": 100000, "key": "f", "kind": "up" },
+      { "at": 150000, "key": "space", "kind": "down" },
+      { "at": 170000, "key": "space", "kind": "up" },
+      { "at": 220000, "key": "m", "kind": "down" },
+      { "at": 240000, "key": "m", "kind": "up" },
+      { "at": 270000, "key": "u", "kind": "down" },
+      { "at": 290000, "key": "u", "kind": "up" },
+      { "at": 320000, "key": "c", "kind": "down" },
+      { "at": 340000, "key": "c", "kind": "up" },
+      { "at": 370000, "key": "j", "kind": "down" },
+      { "at": 390000, "key": "j", "kind": "up" },
+      { "at": 420000, "key": "space", "kind": "down" },
+      { "at": 440000, "key": "space", "kind": "up" }
+    ],
+    "pauseBetweenTrialsUs": 600000
+  },
+  "trials": 50,
+  "expect": {
+    "perTrial": "dù mục ",
+    "field": "the per-trial text 50 times, read back through AX after the last trial",
+    "passesWhen": "50 of 50 trials in every field"
+  },
+  "variants": [
+    { "name": "fixed build", "expect": "50 of 50 in all three fields" },
+    { "name": "build before ADR 0322 (red run)", "expect": "losses in the web fields, none in the native control" },
+    { "name": "ApplePressAndHoldEnabled NO for TestHost", "expect": "recorded for ADR 0322: does press-and-hold matter" },
+    { "name": "a letter without accents: the 'h' of 'minhf' released 0.3 ms after the 'f', then 'nhaajn'", "expect": "'mình nhận ' 50 of 50" }
+  ]
+}

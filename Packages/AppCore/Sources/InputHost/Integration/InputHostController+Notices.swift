@@ -27,6 +27,7 @@ extension InputHostController {
         case .secureInputResumedByKey(let generation):
             // PLT-R398B: the tap already resumed; the monitor ends the episode, the menu follows at once.
             secureResumedGeneration = generation
+            dependencies.health.noteSecureInputEndedByKey()  // PLT-R397B: the episode ends while the user types
             secureInputMonitor?.keyEvidence(generation: generation)
             refreshState()
         case .tapDisabled(let byTimeout):
@@ -115,7 +116,7 @@ extension InputHostController {
             secureInput.enabled && !resumed ? .secureInput : (focus.field.secure ? .secureField : nil)
         guard wanted != captureGap else { return }
         if captureGap != nil { capture.endGap() }
-        if let wanted { capture.beginGap(wanted) }
+        if let wanted { capture.beginGap(wanted, holder: wanted == .secureInput ? secureInput.holder : nil) }
         captureGap = wanted
     }
 }

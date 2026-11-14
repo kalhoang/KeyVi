@@ -31,6 +31,10 @@ extension InputHostController {
             scheduler: DispatchTimerScheduler(queue: queue))
         capture.dev.addAttentionListener { reasons in readback.handle(reasons) }
         capture.dev.setFocusSource { at in DevFocusRecord(snapshots.focus.load(), at: at) }
+        let recorder = capture.dev
+        queue.async {  // ADR 0007 decision 13: the engine identity for the file lines, off the main thread
+            if let identity = DevEngineIdentity.ofLinkedEngine() { recorder.setEngineIdentity(identity) }
+        }
         return readback
     }
 

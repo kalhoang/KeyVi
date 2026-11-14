@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The rules `ConservationLedger` checks (PLT-R311, PLT-R312, PLT-R313, ADR 0308, ADR 0311).
+// The rules `ConservationLedger` checks (PLT-R311, PLT-R312, PLT-R313, ADR 0308, ADR 0311, ADR 0322).
 
 internal import AppModel
 internal import Injection
@@ -80,8 +80,11 @@ struct LedgerState {
         for index in events.keys.sorted() {
             if let reason = outcomeViolation(events[index]!) { found.append(.init(eventIndex: index, reason: reason)) }
         }
-        found += orderingViolations()
-        found += pairingViolations()
+        let keyDowns = keyDownBeforeEachKeyUp()
+        let passedKeyUps = keyUpsOfPassedKeyDowns(keyDowns)
+        found += passedKeyUpViolations(passedKeyUps)
+        found += orderingViolations(passedKeyUps: passedKeyUps, keyDowns: keyDowns)
+        found += pairingViolations(keyDowns)
         if let lostMetric, lostMetric != lostTotal {
             found.append(.init(eventIndex: -1, reason: "lost \(lostTotal) events but the metric says \(lostMetric)"))
         }
@@ -115,11 +118,53 @@ struct LedgerState {
         }
     }
 
-    /// PLT-R311: deliveries reach the field in physical order (an edit counts at its trigger's position).
-    private func orderingViolations() -> [ConservationLedger.Violation] {
+    /// keyUp index -> the last keyDown (autorepeat included) of the same key code before it that no earlier keyUp
+    /// already paired with (the pipeline forgets a pairing at the first keyUp, `ConsumedKeyTable.take`).
+    private func keyDownBeforeEachKeyUp() -> [Int: Int] {
+        var lastDown: [KeyCode: Int] = [:]
+        var pairs: [Int: Int] = [:]
+        for index in events.keys.sorted() {
+            let event = events[index]!
+            switch event.event.kind {
+            case .keyDown: lastDown[event.event.keyCode] = index
+            case .keyUp: pairs[index] = lastDown.removeValue(forKey: event.event.keyCode)
+            default: break
+            }
+        }
+        return pairs
+    }
+
+    /// PLT-R311 amendment (ADR 0322): keyUps whose keyDown passed unchanged. They pass at once, even while jobs are
+    /// in flight, so they are out of the cross-key order.
+    private func keyUpsOfPassedKeyDowns(_ keyDowns: [Int: Int]) -> Set<Int> {
+        Set(keyDowns.compactMap { keyUp, keyDown in events[keyDown]?.outcome == .passed ? keyUp : nil })
+    }
+
+    /// ADR 0322: the app got the keyboard's keyDown, so it must get the keyboard's keyUp, never a replay.
+    private func passedKeyUpViolations(_ passedKeyUps: Set<Int>) -> [ConservationLedger.Violation] {
+        passedKeyUps.sorted().compactMap { index in
+            guard let keyUp = events[index], !keyUp.failingOpen, keyUp.outcome == .held || keyUp.replays > 0 else {
+                return nil
+            }
+            return .init(eventIndex: index, reason: "replayed keyUp of a passed keyDown")
+        }
+    }
+
+    /// PLT-R311: deliveries reach the field in physical order (an edit counts at its trigger's position). The keyUp
+    /// of a passed keyDown is exempt from that order but must still come after its own keyDown (ADR 0322).
+    private func orderingViolations(passedKeyUps: Set<Int>, keyDowns: [Int: Int]) -> [ConservationLedger.Violation] {
         var found: [ConservationLedger.Violation] = []
         var highest = -1
+        var deliveredSoFar: Set<Int> = []
+        let deliveredAtAll = Set(order)
         for index in order {
+            defer { deliveredSoFar.insert(index) }
+            if passedKeyUps.contains(index) {
+                if let keyDown = keyDowns[index], deliveredAtAll.contains(keyDown), !deliveredSoFar.contains(keyDown) {
+                    found.append(.init(eventIndex: index, reason: "ordering: keyUp delivered before its own keyDown"))
+                }
+                continue
+            }
             if index < highest {
                 found.append(.init(eventIndex: index, reason: "ordering: delivered after event \(highest)"))
             }
@@ -129,18 +174,11 @@ struct LedgerState {
     }
 
     /// PLT-R313: a keyUp is delivered exactly when the keyDown before it (same key code) was delivered.
-    private func pairingViolations() -> [ConservationLedger.Violation] {
+    private func pairingViolations(_ keyDowns: [Int: Int]) -> [ConservationLedger.Violation] {
         var found: [ConservationLedger.Violation] = []
-        var lastDown: [KeyCode: Int] = [:]
-        for index in events.keys.sorted() {
-            let event = events[index]!
-            switch event.event.kind {
-            case .keyDown: lastDown[event.event.keyCode] = index
-            case .keyUp:
-                if let reason = pairing(keyUp: event, keyDown: lastDown[event.event.keyCode].flatMap { events[$0] }) {
-                    found.append(.init(eventIndex: index, reason: reason))
-                }
-            default: break
+        for index in events.keys.sorted() where events[index]!.event.kind == .keyUp {
+            if let reason = pairing(keyUp: events[index]!, keyDown: keyDowns[index].flatMap { events[$0] }) {
+                found.append(.init(eventIndex: index, reason: reason))
             }
         }
         return found

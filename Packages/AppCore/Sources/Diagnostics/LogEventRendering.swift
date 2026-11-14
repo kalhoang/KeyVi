@@ -152,7 +152,7 @@ extension HealthEvent.Kind {
             .injection
         case .axCircuitBreakerTrip: .focus
         case .permissionTransition: .permissions
-        case .secureInputEpisode: .secureInput
+        case .secureInputEpisode, .secureInputBursts: .secureInput
         case .ruleLoadError, .ruleTie: .rules
         case .settingsRecovered, .settingsNewerSchema: .settings
         case .safeModeEntered: .lifecycle

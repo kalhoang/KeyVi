@@ -73,6 +73,44 @@ import Testing
             ])
     }
 
+    /// PLT-R397B: short episodes that typing ended (key evidence, PLT-R398B) in quick succession mean something keeps
+    /// toggling secure input while the user types: one content-free health event, rate limited.
+    @Test func shortEpisodesEndedByTypingRaiseOneBurstEventPLTR397B() {
+        let log = HealthEventLog()
+        func shortEpisode(at offset: TimeInterval, endedByKey: Bool = true, length: TimeInterval = 0.2) {
+            log.noteSecureInput(Self.vault, active: true, at: Self.start.addingTimeInterval(offset))
+            if endedByKey { log.noteSecureInputEndedByKey() }
+            log.noteSecureInput(nil, active: false, at: Self.start.addingTimeInterval(offset + length))
+        }
+        func bursts() -> [HealthEvent] { log.recent(limit: 50).filter { $0.kind == .secureInputBursts } }
+        shortEpisode(at: 0)
+        shortEpisode(at: 30, endedByKey: false)  // a poll ended it: not typing
+        shortEpisode(at: 60, length: 4)  // long: a password typed, then the user moved on
+        shortEpisode(at: 90)
+        #expect(bursts().isEmpty)
+        shortEpisode(at: 120)  // the third short episode typing ended within 10 minutes
+        #expect(bursts().map(\.detail) == [.count(3)])
+        #expect(bursts().first?.bundle == nil, "the holder is unreliable (PLT-R396): no bundle on the signal")
+        shortEpisode(at: 150)
+        shortEpisode(at: 180)
+        #expect(bursts().count == 1, "at most one event per window")
+        for offset in stride(from: 800.0, through: 860, by: 30) { shortEpisode(at: offset) }
+        #expect(bursts().map(\.detail) == [.count(3), .count(3)])
+        #expect(SecureInputBursts.shortEpisode == 1 && SecureInputBursts.threshold == 3)
+        #expect(SecureInputBursts.window == 600)
+    }
+
+    /// Spread-out short episodes never add up to a burst.
+    @Test func shortEpisodesFarApartAreNoBurstPLTR397B() {
+        let log = HealthEventLog()
+        for offset in stride(from: 0.0, through: 3_600, by: 400) {
+            log.noteSecureInput(Self.vault, active: true, at: Self.start.addingTimeInterval(offset))
+            log.noteSecureInputEndedByKey()
+            log.noteSecureInput(nil, active: false, at: Self.start.addingTimeInterval(offset + 0.1))
+        }
+        #expect(log.recent(limit: 50).allSatisfy { $0.kind != .secureInputBursts })
+    }
+
     @Test func everyPLTR1206CategoryHasAnEventKind() {
         let required: [HealthEvent.Kind] = [
             .tapTimeout, .watchdogTrip, .flush, .fallbackActivated, .axCircuitBreakerTrip, .echoLoss,

@@ -371,7 +371,7 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
             switch pipeline.consumedKeys.entry(event.keyCode) {
             case .job(let sequence): triggerOfJob[sequence.rawValue] = index
             case .withoutJob: noOpEdits.insert(index)
-            case .none, .hotkey: break
+            case .none, .hotkey, .passedDown, .heldDown: break
             }
         }
         if failingOpenBefore || feedback.isPostingBroken {

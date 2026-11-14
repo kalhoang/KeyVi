@@ -5,7 +5,11 @@
 // whose output differs from the recorded one is flagged. A difference means the host fed the engine something else
 // than the keys suggest, or kept state it should have dropped. Steps decided by the user's word lists or a macro
 // cannot be reproduced offline (the trace holds only their counts), so the segment stops there without a finding.
+// A segment also stops at a gap or a pause (keys inside are not recorded), and segments written by another engine
+// build than the scanner's, or by one that did not record its identity, are not replayed: the summary counts them
+// (ADR 0007 decision 13), unless `--replay-anyway` asks for the old behaviour.
 
+internal import Diagnostics
 internal import Foundation
 public import VietnameseEngine
 internal import VietnameseEngineData
@@ -24,6 +28,22 @@ public final class ReplayEngineFactory {
 
     static func bundledResources() throws -> Resources {
         try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+    }
+
+    /// The engine identity of this scanner (ADR 0007 decision 13): the digest of the probes through its engine with
+    /// the default configuration, computed exactly as the recorder computes it (InputHost
+    /// `DevEngineIdentity.ofLinkedEngine`). A trace written by another identity is not replayed.
+    public private(set) lazy var identity: String = DevEngineIdentity.digest { [resources] vni in
+        let method: InputMethod = vni ? .vni : .telex(TelexOptions())
+        var session = Session(
+            engine: Engine(configuration: EngineConfiguration(inputMethod: method), resources: resources))
+        return { character in
+            switch session.handle(.key(KeyInput(character))).action {
+            case .passThrough: .passThrough
+            case .edit(let edit, let thenPassThrough):
+                .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+            }
+        }
     }
 
     /// Nil when the settings line has not been seen (no replay without the method and tone placement).
@@ -47,9 +67,29 @@ public final class ReplayEngineFactory {
     }
 }
 
+/// Replay segments not replayed because another or an unknown engine build wrote them.
+public struct ReplaySkips: Sendable, Hashable {
+    public var otherEngine = 0
+    public var unidentifiedEngine = 0
+    public var total: Int { otherEngine + unidentifiedEngine }
+
+    public init(otherEngine: Int = 0, unidentifiedEngine: Int = 0) {
+        self.otherEngine = otherEngine
+        self.unidentifiedEngine = unidentifiedEngine
+    }
+}
+
 enum ReplayCheck {
     static func divergences(in events: [TraceEvent], factory: ReplayEngineFactory) -> [Finding] {
+        run(in: events, factory: factory, anyEngine: false).findings
+    }
+
+    /// `anyEngine`: replay whatever engine wrote the trace (`--replay-anyway`).
+    static func run(in events: [TraceEvent], factory: ReplayEngineFactory, anyEngine: Bool) -> (
+        findings: [Finding], skips: ReplaySkips
+    ) {
         var found: [Finding] = []
+        var skips = ReplaySkips()
         var context = TraceContext()
         var session: Session?
         var stepIndex = 0
@@ -59,8 +99,16 @@ enum ReplayCheck {
             context.apply(line)
             switch line.type {
             case "start", "boundary":
-                session = factory.engine(settings: context.settings, focus: context.focus).map { Session(engine: $0) }
                 stepIndex = 0
+                session = nil
+                guard let engine = factory.engine(settings: context.settings, focus: context.focus) else { continue }
+                guard anyEngine || context.engine == factory.identity else {
+                    if context.engine == nil { skips.unidentifiedEngine += 1 } else { skips.otherEngine += 1 }
+                    continue
+                }
+                session = Session(engine: engine)
+            case "gap", "pause":
+                session = nil  // keys inside were not recorded; the next boundary or launch starts again
             case "key" where line.isKeyDown:
                 key = line
             case "engine":
@@ -88,7 +136,7 @@ enum ReplayCheck {
             default: break
             }
         }
-        return found
+        return (found, skips)
     }
 
     /// The engine event the pipeline built from this key (PLT-R310 step 7): a restore binding, Backspace, Return

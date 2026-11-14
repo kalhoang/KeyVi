@@ -49,10 +49,20 @@ struct TraceBuilder {
 
     mutating func advance(_ milliseconds: Int64) { t += milliseconds * 1_000 }
 
-    /// File header, launch, settings and focus, as a fresh launch writes them.
-    mutating func launch(bundle: String = TraceBuilder.editor, rule: String? = "editor.sample") {
-        line("file", ["v": 1, "launch": "abc1", "app": "0.1.0 (1)"])
-        line("start", ["launch": "abc1", "app": "0.1.0 (1)"])
+    /// The scanner's own engine identity: a trace written by the same engine build (ADR 0007 decision 13).
+    static let engineIdentity = ReplayEngineFactory(resources: resources).identity
+
+    /// File header, launch, settings and focus, as a fresh launch writes them. `engine`: the identity the launch
+    /// records (nil, with `version` 1 or 2: a trace of a recorder that wrote none).
+    mutating func launch(
+        bundle: String = TraceBuilder.editor, rule: String? = "editor.sample", version: Int = 3,
+        engine: String? = TraceBuilder.engineIdentity
+    ) {
+        var header: [String: Any] = ["v": version, "launch": "abc1", "app": "0.1.0 (1)"]
+        if let engine { header["eng"] = engine }
+        line("file", header)
+        header["v"] = nil
+        line("start", header)
         line("settings", ["s": TraceBuilder.settings])
         focus(bundle: bundle, rule: rule)
     }
@@ -83,9 +93,10 @@ struct TraceBuilder {
 
     /// A key line and the engine line of the same instant; `engineLine` false for keys the engine never saw.
     /// `dropped`: the tap passed the key but the app never received it (the field model leaves it out).
+    /// `keyUpOutcome`: "held" for a keyUp the tap held while a job was in flight (before ADR 0322).
     mutating func press(
         _ character: String?, keyCode: UInt16 = 0, flags: UInt64 = 0, outcome: String? = nil,
-        event: EngineEvent? = nil, dropped: Bool = false
+        event: EngineEvent? = nil, dropped: Bool = false, keyUpOutcome: String = "passed"
     ) {
         var output: EngineOutput?
         if let event { output = session.handle(event) }
@@ -97,7 +108,7 @@ struct TraceBuilder {
         showInField(output, character: flags == 0 ? character : nil, keyCode: keyCode, dropped: dropped)
         var up = key
         up["ev"] = "keyUp"
-        up["out"] = "passed"
+        up["out"] = keyUpOutcome
         advance(30)
         line("key", up)
         advance(-30)

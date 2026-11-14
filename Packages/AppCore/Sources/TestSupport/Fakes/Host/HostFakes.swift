@@ -52,6 +52,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
         if let notify { post(notify, from: pid) }
     }
 
+    /// AX names no focused application (the system-wide element has none).
+    public func clearFocusedApplication() { state.withLock { $0.focusedPID = nil } }
+
     /// The focused application has no focused element.
     public func focusWithoutElement(pid: Int32, notify: AXNotificationKind?) {
         state.withLock {
@@ -220,6 +223,7 @@ public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendabl
         var dead: Set<Int32> = []
         var identityLookups: [Int32: Int] = [:]
         var runningApplicationScans = 0
+        var frontmost: Int32?
     }
 
     private let state: Mutex<State>
@@ -250,6 +254,13 @@ public final class FakeProcessIdentityProvider: ProcessIdentityProvider, Sendabl
             state.runningApplicationScans += 1
             return state.order.filter { !state.dead.contains($0) }.compactMap { state.processes[$0] }
         }
+    }
+
+    /// The application NSWorkspace would call frontmost (the dev recorder's attribution, PLT-R904A).
+    public func setFrontmost(_ pid: Int32?) { state.withLock { $0.frontmost = pid } }
+
+    public func frontmostApplication() -> ProcessIdentity? {
+        state.withLock { state in state.frontmost.flatMap { state.processes[$0] } }
     }
 
     public func add(_ process: ProcessIdentity) {
