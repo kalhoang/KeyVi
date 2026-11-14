@@ -80,3 +80,9 @@ separately from the app (spec/04-quality-release.md QA-R27).
   (`chơn`, `è` are Vietnamese).
 - `lexicon-builder ambiguity-candidates` listed `h2o` and `m4a` (a digit ends the token in Telex) with the
   displays `o` and `a`.
+- Backspace no longer changes a letter it does not delete (REG-31, ENG-R710 as amended on 14/11/2026): one
+  Telex `w` or VNI `7` on `uo` stays with the `ư` when the `ơ` is deleted (`thuowr` + Backspace gives `thư`,
+  `nguowif`, space, 3 Backspaces give `ngư`), a re-opened `thuở` gives `thu`, and a `u` whose horns a
+  circumflex replaced stays plain. `BackspaceProbe` and the ENG-T38 property tests (generated corpus,
+  English lexicon, prose corpus, fuzz invariant) check that every Backspace only deletes, except the
+  documented exceptions of ENG-R714.
