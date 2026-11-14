@@ -27,6 +27,9 @@ public enum StringTable: String, Sendable, CaseIterable {
     case support = "Support"  // About & Support, donation block (PRD-R59)
     case updates = "Updates"  // PRD-R50-R54
     case composition = "Composition"  // composition root notices: safe mode, move failed, conflicts
+    #if DEV_RECORDER
+    case devRecorder = "DevRecorder"  // PLT-R904A dev builds' typing recorder; the catalog ships in Debug builds only
+    #endif
 }
 
 /// Resolves keys for one language. Immutable; a new instance is created on language change.

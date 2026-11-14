@@ -35,6 +35,11 @@ extension AppEnvironment {
     // MARK: Host events
 
     func hostEvent(_ event: HostEvent) {
+        #if DEV_RECORDER
+        if case .modeChanged(let mode, let manual, let bundle) = event {
+            noteDevMode(mode, manual: manual, bundle: bundle)
+        }
+        #endif
         switch event {
         case .stateChanged(let state):
             updateIcon()

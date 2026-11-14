@@ -75,6 +75,16 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
         INFOPLIST_FILE: App/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      # PLT-R904A, ADR 0007: the dev builds' typing recorder exists only in Debug (DEV_RECORDER; AppCore defines it for
+      # its Debug configuration too). Release and Integration also leave its files out by name, the DevRecorder
+      # catalog included, and scripts/verify-release.sh fails a release that carries the recorder's marker.
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) DEV_RECORDER
+        Release:
+          EXCLUDED_SOURCE_FILE_NAMES: "*DevRecorder*"
+        Integration:
+          EXCLUDED_SOURCE_FILE_NAMES: "*DevRecorder*"
     dependencies:
       - package: AppCore
         products: [AppModel, RealtimeSupport, Diagnostics, SettingsStore, CompatRules, Injection, InputHost, ShellCore]

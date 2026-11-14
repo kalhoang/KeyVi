@@ -1,0 +1,240 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "devRecorder.badge.accessibilityLabel" : {
+      "comment" : "Appended to the menu bar icon's VoiceOver label while the recorder records (the dot on the icon).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording a typing log"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang ghi nhật ký gõ"
+          }
+        }
+      }
+    },
+    "devRecorder.mark" : {
+      "comment" : "PLT-R904A menu item: mark the moment a typing problem was seen. The chord is shown on the right.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark the problem just seen"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đánh dấu lỗi vừa gặp"
+          }
+        }
+      }
+    },
+    "devRecorder.mark.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the marker item (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds a marker to the typing log right now so the problem can be found later. The shortcut works in every app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghi một dấu mốc vào nhật ký gõ ngay lúc này để tìm lại lỗi sau. Phím tắt chạy được trong mọi ứng dụng."
+          }
+        }
+      }
+    },
+    "devRecorder.marked.announcement" : {
+      "comment" : "VoiceOver announcement after the marker was recorded (the icon flashes for 1 second).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Problem marked in the typing log"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã đánh dấu lỗi vào nhật ký gõ"
+          }
+        }
+      }
+    },
+    "devRecorder.openFolder" : {
+      "comment" : "PLT-R904A menu item: show the folder of the typing log files in Finder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open log folder"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở thư mục nhật ký"
+          }
+        }
+      }
+    },
+    "devRecorder.openFolder.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the open folder item (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the folder with the typing log files in Finder. Files are deleted after 7 days."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở thư mục chứa các tệp nhật ký gõ trong Finder. Tệp tự xóa sau 7 ngày."
+          }
+        }
+      }
+    },
+    "devRecorder.pause" : {
+      "comment" : "PLT-R904A menu item: stop recording for 30 minutes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause recording for 30 minutes"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tạm dừng ghi 30 phút"
+          }
+        }
+      }
+    },
+    "devRecorder.pause.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the pause item (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Records nothing for 30 minutes, then records again by itself."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không ghi gì trong 30 phút, sau đó tự ghi tiếp."
+          }
+        }
+      }
+    },
+    "devRecorder.resume" : {
+      "comment" : "PLT-R904A menu item while paused: record again now.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume recording"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiếp tục ghi"
+          }
+        }
+      }
+    },
+    "devRecorder.resume.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the resume item (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Records again now instead of waiting for the 30 minutes to end."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghi tiếp ngay, không chờ hết 30 phút."
+          }
+        }
+      }
+    },
+    "devRecorder.status.accessibilityHint" : {
+      "comment" : "VoiceOver hint of the recorder status line (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "State of the typing log in this dev build. The log stays on this Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trạng thái của nhật ký gõ trong bản dev. Nhật ký chỉ nằm trên máy này."
+          }
+        }
+      }
+    },
+    "devRecorder.status.paused" : {
+      "comment" : "PLT-R904A dev builds only: status line while paused. Argument: the time the pause ends.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording paused until %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã tạm dừng ghi đến %@"
+          }
+        }
+      }
+    },
+    "devRecorder.status.recording" : {
+      "comment" : "PLT-R904A dev builds only: disabled status line at the top of the menu while the typing recorder records.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording a typing log (dev build)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang ghi nhật ký gõ (bản dev)"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

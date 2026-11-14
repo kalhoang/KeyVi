@@ -40,8 +40,13 @@ import Testing
 
     @Test func catalogFilesAreExactlyTheStringTables() throws {
         let onDisk = try CatalogInventory.tablesOnDisk()
+        #if DEV_RECORDER
         #expect(onDisk == Set(StringTable.allCases.map(\.rawValue)))
-        #expect(onDisk.count == 11)
+        #expect(onDisk.count == 12)  // with DevRecorder (PLT-R904A), a table of Debug builds only
+        #else
+        #expect(onDisk.subtracting(["DevRecorder"]) == Set(StringTable.allCases.map(\.rawValue)))
+        #expect(onDisk.count == 12)
+        #endif
     }
 
     @Test(arguments: StringTable.allCases)

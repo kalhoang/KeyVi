@@ -139,6 +139,9 @@ final class AppEnvironment {
         settings = state
         safeMode = state.safeMode  // PLT-R1009: the store decides; leaving safe mode reloads the files
         host.apply(settings: state)
+        #if DEV_RECORDER
+        noteDevSettings(state)  // PLT-R904A
+        #endif
         language.select(state.effective.interfaceLanguage)
         statusItem?.setClickToToggle(state.effective.clickIconToToggle)
         settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
@@ -268,6 +271,9 @@ extension AppEnvironment: LaunchSteps {
         switchHUD = SwitchHUDController(language: language)
         item.setClickToToggle(settings.effective.clickIconToToggle)
         updateIcon()
+        #if DEV_RECORDER
+        startDevRecorder(statusItem: item, settings: settings)  // PLT-R904A: always on in dev builds
+        #endif
     }
 
     func presentOnboarding(settings: SettingsState) {
