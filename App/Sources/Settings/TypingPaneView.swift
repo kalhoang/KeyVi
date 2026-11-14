@@ -36,38 +36,90 @@ struct WordListView: View {
     let list: UserWordList
 
     var body: some View {
-        let localizer = model.localizer
-        let item: SettingItem = list == .keepAsTyped ? .keepAsTyped : .keepVietnamese
-        let rows = model.wordRows(list)
         VStack(alignment: .leading, spacing: 8) {
-            RowLabel(title: localizer.string(item.title), explanation: localizer.string(item.explanation))
-            ListBox {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        if rows.isEmpty {
-                            Text(verbatim: localizer.string(SettingsText.listEmpty))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                        }
-                        ForEach(rows) { row in
-                            Group {
-                                if let learned = row.learned {
-                                    LearnedWordRow(model: model, word: learned)
-                                } else {
-                                    WordEntryRow(model: model, list: list, word: row.word)
-                                }
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 3)
-                }
-                .frame(height: 76)
-                .background(Color(nsColor: .textBackgroundColor))
+            WordListLabel(localizer: model.localizer, list: list)
+            WordListBox(model: model, list: list)
+            WordListAddArea(model: model, list: list)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The two lists side by side, part by part, so their boxes and fields line up even when one explanation wraps to
+/// more lines than the other.
+struct WordListsPair: View {
+    @ObservedObject var model: SettingsWindowModel
+    let lists: [UserWordList]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: SettingsMetrics.rowSpacing) {
+                ForEach(lists, id: \.self) { list in WordListLabel(localizer: model.localizer, list: list) }
             }
+            HStack(alignment: .top, spacing: SettingsMetrics.rowSpacing) {
+                ForEach(lists, id: \.self) { list in WordListBox(model: model, list: list) }
+            }
+            HStack(alignment: .top, spacing: SettingsMetrics.rowSpacing) {
+                ForEach(lists, id: \.self) { list in WordListAddArea(model: model, list: list) }
+            }
+        }
+    }
+}
+
+struct WordListLabel: View {
+    let localizer: Localizer
+    let list: UserWordList
+
+    var body: some View {
+        let item = list.settingItem
+        RowLabel(title: localizer.string(item.title), explanation: localizer.string(item.explanation))
+    }
+}
+
+struct WordListBox: View {
+    @ObservedObject var model: SettingsWindowModel
+    let list: UserWordList
+
+    var body: some View {
+        let rows = model.wordRows(list)
+        ListBox {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if rows.isEmpty {
+                        Text(verbatim: model.localizer.string(SettingsText.listEmpty))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                    }
+                    ForEach(rows) { row in
+                        Group {
+                            if let learned = row.learned {
+                                LearnedWordRow(model: model, word: learned)
+                            } else {
+                                WordEntryRow(model: model, list: list, word: row.word)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 3)
+            }
+            .frame(height: 76)
+            .background(Color(nsColor: .textBackgroundColor))
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The add field of a list and the reason an entry was refused.
+struct WordListAddArea: View {
+    @ObservedObject var model: SettingsWindowModel
+    let list: UserWordList
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
             WordAddRow(model: model, drafts: model.drafts, list: list)
             if let error = model.wordListError[list] {
                 IssueLine(symbol: "exclamationmark.circle", text: error)
@@ -75,6 +127,11 @@ struct WordListView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+extension UserWordList {
+    /// The catalog setting that names and explains the list (PRD-R25).
+    var settingItem: SettingItem { self == .keepAsTyped ? .keepAsTyped : .keepVietnamese }
 }
 
 struct WordEntryRow: View {

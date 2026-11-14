@@ -78,12 +78,10 @@ struct SettingsSectionRow: View {
     let items: [SettingItem]
 
     var body: some View {
-        if items.count == 1, let item = items.first {
-            SettingItemRow(model: model, item: item)
+        if items == [.keepAsTyped, .keepVietnamese] {
+            WordListsPair(model: model, lists: [.keepAsTyped, .keepVietnamese])
         } else {
-            HStack(alignment: .top, spacing: SettingsMetrics.rowSpacing) {
-                ForEach(items, id: \.self) { item in SettingItemRow(model: model, item: item) }
-            }
+            ForEach(items, id: \.self) { item in SettingItemRow(model: model, item: item) }
         }
     }
 }
