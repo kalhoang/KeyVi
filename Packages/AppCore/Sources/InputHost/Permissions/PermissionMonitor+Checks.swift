@@ -74,17 +74,22 @@ extension PermissionMonitor {
         if changed { _ = check() }
     }
 
-    /// PLT-R720: `ready` needs Accessibility, posting and (only when the tap needs it) listening. `stale` means
-    /// the Accessibility grant recorded for this exact signing identity fails now (typically after a macOS
-    /// update; PLT-R740 guidance). A missing Input Monitoring consent with a working Accessibility grant is
-    /// `noPermission` plus `listenEventRequired` (PLT-R702, PLT-R712), never `stale`.
+    /// PLT-R720: `ready` needs Accessibility and (only when the tap needs it) Input Monitoring. Posting rides on
+    /// the Accessibility grant (PLT-R701); the post preflight is reported but never gates, because it keeps its
+    /// launch-time answer after a live grant, and a posting path that fails anyway is caught by echo loss
+    /// (PLT-R323, PLT-R730). `stale` means the Accessibility grant recorded for this exact signing identity fails
+    /// now (typically after a macOS update; PLT-R740 guidance). A missing Input Monitoring consent with a working
+    /// Accessibility grant is `noPermission` plus `listenEventRequired` (PLT-R702, PLT-R712), never `stale`.
     private func evaluate(_ state: inout PermissionMonitorState) -> PermissionStatus {
         let accessibility = probe.isAccessibilityTrusted()
         let post = probe.canPostEvents()
-        let listen = probe.canListenToEvents()
-        // PLT-R702: Input Monitoring is required only when the tap fails while Accessibility is granted.
-        let listenRequired = state.tapUnavailable && accessibility && !listen
-        let ready = accessibility && post && !listenRequired
+        var listen = probe.canListenToEvents()
+        // PLT-R702: Input Monitoring matters only when the tap failed while Accessibility is granted; only then is
+        // the live check (a tap of its own, which may prompt) worth making, and it sees a grant made after launch.
+        let tapNeedsListen = state.tapUnavailable && accessibility
+        if tapNeedsListen && !listen { listen = probe.canListenToEventsNow() }
+        let listenRequired = tapNeedsListen && !listen
+        let ready = accessibility && !listenRequired
         let identity = digest(&state).map(HostServicesHashing.stableHash52)
         let health: PermissionStatus.Health
         if ready {
@@ -92,7 +97,7 @@ extension PermissionMonitor {
             if let identity, store.integer(forKey: Self.lastGrantedDigestKey) != identity {
                 store.set(identity, forKey: Self.lastGrantedDigestKey)
             }
-        } else if !accessibility || !post, let identity, store.integer(forKey: Self.lastGrantedDigestKey) == identity {
+        } else if !accessibility, let identity, store.integer(forKey: Self.lastGrantedDigestKey) == identity {
             health = .stale
         } else {
             health = .noPermission

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// PLT-R701, PLT-R702, PLT-R711, PLT-R720, PLT-R721, PLT-R803: health, stale grants and polling cadence.
+// PLT-R701, PLT-R702, PLT-R711, PLT-R720, PLT-R721, PLT-R731, PLT-R803: health, stale grants, the live
+// Input Monitoring check and polling cadence.
 
 import AppModel
 import RealtimeSupport
@@ -27,6 +28,34 @@ private struct Harness {
         let changes = self.changes
         monitor = PermissionMonitor(probe: probe, store: store, scheduler: timers) { changes.append($0) }
     }
+}
+
+/// `FakePermissionProbe` plus the live Input Monitoring check of the production probe (a listen-only key tap
+/// created and released at once, `SystemPermissionProbe.canListenToEventsNow`), counting its calls.
+private final class LiveListenProbe: PermissionProbe, Sendable {
+    let base: FakePermissionProbe
+    private let state = Mutex((live: false, calls: 0))
+
+    init(trusted: Bool, post: Bool, listen: Bool) {
+        base = FakePermissionProbe(trusted: trusted, post: post, listen: listen)
+    }
+
+    func setLive(_ live: Bool) { state.withLock { $0.live = live } }
+    var liveCalls: Int { state.withLock { $0.calls } }
+
+    func isAccessibilityTrusted() -> Bool { base.isAccessibilityTrusted() }
+    func canPostEvents() -> Bool { base.canPostEvents() }
+    func canListenToEvents() -> Bool { base.canListenToEvents() }
+    func canListenToEventsNow() -> Bool {
+        state.withLock {
+            $0.calls += 1
+            return $0.live
+        }
+    }
+    func promptForAccessibility() { base.promptForAccessibility() }
+    func requestListenEventAccess() -> Bool { base.requestListenEventAccess() }
+    func requestPostEventAccess() -> Bool { base.requestPostEventAccess() }
+    func signingIdentityDigest() -> String? { base.signingIdentityDigest() }
 }
 
 @Suite("PermissionMonitor (PLT-R720, PLT-R721)")
@@ -128,6 +157,72 @@ struct PermissionMonitorTests {
         #expect(harness.monitor.checkNow().listenEventRequired == false)  // Accessibility first
         harness.probe.set(trusted: true, post: true, listen: true)
         #expect(harness.monitor.checkNow().health == .ready)
+    }
+
+    /// PLT-R701: `CGPreflightPostEventAccess()` keeps the answer it had when the process started (Apple DTS,
+    /// developer forums threads 727984 and 720840), so it cannot gate readiness: on Pa's macOS 27.2 the switch of
+    /// Device Control and Data Access was on, `AXIsProcessTrusted()` said so at once, and the screen still waited.
+    @Test func aLiveAccessibilityGrantIsReadyWhileThePostPreflightKeepsItsLaunchAnswer_PLTR701() {
+        let harness = Harness(trusted: false, post: false, listen: false)
+        harness.monitor.start()
+        #expect(harness.changes.last?.health == .noPermission)
+        harness.probe.set(trusted: true, post: false, listen: false)
+        harness.scheduler.advance(by: .seconds(2))
+        #expect(harness.changes.last?.health == .ready)
+        #expect(harness.changes.last?.accessibility == .granted)
+        #expect(harness.changes.last?.listenEventRequired == false)  // PLT-R702: not asked up front
+    }
+
+    /// PLT-R720: `stale` is about the Accessibility grant of this signing identity only; the post preflight's
+    /// launch-time answer never makes a working grant look stale.
+    @Test func aStaleGrantIsAnAccessibilityFailureOnly_PLTR720() {
+        let store = InMemoryKeyValueStore()
+        #expect(Harness(store: store).monitor.checkNow().health == .ready)
+        let relaunched = Harness(trusted: true, post: false, store: store)
+        #expect(relaunched.monitor.checkNow().health == .ready)
+        let broken = Harness(trusted: false, post: true, store: store)
+        #expect(broken.monitor.checkNow().health == .stale)
+    }
+
+    /// PLT-R702, PLT-R731: Input Monitoring turned on while the app runs. The launch-time preflight still says
+    /// denied; the live check (a listen-only key tap) says granted, so the need clears without a relaunch and the
+    /// lifecycle creates the tap again.
+    @Test func inputMonitoringTurnedOnWhileRunningClearsTheNeedWithoutARelaunch_PLTR731() {
+        let probe = LiveListenProbe(trusted: true, post: true, listen: false)
+        let changes = Recorder<PermissionStatus>()
+        let scheduler = ManualScheduler(clock: ManualClock())
+        let monitor = PermissionMonitor(probe: probe, store: InMemoryKeyValueStore(), scheduler: scheduler) {
+            changes.append($0)
+        }
+        monitor.start()
+        monitor.setTapUnavailable(true)
+        #expect(changes.last?.listenEventRequired == true)
+        #expect(changes.last?.health == .noPermission)
+        probe.setLive(true)
+        scheduler.advance(by: .seconds(2))
+        #expect(changes.last?.listenEventRequired == false)
+        #expect(changes.last?.listenEvent == .granted)
+        #expect(changes.last?.health == .ready)
+        monitor.stop()
+    }
+
+    /// PLT-R702: the live check creates a tap, and a tap for keys can make macOS prompt for Input Monitoring, so it
+    /// runs only once the host knows the tap needs Input Monitoring, never while the app is merely polling.
+    @Test func theLiveInputMonitoringCheckRunsOnlyOnceItIsNeeded_PLTR702() {
+        let probe = LiveListenProbe(trusted: false, post: false, listen: false)
+        let scheduler = ManualScheduler(clock: ManualClock())
+        let monitor = PermissionMonitor(probe: probe, store: InMemoryKeyValueStore(), scheduler: scheduler) { _ in }
+        monitor.start()
+        monitor.setTapUnavailable(true)  // a tap failure without Accessibility says nothing about Input Monitoring
+        scheduler.advance(by: .seconds(10))
+        #expect(probe.liveCalls == 0)
+        probe.base.set(trusted: true, post: false, listen: false)
+        _ = monitor.checkNow()
+        #expect(probe.liveCalls == 1)
+        monitor.setTapUnavailable(false)
+        scheduler.advance(by: .seconds(60))
+        #expect(probe.liveCalls == 1)
+        monitor.stop()
     }
 
     @Test func onChangeForTheFirstCheckAndForChangesOnly() {

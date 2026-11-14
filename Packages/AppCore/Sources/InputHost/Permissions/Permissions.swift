@@ -11,10 +11,20 @@ public import SettingsStore
 /// `CGPreflightListenEventAccess()`, `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])`,
 /// `CGRequestListenEventAccess()`, `CGRequestPostEventAccess()`; the signing identity digest comes from
 /// `SecCodeCopySelf` + `SecCodeCopyDesignatedRequirement`.
+///
+/// PLT-R701: `AXIsProcessTrusted()` follows the switch live. The two CoreGraphics preflights keep the answer they
+/// had when the process started (Apple DTS on the developer forums, threads 727984 and 720840), so they never
+/// decide on their own that a permission is still missing; `canListenToEventsNow()` is the live Input Monitoring
+/// check.
 public protocol PermissionProbe: Sendable {
     func isAccessibilityTrusted() -> Bool
     func canPostEvents() -> Bool
+    /// `CGPreflightListenEventAccess()`: the Input Monitoring answer at launch.
     func canListenToEvents() -> Bool
+    /// PLT-R702, PLT-R731: Input Monitoring as it is now, by creating a listen-only key tap and releasing it at
+    /// once (a passive tap never holds keys back). Creating a tap for keys can make macOS prompt for Input
+    /// Monitoring, so the monitor calls this only once it knows the tap needs that permission.
+    func canListenToEventsNow() -> Bool
     func promptForAccessibility()
     func requestListenEventAccess() -> Bool
     func requestPostEventAccess() -> Bool
@@ -27,7 +37,8 @@ public struct PermissionStatus: Sendable, Hashable {
     public var accessibility: PermissionState
     public var postEvent: PermissionState
     public var listenEvent: PermissionState
-    /// Input Monitoring needed: tap could not be created or receives no keys while Accessibility is granted.
+    /// Input Monitoring needed and still missing: the tap could not be created while Accessibility is granted and
+    /// neither the launch-time preflight nor the live check sees Input Monitoring (PLT-R702).
     public var listenEventRequired: Bool
     public var health: Health
     public init(
@@ -79,9 +90,15 @@ public final class PermissionMonitor: Sendable {
     public func checkNow() -> PermissionStatus { check() }
     /// Onboarding polls every 1 s for at most 5 minutes while visible (PLT-R711).
     public func setFastPolling(_ enabled: Bool) { updateFastPolling(enabled) }
-    /// The lifecycle reports that the tap could not be created or receives no keys. With Accessibility granted
-    /// and `CGPreflightListenEventAccess()` false this sets `listenEventRequired` (PLT-R702).
+    /// The lifecycle reports that the tap could not be created. With Accessibility granted and Input Monitoring
+    /// missing (launch-time preflight and live check) this sets `listenEventRequired` (PLT-R702); the live check
+    /// clears it when the user turns Input Monitoring on while the app runs (PLT-R731).
     public func setTapUnavailable(_ unavailable: Bool) { updateTapUnavailable(unavailable) }
+}
+
+extension PermissionProbe {
+    /// Probes without a live check (fakes, wrappers) answer with the launch-time preflight.
+    public func canListenToEventsNow() -> Bool { canListenToEvents() }
 }
 
 /// "Đặt lại quyền" (PLT-R740): runs `/usr/bin/tccutil reset Accessibility <own bundle ID>` after the user
