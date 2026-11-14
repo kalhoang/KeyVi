@@ -367,3 +367,10 @@ Input Monitoring row appears only when the tap cannot be created with Accessibil
 is the live Input Monitoring check. What a run must record here: for each phase, whether the active tap was created
 and received the typed keys, whether the probe's own posted keys came back (posting works after a live grant), and
 which of the three checks changed without a relaunch.
+
+Until this section has a result, the cause stated in PLT-R701 (the relaunch after the Input Monitoring change refreshed
+the post preflight) is an inference, and Pa's checklist T2.2 on macOS 27.2 is the acceptance gate for feedback item 1:
+remove the app from both Device Control and Data Access and Input Monitoring, open it again, switch on Device Control
+and Data Access only, and confirm that screen 2 moves on within 1 s (or shows the Input Monitoring row with its own
+button) and that typing works on screen 7 without opening the app again. Record the outcome here and update PLT-R702
+with the phase that created the tap.
