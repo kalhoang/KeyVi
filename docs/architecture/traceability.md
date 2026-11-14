@@ -105,7 +105,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
 | PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F2 |  |
 | PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
-| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A; Pa | **Pa** |
+| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`, `KeyPipelineDeleteKeyBoundaryTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A; Pa | **Pa** |
 | PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F1; W2-E2 |  |
 | PLT-R342 | Re-entry verification with bounded AX read | `InjectionWorker` (`verifyBeforeApply`) | U | W1-D |  |
 | PLT-R343 | Bounded AX reads (64 characters) | `AXFocusedFieldAccess`, `SystemAXProvider` | U, L | W1-D, W1-E |  |
@@ -151,7 +151,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R402 | Minimal edits (common prefix trim) | `EditMinimizer` | U | W1-D |  |
 | PLT-R403 | NFC insertions, grapheme delete counts | `InjectionWorker` | U | W1-D |  |
 | PLT-R404 | One grapheme per event; chunk up to 20 units | `UnicodeChunker` | U | W1-D |  |
-| PLT-R405 | Unicode events use the triggering keycode, except a letter keycode for Backspace edits | `JobKeyCodes`, `KeyPipeline`, strategies | U (`BackspaceEditKeyCodeTests`, `KeyPipelineDeleteKeyTests`, `KeyPipelineRealEngineBackspaceTests`) | W1-F1, W1-D, W8-B |  |
+| PLT-R405 | Edits, restores and macros type on a letter keycode, never on Delete, Return, Tab or Space; the trigger key follows once | `JobKeyCodes` (`isActionKey`), `KeyPipeline.letterKeyCode`, `SyntheticKeys.unicodeKeyCode`, strategies | U (`BackspaceEditKeyCodeTests`, `KeyPipelineDeleteKeyTests`, `KeyPipelineRealEngineBackspaceTests`, `CommitTriggerKeyCodeTests`, `KeyPipelineCommitTriggerTests`, `KeyPipelineRealEngineCommitTriggerTests`, `KeyCodeFirstComposerOracleTests`), C (`testhost.web.keycodeFirst.backspace`, `testhost.web.keycodeFirst.returnCommit`) | W1-F1, W1-D, W8-B, W8-F |  |
 | PLT-R406 | No modifier flags except where required | strategies | U | W1-D |  |
 | PLT-R407 | Backspace key; forward delete banned | strategies, `RulesLinter` | U, L | W1-D, W1-C |  |
 | PLT-R408 | Timing parameters, caps, split | strategies, `ResolvedParams` | U | W1-D, W1-C |  |
@@ -180,7 +180,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R540 | Override mechanism and scopes | `CompatibilityModeChoice`, `GuidedTestRunner`, rule import | U | W1-G, W2-B, W2-C |  |
 | PLT-R541 | rule-overrides.json listed, exported, in reports | `SettingsStore`, `ReportAssembler`, `ReportedOverride`, ADR 0312 | U | W1-B, W1-G |  |
 | PLT-R701 | Accessibility required, decided by AXIsProcessTrusted() alone; macOS 27 label VERIFY | `PermissionProbe`, `PermissionMonitor`, `SystemPanes.json` | U, M, V | W1-E, W1-G, W8-C; Pa | **Pa** |
-| PLT-R702 | Input Monitoring only when the tap fails with Accessibility granted; live listen-only check | `PermissionMonitor`, `SystemPermissionProbe.canListenToEventsNow` | U, V | W1-E, W8-C; Pa | **Pa** |
+| PLT-R702 | Input Monitoring only when the tap fails with Accessibility granted; live listen-only check; a status replaced during its delivery is never forwarded or returned | `PermissionMonitor` (`checkNow`), `SystemPermissionProbe.canListenToEventsNow`, `InputHostController.permissionsChanged` | U (`PermissionDeliveryGuardTests`), V | W1-E, W8-C, W8-F; Pa | **Pa** |
 | PLT-R703 | No other permissions | `App/Info.plist`, no entitlements | R, L | skeleton; release track |  |
 | PLT-R704 | Pane names and deep links from an OS table | `SystemPaneTable`, `App/Resources/SystemPanes.json` | U, V | W1-G; Pa | **Pa** |
 | PLT-R705 | Permission screen: one row per needed permission with a live state, button opens the first missing pane | `PermissionScreenContent`, `PermissionNeed`, `OnboardingFlow`, App `PermissionRows` | U, M | W8-C; Pa | **Pa** |
@@ -190,7 +190,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R720 | Permission states and stale detection | `PermissionMonitor` | U | W1-E |  |
 | PLT-R721 | Polling cadence 2 s / 30 s / on events | `PermissionMonitor` | U | W1-E |  |
 | PLT-R730 | Fail-open within the same callback | `KeyPipeline`, `InputHostController`, `InjectionWorker`; hook `revokePermission` (`RevocablePermissionProbe`), `compat/scenarios/testhost.failOpen.permissionRevoked.json` | P, U (`HostHookActionsTests`), I (revocation on runner), M | W1-F1, W1-F2; W2-E2; W3-A; Pa | **Pa** |
-| PLT-R731 | Recreate tap when permission returns | `InputHostController` | U, M | W1-F2; Pa | **Pa** |
+| PLT-R731 | Recreate tap when permission returns | `InputHostController`, `RevocablePermissionProbe.canListenToEventsNow` | U (`RevocablePermissionProbeTests`, `FakePermissionProbeLiveCheckTests`), M | W1-F2, W8-F; Pa | **Pa** |
 | PLT-R740 | Re-grant guidance, tccutil reset for own bundle | `PermissionResetting`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R741 | Never suggest sudo or bundle-less tccutil | `Status`/`Onboarding` copy | D | W1-G |  |
 | PLT-R750 | Developer ID signing, hardened runtime, notarized | `Config/Signing.xcconfig`, `Config/Release.xcconfig`, release scripts | R, M | release track; Pa (credentials) | **Pa** |
