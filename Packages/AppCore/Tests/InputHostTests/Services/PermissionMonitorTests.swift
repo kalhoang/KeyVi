@@ -225,6 +225,32 @@ struct PermissionMonitorTests {
         monitor.stop()
     }
 
+    /// PLT-R702, PRD-R40: while a `ready` status is being delivered, the tap creation it triggers can fail and
+    /// produce "needs Input Monitoring" (queued behind it). `latest` already answers with the newer status, so the
+    /// host can tell a receiver that the status in hand was replaced and must not be forwarded.
+    @Test(.timeLimit(.minutes(1))) func latestAnswersWithTheStatusThatReplacedTheOneBeingDelivered_PLTR702() {
+        let probe = FakePermissionProbe(trusted: false, post: false, listen: false)
+        let seenLatest = Recorder<PermissionStatus?>()
+        let binding = LateBinding<PermissionMonitor>()
+        let monitor = PermissionMonitor(
+            probe: probe, store: InMemoryKeyValueStore(), scheduler: ManualScheduler(clock: ManualClock())
+        ) { status in
+            guard let monitor = binding.value else { return }
+            if status.health == .ready { monitor.setTapUnavailable(true) }  // the lifecycle's tap creation failed
+            seenLatest.append(monitor.latest)
+        }
+        binding.value = monitor
+        #expect(monitor.latest == nil)
+        monitor.start()
+        probe.set(trusted: true, post: false, listen: false)
+        _ = monitor.checkNow()
+        let latest = seenLatest.values.compactMap { $0 }
+        #expect(latest.map(\.health) == [.noPermission, .noPermission, .noPermission])
+        #expect(latest.map(\.listenEventRequired) == [false, true, true])
+        #expect(monitor.latest?.listenEventRequired == true)
+        monitor.stop()
+    }
+
     @Test func onChangeForTheFirstCheckAndForChangesOnly() {
         let harness = Harness()
         harness.monitor.start()

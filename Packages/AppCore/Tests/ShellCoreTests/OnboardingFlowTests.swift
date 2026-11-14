@@ -202,6 +202,39 @@ enum Permissions {
         requests.append(flow.takeInputMonitoringRequest())
         #expect(requests == [false, true, false, false])
     }
+
+    /// PRD-R40 (screen 2 is never left without permission), PLT-R702: a `ready` status that was already replaced
+    /// when it arrived (the tap creation it triggered failed and produced "needs Input Monitoring" in the same
+    /// delivery) must not leave the flow on screen 3. The flow returns to screen 2 with the Input Monitoring row,
+    /// and "Quay lại" still goes back to the welcome screen.
+    @Test func aGrantReplacedByInputMonitoringInTheSameDeliveryReturnsToScreenTwo_PLTR702() {
+        var flow = OnboardingFlow(inputs: inputs())
+        flow.next(inputs: inputs())
+        #expect(flow.screen == .permission)
+        flow.permissionChanged(Permissions.granted, inputs: inputs(Permissions.granted))
+        #expect(flow.screen == .typingMethod)
+        flow.permissionChanged(Permissions.needsInputMonitoring, inputs: inputs(Permissions.needsInputMonitoring))
+        #expect(flow.screen == .permission)
+        #expect(flow.inputMonitoringSeen)
+        #expect(!flow.permissionGranted)
+        #expect(!flow.advancedByGrant)
+        let requested = flow.takeInputMonitoringRequest()
+        #expect(requested)
+        flow.back()
+        #expect(flow.screen == .welcome)
+    }
+
+    /// Once the user moved on by choice, a later permission change only updates the state; the PRD-R42 path
+    /// (permission lost after completion) handles a revoked grant.
+    @Test func aPermissionLossAfterTheUserMovedOnDoesNotPullTheFlowBack() {
+        var flow = OnboardingFlow(inputs: inputs(), startAt: .permission)
+        flow.permissionChanged(Permissions.granted, inputs: inputs(Permissions.granted))
+        flow.next(inputs: inputs(Permissions.granted))
+        #expect(flow.screen == .switching)
+        flow.permissionChanged(Permissions.needsInputMonitoring, inputs: inputs(Permissions.needsInputMonitoring))
+        #expect(flow.screen == .switching)
+        #expect(!flow.permissionGranted)
+    }
 }
 
 @Suite struct AppLocationCheckTests {

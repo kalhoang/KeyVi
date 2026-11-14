@@ -9851,6 +9851,11 @@ public final class PermissionMonitor: Sendable {
     public func start() { beginChecks() }
     public func stop() { endChecks() }
     public func checkNow() -> PermissionStatus { check() }
+    /// The status of the most recent check, already set while an older status is still being delivered. A receiver
+    /// that forwards statuses compares the one in hand with this and drops it when a newer one is queued behind it,
+    /// so a `ready` replaced during its own delivery (the tap it allowed failed, PLT-R702) never reaches the UI
+    /// after its replacement (PRD-R40 screen 2). `nil` before the first check.
+    public var latest: PermissionStatus? { state.withLock { $0.last } }
     /// Onboarding polls every 1 s for at most 5 minutes while visible (PLT-R711).
     public func setFastPolling(_ enabled: Bool) { updateFastPolling(enabled) }
     /// The lifecycle reports that the tap could not be created. With Accessibility granted and Input Monitoring
@@ -10992,10 +10997,20 @@ public struct OnboardingFlow: Sendable, Hashable {
     /// Permission granted while on screen 2: advance within 1 s (PRD-R40 "Live state"). The permission monitor
     /// polls every 1 s while onboarding is visible (PLT-R711), so the flow advances on the first poll after the
     /// grant. In the PRD-R42 variant the screen stays to show "Đã cấp quyền" until the user closes it.
+    ///
+    /// PRD-R40, PLT-R702: a grant that is withdrawn before the user moved on (typically a `ready` whose tap creation
+    /// failed in the same delivery, so the tap needs Input Monitoring) takes the flow back to screen 2, which then
+    /// shows what is missing; screen 2 is never left forward without permission.
     public mutating func permissionChanged(_ status: PermissionStatus, inputs: OnboardingInputs) {
         let wasGranted = permissionGranted
         observe(status)
-        guard screen == .permission, permissionGranted, !wasGranted, !permissionOnly, !isFinished else { return }
+        guard !isFinished, !permissionOnly else { return }
+        if advancedByGrant, !permissionGranted, history.last == .permission {
+            advancedByGrant = false
+            screen = history.removeLast()
+            return
+        }
+        guard screen == .permission, permissionGranted, !wasGranted else { return }
         advance(inputs: inputs)
         advancedByGrant = true
     }
