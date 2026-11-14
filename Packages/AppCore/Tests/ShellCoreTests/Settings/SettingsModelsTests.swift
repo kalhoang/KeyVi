@@ -62,19 +62,19 @@ import VietnameseEngineData
         #expect(
             row.note
                 == "Trên macOS 12, Example không tự bật được tùy chọn này. Hãy mở Tùy chọn Hệ thống > Người dùng & Nhóm > "
-                + "Mục đăng nhập, bấm nút cộng (+) rồi chọn Example trong thư mục Ứng dụng.")
+                + "Mục Đăng nhập, bấm nút cộng (+) rồi chọn Example trong thư mục Ứng dụng.")
         #expect(row.button == "Mở Tùy chọn Hệ thống")
         // Pane names come only from the table: a renamed pane shows up in both the note and the button.
         var renamed = viPanes
         renamed.systemSettings = "Pane"
         let renamedRow = LoginItemRowText(localizer: l.en, appName: "Example", panes: renamed, presentation: legacy)
         #expect(renamedRow.button == "Open Pane")
-        #expect(renamedRow.note?.contains("Open Pane > Người dùng & Nhóm > Mục đăng nhập,") == true)
+        #expect(renamedRow.note?.contains("Open Pane > Người dùng & Nhóm > Mục Đăng nhập,") == true)
         // The VoiceOver hint names no pane (the label is the button title, which names it from the table).
         for localizer in [l.vi, l.en] {
             let hint = localizer.accessibilityHint(SettingsControl.openSystemPreferences)
             #expect(!hint.isEmpty && !hint.contains("%"))
-            for name in ["Tùy chọn", "System Preferences", "Mục đăng nhập", "Login Items"] {
+            for name in ["Tùy chọn", "System Preferences", "Mục Đăng nhập", "Mục đăng nhập", "Login Items"] {
                 #expect(!hint.contains(name), "hint names a pane: \(hint)")
             }
         }

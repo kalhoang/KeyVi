@@ -60,6 +60,49 @@ import Testing
                 == "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     }
 
+    /// PRD-R64, decision 0005 Q37: every macOS 12 name as Apple's localization tables of macOS 12.7.6 (21H1320)
+    /// spell it (Security.prefPane, Keyboard.prefPane and its IntlTexts sub-pane, Accounts.prefPane, System
+    /// Preferences.app; docs/runbooks/vm-test-lab.md section 10). Vietnamese capitalises "Đầu vào" and "Đăng nhập".
+    @Test func macOS12NamesMatchTheSystemTables() throws {
+        let table = try Self.shipped()
+        #expect(
+            table.names(macOS: version("12.7.6"), systemLanguage: "vi-VN")
+                == SystemPaneNames(
+                    systemSettings: "Tùy chọn Hệ thống", privacySecurity: "Bảo mật & Quyền riêng tư > Quyền riêng tư",
+                    accessibility: "Trợ năng", inputMonitoring: "Giám sát Đầu vào", keyboard: "Bàn phím",
+                    textReplacements: "Văn bản", usersGroups: "Người dùng & Nhóm", loginItems: "Mục Đăng nhập"))
+        #expect(
+            table.names(macOS: version("12.7.6"), systemLanguage: "en-US")
+                == SystemPaneNames(
+                    systemSettings: "System Preferences", privacySecurity: "Security & Privacy > Privacy",
+                    accessibility: "Accessibility", inputMonitoring: "Input Monitoring", keyboard: "Keyboard",
+                    textReplacements: "Text", usersGroups: "Users & Groups", loginItems: "Login Items"))
+    }
+
+    /// PRD-R64, PLT-R701: every macOS 27 name as Apple's localization tables of macOS 27.2 (26B123) spell it
+    /// (System Settings.app and the SecurityPrivacyExtension, KeyboardSettings, GeneralSettings and LoginItems
+    /// extensions). "Login Items & Extensions" is "Mục đăng nhập & Phần mở rộng" in Vietnamese.
+    @Test func macOS27NamesMatchTheSystemTables() throws {
+        let table = try Self.shipped()
+        #expect(
+            table.names(macOS: version("27.2"), systemLanguage: "vi-VN")
+                == SystemPaneNames(
+                    systemSettings: "Cài đặt hệ thống", privacySecurity: "Quyền riêng tư & Bảo mật",
+                    accessibility: "Điều khiển thiết bị và truy cập dữ liệu", inputMonitoring: "Giám sát đầu vào",
+                    keyboard: "Bàn phím", textReplacements: "Thay thế văn bản", usersGroups: "Cài đặt chung",
+                    loginItems: "Mục đăng nhập & Phần mở rộng"))
+        #expect(
+            table.names(macOS: version("27.2"), systemLanguage: "en-US")
+                == SystemPaneNames(
+                    systemSettings: "System Settings", privacySecurity: "Privacy & Security",
+                    accessibility: "Device Control and Data Access", inputMonitoring: "Input Monitoring",
+                    keyboard: "Keyboard", textReplacements: "Text Replacements", usersGroups: "General",
+                    loginItems: "Login Items & Extensions"))
+        // macOS 15 to 26 have no lab VM; they carry the macOS 27.2 spelling of the pane that macOS 15 introduced.
+        #expect(
+            table.names(macOS: version("15.0"), systemLanguage: "vi").loginItems == "Mục đăng nhập & Phần mở rộng")
+    }
+
     @Test func macOS13And14UseSystemSettings() throws {
         let table = try Self.shipped()
         for macOS in ["13.0", "14.7"] {
