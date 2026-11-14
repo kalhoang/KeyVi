@@ -12,6 +12,10 @@ let strict: [SwiftSetting] = [
     .enableUpcomingFeature("InternalImportsByDefault"),
 ]
 
+/// PLT-R904A, ADR 0007: the dev builds' typing recorder is compiled only in the Debug configuration. Release (and
+/// the Integration test build) never define it; scripts/verify-release.sh proves the recorder is absent.
+let devRecorder: [SwiftSetting] = strict + [.define("DEV_RECORDER", .when(configuration: .debug))]
+
 let package = Package(
     name: "AppCore",
     // PLT-R106: macOS 12 Monterey (Pa's decision 2026-11-13, docs/decisions/0315-minimum-macos-12.md). Newer APIs
@@ -42,7 +46,7 @@ let package = Package(
         // signals, clock and time spans.
         .target(name: "RealtimeSupport", dependencies: ["CRealtimeSupport"], swiftSettings: strict),
         // Typed redacting logger, health events, histograms, reports, capture (PLT-R801, PLT-R9xx, PLT-R12xx).
-        .target(name: "Diagnostics", dependencies: ["AppModel", "RealtimeSupport"], swiftSettings: strict),
+        .target(name: "Diagnostics", dependencies: ["AppModel", "RealtimeSupport"], swiftSettings: devRecorder),
         // Versioned settings documents, migrations, export/import, macro importers (PLT-R10xx, PRD-R32).
         .target(name: "SettingsStore", dependencies: ["AppModel", "RealtimeSupport"], swiftSettings: strict),
         // Rule schema, loader, validator, matcher, fingerprinting, linter (PLT-R5xx).
@@ -51,7 +55,7 @@ let package = Package(
         .target(
             name: "Injection",
             dependencies: ["AppModel", "RealtimeSupport", "Diagnostics"],
-            swiftSettings: strict
+            swiftSettings: devRecorder
         ),
         // Event tap thread, decision pipeline, layout tables, input source, focus (AX thread), secure input,
         // per-app memory, hotkeys, permissions (PLT-R2xx, PLT-R3xx, PLT-R7xx).
@@ -62,13 +66,13 @@ let package = Package(
                 .product(name: "VietnameseEngine", package: "VietnameseEngine"),
                 .product(name: "VietnameseEngineData", package: "VietnameseEngine"),
             ],
-            swiftSettings: strict
+            swiftSettings: devRecorder
         ),
         // UI-free logic of the menu-bar app: view models, localisation lookup, brand, login item (PRD-R*).
         .target(
             name: "ShellCore",
             dependencies: ["AppModel", "Diagnostics", "SettingsStore", "CompatRules", "InputHost", "RealtimeSupport"],
-            swiftSettings: strict
+            swiftSettings: devRecorder
         ),
         // Fakes, simulated text field, pipeline harness, conservation ledger, scenario runner (QA-R1 layer 4).
         .target(
@@ -90,7 +94,7 @@ let package = Package(
             name: "DiagnosticsTests",
             dependencies: ["Diagnostics", "CompatRules", "RealtimeSupport", "TestSupport"],
             exclude: ["Fixtures"],  // golden files read through #filePath
-            swiftSettings: strict
+            swiftSettings: devRecorder
         ),
         .testTarget(
             name: "SettingsStoreTests",
@@ -102,17 +106,19 @@ let package = Package(
         ),
         .testTarget(name: "CompatRulesTests", dependencies: ["CompatRules", "TestSupport"], swiftSettings: strict),
         .testTarget(
-            name: "InjectionTests", dependencies: ["Injection", "RealtimeSupport", "TestSupport"], swiftSettings: strict
+            name: "InjectionTests", dependencies: ["Injection", "RealtimeSupport", "TestSupport"],
+            swiftSettings: devRecorder
         ),
         .testTarget(
-            name: "InputHostTests", dependencies: ["InputHost", "RealtimeSupport", "TestSupport"], swiftSettings: strict
+            name: "InputHostTests", dependencies: ["InputHost", "RealtimeSupport", "TestSupport"],
+            swiftSettings: devRecorder
         ),
         .testTarget(
             name: "ShellCoreTests",
             dependencies: [
                 "ShellCore", "InputHost", "SettingsStore", "Diagnostics", "Injection", "RealtimeSupport", "TestSupport",
             ],
-            swiftSettings: strict
+            swiftSettings: devRecorder
         ),
         .testTarget(name: "TestSupportTests", dependencies: ["TestSupport", "RealtimeSupport"], swiftSettings: strict),
     ],
