@@ -257,6 +257,21 @@ struct EnglishRunTests {
         // ENG-R824: the first word is not corrected afterwards.
         #expect(try Committing.text("this is the best car ") == "thí is the best car ")
         #expect(try Committing.text("I think this is as ") == "I think this is as ")
+        // Cost of the neutrality (open question to the product owner): once `việt` leaves the window of
+        // `as`, only `and` is left, so `as` is restored although no new English evidence was typed.
+        #expect(try Committing.text("vieejt and nam this as ") == "việt and nam thí as ")
+        #expect(try Committing.decision("vieejt and nam this as ") == .restored(.englishRun))
+    }
+
+    @Test("ENG-R823, ENG-R802: with auto restore off a token an `en` row would restore is neutral as well")
+    func autoRestoreOffKeepsTheReasonCodesOfTheRun() throws {
+        // `test` is kept by L11 (`kept(.ambiguityTable)`, ENG-R802), so it is neutral and `and` makes the
+        // run English for `this`: the same rule names itself as with auto restore on.
+        let off = EngineConfiguration(autoRestore: false)
+        #expect(try Committing.text("test and this ", off) == "tét and thí ")
+        #expect(try Committing.decision("test and this ", off) == .kept(.englishRun))
+        #expect(try Committing.text("test and this ") == "test and this ")
+        #expect(try Committing.decision("test and this ") == .restored(.englishRun))
     }
 
     @Test func theUsersVietnameseChoicesAreVietnameseEvidence() throws {

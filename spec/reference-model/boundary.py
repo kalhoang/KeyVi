@@ -67,6 +67,7 @@ RUNS = [
     ("This is as good ", "Thí is as good ", "restored: invalid syllable"),
     ("tricky as hell ", "tricky as hell ", "unchanged"),
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
+    ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
 ]
 if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]

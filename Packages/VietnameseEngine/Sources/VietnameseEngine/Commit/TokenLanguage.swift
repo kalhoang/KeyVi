@@ -19,6 +19,9 @@ package enum TokenLanguage: UInt8, Sendable, Hashable {
     /// A token kept by rule L11 (its ambiguity row is `vi`, or it has no row and is kept by default) is
     /// neutral: its raw keys are an English word and its display an attested syllable, so it is evidence of
     /// neither language (product owner, 14/11/2026, REG-32). The user's own choices (L1, L2) are evidence.
+    /// With auto restore off (ENG-R802) a token an `en` row would have restored is `kept(.ambiguityTable)`
+    /// as well, so it is neutral too and the later tokens name the same rule as with auto restore on
+    /// (`test and this` keeps `this` by `kept(.englishRun)`).
     package static func of(committed facts: CommittedTextFacts, decision: CommitDecision, resources: Resources)
         -> TokenLanguage
     {
