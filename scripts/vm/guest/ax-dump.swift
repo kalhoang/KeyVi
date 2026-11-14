@@ -3,8 +3,9 @@
 // Guest half of the pane-name check (scripts/vm/pane-names.sh, docs/runbooks/vm-test-lab.md section 10): reads the
 // visible labels of System Settings (macOS 13 and later) or System Preferences (macOS 12), and the menus of an app,
 // through the Accessibility API, so App/Resources/SystemPanes.json can quote them as the user sees them (PLT-R704,
-// PRD-R64, ADR 0315). Compiled and run INSIDE a disposable VM only, and it refuses a real Mac: the process that
-// starts it needs the Accessibility grant, which only a VM may receive from a script.
+// PRD-R64, ADR 0315). pane-names.sh compiles it on the host for arm64 macOS 12 and later (the macOS 12 lab image
+// has no compiler) and never runs it there; it runs INSIDE a disposable VM only and refuses a real Mac: the process
+// that starts it needs the Accessibility grant, which only a VM may receive from a script.
 //
 // One line per element: role, subrole, title, description, string value, identifier and selection. It reads labels
 // of system panes and menus, never typed content.

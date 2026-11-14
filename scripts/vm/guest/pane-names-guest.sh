@@ -8,8 +8,10 @@
 # item the secure-input hint quotes (PLT-R704, PRD-R64, PLT-R398C, ADR 0315). Runs INSIDE the disposable VM only,
 # over SSH as the logged-in user; it exits 3 on a real Mac before it parses an argument.
 #
-# Usage: pane-names-guest.sh --out DIR --links FILE --tool AX_DUMP_SWIFT [--settle SECONDS]
+# Usage: pane-names-guest.sh --out DIR --links FILE --tool AX_DUMP [--settle SECONDS]
 #   FILE has one "<name><TAB><x-apple.systempreferences: URL>" line per link; <name> is letters, digits and dots.
+#   AX_DUMP is the ax-dump executable that pane-names.sh builds on the host (the macOS 12 lab image has no command
+#   line tools, see smoke-guest.sh), or ax-dump.swift, compiled here only when the command line tools are installed.
 # Exit status: 0 every link opened a window that was read, 1 otherwise, 2 usage error, 3 not a VM.
 set -uo pipefail
 
@@ -21,7 +23,7 @@ set -uo pipefail
 }
 
 usage() {
-  echo "usage: pane-names-guest.sh --out DIR --links FILE --tool AX_DUMP_SWIFT [--settle SECONDS]" >&2
+  echo "usage: pane-names-guest.sh --out DIR --links FILE --tool AX_DUMP [--settle SECONDS]" >&2
   exit 2
 }
 out=""
@@ -44,6 +46,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$out" ] && [ -f "$links" ] && [ -f "$tool" ] || usage
+case "$tool" in
+  *.swift) ;;
+  *) [ -x "$tool" ] || usage ;;
+esac
 mkdir -p "$out"
 summary="$out/summary.txt"
 : >"$summary"
@@ -71,11 +77,21 @@ quit_settings() {
 note "system: macOS $(sw_vers -productVersion) ($(sw_vers -buildVersion)), $(sed -n 's/^AppleLanguages: //p' "$out/system.txt")"
 
 work="$(mktemp -d)"
-bin="$work/ax-dump"
-if ! swiftc -O -o "$bin" "$tool" >"$out/compile.txt" 2>&1; then
-  note "STOPPED: ax-dump.swift did not compile (compile.txt)"
-  exit 1
-fi
+case "$tool" in
+  *.swift)
+    # Without the command line tools /usr/bin/swiftc is only the xcode-select shim, which offers to install them.
+    if ! xcode-select -p >/dev/null 2>&1; then
+      note "STOPPED: no command line tools in this VM to compile $tool; pass the ax-dump binary pane-names.sh builds"
+      exit 1
+    fi
+    bin="$work/ax-dump"
+    if ! swiftc -O -o "$bin" "$tool" >"$out/compile.txt" 2>&1; then
+      note "STOPPED: ax-dump.swift did not compile (compile.txt)"
+      exit 1
+    fi
+    ;;
+  *) bin="$(cd "$(dirname "$tool")" && pwd)/$(basename "$tool")" ;;
+esac
 trusted=0
 gui "$bin" --trusted >"$out/trusted.txt" 2>&1 && trusted=1
 note "accessibility: $(cat "$out/trusted.txt")"

@@ -204,7 +204,11 @@ scripts/vm/pane-names.sh --vm {{app-slug}}-dev --languages vi --output /Volumes/
 What it does, in the throwaway clone `<vm>-panes` (deleted at the end, like every lab clone):
 
 1. Refuses to start while Safari runs on the host (the maintainer is using the Mac; checked again before every
-   reboot), or while another VM runs (section 3).
+   reboot), or while another VM runs (section 3). Then, before any VM starts, it compiles
+   `scripts/vm/guest/ax-dump.swift` (an Accessibility reader that refuses a real Mac) on the host with
+   `swiftc -O -target arm64-apple-macos12.0` and never runs it there. The guest gets the binary, not the source: the
+   macOS 12 lab image has no command line tools, so `swiftc` in it is only the `xcode-select` shim (the same reason
+   `guest/smoke-guest.sh` avoids `lipo`).
 2. Picks the `SystemPanes.json` entry that `SystemPaneTable` uses for the guest's macOS version and writes its deep
    links to `links.tsv`, plus probe links that show the remaining names (macOS 12: the Privacy tab and the Text tab;
    macOS 13 and later: Privacy & Security and General).
@@ -216,8 +220,9 @@ What it does, in the throwaway clone `<vm>-panes` (deleted at the end, like ever
    Without it the guest reports `trusted: no` and reads nothing.
 4. For each language (`en`, then `vi`): sets `AppleLanguages` (`vi en` for Vietnamese) and `AppleLocale` of the guest
    user, reboots the clone so the login session and every System Settings extension start in that language, and runs
-   `scripts/vm/guest/pane-names-guest.sh` over SSH. The guest script compiles `scripts/vm/guest/ax-dump.swift` (an
-   Accessibility reader that refuses a real Mac), then for each link quits System Settings, opens the link in the
+   `scripts/vm/guest/pane-names-guest.sh --tool inbox/panes/ax-dump` over SSH (given `ax-dump.swift` instead, the
+   guest compiles it only when `xcode-select -p` finds the command line tools, and stops otherwise). For each link it
+   quits System Settings, opens the link in the
    logged-in session (`launchctl asuser`), dumps the window that opened (roles, titles, values, selection) and takes
    a screenshot, then dumps the app's menus (its name is the title of the application menu) and Terminal's menus,
    with a screenshot of Terminal's application menu open.
@@ -226,6 +231,10 @@ Run folder `VM_LAB_RUNS/<timestamp>-panes-<vm>/` (or `--output`): `pane-names.lo
 and one folder per language with `system.txt`, `summary.txt`, `trusted.txt`, `<link>.ax.txt` and `<link>.png` per
 link, `settings-menus.ax.txt`, `terminal-menus.ax.txt`, `terminal-press.txt` and `terminal-menu.png`. The window
 title and the selected row of each `<link>.ax.txt` show which pane and tab the link opened.
+
+Self-tests: `python3 -I scripts/tests/test_pane_names.py` (part of `scripts/tests/run.sh`) drives `pane-names.sh`,
+the guest script and `pane-tables.py` with fake `tart`, `ssh`, `pgrep`, `swiftc` and `sysctl`; no VM starts and
+nothing is opened on the host.
 
 ### 10.2 Localization tables: `scripts/vm/pane-tables.py`
 

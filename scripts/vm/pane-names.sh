@@ -11,7 +11,8 @@
 # the clone). The host boots, copies and reads; it never opens a URL, changes a setting or grants anything.
 # Where the guest's SIP is disabled (VM_DEV), the guest grants Accessibility and Screen Recording to the SSH
 # session with scripts/vm/grant-tcc.sh; with SIP enabled (VM_MONTEREY) the grants must already be in the image
-# (vm-test-lab.md section 10).
+# (vm-test-lab.md section 10). The Accessibility reader (guest/ax-dump.swift) is compiled here on the host, never
+# run here, and pushed as a binary: the macOS 12 lab image has no command line tools (guest/smoke-guest.sh).
 set -euo pipefail
 
 usage() {
@@ -69,7 +70,9 @@ memory="${memory:-$(lab_default_memory "$base_vm")}"
 cpus="${cpus:-$(lab_default_cpus "$base_vm")}"
 lab_validate_int "memory (MB)" "$memory" 1024 "$VM_LAB_MAX_MEMORY_MB" || exit
 lab_validate_int "CPU count" "$cpus" 1 "$VM_LAB_MAX_CPUS" || exit
-require_cmd python3 tar
+require_cmd python3 tar swiftc
+# tart runs arm64 guests only on Apple silicon; macOS 12.0 is the oldest system the app supports (ADR 0315).
+AX_DUMP_TARGET="arm64-apple-macos12.0"
 
 # The maintainer's rule (vm-test-lab.md section 10): Safari open on the host means the Mac is in use, and a VM
 # would take its CPU. Checked before every boot.
@@ -80,7 +83,24 @@ refuse_if_safari() {
   fi
 }
 refuse_if_safari
-lab_prepare_target "$base_vm" 0 panes || exit
+
+# Build the reader before any VM starts, so a compile error never costs a boot.
+stage="$(mktemp -d)"
+mkdir "$stage/panes"
+if ! swiftc -O -target "$AX_DUMP_TARGET" -o "$stage/panes/ax-dump" "$HERE/guest/ax-dump.swift" >"$stage/build.log" 2>&1; then
+  cat "$stage/build.log" >&2
+  rm -rf "$stage"
+  lab_err "could not build ax-dump for $AX_DUMP_TARGET on the host"
+  exit 1
+fi
+rm -f "$stage/build.log"
+
+drop_stage_and_exit() {
+  local rc=$?
+  rm -rf "$stage"
+  exit "$rc"
+}
+lab_prepare_target "$base_vm" 0 panes || drop_stage_and_exit
 vm="$LAB_TARGET"
 
 run_dir="${run_dir:-$VM_LAB_RUNS/$(date -u +%Y%m%dT%H%M%SZ)-panes-$base_vm}"
@@ -144,14 +164,11 @@ set_language() {
 }
 
 lab_install_trap
-lab_start_target "$base_vm" "$vm" "$memory" "$cpus" || exit
+lab_start_target "$base_vm" "$vm" "$memory" "$cpus" || drop_stage_and_exit
 guest_version="$(lab_ssh "$vm" 'sw_vers -productVersion')"
 links_for "$guest_version" >"$run_dir/links.tsv"
 lab_log "$vm runs macOS $guest_version; $(wc -l <"$run_dir/links.tsv" | tr -d ' ') links"
-stage="$(mktemp -d)"
-mkdir "$stage/panes"
-cp "$HERE/guest/pane-names-guest.sh" "$HERE/guest/ax-dump.swift" "$HERE/grant-tcc.sh" "$run_dir/links.tsv" \
-  "$stage/panes/"
+cp "$HERE/guest/pane-names-guest.sh" "$HERE/grant-tcc.sh" "$run_dir/links.tsv" "$stage/panes/"
 lab_push "$vm" "$stage/panes" inbox || {
   lab_err "could not copy the guest scripts into $vm"
   exit 1
@@ -174,7 +191,7 @@ for lang in "${wanted[@]}"; do
   }
   lab_log "reading the panes in $lang"
   # shellcheck disable=SC2016 # expanded by the guest's shell
-  lab_ssh "$vm" "bash inbox/panes/pane-names-guest.sh --out panes-out/$lang --links inbox/panes/links.tsv --tool inbox/panes/ax-dump.swift" \
+  lab_ssh "$vm" "bash inbox/panes/pane-names-guest.sh --out panes-out/$lang --links inbox/panes/links.tsv --tool inbox/panes/ax-dump" \
     >"$run_dir/guest-$lang.log" 2>&1 || rc=1
   lab_pull "$vm" "panes-out/$lang" "$run_dir" || {
     lab_log "warning: could not copy the $lang results back"
