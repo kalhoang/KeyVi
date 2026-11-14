@@ -88,6 +88,7 @@ private enum PropertyRun {
         }
         #expect(stats.editsDelivered > 0 && stats.replaysDelivered > 0 && stats.echoesSeen > 0)
         #expect(stats.discardedEdits > 0, "no edit was discarded for a focus change (PLT-R316)")
+        #expect(stats.editsNearFocusChange > 0, "no word began right after a focus change or click (PLT-R408)")
         #expect(summary.flushes > 0, "no liveness flush (PLT-R314)")
         #expect(stats.toggles > 0 && stats.secureResumes > 0 && stats.failOpenEvents > 0)
     }
