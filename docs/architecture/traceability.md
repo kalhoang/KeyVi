@@ -141,7 +141,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R395 | Poll IsSecureEventInputEnabled every 2 s and on menu open | `SecureInputMonitor` | U | W1-E |  |
 | PLT-R396 | Likely holder from IOConsoleUsers kCGSSessionSecureInputPID | `SystemSecureInputProbe` | U (parser), M | W1-E; Pa (iTerm2, browser) | **Pa** |
 | PLT-R397 | Paused(secureInput) with holder hint, no modals | `SecureInputMonitor`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
-| PLT-R397A | A keyUp the tap never saw go down is a hard boundary (input hidden from the tap) | `KeyPipeline+UnseenInput.swift` (`KeysDown`), `BoundaryReason.unseenInput`, `TapLogCode.unseenKeyUp` | U (`KeyPipelineUnseenInputTests`), P (`UnseenInputPropertyTests`) | W14-H |  |
+| PLT-R397A | A keyUp the tap never saw go down is a hard boundary (input hidden from the tap); engine reset reason `ResetReason.unseenInput` | `KeyPipeline+UnseenInput.swift` (`KeysDown`), `BoundaryReason.unseenInput`, `ResetReason.unseenInput` (engine), `TapLogCode.unseenKeyUp` | U (`KeyPipelineUnseenInputTests`), P (`UnseenInputPropertyTests`) | W14-H, W14-E |  |
 | PLT-R397B | Health signal for short secure-input episodes ended while typing; holder and duration in the dev gap line | `HealthEventLog` (`SecureInputBursts`, `secureInputBursts`), `DevRecorder` gap line | U (`SecureInputEpisodeTests`, `DevRecorderTests`) | W14-H |  |
 | PLT-R398 | Never call EnableSecureEventInput | all | L (grep) | W1-E |  |
 | PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F1, W1-E |  |

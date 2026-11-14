@@ -56,6 +56,8 @@ separately from the app (spec/04-quality-release.md QA-R27).
   placement difference only when the typed token is the source spelled in the typist's own style.
 - `GeneratedCorpusGateTests.exclusionTotal` prints the ENG-R870 exclusions over all shards.
 - `Scripts/coverage.py` also reports the line coverage of the data target and `lexicon-builder`.
+- `ResetReason.unseenInput`: input reached the app that the host never saw (a keyUp without its keyDown,
+  PLT-R397A). `FuzzAlphabet` encodes it as DEL, which was a second Backspace.
 
 ### Changed
 

@@ -77,8 +77,8 @@ extension KeyPipeline {
                 consumedKeys.entry(event.keyCode) == .none
             else { return }
             context.tapLog.push(TapLogRecord(code: .unseenKeyUp, at: now, a: UInt64(event.keyCode.rawValue)))
-            // ENG-R1010: the engine has no reason of its own for this yet (`unknown`); the job reason names it.
-            hardBoundary(.unknown, job: .unseenInput, generation: generation)
+            // ENG-R1010: the engine reset and the job carry the same reason, `unseenInput`.
+            hardBoundary(.unseenInput, job: .unseenInput, generation: generation)
         default:
             break
         }

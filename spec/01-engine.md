@@ -651,7 +651,7 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 
 ### 10.2 Resets (host-sent)
 
-- **ENG-R1010** The host MUST send `reset(reason)` for: cursor movement keys (arrows, Home, End, Page Up/Down, with or without modifiers), mouse clicks in the text area, focus change, app switch, input source change, Secure Event Input turning on or off, the event tap being re-enabled after a timeout, any shortcut with Command or Control (including Command+Backspace and Control+Backspace), Option+Backspace (the app deletes a word), Forward Delete with or without modifiers, mode toggle (Vietnamese/English), configuration change, and any case where the host cannot vouch for the text before the cursor. Only a plain or Shift Backspace reaches the engine as `backspace` (`02-platform.md` PLT-R352).
+- **ENG-R1010** The host MUST send `reset(reason)` for: cursor movement keys (arrows, Home, End, Page Up/Down, with or without modifiers), mouse clicks in the text area, focus change, app switch, input source change, Secure Event Input turning on or off, the event tap being re-enabled after a timeout, any shortcut with Command or Control (including Command+Backspace and Control+Backspace), Option+Backspace (the app deletes a word), Forward Delete with or without modifiers, mode toggle (Vietnamese/English), configuration change, input that reached the app without the host seeing it (a keyUp without its keyDown, `02-platform.md` PLT-R397A; reason `unseenInput`), and any case where the host cannot vouch for the text before the cursor. Only a plain or Shift Backspace reaches the engine as `backspace` (`02-platform.md` PLT-R352).
 - **ENG-R1011** On reset the engine MUST clear the active token and the history and return no edit. Text on screen stays as it is.
   *Rationale: the incumbent did not reset after the tap was re-enabled and then sent wrong deletions.*
 - **ENG-R1012** After a reset, the next key starts a fresh token; it is treated exactly like any other first key (REG-18, REG-22).
@@ -726,7 +726,8 @@ public struct KeyInput: Sendable, Hashable {
 public enum ResetReason: Sendable, Hashable {
     case cursorMoved, pointerClicked, focusChanged, applicationChanged,
          inputSourceChanged, secureInputChanged, eventTapReenabled,
-         shortcut, forwardDelete, modeToggled, configurationChanged, unknown
+         shortcut, forwardDelete, modeToggled, configurationChanged, unknown,
+         unseenInput   // input reached the app that the host never saw (PLT-R397A)
 }
 
 public enum EngineEvent: Sendable, Hashable {

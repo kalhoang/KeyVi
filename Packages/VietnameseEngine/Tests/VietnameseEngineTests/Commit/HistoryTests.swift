@@ -146,6 +146,7 @@ struct ResetTests {
     static let reasons: [ResetReason] = [
         .cursorMoved, .pointerClicked, .focusChanged, .applicationChanged, .inputSourceChanged, .secureInputChanged,
         .eventTapReenabled, .shortcut, .forwardDelete, .modeToggled, .configurationChanged, .unknown,
+        .unseenInput,
     ]
 
     @Test(arguments: reasons)

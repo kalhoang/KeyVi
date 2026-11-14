@@ -191,7 +191,7 @@ Where the owner is another track, the row says so.
 | ENG-R1002 | Backspace re-opens the previous word across boundaries | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries`, `RegressionTests.reg07`, `editing.tsv` |
 | ENG-R1003 | Backspace continues into the re-opened token | `Engine/Reducer+Backspace.swift` | `HistoryTests.backspaceContinuesIntoTheTokenAndPastItsStart` |
 | ENG-R1004 | Empty history: passThrough | `Engine/Reducer+Backspace.swift` | `HistoryTests.emptyHistoryBackspacePassesThrough` |
-| ENG-R1010 | Host sends resets | host (`02-platform.md`); `PublicAPI.swift` (`ResetReason`) | `ResetTests` (every reason) |
+| ENG-R1010 | Host sends resets, `unseenInput` included (PLT-R397A) | host (`02-platform.md`); `PublicAPI.swift` (`ResetReason`) | `ResetTests` (every reason), `FuzzTests.byteEncoding` (DEL is `unseenInput`) |
 | ENG-R1011 | Reset clears token and history, no edit | `Engine/Reducer.swift` | `ResetTests.resetClearsTokenAndHistory`, `RegressionTests.reg22` |
 | ENG-R1012 | After a reset the next key is a first key | `Engine/Reducer.swift` | `RegressionTests.reg18` |
 

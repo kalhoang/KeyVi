@@ -29,15 +29,16 @@ extension SeededGenerator {
 ///
 /// It also defines the byte encoding of the coverage-guided fuzzer and its seed corpus
 /// (`Packages/VietnameseEngineFuzz`, QA-R9), chosen so that a seed file is readable text: a printable
-/// ASCII byte is that key, `\n` `\r` `\t` are Return and Tab, BS and DEL are Backspace, ESC is the
-/// restore toggle; the remaining control bytes are resets and keypad digits; bytes from 0x80 are
+/// ASCII byte is that key, `\n` `\r` `\t` are Return and Tab, BS is Backspace, ESC is the restore
+/// toggle; the remaining control bytes and DEL are resets and keypad digits (DEL is the last reset
+/// reason, `unseenInput`, since 15/11/2026; it was a second Backspace before); bytes from 0x80 are
 /// non-ASCII letters and whitespace.
 public enum FuzzAlphabet {
     /// Every reset reason of 10.2, in declaration order.
     public static let resetReasons: [ResetReason] = [
         .cursorMoved, .pointerClicked, .focusChanged, .applicationChanged, .inputSourceChanged,
         .secureInputChanged, .eventTapReenabled, .shortcut, .forwardDelete, .modeToggled,
-        .configurationChanged, .unknown,
+        .configurationChanged, .unknown, .unseenInput,
     ]
 
     /// ASCII letters, both cases.
@@ -76,7 +77,8 @@ public enum FuzzAlphabet {
         case 0x0A: return .key(KeyInput("\n"))
         case 0x0D: return .key(KeyInput("\r"))
         case 0x09: return .key(KeyInput("\t"))
-        case 0x08, 0x7F: return .backspace
+        case 0x08: return .backspace
+        case 0x7F: return .reset(resetReasons[12])
         case 0x1B: return .restoreToggle
         case 0x00...0x07: return .reset(resetReasons[Int(byte)])
         case 0x0B, 0x0C: return .reset(resetReasons[Int(byte) - 0x0B + 8])

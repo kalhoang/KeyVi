@@ -4,8 +4,8 @@ public import VietnameseEngine
 public import VietnameseEngineTesting
 
 /// The fuzz target: one input is a configuration byte followed by events in the byte encoding of
-/// `FuzzAlphabet` (a printable ASCII byte is that key, BS and DEL are Backspace, ESC is the restore toggle,
-/// other control bytes are resets and keypad digits, bytes from 0x80 non-ASCII letters), so seed files are
+/// `FuzzAlphabet` (a printable ASCII byte is that key, BS is Backspace, ESC is the restore toggle, DEL and
+/// the other control bytes are resets and keypad digits, bytes from 0x80 non-ASCII letters), so seed files are
 /// readable text. Every event is checked by the invariant checker of 13.6 (ENG-T30 to ENG-T37).
 ///
 /// Configuration byte: bit 0 VNI, bit 1 standalone `w` off, bit 2 bracket keys on, bit 3 modern tone style,

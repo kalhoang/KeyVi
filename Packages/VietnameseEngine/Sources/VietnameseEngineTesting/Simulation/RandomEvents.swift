@@ -31,7 +31,7 @@ public enum RandomEvents {
     private static let resets: [ResetReason] = [
         .cursorMoved, .pointerClicked, .focusChanged, .applicationChanged, .inputSourceChanged,
         .secureInputChanged, .eventTapReenabled, .shortcut, .forwardDelete, .modeToggled,
-        .configurationChanged, .unknown,
+        .configurationChanged, .unknown, .unseenInput,
     ]
 
     /// `count` events drawn from `generator`.

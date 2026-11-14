@@ -122,6 +122,8 @@ public enum ResetReason: Sendable, Hashable {
     case configurationChanged
     /// Any other case where the host cannot vouch for the text.
     case unknown
+    /// Input reached the app that the host never saw (a keyUp without its keyDown, PLT-R397A).
+    case unseenInput
 }
 
 /// One input to ``Engine/reduce(_:_:)``.
