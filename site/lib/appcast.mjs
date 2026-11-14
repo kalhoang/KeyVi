@@ -22,7 +22,6 @@ export async function renderAppcast(staticAppcastPath, brand) {
   const source = await readTextIfExists(staticAppcastPath);
   if (source === undefined) return EMPTY_FEED(xmlEscape(brand.host));
   return source
-    .replace(/\{\{AppNameTM\}\}/g, xmlEscape(brand.markedName ?? brand.name))
     .replace(/\{\{AppName\}\}/g, xmlEscape(brand.name))
     .replace(/\{\{host\}\}/g, xmlEscape(brand.host));
 }
