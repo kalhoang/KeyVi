@@ -76,7 +76,7 @@ import Testing
             (.common, CommonText.back.rawValue, "Quay lại", "Back"),
             (.menu, MenuText.settings.rawValue, "Cài đặt...", "Settings..."),
             (.status, StatusText.actionLearnMore.rawValue, "Tìm hiểu thêm", "Learn more"),
-            (.onboarding, OnboardingText.doneStart.rawValue, "Bắt đầu gõ", "Start typing"),
+            (.onboarding, OnboardingText.doneStart.rawValue, "Bắt đầu", "Start"),
             (.settings, SettingsText.paneGeneral.rawValue, "Chung", "General"),
             (.macros, MacrosText.sortTitle.rawValue, "Sắp xếp", "Sort"),
             (.apps, AppsText.columnRule.rawValue, "Quy tắc", "Rule"),

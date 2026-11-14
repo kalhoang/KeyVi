@@ -133,16 +133,19 @@ struct ImportScreen: View {
     }
 }
 
+/// PRD-R40 screen 7 (Pa, 2026-11-14, feedback item 4): what to type, quoted and set apart, with the keys for the
+/// selected input method on a second line; the toggle item names the switch shortcut from Settings.
 struct TryItScreen: View {
     @ObservedObject var model: OnboardingModel
 
     var body: some View {
-        let localizer = model.localizer
-        VStack(alignment: .leading, spacing: 14) {
-            ScreenTitle(text: localizer.string(OnboardingText.tryItTitle))
+        let content = model.tryItContent
+        VStack(alignment: .leading, spacing: 12) {
+            ScreenTitle(text: content.title)
+            Text(verbatim: content.intro).foregroundStyle(.secondary)
             PracticeField(model: model, text: $model.tryItText, control: .tryItField)
-            ForEach(TryItChecklist.Item.allCases, id: \.self) { item in
-                ChecklistRow(model: model, item: item)
+            ForEach(content.items, id: \.item) { item in
+                ChecklistRow(model: model, content: item)
             }
         }
     }
@@ -150,34 +153,35 @@ struct TryItScreen: View {
 
 struct ChecklistRow: View {
     @ObservedObject var model: OnboardingModel
-    let item: TryItChecklist.Item
+    let content: TryItItemContent
 
     var body: some View {
-        let localizer = model.localizer
-        let done = model.checklist?.completed.contains(item) == true
-        let text = label(localizer)
+        let done = model.checklist?.completed.contains(content.item) == true
         // Done is a symbol change plus the spoken state, never colour alone (PRD-R67).
         Label {
-            Text(verbatim: text)
+            VStack(alignment: .leading, spacing: 2) {
+                StyledLineText(line: content.instruction, font: .body)
+                StyledLineText(line: content.detail, font: .callout).foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
         } icon: {
             Image(systemName: done ? "checkmark.circle.fill" : "circle")
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            Text(
-                verbatim: localizer.format(done ? OnboardingText.tryItItemDone : OnboardingText.tryItItemPending, text))
-        )
+        .accessibilityLabel(Text(verbatim: content.accessibilityLabel(done: done, localizer: model.localizer)))
     }
+}
 
-    private func label(_ localizer: Localizer) -> String {
-        switch item {
-        case .typeVietnamese:
-            localizer.format(OnboardingText.tryItItemVietnamese, localizer.string(OnboardingText.tryItTargetVietnamese))
-        case .typeEnglishWords:
-            localizer.format(OnboardingText.tryItItemEnglish, localizer.string(OnboardingText.tryItTargetEnglish))
-        case .toggleAndBack:
-            localizer.string(OnboardingText.tryItItemToggle)
-        }
+/// A line whose emphasised part (the phrase, the keys or the shortcut) is set in a semibold monospaced face of the
+/// line's own size, so it reads as "type exactly this".
+struct StyledLineText: View {
+    let line: StyledLine
+    let font: Font
+
+    var body: some View {
+        var emphasis = AttributedString(line.emphasis)
+        emphasis.font = font.monospaced().weight(.semibold)
+        return Text(AttributedString(line.leading) + emphasis + AttributedString(line.trailing)).font(font)
     }
 }
 

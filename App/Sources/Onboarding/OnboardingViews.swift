@@ -98,43 +98,54 @@ struct WelcomeScreen: View {
     }
 }
 
+/// PRD-R40 screen 2 (Pa, 2026-11-14, feedback item 1): one row per needed permission with its live state, the
+/// instruction for the first one still missing (the footer's primary button opens exactly its pane), then the
+/// stale and Input Monitoring notices. Scrolls only when a long translation or a large text size overflows.
 struct PermissionScreen: View {
     @ObservedObject var model: OnboardingModel
 
     var body: some View {
         let localizer = model.localizer
         let content = model.permissionContent
-        VStack(alignment: .leading, spacing: 12) {
-            ScreenTitle(text: content.title)
-            if let lost = content.lostNotice { Text(verbatim: lost).fontWeight(.medium) }
-            Text(verbatim: content.body)
-            ForEach(content.bullets, id: \.self) { bullet in
-                Label {
-                    Text(verbatim: bullet)
-                } icon: {
-                    Image(systemName: "checkmark.shield").accessibilityHidden(true)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                ScreenTitle(text: content.title)
+                if let lost = content.lostNotice { Text(verbatim: lost).fontWeight(.medium) }
+                Text(verbatim: content.body).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(content.bullets, id: \.self) { bullet in
+                        Label {
+                            Text(verbatim: bullet)
+                        } icon: {
+                            Image(systemName: "checkmark.shield").accessibilityHidden(true)
+                        }
+                    }
                 }
+                PermissionRows(model: model, content: content)
+                HStack(alignment: .center, spacing: 16) {
+                    PermissionIllustration(label: localizer.string(OnboardingText.permissionIllustration))
+                    Text(verbatim: content.instruction).font(.callout).fixedSize(horizontal: false, vertical: true)
+                }
+                PermissionNotices(model: model, content: content)
+                Button(action: { model.showPermissionHelp = true }) { Text(verbatim: content.helpLink) }
+                    .buttonStyle(.link)
+                    .onboardingAccessibility(.permissionHelp, localizer, label: content.helpLink)
             }
-            HStack(alignment: .center, spacing: 16) {
-                PermissionIllustration(label: localizer.string(OnboardingText.permissionIllustration))
-                Text(verbatim: content.instruction).font(.callout)
-            }
-            PermissionStatusView(model: model, content: content)
-            Button(action: { model.showPermissionHelp = true }) { Text(verbatim: content.helpLink) }
-                .buttonStyle(.link)
-                .onboardingAccessibility(.permissionHelp, localizer, label: content.helpLink)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
 
-/// "Đã cấp quyền" with a check mark, or the waiting line, plus the stale and Input Monitoring notices.
-struct PermissionStatusView: View {
+/// The overall state ("Đã cấp quyền" with a check mark, or the waiting line, PRD-R40 live state) above one row per
+/// permission: the pane name as macOS shows it and "Đã bật" or "Cần bật". State is a symbol plus words, never colour
+/// alone (PRD-R67); VoiceOver reads the pane name and its state (PRD-R66).
+struct PermissionRows: View {
     @ObservedObject var model: OnboardingModel
     let content: PermissionScreenContent
 
     var body: some View {
         let localizer = model.localizer
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             if model.flow.permissionGranted {
                 Label {
                     Text(verbatim: localizer.string(OnboardingText.permissionGranted)).fontWeight(.semibold)
@@ -148,26 +159,43 @@ struct PermissionStatusView: View {
                     Image(systemName: "hourglass").accessibilityHidden(true)
                 }
             }
-            if let stale = content.staleNotice { Text(verbatim: stale).font(.callout) }
-            if let notice = content.inputMonitoringNotice { InputMonitoringNotice(model: model, notice: notice) }
+            Divider()
+            ForEach(content.rows, id: \.permission) { row in
+                HStack(spacing: 8) {
+                    Image(systemName: row.granted ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(row.granted ? Color.accentColor : .secondary)
+                        .accessibilityHidden(true)
+                    Text(verbatim: row.title)
+                    Spacer(minLength: 12)
+                    Text(verbatim: row.state)
+                        .fontWeight(row.granted ? .regular : .semibold)
+                        .foregroundStyle(row.granted ? .secondary : .primary)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(verbatim: row.title))
+                .accessibilityValue(Text(verbatim: row.state))
+            }
         }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.5)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator))
     }
 }
 
-struct InputMonitoringNotice: View {
+/// The stale guidance (PLT-R740) and, under a missing Input Monitoring row, why it is needed with the relaunch
+/// offer for a switch that is on but not yet effective (PLT-R702, PLT-R712).
+struct PermissionNotices: View {
     @ObservedObject var model: OnboardingModel
-    let notice: String
+    let content: PermissionScreenContent
 
     var body: some View {
         let localizer = model.localizer
-        let content = model.permissionContent
-        VStack(alignment: .leading, spacing: 6) {
-            Text(verbatim: notice).font(.callout)
-            HStack {
-                if let open = content.openInputMonitoringButton {
-                    Button(action: model.openInputMonitoringPane) { Text(verbatim: open) }
-                        .onboardingAccessibility(.openInputMonitoringPane, localizer, label: open)
-                }
+        if let stale = content.staleNotice {
+            Text(verbatim: stale).font(.callout).fixedSize(horizontal: false, vertical: true)
+        }
+        if let notice = content.inputMonitoringNotice {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(verbatim: notice).font(.callout).fixedSize(horizontal: false, vertical: true)
                 if let relaunch = content.relaunchButton {
                     Button(action: model.relaunch) { Text(verbatim: relaunch) }
                         .onboardingAccessibility(.relaunch, localizer, label: relaunch)

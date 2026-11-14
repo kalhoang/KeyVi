@@ -174,6 +174,34 @@ enum Permissions {
         #expect(flow.screen == .permission)
         #expect(!flow.permissionOnly)
     }
+
+    /// PLT-R702: the Input Monitoring row, once needed on this screen, stays (as granted) when the need clears, and a
+    /// flow that starts while it is needed shows it from the start.
+    @Test func theFlowRemembersThatInputMonitoringWasNeeded_PLTR702() {
+        var flow = OnboardingFlow(inputs: inputs(), startAt: .permission)
+        #expect(!flow.inputMonitoringSeen)
+        flow.permissionChanged(Permissions.needsInputMonitoring, inputs: inputs(Permissions.needsInputMonitoring))
+        #expect(flow.inputMonitoringSeen)
+        #expect(flow.screen == .permission)
+        flow.permissionChanged(Permissions.granted, inputs: inputs(Permissions.granted))
+        #expect(flow.inputMonitoringSeen)
+        let resumed = OnboardingFlow(inputs: inputs(Permissions.needsInputMonitoring), startAt: .permission)
+        #expect(resumed.inputMonitoringSeen)
+    }
+
+    /// PLT-R702: `CGRequestListenEventAccess()` runs once, the first time the row shows as needed, so macOS lists the
+    /// app and shows its own prompt; never before it is needed and never twice in one onboarding.
+    @Test func inputMonitoringIsRequestedOnceWhenItsRowFirstAppears_PLTR702() {
+        var flow = OnboardingFlow(inputs: inputs(), startAt: .permission)
+        var requests = [flow.takeInputMonitoringRequest()]
+        flow.permissionChanged(Permissions.needsInputMonitoring, inputs: inputs(Permissions.needsInputMonitoring))
+        requests.append(flow.takeInputMonitoringRequest())
+        requests.append(flow.takeInputMonitoringRequest())
+        flow.permissionChanged(Permissions.missing, inputs: inputs())
+        flow.permissionChanged(Permissions.needsInputMonitoring, inputs: inputs(Permissions.needsInputMonitoring))
+        requests.append(flow.takeInputMonitoringRequest())
+        #expect(requests == [false, true, false, false])
+    }
 }
 
 @Suite struct AppLocationCheckTests {
