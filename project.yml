@@ -64,8 +64,8 @@ targets:
         excludes:
           - "Updater/Tests/**"
       - path: App/Resources
-      # ADR 0006: the app's own licence ships as Contents/Resources/LICENSE (GPL-3.0 section 0, the Licences panel
-      # of About & Support shows it).
+      # ADR 0006: the app's own licence ships as Contents/Resources/LICENSE (GPL-3.0 section 0, the Licences pane
+      # (Bản quyền) of Settings shows it).
       - path: LICENSE
         buildPhase: resources
     settings:
