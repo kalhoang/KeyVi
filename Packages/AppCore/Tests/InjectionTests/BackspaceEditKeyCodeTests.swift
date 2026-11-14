@@ -2,9 +2,9 @@
 //
 // PLT-R405 for Backspace-triggered edits (PLT-R352, ENG-R712): the insertion of an edit that answers a
 // Backspace never rides on the Delete keycode. Chromium (Electron chat apps) derives the DOM `code` and, for a
-// non-ASCII character, the legacy `keyCode` from the virtual keycode, and Qt maps `kVK_Delete` to its Backspace
-// key, so a Unicode event posted on `kVK_Delete` reaches a web or Qt editor as one more Backspace: the edit then
-// deletes instead of inserting, and one physical Backspace takes the whole word (Pa, 2026-11-14, item 3).
+// non-ASCII character, the legacy `keyCode` from the virtual keycode, so a Unicode event posted on `kVK_Delete`
+// reaches a web editor that acts on `keyCode` 8 as one more Backspace: the edit then deletes instead of
+// inserting, and one physical Backspace takes the whole word (Pa, 2026-11-14, item 3).
 
 import AppModel
 import RealtimeSupport

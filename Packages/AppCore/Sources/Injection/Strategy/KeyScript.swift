@@ -68,9 +68,9 @@ enum SyntheticKeys {
     /// PLT-R405: the triggering keycode; restores and macros use the keycode of their first character if the
     /// current layout has one. An edit triggered by Backspace (PLT-R352) never inserts on that key: it uses the
     /// keycode of a character of the edit (`JobKeyCodes.firstCharacter`, set by the pipeline) or, without one,
-    /// `letterFallback`. Chromium and Qt derive the key event's code from the keycode, so a Unicode event on
-    /// `kVK_Delete` reaches web and Qt editors as one more Backspace. (The other deletion key is a hard boundary
-    /// and never triggers an edit, PLT-R340.)
+    /// `letterFallback`. Chromium derives the DOM `code` (and, for a non-ASCII character, the legacy `keyCode`)
+    /// from the keycode, so a Unicode event on `kVK_Delete` reaches a web editor as one more Backspace. (The
+    /// other deletion key is a hard boundary and never triggers an edit, PLT-R340.)
     static func unicodeKeyCode(for job: EditJob) -> KeyCode {
         let trigger = job.keyCodes.trigger
         if trigger == .delete { return job.keyCodes.firstCharacter ?? letterFallback }
