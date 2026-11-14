@@ -3,79 +3,13 @@
 // "Gõ phím / Typing" (PRD-R24): method Telex/VNI (D1) with a live practice field, tone placement (D2) with hòa and
 // hoà side by side, English restore (D4) with its two user lists (ENG-R860), each learned entry with the app it was
 // learned in, a remove and a "use in every app" button (ENG-R862); Advanced: lone w (D5), brackets (D6),
-// restore-last-word hotkey (D8). The practice field's text stays in memory only (PLT-R901).
+// restore-last-word hotkey (D8). The pane is `SettingsSectionsPane(pane: .typing)`; this file holds the practice
+// field and the word lists. The practice field's text stays in memory only (PLT-R901).
 
 import AppModel
 import SettingsStore
 import ShellCore
 import SwiftUI
-
-struct TypingPaneView: View {
-    @ObservedObject var model: SettingsWindowModel
-
-    var body: some View {
-        let localizer = model.localizer
-        let settings = model.settings
-        VStack(alignment: .leading, spacing: 16) {
-            SettingRow(localizer: localizer, item: .typingMethod) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker(selection: Binding(get: { settings.typingMethod }, set: { model.edit(.typingMethod($0)) })) {
-                        Text(verbatim: localizer.string(SettingsText.methodTelex)).tag(TypingMethod.telex)
-                        Text(verbatim: localizer.string(SettingsText.methodVNI)).tag(TypingMethod.vni)
-                    } label: {
-                        Text(verbatim: localizer.string(SettingItem.typingMethod.title))
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                    .settingsAccessibility(SettingsControl.typingMethod, localizer)
-                    SettingsPracticeField(drafts: model.drafts, localizer: localizer)
-                }
-            }
-            SettingRow(localizer: localizer, item: .tonePlacement) {
-                Picker(selection: Binding(get: { settings.tonePlacement }, set: { model.edit(.tonePlacement($0)) })) {
-                    Text(verbatim: localizer.string(SettingsText.toneTraditional)).tag(TonePlacement.traditional)
-                    Text(verbatim: localizer.string(SettingsText.toneModern)).tag(TonePlacement.modern)
-                } label: {
-                    Text(verbatim: localizer.string(SettingItem.tonePlacement.title))
-                }
-                .pickerStyle(.segmented)
-                .fixedSize()
-                .settingsAccessibility(SettingsControl.tonePlacement, localizer)
-            }
-            ToggleSetting(
-                model: model, item: .englishRestore, control: SettingsControl.englishRestore,
-                isOn: settings.englishRestore
-            ) {
-                .englishRestore($0)
-            }
-            HStack(alignment: .top, spacing: 16) {
-                WordListView(model: model, list: .keepAsTyped)
-                WordListView(model: model, list: .keepVietnamese)
-            }
-            if model.hasLearnedWords {
-                Text(verbatim: localizer.string(SettingsText.listLearnedNote))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            AdvancedSection(model: model, pane: .typing) {
-                ToggleSetting(
-                    model: model, item: .telexStandaloneW, control: SettingsControl.standaloneW,
-                    isOn: settings.telexStandaloneW
-                ) { .telexStandaloneW($0) }
-                ToggleSetting(
-                    model: model, item: .telexBracketKeys, control: SettingsControl.bracketKeys,
-                    isOn: settings.telexBracketKeys
-                ) { .telexBracketKeys($0) }
-                SettingRow(localizer: localizer, item: .restoreHotkey) {
-                    HotkeyRecorderView(model: model, role: .restoreLastWord)
-                }
-            }
-            PaneResetButton(model: model, target: .pane(.typing), control: SettingsControl.resetPane)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
 
 /// The live practice field under the method picker. It observes only the drafts, so typing in it does not
 /// re-render the pane (ADR 0315).
@@ -84,15 +18,19 @@ struct SettingsPracticeField: View {
     let localizer: Localizer
 
     var body: some View {
-        TextField(growing: $drafts.practiceText, placeholder: localizer.string(SettingsText.practicePlaceholder))
-            .textFieldStyle(.roundedBorder)
-            .reservingLines(2)
-            .settingsAccessibility(SettingsControl.practiceField, localizer)
+        TextField(
+            settingsText: $drafts.practiceText, prompt: localizer.string(SettingsText.practicePlaceholder),
+            growing: true
+        )
+        .settingsAccessibility(SettingsControl.practiceField, localizer)
+        .textFieldStyle(.roundedBorder)
+        .labelsHidden()
+        .reservingLines(2)
     }
 }
 
-/// One ENG-R860 list: entries with a remove button each (learned ones also show their app and can be made global,
-/// ENG-R862), and a field to add one.
+/// One ENG-R860 list: its title and explanation, the entries in a rounded list box with a remove button each (learned
+/// ones also show their app and can be made global, ENG-R862), and a field to add one.
 struct WordListView: View {
     @ObservedObject var model: SettingsWindowModel
     let list: UserWordList
@@ -101,36 +39,38 @@ struct WordListView: View {
         let localizer = model.localizer
         let item: SettingItem = list == .keepAsTyped ? .keepAsTyped : .keepVietnamese
         let rows = model.wordRows(list)
-        VStack(alignment: .leading, spacing: 6) {
-            SettingRow(localizer: localizer, item: item) {
-                Text(verbatim: localizer.string(item.title)).fontWeight(.medium)
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    if rows.isEmpty {
-                        Text(verbatim: localizer.string(SettingsText.listEmpty)).foregroundStyle(.secondary)
-                    }
-                    ForEach(rows) { row in
-                        if let learned = row.learned {
-                            LearnedWordRow(model: model, word: learned)
-                        } else {
-                            WordEntryRow(model: model, list: list, word: row.word)
+        VStack(alignment: .leading, spacing: 8) {
+            RowLabel(title: localizer.string(item.title), explanation: localizer.string(item.explanation))
+            ListBox {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if rows.isEmpty {
+                            Text(verbatim: localizer.string(SettingsText.listEmpty))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                        }
+                        ForEach(rows) { row in
+                            Group {
+                                if let learned = row.learned {
+                                    LearnedWordRow(model: model, word: learned)
+                                } else {
+                                    WordEntryRow(model: model, list: list, word: row.word)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 3)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6)
+                .frame(height: 84)
+                .background(Color(nsColor: .textBackgroundColor))
             }
-            .frame(height: 96)
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(.separator))
             WordAddRow(model: model, drafts: model.drafts, list: list)
             if let error = model.wordListError[list] {
-                Label {
-                    Text(verbatim: error)
-                } icon: {
-                    Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
-                }
-                .font(.callout)
+                IssueLine(symbol: "exclamationmark.circle", text: error)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -202,10 +142,11 @@ struct WordAddRow: View {
         let field = list == .keepAsTyped ? SettingsControl.keepAsTypedField : SettingsControl.keepVietnameseField
         let add = list == .keepAsTyped ? SettingsControl.keepAsTypedAdd : SettingsControl.keepVietnameseAdd
         HStack {
-            TextField(text: draft) { Text(verbatim: localizer.string(SettingsText.listPlaceholder)) }
-                .textFieldStyle(.roundedBorder)
-                .onSubmit { model.addWord(to: list) }
+            TextField(settingsText: draft, prompt: localizer.string(SettingsText.listPlaceholder))
                 .settingsAccessibility(field, localizer)
+                .textFieldStyle(.roundedBorder)
+                .labelsHidden()
+                .onSubmit { model.addWord(to: list) }
             Button(action: { model.addWord(to: list) }) { Text(verbatim: localizer.string(SettingsText.listAdd)) }
                 .disabled(draft.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty)
                 .settingsAccessibility(add, localizer)

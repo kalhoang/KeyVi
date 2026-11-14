@@ -299,11 +299,17 @@ import Testing
         }
     }
 
+    /// Files whose hues are decoration beside a text label, never state, with the reason.
+    static let decorativeHues: [String: String] = [
+        "App/Sources/Settings/SettingsSidebar.swift":
+            "System Settings style pane tiles (Pa, 2026-11-14); the pane name is beside each tile and VoiceOver skips it"
+    ]
+
     @Test func noHueIsHardCoded() throws {
         // PRD-R67: state is shown with symbols, text and system semantic colours, never a fixed hue alone.
         let hue =
             /Color\.(red|green|orange|yellow|blue|pink|purple|mint|teal|cyan|indigo|brown)\b|\.(foregroundStyle|foregroundColor|tint|fill)\(\.(red|green|orange|yellow|blue|pink|purple)\)|NSColor\.system(Red|Green|Orange|Yellow|Blue|Pink|Purple)/
-        for (path, lines) in try CatalogInventory.uiSources() {
+        for (path, lines) in try CatalogInventory.uiSources() where Self.decorativeHues[path] == nil {
             for (index, line) in lines.enumerated() where !Self.isComment(line) {
                 #expect(line.firstMatch(of: hue) == nil, "\(path):\(index + 1) hard-codes a hue")
             }

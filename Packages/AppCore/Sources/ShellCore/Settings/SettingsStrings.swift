@@ -16,6 +16,14 @@ public enum SettingsText: String, LocalizationKey {
     case paneAboutSupport = "settings.pane.aboutSupport"
     case advanced = "settings.advanced"
     case resetPane = "settings.reset.paneButton"
+    /// The row beside the per-pane reset button (PRD-R26).
+    case resetPaneExplanation = "settings.reset.paneExplanation"
+    /// Grouped section headers (`SettingsCatalog.sections`, W8-D).
+    case sectionStartup = "settings.section.startup"
+    case sectionSwitching = "settings.section.switching"
+    case sectionLanguage = "settings.section.language"
+    case sectionVietnamese = "settings.section.vietnamese"
+    case sectionEnglish = "settings.section.english"
     case openAtLoginTitle = "settings.general.openAtLogin.title"
     case openAtLoginExplanation = "settings.general.openAtLogin.explanation"
     case openAtLoginApproval = "settings.general.openAtLogin.requiresApproval"

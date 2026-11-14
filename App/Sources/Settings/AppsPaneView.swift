@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // "Ứng dụng / Apps" (PRD-R34-R38): apps typed in (most recent first) and apps with rules, with icon and name,
-// rule, remembered mode and compatibility status (symbol plus text, never colour alone, PRD-R67). Each row offers
-// the details sheet and "Báo lỗi với ứng dụng này..." (PRD-R37). The list scrolls (PRD-R24 acceptance).
+// rule, remembered mode and compatibility status (symbol plus text, never colour alone, PRD-R67), in a rounded list.
+// The selected row's details sheet and "Báo lỗi với ứng dụng này..." (PRD-R37) are under the list and, from macOS
+// 13, in the row's context menu. The list scrolls (PRD-R24 acceptance).
 
 import AppKit
 import AppModel
@@ -17,17 +18,29 @@ struct AppsPaneView: View {
     var body: some View {
         let localizer = model.localizer
         let rows = model.appRows
-        VStack(alignment: .leading, spacing: 10) {
-            Text(verbatim: localizer.string(AppsText.explanation)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(verbatim: localizer.string(AppsText.explanation))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if rows.isEmpty {
-                Text(verbatim: localizer.string(AppsText.empty))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .multilineTextAlignment(.center)
+                ListBox {
+                    Text(verbatim: localizer.string(AppsText.empty))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             } else {
-                AppsTable(model: model, rows: rows, selection: $selection)
+                ListBox { AppsTable(model: model, rows: rows, selection: $selection) }
             }
-            PaneResetButton(model: model, target: .pane(.apps), control: AppsControl.resetPane)
+            HStack(spacing: 8) {
+                AppSelectionActions(model: model, row: rows.first { $0.bundle == selection })
+                Spacer(minLength: 8)
+                PaneResetButton(model: model, target: .pane(.apps), control: AppsControl.resetPane)
+            }
         }
+        .padding(.horizontal, SettingsMetrics.listPaneInset)
+        .padding(.vertical, SettingsMetrics.paneInset)
     }
 }
 
@@ -40,20 +53,19 @@ struct AppsTable: View {
         let localizer = model.localizer
         Table(rows, selection: $selection) {
             TableColumn(localizer.string(AppsText.columnApp)) { row in AppNameCell(model: model, row: row) }
-                .width(min: 150, ideal: 200)
+                .width(min: 80, ideal: 92)
             TableColumn(localizer.string(AppsText.columnRule)) { row in RulePicker(model: model, row: row) }
-                .width(min: 130, ideal: 150)
+                .width(118)
             TableColumn(localizer.string(AppsText.columnRemembered)) { row in
                 Text(verbatim: localizer.string(row.rememberedModeTitle))
             }
-            .width(min: 70, ideal: 90)
+            .width(76)
             TableColumn(localizer.string(AppsText.columnStatus)) { row in
                 StatusCell(localizer: localizer, status: row.status)
             }
-            .width(min: 120, ideal: 150)
-            TableColumn(localizer.string(AppsText.columnActions)) { row in AppRowActions(model: model, row: row) }
-                .width(min: 110, ideal: 120)
+            .width(min: 140, ideal: 140, max: 160)
         }
+        .tableStyle(.inset(alternatesRowBackgrounds: true))
         .settingsAccessibility(AppsControl.list, localizer)
         .rowMenu(model: model, rows: rows, localizer: localizer)
     }
@@ -90,29 +102,38 @@ struct AppNameCell: View {
             if let icon = model.appIdentities.icon(for: row.bundle) {
                 Image(nsImage: icon).resizable().frame(width: 18, height: 18).accessibilityHidden(true)
             }
-            Text(verbatim: model.appName(of: row)).lineLimit(1)
+            Text(verbatim: model.appName(of: row)).lineLimit(1).help(Text(verbatim: model.appName(of: row)))
         }
     }
 }
 
+/// The row's PRD-R34 rule as a borderless pop-up (title and chevron, no bezel) so the four columns fit the window's
+/// minimum width; the menu lists the four rules with a checkmark on the current one.
 struct RulePicker: View {
     @ObservedObject var model: SettingsWindowModel
     let row: AppsPaneRow
 
     var body: some View {
         let localizer = model.localizer
-        Picker(selection: Binding(get: { row.rule }, set: { model.setRule($0, for: row.bundle) })) {
-            ForEach(PerAppRule.allCases, id: \.self) { rule in
-                Text(verbatim: localizer.string(rule.appsTitle)).tag(rule)
+        let label = localizer.accessibilityLabel(AppsControl.rowRule) + ": " + model.appName(of: row)
+        Menu {
+            Picker(selection: Binding(get: { row.rule }, set: { model.setRule($0, for: row.bundle) })) {
+                ForEach(PerAppRule.allCases, id: \.self) { rule in
+                    Text(verbatim: localizer.string(rule.appsTitle)).tag(rule)
+                }
+            } label: {
+                Text(verbatim: localizer.string(AppsText.columnRule))
             }
+            .settingsAccessibility(AppsControl.rowRule, localizer, label: label)
+            .pickerStyle(.inline)
+            .labelsHidden()
         } label: {
-            Text(verbatim: localizer.string(AppsText.columnRule))
+            Text(verbatim: localizer.string(row.rule.appsTitle))
         }
-        .labelsHidden()
-        .settingsAccessibility(
-            AppsControl.rowRule, localizer,
-            label: localizer.accessibilityLabel(AppsControl.rowRule) + ": "
-                + model.appName(of: row))
+        .settingsAccessibility(AppsControl.rowRule, localizer, label: label)
+        .menuStyle(.borderlessButton)
+        .controlSize(.small)
+        .fixedSize()
     }
 }
 
@@ -130,27 +151,27 @@ struct StatusCell: View {
     }
 }
 
-struct AppRowActions: View {
+/// PRD-R37 and the details sheet for the selected row, under the list (keyboard users select a row with the arrow
+/// keys, then Tab to these). From macOS 13 the row's context menu and a double-click offer the same (ADR 0315), so
+/// the four PRD-R34 columns keep their room at the window's minimum width.
+struct AppSelectionActions: View {
     @ObservedObject var model: SettingsWindowModel
-    let row: AppsPaneRow
+    let row: AppsPaneRow?
 
     var body: some View {
         let localizer = model.localizer
-        let name = model.appName(of: row)
-        HStack(spacing: 6) {
-            Button(action: { model.showDetail(row) }) { Text(verbatim: localizer.string(AppsText.details)) }
-                .settingsAccessibility(
-                    AppsControl.rowDetails, localizer,
-                    label: localizer.accessibilityLabel(AppsControl.rowDetails) + ": " + name)
-            Button(action: { model.reportProblem(for: row.bundle) }) {
-                Image(systemName: "exclamationmark.bubble").accessibilityHidden(true)
-            }
-            .buttonStyle(.borderless)
-            .help(Text(verbatim: localizer.string(AppsText.report)))
+        let name = row.map(model.appName(of:)) ?? ""
+        Button(action: { if let row { model.showDetail(row) } }) { Text(verbatim: localizer.string(AppsText.details)) }
+            .disabled(row == nil)
             .settingsAccessibility(
-                AppsControl.rowReport, localizer,
-                label: localizer.accessibilityLabel(AppsControl.rowReport) + ": " + name)
+                AppsControl.rowDetails, localizer,
+                label: localizer.accessibilityLabel(AppsControl.rowDetails) + ": " + name)
+        Button(action: { if let row { model.reportProblem(for: row.bundle) } }) {
+            Text(verbatim: localizer.string(AppsText.report))
         }
+        .disabled(row == nil)
+        .settingsAccessibility(
+            AppsControl.rowReport, localizer, label: localizer.accessibilityLabel(AppsControl.rowReport) + ": " + name)
     }
 }
 

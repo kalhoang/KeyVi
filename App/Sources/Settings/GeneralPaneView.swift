@@ -2,55 +2,44 @@
 //
 // "Chung / General" (PRD-R24): open at login (D17), toggle hotkey (D11), remember per app (D12), switch indicator
 // (D14), interface language (D18); Advanced: sound on switch (D15), click icon to toggle (D16), layout binding
-// (PLT-R373).
+// (PLT-R373). The sections come from `SettingsCatalog.sections(in:)`; this file holds the rows that are more than a
+// switch or a menu, and the D11 and D8 recorder shared with the Typing pane.
 
 import AppModel
 import InputHost
 import ShellCore
 import SwiftUI
 
-struct GeneralPaneView: View {
+/// General and Typing: the catalog's grouped sections, the Advanced disclosure and the pane's reset, in a grouped
+/// Form (macOS 13 and later) or boxed sections (macOS 12).
+struct SettingsSectionsPane: View {
     @ObservedObject var model: SettingsWindowModel
+    let pane: SettingsPaneKind
 
     var body: some View {
-        let settings = model.settings
-        VStack(alignment: .leading, spacing: 16) {
-            OpenAtLoginRow(model: model)
-            SettingRow(localizer: model.localizer, item: .toggleHotkey) {
-                HotkeyRecorderView(model: model, role: .toggleMode)
-            }
-            ToggleSetting(
-                model: model, item: .rememberPerApp, control: SettingsControl.rememberPerApp,
-                isOn: settings.rememberPerApp
-            ) {
-                .rememberPerApp($0)
-            }
-            ToggleSetting(
-                model: model, item: .switchIndicator, control: SettingsControl.switchIndicator,
-                isOn: settings.showSwitchIndicator
-            ) { .showSwitchIndicator($0) }
-            InterfaceLanguageRow(model: model)
-            AdvancedSection(model: model, pane: .general) {
-                ToggleSetting(
-                    model: model, item: .soundOnSwitch, control: SettingsControl.soundOnSwitch,
-                    isOn: settings.soundOnSwitch
-                ) {
-                    .soundOnSwitch($0)
+        let localizer = model.localizer
+        SettingsPaneForm {
+            ForEach(SettingsCatalog.sections(in: pane), id: \.self) { section in
+                SettingsGroup(header: section.header.map(localizer.string), footer: footer(of: section)) {
+                    ForEach(section.rows, id: \.self) { row in SettingsSectionRow(model: model, items: row) }
                 }
-                ToggleSetting(
-                    model: model, item: .clickIconToToggle, control: SettingsControl.clickIconToToggle,
-                    isOn: settings.clickIconToToggle
-                ) { .clickIconToToggle($0) }
-                LayoutBindingSection(model: model)
             }
-            PaneResetButton(model: model, target: .pane(.general), control: SettingsControl.resetPane)
+            if pane.hasAdvancedSection { AdvancedSection(model: model, pane: pane) }
+            if let reset = pane.paneReset {
+                PaneResetSection(model: model, target: .pane(reset), control: SettingsControl.resetPane)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// ENG-R862: under the word lists once a word was learned in an app.
+    private func footer(of section: SettingsSection) -> String? {
+        guard section.items.contains(.keepAsTyped), model.hasLearnedWords else { return nil }
+        return model.localizer.string(SettingsText.listLearnedNote)
     }
 }
 
-/// D17 through `SMAppService` (PLT-R205): the toggle reflects the service status. On macOS 12 there is no
-/// `SMAppService` (ADR 0315): the toggle is disabled and the note and button lead to System Preferences.
+/// D17 through `SMAppService` (PLT-R205): the switch reflects the service status. On macOS 12 there is no
+/// `SMAppService` (ADR 0315): the switch is disabled and the note and button lead to System Preferences.
 struct OpenAtLoginRow: View {
     @ObservedObject var model: SettingsWindowModel
 
@@ -58,22 +47,21 @@ struct OpenAtLoginRow: View {
         let localizer = model.localizer
         let presentation = model.loginItem
         let text = model.loginItemText
-        SettingRow(localizer: localizer, item: .openAtLogin, arguments: [model.appName]) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
+            SettingRow(localizer: localizer, item: .openAtLogin, arguments: [model.appName]) {
                 Toggle(isOn: Binding(get: { presentation.isOn }, set: { model.setOpenAtLogin($0) })) {
                     Text(verbatim: localizer.string(SettingItem.openAtLogin.title))
                 }
                 .settingsAccessibility(SettingsControl.openAtLogin, localizer)
+                .settingsSwitch()
                 .disabled(!presentation.isAvailable)
-                if let note = text.note {
-                    Label {
-                        Text(verbatim: note)
-                    } icon: {
-                        Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
-                    }
-                    .font(.callout)
-                }
-                if let button = text.button {
+            }
+            if let note = text.note {
+                IssueLine(symbol: "exclamationmark.circle", text: note)
+            }
+            if let button = text.button {
+                HStack {
+                    Spacer()
                     Button(action: model.openLoginItemsSettings) { Text(verbatim: button) }
                         .settingsAccessibility(
                             presentation.isAvailable
@@ -85,27 +73,6 @@ struct OpenAtLoginRow: View {
     }
 }
 
-struct InterfaceLanguageRow: View {
-    @ObservedObject var model: SettingsWindowModel
-
-    var body: some View {
-        let localizer = model.localizer
-        SettingRow(localizer: localizer, item: .interfaceLanguage) {
-            Picker(
-                selection: Binding(
-                    get: { model.settings.interfaceLanguage }, set: { model.edit(.interfaceLanguage($0)) })
-            ) {
-                Text(verbatim: localizer.string(SettingsText.languageVietnamese)).tag(InterfaceLanguage.vietnamese)
-                Text(verbatim: localizer.string(SettingsText.languageEnglish)).tag(InterfaceLanguage.english)
-            } label: {
-                Text(verbatim: localizer.string(SettingItem.interfaceLanguage.title))
-            }
-            .fixedSize()
-            .settingsAccessibility(SettingsControl.interfaceLanguage, localizer)
-        }
-    }
-}
-
 /// PLT-R373: off by default; each ASCII-capable layout can be bound to VI or EN.
 struct LayoutBindingSection: View {
     @ObservedObject var model: SettingsWindowModel
@@ -113,25 +80,21 @@ struct LayoutBindingSection: View {
     var body: some View {
         let localizer = model.localizer
         let binding = model.layoutBinding
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             ToggleSetting(
                 model: model, item: .layoutBinding, control: SettingsControl.layoutBindingEnabled,
                 isOn: binding.binding.enabled
             ) { .layoutBinding(binding.settingEnabled($0)) }
             if binding.binding.enabled {
                 if binding.rows.isEmpty {
-                    Text(verbatim: localizer.string(SettingsText.layoutBindingEmpty)).font(.callout)
+                    IssueLine(symbol: "keyboard", text: localizer.string(SettingsText.layoutBindingEmpty))
                 }
                 ForEach(binding.rows) { row in
                     LayoutAssignmentRow(model: model, binding: binding, row: row)
                 }
                 if !binding.isComplete, !binding.rows.isEmpty {
-                    Label {
-                        Text(verbatim: localizer.string(SettingsText.layoutBindingIncomplete))
-                    } icon: {
-                        Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
-                    }
-                    .font(.callout)
+                    IssueLine(
+                        symbol: "exclamationmark.circle", text: localizer.string(SettingsText.layoutBindingIncomplete))
                 }
             }
         }
@@ -145,39 +108,57 @@ struct LayoutAssignmentRow: View {
 
     var body: some View {
         let localizer = model.localizer
-        Picker(
-            selection: Binding(
-                get: { row.assignment }, set: { model.edit(.layoutBinding(binding.assigning($0, to: row.id))) })
-        ) {
-            ForEach(LayoutBindingModel.Assignment.allCases, id: \.self) { assignment in
-                Text(verbatim: localizer.string(assignment.title)).tag(assignment)
+        SettingsFormRow(title: row.name) {
+            Picker(
+                selection: Binding(
+                    get: { row.assignment }, set: { model.edit(.layoutBinding(binding.assigning($0, to: row.id))) })
+            ) {
+                ForEach(LayoutBindingModel.Assignment.allCases, id: \.self) { assignment in
+                    Text(verbatim: localizer.string(assignment.title)).tag(assignment)
+                }
+            } label: {
+                Text(verbatim: row.name)
             }
-        } label: {
-            Text(verbatim: row.name)
+            .settingsAccessibility(
+                SettingsControl.layoutBindingAssignment, localizer,
+                label: localizer.accessibilityLabel(SettingsControl.layoutBindingAssignment) + ": " + row.name
+            )
+            .pickerStyle(.menu)
+            .labelsHidden()
         }
-        .settingsAccessibility(
-            SettingsControl.layoutBindingAssignment, localizer,
-            label: localizer.accessibilityLabel(SettingsControl.layoutBindingAssignment) + ": " + row.name
-        )
-        .fixedSize()
-        .padding(.leading, 20)
+        .padding(.leading, 16)
     }
 }
 
-/// D11 and D8 recorder (PRD-R15, PRD-R16, PRD-R18). While recording, the window's key events go to the recorder.
-/// The restore key also has its on/off switch (D8: Escape by default); the recorder row shows only while it is on.
-struct HotkeyRecorderView: View {
+/// D11 and D8 recorder (PRD-R15, PRD-R16, PRD-R18): the setting's row with the current keys, then the buttons and
+/// the live status. While recording, the window's key events go to the recorder. The restore key also has its
+/// on/off switch on the row (D8: Escape by default); its keys and buttons show only while it is on.
+struct HotkeyRow: View {
     @ObservedObject var model: SettingsWindowModel
+    let item: SettingItem
     let role: HotkeyRole
     @FocusState private var focused: Bool
 
     var body: some View {
         let recording = model.recordingRole == role
         let binding = role == .toggleMode ? model.settings.toggleHotkey : model.settings.restoreHotkey
-        VStack(alignment: .leading, spacing: 6) {
-            if role == .restoreLastWord { RestoreHotkeySwitchRow(model: model) }
+        VStack(alignment: .leading, spacing: 8) {
+            SettingRow(localizer: model.localizer, item: item) {
+                if role == .restoreLastWord {
+                    RestoreHotkeySwitch(model: model)
+                } else {
+                    HotkeyKeysView(model: model, binding: binding, recording: recording)
+                }
+            }
             if role == .toggleMode || binding != nil || recording {
-                recorderRow(binding: binding, recording: recording)
+                HStack(spacing: 8) {
+                    Spacer(minLength: 0)
+                    if role == .restoreLastWord {
+                        HotkeyKeysView(model: model, binding: binding, recording: recording)
+                    }
+                    recorderButton(recording: recording)
+                    RecorderShortcutButtons(model: model, role: role)
+                }
             }
             RecorderStatusLine(model: model, role: role)
         }
@@ -185,49 +166,54 @@ struct HotkeyRecorderView: View {
         .onChange(of: recording) { _ in focused = true }
     }
 
-    private func recorderRow(binding: HotkeyBinding?, recording: Bool) -> some View {
+    @ViewBuilder private func recorderButton(recording: Bool) -> some View {
         let localizer = model.localizer
-        return HStack(spacing: 8) {
-            Text(
-                verbatim: localizer.string(
-                    role == .toggleMode ? SettingsText.toggleHotkeyTitle : SettingsText.restoreHotkeyTitle))
-            Spacer()
-            Text(
-                verbatim: recording
-                    ? localizer.string(SettingsText.hotkeyRecording)
-                    : HotkeyRecorderText.display(binding, localizer: localizer)
-            )
-            .font(.body.monospaced())
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .overlay(
-                RoundedRectangle(cornerRadius: 5).strokeBorder(
-                    recording ? Color.accentColor : .secondary, lineWidth: recording ? 2 : 1))
-            if recording {
-                Button(action: model.cancelRecording) {
-                    Text(verbatim: localizer.string(SettingsText.hotkeyCancel))
-                }
-                .focused($focused)
-                .settingsAccessibility(
-                    role == .toggleMode ? SettingsControl.toggleHotkeyCancel : SettingsControl.restoreHotkeyCancel,
-                    localizer)
-            } else {
-                Button(action: { model.startRecording(role) }) {
-                    Text(verbatim: localizer.string(SettingsText.hotkeyChange))
-                }
-                .focused($focused)
-                .settingsAccessibility(
-                    role == .toggleMode ? SettingsControl.toggleHotkeyChange : SettingsControl.restoreHotkeyChange,
-                    localizer)
+        if recording {
+            Button(action: model.cancelRecording) {
+                Text(verbatim: localizer.string(SettingsText.hotkeyCancel))
             }
-            RecorderShortcutButtons(model: model, role: role)
+            .focused($focused)
+            .settingsAccessibility(
+                role == .toggleMode ? SettingsControl.toggleHotkeyCancel : SettingsControl.restoreHotkeyCancel,
+                localizer)
+        } else {
+            Button(action: { model.startRecording(role) }) {
+                Text(verbatim: localizer.string(SettingsText.hotkeyChange))
+            }
+            .focused($focused)
+            .settingsAccessibility(
+                role == .toggleMode ? SettingsControl.toggleHotkeyChange : SettingsControl.restoreHotkeyChange,
+                localizer)
         }
+    }
+}
+
+/// The recorded keys in a key-cap box; "Nhấn phím..." with an accent border while recording.
+struct HotkeyKeysView: View {
+    @ObservedObject var model: SettingsWindowModel
+    let binding: HotkeyBinding?
+    let recording: Bool
+
+    var body: some View {
+        let localizer = model.localizer
+        Text(
+            verbatim: recording
+                ? localizer.string(SettingsText.hotkeyRecording)
+                : HotkeyRecorderText.display(binding, localizer: localizer)
+        )
+        .font(.body.monospaced())
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
+        .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(.quaternary))
+        .overlay(
+            RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(
+                recording ? Color.accentColor : .clear, lineWidth: 2))
     }
 }
 
 /// D8, PRD-R18: the restore key's on/off switch. Off stores an explicit none; on gives Escape back, or keeps the
 /// key the user recorded (`RestoreHotkeyToggle`).
-struct RestoreHotkeySwitchRow: View {
+struct RestoreHotkeySwitch: View {
     @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
@@ -244,11 +230,12 @@ struct RestoreHotkeySwitchRow: View {
             Text(verbatim: localizer.string(SettingsText.restoreHotkeySwitch))
         }
         .settingsAccessibility(SettingsControl.restoreHotkeySwitch, localizer)
+        .settingsSwitch()
     }
 }
 
-/// "Dùng mặc định" for the toggle; "Dùng Escape" for the restore key, whose off switch is
-/// `RestoreHotkeySwitchRow` (PRD-R18).
+/// "Dùng mặc định" for the toggle; "Dùng Escape" for the restore key, whose off switch is `RestoreHotkeySwitch`
+/// (PRD-R18).
 struct RecorderShortcutButtons: View {
     @ObservedObject var model: SettingsWindowModel
     let role: HotkeyRole
@@ -277,12 +264,7 @@ struct RecorderStatusLine: View {
         if let status = model.recorderStatus(for: role) {
             let conflict = model.hasConflict(for: role)
             VStack(alignment: .leading, spacing: 4) {
-                Label {
-                    Text(verbatim: status).fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: conflict ? "exclamationmark.triangle" : "keyboard").accessibilityHidden(true)
-                }
-                .font(.callout)
+                IssueLine(symbol: conflict ? "exclamationmark.triangle" : "keyboard", text: status)
                 if conflict, let url = model.conflictHelpURL {
                     Button(action: { model.open(url) }) {
                         Text(verbatim: localizer.string(SettingsText.hotkeyConflictHelp))

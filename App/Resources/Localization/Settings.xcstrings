@@ -1172,19 +1172,19 @@
       }
     },
     "settings.control.panePicker.accessibilityHint" : {
-      "comment" : "VoiceOver hint (PRD-R66).",
+      "comment" : "VoiceOver hint of the sidebar (PRD-R66, PRD-R67).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chooses which settings pane to show."
+            "value" : "Chooses which settings pane to show. Use the Up and Down Arrow keys or Command+1 to 5."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn mục cài đặt để hiện."
+            "value" : "Chọn mục cài đặt để hiện. Dùng phím mũi tên lên, xuống hoặc Command + 1 đến 5."
           }
         }
       }
@@ -4051,6 +4051,24 @@
         }
       }
     },
+    "settings.reset.paneExplanation" : {
+      "comment" : "PRD-R26: the row beside the per-pane reset button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Returns this pane to its original settings. You are asked before anything changes."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa mục này về cài đặt ban đầu. Bạn sẽ được hỏi lại trước khi đổi."
+          }
+        }
+      }
+    },
     "settings.reset.title.all" : {
       "comment" : "Global reset confirmation title.",
       "extractionState" : "manual",
@@ -4083,6 +4101,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Khôi phục mặc định cho mục %@?"
+          }
+        }
+      }
+    },
+    "settings.section.english" : {
+      "comment" : "Grouped section header, Typing pane (W8-D).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ tiếng Anh"
+          }
+        }
+      }
+    },
+    "settings.section.language" : {
+      "comment" : "Grouped section header, General pane (W8-D).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ngôn ngữ"
+          }
+        }
+      }
+    },
+    "settings.section.startup" : {
+      "comment" : "Grouped section header, General pane (W8-D).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startup"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khởi động"
+          }
+        }
+      }
+    },
+    "settings.section.switching" : {
+      "comment" : "Grouped section header, General pane (W8-D).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switching VI/EN"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chuyển Việt/Anh"
+          }
+        }
+      }
+    },
+    "settings.section.vietnamese" : {
+      "comment" : "Grouped section header, Typing pane (W8-D).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese typing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ tiếng Việt"
           }
         }
       }
