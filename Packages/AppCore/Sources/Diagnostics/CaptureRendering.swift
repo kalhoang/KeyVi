@@ -22,7 +22,7 @@ enum CaptureRendering {
     }
 
     private static let vietnamese = Labels(
-        title: "Bản ghi thao tác gõ", startedAt: "Bắt đầu lúc", engine: "bộ gõ", deleteWord: "xoá",
+        title: "Bản ghi thao tác gõ", startedAt: "Bắt đầu lúc", engine: "bộ gõ", deleteWord: "xóa",
         insertWord: "chèn", job: "lệnh chèn", focus: "ô nhập", gap: "khoảng trống đến",
         gapTail: "không ghi lại gì", end: "kết thúc")
     private static let english = Labels(

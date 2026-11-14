@@ -50,7 +50,7 @@ export const support = {
 <p>Khi một ứng dụng bật <em>Secure Event Input</em> của macOS, hệ thống ngừng gửi phím cho mọi bộ gõ chạy nền, không riêng gì {{AppName}}. Thường là do một ô mật khẩu còn mở. {{AppName}} chỉ tạm dừng khi macOS báo chế độ này đang bật hoặc khi ô đang chọn thật sự là ô mật khẩu. {{AppName}} không đoán, và tiếp tục ngay ở phím đầu tiên sau khi chế độ này tắt.</p>
 <p>Menu của {{AppName}} nêu ứng dụng có thể đang giữ chế độ này (đây là phỏng đoán tốt nhất, đôi khi chưa chính xác):</p>
 <ul>
-  <li><strong>Terminal</strong>: trong menu Terminal, tắt <em>Secure Keyboard Entry</em>.</li>
+  <li><strong>Terminal</strong>: tắt mục <em>Nhập dùng Bàn phím An Toàn (Secure Keyboard Entry)</em> trong menu Terminal.</li>
   <li><strong>iTerm2</strong>: iTerm2 đang bật Nhập bàn phím an toàn. Hãy tắt mục <em>iTerm2 &gt; Secure Keyboard Entry</em>, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ.</li>
   <li><strong>Trình duyệt</strong>: bấm ra ngoài ô mật khẩu hoặc chuyển sang thẻ khác.</li>
   <li><strong>Trình quản lý mật khẩu</strong> hoặc ứng dụng khác: đóng cửa sổ nhập mật khẩu của nó.</li>
@@ -64,7 +64,7 @@ export const support = {
 <p>Hai bộ gõ chạy cùng lúc sẽ làm lặp hoặc mất chữ. Bạn nên thoát bộ gõ kia và tắt nó khi đăng nhập. {{AppName}} sẽ báo khi phát hiện, nhưng không tự thoát hay chỉnh ứng dụng khác.</p>
 <ol class="steps">
   <li>Thoát bộ gõ cũ (XKey, OpenKey, EVKey, Gõ Nhanh, PHTV hoặc tương tự) từ biểu tượng trên thanh menu.</li>
-  <li>Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; tiện ích mở rộng: xóa bộ gõ cũ khỏi danh sách mở khi đăng nhập. {{verifyHtml}}</li>
+  <li>Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; Phần mở rộng: xóa bộ gõ cũ khỏi danh sách mở khi đăng nhập. {{verifyHtml}}</li>
   <li>Nếu bạn đang bật bộ gõ <em>Tiếng Việt</em> có sẵn của macOS, hãy chọn bàn phím ABC hoặc U.S. khi dùng {{AppName}}.</li>
 </ol>
 <p>Hướng dẫn riêng cho từng ứng dụng nằm ở mục <a href="#chuyen-tu">chuyển từ bộ gõ khác</a>.</p>`,
@@ -152,7 +152,7 @@ export const migrate = {
   quitIntro: "Hai bộ gõ cùng lúc sẽ làm lặp hoặc mất chữ. Bạn nên thoát {{Other}} và tắt nó khi đăng nhập.",
   quitSteps: [
     "Bấm biểu tượng {{Other}} trên thanh menu và chọn thoát. {{verifyHtml}} Tên mục trong bản hiện tại.",
-    "Mở Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; tiện ích mở rộng. Trong danh sách <em>Mở khi đăng nhập</em>, chọn {{Other}} rồi bấm nút trừ (-). {{verifyHtml}} Tên mục trên từng phiên bản macOS.",
+    "Mở Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; Phần mở rộng. Trong danh sách <em>Mở khi đăng nhập</em>, chọn {{Other}} rồi bấm nút trừ (-). {{verifyHtml}} Tên mục trên từng phiên bản macOS.",
     "Nếu {{Other}} có tùy chọn tự khởi động riêng trong cài đặt của nó, hãy tắt luôn. {{verifyHtml}}",
   ],
   screenshotHolder: "Ảnh chụp màn hình sẽ được thêm sau khi từng bước được kiểm tra trên bản cài thật",

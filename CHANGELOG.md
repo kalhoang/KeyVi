@@ -24,6 +24,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Macro shortcuts that differ only by a trailing digit, for example `k` and `k1`, are now refused, because a digit ends a shortcut like punctuation does, so typing `k1` would always expand `k`. A pair saved by an earlier build still loads: the shorter shortcut keeps working, the longer one stops expanding and the Macros pane marks both. To unblock saving, delete or rename one of the pair.
 - KeyVi is now distributed under GPL-3.0-or-later; the typing engine stays MPL-2.0. The disk image includes the licence (`LICENSE.txt`) and the third-party notices (`THIRD_PARTY_NOTICES.txt`).
 - The Apps pane calls the compatibility mode chosen by a guided test "Set by the guided test" ("Theo kết quả thử tự động" in Vietnamese), the name the menu and the Diagnostics window use for that test, and VoiceOver reads the same name.
+- On a Vietnamese macOS, the Secure Input hint for Terminal names the menu item as Terminal shows it, "Nhập dùng Bàn phím An Toàn", followed by its English name "Secure Keyboard Entry". The support page and the support replies use the same words.
 
 ### Fixed
 

@@ -38,7 +38,7 @@
       }
     },
     "secureInputHint.terminal.secureKeyboardEntry" : {
-      "comment" : "PLT-R397 Terminal hint. The menu item is quoted by its English name, as on the website and in the support replies; VERIFY the name Terminal shows on a Vietnamese system.",
+      "comment" : "PLT-R397 Terminal hint. Vietnamese quotes the menu item as a Vietnamese macOS 12.7.6 and 27.2 name it (MainMenu 511.title, docs/runbooks/vm-test-lab.md section 10) followed by the English name, word for word as on the website and in the support replies.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -50,7 +50,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Terminal: tắt mục Secure Keyboard Entry trong menu Terminal."
+            "value" : "Terminal: tắt mục Nhập dùng Bàn phím An Toàn (Secure Keyboard Entry) trong menu Terminal."
           }
         }
       }

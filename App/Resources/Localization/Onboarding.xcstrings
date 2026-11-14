@@ -620,13 +620,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens Input Monitoring in the macOS settings."
+            "value" : "Opens the matching macOS settings pane."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở mục Giám sát đầu vào trong phần cài đặt của macOS."
+            "value" : "Mở phần cài đặt tương ứng của macOS."
           }
         }
       }
@@ -638,13 +638,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open Input Monitoring settings"
+            "value" : "Open the matching macOS settings"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở cài đặt Giám sát đầu vào"
+            "value" : "Mở phần cài đặt tương ứng"
           }
         }
       }

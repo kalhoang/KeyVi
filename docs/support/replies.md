@@ -89,7 +89,7 @@ Facts for the maintainer: while any app holds secure input, macOS stops deliveri
 Đây không phải lỗi của bộ gõ: khi một ứng dụng bật **chế độ nhập bảo mật** (Secure Input), macOS chặn phím với mọi bộ gõ, và {{AppName}} tạm dừng cho đến khi chế độ đó tắt. Bạn làm như sau:
 
 1. Bấm biểu tượng {{AppName}} trên thanh menu. Nếu có biểu tượng khóa, dòng trạng thái sẽ nêu ứng dụng nhiều khả năng đang giữ chế độ này (tên này không phải lúc nào cũng chính xác).
-2. **Terminal:** trong menu Terminal, tắt mục **Secure Keyboard Entry**.
+2. **Terminal:** tắt mục **Nhập dùng Bàn phím An Toàn (Secure Keyboard Entry)** trong menu Terminal.
 3. **iTerm2:** tắt mục **iTerm2 > Secure Keyboard Entry**, hoặc nhập xong (hay hủy) lời nhắc mật khẩu đang chờ. iTerm2 còn tự bật chế độ này khi nó cho rằng đang có lời nhắc mật khẩu (ví dụ sau lệnh `sudo` hoặc `ssh`): nhập xong rồi nhấn Return, hoặc nhấn Control+C để hủy; chế độ bảo mật sẽ tự tắt và {{AppName}} gõ lại được ngay ở phím tiếp theo.
 4. **Trình duyệt hoặc trình quản lý mật khẩu:** bấm ra ngoài ô mật khẩu, hoặc chuyển sang thẻ khác.
 5. Nếu không xác định được ứng dụng nào đang giữ, hoặc menu chỉ ra `loginwindow`: khóa màn hình rồi mở khóa (Control+Command+Q), hoặc đăng xuất rồi đăng nhập lại.

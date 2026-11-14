@@ -1413,8 +1413,6 @@ class TonePlacementTests(unittest.TestCase):
     SETTING_EXAMPLES = {"hoà", "thuỷ", "khoẻ"}
     SETTING_KEYS = {"settings.typing.tone.explanation", "settings.typing.tone.modern"}
     SWIFT_ROOTS = ("Packages/AppCore/Sources", "App/Sources")
-    # Stragglers outside W7-B's paths, requested from the integrator: drop the entry with the fix.
-    SWIFT_PENDING_FIXES = {("Packages/AppCore/Sources/Diagnostics/CaptureRendering.swift", "xoá")}
 
     def test_the_check_flags_modern_placement_only(self):
         modern = "hoá hoà hoạ khoá khoẻ xoá Xoá loè toả tuỳ thuỷ huỷ luỹ Thuỵ HOÁ"
@@ -1459,8 +1457,7 @@ class TonePlacementTests(unittest.TestCase):
                     if line.lstrip().startswith("//"):
                         continue
                     for literal in SWIFT_STRING_LITERAL.findall(line):
-                        offenders += [f"{relative}:{number}: {word}" for word in modern_tone_words(literal)
-                                      if (relative, word) not in self.SWIFT_PENDING_FIXES]
+                        offenders += [f"{relative}:{number}: {word}" for word in modern_tone_words(literal)]
         self.assertEqual(offenders, [])
 
     def test_the_decision_is_recorded_in_q13(self):
@@ -1583,7 +1580,12 @@ class SecureInputSupportPageTests(unittest.TestCase):
         ("en", "Browsers", "secureInputHint.browser.passwordField", "Browser: "),
         ("vi", "iTerm2", "secureInputHint.iterm2.secureKeyboardEntry", ""),
         ("en", "iTerm2", "secureInputHint.iterm2.secureKeyboardEntry", ""),
+        ("vi", "Terminal", "secureInputHint.terminal.secureKeyboardEntry", "Terminal: "),
+        ("en", "Terminal", "secureInputHint.terminal.secureKeyboardEntry", "Terminal: "),
     )
+    # Terminal's menu item as a Vietnamese macOS 12.7.6 and 27.2 show it (MainMenu 511.title, docs/runbooks/vm-test-lab.md
+    # section 10), quoted next to the English name so both readers find it.
+    TERMINAL_ITEM_VI = "Nhập dùng Bàn phím An Toàn (Secure Keyboard Entry)"
 
     def page_sentence(self, language: str, label: str) -> str:
         page = (REPO / "site" / "content" / language / "support.mjs").read_text(encoding="utf-8")
@@ -1599,6 +1601,40 @@ class SecureInputSupportPageTests(unittest.TestCase):
                 catalog = self.STATUS["strings"][key]["localizations"][language]["stringUnit"]["value"]
                 self.assertTrue(catalog.startswith(catalog_label))
                 self.assertEqual(self.page_sentence(language, label), catalog.removeprefix(catalog_label))
+
+    def test_terminal_is_named_by_both_menu_titles_everywhere(self):
+        catalog = self.STATUS["strings"]["secureInputHint.terminal.secureKeyboardEntry"]["localizations"]["vi"]
+        replies = (REPO / "docs" / "support" / "replies.md").read_text(encoding="utf-8")
+        reply = next(line for line in replies.splitlines() if line.startswith("2. **Terminal:**") and "menu Terminal" in line)
+        for where, text in (("catalog", catalog["stringUnit"]["value"]), ("site", self.page_sentence("vi", "Terminal")),
+                            ("replies", reply.replace("**", ""))):
+            with self.subTest(where=where):
+                self.assertIn(self.TERMINAL_ITEM_VI, text)
+
+
+
+class PaneNameCopyTests(unittest.TestCase):
+    """PLT-R701: pane names differ by macOS version (App/Resources/SystemPanes.json, checked against the Apple tables in
+    docs/runbooks/vm-test-lab.md section 10), so fixed copy either names no pane or spells it as the newest table."""
+
+    PANES = json.loads((REPO / "App" / "Resources" / "SystemPanes.json").read_text(encoding="utf-8"))
+
+    def test_the_input_monitoring_button_strings_name_no_pane(self):
+        catalog = json.loads((REPO / "App" / "Resources" / "Localization" / "Onboarding.xcstrings")
+                             .read_text(encoding="utf-8"))["strings"]
+        names = {entry["names"][language]["inputMonitoring"].casefold()
+                 for entry in self.PANES["entries"] for language in ("en", "vi")}
+        for kind in ("accessibilityHint", "accessibilityLabel"):
+            for language, unit in catalog[f"onboarding.control.openInputMonitoringPane.{kind}"]["localizations"].items():
+                with self.subTest(kind=kind, language=language):
+                    value = unit["stringUnit"]["value"].casefold()
+                    self.assertFalse([name for name in names if name in value])
+
+    def test_the_login_items_pane_is_spelled_as_system_panes_json(self):
+        newest = next(e for e in self.PANES["entries"] if "max" not in e["macOS"])["names"]["vi"]["loginItems"]
+        page = html.unescape((REPO / "site" / "content" / "vi" / "support.mjs").read_text(encoding="utf-8"))
+        self.assertNotIn("tiện ích mở rộng", page)
+        self.assertGreaterEqual(page.count(f"Cài đặt chung > {newest}"), 2)
 
 
 class W7bCopyTests(unittest.TestCase):
