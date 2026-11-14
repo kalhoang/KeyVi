@@ -27,7 +27,13 @@ public struct InlineUTF16: Sendable, Hashable, BitwiseCopyable {
         self.init()
         withUnsafeMutableBytes(of: &units) { raw in
             let target = raw.bindMemory(to: UInt16.self)
-            for index in 0..<buffer.count { target[index] = buffer[index] }
+            // A `while` loop: an unoptimised `for ... in` over a range allocates an iterator box per iteration, and
+            // Debug builds (the dev recorder's, PLT-R904A) run this on the tap (PLT-R305).
+            var index = 0
+            while index < buffer.count {
+                target[index] = buffer[index]
+                index += 1
+            }
         }
         count = UInt8(buffer.count)
     }
