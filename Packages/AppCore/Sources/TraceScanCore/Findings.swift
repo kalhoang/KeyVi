@@ -19,6 +19,8 @@ public struct Finding: Sendable, Hashable {
         case keyDropped
         /// A readback mismatch that is exactly one character in the field KeyVi did not type.
         case extraCharacter
+        /// A keyUp whose keyDown the tap never saw: the app received a key KeyVi did not (PLT-R397A).
+        case unseenKey
         /// A readback that timed out or one of whose AX calls took longer than `FindingLimits.slowReadback`.
         case slowReadback
         case resetWithOpenToken
@@ -47,6 +49,9 @@ enum FindingLimits {
     static let burstBackspaces = 3
     /// (c) The burst fits in this window.
     static let burstWindow: Int64 = 1_500_000
+    /// An orphan keyUp this soon after a gap, a pause or a launch ended may belong to a keyDown the recorder did not
+    /// write (the first key after a secure gap, runbook section 4), so it is no unseenKey.
+    static let unseenAfterWindow: Int64 = 1_000_000
     /// (c) The burst starts this soon after the engine transformed a word, and retyping follows this soon.
     static let burstAfterTransform: Int64 = 2_000_000
     static let retypeAfterBurst: Int64 = 2_000_000
@@ -70,40 +75,57 @@ enum FindingLimits {
     static let unmeasuredReadback: Int64 = 150_000
 }
 
-/// The focus and settings in effect at each event, for findings and replay.
+/// The focus, settings and engine identity in effect at each event, for findings and replay. A focus line without an
+/// app but with the frontmost application (format version 3) is attributed to that application, in parentheses.
 struct TraceContext {
     var bundle: String?
     var rule: String?
     var focus: TraceLine?
     var settings: [String: String] = [:]
+    /// The engine identity of the launch that wrote the lines (nil: not recorded, format versions 1 and 2).
+    var engine: String?
 
     mutating func apply(_ line: TraceLine) {
         switch line.type {
         case "focus":
             focus = line
-            bundle = line.bundle
+            bundle = line.bundle ?? line.front.map { "(" + $0 + ")" }
             rule = line.rule
         case "settings": settings = line.s ?? settings
-        case "file", "start":
-            if line.type == "start" {
-                focus = nil
-                bundle = nil
-                rule = nil
-            }
+        case "file":
+            if let identity = line.eng { engine = identity }
+        case "start":
+            focus = nil
+            bundle = nil
+            rule = nil
+            engine = line.eng
         default: break
         }
     }
 }
 
 public enum FindingDetector {
-    /// Every finding in time order; replay divergences need the bundled lexicons (`replay` nil skips them).
-    public static func findings(in events: [TraceEvent], replay: ReplayEngineFactory?) -> [Finding] {
+    /// Every finding in time order and the replay segments skipped for another engine build; replay divergences
+    /// need the bundled lexicons (`replay` nil skips them). `replayAnyEngine`: replay traces of any engine build.
+    public static func scan(
+        _ events: [TraceEvent], replay: ReplayEngineFactory?, replayAnyEngine: Bool = false
+    ) -> (findings: [Finding], replaySkips: ReplaySkips) {
         var found: [Finding] = []
         var scanner = SequentialScan()
         for event in events { scanner.feed(event, into: &found) }
         scanner.finish(into: &found)
-        if let replay { found += ReplayCheck.divergences(in: events, factory: replay) }
-        return found.sorted { ($0.t, $0.eventIndex, $0.kind.order) < ($1.t, $1.eventIndex, $1.kind.order) }
+        var skips = ReplaySkips()
+        if let replay {
+            let replayed = ReplayCheck.run(in: events, factory: replay, anyEngine: replayAnyEngine)
+            found += replayed.findings
+            skips = replayed.skips
+        }
+        let sorted = found.sorted { ($0.t, $0.eventIndex, $0.kind.order) < ($1.t, $1.eventIndex, $1.kind.order) }
+        return (sorted, skips)
+    }
+
+    public static func findings(in events: [TraceEvent], replay: ReplayEngineFactory?) -> [Finding] {
+        scan(events, replay: replay).findings
     }
 }
 

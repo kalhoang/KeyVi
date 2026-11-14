@@ -14,6 +14,8 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     public var v: Int?
     public var launch: String?
     public var app: String?
+    /// Engine identity (`DevEngineIdentity`), file and start lines of format version 3.
+    public var eng: String?
     public var ev: String?
     public var kc: UInt16?
     public var fl: UInt64?
@@ -55,6 +57,11 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     public var mac: Bool?
     public var pause: String?
     public var manual: Bool?
+    /// Focus lines without an app: NSWorkspace's frontmost application (format version 3).
+    public var front: String?
+    /// Secure gap lines: the likely holder's bundle ID and process ID (format version 3).
+    public var holder: String?
+    public var pid: Int32?
     public var status: String?
     public var text: String?
     public var selLoc: Int?
@@ -95,6 +102,9 @@ enum TraceKeys {
     static let option: UInt64 = 0x0008_0000
     static let command: UInt64 = 0x0010_0000
 
+    /// Modifier keys report flagsChanged, never keyUp (kVK_RightCommand to kVK_Function).
+    static func isModifier(_ keyCode: UInt16) -> Bool { (0x36...0x3F).contains(keyCode) }
+
     /// Keypad keys that produce characters (kVK_ANSI_Keypad0...9, Decimal, Multiply, Plus, Clear, Divide, Minus,
     /// Equals), as the pipeline flags them for the engine (PLT-R355).
     static func isKeypadCharacter(_ keyCode: UInt16) -> Bool {
@@ -108,6 +118,12 @@ enum TraceKeys {
 extension TraceLine {
     var isKeyDown: Bool { type == "key" && ev == "keyDown" }
     var isBackspaceDown: Bool { isKeyDown && kc == TraceKeys.backspace }
+    var isKeyUp: Bool { type == "key" && ev == "keyUp" }
+    /// A Backspace the pipeline reports to the engine: plain or with Shift. Option+Backspace deletes a word and
+    /// Command+Backspace the line (PLT-R352): not one Backspace.
+    var isPlainBackspaceDown: Bool {
+        isBackspaceDown && flags & (TraceKeys.command | TraceKeys.control | TraceKeys.option) == 0
+    }
     var flags: UInt64 { fl ?? 0 }
     var hasCommandOrControl: Bool { flags & (TraceKeys.command | TraceKeys.control) != 0 }
     /// An engine step that changed the text.

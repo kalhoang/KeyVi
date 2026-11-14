@@ -38,6 +38,19 @@ public enum TraceRendering {
         return output.joined(separator: "\n") + "\n"
     }
 
+    /// ADR 0007 decision 13: the replay segments skipped because another or an unidentified engine build wrote them
+    /// (no replayDivergence is reported for them). Nil when every segment was replayed or replay was off.
+    public static func replayNote(_ skips: ReplaySkips, replayed: Bool) -> String? {
+        guard replayed, skips.total > 0 else { return nil }
+        var parts: [String] = []
+        if skips.otherEngine > 0 { parts.append(String(skips.otherEngine) + " written by another engine build") }
+        if skips.unidentifiedEngine > 0 {
+            parts.append(String(skips.unidentifiedEngine) + " by a build that did not record its engine")
+        }
+        return "Replay: " + String(skips.total) + " segments not replayed (" + parts.joined(separator: ", ")
+            + "); --replay-anyway replays them\n"
+    }
+
     /// The finding's window, `before` and `after` in microseconds around it.
     public static func show(
         _ finding: Finding, number: Int, events: [TraceEvent], before: Int64, after: Int64, timeZone: TimeZone
@@ -104,11 +117,14 @@ public enum TraceRendering {
                     separator: " ")
         case "gap":
             let span = line.end.map { " " + microseconds(UInt64(max(0, $0 - line.t))) } ?? ""
-            return "gap  " + (line.reason ?? "?") + span
+            let holder = line.holder.map { "  holder " + $0 } ?? ""
+            let pid = line.pid.map { "  pid " + String($0) } ?? ""
+            return "gap  " + (line.reason ?? "?") + span + holder + pid
                 + (line.dropped.map { "  " + String($0) + " records lost" } ?? "")
         case "pause": return "pause  until " + (line.until.map { String($0) } ?? "?")
         case "file", "start":
             return line.type + "  launch " + (line.launch ?? "?") + (line.app.map { "  app " + $0 } ?? "")
+                + (line.eng.map { "  engine " + $0 } ?? "")
         default: return line.type
         }
     }
@@ -133,6 +149,7 @@ public enum TraceRendering {
             "strategy " + (line.strat ?? "-"), "requireTextFocus " + (line.rtf ?? "-"), "ax " + (line.ax ?? "-"),
             "mode " + (line.mode ?? "-") + " (" + (line.modeSrc ?? "-") + ")", "context " + (line.ctx ?? "-"),
             (line.secure ?? false) ? "secure" : "", line.pause.map { "paused " + $0 } ?? "",
+            line.front.map { "frontmost " + $0 } ?? "",
         ].filter { !$0.isEmpty }.joined(separator: "  ")
     }
 

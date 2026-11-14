@@ -4,8 +4,11 @@
 // prints to standard output only; it never writes, moves or deletes a file. scripts/dev/trace-scan.sh passes the dev
 // build's folder as `--dir`; the brand-dependent default lives there, never in Swift.
 //
-//   trace-scan summary --dir PATH [--since 2h | --date YYYY-MM-DD] [--no-replay]
+//   trace-scan summary --dir PATH [--since 2h | --date YYYY-MM-DD] [--no-replay | --replay-anyway]
 //   trace-scan show N --dir PATH [--since ... | --date ...] [--before 30s] [--after 10s] [--no-replay]
+//
+// The replay runs only on segments the scanner's own engine build wrote (ADR 0007 decision 13); `--replay-anyway`
+// replays every segment, as before 2026-11-15.
 //
 // `show N` numbers findings exactly as `summary` does for the same selection, so pass the same `--since` or
 // `--date`. `--now` (ISO 8601) pins the clock `--since` counts from, for tests and reproducible reads.
@@ -21,11 +24,12 @@ public enum TraceScanCommand {
 
     public static let usage = """
         Usage:
-          trace-scan summary --dir PATH [--since 2h | --date YYYY-MM-DD] [--no-replay]
+          trace-scan summary --dir PATH [--since 2h | --date YYYY-MM-DD] [--no-replay | --replay-anyway]
           trace-scan show N --dir PATH [--since 2h | --date YYYY-MM-DD] [--before 30s] [--after 10s] [--no-replay]
 
         summary  metadata only (files, apps, counts, gaps) and the numbered findings
         show N   the excerpt around finding N (same selection as the summary that numbered it)
+        Replay: only segments written by this scanner's engine build; --replay-anyway replays every one.
         Durations: 500ms, 30s, 5m, 2h, 7d. Reads only; never writes anywhere but standard output.
 
         """
@@ -39,6 +43,7 @@ public enum TraceScanCommand {
         var after: Int64 = 10_000_000
         var now: Date?
         var replay = true
+        var replayAnyEngine = false
     }
 
     /// Runs one command. `makeReplay` loads the bundled lexicons (only when replay is on).
@@ -53,10 +58,12 @@ public enum TraceScanCommand {
             let store = TraceStore(directory: directory, timeZone: timeZone)
             let load = try store.load(options.selection, now: options.now ?? now)
             let replay = options.replay ? try makeReplay() : nil
-            let findings = FindingDetector.findings(in: load.events, replay: replay)
+            let scan = FindingDetector.scan(load.events, replay: replay, replayAnyEngine: options.replayAnyEngine)
+            let findings = scan.findings
             switch options.command {
             case "summary":
-                let text = TraceRendering.summary(load, findings: findings, directory: directory, timeZone: timeZone)
+                var text = TraceRendering.summary(load, findings: findings, directory: directory, timeZone: timeZone)
+                if let note = TraceRendering.replayNote(scan.replaySkips, replayed: replay != nil) { text += note }
                 return Result(output: text, error: "", exitCode: 0)
             default:
                 let number = options.number ?? 0
@@ -99,6 +106,10 @@ public enum TraceScanCommand {
         while let flag = remaining.popFirst() {
             if flag == "--no-replay" {
                 options.replay = false
+                continue
+            }
+            if flag == "--replay-anyway" {
+                options.replayAnyEngine = true
                 continue
             }
             guard let value = remaining.popFirst() else { throw TraceScanError.usage(flag + " needs a value") }

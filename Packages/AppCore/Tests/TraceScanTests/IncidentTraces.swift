@@ -16,7 +16,7 @@ enum IncidentTraces {
     /// Backspaces), and the following words were typed and read back with the field one "c" short.
     static func one() -> TraceBuilder {
         var trace = TraceBuilder()
-        trace.launch(bundle: webEditor, rule: nil)
+        trace.launch(bundle: webEditor, rule: nil, version: 1, engine: nil)
         trace.boundary("focusChanged", job: "focusChanged")
         trace.type("Khucs ")
         trace.advance(153)  // "c" goes down 273 ms after the space
@@ -41,7 +41,7 @@ enum IncidentTraces {
     /// commit readback started 71 ms after "i", read "máy co", and the field never received the "i".
     static func ten() -> TraceBuilder {
         var trace = TraceBuilder()
-        trace.launch(bundle: webEditor, rule: nil)
+        trace.launch(bundle: webEditor, rule: nil, version: 1, engine: nil)
         trace.boundary("focusChanged", job: "focusChanged")
         typeIncidentTen(into: &trace)
         return trace

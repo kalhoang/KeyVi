@@ -534,7 +534,8 @@ struct DevRecorderState {
         for item in ordered {
             let age = item.at > monoNow ? 0 : Int64(monoNow.nanoseconds(since: item.at) / 1_000)
             let t = wallMicros - age
-            let line = item.make(t)
+            var line = item.make(t)
+            if line.type == .start { line.eng = engineIdentity }  // known by the first drain (ADR 0007 decision 13)
             let hour = DevTraceFiles.hourKey(
                 for: Date(timeIntervalSince1970: Double(t) / 1_000_000), timeZone: timeZone)
             if hour != currentHour {
