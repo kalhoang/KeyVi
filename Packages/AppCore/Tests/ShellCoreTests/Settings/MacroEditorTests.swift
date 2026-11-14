@@ -53,7 +53,7 @@ import VietnameseEngine
                 "dc, không phải đc"))
         #expect(
             MacroIssueText.text(.shadowedBy(shorter: "vn"), shortcut: "vn.", localizer: l.vi)
-                == "\"vn.\" là gõ tắt \"vn\" thêm dấu câu hoặc chữ số, nên \"vn\" luôn chạy trước và \"vn.\" không bao giờ dùng được."
+                == "\"vn.\" là chữ viết tắt \"vn\" thêm dấu câu hoặc chữ số, nên \"vn\" luôn chạy trước và \"vn.\" không bao giờ dùng được."
         )
         #expect(
             MacroIssueText.text(.shadows(longer: "ad."), shortcut: "ad", localizer: l.en)
@@ -68,10 +68,10 @@ import VietnameseEngine
             #expect(!text.isEmpty && !text.hasPrefix("macros."), "\(issue)")
         }
         let row = MacroImportRow(line: 12, shortcut: "vn", expansion: "", issue: .emptyExpansion)
-        #expect(MacroIssueText.lineText(row, localizer: l.vi) == "Dòng 12: thiếu phần nội dung gõ tắt.")
+        #expect(MacroIssueText.lineText(row, localizer: l.vi) == "Dòng 12: thiếu phần nội dung đầy đủ.")
         #expect(MacroIssueText.lineText(MacroImportRow(line: 1, shortcut: "a", expansion: "b"), localizer: l.vi) == "")
         let problem = MacroTableProblem(trigger: "vn.", issue: .shadowedBy(shorter: "vn"))
-        #expect(MacroIssueText.entryText(problem, localizer: l.vi).hasPrefix("Gõ tắt \"vn.\": "))
+        #expect(MacroIssueText.entryText(problem, localizer: l.vi).hasPrefix("Mục viết tắt \"vn.\": "))
     }
 
     @Test func expansionsAreStoredInNFC_ENGR1101() throws {
@@ -131,7 +131,7 @@ import VietnameseEngine
         let l = try Localizers()
         #expect(
             MacroIssueText.text(.shadowedBy(shorter: "k"), shortcut: "k1", localizer: l.vi)
-                == "\"k1\" là gõ tắt \"k\" thêm dấu câu hoặc chữ số, nên \"k\" luôn chạy trước và \"k1\" không bao giờ dùng được."
+                == "\"k1\" là chữ viết tắt \"k\" thêm dấu câu hoặc chữ số, nên \"k\" luôn chạy trước và \"k1\" không bao giờ dùng được."
         )
         #expect(
             MacroIssueText.text(.shadows(longer: "k2"), shortcut: "K", localizer: l.en)

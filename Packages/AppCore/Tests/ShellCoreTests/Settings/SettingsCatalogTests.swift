@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// PRD-R7 (no "not a setting" items), PRD-R24 (five panes, order, Advanced content), PRD-R25 (one explanation per
+// PRD-R7 (no "not a setting" items), PRD-R24 (seven panes, order, Advanced content), PRD-R25 (one explanation per
 // setting in vi and en), PRD-R6 (edits are explicit choices).
 
 import AppModel
@@ -12,14 +12,14 @@ import Testing
 @testable import ShellCore
 
 @Suite struct SettingsCatalogTests {
-    @Test func atMostFivePanesInSpecOrder() {
-        // PRD-R24
-        #expect(SettingsPaneKind.allCases == [.general, .typing, .apps, .macros, .aboutSupport])
-        #expect(SettingsPaneKind.allCases.count <= 5)
+    @Test func sevenPanesInSpecOrder() {
+        // PRD-R24 (Pa, 15/11/2026: About & Support split into About, Support and Licences)
+        #expect(SettingsPaneKind.allCases == [.general, .typing, .apps, .macros, .about, .support, .licences])
         #expect(
             SettingsPaneKind.allCases.map(\.title) == [
-                .paneGeneral, .paneTyping, .paneApps, .paneMacros, .paneAboutSupport,
+                .paneGeneral, .paneTyping, .paneApps, .paneMacros, .paneAbout, .paneSupport, .paneLicences,
             ])
+        #expect(SettingsPaneKind.allCases.filter { $0.paneReset == nil } == [.about, .support, .licences])
     }
 
     @Test func paneContentsFollowPRDR24() {
@@ -39,12 +39,14 @@ import Testing
             ])
         #expect(SettingsCatalog.items(in: .macros, advanced: false) == [.macrosEnabled])
         #expect(
-            SettingsCatalog.items(in: .aboutSupport, advanced: false) == [
+            SettingsCatalog.items(in: .about, advanced: false) == [
                 .updateChannel, .automaticallyCheckForUpdates, .automaticallyInstallUpdates,
             ])
         #expect(SettingsCatalog.items(in: .apps, advanced: false).isEmpty)
+        #expect(SettingsCatalog.items(in: .support, advanced: false).isEmpty)
+        #expect(SettingsCatalog.items(in: .licences, advanced: false).isEmpty)
         #expect(SettingsPaneKind.general.hasAdvancedSection && SettingsPaneKind.typing.hasAdvancedSection)
-        #expect(!SettingsPaneKind.apps.hasAdvancedSection && !SettingsPaneKind.aboutSupport.hasAdvancedSection)
+        #expect(SettingsPaneKind.allCases.filter(\.hasAdvancedSection) == [.general, .typing])
     }
 
     @Test func notASettingItemsNeverAppear_PRDR7() {

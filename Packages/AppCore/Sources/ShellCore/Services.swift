@@ -80,7 +80,7 @@ public struct SMAppServiceLoginItem: LoginItemService {
     }
 }
 
-/// What the About & Support pane needs from the Sparkle wrapper (App/Updater), so its view model is testable.
+/// What the About pane needs from the Sparkle wrapper (App/Updater), so its view model is testable.
 @MainActor
 public protocol UpdaterControlling: AnyObject {
     var canCheckForUpdates: Bool { get }

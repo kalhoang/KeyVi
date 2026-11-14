@@ -14,7 +14,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thêm gõ tắt"
+            "value" : "Thêm viết tắt"
           }
         }
       }
@@ -68,7 +68,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím tắt"
+            "value" : "Chữ viết tắt"
           }
         }
       }
@@ -86,7 +86,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở ô để thêm gõ tắt mới."
+            "value" : "Mở ô để thêm mục viết tắt mới."
           }
         }
       }
@@ -104,7 +104,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thêm gõ tắt"
+            "value" : "Thêm viết tắt"
           }
         }
       }
@@ -140,7 +140,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giữ gõ tắt"
+            "value" : "Giữ mục viết tắt"
           }
         }
       }
@@ -158,7 +158,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa gõ tắt này."
+            "value" : "Xóa mục viết tắt này."
           }
         }
       }
@@ -176,7 +176,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa gõ tắt"
+            "value" : "Xóa mục viết tắt"
           }
         }
       }
@@ -194,7 +194,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tắt mọi gõ tắt trong danh sách."
+            "value" : "Tắt mọi mục viết tắt trong danh sách."
           }
         }
       }
@@ -212,7 +212,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tắt tất cả gõ tắt"
+            "value" : "Tắt tất cả mục viết tắt"
           }
         }
       }
@@ -230,7 +230,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật hoặc tắt việc viết hoa nội dung theo cách bạn gõ phím tắt."
+            "value" : "Bật hoặc tắt việc viết hoa nội dung theo cách bạn gõ chữ viết tắt."
           }
         }
       }
@@ -248,7 +248,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đổi chữ hoa theo phím tắt"
+            "value" : "Đổi chữ hoa theo chữ viết tắt"
           }
         }
       }
@@ -284,7 +284,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hủy sửa gõ tắt"
+            "value" : "Hủy sửa viết tắt"
           }
         }
       }
@@ -302,7 +302,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật hoặc tắt gõ tắt này."
+            "value" : "Bật hoặc tắt mục viết tắt này."
           }
         }
       }
@@ -320,7 +320,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật gõ tắt này"
+            "value" : "Bật mục viết tắt này"
           }
         }
       }
@@ -338,7 +338,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập nội dung sẽ thay cho phím tắt. Có thể xuống dòng."
+            "value" : "Nhập nội dung sẽ thay cho chữ viết tắt. Có thể xuống dòng."
           }
         }
       }
@@ -356,7 +356,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nội dung gõ tắt"
+            "value" : "Nội dung đầy đủ"
           }
         }
       }
@@ -374,7 +374,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu nếu phím tắt và nội dung hợp lệ."
+            "value" : "Lưu nếu chữ viết tắt và nội dung hợp lệ."
           }
         }
       }
@@ -392,7 +392,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu gõ tắt"
+            "value" : "Lưu mục viết tắt"
           }
         }
       }
@@ -428,7 +428,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím tắt"
+            "value" : "Chữ viết tắt"
           }
         }
       }
@@ -446,7 +446,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật mọi gõ tắt trong danh sách."
+            "value" : "Bật mọi mục viết tắt trong danh sách."
           }
         }
       }
@@ -464,7 +464,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật tất cả gõ tắt"
+            "value" : "Bật tất cả mục viết tắt"
           }
         }
       }
@@ -482,7 +482,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật hoặc tắt mọi gõ tắt."
+            "value" : "Bật hoặc tắt tính năng viết tắt."
           }
         }
       }
@@ -500,7 +500,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật gõ tắt"
+            "value" : "Bật viết tắt"
           }
         }
       }
@@ -518,7 +518,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu danh sách gõ tắt ra một tệp JSON."
+            "value" : "Lưu danh sách viết tắt ra một file JSON."
           }
         }
       }
@@ -536,7 +536,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xuất gõ tắt ra tệp"
+            "value" : "Xuất viết tắt ra file"
           }
         }
       }
@@ -590,7 +590,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn một tệp gõ tắt khác."
+            "value" : "Chọn một file viết tắt khác."
           }
         }
       }
@@ -608,7 +608,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp khác"
+            "value" : "Chọn file khác"
           }
         }
       }
@@ -626,7 +626,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thêm gõ tắt mới và xử lý gõ tắt trùng theo lựa chọn của bạn."
+            "value" : "Thêm mục viết tắt mới và xử lý mục trùng theo lựa chọn của bạn."
           }
         }
       }
@@ -644,7 +644,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập gõ tắt"
+            "value" : "Nhập viết tắt"
           }
         }
       }
@@ -680,7 +680,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cách xử lý gõ tắt bị trùng"
+            "value" : "Cách xử lý mục viết tắt bị trùng"
           }
         }
       }
@@ -698,7 +698,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp JSON, văn bản, CSV hoặc tệp Thay thế văn bản của macOS."
+            "value" : "Chọn file JSON, văn bản, CSV hoặc file Thay thế văn bản của macOS."
           }
         }
       }
@@ -716,7 +716,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập gõ tắt từ tệp"
+            "value" : "Nhập viết tắt từ file"
           }
         }
       }
@@ -734,7 +734,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dùng phím mũi tên để chọn một gõ tắt."
+            "value" : "Dùng phím mũi tên để chọn một mục viết tắt."
           }
         }
       }
@@ -752,7 +752,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Danh sách gõ tắt"
+            "value" : "Danh sách viết tắt"
           }
         }
       }
@@ -770,7 +770,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở hộp xác nhận. Danh sách gõ tắt được giữ nếu bạn không chọn xóa."
+            "value" : "Mở hộp xác nhận. Danh sách viết tắt được giữ nếu bạn không chọn xóa."
           }
         }
       }
@@ -788,7 +788,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Khôi phục mặc định cho mục Gõ tắt"
+            "value" : "Khôi phục mặc định cho mục Viết tắt"
           }
         }
       }
@@ -806,7 +806,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hỏi xác nhận rồi xóa gõ tắt này."
+            "value" : "Hỏi xác nhận rồi xóa mục viết tắt này."
           }
         }
       }
@@ -824,7 +824,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa gõ tắt"
+            "value" : "Xóa mục viết tắt"
           }
         }
       }
@@ -842,7 +842,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tạo bản sao để sửa thành gõ tắt mới."
+            "value" : "Tạo bản sao để sửa thành mục viết tắt mới."
           }
         }
       }
@@ -860,7 +860,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhân bản gõ tắt"
+            "value" : "Nhân bản mục viết tắt"
           }
         }
       }
@@ -878,7 +878,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở ô sửa gõ tắt này."
+            "value" : "Mở ô sửa mục viết tắt này."
           }
         }
       }
@@ -896,7 +896,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sửa gõ tắt"
+            "value" : "Sửa mục viết tắt"
           }
         }
       }
@@ -914,7 +914,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật hoặc tắt gõ tắt này."
+            "value" : "Bật hoặc tắt mục viết tắt này."
           }
         }
       }
@@ -932,7 +932,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật gõ tắt này"
+            "value" : "Bật mục viết tắt này"
           }
         }
       }
@@ -950,7 +950,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lọc danh sách theo phím tắt hoặc nội dung."
+            "value" : "Lọc danh sách theo chữ viết tắt hoặc nội dung."
           }
         }
       }
@@ -968,7 +968,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tìm gõ tắt"
+            "value" : "Tìm viết tắt"
           }
         }
       }
@@ -1004,7 +1004,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sắp xếp gõ tắt"
+            "value" : "Sắp xếp danh sách viết tắt"
           }
         }
       }
@@ -1022,7 +1022,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Số gõ tắt: %d"
+            "value" : "Số mục viết tắt: %d"
           }
         }
       }
@@ -1094,7 +1094,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa gõ tắt \"%@\"?"
+            "value" : "Xóa mục viết tắt \"%@\"?"
           }
         }
       }
@@ -1166,7 +1166,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đổi chữ hoa theo phím tắt"
+            "value" : "Đổi chữ hoa theo chữ viết tắt"
           }
         }
       }
@@ -1220,7 +1220,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật gõ tắt này"
+            "value" : "Bật mục viết tắt này"
           }
         }
       }
@@ -1292,7 +1292,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím tắt"
+            "value" : "Chữ viết tắt"
           }
         }
       }
@@ -1328,7 +1328,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thêm gõ tắt"
+            "value" : "Thêm viết tắt"
           }
         }
       }
@@ -1346,7 +1346,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sửa gõ tắt"
+            "value" : "Sửa viết tắt"
           }
         }
       }
@@ -1364,7 +1364,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chưa có gõ tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\"."
+            "value" : "Chưa có mục viết tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\"."
           }
         }
       }
@@ -1400,7 +1400,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ phím tắt rồi dấu cách hoặc dấu câu để ra cả cụm. Ví dụ: vn ra Việt Nam."
+            "value" : "Gõ chữ viết tắt rồi dấu cách hoặc dấu câu để ra cả cụm. Ví dụ: vn ra Việt Nam."
           }
         }
       }
@@ -1418,7 +1418,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt (macro)"
+            "value" : "Viết tắt (macro)"
           }
         }
       }
@@ -1436,7 +1436,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xuất ra tệp..."
+            "value" : "Xuất ra file..."
           }
         }
       }
@@ -1454,7 +1454,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp. Hãy chọn thư mục khác."
+            "value" : "Không lưu được file. Hãy chọn thư mục khác."
           }
         }
       }
@@ -1472,7 +1472,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập từ tệp..."
+            "value" : "Nhập từ file..."
           }
         }
       }
@@ -1508,7 +1508,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp khác"
+            "value" : "Chọn file khác"
           }
         }
       }
@@ -1544,7 +1544,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã nhập gõ tắt."
+            "value" : "Đã nhập danh sách viết tắt."
           }
         }
       }
@@ -1562,7 +1562,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Với gõ tắt bị trùng:"
+            "value" : "Với mục viết tắt bị trùng:"
           }
         }
       }
@@ -1580,7 +1580,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trùng với gõ tắt đã có: %d"
+            "value" : "Trùng với mục đã có: %d"
           }
         }
       }
@@ -1598,7 +1598,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này không có gõ tắt nào."
+            "value" : "File này không có mục viết tắt nào."
           }
         }
       }
@@ -1634,7 +1634,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này không đúng định dạng."
+            "value" : "File này không đúng định dạng."
           }
         }
       }
@@ -1652,7 +1652,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này không đúng định dạng. Dòng %1$d: %2$@"
+            "value" : "File này không đúng định dạng. Dòng %1$d: %2$@"
           }
         }
       }
@@ -1706,7 +1706,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập gõ tắt"
+            "value" : "Nhập viết tắt"
           }
         }
       }
@@ -1724,7 +1724,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này lớn hơn %@ MB."
+            "value" : "File này lớn hơn %@ MB."
           }
         }
       }
@@ -1742,7 +1742,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không đọc được tệp này."
+            "value" : "Không đọc được file này."
           }
         }
       }
@@ -1778,7 +1778,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã có gõ tắt \"%@\" (không phân biệt chữ hoa)."
+            "value" : "Đã có mục viết tắt \"%@\" (không phân biệt chữ hoa)."
           }
         }
       }
@@ -1796,7 +1796,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thiếu phần nội dung gõ tắt."
+            "value" : "Thiếu phần nội dung đầy đủ."
           }
         }
       }
@@ -1814,7 +1814,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bạn chưa nhập phím tắt."
+            "value" : "Bạn chưa nhập chữ viết tắt."
           }
         }
       }
@@ -1832,7 +1832,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt \"%1$@\": %2$@"
+            "value" : "Mục viết tắt \"%1$@\": %2$@"
           }
         }
       }
@@ -1904,7 +1904,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%1$@\" là gõ tắt \"%2$@\" thêm dấu câu hoặc chữ số, nên \"%2$@\" luôn chạy trước và \"%1$@\" không bao giờ dùng được."
+            "value" : "\"%1$@\" là chữ viết tắt \"%2$@\" thêm dấu câu hoặc chữ số, nên \"%2$@\" luôn chạy trước và \"%1$@\" không bao giờ dùng được."
           }
         }
       }
@@ -1922,7 +1922,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt \"%2$@\" là \"%1$@\" thêm dấu câu hoặc chữ số, nên nếu có \"%1$@\" thì \"%2$@\" sẽ không bao giờ dùng được."
+            "value" : "Chữ viết tắt \"%2$@\" là \"%1$@\" thêm dấu câu hoặc chữ số, nên nếu có \"%1$@\" thì \"%2$@\" sẽ không bao giờ dùng được."
           }
         }
       }
@@ -1940,7 +1940,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím tắt chỉ gồm chữ không dấu, chữ số và dấu câu, vì gõ tắt so theo phím bạn gõ (dc, không phải đc)."
+            "value" : "Chữ viết tắt chỉ gồm chữ không dấu, chữ số và dấu câu, vì nó được so theo phím bạn gõ (dc, không phải đc)."
           }
         }
       }
@@ -1958,7 +1958,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím tắt dài hơn 32 ký tự."
+            "value" : "Chữ viết tắt dài hơn 32 ký tự."
           }
         }
       }
@@ -1976,7 +1976,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phím tắt không được có khoảng trắng."
+            "value" : "Chữ viết tắt không được có khoảng trắng."
           }
         }
       }
@@ -1994,7 +1994,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được danh sách gõ tắt. %@"
+            "value" : "Không lưu được danh sách viết tắt. %@"
           }
         }
       }
@@ -2012,7 +2012,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không có gõ tắt nào khớp với \"%@\"."
+            "value" : "Không có mục viết tắt nào khớp với \"%@\"."
           }
         }
       }
@@ -2030,7 +2030,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tìm gõ tắt"
+            "value" : "Tìm viết tắt"
           }
         }
       }
@@ -2084,7 +2084,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Theo phím tắt"
+            "value" : "Theo chữ viết tắt"
           }
         }
       }

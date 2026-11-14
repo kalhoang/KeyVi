@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The sidebar of the Settings window, like macOS System Settings (Pa, 2026-11-14, feedback item 6): the five panes in
-// PRD-R24 order, each with its SF Symbol on a small coloured rounded tile. A source list with single selection, so
-// the arrow keys move between panes (PRD-R67); Command+1 to 5 are handled by `SettingsWindow`. Fixed width, never
+// The sidebar of the Settings window, like macOS System Settings (Pa, 2026-11-14, feedback item 6): the seven panes
+// in PRD-R24 order, each with its SF Symbol on a small coloured rounded tile. A source list with single selection, so
+// the arrow keys move between panes (PRD-R67); Command+1 to 7 are handled by `SettingsWindow`. Fixed width, never
 // collapsed. The same list runs on macOS 12 and later (ADR 0315).
 
 import AppKit
@@ -77,6 +77,8 @@ extension SettingsPaneTint {
         case .indigo: Color(nsColor: NSColor.systemIndigo)
         case .orange: Color(nsColor: NSColor.systemOrange)
         case .green: Color(nsColor: NSColor.systemGreen)
+        case .red: Color(nsColor: NSColor.systemRed)
+        case .brown: Color(nsColor: NSColor.systemBrown)
         }
     }
 }

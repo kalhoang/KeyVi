@@ -65,7 +65,7 @@ import Testing
         let expected: [(DiagnosticsText, String)] = [
             (.appLabel, "Lỗi xảy ra ở ứng dụng nào?"), (.symptomLabel, "Chuyện gì xảy ra?"),
             (.descriptionLabel, "Bạn gõ gì và mong ra gì?"), (.previewDisclosure, "Xem trước dữ liệu sẽ gửi"),
-            (.github, "Mở GitHub"), (.email, "Gửi qua email"), (.saveFile, "Lưu tệp..."),
+            (.github, "Mở GitHub"), (.email, "Gửi qua email"), (.saveFile, "Lưu file..."),
             (.practiceButton, "Thử trong ô gõ thử"),
         ]
         for (key, text) in expected { #expect(vi.string(key) == text) }
@@ -130,15 +130,15 @@ import Testing
         #expect(
             DiagnosticsCopy.buttonList([.copySuggestion, .copyReport, .openGitHubIssue], joinedBy: .or, en)
                 == "Copy rule, Copy report or Open GitHub issue")
-        #expect(DiagnosticsCopy.buttonList([.email, .saveFile], joinedBy: .and, vi) == "Gửi qua email và Lưu tệp...")
+        #expect(DiagnosticsCopy.buttonList([.email, .saveFile], joinedBy: .and, vi) == "Gửi qua email và Lưu file...")
         #expect(
             DiagnosticsCopy.buttonList([.copySuggestion, .copyReport, .openGitHubIssue], joinedBy: .or, vi)
                 == "Sao chép quy tắc, Sao chép báo cáo hoặc Mở báo lỗi trên GitHub")
         #expect(
             DiagnosticsCopy.clipboardNotice(buttons: [.copyReport], appName: "Example", en)
-                == "When you click Copy report, Example puts the data on the clipboard for you to paste. Apart from "
-                + "the paste compatibility mode you turn on yourself, this is the only time Example writes to the "
-                + "clipboard.")
+                == "When you click Copy report, Example puts the data on the clipboard for you to paste. Example "
+                + "writes to the clipboard only when you click a button like this, or in the paste compatibility "
+                + "mode you turn on yourself.")
     }
 
     /// PRD-R47 item 4, PLT-R1204: the preview segments name the sheet buttons whose output they show, only the

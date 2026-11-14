@@ -43,7 +43,7 @@ struct UpdatePreferences: Sendable, Hashable {
     }
 }
 
-/// One user change of D19, D20 or D21, from the About & Support pane or from Sparkle's own update window.
+/// One user change of D19, D20 or D21, from the About pane or from Sparkle's own update window.
 enum UpdatePreferenceChange: Sendable, Hashable {
     case automaticallyCheck(Bool)
     case automaticallyInstall(Bool)
@@ -94,7 +94,7 @@ enum UpdateChannelPolicy {
     }
 }
 
-/// PRD-R53: the one-line note under the channel control of About & Support (W2-B request from W2-D). Set after
+/// PRD-R53: the one-line note under the channel control of the About pane (W2-B request from W2-D). Set after
 /// every channel change from `UpdateChannelPolicy.notice(switchingFrom:to:)`; the app name is its argument.
 struct UpdateChannelNote: Sendable, Hashable {
     private(set) var key: UpdatesText?

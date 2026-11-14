@@ -70,14 +70,12 @@ struct AdvancedSection: View {
     let pane: SettingsPaneKind
 
     var body: some View {
-        let localizer = model.localizer
         let expanded = Binding(
             get: { model.isAdvancedExpanded(pane) }, set: { model.setAdvancedExpanded($0, for: pane) })
         SettingsGroup {
             SettingsDisclosureHeader(
-                title: localizer.string(SettingsText.advanced), isExpanded: expanded,
-                accessibilityLabel: localizer.accessibilityLabel(SettingsControl.advancedDisclosure),
-                accessibilityHint: localizer.accessibilityHint(SettingsControl.advancedDisclosure))
+                title: model.localizer.string(SettingsText.advanced), isExpanded: expanded,
+                control: SettingsControl.advancedDisclosure, localizer: model.localizer)
             if expanded.wrappedValue {
                 ForEach(SettingsCatalog.items(in: pane, advanced: true), id: \.self) { item in
                     SettingItemRow(model: model, item: item)
@@ -89,19 +87,23 @@ struct AdvancedSection: View {
 
 /// The header row of a disclosure in Settings: the title on the left, the chevron on the right, and the whole row is
 /// the click target (a DisclosureGroup on macOS opens only from its small triangle, not from its title). VoiceOver
-/// sees a disclosure triangle with its expanded state (PRD-R66); keyboard users reach it with Tab and press Space
-/// (PRD-R67). The content is the caller's: rows of their own after the header in a grouped section, or a view under
-/// it in a sheet (`SettingsDisclosure`). No animation with Reduce Motion (PRD-R67).
-struct SettingsDisclosureHeader: View {
+/// sees a disclosure triangle with its expanded state and the control's label and hint (the accessibility
+/// representation, PRD-R66); keyboard users reach it with Tab and press Space, and the plain-style row draws its own
+/// focus ring (PRD-R67). The content is the caller's: rows of their own after the header in a
+/// grouped section, or a view under it (`SettingsDisclosure`). No animation with Reduce Motion (PRD-R67).
+struct SettingsDisclosureHeader<Control: AccessibleControl>: View {
     let title: String
     @Binding var isExpanded: Bool
     var font: Font = .headline
-    let accessibilityLabel: String
-    let accessibilityHint: String
+    let control: Control
+    let localizer: Localizer
+    /// Overrides the control's label, for example to add the licence's name.
+    var label: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @FocusState private var focused: Bool
 
     var body: some View {
-        Button(action: toggle) {
+        Button(action: { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { isExpanded.toggle() } }) {
             HStack(spacing: 8) {
                 Text(verbatim: title).font(font)
                 Spacer(minLength: 0)
@@ -113,39 +115,43 @@ struct SettingsDisclosureHeader: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
+            .overlay(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .strokeBorder(Color(nsColor: .keyboardFocusIndicatorColor), lineWidth: 2)
+                    .padding(-4)
+                    .opacity(focused ? 1 : 0))
         }
         .buttonStyle(.plain)
+        .focused($focused)
+        .systemFocusEffectDisabled()
         .accessibilityRepresentation {
             DisclosureGroup(isExpanded: $isExpanded) {
                 EmptyView()
             } label: {
                 Text(verbatim: title)
             }
-            .accessibilityLabel(Text(verbatim: accessibilityLabel))
-            .accessibilityHint(Text(verbatim: accessibilityHint))
+            .settingsAccessibility(control, localizer, label: label)
         }
-    }
-
-    private func toggle() {
-        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { isExpanded.toggle() }
+        .settingsAccessibility(control, localizer, label: label)
     }
 }
 
-/// A disclosure outside a grouped section (the Apps details sheet, the Licences pane): the header row, then the
-/// content under it while expanded.
-struct SettingsDisclosure<Content: View>: View {
+/// A disclosure outside a grouped section's rows (the Apps details sheet, the Licences pane): the header row, then
+/// the content under it while expanded.
+struct SettingsDisclosure<Control: AccessibleControl, Content: View>: View {
     let title: String
     @Binding var isExpanded: Bool
     var font: Font = .headline
-    let accessibilityLabel: String
-    let accessibilityHint: String
+    let control: Control
+    let localizer: Localizer
+    var label: String?
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             SettingsDisclosureHeader(
-                title: title, isExpanded: $isExpanded, font: font, accessibilityLabel: accessibilityLabel,
-                accessibilityHint: accessibilityHint)
+                title: title, isExpanded: $isExpanded, font: font, control: control, localizer: localizer,
+                label: label)
             if isExpanded { content }
         }
     }

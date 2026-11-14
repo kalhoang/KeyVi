@@ -225,8 +225,7 @@ struct AppDetailSheet: View {
                 ScopedRows(localizer: localizer, detail: detail)
                 SettingsDisclosure(
                     title: localizer.string(SettingsText.advanced), isExpanded: $advanced, font: .body,
-                    accessibilityLabel: localizer.accessibilityLabel(AppsControl.detailAdvanced),
-                    accessibilityHint: localizer.accessibilityHint(AppsControl.detailAdvanced)
+                    control: AppsControl.detailAdvanced, localizer: localizer
                 ) {
                     CompatibilityChoices(model: model, row: row).padding(.top, 6)
                 }

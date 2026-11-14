@@ -536,7 +536,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp %1$@ bị hỏng nên %2$@ đang dùng cài đặt mặc định và chưa lưu thay đổi của bạn."
+            "value" : "File %1$@ bị hỏng nên %2$@ đang dùng cài đặt mặc định và chưa lưu thay đổi của bạn."
           }
         }
       }
@@ -554,7 +554,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp %1$@ đến từ phiên bản mới hơn nên %2$@ không lưu thay đổi vào tệp này."
+            "value" : "File %1$@ đến từ phiên bản mới hơn nên %2$@ không lưu thay đổi vào file này."
           }
         }
       }
@@ -572,7 +572,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%2$@ không lưu được tệp %1$@. Thay đổi mới nhất có thể mất khi thoát."
+            "value" : "%2$@ không lưu được file %1$@. Thay đổi mới nhất có thể mất khi thoát."
           }
         }
       }

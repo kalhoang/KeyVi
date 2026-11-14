@@ -33,7 +33,6 @@ final class SettingsWindowModel: ObservableObject {
     @Published var macroToDelete: StoredMacro?
     @Published var appDetail: AppDetail?
     @Published var pendingPasteMode: BundleKey?
-    @Published var showsLicences = false
     /// PRD-R53 note after switching from Beta back to Stable (the updater's `Updates` copy).
     @Published var channelNote = UpdateChannelNote()
 
@@ -92,6 +91,8 @@ final class SettingsWindowModel: ObservableObject {
     var localizer: Localizer { language.localizer }
     var settings: EffectiveSettings { state.effective }
     var appName: String { brand.displayName }
+    /// The name with its trademark sign, for the About, Support and Licences panes (Pa, 15/11/2026).
+    var markedName: String { brand.markedName }
 
     // MARK: - State
 
@@ -211,7 +212,7 @@ final class SettingsWindowModel: ObservableObject {
         }
     }
 
-    // MARK: - About & Support
+    // MARK: - About, Support and Licences
 
     /// PRD-R53: leaving Beta says that nothing is downgraded.
     func selectChannel(_ channel: UpdateChannel) {
@@ -225,6 +226,18 @@ final class SettingsWindowModel: ObservableObject {
     func reopenOnboarding() { actions?.reopenOnboarding() }
 
     func open(_ url: URL) { NSWorkspace.shared.open(url) }
+
+    /// "Mở trang hỗ trợ": the website's support page in the interface language (PRD-R73).
+    func openSupportPage() { open(SupportLinks.page(siteURL: brand.siteURL, language: localizer.language)) }
+
+    /// The donation block's copy buttons: the clipboard changes only on the user's click (PRD-R48), and the status
+    /// line says it did.
+    func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        statusMessage = localizer.string(SupportText.donateCopied)
+    }
 }
 
 /// Lets the capture controller's closures reach the model without a retain cycle (the model owns the controller).

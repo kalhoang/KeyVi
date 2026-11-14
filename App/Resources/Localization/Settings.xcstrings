@@ -212,7 +212,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đưa quy tắc và lựa chọn đã nhớ theo ứng dụng vào tệp xuất."
+            "value" : "Đưa quy tắc và lựa chọn đã nhớ theo ứng dụng vào file xuất."
           }
         }
       }
@@ -248,7 +248,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đưa danh sách gõ tắt vào tệp xuất."
+            "value" : "Đưa danh sách viết tắt vào file xuất."
           }
         }
       }
@@ -266,7 +266,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gồm gõ tắt"
+            "value" : "Gồm danh sách viết tắt"
           }
         }
       }
@@ -284,7 +284,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn nơi lưu tệp cài đặt."
+            "value" : "Chọn nơi lưu file cài đặt."
           }
         }
       }
@@ -302,7 +302,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu tệp xuất"
+            "value" : "Lưu file xuất"
           }
         }
       }
@@ -410,7 +410,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập gõ tắt"
+            "value" : "Nhập viết tắt"
           }
         }
       }
@@ -536,7 +536,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn một tệp cài đặt khác."
+            "value" : "Chọn một file cài đặt khác."
           }
         }
       }
@@ -554,7 +554,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp khác"
+            "value" : "Chọn file khác"
           }
         }
       }
@@ -572,7 +572,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sao lưu cài đặt hiện tại rồi áp dụng tệp."
+            "value" : "Sao lưu cài đặt hiện tại rồi áp dụng file."
           }
         }
       }
@@ -626,7 +626,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cách xử lý gõ tắt bị trùng"
+            "value" : "Cách xử lý mục viết tắt bị trùng"
           }
         }
       }
@@ -1040,7 +1040,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu cài đặt mặc định thay cho tệp bị hỏng."
+            "value" : "Lưu cài đặt mặc định thay cho file bị hỏng."
           }
         }
       }
@@ -1076,7 +1076,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật hoặc tắt việc tự mở khi bạn đăng nhập."
+            "value" : "Bật hoặc tắt việc tự khởi động cùng hệ thống."
           }
         }
       }
@@ -1094,7 +1094,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở khi đăng nhập"
+            "value" : "Khởi động cùng hệ thống"
           }
         }
       }
@@ -1112,7 +1112,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở phần cài đặt của hệ thống để bạn thêm ứng dụng vào danh sách tự mở khi đăng nhập."
+            "value" : "Mở phần cài đặt của hệ thống để bạn thêm ứng dụng vào danh sách khởi động cùng hệ thống."
           }
         }
       }
@@ -1148,7 +1148,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở Cài đặt hệ thống để cho phép mở khi đăng nhập."
+            "value" : "Mở Cài đặt hệ thống để cho phép khởi động cùng hệ thống."
           }
         }
       }
@@ -1178,13 +1178,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chooses which settings pane to show. Use the Up and Down Arrow keys or Command+1 to 5."
+            "value" : "Chooses which settings pane to show. Use the Up and Down Arrow keys or Command+1 to 7."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn mục cài đặt để hiện. Dùng phím mũi tên lên, xuống hoặc Command + 1 đến 5."
+            "value" : "Chọn mục cài đặt để hiện. Dùng phím mũi tên lên, xuống hoặc Command + 1 đến 7."
           }
         }
       }
@@ -1364,7 +1364,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu cài đặt hiện tại ra tệp trước khi khôi phục."
+            "value" : "Lưu cài đặt hiện tại ra file trước khi khôi phục."
           }
         }
       }
@@ -1400,7 +1400,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn để xóa luôn gõ tắt khi khôi phục."
+            "value" : "Chọn để xóa luôn danh sách viết tắt khi khôi phục."
           }
         }
       }
@@ -1418,7 +1418,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa cả danh sách gõ tắt"
+            "value" : "Xóa cả danh sách viết tắt"
           }
         }
       }
@@ -1976,7 +1976,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp gồm cài đặt và các chế độ tương thích bạn đã đặt. Chọn thêm phần muốn đưa vào:"
+            "value" : "File gồm cài đặt và các chế độ tương thích bạn đã đặt. Chọn thêm phần muốn đưa vào:"
           }
         }
       }
@@ -2030,7 +2030,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp. Hãy chọn thư mục khác."
+            "value" : "Không lưu được file. Hãy chọn thư mục khác."
           }
         }
       }
@@ -2066,7 +2066,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt"
+            "value" : "Viết tắt"
           }
         }
       }
@@ -2084,7 +2084,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt có thể chứa chữ riêng tư."
+            "value" : "Danh sách viết tắt có thể chứa chữ riêng tư."
           }
         }
       }
@@ -2354,7 +2354,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không đổi được tùy chọn mở khi đăng nhập. Hãy thử lại, hoặc bật trong Cài đặt hệ thống."
+            "value" : "Không đổi được tùy chọn khởi động cùng hệ thống. Hãy thử lại, hoặc bật trong Cài đặt hệ thống."
           }
         }
       }
@@ -2390,7 +2390,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS chưa nhận ra %@ để mở khi đăng nhập. Hãy chắc rằng ứng dụng nằm trong thư mục Ứng dụng."
+            "value" : "macOS chưa nhận ra %@ để khởi động cùng hệ thống. Hãy chắc rằng ứng dụng nằm trong thư mục Ứng dụng."
           }
         }
       }
@@ -2444,7 +2444,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS đang chờ bạn cho phép %@ mở khi đăng nhập."
+            "value" : "macOS đang chờ bạn cho phép %@ khởi động cùng hệ thống."
           }
         }
       }
@@ -2462,7 +2462,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở khi đăng nhập"
+            "value" : "Khởi động cùng hệ thống"
           }
         }
       }
@@ -3002,7 +3002,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nhập gõ tắt"
+            "value" : "Nhập viết tắt"
           }
         }
       }
@@ -3092,7 +3092,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp khác"
+            "value" : "Chọn file khác"
           }
         }
       }
@@ -3146,7 +3146,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Khi trùng phím tắt:"
+            "value" : "Khi trùng chữ viết tắt:"
           }
         }
       }
@@ -3164,7 +3164,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này không đúng định dạng."
+            "value" : "File này không đúng định dạng."
           }
         }
       }
@@ -3182,7 +3182,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không chuyển đổi được tệp từ định dạng cũ %d."
+            "value" : "Không chuyển đổi được file từ định dạng cũ %d."
           }
         }
       }
@@ -3200,7 +3200,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này không phải tệp cài đặt xuất từ %@."
+            "value" : "File này không phải file cài đặt xuất từ %@."
           }
         }
       }
@@ -3236,7 +3236,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Phần \"%@\" trong tệp không đúng định dạng."
+            "value" : "Phần \"%@\" trong file không đúng định dạng."
           }
         }
       }
@@ -3254,7 +3254,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này lớn hơn %@ MB."
+            "value" : "File này lớn hơn %@ MB."
           }
         }
       }
@@ -3272,7 +3272,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không đọc được tệp này."
+            "value" : "Không đọc được file này."
           }
         }
       }
@@ -3290,7 +3290,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp này thiếu số phiên bản định dạng, hoặc số đó không hợp lệ."
+            "value" : "File này thiếu số phiên bản định dạng, hoặc số đó không hợp lệ."
           }
         }
       }
@@ -3326,7 +3326,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt: %1$d mới, %2$d trùng, %3$d không hợp lệ"
+            "value" : "Viết tắt: %1$d mới, %2$d trùng, %3$d không hợp lệ"
           }
         }
       }
@@ -3344,7 +3344,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp được tạo bởi phiên bản mới hơn. Chỉ những phần phiên bản này hiểu được sẽ được nhập."
+            "value" : "File được tạo bởi phiên bản mới hơn. Chỉ những phần phiên bản này hiểu được sẽ được nhập."
           }
         }
       }
@@ -3542,7 +3542,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt khi ở chế độ tiếng Anh"
+            "value" : "Viết tắt khi ở chế độ tiếng Anh"
           }
         }
       }
@@ -3578,7 +3578,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp %1$@ bị hỏng và không có bản sao lưu. %2$@ đang dùng mặc định và chưa ghi đè tệp cũ. Bấm \"Dùng mặc định\" để lưu cài đặt hiện tại."
+            "value" : "File %1$@ bị hỏng và không có bản sao lưu. %2$@ đang dùng mặc định và chưa ghi đè file cũ. Bấm \"Dùng mặc định\" để lưu cài đặt hiện tại."
           }
         }
       }
@@ -3632,7 +3632,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp %1$@ được tạo bởi phiên bản mới hơn (định dạng %2$d). %3$@ chỉ dùng những phần hiểu được và không ghi vào tệp này."
+            "value" : "File %1$@ được tạo bởi phiên bản mới hơn (định dạng %2$d). %3$@ chỉ dùng những phần hiểu được và không ghi vào file này."
           }
         }
       }
@@ -3650,7 +3650,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp %1$@ bị hỏng nên đã được khôi phục từ bản sao lưu ngày %2$@. Cài đặt của bạn đã được lưu lại."
+            "value" : "File %1$@ bị hỏng nên đã được khôi phục từ bản sao lưu ngày %2$@. Cài đặt của bạn đã được lưu lại."
           }
         }
       }
@@ -3704,7 +3704,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ gặp sự cố %2$d lần ngay sau khi mở, nên đang chạy ở chế độ an toàn với cài đặt mặc định. Các tệp của bạn không bị thay đổi."
+            "value" : "%1$@ gặp sự cố %2$d lần ngay sau khi mở, nên đang chạy ở chế độ an toàn với cài đặt mặc định. Các file của bạn không bị thay đổi."
           }
         }
       }
@@ -3740,25 +3740,25 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp %@. Thay đổi mới nhất có thể mất khi thoát. Hãy kiểm tra dung lượng ổ đĩa rồi thử lại."
+            "value" : "Không lưu được file %@. Thay đổi mới nhất có thể mất khi thoát. Hãy kiểm tra dung lượng ổ đĩa rồi thử lại."
           }
         }
       }
     },
-    "settings.pane.aboutSupport" : {
-      "comment" : "PRD-R24 pane name.",
+    "settings.pane.about" : {
+      "comment" : "PRD-R24 pane name (Pa, 15/11/2026).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "About & Support"
+            "value" : "About"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giới thiệu & Hỗ trợ"
+            "value" : "Giới thiệu"
           }
         }
       }
@@ -3799,6 +3799,24 @@
         }
       }
     },
+    "settings.pane.licences" : {
+      "comment" : "PRD-R24 pane name (Pa, 15/11/2026).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licences"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bản quyền"
+          }
+        }
+      }
+    },
     "settings.pane.macros" : {
       "comment" : "PRD-R24 pane name.",
       "extractionState" : "manual",
@@ -3812,7 +3830,25 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt"
+            "value" : "Viết tắt"
+          }
+        }
+      }
+    },
+    "settings.pane.support" : {
+      "comment" : "PRD-R24 pane name (Pa, 15/11/2026).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hỗ trợ"
           }
         }
       }
@@ -3830,7 +3866,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ phím"
+            "value" : "Kiểu gõ"
           }
         }
       }
@@ -3848,7 +3884,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định. Danh sách gõ tắt được giữ, trừ khi bạn chọn xóa."
+            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định. Danh sách viết tắt được giữ, trừ khi bạn chọn xóa."
           }
         }
       }
@@ -3902,7 +3938,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Công tắc gõ tắt trở về mặc định. Danh sách gõ tắt được giữ, trừ khi bạn chọn xóa."
+            "value" : "Công tắc viết tắt trở về mặc định. Danh sách viết tắt được giữ, trừ khi bạn chọn xóa."
           }
         }
       }
@@ -3992,7 +4028,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bạn nên xuất cài đặt hiện tại ra tệp trước, để có thể lấy lại sau."
+            "value" : "Bạn nên xuất cài đặt hiện tại ra file trước, để có thể lấy lại sau."
           }
         }
       }
@@ -4028,7 +4064,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xóa cả danh sách gõ tắt"
+            "value" : "Xóa cả danh sách viết tắt"
           }
         }
       }

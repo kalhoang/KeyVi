@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Settings window with at most five panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
+// Settings window with seven panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
 // (PRD-R34-R38). Workstream W2-B; System Settings style sidebar layout W8-D (Pa, 2026-11-14). A normal window (not
 // floating) whose size and position are remembered (PRD-R28); SwiftUI content in an NSHostingController (ADR 0305).
 
@@ -13,18 +13,18 @@ import SettingsStore
 import ShellCore
 import SwiftUI
 
-/// The pane identifiers used by the composition root (`show(.macros)`, `show(.aboutSupport)`).
+/// The pane identifiers used by the composition root (`show(.macros)`, `show(.about)`).
 typealias SettingsPane = SettingsPaneKind
 
 /// What the Settings window asks the composition root to do; implemented by AppEnvironment.
 @MainActor
 protocol SettingsActions: AnyObject {
-    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37): the bug report
+    /// "Báo lỗi..." (Support pane, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37): the bug report
     /// sheet, pre-filled with `bundle` when given.
     func reportProblemFromSettings(for bundle: BundleKey?)
     /// "Chẩn đoán..." (D26 entry, W2-C's diagnostics window).
     func openDiagnostics()
-    /// PRD-R40: onboarding can be reopened from About & Support.
+    /// PRD-R40: onboarding can be reopened from the About pane.
     func reopenOnboarding()
     /// ADR 0305: the tap suspends hotkeys while the recorder captures keys
     /// (`InputHostController.setRecorderActive(_:)`).
@@ -104,7 +104,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.toolbarStyle = .unified
     }
 
-    /// Shows the window on `pane` (menu "Cài đặt...", "Gõ tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
+    /// Shows the window on `pane` (menu "Cài đặt...", "Viết tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
     func show(_ pane: SettingsPane) {
         model.select(pane)
         present()
@@ -152,7 +152,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-/// Command+1 to Command+5 select the panes in sidebar order (PRD-R67), by the digit typed or, on layouts whose number
+/// Command+1 to Command+7 select the panes in sidebar order (PRD-R67), by the digit typed or, on layouts whose number
 /// row types other characters, by the number row key. Only plain Command digits are taken; the
 /// hotkey recorder sees every key first through its local monitor (ADR 0305), and a sheet has its own window.
 final class SettingsWindow: NSWindow {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings window layout in the style of macOS System Settings (Pa, 2026-11-14, feedback item 6): the sidebar with
-// the five panes in PRD-R24 order on the left, running the window's full height under the transparent title bar; on
+// the seven panes in PRD-R24 order on the left, running the window's full height under the transparent title bar; on
 // the right the pane's title in the title bar row, the store notices, then the pane's grouped sections, and the short
 // status line at the bottom. Also the sheets of the reset, export, import, macro and app flows.
 
@@ -74,7 +74,9 @@ struct SettingsDetail: View {
         case .typing: SettingsSectionsPane(model: model, pane: .typing)
         case .apps: AppsPaneView(model: model)
         case .macros: MacrosPaneView(model: model)
-        case .aboutSupport: AboutSupportPaneView(model: model)
+        case .about: AboutPaneView(model: model)
+        case .support: SupportPaneView(model: model)
+        case .licences: LicencesPaneView(model: model)
         }
     }
 }
@@ -91,7 +93,6 @@ struct SettingsSheets: ViewModifier {
             .sheet(isPresented: presence(\.macroDraft)) { MacroEditorSheet(model: model).respectsReduceMotion() }
             .sheet(isPresented: macroImportPresented) { MacroImportSheet(model: model).respectsReduceMotion() }
             .sheet(isPresented: presence(\.appDetail)) { AppDetailSheet(model: model).respectsReduceMotion() }
-            .sheet(isPresented: $model.showsLicences) { LicencesSheet(model: model).respectsReduceMotion() }
             .modifier(MacroDeleteAlert(model: model))
             .modifier(PasteModeAlert(model: model))
     }

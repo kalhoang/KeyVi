@@ -21,7 +21,7 @@ import Testing
         var step = OnboardingImport.opening(data, fileExtension: "txt", existing: mine, localizer: l.vi)
         let session = try #require(step.session)
         #expect(session.newCount == 1 && session.duplicateCount == 1 && session.invalidCount == 1)
-        #expect(session.invalidLines(l.vi) == ["Dòng 3: phím tắt không được có khoảng trắng."])
+        #expect(session.invalidLines(l.vi) == ["Dòng 3: chữ viết tắt không được có khoảng trắng."])
         #expect(step.error == nil)
         #expect(!step.advancesFlow)  // nothing merged yet
         step.session?.resolution = .useImported
@@ -37,7 +37,7 @@ import Testing
         var step = OnboardingImport.opening(
             Data("vn x\tViệt Nam\nok\t\n".utf8), fileExtension: "txt", existing: mine, localizer: l.vi)
         #expect(step.session == nil)
-        #expect(step.error == "Tệp này không đúng định dạng. Dòng 1: phím tắt không được có khoảng trắng.")
+        #expect(step.error == "File này không đúng định dạng. Dòng 1: chữ viết tắt không được có khoảng trắng.")
         let confirmed = step.confirm(existing: mine, localizer: l.vi)
         #expect(confirmed == nil)
         #expect(!step.advancesFlow)
@@ -46,6 +46,6 @@ import Testing
         #expect(!unreadable.advancesFlow)
         let big = OnboardingImport.opening(
             Data(count: MacroImporter.maxFileBytes + 1), fileExtension: "txt", existing: mine, localizer: l.vi)
-        #expect(big.error == "Tệp này lớn hơn 5 MB.")
+        #expect(big.error == "File này lớn hơn 5 MB.")
     }
 }

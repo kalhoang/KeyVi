@@ -139,7 +139,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở thư gửi bộ phận hỗ trợ, kèm tệp báo cáo."
+            "value" : "Mở thư gửi bộ phận hỗ trợ, kèm file báo cáo."
           }
         }
       }
@@ -157,7 +157,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không có ứng dụng thư gửi được tệp đính kèm. Thư đã mở không kèm tệp: hãy bấm Lưu tệp... rồi tự đính kèm."
+            "value" : "Không có ứng dụng thư gửi được file đính kèm. Thư đã mở không kèm file: hãy bấm Lưu file... rồi tự đính kèm."
           }
         }
       }
@@ -174,7 +174,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không mở được ứng dụng thư. Hãy bấm Lưu tệp... rồi gửi tệp bằng cách khác."
+            "value" : "Không mở được ứng dụng thư. Hãy bấm Lưu file... rồi gửi file bằng cách khác."
           }
         }
       }
@@ -474,7 +474,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không lưu được tệp. Hãy chọn thư mục khác."
+            "value" : "Không lưu được file. Hãy chọn thư mục khác."
           }
         }
       }
@@ -492,7 +492,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu tệp..."
+            "value" : "Lưu file..."
           }
         }
       }
@@ -510,7 +510,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu báo cáo thành tệp trên máy."
+            "value" : "Lưu báo cáo thành file trên máy."
           }
         }
       }
@@ -527,7 +527,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã lưu tệp báo cáo."
+            "value" : "Đã lưu file báo cáo."
           }
         }
       }
@@ -646,13 +646,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When you click %1$@, %2$@ puts the data on the clipboard for you to paste. Apart from the paste compatibility mode you turn on yourself, this is the only time %2$@ writes to the clipboard."
+            "value" : "When you click %1$@, %2$@ puts the data on the clipboard for you to paste. %2$@ writes to the clipboard only when you click a button like this, or in the paste compatibility mode you turn on yourself."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Khi bạn bấm %1$@, %2$@ chép dữ liệu vào bộ nhớ tạm để bạn dán. Ngoài chế độ tương thích dán do bạn tự bật, đây là lúc duy nhất %2$@ ghi vào bộ nhớ tạm."
+            "value" : "Khi bạn bấm %1$@, %2$@ chép dữ liệu vào bộ nhớ tạm để bạn dán. %2$@ chỉ ghi vào bộ nhớ tạm khi bạn bấm một nút như vậy, hoặc ở chế độ tương thích dán do bạn tự bật."
           }
         }
       }
@@ -3020,7 +3020,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xuất tệp..."
+            "value" : "Xuất file..."
           }
         }
       }
@@ -3038,7 +3038,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu bản ghi thành tệp rồi xóa bản trên máy."
+            "value" : "Lưu bản ghi thành file rồi xóa bản trên máy."
           }
         }
       }

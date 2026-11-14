@@ -65,7 +65,7 @@ import Testing
             }
         }
         // The whole content of the longest panes in one image (a window taller than any screen, never shown).
-        for pane in [SettingsPaneKind.typing, .aboutSupport] {
+        for pane in [SettingsPaneKind.typing, .about, .support] {
             for language in [InterfaceLanguage.vietnamese, .english] {
                 let full = NSSize(width: SettingsWindowController.defaultSize.width, height: 1_400)
                 result.append(Variant(pane: pane, language: language, dark: false, sizeName: "full", size: full))

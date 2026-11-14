@@ -14,7 +14,7 @@ import Testing
         let text = DiagnosticsRenderer.plainText(DiagnosticsFixtures.representativeReport(), language: .vietnamese)
         #expect(text.hasPrefix("Báo cáo chẩn đoán\nTạo lúc: 2027-01-15T08:00:00Z\n"))
         #expect(text.contains("[Quyền]\n  Trợ năng: granted"))
-        #expect(text.contains("  Số mục gõ tắt: 12"))
+        #expect(text.contains("  Số mục viết tắt: 12"))
         #expect(text.contains("  Triệu chứng: Lặp chữ"))
         #expect(text.contains("  Sửa được: có"))
         #expect(text.contains("  Trường không đưa vào báo cáo: web.urlPrefixes"))

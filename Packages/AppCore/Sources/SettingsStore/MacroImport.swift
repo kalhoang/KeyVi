@@ -19,7 +19,7 @@ public enum MacroImportFormat: String, Sendable, Hashable, CaseIterable {
     case appExport, tabSeparated, csv, textReplacementsPlist
 }
 
-/// Why a row was rejected (shown in the preview, PRD-R43 "Dòng 12: thiếu phần nội dung gõ tắt").
+/// Why a row was rejected (shown in the preview, PRD-R43 "Dòng 12: thiếu phần nội dung đầy đủ").
 public enum MacroRowIssue: Sendable, Hashable {
     case emptyShortcut
     case emptyExpansion

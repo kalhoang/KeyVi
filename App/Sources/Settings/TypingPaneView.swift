@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// "Gõ phím / Typing" (PRD-R24): method Telex/VNI (D1) with a live practice field, tone placement (D2) with hòa and
+// "Kiểu gõ / Typing" (PRD-R24): method Telex/VNI (D1) with a live practice field, tone placement (D2) with hòa and
 // hoà side by side, English restore (D4) with its two user lists (ENG-R860), each learned entry with the app it was
 // learned in, a remove and a "use in every app" button (ENG-R862); Advanced: lone w (D5), brackets (D6),
 // restore-last-word hotkey (D8). The pane is `SettingsSectionsPane(pane: .typing)`; this file holds the practice

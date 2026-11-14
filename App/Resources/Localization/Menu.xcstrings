@@ -530,13 +530,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens About & Support."
+            "value" : "Opens the donation section in About."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở phần Giới thiệu & Hỗ trợ."
+            "value" : "Mở phần ủng hộ trong mục Giới thiệu."
           }
         }
       }
@@ -554,7 +554,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gõ tắt..."
+            "value" : "Viết tắt..."
           }
         }
       }
@@ -572,7 +572,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở danh sách gõ tắt."
+            "value" : "Mở danh sách viết tắt."
           }
         }
       }

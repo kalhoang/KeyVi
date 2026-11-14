@@ -158,7 +158,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ đã dừng đột ngột nhiều lần ngay sau khi mở, nên lần này ứng dụng dùng cài đặt mặc định và không đọc hay ghi các tệp cài đặt của bạn. Bạn có thể đặt lại cài đặt, dùng lại cài đặt đã lưu, hoặc báo lỗi."
+            "value" : "%@ đã dừng đột ngột nhiều lần ngay sau khi mở, nên lần này ứng dụng dùng cài đặt mặc định và không đọc hay ghi các file cài đặt của bạn. Bạn có thể đặt lại cài đặt, dùng lại cài đặt đã lưu, hoặc báo lỗi."
           }
         }
       }
@@ -194,7 +194,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thoát chế độ an toàn và đọc lại các tệp cài đặt của bạn."
+            "value" : "Thoát chế độ an toàn và đọc lại các file cài đặt của bạn."
           }
         }
       }
@@ -302,7 +302,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đưa cài đặt về mặc định, giữ nguyên gõ tắt, rồi thoát chế độ an toàn."
+            "value" : "Đưa cài đặt về mặc định, giữ nguyên danh sách viết tắt, rồi thoát chế độ an toàn."
           }
         }
       }

@@ -12,11 +12,12 @@ import Testing
 @testable import ShellCore
 
 @Suite struct SettingsLayoutTests {
-    @Test func sidebarListsTheFivePanesWithDistinctSymbolsAndTiles() {
+    @Test func sidebarListsTheSevenPanesWithDistinctSymbolsAndTiles() {
         // PRD-R24 order; every row has its own symbol and tile colour, and the pane name next to it (PRD-R67: the
         // colour is decoration, never the only cue).
         let panes = SettingsPaneKind.allCases
-        #expect(panes == [.general, .typing, .apps, .macros, .aboutSupport])
+        // Pa, 15/11/2026: About & Support became About, Support and Licences.
+        #expect(panes == [.general, .typing, .apps, .macros, .about, .support, .licences])
         #expect(Set(panes.map(\.sidebarSymbol)).count == panes.count)
         #expect(Set(panes.map(\.sidebarTint)).count == panes.count)
         #expect(panes.allSatisfy { !$0.sidebarSymbol.isEmpty })
@@ -24,15 +25,15 @@ import Testing
         #expect(SettingsPaneKind.typing.sidebarSymbol == "keyboard")
     }
 
-    @Test func commandOneToFiveSelectThePanesInSidebarOrder() {
-        #expect(SettingsPaneKind.allCases.map(\.shortcutNumber) == [1, 2, 3, 4, 5])
+    @Test func commandOneToSevenSelectThePanesInSidebarOrder() {
+        #expect(SettingsPaneKind.allCases.map(\.shortcutNumber) == [1, 2, 3, 4, 5, 6, 7])
         for pane in SettingsPaneKind.allCases {
             #expect(SettingsPaneKind(shortcutNumber: pane.shortcutNumber) == pane)
             #expect(SettingsPaneKind.forShortcut(characters: String(pane.shortcutNumber)) == pane)
         }
         #expect(SettingsPaneKind(shortcutNumber: 0) == nil)
-        #expect(SettingsPaneKind(shortcutNumber: 6) == nil)
-        for other in [nil, "", "6", "0", "a", "12", "１"] as [String?] {
+        #expect(SettingsPaneKind(shortcutNumber: 8) == nil)
+        for other in [nil, "", "8", "9", "0", "a", "12", "１"] as [String?] {
             #expect(SettingsPaneKind.forShortcut(characters: other) == nil, "\(other ?? "nil")")
         }
     }
@@ -42,7 +43,8 @@ import Testing
         // command 20, numeric pad 21, function 23. Caps lock and the keypad do not matter; any other modifier does.
         let command: UInt64 = 1 << 20
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "2", modifierFlags: command) == .typing)
-        #expect(SettingsPaneKind.forKeyEquivalent(characters: "5", modifierFlags: command | 1 << 16) == .aboutSupport)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "5", modifierFlags: command | 1 << 16) == .about)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "7", modifierFlags: command) == .licences)
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "1", modifierFlags: command | 1 << 21) == .general)
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "3", modifierFlags: command | 0x0100) == .apps)
         for other: UInt64 in [1 << 17, 1 << 18, 1 << 19, 1 << 23] {
@@ -54,15 +56,17 @@ import Testing
 
     @Test func commandDigitsWorkOnLayoutsWithoutDigitsOnTheNumberRow() {
         // French AZERTY gives "&" for the 1 key: like other Mac apps, the key code of the number row (kVK_ANSI_1 to
-        // kVK_ANSI_5: 18, 19, 20, 21, 23) selects the pane when the characters are not a digit.
+        // kVK_ANSI_7: 18, 19, 20, 21, 23, 22, 26) selects the pane when the characters are not a digit.
         let command: UInt64 = 1 << 20
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 18, modifierFlags: command) == .general)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "(", keyCode: 23, modifierFlags: command) == .about)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "§", keyCode: 22, modifierFlags: command) == .support)
         #expect(
-            SettingsPaneKind.forKeyEquivalent(characters: "(", keyCode: 23, modifierFlags: command) == .aboutSupport)
+            SettingsPaneKind.forKeyEquivalent(characters: "\u{E8}", keyCode: 26, modifierFlags: command) == .licences)
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "\u{E9}", keyCode: 19, modifierFlags: command) == .typing)
         // The characters win when they are a digit; other keys and other modifiers still do nothing.
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "4", keyCode: 18, modifierFlags: command) == .macros)
-        #expect(SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 22, modifierFlags: command) == nil)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 28, modifierFlags: command) == nil)
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "a", keyCode: 0, modifierFlags: command) == nil)
         #expect(
             SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 18, modifierFlags: command | 1 << 17) == nil)
@@ -89,7 +93,8 @@ import Testing
             SettingsCatalog.sections(in: .typing).map(\.items) == [
                 [.typingMethod, .tonePlacement], [.englishRestore, .keepAsTyped, .keepVietnamese],
             ])
-        #expect(SettingsCatalog.sections(in: .aboutSupport).first?.header == CatalogText(SupportText.updatesTitle))
+        #expect(SettingsCatalog.sections(in: .about).first?.header == CatalogText(SupportText.updatesTitle))
+        #expect(SettingsCatalog.sections(in: .support).isEmpty && SettingsCatalog.sections(in: .licences).isEmpty)
         // ENG-R860: the two user lists share one row, side by side; every other setting has a row of its own.
         #expect(
             SettingsCatalog.sections(in: .typing).map(\.rows) == [

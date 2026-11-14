@@ -5,7 +5,7 @@
 
 public import SettingsStore
 
-/// The panes with their own reset button. About & Support hosts the global one.
+/// The panes with their own reset button. The Support pane hosts the global one.
 public enum PaneReset: String, Sendable, Hashable, CaseIterable {
     case general, typing, apps, macros
 

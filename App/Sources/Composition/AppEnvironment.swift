@@ -280,7 +280,7 @@ extension AppEnvironment: LaunchSteps {
         presentOnboarding(startAt: nil)
     }
 
-    /// PLT-R1101: D19-D21 are applied before Sparkle starts; changes the user makes in the updater (About & Support,
+    /// PLT-R1101: D19-D21 are applied before Sparkle starts; changes the user makes in the updater (About pane,
     /// Sparkle's window) are written to settings.json as explicit keys, one key per change (PRD-R6).
     func startUpdater(settings: SettingsState) {
         let controller = UpdaterController(

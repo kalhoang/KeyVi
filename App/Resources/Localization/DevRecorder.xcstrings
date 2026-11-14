@@ -104,7 +104,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở thư mục chứa các tệp nhật ký gõ trong Finder. Tệp tự xóa sau 7 ngày."
+            "value" : "Mở thư mục chứa các file nhật ký gõ trong Finder. File tự xóa sau 7 ngày."
           }
         }
       }

@@ -4,7 +4,7 @@
 // Workstream W2-D.
 //
 // Settings D19-D21 live in settings.json (PLT-R1001); this controller mirrors them into Sparkle at launch and on
-// every change, and reports user changes made here (About & Support pane, Sparkle's update window) back through
+// every change, and reports user changes made here (About pane, Sparkle's update window) back through
 // `onPreferenceChange` so the composition root writes them to the settings store. Sparkle starts only when the
 // bundle carries an https feed on the site host and a valid EdDSA key (PLT-R1102).
 
