@@ -388,13 +388,20 @@ Runs of W7-A (clone `{{app-slug}}-dev-w7a`, 6144 MB, 4 CPUs; folders under `/Vol
 | `20261113T222633Z-w7a-reproduction` (`--only` the five, plus `testhost.addressBar.vni`, `testhost.web.input`, `testhost.web.inlineAutocomplete`) | `877ed58` | 3 | 5 | Reproduction on the starting commit: `dđ`, `asia.example`, ` `, `Dd`, `tieengs việt`. The probe's observer on the just launched TestHost was refused (-25204) and, never retried, saw no notification at all; the paste strategy's pasteboard writes and restores were logged |
 | `20261113T222941Z-w7a-webpair` (`--only testhost.web.input,testhost.web.textarea`, probe retrying its observer) | `877ed58` | 1 | 1 | The probe's observer was refused for 390 ms after TestHost's launch, then registered; the early WebKit focus notification of the textarea (row 1 above) |
 
-VM verification of the fixes is **open**: a build with them was starting in the clone when the host's Safari guard
-stopped the VM (05:34 host time, `/Volumes/Data/tart/safari-guard.log`), and Safari then stayed open beyond the
-90-minute limit of Pa's VM rule, so the clone was deleted unverified. Next step, in this order:
-`scripts/vm/integration-dev.sh` (the full suite: expect 40 of 40 and a clean privacy scan); then three times
-`scripts/vm/integration-dev.sh --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition`
-(`testhost.web.input` runs before the textarea on purpose) and five times `--only testhost.web.editModeTransition`;
-record every run in this section. If a scenario still fails, run the probe next to it.
+VM verification of the fixes is **open**, and until it exists the table above is a diagnosis, not proof: no VM run
+contains any of the fixes. A first build with them was starting in the clone when the host's Safari guard stopped the
+VM (2026-11-14 05:34 host time, `/Volumes/Data/tart/safari-guard.log`), and Safari then stayed open beyond the
+90-minute limit of Pa's VM rule, so the clone was deleted unverified. The review follow-up waited again from 07:31 to
+09:02 with Safari open throughout and booted no VM. Next step, in this order, with Safari closed:
+
+1. `scripts/vm/integration-dev.sh` (the full suite: expect 40 of 40 and a clean privacy scan);
+2. three times `scripts/vm/integration-dev.sh --probe --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition`
+   (`testhost.web.input` runs before the textarea on purpose; the probe's log shows TestHost's observer refusals right
+   after launch next to the addressBar results, and is the first run of the committed probe);
+3. five times `scripts/vm/integration-dev.sh --only testhost.web.editModeTransition`.
+
+Record every run (folder, commit, pass and fail) in the table above. If a scenario still fails, read its focus report
+in `integration-out/evidence/` and the probe's log of the same run.
 
 The probe runs inside the VM only (it refuses a real Mac). `scripts/vm/integration-dev.sh --probe` (with or without
 `--only`) has the guest compile it, grant it with the other TCC clients, start it on TestHost's dev bundle ID right
