@@ -67,22 +67,35 @@ extension Composition {
 
 extension Composition {
     /// ENG-R710, ENG-R711: one Backspace on the token. In composing mode the keys removed are the key
-    /// that produced the last letter, every modifier or stroke key that targeted it, and every tone
-    /// key if the tone is shown on it; for a letter produced by an escape only the escaping key. In
-    /// literal mode (and with no letters) the last raw key is removed. The state is then recomputed by
-    /// replay (ENG-R601).
+    /// that produced the last letter, its modifier and stroke keys (except a key that a letter that
+    /// stays still needs, see below), and every tone key if the tone is shown on it; for a letter
+    /// produced by an escape only the escaping key. In literal mode (and with no letters) the last raw
+    /// key is removed. The state is then recomputed by replay (ENG-R601).
+    ///
+    /// A modifier key that also marked a letter that stays, where that letter still shows the mark and
+    /// has no mark key of its own, stays too: `thuowr` + Backspace gives `thư`, not `thu` (one Telex
+    /// `w` or VNI `7` on `uo`). With a mark key of its own (`thuwowr`) the shared key goes, since
+    /// keeping it would replay as an escape (`thuww`).
+    ///
+    /// The horn keys of a `u` that shows no horn go with the letter after it: after a circumflex
+    /// replaced the horns of `ươ` (ENG-R533, `tuwoo` shows `tuô`, Backspace gives `tu`), and when the
+    /// token was re-opened from history with the commit spelling `uơ` of an open `ươ`
+    /// (`showsCommittedSpelling`, ENG-R532, ENG-R1002: re-opened `thuở` + Backspace gives `thu`).
     ///
     /// The tone keys go with the letter the tone is or would be shown on: after a removal (ENG-R411,
     /// Telex `z`, VNI `0`) the tone is level, and leaving the tone key and the removal key behind would
     /// replay them as letters or digits (`asz` + Backspace showing `sz`).
-    package mutating func backspace(rules: ComposerRules) {
+    package mutating func backspace(rules: ComposerRules, showsCommittedSpelling: Bool = false) {
         guard literalStart == nil, let last = letters.last else {
             removeLastKey(rules: rules)
             return
         }
         var removed = KeySet(index: Int(last.source))
         if !last.flags.contains(.escape) {
-            removed.formUnion(last.modifierSources)
+            removed.formUnion(modifierKeysLeavingWith(last))
+            if let uOffset = unshownHornBeforeLast(showsCommittedSpelling: showsCommittedSpelling) {
+                removed.formUnion(letters[uOffset].modifierSources)
+            }
             if placementOffset(style: rules.toneStyle) == letters.count - 1 { removed.formUnion(toneSources) }
         }
         var kept: [UInt8] = []
@@ -93,6 +106,39 @@ extension Composition {
             kept.append(key)
         }
         self = Composition(replaying: kept, capsLockKeys: keptCapsLock, rules: rules)
+    }
+
+    /// ENG-R710: the modifier and stroke keys of `last` that go with it. A letter that stays and still
+    /// shows its mark, with every one of its mark keys shared with `last`, keeps exactly one of them:
+    /// the newest, which gave the mark it shows (`uo76m7` in VNI: the second `7` re-applied the horns
+    /// after the `6`; keeping both `7`s would replay as an escape). The `ư` of a standalone `w` and the
+    /// letters of bracket keys carry their mark from their own key (ENG-R103, ENG-R104): `wow` shows
+    /// `ươ`, Backspace gives `ư`.
+    private func modifierKeysLeavingWith(_ last: ComposedLetter) -> KeySet {
+        var needed = KeySet()
+        for letter in letters.dropLast() where letter.letter.modifier != .none {
+            guard !letter.flags.contains(.standaloneW), !letter.flags.contains(.bracket) else { continue }
+            let shared = letter.modifierSources.intersection(last.modifierSources)
+            if !shared.isEmpty, letter.modifierSources.subtracting(last.modifierSources).isEmpty {
+                needed.formUnion(shared.newest)
+            }
+        }
+        return last.modifierSources.subtracting(needed)
+    }
+
+    /// The offset of the `u` just before the last letter when its horn keys are not shown: the last
+    /// letter is the `ô` whose circumflex removed the horns of `ươ` (ENG-R533), or the token shows the
+    /// commit spelling `uơ` of an open `ươ` (ENG-R532). Nil otherwise.
+    private func unshownHornBeforeLast(showsCommittedSpelling: Bool) -> Int? {
+        let uOffset = letters.count - 2
+        guard uOffset >= 0, letters[uOffset].letter.unmodified == .u else { return nil }
+        let parse = self.parse
+        guard uOffset >= parse.vowelStart, uOffset + 1 < parse.codaStart else { return nil }
+        let lastLetter = letters[uOffset + 1].letter
+        if lastLetter == .oCircumflex, letters[uOffset].letter == .u { return uOffset }
+        guard showsCommittedSpelling else { return nil }
+        let view = LetterView(letters)
+        return HornNormalisation.isOpenHornPair(DisplayLetterView(view, parse: parse), parse: parse) ? uOffset : nil
     }
 
     /// Removes the last raw key and recomputes. Dropping a key of a literal tail after the key that

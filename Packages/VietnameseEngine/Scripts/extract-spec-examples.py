@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Extract the worked examples of spec/01-engine.md into test corpus files.
 
-Reads tables 13.8 (W001-W253), 13.9 and 13.9.1 (B001-B064) and 13.10 (E01-E08, E02b), the fixture
+Reads tables 13.8 (W001-W253 with W243a-W243j), 13.9 and 13.9.1 (B001-B064) and 13.10 (E01-E08, E02b), the fixture
 paragraph of 13.9 and the ENG-R821 proposal table, and writes into
 Tests/VietnameseEngineTests/Corpus/:
 
@@ -28,7 +28,7 @@ DEFAULT_SPEC = PACKAGE_DIR.parent.parent / "spec" / "01-engine.md"
 CORPUS_DIR = PACKAGE_DIR / "Tests" / "VietnameseEngineTests" / "Corpus"
 
 BOUNDARY_KEYS = {"Space": " ", "Return": "\n", "Tab": "\t"}
-EXPECTED_ROWS = {"worked-examples.tsv": 253, "commit-decisions.tsv": 64, "restore-toggle.tsv": 9}
+EXPECTED_ROWS = {"worked-examples.tsv": 263, "commit-decisions.tsv": 64, "restore-toggle.tsv": 9}
 
 
 def fail(message):
@@ -92,7 +92,7 @@ def render(comment_lines, header, rows):
 # ---------------------------------------------------------------- 13.8 worked examples
 
 def worked_examples(lines):
-    rows = table_rows(section(lines, "### 13.8"), r"W\d{3}")
+    rows = table_rows(section(lines, "### 13.8"), r"W\d{3}[a-z]?")
     result = []
     for cells in rows:
         if len(cells) != 8:

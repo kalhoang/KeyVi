@@ -132,7 +132,10 @@ package struct ActiveToken: Sendable, Hashable {
             display.unicodeScalars.removeLast()
             return .passThrough
         }
-        composition.backspace(rules: rules)
+        // A composing token shows something other than its composed form only when it was re-opened
+        // with the commit spelling of an open `ươ` (ENG-R532, ENG-R1002).
+        let showsCommittedSpelling = display != composition.display(style: rules.toneStyle)
+        composition.backspace(rules: rules, showsCommittedSpelling: showsCommittedSpelling)
         let newDisplay = composition.display(style: rules.toneStyle)
         let action = DisplayEdit.actionForBackspace(from: display, to: newDisplay)
         display = newDisplay
