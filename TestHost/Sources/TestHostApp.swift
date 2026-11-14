@@ -64,10 +64,17 @@ final class TestHostApp: NSObject, NSApplicationDelegate {
     @objc func focusMainField(_ sender: Any?) { windowController?.focus(.nativeTextField) }
     @objc func focusSecondWindowField(_ sender: Any?) { secondWindow.focus(.secondTextField) }
     @objc func focusAddressBar(_ sender: Any?) { windowController?.focus(.addressBarWithCompletion) }
+
+    // MARK: Focus moved by a shortcut without an app activation (PLT-R389, PLT-R340 late focus change)
+
+    /// File > Save… (Command+S): a save sheet on the second window, its name field focused (SaveSheet.swift).
+    @objc func showSaveSheet(_ sender: Any?) { secondWindow.showSaveSheet() }
+    /// Window > Show Search Panel (Command+K): a non-activating panel like Spotlight's (SearchPanel.swift).
+    @objc func showSearchPanel(_ sender: Any?) { windowController?.searchPanel.show() }
 }
 
-/// Main menu: Quit, the standard Edit menu and the Window menu's focus shortcuts. Titles are fixed English fixture
-/// text.
+/// Main menu: Quit, File > Save…, the standard Edit menu and the Window menu's focus shortcuts and search panel.
+/// Titles are fixed English fixture text.
 @MainActor
 enum TestHostMenu {
     static func make(target: TestHostApp) -> NSMenu {
@@ -75,17 +82,22 @@ enum TestHostMenu {
         let appMenu = NSMenu()
         appMenu.addItem(
             NSMenuItem(title: "Quit TestHost", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        let fileMenu = NSMenu(title: "File")
+        let save = NSMenuItem(title: "Save…", action: #selector(TestHostApp.showSaveSheet(_:)), keyEquivalent: "s")
+        save.target = target
+        fileMenu.addItem(save)
         let windowMenu = NSMenu(title: "Window")
         for (title, action, key) in [
             ("Focus Main Field", #selector(TestHostApp.focusMainField(_:)), "1"),
             ("Focus Second Window Field", #selector(TestHostApp.focusSecondWindowField(_:)), "2"),
             ("Focus Address Bar", #selector(TestHostApp.focusAddressBar(_:)), "3"),
+            ("Show Search Panel", #selector(TestHostApp.showSearchPanel(_:)), "k"),
         ] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
             item.target = target
             windowMenu.addItem(item)
         }
-        for menu in [appMenu, editMenu(), windowMenu] {
+        for menu in [appMenu, fileMenu, editMenu(), windowMenu] {
             let holder = NSMenuItem()
             holder.submenu = menu
             main.addItem(holder)

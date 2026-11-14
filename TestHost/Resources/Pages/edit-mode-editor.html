@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- 13.2 local page: a spreadsheet grid whose first key opens a separate editor (section 6). The grid cell (a
+     div) holds the keyboard focus in navigation mode; the first key starts edit mode, and after a short
+     transition the page puts that key into a hidden editor input and moves the DOM focus there, so keys typed
+     during the transition are lost (the "first letter lost" bug firstEditDelayUs addresses). The editor then
+     autocompletes from the column, ignoring case and diacritics ("D" + "d" -> "DĐức").
+     The focus change after the first key is discovered after that key was composed: the late focus change rule
+     keeps the word (02-platform.md PLT-R340 amendment of 2026-11-14), so Telex "D" + "d" gives "Đức". The
+     single-element variant is edit-mode-transition.html. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edit-mode transition with a separate editor</title>
+  <link rel="stylesheet" href="testhost.css">
+  <script src="testhost.js"></script>
+</head>
+<body>
+  <p id="cell-label">Cell B2 (column: Đức, Dũng, Nguyễn, Hà Nội)</p>
+  <!-- class testhost-edit-mode-grid: the user rule override of profile testhost-reproductions matches both. -->
+  <div id="cell" class="cell testhost-edit-mode-grid" tabindex="0" role="gridcell" aria-labelledby="cell-label"></div>
+  <input id="cell-editor" class="testhost-edit-mode-grid" type="text" autocomplete="off" spellcheck="false" hidden aria-labelledby="cell-label"
+         data-testhost-field="testhost.web.input" data-testhost-fold-diacritics
+         data-testhost-completions="Đức|Dũng|Nguyễn|Hà Nội">
+  <p>Dropped keys: <span id="dropped">0</span></p>
+  <script>
+    // SPDX-License-Identifier: GPL-3.0-or-later
+    (function () {
+      "use strict";
+      var transitionMilliseconds = 20; // longer than the 5 ms burst interval, shorter than normal typing
+      var cell = document.getElementById("cell");
+      var editor = document.getElementById("cell-editor");
+      var dropped = document.getElementById("dropped");
+      var entering = false;
+      cell.addEventListener("keydown", function (event) {
+        if (event.key.length !== 1 || event.metaKey || event.ctrlKey) {
+          return;
+        }
+        event.preventDefault();
+        if (entering) {
+          dropped.textContent = String(Number(dropped.textContent) + 1);
+          return;
+        }
+        entering = true;
+        var first = event.key;
+        setTimeout(function () {
+          cell.hidden = true;
+          editor.hidden = false;
+          editor.value = first;
+          editor.focus();
+          editor.setSelectionRange(first.length, first.length);
+          window.TestHost.mirror(editor);
+        }, transitionMilliseconds);
+      });
+      // Focusing the mirrored field from TestHost focuses the cell in navigation mode.
+      editor.addEventListener("blur", function () {
+        if (editor.value === "") {
+          editor.hidden = true;
+          cell.hidden = false;
+          entering = false;
+        }
+      });
+      window.TestHost.focus = function () {
+        (editor.hidden ? cell : editor).focus();
+      };
+    })();
+  </script>
+</body>
+</html>

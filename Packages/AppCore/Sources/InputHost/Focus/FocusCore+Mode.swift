@@ -14,10 +14,14 @@ struct SessionMode {
 }
 
 extension FocusCore {
-    /// Tap toggles first, then one revalidation if any idle-key flag arrived (PLT-R382).
+    /// Tap toggles first, then one revalidation if any key asked for one (PLT-R382 in full, which covers a
+    /// PLT-R389 moved-only read in the same batch), then the trigger settle window if a shortcut, Escape, Return,
+    /// Tab or a click asked for it (PLT-R389).
     func drainInbox() {
         var toggled = false
         var revalidate = false
+        var ifMoved = false
+        var afterTrigger = false
         while let notice = services.inbox.pop() {
             switch notice {
             case .modeToggled(let sequence, let bundle, let mode):
@@ -26,10 +30,19 @@ extension FocusCore {
                 toggled = true
             case .revalidateFocus:
                 revalidate = true
+            case .revalidateFocusIfMoved:
+                ifMoved = true
+            case .revalidateFocusAfterTrigger:
+                afterTrigger = true
             }
         }
         if toggled { republishMode() }
-        if revalidate { self.revalidate(scanOverlays: false) }
+        if revalidate {
+            self.revalidate(scanOverlays: false)
+        } else if ifMoved {
+            refresh(force: false, idle: true, ifMoved: true)
+        }
+        if afterTrigger { revalidateAfterTrigger() }
     }
 
     func setMode(_ mode: TypingMode) {

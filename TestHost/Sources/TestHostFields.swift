@@ -25,6 +25,18 @@ enum TestHostField: String, CaseIterable {
     case secondPlainField = "testhost.second.plainField"
     /// Shows every Escape that reaches it as `<esc>` (PLT-R353).
     case escapeField = "testhost.second.escapeField"
+    /// Name field of the save sheet that Command+S attaches to the second window (SaveSheet.swift, PLT-R389 and the
+    /// PLT-R340 late focus change: Pa's T5.5 report of 2026-11-14).
+    case sheetName = "testhost.sheet.name"
+    /// Read-only mirror of the sheet's name field in the second window. An AX focus request focuses the second
+    /// window's text view, the "document" Command+S is typed in, so a scenario can read the sheet back.
+    case sheetMirror = "testhost.sheet.mirror"
+    /// Search field of the non-activating panel that Command+K opens, with inline completion like Spotlight's
+    /// (SearchPanel.swift, PLT-R389, Pa's items 7 and 9 of 2026-11-14).
+    case panelSearch = "testhost.panel.search"
+    /// Read-only transcript of the search panel in the main window: each closed search followed by `<esc>`, then
+    /// the current query. An AX focus request focuses the main window's text field.
+    case panelMirror = "testhost.panel.mirror"
 }
 
 /// Identifier of the button that clears every field of both windows (pressed by the harness before each
@@ -37,6 +49,8 @@ final class TestHostWindowController: NSWindowController {
     private var views: [TestHostField: NSView] = [:]
     let web = WebFieldsController()
     let secureInput = SecureInputHolder()
+    /// Window > Show Search Panel (Command+K), SearchPanel.swift.
+    let searchPanel = SearchPanelController()
     /// Called by the Reset fields button; the app delegate also clears the second window.
     var onReset: (() -> Void)?
 
@@ -52,11 +66,15 @@ final class TestHostWindowController: NSWindowController {
         let layout = TestHostLayout()
         buildNativeFields(into: layout)
         buildWebFields(into: layout)
+        let panelMirror = searchPanel.mirror
+        access[.panelMirror] = ({ panelMirror.stringValue }, { [searchPanel] in searchPanel.reset() })
+        layout.addRow("Search panel (mirror)", panelMirror)
         layout.addRow("Secure input", secureInput.checkbox)
         layout.addRow("", resetButton())
         window.contentView = layout.contentView()
         window.initialFirstResponder = layout.firstField
         web.loadPage(named: WebFieldsController.pages[0])
+        searchPanel.mirror.onFocusRequest = { @MainActor [weak self] in self?.focus(.nativeTextField) }
     }
 
     private func buildNativeFields(into layout: TestHostLayout) {

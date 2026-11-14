@@ -90,7 +90,16 @@ public enum MainNotice: Sendable {
 /// Tap -> ax notices.
 public enum AXNotice: Sendable {
     case modeToggled(sequence: UInt64, bundle: BundleKey?, mode: TypingMode)
-    case revalidateFocus  // PLT-R382
+    /// Read the system-wide focus now: the first key after a typing pause (PLT-R382).
+    case revalidateFocus
+    /// PLT-R389: read the system-wide focused application and element now, and the element's attributes only when
+    /// either differs from the published one: the first key after an event that can move the focus, and every key
+    /// while an overlay rule applies.
+    case revalidateFocusIfMoved
+    /// PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click may move the focus without an app
+    /// activation (a non-activating panel such as Spotlight opens or closes, a sheet takes the focus). The ax
+    /// thread reads the system-wide focus over the trigger settle window (`FocusSettle.triggerDelays`).
+    case revalidateFocusAfterTrigger
 }
 
 /// The two outboxes and their wake-ups.

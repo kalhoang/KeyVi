@@ -99,10 +99,13 @@ public struct HostDecision: Sendable, Hashable {
     public var rule: RuleID?
     public var source: DecisionSource
     public var specificity: Int
+    /// The rule says `overlay: true` (Spotlight, Raycast, Alfred): while it applies, every keyDown asks the ax
+    /// thread to revalidate the focus, because the panel closes without an app activation (PLT-R389).
+    public var overlay: Bool
 
     public init(
         plan: InjectionPlan, variant: EngineVariant, requireTextFocus: RequireTextFocus, verifyReentry: VerifyReentry,
-        restoreHotkeyEnabled: Bool, rule: RuleID?, source: DecisionSource, specificity: Int
+        restoreHotkeyEnabled: Bool, rule: RuleID?, source: DecisionSource, specificity: Int, overlay: Bool = false
     ) {
         self.plan = plan
         self.variant = variant
@@ -112,6 +115,7 @@ public struct HostDecision: Sendable, Hashable {
         self.rule = rule
         self.source = source
         self.specificity = specificity
+        self.overlay = overlay
     }
 }
 

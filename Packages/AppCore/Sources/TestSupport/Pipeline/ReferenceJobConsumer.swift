@@ -41,6 +41,8 @@ final class ReferenceJobConsumer {
     private var outcomes: [JobSequence: JobOutcome] = [:]
     private(set) var deliveries: [UInt32: Delivery] = [:]
     private(set) var discardedEdits = 0
+    /// Edits of a word begun within 300 ms of a focus change or click (PLT-R408 first-edit delay).
+    private(set) var editsNearFocusChange = 0
 
     init(
         queue: JobQueue, feedback: WorkerFeedback, marker: EventMarker, poster: FakeEventPoster,
@@ -140,6 +142,7 @@ final class ReferenceJobConsumer {
             return
         }
         let index = eventIndex(edit.createdAt)
+        if edit.wordStartedNearFocusChange { editsNearFocusChange += 1 }
         if feedback.isPostingBroken {  // ADR 0308 amendment: post nothing, count what is lost
             record(.abandoned, for: edit.sequence)
             if edit.trigger != nil, let index { lose(index) }

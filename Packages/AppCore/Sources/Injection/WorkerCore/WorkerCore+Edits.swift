@@ -44,6 +44,9 @@ extension WorkerCore {
             unreportedDiscards += 1
             return .discardedForGeneration
         }
+        // PLT-R340 amendment: a kept late focus change is confirmed before anything is posted, also for a job
+        // without an edit (the check of a key that only passes).
+        if !lateFocusMatches(job) { return passThrough(job) }
         let prepared = prepare(job)
         if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
         if !reentryMatches(prepared) { return passThrough(prepared) }
@@ -74,14 +77,56 @@ extension WorkerCore {
     func reentryMatches(_ job: EditJob) -> Bool {
         guard job.verifyBeforeApply, let expected = job.replacedText, !expected.isEmpty, let field = job.field
         else { return true }
+        return textBeforeCaret(of: field, endsWith: expected, allowingSelection: false, atTokenStart: false) ?? true
+    }
+
+    /// PLT-R340 amendment (2026-11-14): after a focus change the tap discovered late and kept the composition, the
+    /// new element must be readable and its text before the caret must end with the token's display. A selected
+    /// inline completion after the caret is allowed (the text before the selection is compared). The token begins
+    /// at the start of the text or after a separator, so the unit before it is read in the same bounded read: text
+    /// that merely ends with the token ("Nova" for "a") is not the word being typed. Strict: an unreadable field, no
+    /// field and no expected text all fail, which turns the kept composition into the hard boundary it would have
+    /// been.
+    func lateFocusMatches(_ job: EditJob) -> Bool {
+        guard job.verifyLateFocus else { return true }
+        guard let expected = job.replacedText, !expected.isEmpty, let field = job.field else { return false }
+        return textBeforeCaret(of: field, endsWith: expected, allowingSelection: true, atTokenStart: true) ?? false
+    }
+
+    /// Bounded read (PLT-R343): the selected range, then at most 64 UTF-16 units before its start. Nil when the
+    /// field cannot be read, or when it has a selection and `allowingSelection` is false (no caret to compare at).
+    /// `atTokenStart`: the unit before the expected text, when it fits in the bound, must be a separator.
+    private func textBeforeCaret(
+        of field: FieldHandle, endsWith expected: String, allowingSelection: Bool, atTokenStart: Bool
+    ) -> Bool? {
         let timeout = InjectionTiming.axCallTimeout
-        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout), selection.length == 0
-        else { return true }
-        let expectedUnits = Array(expected.utf16.suffix(InjectionTiming.maximumAXReadUnits))
+        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout),
+            allowingSelection || selection.length == 0
+        else { return nil }
+        let bound = InjectionTiming.maximumAXReadUnits
+        let expectedUnits = Array(expected.utf16.suffix(bound))
         guard selection.location >= expectedUnits.count else { return false }
-        let range = Injection.TextRange(location: selection.location - expectedUnits.count, length: expectedUnits.count)
-        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return true }
-        return Array(text.utf16) == expectedUnits
+        let checksStart = atTokenStart && expectedUnits.count < bound && selection.location > expectedUnits.count
+        let length = expectedUnits.count + (checksStart ? 1 : 0)
+        let range = Injection.TextRange(location: selection.location - length, length: length)
+        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return nil }
+        let units = Array(text.utf16)
+        guard units.count == length else { return false }
+        if checksStart, !Self.separatesTokens(units[0]) { return false }
+        return Array(units.suffix(expectedUnits.count)) == expectedUnits
+    }
+
+    /// Whitespace, punctuation, symbols and controls end a token; letters, marks and digits do not. A surrogate
+    /// half belongs to a supplementary character (emoji and other symbols), which counts as a separator.
+    static func separatesTokens(_ unit: UInt16) -> Bool {
+        guard let scalar = Unicode.Scalar(unit) else { return true }
+        switch scalar.properties.generalCategory {
+        case .uppercaseLetter, .lowercaseLetter, .titlecaseLetter, .modifierLetter, .otherLetter, .nonspacingMark,
+            .spacingMark, .enclosingMark, .decimalNumber, .letterNumber, .otherNumber:
+            return false
+        default:
+            return true
+        }
     }
 
     /// Strategy, then fallbacks, for detectable failures only (PLT-R410, 4.5). `passThrough` replays the trigger.

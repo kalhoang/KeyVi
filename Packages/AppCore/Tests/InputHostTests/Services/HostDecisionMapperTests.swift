@@ -36,6 +36,17 @@ private func field(
 
 @Suite("HostDecisionMapper and text-focus gate (PLT-R386, PLT-R387)")
 struct HostDecisionMapperTests {
+    /// PLT-R389: the tap revalidates on every key while the focus owner's rule is an overlay rule, so the flag
+    /// travels with the decision, also through the per-app "ignore" choice.
+    @Test func theOverlayFlagReachesTheTapPLTR389() {
+        var overlay = decision()
+        #expect(!HostDecisionMapper.map(overlay, engine: .native, optedIntoPaste: false).overlay)
+        overlay.overlay = true
+        let mapped = HostDecisionMapper.map(overlay, engine: .native, optedIntoPaste: false)
+        #expect(mapped.overlay)
+        #expect(HostDecisionMapping.ignoring(mapped).overlay)
+    }
+
     @Test func byEngineBecomesConcrete() {
         #expect(
             HostDecisionMapper.map(decision(), engine: .native, optedIntoPaste: false).requireTextFocus == .whenKnown)

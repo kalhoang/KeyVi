@@ -107,7 +107,7 @@
         "reason": "Column autocomplete selects the suggested remainder ('D'+'d' gives 'DĐức'); first letter lost when the cell enters edit mode.",
         "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
         "tested": [{ "app": "Google Chrome", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. axSelection only (decision of 2026-11-13, docs/decisions/0005-pa-decisions-2026-11-13.md): the zero-width placeholder returns only with an automated 1,000-edit test (PLT-R422); until then a suggestion that AX cannot read may stay in the cell (matrix note). The tested entry is a placeholder until the scenario passes. A page whose editor takes the DOM focus after the first key (a hidden editor element instead of the cell itself) is a hard boundary under PLT-R340: that key and the next become two words (Telex 'Dd' stays 'Dd' instead of 'Đ'), and no rule here can bridge it (open question to Pa, docs/runbooks/integration-suite.md section 10.5).",
+        "notes": "Requires AX document URL; without it this rule never matches. VERIFY firstEditDelayUs. axSelection only (decision of 2026-11-13, docs/decisions/0005-pa-decisions-2026-11-13.md): the zero-width placeholder returns only with an automated 1,000-edit test (PLT-R422); until then a suggestion that AX cannot read may stay in the cell (matrix note). The tested entry is a placeholder until the scenario passes. A page whose editor takes the DOM focus after the first key (a hidden editor element instead of the cell itself) keeps the word under the PLT-R340 late focus change rule (decision of 2026-11-14) when the editor already shows that key before the caret; TestHost reproduces it with edit-mode-editor.html (testhost.web.editModeEditor, docs/runbooks/integration-suite.md section 10.6).",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -125,7 +125,7 @@
         "reason": "In Safari the first letter was lost while the cell was not yet in edit mode, and column autocomplete selected the suggested remainder.",
         "evidence": [{ "type": "scenario", "ref": "compat/sheets-autocomplete" }],
         "tested": [{ "app": "Safari", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Requires AX document URL. VERIFY firstEditDelayUs and that WebKit exposes the cell editor selection. The tested entry is a placeholder until the scenario passes. A page whose editor takes the DOM focus after the first key (a hidden editor element instead of the cell itself) is a hard boundary under PLT-R340: that key and the next become two words (Telex 'Dd' stays 'Dd' instead of 'Đ'), and no rule here can bridge it (open question to Pa, docs/runbooks/integration-suite.md section 10.5).",
+        "notes": "Requires AX document URL. VERIFY firstEditDelayUs and that WebKit exposes the cell editor selection. The tested entry is a placeholder until the scenario passes. A page whose editor takes the DOM focus after the first key (a hidden editor element instead of the cell itself) keeps the word under the PLT-R340 late focus change rule (decision of 2026-11-14) when the editor already shows that key before the caret; TestHost reproduces it with edit-mode-editor.html (testhost.web.editModeEditor, docs/runbooks/integration-suite.md section 10.6).",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -467,10 +467,15 @@
         "features": { "restoreHotkey": false }
       },
       "provenance": {
-        "reason": "Spotlight is a non-activating panel with inline completion: 'books' gave 'boôooks' and 'cố' gave 'coố'.",
-        "evidence": [{ "type": "scenario", "ref": "compat/launchers" }],
+        "reason": "Spotlight is a non-activating panel with inline completion: 'books' gave 'boôooks' and 'cố' gave 'coố'. On macOS 27.2 the product owner saw 'tex' give 'teẽ', 'vieejt' give 'vieêệt' and, on the second opening, Escape restore the word (2026-11-14): opening and closing Spotlight posts no app activation, so this rule did not apply until a key after a pause revalidated the focus. PLT-R389 now revalidates after Command+Space, Escape, Return, Tab and clicks, and on every key while this rule applies.",
+        "evidence": [
+          { "type": "scenario", "ref": "compat/launchers" },
+          { "type": "scenario", "ref": "compat/scenarios/launcher.spotlight.reopen.json" },
+          { "type": "scenario", "ref": "compat/scenarios/testhost.panel.inlineCompletionTwice.json" },
+          { "type": "report", "ref": "product owner manual tests T5.8 and items 7 and 9, 2026-11-14" }
+        ],
         "tested": [{ "app": "Spotlight", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY on macOS 26 and 27, including the redesigned Spotlight field. The tested entry is a placeholder until the scenario passes.",
+        "notes": "axSelection stays: the reports show a completion after the caret absorbing exactly one deletion per edit, which is what axSelection removes first, and the stale focus snapshot explains why it was not used. Public descriptions of the redesigned Spotlight (Apple's macOS Tahoe 26 feature list; Spotlight articles of December 2025) say it autocompletes the query inline with the top hit; none says how Accessibility exposes that completion. VERIFY on macOS 27.2 that the redesigned field exposes that completion as AXSelectedTextRange (docs/runbooks/integration-suite.md section 10.6, step 4); if it does not, axSelectionThenPlaceholder is the fallback, which needs its 1,000-edit test first (PLT-R422). Also VERIFY macOS 26. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },

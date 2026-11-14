@@ -372,14 +372,14 @@ way at the same moment) no focus notification of TestHost arrived: the keys met 
 | `testhost.privacyCanary.paste` (a space only) | TestHost had no Edit menu. AppKit turns Command+V into `paste:` only through a menu key equivalent, so the `paste` strategy's synthetic Command+V reached no field: every edit's deletions ran and its insertion never came, which left the space alone. The pasteboard side worked: the probe logged the transient item with the nspasteboard.org marker types and each restore (changes 2 to 6 in `20261113T222633Z-w7a-reproduction/probe-1.log`), so neither the 400 ms restore delay nor macOS 27 pasteboard privacy was involved, and nothing typed was logged or persisted (privacy scan clean). | TestHost gets the standard Edit menu (Cut, Copy, Paste, Select All). | `TestHostSourcesTests.editMenuHasTheStandardKeyEquivalents` |
 | `testhost.web.editModeTransition` (`Dd`, intermittent) | The local page moved the DOM focus from a grid cell (a `div`) to a hidden editor after the first key. A focus change is a hard boundary (PLT-R340), so with the host tracking it "D" and "d" are two compositions and give `Dd`; the scenario passed only when the app published the editor's focus after the second key had been decided, a race that the settle re-reads would end for good. Not a harness timing problem. | The cell is one input that keeps the focus from the first key on; it still drops the keys of its 20 ms edit-mode transition and autocompletes from its column. | `LocalPagesTests.editModeCellKeepsTheFocusFromTheFirstKey` |
 
-**Limit of the edit-mode fix (open question to Pa).** The old page was the suite's only model of a grid whose first
-key opens a separate editor element. Under PLT-R340 as written, a focus change between the first two keys of a word is
-a hard boundary, so no input method that follows the spec can give `Đức` there: Telex `Dd` stays `Dd`. If Google
-Sheets or Excel on the web move the DOM focus to an editor on the first key (not verified: `compat/matrix.json` rows of
-`web.googleSheets.cellEditor` and `.webkit` are `notVerified`), the product will type `Dd` there and no scenario shows
-it. The notes of both rules in `compat/rules.json` say so. Whether a focus change inside the same window within
-`firstEditDelayUs` (or about 300 ms) of a word's first key should keep the composition is a spec decision
-(PLT-R340, PLT-R408) for Pa, not something to settle in TestHost.
+**Limit of the edit-mode fix (answered by Pa on 2026-11-14).** The old page was the suite's only model of a grid whose
+first key opens a separate editor element. Under PLT-R340 as written then, a focus change between the first two keys of
+a word was a hard boundary, so Telex `Dd` stayed `Dd` there. Pa's manual test T5.5 of 2026-11-14 hit the same class of
+bug in TextEdit's save sheet (Command+S, then `dduongwf` typed at once gave `ddường`) and reported it as a bug, which
+answers the question in favour of keeping the word: PLT-R340 now keeps the composition across a focus change discovered
+late within the same process (500 ms window, verified by the first job's bounded read). W8-A re-added the old page as
+`edit-mode-editor.html` (scenario `testhost.web.editModeEditor`, `Đức`) next to the single-element page of W7-A
+(section 10.6).
 
 Runs of W7-A (clone `{{app-slug}}-dev-w7a`, 6144 MB, 4 CPUs; folders under `/Volumes/Data/tart/runs/`):
 
@@ -394,7 +394,8 @@ VM (2026-11-14 05:34 host time, `/Volumes/Data/tart/safari-guard.log`), and Safa
 90-minute limit of Pa's VM rule, so the clone was deleted unverified. The review follow-up waited again from 07:31 to
 09:02 with Safari open throughout and booted no VM. Next step, in this order, with Safari closed:
 
-1. `scripts/vm/integration-dev.sh` (the full suite: expect 40 of 40 and a clean privacy scan);
+1. `scripts/vm/integration-dev.sh` (the full suite: expect 44 of 44 and a clean privacy scan; 40 before W8-A added
+   the four scenarios of section 10.6);
 2. three times `scripts/vm/integration-dev.sh --probe --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition`
    (`testhost.web.input` runs before the textarea on purpose; the probe's log shows TestHost's observer refusals right
    after launch next to the addressBar results, and is the first run of the committed probe);
@@ -414,3 +415,53 @@ scripts/vm/integration-dev.sh --probe --only testhost.web.input,testhost.web.tex
 
 The typing trace (PLT-R905) is not used in these runs: it starts only after the user confirms it in the app, and the
 text it records would be a finding of the privacy scan.
+
+### 10.6 Focus after panels, sheets and late focus changes (W8-A, 2026-11-14)
+
+Pa's manual tests of 2026-11-14 (items 7 to 9 of that day's feedback; the decision is recorded in
+`docs/decisions/0005-pa-decisions-2026-11-13.md`, and the symptoms are quoted in the table) found three focus bugs on
+macOS 27.2, none of which the suite covered:
+
+| Report | Root cause (from the code, with fakes) | Fix | Unit tests |
+|---|---|---|---|
+| Spotlight: `tex` gave `teẽ`, then `xt` gave `teẽext`; `vieejt` gave `vieêệt` (item 7) | Every first deletion was absorbed by Spotlight's selected inline completion, so the edits ran with the previous app's rule (no `axSelection`). Spotlight is a non-activating panel: Command+Space and Escape post no activation, and nothing made `FocusCore` read the system-wide focus before the first keys unless the pause before them reached the 500 ms of PLT-R382 | PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click asks for reads 25 to 400 ms later, the next key for one more, and every key reads while an overlay rule applies; these reads ask for the element's attributes only when the focused app or element moved | `FocusTriggerSettleTests`, `FocusTriggerTests` |
+| T5.8: on the second opening, Escape gave `vieêệeejt` (item 9) | The same stale snapshot: the previous app's rule has the restore hotkey, so Escape restored `việt` through the absorbed first deletion | The same; `launcher.spotlight` (`restoreHotkey: false`) applies on every opening and stops when Spotlight closes | `FocusTriggerSettleTests.spotlightAppliesOnEveryOpenAndStopsOnCloseT58` |
+| T5.5 step 3: Command+S, then `dduongwf` gave `ddường` (item 8) | The first `d` went into the sheet's name field on the document's snapshot; the field change was published after it (the PLT-R382 read that very key asked for) and PLT-R340 made it a hard boundary | PLT-R340 amendment: same process, readable element, observed within 500 ms of the token's last key: the word is kept; the first job checks the field's text before the caret (`EditJob.verifyLateFocus`) | `LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests` |
+
+New TestHost scenarios (the suite goes from 40 to 44):
+
+| Scenario | TestHost | Expect |
+|---|---|---|
+| `testhost.sheet.commandS` | File > Save… (Command+S) attaches a sheet to the second window; its name field holds `Untitled`, selected; the keys follow at `normal` timing; read back through `testhost.sheet.mirror` | `đường` |
+| `testhost.panel.inlineCompletionTwice` | Window > Show Search Panel (Command+K) shows a non-activating panel whose field completes inline like Spotlight's (diacritics ignored); Escape closes it and appends the query and `<esc>` to the transcript read through `testhost.panel.mirror`; opened twice; profile `testhost-reproductions` gives the field `launcher.spotlight`'s action | `việt<esc>việt<esc>` |
+| `testhost.panel.toneUndo` | The same panel, `tex` then `xt` | `text<esc>` |
+| `testhost.web.editModeEditor` | `edit-mode-editor.html`: the original page of section 10.5 (a grid cell that moves the DOM focus to a separate editor after the first key); profile `testhost-reproductions` gives it the Sheets action with `requireTextFocus: never`, as browser engines get by `byEngine` | `Đức` |
+
+The panel lives in TestHost's own process, so its focus change reaches `FocusCore` through TestHost's
+AXFocusedUIElementChanged as well: it proves that the overlay rule applies on every opening, that Escape passes there
+and that the word survives the inline completion twice, not that a panel of another process is found without a
+notification. That part is the unit tests' (fake AX posts nothing) and the Spotlight check below.
+
+`launcher.spotlight.reopen` (runner only, `targetBundleId` Spotlight) types `vieejt`, Escape twice, then opens Spotlight
+again and types `tex` then `xt`. Its `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
+completion that runs to its end (`AXReadbackText`): Spotlight with history shows `text` as `TextEdit` with `Edit`
+selected, which is the completion the `axSelection` handling removes, not text that was typed.
+
+Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM lock taken:
+
+1. `scripts/vm/integration-dev.sh` (expect 44 of 44 and a clean privacy scan);
+2. three times `scripts/vm/integration-dev.sh --probe --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.privacyCanary.paste,testhost.web.input,testhost.web.textarea,testhost.web.editModeTransition,testhost.web.editModeEditor`;
+3. five times `scripts/vm/integration-dev.sh --only testhost.web.editModeTransition,testhost.web.editModeEditor,testhost.sheet.commandS,testhost.panel.*`;
+4. Spotlight, macOS 27.2: `scripts/vm/integration-dev.sh --only launcher.spotlight` twice in a row in one clone is not
+   possible (each run is a fresh clone), so the check is done by hand in a clone of `{{app-slug}}-dev` after the full
+   run: with the test build running, open Spotlight with Command+Space, type `vieejt` and `tex` then `xt`, press
+   Escape, open it again and repeat; expect `việt`, `text` and an Escape that clears or closes Spotlight each time; then
+   read the field with `ax-dump --bundle com.apple.Spotlight --windows` while a suggestion is shown, to confirm that
+   the redesigned field exposes the selected completion as `AXSelectedTextRange` (the `axSelection` handling of
+   `launcher.spotlight` relies on it).
+
+Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| none yet | | | | Safari stayed open on the host from 17:07 to 18:56 host time on 2026-11-14 (checked before and during W8-A's 60-minute wait, Pa's VM rule), so no VM was booted and the lock was never taken; the four steps above are open |

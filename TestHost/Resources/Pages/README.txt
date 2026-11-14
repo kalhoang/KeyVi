@@ -6,6 +6,7 @@ placeholder). They contain no http(s) references and no network resources; Scena
   fields.html                    input, textarea, contenteditable (the QA-R10 web fields)
   inline-autocomplete.html       browser-style inline autocomplete (4.3)
   edit-mode-transition.html      spreadsheet cell: keys lost while entering edit mode, column autocomplete
+  edit-mode-editor.html          the same with a grid cell whose first key moves the focus to a separate editor
   contenteditable-composer.html  chat composer that re-renders on first input and sends on Return
   testhost.js                    mirroring (data-testhost-field) and the completion rules
   testhost.css                   shared style, system fonts only

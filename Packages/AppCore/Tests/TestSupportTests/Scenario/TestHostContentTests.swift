@@ -65,8 +65,8 @@ private func testHostFieldIDs() throws -> [String] {
     @Test func requiredPagesExist() throws {
         let names = Set(try files(in: pagesDirectory).map(\.lastPathComponent))
         for page in [
-            "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "contenteditable-composer.html",
-            "testhost.js", "testhost.css", "index.html",
+            "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "edit-mode-editor.html",
+            "contenteditable-composer.html", "testhost.js", "testhost.css", "index.html",
         ] {
             #expect(names.contains(page), "\(page)")
         }
@@ -102,16 +102,27 @@ private func testHostFieldIDs() throws -> [String] {
         #expect(script.contains("messageHandlers") && script.contains("data-testhost-echo"))
     }
 
-    /// PLT-R340: a focus change is a hard boundary, so the edit-mode cell must keep the keyboard focus from the
-    /// first key on. The earlier page moved it from a grid cell to a hidden editor after the first key; with the
-    /// host tracking that change, "D" + "d" could only give "Dd", and the scenario passed only when the host saw the
-    /// change late (testhost.web.editModeTransition, integration-suite.md section 10.5).
+    /// The single-element variant: the edit-mode cell keeps the keyboard focus from the first key on
+    /// (testhost.web.editModeTransition, W7-A, integration-suite.md section 10.5).
     @Test func editModeCellKeepsTheFocusFromTheFirstKey() throws {
         let transition = try read(pagesDirectory.appendingPathComponent("edit-mode-transition.html"))
         #expect(matches(#"class="([^"]*\btesthost-edit-mode-cell\b[^"]*)""#, in: transition).count == 1)
         #expect(matches(#"data-testhost-field="([^"]+)""#, in: transition) == ["testhost.web.input"])
         #expect(!transition.contains(".focus("))
         #expect(!transition.contains(" hidden"))
+    }
+
+    /// The original variant, re-added for the PLT-R340 late focus change (2026-11-14): the grid cell (a div) holds
+    /// the focus, and after the first key the page moves the DOM focus to a separate, hidden editor that already
+    /// shows that key. Both elements carry the class the profile matches (testhost.web.editModeEditor, "Đức").
+    @Test func editModeEditorMovesTheFocusToASeparateEditor() throws {
+        let editor = try read(pagesDirectory.appendingPathComponent("edit-mode-editor.html"))
+        #expect(matches(#"class="([^"]*\btesthost-edit-mode-grid\b[^"]*)""#, in: editor).count == 2)
+        #expect(editor.contains(#"role="gridcell""#) && editor.contains("hidden"))
+        #expect(editor.contains("editor.value = first;") && editor.contains("editor.focus();"))
+        #expect(editor.range(of: "editor.value = first;")!.lowerBound < editor.range(of: "editor.focus();")!.lowerBound)
+        #expect(matches(#"data-testhost-field="([^"]+)""#, in: editor) == ["testhost.web.input"])
+        #expect(editor.contains("transitionMilliseconds") && editor.contains("data-testhost-fold-diacritics"))
     }
 
     @Test func scriptsAndStylesCarrySPDXHeaders() throws {
@@ -130,8 +141,34 @@ private func testHostFieldIDs() throws -> [String] {
                 "testhost.native.textField", "testhost.native.textView", "testhost.web.input", "testhost.web.textarea",
                 "testhost.web.contentEditable", "testhost.sim.addressBar", "testhost.sim.sheetCell",
                 "testhost.native.password", "testhost.second.textField", "testhost.second.textView",
-                "testhost.second.plainField", "testhost.second.escapeField",
+                "testhost.second.plainField", "testhost.second.escapeField", "testhost.sheet.name",
+                "testhost.sheet.mirror", "testhost.panel.search", "testhost.panel.mirror",
             ])
+    }
+
+    /// PLT-R389 and the PLT-R340 late focus change: File > Save… (Command+S) attaches a sheet whose name field holds
+    /// "Untitled", selected, to the second window; Window > Show Search Panel (Command+K) shows a non-activating
+    /// panel with Spotlight-like inline completion that closes on Escape. Both are read back through mirrors whose
+    /// AX focus request focuses a document field, and Reset fields closes them.
+    @Test func saveSheetAndSearchPanelExist() throws {
+        let app = try read(sourcesDirectory.appendingPathComponent("TestHostApp.swift"))
+        #expect(app.contains("#selector(TestHostApp.showSaveSheet(_:)), keyEquivalent: \"s\")"))
+        #expect(app.contains("(\"Show Search Panel\", #selector(TestHostApp.showSearchPanel(_:)), \"k\")"))
+        let sheet = try read(sourcesDirectory.appendingPathComponent("SaveSheet.swift"))
+        #expect(sheet.contains("static let initialName = \"Untitled\"") && sheet.contains("selectAll(nil)"))
+        #expect(sheet.contains("TestHostField.sheetName.rawValue"))
+        #expect(sheet.contains("TestHostField.sheetMirror.rawValue"))
+        let panel = try read(sourcesDirectory.appendingPathComponent("SearchPanel.swift"))
+        #expect(panel.contains(".nonactivatingPanel") && panel.contains("ignoringDiacritics: true"))
+        #expect(panel.contains("override func cancelOperation") && panel.contains("EscapeMarkingTextView.marker"))
+        #expect(panel.contains("TestHostField.panelSearch.rawValue"))
+        #expect(panel.contains("TestHostField.panelMirror.rawValue"))
+        let second = try read(sourcesDirectory.appendingPathComponent("SecondWindow.swift"))
+        #expect(second.contains("access[.sheetMirror]") && second.contains("saveSheet.reset()"))
+        #expect(second.contains("self?.focus(.secondTextView)"))
+        let main = try read(sourcesDirectory.appendingPathComponent("TestHostFields.swift"))
+        #expect(main.contains("access[.panelMirror]") && main.contains("searchPanel.reset()"))
+        #expect(main.contains("self?.focus(.nativeTextField)"))
     }
 
     /// The second window builds every one of its fields with label and hint, and the escape field marks Escape.
@@ -166,7 +203,7 @@ private func testHostFieldIDs() throws -> [String] {
             guard case .array(let items)? = override.rule["match"]?["ax"]?["domClasses"] else { return [] }
             return items.compactMap(\.stringValue)
         }
-        #expect(classes.count == 3)
+        #expect(classes.count == 4)
         let pages = try files(in: pagesDirectory).filter { $0.pathExtension == "html" }.map(read).joined()
         for name in classes {
             #expect(pages.range(of: #"class="[^"]*\b"# + name + #"\b"#, options: .regularExpression) != nil, "\(name)")

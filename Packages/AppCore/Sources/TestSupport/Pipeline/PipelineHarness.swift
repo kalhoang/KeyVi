@@ -32,6 +32,8 @@ public struct HarnessStatistics: Sendable, Hashable {
     public var replaysDelivered = 0
     public var echoesSeen = 0
     public var discardedEdits = 0
+    /// Edits flagged for the PLT-R408 first-edit delay (a word begun within 300 ms of a focus change or click).
+    public var editsNearFocusChange = 0
     public var toggles = 0
     public var secureResumes = 0
     public var failOpenEvents = 0
@@ -46,6 +48,7 @@ public struct HarnessStatistics: Sendable, Hashable {
         replaysDelivered += other.replaysDelivered
         echoesSeen += other.echoesSeen
         discardedEdits += other.discardedEdits
+        editsNearFocusChange += other.editsNearFocusChange
         toggles += other.toggles
         secureResumes += other.secureResumes
         failOpenEvents += other.failOpenEvents
@@ -111,6 +114,7 @@ final class HarnessCore {
         drainNotices()
         ledger.lostMetric(metrics.lostWhilePostingBroken.value)
         statistics.discardedEdits = consumer?.discardedEdits ?? 0
+        statistics.editsNearFocusChange = consumer?.editsNearFocusChange ?? 0
     }
 
     private func perform(_ step: RandomEventGenerator.Step) {
@@ -159,11 +163,13 @@ final class HarnessCore {
     // MARK: Host steps
 
     /// A new focus owner every time (new pid or element), cycling through decisions that pause, pass through,
-    /// type English or compose.
+    /// type English or compose. Stamped at the current time like the tracker does, so a word typed right after it
+    /// takes the PLT-R408 first-edit delay. Every change names a new process, so the PLT-R340 late focus change
+    /// (same process) never keeps a word across it: every random focus change is a host transition (PLT-R210).
     private func publishFocusChange() {
         focusGeneration += 1
-        let pid = Int32(100 + focusGeneration % 3)
-        let focus: FocusSnapshot
+        let pid = Int32(truncatingIfNeeded: 100 + focusGeneration)
+        var focus: FocusSnapshot
         switch focusGeneration % 6 {
         case 0:
             focus = PipelineFixtures.focus(
@@ -178,6 +184,7 @@ final class HarnessCore {
                 field: PipelineFixtures.field(editable: false))
         default: focus = PipelineFixtures.focus(generation: focusGeneration, pid: pid)
         }
+        focus.changedAt = clock.now()
         fixture.publish(focus: focus)
         engineLog.mark()
     }

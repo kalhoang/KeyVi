@@ -17,6 +17,8 @@ struct FocusReading {
     var element: AXFocusedElement?
     var attributes: FocusAttributes?
     var availability: AXAvailability
+    /// PLT-R389 moved-only read: the focused element is the published one, so its attributes were not read.
+    var elementUnmoved = false
 }
 
 extension FocusCore {
@@ -24,7 +26,9 @@ extension FocusCore {
     /// not say which bundles have URL rules, so the URL is read only for browser engines (VERIFY with rules).
     static let documentURLEngines: Set<EngineFingerprint> = [.chromium, .webkitBrowser, .gecko]
 
-    func readFocus(rules: any FocusDecisionResolving, at instant: MonotonicInstant) -> FocusReading {
+    func readFocus(
+        rules: any FocusDecisionResolving, at instant: MonotonicInstant, ifMoved: Bool = false
+    ) -> FocusReading {
         let pid: Int32
         switch services.ax.focusedApplication() {
         case .success(let value?): pid = value
@@ -43,12 +47,13 @@ extension FocusCore {
             reading.availability = .timedOut
             return reading
         }
-        readElement(into: &reading, rules: rules, at: instant)
+        readElement(into: &reading, rules: rules, at: instant, ifMoved: ifMoved)
         return reading
     }
 
     private func readElement(
-        into reading: inout FocusReading, rules: any FocusDecisionResolving, at instant: MonotonicInstant
+        into reading: inout FocusReading, rules: any FocusDecisionResolving, at instant: MonotonicInstant,
+        ifMoved: Bool
     ) {
         guard let pid = reading.pid else { return }
         let bundle = reading.identity?.bundle
@@ -62,6 +67,10 @@ extension FocusCore {
             return
         }
         reading.element = element
+        if ifMoved, let current, current.pid == pid, current.element == element.element {
+            reading.elementUnmoved = true  // PLT-R389: same app, same element, nothing more to ask
+            return
+        }
         // Title and URL are requested only when a rule can use them, and only for matching (PLT-R383).
         let request = AXAttributeRequest(
             includeDocumentURL: Self.documentURLEngines.contains(reading.engine),

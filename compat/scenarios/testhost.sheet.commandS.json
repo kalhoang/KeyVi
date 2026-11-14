@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.sheet.commandS",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.sheet.mirror"
+    }
+  ],
+  "keys": [
+    "command+s",
+    "d",
+    "d",
+    "u",
+    "o",
+    "w",
+    "n",
+    "g",
+    "f"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "đường"
+  },
+  "readback": "ax"
+}

@@ -151,9 +151,19 @@ enum AX {
     }
 }
 
+/// The value without a selected inline completion at its end (`AXReadbackText`, `launcher.spotlight`).
 struct LiveAXFieldReader: AXFieldReader {
     func text(identifier: String?, in bundle: BundleKey) async throws -> String {
         let element = try AX.element(identifier, in: bundle)
-        return AX.attribute(element, kAXValueAttribute) as? String ?? ""
+        let value = AX.attribute(element, kAXValueAttribute) as? String ?? ""
+        return AXReadbackText.typed(value: value, selection: selection(of: element))
+    }
+
+    private func selection(of element: AXUIElement) -> AXReadbackText.Selection? {
+        guard let raw = AX.attribute(element, kAXSelectedTextRangeAttribute), CFGetTypeID(raw) == AXValueGetTypeID()
+        else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(raw as! AXValue, .cfRange, &range) else { return nil }  // type ID checked above
+        return AXReadbackText.Selection(location: range.location, length: range.length)
     }
 }

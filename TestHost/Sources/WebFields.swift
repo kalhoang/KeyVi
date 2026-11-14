@@ -30,7 +30,8 @@ final class MirrorTextField: NSTextField {
 final class WebFieldsController: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     /// Bundled local pages, in picker order. `fields.html` holds the QA-R10 input, textarea and contenteditable.
     static let pages = [
-        "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "contenteditable-composer.html",
+        "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "edit-mode-editor.html",
+        "contenteditable-composer.html",
     ]
     static let messageHandler = "testhost"
     static let mirroredFields: [TestHostField] = [.webInput, .webTextarea, .webContentEditable]
