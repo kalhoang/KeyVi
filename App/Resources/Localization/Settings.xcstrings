@@ -4472,13 +4472,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keys as typed, for example: text"
+            "value" : "Keys as typed"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Các phím đã gõ, ví dụ: text"
+            "value" : "Các phím đã gõ"
           }
         }
       }

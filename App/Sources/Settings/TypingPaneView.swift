@@ -65,7 +65,7 @@ struct WordListView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 3)
                 }
-                .frame(height: 84)
+                .frame(height: 76)
                 .background(Color(nsColor: .textBackgroundColor))
             }
             WordAddRow(model: model, drafts: model.drafts, list: list)

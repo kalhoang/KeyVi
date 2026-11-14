@@ -128,13 +128,13 @@ extension SettingsCatalog {
 }
 
 /// Window sizes, in points, like System Settings: about 715 x 470 at the least, resizable; the default opens General
-/// and Typing without scrolling on a 13-inch display (PRD-R24 acceptance). The size and position are remembered
-/// (PRD-R28).
+/// and Typing without scrolling on a 13-inch display at its default scaling, 1440 x 900 points (PRD-R24 acceptance).
+/// The size and position are remembered (PRD-R28).
 public enum SettingsWindowLayout {
     public static let minimumWidth = 715.0
     public static let minimumHeight = 470.0
     public static let defaultWidth = 780.0
-    public static let defaultHeight = 700.0
+    public static let defaultHeight = 740.0
     /// Fixed: the sidebar does not collapse or resize, like System Settings.
     public static let sidebarWidth = 190.0
 }

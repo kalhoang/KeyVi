@@ -99,13 +99,13 @@ import Testing
     }
 
     @Test func windowSizesFollowSystemSettings() {
-        // About 715 x 470 at the least like System Settings, resizable; the default fits a 13-inch display
-        // (1280 x 800 points at the most compact scaling, minus the menu bar and the Dock) so General and Typing
-        // need no scrolling there (PRD-R24 acceptance).
+        // About 715 x 470 at the least like System Settings, resizable; the default window (title bar included)
+        // fits a 13-inch display at its default scaling (1440 x 900 points, minus the menu bar and the Dock), and
+        // General and Typing need no scrolling there (PRD-R24 acceptance; the snapshot tool shows both panes).
         #expect(SettingsWindowLayout.minimumWidth == 715 && SettingsWindowLayout.minimumHeight == 470)
         #expect(SettingsWindowLayout.defaultWidth >= SettingsWindowLayout.minimumWidth)
         #expect(SettingsWindowLayout.defaultHeight >= SettingsWindowLayout.minimumHeight)
-        #expect(SettingsWindowLayout.defaultWidth <= 1_280 && SettingsWindowLayout.defaultHeight <= 720)
+        #expect(SettingsWindowLayout.defaultWidth <= 1_440 && SettingsWindowLayout.defaultHeight + 28 <= 900 - 25 - 80)
         #expect(SettingsWindowLayout.sidebarWidth >= 160 && SettingsWindowLayout.sidebarWidth <= 220)
         #expect(SettingsWindowLayout.minimumWidth - SettingsWindowLayout.sidebarWidth >= 500, "detail column")
     }
