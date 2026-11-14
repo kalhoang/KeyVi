@@ -57,7 +57,10 @@ numbers findings exactly like the summary with the same selection, so repeat the
 `--since`, run both commands close together, or pin the clock with `--now 2026-11-14T10:00:00Z`). `--no-replay` skips
 finding (h) for a faster scan. The replay runs only on segments written by the scanner's own engine build (the
 `eng` identity of format version 3, ADR 0007 decision 13); the summary ends with one `Replay:` line counting the
-segments it skipped, and `--replay-anyway` replays them too (expect divergences that are only rule changes).
+segments it skipped, and `--replay-anyway` replays them too (expect divergences that are only rule changes). A
+`--since` window that starts inside a file keeps that file's last `file`, `settings` and `focus` lines from before
+the window as context (they make no findings), so findings name the app and the replay knows the settings and the
+engine build.
 
 ### 2.1 What a summary shows
 

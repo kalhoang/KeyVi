@@ -170,14 +170,14 @@ extension TraceBuilder {
         #expect(same.findings.contains { $0.kind == .replayDivergence } && same.replaySkips.total == 0)
         let other = scan(tampered(engine: "p1-0000000000000000"), replay: true)
         #expect(!other.findings.contains { $0.kind == .replayDivergence })
-        #expect(other.replaySkips.otherEngine == 2 && other.replaySkips.unidentifiedEngine == 0)
+        #expect(other.replaySkips.otherEngine == 1 && other.replaySkips.unidentifiedEngine == 0)
         let old = scan(tampered(engine: nil, version: 2), replay: true)
-        #expect(old.replaySkips.unidentifiedEngine == 2)
+        #expect(old.replaySkips.unidentifiedEngine == 1)
         let anyway = scan(tampered(engine: "p1-0000000000000000"), replay: true, anyEngine: true)
         #expect(anyway.findings.contains { $0.kind == .replayDivergence })
         #expect(
             TraceRendering.replayNote(other.replaySkips, replayed: true)
-                == "Replay: 2 segments not replayed (2 written by another engine build); --replay-anyway replays them\n"
+                == "Replay: 1 segment not replayed (1 written by another engine build); --replay-anyway replays them\n"
         )
     }
 
@@ -225,5 +225,27 @@ extension TraceBuilder {
             ])
         trace.marker()
         #expect(scan(trace).findings.first?.bundle == "(com.example.unnamed)")
+    }
+
+    /// A `--since` window that starts inside a file keeps that file's header, settings and focus in effect, so the
+    /// findings name the app and the replay knows the settings and the engine build.
+    @Test func aSinceWindowInsideAFileKeepsItsContext() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        trace.boundary("focusChanged", job: "focusChanged")
+        trace.advance(40 * 60_000)
+        trace.boundary("focusChanged", job: "focusChanged")
+        trace.type("vie")
+        let output = trace.engineOutput(.key(KeyInput("e")))
+        trace.line("key", ["ev": "keyDown", "kc": 14, "fl": 0, "ch": "e", "out": "consumedForEdit"])
+        trace.engineLine(output, tamperedInsert: "ế")
+        let folder = TraceBuilder.temporaryFolder()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try trace.write(to: folder)
+        let result = TraceScanCommand.run(
+            ["summary", "--dir", folder.path, "--since", "10m", "--now", "2026-11-14T09:45:00Z"], now: Date(),
+            timeZone: TraceBuilder.utc, makeReplay: { ReplayEngineFactory(resources: TraceBuilder.resources) })
+        #expect(result.output.contains("com.example.editor  rule editor.sample  replayDivergence"))
+        #expect(!result.output.contains("Replay:"))
     }
 }

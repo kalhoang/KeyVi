@@ -56,6 +56,11 @@ public struct TraceStore: Sendable {
             .map(\.0)
     }
 
+    /// Line types a selection that starts inside a file keeps from before its start, the last of each type per file:
+    /// the file header (format version, launch, engine identity), the settings and the focus in effect, so findings
+    /// are attributed to the right app and the replay knows the settings and the engine build. They make no findings.
+    static let contextTypes: Set<String> = ["file", "settings", "focus"]
+
     /// Every line of the selection in time order (ties keep file order).
     public func load(_ selection: TraceSelection, now: Date) throws -> TraceLoad {
         let names = try files(selection, now: now)
@@ -66,15 +71,20 @@ public struct TraceStore: Sendable {
         let upper = lower.map { _ in Int64((now.timeIntervalSince1970 * 1_000_000).rounded()) }
         for name in names {
             let data = try Data(contentsOf: directory.appendingPathComponent(name), options: .mappedIfSafe)
+            var context: [String: TraceLine] = [:]
             for slice in data.split(separator: 0x0A, omittingEmptySubsequences: true) {
                 guard let line = try? decoder.decode(TraceLine.self, from: Data(slice)) else {
                     unreadable += 1
                     continue
                 }
-                if let lower, line.t < lower { continue }
+                if let lower, line.t < lower {
+                    if Self.contextTypes.contains(line.type) { context[line.type] = line }
+                    continue
+                }
                 if let upper, line.t > upper { continue }
                 lines.append((line, name))
             }
+            lines += context.values.sorted { $0.t < $1.t }.map { ($0, name) }
         }
         let ordered = lines.enumerated().sorted { ($0.element.0.t, $0.offset) < ($1.element.0.t, $1.offset) }
         let events = ordered.enumerated().map { index, item in

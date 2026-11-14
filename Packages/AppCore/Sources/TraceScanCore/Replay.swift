@@ -101,11 +101,12 @@ enum ReplayCheck {
             case "start", "boundary":
                 stepIndex = 0
                 session = nil
+                guard let engine = factory.engine(settings: context.settings, focus: context.focus) else { continue }
                 guard anyEngine || context.engine == factory.identity else {
                     if context.engine == nil { skips.unidentifiedEngine += 1 } else { skips.otherEngine += 1 }
                     continue
                 }
-                session = factory.engine(settings: context.settings, focus: context.focus).map { Session(engine: $0) }
+                session = Session(engine: engine)
             case "gap", "pause":
                 session = nil  // keys inside were not recorded; the next boundary or launch starts again
             case "key" where line.isKeyDown:

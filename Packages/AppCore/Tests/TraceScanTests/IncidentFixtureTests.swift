@@ -48,7 +48,7 @@ import Testing
               2  2026-11-14 09:02:36.233  com.example.webeditor  rule -  keyDropped  \
             a passed key is absent from the field: it went down 1411 ms before this commit readback; \
             a readback started 71 ms after it went down
-            Replay: 3 segments not replayed (3 by a build that did not record its engine); --replay-anyway replays them
+            Replay: 2 segments not replayed (2 by a build that did not record its engine); --replay-anyway replays them
 
             """
         #expect(result.exitCode == 0)

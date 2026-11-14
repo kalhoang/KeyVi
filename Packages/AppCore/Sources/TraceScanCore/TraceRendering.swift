@@ -47,7 +47,8 @@ public enum TraceRendering {
         if skips.unidentifiedEngine > 0 {
             parts.append(String(skips.unidentifiedEngine) + " by a build that did not record its engine")
         }
-        return "Replay: " + String(skips.total) + " segments not replayed (" + parts.joined(separator: ", ")
+        let segments = skips.total == 1 ? " segment" : " segments"
+        return "Replay: " + String(skips.total) + segments + " not replayed (" + parts.joined(separator: ", ")
             + "); --replay-anyway replays them\n"
     }
 

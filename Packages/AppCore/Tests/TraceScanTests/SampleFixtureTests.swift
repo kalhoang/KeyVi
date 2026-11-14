@@ -38,7 +38,7 @@ import Testing
             (axTimedOut)
               6  2026-11-14 09:00:04.220  com.example.chat  rule chat.sample  restoreOrReopen  \
             restore (job 4 restore backspaceReplace)
-            Replay: 3 segments not replayed (3 by a build that did not record its engine); --replay-anyway replays them
+            Replay: 2 segments not replayed (2 by a build that did not record its engine); --replay-anyway replays them
 
             """
         #expect(result.exitCode == 0)
