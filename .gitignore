@@ -37,3 +37,6 @@ site/dist/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Private Xcode derived data of parallel builds and reviewers
+.dd-*/

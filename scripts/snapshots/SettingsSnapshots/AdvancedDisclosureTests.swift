@@ -28,15 +28,21 @@ import Testing
                 model.select(pane)
                 let window = SnapshotFixtures.window(
                     size: Self.size, model: model, dark: false, legacyLayout: legacyLayout)
+                let name = "\(pane.rawValue)\(legacyLayout ? " (macOS 12 layout)" : "")"
+                // The first drawing of a new window can differ from the next one (layout warm-up), which would let a
+                // broken disclosure pass. Draw once and drop it, then prove two drawings agree before comparing.
+                _ = try SettingsSnapshotTests.render(window)
                 let collapsed = try SettingsSnapshotTests.render(window)
+                let collapsedCheck = try SettingsSnapshotTests.render(window)
+                try #require(collapsed == collapsedCheck, "\(name): two drawings differ")
                 // What a click on the disclosure does: its binding sets the model's state.
                 model.setAdvancedExpanded(true, for: pane)
                 let expanded = try SettingsSnapshotTests.render(window)
                 model.setAdvancedExpanded(false, for: pane)
                 let collapsedAgain = try SettingsSnapshotTests.render(window)
-                let name = "\(pane.rawValue)\(legacyLayout ? " (macOS 12 layout)" : "")"
                 #expect(collapsed != expanded, "\(name): opening Advanced options did not change the pane")
                 #expect(expanded != collapsedAgain, "\(name): closing Advanced options did not change the pane")
+                #expect(collapsedAgain == collapsed, "\(name): closing Advanced options did not restore the pane")
                 window.contentView = nil
                 await SnapshotFixtures.discard(store)
             }

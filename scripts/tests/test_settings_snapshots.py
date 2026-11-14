@@ -179,13 +179,15 @@ class SettingsViewObservationTests(unittest.TestCase):
     struct under App/Sources/Settings that stores SettingsWindowModel must observe it."""
 
     SETTINGS = REPO / "App" / "Sources" / "Settings"
-    VIEW = re.compile(r"^(?:struct|final class|class) (\w+)(?:<[^>]*>)?: (?:View|ViewModifier)\b(.*?)^}", re.S | re.M)
-    PLAIN = re.compile(r"^\s*(?:let|var) \w+: SettingsWindowModel\b", re.M)
+    ACCESS = r"(?:(?:private|fileprivate|internal|public|package)\s+)?"
+    VIEW = re.compile(
+        rf"^{ACCESS}(?:struct|final class|class) (\w+)(?:<[^>]*>)?: (?:View|ViewModifier)\b(.*?)^}}", re.S | re.M)
+    PLAIN = re.compile(rf"^\s*{ACCESS}(?:let|var) \w+: SettingsWindowModel\b", re.M)
 
     def test_every_settings_view_observes_the_window_model(self) -> None:
         offenders = []
         views = 0
-        for path in sorted(self.SETTINGS.glob("*.swift")):
+        for path in sorted(self.SETTINGS.rglob("*.swift")):
             for match in self.VIEW.finditer(path.read_text(encoding="utf-8")):
                 views += 1
                 for line in self.PLAIN.findall(match.group(2)):
@@ -194,10 +196,21 @@ class SettingsViewObservationTests(unittest.TestCase):
         self.assertEqual(offenders, [], "use @ObservedObject var model: SettingsWindowModel")
 
     def test_the_scan_catches_a_plain_reference(self) -> None:
-        sample = "struct AdvancedSection: View {\n    let model: SettingsWindowModel\n    var body: some View { x }\n}\n"
+        samples = [
+            "struct AdvancedSection: View {\n    let model: SettingsWindowModel\n    var body: some View { x }\n}\n",
+            "private struct Row: View {\n    private let model: SettingsWindowModel\n    var body: some View { x }\n}\n",
+            "fileprivate struct Row: View {\n    fileprivate var model: SettingsWindowModel\n    var body: some View { x }\n}\n",
+        ]
+        for sample in samples:
+            match = self.VIEW.search(sample)
+            self.assertIsNotNone(match, sample)
+            self.assertEqual(len(self.PLAIN.findall(match.group(2))), 1, sample)
+
+    def test_the_scan_accepts_an_observed_reference(self) -> None:
+        sample = "private struct Row: View {\n    @ObservedObject private var model: SettingsWindowModel\n}\n"
         match = self.VIEW.search(sample)
         self.assertIsNotNone(match)
-        self.assertEqual(len(self.PLAIN.findall(match.group(2))), 1)
+        self.assertEqual(self.PLAIN.findall(match.group(2)), [])
 
 
 if __name__ == "__main__":

@@ -19,7 +19,8 @@ struct AboutPaneView: View {
             ForEach(SettingsCatalog.sections(in: .about), id: \.self) { section in
                 SettingsGroup(header: section.header.map(localizer.string)) {
                     ForEach(section.rows, id: \.self) { row in SettingsSectionRow(model: model, items: row) }
-                    CheckForUpdatesRow(model: model)
+                    // Only under the update settings, so a new About section never repeats the button.
+                    if section.items.contains(.automaticallyCheckForUpdates) { CheckForUpdatesRow(model: model) }
                 }
             }
             DonationSection(model: model)
