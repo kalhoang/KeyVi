@@ -21,7 +21,7 @@ public enum DevRecorderLimits {
 enum DevTraceFiles {
     static let folderName = "dev-traces"
     static let fileExtension = "jsonl"
-    /// 2: readback lines carry `durUs`, `waitUs`, `idleUs` and `overlap` (2026-11-14 incidents).
+    /// 2: readback lines carry `durUs`, `maxCallUs`, `waitUs`, `idleUs` and `overlap` (2026-11-14 incidents).
     static let formatVersion = 2
 
     /// `YYYYMMDD-HH` of `date` in `timeZone`.
@@ -142,6 +142,7 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var selLen: Int?
     // readback timing (format version 2)
     var durUs: UInt64?
+    var maxCallUs: UInt64?
     var waitUs: UInt64?
     var idleUs: UInt64?
     var overlap: Bool?
@@ -201,6 +202,7 @@ extension DevTraceLine {
             bundle = readback.bundle
             rule = readback.rule
             durUs = readback.durationMicroseconds
+            maxCallUs = readback.longestCallMicroseconds
             waitUs = readback.waitMicroseconds
             idleUs = readback.idleMicroseconds
             overlap = readback.overlap ? true : nil

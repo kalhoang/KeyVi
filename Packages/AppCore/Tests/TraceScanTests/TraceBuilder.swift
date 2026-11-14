@@ -146,16 +146,17 @@ struct TraceBuilder {
         line("boundary", fields)
     }
 
-    /// A readback line. `durUs`, `waitUs`, `idleUs` and `overlap` exist from format version 2 on; leave them nil
-    /// for a line of the first recorder (2026-11-14).
+    /// A readback line. `durUs`, `maxCallUs`, `waitUs`, `idleUs` and `overlap` exist from format version 2 on;
+    /// leave them nil for a line of the first recorder (2026-11-14).
     mutating func readback(
-        _ text: String, reason: String = "commit", status: String = "ok", durUs: Int? = nil, waitUs: Int? = nil,
-        idleUs: Int? = nil, overlap: Bool = false
+        _ text: String, reason: String = "commit", status: String = "ok", durUs: Int? = nil, maxCallUs: Int? = nil,
+        waitUs: Int? = nil, idleUs: Int? = nil, overlap: Bool = false
     ) {
         var fields: [String: Any] = [
             "reason": reason, "status": status, "text": text, "selLoc": text.utf16.count, "selLen": 0,
         ]
         if let durUs { fields["durUs"] = durUs }
+        if let maxCallUs { fields["maxCallUs"] = maxCallUs }
         if let waitUs { fields["waitUs"] = waitUs }
         if let idleUs { fields["idleUs"] = idleUs }
         if overlap { fields["overlap"] = true }

@@ -71,7 +71,7 @@ local time, app bundle ID, compat rule, finding kind and a detail made of names 
 | `readbackMismatch` | the field text before the caret does not end with what {{AppName}} typed since the last boundary, and the difference is not one of the two kinds below; the scanner then takes the field's text as the new baseline, so one divergence gives one finding |
 | `keyDropped` | the same, explained: exactly one character of a key the tap passed is missing from the field. The detail says how long before the readback the key went down and whether a readback was in flight when it went down, started within 200 ms after it, or was nowhere near; `show` names the character |
 | `extraCharacter` | the same, explained: the field holds exactly one character {{AppName}} did not type (autocorrect, a Backspace the app ignored); `show` names it |
-| `slowReadback` | a readback timed out, or its AX calls took more than 30 ms (longer than one AX call of the inject worker may take, so {{AppName}}'s own reads would time out in that field) |
+| `slowReadback` | a readback timed out, or one of its AX calls took more than 30 ms (longer than one AX call of the inject worker may take, so {{AppName}}'s own reads would time out in that field; the scanner compares the longest single call, not the sum of the read's calls) |
 | `resetWithOpenToken` | a boundary the user did not cause (focus change, late focus, revalidation, configuration, an unknown reason) while a word was being composed |
 | `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included) or took more than 50 ms |
 | `restoreOrReopen` | an Escape restore or a Backspace that re-opened a committed word |
@@ -122,7 +122,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `boundary` | `reason` (the engine's reset reason), `job` (the boundary job reason) |
 | `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
-| `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
+| `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `maxCallUs` (the longest single AX call of the read), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
 | `marker` | `src` (chord, menu) |
 | `mode` | `mode`, `manual`, `bundle` |
 | `gap` | `reason` (secureInput, secureField, overflow), `end` (microseconds) or `dropped` (records lost) |
@@ -144,11 +144,11 @@ attributed to the right field.
   `overlap` (a key went down while they were in flight, so the text may show the field half way through it).
 - The readback reads only in a typing pause: 1 s without a key or click going down and without an edit job (a
   queued or in-flight job postpones it like a key). Every trigger since the last read (commits, Backspace edits,
-  markers) waits for the same pause and gives one read, recorded with the most specific reason; while Pa types
-  without a 1 s pause there is no read at all. At most one read per 300 ms. It stops between its AX calls if a job
-  starts (`skippedBusy`). It reads through its own AX reference to the app's focused element (`skippedNoField` when
-  that is no longer the field of the focus snapshot), so the worker's AX element and its messaging timeout stay
-  untouched.
+  markers; the marker chord itself counts as a key) waits for the same pause and gives one read, recorded with the
+  most specific reason; while Pa types without a 1 s pause there is no read at all. At most one read per 300 ms. It
+  stops between its AX calls if a job starts (`skippedBusy`). It reads through its own AX reference to the app's
+  focused element (`skippedNoField` when that is no longer the field of the focus snapshot), so the worker's AX
+  element and its messaging timeout stay untouched.
 - The explanation of a mismatch names the one character whose absence (or presence) makes the texts agree. When
   later edits deleted across the missing character, the texts may agree only without a neighbour, or not at all;
   read the excerpt before trusting the name. Among equal neighbours (`cc`) the scanner names the key a readback was

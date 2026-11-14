@@ -57,6 +57,8 @@ public final class DevReadback: Sendable {
         var status: DevReadbackStatus
         var text: String?
         var selection: TextRange?
+        /// The longest single AX call, in microseconds.
+        var longestCall: UInt64 = 0
 
         init(_ status: DevReadbackStatus, text: String? = nil, selection: TextRange? = nil) {
             self.status = status
@@ -180,6 +182,7 @@ public final class DevReadback: Sendable {
         let started = clock.now()
         let field = readField(shared)
         record.durationMicroseconds = clock.now().nanoseconds(since: started) / 1_000
+        record.longestCallMicroseconds = field.longestCall
         record.overlap = recorder.inputActivity.count != inputCount
         record.status = field.status
         record.textBeforeCaret = field.text
@@ -197,11 +200,27 @@ public final class DevReadback: Sendable {
         return snapshot.field.axAvailability == .available ? nil : .unavailable
     }
 
+    /// The AX calls with the longest of them: the scanner compares it with the inject worker's per-call timeout
+    /// (PLT-R311 timing row), which the sum of up to three calls would overstate.
+    private func readField(_ shared: FieldHandle) -> FieldRead {
+        var longest: UInt64 = 0
+        var read = readCalls(shared, longest: &longest)
+        read.longestCall = longest
+        return read
+    }
+
+    /// One AX call; its duration becomes `longest` when it is the longest so far.
+    private func timed<Result>(_ longest: inout UInt64, _ call: () -> Result) -> Result {
+        let started = clock.now()
+        defer { longest = max(longest, clock.now().nanoseconds(since: started) / 1_000) }
+        return call()
+    }
+
     /// The AX calls: the private element reference, the selection, then at most 64 units before the caret. Stops
     /// as soon as an edit job is queued.
-    private func readField(_ shared: FieldHandle) -> FieldRead {
+    private func readCalls(_ shared: FieldHandle, longest: inout UInt64) -> FieldRead {
         let field: FieldHandle
-        switch fieldResolver.privateHandle(for: shared, timeout: Self.axTimeout) {
+        switch timed(&longest, { fieldResolver.privateHandle(for: shared, timeout: Self.axTimeout) }) {
         case .success(let resolved?): field = resolved
         case .success(nil): return FieldRead(.skippedNoField)
         case .timedOut: return FieldRead(.timedOut)
@@ -210,7 +229,7 @@ public final class DevReadback: Sendable {
         }
         guard isInjectionIdle() else { return FieldRead(.skippedBusy) }
         let selection: TextRange
-        switch fieldAccess.selectedRange(field, timeout: Self.axTimeout) {
+        switch timed(&longest, { fieldAccess.selectedRange(field, timeout: Self.axTimeout) }) {
         case .success(let range): selection = range
         case .timedOut: return FieldRead(.timedOut)
         case .unavailable: return FieldRead(.unavailable)
@@ -220,7 +239,7 @@ public final class DevReadback: Sendable {
         guard count > 0 else { return FieldRead(.ok, text: "", selection: selection) }
         guard isInjectionIdle() else { return FieldRead(.skippedBusy, selection: selection) }
         let range = TextRange(location: selection.location - count, length: count)
-        switch fieldAccess.text(field, in: range, timeout: Self.axTimeout) {
+        switch timed(&longest, { fieldAccess.text(field, in: range, timeout: Self.axTimeout) }) {
         case .success(let text): return FieldRead(.ok, text: text, selection: selection)
         case .timedOut: return FieldRead(.timedOut, selection: selection)
         case .unavailable: return FieldRead(.unavailable, selection: selection)

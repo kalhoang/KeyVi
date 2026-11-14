@@ -177,14 +177,17 @@ struct ReadbackCheck {
         return nil
     }
 
-    /// A readback that timed out or whose AX calls took longer than the threshold.
+    /// A readback that timed out or one of whose AX calls took longer than the threshold. A line without its
+    /// longest call (the first recorder's) is slow only when it timed out.
     static func slowDetail(_ line: TraceLine) -> String? {
         let readback = (line.reason ?? "?") + " readback"
         if line.status == "timedOut" {
             return readback + " timed out" + (line.durUs.map { " after " + milliseconds(Int64($0)) } ?? "")
         }
-        guard let duration = line.durUs, duration > FindingLimits.slowReadback else { return nil }
-        return readback + " took " + milliseconds(Int64(duration)) + " (" + (line.status ?? "?") + ")"
+        guard let longest = line.maxCallUs, longest > FindingLimits.slowReadback else { return nil }
+        let total = line.durUs.map { " of " + milliseconds(Int64($0)) } ?? ""
+        return readback + ": one AX call took " + milliseconds(Int64(longest)) + total + " (" + (line.status ?? "?")
+            + ")"
     }
 
     private static func finding(

@@ -19,7 +19,7 @@ public struct Finding: Sendable, Hashable {
         case keyDropped
         /// A readback mismatch that is exactly one character in the field KeyVi did not type.
         case extraCharacter
-        /// A readback that timed out or whose AX calls took longer than `FindingLimits.slowReadback`.
+        /// A readback that timed out or one of whose AX calls took longer than `FindingLimits.slowReadback`.
         case slowReadback
         case resetWithOpenToken
         case injectionProblem
@@ -58,8 +58,9 @@ enum FindingLimits {
     static let readbackCompare = 32
     /// (d) A readback this soon after a key may not show it yet, and is not compared.
     static let readbackAfterKey: Int64 = 100_000
-    /// A readback whose AX calls took longer than one AX call of the inject worker may (`axCallTimeout`, 30 ms):
-    /// in that field KeyVi's own reads would time out.
+    /// A readback one of whose AX calls took longer than one AX call of the inject worker may (`axCallTimeout`,
+    /// 30 ms, PLT-R311 timing row): in that field KeyVi's own reads would time out. Compared with the longest single
+    /// call (`maxCallUs`), never with the sum of the read's up to three calls.
     static let slowReadback: UInt64 = 30_000
     /// A key counts as still on its way to the app this long after it went down: normally a few milliseconds, tens
     /// of milliseconds under the memory pressure of 2026-11-14 (incidents 1 and 10: readbacks 27 and 71 ms after

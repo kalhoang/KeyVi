@@ -108,6 +108,19 @@ private func boundaries(_ records: [DevTraceRecord]) -> [(reason: String, job: S
         #expect(fixture.queue.pop() == nil)  // no boundary job, nothing for the app
     }
 
+    /// PLT-R904A, ADR 0007 decision 10: the marker's read waits for the pause after the chord. The chord notes its
+    /// own key down before it requests attention (its key record, which notes it again, comes later in the same
+    /// callback), so a read the attention queue schedules at once still sees the chord: two notes, one request.
+    @Test func theMarkerChordCountsAsInputBeforeItsRequest() throws {
+        let clock = ManualClock()
+        let capture = try startedCapture(clock: clock)
+        let fixture = PipelineFixture(clock: clock, capture: capture)
+        clock.advance(byMicroseconds: 5_000)
+        #expect(fixture.keyDown(semicolon, flags: markerFlags) == .swallow)
+        #expect(capture.dev.inputActivity.count == 2 && capture.dev.inputActivity.lastInput == clock.now())
+        #expect(capture.dev.takeAttention() == [.marker])
+    }
+
     /// The chord is the marker only with exactly Control, Option and Command, and only in a running recorder.
     @Test func otherChordsAndAStoppedRecorderLeaveTheKeyAlone() throws {
         let clock = ManualClock()

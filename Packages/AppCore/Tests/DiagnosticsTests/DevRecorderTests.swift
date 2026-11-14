@@ -319,8 +319,8 @@ struct DevRecorderFixture {
         #expect(activity.latest == fixture.clock.now())
     }
 
-    /// The readback line carries the AX read's duration, the wait since the trigger, the input's idle time and the
-    /// overlap flag (written only when a key went down during the read).
+    /// The readback line carries the AX read's duration and its longest call, the wait since the trigger, the
+    /// input's idle time and the overlap flag (written only when a key went down during the read).
     @Test func readbackLinesCarryTheirTiming() throws {
         let fixture = DevRecorderFixture.make()
         try fixture.dev.start(appVersion: "1")
@@ -328,19 +328,21 @@ struct DevRecorderFixture {
             reason: .commit, status: .ok, textBeforeCaret: "máy co", selectionLocation: 6, selectionLength: 0,
             bundle: "com.example.editor", rule: nil, at: fixture.clock.now())
         record.durationMicroseconds = 12_300
+        record.longestCallMicroseconds = 9_100
         record.waitMicroseconds = 1_250_000
         record.idleMicroseconds = 1_000_000
         record.overlap = true
         fixture.dev.note(.readback(record))
         record.overlap = false
         record.durationMicroseconds = nil
+        record.longestCallMicroseconds = nil
         fixture.dev.note(.readback(record))
         fixture.advance(seconds: 2)
         let lines = fixture.lines(fixture.hour).filter { $0.type == .readback }
         #expect(lines.count == 2)
         #expect(lines[0].durUs == 12_300 && lines[0].waitUs == 1_250_000 && lines[0].idleUs == 1_000_000)
-        #expect(lines[0].overlap == true)
-        #expect(lines[1].overlap == nil && lines[1].durUs == nil)
+        #expect(lines[0].maxCallUs == 9_100 && lines[0].overlap == true)
+        #expect(lines[1].overlap == nil && lines[1].durUs == nil && lines[1].maxCallUs == nil)
     }
 
     /// PLT-R904A retention: 7 days, then 200 MB (a small cap here) oldest first; the file in use and foreign files

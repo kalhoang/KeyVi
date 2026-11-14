@@ -118,11 +118,14 @@ extension KeyPipeline {
     }
 
     /// The marker chord (PLT-R904A): consumed like a hotkey (its keyUp too), a marker record when the key may be
-    /// recorded, and a confirmation request. Nil for every other key.
+    /// recorded, and a confirmation request. Nil for every other key. The chord notes its own key down before the
+    /// request (its key record notes it again later in this callback): the marker's read waits for the pause after
+    /// the chord (ADR 0007 decision 10) even when the attention queue runs before the key record is pushed.
     func devMarkerVerdict(_ event: RawKeyEvent, now: MonotonicInstant) -> TapVerdict? {
         guard DevMarkerChord.matches(event), let dev = context.capture?.dev, dev.isStarted else { return nil }
         if !event.autorepeat, capturingThisKey, dev.isActive {
             dev.pushTap(.marker(source: .chord, at: now))
+            dev.noteInputDown(at: now)
             dev.requestAttention(.marker)
         }
         return consumeAsHotkey(event)

@@ -113,11 +113,14 @@ public enum TraceRendering {
         }
     }
 
-    /// Format version 2: how long the AX calls took, the wait since the trigger, the input's idle time, and a key
-    /// that went down during the read.
+    /// Format version 2: how long the AX calls took (and the longest of them), the wait since the trigger, the
+    /// input's idle time, and a key that went down during the read.
     private static func readbackTiming(_ line: TraceLine) -> [String] {
         var parts: [String] = []
-        if let duration = line.durUs { parts.append("read " + microseconds(duration)) }
+        if let duration = line.durUs {
+            let longest = line.maxCallUs.map { " (longest call " + microseconds($0) + ")" } ?? ""
+            parts.append("read " + microseconds(duration) + longest)
+        }
         if let wait = line.waitUs { parts.append("waited " + String(TraceText.seconds(wait).dropFirst())) }
         if let idle = line.idleUs { parts.append("idle " + String(TraceText.seconds(idle).dropFirst())) }
         if line.overlap == true { parts.append("key during read") }

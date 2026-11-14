@@ -203,6 +203,9 @@ public struct DevReadbackRecord: Sendable, Hashable {
     public var at: MonotonicInstant
     /// How long the AX calls took, timeouts included; nil when no AX call was made.
     public var durationMicroseconds: UInt64?
+    /// The longest single AX call of the read, timeouts included; nil when no AX call was made. The scanner compares
+    /// it with the inject worker's per-call timeout (PLT-R311 timing row).
+    public var longestCallMicroseconds: UInt64?
     /// From the first trigger to the start of the read (the pause it waited for).
     public var waitMicroseconds: UInt64?
     /// How long no key, click or job had happened when the read started; nil before any input.

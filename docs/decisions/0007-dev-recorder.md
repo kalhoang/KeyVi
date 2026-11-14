@@ -85,23 +85,24 @@ into public issues.
     pressure. The likely cause is an accessibility read of a large WebKit editor (its focused element, selection
     and text) racing a keystroke WebKit is still handling. Production {{AppName}} holds keys while a job touches AX
     (PLT-R311), so it never races this way; an observer must not hold keys. So:
-    - Every readback (commit, Backspace edit, marker) waits until no key or click has gone down and no edit job
-      has run for **1 s** (`DevReadback.quietPeriod`): twice PLT-R382's 500 ms, the spec's bound of continuous
-      typing, so a pause that long is neither between two keys of a word nor between two words typed in a row
-      (incident 10: 64 to 70 ms between keys, 95 ms from the space to the next word, 300 ms commit delay), and a
-      key the app was still handling has long arrived. It is short enough that most pauses to read or think still
-      get a read. Every trigger since the last read gives one read with the most specific reason; while Pa types
+    - Every readback (commit, Backspace edit, marker; the marker chord counts as a key) waits until no key or
+      click has gone down and no edit job has run for **1 s** (`DevReadback.quietPeriod`): twice PLT-R382's
+      500 ms, the spec's bound of continuous typing, so a pause that long is neither between two keys of a word
+      nor between two words typed in a row (incident 10: 64 to 70 ms between keys, 95 ms from the space to the
+      next word, 300 ms commit delay), and a key the app was still handling has long arrived. It is short enough
+      that most pauses to read or think still get a read. Every trigger since the last read gives one read with the most specific reason; while Pa types
       without such a pause there is none. The tap tells the recorder the time of every key and click down (two
       atomic writes, no allocation); the inject thread the end of every job.
     - A key or click that still goes down while the read is in flight is flagged on the line (`overlap`), and the
       scanner does not compare such a read. Each line also records the AX calls' duration (`durUs`, timeouts
-      included), the wait since the first trigger (`waitUs`) and the input's idle time when the read started
-      (`idleUs`). File format version 2.
+      included) and the longest single call (`maxCallUs`), the wait since the first trigger (`waitUs`) and the
+      input's idle time when the read started (`idleUs`). File format version 2.
     - The scanner explains a mismatch that is exactly one passed key missing from the field (`keyDropped`) or one
       character more in the field (`extraCharacter`), says whether a readback was in flight when that key went down
       or started within 200 ms after it, takes the field's text as its new baseline after any mismatch (one
-      divergence, one finding), and flags readbacks that timed out or took more than 30 ms (`slowReadback`). The
-      summary names no character; `show` does, in the finding's note.
+      divergence, one finding), and flags readbacks that timed out or one of whose AX calls took more than 30 ms,
+      the inject worker's per-call timeout (`slowReadback`). The summary names no character; `show` does, in the
+      finding's note.
     The incidents are reproduced with sample words in `Packages/AppCore/Tests/TraceScanTests/Fixtures/incidents`.
 
 11. **WebKit editors keep their readback.** Skipping them until proven safe was considered and rejected:

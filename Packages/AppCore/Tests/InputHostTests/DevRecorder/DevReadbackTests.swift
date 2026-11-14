@@ -334,6 +334,30 @@ private struct ReadbackRig {
         #expect(rig.readbackLines().last?["durUs"] as? Int == 8_000)
     }
 
+    /// The longest single AX call is recorded too: the scanner compares it with the inject worker's per-call
+    /// timeout (`axCallTimeout`, PLT-R311 timing row), which the sum of up to three calls would overstate.
+    @Test func theLongestAXCallIsRecorded() throws {
+        let rig = try ReadbackRig(text: "abc")
+        let clock = rig.clock
+        let calls = Atomic<Int>(0)
+        rig.elements.afterCall.withLock {
+            $0 = .init {
+                let index = calls.wrappingAdd(1, ordering: .relaxed).oldValue
+                clock.advance(byMicroseconds: index == 0 ? 3_000 : 11_000)
+            }
+        }
+        let record = rig.readback.read(.commit)
+        #expect(record.durationMicroseconds == 14_000 && record.longestCallMicroseconds == 11_000)
+        rig.elements.afterCall.withLock { $0 = nil }
+        rig.focus.publish(ReadbackRig.focus(requireTextFocus: .never))
+        #expect(rig.readback.read(.commit).longestCallMicroseconds == nil)
+        rig.focus.publish(ReadbackRig.focus())
+        rig.elements.afterCall.withLock { $0 = .init { clock.advance(byMicroseconds: 5_000) } }
+        rig.readback.handle([.commit])
+        rig.advance(milliseconds: 0)
+        #expect(rig.readbackLines().last?["maxCallUs"] as? Int == 5_000)
+    }
+
     /// Review W8-E finding 1: the readback reads through its own element reference, so the timeout the worker set
     /// on the shared field element is never changed by a readback.
     @Test func readsThroughItsOwnElementAndLeavesTheWorkersTimeoutAlone() throws {

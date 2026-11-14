@@ -68,14 +68,14 @@ private func scan(_ builder: TraceBuilder, _ arguments: [String]) throws -> Stri
 
     /// A readback a key overlapped is not compared (its text may be half way through the key); the next readback
     /// names the key and says that a readback was in flight when it went down. The overlapped read also took
-    /// longer than the slow-readback threshold.
+    /// longer than the slow-readback threshold (one AX call over 30 ms).
     @Test func aReadAKeyOverlappedIsDiscountedAndNamed() throws {
         var trace = TraceBuilder()
         trace.launch(bundle: webEditor, rule: nil)
         trace.boundary("focusChanged", job: "focusChanged")
         trace.type("xin ")
         trace.advance(1_000)
-        trace.readback("xin b", durUs: 40_000, idleUs: 1_000_000, overlap: true)  // a torn read: no finding
+        trace.readback("xin b", durUs: 40_000, maxCallUs: 35_000, idleUs: 1_000_000, overlap: true)  // torn: no finding
         trace.advance(15)
         trace.press("b", event: .key(KeyInput("b")), dropped: true)
         trace.advance(120)
@@ -162,23 +162,28 @@ private func scan(_ builder: TraceBuilder, _ arguments: [String]) throws -> Stri
         #expect(findings(trace).map(\.kind) == [.keyDropped])
     }
 
-    /// Slow and timed-out readbacks (more than 30 ms of AX calls), with the first recorder's lines (no duration)
-    /// flagged only when they timed out.
+    /// Slow and timed-out readbacks: one AX call longer than the inject worker's per-call timeout (30 ms, PLT-R311
+    /// timing row), not the sum of the read's calls (three 15 ms calls are not slow). Lines without the longest
+    /// call (the first recorder's) are flagged only when they timed out.
     @Test func slowReadbacksAreFindings() throws {
         var trace = TraceBuilder()
         trace.launch(bundle: webEditor, rule: nil)
-        trace.readback("", durUs: 30_000)
+        trace.readback("", durUs: 30_000, maxCallUs: 30_000)
         trace.advance(1_000)
-        trace.readback("", durUs: 45_000)
+        trace.readback("", durUs: 45_000, maxCallUs: 15_000)
         trace.advance(1_000)
-        trace.readback("", reason: "marker", status: "timedOut", durUs: 51_000)
+        trace.readback("", durUs: 45_000, maxCallUs: 31_000)
+        trace.advance(1_000)
+        trace.readback("", reason: "marker", status: "timedOut", durUs: 51_000, maxCallUs: 50_000)
         trace.advance(1_000)
         trace.readback("", status: "timedOut")
+        trace.advance(1_000)
+        trace.readback("", durUs: 90_000)
         let found = findings(trace)
         #expect(found.map(\.kind) == [.slowReadback, .slowReadback, .slowReadback])
         #expect(
             found.map(\.detail) == [
-                "commit readback took 45 ms (ok)", "marker readback timed out after 51 ms",
+                "commit readback: one AX call took 31 ms of 45 ms (ok)", "marker readback timed out after 51 ms",
                 "commit readback timed out",
             ])
     }
@@ -187,15 +192,15 @@ private func scan(_ builder: TraceBuilder, _ arguments: [String]) throws -> Stri
     @Test func showPrintsTheReadbackTiming() throws {
         var trace = TraceBuilder()
         trace.launch(bundle: webEditor, rule: nil)
-        trace.readback("", durUs: 45_000)
+        trace.readback("", durUs: 45_000, maxCallUs: 40_000)
         trace.line(
             "readback",
             [
                 "reason": "commit", "status": "ok", "text": "ab", "selLoc": 2, "selLen": 0, "durUs": 12_300,
-                "waitUs": 1_250_000, "idleUs": 1_000_000, "overlap": true,
+                "maxCallUs": 6_100, "waitUs": 1_250_000, "idleUs": 1_000_000, "overlap": true,
             ])
         let shown = try scan(trace, ["show", "1"])
-        let timing = "read 12.3 ms  waited 1.250 s  idle 1.000 s  key during read"
+        let timing = "read 12.3 ms (longest call 6.1 ms)  waited 1.250 s  idle 1.000 s  key during read"
         #expect(shown.contains("readback  commit  ok  \"ab\"  selection 2+0  " + timing))
     }
 }
