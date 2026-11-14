@@ -66,7 +66,8 @@ private func testHostFieldIDs() throws -> [String] {
         let names = Set(try files(in: pagesDirectory).map(\.lastPathComponent))
         for page in [
             "fields.html", "inline-autocomplete.html", "edit-mode-transition.html", "edit-mode-editor.html",
-            "contenteditable-composer.html", "testhost.js", "testhost.css", "index.html",
+            "contenteditable-composer.html", "keycode-first-composer.html", "testhost.js", "testhost.css",
+            "index.html",
         ] {
             #expect(names.contains(page), "\(page)")
         }
@@ -100,6 +101,20 @@ private func testHostFieldIDs() throws -> [String] {
         #expect(composer.contains(#"contenteditable="true""#) && composer.contains("\"Enter\""))
         let script = try read(pagesDirectory.appendingPathComponent("testhost.js"))
         #expect(script.contains("messageHandlers") && script.contains("data-testhost-echo"))
+    }
+
+    /// PLT-R405 (W8-F): the key-code-first composer deletes on `event.code` "Backspace" and sends on "Enter" in its
+    /// keydown listener whatever character the event carries, types on keypress, and refuses every other edit, so
+    /// an edit posted on its trigger's keycode shows up in the readback (testhost.web.keycodeFirst.*).
+    @Test func keycodeFirstComposerActsOnTheKeyCode() throws {
+        let page = try read(pagesDirectory.appendingPathComponent("keycode-first-composer.html"))
+        #expect(matches(#"data-testhost-field="([^"]+)""#, in: page) == ["testhost.web.textarea"])
+        #expect(page.contains(#"<textarea id="keycode-composer""#))
+        #expect(page.contains(#"addEventListener("keydown""#) && page.contains(#"event.code === "Backspace""#))
+        #expect(page.contains(#"event.code === "Enter""#) && page.contains(#"var sendMarker = "<send>";"#))
+        #expect(page.contains(#"addEventListener("keypress""#) && page.contains(#"addEventListener("beforeinput""#))
+        #expect(page.contains("window.TestHost.mirror(composer)"))
+        #expect(!page.contains("event.key === \"Backspace\""), "the key code decides, not the key")
     }
 
     /// The single-element variant: the edit-mode cell keeps the keyboard focus from the first key on

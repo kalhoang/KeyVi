@@ -8,6 +8,7 @@ placeholder). They contain no http(s) references and no network resources; Scena
   edit-mode-transition.html      spreadsheet cell: keys lost while entering edit mode, column autocomplete
   edit-mode-editor.html          the same with a grid cell whose first key moves the focus to a separate editor
   contenteditable-composer.html  chat composer that re-renders on first input and sends on Return
+  keycode-first-composer.html    composer that deletes and sends by event.code, types on keypress (PLT-R405)
   testhost.js                    mirroring (data-testhost-field) and the completion rules
   testhost.css                   shared style, system fonts only
 

@@ -73,6 +73,7 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
 | Group | Scenarios | Covers |
 |---|---|---|
 | TestHost fields | `testhost.native.*`, `testhost.web.*`, `testhost.addressBar.*`, `testhost.sheetCell.*`, `testhost.password.noTransform` | QA-R10, QA-R21, PLT-R387, inline completion and edit-mode transition (4.3, 6) |
+| Key-code-first composer | `testhost.web.keycodeFirst.{backspace,returnCommit}` (`keycode-first-composer.html`: deletes on `event.code` "Backspace", sends on "Enter", types on keypress; default rules) | PLT-R405: an edit never types on the keycode of the key that triggered it (Pa's manual tests of 2026-11-14, chat apps) |
 | Focus moved without an activation | `testhost.sheet.commandS`, `testhost.panel.{inlineCompletionTwice,toneUndo}`, `testhost.web.editModeEditor`, `launcher.spotlight.reopen` | PLT-R389, PLT-R340 late focus change (Pa's manual tests of 2026-11-14: Spotlight, T5.5, T5.8) |
 | Layouts and input sources | `testhost.layout.{abc,qwertz,azerty,dvorak}`, `testhost.inputSource.japanese` | 13.2, PLT-R361, PLT-R371 |
 | Secure input | `testhost.secureInput.{pause,release}`, `terminal.iterm2.secureKeyboardEntry{,Off}` | PLT-R398B, PLT-R398C |

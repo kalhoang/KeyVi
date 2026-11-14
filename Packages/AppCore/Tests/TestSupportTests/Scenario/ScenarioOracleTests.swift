@@ -174,6 +174,33 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
     }
 }
 
+/// PLT-R405 (W8-F): the key-code-first composer page (keycode-first-composer.html) shows what a plain field would,
+/// except that its keydown listener turns each Return into the marker `<send>`. Through the real engine: `hoafn` then
+/// Backspace leaves `hòa` (W240), `thuowr` then Return commits `thuở` (ENG-R532) and sends once.
+@Suite struct KeyCodeFirstComposerOracleTests {
+    static let scenarios = ["testhost.web.keycodeFirst.backspace", "testhost.web.keycodeFirst.returnCommit"]
+
+    @Test func theScenariosExpectWhatTheEngineProduces() async throws {
+        let profiles = try repositoryProfiles()
+        let targets = try repositoryTargets()
+        let byID = Dictionary(
+            uniqueKeysWithValues: try ScenarioRunner.load(directory: scenariosDirectory).map { ($0.id, $0) })
+        for id in Self.scenarios {
+            let scenario = try #require(byID[id], "\(id)")
+            let field = try #require(scenario.setup.last { $0.action == .focusField }?.value)
+            #expect(field == "testhost.web.textarea")
+            #expect(
+                scenario.setup.contains {
+                    $0.action == .openURL && $0.value?.hasSuffix("/keycode-first-composer.html") == true
+                })
+            #expect(!profiles.contains { $0.scenarios.contains(id) }, "\(id) runs on the default rules")
+            let (text, mode) = try await oracleText(scenario, profiles: profiles, targets: targets, field: field)
+            #expect(text.replacingOccurrences(of: "\n", with: "<send>") == scenario.expect.text, "\(id)")
+            #expect(mode == .vietnamese)
+        }
+    }
+}
+
 @Suite struct CommonWordsGoldenTests {
     static let count = 200
 
