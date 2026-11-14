@@ -209,6 +209,7 @@ suite possible without a dedicated Mac and without touching Pa's Mac:
 ```sh
 scripts/vm/integration-dev.sh    # throwaway clone of {{app-slug}}-dev (6144 MB, 4 CPUs), deleted afterwards
 scripts/vm/integration-dev.sh --only testhost.web.textarea    # control run of chosen scenarios (IDs, PREFIX*)
+scripts/vm/integration-dev.sh --probe --only testhost.web.textarea    # the same with the AX focus probe (10.5)
 ```
 
 It copies the committed checkout (`git archive HEAD`) into the clone and runs
@@ -356,14 +357,29 @@ or vanished file) in every run since the second.
 Method: control runs in a throwaway clone of `{{app-slug}}-dev` with an AX probe running in the guest's session next
 to the harness (`scripts/vm/guest/ax-focus-probe.swift`, how to use it below). The probe logs every focus, window,
 selection and value notification of TestHost with the role, identifier and hash of the notified element and of the
-app's focused element at that moment, and every pasteboard change (types and byte count, never a value).
+app's focused element at that moment, and every pasteboard change (change count and types, never a value). The two
+probe logs cited in the table come from an earlier, uncommitted revision of the probe (`probe-source.swift` in the
+same run folders): its lines read `NOTE ... vsPrev=` and `PASTEBOARD ... len=` instead of `focus=same|changed` and
+`pasteboard change=... types=...`, and it counted the bytes of the pasteboard's text, which the committed probe does
+not read at all.
 
 | Scenario | Root cause | Fix | Test |
 |---|---|---|---|
-| `testhost.web.textarea`, and the intermittent `testhost.web.inlineAutocomplete` and `testhost.perWindowRule.mainWindow` | WebKit posts `AXFocusedUIElementChanged` for the page's textarea (the notification names a group of the WebContent process) while the app's `AXFocusedUIElement` still reads none; 13 ms later the textarea is the focused element, and no second notification follows (`20261113T222941Z-w7a-webpair/probe-1.log`, 7.043 s and 7.056 s). `FocusCore` read the focus once per notification, so it published "no text focus" and kept it until the PLT-R382 revalidation on the first key: the first word passed untransformed (`tieengs việt`; on the completion page `asia.example`, both keys passed). | Settle re-reads: 40, 120 and 400 ms after every focus notification and every activation, `FocusCore` reads the focus again and publishes only a change; a timeout ends the window, so a slow app does not trip its PLT-R384 breaker faster; a deferred publication wakes the main thread like a notification does (`FocusCore+Settle.swift`, PLT-R380, PLT-R391). | `FocusSettleTests` |
-| `testhost.addressBar.telexStroke` (`dđ`), `testhost.addressBar.telexTone` (`asia.example`, `aá`) | Not the deletion count: the inline-completion handling of the edit (`axSelectionThenPlaceholder`, one extra Backspace when a suggestion is selected, `KeyStrategies.swift`) is right whenever the snapshot carries the address bar's rule; `testhost.addressBar.vni` passes in every run with the same field and rule. These two scenarios are the first after TestHost's launch. A just launched app answers `AXObserverAddNotification` with `kAXErrorCannotComplete` (-25204) for about 400 ms (the probe's own observer, both runs below), and `FocusCore` never asked again, so no focus notification of TestHost arrived: the keys met a stale snapshot (another field's rule gives `dđ`, no text focus gives `asia.example`). Their 5 to 8 s durations (2 s of them the harness's focus-refresh wait timing out) match. | A refused observer is retried 100, 200, 400, 800, 1,600 and 3,200 ms later while the app owns the focus, and a late registration reads the focus it missed; `SystemAXProvider` adds an observer's notifications all together or not at all (`AXObserverRegistration`), so a refusal halfway is retried too. | `FocusSettleTests`, `AXObserverRegistrationTests` |
+| `testhost.web.textarea`, and the intermittent `testhost.web.inlineAutocomplete` and `testhost.perWindowRule.mainWindow` | WebKit posts `AXFocusedUIElementChanged` for the page's textarea (the notification names a group of the WebContent process) while the app's `AXFocusedUIElement` still reads none; 13 ms later the textarea is the focused element, and no second notification follows (`20261113T222941Z-w7a-webpair/probe-1.log`, 7.043 s and 7.056 s). `FocusCore` read the focus once per notification, so it published "no text focus" and kept it until the PLT-R382 revalidation on the first key: the first word passed untransformed (`tieengs việt`; on the completion page `asia.example`, both keys passed). | Settle re-reads: 40, 120 and 400 ms after every focus notification and every activation, `FocusCore` reads the focus again and publishes only a change; a timeout ends the window, and a notification whose own read timed out opens none, so a focus change of a slow app
+costs one PLT-R384 breaker count as before; a deferred publication wakes the main thread like a notification does (`FocusCore+Settle.swift`, PLT-R380, PLT-R391). | `FocusSettleTests` |
+| `testhost.addressBar.telexStroke` (`dđ`), `testhost.addressBar.telexTone` (`asia.example`, `aá`) | Not the deletion count: the inline-completion handling of the edit (`axSelectionThenPlaceholder`, one extra Backspace when a suggestion is selected, `KeyStrategies.swift`) is right whenever the snapshot carries the address bar's rule; `testhost.addressBar.vni` passes in every run with the same field and rule. These two scenarios are the first after TestHost's launch. A just launched app answers `AXObserverAddNotification` with `kAXErrorCannotComplete` (-25204) for about 400 ms (the probe's own observer, both runs below), and `FocusCore` never asked again, so (inferred: the probe's observer was refused, and `FocusCore` registers the same
+way at the same moment) no focus notification of TestHost arrived: the keys met a stale snapshot (another field's rule gives `dđ`, no text focus gives `asia.example`). Their 5 to 8 s durations (2 s of them the harness's focus-refresh wait timing out) match. | A refused observer is retried 100, 200, 400, 800, 1,600 and 3,200 ms later while the app owns the focus, and a late registration reads the focus it missed; `SystemAXProvider` adds an observer's notifications all together or not at all (`AXObserverRegistration`), so a refusal halfway is retried too; the last retry keeps what the app accepts, so one name refused for good does not cost the others. The PLT-R382 revalidation also runs on the first key after the app starts: before, that key never counted as idle, which is why `telexStroke` composed both keys on the stale snapshot while `telexTone`, one scenario later, got the revalidation on its first key. | `FocusSettleTests`, `AXObserverRegistrationTests`, `KeyPipelineHostTests.firstKeyDownAfterStartRequestsRevalidation` |
 | `testhost.privacyCanary.paste` (a space only) | TestHost had no Edit menu. AppKit turns Command+V into `paste:` only through a menu key equivalent, so the `paste` strategy's synthetic Command+V reached no field: every edit's deletions ran and its insertion never came, which left the space alone. The pasteboard side worked: the probe logged the transient item with the nspasteboard.org marker types and each restore (changes 2 to 6 in `20261113T222633Z-w7a-reproduction/probe-1.log`), so neither the 400 ms restore delay nor macOS 27 pasteboard privacy was involved, and nothing typed was logged or persisted (privacy scan clean). | TestHost gets the standard Edit menu (Cut, Copy, Paste, Select All). | `TestHostSourcesTests.editMenuHasTheStandardKeyEquivalents` |
 | `testhost.web.editModeTransition` (`Dd`, intermittent) | The local page moved the DOM focus from a grid cell (a `div`) to a hidden editor after the first key. A focus change is a hard boundary (PLT-R340), so with the host tracking it "D" and "d" are two compositions and give `Dd`; the scenario passed only when the app published the editor's focus after the second key had been decided, a race that the settle re-reads would end for good. Not a harness timing problem. | The cell is one input that keeps the focus from the first key on; it still drops the keys of its 20 ms edit-mode transition and autocompletes from its column. | `LocalPagesTests.editModeCellKeepsTheFocusFromTheFirstKey` |
+
+**Limit of the edit-mode fix (open question to Pa).** The old page was the suite's only model of a grid whose first
+key opens a separate editor element. Under PLT-R340 as written, a focus change between the first two keys of a word is
+a hard boundary, so no input method that follows the spec can give `Đức` there: Telex `Dd` stays `Dd`. If Google
+Sheets or Excel on the web move the DOM focus to an editor on the first key (not verified: `compat/matrix.json` rows of
+`web.googleSheets.cellEditor` and `.webkit` are `notVerified`), the product will type `Dd` there and no scenario shows
+it. The notes of both rules in `compat/rules.json` say so. Whether a focus change inside the same window within
+`firstEditDelayUs` (or about 300 ms) of a word's first key should keep the composition is a spec decision
+(PLT-R340, PLT-R408) for Pa, not something to settle in TestHost.
 
 Runs of W7-A (clone `{{app-slug}}-dev-w7a`, 6144 MB, 4 CPUs; folders under `/Volumes/Data/tart/runs/`):
 
@@ -380,14 +396,14 @@ stopped the VM (05:34 host time, `/Volumes/Data/tart/safari-guard.log`), and Saf
 (`testhost.web.input` runs before the textarea on purpose) and five times `--only testhost.web.editModeTransition`;
 record every run in this section. If a scenario still fails, run the probe next to it.
 
-The probe, inside the VM only (it refuses a real Mac), from the checkout in the guest:
+The probe runs inside the VM only (it refuses a real Mac). `scripts/vm/integration-dev.sh --probe` (with or without
+`--only`) has the guest compile it, grant it with the other TCC clients, start it on TestHost's dev bundle ID right
+before the suite and end it after; its log is `integration-out/probe.log` in the run folder (`probe-build.log` if it
+did not compile):
 
 ```sh
-xcrun swiftc -O -o "$HOME/ax-focus-probe" scripts/vm/guest/ax-focus-probe.swift
-sudo scripts/vm/grant-tcc.sh --binary "$HOME/ax-focus-probe"
-# One command in the guest's GUI session (scripts/vm/lab.sh exec <vm> /bin/bash -c '...'), so the probe ends with the run:
-"$HOME/ax-focus-probe" '<dev bundle ID>.testhost' >"$HOME/probe.log" 2>&1 & probe=$!
-COMPAT_HARNESS_LIVE=1 COMPAT_HARNESS_TESTS_ARGS="run --scenarios compat/scenarios --only <IDs> --output .build/integration/tests" \
-  scripts/run-integration.sh tests
-kill "$probe"
+scripts/vm/integration-dev.sh --probe --only testhost.web.input,testhost.web.textarea
 ```
+
+The typing trace (PLT-R905) is not used in these runs: it starts only after the user confirms it in the app, and the
+text it records would be a finding of the privacy scan.
