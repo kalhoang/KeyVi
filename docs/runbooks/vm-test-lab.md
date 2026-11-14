@@ -312,3 +312,58 @@ actually lands is the on-screen check.
 Still open: section 10.1 on both VMs (names as displayed, deep links, screenshots; the Monterey run needs the grant of
 step 3), and macOS 13 to 26, which have no lab VM. Terminal shows the menu item in Vietnamese on a Vietnamese system,
 while the app's Vietnamese secure-input hint quotes the English name; that copy belongs to the catalog owner.
+
+## 11. Tap permission (`scripts/vm/tap-permission.sh`)
+
+Specification: PLT-R701, PLT-R702, PLT-R705, PLT-R712, PLT-R731 (02-platform.md section 7). Question: which TCC
+permission does the app's tap (active, key-down, session level, the parameters of `TapThread.swift`) need on a given
+macOS, and which checks see a grant made while the app runs? Apple's answer (WWDC19 session 701): a listen-only tap
+needs Input Monitoring, a modifying tap needs Accessibility; Apple DTS on the developer forums (threads 727984 and
+720840): `CGPreflightPostEventAccess()` and `CGPreflightListenEventAccess()` keep the answer they had when the process
+started. This check measures it on the lab VM.
+
+```sh
+scripts/vm/tap-permission.sh                       # {{app-slug}}-dev (macOS 27.2, SIP disabled)
+scripts/vm/tap-permission.sh --keys 20 --output /Volumes/Data/tart/runs/<name>
+scripts/vm/tap-permission.sh summarize --input <run folder>/tap-out/probe.jsonl
+```
+
+What it does, in the throwaway clone `<vm>-tap` (deleted at the end, like every lab clone):
+
+1. Refuses to start while Safari runs on the host or another VM runs (section 5). Before any VM starts it compiles
+   `scripts/vm/guest/tap-permission-probe.swift` on the host (`swiftc -O -target arm64-apple-macos12.0`), wraps it in
+   an app bundle `TapProbe.app` (bundle ID: the development bundle ID plus `.tapprobe`, `LSUIElement`), signs the
+   bundle and a copy of the binary (the typer) ad hoc, and never runs either on the host. A guest with SIP enabled is
+   refused: `grant-tcc.sh` cannot write TCC there.
+2. Copies the bundle, the typer, `grant-tcc.sh` and the script itself into the guest and runs
+   `tap-permission.sh guest` through the tart guest agent (the logged-in session). The guest mode installs the probe in
+   `~/Applications`, runs `tccutil reset All` for its bundle ID, grants the typer and the guest agent Accessibility
+   and event posting, and starts the probe with `open`, so TCC sees the bundle and not the shell that started it.
+3. Five phases, each marked in `probe.jsonl`, each followed by `--keys` presses of the X key typed by the typer:
+   `fresh` (nothing granted), `accessibility-live` (the Accessibility row only, same process),
+   `accessibility-relaunch` (the probe quit and started again), `input-monitoring-live` (Input Monitoring added, same
+   process), `input-monitoring-relaunch`. Grants go through `grant-tcc.sh`, which restarts `tccd`, unlike the switch
+   in System Settings; a process-level cache in CoreGraphics is not affected by either route.
+4. Every second the probe appends one line: `AXIsProcessTrusted()`, `CGPreflightPostEventAccess()`,
+   `CGPreflightListenEventAccess()`, whether its active tap is installed (it retries every second), whether a
+   listen-only tap can be created now (the app's live Input Monitoring check), the key-downs its tap received from
+   other processes and how many of its own posted key-downs (F19, marked) came back through it. Counts only, never a
+   key (PLT-R901).
+
+Run folder `VM_LAB_RUNS/<timestamp>-tap-permission/` (or `--output`): `tap-permission.log`, `guest.log`,
+`summary.txt` (one row per phase: ax, post, listen, activeTap, listenOnlyNow, keys/typed, echoes/posted) and
+`tap-out/` with `probe.jsonl`, `guest-summary.txt`, `system.txt`, the grant logs and `tcc-rows.txt` (the probe's TCC
+rows at the end).
+
+Self-tests: `python3 -I scripts/tests/test_tap_permission.py` (part of `scripts/tests/run.sh`) drives the host mode
+with fake `tart`, `ssh`, `pgrep`, `swiftc` and `codesign`, the guest mode with a fake `sysctl` and fake system tools,
+and `summarize` on a sample log; no VM starts and nothing touches TCC or posts a key on the host.
+
+### 11.1 Results
+
+Not run yet (W8-C, 2026-11-14): Safari was open on the host for the whole wait, so no VM was booted. Until a run
+exists, the app follows Apple's documented behaviour (PLT-R701, PLT-R702): readiness is `AXIsProcessTrusted()`, the
+Input Monitoring row appears only when the tap cannot be created with Accessibility granted, and the listen-only tap
+is the live Input Monitoring check. What a run must record here: for each phase, whether the active tap was created
+and received the typed keys, whether the probe's own posted keys came back (posting works after a live grant), and
+which of the three checks changed without a relaunch.

@@ -9774,10 +9774,20 @@ public import SettingsStore
 /// `CGPreflightListenEventAccess()`, `AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt: true])`,
 /// `CGRequestListenEventAccess()`, `CGRequestPostEventAccess()`; the signing identity digest comes from
 /// `SecCodeCopySelf` + `SecCodeCopyDesignatedRequirement`.
+///
+/// PLT-R701: `AXIsProcessTrusted()` follows the switch live. The two CoreGraphics preflights keep the answer they
+/// had when the process started (Apple DTS on the developer forums, threads 727984 and 720840), so they never
+/// decide on their own that a permission is still missing; `canListenToEventsNow()` is the live Input Monitoring
+/// check.
 public protocol PermissionProbe: Sendable {
     func isAccessibilityTrusted() -> Bool
     func canPostEvents() -> Bool
+    /// `CGPreflightListenEventAccess()`: the Input Monitoring answer at launch.
     func canListenToEvents() -> Bool
+    /// PLT-R702, PLT-R731: Input Monitoring as it is now, by creating a listen-only key tap and releasing it at
+    /// once (a passive tap never holds keys back). Creating a tap for keys can make macOS prompt for Input
+    /// Monitoring, so the monitor calls this only once it knows the tap needs that permission.
+    func canListenToEventsNow() -> Bool
     func promptForAccessibility()
     func requestListenEventAccess() -> Bool
     func requestPostEventAccess() -> Bool
@@ -9790,7 +9800,8 @@ public struct PermissionStatus: Sendable, Hashable {
     public var accessibility: PermissionState
     public var postEvent: PermissionState
     public var listenEvent: PermissionState
-    /// Input Monitoring needed: tap could not be created or receives no keys while Accessibility is granted.
+    /// Input Monitoring needed and still missing: the tap could not be created while Accessibility is granted and
+    /// neither the launch-time preflight nor the live check sees Input Monitoring (PLT-R702).
     public var listenEventRequired: Bool
     public var health: Health
     public init(
@@ -9842,9 +9853,15 @@ public final class PermissionMonitor: Sendable {
     public func checkNow() -> PermissionStatus { check() }
     /// Onboarding polls every 1 s for at most 5 minutes while visible (PLT-R711).
     public func setFastPolling(_ enabled: Bool) { updateFastPolling(enabled) }
-    /// The lifecycle reports that the tap could not be created or receives no keys. With Accessibility granted
-    /// and `CGPreflightListenEventAccess()` false this sets `listenEventRequired` (PLT-R702).
+    /// The lifecycle reports that the tap could not be created. With Accessibility granted and Input Monitoring
+    /// missing (launch-time preflight and live check) this sets `listenEventRequired` (PLT-R702); the live check
+    /// clears it when the user turns Input Monitoring on while the app runs (PLT-R731).
     public func setTapUnavailable(_ unavailable: Bool) { updateTapUnavailable(unavailable) }
+}
+
+extension PermissionProbe {
+    /// Probes without a live check (fakes, wrappers) answer with the launch-time preflight.
+    public func canListenToEventsNow() -> Bool { canListenToEvents() }
 }
 
 /// "Đặt lại quyền" (PLT-R740): runs `/usr/bin/tccutil reset Accessibility <own bundle ID>` after the user
@@ -10926,6 +10943,13 @@ public struct OnboardingFlow: Sendable, Hashable {
     public private(set) var permissionGranted: Bool
     /// Set when the grant advanced the flow by itself, so the next screen can confirm it; cleared on the next move.
     public private(set) var advancedByGrant = false
+    /// PLT-R702: the tap was seen to need Input Monitoring during this onboarding; its row then stays on screen 2,
+    /// as granted once the need cleared (`PermissionScreenContent`).
+    public private(set) var inputMonitoringSeen = false
+    /// PLT-R702: the latest status needs Input Monitoring, and whether `CGRequestListenEventAccess()` was already
+    /// called for this onboarding.
+    private var inputMonitoringNeeded = false
+    private var inputMonitoringRequested = false
     private var history: [OnboardingScreen] = []
 
     public init(inputs: OnboardingInputs) {
@@ -10937,11 +10961,13 @@ public struct OnboardingFlow: Sendable, Hashable {
         permissionOnly = inputs.permissionLostAfterCompletion
         screen = permissionOnly ? .permission : startAt
         permissionGranted = Self.isGranted(inputs.permission)
+        inputMonitoringSeen = inputs.permission.listenEventRequired
+        inputMonitoringNeeded = inputs.permission.listenEventRequired
     }
 
     /// Screens 5 and 6 are skipped when their condition is false; screen 2 has no "Bỏ qua".
     public mutating func next(inputs: OnboardingInputs) {
-        permissionGranted = Self.isGranted(inputs.permission)
+        observe(inputs.permission)
         // PRD-R40: screen 2 cannot be left forward until permission is granted.
         if screen == .permission && !permissionGranted { return }
         advance(inputs: inputs)
@@ -10968,14 +10994,28 @@ public struct OnboardingFlow: Sendable, Hashable {
     /// grant. In the PRD-R42 variant the screen stays to show "Đã cấp quyền" until the user closes it.
     public mutating func permissionChanged(_ status: PermissionStatus, inputs: OnboardingInputs) {
         let wasGranted = permissionGranted
-        permissionGranted = Self.isGranted(status)
+        observe(status)
         guard screen == .permission, permissionGranted, !wasGranted, !permissionOnly, !isFinished else { return }
         advance(inputs: inputs)
         advancedByGrant = true
     }
 
+    /// PLT-R702: true once, the first time the Input Monitoring row shows as needed, so the caller asks macOS
+    /// (`CGRequestListenEventAccess()`) to list the app and show its own prompt, without waiting for a click.
+    public mutating func takeInputMonitoringRequest() -> Bool {
+        guard inputMonitoringNeeded, !inputMonitoringRequested else { return false }
+        inputMonitoringRequested = true
+        return true
+    }
+
     /// Accessibility trusted and, when macOS demands it, Input Monitoring too (PLT-R701, PLT-R702).
     public static func isGranted(_ status: PermissionStatus) -> Bool { status.health == .ready }
+
+    private mutating func observe(_ status: PermissionStatus) {
+        permissionGranted = Self.isGranted(status)
+        inputMonitoringNeeded = status.listenEventRequired
+        if inputMonitoringNeeded { inputMonitoringSeen = true }
+    }
 
     private mutating func advance(inputs: OnboardingInputs) {
         advancedByGrant = false
@@ -12612,6 +12652,8 @@ import SwiftUI
 protocol OnboardingActions: AnyObject {
     func openPermissionPane()  // deep link from SystemPanes.json (PLT-R704)
     func openInputMonitoringPane()  // PLT-R702, only when macOS demands Input Monitoring
+    /// PLT-R702: `CGRequestListenEventAccess()` once, when screen 2 first shows Input Monitoring as needed.
+    func requestInputMonitoringAccess()
     func resetPermission() -> PermissionReset.Outcome  // PLT-R740, after confirmation
     func relaunch()  // PLT-R712
     func setTypingMethod(_ method: TypingMethod)

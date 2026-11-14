@@ -281,8 +281,10 @@ PRD-R40 Onboarding runs on first launch and can be reopened from About & Support
 - Body: `Để thêm dấu khi bạn gõ, macOS cần bạn cho phép {{AppName}} trong mục Quyền riêng tư & Bảo mật.`
 - Bullets: `{{AppName}} chỉ xử lý phím khi bạn gõ chữ.` / `Ô mật khẩu luôn được bỏ qua.` / `Không có dữ liệu nào rời khỏi máy của bạn.`
 - Dynamic instruction (by macOS version): on macOS 27 and later `Mở Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Điều khiển thiết bị và truy cập dữ liệu, rồi bật {{AppName}}.`; on macOS 13 to 26 the same with `Trợ năng`; on macOS 12, where the app is called System Preferences, `Mở Tùy chọn Hệ thống > Bảo mật & Quyền riêng tư > Quyền riêng tư > Trợ năng, rồi bật {{AppName}}.` The names of macOS 12.7.6 and 27.2 match Apple's localization tables of those builds (decision 0005 Q37, docs/runbooks/vm-test-lab.md section 10.3); VERIFY them as displayed on a Vietnamese-language system, and the names of macOS 13 to 26, before release; the English names are "Device Control and Data Access" (macOS 27), "Accessibility" (macOS 13 to 26) and "System Preferences > Security & Privacy > Privacy > Accessibility" (macOS 12). Names come from the OS-version table of PLT-R704, never from code.
-- Button: `Mở {{SystemSettings}}` (the pane app's name from the PLT-R704 table: Cài đặt hệ thống on macOS 13 and later, Tùy chọn Hệ thống on macOS 12). A short looping illustration (static image when Reduce Motion is on) shows the toggle.
-- Live state: the screen polls permission state and advances automatically within 1 s of the grant, showing `Đã cấp quyền` with a check mark. Accessibility is the only permission requested up front (PLT-R701); Input Monitoring is requested only if macOS demands it for the tap (PLT-R702), and in that case the screen says so explicitly and offers `Mở lại {{AppName}}` if a relaunch is needed. If the app was launched from the DMG or another temporary location, the move-to-Applications offer (PLT-R710) comes before this screen.
+- Permission rows (Pa, 2026-11-14, PLT-R705): under the line `Đang chờ bạn bật quyền...` (or `Đã cấp quyền` with a check mark once every row is on), one row per permission the app needs, named as System Settings names it in the macOS language (PLT-R704 table), each with its live state `Đã bật` (check mark) or `Cần bật` (empty circle): Accessibility always (`Điều khiển thiết bị và truy cập dữ liệu` on macOS 27, `Trợ năng` on macOS 12 to 26); Input Monitoring (`Giám sát đầu vào`) as soon as the app knows the tap needs it (PLT-R702), kept as `Đã bật` once that need cleared. The dynamic instruction above names the pane of the first row still `Cần bật`.
+- Button: `Mở {{Pane}}`, where {{Pane}} is the name of the first row still `Cần bật` (for example `Mở Điều khiển thiết bị và truy cập dữ liệu`, then `Mở Giám sát đầu vào`); it opens exactly that pane (Pa, 2026-11-14: a button that always opened the Accessibility pane while Input Monitoring was the missing switch left the user stuck). A short looping illustration (static image when Reduce Motion is on) shows the toggle.
+- Input Monitoring line, under the rows while that row is `Cần bật` (PLT-R702, PLT-R712): `macOS cần thêm quyền {{InputMonitoring}} để {{AppName}} nhận phím gõ. Nếu công tắc đã bật mà dòng này vẫn báo cần bật, hãy mở lại {{AppName}}.` with the button `Mở lại {{AppName}}`. When the row first appears, macOS is asked once to list the app and show its own prompt.
+- Live state: the screen polls permission state and advances automatically within 1 s of the grant, showing `Đã cấp quyền` with a check mark. Accessibility is the only permission requested up front (PLT-R701); Input Monitoring only if the tap needs it (PLT-R702). If the app was launched from the DMG or another temporary location, the move-to-Applications offer (PLT-R710) comes before this screen.
 - Help link: `Không thấy {{AppName}} trong danh sách?` opens a sheet: remove and re-add steps, and a `Đặt lại quyền` button that resets only this app's entry after confirmation.
 
 **Screen 3: Typing method**
@@ -309,16 +311,21 @@ PRD-R40 Onboarding runs on first launch and can be reopened from About & Support
 **Screen 6: Import (conditional)**
 - Shown if a known export file or a known competitor app is detected (section 15). Title: `Mang gõ tắt và cài đặt từ {{OtherApp}}`. Body: `Bạn có thể chuyển danh sách gõ tắt từ {{OtherApp}} sang bằng tệp văn bản theo mẫu.` Buttons: `Chọn tệp...`, `Để sau`. (No importer reads another input method's own files yet: the user exports or retypes the list in the text template of PRD-R32. Body changed by the product owner on 13/11/2026.)
 
-**Screen 7: Try it**
+**Screen 7: Try it** (wording by Pa's feedback, 2026-11-14: the first draft was unclear)
 - Title: `Thử gõ một chút`
-- Three checklist items in a text field, each ticks when done: type `Tiếng Việt có dấu`; type `text user wifi` and see it unchanged; press the toggle hotkey once and back.
+- Intro: `Gõ vào ô bên dưới. Mỗi mục được đánh dấu khi bạn làm xong.`
+- A text field, then three checklist items, each ticks when done. Each item has two lines; the phrase to type, the keys to press and the shortcut are set apart in a semibold monospaced face, and the quotes are part of the copy:
+  - `Gõ cụm từ “Tiếng Việt có dấu”`; second line `Phím cần gõ (Telex): Tieengs Vieetj cos daaus`, with VNI selected `Phím cần gõ (VNI): Tie61ng Vie65t co1 da61u`.
+  - `Gõ các từ tiếng Anh “text user wifi”`; second line `Phím cần gõ: text user wifi. Chữ phải giữ nguyên, không bị thêm dấu.`
+  - `Nhấn rồi thả {{ToggleKey}} để chuyển sang tiếng Anh, rồi làm lại một lần nữa để về tiếng Việt`; second line `Biểu tượng trên thanh menu đổi từ V sang E, rồi về lại V.` {{ToggleKey}} is the switch shortcut set in Settings, in words (`Control + Shift` by default; modifiers in Apple's order fn, Control, Option, Shift, Command; `Command phải`, `Option phải` for the right-hand keys). When the window opens in English mode the two languages and the letters swap.
+- VoiceOver reads each item as `Chưa xong: ` or `Đã xong: ` followed by both lines (PRD-R66).
 - Button: `Xong`
 
 **Screen 8: Done**
 - Title: `Xong rồi!`
 - Body: `{{AppName}} nằm trên thanh menu, góc trên bên phải màn hình.` An arrow points at the icon.
 - Checkbox (checked): `Mở {{AppName}} khi đăng nhập`
-- Button: `Bắt đầu gõ`
+- Button: `Bắt đầu` (Pa, 2026-11-14; was `Bắt đầu gõ`)
 - No donation prompt, no newsletter, no rating request.
 
 PRD-R41 If the user closes onboarding before granting permission, the menu bar icon shows the slashed state and the status line offers to resume onboarding at screen 2.
