@@ -123,6 +123,8 @@ public struct JobKeyCodes: Sendable, Hashable {
     /// Keycode of the physical key that triggered the edit.
     public var trigger: KeyCode
     /// For restores and macros: keycode producing the first inserted character in the current layout, if any.
+    /// For a Backspace edit (PLT-R352, PLT-R405): keycode of the first character of the insertion, or else of
+    /// the replaced text, that the current layout types, so the insertion never rides on `kVK_Delete`.
     public var firstCharacter: KeyCode?
     /// Keycode producing "v" in the current layout (Command+V for `paste`).
     public var paste: KeyCode?

@@ -179,10 +179,16 @@ extension KeyPipeline {
         _ edit: TextEdit, kind: EditKind, replaced: String, trigger: KeyEventRecord?, _ key: KeyInputContext,
         focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> EditJob {
-        // PLT-R405: restores and macros type with the keycode producing their first character, if any.
-        let firstCharacter =
-            kind == .restore || kind == .macro
-            ? edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) } : nil
+        // PLT-R405: restores and macros type with the keycode producing their first character, if any; a Backspace
+        // edit with the keycode of a character of the edit, never with `kVK_Delete` (PLT-R352).
+        let firstCharacter: KeyCode?
+        if kind == .restore || kind == .macro {
+            firstCharacter = edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) }
+        } else if VirtualKeyGroup.of(key.event.keyCode) == .backspace {
+            firstCharacter = Self.letterKeyCode(insertion: edit.insert, replaced: replaced, table: inputSource.table)
+        } else {
+            firstCharacter = nil
+        }
         return EditJob(
             sequence: context.queue.nextSequence(), generation: focus.generation, plan: focus.decision.plan,
             field: focus.fieldHandle, kind: kind, deleteCount: edit.deleteCount,
@@ -192,6 +198,19 @@ extension KeyPipeline {
             trigger: trigger,
             verifyBeforeApply: keyState.reopenedWord && focus.decision.verifyReentry != .never,
             wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe)
+    }
+
+    /// PLT-R405, PLT-R352: for a Backspace edit, the keycode of the first character of the insertion, or else of
+    /// the replaced text, that the current layout types. Bounded by the token's length; table lookups only.
+    static func letterKeyCode(insertion: String, replaced: String, table: LayoutTable?) -> KeyCode? {
+        guard let table else { return nil }
+        for character in insertion {
+            if let code = table.keyCode(producing: character) { return code }
+        }
+        for character in replaced {
+            if let code = table.keyCode(producing: character) { return code }
+        }
+        return nil
     }
 
     /// PLT-R408: the word began within 300 ms of a focus change or click.
