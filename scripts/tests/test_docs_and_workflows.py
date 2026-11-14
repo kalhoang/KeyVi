@@ -861,6 +861,61 @@ class IntegrationHooksBuildTests(unittest.TestCase):
         self.assertNotIn("Integration", build)
 
 
+class DevRecorderBuildTests(unittest.TestCase):
+    """PLT-R904A, ADR 0007 (Pa, 2026-11-14): the dev builds' typing recorder exists only in the Debug configuration.
+    AppCore defines DEV_RECORDER for Debug only, the App target adds it for Debug only and leaves the recorder's
+    files out of Release and Integration by name, every recorder file compiles only under the condition, and the
+    marker verify-release.sh looks for is the one the recorder carries."""
+
+    MARKER_LINE = re.compile(r'^DEV_RECORDER_MARKER="(.+)"$', re.M)
+    DIAGNOSTICS = REPO / "Packages" / "AppCore" / "Sources" / "Diagnostics" / "DevRecorder.swift"
+
+    def swift_marker(self) -> str:
+        source = self.DIAGNOSTICS.read_text(encoding="utf-8")
+        return re.search(r'static let buildMarker = "([^"]+)"', source).group(1)
+
+    def recorder_files(self) -> list[Path]:
+        roots = [REPO / "App" / "Sources", REPO / "Packages" / "AppCore" / "Sources"]
+        return sorted(
+            path for root in roots for path in root.rglob("*.swift")
+            if "DevRecorder" in path.name and ".build" not in path.parts)
+
+    def test_verify_release_looks_for_the_marker_the_recorder_carries(self):
+        marker = self.swift_marker()
+        self.assertGreater(len(marker.encode()), 15)  # longer strings live in __TEXT, never inline in a register
+        text = (REPO / "scripts" / "verify-release.sh").read_text(encoding="utf-8")
+        self.assertEqual(self.MARKER_LINE.search(text).group(1), marker)
+        self.assertIn("DevRecorder.strings", text)
+
+    def test_every_recorder_file_compiles_only_under_the_condition(self):
+        files = self.recorder_files()
+        self.assertGreaterEqual(len(files), 10)
+        for path in files:
+            lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            code = [line for line in lines if not line.startswith("//")]
+            with self.subTest(file=str(path.relative_to(REPO))):
+                self.assertEqual(code[0], "#if DEV_RECORDER")
+                self.assertEqual(code[-1], "#endif")
+
+    def test_appcore_defines_the_condition_for_debug_only(self):
+        manifest = (REPO / "Packages" / "AppCore" / "Package.swift").read_text(encoding="utf-8")
+        defines = re.findall(r'\.define\("DEV_RECORDER"[^)]*\)\)?', manifest)
+        self.assertEqual(defines, ['.define("DEV_RECORDER", .when(configuration: .debug))'])
+
+    def test_the_app_adds_the_condition_in_debug_and_drops_the_files_elsewhere(self):
+        project = (REPO / "project.yml").read_text(encoding="utf-8")
+        self.assertIn("        Debug:\n          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) DEV_RECORDER\n", project)
+        self.assertIn('        Release:\n          EXCLUDED_SOURCE_FILE_NAMES: "*DevRecorder*"\n', project)
+        self.assertIn('        Integration:\n          EXCLUDED_SOURCE_FILE_NAMES: "*DevRecorder*"\n', project)
+        self.assertEqual(project.count("DEV_RECORDER"), 2)  # the Debug setting and its comment
+        for name in sorted(path.name for path in (REPO / "Config").glob("*.xcconfig")):
+            with self.subTest(config=name):
+                self.assertNotIn("DEV_RECORDER", (REPO / "Config" / name).read_text(encoding="utf-8"))
+        build = (REPO / "scripts" / "build-release.sh").read_text(encoding="utf-8")
+        self.assertNotRegex(build, r"-configuration\s+Debug")
+        self.assertTrue((REPO / "App" / "Resources" / "Localization" / "DevRecorder.xcstrings").is_file())
+
+
 class LicenceTests(unittest.TestCase):
     """ADR 0006 (Pa, 2026-11-13): the app is GPL-3.0-or-later, the engine packages, the data pipeline and the
     reference model are MPL-2.0, every contribution is signed off (DCO) and contributions to GPL-covered parts are also
