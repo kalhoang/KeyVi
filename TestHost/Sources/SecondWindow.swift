@@ -20,6 +20,8 @@ final class EscapeMarkingTextView: SingleLineTextView {
 @MainActor
 final class TestHostSecondWindowController: NSWindowController {
     private var access: [TestHostField: (view: NSView, get: () -> String, reset: () -> Void)] = [:]
+    /// File > Save… (Command+S) attaches it to this window (SaveSheet.swift).
+    let saveSheet = SaveSheetController()
 
     required init?(coder: NSCoder) { nil }
 
@@ -34,6 +36,7 @@ final class TestHostSecondWindowController: NSWindowController {
         buildFields(into: layout)
         window.contentView = layout.contentView()
         window.initialFirstResponder = layout.firstField
+        saveSheet.mirror.onFocusRequest = { @MainActor [weak self] in self?.focus(.secondTextView) }
     }
 
     private func buildFields(into layout: TestHostLayout) {
@@ -60,6 +63,10 @@ final class TestHostSecondWindowController: NSWindowController {
             hint: "Shows each Escape key that reaches it as the text <esc>.")
         access[.escapeField] = (escape, { escape.string }, { escape.replaceAll(with: "") })
         layout.addRow("Escape field", escape.embedded())
+
+        let sheetMirror = saveSheet.mirror
+        access[.sheetMirror] = (sheetMirror, { sheetMirror.stringValue }, { [saveSheet] in saveSheet.reset() })
+        layout.addRow("Save sheet name (mirror)", sheetMirror)
     }
 
     private func describe(_ view: NSView, _ field: TestHostField, _ label: String, _ hint: String) {
@@ -76,6 +83,14 @@ final class TestHostSecondWindowController: NSWindowController {
     func resetAll() {
         for field in access.values { field.reset() }
         window?.makeFirstResponder(nil)
+    }
+
+    /// File > Save… (Command+S): this window comes forward and gets the save sheet.
+    func showSaveSheet() {
+        guard let window else { return }
+        showWindow(nil)
+        window.makeKeyAndOrderFront(nil)
+        saveSheet.show(on: window)
     }
 
     /// Brings this window forward and focuses `field` (Window menu, Command+2), caret at the end.
