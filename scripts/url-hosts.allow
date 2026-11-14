@@ -29,8 +29,9 @@ ns.adobe.com
 www.daemonology.net
 sites.google.com
 
-# Licence text that is never contacted: the Exhibit A URL of the Mozilla Public License 2.0 inside the engine's
-# licence, which the Licences pane shows verbatim (ADR 0006 amendment of 2026-11-15).
+# Licence text that is never contacted: the Exhibit A URL of the Mozilla Public License 2.0. It is needed once the
+# engine's licence text is compiled into the app for the Licences pane (ShellCore/Settings/AboutSupport.swift,
+# EngineLicence) or quoted in a String Catalog (ADR 0006 amendment of 2026-11-15).
 mozilla.org
 
 # Website only, never inside the app (scripts/check-url-hosts.sh fails if the app contains one).

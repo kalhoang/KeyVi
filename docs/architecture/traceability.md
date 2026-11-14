@@ -423,7 +423,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | CLR-R3 | Allowed sources only | process | D | all |  |
 | CLR-R4 | Discard code that resembles another IME | process | D | all |  |
 | CLR-R5 | Behavioural facts allowed, code not | process | D | all |  |
-| CLR-R6 | Permissive word lists only | engine data | D, L | engine data track |  |
+| CLR-R6 | Third-party word lists permissive; own lists under the engine licence (ENG-R109) | engine data | D, L | engine data track |  |
 | CLR-R7 | Original or licensed assets with recorded source | `App/Resources/Assets.xcassets`, site | D | W1-G; site track |  |
 | CLR-R8 | New, empty memory project | process (a new memory project, empty at the start) | D | done |  |
 | CLR-R9 | No research folder in the repository | process | D | all |  |

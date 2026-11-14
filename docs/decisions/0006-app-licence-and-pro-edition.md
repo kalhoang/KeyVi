@@ -26,7 +26,7 @@ wants both a free, open app and the option of a paid Pro edition later, without 
    - Everything else (the app, AppCore, TestHost, SpikeIMK, scripts, the website, `deploy/`, `compat/`, the docs)
      is **GPL-3.0-or-later**. The root `LICENSE` is the verbatim GNU GPL version 3 text as published at
      `https://www.gnu.org/licenses/gpl-3.0.txt` (byte-exact, pinned by SHA-256 in
-     `scripts/tests/test_docs_and_workflows.py`); source files carry `SPDX-License-Identifier: GPL-3.0-or-later`
+     `scripts/tests/test_licences_and_wording.py`); source files carry `SPDX-License-Identifier: GPL-3.0-or-later`
      (`scripts/check-spdx.sh`, CLR-R11). "Or later" lets the project follow a future GPL version without asking
      every contributor again.
    - "The {{AppName}} authors" means Kal, the maintainer and copyright holder of the original work, and every
@@ -112,7 +112,7 @@ The product owner moved the parts that decision 1 made MIT to the Mozilla Public
 - Licence text. Each of the four directories has a `LICENSE` that is the verbatim text of
   `https://www.mozilla.org/media/MPL/2.0/index.txt` as fetched on 2026-11-15 (16,726 bytes, SHA-256
   `3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04`, pinned in
-  `scripts/tests/test_docs_and_workflows.py`, never edited). The MPL text has no copyright line, so
+  `scripts/tests/test_licences_and_wording.py`, never edited). The MPL text has no copyright line, so
   "Copyright (c) 2026 the {{AppName}} authors" and the Exhibit A notice live in a `NOTICE` file beside it, with
   the literal name that `scripts/rename-app.sh` rewrites; the reference model keeps them in its README, because
   `spec/` keeps the brand placeholders and is never rewritten.
@@ -135,8 +135,9 @@ The product owner moved the parts that decision 1 made MIT to the Mozilla Public
 ## Consequences
 
 - `LicenseRef-App-Pending` is gone outside the decision records: spec, docs, `CONTRIBUTING.md`, the pull request
-  template, `THIRD_PARTY_NOTICES.md` and the README name GPL-3.0-or-later and MPL-2.0;
-  `scripts/tests/test_docs_and_workflows.py` (`LicenceTests`) fails if the old identifier returns.
+  template, `THIRD_PARTY_NOTICES.md` and the README name GPL-3.0-or-later and MIT (GPL-3.0-or-later and MPL-2.0
+  since the amendment of 15/11/2026); `scripts/tests/test_licences_and_wording.py` (`LicenceTests`) fails if the
+  old identifier returns.
 - `scripts/rename-app.sh` never rewrites the root `LICENSE`, so the GPL text stays byte-exact after a rename;
   the MIT `LICENSE` files name the product and follow a rename (since the amendment of 15/11/2026: no `LICENSE` is
   rewritten, and the `NOTICE` files carry the product name).
