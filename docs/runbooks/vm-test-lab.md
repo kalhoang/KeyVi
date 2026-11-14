@@ -184,3 +184,122 @@ the result of the first attempt and the manual grant for an image with SIP enabl
 | A VM stays `running` after a killed script | `lab.sh down <vm>`; it falls back to `tart stop` and then kills `tart run` |
 | `is the Tart Guest Agent running?` right after boot | The guest agent starts in the user session after SSH: `integration-dev.sh` waits up to `VM_AGENT_TIMEOUT` (180 s) for it |
 | `ssh` and `tart exec` hang after a long run | The 6 GB guest is swapping (it was Spotlight indexing the checkout until the guest script turned indexing off): `tart stop <vm>` (with `TART_HOME` set) still works |
+
+## 10. System pane names (`SystemPanes.json`)
+
+Specification: PLT-R704, PRD-R64, PLT-R398C, [ADR 0315](../decisions/0315-minimum-macos-12.md), decision 0005 Q37
+([0005](../decisions/0005-pa-decisions-2026-11-13.md)). `App/Resources/SystemPanes.json` holds, per macOS version and
+macOS language, the names of System Settings (macOS 13 and later) or System Preferences (macOS 12) that the app's copy
+quotes, and the deep links it opens. Each entry's `_verify` note says what was checked and what is still VERIFY. Two
+checks exist, the first one stronger.
+
+### 10.1 On screen: `scripts/vm/pane-names.sh`
+
+```sh
+scripts/vm/pane-names.sh --vm {{app-slug}}-monterey    # macOS 12.7.6, English then Vietnamese
+scripts/vm/pane-names.sh --vm {{app-slug}}-dev         # macOS 27.2
+scripts/vm/pane-names.sh --vm {{app-slug}}-dev --languages vi --output /Volumes/Data/tart/runs/<name>
+```
+
+What it does, in the throwaway clone `<vm>-panes` (deleted at the end, like every lab clone):
+
+1. Refuses to start while Safari runs on the host (the maintainer is using the Mac; checked again before every
+   reboot), or while another VM runs (section 3).
+2. Picks the `SystemPanes.json` entry that `SystemPaneTable` uses for the guest's macOS version and writes its deep
+   links to `links.tsv`, plus probe links that show the remaining names (macOS 12: the Privacy tab and the Text tab;
+   macOS 13 and later: Privacy & Security and General).
+3. With SIP disabled (`{{app-slug}}-dev`), grants Accessibility and Screen Recording to
+   `/usr/libexec/sshd-keygen-wrapper` with `grant-tcc.sh`, so the SSH session can read windows and take screenshots.
+   With SIP enabled (`{{app-slug}}-monterey`) that grant has to be in the base VM already: add
+   `/usr/libexec/sshd-keygen-wrapper` to Accessibility and to Screen Recording once by hand, as in
+   [integration-suite.md](integration-suite.md) section 10.2 (this changes the base VM: the maintainer's decision).
+   Without it the guest reports `trusted: no` and reads nothing.
+4. For each language (`en`, then `vi`): sets `AppleLanguages` (`vi en` for Vietnamese) and `AppleLocale` of the guest
+   user, reboots the clone so the login session and every System Settings extension start in that language, and runs
+   `scripts/vm/guest/pane-names-guest.sh` over SSH. The guest script compiles `scripts/vm/guest/ax-dump.swift` (an
+   Accessibility reader that refuses a real Mac), then for each link quits System Settings, opens the link in the
+   logged-in session (`launchctl asuser`), dumps the window that opened (roles, titles, values, selection) and takes
+   a screenshot, then dumps the app's menus (its name is the title of the application menu) and Terminal's menus,
+   with a screenshot of Terminal's application menu open.
+
+Run folder `VM_LAB_RUNS/<timestamp>-panes-<vm>/` (or `--output`): `pane-names.log`, `links.tsv`, `guest-<lang>.log`
+and one folder per language with `system.txt`, `summary.txt`, `trusted.txt`, `<link>.ax.txt` and `<link>.png` per
+link, `settings-menus.ax.txt`, `terminal-menus.ax.txt`, `terminal-press.txt` and `terminal-menu.png`. The window
+title and the selected row of each `<link>.ax.txt` show which pane and tab the link opened.
+
+### 10.2 Localization tables: `scripts/vm/pane-tables.py`
+
+When no VM can boot, the spelling macOS ships can still be read from its localization tables, without booting
+anything. It is weaker evidence: it shows how macOS spells a name, not that the pane shows it there, and it says
+nothing about where a deep link lands.
+
+```sh
+python3 -I scripts/vm/pane-tables.py --root <mounted system volume> --check App/Resources/SystemPanes.json
+```
+
+For macOS 12, the system volume of a throwaway clone, attached read-only and never booted:
+
+```sh
+scripts/vm/lab.sh clone {{app-slug}}-monterey {{app-slug}}-monterey-panes
+diskutil image attach --readOnly --noMount /Volumes/Data/tart/home/vms/{{app-slug}}-monterey-panes/disk.img
+diskutil list <disk image device>         # the APFS container; its "Macintosh HD" volume is the system volume
+diskutil mount readOnly -mountOptions nobrowse -mountPoint /tmp/panes-12 <container>s1
+python3 -I scripts/vm/pane-tables.py --root /tmp/panes-12 --check App/Resources/SystemPanes.json
+diskutil unmount /tmp/panes-12 && diskutil eject <disk image device>
+scripts/vm/lab.sh delete {{app-slug}}-monterey-panes
+```
+
+For a macOS 13 or later build, `--root /` reads the running system; that counts for a lab VM only when the host runs
+the VM's exact build (`sw_vers -buildVersion`). The script reads `InfoPlist.strings`, `Localizable.strings` and the
+nib strings of System Preferences and its panes on macOS 12, the `.loctable` files of System Settings and its
+extensions from macOS 13, and Terminal's main menu. Labels of a compiled nib keep their English text in
+`Base.lproj` (reported as `base nib`). A button that opens a sheet carries an ellipsis (`Text Replacements…`); the
+copy quotes the name without it. Exit status 0 when every compared name matches.
+
+### 10.3 Results, 2026-11-14 (W7-D)
+
+The on-screen check did not run: Safari was open on the host for the whole 90-minute wait, so no VM was booted. The
+localization tables were read instead (section 10.2). Run folder `/Volumes/Data/tart/runs/w7d-20261114T035118Z/`:
+`README.txt`, `tables-macos12.7.6-21H1320.tsv`, `tables-macos27.2-26B123.tsv`, `base-nib-english-macos12.7.6.txt`,
+`anchors-macos12.7.6.txt` and `anchors-macos27.2.txt`.
+
+macOS 12.7.6 (21H1320), from the system volume of a never-booted clone of `{{app-slug}}-monterey`:
+
+| Name | English | Vietnamese | Source |
+|---|---|---|---|
+| App | System Preferences | Tùy chọn Hệ thống | `System Preferences.app` `InfoPlist.strings` `CFBundleName` |
+| Security & Privacy (icon) | Security & Privacy | Bảo mật & Quyền riêng tư | `Security.prefPane` `NSPrefPaneIconLabel` (its `CFBundleName`: "Bảo mật & quyền riêng tư") |
+| Privacy tab | Privacy (base nib) | Quyền riêng tư | `SecurityPref.strings` `201924.label` |
+| Accessibility | Accessibility | Trợ năng | `Security.prefPane` `Localizable.strings` `ACCESSIBILITY` |
+| Input Monitoring | Input Monitoring | **Giám sát Đầu vào** (was "Giám sát đầu vào") | `LISTEN_EVENT` |
+| Keyboard | Keyboard | Bàn phím | `Keyboard.prefPane` `CFBundleName` |
+| Text tab | Text | Văn bản | `IntlTexts.prefPane` `CFBundleName` |
+| Users & Groups | Users & Groups | Người dùng & Nhóm | `Accounts.prefPane` `CFBundleName` |
+| Login Items tab | Login Items (base nib) | **Mục Đăng nhập** (was "Mục đăng nhập") | `AccountsPref.strings` `122.label` |
+| Terminal menu item | Secure Keyboard Entry (base nib) | Nhập dùng Bàn phím An Toàn | `Terminal.app` `MainMenu.strings` `511.title` |
+
+macOS 27.2 (26B123), the build of `{{app-slug}}-dev`, read on the maintainer's Mac, which runs that build:
+
+| Name | English | Vietnamese | Source |
+|---|---|---|---|
+| App | System Settings | Cài đặt hệ thống | `System Settings.app` `InfoPlist.loctable` |
+| Privacy & Security | Privacy & Security | Quyền riêng tư & Bảo mật | `SecurityPrivacyExtension` `InfoPlist.loctable` |
+| Accessibility | Device Control and Data Access | Điều khiển thiết bị và truy cập dữ liệu | `SecurityPrivacyExtension` `ACCESSIBILITY` |
+| Input Monitoring | Input Monitoring | Giám sát đầu vào | `SecurityPrivacyExtension` `LISTEN_EVENT` |
+| Keyboard | Keyboard | Bàn phím | `KeyboardSettings` `InfoPlist.loctable` |
+| Text Replacements | Text Replacements… | Thay thế văn bản… | `KeyboardSettings` `Localizable.loctable` |
+| General | General | Cài đặt chung | `GeneralSettings` `InfoPlist.loctable` |
+| Login Items & Extensions | Login Items & Extensions | **Mục đăng nhập & Phần mở rộng** (was "Mục đăng nhập & tiện ích mở rộng") | `LoginItems` `Localizable.loctable` |
+| Terminal menu item | Secure Keyboard Entry | Nhập dùng Bàn phím An Toàn | `Terminal.app` `MainMenu.loctable` `511.title` |
+
+The three names in bold were changed in `SystemPanes.json` (the macOS 15 to 26 entry carries the macOS 27.2 spelling
+of Login Items & Extensions). Deep links: the pane bundles of macOS 12.7.6 have the IDs the links name
+(`com.apple.preference.security`, `com.apple.preference.keyboard`, `com.apple.preferences.users`) and list the anchors
+`Privacy_Accessibility`, `Privacy_ListenEvent`, `Privacy`, `InputSources` and `Text`; on macOS 27.2 the extensions
+have the IDs the links name (`com.apple.Keyboard-Settings.extension`, `com.apple.LoginItems-Settings.extension`) and
+the Privacy & Security extension still lists `Privacy_Accessibility` and `Privacy_ListenEvent`. Where each link
+actually lands is the on-screen check.
+
+Still open: section 10.1 on both VMs (names as displayed, deep links, screenshots; the Monterey run needs the grant of
+step 3), and macOS 13 to 26, which have no lab VM. Terminal shows the menu item in Vietnamese on a Vietnamese system,
+while the app's Vietnamese secure-input hint quotes the English name; that copy belongs to the catalog owner.
