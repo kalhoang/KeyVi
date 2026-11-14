@@ -71,7 +71,7 @@ public enum SupportText: String, LocalizationKey {
     case donateCopy = "support.donate.copy"
     case donateCopied = "support.donate.copied"
     case donateShareTitle = "support.donate.shareTitle"
-    /// Arguments: the name with its trademark sign, then the website address in the interface language.
+    /// Pa's wording (15/11/2026). Arguments: the name with its trademark sign, then `https://<site host>`.
     case donateShareText = "support.donate.shareText"
     case donateShare = "support.donate.share"
     case donateVietQR = "support.donate.vietQR"

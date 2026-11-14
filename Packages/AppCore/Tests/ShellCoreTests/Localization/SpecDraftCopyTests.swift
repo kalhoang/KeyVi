@@ -190,9 +190,9 @@ import Testing
         Draft(table: .support, key: "support.donate.accountTitle", vi: "Thông tin tài khoản"),
         Draft(table: .support, key: "support.donate.shareTitle", vi: "Nội dung chia sẻ"),
         Draft(
-            table: .support, key: "support.donate.shareText", arguments: [appTM, "https://{{app-slug}}.kal.vn/"],
+            table: .support, key: "support.donate.shareText", arguments: [appTM, "https://{{app-slug}}.kal.vn"],
             vi:
-                "Mình đang dùng {{AppNameTM}}, bộ gõ tiếng Việt miễn phí cho máy Mac. Tải tại https://{{app-slug}}.kal.vn/"
+                "Giới thiệu với mọi người {{AppNameTM}}, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: https://{{app-slug}}.kal.vn"
         ),
         Draft(table: .support, key: "support.donate.share", vi: "Chia sẻ..."),
         // About & Support sections (Pa, 15/11/2026; "gởi" as Pa wrote it).

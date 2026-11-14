@@ -1100,19 +1100,19 @@
       }
     },
     "support.donate.shareText" : {
-      "comment" : "%1$@ is the name with its trademark sign, %2$@ the website address in the interface language.",
+      "comment" : "Pa's wording (15/11/2026), kept verbatim: the user posts it in their own voice. %1$@ is the name with its trademark sign, %2$@ the website address.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I'm using %1$@, a free Vietnamese input method for the Mac. Get it at %2$@"
+            "value" : "Check out %1$@, a free Vietnamese keyboard for Mac that is really good! Get it here: %2$@"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mình đang dùng %1$@, bộ gõ tiếng Việt miễn phí cho máy Mac. Tải tại %2$@"
+            "value" : "Giới thiệu với mọi người %1$@, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: %2$@"
           }
         }
       }

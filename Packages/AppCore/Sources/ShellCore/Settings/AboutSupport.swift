@@ -19,16 +19,11 @@ public enum AboutSupportContent {
         channel == .beta ? .beta : .stable
     }
 
-    /// The website in the interface language: Vietnamese at `/`, English at `/en/` (PRD-R73).
-    public static func siteURL(brand: Brand, language: InterfaceLanguage) -> URL {
-        language == .english ? brand.siteURL.appendingPathComponent("en", isDirectory: true) : brand.siteURL
-    }
-
-    /// The donation block's "Nội dung chia sẻ": the marked name and the website, nothing about the user (PRD-R59).
+    /// The donation block's "Nội dung chia sẻ" (Pa's wording, 15/11/2026): the marked name and the website's address
+    /// as Pa wrote it, `https://<site host>`, nothing about the user (PRD-R59). The address is the same in both
+    /// languages: the people the user shares it with pick their own language on the site.
     public static func shareText(brand: Brand, localizer: Localizer) -> String {
-        localizer.format(
-            SupportText.donateShareText, brand.markedName,
-            siteURL(brand: brand, language: localizer.language).absoluteString)
+        localizer.format(SupportText.donateShareText, brand.markedName, "https://\(brand.siteHost)")
     }
 
     /// "Bản quyền © 2026 các tác giả <name>", the line of the LICENSE files.

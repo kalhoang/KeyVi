@@ -287,7 +287,7 @@ import VietnameseEngineData
         }
     }
 
-    /// Pa, 15/11/2026: the share text names the marked name and the website in the interface language, nothing else.
+    /// Pa, 15/11/2026: the share text is Pa's, with the marked name and the website's address, nothing else.
     @Test func shareTextNamesTheMarkedNameAndTheWebsite_PRDR59() throws {
         let l = try Localizers()
         let brand = Brand(
@@ -295,11 +295,12 @@ import VietnameseEngineData
             version: "1.0", build: "1", supportEmail: nil, trademarkSign: "™")
         #expect(
             AboutSupportContent.shareText(brand: brand, localizer: l.vi)
-                == "Mình đang dùng Example™, bộ gõ tiếng Việt miễn phí cho máy Mac. Tải tại https://example.invalid/")
+                == "Giới thiệu với mọi người Example™, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! "
+                + "Tải ở đây: https://example.invalid")
         #expect(
             AboutSupportContent.shareText(brand: brand, localizer: l.en)
-                == "I'm using Example™, a free Vietnamese input method for the Mac. Get it at https://example.invalid/en/"
-        )
+                == "Check out Example™, a free Vietnamese keyboard for Mac that is really good! "
+                + "Get it here: https://example.invalid")
         #expect(
             AboutSupportContent.copyrightLine(brand: brand, localizer: l.vi) == "Bản quyền © 2026 các tác giả Example")
         #expect(
