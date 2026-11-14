@@ -3371,7 +3371,7 @@ public enum DiagnosticsRenderer {
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
     public static func parseIssueBlock(_ text: String) -> [String: String]? { IssueBlock.parse(text) }
 
-    /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47): pretty-printed, sorted keys, ISO 8601
+    /// JSON file attached by "Gửi qua email" / "Lưu file..." (PRD-R47): pretty-printed, sorted keys, ISO 8601
     /// dates. Decodes back into an equal `DiagnosticsReport`.
     public static func json(_ report: DiagnosticsReport) throws -> Data { try ReportJSON.encode(report) }
 
@@ -4762,7 +4762,7 @@ public enum MacroImportFormat: String, Sendable, Hashable, CaseIterable {
     case appExport, tabSeparated, csv, textReplacementsPlist
 }
 
-/// Why a row was rejected (shown in the preview, PRD-R43 "Dòng 12: thiếu phần nội dung gõ tắt").
+/// Why a row was rejected (shown in the preview, PRD-R43 "Dòng 12: thiếu phần nội dung đầy đủ").
 public enum MacroRowIssue: Sendable, Hashable {
     case emptyShortcut
     case emptyExpansion
@@ -10393,11 +10393,12 @@ public struct Brand: Sendable, Hashable {
     /// Info.plist keys (App/Info.plist): `CFBundleDisplayName` = $(APP_DISPLAY_NAME), `AppSlug` = $(APP_SLUG),
     /// `AppSiteHost` = $(APP_SITE_HOST), `AppSupportEmail` = $(APP_SUPPORT_EMAIL),
     /// `AppRepositoryURL` = $(APP_REPOSITORY_URL), `AppLegacyStorageFolderNames` =
-    /// $(APP_LEGACY_STORAGE_FOLDER_NAMES) (semicolon-separated, ADR 0307).
+    /// $(APP_LEGACY_STORAGE_FOLDER_NAMES) (semicolon-separated, ADR 0307), `AppTrademarkSign` = $(APP_TRADEMARK_SIGN).
     public enum InfoKey {
         public static let displayName = "CFBundleDisplayName"
         public static let slug = "AppSlug"
         public static let siteHost = "AppSiteHost"
+        public static let trademarkSign = "AppTrademarkSign"
         public static let supportEmail = "AppSupportEmail"  // VERIFY with Pa (QA-R51)
         public static let repositoryURL = "AppRepositoryURL"  // VERIFY with Pa (PRD-R47, QA-R60)
         public static let legacyStorageFolderNames = "AppLegacyStorageFolderNames"
@@ -10418,10 +10419,13 @@ public struct Brand: Sendable, Hashable {
     /// Storage folder names used by earlier product names, newest first, for the one-time move after a rename
     /// (ADR 0307, `LegacyStorageMigrator`).
     public var legacyStorageFolderNames: [String]
+    /// The sign after the name where the product presents itself ("™", Pa 15/11/2026), or empty.
+    public var trademarkSign: String
 
     public init(
         displayName: String, slug: String, siteHost: String, bundleIdentifier: String, version: String, build: String,
-        supportEmail: String?, repositoryURL: URL? = nil, legacyStorageFolderNames: [String] = []
+        supportEmail: String?, repositoryURL: URL? = nil, legacyStorageFolderNames: [String] = [],
+        trademarkSign: String = ""
     ) {
         self.displayName = displayName
         self.slug = slug
@@ -10432,6 +10436,7 @@ public struct Brand: Sendable, Hashable {
         self.supportEmail = supportEmail
         self.repositoryURL = repositoryURL
         self.legacyStorageFolderNames = legacyStorageFolderNames
+        self.trademarkSign = trademarkSign
     }
 
     /// Reads the bundle; traps with a clear message if a required key is missing or empty (a build
@@ -10463,8 +10468,13 @@ public struct Brand: Sendable, Hashable {
             siteHost: required(InfoKey.siteHost), bundleIdentifier: required(InfoKey.bundleIdentifier),
             version: optional(InfoKey.version) ?? "0", build: optional(InfoKey.build) ?? "0",
             supportEmail: optional(InfoKey.supportEmail), repositoryURL: repository,
-            legacyStorageFolderNames: legacy)
+            legacyStorageFolderNames: legacy, trademarkSign: optional(InfoKey.trademarkSign) ?? "")
     }
+
+    /// The name with its trademark sign ("<name>™"), for the About, Support and Licences panes, the donation block and
+    /// the privacy text. Menus, buttons, window titles, onboarding, notifications, permission prompts and identifiers
+    /// use `displayName` (Pa, 15/11/2026).
+    public var markedName: String { displayName + trademarkSign }
 
     /// Folder name under Application Support and Logs: the display name if it is pure ASCII, else the slug
     /// (PLT-R903). Frozen at the first public release (docs/decisions/0307-settings-file-layout.md).
@@ -10506,11 +10516,11 @@ public enum StringTable: String, Sendable, CaseIterable {
     case menu = "Menu"  // status item, menu, HUD, VoiceOver labels (PRD-R10, PRD-R11)
     case status = "Status"  // status lines and error states (PRD-R43), secure-input hints (PLT-R397)
     case onboarding = "Onboarding"  // PRD-R40 screens 1-8
-    case settings = "Settings"  // five panes (PRD-R24, PRD-R25)
+    case settings = "Settings"  // window chrome and the General and Typing panes (PRD-R24, PRD-R25)
     case macros = "Macros"  // section 8
     case apps = "Apps"  // section 9
     case diagnostics = "Diagnostics"  // PLT-R1201, PLT-R1205, PRD-R47
-    case support = "Support"  // About & Support, donation block (PRD-R59)
+    case support = "Support"  // About, Support and Licences panes, donation block (PRD-R59)
     case updates = "Updates"  // PRD-R50-R54
     case composition = "Composition"  // composition root notices: safe mode, move failed, conflicts
     #if DEV_RECORDER
@@ -11337,7 +11347,7 @@ public enum ReportAssembler {
 /// A mail draft for "Gửi qua email" (PRD-R47). The App sends it with
 /// `NSSharingService(named: .composeEmail)`: `recipients`, `subject`, the body as the first item and the JSON
 /// report file URL as an attachment. Only when no mail service is available does it fall back to a `mailto:`
-/// URL with subject and body and no attachment (the sheet then offers "Lưu tệp..." for the JSON).
+/// URL with subject and body and no attachment (the sheet then offers "Lưu file..." for the JSON).
 public struct MailDraft: Sendable, Hashable {
     public var recipients: [String]
     public var subject: String
@@ -11556,7 +11566,7 @@ public struct BugReportSheet: Sendable, Hashable {
     /// The block written to the clipboard by "Copy report" and "Mở GitHub" (QA-R44), after the notice (PRD-R48).
     public func clipboardText(_ report: DiagnosticsReport) -> String { ReportPreviewFormat.copiedBlock.text(report) }
 
-    /// The JSON file for "Gửi qua email" and "Lưu tệp..." (PRD-R47).
+    /// The JSON file for "Gửi qua email" and "Lưu file..." (PRD-R47).
     public func attachment(_ report: DiagnosticsReport) throws -> Data { try DiagnosticsRenderer.json(report) }
 
     public func attachmentFileName(slug: String, report: DiagnosticsReport) -> String {
@@ -11599,7 +11609,7 @@ public enum DiagnosticsNavigation {
     public enum Origin: Sendable, Hashable {
         /// The status menu: PRD-R11 items 4 and 6 and the status line's "Báo lỗi...".
         case menu
-        /// The Settings window: an Apps pane row or detail sheet (PRD-R37), About & Support, a store notice.
+        /// The Settings window: an Apps pane row or detail sheet (PRD-R37), the Support pane, a store notice.
         case settings
     }
 
@@ -11736,7 +11746,7 @@ internal import Foundation
 public enum ReportPreviewFormat: String, Sendable, Hashable, CaseIterable {
     /// The diagnostics block (ADR 0501) that "Copy report" and "Mở GitHub" put on the clipboard.
     case copiedBlock
-    /// The JSON file that "Gửi qua email" attaches and "Lưu tệp..." saves (PLT-R1202 "plain text and JSON").
+    /// The JSON file that "Gửi qua email" attaches and "Lưu file..." saves (PLT-R1202 "plain text and JSON").
     case attachedFile
 
     /// Exactly the text the paths of this format write. The JSON is empty only when it cannot be encoded, in
@@ -12219,7 +12229,7 @@ public struct SMAppServiceLoginItem: LoginItemService {
     }
 }
 
-/// What the About & Support pane needs from the Sparkle wrapper (App/Updater), so its view model is testable.
+/// What the About pane needs from the Sparkle wrapper (App/Updater), so its view model is testable.
 @MainActor
 public protocol UpdaterControlling: AnyObject {
     var canCheckForUpdates: Bool { get }
@@ -12561,7 +12571,7 @@ extension AppEnvironment: LaunchSteps {
         presentOnboarding(startAt: nil)
     }
 
-    /// PLT-R1101: D19-D21 are applied before Sparkle starts; changes the user makes in the updater (About & Support,
+    /// PLT-R1101: D19-D21 are applied before Sparkle starts; changes the user makes in the updater (About pane,
     /// Sparkle's window) are written to settings.json as explicit keys, one key per change (PRD-R6).
     func startUpdater(settings: SettingsState) {
         let controller = UpdaterController(
@@ -12602,7 +12612,7 @@ protocol StatusMenuActions: AnyObject {
     func openMacros()
     func openSettings()
     func checkForUpdates()
-    func openSupport()
+    func openDonation()
     func performStatusAction(_ action: StatusLine.Action)
 }
 
@@ -12754,7 +12764,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc func openMacros(_ sender: NSMenuItem) { actions?.openMacros() }
     @objc func openSettings(_ sender: NSMenuItem) { actions?.openSettings() }
     @objc func checkForUpdates(_ sender: NSMenuItem) { actions?.checkForUpdates() }
-    @objc func openSupport(_ sender: NSMenuItem) { actions?.openSupport() }
+    @objc func openDonation(_ sender: NSMenuItem) { actions?.openDonation() }
 
     @objc func performStatusAction(_ sender: NSMenuItem) {
         guard let action = (sender.representedObject as? StatusActionBox)?.action else { return }
@@ -12947,7 +12957,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 ```swift
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Settings window with at most five panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
+// Settings window with seven panes (PRD-R24-R28), macros editor (PRD-R29-R33) and Apps pane
 // (PRD-R34-R38). Workstream W2-B; System Settings style sidebar layout W8-D (Pa, 2026-11-14). A normal window (not
 // floating) whose size and position are remembered (PRD-R28); SwiftUI content in an NSHostingController (ADR 0305).
 
@@ -12960,18 +12970,18 @@ import SettingsStore
 import ShellCore
 import SwiftUI
 
-/// The pane identifiers used by the composition root (`show(.macros)`, `show(.aboutSupport)`).
+/// The pane identifiers used by the composition root (`show(.macros)`, `show(.about)`).
 typealias SettingsPane = SettingsPaneKind
 
 /// What the Settings window asks the composition root to do; implemented by AppEnvironment.
 @MainActor
 protocol SettingsActions: AnyObject {
-    /// "Báo lỗi..." (About & Support, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37): the bug report
+    /// "Báo lỗi..." (Support pane, safe-mode notice) and "Báo lỗi với ứng dụng này..." (PRD-R37): the bug report
     /// sheet, pre-filled with `bundle` when given.
     func reportProblemFromSettings(for bundle: BundleKey?)
     /// "Chẩn đoán..." (D26 entry, W2-C's diagnostics window).
     func openDiagnostics()
-    /// PRD-R40: onboarding can be reopened from About & Support.
+    /// PRD-R40: onboarding can be reopened from the About pane.
     func reopenOnboarding()
     /// ADR 0305: the tap suspends hotkeys while the recorder captures keys
     /// (`InputHostController.setRecorderActive(_:)`).
@@ -13051,7 +13061,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.toolbarStyle = .unified
     }
 
-    /// Shows the window on `pane` (menu "Cài đặt...", "Gõ tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
+    /// Shows the window on `pane` (menu "Cài đặt...", "Viết tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
     func show(_ pane: SettingsPane) {
         model.select(pane)
         present()
@@ -13099,7 +13109,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-/// Command+1 to Command+5 select the panes in sidebar order (PRD-R67), by the digit typed or, on layouts whose number
+/// Command+1 to Command+7 select the panes in sidebar order (PRD-R67), by the digit typed or, on layouts whose number
 /// row types other characters, by the number row key. Only plain Command digits are taken; the
 /// hotkey recorder sees every key first through its local monitor (ADR 0305), and a sheet has its own window.
 final class SettingsWindow: NSWindow {
@@ -13501,7 +13511,7 @@ enum ReportActions {
     enum MailOutcome { case composed, fallbackWithoutAttachment, unavailable }
 
     /// "Gửi qua email" (PRD-R47): the system mail service with the JSON file attached; otherwise a `mailto:`
-    /// draft without the attachment (the sheet then points to "Lưu tệp...").
+    /// draft without the attachment (the sheet then points to "Lưu file...").
     static func email(_ draft: MailDraft, attachment: Data) -> MailOutcome {
         if let service = NSSharingService(named: .composeEmail), let file = temporaryFile(attachment, draft) {
             service.recipients = draft.recipients
@@ -13542,7 +13552,7 @@ enum ReportActions {
 // Workstream W2-D.
 //
 // Settings D19-D21 live in settings.json (PLT-R1001); this controller mirrors them into Sparkle at launch and on
-// every change, and reports user changes made here (About & Support pane, Sparkle's update window) back through
+// every change, and reports user changes made here (About pane, Sparkle's update window) back through
 // `onPreferenceChange` so the composition root writes them to the settings store. Sparkle starts only when the
 // bundle carries an https feed on the site host and a valid EdDSA key (PLT-R1102).
 
