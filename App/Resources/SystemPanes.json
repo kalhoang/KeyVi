@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "_comment": "PLT-R704, PRD-R64, ADR 0315. Every value is VERIFY on a real system in that language and macOS version. Deep links are data, never code (PLT-R501 lint). Names are in the macOS language because UI copy quotes them as the user sees them in System Settings (macOS 13 and later) or System Preferences (macOS 12).",
+  "_comment": "PLT-R704, PRD-R64, ADR 0315. Deep links are data, never code (PLT-R501 lint). Names are in the macOS language because UI copy quotes them as the user sees them in System Settings (macOS 13 and later) or System Preferences (macOS 12). Each entry's _verify note says what was checked against which macOS build and what is still VERIFY (docs/runbooks/vm-test-lab.md section 10).",
   "entries": [
     {
-      "_verify": "macOS 12 Monterey has System Preferences, not System Settings (ADR 0315). Accessibility and Input Monitoring are on the Privacy tab of Security & Privacy, so privacySecurity names the pane and the tab (the copy reads \"System Preferences > Security & Privacy > Privacy > Accessibility\", PLT-R701); Text Replacements are the Text tab of Keyboard; Login Items are a tab of Users & Groups, and the users pane has no anchor for it. VERIFY every Vietnamese name and every deep link on a macOS 12 machine in each language.",
+      "_verify": "macOS 12 Monterey has System Preferences, not System Settings (ADR 0315). Accessibility and Input Monitoring are on the Privacy tab of Security & Privacy, so privacySecurity names the pane and the tab (the copy reads \"System Preferences > Security & Privacy > Privacy > Accessibility\", PLT-R701); Text Replacements are the Text tab of Keyboard; Login Items are a tab of Users & Groups, and the users pane has no anchor for it. Every name matches Apple's localization tables of macOS 12.7.6 (21H1320), read on 2026-11-14 from the system volume of a throwaway clone of the lab VM: Vietnamese capitalises \"Giám sát Đầu vào\" and the tab \"Mục Đăng nhập\". VERIFY on screen with scripts/vm/pane-names.sh (the VM could not boot that day): the names as displayed (the Security & Privacy icon reads \"Bảo mật & Quyền riêng tư\", the pane's bundle name \"Bảo mật & quyền riêng tư\") and that every deep link opens the pane and tab it names.",
       "macOS": {
         "min": "12.0",
         "max": "12.99"
@@ -23,11 +23,11 @@
           "systemSettings": "Tùy chọn Hệ thống",
           "privacySecurity": "Bảo mật & Quyền riêng tư > Quyền riêng tư",
           "accessibility": "Trợ năng",
-          "inputMonitoring": "Giám sát đầu vào",
+          "inputMonitoring": "Giám sát Đầu vào",
           "keyboard": "Bàn phím",
           "textReplacements": "Văn bản",
           "usersGroups": "Người dùng & Nhóm",
-          "loginItems": "Mục đăng nhập"
+          "loginItems": "Mục Đăng nhập"
         }
       },
       "deepLinks": {
@@ -39,7 +39,7 @@
       }
     },
     {
-      "_verify": "macOS 13 and 14: System Settings, Login Items under General (ADR 0315). VERIFY the Vietnamese names and every deep link on macOS 13 and 14 machines.",
+      "_verify": "macOS 13 and 14: System Settings, Login Items under General (ADR 0315). No lab VM runs macOS 13 or 14 (the lab has 12.7.6 and 27.2): VERIFY every Vietnamese name and every deep link on macOS 13 and 14 machines. Input Monitoring reads \"Giám sát Đầu vào\" on macOS 12 and \"Giám sát đầu vào\" on macOS 27.2; which one macOS 13 and 14 show is not known.",
       "macOS": {
         "min": "13.0",
         "max": "14.99"
@@ -75,7 +75,7 @@
       }
     },
     {
-      "_verify": "macOS 15 and 26. VERIFY the Vietnamese names of Input Monitoring and Text Replacements, and that inputSources has no dedicated anchor (it opens Keyboard). Login Items is \"Login Items & Extensions\" from macOS 15; VERIFY its Vietnamese name and that of General.",
+      "_verify": "macOS 15 and 26. No lab VM runs these versions: VERIFY every name and deep link on macOS 15 and 26 machines, in particular the Vietnamese names of Input Monitoring (\"Giám sát Đầu vào\" on macOS 12, \"Giám sát đầu vào\" on macOS 27.2) and Text Replacements, and that inputSources has no dedicated anchor (it opens Keyboard). Login Items is \"Login Items & Extensions\" from macOS 15; loginItems carries the Vietnamese spelling of macOS 27.2, \"Mục đăng nhập & Phần mở rộng\".",
       "macOS": {
         "min": "15.0",
         "max": "26.99"
@@ -99,7 +99,7 @@
           "keyboard": "Bàn phím",
           "textReplacements": "Thay thế văn bản",
           "usersGroups": "Cài đặt chung",
-          "loginItems": "Mục đăng nhập & tiện ích mở rộng"
+          "loginItems": "Mục đăng nhập & Phần mở rộng"
         }
       },
       "deepLinks": {
@@ -111,7 +111,7 @@
       }
     },
     {
-      "_verify": "macOS 27: Accessibility is renamed Device Control and Data Access (PLT-R701, vendor documents of September to October 2026). VERIFY the exact Vietnamese and English labels and every deep link on a macOS 27.x machine.",
+      "_verify": "macOS 27: Accessibility is renamed Device Control and Data Access (PLT-R701). Every name matches Apple's localization tables of macOS 27.2 (26B123), the build of the lab VM, read on 2026-11-14 from that build's System Settings.app and its SecurityPrivacyExtension (ACCESSIBILITY, LISTEN_EVENT), KeyboardSettings (Text Replacements...), GeneralSettings and LoginItems extensions; that Privacy & Security extension still lists the anchors Privacy_Accessibility and Privacy_ListenEvent. VERIFY on screen with scripts/vm/pane-names.sh (the VM could not boot that day): the names as displayed and that every deep link opens the pane it names.",
       "macOS": {
         "min": "27.0"
       },
@@ -134,7 +134,7 @@
           "keyboard": "Bàn phím",
           "textReplacements": "Thay thế văn bản",
           "usersGroups": "Cài đặt chung",
-          "loginItems": "Mục đăng nhập & tiện ích mở rộng"
+          "loginItems": "Mục đăng nhập & Phần mở rộng"
         }
       },
       "deepLinks": {
