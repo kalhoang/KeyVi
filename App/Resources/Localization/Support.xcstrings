@@ -1424,7 +1424,7 @@
       }
     },
     "support.licences.engine" : {
-      "comment" : "Packages/VietnameseEngine/LICENSE, shown in full under the row.",
+      "comment" : "Packages/VietnameseEngine/NOTICE and LICENSE (MPL-2.0), shown in full under the row.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {

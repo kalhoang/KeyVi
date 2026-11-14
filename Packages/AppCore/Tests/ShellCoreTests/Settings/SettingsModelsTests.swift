@@ -238,12 +238,18 @@ import VietnameseEngineData
         #expect(fallback.sections[1].text == l.vi.string(SupportText.licencesUnavailable))
     }
 
-    /// The Licences pane shows the engine's MPL-2.0 licence (the app binary contains the engine); the text is the file
-    /// Packages/VietnameseEngine/LICENSE.
+    /// The Licences pane shows the engine's MPL-2.0 licence (the app binary contains the engine): its NOTICE, which
+    /// names the authors by the brand's display name, then the verbatim MPL text of Packages/VietnameseEngine/LICENSE.
     @Test func engineLicenceMatchesThePackageLicenceFile() throws {
-        let file = try String(contentsOf: RepoPaths.url("Packages/VietnameseEngine/LICENSE"), encoding: .utf8)
+        func file(_ name: String) throws -> String {
+            try String(contentsOf: RepoPaths.url("Packages/VietnameseEngine/\(name)"), encoding: .utf8)
+                .trimmingCharacters(in: .newlines)
+        }
         let name = try BrandFiles.values().displayName
-        #expect(EngineLicence.text(appName: name) == file.trimmingCharacters(in: .newlines))
+        let expected = try file("NOTICE") + "\n\n" + file("LICENSE")
+        #expect(EngineLicence.text(appName: name) == expected)
+        #expect(EngineLicence.text(appName: name).contains("Mozilla Public License Version 2.0"))
+        #expect(!EngineLicence.text(appName: name).contains("{{"))
     }
 
     @Test func sparkleNoticeMatchesThirdPartyNotices() throws {

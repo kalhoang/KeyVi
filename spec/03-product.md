@@ -218,7 +218,7 @@ PRD-R24 The Settings window MUST have these seven panes, in this order (Pa, 15/1
 | **Viết tắt / Macros** | Section 8 |
 | **Giới thiệu / About** | The app's icon, name with its trademark sign, one-line description, version and build; `Xem lại hướng dẫn làm quen` (PRD-R40); channel and update controls (D19 to D21, PRD-R53); donation block (section 13) |
 | **Hỗ trợ / Support** | Report a problem and diagnostics (D26); help on the website (`/ho-tro`) and by email (when the support address is set); export, import and the global reset (PRD-R26); privacy summary |
-| **Bản quyền / Licences** | The copyright line of the LICENSE files (`Bản quyền © 2026 các tác giả {{AppName}}`), a licence summary, a link to the source repository once it is public; the app's licence (GPL-3.0-or-later, the full text the bundle carries), the Mozilla Public License 2.0 of the Vietnamese engine, and the acknowledgements (the bundled word lists' notices, Sparkle), each text under its own disclosure |
+| **Bản quyền / Licences** | The copyright line of the LICENSE files (`Bản quyền © 2026 các tác giả {{AppName}}`), a licence summary, a link to the source repository once it is public; the app's licence (GPL-3.0-or-later, the full text the bundle carries), the Mozilla Public License 2.0 of the Vietnamese engine (its NOTICE and LICENSE), and the acknowledgements (the bundled word lists' notices, Sparkle), each text under its own disclosure |
 
 PRD-R25 Every setting MUST have a one-line explanation under it in plain language, with an example where relevant (e.g. "Ví dụ: gõ `text` vẫn ra `text`, không thành `tẽt`.").
 
