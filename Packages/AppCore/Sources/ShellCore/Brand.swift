@@ -89,7 +89,7 @@ public struct Brand: Sendable, Hashable {
             legacyStorageFolderNames: legacy, trademarkSign: optional(InfoKey.trademarkSign) ?? "")
     }
 
-    /// The name with its trademark sign ("KeyVi™"), for the About, Support and Licences panes, the donation block and
+    /// The name with its trademark sign ("<name>™"), for the About, Support and Licences panes, the donation block and
     /// the privacy text. Menus, buttons, window titles, onboarding, notifications, permission prompts and identifiers
     /// use `displayName` (Pa, 15/11/2026).
     public var markedName: String { displayName + trademarkSign }

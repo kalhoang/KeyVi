@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Smaller Settings models: login item (D17, PLT-R205), word lists (ENG-R860), layout binding (PLT-R373), reset
-// requests (PRD-R26), store notices (PLT-R1006, PLT-R1007, PLT-R1009), About & Support (PRD-R53, PRD-R59,
+// requests (PRD-R26), store notices (PLT-R1006, PLT-R1007, PLT-R1009), the About, Support and Licences panes (PRD-R53, PRD-R59,
 // ENG-R811) and the updater bridge (D19 to D21).
 
 import AppModel

@@ -170,7 +170,7 @@ For each run record the following. This is the evidence that goes into `compat/m
 | App version | `mdls` command above |
 | App category (browser, office, chat, notes, developer, terminal, design, launcher, remote, game, system, other) | Your judgement |
 | macOS version and build | `sw_vers` |
-| KeyVi version and build, channel | Menu, About & Support |
+| KeyVi version and build, channel | Menu, About pane of Settings |
 | Architecture (Apple silicon or Intel) | Apple menu, About This Mac |
 | Result of each of the 12 steps: `pass`, `fail`, `n/a` | This script |
 | For each `fail`: the first wrong word or the observed symptom (lost, doubled, wrong tone, out of order, lag) | Your eyes |

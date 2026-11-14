@@ -6,7 +6,7 @@ Owner: the maintainer. Specification: PRD-R56 to PRD-R61, spec/03-product.md sec
 
 ## What is allowed, and what is not
 
-Entry points, and only these (PRD-R57): the `Ủng hộ {{AppName}}...` menu item, the donation block in About & Support, the website `/ung-ho` page, the GitHub repository Sponsor button (once it exists), and one plain line at the bottom of the release notes on the website (not in the in-app update window).
+Entry points, and only these (PRD-R57): the `Ủng hộ {{AppName}}...` menu item, the donation block in the About pane, the website `/ung-ho` page, the GitHub repository Sponsor button (once it exists), and one plain line at the bottom of the release notes on the website (not in the in-app update window).
 
 Forbidden (PRD-R58): popups, timers, counters, "you have typed N words" messages, badges, features locked behind donating, donation prompts in onboarding, during updates or after a crash or bug report.
 

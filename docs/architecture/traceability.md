@@ -287,7 +287,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R21 | Rule precedence ignore > EN > VI > memory > default | `AppModeMemory.resolve` | U | W1-E |  |
 | PRD-R22 | Keyed by bundle; overlays have their own memory | `FocusTracker` | U, C (Spotlight over Terminal) | W1-E; Pa | **Pa** |
 | PRD-R23 | Memory survives restarts/updates, exported | `SettingsStore` | U | W1-B |  |
-| PRD-R24 | At most five panes, Advanced disclosure | Settings UI | M | W2-B |  |
+| PRD-R24 | Seven panes (Pa, 15/11/2026), Advanced disclosure that opens from its whole row | `SettingsPaneKind`, Settings UI (`AboutPaneView`, `SupportPaneView`, `LicencesPaneView`, `SettingsDisclosureHeader`) | U, M (`SettingsLayoutTests`, `SettingsCatalogTests`; snapshot bundle `AdvancedDisclosureTests`; `test_settings_snapshots.py` observation guard) | W2-B, W8-D, W12-S |  |
 | PRD-R25 | One-line explanation per setting | `Settings` table | M, D | W2-B |  |
 | PRD-R26 | Reset per pane and global with confirmation and export offer | `SettingsStore.reset`, Settings UI | U, M | W1-B, W2-B |  |
 | PRD-R27 | Changes apply immediately without losing the word | `InputHostController.apply` | U, I | W1-F1, W2-A |  |
@@ -311,7 +311,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R45 | Diagnostics allowed fields only | `DiagnosticsReport` | U | W1-A |  |
 | PRD-R46 | Content-free health log; trace the only content artefact | `HealthEventLog`, `CaptureController` | U | W1-A |  |
 | PRD-R47 | Bug report sheet | `BugReportComposer`, `BugReportController` | U, M | W1-G, W2-C |  |
-| PRD-R48 | Clipboard use stated before writing | `BugReportController` | M | W2-C |  |
+| PRD-R48 | Clipboard written only on a button the user clicks (report flow, donation `Sao chép`), stated before writing | `BugReportController`, `SettingsWindowModel.copyToClipboard` | U, M (`DiagnosticsCatalogTests`) | W2-C, W12-S |  |
 | PRD-R49 | Works without GitHub; practice field button | `BugReportController` | M | W2-C |  |
 | PRD-R50 | Sparkle standard driver configuration | `UpdaterController` | U, M | W2-D; Pa | **Pa** |
 | PRD-R51 | Release notes in interface language | appcast, release scripts | M | release track; W2-D |  |
@@ -322,7 +322,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R56 | Free; donations are a tip jar | n/a | D | n/a |  |
 | PRD-R57 | Donation entry points only those listed | menu, About pane, site | M | W1-G, W2-B; site track |  |
 | PRD-R58 | No nags, counters or locked features | all UI | D, M | all UI workstreams |  |
-| PRD-R59 | Donation block content, bundled QR assets | `DonationInfo`, About pane | M (account VERIFY) | W2-B; Pa | **Pa** |
+| PRD-R59 | Donation block content (Pa's copy of 15/11/2026: two columns, account details with copy buttons, share text with the macOS share menu), bundled QR assets | `DonationInfo.details`, `AboutSupportContent.shareText`, `DonationSection` (About pane) | U, M (`SettingsModelsTests`, `SpecDraftCopyTests`, `DonationQRTests`) | W2-B, W12-S; Pa | **Pa** |
 | PRD-R60 | No Polar.sh or Buy Me a Coffee | site, docs | D | site track |  |
 | PRD-R61 | Optional public sponsor list | site | D | site track; Pa |  |
 | PRD-R62 | String Catalogs vi + en, neutral copy | `App/Resources/Localization/*.xcstrings` | L (l10n lint), D | W1-G, W2-B, W2-C, W2-D, W2-F |  |

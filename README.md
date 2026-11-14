@@ -2,7 +2,7 @@
 
 [Tiếng Việt](README.vi.md)
 
-KeyVi is a Vietnamese input method for macOS, written from scratch by Kal. It is a menu-bar app that types Vietnamese (Telex or VNI) in any app, restores English words automatically, and tells you plainly when something cannot work.
+KeyVi™ is a Vietnamese input method for macOS, written from scratch by Kal. It is a menu-bar app that types Vietnamese (Telex or VNI) in any app, restores English words automatically, and tells you plainly when something cannot work.
 
 > **Name:** the product name and its identifiers (slug, bundle IDs, website host) come from [`Config/Brand.xcconfig`](Config/Brand.xcconfig) and [`scripts/brand.env`](scripts/brand.env).
 
@@ -100,10 +100,10 @@ All layers, the coverage targets and the contribution rules are in [CONTRIBUTING
 
 ## Licence and provenance
 
-- KeyVi is free software under the GNU General Public License, version 3 or (at your option) any later version: [LICENSE](LICENSE). Copyright (c) 2026 the KeyVi authors.
+- KeyVi™ is free software under the GNU General Public License, version 3 or (at your option) any later version: [LICENSE](LICENSE). Copyright (c) 2026 the KeyVi authors.
 - The Vietnamese engine packages and the word-list pipeline are MPL-2.0-licensed, so other projects can embed them: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
 - Contributions are signed off (Developer Certificate of Origin); contributions to GPL-covered parts are also licensed to the project under MIT, with no CLA ([CONTRIBUTING.md](CONTRIBUTING.md) section 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
-- KeyVi is an independent implementation written under clean-room rules: [spec/05-clean-room.md](spec/05-clean-room.md). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- KeyVi™ is an independent implementation written under clean-room rules: [spec/05-clean-room.md](spec/05-clean-room.md). Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Links
 

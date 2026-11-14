@@ -1,8 +1,8 @@
 # Managed Macs: privacy permissions for IT administrators
 
-Audience: administrators who deploy {{AppName}} with a device management (MDM) service. Specification: PLT-R760, with PLT-R701 to PLT-R703 (permissions) and PLT-R750 to PLT-R752 (signing identity).
+Audience: administrators who deploy {{AppNameTM}} with a device management (MDM) service. Specification: PLT-R760, with PLT-R701 to PLT-R703 (permissions) and PLT-R750 to PLT-R752 (signing identity).
 
-{{AppName}} is a Vietnamese input method that runs as a menu-bar app with a keyboard event tap. It needs macOS privacy permissions to read keystrokes and type the corrected text. On a managed Mac, a Privacy Preferences Policy Control (PPPC) profile can pre-approve them for the app's code requirement. On an unmanaged Mac, the user approves them once in System Settings, guided by the app (section 5).
+{{AppNameTM}} is a Vietnamese input method that runs as a menu-bar app with a keyboard event tap. It needs macOS privacy permissions to read keystrokes and type the corrected text. On a managed Mac, a Privacy Preferences Policy Control (PPPC) profile can pre-approve them for the app's code requirement. On an unmanaged Mac, the user approves them once in System Settings, guided by the app (section 5).
 
 Sources: Apple's device management reference for the `PrivacyPreferencesPolicyControl` payload and Apple's deployment guide for macOS 27. Pane names and the macOS 27 behaviour are marked VERIFY: check them against Apple's current documentation and your MDM vendor's for the macOS version you deploy.
 
@@ -132,6 +132,6 @@ Without device management, the user grants the permissions once in System Settin
 
 ## 6. Checking a deployment
 
-- System Settings > Privacy & Security > Accessibility (macOS 15 and 26) or Device Control and Data Access (macOS 27): {{AppName}} is listed, marked as managed by a profile, and switched on.
-- The in-app report (About & Support) contains a diagnostics block with `permission.accessibility`, `permission.postEvent`, `permission.inputMonitoring` and `permission.health` ([ADR 0501](../decisions/0501-diagnostics-block-format.md)). `permission.health: ready` means the profile works; `noPermission` or `stale` means a grant is missing or no longer matches the code requirement.
+- System Settings > Privacy & Security > Accessibility (macOS 15 and 26) or Device Control and Data Access (macOS 27): {{AppNameTM}} is listed, marked as managed by a profile, and switched on.
+- The in-app report (Support pane) contains a diagnostics block with `permission.accessibility`, `permission.postEvent`, `permission.inputMonitoring` and `permission.health` ([ADR 0501](../decisions/0501-diagnostics-block-format.md)). `permission.health: ready` means the profile works; `noPermission` or `stale` means a grant is missing or no longer matches the code requirement.
 - Never reset all permissions with `sudo tccutil reset Accessibility` and no bundle ID: that clears every app's grant (PLT-R741).

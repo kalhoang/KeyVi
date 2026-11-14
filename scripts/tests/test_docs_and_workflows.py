@@ -219,8 +219,8 @@ class NoticesTests(unittest.TestCase):
         data = " ".join(self.section(3).split())
         if shown:
             self.assertNotIn("not yet implemented", data, "App code shows NOTICES.txt now; update section 3")
-            self.assertNotIn("VERIFY", data, "the About & Support pane shows NOTICES.txt; close the VERIFY")
-            self.assertIn("About & Support", data)
+            self.assertNotIn("VERIFY", data, "the Licences pane shows NOTICES.txt; close the VERIFY")
+            self.assertIn("Licences pane", data)
             self.assertIn("Resources.bundledNotices()", data)
         else:
             self.assertIn("VERIFY", data)

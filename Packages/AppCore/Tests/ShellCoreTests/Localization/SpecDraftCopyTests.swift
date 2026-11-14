@@ -195,7 +195,7 @@ import Testing
                 "Giới thiệu với mọi người {{AppNameTM}}, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: https://{{app-slug}}.kal.vn"
         ),
         Draft(table: .support, key: "support.donate.share", vi: "Chia sẻ..."),
-        // About & Support sections (Pa, 15/11/2026; "gởi" as Pa wrote it).
+        // Support pane sections and Licences (Pa, 15/11/2026; "gởi" as Pa wrote it).
         Draft(
             table: .support, key: "support.diagnostics.explanation",
             vi: "Xem tình trạng bộ gõ, hoặc ghi lại thao tác gõ trong thời gian ngắn để gởi kèm báo lỗi."),
