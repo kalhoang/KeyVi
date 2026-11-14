@@ -178,7 +178,8 @@ private struct OverDeletingFactory: CompositionEngineFactory {
     @Test func aBackspaceEditNeverDeletesMoreThanTheTokenENGR714() {
         let log = OverDeletingLog()
         let fixture = PipelineFixture()
-        let pipeline = KeyPipeline(context: fixture.context, factory: OverDeletingFactory(log: log), clock: fixture.clock)
+        let pipeline = KeyPipeline(
+            context: fixture.context, factory: OverDeletingFactory(log: log), clock: fixture.clock)
         for code in [Key.a, Code.b] {
             _ = pipeline.handle(PipelineFixtures.keyEvent(.keyDown, code, at: fixture.clock.now()))
             _ = pipeline.handle(PipelineFixtures.keyEvent(.keyUp, code, at: fixture.clock.now()))

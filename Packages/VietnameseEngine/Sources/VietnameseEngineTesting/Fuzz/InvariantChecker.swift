@@ -411,7 +411,9 @@ public struct InvariantChecker: Sendable {
     private func fieldTailBeforeBackspace(_ event: EngineEvent, index: Int) -> (tail: String, token: ActiveToken?)? {
         guard case .backspace = event, !field.isEmpty else { return nil }
         let token = session.state.active
-        if let token, token.composition.raw.count > options.perEventTokenLimit || token.display.count >= options.tailWindow {
+        if let token,
+            token.composition.raw.count > options.perEventTokenLimit || token.display.count >= options.tailWindow
+        {
             return nil
         }
         return (String(field.suffix(options.tailWindow)), token)

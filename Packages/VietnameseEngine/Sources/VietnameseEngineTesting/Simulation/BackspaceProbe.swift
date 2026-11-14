@@ -108,9 +108,11 @@ public enum BackspaceProbe {
         guard letters.count >= 2, onlyLastLetterDiffers(expected: expected, after: after) else { return .violation }
         let previous = letters[letters.count - 2]
         let deleted = letters[letters.count - 1]
-        let hornComesBack = expected.unicodeScalars.last?.properties.lowercaseMapping == "u"
+        let hornComesBack =
+            expected.unicodeScalars.last?.properties.lowercaseMapping == "u"
             && after.unicodeScalars.last?.properties.lowercaseMapping == "ư"
-        let hornGoes = expected.unicodeScalars.last?.properties.lowercaseMapping == "ư"
+        let hornGoes =
+            expected.unicodeScalars.last?.properties.lowercaseMapping == "ư"
             && after.unicodeScalars.last?.properties.lowercaseMapping == "u"
         if hornComesBack, previous.flags.contains(.standaloneW) || previous.flags.contains(.bracket) {
             return .selfMarkedHorn
