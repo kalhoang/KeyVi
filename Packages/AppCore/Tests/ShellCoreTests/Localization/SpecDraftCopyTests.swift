@@ -23,6 +23,8 @@ import Testing
     }
 
     static let app = "{{AppName}}"
+    /// The name with its trademark sign where the spec writes it (Pa, 15/11/2026).
+    static let appTM = "{{AppNameTM}}"
 
     static let menu: [Draft] = [
         Draft(table: .menu, key: "menu.mode.vietnamese", vi: "Tiếng Việt"),
@@ -35,7 +37,7 @@ import Testing
         Draft(table: .menu, key: "menu.perApp.rule.alwaysVietnamese", vi: "Luôn tiếng Việt"),
         Draft(table: .menu, key: "menu.perApp.rule.ignore", vi: "Bỏ qua ứng dụng này"),
         Draft(table: .menu, key: "menu.perApp.report", vi: "Báo lỗi với ứng dụng này..."),
-        Draft(table: .menu, key: "menu.macros", vi: "Gõ tắt..."),
+        Draft(table: .menu, key: "menu.macros", vi: "Viết tắt..."),
         Draft(table: .menu, key: "menu.settings", vi: "Cài đặt..."),
         Draft(table: .menu, key: "menu.reportProblem", vi: "Báo lỗi..."),
         Draft(table: .menu, key: "menu.checkForUpdates", vi: "Kiểm tra cập nhật..."),
@@ -94,10 +96,11 @@ import Testing
             vi: "Bạn vẫn đang dùng bản {{Version}}, mọi thứ hoạt động bình thường."),
         Draft(table: .updates, key: "updates.failed.retry", vi: "Thử lại"),
         Draft(table: .updates, key: "updates.failed.download", vi: "Tải từ trang web"),
-        Draft(table: .macros, key: "macros.import.chooseOther", vi: "Chọn tệp khác"),
-        Draft(table: .macros, key: "macros.empty", vi: "Chưa có gõ tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\"."),
-        Draft(table: .macros, key: "macros.add", vi: "Thêm gõ tắt"),
-        Draft(table: .macros, key: "macros.import", vi: "Nhập từ tệp..."),
+        Draft(table: .macros, key: "macros.import.chooseOther", vi: "Chọn file khác"),
+        Draft(
+            table: .macros, key: "macros.empty", vi: "Chưa có mục viết tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\"."),
+        Draft(table: .macros, key: "macros.add", vi: "Thêm viết tắt"),
+        Draft(table: .macros, key: "macros.import", vi: "Nhập từ file..."),
         Draft(table: .apps, key: "apps.empty", vi: "Các ứng dụng bạn gõ sẽ hiện ở đây để bạn đặt quy tắc riêng."),
     ]
 
@@ -115,9 +118,9 @@ import Testing
         Draft(
             table: .settings, key: "settings.typing.restoreHotkey.title", vi: "Phím khôi phục từ vừa gõ",
             en: "Restore-last-word hotkey"),
-        Draft(table: .macros, key: "macros.enabled.title", vi: "Gõ tắt (macro)", en: "Macros"),
+        Draft(table: .macros, key: "macros.enabled.title", vi: "Viết tắt (macro)", en: "Macros"),
         Draft(
-            table: .settings, key: "settings.name.macrosInEnglishMode", vi: "Gõ tắt khi ở chế độ tiếng Anh",
+            table: .settings, key: "settings.name.macrosInEnglishMode", vi: "Viết tắt khi ở chế độ tiếng Anh",
             en: "Expand macros in English mode"),
         Draft(
             table: .settings, key: "settings.general.toggleHotkey.title", vi: "Phím chuyển Việt/Anh",
@@ -137,7 +140,9 @@ import Testing
         Draft(
             table: .settings, key: "settings.general.clickIcon.title", vi: "Bấm biểu tượng để chuyển Việt/Anh",
             en: "Click menu bar icon to toggle"),
-        Draft(table: .settings, key: "settings.general.openAtLogin.title", vi: "Mở khi đăng nhập", en: "Open at login"),
+        Draft(
+            table: .settings, key: "settings.general.openAtLogin.title", vi: "Khởi động cùng hệ thống",
+            en: "Open at login"),
         Draft(
             table: .settings, key: "settings.general.interfaceLanguage.title", vi: "Ngôn ngữ giao diện",
             en: "Interface language"),
@@ -149,10 +154,12 @@ import Testing
             en: "Install updates automatically"),
         Draft(table: .support, key: "support.channel.title", vi: "Kênh cập nhật", en: "Update channel"),
         Draft(table: .settings, key: "settings.pane.general", vi: "Chung", en: "General"),
-        Draft(table: .settings, key: "settings.pane.typing", vi: "Gõ phím", en: "Typing"),
+        Draft(table: .settings, key: "settings.pane.typing", vi: "Kiểu gõ", en: "Typing"),
         Draft(table: .settings, key: "settings.pane.apps", vi: "Ứng dụng", en: "Apps"),
-        Draft(table: .settings, key: "settings.pane.macros", vi: "Gõ tắt", en: "Macros"),
-        Draft(table: .settings, key: "settings.pane.aboutSupport", vi: "Giới thiệu & Hỗ trợ", en: "About & Support"),
+        Draft(table: .settings, key: "settings.pane.macros", vi: "Viết tắt", en: "Macros"),
+        Draft(table: .settings, key: "settings.pane.about", vi: "Giới thiệu", en: "About"),
+        Draft(table: .settings, key: "settings.pane.support", vi: "Hỗ trợ", en: "Support"),
+        Draft(table: .settings, key: "settings.pane.licences", vi: "Bản quyền", en: "Licences"),
         Draft(table: .settings, key: "settings.advanced", vi: "Tùy chọn nâng cao"),
         Draft(
             table: .settings, key: "settings.typing.englishRestore.explanation",
@@ -168,11 +175,42 @@ import Testing
         Draft(table: .apps, key: "apps.status.knownLimitation", vi: "Hạn chế đã biết", en: "Known limitation"),
         Draft(table: .apps, key: "apps.compat.title", vi: "Chế độ tương thích"),
         Draft(table: .apps, key: "apps.report", vi: "Báo lỗi với ứng dụng này..."),
+        // PRD-R59, Pa's donation copy (15/11/2026): the marked name in the title and the first line.
+        Draft(table: .support, key: "support.donate.title", arguments: [appTM], vi: "Ủng hộ {{AppNameTM}}"),
         Draft(
-            table: .support, key: "support.donate.body", arguments: [app],
+            table: .support, key: "support.donate.body", arguments: [appTM],
             vi:
-                "{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp."
+                "{{AppNameTM}} miễn phí vĩnh viễn. Nếu bạn thấy hữu dụng, có thể mời Kal 1 ly cafe để có tinh thần phát triển thêm tính năng mới."
         ),
+        Draft(
+            table: .support, key: "support.donate.howTo", arguments: [app],
+            vi:
+                "Bạn có thể ủng hộ bằng cách chuyển khoản tới tài khoản bên dưới hoặc đơn giản là chia sẻ, giới thiệu {{AppName}} cho nhiều người sử dụng."
+        ),
+        Draft(table: .support, key: "support.donate.accountTitle", vi: "Thông tin tài khoản"),
+        Draft(table: .support, key: "support.donate.shareTitle", vi: "Nội dung chia sẻ"),
+        Draft(
+            table: .support, key: "support.donate.shareText", arguments: [appTM, "https://{{app-slug}}.kal.vn"],
+            vi:
+                "Giới thiệu với mọi người {{AppNameTM}}, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: https://{{app-slug}}.kal.vn"
+        ),
+        Draft(table: .support, key: "support.donate.share", vi: "Chia sẻ..."),
+        // Support pane sections and Licences (Pa, 15/11/2026; "gởi" as Pa wrote it).
+        Draft(
+            table: .support, key: "support.diagnostics.explanation",
+            vi: "Xem tình trạng bộ gõ, hoặc ghi lại thao tác gõ trong thời gian ngắn để gởi kèm báo lỗi."),
+        Draft(
+            table: .support, key: "support.settings.explanation",
+            vi:
+                "Lưu cài đặt và dễ dàng nhập lại ở máy khác mà không cần cấu hình lại, hoặc đưa tất cả về mặc định."),
+        Draft(
+            table: .support, key: "support.privacy.body", arguments: [appTM],
+            vi:
+                "{{AppNameTM}} chỉ lưu thông tin ở máy hiện hành và không lưu nội dung bạn viết cũng như không tự ý gởi về server các hoạt động mà không có sự đồng ý của người dùng. Kết nối mạng duy nhất là kiểm tra cập nhật."
+        ),
+        Draft(
+            table: .support, key: "support.licences.copyright", arguments: [app],
+            vi: "Bản quyền © 2026 các tác giả {{AppName}}"),
         Draft(table: .menu, key: "menu.donate", arguments: [app], vi: "Ủng hộ {{AppName}}..."),
     ]
 
@@ -266,11 +304,11 @@ import Testing
         ),
         Draft(
             table: .onboarding, key: "onboarding.import.title", arguments: ["{{OtherApp}}"],
-            vi: "Mang gõ tắt và cài đặt từ {{OtherApp}}"),
+            vi: "Mang danh sách viết tắt và cài đặt từ {{OtherApp}}"),
         Draft(
             table: .onboarding, key: "onboarding.import.body", arguments: ["{{OtherApp}}"],
-            vi: "Bạn có thể chuyển danh sách gõ tắt từ {{OtherApp}} sang bằng tệp văn bản theo mẫu."),
-        Draft(table: .onboarding, key: "onboarding.import.chooseFile", vi: "Chọn tệp..."),
+            vi: "Bạn có thể chuyển danh sách viết tắt từ {{OtherApp}} sang bằng file văn bản theo mẫu."),
+        Draft(table: .onboarding, key: "onboarding.import.chooseFile", vi: "Chọn file..."),
         Draft(table: .onboarding, key: "onboarding.import.later", vi: "Để sau"),
         Draft(table: .onboarding, key: "onboarding.tryIt.title", vi: "Thử gõ một chút"),
         Draft(table: .onboarding, key: "onboarding.tryIt.target.vietnamese", vi: "Tiếng Việt có dấu"),
@@ -305,8 +343,8 @@ import Testing
             table: .onboarding, key: "onboarding.done.body", arguments: [app],
             vi: "{{AppName}} nằm trên thanh menu, góc trên bên phải màn hình."),
         Draft(
-            table: .onboarding, key: "onboarding.done.openAtLogin", arguments: [app], vi: "Mở {{AppName}} khi đăng nhập"
-        ),
+            table: .onboarding, key: "onboarding.done.openAtLogin", arguments: [app],
+            vi: "Khởi động {{AppName}} cùng hệ thống"),
         // Pa, 2026-11-14 (feedback item 5).
         Draft(table: .onboarding, key: "onboarding.done.start", vi: "Bắt đầu", en: "Start"),
     ]
@@ -327,7 +365,7 @@ import Testing
         Draft(table: .diagnostics, key: "bugReport.preview.disclosure", vi: "Xem trước dữ liệu sẽ gửi"),
         Draft(table: .diagnostics, key: "bugReport.github", vi: "Mở GitHub"),
         Draft(table: .diagnostics, key: "bugReport.email", vi: "Gửi qua email"),
-        Draft(table: .diagnostics, key: "bugReport.saveFile", vi: "Lưu tệp..."),
+        Draft(table: .diagnostics, key: "bugReport.saveFile", vi: "Lưu file..."),
     ]
 
     static let all: [Draft] = menu + status + settings + onboarding + bugReport

@@ -48,7 +48,7 @@ load_brand() {
   local file="${BRAND_ENV:-$REPO_ROOT/scripts/brand.env}"
   [[ -f "$file" ]] || die "brand file not found: $file"
   # Optional keys must come from the file, never from a stale environment.
-  unset APP_SUPPORT_EMAIL APP_REPOSITORY_URL APP_LEGACY_STORAGE_FOLDER_NAMES
+  unset APP_SUPPORT_EMAIL APP_REPOSITORY_URL APP_LEGACY_STORAGE_FOLDER_NAMES APP_TRADEMARK_SIGN
   # shellcheck source=../brand.env
   source "$file"
   : "${APP_DISPLAY_NAME:?missing in $file}" "${APP_SLUG:?missing in $file}"
@@ -57,6 +57,11 @@ load_brand() {
   APP_SUPPORT_EMAIL="${APP_SUPPORT_EMAIL:-}"
   APP_REPOSITORY_URL="${APP_REPOSITORY_URL:-}"
   APP_LEGACY_STORAGE_FOLDER_NAMES="${APP_LEGACY_STORAGE_FOLDER_NAMES:-}"
+  APP_TRADEMARK_SIGN="${APP_TRADEMARK_SIGN:-}"
+  case "$APP_TRADEMARK_SIGN" in
+    "" | "™" | "®") ;;
+    *) die "APP_TRADEMARK_SIGN must be empty, ™ or ®: $APP_TRADEMARK_SIGN" ;;
+  esac
   [[ "$APP_SLUG" =~ ^[a-z][a-z0-9-]*[a-z0-9]$ ]] || die "APP_SLUG has an invalid shape: $APP_SLUG"
   [[ "$APP_BUNDLE_ID_RELEASE" =~ ^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$ ]] || die "APP_BUNDLE_ID_RELEASE invalid"
   [[ "$APP_SITE_HOST" =~ ^[a-z0-9-]+(\.[a-z0-9-]+)+$ ]] || die "APP_SITE_HOST invalid"
@@ -68,7 +73,7 @@ load_brand() {
   fi
   APP_STORAGE_FOLDER="$(storage_folder_for "$APP_DISPLAY_NAME" "$APP_SLUG")"
   export APP_DISPLAY_NAME APP_SLUG APP_BUNDLE_ID_RELEASE APP_BUNDLE_ID_DEV APP_SITE_HOST APP_STORAGE_FOLDER
-  export APP_SUPPORT_EMAIL APP_REPOSITORY_URL APP_LEGACY_STORAGE_FOLDER_NAMES
+  export APP_SUPPORT_EMAIL APP_REPOSITORY_URL APP_LEGACY_STORAGE_FOLDER_NAMES APP_TRADEMARK_SIGN
 }
 
 # Host of APP_REPOSITORY_URL, or github.com while the repository is not decided (QA-R60: the issue forms

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Layout of the Settings window in the style of macOS System Settings (Pa, 2026-11-14, feedback item 6; PRD-R24):
-// a sidebar with the five panes, each with an SF Symbol on a small coloured tile, and grouped sections on the right
+// a sidebar with the seven panes, each with an SF Symbol on a small coloured tile, and grouped sections on the right
 // where each setting is a row with its title and one-line explanation (PRD-R25) on the left and its control on the
 // right. The App target draws it; the rules that can be checked without drawing live here.
 
@@ -11,7 +11,7 @@ import CompatRules
 /// Decorative tile colour behind a pane's symbol in the sidebar. The pane's name is always next to the tile, so the
 /// colour carries no information of its own (PRD-R67).
 public enum SettingsPaneTint: String, Sendable, Hashable, CaseIterable {
-    case gray, blue, indigo, orange, green
+    case gray, blue, indigo, orange, green, red, brown
 }
 
 extension SettingsPaneKind {
@@ -22,7 +22,9 @@ extension SettingsPaneKind {
         case .typing: "keyboard"
         case .apps: "square.grid.2x2.fill"
         case .macros: "text.badge.plus"
-        case .aboutSupport: SettingsSymbol.infoFill
+        case .about: SettingsSymbol.infoFill
+        case .support: "lifepreserver.fill"
+        case .licences: "c.circle.fill"
         }
     }
 
@@ -32,11 +34,13 @@ extension SettingsPaneKind {
         case .typing: .blue
         case .apps: .indigo
         case .macros: .orange
-        case .aboutSupport: .green
+        case .about: .green
+        case .support: .red
+        case .licences: .brown
         }
     }
 
-    /// Command+1 to Command+5 select the panes in sidebar order (PRD-R67 keyboard navigation).
+    /// Command+1 to Command+7 select the panes in sidebar order (PRD-R67 keyboard navigation).
     public var shortcutNumber: Int { (Self.allCases.firstIndex(of: self) ?? 0) + 1 }
 
     public init?(shortcutNumber: Int) {
@@ -46,7 +50,7 @@ extension SettingsPaneKind {
     }
 
     /// The pane for a key event pressed with Command only, from its characters ignoring modifiers: one ASCII digit
-    /// from 1 to 5.
+    /// from 1 to 7.
     public static func forShortcut(characters: String?) -> SettingsPaneKind? {
         guard let characters, characters.count == 1, let digit = characters.first, digit.isASCII,
             let number = digit.wholeNumberValue
@@ -54,15 +58,15 @@ extension SettingsPaneKind {
         return SettingsPaneKind(shortcutNumber: number)
     }
 
-    /// The pane for a key on the number row by its virtual key code (kVK_ANSI_1 to kVK_ANSI_5), for layouts whose
+    /// The pane for a key on the number row by its virtual key code (kVK_ANSI_1 to kVK_ANSI_7), for layouts whose
     /// number row does not type digits without Shift, such as French AZERTY ("&" on the 1 key).
     public static func forShortcut(keyCode: UInt16?) -> SettingsPaneKind? {
         guard let keyCode, let number = numberRowKeyCodes[keyCode] else { return nil }
         return SettingsPaneKind(shortcutNumber: number)
     }
 
-    /// The pane for a key equivalent: Command alone (caps lock and the keypad bit aside) with a digit from 1 to 5,
-    /// or, when the characters are not a digit, the number row key from 1 to 5 like other Mac apps' Command+digit
+    /// The pane for a key equivalent: Command alone (caps lock and the keypad bit aside) with a digit from 1 to 7,
+    /// or, when the characters are not a digit, the number row key from 1 to 7 like other Mac apps' Command+digit
     /// shortcuts. `modifierFlags` carries the bits NSEvent.ModifierFlags and CGEventFlags share.
     public static func forKeyEquivalent(
         characters: String?, keyCode: UInt16? = nil, modifierFlags: UInt64
@@ -71,8 +75,8 @@ extension SettingsPaneKind {
         return forShortcut(characters: characters) ?? forShortcut(keyCode: keyCode)
     }
 
-    /// Carbon `kVK_ANSI_1` to `kVK_ANSI_5` (Events.h): the keys, not the characters they type.
-    private static let numberRowKeyCodes: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5]
+    /// Carbon `kVK_ANSI_1` to `kVK_ANSI_7` (Events.h): the keys, not the characters they type.
+    private static let numberRowKeyCodes: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6, 26: 7]
 }
 
 /// Modifier bits that decide whether a key is a pane shortcut.
@@ -133,12 +137,13 @@ extension SettingsCatalog {
             ]
         case .apps: []
         case .macros: [SettingsSection(header: nil, items: [.macrosEnabled])]
-        case .aboutSupport:
+        case .about:
             [
                 SettingsSection(
                     header: CatalogText(SupportText.updatesTitle),
                     items: [.updateChannel, .automaticallyCheckForUpdates, .automaticallyInstallUpdates])
             ]
+        case .support, .licences: []
         }
     }
 }

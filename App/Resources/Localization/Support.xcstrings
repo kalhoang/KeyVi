@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "vi",
   "strings" : {
+    "support.about.description" : {
+      "comment" : "About pane, under the name and version.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A free Vietnamese input method for the Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bộ gõ tiếng Việt miễn phí cho máy Mac."
+          }
+        }
+      }
+    },
     "support.autoCheck.explanation" : {
       "comment" : "PRD-R25, PLT-R906.",
       "extractionState" : "manual",
@@ -343,6 +361,114 @@
         }
       }
     },
+    "support.control.copyAccount.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies the account number to the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chép số tài khoản vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "support.control.copyAccount.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy account number"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép số tài khoản"
+          }
+        }
+      }
+    },
+    "support.control.copyBank.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies the bank name to the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chép tên ngân hàng vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "support.control.copyBank.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy bank name"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép tên ngân hàng"
+          }
+        }
+      }
+    },
+    "support.control.copyShareText.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies the share text to the clipboard."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chép nội dung chia sẻ vào bộ nhớ tạm."
+          }
+        }
+      }
+    },
+    "support.control.copyShareText.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy share text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép nội dung chia sẻ"
+          }
+        }
+      }
+    },
     "support.control.diagnostics.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -392,7 +518,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu cài đặt ra một tệp."
+            "value" : "Lưu cài đặt ra một file."
           }
         }
       }
@@ -415,6 +541,78 @@
         }
       }
     },
+    "support.control.helpEmail.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens a new message to the support address in your mail app."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở thư mới tới địa chỉ hỗ trợ trong ứng dụng email."
+          }
+        }
+      }
+    },
+    "support.control.helpEmail.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send email"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gửi email"
+          }
+        }
+      }
+    },
+    "support.control.helpWebsite.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the support page of the website in your browser."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang hỗ trợ của trang web trong trình duyệt."
+          }
+        }
+      }
+    },
+    "support.control.helpWebsite.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open support page"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang hỗ trợ"
+          }
+        }
+      }
+    },
     "support.control.importSettings.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -428,7 +626,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn một tệp cài đặt và xem trước thay đổi."
+            "value" : "Chọn một file cài đặt và xem trước thay đổi."
           }
         }
       }
@@ -451,74 +649,38 @@
         }
       }
     },
-    "support.control.licences.accessibilityHint" : {
-      "comment" : "VoiceOver hint (PRD-R66).",
+    "support.control.notice.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opens the licences of the bundled software and data."
+            "value" : "Shows or hides the full text."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở giấy phép của phần mềm và dữ liệu đi kèm."
+            "value" : "Hiện hoặc ẩn toàn văn."
           }
         }
       }
     },
-    "support.control.licences.accessibilityLabel" : {
-      "comment" : "VoiceOver label (PRD-R66).",
+    "support.control.notice.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Licences and acknowledgements"
+            "value" : "Licence text"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giấy phép và ghi công"
-          }
-        }
-      }
-    },
-    "support.control.licencesClose.accessibilityHint" : {
-      "comment" : "VoiceOver hint (PRD-R66).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Closes the licences."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đóng bảng giấy phép."
-          }
-        }
-      }
-    },
-    "support.control.licencesClose.accessibilityLabel" : {
-      "comment" : "VoiceOver label (PRD-R66).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Close licences"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Đóng giấy phép"
+            "value" : "Văn bản giấy phép"
           }
         }
       }
@@ -631,6 +793,78 @@
         }
       }
     },
+    "support.control.share.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the macOS share menu with the share text."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở menu chia sẻ của macOS với nội dung chia sẻ."
+          }
+        }
+      }
+    },
+    "support.control.share.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chia sẻ"
+          }
+        }
+      }
+    },
+    "support.control.sourceLink.accessibilityHint" : {
+      "comment" : "PRD-R66 VoiceOver hint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the source code repository in your browser."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở kho mã nguồn trong trình duyệt."
+          }
+        }
+      }
+    },
+    "support.control.sourceLink.accessibilityLabel" : {
+      "comment" : "PRD-R66 VoiceOver label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View source code"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem mã nguồn"
+          }
+        }
+      }
+    },
     "support.control.sponsorsLink.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -686,73 +920,145 @@
       }
     },
     "support.diagnostics.explanation" : {
-      "comment" : "PRD-R25, D26.",
+      "comment" : "Pa's wording (15/11/2026), spelling \"gởi\" as Pa wrote it.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "See how the input method is doing, or record a short typing trace for a bug report."
+            "value" : "See how the input method is doing, or record a short typing trace to attach to a bug report."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xem tình trạng bộ gõ, hoặc ghi lại thao tác gõ trong chốc lát để gửi kèm báo lỗi."
+            "value" : "Xem tình trạng bộ gõ, hoặc ghi lại thao tác gõ trong thời gian ngắn để gởi kèm báo lỗi."
           }
         }
       }
     },
-    "support.donate.accountNumber" : {
-      "comment" : "PRD-R59, Pa's decision S8: account number in text; the holder's name is never shown. %@ is the number.",
+    "support.donate.accountLabel" : {
+      "comment" : "PRD-R59, S8. The holder's name is never shown.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Account number: %@"
+            "value" : "Account number"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Số tài khoản: %@"
+            "value" : "Số tài khoản"
           }
         }
       }
     },
-    "support.donate.bank" : {
-      "comment" : "PRD-R59, Pa's decision S8: bank name next to the VietQR code. %@ is the bank name.",
+    "support.donate.accountTitle" : {
+      "comment" : "PRD-R59 heading over the bank and account number.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bank: %@"
+            "value" : "Account details"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ngân hàng: %@"
+            "value" : "Thông tin tài khoản"
+          }
+        }
+      }
+    },
+    "support.donate.bankLabel" : {
+      "comment" : "PRD-R59, S8.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bank"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ngân hàng"
           }
         }
       }
     },
     "support.donate.body" : {
-      "comment" : "PRD-R59 (verbatim). %@ is the app name.",
+      "comment" : "PRD-R59, Pa's wording (15/11/2026). %@ is the name with its trademark sign.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ is free and always will be. If you find it useful, you can support it so Kal has more time to keep building."
+            "value" : "%@ is free forever. If you find it useful, you can buy Kal a coffee to keep new features coming."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp."
+            "value" : "%@ miễn phí vĩnh viễn. Nếu bạn thấy hữu dụng, có thể mời Kal 1 ly cafe để có tinh thần phát triển thêm tính năng mới."
+          }
+        }
+      }
+    },
+    "support.donate.copied" : {
+      "comment" : "Status line after a Copy button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã sao chép."
+          }
+        }
+      }
+    },
+    "support.donate.copy" : {
+      "comment" : "Button beside a value of the donation block.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép"
+          }
+        }
+      }
+    },
+    "support.donate.howTo" : {
+      "comment" : "PRD-R59, Pa's wording (15/11/2026). %@ is the display name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can donate by bank transfer to the account below, or simply share %@ and recommend it to others."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn có thể ủng hộ bằng cách chuyển khoản tới tài khoản bên dưới hoặc đơn giản là chia sẻ, giới thiệu %@ cho nhiều người sử dụng."
           }
         }
       }
@@ -771,6 +1077,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quét mã bằng ứng dụng ngân hàng. Ứng dụng sẽ hiện tên người nhận để bạn kiểm tra trước khi chuyển."
+          }
+        }
+      }
+    },
+    "support.donate.share" : {
+      "comment" : "Opens the macOS share menu with the share text.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chia sẻ..."
+          }
+        }
+      }
+    },
+    "support.donate.shareText" : {
+      "comment" : "Pa's wording (15/11/2026), kept verbatim: the user posts it in their own voice. %1$@ is the name with its trademark sign, %2$@ the website address.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check out %1$@, a free Vietnamese keyboard for Mac that is really good! Get it here: %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giới thiệu với mọi người %1$@, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: %2$@"
+          }
+        }
+      }
+    },
+    "support.donate.shareTitle" : {
+      "comment" : "PRD-R59 heading over the share text.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Share text"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nội dung chia sẻ"
           }
         }
       }
@@ -794,7 +1154,7 @@
       }
     },
     "support.donate.title" : {
-      "comment" : "PRD-R57 block title. %@ is the app name.",
+      "comment" : "PRD-R59. %@ is the name with its trademark sign.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -865,8 +1225,62 @@
         }
       }
     },
+    "support.help.email.explanation" : {
+      "comment" : "%@ is the support address (APP_SUPPORT_EMAIL).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send a question or feedback to %@."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gửi câu hỏi hoặc góp ý tới %@."
+          }
+        }
+      }
+    },
+    "support.help.email.open" : {
+      "comment" : "Button: a new message to the support address.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Email..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gửi email..."
+          }
+        }
+      }
+    },
+    "support.help.email.title" : {
+      "comment" : "PRD-R25 row title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email"
+          }
+        }
+      }
+    },
     "support.help.title" : {
-      "comment" : "Section title.",
+      "comment" : "Support pane section header: help on the website and by email.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -878,7 +1292,61 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hỗ trợ"
+            "value" : "Trợ giúp"
+          }
+        }
+      }
+    },
+    "support.help.website.explanation" : {
+      "comment" : "PRD-R25, PRD-R73 /ho-tro.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Common questions, what to do when typing does not work, and how to move from another input method."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Câu hỏi thường gặp, cách xử lý khi không gõ được và hướng dẫn chuyển từ bộ gõ khác."
+          }
+        }
+      }
+    },
+    "support.help.website.open" : {
+      "comment" : "Button: opens /ho-tro or /en/support/.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Support Page"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở trang hỗ trợ"
+          }
+        }
+      }
+    },
+    "support.help.website.title" : {
+      "comment" : "PRD-R25 row title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help on the website"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hướng dẫn trên trang web"
           }
         }
       }
@@ -901,26 +1369,8 @@
         }
       }
     },
-    "support.licences" : {
-      "comment" : "Opens licences and acknowledgements.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Licences and Acknowledgements..."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giấy phép và ghi công..."
-          }
-        }
-      }
-    },
     "support.licences.app" : {
-      "comment" : "App licence row (ADR 0006, GPL-3.0 section 0). %@ is the app name.",
+      "comment" : "ADR 0006. %@ is the name with its trademark sign.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -937,20 +1387,20 @@
         }
       }
     },
-    "support.licences.close" : {
-      "comment" : "Closes the sheet.",
+    "support.licences.copyright" : {
+      "comment" : "The LICENSE files' line. %@ is the display name (no trademark sign).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Close"
+            "value" : "Copyright © 2026 the %@ authors"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đóng"
+            "value" : "Bản quyền © 2026 các tác giả %@"
           }
         }
       }
@@ -973,6 +1423,78 @@
         }
       }
     },
+    "support.licences.engine" : {
+      "comment" : "Packages/VietnameseEngine/LICENSE, shown in full under the row.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vietnamese engine: MPL-2.0"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bộ máy gõ tiếng Việt: MPL-2.0"
+          }
+        }
+      }
+    },
+    "support.licences.section.credits" : {
+      "comment" : "Licences pane section header.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acknowledgements"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ghi công"
+          }
+        }
+      }
+    },
+    "support.licences.section.licences" : {
+      "comment" : "Licences pane section header.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licences"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giấy phép"
+          }
+        }
+      }
+    },
+    "support.licences.source" : {
+      "comment" : "Link to APP_REPOSITORY_URL; hidden while it is empty.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View Source Code"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem mã nguồn"
+          }
+        }
+      }
+    },
     "support.licences.sparkle" : {
       "comment" : "Sparkle notice section.",
       "extractionState" : "manual",
@@ -991,20 +1513,20 @@
         }
       }
     },
-    "support.licences.title" : {
-      "comment" : "Sheet title.",
+    "support.licences.summary" : {
+      "comment" : "ADR 0006. %@ is the name with its trademark sign.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Licences and Acknowledgements"
+            "value" : "%@ is open-source software under the GNU GPL, version 3 or later. The Vietnamese engine is under the Mozilla Public License 2.0."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giấy phép và ghi công"
+            "value" : "%@ là phần mềm mã nguồn mở theo giấy phép GNU GPL phiên bản 3 trở lên. Bộ máy gõ tiếng Việt dùng Giấy phép Công cộng Mozilla 2.0 (MPL-2.0)."
           }
         }
       }
@@ -1028,19 +1550,19 @@
       }
     },
     "support.privacy.body" : {
-      "comment" : "Privacy summary (principle 4, PLT-R906). %@ is the app name.",
+      "comment" : "Pa's wording (15/11/2026), spelling \"gởi\" as Pa wrote it. %@ is the name with its trademark sign.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ never sends what you type anywhere and does not store it. The only network connection is the update check."
+            "value" : "%@ keeps its information on this Mac only. It does not store what you write and never sends your activity to a server without your consent. The only network connection is the update check."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ không gửi nội dung bạn gõ đi đâu cả và không lưu lại những gì bạn gõ. Kết nối mạng duy nhất là kiểm tra cập nhật."
+            "value" : "%@ chỉ lưu thông tin ở máy hiện hành và không lưu nội dung bạn viết cũng như không tự ý gởi về server các hoạt động mà không có sự đồng ý của người dùng. Kết nối mạng duy nhất là kiểm tra cập nhật."
           }
         }
       }
@@ -1077,6 +1599,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Xem lại hướng dẫn làm quen"
+          }
+        }
+      }
+    },
+    "support.report.title" : {
+      "comment" : "Support pane section header.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reports and diagnostics"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Báo lỗi và chẩn đoán"
           }
         }
       }
@@ -1118,19 +1658,19 @@
       }
     },
     "support.settings.explanation" : {
-      "comment" : "About & Support, Settings section: above the export, import and reset buttons (W8-D).",
+      "comment" : "Pa's wording (15/11/2026). Under the export, import and reset buttons.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Save your settings to a file to use on another Mac, import them from a file, or put everything back to the defaults."
+            "value" : "Save your settings and import them on another Mac without setting everything up again, or put everything back to the defaults."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lưu cài đặt ra tệp để dùng trên máy khác, nhập lại từ tệp, hoặc đưa tất cả về mặc định."
+            "value" : "Lưu cài đặt và dễ dàng nhập lại ở máy khác mà không cần cấu hình lại, hoặc đưa tất cả về mặc định."
           }
         }
       }

@@ -1,6 +1,6 @@
 # Security policy
 
-KeyVi handles keystrokes, so security reports are taken seriously. This policy follows QA-R56 to QA-R58 of the specification ([spec/04-quality-release.md](spec/04-quality-release.md) section 6).
+KeyVi™ handles keystrokes, so security reports are taken seriously. This policy follows QA-R56 to QA-R58 of the specification ([spec/04-quality-release.md](spec/04-quality-release.md) section 6).
 
 ## Supported versions
 

@@ -1,4 +1,4 @@
-# Contributing to KeyVi
+# Contributing to KeyVi™
 
 Thank you for helping. This project has one maintainer, so the rules below are deliberately short and mechanical. Everything here is binding for every contribution, whatever tools were used to write it.
 

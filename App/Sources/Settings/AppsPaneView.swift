@@ -205,7 +205,6 @@ struct AppSelectionActions: View {
 struct AppDetailSheet: View {
     @ObservedObject var model: SettingsWindowModel
     @State private var advanced = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let localizer = model.localizer
@@ -224,13 +223,12 @@ struct AppDetailSheet: View {
                         .font(.callout)
                 }
                 ScopedRows(localizer: localizer, detail: detail)
-                DisclosureGroup(isExpanded: $advanced) {
+                SettingsDisclosure(
+                    title: localizer.string(SettingsText.advanced), isExpanded: $advanced, font: .body,
+                    control: AppsControl.detailAdvanced, localizer: localizer
+                ) {
                     CompatibilityChoices(model: model, row: row).padding(.top, 6)
-                } label: {
-                    Text(verbatim: localizer.string(SettingsText.advanced))
                 }
-                .settingsAccessibility(AppsControl.detailAdvanced, localizer)
-                .transaction { if reduceMotion { $0.animation = nil } }
                 HStack {
                     Button(action: { model.reportProblem(for: row.bundle) }) {
                         Text(verbatim: localizer.string(AppsText.report))

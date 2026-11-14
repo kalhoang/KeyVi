@@ -53,7 +53,7 @@ struct StatusMenuBuilder {
             item = action(entry, #selector(StatusItemController.checkForUpdates(_:)))
             item.isEnabled = enabled
         case .donate:
-            item = action(entry, #selector(StatusItemController.openSupport(_:)), argument: model.appName)
+            item = action(entry, #selector(StatusItemController.openDonation(_:)), argument: model.appName)
         case .quit:
             item = NSMenuItem(
                 title: localizer.format(MenuText.quit, model.appName),

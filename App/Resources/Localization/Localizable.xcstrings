@@ -32,7 +32,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tệp chẩn đoán đính kèm: %@"
+            "value" : "File chẩn đoán đính kèm: %@"
           }
         }
       }

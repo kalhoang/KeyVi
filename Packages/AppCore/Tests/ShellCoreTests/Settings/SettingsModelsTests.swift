@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Smaller Settings models: login item (D17, PLT-R205), word lists (ENG-R860), layout binding (PLT-R373), reset
-// requests (PRD-R26), store notices (PLT-R1006, PLT-R1007, PLT-R1009), About & Support (PRD-R53, PRD-R59,
+// requests (PRD-R26), store notices (PLT-R1006, PLT-R1007, PLT-R1009), the About, Support and Licences panes (PRD-R53, PRD-R59,
 // ENG-R811) and the updater bridge (D19 to D21).
 
 import AppModel
@@ -166,7 +166,7 @@ import VietnameseEngineData
         #expect(
             ResetRequest(target: .all).offersMacroDeletion && ResetRequest(target: .pane(.macros)).offersMacroDeletion)
         #expect(!ResetRequest(target: .pane(.typing)).offersMacroDeletion)
-        #expect(ResetRequest(target: .pane(.typing)).title(l.vi) == "Khôi phục mặc định cho mục Gõ phím?")
+        #expect(ResetRequest(target: .pane(.typing)).title(l.vi) == "Khôi phục mặc định cho mục Kiểu gõ?")
         #expect(ResetRequest(target: .all).title(l.en) == "Restore all settings to their defaults?")
         var typing = ResetRequest(target: .pane(.typing))
         typing.deleteMacros = true  // ignored where the checkbox is not offered
@@ -178,7 +178,7 @@ import VietnameseEngineData
         macros.deleteMacros = true
         #expect(macros.plan.storeScope == .macros(includeList: true))
         #expect(PaneReset.allCases.map(\.pane) == [.general, .typing, .apps, .macros])
-        #expect(SettingsPaneKind.allCases.map(\.paneReset) == [.general, .typing, .apps, .macros, nil])
+        #expect(SettingsPaneKind.allCases.map(\.paneReset) == [.general, .typing, .apps, .macros, nil, nil, nil])
     }
 }
 
@@ -223,18 +223,27 @@ import VietnameseEngineData
         #expect(AboutSupportContent.versionLine(brand: brand, localizer: l.vi) == "Phiên bản 0.1.0 (12)")
     }
 
-    @Test func acknowledgementsShowTheBundledNoticesAndSparkle_ENGR811() throws {
+    @Test func acknowledgementsShowTheEngineLicenceTheBundledNoticesAndSparkle_ENGR811() throws {
         let l = try Localizers()
         let notices = try Resources.bundledNotices()
-        let shown = Acknowledgements(dataNotices: Resources.bundledNotices, localizer: l.vi)
-        #expect(shown.sections.map(\.title) == [.licencesData, .licencesSparkle])
-        #expect(shown.sections[0].text == notices)
+        let shown = Acknowledgements(dataNotices: Resources.bundledNotices, appName: "Example", localizer: l.vi)
+        #expect(shown.sections.map(\.title) == [.licencesEngine, .licencesData, .licencesSparkle])
+        #expect(shown.sections[0].text == EngineLicence.text(appName: "Example"))
+        #expect(shown.sections[1].text == notices)
         #expect(notices.contains("SCOWL"))
-        #expect(shown.sections[1].text.contains("Andy Matuschak"))
-        #expect(shown.sections.map(\.id) == [.licencesData, .licencesSparkle])
+        #expect(shown.sections[2].text.contains("Andy Matuschak"))
+        #expect(shown.sections.map(\.id) == [.licencesEngine, .licencesData, .licencesSparkle])
         struct Missing: Error {}
-        let fallback = Acknowledgements(dataNotices: { throw Missing() }, localizer: l.vi)
-        #expect(fallback.sections[0].text == l.vi.string(SupportText.licencesUnavailable))
+        let fallback = Acknowledgements(dataNotices: { throw Missing() }, appName: "Example", localizer: l.vi)
+        #expect(fallback.sections[1].text == l.vi.string(SupportText.licencesUnavailable))
+    }
+
+    /// The Licences pane shows the engine's MPL-2.0 licence (the app binary contains the engine); the text is the file
+    /// Packages/VietnameseEngine/LICENSE.
+    @Test func engineLicenceMatchesThePackageLicenceFile() throws {
+        let file = try String(contentsOf: RepoPaths.url("Packages/VietnameseEngine/LICENSE"), encoding: .utf8)
+        let name = try BrandFiles.values().displayName
+        #expect(EngineLicence.text(appName: name) == file.trimmingCharacters(in: .newlines))
     }
 
     @Test func sparkleNoticeMatchesThirdPartyNotices() throws {
@@ -251,10 +260,10 @@ import VietnameseEngineData
     @Test func donationBlockShowsTheBankAndTheAccountNumberOnly_PRDR59() throws {
         let l = try Localizers()
         let info = DonationInfo.standard
-        #expect(info.bankLine(l.vi) == "Ngân hàng: LioBank")
-        #expect(info.accountNumberLine(l.vi) == "Số tài khoản: 688688678")
-        #expect(info.bankLine(l.en) == "Bank: LioBank")
-        #expect(info.accountNumberLine(l.en) == "Account number: 688688678")
+        #expect(info.details.map(\.value) == ["LioBank", "688688678"])
+        #expect(info.details.map { l.vi.string($0.label) } == ["Ngân hàng", "Số tài khoản"])
+        #expect(info.details.map { l.en.string($0.label) } == ["Bank", "Account number"])
+        #expect(info.details.map(\.copyControl) == [.copyBank, .copyAccount])
         #expect(!info.showsSponsors)
         var sponsored = info
         sponsored.githubSponsorsURL = URL(string: "https://github.com/sponsors/example")
@@ -276,5 +285,29 @@ import VietnameseEngineData
                 }
             }
         }
+    }
+
+    /// Pa, 15/11/2026: the share text is Pa's, with the marked name and the website's address, nothing else.
+    @Test func shareTextNamesTheMarkedNameAndTheWebsite_PRDR59() throws {
+        let l = try Localizers()
+        let brand = Brand(
+            displayName: "Example", slug: "example", siteHost: "example.invalid", bundleIdentifier: "invalid.example",
+            version: "1.0", build: "1", supportEmail: nil, trademarkSign: "™")
+        #expect(
+            AboutSupportContent.shareText(brand: brand, localizer: l.vi)
+                == "Giới thiệu với mọi người Example™, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! "
+                + "Tải ở đây: https://example.invalid")
+        #expect(
+            AboutSupportContent.shareText(brand: brand, localizer: l.en)
+                == "Check out Example™, a free Vietnamese keyboard for Mac that is really good! "
+                + "Get it here: https://example.invalid")
+        #expect(
+            AboutSupportContent.copyrightLine(brand: brand, localizer: l.vi) == "Bản quyền © 2026 các tác giả Example")
+        #expect(
+            AboutSupportContent.copyrightLine(brand: brand, localizer: l.en) == "Copyright © 2026 the Example authors")
+        #expect(AboutSupportContent.mailURL(brand: brand) == nil)
+        var mailed = brand
+        mailed.supportEmail = "help@example.invalid"
+        #expect(AboutSupportContent.mailURL(brand: mailed)?.absoluteString == "mailto:help@example.invalid")
     }
 }

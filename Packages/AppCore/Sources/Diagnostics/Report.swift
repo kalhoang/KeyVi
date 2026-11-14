@@ -443,7 +443,7 @@ public enum DiagnosticsRenderer {
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
     public static func parseIssueBlock(_ text: String) -> [String: String]? { IssueBlock.parse(text) }
 
-    /// JSON file attached by "Gửi qua email" / "Lưu tệp..." (PRD-R47): pretty-printed, sorted keys, ISO 8601
+    /// JSON file attached by "Gửi qua email" / "Lưu file..." (PRD-R47): pretty-printed, sorted keys, ISO 8601
     /// dates. Decodes back into an equal `DiagnosticsReport`.
     public static func json(_ report: DiagnosticsReport) throws -> Data { try ReportJSON.encode(report) }
 

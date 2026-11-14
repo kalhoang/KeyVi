@@ -16,7 +16,11 @@ import Testing
     static let languages: Set<String> = ["vi", "en"]
 
     /// PRD-R40: "no exclamation marks except the final screen".
-    static let exclamationAllowed: Set<String> = ["onboarding.done.title"]
+    static let exclamationAllowed: Set<String> = ["onboarding.done.title", paVerbatim]
+
+    /// The donation block's share text is Pa's wording, verbatim (15/11/2026): the user posts it to other people in
+    /// their own voice, so its "nè" and "!" stay. The only key exempt from the informal-word check.
+    static let paVerbatim = "support.donate.shareText"
 
     /// Informal, slang or regional words that standard, neutral Vietnamese UI copy avoids (PRD-R62, PRD-R40).
     /// Compared as whole words, case-insensitively. "vô" is not listed: a whole-word check cannot tell the regional
@@ -99,7 +103,9 @@ import Testing
                 }
             }
             let informal = Self.informalWords(in: entry.units["vi"]?.value ?? "")
-            #expect(informal.isEmpty, "\(table.rawValue): \(entry.key) uses \(informal.sorted()) (PRD-R62)")
+            if entry.key != Self.paVerbatim {
+                #expect(informal.isEmpty, "\(table.rawValue): \(entry.key) uses \(informal.sorted()) (PRD-R62)")
+            }
         }
     }
 

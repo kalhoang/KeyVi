@@ -115,15 +115,15 @@ PRD-R6 A setting the user never touched MUST follow future default changes; a se
 | D6 | Telex: phím `[` `]` thành `ơ` `ư` / Bracket keys produce ơ, ư | **Off** | Mangles code and Markdown (`[`, `]` typed twice produced `?`-like output in XKey reports) |
 | D7 | Gõ tắt phụ âm nhanh / Quick consonant shortcuts | **Not offered** (non-goal, section 3.2) | Mangles normal typing (cc becomes ch, kkk becomes khk); the engine does not implement it (ENG-R121) |
 | D8 | Phím khôi phục từ vừa gõ / Restore-last-word hotkey | **Escape**, with an on/off setting (decision of the product owner, 13/11/2026) | One key that users of other input methods know, free inside a word in ordinary text fields. The key is consumed only if the current word contains a transformation; a second consecutive press always passes through (ENG-R701, ENG-R702), so Escape still closes Spotlight and dialogs. Compatibility rules turn it off automatically in terminals, IDEs and code editors, games and remote desktop clients, and in launchers such as Spotlight, Raycast and Alfred, where Escape has its own meaning (PLT-R353) |
-| D9 | Gõ tắt (macro) / Macros | **On, empty list** | Costs nothing until the user adds an entry |
-| D10 | Gõ tắt khi ở chế độ tiếng Anh / Expand macros in English mode | **Off** | Prevents surprise expansions while coding |
+| D9 | Viết tắt (macro) / Macros | **On, empty list** | Costs nothing until the user adds an entry |
+| D10 | Viết tắt khi ở chế độ tiếng Anh / Expand macros in English mode | **Off** | Prevents surprise expansions while coding |
 | D11 | Phím chuyển Việt/Anh / VI/EN toggle hotkey | **Tap Control+Shift** (press and release both modifiers, no other key or click in between, within 500 ms) | Same muscle memory as Unikey/EVKey on Windows; no clash with macOS input-source shortcuts (Control+Space, Control+Option+Space), Spotlight (Command+Space), Character Viewer (Control+Command+Space) or the Globe key. Holding the chord for other shortcuts does not toggle |
 | D12 | Nhớ Việt/Anh theo ứng dụng / Remember VI/EN per app | **On** | Developers live in English in terminals and Vietnamese in chat; one switch per app teaches the app forever |
 | D13 | Chế độ cho ứng dụng mới / Mode for an app seen for the first time | **Inherit current mode** | Least surprise |
 | D14 | Hiện thông báo nhỏ khi chuyển / Show switch indicator | **On**, only on manual toggle | Silent mode errors are a top annoyance; no indicator on automatic per-app switches |
 | D15 | Âm thanh khi chuyển / Sound on switch | **Off** | Noise in shared spaces |
 | D16 | Bấm biểu tượng để chuyển Việt/Anh / Click menu bar icon to toggle | **Off** | macOS convention is click to open menu; offered because users asked |
-| D17 | Mở khi đăng nhập / Open at login | **On** (shown pre-checked in onboarding) | An IME that does not start is a broken IME |
+| D17 | Khởi động cùng hệ thống / Open at login | **On** (shown pre-checked in onboarding) | An IME that does not start is a broken IME |
 | D18 | Ngôn ngữ giao diện / Interface language | **Vietnamese** | Target users are Vietnamese, many run macOS in English; English selectable |
 | D19 | Tự động kiểm tra cập nhật / Check for updates automatically | **On**, daily | Fixes for app compatibility must reach users |
 | D20 | Tự động cài cập nhật / Install updates automatically | **On**, installs on next quit or restart, never mid-typing | Users should not run stale builds; install timing never interrupts |
@@ -137,7 +137,7 @@ PRD-R6 A setting the user never touched MUST follow future default changes; a se
 
 PRD-R7 Settings that are "not a setting" above MUST NOT appear in the UI. They are documented on the website FAQ.
 
-PRD-R8 Minimum macOS: **macOS 12 Monterey**, on Apple silicon and Intel Macs (Pa's decision of 2026-11-13: as old as possible, and Intel; PLT-R106, docs/decisions/0315-minimum-macos-12.md). Rationale: 12.0 is the floor of the only dependency (Sparkle 2.10.1) and of the Xcode 27 SDK, and it keeps Macs that stop at Monterey, Ventura or Sonoma (MacBook Air 2018 and 2019, some 2016 and 2017 models). macOS 27 runs on Apple silicon only (Intel stays on macOS 26), so the universal binary MUST be kept (PLT-R105). Differences on older systems: macOS 12 has System Preferences instead of System Settings, so onboarding names and opens the macOS 12 panes (PRD-R64, PLT-R704); the app cannot add itself to the login items there, so "Mở khi đăng nhập" is disabled and explains how to add the app in System Preferences > Users & Groups > Login Items; small visual fallbacks (single-line practice field, no row context menus where buttons offer the same commands) apply below macOS 13. The website lists the minimum macOS and which systems are tested (PLT-R107).
+PRD-R8 Minimum macOS: **macOS 12 Monterey**, on Apple silicon and Intel Macs (Pa's decision of 2026-11-13: as old as possible, and Intel; PLT-R106, docs/decisions/0315-minimum-macos-12.md). Rationale: 12.0 is the floor of the only dependency (Sparkle 2.10.1) and of the Xcode 27 SDK, and it keeps Macs that stop at Monterey, Ventura or Sonoma (MacBook Air 2018 and 2019, some 2016 and 2017 models). macOS 27 runs on Apple silicon only (Intel stays on macOS 26), so the universal binary MUST be kept (PLT-R105). Differences on older systems: macOS 12 has System Preferences instead of System Settings, so onboarding names and opens the macOS 12 panes (PRD-R64, PLT-R704); the app cannot add itself to the login items there, so "Khởi động cùng hệ thống" is disabled and explains how to add the app in System Preferences > Users & Groups > Login Items; small visual fallbacks (single-line practice field, no row context menus where buttons offer the same commands) apply below macOS 13. The website lists the minimum macOS and which systems are tested (PLT-R107).
 
 ---
 
@@ -163,9 +163,9 @@ PRD-R11 Menu layout (top to bottom). Items marked "conditional" appear only in t
 2. `Tiếng Việt` / `Tiếng Anh` radio pair, with the hotkey shown on the right.
 3. Separator. `Telex` / `VNI` radio pair.
 4. Submenu `Với <App name>` (frontmost app before the menu opened): `Nhớ lựa chọn` (default), `Luôn tiếng Anh`, `Luôn tiếng Việt`, `Bỏ qua ứng dụng này`, then `Báo lỗi với ứng dụng này...`.
-5. Separator. `Gõ tắt...`, `Cài đặt...` (Command+,).
+5. Separator. `Viết tắt...`, `Cài đặt...` (Command+,).
 6. Separator. `Báo lỗi...`, `Kiểm tra cập nhật...`.
-7. `Ủng hộ {{AppName}}...` (opens the About & Support pane; no badge, no counter).
+7. `Ủng hộ {{AppName}}...` (opens the About pane, where the donation block is; no badge, no counter).
 8. `Thoát {{AppName}}` (Command+Q).
 
 PRD-R12 The switch indicator (D14) is a small non-activating HUD near the screen centre bottom showing `V` or `E` for 600 ms, MUST NOT take focus, MUST respect Reduce Motion (no animation, plain fade off), and MUST NOT appear for automatic per-app switches.
@@ -208,15 +208,17 @@ Acceptance: switch to Terminal, toggle to EN, switch to Zalo (VI), back to Termi
 
 ## 7. Settings information architecture
 
-PRD-R24 The Settings window MUST have at most five panes, in this order. Rarely used options sit behind a `Tùy chọn nâng cao` disclosure at the bottom of a pane, collapsed by default and remembered once expanded.
+PRD-R24 The Settings window MUST have these seven panes, in this order (Pa, 15/11/2026: `Gõ phím` became `Kiểu gõ`, `Gõ tắt` became `Viết tắt`, and About & Support was split into About, Support and Licences). Rarely used options sit behind a `Tùy chọn nâng cao` disclosure at the bottom of a pane, collapsed by default and remembered once expanded.
 
 | Pane (vi / en) | Contents |
 |---|---|
 | **Chung / General** | Open at login (D17); toggle hotkey (D11); remember per app (D12); switch indicator (D14); interface language (D18). Advanced: sound on switch (D15), click icon to toggle (D16) |
-| **Gõ phím / Typing** | Method Telex/VNI (D1) with a live practice field; tone placement traditional/modern (D2) showing `hòa`/`hoà` side by side; English restore (D4) with its two user lists (keep as typed, keep Vietnamese; ENG-R860); each learned entry shows the app it was learned in and can be removed or made global (ENG-R862). Advanced: lone `w` (D5), brackets (D6), restore-last-word hotkey (D8) |
+| **Kiểu gõ / Typing** | Method Telex/VNI (D1) with a live practice field; tone placement traditional/modern (D2) showing `hòa`/`hoà` side by side; English restore (D4) with its two user lists (keep as typed, keep Vietnamese; ENG-R860); each learned entry shows the app it was learned in and can be removed or made global (ENG-R862). Advanced: lone `w` (D5), brackets (D6), restore-last-word hotkey (D8) |
 | **Ứng dụng / Apps** | Section 9 |
-| **Gõ tắt / Macros** | Section 8 |
-| **Giới thiệu & Hỗ trợ / About & Support** | Version, channel, update controls (D19 to D21), diagnostics (D26), Report a problem, Export/Import/Reset settings, licences and acknowledgements, privacy summary, donation block (section 13) |
+| **Viết tắt / Macros** | Section 8 |
+| **Giới thiệu / About** | The app's icon, name with its trademark sign, one-line description, version and build; `Xem lại hướng dẫn làm quen` (PRD-R40); channel and update controls (D19 to D21, PRD-R53); donation block (section 13) |
+| **Hỗ trợ / Support** | Report a problem and diagnostics (D26); help on the website (`/ho-tro`) and by email (when the support address is set); export, import and the global reset (PRD-R26); privacy summary |
+| **Bản quyền / Licences** | The copyright line of the LICENSE files (`Bản quyền © 2026 các tác giả {{AppName}}`), a licence summary, a link to the source repository once it is public; the app's licence (GPL-3.0-or-later, the full text the bundle carries), the Mozilla Public License 2.0 of the Vietnamese engine, and the acknowledgements (the bundled word lists' notices, Sparkle), each text under its own disclosure |
 
 PRD-R25 Every setting MUST have a one-line explanation under it in plain language, with an example where relevant (e.g. "Ví dụ: gõ `text` vẫn ra `text`, không thành `tẽt`.").
 
@@ -226,9 +228,11 @@ PRD-R27 Settings changes MUST apply immediately without restart and without losi
 
 PRD-R28 The Settings window is a normal window: it does not float above other apps, and its size and position are remembered.
 
-Layout (Pa, 2026-11-14, manual-test feedback item 6): the window looks like macOS System Settings. A fixed sidebar on the left lists the five panes in the PRD-R24 order, each with an SF Symbol on a small coloured rounded tile (decoration only: the pane name is beside it, PRD-R67); the arrow keys and Command+1 to Command+5 move between panes. On the right are the pane title, the store notices, then rounded grouped sections: each setting is a row with its title and its PRD-R25 explanation on the left and its control on the right (a switch, a pop-up menu, or a segmented control where both values show side by side, such as `hòa`/`hoà`). `Tùy chọn nâng cao` and the pane's `Khôi phục mặc định...` are sections of their own; the Apps and Macros lists sit in rounded list boxes with their buttons under the list. In the Apps table the rule, remembered and status columns are as wide as their longest value in the interface language, and the app name column takes the rest of the width. As in System Settings, the sidebar runs the window's full height with the window buttons inside it, under a transparent title bar, and the pane title sits in the title bar row. The window can be resized down to about 715 x 470 points, like System Settings. macOS 12 has no grouped form style, so it shows the same sidebar with boxed sections.
+Layout (Pa, 2026-11-14, manual-test feedback item 6): the window looks like macOS System Settings. A fixed sidebar on the left lists the seven panes in the PRD-R24 order, each with an SF Symbol on a small coloured rounded tile (decoration only: the pane name is beside it, PRD-R67); the arrow keys and Command+1 to Command+7 move between panes. On the right are the pane title, the store notices, then rounded grouped sections: each setting is a row with its title and its PRD-R25 explanation on the left and its control on the right (a switch, a pop-up menu, or a segmented control where both values show side by side, such as `hòa`/`hoà`). `Tùy chọn nâng cao` and the pane's `Khôi phục mặc định...` are sections of their own, and a disclosure opens from a click anywhere on its title row (Pa, 15/11/2026: the Advanced options could not be opened); the Apps and Macros lists sit in rounded list boxes with their buttons under the list. In the Apps table the rule, remembered and status columns are as wide as their longest value in the interface language, and the app name column takes the rest of the width. As in System Settings, the sidebar runs the window's full height with the window buttons inside it, under a transparent title bar, and the pane title sits in the title bar row. The window can be resized down to about 715 x 470 points, like System Settings. macOS 12 has no grouped form style, so it shows the same sidebar with boxed sections.
 
-Acceptance: a new user finds and changes Telex to VNI in under 15 seconds in a moderated test; no pane scrolls on a 13-inch display at default text size except the Apps and Macros lists and About & Support, whose donation block (section 13) sits below the update, support and settings sections (Pa, 2026-11-14, feedback item 6 layout).
+Copy of the new panes (Pa, 15/11/2026; `gởi` as Pa wrote it): Support's diagnostics row says `Xem tình trạng bộ gõ, hoặc ghi lại thao tác gõ trong thời gian ngắn để gởi kèm báo lỗi.`; its settings row says `Lưu cài đặt và dễ dàng nhập lại ở máy khác mà không cần cấu hình lại, hoặc đưa tất cả về mặc định.` above `Xuất cài đặt...`, `Nhập cài đặt...` and `Khôi phục mặc định...`; its privacy summary says `{{AppNameTM}} chỉ lưu thông tin ở máy hiện hành và không lưu nội dung bạn viết cũng như không tự ý gởi về server các hoạt động mà không có sự đồng ý của người dùng. Kết nối mạng duy nhất là kiểm tra cập nhật.` Licences starts with `Bản quyền © 2026 các tác giả {{AppName}}`, the line of the LICENSE files. General's D17 row is `Khởi động cùng hệ thống`.
+
+Acceptance: a new user finds and changes Telex to VNI in under 15 seconds in a moderated test; no pane scrolls on a 13-inch display at default text size except the Apps and Macros lists, About, whose donation block (section 13) sits below the update section, and Licences while a licence text is open (Pa, 2026-11-14, feedback item 6 layout; 15/11/2026, seven panes).
 
 ---
 
@@ -270,7 +274,7 @@ PRD-R39 Tier lists (initial; maintained per QA-R):
 
 ## 10. Onboarding
 
-PRD-R40 Onboarding runs on first launch and can be reopened from About & Support. It MUST be completable in under 90 seconds by a user who already knows Telex. Every screen has `Quay lại` and, except permissions, `Bỏ qua`. Window: 640 x 480 pt, centred, not floating. Copy below is a draft for the Vietnamese UI (English UI uses an equivalent translation); tone is neutral and friendly, uses "bạn", no slang, no exclamation marks except the final screen.
+PRD-R40 Onboarding runs on first launch and can be reopened from the About pane. It MUST be completable in under 90 seconds by a user who already knows Telex. Every screen has `Quay lại` and, except permissions, `Bỏ qua`. Window: 640 x 480 pt, centred, not floating. Copy below is a draft for the Vietnamese UI (English UI uses an equivalent translation); tone is neutral and friendly, uses "bạn", no slang, no exclamation marks except the final screen.
 
 **Screen 1: Welcome**
 - Title: `Chào mừng bạn đến với {{AppName}}`
@@ -311,7 +315,7 @@ PRD-R40 Onboarding runs on first launch and can be reopened from About & Support
 - For the built-in input source: `Bạn có thể giữ hoặc gỡ bộ gõ Tiếng Việt của macOS. Khi dùng {{AppName}}, hãy chọn bàn phím ABC hoặc U.S.` with a button to open Keyboard settings.
 
 **Screen 6: Import (conditional)**
-- Shown if a known export file or a known competitor app is detected (section 15). Title: `Mang gõ tắt và cài đặt từ {{OtherApp}}`. Body: `Bạn có thể chuyển danh sách gõ tắt từ {{OtherApp}} sang bằng tệp văn bản theo mẫu.` Buttons: `Chọn tệp...`, `Để sau`. (No importer reads another input method's own files yet: the user exports or retypes the list in the text template of PRD-R32. Body changed by the product owner on 13/11/2026.)
+- Shown if a known export file or a known competitor app is detected (section 15). Title: `Mang danh sách viết tắt và cài đặt từ {{OtherApp}}`. Body: `Bạn có thể chuyển danh sách viết tắt từ {{OtherApp}} sang bằng file văn bản theo mẫu.` Buttons: `Chọn file...`, `Để sau`. (No importer reads another input method's own files yet: the user exports or retypes the list in the text template of PRD-R32. Body changed by the product owner on 13/11/2026; `viết tắt` and `file` on 15/11/2026.)
 
 **Screen 7: Try it** (wording by Pa's feedback, 2026-11-14: the first draft was unclear)
 - Title: `Thử gõ một chút`
@@ -326,7 +330,7 @@ PRD-R40 Onboarding runs on first launch and can be reopened from About & Support
 **Screen 8: Done**
 - Title: `Xong rồi!`
 - Body: `{{AppName}} nằm trên thanh menu, góc trên bên phải màn hình.` An arrow points at the icon.
-- Checkbox (checked): `Mở {{AppName}} khi đăng nhập`
+- Checkbox (checked): `Khởi động {{AppName}} cùng hệ thống` (Pa, 15/11/2026; was `Mở {{AppName}} khi đăng nhập`)
 - Button: `Bắt đầu` (Pa, 2026-11-14; was `Bắt đầu gõ`)
 - No donation prompt, no newsletter, no rating request.
 
@@ -352,8 +356,8 @@ PRD-R43 Every error message MUST state what happened, which app or component is 
 | Non-Latin input source active | Dimmed icon, status line | `Đang dùng bàn phím {{SourceName}}. {{AppName}} tạm dừng.` | none |
 | App in Known limitation list | Status line when that app is frontmost | one-line limitation text | `Tìm hiểu thêm` |
 | Update failed | Update window | `Không tải được bản cập nhật. Bạn vẫn đang dùng bản {{Version}}, mọi thứ hoạt động bình thường.` | `Thử lại`, `Tải từ trang web` |
-| Import file invalid | Import sheet | `Tệp này không đúng định dạng. Dòng 12: thiếu phần nội dung gõ tắt.` | `Chọn tệp khác` |
-| Macros empty | Macros pane | `Chưa có gõ tắt nào. Ví dụ: gõ "vn" để ra "Việt Nam".` | `Thêm gõ tắt`, `Nhập từ tệp...` |
+| Import file invalid | Import sheet | `File này không đúng định dạng. Dòng 12: thiếu phần nội dung đầy đủ.` | `Chọn file khác` |
+| Macros empty | Macros pane | `Chưa có mục viết tắt nào. Ví dụ: gõ "vn" để ra "Việt Nam".` | `Thêm viết tắt`, `Nhập từ file...` |
 | Apps list empty | Apps pane | `Các ứng dụng bạn gõ sẽ hiện ở đây để bạn đặt quy tắc riêng.` | none |
 
 PRD-R44 When permission is missing or the tap is not running, keyboard input MUST pass through unchanged (fail open). The app MUST never leave the keyboard unusable.
@@ -371,9 +375,9 @@ PRD-R47 `Báo lỗi...` opens a sheet with:
 2. `Chuyện gì xảy ra?` choice chips: `Mất chữ`, `Lặp chữ`, `Sai dấu`, `Không gõ được tiếng Việt`, `Chậm / giật`, `Khác`.
 3. `Bạn gõ gì và mong ra gì?` free text, with a hint: `Bạn tự gõ lại ví dụ ở đây. {{AppName}} không tự gửi những gì bạn đã gõ.`
 4. A `Xem trước dữ liệu sẽ gửi` disclosure showing the exact redacted diagnostics text.
-5. Buttons: `Mở GitHub` (opens a prefilled issue form URL with the summary in the body and copies the full diagnostics block to the clipboard, telling the user to paste it), `Gửi qua email` (opens a mail draft to the support address with the diagnostics as an attachment), `Lưu tệp...`.
+5. Buttons: `Mở GitHub` (opens a prefilled issue form URL with the summary in the body and copies the full diagnostics block to the clipboard, telling the user to paste it), `Gửi qua email` (opens a mail draft to the support address with the diagnostics as an attachment), `Lưu file...`.
 
-PRD-R48 Clipboard use in the report flow is the only time the app writes to the user's clipboard on purpose, apart from the opt-in paste compatibility mode for a specific app, which saves and restores the clipboard around each paste (PLT-R461) and is explained when the user turns it on. The report sheet MUST say so before writing to the clipboard.
+PRD-R48 The app writes to the user's clipboard on purpose only when the user clicks a button that says so (the report flow's copy and `Mở GitHub` buttons, and the `Sao chép` buttons of the donation block, Pa 15/11/2026), apart from the opt-in paste compatibility mode for a specific app, which saves and restores the clipboard around each paste (PLT-R461) and is explained when the user turns it on. The report sheet MUST say so before writing to the clipboard.
 
 PRD-R49 The report flow MUST work without a GitHub account (email path) and MUST include a "test in the practice field" button that opens a local text field so users can check whether the problem is app-specific.
 
@@ -389,7 +393,7 @@ PRD-R51 The update window MUST show release notes in the interface language, sho
 
 PRD-R52 After an update, settings, per-app memory, macros and permissions MUST be intact. The first launch after an update shows nothing unless a setting meaning changed (then one line in the menu status line for 24 hours, linking to release notes). Permission loss after an update is a release-blocking bug (QA-R).
 
-PRD-R53 Users MAY switch channel (Stable/Beta) in About & Support. Switching from Beta back to Stable offers the next stable when it is newer; it does not downgrade automatically and says so.
+PRD-R53 Users MAY switch channel (Stable/Beta) in the About pane. Switching from Beta back to Stable offers the next stable when it is newer; it does not downgrade automatically and says so.
 
 PRD-R54 Critical updates (security, data loss) are marked as such and show the window immediately but remain dismissible.
 
@@ -401,11 +405,11 @@ PRD-R55 No Sparkle system profile submission (disabled, not offered).
 
 PRD-R56 {{AppName}} is free. Donations are a tip jar, never a nag.
 
-PRD-R57 Donation entry points, and only these: the `Ủng hộ {{AppName}}...` menu item; the donation block in About & Support; the website `/ung-ho` page; the GitHub repository Sponsor button, only if GitHub Sponsors is enabled later; one plain line at the bottom of release notes on the website (not in the in-app update window).
+PRD-R57 Donation entry points, and only these: the `Ủng hộ {{AppName}}...` menu item; the donation block in the About pane; the website `/ung-ho` page; the GitHub repository Sponsor button, only if GitHub Sponsors is enabled later; one plain line at the bottom of release notes on the website (not in the in-app update window).
 
 PRD-R58 Forbidden: popups, timers, counters, "you have typed N words" messages, badges, features locked behind donating, donation prompts in onboarding, during updates or after a crash or bug report.
 
-PRD-R59 Donation block content: a short thank-you line (`{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.`); a bank VietQR (Napas) QR code for Pa's bank account (LioBank, an OCB digital bank, NAPAS BIN 970448, account 688688678) with the bank name LioBank and the account number shown in text and the holder name never shown (the VietQR payload carries no name; bank apps show the holder after lookup). No MoMo QR and no other payment method (decision of the product owner, 13/11/2026, S8). A GitHub Sponsors link appears only once a sponsor page exists (the website's `sponsorsUrl` is empty until then). QR images are bundled assets, not fetched.
+PRD-R59 Donation block content (Pa's copy of 15/11/2026, in the About pane; the website's `/ung-ho` page takes the same copy when Pa and the integrator redo the site): two columns. On the left: the title `Ủng hộ {{AppNameTM}}`; the lines `{{AppNameTM}} miễn phí vĩnh viễn. Nếu bạn thấy hữu dụng, có thể mời Kal 1 ly cafe để có tinh thần phát triển thêm tính năng mới.` and `Bạn có thể ủng hộ bằng cách chuyển khoản tới tài khoản bên dưới hoặc đơn giản là chia sẻ, giới thiệu {{AppName}} cho nhiều người sử dụng.`; `Thông tin tài khoản` with the bank name LioBank (an OCB digital bank, NAPAS BIN 970448) and the account number 688688678, each selectable with a `Sao chép` button, and the holder name never shown (the VietQR payload carries no name; bank apps show the holder after lookup); `Nội dung chia sẻ` with a read-only text in Pa's words, kept verbatim because the user posts it in their own voice (`Giới thiệu với mọi người {{AppNameTM}}, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: https://{{app-slug}}.kal.vn`; English `Check out {{AppNameTM}}, a free Vietnamese keyboard for Mac that is really good! Get it here: https://{{app-slug}}.kal.vn`), a `Chia sẻ...` button that opens the macOS share menu and a `Sao chép` button. On the right: the bank VietQR (Napas) code for Pa's account, as large as the layout allows, with its caption and the line telling the user that the bank app shows the recipient's name. No MoMo QR and no other payment method (decision of the product owner, 13/11/2026, S8). A GitHub Sponsors link appears only once a sponsor page exists (the website's `sponsorsUrl` is empty until then). QR images are bundled assets, not fetched.
 
 PRD-R60 Polar.sh MUST NOT be used for donations (its acceptable-use policy prohibits donations and sponsorship); Polar is only an option if a paid product is ever sold. Buy Me a Coffee is not used (Vietnam is not a payout country).
 
@@ -418,6 +422,8 @@ PRD-R61 No public sponsor list for now (decision of the product owner, 13/11/202
 ### 14.1 Localisation
 
 PRD-R62 The UI ships in Vietnamese (default, D18) and English. All strings live in a String Catalog; no hard-coded user-visible text. Vietnamese copy uses standard, neutral wording understood nationwide and avoids slang and regional idioms.
+
+Name and trademark sign (Pa, 15/11/2026): where the product presents itself, the name carries the trademark sign of the brand files (`{{AppNameTM}}`, `APP_TRADEMARK_SIGN`): the About, Support and Licences panes' titles and prose, the donation block, the privacy text, the front-door Markdown and the user documentation, and the website's page titles and prose once the site is redone (Pa, 15/11/2026: the website is not changed now). The sign is never in menu items, buttons, window titles, onboarding, notifications, system permission prompts, the bundle name, URLs, file names or any identifier. Vietnamese copy says `file` (never `tệp`), except where it quotes a macOS pane, menu or button exactly as macOS shows it (PRD-R64).
 
 PRD-R63 Changing the interface language applies immediately without restart.
 

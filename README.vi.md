@@ -1,8 +1,8 @@
-# KeyVi
+# KeyVi™
 
 [English](README.md)
 
-KeyVi là bộ gõ tiếng Việt cho macOS do Kal tự viết từ đầu. Đây là ứng dụng nằm trên thanh menu, gõ tiếng Việt (Telex hoặc VNI) trong mọi ứng dụng, tự khôi phục từ tiếng Anh, và nói rõ cho bạn biết khi có điều gì đó không hoạt động được.
+KeyVi™ là bộ gõ tiếng Việt cho macOS do Kal tự viết từ đầu. Đây là ứng dụng nằm trên thanh menu, gõ tiếng Việt (Telex hoặc VNI) trong mọi ứng dụng, tự khôi phục từ tiếng Anh, và nói rõ cho bạn biết khi có điều gì đó không hoạt động được.
 
 > **Về tên:** tên sản phẩm và các định danh đi kèm (slug, bundle ID, địa chỉ website) lấy từ [`Config/Brand.xcconfig`](Config/Brand.xcconfig) và [`scripts/brand.env`](scripts/brand.env).
 
@@ -23,7 +23,7 @@ Lộ trình (alpha riêng tư, beta kín, beta công khai, 1.0) cùng tiêu chí
 - Gõ Telex và VNI, kết quả theo Unicode (NFC).
 - Tự khôi phục từ tiếng Anh bằng dữ liệu đi kèm, không cần tải thêm.
 - Nhớ chế độ Việt/Anh theo từng ứng dụng và quy tắc riêng cho từng ứng dụng.
-- Gõ tắt (macro).
+- Viết tắt (macro).
 - Biểu tượng trạng thái trên thanh menu, hướng dẫn ban đầu có ô gõ thử, cửa sổ Cài đặt gọn.
 - Chẩn đoán và báo lỗi một chạm, không bao giờ chứa nội dung bạn đã gõ.
 - Cập nhật qua Sparkle 2, có kênh ổn định và kênh beta.
@@ -49,7 +49,7 @@ Hãy kéo ứng dụng vào thư mục `/Applications` trước lần mở đầ
 - Nội dung bạn gõ không bao giờ rời khỏi máy và không bao giờ được ghi xuống đĩa. Ngoại lệ duy nhất là bản ghi thao tác gõ để báo lỗi do chính bạn bấm bắt đầu: từ 60 đến 180 giây, có đồng hồ đếm ngược hiện rõ, bạn xem lại trước khi chia sẻ, tự xóa sau 24 giờ và không bao giờ tự động gửi đi.
 - Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật (appcast và gói cập nhật trên `keyvi.kal.vn`).
 - Không có telemetry, không phân tích sử dụng, không dịch vụ báo cáo sự cố, không cấu hình từ xa.
-- Dữ liệu chẩn đoán không chứa ký tự đã gõ, từ đã gõ, nội dung gõ tắt, nội dung bộ nhớ tạm hay tiêu đề cửa sổ.
+- Dữ liệu chẩn đoán không chứa ký tự đã gõ, từ đã gõ, nội dung viết tắt, nội dung bộ nhớ tạm hay tiêu đề cửa sổ.
 
 Chi tiết: [spec/03-product.md](spec/03-product.md) nguyên tắc 4 và mục 11, [spec/02-platform.md](spec/02-platform.md) mục 9. Trang quyền riêng tư công khai là `/rieng-tu` trên website.
 
@@ -87,10 +87,10 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 
 ## Giấy phép và nguồn gốc mã
 
-- KeyVi là phần mềm tự do theo Giấy phép Công cộng GNU (GNU GPL), phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn: [LICENSE](LICENSE). Bản quyền (c) 2026 thuộc các tác giả của KeyVi.
+- KeyVi™ là phần mềm tự do theo Giấy phép Công cộng GNU (GNU GPL), phiên bản 3 hoặc (tùy bạn chọn) bất kỳ phiên bản nào mới hơn: [LICENSE](LICENSE). Bản quyền (c) 2026 thuộc các tác giả của KeyVi.
 - Các gói engine tiếng Việt và quy trình tạo danh sách từ dùng giấy phép MPL-2.0 để dự án khác có thể nhúng vào: [Packages/VietnameseEngine/LICENSE](Packages/VietnameseEngine/LICENSE), [Packages/VietnameseEngineFuzz/LICENSE](Packages/VietnameseEngineFuzz/LICENSE), [data/LICENSE](data/LICENSE).
 - Mọi đóng góp cần dòng ký xác nhận (Developer Certificate of Origin); đóng góp vào phần dùng GPL đồng thời được cấp cho dự án theo giấy phép MIT, không cần ký CLA ([CONTRIBUTING.md](CONTRIBUTING.md) mục 3, [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)).
-- KeyVi là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- KeyVi™ là bản cài đặt độc lập, viết theo quy tắc clean-room: [spec/05-clean-room.md](spec/05-clean-room.md). Thành phần bên thứ ba: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Liên kết
 

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// What the Settings window shows (PRD-R7, PRD-R24, PRD-R25): five panes in a fixed order, the settings of each
+// What the Settings window shows (PRD-R7, PRD-R24, PRD-R25): seven panes in a fixed order, the settings of each
 // pane with a title and a one-line explanation, and the defaults that are deliberately not settings.
 
 public import SettingsStore
 
-/// The five panes, in PRD-R24 order. At most five (PRD-R24).
+/// The seven panes, in PRD-R24 order (Pa, 15/11/2026: About & Support split into About, Support and Licences).
 public enum SettingsPaneKind: String, Sendable, Hashable, CaseIterable {
-    case general, typing, apps, macros, aboutSupport
+    case general, typing, apps, macros, about, support, licences
 
     public var title: SettingsText {
         switch self {
@@ -15,18 +15,20 @@ public enum SettingsPaneKind: String, Sendable, Hashable, CaseIterable {
         case .typing: .paneTyping
         case .apps: .paneApps
         case .macros: .paneMacros
-        case .aboutSupport: .paneAboutSupport
+        case .about: .paneAbout
+        case .support: .paneSupport
+        case .licences: .paneLicences
         }
     }
 
-    /// The pane's own reset (PRD-R26). About & Support hosts the global reset instead.
+    /// The pane's own reset (PRD-R26). Support hosts the global reset instead; About and Licences have nothing to reset.
     public var paneReset: PaneReset? {
         switch self {
         case .general: .general
         case .typing: .typing
         case .apps: .apps
         case .macros: .macros
-        case .aboutSupport: nil
+        case .about, .support, .licences: nil
         }
     }
 
@@ -45,7 +47,7 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
     case telexStandaloneW, telexBracketKeys, restoreHotkey
     // Macros (section 8)
     case macrosEnabled
-    // About & Support (D19 to D21)
+    // About (D19 to D21)
     case updateChannel, automaticallyCheckForUpdates, automaticallyInstallUpdates
 
     public var pane: SettingsPaneKind {
@@ -57,7 +59,7 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
             .telexBracketKeys, .restoreHotkey:
             .typing
         case .macrosEnabled: .macros
-        case .updateChannel, .automaticallyCheckForUpdates, .automaticallyInstallUpdates: .aboutSupport
+        case .updateChannel, .automaticallyCheckForUpdates, .automaticallyInstallUpdates: .about
         }
     }
 

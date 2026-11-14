@@ -68,15 +68,17 @@ import Testing
         let l = try Localizers()
         let expected: [(String, String, StringTable, String)] = [
             ("settings.pane.general", "Chung", .settings, "General"),
-            ("settings.pane.typing", "Gõ phím", .settings, "Typing"),
+            ("settings.pane.typing", "Kiểu gõ", .settings, "Typing"),
             ("settings.pane.apps", "Ứng dụng", .settings, "Apps"),
-            ("settings.pane.macros", "Gõ tắt", .settings, "Macros"),
-            ("settings.pane.aboutSupport", "Giới thiệu & Hỗ trợ", .settings, "About & Support"),
+            ("settings.pane.macros", "Viết tắt", .settings, "Macros"),
+            ("settings.pane.about", "Giới thiệu", .settings, "About"),
+            ("settings.pane.support", "Hỗ trợ", .settings, "Support"),
+            ("settings.pane.licences", "Bản quyền", .settings, "Licences"),
             ("settings.advanced", "Tùy chọn nâng cao", .settings, "Advanced options"),
-            ("macros.empty", "Chưa có gõ tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\".", .macros, ""),
-            ("macros.add", "Thêm gõ tắt", .macros, ""),
-            ("macros.import", "Nhập từ tệp...", .macros, ""),
-            ("macros.import.chooseOther", "Chọn tệp khác", .macros, ""),
+            ("macros.empty", "Chưa có mục viết tắt nào. Ví dụ: gõ \"vn\" để ra \"Việt Nam\".", .macros, ""),
+            ("macros.add", "Thêm viết tắt", .macros, ""),
+            ("macros.import", "Nhập từ file...", .macros, ""),
+            ("macros.import.chooseOther", "Chọn file khác", .macros, ""),
             ("apps.empty", "Các ứng dụng bạn gõ sẽ hiện ở đây để bạn đặt quy tắc riêng.", .apps, ""),
             ("apps.rule.remember", "Nhớ lựa chọn", .apps, ""),
             ("apps.rule.alwaysEnglish", "Luôn tiếng Anh", .apps, ""),
@@ -100,19 +102,25 @@ import Testing
             if !en.isEmpty { #expect(l.en.string(key, table: table) == en, "\(key)") }
         }
         #expect(l.vi.string(SettingsText.resetPane).hasPrefix("Khôi phục mặc định"))
+        // PRD-R59, Pa's donation copy (15/11/2026), with the marked name in the title and the first line.
+        #expect(l.vi.format(SupportText.donateTitle, "{{AppNameTM}}") == "Ủng hộ {{AppNameTM}}")
         #expect(
-            l.vi.format(SupportText.donateBody, "{{AppName}}")
-                == "{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp."
+            l.vi.format(SupportText.donateBody, "{{AppNameTM}}")
+                == "{{AppNameTM}} miễn phí vĩnh viễn. Nếu bạn thấy hữu dụng, có thể mời Kal 1 ly cafe để có tinh thần phát triển thêm tính năng mới."
+        )
+        #expect(
+            l.vi.format(SupportText.donateHowTo, "{{AppName}}")
+                == "Bạn có thể ủng hộ bằng cách chuyển khoản tới tài khoản bên dưới hoặc đơn giản là chia sẻ, giới thiệu {{AppName}} cho nhiều người sử dụng."
         )
         // PRD-R43 draft, whole sentence: the reason continues the sentence after "Dòng 12:" in lower case.
         let row = MacroImportRow(line: 12, shortcut: "x", expansion: "", issue: .emptyExpansion)
         #expect(
             MacroImportRefusal.invalidFile(firstInvalid: row).message(l.vi)
-                == "Tệp này không đúng định dạng. Dòng 12: thiếu phần nội dung gõ tắt.")
+                == "File này không đúng định dạng. Dòng 12: thiếu phần nội dung đầy đủ.")
         #expect(
             MacroImportRefusal.invalidFile(firstInvalid: row).message(l.en)
                 == "This file is not in the expected format. Line 12: the macro text is missing.")
-        #expect(l.vi.string(MacrosText.issueEmptyExpansion) == "Thiếu phần nội dung gõ tắt.")
+        #expect(l.vi.string(MacrosText.issueEmptyExpansion) == "Thiếu phần nội dung đầy đủ.")
     }
 
     @Test func recoveredFromBackupCopyDoesNotSayChangesAreLost() throws {
@@ -220,9 +228,13 @@ import Testing
             .dismiss(.settings), .useDefaults(.settings), .leaveSafeMode, .report, .resetAll,
         ]
         let noticeControls = source.contains("action.control") ? Set(actions.map(\.control)) : []
+        // The donation block's copy buttons get their control from `DonationDetail.copyControl` (ShellCore).
+        let detailControls =
+            source.contains("detail.copyControl") ? Set(DonationInfo.standard.details.map(\.copyControl)) : []
         func check<C: AccessibleControl>(_ type: C.Type, prefix: String) {
             for control in type.allCases {
                 if let control = control as? SettingsControl, noticeControls.contains(control) { continue }
+                if let control = control as? SupportControl, detailControls.contains(control) { continue }
                 #expect(
                     source.contains("\(prefix).\(control.rawValue)"), "\(prefix).\(control.rawValue) is never shown")
             }
@@ -272,7 +284,7 @@ import Testing
         let text = CatalogText(key: "support.donate.title", table: .support)
         #expect(text == CatalogText(SupportText.donateTitle))
         #expect(l.en.format(text, "App") == "Support App")
-        #expect(l.vi.string(CatalogText(MacrosText.add)) == "Thêm gõ tắt")
+        #expect(l.vi.string(CatalogText(MacrosText.add)) == "Thêm viết tắt")
         #expect(SettingsSymbol.info != SettingsSymbol.infoFill)
     }
 

@@ -157,7 +157,7 @@ enum ReportActions {
     enum MailOutcome { case composed, fallbackWithoutAttachment, unavailable }
 
     /// "Gửi qua email" (PRD-R47): the system mail service with the JSON file attached; otherwise a `mailto:`
-    /// draft without the attachment (the sheet then points to "Lưu tệp...").
+    /// draft without the attachment (the sheet then points to "Lưu file...").
     static func email(_ draft: MailDraft, attachment: Data) -> MailOutcome {
         if let service = NSSharingService(named: .composeEmail), let file = temporaryFile(attachment, draft) {
             service.recipients = draft.recipients

@@ -22,9 +22,9 @@ import Testing
 
     @Test func countsInCopyAreGroupedPerLanguage() {
         // Integer arguments go through `String(format:locale:)`, which groups digits in the selected language.
-        #expect(vi.format(MacrosText.count, 1_500) == "Số gõ tắt: 1.500")
+        #expect(vi.format(MacrosText.count, 1_500) == "Số mục viết tắt: 1.500")
         #expect(en.format(MacrosText.count, 1_500) == "Macros: 1,500")
-        #expect(vi.format(SettingsText.importMacros, 1_200, 3, 0) == "Gõ tắt: 1.200 mới, 3 trùng, 0 không hợp lệ")
+        #expect(vi.format(SettingsText.importMacros, 1_200, 3, 0) == "Viết tắt: 1.200 mới, 3 trùng, 0 không hợp lệ")
         #expect(en.format(SettingsText.importMacros, 1_200, 3, 0) == "Macros: 1,200 new, 3 duplicates, 0 invalid")
     }
 

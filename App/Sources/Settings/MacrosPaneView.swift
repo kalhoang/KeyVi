@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// "Gõ tắt / Macros" (PRD-R29-R33): the D9 switch, search, sort, add, import and export, a list with an enable
+// "Viết tắt / Macros" (PRD-R29-R33): the D9 switch, search, sort, add, import and export, a list with an enable
 // checkbox per macro, edit, duplicate, delete and enable or disable all. The list scrolls (PRD-R24 acceptance).
 // Rows with a problem show a symbol and the reason (row context).
 
@@ -67,7 +67,7 @@ struct MacrosToolbar: View {
     }
 }
 
-/// PRD-R43: "Chưa có gõ tắt nào..." with "Thêm gõ tắt" and "Nhập từ tệp..." (both buttons are under the list).
+/// PRD-R43: "Chưa có mục viết tắt nào..." with "Thêm viết tắt" and "Nhập từ file..." (both buttons are under the list).
 struct MacrosEmptyState: View {
     @ObservedObject var model: SettingsWindowModel
 

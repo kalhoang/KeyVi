@@ -20,11 +20,11 @@ public enum StringTable: String, Sendable, CaseIterable {
     case menu = "Menu"  // status item, menu, HUD, VoiceOver labels (PRD-R10, PRD-R11)
     case status = "Status"  // status lines and error states (PRD-R43), secure-input hints (PLT-R397)
     case onboarding = "Onboarding"  // PRD-R40 screens 1-8
-    case settings = "Settings"  // five panes (PRD-R24, PRD-R25)
+    case settings = "Settings"  // window chrome and the General and Typing panes (PRD-R24, PRD-R25)
     case macros = "Macros"  // section 8
     case apps = "Apps"  // section 9
     case diagnostics = "Diagnostics"  // PLT-R1201, PLT-R1205, PRD-R47
-    case support = "Support"  // About & Support, donation block (PRD-R59)
+    case support = "Support"  // About, Support and Licences panes, donation block (PRD-R59)
     case updates = "Updates"  // PRD-R50-R54
     case composition = "Composition"  // composition root notices: safe mode, move failed, conflicts
     #if DEV_RECORDER

@@ -49,8 +49,17 @@ public enum GuidedTestOverride {
 public enum SupportLinks {
     public enum Topic: Sendable, Hashable { case permission, secureInput, conflicts, appSpecific }
 
+    /// The support page itself (PRD-R73 `/ho-tro`, `/en/support/`), for the Support pane's "Mở trang hỗ trợ".
+    public static func page(siteURL: URL, language: InterfaceLanguage) -> URL {
+        URL(string: path(language), relativeTo: siteURL)?.absoluteURL ?? siteURL
+    }
+
+    private static func path(_ language: InterfaceLanguage) -> String {
+        language == .vietnamese ? "ho-tro/" : "en/support/"
+    }
+
     public static func url(_ topic: Topic, siteURL: URL, language: InterfaceLanguage) -> URL {
-        let path = language == .vietnamese ? "ho-tro/" : "en/support/"
+        let path = path(language)
         let anchor: String
         switch (topic, language) {
         case (.permission, .vietnamese): anchor = "quyen"

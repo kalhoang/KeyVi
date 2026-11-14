@@ -219,8 +219,8 @@ class NoticesTests(unittest.TestCase):
         data = " ".join(self.section(3).split())
         if shown:
             self.assertNotIn("not yet implemented", data, "App code shows NOTICES.txt now; update section 3")
-            self.assertNotIn("VERIFY", data, "the About & Support pane shows NOTICES.txt; close the VERIFY")
-            self.assertIn("About & Support", data)
+            self.assertNotIn("VERIFY", data, "the Licences pane shows NOTICES.txt; close the VERIFY")
+            self.assertIn("Licences pane", data)
             self.assertIn("Resources.bundledNotices()", data)
         else:
             self.assertIn("VERIFY", data)
@@ -271,6 +271,17 @@ class FrontDoorBrandTests(unittest.TestCase):
         self.assertIn("docs/support/b.md:1: literal slug ({{app-slug}}) 'testapp'", result.stderr)
         self.assertNotIn("docs/decisions/", result.stderr)
 
+    def test_docs_take_the_trademark_sign_from_the_brand(self):
+        """Pa, 15/11/2026: the docs write the name with its sign as {{AppNameTM}}, so APP_TRADEMARK_SIGN alone decides
+        whether a sign is shown (a rename may clear it)."""
+        self.write(self.root, "docs/support/a.md", "{{AppName}}™ is free.\n")
+        self.write(self.root, "docs/support/b.md", "{{AppNameTM}} is free; {{AppName}} has no ads.\n")
+        result = self.brand(self.root)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("docs/support/a.md:1: '{{AppName}}™' hard-codes the trademark sign; use {{AppNameTM}}",
+                      result.stderr)
+        self.assertNotIn("docs/support/b.md", result.stderr)
+
     def test_front_door_files_reject_every_placeholder(self):
         cases = {
             "README.md": ("# {{AppName}}\n", "{{AppName}}"),
@@ -311,7 +322,8 @@ class FrontDoorBrandTests(unittest.TestCase):
         for rel in ("README.md", "README.vi.md"):
             with self.subTest(readme=rel):
                 text = (REPO / rel).read_text(encoding="utf-8")
-                self.assertEqual(text.splitlines()[0], f"# {name}")
+                # The heading carries the trademark sign of APP_TRADEMARK_SIGN (Pa, 15/11/2026).
+                self.assertEqual(text.splitlines()[0], f"# {name}{brand.get('APP_TRADEMARK_SIGN', '')}")
                 self.assertIn(f"`https://{host}`", text)
                 # The tap owner is still a VERIFY marker; only the cask name is the brand's.
                 self.assertRegex(text, r"[\w.-]+/tap/" + re.escape(slug) + "`")

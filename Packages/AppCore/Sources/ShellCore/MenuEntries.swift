@@ -22,7 +22,7 @@ public enum MenuEntry: Sendable, Hashable {
     /// Item 6.
     case reportProblem
     case checkForUpdates(enabled: Bool)
-    /// Item 7: opens About & Support (PRD-R57: the only in-menu donation entry; no badge, no counter).
+    /// Item 7: opens the About pane, where the donation block is (PRD-R57: the only in-menu donation entry; no badge, no counter).
     case donate
     /// Item 8.
     case quit

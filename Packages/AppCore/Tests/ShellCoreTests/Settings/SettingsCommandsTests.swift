@@ -172,7 +172,7 @@ import Testing
         let l = try Localizers()
         let lines = summary.lines(l.vi)
         #expect(lines.contains("Cài đặt sẽ đổi: Kiểu gõ."))
-        #expect(lines.contains("Gõ tắt: 1 mới, 1 trùng, 1 không hợp lệ"))
+        #expect(lines.contains("Viết tắt: 1 mới, 1 trùng, 1 không hợp lệ"))
         #expect(lines.contains { $0.hasPrefix("Bỏ qua vì phiên bản này chưa hiểu:") && $0.contains("cloud") })
         #expect(lines.contains(l.vi.string(SettingsText.importNewerSchema)))
         #expect(summary.isNewerSchema && summary.hasSettings && summary.hasMacros && summary.hasDuplicateMacros)
@@ -207,14 +207,14 @@ import Testing
             _ = try await commands.previewImport(Data(#"{"kind":"other"}"#.utf8))
         }
         let cases: [(SettingsImportError, String)] = [
-            (.tooLarge(limit: 5 * 1024 * 1024), "Tệp này lớn hơn 5 MB."),
-            (.notJSON, "Tệp này không đúng định dạng."),
-            (.tooDeeplyNested(limit: 64), "Tệp này không đúng định dạng."),
-            (.notAnObject, "Tệp này không đúng định dạng."),
-            (.notASettingsExport, "Tệp này không phải tệp cài đặt xuất từ App."),
-            (.invalidSchemaVersion, "Tệp này thiếu số phiên bản định dạng, hoặc số đó không hợp lệ."),
-            (.invalidSection("macros"), "Phần \"macros\" trong tệp không đúng định dạng."),
-            (.migrationFailed(fromVersion: 0), "Không chuyển đổi được tệp từ định dạng cũ 0."),
+            (.tooLarge(limit: 5 * 1024 * 1024), "File này lớn hơn 5 MB."),
+            (.notJSON, "File này không đúng định dạng."),
+            (.tooDeeplyNested(limit: 64), "File này không đúng định dạng."),
+            (.notAnObject, "File này không đúng định dạng."),
+            (.notASettingsExport, "File này không phải file cài đặt xuất từ App."),
+            (.invalidSchemaVersion, "File này thiếu số phiên bản định dạng, hoặc số đó không hợp lệ."),
+            (.invalidSection("macros"), "Phần \"macros\" trong file không đúng định dạng."),
+            (.migrationFailed(fromVersion: 0), "Không chuyển đổi được file từ định dạng cũ 0."),
             (.unavailableInSafeMode, "App đang chạy ở chế độ an toàn. Hãy thoát chế độ an toàn rồi nhập lại."),
         ]
         for (error, text) in cases {
@@ -223,7 +223,7 @@ import Testing
         }
         #expect(
             SettingsImportMessage.text(for: CocoaError(.fileReadNoPermission), appName: "App", l.vi)
-                == "Không đọc được tệp này.")
+                == "Không đọc được file này.")
     }
 
     @Test func importLimitAndSchemaVersionComeFromTheStore_PLTR912_PRDR72() async throws {

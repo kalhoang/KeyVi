@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// "Nhập từ tệp..." in the Macros pane (PRD-R32, PRD-R70): a file the user picked is parsed by SettingsStore's
+// "Nhập từ file..." in the Macros pane (PRD-R32, PRD-R70): a file the user picked is parsed by SettingsStore's
 // tolerant importer, previewed with counts of new, duplicate and invalid rows, and merged with the user's choice
 // for duplicates. Counts are the importer's own (`MacroImportPreview`), so the sheet and W1-B always agree.
 
@@ -10,7 +10,7 @@ public import SettingsStore
 public enum MacroImportRefusal: Error, Sendable, Hashable {
     case tooLarge
     case empty
-    /// Nothing importable. `firstInvalid` gives the PRD-R43 line ("Dòng 12: thiếu phần nội dung gõ tắt."), nil
+    /// Nothing importable. `firstInvalid` gives the PRD-R43 line ("Dòng 12: thiếu phần nội dung đầy đủ."), nil
     /// when the file could not be read as any format.
     case invalidFile(firstInvalid: MacroImportRow?)
 }
@@ -75,9 +75,9 @@ extension MacroImportRefusal {
     }
 }
 
-/// Onboarding screen 6 "Chọn tệp..." (PRD-R40, PRD-R32, PRD-R43 "Import file invalid"): the same session as the
+/// Onboarding screen 6 "Chọn file..." (PRD-R40, PRD-R32, PRD-R43 "Import file invalid"): the same session as the
 /// Macros pane, so the onboarding import also shows the counts of new, duplicate and invalid rows, the duplicate
-/// choice and the invalid lines before anything is merged. A refused file shows its reason with "Chọn tệp
+/// choice and the invalid lines before anything is merged. A refused file shows its reason with "Chọn file
 /// khác"; the flow leaves screen 6 only after a confirmed import (or "Để sau").
 public struct OnboardingImport: Sendable, Hashable {
     /// The preview; its `resolution` is the user's duplicate choice.

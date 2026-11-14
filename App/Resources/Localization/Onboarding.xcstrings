@@ -266,7 +266,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp bạn đã xuất để nhập gõ tắt."
+            "value" : "Chọn file bạn đã xuất để nhập danh sách viết tắt."
           }
         }
       }
@@ -284,7 +284,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp gõ tắt"
+            "value" : "Chọn file viết tắt"
           }
         }
       }
@@ -590,7 +590,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bật hoặc tắt việc tự mở khi bạn đăng nhập."
+            "value" : "Bật hoặc tắt việc tự khởi động cùng hệ thống."
           }
         }
       }
@@ -608,7 +608,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở khi đăng nhập"
+            "value" : "Khởi động cùng hệ thống"
           }
         }
       }
@@ -1022,7 +1022,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở %@ khi đăng nhập"
+            "value" : "Khởi động %@ cùng hệ thống"
           }
         }
       }
@@ -1040,7 +1040,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Để %1$@ tự mở khi bạn đăng nhập, hãy thêm ứng dụng trong %2$@ > %3$@ > %4$@."
+            "value" : "Để %1$@ khởi động cùng hệ thống, hãy thêm ứng dụng trong %2$@ > %3$@ > %4$@."
           }
         }
       }
@@ -1094,7 +1094,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bạn có thể chuyển danh sách gõ tắt từ %@ sang bằng tệp văn bản theo mẫu."
+            "value" : "Bạn có thể chuyển danh sách viết tắt từ %@ sang bằng file văn bản theo mẫu."
           }
         }
       }
@@ -1112,7 +1112,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chọn tệp..."
+            "value" : "Chọn file..."
           }
         }
       }
@@ -1148,7 +1148,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mang gõ tắt và cài đặt từ %@"
+            "value" : "Mang danh sách viết tắt và cài đặt từ %@"
           }
         }
       }

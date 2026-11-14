@@ -119,7 +119,7 @@ struct ConflictRow: View {
 }
 
 /// PRD-R40 screen 6, PRD-R69: offered only for a detected export file or app; reading happens after the user
-/// picks the file. The footer holds "Chọn tệp..." and "Để sau".
+/// picks the file. The footer holds "Chọn file..." and "Để sau".
 struct ImportScreen: View {
     @ObservedObject var model: OnboardingModel
 
@@ -263,8 +263,8 @@ struct PermissionHelpSheet: View {
     }
 }
 
-/// PRD-R40 screen 6 "Chọn tệp...": the Macros pane's preview before anything is merged (PRD-R32); a refused file
-/// shows its reason with "Chọn tệp khác" (PRD-R43 "Import file invalid") and the flow stays on screen 6.
+/// PRD-R40 screen 6 "Chọn file...": the Macros pane's preview before anything is merged (PRD-R32); a refused file
+/// shows its reason with "Chọn file khác" (PRD-R43 "Import file invalid") and the flow stays on screen 6.
 struct OnboardingImportSheet: View {
     @ObservedObject var model: OnboardingModel
 

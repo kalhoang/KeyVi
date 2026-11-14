@@ -195,7 +195,8 @@ extension AppEnvironment: StatusMenuActions {
     func openMacros() { settingsController()?.show(.macros) }
     func openSettings() { settingsController()?.show(.general) }
     func checkForUpdates() { updater?.checkForUpdates() }
-    func openSupport() { settingsController()?.show(.aboutSupport) }
+    /// "Ủng hộ <name>...": the About pane, where the donation block is (PRD-R57).
+    func openDonation() { settingsController()?.show(.about) }
 
     func performStatusAction(_ action: StatusLine.Action) {
         switch action {

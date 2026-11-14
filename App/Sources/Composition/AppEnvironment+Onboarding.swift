@@ -44,7 +44,7 @@ extension AppEnvironment {
     }
 
     /// PRD-R40 screen 6: a running competitor app (the rules' conflicting input apps) is a known import source.
-    /// Nothing is read here; the import runs only after the explicit "Chọn tệp..." click (PRD-R69).
+    /// Nothing is read here; the import runs only after the explicit "Chọn file..." click (PRD-R69).
     static func importCandidates(_ seen: [ImportCandidate], adding conflicts: [ConflictingInput]) -> [ImportCandidate] {
         let known = Set(seen.compactMap(\.bundle))
         let added = conflicts.compactMap { conflict -> ImportCandidate? in
@@ -179,7 +179,7 @@ extension AppEnvironment: SettingsActions {
 
     func openDiagnostics() { diagnosticsController().showReport() }
 
-    /// PRD-R40: onboarding reopened from About & Support starts at screen 1.
+    /// PRD-R40: onboarding reopened from the About pane starts at screen 1.
     func reopenOnboarding() { presentOnboarding(startAt: nil) }
 
     /// ADR 0305, PRD-R15: the tap suspends its hotkeys while the recorder captures keys.

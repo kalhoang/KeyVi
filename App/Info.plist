@@ -38,6 +38,8 @@
 	<string>$(APP_SLUG)</string>
 	<key>AppSiteHost</key>
 	<string>$(APP_SITE_HOST)</string>
+	<key>AppTrademarkSign</key>
+	<string>$(APP_TRADEMARK_SIGN)</string>
 	<key>AppSupportEmail</key>
 	<string>$(APP_SUPPORT_EMAIL)</string>
 	<key>AppRepositoryURL</key>

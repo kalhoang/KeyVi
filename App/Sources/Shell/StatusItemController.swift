@@ -19,7 +19,7 @@ protocol StatusMenuActions: AnyObject {
     func openMacros()
     func openSettings()
     func checkForUpdates()
-    func openSupport()
+    func openDonation()
     func performStatusAction(_ action: StatusLine.Action)
 }
 
@@ -171,7 +171,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc func openMacros(_ sender: NSMenuItem) { actions?.openMacros() }
     @objc func openSettings(_ sender: NSMenuItem) { actions?.openSettings() }
     @objc func checkForUpdates(_ sender: NSMenuItem) { actions?.checkForUpdates() }
-    @objc func openSupport(_ sender: NSMenuItem) { actions?.openSupport() }
+    @objc func openDonation(_ sender: NSMenuItem) { actions?.openDonation() }
 
     @objc func performStatusAction(_ sender: NSMenuItem) {
         guard let action = (sender.representedObject as? StatusActionBox)?.action else { return }

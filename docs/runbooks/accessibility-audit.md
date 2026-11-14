@@ -133,31 +133,41 @@ Legend: **Code** is what the code and tests guarantee; **Pa** is what Pa verifie
      System Settings shows them. Record the exact names; they are VERIFY entries of `App/Resources/SystemPanes.json`.
   6. Move-to-Applications alert (run the DMG copy): both buttons read their titles and hints.
 
-### 3.6 Settings window: sidebar and five panes (PRD-R24 to PRD-R28, PRD-R67)
+### 3.6 Settings window: sidebar and seven panes (PRD-R24 to PRD-R28, PRD-R67)
 
-- Code: a sidebar list of the five panes (label and hint; the arrow keys and Command+1 to 5 change pane); every
-  toggle, picker, field, button and list has a label and a hint from the Settings, Apps, Macros or Support table;
+- Code: a sidebar list of the seven panes (Chung, Kiểu gõ, Ứng dụng, Viết tắt, Giới thiệu, Hỗ trợ, Bản quyền; label and
+  hint; the arrow keys and Command+1 to 7 change pane); every toggle, picker, field, button and list has a label and a
+  hint from the Settings, Apps, Macros or Support table;
   explanations under every setting; warnings and statuses carry a symbol; the Apps status column is a symbol plus
   text; the Apps Details and report buttons act on the selected row under the list (from macOS 13 also the row's
   context menu and a double-click); the sidebar tiles are decoration beside the pane name (allowlisted in the hue
   check); the last-verified day in the app details follows the interface language; implicit animations and the Advanced
-  disclosures stop animating under Reduce Motion; the title follows a language change.
+  disclosures stop animating under Reduce Motion; the title follows a language change. Every disclosure (Advanced
+  options, the Apps details' Advanced, each licence text in Bản quyền) is one header row that is the whole click
+  target: a plain button that draws its own focus ring and that VoiceOver reads as a disclosure triangle with its
+  state (accessibility representation), and the views that hold the window model observe it (Pa, 15/11/2026: the
+  Advanced options could not be opened; `AdvancedDisclosureTests` in the snapshot bundle). The donation block's
+  account values and share text are selectable, each with a `Sao chép` button, and `Chia sẻ...` opens the macOS
+  share menu.
 - Pa:
-  1. Keyboard only: Command+, opens the window; Tab reaches the sidebar, the arrow keys or Command+1 to 5 change
+  1. Keyboard only: Command+, opens the window; Tab reaches the sidebar, the arrow keys or Command+1 to 7 change
      pane; in each pane, Tab reaches every control in reading order with a visible focus ring; the Apps and Macros
      tables take arrow keys, and the buttons under each list (Details and report for Apps; edit, duplicate and
      delete for Macros) are reachable after selecting a row.
-  2. VoiceOver: each control reads label, value and hint; the Apps table reads the column headers; the status cell reads the status words; the macro row checkbox reads "Bật gõ tắt này: <shortcut>".
+  2. VoiceOver: each control reads label, value and hint; the Apps table reads the column headers; the status cell reads the status words; the macro row checkbox reads "Bật mục viết tắt này: <shortcut>"; "Tùy chọn nâng cao" reads as a collapsed or expanded disclosure triangle; in Giới thiệu, each `Sao chép` button reads what it copies.
   3. Interface language: switch to English and back; every pane, the window title and open sheets switch at once,
      without reopening the window (PRD-R63).
   4. Increase Contrast, light and dark: notices, the selected sidebar row, the sidebar tiles (outlined under Increase Contrast), the hotkey recorder box while recording and
      all secondary text stay readable (WCAG AA is a visual judgement here; note any faint text).
   5. Reduce Motion: expand "Tùy chọn nâng cao": it opens without animation.
+  6. Mouse: in Chung and Kiểu gõ, click anywhere on the "Tùy chọn nâng cao" row (the title, the empty middle, the
+     chevron): it opens, and a second click closes it; the same for the Advanced row of an app's Details sheet and
+     each licence row of Bản quyền.
 
 ### 3.7 Settings sheets and alerts
 
 Hotkey recorder (General and Typing), macro editor, macro import preview, settings import summary, export, reset
-confirmation, app details, licences, macro delete alert, paste-mode alert.
+confirmation, app details, macro delete alert, paste-mode alert (the licences are a pane now, Bản quyền).
 
 - Code: every control has a label and a hint; each sheet has a default and a cancel keyboard shortcut where an
   action is safe to default (reset and delete never default to the destructive button); the recorder takes focus
@@ -177,7 +187,7 @@ confirmation, app details, licences, macro delete alert, paste-mode alert.
   label and a hint; the bug report's symptom chips show selection with a check symbol and the selected trait;
   status lines update in place; windows disable animations under Reduce Motion and follow a language change.
 - Pa:
-  1. Keyboard only: open Diagnostics from About & Support; Tab reaches the report text and every button; Return
+  1. Keyboard only: open Diagnostics from the Support pane; Tab reaches the report text and every button; Return
      copies the report (default button).
   2. Bug report: VoiceOver reads the app picker, each chip with its selected state, the description field and its
      hint, the preview disclosure and each button.
@@ -255,7 +265,7 @@ Changed:
 
 | Key | Before | After |
 |---|---|---|
-| `macros.enabled.title` | "Bật gõ tắt" / "Use macros" | "Gõ tắt (macro)" / "Macros" (D9 label) |
+| `macros.enabled.title` | "Bật gõ tắt" / "Use macros" | "Gõ tắt (macro)" / "Macros" (D9 label); "Viết tắt (macro)" since Pa's 15/11/2026 rename |
 | `settings.name.macrosInEnglishMode` (en) | "Macros in English mode" | "Expand macros in English mode" (D10 label) |
 | `settings.name.firstSeenAppMode` (en) | "Mode for apps seen for the first time" | "Mode for an app seen for the first time" (D13 label) |
 | `macros.export.failed`, `settings.export.failed` | "... Bạn thử chọn thư mục khác." / "Try another folder." | "... Hãy chọn thư mục khác." / "Choose another folder." |

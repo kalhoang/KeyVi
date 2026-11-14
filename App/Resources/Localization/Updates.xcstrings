@@ -2,7 +2,7 @@
   "sourceLanguage" : "vi",
   "strings" : {
     "updates.channel.stableNoDowngrade" : {
-      "comment" : "PRD-R53: shown in About & Support after switching from Beta to Stable. %@ is the app name.",
+      "comment" : "PRD-R53: shown in the About pane after switching from Beta to Stable. %@ is the app name.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {

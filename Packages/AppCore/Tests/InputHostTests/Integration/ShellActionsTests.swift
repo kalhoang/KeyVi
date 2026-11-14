@@ -67,6 +67,10 @@ struct ShellActionsTests {
                 #expect(SupportLinks.url(topic, siteURL: site, language: language).host == "example.org")
             }
         }
+        // The Support pane's "Mở trang hỗ trợ" (Pa, 15/11/2026): the page itself in the interface language.
+        #expect(SupportLinks.page(siteURL: site, language: .vietnamese).absoluteString == "https://example.org/ho-tro/")
+        #expect(
+            SupportLinks.page(siteURL: site, language: .english).absoluteString == "https://example.org/en/support/")
     }
 
     @MainActor

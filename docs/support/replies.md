@@ -32,7 +32,7 @@ Use when the report is thin, or the user has not used the in-app report. Order o
 
 Cảm ơn bạn đã báo lỗi. Để mình tìm đúng nguyên nhân, bạn giúp mình hai việc nhỏ nhé:
 
-1. Mở {{AppName}} trên thanh menu, chọn **Báo lỗi...**, chọn ứng dụng đang bị lỗi và triệu chứng gần nhất, rồi bấm **Mở GitHub**. Ứng dụng sẽ chép sẵn phần chẩn đoán vào bộ nhớ tạm, bạn chỉ cần dán vào ô tương ứng. Phần chẩn đoán không chứa nội dung bạn đã gõ. Bạn có thể bấm **Xem trước dữ liệu sẽ gửi** để kiểm tra.
+1. Mở {{AppNameTM}} trên thanh menu, chọn **Báo lỗi...**, chọn ứng dụng đang bị lỗi và triệu chứng gần nhất, rồi bấm **Mở GitHub**. Ứng dụng sẽ chép sẵn phần chẩn đoán vào bộ nhớ tạm, bạn chỉ cần dán vào ô tương ứng. Phần chẩn đoán không chứa nội dung bạn đã gõ. Bạn có thể bấm **Xem trước dữ liệu sẽ gửi** để kiểm tra.
 2. Trong cửa sổ báo lỗi, bấm **Thử trong ô gõ thử** rồi gõ lại đúng ví dụ bị lỗi. Cho mình biết lỗi có xảy ra ở ô gõ thử không. Nếu không, lỗi nằm ở ứng dụng cụ thể kia, và đó là thông tin rất hữu ích.
 
 Bạn không cần gửi nhật ký hay chạy lệnh nào. Nếu sau hai bước này mình vẫn thiếu thông tin, mình sẽ hướng dẫn thêm từng bước. Bạn cũng có thể gửi báo cáo qua email nếu không có tài khoản GitHub (địa chỉ hỗ trợ có trên website).
@@ -41,7 +41,7 @@ Bạn không cần gửi nhật ký hay chạy lệnh nào. Nếu sau hai bướ
 
 Thank you for the report. To find the cause, two small things would help:
 
-1. Open {{AppName}} from the menu bar, choose **Báo lỗi... (Report a problem)**, pick the app where it happens and the closest symptom, then click **Mở GitHub (Open GitHub)**. The app copies the diagnostics block to your clipboard; paste it into the matching field. The diagnostics contain no typed content, and **Xem trước dữ liệu sẽ gửi (Preview what will be sent)** shows exactly what is included.
+1. Open {{AppNameTM}} from the menu bar, choose **Báo lỗi... (Report a problem)**, pick the app where it happens and the closest symptom, then click **Mở GitHub (Open GitHub)**. The app copies the diagnostics block to your clipboard; paste it into the matching field. The diagnostics contain no typed content, and **Xem trước dữ liệu sẽ gửi (Preview what will be sent)** shows exactly what is included.
 2. In the report window, click the practice-field button and retype the example that goes wrong. Tell us whether it also goes wrong there. If it does not, the problem is specific to that app, which is very useful to know.
 
 You do not need to send logs or run commands. If we still need more after these two steps, we will explain the next step one at a time. If you do not have a GitHub account, you can send the report by email (the support address is on the website).
@@ -54,7 +54,7 @@ Use when the menu icon is slashed, the user says the app "does nothing", or typi
 
 ### Vietnamese
 
-Có vẻ {{AppName}} chưa có quyền nhận phím gõ, hoặc macOS đã tắt quyền này (thường xảy ra sau khi cập nhật hệ điều hành). Trong lúc đó {{AppName}} tự tạm dừng để bàn phím của bạn vẫn dùng bình thường. Bạn làm như sau:
+Có vẻ {{AppNameTM}} chưa có quyền nhận phím gõ, hoặc macOS đã tắt quyền này (thường xảy ra sau khi cập nhật hệ điều hành). Trong lúc đó {{AppName}} tự tạm dừng để bàn phím của bạn vẫn dùng bình thường. Bạn làm như sau:
 
 1. Bấm vào biểu tượng {{AppName}} trên thanh menu. Dòng trạng thái ở đầu menu sẽ cho biết chính xác vấn đề, bấm vào đó để mở đúng chỗ cấp quyền.
 2. Hoặc mở **Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Trợ năng** (trên macOS 27 mục này có tên **Điều khiển thiết bị và truy cập dữ liệu**) và bật {{AppName}}.
@@ -65,7 +65,7 @@ Cho mình biết kết quả nhé. Nếu vẫn chưa được, bạn gửi giúp
 
 ### English
 
-It looks like {{AppName}} does not have permission to receive key presses, or macOS switched it off (this often happens after an OS update). While that is the case {{AppName}} pauses itself so your keyboard keeps working normally. Please:
+It looks like {{AppNameTM}} does not have permission to receive key presses, or macOS switched it off (this often happens after an OS update). While that is the case {{AppName}} pauses itself so your keyboard keeps working normally. Please:
 
 1. Click the {{AppName}} icon in the menu bar. The status line at the top of the menu says exactly what is wrong; click it to open the right place.
 2. Or open **System Settings > Privacy & Security > Accessibility** (on macOS 27 this pane is named **Device Control and Data Access**) and switch {{AppName}} on.
@@ -86,7 +86,7 @@ Facts for the maintainer: while any app holds secure input, macOS stops deliveri
 
 ### Vietnamese
 
-Đây không phải lỗi của bộ gõ: khi một ứng dụng bật **chế độ nhập bảo mật** (Secure Input), macOS chặn phím với mọi bộ gõ, và {{AppName}} tạm dừng cho đến khi chế độ đó tắt. Bạn làm như sau:
+Đây không phải lỗi của bộ gõ: khi một ứng dụng bật **chế độ nhập bảo mật** (Secure Input), macOS chặn phím với mọi bộ gõ, và {{AppNameTM}} tạm dừng cho đến khi chế độ đó tắt. Bạn làm như sau:
 
 1. Bấm biểu tượng {{AppName}} trên thanh menu. Nếu có biểu tượng khóa, dòng trạng thái sẽ nêu ứng dụng nhiều khả năng đang giữ chế độ này (tên này không phải lúc nào cũng chính xác).
 2. **Terminal:** tắt mục **Nhập dùng Bàn phím An Toàn (Secure Keyboard Entry)** trong menu Terminal.
@@ -98,7 +98,7 @@ Facts for the maintainer: while any app holds secure input, macOS stops deliveri
 
 ### English
 
-This is not an input method bug: when an app turns on **Secure Input**, macOS blocks keys for every input method, and {{AppName}} pauses until it is off. Please:
+This is not an input method bug: when an app turns on **Secure Input**, macOS blocks keys for every input method, and {{AppNameTM}} pauses until it is off. Please:
 
 1. Click the {{AppName}} icon in the menu bar. If it shows a lock badge, the status line names the app that most likely holds secure input (the name is not always accurate).
 2. **Terminal:** in the Terminal menu, turn off **Secure Keyboard Entry**.
@@ -118,7 +118,7 @@ Use when letters are doubled or swallowed, or the menu or onboarding reports a c
 
 Hai bộ gõ chạy cùng lúc sẽ làm lặp hoặc mất chữ. Có vẻ máy bạn đang chạy {{OtherApp}} (hoặc nguồn nhập tiếng Việt có sẵn của macOS). Bạn thử như sau:
 
-1. Thoát {{OtherApp}} (bấm biểu tượng trên thanh menu và chọn Thoát), rồi tắt tùy chọn tự mở khi đăng nhập của nó. {{AppName}} không tự thoát hay chỉnh sửa ứng dụng khác của bạn.
+1. Thoát {{OtherApp}} (bấm biểu tượng trên thanh menu và chọn Thoát), rồi tắt tùy chọn tự mở khi đăng nhập của nó. {{AppNameTM}} không tự thoát hay chỉnh sửa ứng dụng khác của bạn.
 2. Nếu bạn dùng nguồn nhập **Tiếng Việt** có sẵn của macOS: mở **Cài đặt hệ thống > Bàn phím > Nguồn nhập** và chọn bàn phím **ABC** hoặc **U.S.** khi dùng {{AppName}}. Bạn có thể giữ hoặc gỡ nguồn nhập tiếng Việt của macOS.
 3. Mở lại {{AppName}} rồi thử gõ trong ô gõ thử.
 
@@ -128,7 +128,7 @@ Nếu vẫn lặp chữ, bạn gửi giúp mình báo cáo từ mục **Báo l�
 
 Two input methods running at once cause doubled or lost letters. It looks like {{OtherApp}} (or macOS's built-in Vietnamese input source) is running. Please:
 
-1. Quit {{OtherApp}} (click its menu-bar icon and choose Quit) and turn off its open-at-login option. {{AppName}} never quits or modifies other apps for you.
+1. Quit {{OtherApp}} (click its menu-bar icon and choose Quit) and turn off its open-at-login option. {{AppNameTM}} never quits or modifies other apps for you.
 2. If you use macOS's built-in **Vietnamese** input source: open **System Settings > Keyboard > Input Sources** and choose the **ABC** or **U.S.** keyboard while using {{AppName}}. You may keep or remove the built-in Vietnamese source.
 3. Reopen {{AppName}} and try the practice field.
 
@@ -142,7 +142,7 @@ Use when the app is on the "Hạn chế đã biết" list. Each limitation text 
 
 ### Vietnamese
 
-Cảm ơn bạn đã báo. Đây là một **hạn chế đã biết** của <Tên ứng dụng> <phiên bản>: <mô tả một câu, không dùng thuật ngữ kỹ thuật>. Nguyên nhân nằm ở cách ứng dụng đó (hoặc macOS) xử lý phím gõ, nên {{AppName}} chưa thể sửa hoàn toàn ở phía mình.
+Cảm ơn bạn đã báo. Đây là một **hạn chế đã biết** của <Tên ứng dụng> <phiên bản>: <mô tả một câu, không dùng thuật ngữ kỹ thuật>. Nguyên nhân nằm ở cách ứng dụng đó (hoặc macOS) xử lý phím gõ, nên {{AppNameTM}} chưa thể sửa hoàn toàn ở phía mình.
 
 Cách tạm thời: <cách khắc phục, từng bước ngắn>.
 
@@ -150,7 +150,7 @@ Mình đã ghi vào bảng tương thích (mục "Hạn chế đã biết") và 
 
 ### English
 
-Thank you for reporting this. It is a **known limitation** of <App name> <version>: <one-sentence description in plain words>. The cause is in how that app (or macOS) handles typed keys, so {{AppName}} cannot fully fix it on its side yet.
+Thank you for reporting this. It is a **known limitation** of <App name> <version>: <one-sentence description in plain words>. The cause is in how that app (or macOS) handles typed keys, so {{AppNameTM}} cannot fully fix it on its side yet.
 
 Workaround for now: <short step-by-step workaround>.
 
@@ -166,7 +166,7 @@ Use when a fix is `fixed-in-beta` and you want the reporter to confirm it (QA-R4
 
 Bản sửa đã có trong bản beta **<phiên bản beta>**. Bạn thử giúp mình nhé:
 
-1. Mở {{AppName}} > **Cài đặt...** > **Giới thiệu & Hỗ trợ**.
+1. Mở {{AppName}} > **Cài đặt...** > **Giới thiệu**.
 2. Ở mục **Kênh cập nhật**, chọn **Beta**.
 3. Bấm **Kiểm tra cập nhật...** và cài bản beta mới nhất.
 4. Thử lại đúng trường hợp bị lỗi trước đây và cho mình biết kết quả.
@@ -177,7 +177,7 @@ Người dùng beta cũng nhận các bản ổn định mới hơn bản beta m
 
 The fix is in beta **<beta version>**. Please try it:
 
-1. Open {{AppName}} > **Settings...** > **About & Support**.
+1. Open {{AppName}} > **Settings...** > **About**.
 2. Under **Update channel**, choose **Beta**.
 3. Click **Check for Updates...** and install the latest beta.
 4. Retry the exact case that failed before and tell us the result.

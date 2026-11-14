@@ -192,7 +192,7 @@ if [[ -z "$notes_vi" ]]; then
 fi
 notes_vi="${notes_vi:-$notes_en}"
 py scripts/lib/publish_helpers.py release-notes-page --check --app-name "$APP_DISPLAY_NAME" --version "$version" \
-  --notes-vi "$notes_vi" --notes-en "$notes_en" || die "the release notes for $version are not publishable"
+  --trademark-sign "$APP_TRADEMARK_SIGN" --notes-vi "$notes_vi" --notes-en "$notes_en" || die "the release notes for $version are not publishable"
 
 # QA-R29: a stable release has been on beta for at least 72 hours with no new P0/P1, except P0 hotfixes.
 # Checked before any download or keychain access; a dry run only warns.
@@ -365,13 +365,13 @@ info "appcast item"
 py scripts/lib/publish_helpers.py appcast-insert "${appcast_args[@]}"
 info "release-notes page ($notes_url)"
 py scripts/lib/publish_helpers.py release-notes-page --out "$out_root/$notes_page_rel" \
-  --app-name "$APP_DISPLAY_NAME" --version "$version" --notes-vi "$notes_vi" --notes-en "$notes_en" \
-  --changelog-url-vi "$changelog_url_vi" --changelog-url-en "$changelog_url_en"
+  --app-name "$APP_DISPLAY_NAME" --trademark-sign "$APP_TRADEMARK_SIGN" --version "$version" \
+  --notes-vi "$notes_vi" --notes-en "$notes_en" --changelog-url-vi "$changelog_url_vi" --changelog-url-en "$changelog_url_en"
 info "releases.json entry"
 py scripts/lib/publish_helpers.py releases-add --file "$out_root/site/data/releases.json" \
   --version "$version" --build "$build" --channel "$channel" --date "$today" --dmg-url "$dmg_url" \
   --sha256 "$dmg_sha" --size "$dmg_len" --minimum-system-version "$min_system" \
-  --notes-vi "$notes_vi" --notes-en "$notes_en" --app-name "$APP_DISPLAY_NAME"
+  --notes-vi "$notes_vi" --notes-en "$notes_en" --app-name "$APP_DISPLAY_NAME" --trademark-sign "$APP_TRADEMARK_SIGN"
 
 # --- 5. Homebrew cask (stable only) ------------------------------------------------------------
 if [[ "$channel" == "stable" ]]; then

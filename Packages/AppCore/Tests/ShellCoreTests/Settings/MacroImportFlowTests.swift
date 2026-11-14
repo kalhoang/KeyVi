@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// "Nhập từ tệp..." (PRD-R32, PRD-R43, PRD-R70): preview counts equal SettingsStore's importer (W1-B), refused
+// "Nhập từ file..." (PRD-R32, PRD-R43, PRD-R70): preview counts equal SettingsStore's importer (W1-B), refused
 // files are explained with their line, merges follow the duplicate choice, expansions are saved in NFC, and the
 // macro export reads back through the importer.
 
@@ -27,7 +27,7 @@ import Testing
         let l = try Localizers()
         #expect(
             session.invalidLines(l.vi) == [
-                "Dòng 3: phím tắt không được có khoảng trắng.", "Dòng 5: thiếu phần nội dung gõ tắt.",
+                "Dòng 3: chữ viết tắt không được có khoảng trắng.", "Dòng 5: thiếu phần nội dung đầy đủ.",
             ])
         #expect(l.vi.format(MacrosText.importNew, session.newCount) == "Mới: 2")
     }
@@ -62,7 +62,7 @@ import Testing
             Issue.record("expected a refusal")
             return
         }
-        #expect(refusal.message(l.vi).hasPrefix("Tệp này không đúng định dạng."))
+        #expect(refusal.message(l.vi).hasPrefix("File này không đúng định dạng."))
         let onlyInvalid = Data("vn x\tViệt Nam\nok\t\n".utf8)
         let result = MacroImportSession.open(onlyInvalid, fileExtension: "txt", existing: [])
         guard case .failure(.invalidFile(let row?)) = result else {
@@ -74,16 +74,17 @@ import Testing
             MacroImportRefusal.invalidFile(
                 firstInvalid: MacroImportRow(line: 12, shortcut: "x", expansion: "", issue: .emptyExpansion)
             )
-            .message(l.vi) == "Tệp này không đúng định dạng. Dòng 12: thiếu phần nội dung gõ tắt.")  // PRD-R43 verbatim
+            // PRD-R43 verbatim
+            .message(l.vi) == "File này không đúng định dạng. Dòng 12: thiếu phần nội dung đầy đủ.")
         let garbage = Data([0xFF, 0xFE, 0x00, 0x01])
         let unreadable = MacroImportSession.open(garbage, fileExtension: "json", existing: [])
         #expect(unreadable == .failure(.invalidFile(firstInvalid: nil)))
         #expect(
             MacroImportRefusal.invalidFile(firstInvalid: nil).message(l.en)
                 == "This file is not in the expected format.")
-        #expect(MacroImportRefusal.tooLarge.message(l.vi) == "Tệp này lớn hơn 5 MB.")
+        #expect(MacroImportRefusal.tooLarge.message(l.vi) == "File này lớn hơn 5 MB.")
         #expect(MacroImportRefusal.tooLarge.message(l.en) == "This file is larger than 5 MB.")
-        #expect(MacroImportRefusal.empty.message(l.vi) == "Tệp này không có gõ tắt nào.")
+        #expect(MacroImportRefusal.empty.message(l.vi) == "File này không có mục viết tắt nào.")
     }
 
     @Test func exportReadsBackThroughTheImporter() throws {

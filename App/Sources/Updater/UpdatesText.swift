@@ -17,7 +17,7 @@ enum UpdatesText: String, LocalizationKey {
     case retry = "updates.failed.retry"
     case download = "updates.failed.download"
     case close = "updates.failed.close"
-    /// PRD-R53: shown by the About & Support pane right after the user leaves Beta, through `UpdateChannelNote`.
+    /// PRD-R53: shown by the About pane right after the user leaves Beta, through `UpdateChannelNote`.
     /// `%@` is the app name.
     case stableNoDowngrade = "updates.channel.stableNoDowngrade"
 }

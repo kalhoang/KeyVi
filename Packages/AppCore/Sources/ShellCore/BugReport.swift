@@ -92,7 +92,7 @@ public enum ReportAssembler {
 /// A mail draft for "Gửi qua email" (PRD-R47). The App sends it with
 /// `NSSharingService(named: .composeEmail)`: `recipients`, `subject`, the body as the first item and the JSON
 /// report file URL as an attachment. Only when no mail service is available does it fall back to a `mailto:`
-/// URL with subject and body and no attachment (the sheet then offers "Lưu tệp..." for the JSON).
+/// URL with subject and body and no attachment (the sheet then offers "Lưu file..." for the JSON).
 public struct MailDraft: Sendable, Hashable {
     public var recipients: [String]
     public var subject: String
@@ -311,7 +311,7 @@ public struct BugReportSheet: Sendable, Hashable {
     /// The block written to the clipboard by "Copy report" and "Mở GitHub" (QA-R44), after the notice (PRD-R48).
     public func clipboardText(_ report: DiagnosticsReport) -> String { ReportPreviewFormat.copiedBlock.text(report) }
 
-    /// The JSON file for "Gửi qua email" and "Lưu tệp..." (PRD-R47).
+    /// The JSON file for "Gửi qua email" and "Lưu file..." (PRD-R47).
     public func attachment(_ report: DiagnosticsReport) throws -> Data { try DiagnosticsRenderer.json(report) }
 
     public func attachmentFileName(slug: String, report: DiagnosticsReport) -> String {
@@ -354,7 +354,7 @@ public enum DiagnosticsNavigation {
     public enum Origin: Sendable, Hashable {
         /// The status menu: PRD-R11 items 4 and 6 and the status line's "Báo lỗi...".
         case menu
-        /// The Settings window: an Apps pane row or detail sheet (PRD-R37), About & Support, a store notice.
+        /// The Settings window: an Apps pane row or detail sheet (PRD-R37), the Support pane, a store notice.
         case settings
     }
 

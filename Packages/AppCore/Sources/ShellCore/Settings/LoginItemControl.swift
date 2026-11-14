@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// "Mở khi đăng nhập" (D17, PLT-R205). `SMAppService` is the source of truth, so the toggle reflects the service
+// "Khởi động cùng hệ thống" (D17, PLT-R205). `SMAppService` is the source of truth, so the toggle reflects the service
 // status, never a stored preference. macOS 12 has no `SMAppService`: the toggle is disabled and the note tells the
 // user how to add the app in System Preferences (ADR 0315).
 

@@ -68,7 +68,7 @@ import Testing
         #expect(UpdateChannelPolicy.notice(switchingFrom: .beta, to: .beta) == nil)
     }
 
-    @Test("PRD-R53: the About & Support note follows each channel change and names the app")
+    @Test("PRD-R53: the About pane note follows each channel change and names the app")
     func channelNoteOfTheSettingsPane() throws {
         var note = UpdateChannelNote()
         let vi = TestResources.localizer(.vietnamese)

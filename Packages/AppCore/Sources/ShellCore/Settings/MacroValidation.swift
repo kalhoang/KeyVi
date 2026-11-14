@@ -114,7 +114,7 @@ public enum MacroIssueText {
         }
     }
 
-    /// "Dòng 12: thiếu phần nội dung gõ tắt." for an imported row (PRD-R43).
+    /// "Dòng 12: thiếu phần nội dung đầy đủ." for an imported row (PRD-R43).
     public static func lineText(_ row: MacroImportRow, localizer: Localizer) -> String {
         guard let reason = lineReason(row, localizer: localizer) else { return "" }
         return localizer.format(MacrosText.issueLine, row.line, reason)
@@ -133,7 +133,7 @@ public enum MacroIssueText {
         return String(first).lowercased(with: locale) + rest
     }
 
-    /// "Gõ tắt "x": ..." for a problem in the saved list.
+    /// "Mục viết tắt "x": ..." for a problem in the saved list.
     public static func entryText(_ problem: MacroTableProblem, localizer: Localizer) -> String {
         localizer.format(
             MacrosText.issueEntry, problem.trigger, text(problem.issue, shortcut: problem.trigger, localizer: localizer)

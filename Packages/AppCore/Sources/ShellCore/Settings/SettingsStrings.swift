@@ -13,7 +13,9 @@ public enum SettingsText: String, LocalizationKey {
     case paneTyping = "settings.pane.typing"
     case paneApps = "settings.pane.apps"
     case paneMacros = "settings.pane.macros"
-    case paneAboutSupport = "settings.pane.aboutSupport"
+    case paneAbout = "settings.pane.about"
+    case paneSupport = "settings.pane.support"
+    case paneLicences = "settings.pane.licences"
     case advanced = "settings.advanced"
     case resetPane = "settings.reset.paneButton"
     /// The row beside the per-pane reset button (PRD-R26).

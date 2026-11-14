@@ -37,7 +37,7 @@ struct SettingRow<Control: View>: View {
 
 /// A Bool setting as a switch on the right of its title and explanation, like System Settings.
 struct ToggleSetting<Control: AccessibleControl>: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let item: SettingItem
     let control: Control
     let isOn: Bool
@@ -62,26 +62,97 @@ extension View {
     }
 }
 
-/// "Tùy chọn nâng cao" as its own section: collapsed by default, remembered once expanded (PRD-R24). No animation
-/// with Reduce Motion (PRD-R67).
+/// "Tùy chọn nâng cao" as its own section: collapsed by default, remembered once expanded (PRD-R24). The view
+/// observes the window model: with a plain reference, SwiftUI kept the section's old body when the model published
+/// the new state, so a click on the disclosure changed nothing on screen (Pa, 15/11/2026).
 struct AdvancedSection: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let pane: SettingsPaneKind
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let expanded = Binding(
             get: { model.isAdvancedExpanded(pane) }, set: { model.setAdvancedExpanded($0, for: pane) })
         SettingsGroup {
-            DisclosureGroup(isExpanded: expanded) {
+            SettingsDisclosureHeader(
+                title: model.localizer.string(SettingsText.advanced), isExpanded: expanded,
+                control: SettingsControl.advancedDisclosure, localizer: model.localizer)
+            if expanded.wrappedValue {
                 ForEach(SettingsCatalog.items(in: pane, advanced: true), id: \.self) { item in
                     SettingItemRow(model: model, item: item)
                 }
-            } label: {
-                Text(verbatim: model.localizer.string(SettingsText.advanced)).font(.headline)
             }
-            .settingsAccessibility(SettingsControl.advancedDisclosure, model.localizer)
-            .transaction { if reduceMotion { $0.animation = nil } }
+        }
+    }
+}
+
+/// The header row of a disclosure in Settings: the title on the left, the chevron on the right, and the whole row is
+/// the click target (a DisclosureGroup on macOS opens only from its small triangle, not from its title). VoiceOver
+/// sees a disclosure triangle with its expanded state and the control's label and hint (the accessibility
+/// representation, PRD-R66); keyboard users reach it with Tab and press Space, and the plain-style row draws its own
+/// focus ring (PRD-R67). The content is the caller's: rows of their own after the header in a
+/// grouped section, or a view under it (`SettingsDisclosure`). No animation with Reduce Motion (PRD-R67).
+struct SettingsDisclosureHeader<Control: AccessibleControl>: View {
+    let title: String
+    @Binding var isExpanded: Bool
+    var font: Font = .headline
+    let control: Control
+    let localizer: Localizer
+    /// Overrides the control's label, for example to add the licence's name.
+    var label: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Button(action: { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { isExpanded.toggle() } }) {
+            HStack(spacing: 8) {
+                Text(verbatim: title).font(font)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .overlay(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .strokeBorder(Color(nsColor: .keyboardFocusIndicatorColor), lineWidth: 2)
+                    .padding(-4)
+                    .opacity(focused ? 1 : 0))
+        }
+        .buttonStyle(.plain)
+        .focused($focused)
+        .systemFocusEffectDisabled()
+        .accessibilityRepresentation {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                EmptyView()
+            } label: {
+                Text(verbatim: title)
+            }
+            .settingsAccessibility(control, localizer, label: label)
+        }
+        .settingsAccessibility(control, localizer, label: label)
+    }
+}
+
+/// A disclosure outside a grouped section's rows (the Apps details sheet, the Licences pane): the header row, then
+/// the content under it while expanded.
+struct SettingsDisclosure<Control: AccessibleControl, Content: View>: View {
+    let title: String
+    @Binding var isExpanded: Bool
+    var font: Font = .headline
+    let control: Control
+    let localizer: Localizer
+    var label: String?
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SettingsDisclosureHeader(
+                title: title, isExpanded: $isExpanded, font: font, control: control, localizer: localizer,
+                label: label)
+            if isExpanded { content }
         }
     }
 }
@@ -89,7 +160,7 @@ struct AdvancedSection: View {
 /// PRD-R26 per-pane reset as the last section: what it does on the left, the button that opens the confirmation
 /// (with the export offer) on the right.
 struct PaneResetSection<Control: AccessibleControl>: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let target: ResetTarget
     let control: Control
 
@@ -103,7 +174,7 @@ struct PaneResetSection<Control: AccessibleControl>: View {
 }
 
 struct PaneResetButton<Control: AccessibleControl>: View {
-    let model: SettingsWindowModel
+    @ObservedObject var model: SettingsWindowModel
     let target: ResetTarget
     let control: Control
 

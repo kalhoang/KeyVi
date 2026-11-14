@@ -11,11 +11,12 @@ public struct Brand: Sendable, Hashable {
     /// Info.plist keys (App/Info.plist): `CFBundleDisplayName` = $(APP_DISPLAY_NAME), `AppSlug` = $(APP_SLUG),
     /// `AppSiteHost` = $(APP_SITE_HOST), `AppSupportEmail` = $(APP_SUPPORT_EMAIL),
     /// `AppRepositoryURL` = $(APP_REPOSITORY_URL), `AppLegacyStorageFolderNames` =
-    /// $(APP_LEGACY_STORAGE_FOLDER_NAMES) (semicolon-separated, ADR 0307).
+    /// $(APP_LEGACY_STORAGE_FOLDER_NAMES) (semicolon-separated, ADR 0307), `AppTrademarkSign` = $(APP_TRADEMARK_SIGN).
     public enum InfoKey {
         public static let displayName = "CFBundleDisplayName"
         public static let slug = "AppSlug"
         public static let siteHost = "AppSiteHost"
+        public static let trademarkSign = "AppTrademarkSign"
         public static let supportEmail = "AppSupportEmail"  // VERIFY with Pa (QA-R51)
         public static let repositoryURL = "AppRepositoryURL"  // VERIFY with Pa (PRD-R47, QA-R60)
         public static let legacyStorageFolderNames = "AppLegacyStorageFolderNames"
@@ -36,10 +37,13 @@ public struct Brand: Sendable, Hashable {
     /// Storage folder names used by earlier product names, newest first, for the one-time move after a rename
     /// (ADR 0307, `LegacyStorageMigrator`).
     public var legacyStorageFolderNames: [String]
+    /// The sign after the name where the product presents itself ("™", Pa 15/11/2026), or empty.
+    public var trademarkSign: String
 
     public init(
         displayName: String, slug: String, siteHost: String, bundleIdentifier: String, version: String, build: String,
-        supportEmail: String?, repositoryURL: URL? = nil, legacyStorageFolderNames: [String] = []
+        supportEmail: String?, repositoryURL: URL? = nil, legacyStorageFolderNames: [String] = [],
+        trademarkSign: String = ""
     ) {
         self.displayName = displayName
         self.slug = slug
@@ -50,6 +54,7 @@ public struct Brand: Sendable, Hashable {
         self.supportEmail = supportEmail
         self.repositoryURL = repositoryURL
         self.legacyStorageFolderNames = legacyStorageFolderNames
+        self.trademarkSign = trademarkSign
     }
 
     /// Reads the bundle; traps with a clear message if a required key is missing or empty (a build
@@ -81,8 +86,13 @@ public struct Brand: Sendable, Hashable {
             siteHost: required(InfoKey.siteHost), bundleIdentifier: required(InfoKey.bundleIdentifier),
             version: optional(InfoKey.version) ?? "0", build: optional(InfoKey.build) ?? "0",
             supportEmail: optional(InfoKey.supportEmail), repositoryURL: repository,
-            legacyStorageFolderNames: legacy)
+            legacyStorageFolderNames: legacy, trademarkSign: optional(InfoKey.trademarkSign) ?? "")
     }
+
+    /// The name with its trademark sign ("<name>™"), for the About, Support and Licences panes, the donation block and
+    /// the privacy text. Menus, buttons, window titles, onboarding, notifications, permission prompts and identifiers
+    /// use `displayName` (Pa, 15/11/2026).
+    public var markedName: String { displayName + trademarkSign }
 
     /// Folder name under Application Support and Logs: the display name if it is pure ASCII, else the slug
     /// (PLT-R903). Frozen at the first public release (docs/decisions/0307-settings-file-layout.md).
