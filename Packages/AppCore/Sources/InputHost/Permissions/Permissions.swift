@@ -87,7 +87,14 @@ public final class PermissionMonitor: Sendable {
 
     public func start() { beginChecks() }
     public func stop() { endChecks() }
-    public func checkNow() -> PermissionStatus { check() }
+    /// Checks at once and returns the newest status. When the check runs on main its status is delivered inside the
+    /// call, and that delivery may already have replaced it (a `ready` whose tap failed, PLT-R702): the replacement
+    /// is returned then, never the replaced status, so a caller that records or feeds the result (menu open, wake,
+    /// PLT-R721) agrees with what the receivers were told.
+    public func checkNow() -> PermissionStatus {
+        let status = check()
+        return latest ?? status
+    }
     /// The status of the most recent check, already set while an older status is still being delivered. A receiver
     /// that forwards statuses compares the one in hand with this and drops it when a newer one is queued behind it,
     /// so a `ready` replaced during its own delivery (the tap it allowed failed, PLT-R702) never reaches the UI

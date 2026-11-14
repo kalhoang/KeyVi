@@ -59,6 +59,42 @@ struct PermissionDeliveryGuardTests {
         #expect(rig.tapFactory.requestedMasks.count == 1, "one attempt; the backoff retries later (PLT-R332)")
     }
 
+    /// The grant above while the replacement nests inside the check (production's inline main hop): the monitor's
+    /// own callers on main (`refreshPermissions` on menu open, `feedFreshPermissions` on wake) keep the replacement,
+    /// never the `ready` that `check()` computed before its delivery replaced it (PLT-R702, PLT-R721).
+    private static func grantedWithoutInputMonitoringOnMain() async -> HostRig {
+        let rig = HostRig(
+            permissions: FakePermissionProbe(trusted: false, post: false, listen: false), nestedHops: true)
+        rig.tapFactory.setFailCreation(true)
+        await rig.start()
+        rig.events.removeAll()
+        rig.permissions.set(trusted: true, post: false, listen: false)
+        return rig
+    }
+
+    @Test func refreshPermissionsReturnsTheReplacement() async throws {
+        let rig = await Self.grantedWithoutInputMonitoringOnMain()
+        defer { rig.stop() }
+        let returned = rig.controller.refreshPermissions()
+        rig.settle()
+        #expect(returned.health == .noPermission && returned.listenEventRequired, "\(returned)")
+        #expect(rig.controller.latestPermissions == returned)
+        #expect(rig.controller.reportContext().permissions == returned)
+        #expect(rig.tapFactory.requestedMasks.count == 1)
+    }
+
+    @Test func wakeNeverReopensTheTapOnAReplacedReady() async throws {
+        let rig = await Self.grantedWithoutInputMonitoringOnMain()
+        defer { rig.stop() }
+        rig.controller.handle(.didWake)
+        rig.settle()
+        let latest = try #require(rig.controller.latestPermissions)
+        #expect(latest.health == .noPermission && latest.listenEventRequired, "\(latest)")
+        #expect(rig.lifecyclePhase == .noPermission, "\(rig.lifecyclePhase)")
+        #expect(rig.tapFactory.requestedMasks.count == 1, "one attempt; a stale `ready` would open a second tap")
+        #expect(!Self.forwarded(rig.events).contains { $0.health == .ready })
+    }
+
     /// The same grant once Input Monitoring is on as well: nothing replaces `ready`, so it is forwarded.
     @Test(arguments: Delivery.allCases)
     func aReadyThatStaysReadyIsForwarded(delivery: Delivery) async throws {
