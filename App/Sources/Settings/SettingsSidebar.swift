@@ -12,6 +12,8 @@ import SwiftUI
 
 struct SettingsSidebar: View {
     @ObservedObject var model: SettingsWindowModel
+    /// The sidebar runs under the transparent title bar; its first row starts below the window buttons.
+    let titleBarHeight: CGFloat
 
     var body: some View {
         let localizer = model.localizer
@@ -21,6 +23,9 @@ struct SettingsSidebar: View {
             }
         }
         .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Color.clear.frame(height: max(0, titleBarHeight - SettingsMetrics.sidebarListTopPadding))
+        }
         .settingsAccessibility(SettingsControl.panePicker, localizer)
         .frame(width: SettingsWindowLayout.sidebarWidth)
     }

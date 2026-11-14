@@ -51,19 +51,29 @@ struct AppsTable: View {
 
     var body: some View {
         let localizer = model.localizer
-        Table(rows, selection: $selection) {
+        let fixed = AppsTableLayout.fixedColumns(localizer: localizer)
+        GeometryReader { proxy in
+            table(fixed: fixed, appWidth: AppsTableLayout.appColumnWidth(listWidth: proxy.size.width, fixed: fixed))
+        }
+    }
+
+    /// Every column has the width the layout gives it for the list's current width, so the name column grows and
+    /// shrinks with the window and the table never scrolls sideways.
+    private func table(fixed: AppsTableLayout.FixedColumns, appWidth: Double) -> some View {
+        let localizer = model.localizer
+        return Table(rows, selection: $selection) {
             TableColumn(localizer.string(AppsText.columnApp)) { row in AppNameCell(model: model, row: row) }
-                .width(min: 80, ideal: 92)
+                .width(appWidth)
             TableColumn(localizer.string(AppsText.columnRule)) { row in RulePicker(model: model, row: row) }
-                .width(118)
+                .width(fixed.rule)
             TableColumn(localizer.string(AppsText.columnRemembered)) { row in
                 Text(verbatim: localizer.string(row.rememberedModeTitle))
             }
-            .width(76)
+            .width(fixed.remembered)
             TableColumn(localizer.string(AppsText.columnStatus)) { row in
                 StatusCell(localizer: localizer, status: row.status)
             }
-            .width(min: 140, ideal: 140, max: 160)
+            .width(fixed.status)
         }
         .tableStyle(.inset(alternatesRowBackgrounds: true))
         .settingsAccessibility(AppsControl.list, localizer)
@@ -72,13 +82,17 @@ struct AppsTable: View {
 }
 
 extension View {
-    /// Row context menu and double-click to open the details, from macOS 13 (`contextMenu(forSelectionType:)`).
-    /// On macOS 12 the Actions column offers the same two commands (ADR 0315).
+    /// Row context menu (details and PRD-R37 report) and double-click to open the details, from macOS 13
+    /// (`contextMenu(forSelectionType:)`). On macOS 12 the buttons under the list act on the selected row (ADR 0315).
     @ViewBuilder
     fileprivate func rowMenu(model: SettingsWindowModel, rows: [AppsPaneRow], localizer: Localizer) -> some View {
         if #available(macOS 13, *) {
             contextMenu(forSelectionType: BundleKey.self) { bundles in
                 if let bundle = bundles.first {
+                    if let row = rows.first(where: { $0.bundle == bundle }) {
+                        Button(action: { model.showDetail(row) }) { Text(verbatim: localizer.string(AppsText.details)) }
+                            .settingsAccessibility(AppsControl.rowDetails, localizer)
+                    }
                     Button(action: { model.reportProblem(for: bundle) }) {
                         Text(verbatim: localizer.string(AppsText.report))
                     }
@@ -103,6 +117,18 @@ struct AppNameCell: View {
                 Image(nsImage: icon).resizable().frame(width: 18, height: 18).accessibilityHidden(true)
             }
             Text(verbatim: model.appName(of: row)).lineLimit(1).help(Text(verbatim: model.appName(of: row)))
+        }
+    }
+}
+
+extension AppsTableLayout {
+    /// The fixed columns measured with the fonts the table draws them in (system font; small for the rule pop-up and
+    /// the headers).
+    @MainActor static func fixedColumns(localizer: Localizer) -> FixedColumns {
+        let body = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        return fixedColumns(localizer: localizer) { text, style in
+            Double((text as NSString).size(withAttributes: [.font: style == .body ? body : small]).width)
         }
     }
 }

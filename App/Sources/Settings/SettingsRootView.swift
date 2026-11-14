@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Settings window layout in the style of macOS System Settings (Pa, 2026-11-14, feedback item 6): the sidebar with
-// the five panes in PRD-R24 order on the left; on the right the pane's title, the store notices, then the pane's
-// grouped sections, and the short status line at the bottom. Also the sheets of the reset, export, import, macro and
-// app flows.
+// the five panes in PRD-R24 order on the left, running the window's full height under the transparent title bar; on
+// the right the pane's title in the title bar row, the store notices, then the pane's grouped sections, and the short
+// status line at the bottom. Also the sheets of the reset, export, import, macro and app flows.
 
 import AppModel
 import ShellCore
@@ -13,10 +13,15 @@ struct SettingsRootView: View {
     @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
-        HStack(spacing: 0) {
-            SettingsSidebar(model: model)
-            Divider()
-            SettingsDetail(model: model)
+        // The title bar's height is the top safe area (`SettingsWindowController.configure`); both columns run under
+        // it and keep their content below it.
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                SettingsSidebar(model: model, titleBarHeight: proxy.safeAreaInsets.top)
+                Divider()
+                SettingsDetail(model: model, titleBarHeight: proxy.safeAreaInsets.top)
+            }
+            .ignoresSafeArea(.container, edges: .top)
         }
         .frame(
             minWidth: SettingsWindowLayout.minimumWidth, maxWidth: .infinity,
@@ -28,19 +33,24 @@ struct SettingsRootView: View {
     }
 }
 
-/// The right-hand column: title, notices (PLT-R1006, PLT-R1007, PLT-R1009), the pane, the status line.
+/// The right-hand column: title in the title bar row, notices (PLT-R1006, PLT-R1007, PLT-R1009), the pane, the
+/// status line.
 struct SettingsDetail: View {
     @ObservedObject var model: SettingsWindowModel
+    let titleBarHeight: CGFloat
 
     var body: some View {
         let localizer = model.localizer
         VStack(alignment: .leading, spacing: 0) {
             Text(verbatim: localizer.string(model.selectedPane.title))
-                .font(.title2.weight(.semibold))
+                .font(.title3.weight(.bold))
+                .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, SettingsMetrics.paneInset)
-                .padding(.top, 14)
-                .padding(.bottom, model.notices.isEmpty ? 2 : 10)
+                .frame(height: max(titleBarHeight, SettingsMetrics.minimumTitleRowHeight))
+                // The pane starts a little below the title bar row: a scroll view whose top edge meets the title
+                // bar would extend under it and cover the title.
+                .padding(.bottom, model.notices.isEmpty ? SettingsMetrics.titleRowGap : 8)
             ForEach(model.notices, id: \.self) { notice in
                 NoticeBanner(model: model, notice: notice)
                     .padding(.horizontal, SettingsMetrics.paneInset)

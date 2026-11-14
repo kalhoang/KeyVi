@@ -12791,10 +12791,22 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     /// Window traits of the layout, shared with the snapshot tool (scripts/snapshots): a normal window that does not
-    /// float above other apps (PRD-R28), resizable down to about the size System Settings allows.
+    /// float above other apps (PRD-R28), resizable down to about the size System Settings allows. Like System
+    /// Settings, the content runs under a transparent, unified title bar (an empty toolbar gives it the taller
+    /// height): the sidebar fills the window's full height with the window buttons inside it, and the pane's name
+    /// sits in the title bar row (`SettingsRootView`). The window title stays set for VoiceOver and the Window menu,
+    /// only hidden.
     static func configure(_ window: NSWindow) {
         window.level = .normal
         window.contentMinSize = minimumSize
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        let toolbar = NSToolbar(identifier: "SettingsWindow.toolbar")
+        toolbar.allowsUserCustomization = false
+        toolbar.showsBaselineSeparator = false
+        window.toolbar = toolbar
+        window.toolbarStyle = .unified
     }
 
     /// Shows the window on `pane` (menu "Cài đặt...", "Gõ tắt...", "Ủng hộ...", the URL scheme, PLT-R909).
@@ -12845,7 +12857,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-/// Command+1 to Command+5 select the panes in sidebar order (PRD-R67). Only plain Command digits are taken; the
+/// Command+1 to Command+5 select the panes in sidebar order (PRD-R67), by the digit typed or, on layouts whose number
+/// row types other characters, by the number row key. Only plain Command digits are taken; the
 /// hotkey recorder sees every key first through its local monitor (ADR 0305), and a sheet has its own window.
 final class SettingsWindow: NSWindow {
     var selectPane: (@MainActor (SettingsPaneKind) -> Void)?
@@ -12853,7 +12866,8 @@ final class SettingsWindow: NSWindow {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if event.type == .keyDown, let selectPane,
             let pane = SettingsPaneKind.forKeyEquivalent(
-                characters: event.charactersIgnoringModifiers, modifierFlags: UInt64(event.modifierFlags.rawValue))
+                characters: event.charactersIgnoringModifiers, keyCode: event.keyCode,
+                modifierFlags: UInt64(event.modifierFlags.rawValue))
         {
             selectPane(pane)
             return true

@@ -31,10 +31,19 @@ extension EnvironmentValues {
 enum SettingsMetrics {
     static let paneInset: CGFloat = 20
     /// The Apps and Macros lists use a little more of the width, so their columns fit the minimum window.
-    static let listPaneInset: CGFloat = 14
+    static let listPaneInset = CGFloat(SettingsWindowLayout.listPaneInset)
     static let sectionSpacing: CGFloat = 18
     static let rowSpacing: CGFloat = 16
     static let listCornerRadius: CGFloat = 8
+    /// Fill of a `SettingsCard`: a faint tint of the text colour, so it follows Dark Mode.
+    static let cardFillOpacity = 0.04
+    /// The pane title's row when the window has no title bar over the content (previews, tests).
+    static let minimumTitleRowHeight: CGFloat = 40
+    /// Space between the title bar row and the pane under it.
+    static let titleRowGap: CGFloat = 4
+    /// The sidebar list's own top padding, taken off the title bar height so its first row sits just under the
+    /// window buttons, like System Settings.
+    static let sidebarListTopPadding: CGFloat = 10
 }
 
 /// A pane's scrolling content made of `SettingsGroup` sections.
@@ -165,5 +174,22 @@ struct ListBox<Content: View>: View {
             .overlay(
                 RoundedRectangle(cornerRadius: SettingsMetrics.listCornerRadius, style: .continuous)
                     .strokeBorder(.separator))
+    }
+}
+
+/// A rounded card for a setting outside a grouped Form (the Macros pane's D9 switch above its list). Drawn here
+/// rather than with `GroupBox`, whose look changes between macOS versions, so the card has the same corner and
+/// outline as the `ListBox` under it on every version and a fill close to the grouped Form's cards.
+struct SettingsCard<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: SettingsMetrics.listCornerRadius, style: .continuous)
+        content
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(shape.fill(Color.primary.opacity(SettingsMetrics.cardFillOpacity)))
+            .overlay(shape.strokeBorder(.separator))
     }
 }

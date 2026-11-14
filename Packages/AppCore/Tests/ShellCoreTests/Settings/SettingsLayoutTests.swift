@@ -4,6 +4,7 @@
 // PRD-R67): the sidebar's symbols, tiles and keyboard shortcuts, the grouped sections of each pane and the window's
 // sizes.
 
+import AppKit
 import AppModel
 import Foundation
 import Testing
@@ -49,6 +50,23 @@ import Testing
         }
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "1", modifierFlags: 0) == nil)
         #expect(SettingsPaneKind.forKeyEquivalent(characters: "w", modifierFlags: command) == nil)
+    }
+
+    @Test func commandDigitsWorkOnLayoutsWithoutDigitsOnTheNumberRow() {
+        // French AZERTY gives "&" for the 1 key: like other Mac apps, the key code of the number row (kVK_ANSI_1 to
+        // kVK_ANSI_5: 18, 19, 20, 21, 23) selects the pane when the characters are not a digit.
+        let command: UInt64 = 1 << 20
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 18, modifierFlags: command) == .general)
+        #expect(
+            SettingsPaneKind.forKeyEquivalent(characters: "(", keyCode: 23, modifierFlags: command) == .aboutSupport)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "\u{E9}", keyCode: 19, modifierFlags: command) == .typing)
+        // The characters win when they are a digit; other keys and other modifiers still do nothing.
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "4", keyCode: 18, modifierFlags: command) == .macros)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 22, modifierFlags: command) == nil)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "a", keyCode: 0, modifierFlags: command) == nil)
+        #expect(
+            SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 18, modifierFlags: command | 1 << 17) == nil)
+        #expect(SettingsPaneKind.forKeyEquivalent(characters: "&", keyCode: 18, modifierFlags: 0) == nil)
     }
 
     @Test func sectionsHoldEveryVisibleSettingOnceInSpecOrder() {
@@ -99,14 +117,70 @@ import Testing
     }
 
     @Test func windowSizesFollowSystemSettings() {
-        // About 715 x 470 at the least like System Settings, resizable; the default window (title bar included)
-        // fits a 13-inch display at its default scaling (1440 x 900 points, minus the menu bar and the Dock), and
-        // General and Typing need no scrolling there (PRD-R24 acceptance; the snapshot tool shows both panes).
+        // About 715 x 470 at the least like System Settings, resizable. The content runs under the transparent
+        // title bar, so these are the whole window's sizes: the default fits a 13-inch display at its default
+        // scaling (1440 x 900 points, minus the menu bar and the Dock), and under its 52 pt title bar row General
+        // and Typing need no scrolling (PRD-R24 acceptance; the snapshot tool shows both panes).
         #expect(SettingsWindowLayout.minimumWidth == 715 && SettingsWindowLayout.minimumHeight == 470)
         #expect(SettingsWindowLayout.defaultWidth >= SettingsWindowLayout.minimumWidth)
         #expect(SettingsWindowLayout.defaultHeight >= SettingsWindowLayout.minimumHeight)
-        #expect(SettingsWindowLayout.defaultWidth <= 1_440 && SettingsWindowLayout.defaultHeight + 28 <= 900 - 25 - 80)
+        #expect(SettingsWindowLayout.defaultWidth <= 1_440 && SettingsWindowLayout.defaultHeight <= 900 - 25 - 80)
+        #expect(SettingsWindowLayout.defaultHeight - 52 >= 714, "room for the Typing pane under the title bar row")
         #expect(SettingsWindowLayout.sidebarWidth >= 160 && SettingsWindowLayout.sidebarWidth <= 220)
         #expect(SettingsWindowLayout.minimumWidth - SettingsWindowLayout.sidebarWidth >= 500, "detail column")
+        #expect(SettingsWindowLayout.minimumListWidth == 715 - 190 - 1 - 2 * SettingsWindowLayout.listPaneInset)
+    }
+
+    @Test func appsTableFixedColumnsFitTheirLongestValueAndHeader() throws {
+        // PRD-R34, PRD-R35: the rule, remembered and status columns are as wide as their longest value in the
+        // interface language (plus the pop-up chevron or the status symbol) or their header, so none truncates.
+        let l = try Localizers()
+        let measure: (String, AppsTableLayout.TextStyle) -> Double = { text, style in
+            Double(text.count) * (style == .body ? 2 : 1)
+        }
+        let en = AppsTableLayout.fixedColumns(localizer: l.en, measure: measure)
+        // "Always Vietnamese" (17, small), "Works with notes" (16, body); the header "Remembered" (10, small, plus
+        // the header cell's padding) is wider than "Vietnamese" (10, body).
+        #expect(en.rule == 17 + AppsTableLayout.ruleAccessoryWidth)
+        #expect(en.remembered == 10 + AppsTableLayout.headerPadding)
+        #expect(en.status == 32 + AppsTableLayout.statusAccessoryWidth)
+        // A header wider than every value sets the width; widths are whole points.
+        let wideHeaders = AppsTableLayout.fixedColumns(localizer: l.en) { text, _ in
+            text == l.en.string(AppsText.columnRemembered) ? 300.2 : 10
+        }
+        #expect(wideHeaders.remembered == (300.2 + AppsTableLayout.headerPadding).rounded(.up))
+        #expect(wideHeaders.rule == 10 + AppsTableLayout.ruleAccessoryWidth)
+    }
+
+    @MainActor @Test func appsTableGivesTheRestOfTheWidthToAppNames() throws {
+        // Pa's feedback item 6 (the Settings window looked bad): at the window's minimum width the app name column,
+        // the one a user reads first, takes all the room the other columns do not need. Measured with the system
+        // font the table uses, a name like "Google Chrome" with its icon fits whole in Vietnamese at the minimum
+        // width and in English at the default width (the English rule and status values are longer).
+        let l = try Localizers()
+        let body = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let measure: (String, AppsTableLayout.TextStyle) -> Double = { text, style in
+            Double((text as NSString).size(withAttributes: [.font: style == .body ? body : small]).width)
+        }
+        let minimum = SettingsWindowLayout.minimumListWidth
+        let iconAndGap = 24.0
+        let vi = AppsTableLayout.fixedColumns(localizer: l.vi, measure: measure)
+        let chrome = measure("Google Chrome", .body) + iconAndGap
+        #expect(AppsTableLayout.appColumnWidth(listWidth: minimum, fixed: vi) >= chrome + 8, "room to spare in vi")
+        let en = AppsTableLayout.fixedColumns(localizer: l.en, measure: measure)
+        #expect(AppsTableLayout.appColumnWidth(listWidth: minimum, fixed: en) >= 100)
+        let atDefault = minimum + SettingsWindowLayout.defaultWidth - SettingsWindowLayout.minimumWidth
+        #expect(AppsTableLayout.appColumnWidth(listWidth: atDefault, fixed: en) >= chrome + 20)
+        for localizer in [l.vi, l.en] {
+            let fixed = AppsTableLayout.fixedColumns(localizer: localizer, measure: measure)
+            let app = AppsTableLayout.appColumnWidth(listWidth: minimum, fixed: fixed)
+            // No horizontal scrolling: the four columns fit the list at the minimum width.
+            #expect(app >= AppsTableLayout.appColumnMinimum)
+            #expect(app + fixed.rule + fixed.remembered + fixed.status + AppsTableLayout.tableChrome <= minimum + 0.5)
+            // A wider window gives every extra point to the names.
+            #expect(AppsTableLayout.appColumnWidth(listWidth: minimum + 65, fixed: fixed) == app + 65)
+        }
+        #expect(AppsTableLayout.appColumnWidth(listWidth: 100, fixed: vi) == AppsTableLayout.appColumnMinimum)
     }
 }

@@ -5,6 +5,9 @@
 // where each setting is a row with its title and one-line explanation (PRD-R25) on the left and its control on the
 // right. The App target draws it; the rules that can be checked without drawing live here.
 
+import AppModel
+import CompatRules
+
 /// Decorative tile colour behind a pane's symbol in the sidebar. The pane's name is always next to the tile, so the
 /// colour carries no information of its own (PRD-R67).
 public enum SettingsPaneTint: String, Sendable, Hashable, CaseIterable {
@@ -51,12 +54,25 @@ extension SettingsPaneKind {
         return SettingsPaneKind(shortcutNumber: number)
     }
 
-    /// The pane for a key equivalent: Command alone (caps lock and the keypad bit aside) with a digit from 1 to 5.
-    /// `modifierFlags` carries the bits NSEvent.ModifierFlags and CGEventFlags share.
-    public static func forKeyEquivalent(characters: String?, modifierFlags: UInt64) -> SettingsPaneKind? {
-        guard modifierFlags & ShortcutModifier.significant == ShortcutModifier.command else { return nil }
-        return forShortcut(characters: characters)
+    /// The pane for a key on the number row by its virtual key code (kVK_ANSI_1 to kVK_ANSI_5), for layouts whose
+    /// number row does not type digits without Shift, such as French AZERTY ("&" on the 1 key).
+    public static func forShortcut(keyCode: UInt16?) -> SettingsPaneKind? {
+        guard let keyCode, let number = numberRowKeyCodes[keyCode] else { return nil }
+        return SettingsPaneKind(shortcutNumber: number)
     }
+
+    /// The pane for a key equivalent: Command alone (caps lock and the keypad bit aside) with a digit from 1 to 5,
+    /// or, when the characters are not a digit, the number row key from 1 to 5 like other Mac apps' Command+digit
+    /// shortcuts. `modifierFlags` carries the bits NSEvent.ModifierFlags and CGEventFlags share.
+    public static func forKeyEquivalent(
+        characters: String?, keyCode: UInt16? = nil, modifierFlags: UInt64
+    ) -> SettingsPaneKind? {
+        guard modifierFlags & ShortcutModifier.significant == ShortcutModifier.command else { return nil }
+        return forShortcut(characters: characters) ?? forShortcut(keyCode: keyCode)
+    }
+
+    /// Carbon `kVK_ANSI_1` to `kVK_ANSI_5` (Events.h): the keys, not the characters they type.
+    private static let numberRowKeyCodes: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5]
 }
 
 /// Modifier bits that decide whether a key is a pane shortcut.
@@ -129,12 +145,68 @@ extension SettingsCatalog {
 
 /// Window sizes, in points, like System Settings: about 715 x 470 at the least, resizable; the default opens General
 /// and Typing without scrolling on a 13-inch display at its default scaling, 1440 x 900 points (PRD-R24 acceptance).
-/// The size and position are remembered (PRD-R28).
+/// The content runs under the transparent title bar, so these are the whole window's sizes. The size and position
+/// are remembered (PRD-R28).
 public enum SettingsWindowLayout {
     public static let minimumWidth = 715.0
     public static let minimumHeight = 470.0
     public static let defaultWidth = 780.0
-    public static let defaultHeight = 740.0
+    public static let defaultHeight = 768.0
     /// Fixed: the sidebar does not collapse or resize, like System Settings.
     public static let sidebarWidth = 190.0
+    /// Side insets of the Apps and Macros panes, a little narrower than the grouped sections' so the lists get room.
+    public static let listPaneInset = 12.0
+    /// Width of the Apps and Macros lists at the window's minimum width (sidebar, its 1 pt divider and insets aside).
+    public static var minimumListWidth: Double { minimumWidth - sidebarWidth - 1 - 2 * listPaneInset }
+}
+
+/// Columns of the Apps table (PRD-R34). The rule, remembered-mode and status columns are as wide as their longest
+/// value in the interface language or their header, so none of them truncates; the app name column, the one a user
+/// reads first, takes the rest of the width and every extra point of a wider window (Pa, 2026-11-14, feedback
+/// item 6).
+public enum AppsTableLayout {
+    /// The fonts the table uses: the body font for names, modes and statuses; the small one for the rule pop-up
+    /// (small control size) and the column headers.
+    public enum TextStyle: Sendable { case body, small }
+
+    public struct FixedColumns: Sendable, Equatable {
+        public var rule: Double
+        public var remembered: Double
+        public var status: Double
+
+        public var total: Double { rule + remembered + status }
+    }
+
+    /// The borderless rule pop-up's chevron and the gap before it.
+    public static let ruleAccessoryWidth = 11.0
+    /// The status symbol and the gap before its label (PRD-R67: symbol plus text).
+    public static let statusAccessoryWidth = 22.0
+    /// The app column never gets narrower than this: the icon and a few letters, the full name on hover.
+    public static let appColumnMinimum = 80.0
+    /// The header cell's padding around its title (the header uses the small font).
+    public static let headerPadding = 10.0
+    /// What the inset table style adds around the four columns: the 17 pt gap after each column and the row insets
+    /// on both sides (4 x 17 + 8, measured on the snapshot images).
+    public static let tableChrome = 76.0
+
+    /// Widths of the three fixed columns for `localizer`'s language; `measure` returns a text's width in points in
+    /// a style. Widths are rounded up to whole points.
+    public static func fixedColumns(
+        localizer: Localizer, measure: (String, TextStyle) -> Double
+    ) -> FixedColumns {
+        func width(_ header: AppsText, _ values: [AppsText], _ style: TextStyle, accessory: Double) -> Double {
+            let longest = values.map { measure(localizer.string($0), style) }.max() ?? 0
+            return max(measure(localizer.string(header), .small) + headerPadding, longest + accessory).rounded(.up)
+        }
+        return FixedColumns(
+            rule: width(.columnRule, PerAppRule.allCases.map(\.appsTitle), .small, accessory: ruleAccessoryWidth),
+            remembered: width(.columnRemembered, [.modeVietnamese, .modeEnglish, .modeNone], .body, accessory: 0),
+            status: width(
+                .columnStatus, MatrixStatus.allCases.map(\.appsTitle), .body, accessory: statusAccessoryWidth))
+    }
+
+    /// Width of the app column in a list `listWidth` points wide.
+    public static func appColumnWidth(listWidth: Double, fixed: FixedColumns) -> Double {
+        max(appColumnMinimum, (listWidth - tableChrome - fixed.total).rounded(.down))
+    }
 }

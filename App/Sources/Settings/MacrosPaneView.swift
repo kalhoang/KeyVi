@@ -17,9 +17,7 @@ struct MacrosPaneView: View {
     var body: some View {
         let localizer = model.localizer
         VStack(alignment: .leading, spacing: 12) {
-            GroupBox {
-                SettingItemRow(model: model, item: .macrosEnabled).padding(6)
-            }
+            SettingsCard { SettingItemRow(model: model, item: .macrosEnabled) }
             MacrosToolbar(model: model)
             ListBox {
                 if model.macroList.isEmpty {
