@@ -4,8 +4,9 @@
 # Developer Certificate of Origin check (docs/decisions/0006-app-licence-and-pro-edition.md, QA-R61,
 # CLR-R14): every non-merge commit in BASE..HEAD must carry a `Signed-off-by:` trailer whose e-mail
 # equals the commit author's e-mail (`git commit -s` writes it). The sign-off certifies the DCO 1.1 and
-# affirms the inbound terms of CONTRIBUTING.md section 3 (contributions to GPL-3.0-or-later parts are
-# also licensed to the project under MIT), so it applies to every area of the repository.
+# affirms the inbound terms of CONTRIBUTING.md section 3 (every contribution, to an MPL-2.0 or a
+# GPL-3.0-or-later part, is also licensed to the project under MIT), so it applies to every area of the
+# repository.
 #
 # Inputs: --base and --head commits (ci.yml passes the pull request's base and head SHAs), --path
 # (repeatable; limits the check to commits touching those paths; default: every path), --repo (tests).

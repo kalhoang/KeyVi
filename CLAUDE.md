@@ -50,10 +50,11 @@ and `spec/` keep the brand placeholders.
 
 ## Engineering rules
 - Swift 6 language mode, complete strict concurrency. No global or static mutable state in the engine (ENG-R1202).
-- Every source file starts with an SPDX header: engine packages, the `data/` pipeline and `spec/reference-model` `MPL-2.0`;
-  everything else `GPL-3.0-or-later` (Pa, 2026-11-13; `docs/decisions/0006-app-licence-and-pro-edition.md`). Root `LICENSE`
-  is the verbatim GPL-3.0 text (never edit it); the MPL-2.0 parts carry their own `LICENSE`. Contributions need a DCO sign-off;
-  contributions to GPL parts are also licensed to the project under MIT (`CONTRIBUTING.md` section 3).
+- Every source file starts with an SPDX header: engine packages, the `data/` pipeline and `spec/reference-model`
+  `MPL-2.0`; everything else `GPL-3.0-or-later` (`docs/decisions/0006-app-licence-and-pro-edition.md`, amended
+  2026-11-15). Root `LICENSE` is the verbatim GPL-3.0 text (never edit it); the MPL-2.0 parts carry their own `LICENSE`
+  (the verbatim MPL text, never edit it) and a `NOTICE` with the copyright line. Contributions need a DCO sign-off; every
+  contribution is also licensed to the project under MIT (`CONTRIBUTING.md` section 3).
 - No per-app branches in code: bundle IDs live only in `compat/rules.json`, test fixtures and the
   conflicting-apps list (PLT-R501).
 - Privacy: never log, print or persist typed content (PLT-R901, ENG-R1220). Typed logging API only.
