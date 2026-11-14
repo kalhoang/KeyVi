@@ -159,14 +159,14 @@ final class FocusCore {
         guard running else { return }
         if scanOverlays { syncObservers(scanOverlays: true) }
         refresh(force: false, idle: !scanOverlays)
-        if scanOverlays { scheduleSettle() }
+        if scanOverlays { scheduleSettleUnlessTimedOut() }
     }
 
     /// The read happens now; the settle window reads again in case the app posted before its focus was readable.
     func handleNotification(pid: Int32, kind: AXNotificationKind) {
         guard running else { return }
         refresh(force: false)
-        scheduleSettle()
+        scheduleSettleUnlessTimedOut()
     }
 
     /// Reads the system-wide focus and, when the context changed (or `force`), resolves once and publishes
@@ -181,6 +181,7 @@ final class FocusCore {
         guard running, let rules else { return .unchanged }
         let started = services.clock.now()
         let reading = readFocus(rules: rules, at: started)
+        deferred.lastReadTimedOut = reading.availability == .timedOut
         if idle, learnedNothing(from: reading, at: started) { return .learnedNothing }
         let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false

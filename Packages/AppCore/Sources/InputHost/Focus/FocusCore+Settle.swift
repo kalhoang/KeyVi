@@ -43,12 +43,22 @@ struct FocusDeferredState {
     var settleEpoch: UInt64 = 0
     var settleTimers: [any ScheduledTimer] = []
     var retryTimers: [Int32: any ScheduledTimer] = [:]
+    /// The last focus read timed out (or met an open breaker, PLT-R384).
+    var lastReadTimedOut = false
     /// Told after a deferred refresh published a snapshot, so the main thread follows (the notification path has
     /// `FocusChangeSignalingAXProvider` for that).
     var publicationObserver: (@Sendable () -> Void)?
 }
 
 extension FocusCore {
+    /// Opens the settle window after the read that just happened, unless that read timed out: re-reading an app
+    /// that does not answer would add a breaker count per focus change (PLT-R384), and the next notification or
+    /// the next key after a pause reads again anyway.
+    func scheduleSettleUnlessTimedOut() {
+        guard !deferred.lastReadTimedOut else { return cancelSettle() }
+        scheduleSettle()
+    }
+
     /// Starts the settle window again (a later notification replaces the earlier window).
     func scheduleSettle() {
         guard let scheduler = services.scheduler else { return }
@@ -97,7 +107,8 @@ extension FocusCore {
     }
 
     /// Like the idle revalidation: a timeout teaches nothing and ends the window, so a slow app is not asked
-    /// again and again (each timeout counts towards its circuit breaker, PLT-R384).
+    /// again and again (each timeout counts towards its circuit breaker, PLT-R384). With the notification read
+    /// itself timing out no window opens at all, so a focus change costs one count.
     private func settleReRead() {
         switch refresh(force: false, idle: true) {
         case .learnedNothing: cancelSettle()

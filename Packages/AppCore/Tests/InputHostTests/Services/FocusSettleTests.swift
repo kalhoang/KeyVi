@@ -122,6 +122,26 @@ struct FocusSettleTests {
         #expect(harness.snapshot.field.axAvailability == .available)
     }
 
+    /// PLT-R384: one focus change of a timing-out app costs one breaker count, as before the settle window
+    /// existed. A notification read that timed out opens no window, so two changes within 10 s do not trip.
+    @Test func aTimedOutNotificationReadOpensNoSettleWindow() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(identifier: "a"), notify: nil, element: 1)
+        harness.start()
+        harness.ax.setTimingOut(pid: terminalPID, true)
+        let queries = harness.ax.elementQueryCount(pid: terminalPID)
+        for _ in 0..<2 {
+            harness.advance(by: .seconds(1))
+            harness.ax.post(.focusedElementChanged, from: terminalPID)
+            harness.sync()
+            harness.advance(by: FocusSettle.window)
+        }
+        #expect(harness.ax.elementQueryCount(pid: terminalPID) == queries + 2)
+        #expect(harness.health.recent(limit: 10).filter { $0.kind == .axCircuitBreakerTrip }.isEmpty)
+        #expect(harness.scheduler.pendingCount == 0)
+    }
+
     @Test func aSettlePublicationTellsTheHost() {
         let harness = FocusHarness(scheduled: true)
         defer { harness.finish() }
