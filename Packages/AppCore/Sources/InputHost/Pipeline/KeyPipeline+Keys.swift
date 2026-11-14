@@ -106,10 +106,24 @@ extension KeyPipeline {
         engineDirty = true
         noteEngineCapture(output)
         keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
+        if case .backspace = input, Self.overDeletes(output, replaced: replaced) {
+            // ENG-R714, PLT-R352: a Backspace edit never deletes more than the active token's display. The engine
+            // guarantees it; should it ever answer otherwise, the app deletes its one character and the
+            // composition starts afresh instead of the field losing text the engine cannot vouch for.
+            hardBoundary(.unknown, job: .navigation, generation: focus.generation)
+            return passOrHold(key.event, now: key.now, probe: key.probe)
+        }
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
         // ENG-R861, memory only; ENG-R862: attributed to the app typed in (a copy from the snapshot, PLT-R304).
         if let learning = output.learning { notifyMain(.learning(learning, bundle: focus.app?.bundle)) }
         return apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)
+    }
+
+    /// ENG-R714: the engine's answer to a Backspace deletes more than the display it had (`replaced`).
+    @inline(__always)
+    static func overDeletes(_ output: EngineOutput, replaced: String) -> Bool {
+        guard case .edit(let edit, _) = output.action else { return false }
+        return edit.deleteCount > replaced.count
     }
 
     /// ENG-R1002: a Backspace with no active word that edits or leaves a word active walked back into the
