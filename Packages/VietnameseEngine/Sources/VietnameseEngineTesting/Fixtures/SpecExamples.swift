@@ -26,9 +26,9 @@ public enum PreviousToken: String, Sendable, Hashable {
     }
 }
 
-/// A worked composition example of spec 13.8 (W001-W253).
+/// A worked composition example of spec 13.8 (W001-W253 and W243a-W243j).
 public struct WorkedExample: Sendable, Hashable {
-    /// The row identifier of the spec (W001, B001, E01).
+    /// The row identifier of the spec (W001, W243a, B001, E01).
     public let id: String
     /// The group column of 13.8.
     public let group: String

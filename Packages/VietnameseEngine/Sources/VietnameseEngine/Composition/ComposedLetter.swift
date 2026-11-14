@@ -21,6 +21,31 @@ package struct KeySet: Sendable, Hashable {
 
     @inline(__always)
     package mutating func formUnion(_ other: KeySet) { bits |= other.bits }
+
+    /// The set holds no key.
+    package var isEmpty: Bool { bits == 0 }
+
+    /// The keys of this set that are not in `other`.
+    @inline(__always)
+    package func subtracting(_ other: KeySet) -> KeySet {
+        var result = KeySet()
+        result.bits = bits & ~other.bits
+        return result
+    }
+
+    /// The set holding only the highest index of this set (the newest key); empty if this set is.
+    package var newest: KeySet {
+        guard bits != 0 else { return KeySet() }
+        return KeySet(index: 63 - bits.leadingZeroBitCount)
+    }
+
+    /// The keys in both sets.
+    @inline(__always)
+    package func intersection(_ other: KeySet) -> KeySet {
+        var result = KeySet()
+        result.bits = bits & other.bits
+        return result
+    }
 }
 
 /// One letter of a composing token: its identity, its case, and the keys that made it (6.1).

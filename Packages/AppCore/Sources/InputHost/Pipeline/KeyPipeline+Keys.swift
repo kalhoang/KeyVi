@@ -109,10 +109,24 @@ extension KeyPipeline {
         keyState.lastComposedKeyAt = key.now  // PLT-R340 amendment: the late focus window starts here
         noteEngineCapture(output)
         keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
+        if case .backspace = input, Self.overDeletes(output, replaced: replaced) {
+            // ENG-R714, PLT-R352: a Backspace edit never deletes more than the active token's display. The engine
+            // guarantees it; should it ever answer otherwise, the app deletes its one character and the
+            // composition starts afresh instead of the field losing text the engine cannot vouch for.
+            hardBoundary(.unknown, job: .navigation, generation: focus.generation)
+            return passOrHold(key.event, now: key.now, probe: key.probe)
+        }
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
         // ENG-R861, memory only; ENG-R862: attributed to the app typed in (a copy from the snapshot, PLT-R304).
         if let learning = output.learning { notifyMain(.learning(learning, bundle: focus.app?.bundle)) }
         return apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)
+    }
+
+    /// ENG-R714: the engine's answer to a Backspace deletes more than the display it had (`replaced`).
+    @inline(__always)
+    static func overDeletes(_ output: EngineOutput, replaced: String) -> Bool {
+        guard case .edit(let edit, _) = output.action else { return false }
+        return edit.deleteCount > replaced.count
     }
 
     /// ENG-R1002: a Backspace with no active word that edits or leaves a word active walked back into the
@@ -189,10 +203,16 @@ extension KeyPipeline {
         _ edit: TextEdit, kind: EditKind, replaced: String, trigger: KeyEventRecord?, _ key: KeyInputContext,
         focus: FocusSnapshot, inputSource: InputSourceSnapshot
     ) -> EditJob {
-        // PLT-R405: restores and macros type with the keycode producing their first character, if any.
-        let firstCharacter =
-            kind == .restore || kind == .macro
-            ? edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) } : nil
+        // PLT-R405: restores and macros type with the keycode producing their first character, if any; a Backspace
+        // edit with the keycode of a character of the edit, never with `kVK_Delete` (PLT-R352).
+        let firstCharacter: KeyCode?
+        if kind == .restore || kind == .macro {
+            firstCharacter = edit.insert.first.flatMap { inputSource.table?.keyCode(producing: $0) }
+        } else if VirtualKeyGroup.of(key.event.keyCode) == .backspace {
+            firstCharacter = Self.letterKeyCode(insertion: edit.insert, replaced: replaced, table: inputSource.table)
+        } else {
+            firstCharacter = nil
+        }
         return EditJob(
             sequence: context.queue.nextSequence(), generation: focus.generation, plan: focus.decision.plan,
             field: focus.fieldHandle, kind: kind, deleteCount: edit.deleteCount,
@@ -215,6 +235,19 @@ extension KeyPipeline {
     private static func deliversEdit(_ output: EngineOutput) -> Bool {
         guard case .edit(let edit, _) = output.action else { return false }
         return edit.deleteCount > 0 || !edit.insert.isEmpty
+    }
+
+    /// PLT-R405, PLT-R352: for a Backspace edit, the keycode of the first character of the insertion, or else of
+    /// the replaced text, that the current layout types. Bounded by the token's length; table lookups only.
+    static func letterKeyCode(insertion: String, replaced: String, table: LayoutTable?) -> KeyCode? {
+        guard let table else { return nil }
+        for character in insertion {
+            if let code = table.keyCode(producing: character) { return code }
+        }
+        for character in replaced {
+            if let code = table.keyCode(producing: character) { return code }
+        }
+        return nil
     }
 
     /// PLT-R408: the word began within 300 ms of a focus change or click.

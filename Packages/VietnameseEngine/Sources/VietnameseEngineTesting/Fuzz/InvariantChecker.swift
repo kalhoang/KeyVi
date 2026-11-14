@@ -125,6 +125,9 @@ public struct FuzzStatistics: Sendable, Hashable {
 /// - ENG-R710, ENG-R711: a Backspace on the active token leaves it with fewer characters than before (it
 ///   removes the last visible character; the replay never brings back keys as extra letters), or as
 ///   many when it removes an escaping key and the escaped effect comes back.
+/// - ENG-T38: a Backspace takes exactly the last character of the field and leaves the others as they
+///   were, except the documented exceptions of ENG-R714 (`BackspaceProbe.Outcome`); an edit answering a
+///   Backspace deletes at most the active token's display.
 ///
 /// Checks that cost time proportional to the token are done every event for tokens up to a limit and
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
@@ -193,6 +196,7 @@ public struct InvariantChecker: Sendable {
         remember(event)
         let produced = producedCount(before: event)
         let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
+        let fieldBeforeBackspace = fieldTailBeforeBackspace(event, index: index)
         let before = takesPureReduceSample(index) ? session.state : nil
         let start = Self.uptimeNanoseconds()
         let cpuStart = Self.hangClockNanoseconds()
@@ -206,6 +210,7 @@ public struct InvariantChecker: Sendable {
         try applyToField(event, output, index: index)
         try checkView(index: index)
         try checkBackspace(beforeBackspace, index: index)
+        try checkBackspaceOnlyDeletes(fieldBeforeBackspace, output, index: index)
         try checkState(output, index: index)
         try checkRestore(index: index)
         try checkEscape(index: index)
@@ -396,6 +401,38 @@ public struct InvariantChecker: Sendable {
         guard countAfter < before.count || (before.removesEscape && countAfter == before.count) else {
             throw violation(
                 "ENG-R710", "Backspace left \(countAfter) characters of a token of \(before.count)", index)
+        }
+    }
+
+    // MARK: - ENG-T38: Backspace only deletes
+
+    /// The field tail (the token's display plus a few characters, within the tail window) and the active
+    /// token before a Backspace; nil for other events and for tokens measured only periodically.
+    private func fieldTailBeforeBackspace(_ event: EngineEvent, index: Int) -> (tail: String, token: ActiveToken?)? {
+        guard case .backspace = event, !field.isEmpty else { return nil }
+        let token = session.state.active
+        if let token,
+            token.composition.raw.count > options.perEventTokenLimit || token.display.count >= options.tailWindow
+        {
+            return nil
+        }
+        return (String(field.suffix(options.tailWindow)), token)
+    }
+
+    /// ENG-T38: the tail after the Backspace is the tail before it minus its last character, except the
+    /// documented exceptions of ENG-R714; no Backspace edit deletes more than the active token's display.
+    private func checkBackspaceOnlyDeletes(
+        _ before: (tail: String, token: ActiveToken?)?, _ output: EngineOutput, index: Int
+    ) throws {
+        guard let before else { return }
+        if BackspaceProbe.deletesMoreThanToken(output, token: before.token) {
+            throw violation("ENG-T38", "a Backspace edit deletes more than the token's display", index)
+        }
+        let after = String(field.suffix(max(0, before.tail.count - 1)))
+        let outcome = BackspaceProbe.classify(before: before.tail, after: after, token: before.token)
+        guard outcome != .violation else {
+            throw violation(
+                "ENG-T38", "Backspace turned \(before.tail.debugDescription) into \(after.debugDescription)", index)
         }
     }
 

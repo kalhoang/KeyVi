@@ -129,10 +129,11 @@ Where the owner is another track, the row says so.
 | ENG-R703 | Toggle with nothing to do passes through | `Engine/Reducer.swift` | E05, E06, `RestoreToggleTests.toggleWithoutTokenPassesThrough`, `no-shortcuts.tsv` NS010-NS012 |
 | ENG-R704 | Undo an automatic restore: Backspace, toggle | `Engine/History.swift` (`reopened`) | E04, `RestoreToggleTests.e04UndoesTheAutomaticRestore`, `editing.tsv` ED018-ED019 |
 | ENG-R705 | Restore reproduces digits and doubled letters | `Engine/ActiveToken.swift` | E03, E07, E08, `restore-exact.tsv`, `RestoreToggleTests.vniRestoreReproducesDigits` |
-| ENG-R710 | Backspace removes the letter's keys and recomputes | `Composition/Composition+Rendering.swift` (`backspace`, `Composition.placementOffset`) | W236-W243, `editing.tsv` ED001-ED006, ED033-ED044, `InvariantChecker` (Backspace shortens the token, every fuzz event) |
+| ENG-R710 | Backspace removes the letter's keys and recomputes; a shared modifier key stays with a letter that keeps its mark | `Composition/Composition+Rendering.swift` (`backspace`, `modifierKeysLeavingWith`, `unshownHornBeforeLast`, `Composition.placementOffset`), `Engine/ActiveToken.swift` (`backspace`, commit spelling of a re-opened word) | W236-W243, W243a-W243j, `editing.tsv` ED001-ED006, ED033-ED044, `InvariantChecker` (Backspace shortens the token, every fuzz event), `BackspacePropertyTests` |
 | ENG-R711 | Backspace on an escape letter removes only its key | `Composition/Composition+Rendering.swift` | W241, `RegressionTests.reg24`, `editing.tsv` ED043-ED044 |
 | ENG-R712 | passThrough when one character goes, else an edit | `Engine/DisplayEdit.swift` (`actionForBackspace`) | `EditTraceTests.backspaceActions` |
 | ENG-R713 | Backspace with no token: history rules | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries` |
+| ENG-R714 | Backspace only deletes, documented exceptions | `Composition/Composition+Rendering.swift` (`backspace`), `Engine/DisplayEdit.swift` (`actionForBackspace`) | `BackspacePropertyTests`, `BackspaceRealDataTests` (bundled data), `InvariantChecker.checkBackspaceOnlyDeletes` (every fuzz event), `VietnameseEngineTesting/Simulation/BackspaceProbe.swift` (the exception classes) |
 
 ## 8. Restore policy
 
@@ -242,6 +243,7 @@ Where the owner is another track, the row says so.
 | ENG-T35 | VNI method isolation | `InvariantChecker.checkMethodIsolation` | Fuzz (VNI combinations) |
 | ENG-T36 | Escape: T + K + K ends with K | `InvariantChecker.checkEscape` | Fuzz, `OptionAndEscapeTests.doubledTransformEndsWithTheKey` |
 | ENG-T37 | No non-viable composing display | `InvariantChecker.checkState` | Fuzz, `CompositionPropertyTests` |
+| ENG-T38 | Backspace only deletes (ENG-R714) | `Simulation/BackspaceProbe.swift`, `InvariantChecker.checkBackspaceOnlyDeletes` | Fuzz, `BackspacePropertyTests` (generated corpus, extra orders, mixed case, before and after a boundary), `BackspaceRealDataTests` (English lexicon and tech lists, prose corpus) |
 | ENG-T40 | Benchmark replays the corpus, three typists, fuzz stream | `Benchmarks/EngineBenchmark/` (prose corpus and generated corpus typists, fuzz, bundled resources) | `Scripts/benchmark.sh`, `Benchmarks/baseline.json` |
 
 ## 13.5 Regressions
@@ -278,3 +280,4 @@ Where the owner is another track, the row says so.
 | REG-28 | `dz` onset | `Orthography/Onset.swift` | `RegressionTests.reg28`, B053-B054, `rhymes-rare.tsv` RR048 |
 | REG-29 | `hẹo` restored at Space only | `Commit/CommitRules.swift` (ENG-R316) | `RegressionTests.reg29`, B055-B056 |
 | REG-30 | Restore fired only on Space | `Engine/Reducer+Commit.swift` | `RegressionTests.reg30`, B057-B064, `english.tsv` EN022 |
+| REG-31 | Backspace took the horn off `ư` with the `ơ` | `Composition/Composition+Rendering.swift` (ENG-R710) | `RegressionTests.reg31`, W243a-W243j, `BackspacePropertyTests` |

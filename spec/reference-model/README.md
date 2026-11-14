@@ -5,7 +5,8 @@ A small Python model of the orthography and composition rules in `../01-engine.m
 - `ortho.py`: syllable inventory, tiers, tone rules.
 - `compose.py`: keystroke-to-display composition (Telex, VNI, both tone styles).
 - `boundary.py`: commit / restore decisions; `common_en.txt` is a hand-written English fixture list.
-- `corpus.py`: generates the O1-O4 corpus; `examples.py` checks `examples.json` / `rows.json`.
+- `corpus.py`: generates the O1-O4 corpus; `examples.py` checks its example list (and writes `examples.json`) and every 13.8 row of `rows.json` (`python3 -I examples.py` prints the mismatches; none expected).
+- `compose.py` models Backspace by ENG-R710 as amended on 14/11/2026 (a modifier key shared with a letter that stays keeps marking it, REG-31) and the space boundary with re-open (ENG-R1002) for rows W243h and W243i; the restore decisions of section 8 are left to `boundary.py`.
 
 Known gaps (update the model from the spec before relying on it):
 

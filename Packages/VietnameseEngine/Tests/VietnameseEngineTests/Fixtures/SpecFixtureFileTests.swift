@@ -4,16 +4,18 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Integrity of the corpus files extracted from spec 13.8 to 13.10 by
-/// Scripts/extract-spec-examples.py (253 + 64 + 9 rows), and of the 13.9 fixture resources.
+/// Scripts/extract-spec-examples.py (263 + 64 + 9 rows), and of the 13.9 fixture resources.
 @Suite("Spec fixture files (13.8 to 13.10)")
 struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
         let rows = try SpecExamples.workedExamples(tsv: CorpusFiles.text(SpecExamples.workedExamplesFile))
-        #expect(rows.count == 253)
-        #expect(
-            rows.map(\.id) == (1...253).map { "W" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
+        #expect(rows.count == 263)
+        // REG-31: W243a to W243j follow W243; the suffix keeps the numbers of the rows after them.
+        let numbered = (1...253).map { "W" + String(repeating: "0", count: 3 - String($0).count) + String($0) }
+        let inserted = "abcdefghij".map { "W243" + String($0) }
+        #expect(rows.map(\.id) == numbered.prefix(243) + inserted + numbered.suffix(10))
         #expect(Set(rows.map(\.options)) == ["-", "bracket keys on", "standalone w off"])
-        #expect(rows.filter { $0.method == .vni }.map(\.id).count == 43)
+        #expect(rows.filter { $0.method == .vni }.map(\.id).count == 44)
         let first = try #require(rows.first)
         #expect(first.keys == "as" && first.expected == "á" && first.method == .telex && first.style == .traditional)
         let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
@@ -24,6 +26,8 @@ struct SpecFixtureFileTests {
                 .key(KeyInput("v")), .key(KeyInput("i")), .key(KeyInput("e")), .key(KeyInput("e")), .key(KeyInput("j")),
                 .key(KeyInput("t")), .backspace,
             ])
+        #expect(byID["W243f"]?.method == .vni && byID["W243f"]?.expected == "thư")
+        #expect(byID["W243h"]?.keys == "nguowif ⌫⌫⌫" && byID["W243h"]?.expected == "ngư")
         #expect(byID["W244"]?.inputMethod == .telex(TelexOptions(bracketKeys: true)))
         #expect(byID["W246"]?.inputMethod == .telex(TelexOptions(standaloneW: false)))
         #expect(byID["W252"]?.configuration.inputMethod == .vni)

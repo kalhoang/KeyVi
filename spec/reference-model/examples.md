@@ -243,6 +243,16 @@
 | W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhầm` | deleting the escape letter restores the tone (REG-24) |
 | W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `á` | deleting the escape letter restores the tone |
 | W243 | Backspace inside a token | Telex | trad | - | `duwowngf⌫⌫⌫` | `dư` | ơ deleted with its horn and tone; ư keeps its horn |
+| W243a | Backspace inside a token | Telex | trad | - | `thuowr⌫` | `thư` | one `w` marked `ư` and `ơ`: it stays with `ư` (ENG-R710) |
+| W243b | Backspace inside a token | Telex | trad | - | `dduowcj⌫⌫` | `đư` | the tone goes with `ợ`, the shared `w` stays |
+| W243c | Backspace inside a token | Telex | trad | - | `truowngf⌫⌫⌫` | `trư` | coda, then `ờ`; `ư` keeps its horn |
+| W243d | Backspace inside a token | Telex | trad | - | `thuwor⌫` | `thư` | `uwo` order: the `o` showed its horn by completion (ENG-R530) |
+| W243e | Backspace inside a token | Telex | trad | - | `thuwowr⌫` | `thư` | explicit `uwow`: the second `w` goes, the first keeps `ư` |
+| W243f | Backspace inside a token | VNI | trad | - | `thuo73⌫` | `thư` | one `7` marked `ư` and `ơ`: it stays with `ư` |
+| W243g | Backspace inside a token | Telex | trad | - | `THUOWR⌫` | `THƯ` | uppercase |
+| W243h | Backspace inside a token | Telex | trad | - | `nguowif ⌫⌫⌫` | `ngư` | the first Backspace re-opens the word (ENG-R1002, ENG-R1003) |
+| W243i | Backspace inside a token | Telex | trad | - | `thuowr ⌫⌫` | `thu` | re-opened `thuở` shows the commit spelling `uơ` (ENG-R532): its `u` keeps no horn |
+| W243j | Backspace inside a token | Telex | trad | - | `cuowios⌫⌫` | `cu` | `ô` replaced the horns (ENG-R533): the `u` shows none and stays plain |
 | W244 | Options | Telex | trad | brackets=True | `[` | `ơ` | bracket option on |
 | W245 | Options | Telex | trad | brackets=True | `]` | `ư` | bracket option on |
 | W246 | Options | Telex | trad | standalone_w=False | `w` | `w` | standalone w off |

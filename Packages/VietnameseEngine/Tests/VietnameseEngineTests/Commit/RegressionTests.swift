@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-30, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-31, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-30 (13.5)")
+@Suite("Regressions REG-01 to REG-31 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni)
 
@@ -277,5 +277,24 @@ struct RegressionTests {
             #expect(driver.field.string == keys + boundary, "\(keys)\(boundary.debugDescription)")
             #expect(driver.outputs.last?.decision == .restored(.invalid))
         }
+    }
+
+    @Test("REG-31 Backspace never takes the horn off a letter it does not delete")
+    func reg31() throws {
+        // ENG-R710: one `w` (VNI `7`) marked both letters of `ươ`; deleting `ơ` keeps it for `ư`, inside the
+        // word and after the word is re-opened (ENG-R1002), and the Backspace that deletes `ơ` passes
+        // through (ENG-R712: the field loses exactly one character).
+        for (keys, expected) in [
+            ("thuowr⌫", "thư"), ("dduowcj⌫⌫", "đư"), ("truowngf⌫⌫⌫", "trư"), ("nguowif ⌫⌫⌫", "ngư"),
+            ("Thuowng⌫⌫⌫", "Thư"), ("NGUOWIF ⌫⌫⌫", "NGƯ"),
+        ] {
+            let driver = try Committing.driver(keys)
+            #expect(driver.field.string == expected, "\(keys)")
+            #expect(driver.outputs.last?.action == .passThrough, "\(keys)")
+        }
+        #expect(try Committing.driver("thuo73⌫", vni).field.string == "thư")
+        #expect(try Committing.driver("duo7c5 ⌫⌫⌫", vni).field.string == "dư")
+        // ENG-R532: a re-opened `thuở` shows `uơ`; its `u` shows no horn, so it stays `u`.
+        #expect(try Committing.driver("thuowr ⌫⌫").field.string == "thu")
     }
 }

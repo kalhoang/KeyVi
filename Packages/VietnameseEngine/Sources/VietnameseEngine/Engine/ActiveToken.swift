@@ -43,6 +43,10 @@ package struct ActiveToken: Sendable, Hashable {
     package private(set) var restoredByRule = false
     /// Non-nil for a macro expansion (ENG-R1104); `composition` is then unused.
     package private(set) var macroKeys: MacroTokenKeys?
+    /// Set when the token is re-opened showing the commit spelling `uơ` of an open `ươ` (ENG-R532,
+    /// ENG-R1002) instead of its composed display; cleared by the next event, which shows the composed
+    /// display again.
+    private var showsCommittedSpelling = false
 
     package init() {}
 
@@ -66,6 +70,7 @@ package struct ActiveToken: Sendable, Hashable {
         var token = self
         token.display = display
         token.restoredByRule = restoredByRule
+        token.showsCommittedSpelling = !token.isLiteral && token.composition.writesOpenHornPairAtCommit
         return token
     }
 
@@ -96,6 +101,7 @@ package struct ActiveToken: Sendable, Hashable {
     /// (`passThrough`); composing tokens recompute the display and return the minimal edit (ENG-R610,
     /// ENG-R611). `capsLock` is the key's Caps Lock state (ENG-R906).
     package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> KeyAction {
+        showsCommittedSpelling = false
         if macroKeys != nil {
             macroKeys?.append(key)
             display.unicodeScalars.append(Unicode.Scalar(key))
@@ -132,7 +138,8 @@ package struct ActiveToken: Sendable, Hashable {
             display.unicodeScalars.removeLast()
             return .passThrough
         }
-        composition.backspace(rules: rules)
+        composition.backspace(rules: rules, showsCommittedSpelling: showsCommittedSpelling)
+        showsCommittedSpelling = false
         let newDisplay = composition.display(style: rules.toneStyle)
         let action = DisplayEdit.actionForBackspace(from: display, to: newDisplay)
         display = newDisplay
@@ -142,6 +149,7 @@ package struct ActiveToken: Sendable, Hashable {
     /// The restore toggle (ENG-R701, ENG-R703); the consecutive case (ENG-R702) is handled by the
     /// reducer. Returns nil when neither branch applies, so the key passes through.
     package mutating func toggleRestore(rules: ComposerRules) -> KeyAction? {
+        showsCommittedSpelling = false
         if let macroKeys { return restoreMacroSpan(macroKeys, rules: rules) }
         let raw = rawText
         if display != raw {
