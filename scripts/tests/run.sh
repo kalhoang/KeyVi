@@ -151,16 +151,26 @@ rm "$T"/l/Packages/AppCore/Sources/InputHost/{Bad,Print,Url}.swift
 expect 0 "typed calls, comments and CLI prints pass" "$S/lint-log-interpolation.sh" --root "$T/l"
 
 echo "== check-spdx.sh"
-mkdir -p "$T/s/Packages/VietnameseEngine/Sources" "$T/s/App" "$T/s/scripts" "$T/s/spec"
+mkdir -p "$T/s/Packages/VietnameseEngine/Sources" "$T/s/Packages/VietnameseEngineFuzz" "$T/s/data" "$T/s/App" \
+  "$T/s/scripts" "$T/s/spec/reference-model"
+# ADR 0006 amendment of 2026-11-15: the engine packages, data/ and spec/reference-model/ are MPL-2.0.
 printf '// SPDX-License-Identifier: MPL-2.0\n' >"$T/s/Packages/VietnameseEngine/Sources/A.swift"
+printf '// SPDX-License-Identifier: MPL-2.0\n' >"$T/s/Packages/VietnameseEngineFuzz/F.swift"
+printf '# SPDX-License-Identifier: MPL-2.0\n' >"$T/s/data/build.py"
+printf '# SPDX-License-Identifier: MPL-2.0\n' >"$T/s/spec/reference-model/model.py"
 printf '// SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/App/B.swift"
 printf 'print(1)\n' >"$T/s/spec/model.py"
 printf '#!/bin/sh\n# SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/scripts/tool"
-expect 0 "correct headers pass, spec/ excluded" "$S/check-spdx.sh" --root "$T/s"
+expect 0 "correct headers pass, spec/ excluded except the reference model" "$S/check-spdx.sh" --root "$T/s"
 printf '// SPDX-License-Identifier: MIT\n' >"$T/s/App/B.swift"
+printf '// SPDX-License-Identifier: MIT\n' >"$T/s/Packages/VietnameseEngine/Sources/A.swift"
+printf '# SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/spec/reference-model/model.py"
 printf '#!/bin/sh\necho hi\n' >"$T/s/scripts/tool2"
 expect 1 "wrong licence and missing header fail" "$S/check-spdx.sh" --root "$T/s"
-contains "wrong licence reported" "App/B.swift: SPDX licence MIT"
+contains "wrong licence reported" "App/B.swift: SPDX licence MIT, expected GPL-3.0-or-later"
+contains "the engine expects MPL-2.0" "Packages/VietnameseEngine/Sources/A.swift: SPDX licence MIT, expected MPL-2.0"
+contains "the reference model is checked" \
+  "spec/reference-model/model.py: SPDX licence GPL-3.0-or-later, expected MPL-2.0"
 contains "missing header reported" "scripts/tool2: missing"
 
 echo "== check-url-hosts.sh"
@@ -571,6 +581,12 @@ contains "drop reported" "coverage dropped 2.50 points"
 echo "== rename-app.sh in a scratch copy"
 R="$T/repo"
 mkdir -p "$R/Config" "$R/docs/decisions" "$R/spec"
+# ADR 0006: no LICENSE file is ever rewritten (the verbatim GPL-3.0 and MPL-2.0 texts); the copyright lines that name
+# the product live in the NOTICE files of the MPL-2.0 directories and follow a rename.
+mkdir -p "$R/Packages/VietnameseEngine"
+printf 'Verbatim licence text that happens to contain Test App.\n' >"$R/LICENSE"
+cp "$R/LICENSE" "$R/Packages/VietnameseEngine/LICENSE"
+printf 'Copyright (c) 2026 the Test App authors\n' >"$R/Packages/VietnameseEngine/NOTICE"
 cp -R "$S" "$R/scripts"
 cp "$T/brand.env" "$R/scripts/brand.env"
 cat >>"$R/scripts/brand.env" <<'EOF'
@@ -607,6 +623,16 @@ else
 fi
 expect 0 "rename apply" "$R/scripts/rename-app.sh" "Xuôi" xuoi --bundle-prefix vn.example --domain example.vn --apply
 if grep -q '^APP_DISPLAY_NAME="Xuôi"$' "$R/scripts/brand.env"; then ok "brand.env rewritten"; else ko "brand.env rewritten"; fi
+if grep -qx 'Copyright (c) 2026 the Xuôi authors' "$R/Packages/VietnameseEngine/NOTICE"; then
+  ok "the engine NOTICE names the new authors"
+else
+  ko "the engine NOTICE names the new authors"
+fi
+if grep -q 'contain Test App' "$R/LICENSE" && grep -q 'contain Test App' "$R/Packages/VietnameseEngine/LICENSE"; then
+  ok "the root and engine LICENSE texts stay byte-exact"
+else
+  ko "the root and engine LICENSE texts stay byte-exact"
+fi
 if grep -q '^APP_BUNDLE_ID_DEV = vn.example.xuoi.dev$' "$R/Config/Brand.xcconfig"; then ok "xcconfig rewritten"; else ko "xcconfig rewritten"; fi
 # ADR 0307 amendment: the old folder name (ASCII display name) goes into the legacy list of both files.
 if grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES="Test App"$' "$R/scripts/brand.env" &&

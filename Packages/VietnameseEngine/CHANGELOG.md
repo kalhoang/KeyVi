@@ -59,6 +59,9 @@ separately from the app (spec/04-quality-release.md QA-R27).
 
 ### Changed
 
+- The package is licensed under the Mozilla Public License 2.0 instead of MIT, decided on 15/11/2026 before any
+  release (ENG-R109, `docs/decisions/0006-app-licence-and-pro-edition.md`): `LICENSE` is the verbatim MPL-2.0
+  text, `NOTICE` holds the copyright line, and every source file carries `SPDX-License-Identifier: MPL-2.0`.
 - `Engine.init` builds the generated tables, so their one-time construction (about 12 ms in release) no
   longer lands on the first keystroke (ENG-R1230).
 - Committing or toggling a long literal token costs a copy, not per-character work: a 100,000-key token

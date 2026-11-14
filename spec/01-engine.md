@@ -54,8 +54,8 @@ Keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. Any
 - **ENG-R107** Free-order entry (tone, modifier and `đ` keys typed after later letters, section 4.6) MUST always be on. There is no "free marking" setting.
   *Rationale: in the audited incumbent the most frequent support answer was "turn on free marking", which means the default was wrong. With the viability rule (sections 3.14 and 4.4) free order has no false positives on valid Vietnamese.*
 - **ENG-R108** The engine MUST accept a **restore toggle** event that switches the current token between its Vietnamese form and the keys as typed (section 7.2). The host binds it to a hotkey (`03-product.md` D8: Escape by default, with a setting to turn it off or choose another key).
-- **ENG-R109** The engine MUST be a standalone Swift package with no dependency on the app. Its licence is MPL-2.0.
-  *Rationale: file-level copyleft keeps changes to the engine's own files open, while any app can still embed the engine; through MPL-2.0 section 3.3 it combines with GPL-2.0 projects, which Apache-2.0 does not. Bundled word lists keep their own notices (section 8.2).*
+- **ENG-R109** The engine MUST be a standalone Swift package with no dependency on the app. Its licence is MPL-2.0 (decision of the product owner, 15/11/2026, `docs/decisions/0006-app-licence-and-pro-edition.md`): `LICENSE` is the verbatim MPL-2.0 text, `NOTICE` holds the copyright line, and no file is marked "Incompatible With Secondary Licenses".
+  *Rationale: file-level copyleft keeps changes to the engine's own files open, while any app, closed source or on the App Store, can still embed the engine. Through the Secondary Licenses of MPL-2.0 section 3.3 it combines with GPL-2.0, LGPL-2.1, AGPL-3.0 and GPL-3.0 projects, this app included; Apache-2.0 would not combine with GPL-2.0. The first version said MIT; the change was decided before any release, so no MIT copy was ever distributed. Bundled word lists keep their own notices (section 8.2).*
 - **ENG-R110** The engine MUST match and expand macros (text expansion) at commit, as specified in section 11. The macro table is user data supplied by the host; the engine ships with an empty table.
   *Rationale: every Vietnamese input method users compare against has macros; doing the match inside the engine keeps the edit exact and the trigger restorable.*
 
@@ -1352,7 +1352,7 @@ All answered on 13/11/2026; every answer and the place that implements it is lis
 
 | # | Question | Answer (Pa, 13/11/2026) |
 |---|---|---|
-| Q1 | Engine licence: MIT or Apache-2.0? | MPL-2.0 (ENG-R109); the app is GPL-3.0-or-later (`docs/decisions/0006-app-licence-and-pro-edition.md`). |
+| Q1 | Engine licence: MIT or Apache-2.0? | MPL-2.0 (ENG-R109, amended 15/11/2026 before any release); the app is GPL-3.0-or-later (`docs/decisions/0006-app-licence-and-pro-edition.md`). |
 | Q2 | Default tone style: traditional (`hòa`, `thủy`) or modern (`hoà`, `thuỷ`, textbook standard since 2018)? | Traditional by default, with the setting to change it (ENG-R510, `03-product.md` D2). |
 | Q3 | Review of the ambiguity table: confirm the proposed rows in ENG-R821 and review the top 300 generated candidates. | Lists stay unreviewed for now; unreviewed rows behave as `vi` (ENG-R821). Review later. |
 | Q4 | Restore hotkey: unset (first version) or Escape bound by default? | Escape bound by default, with an on/off setting; compatibility rules turn it off in terminals, IDEs and code editors, games and remote desktop clients (7.2, `03-product.md` D8, `02-platform.md` PLT-R353). |

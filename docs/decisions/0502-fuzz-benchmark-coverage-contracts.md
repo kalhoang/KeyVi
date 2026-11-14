@@ -16,8 +16,8 @@ The CI scripts call code that other tracks write. These are the names and format
 Amended 2026-11-13 after the engine merge: one product with a method switch replaces the two products
 (`fuzz-telex`, `fuzz-vni`) of the first version, and the seeds live in one folder.
 
-- Package `Packages/VietnameseEngineFuzz` (MPL-2.0), executable product `engine-fuzz`. Built with `-DLIBFUZZER`
-  it defines `LLVMFuzzerTestOneInput`; without the flag it has a `main` that replays files and runs seeded
+- Package `Packages/VietnameseEngineFuzz` (MPL-2.0 since 15/11/2026, MIT before; ADR 0006), executable product
+  `engine-fuzz`. Built with `-DLIBFUZZER` it defines `LLVMFuzzerTestOneInput`; without the flag it has a `main` that replays files and runs seeded
   mutations (macOS, whose toolchain has no libFuzzer). The first byte of each input selects the method and
   the options (`Packages/VietnameseEngineFuzz/README.md`, "Input format"); `ENGINE_FUZZ_METHOD=telex|vni`
   pins the method.

@@ -2,7 +2,7 @@
 
 This file lists every third-party dependency, data list and asset that ships with KeyVi or its website, with its licence (CLR-R6, CLR-R7, QA-R66). It must be complete before every public release. Adding a dependency requires a decision record in `docs/decisions/` and an entry here (QA-R24).
 
-The project's own code is GPL-3.0-or-later (the root [LICENSE](LICENSE)); the engine packages and the `data/` pipeline are MPL-2.0 (their own `LICENSE` files; [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)). The entries below are the material that comes from elsewhere or needs a recorded source.
+The project's own code is GPL-3.0-or-later (the root [LICENSE](LICENSE)); the engine packages, the `data/` pipeline and the reference model in `spec/reference-model/` are under the Mozilla Public License 2.0 (each has its own `LICENSE` with the verbatim MPL-2.0 text; the copyright lines are in the `NOTICE` files and in the reference model's README; [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)). The entries below are the material that comes from elsewhere or needs a recorded source.
 
 The project is pre-alpha. Sections marked **placeholder** are filled in by the track or person that owns the item; do not remove them.
 
@@ -174,7 +174,7 @@ The authoritative list, with source URL, pinned version, checksum, licence, the 
 | Place names of Viet Nam (proper-noun test corpus, not shipped) | none (`Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus/proper-nouns.tsv`) | Official register of administrative units of Viet Nam (General Statistics Office); source recorded in the file header; spellings typed by hand | State administrative document excluded from copyright (Article 15 of the same law); place names are facts | Recorded |
 | Other engine test corpora (collisions, editing, macros, layouts, spec examples) | none | Written for this project, or generated from `spec/` by the scripts in `Packages/VietnameseEngine/Scripts/` | MPL-2.0, as the engine package | Original |
 
-Rules (CLR-R6): every list needs a recorded permissive licence (MIT, BSD, Apache-2.0, CC0, CC-BY or public domain). GPL and LGPL data, including the hunspell-vi and Aspell Vietnamese lists, must not be bundled or downloaded. The syllable validator is rule-based, so no Vietnamese dictionary is needed.
+Rules (CLR-R6): every third-party list needs a recorded permissive licence (MIT, BSD, Apache-2.0, CC0, CC-BY or public domain); lists written for this project carry the engine's MPL-2.0. GPL and LGPL data, including the hunspell-vi and Aspell Vietnamese lists, must not be bundled or downloaded. The syllable validator is rule-based, so no Vietnamese dictionary is needed.
 
 ## 4. Assets
 

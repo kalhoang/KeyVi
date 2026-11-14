@@ -37,7 +37,8 @@ Official Gazette (congbao.chinhphu.vn).
    additions to attested.txt)
 ---------------------------------------------------------------------------------------------------
 
-Written by the contributors of the Vietnamese engine and distributed under the same MPL-2.0 licence as
-the engine package (Packages/VietnameseEngine/LICENSE). Product and company names in
+Written by the contributors of the Vietnamese engine and distributed under the same licence as the
+engine package, the Mozilla Public License 2.0 (Packages/VietnameseEngine/LICENSE and NOTICE in the
+engine's source repository; https://mozilla.org/MPL/2.0/). Product and company names in
 tech-always.txt are trademarks of their respective owners; they are listed only so that typing them
 is not altered.

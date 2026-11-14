@@ -65,7 +65,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 |---|---|---|---|---|---|
 | PLT-R101 | Swift 6 strict concurrency, pinned toolchain | `Packages/AppCore/Package.swift`, `project.yml` | L | all (integrator); CI track pins Xcode |  |
 | PLT-R102 | SwiftPM targets and responsibilities | `Packages/AppCore/Package.swift`, ADR 0302 | D | skeleton (done) |  |
-| PLT-R103 | Engine package permissive, no AppKit/CG/Carbon | `Packages/VietnameseEngine` | L | engine track |  |
+| PLT-R103 | Engine package MPL-2.0, no AppKit/CG/Carbon | `Packages/VietnameseEngine` | L | engine track |  |
 | PLT-R104 | Sparkle only runtime dependency, exact pin, resolved file committed | `project.yml`, `Config/Package.resolved`; unit evidence: UpdaterTests `BuiltBundleTests` (run by `ci.yml` macos-app) | L, U | skeleton (done); W2-D |  |
 | PLT-R105 | Universal binary (arm64 + x86_64), Intel supported | `Config/Release.xcconfig`, `.github/workflows/ci.yml` job `macos-x86_64` (AppCore suite under Rosetta) | R, U, M | W4-A (ADR 0315); release track (`lipo` check) | **Pa** (Intel smoke test when hardware exists) |
 | PLT-R106 | macOS 12.0 minimum; newer APIs only behind `#available`; RealtimeSupport `Atomic`, `Mutex`, `TimeSpan` instead of `Synchronization` and `Duration` | `Package.swift` (AppCore, engine, fuzz), `project.yml`, `RealtimeSupport`, ADR 0315 | L, U | W4-A; every build fails on unguarded newer APIs; strong imports checked against the macOS 12.0 SDK (ADR 0315) |  |

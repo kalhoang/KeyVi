@@ -327,9 +327,12 @@ class FrontDoorBrandTests(unittest.TestCase):
         """The name is final (2026-11-13), the floor is macOS 12 (ADR 0315), the licences are decided (ADR 0006)."""
         for rel, current, stale in (
             ("README.md", ("macOS 12 Monterey or later", "Apple silicon or Intel", "GNU General Public License",
-                           "MPL-2.0-licensed", "Config/Brand.xcconfig", "scripts/brand.env", "0315-minimum-macos-12.md"),
-             ("name is temporary", "not been chosen", "macOS 15", "macOS 14", "pending confirmation")),
-            ("README.vi.md", ("macOS 12 Monterey trở lên", "chip Apple hoặc Intel", "GNU GPL", "giấy phép MPL-2.0",
+                           "Mozilla Public License 2.0 (MPL-2.0)", "Config/Brand.xcconfig", "scripts/brand.env",
+                           "0315-minimum-macos-12.md"),
+             ("name is temporary", "not been chosen", "macOS 15", "macOS 14", "pending confirmation",
+              "MIT-licensed")),
+            ("README.vi.md", ("macOS 12 Monterey trở lên", "chip Apple hoặc Intel", "GNU GPL",
+                              "Giấy phép Công cộng Mozilla 2.0 (MPL-2.0)",
                               "Config/Brand.xcconfig", "scripts/brand.env", "0315-minimum-macos-12.md"),
              ("tên tạm", "chưa được chọn", "macOS 15", "macOS 14", "chờ người phát triển")),
         ):
@@ -917,24 +920,43 @@ class DevRecorderBuildTests(unittest.TestCase):
 
 
 class LicenceTests(unittest.TestCase):
-    """ADR 0006 (Pa, 2026-11-13): the app is GPL-3.0-or-later, the engine packages, the data pipeline and the
-    reference model are MPL-2.0, every contribution is signed off (DCO) and contributions to GPL-covered parts are also
-    licensed to the project under MIT (QA-R61, PLT-R108, CLR-R11)."""
+    """ADR 0006 (Pa, 2026-11-13, amended 2026-11-15): the app is GPL-3.0-or-later; the engine packages, the data
+    pipeline and the reference model are MPL-2.0 (MIT until the amendment, decided before any release); every
+    contribution is signed off (DCO) and is also licensed to the project under MIT, the MPL-2.0 parts as well as the
+    GPL-covered ones (QA-R61, PLT-R103, PLT-R108, ENG-R109, CLR-R11)."""
 
     # SHA-256 of https://www.gnu.org/licenses/gpl-3.0.txt as fetched on 2026-11-13 (35,149 bytes, the verbatim text).
     GPL3_SHA256 = "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
-    # spec/reference-model is MPL-2.0 too, through the SPDX header of each script and its README (spec/ keeps brand
-    # placeholders and is never rewritten by scripts/rename-app.sh, so it holds no LICENSE naming the product).
-    MIT_DIRS = ("Packages/VietnameseEngine", "Packages/VietnameseEngineFuzz", "data")
-    # SHA-256 of the verbatim Mozilla Public License 2.0 text (https://www.mozilla.org/media/MPL/2.0/index.txt).
+    # SHA-256 of https://www.mozilla.org/media/MPL/2.0/index.txt as fetched on 2026-11-15 (16,726 bytes, the verbatim
+    # text). It has no copyright line, so the MPL-2.0 directories carry it unchanged and name their authors elsewhere.
     MPL2_SHA256 = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    MPL_DIRS = ("Packages/VietnameseEngine", "Packages/VietnameseEngineFuzz", "data", "spec/reference-model")
+    # The copyright line names the product: a NOTICE beside the LICENSE (literal name, rewritten by
+    # scripts/rename-app.sh) outside spec/; the README in spec/reference-model (spec/ keeps brand placeholders and is
+    # never rewritten by a rename).
+    NOTICE_DIRS = ("Packages/VietnameseEngine", "Packages/VietnameseEngineFuzz", "data")
+    # MPL-2.0 Exhibit A, as the notice of every file in those directories (the MPL allows it to live in a NOTICE or
+    # LICENSE file of the directory instead of each file).
+    EXHIBIT_A = ("This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of "
+                 "the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.")
+    # Exhibit B would forbid combining the engine with the GPL app (MPL-2.0 section 3.3, Secondary Licenses).
+    EXHIBIT_B = "Incompatible With Secondary " + "Licenses"  # split so this file does not match its own search
     ADR = REPO / "docs" / "decisions" / "0006-app-licence-and-pro-edition.md"
     PENDING_ID = "LicenseRef-" + "App-Pending"  # split so this file does not match its own search
+    MIT_SPDX = "SPDX-License-Identifier: " + "MIT"  # split so this file does not match its own search
 
     @staticmethod
     def brand_name() -> str:
         env = (REPO / "scripts" / "brand.env").read_text(encoding="utf-8")
         return re.search(r'^APP_DISPLAY_NAME="([^"]+)"$', env, re.M).group(1)
+
+    @staticmethod
+    def flat(text: str) -> str:
+        return " ".join(text.split())
+
+    @staticmethod
+    def listed() -> list[str]:
+        return run("git", "-C", str(REPO), "ls-files", check=True).stdout.splitlines()
 
     def test_root_licence_is_the_verbatim_gpl_3_text(self):
         data = (REPO / "LICENSE").read_bytes()
@@ -942,36 +964,81 @@ class LicenceTests(unittest.TestCase):
                                         b"                       Version 3, 29 June 2007\n"))
         self.assertEqual(hashlib.sha256(data).hexdigest(), self.GPL3_SHA256, "LICENSE must be byte-exact")
 
-    def test_engine_parts_carry_the_verbatim_mpl_2_text(self):
-        for directory in self.MIT_DIRS:
+    def test_mpl_parts_carry_the_verbatim_mpl_2_text(self):
+        for directory in self.MPL_DIRS:
             with self.subTest(directory=directory):
                 data = (REPO / directory / "LICENSE").read_bytes()
                 self.assertTrue(data.startswith(b"Mozilla Public License Version 2.0\n"))
                 self.assertEqual(hashlib.sha256(data).hexdigest(), self.MPL2_SHA256, "LICENSE must be byte-exact")
 
-    def test_mit_parts_match_the_spdx_lint(self):
-        lint = (REPO / "scripts" / "check-spdx.sh").read_text(encoding="utf-8")
-        mit_path = re.compile(re.search(r'MIT_PATH = re\.compile\(r"([^"]+)"\)', lint).group(1))
-        for directory in self.MIT_DIRS:
+    def test_mpl_parts_name_their_authors_and_carry_exhibit_a(self):
+        copyright_line = f"Copyright (c) 2026 the {self.brand_name()} authors"
+        for directory in self.NOTICE_DIRS:
             with self.subTest(directory=directory):
-                self.assertRegex(f"{directory}/x.swift", mit_path)
-        self.assertNotRegex("App/x.swift", mit_path)
+                text = self.flat((REPO / directory / "NOTICE").read_text(encoding="utf-8"))
+                for needle in (copyright_line, self.EXHIBIT_A, "LICENSE", "SPDX-License-Identifier: MPL-2.0",
+                               "section 3.3", "GPL-3.0-or-later"):
+                    with self.subTest(needle=needle):
+                        self.assertIn(needle, text)
+        readme = self.flat((REPO / "spec" / "reference-model" / "README.md").read_text(encoding="utf-8"))
+        for needle in ("Copyright (c) 2026 the {{AppName}} authors", self.EXHIBIT_A, "MPL-2.0", "`LICENSE`"):
+            with self.subTest(reference_model=needle):
+                self.assertIn(needle, readme)
+
+    def test_no_mpl_part_is_marked_incompatible_with_secondary_licences(self):
+        offenders = []
+        for rel in self.listed():
+            if not rel.startswith(tuple(f"{directory}/" for directory in self.MPL_DIRS)) or rel.endswith("/LICENSE"):
+                continue  # the LICENSE files are the verbatim text, Exhibit B template included
+            path = REPO / rel
+            if path.suffix.lower() in IMAGE_SUFFIXES or not path.is_file():
+                continue
+            if self.EXHIBIT_B in path.read_text(encoding="utf-8", errors="replace"):
+                offenders.append(rel)
+        self.assertEqual(offenders, [], "the engine must stay combinable with the GPL app (MPL-2.0 section 3.3)")
+
+    def test_mpl_parts_match_the_spdx_lint(self):
+        lint = (REPO / "scripts" / "check-spdx.sh").read_text(encoding="utf-8")
+        mpl_path = re.compile(re.search(r'MPL_PATH = re\.compile\(r"([^"]+)"\)', lint).group(1))
+        excluded = re.search(r'EXCLUDED = re\.compile\((r"[^\n]+"\n\s+r"[^\n]+")\)', lint)
+        self.assertIsNotNone(excluded, "check-spdx.sh no longer defines EXCLUDED")
+        excluded = re.compile("".join(re.findall(r'r"([^"]*)"', excluded.group(1))))
+        for directory in self.MPL_DIRS:
+            with self.subTest(directory=directory):
+                self.assertRegex(f"{directory}/x.py", mpl_path)
+                self.assertIsNone(excluded.search(f"{directory}/x.py"), "the MPL-2.0 directories are checked")
+        self.assertNotRegex("App/x.swift", mpl_path)
+        self.assertIsNotNone(excluded.search("spec/x.py"), "the rest of spec/ stays out of the lint")
         for script in sorted((REPO / "spec" / "reference-model").glob("*.py")):
             with self.subTest(reference_model=script.name):
-                self.assertEqual(script.read_text(encoding="utf-8").splitlines()[0], "# SPDX-License-Identifier: MPL-2.0")
+                self.assertEqual(script.read_text(encoding="utf-8").splitlines()[0],
+                                 "# SPDX-License-Identifier: MPL-2.0")
 
-    def test_a_rename_never_touches_the_gpl_text(self):
+    def test_no_file_still_carries_the_mit_identifier(self):
+        offenders = []
+        for rel in self.listed():
+            if rel.startswith(("scripts/tests/", "docs/decisions/")) or Path(rel).suffix.lower() in IMAGE_SUFFIXES:
+                continue  # the lint self-tests write a wrong header on purpose; decision records keep their history
+            path = REPO / rel
+            if path.is_file() and self.MIT_SPDX in path.read_text(encoding="utf-8", errors="replace"):
+                offenders.append(rel)
+        self.assertEqual(offenders, [], "the engine parts are MPL-2.0 since 2026-11-15 (ADR 0006 amendment)")
+
+    def test_a_rename_never_touches_a_licence_text(self):
         rename = (REPO / "scripts" / "rename-app.sh").read_text(encoding="utf-8")
         excluded = re.search(r'EXCLUDED = re\.compile\((r"[^\n]+"\n\s+r"[^\n]+")\)', rename)
         self.assertIsNotNone(excluded, "rename-app.sh no longer defines EXCLUDED")
         pattern = re.compile("".join(re.findall(r'r"([^"]*)"', excluded.group(1))))
-        self.assertTrue(pattern.search("LICENSE"), "the verbatim GPL text must stay byte-exact after a rename")
-        self.assertFalse(pattern.search("data/LICENSE"), "the engine licences follow a rename")
+        for rel in ("LICENSE", *(f"{directory}/LICENSE" for directory in self.MPL_DIRS)):
+            with self.subTest(licence=rel):
+                self.assertTrue(pattern.search(rel), "the verbatim GPL and MPL texts stay byte-exact after a rename")
+        for directory in self.NOTICE_DIRS:
+            with self.subTest(notice=directory):
+                self.assertFalse(pattern.search(f"{directory}/NOTICE"), "the copyright lines follow a rename")
 
     def test_no_file_still_calls_the_app_licence_pending(self):
-        listed = run("git", "-C", str(REPO), "ls-files", check=True).stdout.splitlines()
         offenders = []
-        for rel in listed:
+        for rel in self.listed():
             if rel.startswith("docs/decisions/") or Path(rel).suffix.lower() in IMAGE_SUFFIXES:
                 continue  # decision records keep their history
             path = REPO / rel
@@ -990,24 +1057,46 @@ class LicenceTests(unittest.TestCase):
                 self.assertNotIn("not decided", line.lower())
         platform = (REPO / "spec" / "02-platform.md").read_text(encoding="utf-8")
         plt_r108 = next(line for line in platform.splitlines() if line.startswith("- **PLT-R108**"))
-        for needle in ("GPL-3.0-or-later", "compat-rules.json", "injection"):
+        for needle in ("GPL-3.0-or-later", "compat-rules.json", "injection", "MPL-2.0"):
             self.assertIn(needle, plt_r108)
         self.assertNotIn("open decision", plt_r108)
+        plt_r103 = next(line for line in platform.splitlines() if line.startswith("- **PLT-R103**"))
+        self.assertIn("MPL-2.0", plt_r103)
         quality = (REPO / "spec" / "04-quality-release.md").read_text(encoding="utf-8")
         qa_r61 = quality.split("QA-R61 ", 1)[1].split("\nQA-R62 ", 1)[0]
-        for needle in ("Signed-off-by", "MIT", "no CLA"):
+        for needle in ("Signed-off-by", "MIT", "no CLA", "MPL-2.0"):
             self.assertIn(needle, qa_r61)
         self.assertNotIn("open for Pa", qa_r61)
+
+    def test_the_engine_requirements_state_mpl_2(self):
+        """ENG-R109 and the engine licence rows of the open-decision lists follow the amendment of 2026-11-15."""
+        engine = (REPO / "spec" / "01-engine.md").read_text(encoding="utf-8")
+        overview = (REPO / "spec" / "00-overview.md").read_text(encoding="utf-8")
+        rows = {
+            "ENG-R109": next(line for line in engine.splitlines() if line.startswith("- **ENG-R109**")),
+            "ENG Q1": next(line for line in engine.splitlines() if line.startswith("| Q1 |")),
+            "engine intent": next(line for line in engine.splitlines() if line.startswith("| Engine licence intent")),
+            "00 row 3": next(line for line in overview.splitlines() if line.startswith("| 3 | Engine licence")),
+        }
+        for name, line in rows.items():
+            with self.subTest(row=name):
+                self.assertIn("MPL-2.0", line)
+                self.assertNotIn("SHOULD be MIT", line)
+                self.assertNotIn("MIT stays", line)
 
     def test_contributing_states_dco_and_inbound_mit_without_a_cla(self):
         text = " ".join((REPO / "CONTRIBUTING.md").read_text(encoding="utf-8").split())
         for needle in ("Signed-off-by", "Developer Certificate of Origin", "https://developercertificate.org",
                        "GPL-3.0-or-later", "also licensed to the project under the MIT licence",
+                       "A contribution to an MPL-2.0 part is licensed under MPL-2.0", "MPL-2.0 (SPDX `MPL-2.0`)",
                        "No contributor licence agreement", "ADR 0006", "scripts/check-dco.sh",
-                       "A pull request with an unsigned commit is not merged"):
+                       "A pull request with an unsigned commit is not merged",
+                       "Permission is hereby granted, free of charge"):
             with self.subTest(needle=needle):
                 self.assertIn(needle, text)
         self.assertNotIn("not accepted until", text)
+        # The MIT text of the inbound grant is in CONTRIBUTING.md itself: no LICENSE file of the repository is MIT.
+        self.assertNotIn("the text of [Packages/VietnameseEngine/LICENSE]", text)
         # The merge rule must not depend on the CI scope: the dco job of ci.yml checked only the engine paths when
         # ADR 0006 was written, so CONTRIBUTING.md states the rule, not what CI happens to check.
         self.assertNotIn("checks every commit of a pull request from a fork", text)
@@ -1017,17 +1106,24 @@ class LicenceTests(unittest.TestCase):
         section = text.split("## Sign-off and licence", 1)[1].split("\n## ", 1)[0]
         self.assertIn("Signed-off-by:", section)
         self.assertIn("MIT", section)
+        self.assertIn("MPL-2.0", section)
         self.assertIn("GPL-3.0-or-later", section)
         self.assertNotIn("Not required for non-engine areas", text)
+        self.assertIn("`MPL-2.0` in the engine packages", text)
 
     def test_adr_0006_records_the_decision(self):
         text = " ".join(self.ADR.read_text(encoding="utf-8").split())
         self.assertTrue(text.startswith("# 0006. App licence and the Pro edition"))
         for needle in ("Status: accepted", "GPL-3.0-or-later", "MIT", "Developer Certificate of Origin", "PLT-R108",
                        "compat-rules.json", "injection", "99,000 VND", "after 1.0", "lifetime", "private module",
-                       "signature", "offline", "Supersedes", "0401", "withdrawn", "no paid edition"):
+                       "signature", "offline", "Supersedes", "0401", "withdrawn", "no paid edition",
+                       "## Amendment, 15/11/2026: the engine parts are MPL-2.0", "file-level copyleft",
+                       "App Store", "Secondary License", "before any release", self.MPL2_SHA256):
             with self.subTest(needle=needle):
                 self.assertIn(needle, text)
+        amendments = re.findall(r"^## Amendment, .+$", self.ADR.read_text(encoding="utf-8"), re.M)
+        self.assertEqual(amendments, ["## Amendment, 15/11/2026: no paid edition",
+                                      "## Amendment, 15/11/2026: the engine parts are MPL-2.0"])
         adr_0001 = (REPO / "docs" / "decisions" / "0001-defaults-for-open-decisions.md").read_text(encoding="utf-8")
         status = next(line for line in adr_0001.splitlines() if line.startswith("- Status:"))
         self.assertIn("0005", status)

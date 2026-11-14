@@ -1,0 +1,14 @@
+VietnameseEngineFuzz, the fuzzing package of the KeyVi typing engine
+Copyright (c) 2026 the KeyVi authors
+
+This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not
+distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+This notice (MPL-2.0 Exhibit A) applies to every file in this directory and below it, the seed corpus included.
+The licence text is the file LICENSE beside this one, unchanged, and every source file carries
+SPDX-License-Identifier: MPL-2.0. No Exhibit B notice applies, so a Larger Work may combine these files with code
+under the GNU GPL, LGPL or AGPL (Secondary Licenses, MPL-2.0 section 3.3), as the KeyVi app does under
+GPL-3.0-or-later.
+
+"The KeyVi authors" are Kal, the maintainer and copyright holder of the original work, and every contributor, as
+recorded by the git history and the Signed-off-by lines (CONTRIBUTING.md section 3).
