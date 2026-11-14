@@ -167,6 +167,24 @@ private func boundaries(_ records: [DevTraceRecord]) -> [(reason: String, job: S
         #expect(capture.dev.takeAttention() == [.commit])
     }
 
+    /// PLT-R904A readback pause (incidents 1 and 10 of 2026-11-14): every key down and click the tap records tells
+    /// the recorder when input last went down; key ups and modifier changes do not.
+    @Test func keyDownsAndClicksMarkInputActivity() throws {
+        let clock = ManualClock()
+        let capture = try startedCapture(clock: clock)
+        let fixture = PipelineFixture(clock: clock, capture: capture)
+        #expect(capture.dev.inputActivity.count == 0 && capture.dev.inputActivity.lastInput == nil)
+        clock.advance(byMicroseconds: 5_000)
+        fixture.typeKeys([Key.a, Key.s])
+        #expect(capture.dev.inputActivity.count == 2)
+        #expect(capture.dev.inputActivity.lastInput == clock.now())
+        clock.advance(byMicroseconds: 5_000)
+        fixture.flags(Key.shift, Flag.shift)
+        #expect(capture.dev.inputActivity.count == 2)
+        fixture.send(PipelineFixtures.keyEvent(.leftMouseDown, 0, at: clock.now()))
+        #expect(capture.dev.inputActivity.count == 3 && capture.dev.inputActivity.lastInput == clock.now())
+    }
+
     /// PLT-R905 rules: nothing from a secure field, not even the marker.
     @Test func aSecureFieldRecordsNothing() throws {
         let clock = ManualClock()

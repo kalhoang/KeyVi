@@ -21,7 +21,8 @@ public enum DevRecorderLimits {
 enum DevTraceFiles {
     static let folderName = "dev-traces"
     static let fileExtension = "jsonl"
-    static let formatVersion = 1
+    /// 2: readback lines carry `durUs`, `waitUs`, `idleUs` and `overlap` (2026-11-14 incidents).
+    static let formatVersion = 2
 
     /// `YYYYMMDD-HH` of `date` in `timeZone`.
     static func hourKey(for date: Date, timeZone: TimeZone) -> String {
@@ -139,6 +140,11 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var text: String?
     var selLoc: Int?
     var selLen: Int?
+    // readback timing (format version 2)
+    var durUs: UInt64?
+    var waitUs: UInt64?
+    var idleUs: UInt64?
+    var overlap: Bool?
     // settings
     var s: [String: String]?
 
@@ -194,6 +200,10 @@ extension DevTraceLine {
             selLen = readback.selectionLength
             bundle = readback.bundle
             rule = readback.rule
+            durUs = readback.durationMicroseconds
+            waitUs = readback.waitMicroseconds
+            idleUs = readback.idleMicroseconds
+            overlap = readback.overlap ? true : nil
         case .mode(let change):
             self.init(type: .mode, t: t)
             mode = change.mode.rawValue

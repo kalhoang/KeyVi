@@ -42,6 +42,12 @@ public enum DevTraceRecord: Sendable {
         case .mode(let mode): mode.at
         }
     }
+
+    /// The end of an edit job, for the readback's pause (a borrow, so a consuming push can still move the record).
+    var jobEnd: MonotonicInstant? {
+        if case .job(let job) = self { return job.at }
+        return nil
+    }
 }
 
 public enum DevMarkerSource: String, Sendable, Codable {
@@ -183,7 +189,8 @@ public enum DevReadbackStatus: String, Sendable {
     case failed
 }
 
-/// At most 64 UTF-16 units before the caret and the selected range (content, dev builds only).
+/// At most 64 UTF-16 units before the caret and the selected range (content, dev builds only), with the read's
+/// timing (format version 2, after the incidents of 2026-11-14).
 public struct DevReadbackRecord: Sendable, Hashable {
     public var reason: DevReadbackReason
     public var status: DevReadbackStatus
@@ -192,7 +199,16 @@ public struct DevReadbackRecord: Sendable, Hashable {
     public var selectionLength: Int?
     public var bundle: String?
     public var rule: String?
+    /// When the read started (after the pause).
     public var at: MonotonicInstant
+    /// How long the AX calls took, timeouts included; nil when no AX call was made.
+    public var durationMicroseconds: UInt64?
+    /// From the first trigger to the start of the read (the pause it waited for).
+    public var waitMicroseconds: UInt64?
+    /// How long no key, click or job had happened when the read started; nil before any input.
+    public var idleMicroseconds: UInt64?
+    /// A key or click went down while the read was in flight: the read may have raced the app's handling of it.
+    public var overlap = false
 
     public init(
         reason: DevReadbackReason, status: DevReadbackStatus, textBeforeCaret: String? = nil,
@@ -207,6 +223,31 @@ public struct DevReadbackRecord: Sendable, Hashable {
         self.bundle = bundle
         self.rule = rule
         self.at = at
+    }
+}
+
+/// Input as the readback's pause sees it (PLT-R904A): how many keys and clicks went down since launch, the last
+/// one, and the end of the last edit job. A readback reads only after `latest` is at least 1 s old.
+public struct DevInputActivity: Sendable, Hashable {
+    /// Keys and clicks down since launch; a change during a read means a key overlapped it.
+    public var count: UInt64
+    public var lastInput: MonotonicInstant?
+    public var lastJob: MonotonicInstant?
+
+    /// The later of the last key or click and the last job end.
+    public var latest: MonotonicInstant? {
+        switch (lastInput, lastJob) {
+        case (let input?, let job?): max(input, job)
+        case (let input?, nil): input
+        case (nil, let job?): job
+        case (nil, nil): nil
+        }
+    }
+
+    public init(count: UInt64, lastInput: MonotonicInstant?, lastJob: MonotonicInstant?) {
+        self.count = count
+        self.lastInput = lastInput
+        self.lastJob = lastJob
     }
 }
 

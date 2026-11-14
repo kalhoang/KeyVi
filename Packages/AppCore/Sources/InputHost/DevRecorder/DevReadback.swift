@@ -2,14 +2,19 @@
 //
 // Field readback for the dev recorder (PLT-R904A, ADR 0007): what the focused field really shows before the caret
 // (at most 64 UTF-16 units) and the selection, next to what KeyVi believes it typed. Debug configuration only. Runs
-// on the recorder's attention queue, never on the tap: about 300 ms after a Backspace that edited or a committed
-// word (debounced, at most one read per 300 ms) and at once for a marker. Observer rule: the recorder must not
-// change what KeyVi does or what the app sees, so it reads only where the app's compat rule lets KeyVi rely on
-// accessibility (never under `requireTextFocus: never`, as for `electron.default`), never sets
-// AXEnhancedUserInterface or AXManualAccessibility, and never reads a secure field or while secure input is on.
-// It never shares the inject worker's AX element (a private reference from `DevReadbackFieldResolver`, so AX's
-// per-element messaging timeout of the worker stays as the worker set it) and never reads beside an edit job: it
-// waits while the injection queue has a queued or in-flight job, and stops between its reads if one starts.
+// on the recorder's attention queue, never on the tap, and only in a typing pause: no key or click down and no edit
+// job for `quietPeriod`. The first recorder read 300 ms after a commit, that is while the user typed the next word;
+// on 2026-11-14 a WebKit editor lost a key that had gone down a few tens of milliseconds before such a read
+// (incidents 1 and 10 of that day's trace). KeyVi itself holds keys while a job touches AX; an observer cannot hold
+// keys, so it waits until nothing is being typed. A key that still goes down while a read is in flight is flagged
+// on the line (`overlap`), and every read records how long its AX calls took and how long it waited.
+// Observer rule: the recorder must not change what KeyVi does or what the app sees, so it reads only where the
+// app's compat rule lets KeyVi rely on accessibility (never under `requireTextFocus: never`, as for
+// `electron.default`), never sets AXEnhancedUserInterface or AXManualAccessibility, and never reads a secure field
+// or while secure input is on. It never shares the inject worker's AX element (a private reference from
+// `DevReadbackFieldResolver`, so AX's per-element messaging timeout of the worker stays as the worker set it) and
+// never reads beside an edit job: a queued or in-flight job postpones it like a key, and a job starting between its
+// AX calls stops it.
 
 #if DEV_RECORDER
 public import Diagnostics
@@ -18,24 +23,46 @@ public import RealtimeSupport
 internal import AppModel
 
 public final class DevReadback: Sendable {
-    /// Delay after a Backspace edit or a commit, so the read sees the settled field.
-    public static let delay: TimeSpan = .milliseconds(300)
+    /// A read starts only after this long without a key or click down and without an edit job. Twice PLT-R382's
+    /// 500 ms, the spec's bound of continuous typing: a pause that long is neither between two keys of a word nor
+    /// between two words typed in a row (incident 10: 64 to 70 ms between keys, 95 ms from the space to the next
+    /// word), and a key the app was still handling has long been delivered. Short enough that most pauses to read
+    /// or think still get a read.
+    public static let quietPeriod: TimeSpan = .seconds(1)
     /// At most one read per this interval (the app answers every AX request on its main thread).
     public static let minimumInterval: TimeSpan = .milliseconds(300)
-    /// A trigger never waits longer than this behind later triggers.
-    public static let maximumDelay: TimeSpan = .seconds(1)
-    /// Short AX messaging timeout for each of the two reads.
+    /// Short AX messaging timeout for each AX call.
     public static let axTimeout: TimeSpan = .milliseconds(50)
     /// PLT-R343's bound on any read.
     public static let maximumUnits = 64
-    /// While an edit job is queued or in flight, the read is tried again after this (within `maximumDelay`).
-    public static let busyRetry: TimeSpan = .milliseconds(20)
+
+    /// What the scheduler knew when it confirmed the pause.
+    struct Timing {
+        var waitMicroseconds: UInt64?
+        var idleMicroseconds: UInt64?
+        /// `DevInputActivity.count` at that moment: another count after the AX calls means a key or click went down
+        /// while they were in flight.
+        var inputCount: UInt64
+    }
 
     private struct State {
         var pending: Set<DevReadbackReason> = []
         var firstPendingAt: MonotonicInstant?
         var timer: (any ScheduledTimer)?
         var lastReadAt: MonotonicInstant?
+    }
+
+    /// What the AX calls returned.
+    private struct FieldRead {
+        var status: DevReadbackStatus
+        var text: String?
+        var selection: TextRange?
+
+        init(_ status: DevReadbackStatus, text: String? = nil, selection: TextRange? = nil) {
+            self.status = status
+            self.text = text
+            self.selection = selection
+        }
     }
 
     private let recorder: DevRecorder
@@ -49,7 +76,8 @@ public final class DevReadback: Sendable {
     private let state = Mutex(State())
 
     /// `fieldAccess` reads only, through the handles `fieldResolver` returns. `isInjectionIdle`: no edit job queued
-    /// or in flight (production: `JobQueue.inFlight == 0`, two atomic loads).
+    /// or in flight (production: `JobQueue.inFlight == 0`, two atomic loads). The pause comes from the recorder's
+    /// `inputActivity`, which the tap and the inject thread keep current.
     public init(
         recorder: DevRecorder, fieldAccess: any FocusedFieldAccess, fieldResolver: any DevReadbackFieldResolver,
         isInjectionIdle: @escaping @Sendable () -> Bool, focus: @escaping @Sendable () -> FocusSnapshot,
@@ -66,99 +94,137 @@ public final class DevReadback: Sendable {
         self.scheduler = scheduler
     }
 
-    /// Attention from the recorder: a marker reads as soon as the rate limit allows, other reasons 300 ms after the
-    /// latest trigger (but at most 1 s after the first).
+    /// Attention from the recorder (a commit, a Backspace that edited, a marker): one read at the next pause, for
+    /// every trigger since the last read.
     public func handle(_ reasons: Set<DevReadbackReason>) {
         guard !reasons.isEmpty else { return }
         let now = clock.now()
         state.withLock { state in
             state.pending.formUnion(reasons)
-            let first = state.firstPendingAt ?? now
-            state.firstPendingAt = first
-            var due = reasons.contains(.marker) ? now : now.advanced(byMicroseconds: Self.micros(Self.delay))
-            let latest = first.advanced(byMicroseconds: Self.micros(Self.maximumDelay))
-            if due > latest { due = latest }
-            if let last = state.lastReadAt {
-                let allowed = last.advanced(byMicroseconds: Self.micros(Self.minimumInterval))
-                if due < allowed { due = allowed }
-            }
-            state.timer?.cancel()
-            let delay = due > now ? due.duration(since: now) : .zero
-            state.timer = scheduler.schedule(after: delay, leeway: .milliseconds(10)) { [weak self] in self?.fire() }
+            if state.firstPendingAt == nil { state.firstPendingAt = now }
+            schedule(&state, at: earliestRead(state, activity: recorder.inputActivity, now: now), now: now)
         }
     }
 
-    /// One read now, recorded with the most specific pending reason; later while an edit job is queued or in
-    /// flight, and recorded as skipped when the worker stays busy past `maximumDelay`.
+    /// The end of the pause (the last key, click or job plus `quietPeriod`) or of the rate limit, whichever is
+    /// later; now when both are over.
+    private func earliestRead(_ state: State, activity: DevInputActivity, now: MonotonicInstant) -> MonotonicInstant {
+        var due = now
+        if let latest = activity.latest {
+            due = max(due, latest.advanced(byMicroseconds: Self.micros(Self.quietPeriod)))
+        }
+        if let last = state.lastReadAt {
+            due = max(due, last.advanced(byMicroseconds: Self.micros(Self.minimumInterval)))
+        }
+        return due
+    }
+
+    private func schedule(_ state: inout State, at due: MonotonicInstant, now: MonotonicInstant) {
+        state.timer?.cancel()
+        let delay = due > now ? due.duration(since: now) : .zero
+        state.timer = scheduler.schedule(after: delay, leeway: .milliseconds(10)) { [weak self] in self?.fire() }
+    }
+
+    /// One read when the pause holds, recorded with the most specific pending reason; otherwise the read moves to
+    /// the new end of the pause. A queued or in-flight job counts as input: the read looks again one pause later.
     private func fire() {
         let now = clock.now()
-        let reasons = state.withLock { state -> Set<DevReadbackReason>? in
-            if !isInjectionIdle(), let first = state.firstPendingAt,
-                now < first.advanced(byMicroseconds: Self.micros(Self.maximumDelay))
-            {
-                state.timer = scheduler.schedule(after: Self.busyRetry, leeway: .milliseconds(5)) { [weak self] in
-                    self?.fire()
-                }
+        let taken = state.withLock { state -> (reasons: Set<DevReadbackReason>, timing: Timing)? in
+            guard !state.pending.isEmpty else { return nil }
+            guard isInjectionIdle() else {
+                schedule(&state, at: now.advanced(byMicroseconds: Self.micros(Self.quietPeriod)), now: now)
                 return nil
             }
-            defer {
-                state.pending = []
-                state.firstPendingAt = nil
-                state.timer = nil
-                state.lastReadAt = now
+            let activity = recorder.inputActivity
+            let due = earliestRead(state, activity: activity, now: now)
+            guard due <= now else {
+                schedule(&state, at: due, now: now)
+                return nil
             }
-            return state.pending
+            let timing = Timing(
+                waitMicroseconds: state.firstPendingAt.map { now.nanoseconds(since: $0) / 1_000 },
+                idleMicroseconds: activity.latest.map { now.nanoseconds(since: $0) / 1_000 },
+                inputCount: activity.count)
+            defer { state = State(lastReadAt: now) }
+            return (state.pending, timing)
         }
-        guard let reasons,
-            let reason = [DevReadbackReason.marker, .backspaceEdit, .commit].first(where: reasons.contains),
+        guard let taken,
+            let reason = [DevReadbackReason.marker, .backspaceEdit, .commit].first(where: taken.reasons.contains),
             recorder.isActive
         else { return }
-        recorder.note(.readback(read(reason)))
+        recorder.note(.readback(read(reason, timing: taken.timing)))
     }
 
-    /// The readback itself, or why it was skipped (tested directly).
-    func read(_ reason: DevReadbackReason) -> DevReadbackRecord {
+    /// The readback itself, or why it was skipped (tested directly; without `timing` the pause counts as confirmed
+    /// at the call).
+    func read(_ reason: DevReadbackReason, timing: Timing? = nil) -> DevReadbackRecord {
         let snapshot = focus()
-        let at = clock.now()
-        func record(_ status: DevReadbackStatus, text: String? = nil, selection: TextRange? = nil) -> DevReadbackRecord
-        {
-            DevReadbackRecord(
-                reason: reason, status: status, textBeforeCaret: text, selectionLocation: selection?.location,
-                selectionLength: selection?.length, bundle: snapshot.app?.bundle.rawValue,
-                rule: snapshot.decision.rule?.rawValue, at: at)
+        let inputCount = timing?.inputCount ?? recorder.inputActivity.count
+        var record = DevReadbackRecord(
+            reason: reason, status: .ok, bundle: snapshot.app?.bundle.rawValue,
+            rule: snapshot.decision.rule?.rawValue, at: clock.now())
+        record.waitMicroseconds = timing?.waitMicroseconds
+        record.idleMicroseconds = timing?.idleMicroseconds
+        if let skipped = skipReason(snapshot) {
+            record.status = skipped
+            return record
         }
+        guard let shared = snapshot.fieldHandle else {
+            record.status = .skippedNoField
+            return record
+        }
+        guard isInjectionIdle() else {
+            record.status = .skippedBusy
+            return record
+        }
+        let started = clock.now()
+        let field = readField(shared)
+        record.durationMicroseconds = clock.now().nanoseconds(since: started) / 1_000
+        record.overlap = recorder.inputActivity.count != inputCount
+        record.status = field.status
+        record.textBeforeCaret = field.text
+        record.selectionLocation = field.selection?.location
+        record.selectionLength = field.selection?.length
+        return record
+    }
+
+    /// Why nothing may be read here (observer rule), before any AX call.
+    private func skipReason(_ snapshot: FocusSnapshot) -> DevReadbackStatus? {
         if snapshot.field.secure || snapshot.pause?.code == .secureField || secureInput().enabled {
-            return record(.skippedSecure)
+            return .skippedSecure
         }
-        if snapshot.decision.requireTextFocus == .never { return record(.skippedRule) }
-        guard snapshot.field.axAvailability == .available else { return record(.unavailable) }
-        guard let shared = snapshot.fieldHandle else { return record(.skippedNoField) }
-        guard isInjectionIdle() else { return record(.skippedBusy) }
+        if snapshot.decision.requireTextFocus == .never { return .skippedRule }
+        return snapshot.field.axAvailability == .available ? nil : .unavailable
+    }
+
+    /// The AX calls: the private element reference, the selection, then at most 64 units before the caret. Stops
+    /// as soon as an edit job is queued.
+    private func readField(_ shared: FieldHandle) -> FieldRead {
         let field: FieldHandle
         switch fieldResolver.privateHandle(for: shared, timeout: Self.axTimeout) {
         case .success(let resolved?): field = resolved
-        case .success(nil): return record(.skippedNoField)
-        case .timedOut: return record(.timedOut)
-        case .unavailable: return record(.unavailable)
-        case .failed: return record(.failed)
+        case .success(nil): return FieldRead(.skippedNoField)
+        case .timedOut: return FieldRead(.timedOut)
+        case .unavailable: return FieldRead(.unavailable)
+        case .failed: return FieldRead(.failed)
         }
-        guard isInjectionIdle() else { return record(.skippedBusy) }
+        guard isInjectionIdle() else { return FieldRead(.skippedBusy) }
         let selection: TextRange
         switch fieldAccess.selectedRange(field, timeout: Self.axTimeout) {
         case .success(let range): selection = range
-        case .timedOut: return record(.timedOut)
-        case .unavailable: return record(.unavailable)
-        case .failed: return record(.failed)
+        case .timedOut: return FieldRead(.timedOut)
+        case .unavailable: return FieldRead(.unavailable)
+        case .failed: return FieldRead(.failed)
         }
         let count = min(Self.maximumUnits, max(0, selection.location))
-        guard count > 0 else { return record(.ok, text: "", selection: selection) }
-        guard isInjectionIdle() else { return record(.skippedBusy, selection: selection) }
+        guard count > 0 else { return FieldRead(.ok, text: "", selection: selection) }
+        guard isInjectionIdle() else { return FieldRead(.skippedBusy, selection: selection) }
         let range = TextRange(location: selection.location - count, length: count)
         switch fieldAccess.text(field, in: range, timeout: Self.axTimeout) {
-        case .success(let text): return record(.ok, text: text, selection: selection)
-        case .timedOut: return record(.timedOut, selection: selection)
-        case .unavailable: return record(.unavailable, selection: selection)
-        case .failed: return record(.failed, selection: selection)
+        case .success(let text): return FieldRead(.ok, text: text, selection: selection)
+        case .timedOut: return FieldRead(.timedOut, selection: selection)
+        case .unavailable: return FieldRead(.unavailable, selection: selection)
+        case .failed: return FieldRead(.failed, selection: selection)
         }
     }
 

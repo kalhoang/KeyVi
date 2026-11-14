@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// PLT-R904A (ADR 0007) field readback: at most 64 UTF-16 units before the caret and the selection; 300 ms after a
-// Backspace edit or a commit, debounced to one read per 300 ms, at once for a marker. Observer rule: no read where
-// the compat rule keeps KeyVi off accessibility (`requireTextFocus: never`), never in a secure field or while
-// secure input is on, and only reads (no writes, no AXEnhancedUserInterface or AXManualAccessibility).
+// PLT-R904A (ADR 0007) field readback: at most 64 UTF-16 units before the caret and the selection, read only in a
+// typing pause (no key or click down and no edit job for 1 s; review of Pa's traces of 2026-11-14, incidents 1 and
+// 10), at most one read per 300 ms. Each read records how long it waited, how long the input had been idle, how
+// long the AX calls took, and whether a key went down while it was in flight. Observer rule: no read where the
+// compat rule keeps KeyVi off accessibility (`requireTextFocus: never`), never in a secure field or while secure
+// input is on, and only reads (no writes, no AXEnhancedUserInterface or AXManualAccessibility).
 
 #if DEV_RECORDER
 import AppModel
@@ -121,20 +123,38 @@ private struct ReadbackRig {
 
     func advance(milliseconds: Int) { scheduler.advance(by: .milliseconds(milliseconds)) }
 
-    /// Readbacks written so far (drains the recorder into its in-memory file).
-    func readbacks() -> [(reason: String?, status: String?, text: String?)] {
+    /// A key or click goes down now (what the tap tells the recorder).
+    func key() { capture.dev.noteInputDown(at: clock.now()) }
+
+    /// An edit job finishes now (what the inject thread pushes).
+    func jobFinished() {
+        capture.dev.pushInject(
+            .job(
+                DevJobRecord(
+                    sequence: 1, generation: 1, kind: "compose", strategy: .backspaceReplace, outcome: "executed",
+                    deleteCount: 1, insertCount: 1, eventsPosted: 4, totalMicroseconds: 4_000, runMicroseconds: 2_000,
+                    at: clock.now())))
+    }
+
+    /// Readback lines written so far (drains the recorder into its in-memory file).
+    func readbackLines() -> [[String: Any]] {
         capture.dev.drain()
         let folder = URL(fileURLWithPath: "/logs/SampleApp/dev-traces", isDirectory: true)
         guard let files = try? capture.fileSystem.contentsOfDirectory(at: folder) else { return [] }
-        return files.flatMap { url -> [(reason: String?, status: String?, text: String?)] in
+        return files.flatMap { url -> [[String: Any]] in
             let data = (try? capture.fileSystem.readData(at: url, maxBytes: 1 << 20)) ?? Data()
             return data.split(separator: 0x0A).compactMap { line in
                 guard let object = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any],
                     object["type"] as? String == "readback"
                 else { return nil }
-                return (object["reason"] as? String, object["status"] as? String, object["text"] as? String)
+                return object
             }
         }
+    }
+
+    /// Readbacks written so far: reason, status and text.
+    func readbacks() -> [(reason: String?, status: String?, text: String?)] {
+        readbackLines().map { ($0["reason"] as? String, $0["status"] as? String, $0["text"] as? String) }
     }
 }
 
@@ -183,26 +203,79 @@ private struct ReadbackRig {
         #expect(rig.access.callCount == before)
     }
 
-    /// 300 ms after the last trigger, one read for a burst, the most specific reason.
-    @Test func readsThreeHundredMillisecondsAfterABurst() throws {
-        let rig = try ReadbackRig(text: "chào")
+    /// 1 s without a key, a click or a job: then one read for every trigger of the burst, the most specific reason,
+    /// with how long it waited and how long the input had been idle.
+    @Test func readsOnlyAfterOneSecondWithoutInput() throws {
+        let rig = try ReadbackRig(text: "chào ")
+        rig.key()
         rig.readback.handle([.commit])
         rig.advance(milliseconds: 200)
+        rig.key()
         rig.readback.handle([.backspaceEdit])
-        rig.advance(milliseconds: 299)
+        rig.advance(milliseconds: 999)
         #expect(rig.readbacks().isEmpty)
+        #expect(rig.resolver.callCount == 0)
         rig.advance(milliseconds: 1)
-        let reads = rig.readbacks()
-        #expect(reads.count == 1)
-        #expect(reads.first?.reason == "backspaceEdit" && reads.first?.text == "chào")
+        let lines = rig.readbackLines()
+        #expect(lines.count == 1)
+        #expect(lines.first?["reason"] as? String == "backspaceEdit" && lines.first?["text"] as? String == "chào ")
+        #expect(lines.first?["waitUs"] as? Int == 1_200_000)
+        #expect(lines.first?["idleUs"] as? Int == 1_000_000)
+        #expect(lines.first?["overlap"] == nil)
     }
 
-    /// A marker reads at once, but never sooner than 300 ms after the previous read.
-    @Test func aMarkerReadsAtOnceWithinTheRateLimit() throws {
+    /// Incident 1 (Dokomo, 2026-11-14 22:41:30): the next word's first key went down 273 ms after the commit and
+    /// 27 ms before the old 300 ms readback, and never reached the field. The read now waits until 1 s after that key.
+    @Test func theNextWordsFirstKeyPostponesTheCommitReadback() throws {
+        let rig = try ReadbackRig(text: "Khúc c")
+        rig.key()  // the space that committed "Khúc"
+        rig.readback.handle([.commit])
+        rig.advance(milliseconds: 273)
+        rig.key()  // "c"
+        rig.advance(milliseconds: 27)
+        #expect(rig.resolver.callCount == 0 && rig.access.callCount == 0)
+        rig.advance(milliseconds: 972)
+        #expect(rig.readbacks().isEmpty)
+        rig.advance(milliseconds: 1)
+        #expect(rig.readbacks().map(\.text) == ["Khúc c"])
+    }
+
+    /// Typing without a 1 s pause postpones the read for as long as it lasts; the first pause reads once.
+    @Test func continuousTypingPostponesTheReadUntilAPause() throws {
+        let rig = try ReadbackRig(text: "abc")
+        for index in 0..<50 {
+            rig.key()
+            if index % 5 == 4 { rig.readback.handle([.commit]) }
+            rig.advance(milliseconds: 100)
+        }
+        #expect(rig.readbacks().isEmpty && rig.resolver.callCount == 0)
+        rig.advance(milliseconds: 900)
+        let lines = rig.readbackLines()
+        #expect(lines.count == 1)
+        #expect(lines.first?["waitUs"] as? Int == 5_500_000)
+    }
+
+    /// A marker waits for the pause too, then reads; with no recent input it reads at once.
+    @Test func aMarkerWaitsForThePause() throws {
+        let rig = try ReadbackRig(text: "abc")
+        rig.key()  // the chord itself goes down
+        rig.readback.handle([.marker])
+        rig.advance(milliseconds: 999)
+        #expect(rig.readbacks().isEmpty)
+        rig.advance(milliseconds: 1)
+        #expect(rig.readbacks().map(\.reason) == ["marker"])
+        rig.advance(milliseconds: 5_000)
+        rig.readback.handle([.marker])  // from the menu, long after the last key
+        rig.advance(milliseconds: 0)
+        #expect(rig.readbacks().count == 2)
+    }
+
+    /// Never more than one read per 300 ms, even for two menu markers in a row.
+    @Test func readsAreAtLeastThreeHundredMillisecondsApart() throws {
         let rig = try ReadbackRig(text: "abc")
         rig.readback.handle([.marker])
         rig.advance(milliseconds: 0)
-        #expect(rig.readbacks().map(\.reason) == ["marker"])
+        #expect(rig.readbacks().count == 1)
         rig.advance(milliseconds: 100)
         rig.readback.handle([.marker])
         rig.advance(milliseconds: 199)
@@ -211,16 +284,54 @@ private struct ReadbackRig {
         #expect(rig.readbacks().count == 2)
     }
 
-    /// Continuous typing never postpones a read by more than 1 s.
-    @Test func triggersNeverWaitMoreThanOneSecond() throws {
+    /// An edit job is activity: no read while one is queued or in flight, and none within 1 s after one finished.
+    @Test func jobsPostponeTheReadLikeKeys() throws {
         let rig = try ReadbackRig(text: "abc")
-        var elapsed = 0
-        while elapsed < 1_000 {
-            rig.readback.handle([.commit])
-            rig.advance(milliseconds: 100)
-            elapsed += 100
+        rig.idle.store(false, ordering: .relaxed)
+        rig.readback.handle([.commit])
+        rig.advance(milliseconds: 3_000)
+        #expect(rig.access.callCount == 0 && rig.resolver.callCount == 0)
+        rig.idle.store(true, ordering: .relaxed)
+        rig.jobFinished()
+        rig.advance(milliseconds: 999)
+        #expect(rig.readbacks().isEmpty && rig.resolver.callCount == 0)
+        rig.advance(milliseconds: 1_001)
+        #expect(rig.readbacks().map(\.status) == ["ok"])
+    }
+
+    /// A key that goes down while the read is in flight is flagged on the line, so the scanner discounts the read.
+    @Test func aKeyDuringTheReadIsFlagged() throws {
+        let rig = try ReadbackRig(text: "abc")
+        let capture = rig.capture
+        let clock = rig.clock
+        rig.elements.afterCall.withLock {
+            $0 = .init { capture.dev.noteInputDown(at: clock.now()) }
         }
-        #expect(rig.readbacks().count == 1)
+        rig.readback.handle([.commit])
+        rig.advance(milliseconds: 0)
+        let line = try #require(rig.readbackLines().first)
+        #expect(line["status"] as? String == "ok")
+        #expect(line["overlap"] as? Bool == true)
+        rig.elements.afterCall.withLock { $0 = nil }
+        #expect(rig.readback.read(.marker).overlap == false)
+    }
+
+    /// The AX calls' duration is recorded (timeouts included); a read skipped before any AX call has none.
+    @Test func theReadDurationIsRecorded() throws {
+        let rig = try ReadbackRig(text: "abc")
+        let clock = rig.clock
+        rig.elements.afterCall.withLock { $0 = .init { clock.advance(byMicroseconds: 4_000) } }
+        #expect(rig.readback.read(.commit).durationMicroseconds == 8_000)
+        rig.access.setBehaviour(.timeout)
+        let timedOut = rig.readback.read(.commit)
+        #expect(timedOut.status == .timedOut && timedOut.durationMicroseconds == 4_000)
+        rig.focus.publish(ReadbackRig.focus(requireTextFocus: .never))
+        #expect(rig.readback.read(.commit).durationMicroseconds == nil)
+        rig.access.setBehaviour(.normal)
+        rig.focus.publish(ReadbackRig.focus())
+        rig.readback.handle([.commit])
+        rig.advance(milliseconds: 0)
+        #expect(rig.readbackLines().last?["durUs"] as? Int == 8_000)
     }
 
     /// Review W8-E finding 1: the readback reads through its own element reference, so the timeout the worker set
@@ -243,29 +354,6 @@ private struct ReadbackRig {
         rig.resolver.focusMoved.store(true, ordering: .relaxed)
         #expect(rig.readback.read(.marker).status == .skippedNoField)
         #expect(rig.access.callCount == 0)
-    }
-
-    /// No readback call while an edit job is queued or in flight: the read waits, 20 ms at a time.
-    @Test func waitsWhileAJobIsInFlight() throws {
-        let rig = try ReadbackRig(text: "abc")
-        rig.idle.store(false, ordering: .relaxed)
-        rig.readback.handle([.commit])
-        rig.advance(milliseconds: 600)
-        #expect(rig.access.callCount == 0 && rig.resolver.callCount == 0)
-        #expect(rig.readbacks().isEmpty)
-        rig.idle.store(true, ordering: .relaxed)
-        rig.advance(milliseconds: 20)
-        #expect(rig.readbacks().map(\.status) == ["ok"])
-    }
-
-    /// A worker busy for the whole second: the read is recorded as skipped, without an AX call.
-    @Test func aWorkerBusyForOneSecondSkipsTheRead() throws {
-        let rig = try ReadbackRig(text: "abc")
-        rig.idle.store(false, ordering: .relaxed)
-        rig.readback.handle([.marker])
-        rig.advance(milliseconds: 1_100)
-        #expect(rig.readbacks().map(\.status) == ["skippedBusy"])
-        #expect(rig.access.callCount == 0 && rig.resolver.callCount == 0)
     }
 
     /// A job pushed between the two reads stops the readback before its second call.
