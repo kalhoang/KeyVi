@@ -133,7 +133,7 @@ Where the owner is another track, the row says so.
 | ENG-R711 | Backspace on an escape letter removes only its key | `Composition/Composition+Rendering.swift` | W241, `RegressionTests.reg24`, `editing.tsv` ED043-ED044 |
 | ENG-R712 | passThrough when one character goes, else an edit | `Engine/DisplayEdit.swift` (`actionForBackspace`) | `EditTraceTests.backspaceActions` |
 | ENG-R713 | Backspace with no token: history rules | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries` |
-| ENG-R714 | Backspace only deletes, documented exceptions | `Composition/Composition+Rendering.swift` (`backspace`), `Engine/DisplayEdit.swift` (`actionForBackspace`) | `BackspacePropertyTests`, `VietnameseEngineDataTests` `BackspaceRealDataTests`, `InvariantChecker.checkBackspaceOnlyDeletes` (every fuzz event), `VietnameseEngineTesting/Simulation/BackspaceProbe.swift` (the exception classes) |
+| ENG-R714 | Backspace only deletes, documented exceptions | `Composition/Composition+Rendering.swift` (`backspace`), `Engine/DisplayEdit.swift` (`actionForBackspace`) | `BackspacePropertyTests`, `BackspaceRealDataTests` (bundled data), `InvariantChecker.checkBackspaceOnlyDeletes` (every fuzz event), `VietnameseEngineTesting/Simulation/BackspaceProbe.swift` (the exception classes) |
 
 ## 8. Restore policy
 
