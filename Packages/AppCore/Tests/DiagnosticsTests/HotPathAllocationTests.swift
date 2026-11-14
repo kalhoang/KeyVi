@@ -164,6 +164,18 @@ private func expectNoAllocations(_ count: Int?, sourceLocation: SourceLocation =
         #expect(sink > 0)
     }
 
+    /// The tap copies every event's Unicode string and every key's layout character into an `InlineUTF16`; Debug
+    /// builds (the dev recorder's, PLT-R904A) run that copy unoptimised.
+    @Test func inlineUTF16CopyAllocatesNothing() {
+        let source: [UInt16] = Array("ươ".utf16)
+        var sink = 0
+        let count = source.withUnsafeBufferPointer { buffer in
+            allocations { sink &+= Int(InlineUTF16(buffer)?.count ?? 0) }
+        }
+        expectNoAllocations(count)
+        #expect(sink == 2 * 10_001)
+    }
+
     @Test func tapSignalsAllocateNothing() {
         let wake = WakeSignal(queue: DispatchQueue(label: "test.alloc.wake")) {}
         let worker = WorkerSignal()

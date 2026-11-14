@@ -12,6 +12,11 @@ internal import RealtimeSupport
 struct JobContext {
     var sequence: JobSequence
     var posted = false
+    #if DEV_RECORDER
+    /// PLT-R904A: events this job posted and when it started on the inject thread.
+    var eventsPosted = 0
+    var startedAt: MonotonicInstant?
+    #endif
 }
 
 struct PostedEvent {
@@ -172,7 +177,12 @@ final class WorkerCore {
         }
     }
 
-    func begin(_ sequence: JobSequence) { context = JobContext(sequence: sequence) }
+    func begin(_ sequence: JobSequence) {
+        context = JobContext(sequence: sequence)
+        #if DEV_RECORDER
+        context?.startedAt = services.clock.now()
+        #endif
+    }
 
     /// Exactly one `finished` per job: with an expectation iff the job posted (ADR 0311). The expectation names the
     /// latest posted event, which is the job's own last event or a held event released after it; echoes arrive
@@ -198,6 +208,9 @@ final class WorkerCore {
     func notePosted(_ sequence: UInt32) {
         lastPosted = PostedEvent(sequence: sequence, at: services.clock.now())
         context?.posted = true
+        #if DEV_RECORDER
+        context?.eventsPosted += 1
+        #endif
     }
 
     /// Replays a held or trigger event with the marker (PLT-R324). Always the echo kind: a probe-kind marker would

@@ -258,6 +258,9 @@ final class FocusCore {
     /// PLT-R905: every focus change goes into a running typing trace with roles and the bundle ID only, never
     /// titles or URLs (the record type has no field for them).
     private func recordFocusCapture(_ snapshot: FocusSnapshot, at instant: MonotonicInstant) {
+        #if DEV_RECORDER
+        recordDevFocus(snapshot, at: instant)  // PLT-R904A
+        #endif
         guard let capture = services.capture, capture.isRecording else { return }
         let record = CaptureRecord.focus(
             bundle: snapshot.app?.bundle, role: snapshot.field.role, subrole: snapshot.field.subrole, at: instant)

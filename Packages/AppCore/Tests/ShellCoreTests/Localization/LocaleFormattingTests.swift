@@ -72,7 +72,7 @@ import Testing
     @Test func languageChangeReRendersEveryTableWithoutRestart() {
         // PRD-R63: one observable model feeds every window; each table switches with it.
         let model = InterfaceLanguageModel(language: .vietnamese, appBundle: bundle.bundle)
-        let samples: [(StringTable, String, String, String)] = [
+        var samples: [(StringTable, String, String, String)] = [
             (.common, CommonText.back.rawValue, "Quay lại", "Back"),
             (.menu, MenuText.settings.rawValue, "Cài đặt...", "Settings..."),
             (.status, StatusText.actionLearnMore.rawValue, "Tìm hiểu thêm", "Learn more"),
@@ -85,6 +85,10 @@ import Testing
             (.composition, CompositionText.safeModeLater.rawValue, "Để sau", "Not Now"),
             (.updates, "updates.failed.retry", "Thử lại", "Try Again"),
         ]
+        #if DEV_RECORDER
+        // PLT-R904A: the dev recorder's table exists in Debug builds only.
+        samples.append((.devRecorder, DevRecorderText.resume.rawValue, "Tiếp tục ghi", "Resume recording"))
+        #endif
         #expect(Set(samples.map(\.0)) == Set(StringTable.allCases))
         for (table, key, viText, _) in samples { #expect(model.localizer.string(key, table: table) == viText) }
         model.select(.english)

@@ -44,6 +44,10 @@ final class DiagnosticsWiring {
     let metrics = PlatformMetrics()
     let tapLog = TapLogRing()
     let redactionSalt: RedactionSalt
+    #if DEV_RECORDER
+    /// PLT-R904A: the dev builds' always-on typing recorder (ADR 0007).
+    let devRecorder: DevRecorderController
+    #endif
     private let utility: DispatchQueue
     private let scheduler: DispatchTimerScheduler
     private var timers: [any ScheduledTimer] = []
@@ -56,9 +60,18 @@ final class DiagnosticsWiring {
             policy: LogStorePolicy(directory: paths.logs), fileSystem: fileSystem, clock: SystemWallClock(),
             subsystem: subsystem)
         health = HealthEventLog(mirror: logger)
+        #if DEV_RECORDER
+        // The recorder's marker and readback requests run on their own queue, off the tap and the utility queue.
+        let devAttention = DispatchQueue(label: subsystem + ".dev-recorder", qos: .utility)
+        capture = CaptureController(
+            directory: paths.captures, fileSystem: fileSystem, wallClock: SystemWallClock(), clock: MachClock(),
+            scheduler: scheduler, devAttentionQueue: devAttention)
+        devRecorder = DevRecorderController(recorder: capture.dev, attentionQueue: devAttention)
+        #else
         capture = CaptureController(
             directory: paths.captures, fileSystem: fileSystem, wallClock: SystemWallClock(), clock: MachClock(),
             scheduler: scheduler)
+        #endif
         redactionSalt = RedactionSaltStore.load(from: UserDefaultsSaltStorage(defaults: defaults))
     }
 
@@ -78,7 +91,17 @@ final class DiagnosticsWiring {
     func flushOperation() -> @Sendable () -> Void {
         let logger = self.logger
         let utility = self.utility
+        #if DEV_RECORDER
+        let recorder = capture.dev
+        return {
+            utility.sync {
+                logger.flush()
+                recorder.stop()  // PLT-R904A: what is queued is written, then a stop line
+            }
+        }
+        #else
         return { utility.sync { logger.flush() } }
+        #endif
     }
 }
 

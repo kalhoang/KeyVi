@@ -65,6 +65,33 @@ for script in "$S"/*.sh "$S"/publish-release "$S"/*.py; do
   esac
 done
 
+echo "== scripts/dev/trace-scan.sh (PLT-R904A dev recorder scanner wrapper)"
+expect 0 "help dev/trace-scan.sh" bash "$S/dev/trace-scan.sh" --help
+contains "help names both commands" "show N"
+expect 2 "dev/trace-scan.sh without a command" bash "$S/dev/trace-scan.sh"
+mkdir -p "$T/scan/home" "$T/scan/bin"
+expect 0 "default folder from the brand file" env HOME="$T/scan/home" bash "$S/dev/trace-scan.sh" --print-dir
+display_folder="$(sed -n 's/^APP_DISPLAY_NAME="\(.*\)"$/\1/p' "$S/brand.env")"
+contains "default folder is the dev build's dev-traces" "$T/scan/home/Library/Logs/$display_folder/dev-traces"
+cat >"$T/scan/bin/trace-scan" <<'SCAN'
+#!/usr/bin/env bash
+printf 'args:'
+printf ' [%s]' "$@"
+printf '\n'
+SCAN
+chmod +x "$T/scan/bin/trace-scan"
+expect 0 "the wrapper adds the default folder" env HOME="$T/scan/home" TRACE_SCAN_BIN="$T/scan/bin/trace-scan" \
+  bash "$S/dev/trace-scan.sh" summary --since 2h
+contains "default --dir passed" "args: [summary] [--since] [2h] [--dir] [$T/scan/home/Library/Logs/$display_folder/dev-traces]"
+expect 0 "an explicit folder is kept" env HOME="$T/scan/home" TRACE_SCAN_BIN="$T/scan/bin/trace-scan" \
+  bash "$S/dev/trace-scan.sh" show 3 --dir /elsewhere
+contains "explicit --dir kept" "args: [show] [3] [--dir] [/elsewhere]"
+sed 's/^APP_DISPLAY_NAME=.*/APP_DISPLAY_NAME="Gõ Việt"/' "$S/brand.env" >"$T/scan/brand.env"
+expect 0 "a non-ASCII name uses the slug" env HOME="$T/scan/home" BRAND_ENV="$T/scan/brand.env" \
+  bash "$S/dev/trace-scan.sh" --print-dir
+slug="$(sed -n 's/^APP_SLUG="\(.*\)"$/\1/p' "$S/brand.env")"
+contains "slug folder" "$T/scan/home/Library/Logs/$slug/dev-traces"
+
 echo "== build-number.sh"
 for pair in "0.1.0-beta.1:10001" "0.1.0:10099" "1.4.1:1040199" "v2.0.0-beta.12:2000012"; do
   got="$("$S/build-number.sh" "${pair%%:*}")"
@@ -1168,6 +1195,27 @@ EOF
   expect 1 "verify-release fails on integration hooks code" "$M/scripts/verify-release.sh" --app "$hooked" --pre-notarization
   contains "hooks code reported" "FAILED: no integration hooks adapter (INTEGRATION_HOOKS test build marker)"
   contains "names the file" "integration hooks adapter found in: $hooked/Contents/MacOS/Test"
+  # PLT-R904A, ADR 0007: a Debug build carries the dev recorder's marker in its code and its string table; a
+  # release must carry neither.
+  contains "a build without the recorder passes the recorder check" "ok: no dev recorder (DEV_RECORDER marker and string table, PLT-R904A)"
+  recorded="$M/recorded/$(basename "$app")"
+  mkdir -p "$M/recorded"
+  cp -R "$app" "$recorded"
+  printf '# %s\n' "$(sed -n 's/^DEV_RECORDER_MARKER="\(.*\)"$/\1/p' "$M/scripts/verify-release.sh")" \
+    >>"$recorded/Contents/MacOS/Test"
+  codesign --force --sign - "$recorded" >/dev/null 2>&1
+  expect 1 "verify-release fails on dev recorder code" "$M/scripts/verify-release.sh" --app "$recorded" --pre-notarization
+  contains "recorder code reported" "FAILED: no dev recorder (DEV_RECORDER marker and string table, PLT-R904A)"
+  contains "names the recorder file" "dev recorder code found in: $recorded/Contents/MacOS/Test"
+  tabled="$M/tabled/$(basename "$app")"
+  mkdir -p "$M/tabled"
+  cp -R "$app" "$tabled"
+  mkdir -p "$tabled/Contents/Resources/vi.lproj"
+  printf '"devRecorder.mark" = "x";\n' >"$tabled/Contents/Resources/vi.lproj/DevRecorder.strings"
+  codesign --force --sign - "$tabled" >/dev/null 2>&1
+  expect 1 "verify-release fails on the dev recorder string table" "$M/scripts/verify-release.sh" --app "$tabled" \
+    --pre-notarization
+  contains "names the string table" "dev recorder string table found: $tabled/Contents/Resources/vi.lproj/DevRecorder.strings"
   /usr/libexec/PlistBuddy -c 'Set :SUPublicEDKey ""' "$app/Contents/Info.plist"
   codesign --force --sign - "$app" >/dev/null 2>&1
   expect 1 "verify-release fails without SUPublicEDKey" "$M/scripts/verify-release.sh" --app "$app" --pre-notarization

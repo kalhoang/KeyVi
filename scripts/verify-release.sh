@@ -19,6 +19,9 @@
 #     App-side adapter in App/Sources/IntegrationHooks and its queue (only Config/Integration.xcconfig sets the
 #     condition, ADR 0502). This proves the adapter is absent, not every hooks type: AppCore's hook server,
 #     directory watcher and instruments are compiled into every configuration and stay unused without it.
+#   - no dev recorder (PLT-R904A, docs/decisions/0007-dev-recorder.md): no file of the bundle carries the marker of
+#     the Debug builds' typing recorder and the bundle has no DevRecorder string table. DEV_RECORDER is defined for
+#     the Debug configuration only, so this proves a release was not built from Debug.
 #
 # Inputs: --app (the built .app), --dmg (optional), --previous-dr FILE (the designated-requirement.txt asset
 # of the previous published release; leave it out for the first release), --write-dr FILE (write this
@@ -72,6 +75,9 @@ load_team_id
 # The one string only the App-side INTEGRATION_HOOKS adapter carries (IntegrationHooksBuild.marker, the label
 # of the hooks' queue; scripts/tests keep this copy equal to the Swift one).
 HOOKS_MARKER="INTEGRATION_HOOKS test build: file-drop integration hooks"
+# The one string only the Debug builds' typing recorder carries (DevRecorder.buildMarker in AppCore's Diagnostics,
+# PLT-R904A; scripts/tests keep this copy equal to the Swift one).
+DEV_RECORDER_MARKER="DEV_RECORDER build: continuous typing recorder for dev builds only"
 
 failures=()
 check() {
@@ -253,6 +259,18 @@ check_no_hooks() {
   fi
 }
 
+check_no_dev_recorder() {
+  local found tables
+  found="$(LC_ALL=C grep -r -a -F -l -- "$DEV_RECORDER_MARKER" "$app/Contents" 2>/dev/null || true)"
+  tables="$(find "$app/Contents" -name 'DevRecorder.strings*' 2>/dev/null || true)"
+  if [[ -n "$found" || -n "$tables" ]]; then
+    [[ -z "$found" ]] || log "  dev recorder code found in: ${found//$'\n'/, }"
+    [[ -z "$tables" ]] || log "  dev recorder string table found: ${tables//$'\n'/, }"
+    log "  a release is built with -configuration Release, never Debug (docs/decisions/0007-dev-recorder.md)"
+    return 1
+  fi
+}
+
 check "codesign --verify --deep --strict" check_signature
 check "Developer ID identity, team $APP_TEAM_ID, secure timestamp" check_identity
 check "hardened runtime flag" check_runtime
@@ -269,6 +287,7 @@ else
 fi
 check "URL host allowlist (QA-R60)" check_hosts
 check "no integration hooks adapter (INTEGRATION_HOOKS test build marker)" check_no_hooks
+check "no dev recorder (DEV_RECORDER marker and string table, PLT-R904A)" check_no_dev_recorder
 if [[ -n "$dmg" ]]; then
   check "DMG signature" check_dmg_signature
 fi

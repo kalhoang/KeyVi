@@ -35,6 +35,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var appName: String?
     private var clickToToggle = false
     private var languageObservation: AnyCancellable?
+    #if DEV_RECORDER
+    /// PLT-R904A: the dev recorder's badge and menu items.
+    var devRecorder: DevRecorderController? {
+        didSet {
+            devRecorder?.indicatorChanged = { [weak self] in self?.applyIcon() }
+            devRecorder?.announce = { [weak self] text in self?.announce(text) }
+            applyIcon()
+        }
+    }
+    #endif
 
     /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
     init(
@@ -81,6 +91,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let model = menuModel()
         appName = model.appName
         menu.removeAllItems()
+        #if DEV_RECORDER
+        if let devRecorder {
+            for item in DevRecorderMenu.items(for: devRecorder, localizer: language.localizer) { menu.addItem(item) }
+        }
+        #endif
         let builder = StatusMenuBuilder(localizer: language.localizer, target: self)
         for entry in model.entries { menu.addItem(builder.item(for: entry, model: model)) }
     }
@@ -93,8 +108,25 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         button.image = StatusGlyph.image(for: iconState)
         let localizer = language.localizer
         button.setAccessibilityLabel(localizer.string(labelKey ?? iconState.accessibilityLabelKey, table: .menu))
+        #if DEV_RECORDER
+        if let devRecorder, devRecorder.isRecording, let image = button.image {
+            button.image = DevRecorderBadge.image(over: image, flashing: devRecorder.isFlashing)
+            let label = localizer.string(labelKey ?? iconState.accessibilityLabelKey, table: .menu)
+            button.setAccessibilityLabel(label + ", " + localizer.string(DevRecorderText.badgeLabel))
+        }
+        #endif
         if let appName { button.setAccessibilityHelp(localizer.format(MenuText.statusItemHint, appName)) }
     }
+
+    #if DEV_RECORDER
+    /// PRD-R66: the marker confirmation is spoken, from the status item's window, without taking focus.
+    private func announce(_ text: String) {
+        guard let window = statusItem.button?.window else { return }
+        NSAccessibility.post(
+            element: window, notification: .announcementRequested,
+            userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+    }
+    #endif
 
     /// PRD-R63: the status item's label follows a language change at once; the menu is rebuilt on next open.
     private func observeLanguage() {

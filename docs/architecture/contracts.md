@@ -1629,7 +1629,13 @@ public struct InlineUTF16: Sendable, Hashable, BitwiseCopyable {
         self.init()
         withUnsafeMutableBytes(of: &units) { raw in
             let target = raw.bindMemory(to: UInt16.self)
-            for index in 0..<buffer.count { target[index] = buffer[index] }
+            // A `while` loop: an unoptimised `for ... in` over a range allocates an iterator box per iteration, and
+            // Debug builds (the dev recorder's, PLT-R904A) run this on the tap (PLT-R305).
+            var index = 0
+            while index < buffer.count {
+                target[index] = buffer[index]
+                index += 1
+            }
         }
         count = UInt8(buffer.count)
     }
@@ -3499,6 +3505,10 @@ public final class CaptureController: Sendable {
     private let recording = Atomic<Bool>(false)
     private let session = Mutex<CaptureSession?>(nil)
     private let writeFailures = Atomic<Int>(0)
+    #if DEV_RECORDER
+    /// PLT-R904A: the dev builds' continuous recorder shares the rings, the drain and the secure gaps.
+    public let dev: DevRecorder
+    #endif
 
     public init(
         directory: URL, fileSystem: any FileSystem, wallClock: any WallClock, clock: any MonotonicClock,
@@ -3509,10 +3519,45 @@ public final class CaptureController: Sendable {
         self.wallClock = wallClock
         self.clock = clock
         self.scheduler = scheduler
+        #if DEV_RECORDER
+        dev = DevRecorder(
+            directory: Self.devDirectory(besides: directory), fileSystem: fileSystem, wallClock: wallClock,
+            clock: clock, scheduler: scheduler)
+        dev.attach { [weak self] in self?.drainNow() }
+        #endif
     }
 
-    /// Tap-safe (one atomic load).
-    public var isRecording: Bool { recording.load(ordering: .acquiring) }
+    #if DEV_RECORDER
+    /// The running app's wiring: the recorder's attention requests (marker, readback) run on `attentionQueue`.
+    public init(
+        directory: URL, fileSystem: any FileSystem, wallClock: any WallClock, clock: any MonotonicClock,
+        scheduler: any TimerScheduler, devAttentionQueue: DispatchQueue
+    ) {
+        self.directory = directory
+        self.fileSystem = fileSystem
+        self.wallClock = wallClock
+        self.clock = clock
+        self.scheduler = scheduler
+        dev = DevRecorder(
+            directory: Self.devDirectory(besides: directory), fileSystem: fileSystem, wallClock: wallClock,
+            clock: clock, scheduler: scheduler, attentionQueue: devAttentionQueue)
+        dev.attach { [weak self] in self?.drainNow() }
+    }
+
+    /// `<logs folder>/dev-traces`, next to `captures`.
+    static func devDirectory(besides captures: URL) -> URL {
+        captures.deletingLastPathComponent().appendingPathComponent(DevTraceFiles.folderName, isDirectory: true)
+    }
+    #endif
+
+    /// Tap-safe (one atomic load; two in dev builds).
+    public var isRecording: Bool {
+        #if DEV_RECORDER
+        return recording.load(ordering: .acquiring) || dev.isActive
+        #else
+        recording.load(ordering: .acquiring)
+        #endif
+    }
 
     /// Appends that failed while a session ran (timer-driven drains cannot throw).
     public var failedWrites: Int { writeFailures.load(ordering: .relaxed) }
@@ -3522,7 +3567,12 @@ public final class CaptureController: Sendable {
         guard duration > .zero, duration <= CaptureLimits.maximumDuration else { throw CaptureError.invalidDuration }
         return try session.withLock { (active: inout CaptureSession?) throws -> CaptureSessionInfo in
             guard active == nil else { throw CaptureError.alreadyRecording }
+            #if DEV_RECORDER
+            // The continuous recorder keeps what is queued; the new session still starts with nothing old.
+            if dev.isStarted { drainContinuousOnly() } else { discardPendingRecords() }
+            #else
             discardPendingRecords()
+            #endif
             let startedAt = wallClock.now()
             let id = CaptureFiles.makeID(at: startedAt)
             let info = CaptureSessionInfo(
@@ -3552,6 +3602,9 @@ public final class CaptureController: Sendable {
 
     /// Secure input turned on or a secure field got focus: record nothing until `endGap` (PLT-R905).
     public func beginGap(_ reason: PauseCode) {
+        #if DEV_RECORDER
+        dev.beginGap(reason, at: clock.now())
+        #endif
         session.withLock { active in
             guard active != nil, active?.openGap == nil else { return }
             recording.store(false, ordering: .releasing)
@@ -3560,6 +3613,9 @@ public final class CaptureController: Sendable {
     }
 
     public func endGap() {
+        #if DEV_RECORDER
+        dev.endGap(at: clock.now())
+        #endif
         session.withLock { active in
             guard active?.openGap != nil else { return }
             active?.closeGap(at: clock.now())
@@ -3612,10 +3668,16 @@ public final class CaptureController: Sendable {
             for timer in current.timers { timer.cancel() }
             let now = clock.now()
             current.closeGap(at: now)
+            #if DEV_RECORDER
+            dev.stage()
+            #endif
             var lines = drainedLines(&current, now: now)
             lines.append(CaptureLine(type: .end, t: now.microseconds(since: current.start), reason: reason.rawValue))
             append(lines, to: current.info.file)
             active = nil
+            #if DEV_RECORDER
+            dev.flush()
+            #endif
             return current.info
         }
     }
@@ -3625,12 +3687,47 @@ public final class CaptureController: Sendable {
     }
 
     private func drainNow() {
+        #if DEV_RECORDER
+        drainNow(betweenRings: {})
+        #else
         session.withLock { active in
             guard var current = active else { return }
             append(drainedLines(&current, now: clock.now()), to: current.info.file)
             active = current
         }
+        #endif
     }
+
+    #if DEV_RECORDER
+    /// PLT-R904A trace order: the tap pushes a key into the shared ring before the dev records of the same key
+    /// (engine steps, boundaries), so the dev rings are popped first. A key that arrives between the two pops is
+    /// then written with or before its dev records, never after them. `betweenRings` runs between the two pops
+    /// (tests: a producer racing the drain).
+    func drainNow(betweenRings: () -> Void) {
+        session.withLock { active in
+            guard var current = active else {
+                drainContinuousOnly(betweenRings: betweenRings)
+                return
+            }
+            dev.stage()
+            betweenRings()
+            append(drainedLines(&current, now: clock.now()), to: current.info.file)
+            active = current
+            dev.flush()
+        }
+    }
+
+    /// No time-boxed session: every queued record goes to the dev recorder only. Called with the session lock held,
+    /// so the rings keep exactly one consumer at a time.
+    private func drainContinuousOnly(betweenRings: () -> Void = {}) {
+        dev.stage()
+        betweenRings()
+        for ring in [tapRecords, injectRecords, focusRecords] {
+            while let record = ring.pop() { dev.collect(record) }
+        }
+        dev.flush()
+    }
+    #endif
 
     /// Pops every ring and returns the lines to write, oldest first. Records stamped before the session or
     /// inside a gap are dropped (PLT-R905 "nothing is recorded while secure input is on").
@@ -3638,6 +3735,9 @@ public final class CaptureController: Sendable {
         var timed: [(at: MonotonicInstant, line: CaptureLine)] = session.takeUnwrittenGaps()
         for ring in [tapRecords, injectRecords, focusRecords] {
             while let record = ring.pop() {
+                #if DEV_RECORDER
+                dev.collect(record)
+                #endif
                 let at = record.timestamp ?? now
                 guard session.accepts(at) else { continue }
                 timed.append((at, CaptureLine(record, start: session.start)))
@@ -10413,6 +10513,9 @@ public enum StringTable: String, Sendable, CaseIterable {
     case support = "Support"  // About & Support, donation block (PRD-R59)
     case updates = "Updates"  // PRD-R50-R54
     case composition = "Composition"  // composition root notices: safe mode, move failed, conflicts
+    #if DEV_RECORDER
+    case devRecorder = "DevRecorder"  // PLT-R904A dev builds' typing recorder; the catalog ships in Debug builds only
+    #endif
 }
 
 /// Resolves keys for one language. Immutable; a new instance is created on language change.
@@ -12317,6 +12420,9 @@ final class AppEnvironment {
         settings = state
         safeMode = state.safeMode  // PLT-R1009: the store decides; leaving safe mode reloads the files
         host.apply(settings: state)
+        #if DEV_RECORDER
+        noteDevSettings(state)  // PLT-R904A
+        #endif
         language.select(state.effective.interfaceLanguage)
         statusItem?.setClickToToggle(state.effective.clickIconToToggle)
         settingsWindow?.settingsChanged(state)  // changes made elsewhere show at once (menu, memory, import)
@@ -12446,6 +12552,9 @@ extension AppEnvironment: LaunchSteps {
         switchHUD = SwitchHUDController(language: language)
         item.setClickToToggle(settings.effective.clickIconToToggle)
         updateIcon()
+        #if DEV_RECORDER
+        startDevRecorder(statusItem: item, settings: settings)  // PLT-R904A: always on in dev builds
+        #endif
     }
 
     func presentOnboarding(settings: SettingsState) {
@@ -12509,6 +12618,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var appName: String?
     private var clickToToggle = false
     private var languageObservation: AnyCancellable?
+    #if DEV_RECORDER
+    /// PLT-R904A: the dev recorder's badge and menu items.
+    var devRecorder: DevRecorderController? {
+        didSet {
+            devRecorder?.indicatorChanged = { [weak self] in self?.applyIcon() }
+            devRecorder?.announce = { [weak self] text in self?.announce(text) }
+            applyIcon()
+        }
+    }
+    #endif
 
     /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
     init(
@@ -12555,6 +12674,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let model = menuModel()
         appName = model.appName
         menu.removeAllItems()
+        #if DEV_RECORDER
+        if let devRecorder {
+            for item in DevRecorderMenu.items(for: devRecorder, localizer: language.localizer) { menu.addItem(item) }
+        }
+        #endif
         let builder = StatusMenuBuilder(localizer: language.localizer, target: self)
         for entry in model.entries { menu.addItem(builder.item(for: entry, model: model)) }
     }
@@ -12567,8 +12691,25 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         button.image = StatusGlyph.image(for: iconState)
         let localizer = language.localizer
         button.setAccessibilityLabel(localizer.string(labelKey ?? iconState.accessibilityLabelKey, table: .menu))
+        #if DEV_RECORDER
+        if let devRecorder, devRecorder.isRecording, let image = button.image {
+            button.image = DevRecorderBadge.image(over: image, flashing: devRecorder.isFlashing)
+            let label = localizer.string(labelKey ?? iconState.accessibilityLabelKey, table: .menu)
+            button.setAccessibilityLabel(label + ", " + localizer.string(DevRecorderText.badgeLabel))
+        }
+        #endif
         if let appName { button.setAccessibilityHelp(localizer.format(MenuText.statusItemHint, appName)) }
     }
+
+    #if DEV_RECORDER
+    /// PRD-R66: the marker confirmation is spoken, from the status item's window, without taking focus.
+    private func announce(_ text: String) {
+        guard let window = statusItem.button?.window else { return }
+        NSAccessibility.post(
+            element: window, notification: .announcementRequested,
+            userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+    }
+    #endif
 
     /// PRD-R63: the status item's label follows a language change at once; the menu is rebuilt on next open.
     private func observeLanguage() {
