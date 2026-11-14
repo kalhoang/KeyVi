@@ -577,6 +577,7 @@ cat >>"$R/scripts/brand.env" <<'EOF'
 APP_SUPPORT_EMAIL="help@example.vn"
 APP_REPOSITORY_URL="https://github.com/o/testapp"
 APP_LEGACY_STORAGE_FOLDER_NAMES=""
+APP_TRADEMARK_SIGN="™"
 EOF
 cat >"$R/Config/Brand.xcconfig" <<'EOF'
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -588,14 +589,16 @@ APP_SITE_HOST = testapp.example.vn
 APP_SUPPORT_EMAIL = help@example.vn
 APP_REPOSITORY_URL = https:/$()/github.com/o/testapp
 APP_LEGACY_STORAGE_FOLDER_NAMES =
+APP_TRADEMARK_SIGN = ™
 EOF
-printf 'Install Test App from https://testapp.example.vn (cask testapp, bundle vn.example.testapp).\nKeep {{AppName}} and testappx.\n' >"$R/README.md"
+printf 'Install Test App from https://testapp.example.vn (cask testapp, bundle vn.example.testapp).\nKeep {{AppName}} and testappx.\nAbout Test App™.\n' >"$R/README.md"
 printf 'Test App was the temporary name.\n' >"$R/docs/decisions/0001-x.md"
 printf '{{AppName}} Test App\n' >"$R/spec/00.md"
 (cd "$R" && git init -q && git add -A)
 expect 2 "rename needs two arguments" "$R/scripts/rename-app.sh" OnlyOne
 expect 1 "rename rejects a bad slug" "$R/scripts/rename-app.sh" "New" "Bad_Slug"
 expect 1 "rename rejects ; in the name (legacy folder separator, ADR 0307)" "$R/scripts/rename-app.sh" "A;B" ab
+expect 1 "rename rejects a trademark sign other than ™ or ®" "$R/scripts/rename-app.sh" "New" new --trademark-sign X
 expect 0 "rename dry run" "$R/scripts/rename-app.sh" "Xuôi" xuoi --bundle-prefix vn.example --domain example.vn
 contains "dry run lists README" "--- README.md"
 contains "dry run shows the legacy folder" "legacy storage folders: (none) -> Test App"
@@ -632,10 +635,25 @@ else
   ko "README literals rewritten"
 fi
 if grep -q '{{AppName}} and testappx' "$R/README.md"; then ok "placeholders and longer words untouched"; else ko "placeholders untouched"; fi
+if grep -q '^About Xuôi™\.$' "$R/README.md" && grep -q '^APP_TRADEMARK_SIGN="™"$' "$R/scripts/brand.env" &&
+  grep -q '^APP_TRADEMARK_SIGN = ™$' "$R/Config/Brand.xcconfig"; then
+  ok "the trademark sign is kept by default and follows the new name"
+else
+  ko "the trademark sign is kept by default and follows the new name"
+fi
 if grep -q 'Test App was' "$R/docs/decisions/0001-x.md"; then ok "decision records untouched"; else ko "decision records untouched"; fi
 if grep -q 'Test App' "$R/spec/00.md"; then ok "spec untouched"; else ko "spec untouched"; fi
 # A non-ASCII name stores its folders under the slug (PLT-R903), so the slug is what becomes legacy.
-expect 0 "second rename" "$R/scripts/rename-app.sh" "Zeta Gõ" zetago --bundle-prefix vn.example --domain example.vn --apply
+expect 0 "second rename" "$R/scripts/rename-app.sh" "Zeta Gõ" zetago --bundle-prefix vn.example --domain example.vn \
+  --no-trademark-sign --apply
+if grep -q '^About Zeta Gõ\.$' "$R/README.md" && grep -q '^APP_TRADEMARK_SIGN=""$' "$R/scripts/brand.env" &&
+  grep -q '^APP_TRADEMARK_SIGN =$' "$R/Config/Brand.xcconfig"; then
+  ok "--no-trademark-sign clears the sign in the brand files and the front door"
+else
+  ko "--no-trademark-sign clears the sign in the brand files and the front door"
+fi
+expect 0 "brand files in sync after clearing the sign" python3 -I "$R/scripts/check-brand-sync.py" \
+  --xcconfig "$R/Config/Brand.xcconfig" --env "$R/scripts/brand.env"
 if grep -q '^APP_LEGACY_STORAGE_FOLDER_NAMES="xuoi;Test App"$' "$R/scripts/brand.env"; then
   ok "legacy list is newest first and uses the slug for a non-ASCII name"
 else

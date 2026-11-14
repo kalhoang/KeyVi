@@ -1,4 +1,4 @@
-# KeyVi
+# KeyVi™
 
 [Tiếng Việt](README.vi.md)
 

@@ -35,4 +35,20 @@ import Testing
         #expect(brand.repositoryURL?.host == "github.com")
         #expect(brand.storageFolderName == "example")
     }
+
+    /// Pa, 15/11/2026: the name carries its trademark sign where the product presents itself ("KeyVi™"); the sign
+    /// comes from APP_TRADEMARK_SIGN, and an empty, missing or unsubstituted value gives the bare name.
+    @Test func markedNameAddsTheTrademarkSign() {
+        var signed = info
+        signed["AppTrademarkSign"] = "™"
+        let brand = Brand.from(info: signed)
+        #expect(brand.trademarkSign == "™")
+        #expect(brand.markedName == "Example Name™")
+        #expect(brand.displayName == "Example Name")
+        for value: Any? in ["", "$(APP_TRADEMARK_SIGN)", nil] {
+            var bare = info
+            bare["AppTrademarkSign"] = value
+            #expect(Brand.from(info: bare).markedName == "Example Name")
+        }
+    }
 }

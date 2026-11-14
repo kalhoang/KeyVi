@@ -436,6 +436,13 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertEqual(self.helper("releases-add", "--file", str(path), "--version", "0.2.0", *common).returncode, 0)
         doc = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(doc["releases"][0]["notes"]["en"], "Fixes in Test App")
+        # {{AppNameTM}} is the name with APP_TRADEMARK_SIGN (Pa, 15/11/2026); without a sign it is the bare name.
+        common[-3:] = ["About {{AppNameTM}}", "--app-name", "Test App", "--trademark-sign", "™"]
+        self.assertEqual(self.helper("releases-add", "--file", str(path), "--version", "0.3.0", *common).returncode, 0)
+        common[-5:] = ["About {{AppNameTM}}", "--app-name", "Test App"]
+        self.assertEqual(self.helper("releases-add", "--file", str(path), "--version", "0.4.0", *common).returncode, 0)
+        notes = {entry["version"]: entry["notes"]["en"] for entry in json.loads(path.read_text(encoding="utf-8"))["releases"]}
+        self.assertEqual((notes["0.3.0"], notes["0.4.0"]), ("About Test App™", "About Test App"))
 
     def notes_page(self, out, notes_vi="### Đã sửa\n- Sửa lỗi lặp chữ trong **Chrome**",
                    notes_en="### Fixed\n- Fixed doubled letters in **Chrome**", *extra):

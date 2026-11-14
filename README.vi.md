@@ -1,4 +1,4 @@
-# KeyVi
+# KeyVi™
 
 [English](README.md)
 

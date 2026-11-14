@@ -128,10 +128,13 @@ def cmd_appcast_insert(args) -> int:
     return 0
 
 
-def fill_brand(value: str, app_name: str) -> str:
-    """Release notes come from CHANGELOG sections; a section may still say {{AppName}} (the file writes the literal name
-    since 2026-11-14, ADR 0400 decision 1 amendment)."""
-    return value.replace("{{AppName}}", app_name) if app_name else value
+def fill_brand(value: str, app_name: str, trademark_sign: str = "") -> str:
+    """Release notes come from CHANGELOG sections; a section may still say {{AppName}} or {{AppNameTM}} (the name with
+    APP_TRADEMARK_SIGN, Pa 15/11/2026); the file writes the literal name since 2026-11-14 (ADR 0400 decision 1
+    amendment)."""
+    if not app_name:
+        return value
+    return value.replace("{{AppNameTM}}", app_name + trademark_sign).replace("{{AppName}}", app_name)
 
 
 def cmd_releases_add(args) -> int:
@@ -154,7 +157,8 @@ def cmd_releases_add(args) -> int:
         "sha256": args.sha256,
         "size": args.size,
         "minimumSystemVersion": args.minimum_system_version,
-        "notes": {"vi": fill_brand(args.notes_vi, args.app_name), "en": fill_brand(args.notes_en, args.app_name)},
+        "notes": {lang: fill_brand(value, args.app_name, args.trademark_sign)
+                  for lang, value in (("vi", args.notes_vi), ("en", args.notes_en))},
     }
     doc["releases"] = [entry] + doc["releases"]
     doc["schemaVersion"] = doc.get("schemaVersion", 1)
@@ -229,7 +233,8 @@ def checked_notes(args) -> dict[str, str]:
     """Fills {{AppName}} and refuses notes the site build or the update window would reject."""
     if not VERSION_RE.match(args.version):
         raise SystemExit(f"invalid version {args.version}")
-    notes = {"vi": fill_brand(args.notes_vi, args.app_name), "en": fill_brand(args.notes_en, args.app_name)}
+    notes = {lang: fill_brand(value, args.app_name, args.trademark_sign)
+             for lang, value in (("vi", args.notes_vi), ("en", args.notes_en))}
     for lang, value in notes.items():
         if any(dash in value for dash in DASHES):
             raise SystemExit(f"the {lang} notes contain an en or em dash; use a comma, colon or hyphen "
@@ -429,12 +434,14 @@ def main(argv: list[str]) -> int:
     p.add_argument("--notes-vi", default="")
     p.add_argument("--notes-en", default="")
     p.add_argument("--app-name", default="", help="fills {{AppName}} in the notes")
+    p.add_argument("--trademark-sign", default="", help="APP_TRADEMARK_SIGN, for {{AppNameTM}} in the notes")
     p.set_defaults(func=cmd_releases_add)
 
     p = sub.add_parser("release-notes-page")
     p.add_argument("--out", help="site/static/release-notes/<version>/index.html (required unless --check)")
     p.add_argument("--check", action="store_true", help="validate the notes only; write nothing")
     p.add_argument("--app-name", required=True)
+    p.add_argument("--trademark-sign", default="", help="APP_TRADEMARK_SIGN, for {{AppNameTM}} in the notes")
     p.add_argument("--version", required=True)
     p.add_argument("--notes-vi", default="")
     p.add_argument("--notes-en", default="")

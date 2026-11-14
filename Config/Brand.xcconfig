@@ -8,6 +8,11 @@ APP_SLUG = keyvi
 APP_BUNDLE_ID_RELEASE = vn.kal.keyvi
 APP_BUNDLE_ID_DEV = vn.kal.keyvi.dev
 APP_SITE_HOST = keyvi.kal.vn
+// Trademark sign after the name where the product presents itself (Pa, 15/11/2026): the About, Support and Licences
+// panes, the donation block, the website and the documentation ({{AppNameTM}}). Never in menus, buttons, window
+// titles, onboarding, notifications, permission prompts, the bundle name or an identifier. Empty writes the bare
+// name. scripts/rename-app.sh keeps it unless --trademark-sign or --no-trademark-sign is given.
+APP_TRADEMARK_SIGN = ™
 
 // Added 2026-11-13 by the platform design (review findings on PRD-R47, QA-R51, QA-R60 and the temporary
 // name). The values above are unchanged. Empty means "not decided yet"; Pa fills them (VERIFY).

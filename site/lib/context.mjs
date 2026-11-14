@@ -74,6 +74,7 @@ function tokensFor(ctx, lang) {
   const { brand, config } = ctx;
   const tokens = {
     AppName: brand.name,
+    AppNameTM: brand.markedName,
     slug: brand.slug,
     host: brand.host,
     bundleId: brand.bundleId,

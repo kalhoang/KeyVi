@@ -7,7 +7,8 @@
          of the target Markdown file. Absolute URLs, mail links and template links ({{...}}) are skipped.
   brand  docs/ (except docs/decisions/, the historical records) contains no literal display name, slug,
          bundle ID or site host from scripts/brand.env: it says {{AppName}} and {{app-slug}}, so a rename
-         needs no change there. The front door (FRONT_DOOR: the files GitHub or the DMG shows exactly as they
+         needs no change there. Where the name carries its trademark sign it says {{AppNameTM}} (Pa,
+         15/11/2026), never {{AppName}} followed by a literal sign, so APP_TRADEMARK_SIGN alone decides it. The front door (FRONT_DOOR: the files GitHub or the DMG shows exactly as they
          are, so nothing fills a placeholder in) is the reverse: it contains no {{...}} placeholder and writes
          the literal values, which scripts/rename-app.sh rewrites on a rename (ADR 0400 decision 1, amended
          2026-11-13).
@@ -36,6 +37,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # CONTRIBUTING.md and the compatibility form link to. `*` never crosses a `/`.
 FRONT_DOOR = ("*.md", ".github/*.md", ".github/ISSUE_TEMPLATE/*", "compat/SCRIPT.md")
 PLACEHOLDER = re.compile(r"(?<!\$)\{\{\s*[A-Za-z][\w-]*\s*\}\}")
+# {{AppName}} with a literal sign after it: {{AppNameTM}} takes the sign from APP_TRADEMARK_SIGN instead.
+SIGNED_PLACEHOLDER = re.compile(r"\{\{\s*AppName\s*\}\}[™®]")
 INLINE_LINK = re.compile(r"!?\[(?:[^\[\]]|\[[^\]]*\])*\]\(\s*(<[^>]+>|[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)")
 # Footnote definitions ("[^1]: text") are not link definitions; their text is no target.
 REFERENCE_DEF = re.compile(r"^\s{0,3}\[(?!\^)[^\]]+\]:\s*(<[^>]+>|\S+)")
@@ -176,6 +179,9 @@ def check_brand(root: Path, env_file: Path) -> list[str]:
     for path in select(root, files, lambda rel: in_docs(rel, include_decisions=False)):
         rel = path.relative_to(root)
         for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            signed = SIGNED_PLACEHOLDER.search(line)
+            if signed:
+                problems.append(f"{rel}:{number}: {signed.group(0)!r} hard-codes the trademark sign; use {{{{AppNameTM}}}}")
             for pattern, label in patterns:
                 match = pattern.search(line)
                 if match:

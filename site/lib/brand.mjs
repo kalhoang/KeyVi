@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Reads the brand values (display name, slug, bundle IDs, site host) from scripts/brand.env.
+// Reads the brand values (display name, slug, bundle IDs, site host, trademark sign) from scripts/brand.env.
 // The name is temporary; scripts/rename-app.sh keeps brand.env in sync, so the site never hard-codes it.
 import { readFile } from "node:fs/promises";
 
@@ -29,8 +29,16 @@ export async function loadBrand(brandEnvPath) {
   const env = parseBrandEnv(text);
   const missing = REQUIRED.filter((key) => !env[key]);
   if (missing.length > 0) throw new Error(`Missing ${missing.join(", ")} in ${brandEnvPath}`);
+  const trademarkSign = env.APP_TRADEMARK_SIGN ?? "";
+  if (!["", "\u2122", "\u00AE"].includes(trademarkSign)) {
+    throw new Error(`APP_TRADEMARK_SIGN in ${brandEnvPath} must be empty, \u2122 or \u00AE`);
+  }
   return Object.freeze({
     name: env.APP_DISPLAY_NAME,
+    // Pa, 15/11/2026: page titles and prose write the name with its sign ({{AppNameTM}}); URLs, paths, file names
+    // and the slug never carry it.
+    trademarkSign,
+    markedName: env.APP_DISPLAY_NAME + trademarkSign,
     slug: env.APP_SLUG,
     bundleId: env.APP_BUNDLE_ID_RELEASE,
     host: env.APP_SITE_HOST,

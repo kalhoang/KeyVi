@@ -4,14 +4,16 @@
 # Renames the product (spec/00-overview.md section 4).
 #   1. Rewrites the two brand sources: Config/Brand.xcconfig and scripts/brand.env
 #      (display name, slug, bundle IDs vn.kal.<slug> and vn.kal.<slug>.dev, site host <slug>.kal.vn).
-#      APP_SUPPORT_EMAIL and APP_REPOSITORY_URL are kept as they are. The old storage folder name
+#      APP_SUPPORT_EMAIL and APP_REPOSITORY_URL are kept as they are; APP_TRADEMARK_SIGN too, unless
+#      --trademark-sign or --no-trademark-sign is given. The old storage folder name
 #      (PLT-R903: the display name, or the slug for a non-ASCII name) is put first in
 #      APP_LEGACY_STORAGE_FOLDER_NAMES so the first launch after the rename moves settings and logs
 #      (ADR 0307 amendment); the new folder name is dropped from that list.
 #   2. Rewrites every documented literal occurrence of the old values in tracked text files outside
-#      spec/ and docs/decisions/ (historical records): old display name, bundle IDs, site host, slug.
+#      spec/ and docs/decisions/ (historical records): old display name, bundle IDs, site host, slug. The
+#      old name with its old trademark sign ("Old™") becomes the new name with the new sign.
 #      The root LICENSE (the verbatim GPL-3.0 text, ADR 0006) is never rewritten.
-#   3. Leaves template placeholders ({{AppName}}, {{app-slug}}, {{storage-folder}}, {{bundle-id}})
+#   3. Leaves template placeholders ({{AppName}}, {{AppNameTM}}, {{app-slug}}, {{storage-folder}}, {{bundle-id}})
 #      untouched: they are rendered from scripts/brand.env at build or publish time. The front door
 #      (FRONT_DOOR in scripts/check-docs.py: files GitHub or the DMG shows as they are) carries the
 #      literal values instead, so step 2 rewrites it (ADR 0400 decision 1, amended 2026-11-13).
@@ -25,6 +27,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage: scripts/rename-app.sh "<Display Name>" <slug> [--apply] [--after-release]
+                             [--trademark-sign SIGN | --no-trademark-sign]
 
   <Display Name>   new product name, for example "Xuôi"
   <slug>           ASCII slug: lowercase letters and digits (hyphens inside allowed), 2 to 32 chars
@@ -33,6 +36,8 @@ Options:
   --apply          write the changes (default: dry run that lists every file and line)
   --bundle-prefix P   bundle ID prefix (default: vn.kal)
   --domain D       parent domain of the site host (default: kal.vn)
+  --trademark-sign SIGN   sign after the name in the About panes, site and docs: ™ or ® (default: keep it)
+  --no-trademark-sign     write the bare name from now on (clears APP_TRADEMARK_SIGN)
   --after-release  allow renaming after a public release (breaks permissions and updates)
   -h, --help       show this help
 EOF
@@ -50,6 +55,8 @@ apply=0
 after_release=0
 prefix="vn.kal"
 domain="kal.vn"
+sign_given=0
+new_sign=""
 positional=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -58,6 +65,8 @@ while [[ $# -gt 0 ]]; do
     --after-release) after_release=1; shift ;;
     --bundle-prefix) prefix="${2:?}"; shift 2 ;;
     --domain) domain="${2:?}"; shift 2 ;;
+    --trademark-sign) sign_given=1; new_sign="${2?}"; shift 2 ;;
+    --no-trademark-sign) sign_given=1; new_sign=""; shift ;;
     -*) usage >&2; exit 2 ;;
     *) positional+=("$1"); shift ;;
   esac
@@ -74,6 +83,10 @@ esac
 [[ "$new_slug" =~ ^[a-z][a-z0-9-]{0,30}[a-z0-9]$ ]] || die "slug must match ^[a-z][a-z0-9-]{0,30}[a-z0-9]$"
 [[ "$prefix" =~ ^[a-z0-9]+(\.[a-z0-9-]+)*$ ]] || die "invalid bundle prefix"
 [[ "$domain" =~ ^[a-z0-9-]+(\.[a-z0-9-]+)+$ ]] || die "invalid domain"
+case "$new_sign" in
+  "" | "™" | "®") ;;
+  *) die "trademark sign must be ™ or ® (or --no-trademark-sign)" ;;
+esac
 
 load_brand
 old_name="$APP_DISPLAY_NAME"
@@ -87,6 +100,8 @@ new_host="$new_slug.$domain"
 old_folder="$(storage_folder_for "$old_name" "$old_slug")"
 new_folder="$(storage_folder_for "$new_name" "$new_slug")"
 old_legacy="$APP_LEGACY_STORAGE_FOLDER_NAMES"
+old_sign="$APP_TRADEMARK_SIGN"
+[[ $sign_given -eq 1 ]] || new_sign="$old_sign"
 
 if [[ -f "$REPO_ROOT/site/data/releases.json" ]] && [[ $after_release -eq 0 ]]; then
   count="$(py -c 'import json,sys; d=json.load(open(sys.argv[1])); print(len(d.get("releases", [])) if isinstance(d, dict) else 0)' \
@@ -98,6 +113,7 @@ fi
 
 info "rename: \"$old_name\" ($old_slug) -> \"$new_name\" ($new_slug)"
 info "bundle IDs: $old_bundle -> $new_bundle, $old_bundle_dev -> $new_bundle_dev; host: $old_host -> $new_host"
+info "trademark sign: ${old_sign:-(none)} -> ${new_sign:-(none)}"
 if [[ "$new_folder" == "$new_slug" && "$new_name" != "$new_slug" ]]; then
   info "the new name contains non-ASCII characters: folders use the slug '$new_slug' (PLT-R903)"
 fi
@@ -109,13 +125,13 @@ tracked_files >"$file_list"
 py - "$REPO_ROOT" "$apply" "$file_list" \
   "$old_name" "$new_name" "$old_slug" "$new_slug" "$old_bundle" "$new_bundle" \
   "$old_bundle_dev" "$new_bundle_dev" "$old_host" "$new_host" \
-  "$old_folder" "$new_folder" "$old_legacy" <<'PY'
+  "$old_folder" "$new_folder" "$old_legacy" "$old_sign" "$new_sign" <<'PY'
 import os
 import re
 import sys
 
 (root, apply, file_list, old_name, new_name, old_slug, new_slug, old_bundle, new_bundle,
- old_dev, new_dev, old_host, new_host, old_folder, new_folder, old_legacy) = sys.argv[1:]
+ old_dev, new_dev, old_host, new_host, old_folder, new_folder, old_legacy, old_sign, new_sign) = sys.argv[1:]
 apply = apply == "1"
 
 
@@ -140,10 +156,15 @@ EXCLUDED = re.compile(r"^(spec/|docs/decisions/|\.git/|dist/|site/dist/|LICENSE$
                       r"\.(png|jpg|jpeg|gif|icns|ico|pdf|dmg|zip|car|ttf|otf|woff2?)$")
 
 # Order matters: longest, most specific values first so a bundle ID is not half-rewritten by the slug.
+# The name with its sign goes before the bare name, so "Old™" becomes "New™" (or "New" once the sign is cleared).
 replacements = [
     (re.escape(old_dev), new_dev),
     (re.escape(old_bundle), new_bundle),
     (re.escape(old_host), new_host),
+]
+if old_sign:
+    replacements.append((re.escape(old_name + old_sign), new_name + new_sign))
+replacements += [
     (re.escape(old_name), new_name),
     (r"(?<![A-Za-z0-9_])" + re.escape(old_slug) + r"(?![A-Za-z0-9_])", new_slug),
 ]
@@ -161,21 +182,23 @@ def rewrite_brand_file(rel, text):
     values = {
         "APP_DISPLAY_NAME": new_name, "APP_SLUG": new_slug, "APP_BUNDLE_ID_RELEASE": new_bundle,
         "APP_BUNDLE_ID_DEV": new_dev, "APP_SITE_HOST": new_host,
-        "APP_LEGACY_STORAGE_FOLDER_NAMES": new_legacy,
+        "APP_LEGACY_STORAGE_FOLDER_NAMES": new_legacy, "APP_TRADEMARK_SIGN": new_sign,
     }
     seen = set()
     out = []
     for line in text.splitlines(keepends=True):
-        match = re.match(r"^(\s*)(APP_[A-Z_]+)(\s*=\s*)(.*?)(\r?\n?)$", line)
+        # [ \t]* rather than \s*: an empty value ("KEY =") must keep its line break.
+        match = re.match(r"^([ \t]*)(APP_[A-Z_]+)([ \t]*=[ \t]*)(.*?)(\r?\n?)$", line)
         if match and match.group(2) in values:
             key = match.group(2)
             seen.add(key)
             line = match.group(1) + brand_line(rel, key, values[key]) + match.group(5)
         out.append(line)
-    if "APP_LEGACY_STORAGE_FOLDER_NAMES" not in seen and new_legacy:
-        if out and not out[-1].endswith("\n"):
-            out.append("\n")
-        out.append(brand_line(rel, "APP_LEGACY_STORAGE_FOLDER_NAMES", new_legacy) + "\n")
+    for key, value in (("APP_LEGACY_STORAGE_FOLDER_NAMES", new_legacy), ("APP_TRADEMARK_SIGN", new_sign)):
+        if key not in seen and value:
+            if out and not out[-1].endswith("\n"):
+                out.append("\n")
+            out.append(brand_line(rel, key, value) + "\n")
     return "".join(out)
 
 
