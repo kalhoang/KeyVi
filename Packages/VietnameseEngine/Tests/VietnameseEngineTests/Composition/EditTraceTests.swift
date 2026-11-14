@@ -60,11 +60,12 @@ struct EditTraceTests {
     }
 
     @Test func backspaceActions() throws {
-        // ENG-R712: plain deletion passes through; relocation swallows the Backspace and edits.
+        // ENG-R712: plain deletion passes through; relocation swallows the Backspace and edits. An escape
+        // letter goes with the keys it undid, so its Backspace passes through too (ENG-R711, 15/11/2026).
         #expect(try trace("vieejt⌫").last == .pass)
         #expect(try trace("hoafn⌫").last == .edit(3, "òa"))
-        #expect(try trace("nhaamff⌫").last == .edit(3, "ầm"))
-        #expect(try trace("ass⌫").last == .edit(2, "á"))
+        #expect(try trace("nhaamff⌫").last == .pass)
+        #expect(try trace("ass⌫").last == .pass)
     }
 
     @Test func literalKeysPassThrough() throws {

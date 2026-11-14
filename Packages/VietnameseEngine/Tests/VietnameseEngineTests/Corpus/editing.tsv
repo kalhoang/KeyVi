@@ -13,7 +13,7 @@ ED002	Telex	-	vieejt⌫⌫	vi	-	W237: the tone goes with ệ
 ED003	Telex	-	hoafn⌫	hòa	hoaf	W240: tone relocates
 ED004	Telex	modern	hoaf⌫	ho	-	W239
 ED005	Telex	-	duwowngf⌫⌫⌫	dư	duw	W243
-ED006	Telex	-	nhaamff⌫	nhầm	nhaamf	W241, REG-24
+ED006	Telex	-	nhaamff⌫	nhâm	nhaam	W241, REG-24: the escape letter goes with the tone key it undid (ENG-R711, 15/11/2026)
 ED007	Telex	-	chao\s⌫f	chào	chaof	REG-07: re-open after a space
 ED008	Telex	-	chao,\s⌫⌫f	chào	chaof	REG-07: after ", "
 ED009	Telex	-	chao.\s⌫⌫f	chào	chaof	REG-07: after ". "
@@ -50,5 +50,22 @@ ED039	Telex	-	aszn⌫⌫		-	the coda goes first, then a with the tone keys (the 
 ED040	VNI	-	a10⌫		-	ENG-R710 after a 0 removal (the field is empty)
 ED041	VNI	-	to10⌫	t	-	ENG-R710 after a 0 removal
 ED042	VNI	-	vie65t0⌫⌫⌫	v	-	the tone key and the 0 go with ê, the 6 with ê too
-ED043	Telex	-	ww⌫	ư	-	ENG-R711: only the escaping w goes, the standalone ư comes back (the length stays)
-ED044	Telex	brackets	m[[⌫	mơ	-	ENG-R711 with a bracket key
+ED043	Telex	-	ww⌫		-	ENG-R711: the escaping w goes with the standalone w whose ư it removed (the field is empty)
+ED044	Telex	brackets	m[[⌫	m	-	ENG-R711 with a bracket key: both brackets go
+ED045	Telex	-	nhaamff⌫f\s	nhầm\s	-	REG-24: after the escape letter is deleted the tone key applies again
+ED046	Telex	-	boss⌫	bo	bo	ENG-R711: one key typed too many costs one character
+ED047	Telex	-	cass⌫o	cao	-	ENG-R711: the product owner's trace (the first version gave cáo)
+ED048	Telex	-	teee⌫epj	tệp	-	ENG-R711: the product owner's trace (the first version gave teepj)
+ED049	Telex	-	WSw⌫		-	ENG-R711, ENG-R432: the tone key whose vowel the escape removed goes too (the field is empty)
+ED050	Telex	-	daauszz\s	dau\s	-	ENG-R411: the second z removes the marks (REG-34); the commit keeps dau (L7)
+ED051	Telex	-	daauszz⌫	da	-	ENG-R411, ENG-T38: Backspace after a mark removal takes one character
+ED052	Telex	-	daauszzz	dauz	-	ENG-R411: nothing left to remove, the third z is a letter
+ED053	VNI	-	a6100	a	-	ENG-R411 in VNI: the second 0 removes the circumflex
+ED054	Telex	-	daaus\s⌫zz	dau	-	ENG-R411 on a re-opened word
+ED055	Telex	-	tiesng\s⌫⌫⌫⌫⌫eesn	tiến	-	ENG-R1005 (REG-33): the restore ends once the remaining keys compose to themselves
+ED056	Telex	-	baas\s⌫⌫⌫⌫aasm\s	bấm\s	-	ENG-R1005: the product owner's trace (the first version gave baasm, composed only at Space)
+ED057	Telex	-	test\s⌫⌫⌫s	té	-	ENG-R1005 with an L11 restore
+ED058	Telex	-	tieesngg\s⌫⌫\s	tiếng\s	-	ENG-R1005: at the boundary a re-opened token is decided on its raw keys at that moment
+ED059	Telex	-	boss\s⌫⌫\s	bó\s	-	ENG-R1005: the same, the shown bos commits as bó
+ED060	Telex	-	text\s⌫⌫\s	tẽ\s	-	ENG-R1005: known cost, tex is not English
+ED061	Telex	-	vieejt⎋\s⌫⌫⌫⌫⌫eejt\s	vieejt\s	-	ENG-R1005, ENG-R701: a user restore stays literal whatever is deleted

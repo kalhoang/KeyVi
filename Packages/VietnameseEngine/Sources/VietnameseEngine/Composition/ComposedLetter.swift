@@ -39,6 +39,14 @@ package struct KeySet: Sendable, Hashable {
         return KeySet(index: 63 - bits.leadingZeroBitCount)
     }
 
+    /// The keys in either set.
+    @inline(__always)
+    package func union(_ other: KeySet) -> KeySet {
+        var result = self
+        result.formUnion(other)
+        return result
+    }
+
     /// The keys in both sets.
     @inline(__always)
     package func intersection(_ other: KeySet) -> KeySet {
@@ -54,7 +62,7 @@ package struct ComposedLetter: Sendable, Hashable {
         package let rawValue: UInt8
         package init(rawValue: UInt8) { self.rawValue = rawValue }
 
-        /// Appended by an escape (4.7); Backspace removes only its key (ENG-R711).
+        /// Appended by an escape (4.7); Backspace removes its key and the keys it undid (ENG-R711).
         package static let escape = Flags(rawValue: 1 << 0)
         /// The `ư` of a standalone Telex `w` (ENG-R103); a `w` escape removes it (ENG-R413).
         package static let standaloneW = Flags(rawValue: 1 << 1)
@@ -72,12 +80,16 @@ package struct ComposedLetter: Sendable, Hashable {
     package var source: UInt8
     /// Raw indices of every modifier or stroke key that targeted the letter (ENG-R710).
     package var modifierSources = KeySet()
+    /// For a letter appended by an escape (4.7), the raw indices of the earlier keys whose effect the
+    /// escape undid; Backspace removes them with the letter (ENG-R711). Empty for other letters.
+    package var undoneKeys = KeySet()
 
-    package init(_ letter: Letter, uppercase: Bool, flags: Flags = [], source: Int) {
+    package init(_ letter: Letter, uppercase: Bool, flags: Flags = [], source: Int, undoneKeys: KeySet = KeySet()) {
         self.letter = letter
         self.isUppercase = uppercase
         self.flags = flags
         self.source = UInt8(truncatingIfNeeded: source)
+        self.undoneKeys = undoneKeys
     }
 
     /// Sets the letter's modifier (or stroke) on behalf of the key `index`.

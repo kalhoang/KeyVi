@@ -112,7 +112,7 @@ A Vietnamese syllable is `[onset] [medial] nucleus [coda] + tone`. In spelling, 
 | `ch` `d` `đ` `h` `kh` `l` `n` `nh` `r` `s` `t` `th` `tr` `x` | A | No special constraint beyond 3.10. |
 | `bl` `br` `dr` `đr` `gl` `gr` `kl` `kr` `pl` `pr` | B | Clusters found in ethnic-minority place names (`Krông`, `Đắk Glong`, `M'Đrắk`, `Ia Grai`, `Kon Plông`, `Chư Prông`). |
 | `z` | B | Teencode (`zá`, `zui`, `zậy`). |
-| `dz` | B | Colloquial (mostly Southern) spelling of the `d`/`v` sound: `dzô`, `dzậy`, `dzui`, `dzữ`, `dzìa`. Follows the same constraints as `d`. In Telex the `z` of `dz` arrives before any vowel, so ENG-R411 makes it a letter, never tone removal. Required by the product owner (P0-2 in 03-product.md). |
+| `dz` | B | Colloquial (mostly Southern) spelling of the `d`/`v` sound: `dzô`, `dzậy`, `dzui`, `dzữ`, `dzìa`. Follows the same constraints as `d`. In Telex the `z` of `dz` arrives before any vowel and after an unstroked `d`, so ENG-R411 finds nothing to remove and makes it a letter, never tone removal (after `đ` it removes the stroke: `ddz` -> `d`). Required by the product owner (P0-2 in 03-product.md). |
 
 `f`, `j` and `w` are not onsets in any tier. In Telex `f` and `j` are tone keys and `w` is a vowel modifier; a token that starts with them is never Vietnamese, so it goes literal at once (`facebook`, `java` are never touched). Decision (Pa, 13/11/2026): the slang onsets supported are `z` and `dz`; `f`, `j` and `w` stay out because they would make common English words (`for`, `fix`, `jar`, `was`) compose.
 
@@ -259,7 +259,7 @@ The generator of the implementation, built from the tables above, prints: 156 Ti
 | `r` | tone | hỏi | `ar` -> `ả` |
 | `x` | tone | ngã | `ax` -> `ã` |
 | `j` | tone | nặng | `aj` -> `ạ` |
-| `z` | tone removal | removes the tone; a letter if there is no tone | `asz` -> `a`, `za` -> `za` |
+| `z` | tone removal | removes one layer per press: the tone, then every vowel mark and the stroke at once; a letter if there is neither (ENG-R411) | `asz` -> `a`, `aaz` -> `a`, `daauszz` -> `dau`, `za` -> `za` |
 | `a` `e` `o` | circumflex | on the same letter in the vowel group | `aa` -> `â`, `ee` -> `ê`, `oo` -> `ô`, `cuwowio` -> `cuôi` |
 | `w` | horn / breve | `a` -> `ă`, `o` -> `ơ`, `u` -> `ư`, `uo` -> `ươ`, `ua` -> `ưa` (not after `q`), `qua` -> `quă`, `oa` -> `oă`, `uu` -> `ưu`, `ui` -> `ưi`; alone -> `ư` (option) | `aw` -> `ă`, `tuowng` -> `tương`, `w` -> `ư` |
 | `d` | stroke | `d` that starts the token -> `đ` | `dd` -> `đ`, `dangd` -> `đang` |
@@ -273,7 +273,7 @@ All roles apply to uppercase keys too. The case of a transform key never matters
 | Key | Role | Effect |
 |---|---|---|
 | `1` `2` `3` `4` `5` | tone | sắc, huyền, hỏi, ngã, nặng |
-| `0` | tone removal | removes the tone; literal `0` if there is no tone |
+| `0` | tone removal | removes one layer per press: the tone, then every vowel mark and the stroke at once; literal `0` if there is neither (ENG-R411) |
 | `6` | circumflex | on `a`, `e` or `o` in the vowel group (rightmost eligible first) |
 | `7` | horn | on `o` or `u`; `uo` -> `ươ`, `ua` -> `ưa`, `uu` -> `ưu`, `ui` -> `ưi` |
 | `8` | breve | on `a` (`oa` -> `oă`, `qua` -> `quă`) |
@@ -296,9 +296,9 @@ For each key while composing a token:
 ### 4.4 When a transform applies (normative)
 
 - **ENG-R410 Tone.** Applies when the parse of the current letters has a non-empty vowel group (the `u` of `qu` and the `i` of a `gi` onset do not count). If the current tone equals the key's tone, the key escapes (4.7). Otherwise it replaces the current tone. Tone keys never fail because of the coda; an invalid tone/coda pair is judged at commit.
-- **ENG-R411 Tone removal.** Applies when the token has a tone. Otherwise the key is a letter (Telex `z`) or literal (VNI `0`). This is the only behaviour for `qu` with no vowel: `quz` -> `quz`, `qu0` -> `qu0`, never a crash (REG-01).
+- **ENG-R411 Tone removal.** Removes one layer per press. If the token has a tone, the key removes it. Otherwise, if a letter carries a vowel mark (circumflex, horn or breve) or the token has `đ`, the key removes all of them at once (`đ` becomes `d`; the `ư` of a standalone `w` becomes `u`, `wz` -> `u`). Otherwise the key is a letter (Telex `z`) or literal (VNI `0`). So `daausz` -> `dâu`, `daauszz` -> `dau`, `daauszzz` -> `dauz`, `dduwowngfzz` -> `duong`, `aaz` -> `a`; VNI `a610` -> `â`, `a6100` -> `a`, `a61000` -> `a0`. A key with nothing to remove behaves as before: this is the only behaviour for `qu` with no vowel, `quz` -> `quz`, `qu0` -> `qu0`, never a crash (REG-01), and for a `z` before any vowel (`za`, `dz`; REG-25). After a removal every key keeps its role, as after a tone removal (`aszs` -> `á`): a tone key sets a tone, a modifier or stroke key marks again and a second press of it escapes (`aaza` -> `â`, `aazaa` -> `aa`, `daauszza` -> `dâu`, `ddzd` -> `đ`), and a further tone-removal key starts again from the top layer (`aazaz` -> `a`). Removing marks never makes the letters non-viable (the wildcard of ENG-R345). The commit decides by 8.1 as for any token: `daauszz` + space keeps `dau`, but `dduwowngfzz` + space restores the raw keys because `duong` is not a syllable (L5), as a tone removal already did for `vieejtz` (`viêt` has a stop coda without sắc or nặng, 3.11). Known cost; whether a removal should make the commit keep the unmarked text like an escape (L4) is an open question for the product owner (section 15). *(Amended by the product owner on 15/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, REG-34: the first version removed only the tone, so `daauszz` gave `dâuz` where `dau` was expected.)*
 - **ENG-R412 Circumflex.** Target: a letter in the vowel group with the key's base letter (Telex) or with base `a`, `e` or `o`, rightmost first (VNI `6`). If the target already has a circumflex, the key escapes. Otherwise the target gets a circumflex, replacing any horn or breve on it; if the target is the `o` of a `u o` pair, the horn is also removed from the `u` (`ươ` + `o` -> `uô`). The transform applies only if the result is viable; otherwise the next target is tried, then the key falls through to step 3.
-- **ENG-R413 Horn and breve (Telex `w`).** Candidate target sets, in order: (a) a `u o` pair inside the vowel group (both letters get a horn), then (b) single letters of the vowel group from right to left: `a` gets a breve, `o` or `u` gets a horn. A set whose letters already carry exactly that modifier is skipped. The first set whose result is viable is applied. If none applies and the vowel group already has a horn or breve, the key escapes: every horn and breve in the vowel group is removed, an `ư` that was created by a standalone `w` is removed, and the key is appended as a letter. If none applies, the vowel group is empty and standalone `w` is on, `ư` is appended if viable. Otherwise the key falls through to step 3.
+- **ENG-R413 Horn and breve (Telex `w`).** Candidate target sets, in order: (a) a `u o` pair inside the vowel group (both letters get a horn), then (b) single letters of the vowel group from right to left: `a` gets a breve, `o` or `u` gets a horn. A set whose letters already carry exactly that modifier is skipped. The first set whose result is viable is applied. If none applies and the vowel group already has a horn or breve, the key escapes: every horn and breve in the vowel group is removed, an `ư` that was created by a standalone `w` is removed (a tone shown on it then has no letter, ENG-R432), and the key is appended as a letter. If none applies, the vowel group is empty and standalone `w` is on, `ư` is appended if viable. Otherwise the key falls through to step 3.
 - **ENG-R414** VNI `7` follows ENG-R413 restricted to `o` and `u` with no standalone case. VNI `8` follows it restricted to `a`.
 - **ENG-R415 Stroke.** Applies when the first letter of the token is `d`. An unstroked `d` becomes `đ` if viable; a stroked one escapes. Otherwise Telex `d` is a letter and VNI `9` is literal.
 - **ENG-R416** A transform that would make the letters non-viable MUST NOT be applied. The key then becomes a letter or literal according to 4.3. Consequences: `chưa` + `a` -> `chưaa` (no `ưâ`), `cua` + `a` -> `cuaa` (no `c` + `uâ`), `khoa` + `a` -> `khoaa`, `q` + `w` -> `qw` (no `qư`) (REG-13, REG-20).
@@ -313,12 +313,12 @@ For each key while composing a token:
 
 - **ENG-R430** Tone, modifier and stroke keys MAY be typed anywhere after the letters they act on, including after the coda: `caanf`, `caafn` -> `cần`; `hopwj`, `howjp` -> `hợp`; `dangd` -> `đang`; `chwa` -> `chưa`; `wngs`, `wsng` -> `ứng`; `mootj`, `moojt` -> `một`; `phucws` -> `phức`; VNI `vie6t5`, `vie65t` -> `việt`, `duoc795` -> `được` (REG-09).
 - **ENG-R431** A circumflex key typed after the coda applies to the matching vowel (`cana` -> `cân`) because a vowel letter after a coda is never viable as a letter.
-- **ENG-R432** A tone key typed before any vowel is a letter (`tsa` goes literal at `s`).
+- **ENG-R432** A tone key typed before any vowel is a letter (`tsa` goes literal at `s`). A tone key whose vowel an escape removes later (a Telex `w` escape removing the `ư` of a standalone `w`, ENG-R413, or a bracket key removing its own letter, 4.8) shows on no letter for the rest of the token, which is literal from the escape key on (ENG-R442): `WSw` shows `w`. It is not a letter either: Backspace on the escape letter removes it with the escape instead of bringing it back as a letter (ENG-R711: `WSw` + Backspace leaves an empty token).
 
 ### 4.7 Escape by doubling
 
 - **ENG-R440** Typing a transform key whose effect is already present removes the effect and appends the key itself as a letter (Telex) or literal character (VNI): `ass` -> `as`, `aaa` -> `aa`, `aww` -> `aw`, `ddd` -> `dd`, `ww` -> `w`, `nhaamff` -> `nhâmf`, VNI `a11` -> `a1`, `d99` -> `d9`.
-- **ENG-R441** Escape is sticky per kind for the rest of the token. Kinds: tone, circumflex, Telex `w`, VNI horn, VNI breve, stroke. After an escape, keys of that kind are letters (Telex) or literal (VNI). Example: `boooong` -> `booong`, while `booong` -> `boong`.
+- **ENG-R441** Escape is sticky per kind for the rest of the token, or until Backspace deletes the escape letter (ENG-R711). Kinds: tone, circumflex, Telex `w`, VNI horn, VNI breve, stroke. After an escape, keys of that kind are letters (Telex) or literal (VNI). Example: `boooong` -> `booong`, while `booong` -> `boong`; `boss` + Backspace, `s` -> `bó`.
 - **ENG-R442** The escaped letter is an ordinary letter for viability; if it makes the token non-viable, literal mode starts (`ass` -> `as`, then literal).
 
 ### 4.8 What the options change
@@ -480,24 +480,24 @@ Defined in 4.7. Doubling is the always-available, per-key way to get a literal l
 - **ENG-R702** A `restoreToggle` that immediately follows another `restoreToggle` (no other event in between) MUST return `passThrough` and change nothing. A second consecutive press therefore always reaches the app with its normal meaning.
   *Rationale: a toggle that flips back and forth on every press would trap the user in Spotlight or a dialog, where Escape also means "close"; the review replaced the earlier flip-back behaviour with this rule. The Vietnamese form is still one step away: Backspace (or any other event) followed by the toggle composes the token again (E02b), and an automatic restore is undone the same way (ENG-R704).*
 - **ENG-R703** If there is no active token, or neither branch of ENG-R701 applies, `restoreToggle` MUST return `passThrough`, so the key keeps its normal meaning (closing Spotlight, dialogs, Vim insert mode).
-- **ENG-R704** To undo an automatic restore, the user presses Backspace once (re-opening the word, section 10) and then the toggle. Example: `test` + space commits `test ` (restored by rule L11); Backspace re-opens `test` in its restored state; the toggle shows `tét` and marks the token user-kept.
+- **ENG-R704** To undo an automatic restore, the user presses Backspace once (re-opening the word, section 10) and then the toggle. Example: `test` + space commits `test ` (restored by rule L11); Backspace re-opens `test` in its restored state (ENG-R1005); the toggle shows `tét` and marks the token user-kept.
 - **ENG-R705** The restore of a VNI token MUST reproduce the digits typed (`vie65t` + toggle -> `vie65t`), and a Telex token the letters typed, including doubled letters (`traffic`) (REG-05, REG-27).
 
 Default binding (host side, `03-product.md` D8 and PRD-R18): **Escape is bound by default**, with an on/off setting (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md; the first version left it unset). Escape is one key, free inside a word in ordinary text fields, and known to users of other input methods. The host consumes it only when the engine answers with an edit (ENG-R701); otherwise it passes through with its normal meaning (ENG-R702, ENG-R703), so a second press always closes Spotlight or a dialog. Compatibility rules turn the binding off where Escape has its own meaning (terminals, IDEs and code editors, games, remote desktop clients: `features.restoreHotkey: false`, `02-platform.md` PLT-R353), never per-app code. The engine is unaffected: it only sees `restoreToggle` events.
 
 ### 7.3 Tone removal
 
-`z` (Telex) and `0` (VNI) remove the tone (ENG-R411). They never remove vowel modifiers or `đ`; those are removed by doubling (`aa` + `a`, `dd` + `d`). With no tone present the key is a letter or literal digit, which also covers `qu` with no vowel and every other vowel-less token (REG-01, REG-25).
+`z` (Telex) and `0` (VNI) remove one layer per press (ENG-R411): the tone first; with no tone, every vowel modifier and `đ` at once (`daauszz` -> `dau`, `dduwowngfzz` -> `duong`); with neither, the key is a letter or literal digit, which also covers `qu` with no vowel and every other vowel-less token (REG-01, REG-25). Doubling still removes one modifier or the stroke by itself (`aa` + `a`, `dd` + `d`). *(The first version never removed vowel modifiers or `đ` with these keys; amended by the product owner on 15/11/2026, REG-34.)*
 
 ### 7.4 Backspace inside a token
 
-- **ENG-R710** Backspace removes the last visible character of the token. In composing mode the engine removes from the raw keys: the key that produced that letter, its modifier and stroke keys, and every tone key if the tone is displayed on that letter. Then it recomputes. In literal mode it removes the last raw key and recomputes (which may leave literal mode).
+- **ENG-R710** Backspace removes the last visible character of the token. In composing mode the engine removes from the raw keys: the key that produced that letter, its modifier and stroke keys, and every tone key if the tone is displayed on that letter. Then it recomputes. In literal mode it removes the last raw key and recomputes (which may leave literal mode). A re-opened token that a commit rule restored leaves its restored state by ENG-R1005. A key that set or removed a tone, or removed letter marks (ENG-R411), never comes back as a letter: when it would replay as a letter or literal digit once the deleted letter's keys are gone, it goes too (`aaz` + Backspace leaves an empty token, `daauszz` + Backspace -> `da`: there the second `z` still finds `â` to unmark and stays).
   A modifier or stroke key goes with the deleted letter only if every letter it targeted is deleted; otherwise it stays and keeps marking the remaining letters. This matters for keys that mark two letters at once: one Telex `w` or VNI `7` on `uo` (`thuowr` + Backspace -> `thư`, not `thu`; `dduowcj` + 2 Backspaces -> `đư`). Precisely, a shared key stays only for a remaining letter that still shows the mark and has no other way to get it: when that letter also has a mark key of its own (`thuwowr`), or is the `ư` of a standalone `w` or of a bracket key (ENG-R103, ENG-R104: `wow`), the shared key goes, because keeping it would replay as an escape (`thuww`); when it has several shared keys, only the newest stays (VNI `uo76m7`: the second `7` gave the horns back after the `6`). A `u` that shows no horn loses its horn keys with the letter after it: after a circumflex replaced the horns of `ươ` (ENG-R533: `cuowio` shows `cuôi`, `cuowios` + 2 Backspaces -> `cu`), and in a word re-opened from history that shows the commit spelling `uơ` of an open `ươ` (ENG-R532, ENG-R1002: `thuowr`, space, 2 Backspaces -> `thu`).
   *History: the first version removed every modifier key that targeted the letter, so deleting `ơ` also took the horn off `ư` (`thuowr` + Backspace gave `thu`; reported by the product owner on 14/11/2026 in chat apps, "Backspace gây đổi chữ"). W243 only covered one `w` per letter.*
-- **ENG-R711** If the removed letter was produced by an escape, only the escaping key is removed, so the escaped effect comes back: `nhaamff` + Backspace -> `nhầm`; `ass` + Backspace -> `á` (REG-24).
+- **ENG-R711** If the removed letter was produced by an escape (4.7), Backspace removes the escaping key and also the earlier keys whose effect it undid, so the field loses exactly its last character and the stickiness of that kind ends because its escape is gone (ENG-R441): `boss` + Backspace -> `bo`, and one more `s` -> `bó`; `nhaamff` + Backspace -> `nhâm`, and a following `f` -> `nhầm` (the tone can be applied again, REG-24); `ass` + Backspace -> `a`; `cass` + Backspace, `o` -> `cao`; `teee` + Backspace, `e` -> `tê`, and `teee` + Backspace, `epj` -> `tệp`; `verr` + Backspace -> `ve`; `Saff` + Backspace -> `Sa`; `Quyeenff` + Backspace -> `Quyên`; `ww` + Backspace leaves an empty token. The keys an escape undid are: for a tone, every key that set or removed the tone; for a circumflex, every mark key of its letter and, on the `o` of a `u o` pair, the horn keys of the `u` whose horn the circumflex removed (ENG-R412, ENG-R533); for the stroke, the stroke keys; for a horn or breve, the mark keys of every letter it unmarked and the keys of every standalone `ư` it removed (ENG-R413); for a bracket key, the keys of the letters it removed (4.8). A tone key whose vowel the escape removed goes too (ENG-R432), and so does any key that would otherwise come back as a letter (ENG-R710). The result is always the old display minus its last character; when the remaining keys cannot give it, the engine falls back to it anyway. The only such case is the `ư` of a standalone `w` or of a bracket key shown as `u` because the escape removed its horn (bracket `]` then `w`) or undid the circumflex that removed it (`wooo` shows `uoo`, Backspace gives `uo`): its key is kept as a `u` key, the only key that shows `u` there, so the restore toggle shows `u` for it. `WSw` (`w` after the standalone `Ư` took the tone of `S`) + Backspace leaves an empty token: replaying the `S` alone would make it a letter. *(Amended by the product owner on 15/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, which changes the decision of 14/11/2026: the first version removed only the escaping key, so the escaped effect came back, `boss` + Backspace gave `bó`, and the length could stay, `ww` + Backspace gave `ư`. In his dev traces of 16 hours it hurt three times and helped once: `cass` + Backspace, `o` gave `cáo`; `teee` + Backspace, `e` gave `tee`; `W` + Backspace gave `Ư` instead of deleting it.)*
 - **ENG-R712** If the recomputed display equals the old display minus its last character, the action is `passThrough` (the app deletes the character itself). Otherwise the engine swallows the Backspace and returns an edit (for example traditional `hoàn` + Backspace -> `hòa`).
 - **ENG-R713** Backspace with no active token is handled by the history rules of section 10.
-- **ENG-R714** Backspace only deletes: every Backspace, inside a token or into the history, takes exactly the last character of the field and leaves every other character as it was, with these documented exceptions: (a) the tone moves to the letter the placement rule now picks (5.1, 5.2; W240); (b) an escape letter is deleted and the escaped effect comes back (ENG-R711, W241, W242; kept by the product owner on 14/11/2026 so that one key typed too many never costs the whole word: `boss` then Backspace gives `bó`); (c) the key that started literal mode is deleted and the token is recomputed (ENG-R421); (d) the letter before the deleted one is the `ư` of a standalone `w` or of a bracket key that the field showed as `u` (a circumflex replaced its horn, ENG-R533, or a re-opened word shows the commit spelling `uơ`, ENG-R532); its own key is the only key left for it, so it shows `ư` again (`woo` shows `uô`, Backspace gives `ư`); (e) a plain `u` that showed a horn only to complete the pair with a bracket `ơ` (ENG-R530) shows `u` again when that `ơ` is deleted (`u[` shows `ươ`, Backspace gives `u`); (f) a bracket letter follows the case of the word (ENG-R906), so a deletion that changes whether the word is all caps changes its case. An edit answering a Backspace MUST NOT delete more than the active token's display (a Backspace with no active token passes through, ENG-R1002; only when the newest history entry is a token without its boundary, which a commit never leaves, does ENG-R1003 re-open it and delete into it, and the host, which saw no active token, refuses any edit that results, PLT-R352). ENG-T38 tests this property.
+- **ENG-R714** Backspace only deletes: every Backspace, inside a token or into the history, takes exactly the last character of the field and leaves every other character as it was, with these documented exceptions: (a) the tone moves to the letter the placement rule now picks (5.1, 5.2; W240); (b) the letter before the deleted one is the `ư` of a standalone `w` or of a bracket key that the field showed as `u` (a circumflex replaced its horn, ENG-R533, or a re-opened word shows the commit spelling `uơ`, ENG-R532); its own key is the only key left for it, so it shows `ư` again (`woo` shows `uô`, Backspace gives `ư`); (c) a plain `u` that showed a horn only to complete the pair with a bracket `ơ` (ENG-R530) shows `u` again when that `ơ` is deleted (`u[` shows `ươ`, Backspace gives `u`); (d) a bracket letter follows the case of the word (ENG-R906), so a deletion that changes whether the word is all caps changes its case. An escape letter is no exception: it goes with the keys it undid (ENG-R711). Neither is the key that started literal mode: the recompute of ENG-R421 gives back the display frozen before that key, so the field loses exactly its character. *(The first version listed two more exceptions: (b) an escape letter brought the escaped effect back, kept on 14/11/2026 and changed by the product owner on 15/11/2026, and (c) the recompute after deleting the key that started literal mode, which only differed from a deletion when that key was an escape.)* An edit answering a Backspace MUST NOT delete more than the active token's display (a Backspace with no active token passes through, ENG-R1002; only when the newest history entry is a token without its boundary, which a commit never leaves, does ENG-R1003 re-open it and delete into it, and the host, which saw no active token, refuses any edit that results, PLT-R352). ENG-T38 tests this property.
 
 Examples: `vieejt` + Backspace -> `việ`, + Backspace -> `vi` (the tone goes with `ệ`); traditional `hoaf` + Backspace -> `hò` (tone was on `o`); modern `hoaf` + Backspace -> `ho` (tone was on `à`); `duwowngf` + 3 Backspaces -> `dư`; `thuowr` + Backspace -> `thư`; `truowngf` + 3 Backspaces -> `trư`; `nguowif`, space, 3 Backspaces -> `ngư`; VNI `thuo73` + Backspace -> `thư`.
 
@@ -648,6 +648,8 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 - **ENG-R1002** Backspace with no active token removes the last recorded boundary character (`passThrough`). When the last boundary character before a token is removed, that token is re-opened as the active token with all its raw keys and flags, so further keys edit it: `chao` + space, Backspace, `f` -> `chào` (REG-07). This MUST work across `", "`, `". "` and double spaces.
 - **ENG-R1003** Backspace continues into the re-opened token by the rules of 7.4, and past its start into the previous history entry.
 - **ENG-R1004** If the history is empty, Backspace is `passThrough` and changes nothing.
+- **ENG-R1005** A re-opened token that a commit rule restored (any `restored` decision of 8.1 except L1; an entry of the keep-as-typed list, L2, counts as a rule because it names a word, not this token) shows its raw keys, and keys typed into it are appended as typed (the toggle composes it, ENG-R704). Its restore ends at the first Backspace after which the composed display of the remaining raw keys equals the text shown, that is when no remaining key transforms anything; from then on the token composes exactly like a token typed afresh with those keys (ENG-R1012). That Backspace changes nothing else on screen (ENG-R714). A writer who deletes back past the keys that made the word invalid or English and types again therefore gets Vietnamese: `tiesng`, space (restored, L5), five Backspaces, `eesn` shows `tiến`; `baas`, space, four Backspaces, `aasm` shows `bấm`; `huux`, space, two Backspaces, `w` shows `hưu`. Keys typed before such a Backspace stay as typed (`Safar`, space, Backspace, `i` gives `Safari`). A token the user restored with the toggle (ENG-R701, L1) stays literal for the rest of the token whatever is deleted; the toggle composes it again (E02b). At the boundary a re-opened token is decided by 8.1 on its raw keys at that moment, like any token, also while it still shows them as typed: `tieesngg`, space, two Backspaces, space gives `tiếng `; `boss`, space, two Backspaces, space gives `bó `. Known cost: `text`, space, two Backspaces, space gives `tẽ ` (`tex` is not English).
+  *Rationale: the field shows the keys as typed both for a literal token and for a restored one, so the writer cannot tell them apart, and literal mode already ends when Backspace removes its cause (ENG-R421: `chuognw`, space, four Backspaces, `ngw` gives `chương`). The commit judged the word that was typed; once Backspace has removed every key whose effect the restore undid, that judgement describes nothing on screen. Reported by the product owner on 15/11/2026 from a dev trace (REG-33): the first version kept the restore until the token ended, so `tiesng`, space, five Backspaces, `eesn` showed `tieesn`.*
 
 ### 10.2 Resets (host-sent)
 
@@ -912,7 +914,7 @@ extension Resources {
 | REG-21 | `dda` gave `â` | ENG-R415 | `dda` -> `đa` |
 | REG-22 | Engine not reset when the tap was re-enabled | ENG-R1010, ENG-R1011 | `reset(.eventTapReenabled)` clears token and history |
 | REG-23 | Debug mode wrote keystrokes to a file | ENG-R1220 | static check: no logging or I/O symbols in the core |
-| REG-24 | After deleting an extra tone key the tone could not be re-applied | ENG-R711 | W241 |
+| REG-24 | After deleting an extra tone key the tone could not be re-applied. Since 15/11/2026 the Backspace takes the tone key with the escape letter, so the tone kind is no longer escaped and the next tone key applies (`nhaamff` + Backspace gives `nhâm`, then `f` gives `nhầm`) | ENG-R711, ENG-R441 | W241, W242a |
 | REG-25 | Teencode `zá` impossible because `z` always meant tone removal | ENG-R411, Tier B `z` | W156-W157 |
 | REG-26 | Misspellings `nghãi`, `nghô` accepted | 3.10, ENG-R420 | B044, B045 |
 | REG-27 | Restore after doubled letters lost a letter (`traffic` -> `trafic`) | L4 | W148, B009 |
@@ -921,6 +923,8 @@ extension Resources {
 | REG-30 | (Product owner, P0-3) English restore fired only on Space; `, . ; : ! ?` and the like left `tẽt`, so the user had to type Space then Backspace | ENG-R910, 9 (boundary table), ENG-R803 | B057-B064 |
 | REG-31 | (Product owner, 14/11/2026) Backspace changed a letter it did not delete: one `w` on `uo` lost its horn on `ư` with the `ơ` (`thuowr` + Backspace -> `thu`) | ENG-R710, ENG-R714 | W243a-W243j, ENG-T38 |
 | REG-32 | (Product owner, 14/11/2026) An English loanword in a Vietnamese sentence made the run English, so the next collision was restored: `cũng tricky as` committed `as` instead of `á`, `trên server been` kept `been` | ENG-R823, L10 | B065-B072 |
+| REG-33 | (Product owner, 15/11/2026, dev trace) Retyping a word re-opened after an automatic restore stayed as typed: `tiesng`, space, five Backspaces, `eesn` showed `tieesn`, not `tiến` | ENG-R1005 | W243k-W243o |
+| REG-34 | (Product owner, 15/11/2026) A second tone-removal press did nothing useful: `daauszz` gave `dâuz` where `dau` was expected | ENG-R411 | W158a-W158j, W184a-W184c, W242n, W242o |
 
 ### 13.6 Fuzz invariants
 
@@ -932,7 +936,7 @@ Run at least 1,000,000 random events per pull request and 100,000,000 nightly, o
 - **ENG-T33 Determinism and replay.** Replaying the same events from `.initial` gives identical outputs; an incremental implementation equals full replay at every step.
 - **ENG-T34 Encoding.** Every inserted string is NFC, contains no combining marks, and `deleteCount == deleteUTF16Count` for every edit.
 - **ENG-T35 Method isolation.** In VNI, no output character is a letter that was not typed, except the Vietnamese letters derived from typed letters; in particular `w` appears only if typed.
-- **ENG-T36 Escape.** For every transform key K and token T where K applies, T + K + K ends with the literal K.
+- **ENG-T36 Escape.** For every transform key K and token T where K applies, T + K + K ends with the literal K. The tone-removal key removes one layer per press (ENG-R411: the tone, then the marks), so for it T + K + K + K does.
 - **ENG-T37 Viability.** No display in composing mode is non-viable.
 - **ENG-T38 Backspace only deletes.** Every Backspace takes exactly the last character of the field and leaves the other characters as they were, except the documented exceptions of ENG-R714; no Backspace edit deletes more than the active token's display. Checked on the fuzz streams and as a property test: every generated syllable (ENG-T02 orders O1 to O4 in Telex and VNI, both tone styles, the ENG-T03 variants, plus the horn-first orders Telex `uwo` and VNI `u7o`, the horn and circumflex changes of mind of ENG-R533, Telex standalone `w`, and a mixed-case spelling), the English lexicon and both tech lists (Telex in three casings and VNI) and the distinct words of the prose corpus (three typists, Telex and VNI) are typed, then Backspace is pressed until the field is empty, once before any boundary and once after a space (the first Backspace re-opens the word, ENG-R1002, ENG-R1003).
 
@@ -940,9 +944,9 @@ Run at least 1,000,000 random events per pull request and 100,000,000 nightly, o
 
 - **ENG-T40** A benchmark replays the prose corpus (13.4) with the three typists and a fuzz stream, records per-event latency and asserts ENG-R1230 and ENG-R1231.
 
-### 13.8 Worked examples: composition (263 rows)
+### 13.8 Worked examples: composition (296 rows)
 
-Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the display after the last key, before any space. A space inside the keys is typed like any other key (W243h, W243i: it commits the word, and the next Backspace re-opens it). Every row was checked against the reference model; the implementation's test suite MUST contain all of them. Rows W243a-W243j were added after W243 on 14/11/2026 (REG-31); the letter suffix keeps the numbers of the rows after them.
+Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the display after the last key, before any space. A space inside the keys is typed like any other key (W243h, W243i: it commits the word, and the next Backspace re-opens it). Every row was checked against the reference model, except W243k-W243o, which depend on the restore decisions of section 8 that the model leaves out; the implementation's test suite MUST contain all of them. Rows W243a-W243j were added after W243 on 14/11/2026 (REG-31), and rows W158a-W158j, W184a-W184c, W242a-W242o and W243k-W243o on 15/11/2026 (REG-24, REG-33, REG-34); the letter suffix keeps the numbers of the rows after them. An empty output cell (two backticks) means the token is empty.
 
 | # | Group | Method | Style | Options | Keys typed | Output before boundary | Note |
 |---|---|---|---|---|---|---|---|
@@ -1104,6 +1108,16 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 | W156 | Tone removal | Telex | trad | - | `za` | `za` | z with no tone to remove is a letter (REG-25) |
 | W157 | Tone removal | Telex | trad | - | `zas` | `zá` | teencode z onset (Tier B) |
 | W158 | Tone removal | Telex | trad | - | `vieejtz` | `viêt` |  |
+| W158a | Tone removal | Telex | trad | - | `daausz` | `dâu` | z removes the tone (ENG-R411) |
+| W158b | Tone removal | Telex | trad | - | `daauszz` | `dau` | a second z removes the marks (REG-34) |
+| W158c | Tone removal | Telex | trad | - | `daauszzz` | `dauz` | nothing left to remove: a letter |
+| W158d | Tone removal | Telex | trad | - | `dduwowngfzz` | `duong` | every mark at once, `đ` becomes `d` |
+| W158e | Tone removal | Telex | trad | - | `aaz` | `a` | no tone: z removes the circumflex |
+| W158f | Tone removal | Telex | trad | - | `aaza` | `â` | after a removal the modifier key marks again |
+| W158g | Tone removal | Telex | trad | - | `aazaa` | `aa` | and its second press escapes |
+| W158h | Tone removal | Telex | trad | - | `daauszza` | `dâu` | the circumflex comes back on `a` |
+| W158i | Tone removal | Telex | trad | - | `ddz` | `d` | the stroke is a mark too |
+| W158j | Tone removal | Telex | trad | - | `wz` | `u` | the `ư` of a standalone `w` loses its horn |
 | W159 | VNI | VNI | trad | - | `a1` | `á` |  |
 | W160 | VNI | VNI | trad | - | `a2` | `à` |  |
 | W161 | VNI | VNI | trad | - | `a3` | `ả` |  |
@@ -1130,6 +1144,9 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 | W182 | VNI | VNI | trad | - | `d99` | `d9` | escape of đ |
 | W183 | VNI | VNI | trad | - | `qu0` | `qu0` | no nucleus: 0 is literal, no crash |
 | W184 | VNI | VNI | trad | - | `a10` | `a` | 0 removes the tone |
+| W184a | VNI | VNI | trad | - | `a610` | `â` | 0 removes the tone (ENG-R411) |
+| W184b | VNI | VNI | trad | - | `a6100` | `a` | a second 0 removes the circumflex (REG-34) |
+| W184c | VNI | VNI | trad | - | `a61000` | `a0` | nothing left to remove: literal |
 | W185 | VNI | VNI | trad | - | `2024` | `2024` | no vowel: digits are literal |
 | W186 | VNI | VNI | trad | - | `b2` | `b2` | no vowel: literal digit, token goes literal |
 | W187 | VNI | VNI | trad | - | `u7a4` | `ữa` |  |
@@ -1186,8 +1203,23 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 | W238 | Backspace inside a token | Telex | trad | - | `hoaf⌫` | `hò` | tone was on o: stays |
 | W239 | Backspace inside a token | Telex | modern | - | `hoaf⌫` | `ho` | tone was on à: removed with it |
 | W240 | Backspace inside a token | Telex | trad | - | `hoafn⌫` | `hòa` | tone relocates after the coda is deleted |
-| W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhầm` | deleting the escape letter restores the tone (REG-24) |
-| W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `á` | deleting the escape letter restores the tone |
+| W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhâm` | the escape letter goes with the tone key it undid (ENG-R711) |
+| W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `a` | the escape letter goes with the tone key it undid |
+| W242a | Backspace inside a token | Telex | trad | - | `nhaamff⌫f` | `nhầm` | the tone can be applied again (REG-24) |
+| W242b | Backspace inside a token | Telex | trad | - | `boss⌫` | `bo` | one key too many costs one character |
+| W242c | Backspace inside a token | Telex | trad | - | `boss⌫s` | `bó` | the escape is gone, so `s` is a tone key again (ENG-R441) |
+| W242d | Backspace inside a token | Telex | trad | - | `cass⌫o` | `cao` |  |
+| W242e | Backspace inside a token | Telex | trad | - | `teee⌫e` | `tê` | the circumflex key went with the escape letter |
+| W242f | Backspace inside a token | Telex | trad | - | `teee⌫epj` | `tệp` |  |
+| W242g | Backspace inside a token | Telex | trad | - | `verr⌫` | `ve` |  |
+| W242h | Backspace inside a token | Telex | trad | - | `Saff⌫` | `Sa` |  |
+| W242i | Backspace inside a token | Telex | trad | - | `Quyeenff⌫` | `Quyên` |  |
+| W242j | Backspace inside a token | Telex | trad | - | `ww⌫` | `` | the escape removed the standalone `ư`: both keys go |
+| W242k | Backspace inside a token | Telex | trad | - | `WSw⌫` | `` | the `S` lost its vowel to the escape (ENG-R432): it goes too |
+| W242l | Backspace inside a token | Telex | trad | - | `booo⌫` | `bo` | an escape letter that stays a letter (`oo`) |
+| W242m | Backspace inside a token | VNI | trad | - | `a11⌫` | `a` |  |
+| W242n | Backspace inside a token | Telex | trad | - | `daauszz⌫` | `da` | after a mark removal Backspace takes one character (ENG-T38) |
+| W242o | Backspace inside a token | Telex | trad | - | `aaz⌫` | `` | the `z` has nothing left to remove: it goes too |
 | W243 | Backspace inside a token | Telex | trad | - | `duwowngf⌫⌫⌫` | `dư` | ơ deleted with its horn and tone; ư keeps its horn |
 | W243a | Backspace inside a token | Telex | trad | - | `thuowr⌫` | `thư` | one `w` marked `ư` and `ơ`: it stays with `ư` (ENG-R710) |
 | W243b | Backspace inside a token | Telex | trad | - | `dduowcj⌫⌫` | `đư` | the tone goes with `ợ`, the shared `w` stays |
@@ -1199,6 +1231,11 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 | W243h | Backspace inside a token | Telex | trad | - | `nguowif ⌫⌫⌫` | `ngư` | the first Backspace re-opens the word (ENG-R1002, ENG-R1003) |
 | W243i | Backspace inside a token | Telex | trad | - | `thuowr ⌫⌫` | `thu` | re-opened `thuở` shows the commit spelling `uơ` (ENG-R532): its `u` keeps no horn |
 | W243j | Backspace inside a token | Telex | trad | - | `cuowios⌫⌫` | `cu` | `ô` replaced the horns (ENG-R533): the `u` shows none and stays plain |
+| W243k | Backspace inside a token | Telex | trad | - | `tiesng ⌫⌫⌫⌫⌫eesn` | `tiến` | the restore of the re-opened word ends at `tie` (ENG-R1005, REG-33) |
+| W243l | Backspace inside a token | Telex | trad | - | `baas ⌫⌫⌫⌫aasm` | `bấm` | the restore ends at `ba` |
+| W243m | Backspace inside a token | Telex | trad | - | `huux ⌫⌫w` | `hưu` | the restore ends at `huu` |
+| W243n | Backspace inside a token | Telex | trad | - | `text ⌫⌫⌫x` | `tẽ` | the restore ends at `te` |
+| W243o | Backspace inside a token | VNI | trad | - | `tie1ng ⌫⌫⌫⌫⌫e61ng` | `tiếng` |  |
 | W244 | Options | Telex | trad | bracket keys on | `[` | `ơ` | bracket option on |
 | W245 | Options | Telex | trad | bracket keys on | `]` | `ư` | bracket option on |
 | W246 | Options | Telex | trad | standalone w off | `w` | `w` | standalone w off |
@@ -1334,6 +1371,9 @@ Same fixtures as 13.9. Each row types the keys from an empty field, so every tok
 | Legacy encodings broken, rarely used | ENG-R120 |
 | Backspace across punctuation lost context | section 10.1, REG-07 |
 | Backspace changed letters it did not delete | ENG-R710, ENG-R714, ENG-T38, REG-31 |
+| Backspace on an escape letter brought the escaped effect back instead of deleting it | ENG-R711, ENG-R714, ENG-T38, REG-24 |
+| A word re-opened after an automatic restore stayed as typed | ENG-R1005, REG-33 |
+| A second tone-removal press could not remove the letter marks | ENG-R411, REG-34 |
 | Restore damaged words, names, missing rhymes | sections 3.7 and 3.12, ENG-R843, REG-08 |
 | Blocking work per keystroke | ENG-R1210, ENG-R1230 (the engine never blocks; tap threading is in the host spec) |
 | Engine not reset after tap re-enable | ENG-R1010, ENG-R1011, REG-22 |
@@ -1349,7 +1389,7 @@ Same fixtures as 13.9. Each row types the keys from an empty field, so every tok
 
 ## 15. Open questions for Pa
 
-All answered on 13/11/2026; every answer and the place that implements it is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`.
+Q1 to Q8 were answered on 13/11/2026; every answer and the place that implements it is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`. Q9 is open.
 
 | # | Question | Answer (Pa, 13/11/2026) |
 |---|---|---|
@@ -1361,3 +1401,4 @@ All answered on 13/11/2026; every answer and the place that implements it is lis
 | Q6 | Macro triggers are matched on raw keys (ENG-R1102); is the trigger character set (printable ASCII, no Vietnamese letters) acceptable? | Yes, keep the current set. |
 | Q7 | Attested-syllable source: Vietnamese legal texts plus Pa's additions, or hand curation only? | Keep the current attested sources (legal texts plus reviewed additions). |
 | Q8 | Keep teencode `z` onset and `k` coda in v1, and add the `dz` onset (P0-2)? `f`, `j`, `w` stay out. | Keep, plus `dz` (resolved earlier the same day). |
+| Q9 | (15/11/2026) After a tone-removal key removed the marks (ENG-R411), the commit decides by 8.1 like any token, so an unmarked spelling that is not a syllable is restored: `dduwowngfzz` shows `duong` and Space gives `dduwowngfzz` (L5), as `vieejtz` already did. Should a removal make the commit keep the unmarked text like an escape (L4: keep it unless the raw keys are English)? | Open. |

@@ -39,7 +39,8 @@ package struct ActiveToken: Sendable, Hashable {
     package private(set) var display = ""
     package private(set) var userChoice = UserChoice.none
     /// Set when a token that a commit rule restored is re-opened (section 10): it shows its raw keys and
-    /// the toggle can bring the composed form back (ENG-R701, ENG-R704).
+    /// the toggle can bring the composed form back (ENG-R701, ENG-R704). Cleared by the first Backspace
+    /// after which the remaining raw keys compose to the text shown (ENG-R1005).
     package private(set) var restoredByRule = false
     /// Non-nil for a macro expansion (ENG-R1104); `composition` is then unused.
     package private(set) var macroKeys: MacroTokenKeys?
@@ -119,9 +120,10 @@ package struct ActiveToken: Sendable, Hashable {
         return action
     }
 
-    /// Backspace inside the token (7.4). A restored token is literal: it loses its last raw key. Long
-    /// literal tails shrink in place (no full render). A macro expansion loses its last character
-    /// (ENG-R1104), and a key typed into it since the expansion if there is one.
+    /// Backspace inside the token (7.4). A restored token is literal: it loses its last raw key, and a
+    /// token a commit rule restored composes again once no remaining key transforms anything
+    /// (ENG-R1005). Long literal tails shrink in place (no full render). A macro expansion loses its last
+    /// character (ENG-R1104), and a key typed into it since the expansion if there is one.
     package mutating func backspace(rules: ComposerRules) -> KeyAction {
         if macroKeys != nil {
             display.removeLast()
@@ -131,6 +133,7 @@ package struct ActiveToken: Sendable, Hashable {
         if showsRawKeys {
             composition.removeLastKey(rules: rules)
             display.unicodeScalars.removeLast()
+            endRuleRestoreIfComposedMatches(rules: rules)
             return .passThrough
         }
         if let literalStart = composition.literalStart, composition.raw.count - 1 > literalStart {
@@ -144,6 +147,20 @@ package struct ActiveToken: Sendable, Hashable {
         let action = DisplayEdit.actionForBackspace(from: display, to: newDisplay)
         display = newDisplay
         return action
+    }
+
+    /// ENG-R1005: the restore of a re-opened token that a commit rule restored ends at the first Backspace
+    /// after which the composed display of the remaining raw keys equals the text shown, so the token
+    /// composes like one typed afresh with those keys (`tiesng`, space, five Backspaces, `eesn` shows
+    /// `tiến`). Nothing changes on screen. A user restore (L1) stays literal (ENG-R701, E02b). While the
+    /// composition is literal the flag changes nothing observable, and skipping the render there keeps a
+    /// long literal token's Backspace bounded (ENG-R641, ENG-R1232); the check runs again once a
+    /// Backspace leaves literal mode.
+    private mutating func endRuleRestoreIfComposedMatches(rules: ComposerRules) {
+        guard userChoice == .none, restoredByRule, !composition.isLiteral,
+            composition.display(style: rules.toneStyle) == display
+        else { return }
+        restoredByRule = false
     }
 
     /// The restore toggle (ENG-R701, ENG-R703); the consecutive case (ENG-R702) is handled by the

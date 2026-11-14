@@ -13,19 +13,36 @@ extension Composition {
     mutating func applyTone(_ newTone: Tone, key: UInt8, at index: Int) -> Bool {
         guard parse.hasVowelGroup else { return false }
         if tone == newTone {
+            // ENG-R711: the escape undid every key that set or removed the tone.
+            let undone = toneSources
             setTone(.level, byKey: nil)
-            escape(.tone, key: key, at: index)
+            escape(.tone, key: key, at: index, undoing: undone)
         } else {
             setTone(newTone, byKey: index)
         }
         return true
     }
 
-    /// ENG-R411. Applies when the token has a tone; otherwise Telex `z` is a letter and VNI `0` a literal
-    /// (this covers `qu` with no vowel, REG-01, and every vowel-less token, 7.3).
-    mutating func removeTone(at index: Int) -> Bool {
-        guard tone != .level else { return false }
-        setTone(.level, byKey: index)
+    /// ENG-R411, one layer per press (amended by the product owner on 15/11/2026, REG-34): with a tone the
+    /// key removes the tone; otherwise, when a letter carries a vowel mark or the stroke, it removes all of
+    /// them at once (`đ` becomes `d`); otherwise Telex `z` is a letter and VNI `0` a literal (this covers
+    /// `qu` with no vowel, REG-01, and every vowel-less token, 7.3). Removing marks keeps the letters
+    /// viable (the wildcard of ENG-R345), which the check below only confirms.
+    mutating func removeToneOrMarks(at index: Int) -> Bool {
+        if tone != .level {
+            setTone(.level, byKey: index)
+            return true
+        }
+        guard hasMarkedLetter else { return false }
+        let saved = letters
+        for offset in letters.indices where letters[offset].letter.modifier != .none {
+            letters[offset].letter = letters[offset].letter.unmodified
+        }
+        guard isViable else {
+            letters = saved
+            return false
+        }
+        markRemovalSources.formUnion(KeySet(index: index))
         return true
     }
 
@@ -46,8 +63,14 @@ extension Composition {
                 guard currentBase == .a || currentBase == .e || currentBase == .o else { continue }
             }
             if current.modifier == .circumflex {
+                // ENG-R711: the escape undid every key that marked the target and, on the `o` of a `u o`
+                // pair, the horn keys of the `u` whose horn the circumflex removed (ENG-R412, ENG-R533).
+                var undone = letters[offset].modifierSources
+                if currentBase == .o, offset > parse.vowelStart, letters[offset - 1].letter == .u {
+                    undone.formUnion(letters[offset - 1].modifierSources)
+                }
                 letters[offset].letter = currentBase
-                escape(.circumflex, key: key, at: index)
+                escape(.circumflex, key: key, at: index, undoing: undone)
                 return true
             }
             if tryCircumflex(at: offset, parse: parse, key: index) { return true }
@@ -87,8 +110,8 @@ extension Composition {
         }
         // Escape: the effect is already present (ENG-R440, ENG-R534).
         if parse.vowelRange.contains(where: { scope.isEffect(letters[$0].letter.modifier) }) {
-            removeHornBreveEffect(scope, parse: parse)
-            escape(scope.kind, key: key, at: index)
+            let undone = removeHornBreveEffect(scope, parse: parse)
+            escape(scope.kind, key: key, at: index, undoing: undone)
             return true
         }
         // ENG-R103: `w` with no vowel yet is the vowel `ư` (its case follows the key, ENG-R903).
@@ -126,18 +149,27 @@ extension Composition {
 
     /// ENG-R413 escape: removes every horn and breve the key could have made in the vowel group (VNI `7`
     /// only horns, VNI `8` only breves) and, for Telex `w`, the `ư` letters a standalone `w` created.
-    private mutating func removeHornBreveEffect(_ scope: HornBreveScope, parse: SyllableParse) {
+    /// Returns the keys whose effect the escape undid (ENG-R711): the mark keys of every letter it
+    /// unmarked and the keys of every `ư` it removed.
+    private mutating func removeHornBreveEffect(_ scope: HornBreveScope, parse: SyllableParse) -> KeySet {
+        var undone = KeySet()
         var result: [ComposedLetter] = []
         result.reserveCapacity(letters.count)
         for (offset, var letter) in letters.enumerated() {
             let inVowelGroup = parse.vowelRange.contains(offset)
             if inVowelGroup, scope == .telexW, letter.flags.contains(.standaloneW), letter.letter == .uHorn {
+                undone.formUnion(KeySet(index: Int(letter.source)))
+                undone.formUnion(letter.modifierSources)
                 continue
             }
-            if inVowelGroup, scope.isEffect(letter.letter.modifier) { letter.letter = letter.letter.unmodified }
+            if inVowelGroup, scope.isEffect(letter.letter.modifier) {
+                letter.letter = letter.letter.unmodified
+                undone.formUnion(letter.modifierSources)
+            }
             result.append(letter)
         }
         letters = result
+        return undone
     }
 
     /// ENG-R415. Applies when the first letter of the token is `d`: an unstroked `d` becomes `đ` if
@@ -146,7 +178,7 @@ extension Composition {
         guard let first = letters.first, first.letter.unmodified == .d else { return false }
         if first.letter == .dStroke {
             letters[0].letter = .d
-            escape(.stroke, key: key, at: index)
+            escape(.stroke, key: key, at: index, undoing: first.modifierSources)
             return true
         }
         letters[0].modify(to: .dStroke, byKey: index)
@@ -167,8 +199,13 @@ extension Composition {
         }
         let madeBySameKey: (ComposedLetter) -> Bool = { $0.flags.contains(.bracket) && $0.letter == letter }
         guard letters.contains(where: madeBySameKey) else { return false }
+        var undone = KeySet()
+        for removed in letters where madeBySameKey(removed) {
+            undone.formUnion(KeySet(index: Int(removed.source)))
+            undone.formUnion(removed.modifierSources)
+        }
         letters.removeAll(where: madeBySameKey)
-        escape(.bracket, key: key, at: index)
+        escape(.bracket, key: key, at: index, undoing: undone)
         return true
     }
 }

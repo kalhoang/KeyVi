@@ -138,15 +138,16 @@ def all_syllables(tier):
 
 # ---------------- letters ----------------
 class L:
-    __slots__ = ("base", "mod", "stroke", "upper", "fromw", "src", "msrc")
+    __slots__ = ("base", "mod", "stroke", "upper", "fromw", "src", "msrc", "undone")
 
-    def __init__(self, base, mod="", stroke=False, upper=False, fromw=False, src=-1, msrc=None):
+    def __init__(self, base, mod="", stroke=False, upper=False, fromw=False, src=-1, msrc=None, undone=None):
         self.base, self.mod, self.stroke, self.upper, self.fromw = base, mod, stroke, upper, fromw
         self.src = src
         self.msrc = list(msrc or [])
+        self.undone = list(undone or [])  # escape letter: the keys whose effect the escape undid (ENG-R711)
 
     def copy(self):
-        return L(self.base, self.mod, self.stroke, self.upper, self.fromw, self.src, self.msrc)
+        return L(self.base, self.mod, self.stroke, self.upper, self.fromw, self.src, self.msrc, self.undone)
 
     def char(self):
         b = self.base

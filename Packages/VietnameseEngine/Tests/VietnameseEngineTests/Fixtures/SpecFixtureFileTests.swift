@@ -4,18 +4,23 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Integrity of the corpus files extracted from spec 13.8 to 13.10 by
-/// Scripts/extract-spec-examples.py (263 + 72 + 9 rows), and of the 13.9 fixture resources.
+/// Scripts/extract-spec-examples.py (296 + 72 + 9 rows), and of the 13.9 fixture resources.
 @Suite("Spec fixture files (13.8 to 13.10)")
 struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
         let rows = try SpecExamples.workedExamples(tsv: CorpusFiles.text(SpecExamples.workedExamplesFile))
-        #expect(rows.count == 263)
-        // REG-31: W243a to W243j follow W243; the suffix keeps the numbers of the rows after them.
-        let numbered = (1...253).map { "W" + String(repeating: "0", count: 3 - String($0).count) + String($0) }
-        let inserted = "abcdefghij".map { "W243" + String($0) }
-        #expect(rows.map(\.id) == numbered.prefix(243) + inserted + numbered.suffix(10))
+        #expect(rows.count == 296)
+        // Lettered rows follow the row they extend; the suffix keeps the numbers of the rows after them:
+        // W243a-W243j (REG-31, 14/11/2026), W158a-W158j, W184a-W184c, W242a-W242o and W243k-W243o
+        // (REG-24, REG-33, REG-34, 15/11/2026).
+        let lettered: [Int: String] = [158: "abcdefghij", 184: "abc", 242: "abcdefghijklmno", 243: "abcdefghijklmno"]
+        let expectedIDs = (1...253).flatMap { number -> [String] in
+            let id = "W" + String(repeating: "0", count: 3 - String(number).count) + String(number)
+            return [id] + (lettered[number] ?? "").map { id + String($0) }
+        }
+        #expect(rows.map(\.id) == expectedIDs)
         #expect(Set(rows.map(\.options)) == ["-", "bracket keys on", "standalone w off"])
-        #expect(rows.filter { $0.method == .vni }.map(\.id).count == 44)
+        #expect(rows.filter { $0.method == .vni }.map(\.id).count == 49)
         let first = try #require(rows.first)
         #expect(first.keys == "as" && first.expected == "á" && first.method == .telex && first.style == .traditional)
         let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
@@ -34,7 +39,9 @@ struct SpecFixtureFileTests {
         #expect(byID["W253"]?.keys == "heoj" && byID["W253"]?.expected == "hẹo")
         // Backspace markers appear only in the Backspace group.
         #expect(rows.filter { $0.keys.contains("⌫") }.allSatisfy { $0.group == "Backspace inside a token" })
-        #expect(rows.allSatisfy { !$0.keys.isEmpty && !$0.expected.isEmpty })
+        // An empty output only after a Backspace that leaves an empty token (W242j, W242k, W242o).
+        #expect(rows.allSatisfy { !$0.keys.isEmpty && (!$0.expected.isEmpty || $0.keys.hasSuffix("⌫")) })
+        #expect(rows.filter(\.expected.isEmpty).map(\.id) == ["W242j", "W242k", "W242o"])
     }
 
     @Test func commitDecisions() throws {

@@ -120,11 +120,12 @@ public struct FuzzStatistics: Sendable, Hashable {
 ///   precomposed letters (so they are NFC), an optional caller-supplied NFC check, and `deleteCount ==
 ///   deleteUTF16Count` for every edit.
 /// - ENG-T35: in VNI every letter of the token comes from a letter typed in the token.
-/// - ENG-T36: for a transform key K that applies to the token T, T + K + K ends with the literal K.
+/// - ENG-T36: for a transform key K that applies to the token T, T + K + K ends with the literal K; for the
+///   tone-removal key, which removes one layer per press (ENG-R411: the tone, then the marks), T + K + K + K.
 /// - ENG-T37: the letters of a composing token are viable.
 /// - ENG-R710, ENG-R711: a Backspace on the active token leaves it with fewer characters than before (it
-///   removes the last visible character; the replay never brings back keys as extra letters), or as
-///   many when it removes an escaping key and the escaped effect comes back.
+///   removes the last visible character; the replay never brings back keys as extra letters), also when
+///   it removes an escape letter (ENG-R711 as amended on 15/11/2026: the keys it undid go with it).
 /// - ENG-T38: a Backspace takes exactly the last character of the field and leaves the others as they
 ///   were, except the documented exceptions of ENG-R714 (`BackspaceProbe.Outcome`); an edit answering a
 ///   Backspace deletes at most the active token's display.
@@ -371,36 +372,25 @@ public struct InvariantChecker: Sendable {
 
     // MARK: - ENG-R710: Backspace shortens the token
 
-    /// The token before a Backspace: its display length and whether the Backspace removes only an escaping
-    /// key (ENG-R711). Nil when the event is not a Backspace on a token. Counting is O(token), so long
-    /// tokens are measured only periodically.
-    private func tokenCountBeforeBackspace(_ event: EngineEvent, index: Int) -> (count: Int, removesEscape: Bool)? {
+    /// The display length of the token before a Backspace. Nil when the event is not a Backspace on a
+    /// token. Counting is O(token), so long tokens are measured only periodically.
+    private func tokenCountBeforeBackspace(_ event: EngineEvent, index: Int) -> Int? {
         guard case .backspace = event, let token = session.state.active,
             token.composition.raw.count <= options.perEventTokenLimit || index % options.fullCheckInterval == 0
         else { return nil }
-        let composition = token.composition
-        var removesEscape = false
-        if !token.isMacro, !token.showsRawKeys {
-            if let literalStart = composition.literalStart {
-                // An escape that appends a non-letter (`ww`, `[[`, VNI `a11`) starts literal mode with its key.
-                removesEscape = composition.escapeUsed && literalStart == composition.raw.count - 1
-            } else {
-                removesEscape = composition.letters.last?.flags.contains(.escape) ?? false
-            }
-        }
-        return (token.display.count, removesEscape)
+        return token.display.count
     }
 
     /// ENG-R710: Backspace removes the last visible character of the token, so the display gets shorter. A
     /// replay that turns the remaining keys into stray letters or digits (a tone key left behind by its
-    /// letter) makes it as long or longer. ENG-R711: removing an escaping key brings the escaped effect
-    /// back, so the length may stay (`ww` shows `w`, Backspace shows `ư`); it never grows.
-    private func checkBackspace(_ before: (count: Int, removesEscape: Bool)?, index: Int) throws {
-        guard let before else { return }
+    /// letter) makes it as long or longer. ENG-R711: an escape letter goes with the keys it undid, so it
+    /// shortens the display too (`ww` shows `w`, Backspace leaves nothing).
+    private func checkBackspace(_ countBefore: Int?, index: Int) throws {
+        guard let countBefore else { return }
         let countAfter = session.state.activeDisplay.count
-        guard countAfter < before.count || (before.removesEscape && countAfter == before.count) else {
+        guard countAfter < countBefore else {
             throw violation(
-                "ENG-R710", "Backspace left \(countAfter) characters of a token of \(before.count)", index)
+                "ENG-R710", "Backspace left \(countAfter) characters of a token of \(countBefore)", index)
         }
     }
 
@@ -570,11 +560,17 @@ public struct InvariantChecker: Sendable {
             return  // the key was appended as a letter: it did not apply
         }
         statistics.escapeChecks += 1
+        var presses = String(key)
+        if case .toneRemoval = rules.role(of: byte) {
+            _ = probe.handle(.key(KeyInput(key)))
+            presses.append(key)
+        }
         _ = probe.handle(.key(KeyInput(key)))
+        presses.append(key)
         guard probe.state.activeDisplay.last == key else {
             throw violation(
                 "ENG-T36",
-                "\(token.rawText.debugDescription) + \(key)\(key) shows \(probe.state.activeDisplay.debugDescription)",
+                "\(token.rawText.debugDescription) + \(presses) shows \(probe.state.activeDisplay.debugDescription)",
                 index)
         }
     }

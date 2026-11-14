@@ -7,7 +7,7 @@
 /// (raw keys, configuration). The Caps Lock state of the bracket keys (ENG-R906) is part of that input:
 /// it is kept next to the raw keys (`capsLockKeys`) because a bracket key's byte has no case. Appending a
 /// key applies one more step of the same fold; every other change (Backspace, ENG-R710) rebuilds the
-/// state by replaying the remaining keys (`init(replaying:capsLockKeys:rules:)`). The only shortcut,
+/// state by replaying the remaining keys (`init(replaying:capsLockKeys:droppingIdle:rules:)`). The only shortcut,
 /// dropping the last key of a literal tail, gives the state that replay gives by construction;
 /// `CompositionPropertyTests` checks the equality on random event streams after every event (ENG-T33).
 package struct Composition: Sendable, Hashable {
@@ -28,6 +28,13 @@ package struct Composition: Sendable, Hashable {
     package internal(set) var escapeUsed = false
     /// Raw index of the key that started literal mode; nil while composing (4.5).
     package internal(set) var literalStart: Int?
+    /// Set when the key that started literal mode was appended by an escape (4.7, ENG-R442: `ass`,
+    /// `ww`): the raw indices of the earlier keys whose effect it undid, which Backspace removes with it
+    /// (ENG-R711). Nil otherwise.
+    package internal(set) var literalEscapeUndone: KeySet?
+    /// ENG-R411: raw indices of the tone-removal keys (Telex `z`, VNI `0`) that removed letter marks
+    /// rather than a tone.
+    package internal(set) var markRemovalSources = KeySet()
     package internal(set) var camelCase = CamelCaseTracker()
     /// ENG-R906: raw indices of the bracket keys typed with Caps Lock on while composing. Literal keys
     /// never become letters, so they are not recorded.
@@ -37,10 +44,24 @@ package struct Composition: Sendable, Hashable {
 
     /// Replays `keys` from an empty token (ENG-R601); `capsLockKeys` holds the offsets in `keys` of the
     /// keys typed with Caps Lock on (ENG-R906).
-    package init<S: Sequence>(replaying keys: S, capsLockKeys: KeySet = KeySet(), rules: ComposerRules)
-    where S.Element == UInt8 {
+    ///
+    /// `idleTransforms` holds the offsets of keys that acted as transforms where they were first typed (a
+    /// tone key, a tone removal, a mark removal) and must not come back as letters: such a key is left out
+    /// when, replayed here, it would be appended as a letter or a literal character. Backspace uses this
+    /// (ENG-R710, ENG-R711): a removal key whose letters are gone, or a tone key whose vowel an escape
+    /// removed (`WSw`), goes with the deleted letter instead of reappearing.
+    package init<S: Sequence>(
+        replaying keys: S, capsLockKeys: KeySet = KeySet(), droppingIdle idleTransforms: KeySet = KeySet(),
+        rules: ComposerRules
+    ) where S.Element == UInt8 {
         for (offset, key) in keys.enumerated() {
-            append(key, capsLock: capsLockKeys.contains(offset), rules: rules)
+            let capsLock = capsLockKeys.contains(offset)
+            guard idleTransforms.contains(offset) else {
+                append(key, capsLock: capsLock, rules: rules)
+                continue
+            }
+            var trial = self
+            if trial.append(key, capsLock: capsLock, rules: rules) { self = trial }
         }
     }
 
@@ -52,19 +73,21 @@ package struct Composition: Sendable, Hashable {
     // MARK: - One key (4.3)
 
     /// Applies one key by the order of interpretation of 4.3. `capsLock` is the key's Caps Lock state,
-    /// which only bracket keys use (ENG-R906).
-    package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) {
+    /// which only bracket keys use (ENG-R906). Returns true when the key acted by its transform role
+    /// (step 2, an escape included) and false when it was appended as a letter or a literal character.
+    @discardableResult
+    package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> Bool {
         let index = raw.count
         raw.append(key)
         // Step 1: literal mode appends verbatim.
         if literalStart != nil {
             camelCase.observeLiteral(key, at: index)
-            return
+            return false
         }
         // ENG-R641: bound the replay cost; restore stays exact because `raw` keeps every key.
         guard index < Self.composingKeyLimit else {
             enterLiteral(at: index)
-            return
+            return false
         }
         if capsLock, ASCII.isBracket(key) { capsLockKeys.formUnion(KeySet(index: index)) }
         // Step 2: the key's transform role, unless its kind was escaped (ENG-R441).
@@ -72,17 +95,18 @@ package struct Composition: Sendable, Hashable {
         if let kind = role.escapeKind, !escapedKinds.contains(kind),
             applyTransform(role, key: key, at: index, rules: rules)
         {
-            return
+            return true
         }
         // Steps 3 and 4: a letter, or a literal character (VNI digit, bracket key).
         appendLetterOrLiteral(key, at: index, flags: [])
+        return false
     }
 
     private mutating func applyTransform(_ role: KeyRole, key: UInt8, at index: Int, rules: ComposerRules) -> Bool {
         switch role {
         case .letter: return false
         case .tone(let tone): return applyTone(tone, key: key, at: index)
-        case .toneRemoval: return removeTone(at: index)
+        case .toneRemoval: return removeToneOrMarks(at: index)
         case .circumflex(let base): return applyCircumflex(base, key: key, at: index)
         case .hornOrBreve(let scope):
             return applyHornOrBreve(scope, standalone: rules.standaloneW, key: key, at: index)
@@ -95,11 +119,17 @@ package struct Composition: Sendable, Hashable {
 
     /// 4.3 steps 3 and 4: append the key as a letter; enter literal mode if it is not a letter, if it
     /// completes a camel-case pattern (ENG-R904) or if the letters stop being viable (ENG-R420).
-    mutating func appendLetterOrLiteral(_ key: UInt8, at index: Int, flags: ComposedLetter.Flags) {
+    /// `undoing` is set for the key of an escape: the keys whose effect it undid (ENG-R711).
+    mutating func appendLetterOrLiteral(
+        _ key: UInt8, at index: Int, flags: ComposedLetter.Flags, undoing: KeySet? = nil
+    ) {
         guard let letter = Letter(ascii: key),
-            appendProduced(letter, uppercase: ASCII.isUppercaseLetter(key), flags: flags, at: index)
+            appendProduced(
+                letter, uppercase: ASCII.isUppercaseLetter(key), flags: flags, at: index,
+                undoing: undoing ?? KeySet())
         else {
             enterLiteral(at: index)
+            literalEscapeUndone = undoing
             return
         }
     }
@@ -108,10 +138,11 @@ package struct Composition: Sendable, Hashable {
     /// is nil for a letter whose key has no case (bracket keys); such letters do not take part in the
     /// camel-case pattern. Returns false, with the letters unchanged, when the letter is rejected.
     mutating func appendProduced(
-        _ letter: Letter, uppercase: Bool?, flags: ComposedLetter.Flags, at index: Int
+        _ letter: Letter, uppercase: Bool?, flags: ComposedLetter.Flags, at index: Int, undoing: KeySet = KeySet()
     ) -> Bool {
         if let uppercase, camelCase.completes(uppercase: uppercase) { return false }
-        letters.append(ComposedLetter(letter, uppercase: uppercase ?? false, flags: flags, source: index))
+        letters.append(
+            ComposedLetter(letter, uppercase: uppercase ?? false, flags: flags, source: index, undoneKeys: undoing))
         guard isViable else {
             letters.removeLast()
             return false
@@ -128,11 +159,12 @@ package struct Composition: Sendable, Hashable {
 
     /// 4.7: the effect was removed by the caller; mark the kind (sticky, ENG-R441) and append the key
     /// as a letter (Telex) or literal character (VNI). ENG-R442: the escaped letter is an ordinary
-    /// letter for viability.
-    mutating func escape(_ kind: EscapeKinds, key: UInt8, at index: Int) {
+    /// letter for viability. `undoing` holds the earlier keys whose effect the escape removed; Backspace
+    /// on the escape letter removes them with it (ENG-R711).
+    mutating func escape(_ kind: EscapeKinds, key: UInt8, at index: Int, undoing: KeySet) {
         escapedKinds.insert(kind)
         escapeUsed = true
-        appendLetterOrLiteral(key, at: index, flags: .escape)
+        appendLetterOrLiteral(key, at: index, flags: .escape, undoing: undoing)
     }
 
     // MARK: - Orthography of the current letters
@@ -147,6 +179,9 @@ package struct Composition: Sendable, Hashable {
         let view = LetterView(letters)
         return ViabilityAutomaton.shared.accepts(DisplayLetterView(view, parse: SyllableParser.parse(view)))
     }
+
+    /// Whether a letter carries a vowel mark (breve, circumflex, horn) or the stroke (ENG-R411).
+    var hasMarkedLetter: Bool { letters.contains { $0.letter.modifier != .none } }
 
     /// Offset of the letter that shows the tone (5.1), nil without tone or vowel group.
     package func toneOffset(style: ToneStyle) -> Int? {

@@ -3,11 +3,12 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.8: every worked composition example W001-W253 and W243a-W243j (REG-31), display before any boundary. Rows whose note
+/// Spec 13.8: every worked composition example W001-W253 with the lettered rows (REG-24, REG-31, REG-33,
+/// REG-34), display before any boundary. Rows whose note
 /// mentions a boundary restore (W147, W148, W211-W222 ...) only check the display before the boundary;
 /// the restore itself is section 8. Every event also goes through the simulated text field, so the
 /// edits must rebuild exactly the display in an empty field (ENG-T31, ENG-R611, ENG-R631).
-@Suite("Worked examples W001-W253, W243a-W243j (13.8)")
+@Suite("Worked examples W001-W253 and lettered rows (13.8)")
 struct WorkedExampleTests {
     static let rows: [WorkedExample] = {
         do {
@@ -19,7 +20,7 @@ struct WorkedExampleTests {
     }()
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 263)
+        #expect(Self.rows.count == 296)
     }
 
     @Test(arguments: rows)

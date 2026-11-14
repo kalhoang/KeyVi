@@ -74,7 +74,7 @@ Where the owner is another track, the row says so.
 | ENG-R402 | Shifted digits are symbols, boundaries | `Engine/TokenKey.swift` | `RegressionTests.reg14`, `layouts.tsv` (AZERTY digits with Shift) |
 | ENG-R403 | Telex and VNI never mix; VNI restore gives the digits | `Composition/KeyRoles.swift` | `RegressionTests.reg05`, Fuzz (ENG-T35), `restore-exact.tsv` |
 | ENG-R410 | Tone applies with a vowel group; same tone escapes | `Composition/Composition+Transforms.swift` (`applyTone`) | W001-W005, W131-W150, `OptionAndEscapeTests.doubledToneEndsWithTheKeyOverTheCorpus` |
-| ENG-R411 | Tone removal; `qu` with no vowel | `Composition/Composition+Transforms.swift` (`removeTone`) | W151-W158, `crash-regressions.tsv` CR001-CR009, `RegressionTests.reg01`, `editing.tsv` ED033-ED042 (Backspace after a removal) |
+| ENG-R411 | Tone removal by layers (tone, then every mark and `đ`, then a letter); `qu` with no vowel | `Composition/Composition+Transforms.swift` (`removeToneOrMarks`), `Composition/Composition.swift` (`markRemovalSources`, `hasMarkedLetter`) | W151-W158, W158a-W158j, W184a-W184c, `ToneRemovalLayerTests`, `crash-regressions.tsv` CR001-CR009, `RegressionTests.reg01`, `RegressionTests.reg34`, `editing.tsv` ED033-ED042 and ED050-ED054 |
 | ENG-R412 | Circumflex targets, viability, escape | `Composition/Composition+Transforms.swift` (`applyCircumflex`) | W006-W009, W121-W130, `OptionAndEscapeTests.readingsOfDecision0102` |
 | ENG-R413 | Horn and breve, pair first, escape, standalone `ư` | `Composition/Composition+Transforms.swift` (`applyHornOrBreve`) | W010-W013, W121-W130, W246-W248 |
 | ENG-R414 | VNI `7` and `8` | `Composition/KeyRoles.swift` (`HornBreveScope`) | W159-W200, `OptionAndEscapeTests.readingsOfDecision0102` |
@@ -84,7 +84,7 @@ Where the owner is another track, the row says so.
 | ENG-R421 | Literal mode ends at the token end or when Backspace removes its key | `Composition/Composition+Rendering.swift` (`removeLastKey`) | `RequirementGapTests.literalModeEndsWithItsKey` |
 | ENG-R430 | Free-order entry | `Composition/Composition+Transforms.swift` | W033-W061, generated corpus O2-O4, `RegressionTests.reg09` |
 | ENG-R431 | Circumflex after the coda | `Composition/Composition+Transforms.swift` | W034, `OptionAndEscapeTests.literalModeFreezesTheDisplay` (`cana`), `proper-nouns.tsv` PN203 |
-| ENG-R432 | Tone key before any vowel is a letter | `Composition/Composition+Transforms.swift` (`applyTone` guard) | `OptionAndEscapeTests.literalModeFreezesTheDisplay` (`tsa`), `no-shortcuts.tsv` NS014 |
+| ENG-R432 | Tone key before any vowel is a letter; a tone key whose vowel an escape removed shows nowhere and goes with the escape letter | `Composition/Composition+Transforms.swift` (`applyTone` guard), `Composition/Composition.swift` (`init(replaying:capsLockKeys:droppingIdle:rules:)`) | `OptionAndEscapeTests.literalModeFreezesTheDisplay` (`tsa`), `no-shortcuts.tsv` NS014, W242k, `editing.tsv` ED049 |
 | ENG-R440 | Escape by doubling | `Composition/Composition.swift` (`escape`) | W131-W150, Fuzz (ENG-T36), `OptionAndEscapeTests.doubledTransformEndsWithTheKey` |
 | ENG-R441 | Escape is sticky per kind | `Composition/KeyRoles.swift` (`EscapeKinds`) | `OptionAndEscapeTests.escapeIsStickyPerKind` |
 | ENG-R442 | The escaped letter counts for viability | `Composition/Composition.swift` (`appendLetterOrLiteral`) | B014, `crash-regressions.tsv` CR015, CR028-CR030 |
@@ -127,10 +127,10 @@ Where the owner is another track, the row says so.
 | ENG-R701 | Toggle: raw keys (user-restored) or composed form (user-kept) | `Engine/ActiveToken.swift` (`toggleRestore`) | E01-E08, `RestoreToggleTests.tokenRestoredByARuleComposesOnToggle`, Fuzz (ENG-T32) |
 | ENG-R702 | A consecutive toggle passes through | `Engine/Reducer.swift` (`toggleRestore`) | E02, `crash-regressions.tsv` CR038 |
 | ENG-R703 | Toggle with nothing to do passes through | `Engine/Reducer.swift` | E05, E06, `RestoreToggleTests.toggleWithoutTokenPassesThrough`, `no-shortcuts.tsv` NS010-NS012 |
-| ENG-R704 | Undo an automatic restore: Backspace, toggle | `Engine/History.swift` (`reopened`) | E04, `RestoreToggleTests.e04UndoesTheAutomaticRestore`, `editing.tsv` ED018-ED019 |
+| ENG-R704 | Undo an automatic restore: Backspace, toggle | `Engine/History.swift` (`reopened`) | E04, `RestoreToggleTests.e04UndoesTheAutomaticRestore`, `editing.tsv` ED018-ED019, `ReopenedRestoredTokenTests.restoreLastsWhileAKeyStillTransforms` |
 | ENG-R705 | Restore reproduces digits and doubled letters | `Engine/ActiveToken.swift` | E03, E07, E08, `restore-exact.tsv`, `RestoreToggleTests.vniRestoreReproducesDigits` |
-| ENG-R710 | Backspace removes the letter's keys and recomputes; a shared modifier key stays with a letter that keeps its mark | `Composition/Composition+Rendering.swift` (`backspace`, `modifierKeysLeavingWith`, `unshownHornBeforeLast`, `Composition.placementOffset`), `Engine/ActiveToken.swift` (`backspace`, commit spelling of a re-opened word) | W236-W243, W243a-W243j, `editing.tsv` ED001-ED006, ED033-ED044, `InvariantChecker` (Backspace shortens the token, every fuzz event), `BackspacePropertyTests` |
-| ENG-R711 | Backspace on an escape letter removes only its key | `Composition/Composition+Rendering.swift` | W241, `RegressionTests.reg24`, `editing.tsv` ED043-ED044 |
+| ENG-R710 | Backspace removes the letter's keys and recomputes; a shared modifier key stays with a letter that keeps its mark | `Composition/Composition+Rendering.swift` (`backspace`, `modifierKeysLeavingWith`, `unshownHornBeforeLast`, `Composition.placementOffset`), `Engine/ActiveToken.swift` (`backspace`, commit spelling of a re-opened word) | W236-W243, W243a-W243j, W242n-W242o, `editing.tsv` ED001-ED006, ED033-ED044, ED051, `InvariantChecker` (Backspace shortens the token, every fuzz event), `BackspacePropertyTests` |
+| ENG-R711 | Backspace on an escape letter removes it with the keys it undid; fallback for an `ư` of its own key shown as `u` | `Composition/Composition+Transforms.swift` (the `undoing` keys of each escape), `Composition/Composition.swift` (`literalEscapeUndone`), `Composition/ComposedLetter.swift` (`undoneKeys`), `Composition/Composition+Rendering.swift` (`backspace`, `removeEscapeLetter`) | W241, W242, W242a-W242m, `EscapeBackspaceTests`, `RegressionTests.reg24`, `editing.tsv` ED006, ED043-ED049 |
 | ENG-R712 | passThrough when one character goes, else an edit | `Engine/DisplayEdit.swift` (`actionForBackspace`) | `EditTraceTests.backspaceActions` |
 | ENG-R713 | Backspace with no token: history rules | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries` |
 | ENG-R714 | Backspace only deletes, documented exceptions | `Composition/Composition+Rendering.swift` (`backspace`), `Engine/DisplayEdit.swift` (`actionForBackspace`) | `BackspacePropertyTests`, `BackspaceRealDataTests` (bundled data), `InvariantChecker.checkBackspaceOnlyDeletes` (every fuzz event), `VietnameseEngineTesting/Simulation/BackspaceProbe.swift` (the exception classes) |
@@ -191,6 +191,7 @@ Where the owner is another track, the row says so.
 | ENG-R1002 | Backspace re-opens the previous word across boundaries | `Engine/Reducer+Backspace.swift` | `HistoryTests.reopenAcrossBoundaries`, `RegressionTests.reg07`, `editing.tsv` |
 | ENG-R1003 | Backspace continues into the re-opened token | `Engine/Reducer+Backspace.swift` | `HistoryTests.backspaceContinuesIntoTheTokenAndPastItsStart` |
 | ENG-R1004 | Empty history: passThrough | `Engine/Reducer+Backspace.swift` | `HistoryTests.emptyHistoryBackspacePassesThrough` |
+| ENG-R1005 | A re-opened rule-restored token composes again once the remaining keys compose to the text shown; L1 stays literal | `Engine/ActiveToken.swift` (`endRuleRestoreIfComposedMatches`) | W243k-W243o, `ReopenedRestoredTokenTests` (property: retyped syllables equal fresh ones), `RegressionTests.reg33`, `editing.tsv` ED055-ED061, `ReopenedRestoredRealDataTests` |
 | ENG-R1010 | Host sends resets, `unseenInput` included (PLT-R397A) | host (`02-platform.md`); `PublicAPI.swift` (`ResetReason`) | `ResetTests` (every reason), `FuzzTests.byteEncoding` (DEL is `unseenInput`) |
 | ENG-R1011 | Reset clears token and history, no edit | `Engine/Reducer.swift` | `ResetTests.resetClearsTokenAndHistory`, `RegressionTests.reg22` |
 | ENG-R1012 | After a reset the next key is a first key | `Engine/Reducer.swift` | `RegressionTests.reg18` |
@@ -241,7 +242,7 @@ Where the owner is another track, the row says so.
 | ENG-T33 | Determinism and replay | `InvariantChecker` (replay, pure `reduce`) | Fuzz, `FuzzTests.determinism`, `CompositionPropertyTests` |
 | ENG-T34 | NFC, no combining marks, equal counts | `InvariantChecker.checkEdit` | Fuzz (Foundation NFC check in tests) |
 | ENG-T35 | VNI method isolation | `InvariantChecker.checkMethodIsolation` | Fuzz (VNI combinations) |
-| ENG-T36 | Escape: T + K + K ends with K | `InvariantChecker.checkEscape` | Fuzz, `OptionAndEscapeTests.doubledTransformEndsWithTheKey` |
+| ENG-T36 | Escape: T + K + K ends with K (tone removal: T + K + K + K) | `InvariantChecker.checkEscape` | Fuzz, `OptionAndEscapeTests.doubledTransformEndsWithTheKey` |
 | ENG-T37 | No non-viable composing display | `InvariantChecker.checkState` | Fuzz, `CompositionPropertyTests` |
 | ENG-T38 | Backspace only deletes (ENG-R714) | `Simulation/BackspaceProbe.swift`, `InvariantChecker.checkBackspaceOnlyDeletes` | Fuzz, `BackspacePropertyTests` (generated corpus, extra orders, mixed case, before and after a boundary), `BackspaceRealDataTests` (English lexicon and tech lists, prose corpus) |
 | ENG-T40 | Benchmark replays the corpus, three typists, fuzz stream | `Benchmarks/EngineBenchmark/` (prose corpus and generated corpus typists, fuzz, bundled resources) | `Scripts/benchmark.sh`, `Benchmarks/baseline.json` |
@@ -273,7 +274,7 @@ Where the owner is another track, the row says so.
 | REG-21 | `dda` gave `â` | `Composition/Composition+Transforms.swift` (`applyStroke`) | `RegressionTests.reg21` |
 | REG-22 | No reset after the tap was re-enabled | `Engine/Reducer.swift` | `RegressionTests.reg22` |
 | REG-23 | Keystrokes written to a file | whole core | `RegressionTests.reg23`, `StaticSourceTests` |
-| REG-24 | Tone not re-applicable after deleting the extra key | `Composition/Composition+Rendering.swift` (ENG-R711) | `RegressionTests.reg24`, W241 |
+| REG-24 | Tone not re-applicable after deleting the extra key | `Composition/Composition+Rendering.swift` (ENG-R711) | `RegressionTests.reg24`, W241, W242a |
 | REG-25 | Teencode `zá` impossible | `Composition/Composition+Transforms.swift` (ENG-R411) | `RegressionTests.reg25`, W156-W157 |
 | REG-26 | Misspellings accepted | `Orthography/SyllableRules.swift` | `RegressionTests.reg26`, B044-B045 |
 | REG-27 | Restore lost a doubled letter | `Engine/ActiveToken.swift` (raw keys) | `RegressionTests.reg27`, `restore-exact.tsv` RE006-RE009 |
@@ -282,3 +283,5 @@ Where the owner is another track, the row says so.
 | REG-30 | Restore fired only on Space | `Engine/Reducer+Commit.swift` | `RegressionTests.reg30`, B057-B064, `english.tsv` EN022 |
 | REG-31 | Backspace took the horn off `ư` with the `ơ` | `Composition/Composition+Rendering.swift` (ENG-R710) | `RegressionTests.reg31`, W243a-W243j, `BackspacePropertyTests` |
 | REG-32 | An English loanword in a Vietnamese sentence made the run English (`cũng tricky as`) | `Commit/TokenLanguage.swift` (ENG-R823) | `RegressionTests.reg32`, B065-B072, `EnglishRunRealDataTests` |
+| REG-33 | A re-opened restored word stayed literal after deleting back and retyping (`tiesng`) | `Engine/ActiveToken.swift` (ENG-R1005) | `RegressionTests.reg33`, W243k-W243o, `ReopenedRestoredTokenTests` |
+| REG-34 | A second tone-removal press did not remove the marks (`daauszz` gave `dâuz`) | `Composition/Composition+Transforms.swift` (ENG-R411) | `RegressionTests.reg34`, W158a-W158j, W184a-W184c, `ToneRemovalLayerTests` |
