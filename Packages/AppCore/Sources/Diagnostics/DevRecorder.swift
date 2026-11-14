@@ -253,6 +253,11 @@ public final class DevRecorder: Sendable {
     /// The focus in effect at an instant, written when a pause or a secure gap ends: focus changes inside those
     /// windows are not recorded, so without it the lines after them would carry the focus from before (review W8-E
     /// finding 3).
+    /// The engine identity for the file lines (ADR 0007 decision 13), computed off the main thread at start.
+    public func setEngineIdentity(_ identity: String) {
+        state.withLock { $0.engineIdentity = identity }
+    }
+
     public func setFocusSource(_ source: @escaping @Sendable (MonotonicInstant) -> DevFocusRecord) {
         let box = DevFocusSource(source)
         focusSource.withLock { $0 = box }
@@ -286,10 +291,12 @@ public final class DevRecorder: Sendable {
         drainHook.withLock { $0 = box }
     }
 
-    /// PLT-R905 secure gap: secure input on or a secure field focused.
-    func beginGap(_ reason: PauseCode, at instant: MonotonicInstant) {
+    /// PLT-R905 secure gap: secure input on or a secure field focused. `holder`: the likely holder of secure input
+    /// (PLT-R396) when the gap begins, written with the gap (bundle ID and PID, never its name).
+    func beginGap(_ reason: PauseCode, holder: SecureInputHolder? = nil, at instant: MonotonicInstant) {
         state.withLock { state in
             state.secureGap = reason
+            state.secureGapHolder = holder.map { ($0.bundle?.rawValue, $0.pid) }
             state.openWindow(.secure(reason), at: instant)
             updateActive(state)
         }
@@ -299,12 +306,18 @@ public final class DevRecorder: Sendable {
         let ended = state.withLock { state -> Bool in
             guard let reason = state.secureGap else { return false }
             state.secureGap = nil
+            let holder = state.secureGapHolder
+            state.secureGapHolder = nil
             let from = state.closeWindow(.secure(reason), at: instant)
             if state.started, let from {
                 state.append(at: from, exempt: true) { [start = from] t in
                     var line = DevTraceLine(type: .gap, t: t)
                     line.reason = reason.rawValue
-                    line.end = t + Int64(instant.nanoseconds(since: start) / 1_000)
+                    let micros = instant.nanoseconds(since: start) / 1_000
+                    line.end = t + Int64(micros)
+                    line.durUs = micros
+                    line.holder = holder?.bundle
+                    line.pid = holder?.pid
                     return line
                 }
             }
@@ -455,6 +468,9 @@ struct DevRecorderState {
     var startedAt = MonotonicInstant.zero
     var pausedUntil: Date?
     var secureGap: PauseCode?
+    var secureGapHolder: (bundle: String?, pid: Int32)?
+    /// `DevEngineIdentity` of the running engine, written in every file line once known.
+    var engineIdentity: String?
     var timers: [any ScheduledTimer] = []
     var resumeTimer: (any ScheduledTimer)?
     var windows: [(window: Window, from: MonotonicInstant, to: MonotonicInstant?)] = []
@@ -541,6 +557,7 @@ struct DevRecorderState {
         file.launch = launch
         file.app = appVersion
         file.build = DevRecorder.buildMarker
+        file.eng = engineIdentity
         return [file]
             + [lastSettings, lastFocus].compactMap { line in
                 line.map {

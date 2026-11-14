@@ -6,6 +6,7 @@
 // than the keys suggest, or kept state it should have dropped. Steps decided by the user's word lists or a macro
 // cannot be reproduced offline (the trace holds only their counts), so the segment stops there without a finding.
 
+internal import Diagnostics
 internal import Foundation
 public import VietnameseEngine
 internal import VietnameseEngineData
@@ -24,6 +25,22 @@ public final class ReplayEngineFactory {
 
     static func bundledResources() throws -> Resources {
         try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+    }
+
+    /// The engine identity of this scanner (ADR 0007 decision 13): the digest of the probes through its engine with
+    /// the default configuration, computed exactly as the recorder computes it (InputHost
+    /// `DevEngineIdentity.ofLinkedEngine`). A trace written by another identity is not replayed.
+    public private(set) lazy var identity: String = DevEngineIdentity.digest { [resources] vni in
+        let method: InputMethod = vni ? .vni : .telex(TelexOptions())
+        var session = Session(
+            engine: Engine(configuration: EngineConfiguration(inputMethod: method), resources: resources))
+        return { character in
+            switch session.handle(.key(KeyInput(character))).action {
+            case .passThrough: .passThrough
+            case .edit(let edit, let thenPassThrough):
+                .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+            }
+        }
     }
 
     /// Nil when the settings line has not been seen (no replay without the method and tone placement).

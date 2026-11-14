@@ -22,7 +22,9 @@ enum DevTraceFiles {
     static let folderName = "dev-traces"
     static let fileExtension = "jsonl"
     /// 2: readback lines carry `durUs`, `maxCallUs`, `waitUs`, `idleUs` and `overlap` (2026-11-14 incidents).
-    static let formatVersion = 2
+    /// 3: file lines carry the engine identity `eng`, secure gap lines the likely holder (`holder`, `pid`) and
+    /// `durUs`, focus lines without an app the frontmost application `front` (2026-11-15).
+    static let formatVersion = 3
 
     /// `YYYYMMDD-HH` of `date` in `timeZone`.
     static func hourKey(for date: Date, timeZone: TimeZone) -> String {
@@ -89,6 +91,8 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var launch: String?
     var build: String?
     var app: String?
+    /// Engine identity (`DevEngineIdentity`), file lines (format version 3).
+    var eng: String?
     // key
     var ev: String?
     var kc: UInt16?
@@ -136,6 +140,11 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var mac: Bool?
     var pause: String?
     var manual: Bool?
+    /// Focus lines without an app: the frontmost application's bundle ID (format version 3).
+    var front: String?
+    /// Secure gap lines: the likely holder's bundle ID and process ID (PLT-R396, format version 3).
+    var holder: String?
+    var pid: Int32?
     var status: String?
     var text: String?
     var selLoc: Int?
@@ -248,6 +257,7 @@ extension DevTraceLine {
         er = focus.englishRestore
         mac = focus.macros
         pause = focus.pause
+        front = focus.bundle == nil ? focus.frontmost : nil
     }
 }
 
