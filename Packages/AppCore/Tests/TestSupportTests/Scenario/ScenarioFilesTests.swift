@@ -24,7 +24,18 @@ private func scenarioFiles() throws -> [URL] {
     @Test func everyFileDecodesAndValidates() throws {
         let scenarios = try ScenarioRunner.load(directory: scenariosDirectory)
         #expect(scenarios.count == (try scenarioFiles()).count)
-        #expect(scenarios.count >= 40)
+        #expect(scenarios.count >= 44)
+    }
+
+    /// The TestHost suite size (`scripts/run-integration.sh tests`, `--only 'testhost.*'`) is quoted by the VM
+    /// runbook's proof plan; adding or removing a TestHost scenario updates both (W8-A added the save sheet, the
+    /// two search panel scenarios and the separate-editor page: 44).
+    @Test func theTestHostSuiteSizeIsPinnedInTheRunbook() throws {
+        let testHost = try scenarioFiles().filter { $0.lastPathComponent.hasPrefix("testhost.") }
+        #expect(testHost.count == 44)
+        let runbook = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("docs/runbooks/integration-suite.md"), encoding: .utf8)
+        #expect(runbook.contains("expect \(testHost.count) of \(testHost.count)"))
     }
 
     /// Schema conformance against the schema file itself, so the Swift types and the schema cannot drift.

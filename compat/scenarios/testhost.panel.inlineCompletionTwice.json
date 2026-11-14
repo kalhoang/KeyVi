@@ -1,0 +1,43 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "testhost.panel.inlineCompletionTwice",
+  "targetBundleId": "local.testhost",
+  "setup": [
+    {
+      "action": "launch"
+    },
+    {
+      "action": "setSecureInput",
+      "value": "off"
+    },
+    {
+      "action": "focusField",
+      "value": "testhost.panel.mirror"
+    }
+  ],
+  "keys": [
+    "command+k",
+    "v",
+    "i",
+    "e",
+    "e",
+    "j",
+    "t",
+    "escape",
+    "command+k",
+    "v",
+    "i",
+    "e",
+    "e",
+    "j",
+    "t",
+    "escape"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "việt<esc>việt<esc>"
+  },
+  "readback": "ax"
+}

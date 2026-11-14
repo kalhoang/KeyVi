@@ -6,8 +6,11 @@
     "testhost.addressBar.telexStroke",
     "testhost.addressBar.telexTone",
     "testhost.addressBar.vni",
+    "testhost.panel.inlineCompletionTwice",
+    "testhost.panel.toneUndo",
     "testhost.sheetCell.columnAutocomplete",
     "testhost.web.composer",
+    "testhost.web.editModeEditor",
     "testhost.web.editModeTransition",
     "testhost.web.inlineAutocomplete"
   ],
@@ -35,6 +38,22 @@
       "summary": "TestHost local page with an edit-mode transition reproduces the Google Sheets cell editor",
       "match": { "bundleIds": ["local.testhost"], "ax": { "domClasses": ["testhost-edit-mode-cell"] } },
       "actionFromRule": "web.googleSheets.cellEditor.webkit"
+    },
+    {
+      "id": "user.testhost.webEditModeGrid",
+      "summary": "TestHost local page whose grid cell moves the focus to a separate editor on the first key reproduces the Google Sheets cell editor in a browser (requireTextFocus never, as byEngine gives for browser engines; TestHost is a native app)",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "domClasses": ["testhost-edit-mode-grid"] } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "params": { "inlineCompletion": "axSelection", "firstEditDelayUs": 8000 },
+        "requireTextFocus": "never"
+      }
+    },
+    {
+      "id": "user.testhost.searchPanel",
+      "summary": "TestHost search panel (a non-activating panel opened by Command+K, inline completion) reproduces Spotlight",
+      "match": { "bundleIds": ["local.testhost"], "ax": { "identifiers": ["testhost.panel.search"] } },
+      "actionFromRule": "launcher.spotlight"
     },
     {
       "id": "user.testhost.webComposer",

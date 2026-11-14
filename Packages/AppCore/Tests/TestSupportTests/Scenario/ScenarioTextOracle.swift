@@ -33,19 +33,23 @@ struct ScenarioTextOracle {
     private let passThroughFields: Set<String>
     private var focused: String
     private let focusShortcuts: [String: String]
+    /// Fields whose rule turns the restore hotkey off (`features.restoreHotkey: false`, PLT-R353): an Escape there
+    /// always passes through.
+    private let noRestoreFields: Set<String>
     /// `revokePermission` fired: the host failed open, keys pass untouched until `restorePermission` (PLT-R730).
     private var failedOpen = false
 
     /// `focusShortcuts`: key name -> field it focuses (TestHost's Command+1 and Command+2).
     init(
         settings: SettingsState, focused: String, passThroughFields: Set<String> = [],
-        focusShortcuts: [String: String] = [:]
+        focusShortcuts: [String: String] = [:], noRestoreFields: Set<String> = []
     ) throws {
         session = Session(engine: try Self.engine(settings: settings))
         restoreHotkeyBound = settings.effective.restoreHotkey == .key(.escape)
         self.passThroughFields = passThroughFields
         self.focused = focused
         self.focusShortcuts = focusShortcuts
+        self.noRestoreFields = noRestoreFields
     }
 
     /// The default-variant engine the app builds from these settings (EngineBridge, ADR 0306).
@@ -110,7 +114,7 @@ struct ScenarioTextOracle {
     }
 
     private mutating func escape() {
-        if transforms, restoreHotkeyBound {
+        if transforms, restoreHotkeyBound, !noRestoreFields.contains(focused) {
             let action = session.handle(.restoreToggle).action
             if case .edit = action { return apply(action, passThrough: { _ in }) }
         }

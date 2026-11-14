@@ -15,7 +15,8 @@ swift run --package-path Packages/AppCore compat-harness coverage        # rules
 set, the QA-R11 suite and the spec 5.6 example rules, and fails when a rule in `compat/rules.json` has no scenario
 file. `ScenarioOracleTests` replays every TestHost scenario that types into a plain native field through the real
 engine, configured from the files the harness writes for it, and fails when its `expect.text` is not what the engine
-produces. The live run on the self-hosted runner is described step by step in
+produces; `ShortcutOpenedFieldOracleTests` does the same for the save sheet and search panel scenarios, which are read
+back through a mirror. The live run on the self-hosted runner is described step by step in
 [docs/runbooks/integration-suite.md](../../docs/runbooks/integration-suite.md).
 
 ## App profiles (`profiles/`)
@@ -29,12 +30,13 @@ an error, onboarding state kept), starts it again and waits until it is ready. `
 | Profile | Scenarios | What it sets |
 |---|---|---|
 | `qa-r11` | `testhost.macro.*`, `testhost.restoreHotkey.twice`, `testhost.perWindowRule.*` | Macros `vn` and `@@`, restore hotkey Escape, `passThrough` for `testhost.second.textField` |
-| `testhost-reproductions` | `testhost.addressBar.*`, `testhost.sheetCell.*`, `testhost.web.{inlineAutocomplete,editModeTransition,composer}` | QA-R21: each simulated field gets the action of the shipped rule it reproduces (`actionFromRule`) |
+| `testhost-reproductions` | `testhost.addressBar.*`, `testhost.sheetCell.*`, `testhost.panel.*`, `testhost.web.{inlineAutocomplete,editModeTransition,editModeEditor,composer}` | QA-R21: each simulated field gets the action of the shipped rule it reproduces (`actionFromRule`; the search panel gets `launcher.spotlight`'s); the separate-editor page gets the Sheets action with `requireTextFocus: never`, as browser engines resolve `byEngine` |
 | `privacy-canary` | `testhost.privacyCanary.*` | One TestHost field per injection strategy |
 | `bench-workload` | none (`compat-harness bench`) | `axSelection` for the TestHost address bar, so T3 gets samples |
 
 Overrides name `local.testhost` in `bundleIds`; the harness resolves it like `targetBundleId`. Web pages are matched
-by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testhost-composer`).
+by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testhost-edit-mode-grid`,
+`testhost-composer`).
 
 ## Conventions
 
@@ -71,6 +73,7 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
 | Group | Scenarios | Covers |
 |---|---|---|
 | TestHost fields | `testhost.native.*`, `testhost.web.*`, `testhost.addressBar.*`, `testhost.sheetCell.*`, `testhost.password.noTransform` | QA-R10, QA-R21, PLT-R387, inline completion and edit-mode transition (4.3, 6) |
+| Focus moved without an activation | `testhost.sheet.commandS`, `testhost.panel.{inlineCompletionTwice,toneUndo}`, `testhost.web.editModeEditor`, `launcher.spotlight.reopen` | PLT-R389, PLT-R340 late focus change (Pa's manual tests of 2026-11-14: Spotlight, T5.5, T5.8) |
 | Layouts and input sources | `testhost.layout.{abc,qwertz,azerty,dvorak}`, `testhost.inputSource.japanese` | 13.2, PLT-R361, PLT-R371 |
 | Secure input | `testhost.secureInput.{pause,release}`, `terminal.iterm2.secureKeyboardEntry{,Off}` | PLT-R398B, PLT-R398C |
 | Fail-open and tap recovery | `testhost.failOpen.permissionRevoked`, `testhost.tapTimeout.recovery` | 13.2, QA-R11 (manual for now, see below) |

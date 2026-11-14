@@ -129,6 +129,51 @@ func oracleText(_ scenario: Scenario, profiles: [AppProfile], targets: HarnessTa
     }
 }
 
+/// PLT-R389 and the PLT-R340 late focus change (Pa's items 7 to 9 of 2026-11-14): the save sheet and the search
+/// panel open with a shortcut and are read back through a mirror, so the generic check above skips them. The model:
+/// Command+S focuses the sheet's name field (its selected "Untitled" is replaced by the first key), Command+K the
+/// panel's field (a fresh query appended to the transcript, which the mirror shows), and Escape in the panel passes
+/// through as `<esc>` because the field has `launcher.spotlight`'s action (no restore hotkey, PLT-R353). The inline
+/// completion is invisible in the expected text: with `axSelection` every edit removes the suggestion first.
+@Suite struct ShortcutOpenedFieldOracleTests {
+    static let readFields = [
+        "testhost.sheet.commandS": "testhost.sheet.name",
+        "testhost.panel.inlineCompletionTwice": "testhost.panel.search",
+        "testhost.panel.toneUndo": "testhost.panel.search",
+    ]
+
+    @Test func sheetAndPanelScenariosExpectWhatTheEngineProduces() async throws {
+        let profiles = try repositoryProfiles()
+        let targets = try repositoryTargets()
+        let byID = Dictionary(
+            uniqueKeysWithValues: try ScenarioRunner.load(directory: scenariosDirectory).map { ($0.id, $0) })
+        for (id, field) in Self.readFields {
+            let scenario = try #require(byID[id], "\(id)")
+            let configuration = AppConfiguration.of(scenario, profiles: profiles)
+            let settings = try await OracleSettings.load(configuration, targets: targets)
+            var oracle = try ScenarioTextOracle(
+                settings: settings, focused: "testhost.native.textField",
+                focusShortcuts: ["command+s": "testhost.sheet.name", "command+k": "testhost.panel.search"],
+                noRestoreFields: ["testhost.panel.search"])
+            oracle.type(scenario.keys)
+            #expect(oracle.text(of: field) == scenario.expect.text, "\(id)")
+            #expect(oracle.text(of: "testhost.native.textField").isEmpty, "\(id): nothing reaches the previous field")
+        }
+    }
+
+    /// The panel scenarios run with the panel field matched to `launcher.spotlight`, the sheet one with the default
+    /// rule of a native field.
+    @Test func thePanelFieldGetsTheSpotlightAction() throws {
+        let profiles = try repositoryProfiles()
+        let reproductions = try #require(profiles.first { $0.id == "testhost-reproductions" })
+        let panel = try #require(reproductions.ruleOverrides.first { $0.actionFromRule == "launcher.spotlight" })
+        #expect(panel.rule["match"]?["ax"]?["identifiers"] == .array([.string("testhost.panel.search")]))
+        #expect(reproductions.scenarios.contains("testhost.panel.inlineCompletionTwice"))
+        #expect(reproductions.scenarios.contains("testhost.panel.toneUndo"))
+        #expect(!profiles.contains { $0.scenarios.contains("testhost.sheet.commandS") })
+    }
+}
+
 @Suite struct CommonWordsGoldenTests {
     static let count = 200
 
