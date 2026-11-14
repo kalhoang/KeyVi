@@ -32,6 +32,14 @@ extension ReportLabels {
             .lostLetters: "Mất chữ", .duplicatedLetters: "Lặp chữ", .lettersOutOfOrder: "Chữ sai thứ tự",
             .wrongTone: "Sai dấu", .cannotTypeVietnamese: "Không gõ được tiếng Việt",
             .nothingTyped: "Không ra chữ nào", .lag: "Chậm / giật", .other: "Khác",
+        ],
+        notices: [
+            .secureInputBursts: HealthNoticeText(
+                label: "Chế độ nhập bảo mật bật tắt liên tục",
+                explanation:
+                    "Có ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật (Secure Input) trong lúc bạn gõ, nên vài phím "
+                    + "có thể không tới được %@. Hãy thử thoát các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng "
+                    + "chạy nền mới cài để tìm ra ứng dụng đó.")
         ])
 
     static let english = ReportLabels(
@@ -64,5 +72,13 @@ extension ReportLabels {
             .lettersOutOfOrder: "Letters out of order", .wrongTone: "Wrong tone",
             .cannotTypeVietnamese: "Cannot type Vietnamese", .nothingTyped: "Nothing typed", .lag: "Lag",
             .other: "Other",
+        ],
+        notices: [
+            .secureInputBursts: HealthNoticeText(
+                label: "Secure Input keeps turning on and off",
+                explanation:
+                    "An app keeps turning Secure Input on and off while you type, so some keys may not reach %@. Try "
+                    + "quitting other input methods, password managers or recently installed background apps to find "
+                    + "it.")
         ])
 }

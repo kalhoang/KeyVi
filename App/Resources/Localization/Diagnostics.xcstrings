@@ -746,6 +746,42 @@
         }
       }
     },
+    "diagnostics.health.secureInputBursts.explanation" : {
+      "comment" : "PLT-R397B, PLT-R1201: explanation of the notice for secure-input bursts; argument is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An app keeps turning Secure Input on and off while you type, so some keys may not reach %@. Try quitting other input methods, password managers or recently installed background apps to find it."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Có ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật (Secure Input) trong lúc bạn gõ, nên vài phím có thể không tới được %@. Hãy thử thoát các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng chạy nền mới cài để tìm ra ứng dụng đó."
+          }
+        }
+      }
+    },
+    "diagnostics.health.secureInputBursts.label" : {
+      "comment" : "PLT-R397B, PLT-R1201: label of the notice for secure-input bursts, under the Diagnostics window's state line.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secure Input keeps turning on and off"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chế độ nhập bảo mật bật tắt liên tục"
+          }
+        }
+      }
+    },
     "diagnostics.information.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",

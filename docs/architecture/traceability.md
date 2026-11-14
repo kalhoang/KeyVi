@@ -142,7 +142,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R396 | Likely holder from IOConsoleUsers kCGSSessionSecureInputPID | `SystemSecureInputProbe` | U (parser), M | W1-E; Pa (iTerm2, browser) | **Pa** |
 | PLT-R397 | Paused(secureInput) with holder hint, no modals | `SecureInputMonitor`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R397A | A keyUp the tap never saw go down is a hard boundary (input hidden from the tap) | `KeyPipeline+UnseenInput.swift` (`KeysDown`), `BoundaryReason.unseenInput`, `TapLogCode.unseenKeyUp` | U (`KeyPipelineUnseenInputTests`), P (`UnseenInputPropertyTests`) | W14-H |  |
-| PLT-R397B | Health signal for short secure-input episodes ended while typing; holder and duration in the dev gap line | `HealthEventLog` (`SecureInputBursts`, `secureInputBursts`), `DevRecorder` gap line | U (`SecureInputEpisodeTests`, `DevRecorderTests`) | W14-H |  |
+| PLT-R397B | Health signal for short secure-input episodes ended while typing; holder and duration in the dev gap line; label and explanation in the Diagnostics window, the report text and the copied block | `HealthEventLog` (`SecureInputBursts`, `secureInputBursts`), `DevRecorder` gap line, `HealthNotice`, `DiagnosticsCopy.notice`, App `HealthNoticeView` | U (`SecureInputEpisodeTests`, `DevRecorderTests`, `HealthNoticeTests`, `DiagnosticsCatalogTests`, `SpecDraftCopyTests`), M | W14-H, W14-P; Pa |  |
 | PLT-R398 | Never call EnableSecureEventInput | all | L (grep) | W1-E |  |
 | PLT-R398A | P0-1: only OS state and AXSecureTextField pause | `HostStateResolver` | U, L | W1-F1, W1-E |  |
 | PLT-R398B | P0-1: resume on the first key after release | `KeyPipeline`, `HostCounters` (reported as `firstKeyAfterSecureInputReleaseComposed`), `compat/scenarios/testhost.secureInput.release.json` | P, U (`FirstKeyAfterSecureReleaseTests`), I, C | W1-F1; W2-E2; W3-A; Pa (iTerm2) | **Pa** |
@@ -242,7 +242,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1108 | Update tests before publication | self-hosted runner (13.5) | I, M | W2-E2; Pa | **Pa** |
 | PLT-R1109 | minimumSystemVersion and minimumAutoupdateVersion | appcast scripts | R | release track |  |
 | PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew` | R | release track |  |
-| PLT-R1201 | Diagnostics window contents and buttons | `DiagnosticsWindowController` | U (view model), M | W2-C; Pa | **Pa** |
+| PLT-R1201 | Diagnostics window contents and buttons; health notices under the state line | `DiagnosticsWindowController`, `DiagnosticsWindowView` (`HealthNoticeView`), `DiagnosticsCopy.notices` | U (view model, `DiagnosticsCatalogTests`), M | W2-C, W14-P; Pa | **Pa** |
 | PLT-R1202 | Environment report contents | `DiagnosticsReport` (`FocusSection.appSource`), `ReportAssembler` | U (`FocusedAppSourceReportTests`, `ReportAssemblerTests`) | W1-A, W1-G, W14-P |  |
 | PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |
 | PLT-R1204 | User sees exact report before copying | `BugReportController` | M | W2-C; Pa | **Pa** |

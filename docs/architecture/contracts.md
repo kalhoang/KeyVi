@@ -3426,6 +3426,15 @@ public enum DiagnosticsRenderer {
     /// lists are comma-separated. Keys match `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. At most 200 lines.
     public static func issueBlock(_ report: DiagnosticsReport) -> String { IssueBlock.render(report) }
 
+    /// The label and explanation the plain-text report and the copied block give a health notice, in `language`
+    /// with `appName` as the argument (PLT-R1201, PRD-R62). The Diagnostics window shows the same words from the
+    /// String Catalog.
+    public static func healthNoticeText(
+        _ notice: HealthNotice, language: InterfaceLanguage, appName: String
+    ) -> HealthNoticeText {
+        ReportLabels.labels(for: language).notice(notice, appName: appName)
+    }
+
     /// Inverse of `issueBlock` for tests and for the labeller contract: `nil` when no block or an unknown
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
     public static func parseIssueBlock(_ text: String) -> [String: String]? { IssueBlock.parse(text) }

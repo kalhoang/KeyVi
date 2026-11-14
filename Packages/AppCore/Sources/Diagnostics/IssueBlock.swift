@@ -3,9 +3,10 @@
 // The machine-parseable diagnostics block (QA-R44), format v1 of docs/decisions/0501-diagnostics-block-format.md:
 // a fenced block (info string `text`), the header `<slug>-diagnostics v1`, then `key: value` lines, at most 200
 // lines in total. Every `DiagnosticsBlockKey` is always present (empty value when unknown) so the shape is
-// stable; the other ADR 0501 keys follow. `#` lines close the block for the reader: when AX named no app, where the
-// focused app came from (PLT-R381 amendment); parsers ignore them (ADR 0501 rule 2). `scripts/parse-diagnostics.py`
-// reads the same format.
+// stable; the other ADR 0501 keys follow. `#` lines close the block for the reader: the health notices of the last
+// 24 hours in the interface language (PLT-R1201, PLT-R397B) and, when AX named no app, where the focused app came
+// from (PLT-R381 amendment); parsers ignore them (ADR 0501 rule 2). `scripts/parse-diagnostics.py` reads the same
+// format.
 
 internal import AppModel
 internal import Foundation
@@ -26,11 +27,17 @@ enum IssueBlock {
     }
 
     /// `#` lines for the reader, which parsers ignore (ADR 0501 rule 2): the focused app's source when it is the
-    /// frontmost-app fallback (no block key yet).
+    /// frontmost-app fallback (no block key yet), then each health notice with its label and explanation in the
+    /// interface language and the app name from the bundle (PRD-R62).
     static func comments(_ report: DiagnosticsReport) -> [String] {
         var lines: [String] = []
         if let source = report.focus?.appSource, source != .accessibility {
             lines.append("# focus.appSource: " + source.rawValue)
+        }
+        let labels = ReportLabels.labels(for: report.settings.interfaceLanguage)
+        for notice in HealthNotice.notices(in: report) {
+            let text = labels.notice(notice, appName: report.app.displayName)
+            lines.append("# " + MetadataText.singleLine(text.label + ": " + text.explanation, maxLength: 2_000))
         }
         return lines
     }

@@ -2,9 +2,12 @@
 //
 // Labels of the plain-text report (PLT-R1204) in the two interface languages (PRD-R63). Diagnostics has no
 // resource bundle, so the strings live here; the app name is never part of them (brand rule). Vietnamese copy
-// is standard and neutral (PRD-R62); the symptom names follow the PRD-R47 chips.
+// is standard and neutral (PRD-R62); the symptom names follow the PRD-R47 chips. A health notice's explanation
+// takes the app name as its `%@` argument (`notice(_:appName:)`), like the String Catalog copy the Diagnostics window
+// shows (ShellCore `DiagnosticsCopy.notice`, kept equal by a test).
 
 internal import AppModel
+internal import Foundation
 
 struct ReportLabels: Sendable {
     var title: String
@@ -87,8 +90,15 @@ struct ReportLabels: Sendable {
     var reportedApp: String
     var practiceField: String
     var symptoms: [DiagnosticsReport.Symptom: String]
+    /// Label and explanation format (`%@`: the app name) of each health notice.
+    var notices: [HealthNotice: HealthNoticeText]
 
     static func labels(for language: InterfaceLanguage) -> ReportLabels {
         language == .vietnamese ? vietnamese : english
+    }
+
+    func notice(_ notice: HealthNotice, appName: String) -> HealthNoticeText {
+        let copy = notices[notice] ?? HealthNoticeText(label: notice.rawValue, explanation: "")
+        return HealthNoticeText(label: copy.label, explanation: String(format: copy.explanation, appName))
     }
 }
