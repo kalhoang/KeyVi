@@ -103,8 +103,9 @@ public struct DevJobRecord: Sendable {
     /// From the start of execution on the inject thread to its end.
     public var runMicroseconds: UInt64
     public var at: MonotonicInstant
-    /// What the read of a selected inline completion found (`selected`, `none`, `unreadable`, PLT-R420); nil when
-    /// the job made no such read.
+    /// What the completion read found: `selected`, `none` or `unreadable` (PLT-R420); `selected`, `forwardDelete`,
+    /// `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable` (PLT-R423); nil when the job made no
+    /// such read.
     public var completion: StaticString?
 
     public init(

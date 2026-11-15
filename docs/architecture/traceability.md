@@ -3,7 +3,7 @@
 One row per requirement of `spec/02-platform.md` (PLT-R), `spec/03-product.md` (PRD-R),
 `spec/04-quality-release.md` (QA-R) and `spec/05-clean-room.md` (CLR-R): the owning module or file, how it is
 verified, and the workstream that implements it ([workstreams.md](workstreams.md)). Engine requirements
-(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (347 with PLT-R397A, PLT-R397B, PLT-R357, PLT-R914, QA-R68, PRD-R78 and PRD-R79 of 2026-11-15),
+(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (349 with PLT-R397A, PLT-R397B, PLT-R357, PLT-R914, PLT-R423, PLT-R424, QA-R68, PRD-R78 and PRD-R79 of 2026-11-15),
 no requirement missing, none duplicated.
 
 ## Legend
@@ -156,13 +156,15 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R404 | One grapheme per event; chunk up to 20 units | `UnicodeChunker` | U | W1-D |  |
 | PLT-R405 | Edits, restores and macros type on a letter keycode, never on Delete, Return, Tab or Space; the trigger key follows once | `JobKeyCodes` (`isActionKey`), `KeyPipeline.letterKeyCode`, `SyntheticKeys.unicodeKeyCode`, strategies | U (`BackspaceEditKeyCodeTests`, `KeyPipelineDeleteKeyTests`, `KeyPipelineRealEngineBackspaceTests`, `CommitTriggerKeyCodeTests`, `KeyPipelineCommitTriggerTests`, `KeyPipelineRealEngineCommitTriggerTests`, `KeyCodeFirstComposerOracleTests`), C (`testhost.web.keycodeFirst.backspace`, `testhost.web.keycodeFirst.returnCommit`) | W1-F1, W1-D, W8-B, W8-F |  |
 | PLT-R406 | No modifier flags except where required | strategies | U | W1-D |  |
-| PLT-R407 | Backspace key; forward delete banned | strategies, `RulesLinter` | U, L | W1-D, W1-C |  |
+| PLT-R407 | Backspace key; forward delete banned except the scoped `forwardDelete` completion handling (amended 15/11/2026) | strategies (`SyntheticKeys`), `RulesLinter`, `check-no-forward-delete.py` | U (`ForwardDeleteTests`), L | W1-D, W1-C; W17-D |  |
 | PLT-R408 | Timing parameters, caps, split | strategies, `ResolvedParams` | U | W1-D, W1-C |  |
 | PLT-R409 | Pacing on inject thread with absolute deadlines | `InjectionWorker`, `MachClock.sleep` | U | W1-D |  |
 | PLT-R410 | Verification modes echo/axReadback/human | `InjectionWorker` | U, I | W1-D; W2-C (human) |  |
 | PLT-R420 | Inline completion: axSelection; the read's result on the dev trace's job line (15/11/2026) | strategies (`CompletionPrefix`, `CompletionRead`) | U (`InlineCompletionTests`, `WorkerDevRecorderTests.theInlineCompletionReadIsRecordedPLTR420`), C | W1-D; W2-E2; W17-B |  |
 | PLT-R421 | Inline completion: placeholder | strategies | U, C | W1-D; W2-E2 |  |
 | PLT-R422 | Placeholder gate: 1,000-edit test, no broad rules | `RulesLinter`, compat scenario | L, C | W1-C; W2-E2 |  |
+| PLT-R423 | Inline completion: `forwardDelete` (a Forward Delete before each Backspace when the caret is read at the end of the text; selection keeps PLT-R420; caret before the end or unreadable field gets nothing); `launcher.spotlight` uses it (added 15/11/2026, finding 202) | strategies (`CompletionPrefix`, `CompletionRead`, `SyntheticKeys`), `FocusedFieldAccess.caret` (`AXFieldCalls`), `compat/rules.json` | U (`ForwardDeleteCompletionTests`, `ForwardDeleteTests`, `WorkerCompletionFallbackTests`, `WorkerDevRecorderTests`, `AXFieldCallsTests`, `FindingDetectorTests`, `RecorderRoundTripTests`), C (`launcher.spotlight.campo.suggestion`), M | W17-D | **Pa** |
+| PLT-R424 | `forwardDelete` never in defaults, global or title-only rules | `RulesValidator` (`ForwardDeleteScope`), `RulesLinter`, `check-rules.py`, `check-no-forward-delete.py` | U (`LoadingTests`, `LinterTests`, `SeededDataTests`), L | W17-D |  |
 | PLT-R460 | paste only opt-in or long text | strategies, rules `requiresUserOptIn` | U | W1-D, W1-C |  |
 | PLT-R461 | Full clipboard preservation | `PasteboardPreserver`, `NSPasteboardAccess` | U (unique pasteboard) | W1-D |  |
 | PLT-R462 | Paste failure modes in UI; NSPasteboard threading VERIFY | `NSPasteboardAccess`, Apps pane copy | V, D | W1-D, W2-B | **Pa** |

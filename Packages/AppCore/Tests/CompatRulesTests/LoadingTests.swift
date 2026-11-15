@@ -143,6 +143,34 @@ import Testing
         }
     }
 
+    /// PLT-R424: `forwardDelete` has the placeholder's scope: never in defaults, a global rule or a title-only rule.
+    @Test func forwardDeleteScopePLTR424() {
+        let forwardDelete = RuleAction(
+            strategy: .backspaceReplace, params: StrategyParams(inlineCompletion: .forwardDelete))
+        let global = Build.rule("f.global", match: RuleMatch(), action: forwardDelete)
+        let titleOnly = Build.rule(
+            "f.title", match: RuleMatch(bundleIds: [bundleKey("com.a.b")], titlePattern: "Search"),
+            action: forwardDelete)
+        let categoryOnly = Build.rule("f.category", match: RuleMatch(appCategories: ["x"]), action: forwardDelete)
+        let bundleScoped = Build.rule(
+            "f.bundle", match: RuleMatch(bundleIds: [bundleKey("com.a.b")]), action: forwardDelete)
+        let fieldScoped = Build.rule(
+            "f.field", match: RuleMatch(engines: [.native], ax: AXMatch(subroles: ["AXSearchField"])),
+            action: forwardDelete)
+        #expect(
+            RulesValidator.issues(
+                in: Build.document([global, titleOnly, categoryOnly, bundleScoped, fieldScoped])) == [
+                    .forwardDeleteInBroadRule(ruleID("f.global")), .forwardDeleteInBroadRule(ruleID("f.title")),
+                    .forwardDeleteInBroadRule(ruleID("f.category")),
+                ])
+        var defaults = Build.defaults
+        defaults.params.inlineCompletion = .forwardDelete
+        #expect(RulesValidator.issues(in: Build.document([], defaults: defaults)) == [.forwardDeleteInBroadRule(nil)])
+        let override = Build.rule(
+            "user.app", match: RuleMatch(bundleIds: [bundleKey("com.a.b")]), action: forwardDelete)
+        #expect(RulesValidator.overrideIssues(override).isEmpty)
+    }
+
     /// PLT-R422: never in defaults, a global rule or a title-only rule.
     @Test func placeholderScope() {
         let placeholder = RuleAction(

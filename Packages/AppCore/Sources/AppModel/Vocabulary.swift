@@ -48,9 +48,10 @@ public enum InjectionStrategy: String, Sendable, Hashable, Codable, CaseIterable
     case backspaceReplace, selectReplace, axReplace, paste, passThrough
 }
 
-/// Inline-completion handling (PLT-R420-R422).
+/// Inline-completion handling (PLT-R420-R424). `forwardDelete` clears a suggestion shown after the caret without a
+/// selection (PLT-R423) and is never allowed in defaults, global or title-only rules (PLT-R424).
 public enum InlineCompletionMode: String, Sendable, Hashable, Codable, CaseIterable {
-    case none, axSelection, placeholder, axSelectionThenPlaceholder
+    case none, axSelection, placeholder, axSelectionThenPlaceholder, forwardDelete
 }
 
 /// Text-context gating (PLT-R386). `byEngine` is resolved to a concrete value before it reaches the tap.

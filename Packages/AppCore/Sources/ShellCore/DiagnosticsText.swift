@@ -124,6 +124,7 @@ public enum DiagnosticsText: String, LocalizationKey {
     case handlingAXSelection = "strategy.inlineCompletion.axSelection"
     case handlingPlaceholder = "strategy.inlineCompletion.placeholder"
     case handlingBoth = "strategy.inlineCompletion.axSelectionThenPlaceholder"
+    case handlingForwardDelete = "strategy.inlineCompletion.forwardDelete"
     case candidateHandling = "strategy.withHandling"
     case candidatePacing = "strategy.withPacing"
     case traceConfirmTitle = "trace.confirm.title"
@@ -391,6 +392,7 @@ public enum DiagnosticsCopy {
             case .axSelection: .handlingAXSelection
             case .placeholder: .handlingPlaceholder
             case .axSelectionThenPlaceholder: .handlingBoth
+            case .forwardDelete: .handlingForwardDelete
             }
         if let handling { text = localizer.format(DiagnosticsText.candidateHandling, text, localizer.string(handling)) }
         if interEventDelayUs > 0 {

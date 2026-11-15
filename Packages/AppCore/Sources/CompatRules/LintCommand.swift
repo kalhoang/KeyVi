@@ -207,6 +207,7 @@ extension LintCode {
         case .reviewByMoreThan12Months: "reviewBy more than 12 months ahead (PLT-R506)"
         case .identicalMatchSignature: "identical match signature (PLT-R521)"
         case .placeholderWithoutGateTest: "placeholder without its gate (PLT-R422)"
+        case .forwardDeleteInBroadRule: "forwardDelete outside a rule scoped to apps or fields (PLT-R424)"
         case .manualTestWithoutMatrixRow: "manual scenario without a matrix row (PLT-R531)"
         case .manualMatrixRowUnverified: "matrix row not verified yet (PLT-R531)"
         case .tier1MatrixRowOlderThan90Days: "Tier 1 row older than 90 days (PLT-R531)"

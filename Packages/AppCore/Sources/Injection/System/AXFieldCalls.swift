@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Bounded AX calls for injection (PLT-R342, PLT-R343, 4.5). Never reads `AXValue`: only the selected range, a
-// parameterized range read of at most 64 UTF-16 units, and selection writes. Every call first sets the
-// messaging timeout on the element.
+// Bounded AX calls for injection (PLT-R342, PLT-R343, PLT-R423, 4.5). Never reads `AXValue`: only the selected range,
+// the character count, a parameterized range read of at most 64 UTF-16 units, and selection writes. Every call first
+// sets the messaging timeout on the element.
 
 internal import AppModel
 internal import ApplicationServices
@@ -18,6 +18,32 @@ enum AXFieldCalls {
         guard error == .success else { return map(error) }
         guard let range = cfRange(from: value) else { return .unavailable }
         return .success(Injection.TextRange(location: range.location, length: range.length))
+    }
+
+    /// PLT-R423: the selected range and `kAXNumberOfCharactersAttribute` in one message to the app, so both describe
+    /// the same moment and the read costs one round trip, as the `axSelection` read does.
+    static func caret(_ element: AXUIElement?, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        guard let element else { return .unavailable }
+        prepare(element, timeout: timeout)
+        let attributes = [kAXSelectedTextRangeAttribute, kAXNumberOfCharactersAttribute] as CFArray
+        var values: CFArray?
+        let error = AXUIElementCopyMultipleAttributeValues(
+            element, attributes, AXCopyMultipleAttributeOptions(rawValue: 0), &values)
+        guard error == .success else { return map(error) }
+        return caret(from: values as? [AnyObject])
+    }
+
+    /// Decodes the two values of `caret`. Without the stop-on-error option a failed attribute arrives as an `AXValue`
+    /// of type `.axError` in its slot; it is mapped like the error of a single read.
+    static func caret(from values: [AnyObject]?) -> AXCallResult<FieldCaret> {
+        guard let values, values.count == 2 else { return .unavailable }
+        if let error = axError(in: values[0]) ?? axError(in: values[1]) { return map(error) }
+        guard let range = cfRange(from: values[0]), let count = (values[1] as? NSNumber)?.intValue else {
+            return .unavailable
+        }
+        return .success(
+            FieldCaret(
+                selection: Injection.TextRange(location: range.location, length: range.length), characterCount: count))
     }
 
     static func text(_ element: AXUIElement?, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String>
@@ -73,6 +99,14 @@ enum AXFieldCalls {
 
     private static func prepare(_ element: AXUIElement, timeout: TimeSpan) {
         AXUIElementSetMessagingTimeout(element, Float(Double(InjectionTiming.nanoseconds(timeout)) / 1e9))
+    }
+
+    private static func axError(in value: AnyObject) -> AXError? {
+        guard CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        let axValue = unsafeDowncast(value, to: AXValue.self)
+        var error = AXError.success
+        guard AXValueGetType(axValue) == .axError, AXValueGetValue(axValue, .axError, &error) else { return nil }
+        return error == .success ? nil : error
     }
 
     private static func cfRange(from value: CFTypeRef?) -> CFRange? {

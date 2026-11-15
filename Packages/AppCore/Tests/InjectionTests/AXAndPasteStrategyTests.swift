@@ -123,6 +123,9 @@ private final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
     func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         base.selectedRange(field, timeout: timeout)
     }
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        base.caret(field, timeout: timeout)
+    }
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         base.text(field, in: range, timeout: timeout)
     }

@@ -438,6 +438,12 @@ final class ScriptedFieldAccess: FocusedFieldAccess, Sendable {
         return .success(Injection.TextRange(location: current.utf16.count, length: 0))
     }
 
+    /// The guided test never uses `forwardDelete` (PLT-R423); a read would find the caret at the end.
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        let count = current.utf16.count
+        return .success(FieldCaret(selection: Injection.TextRange(location: count, length: 0), characterCount: count))
+    }
+
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         let text = current
         return .success(range.location >= text.utf16.count ? "" : text)  // nothing after the caret

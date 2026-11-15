@@ -71,6 +71,8 @@ struct DocumentChecks {
         switch issue {
         case .placeholderInBroadRule(let rule):
             return LintFinding(severity: .error, code: .placeholderWithoutGateTest, rule: rule, detail: issue.detail)
+        case .forwardDeleteInBroadRule(let rule):
+            return LintFinding(severity: .error, code: .forwardDeleteInBroadRule, rule: rule, detail: issue.detail)
         case .parameterOutOfRange(nil, "inlineCompletion"):
             return LintFinding(
                 severity: .error, code: .placeholderWithoutGateTest, detail: "defaults enable the placeholder globally")

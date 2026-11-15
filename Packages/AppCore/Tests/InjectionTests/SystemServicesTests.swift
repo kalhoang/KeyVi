@@ -5,6 +5,7 @@
 
 import AppModel
 import ApplicationServices
+import Foundation
 import RealtimeSupport
 import TestSupport
 import Testing
@@ -91,6 +92,7 @@ import Testing
         let field = FieldHandle(pid: 1, token: 1, element: nil)
         let range = Injection.TextRange(location: 0, length: 1)
         #expect(isUnavailable(access.selectedRange(field, timeout: .milliseconds(15))))
+        #expect(isUnavailable(access.caret(field, timeout: .milliseconds(15))))
         #expect(isUnavailable(access.text(field, in: range, timeout: .milliseconds(15))))
         #expect(isUnavailable(access.setSelectedRange(field, to: range, timeout: .milliseconds(15))))
         #expect(isUnavailable(access.setSelectedText(field, to: "x", timeout: .milliseconds(15))))
@@ -102,6 +104,38 @@ import Testing
         #expect(bounded.location == 0 && bounded.length == 64)
         let small = AXFieldCalls.boundedRange(Injection.TextRange(location: 10, length: -1))
         #expect(small.location == 10 && small.length == 0)
+    }
+
+    /// PLT-R423: the selection and the character count decode from one multiple-attribute read; a failed slot maps
+    /// like the error of a single read, anything else that is not a range and a number is unavailable.
+    @Test func caretDecodesTheSelectionAndTheCountPLTR423() throws {
+        var range = CFRange(location: 3, length: 0)
+        let selection = try #require(AXValueCreate(.cfRange, &range))
+        guard case .success(let caret) = AXFieldCalls.caret(from: [selection, NSNumber(value: 3)]) else {
+            Issue.record("a range and a number decode")
+            return
+        }
+        #expect(caret == FieldCaret(selection: Injection.TextRange(location: 3, length: 0), characterCount: 3))
+        #expect(caret.isAtEndOfText)
+        var timedOut = AXError.cannotComplete
+        let failed = try #require(AXValueCreate(.axError, &timedOut))
+        #expect(isTimedOut(AXFieldCalls.caret(from: [selection, failed])))
+        #expect(isTimedOut(AXFieldCalls.caret(from: [failed, NSNumber(value: 3)])))
+        #expect(isUnavailable(AXFieldCalls.caret(from: [selection])))
+        #expect(isUnavailable(AXFieldCalls.caret(from: [selection, "3" as NSString])))
+        #expect(isUnavailable(AXFieldCalls.caret(from: [NSNumber(value: 3), NSNumber(value: 3)])))
+        #expect(isUnavailable(AXFieldCalls.caret(from: nil)))
+    }
+
+    /// PLT-R423: only an empty selection exactly at the end of the text is "at the end".
+    @Test func onlyAnEmptySelectionAtTheEndIsAtTheEndPLTR423() {
+        func caret(_ location: Int, _ length: Int, count: Int) -> FieldCaret {
+            FieldCaret(selection: Injection.TextRange(location: location, length: length), characterCount: count)
+        }
+        #expect(caret(4, 0, count: 4).isAtEndOfText)
+        #expect(!caret(3, 0, count: 4).isAtEndOfText)
+        #expect(!caret(3, 1, count: 4).isAtEndOfText)
+        #expect(!caret(5, 0, count: 4).isAtEndOfText)  // inconsistent read: never treated as the end
     }
 
     @Test func errorMapping() {

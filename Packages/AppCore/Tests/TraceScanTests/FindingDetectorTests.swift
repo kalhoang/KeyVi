@@ -129,6 +129,33 @@ private let command: UInt64 = 0x0010_0000
             ])
     }
 
+    /// PLT-R423: a `forwardDelete` job posts a Forward Delete pair before each Backspace pair (6 events for a delete-1
+    /// edit, 12 for delete 2 insert 2) and names its decision on the job line; none of that is a finding.
+    @Test func forwardDeleteJobsAreNotFindingsPLTR423() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        trace.boundary("focusChanged", job: "focusChanged")
+        trace.type("tiee")
+        trace.line("job", Self.forwardDeleteJob(1, delete: 1, posted: 6, completion: "forwardDelete"))
+        trace.type("ns")
+        trace.line("job", Self.forwardDeleteJob(2, delete: 2, posted: 12, completion: "forwardDelete"))
+        trace.type("g ")
+        trace.line(
+            "job", Self.forwardDeleteJob(3, delete: 1, posted: 4, completion: "forwardDelete skipped notAtEnd"))
+        trace.advance(400)
+        trace.readback("tiếng ")
+        #expect(try kinds(trace, replay: true).isEmpty)
+    }
+
+    private static func forwardDeleteJob(_ sequence: Int, delete: Int, posted: Int, completion: String) -> [String: Any]
+    {
+        [
+            "seq": sequence, "gen": 1, "kind": "compose", "strat": "backspaceReplace", "out": "executed",
+            "delN": delete,
+            "insN": delete, "posted": posted, "totalUs": 1_600, "runUs": 1_400, "compl": completion,
+        ]
+    }
+
     /// (g) Escape restore and history re-open.
     @Test func restoresAndReopensAreFindings() throws {
         var trace = TraceBuilder()

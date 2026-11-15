@@ -157,6 +157,25 @@ class CheckRulesTests(TempDirTestCase):
         self.assertIn("global rule", result.stderr)
         self.assertIn("title-only rule", result.stderr)
 
+    def test_forward_delete_only_in_a_scoped_rule(self):
+        """PLT-R424: forwardDelete has the placeholder's scope; defaults, global and title-only rules are errors."""
+        global_rule = good_rule("g.rule", match={})
+        global_rule["action"]["params"] = {"inlineCompletion": "forwardDelete"}
+        title_rule = good_rule("t.rule", match={"bundleIds": ["x.y.z"], "titlePattern": "Search"})
+        title_rule["action"]["params"] = {"inlineCompletion": "forwardDelete"}
+        result = self.check(rules_doc(global_rule, title_rule))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("rule g.rule: forwardDelete in a global rule (PLT-R424)", result.stderr)
+        self.assertIn("rule t.rule: forwardDelete in a title-only rule (PLT-R424)", result.stderr)
+        doc = rules_doc()
+        doc["defaults"]["params"]["inlineCompletion"] = "forwardDelete"
+        defaults = self.check(doc)
+        self.assertEqual(defaults.returncode, 1)
+        self.assertIn("defaults: forwardDelete must not be enabled globally (PLT-R424)", defaults.stderr)
+        scoped = good_rule("s.rule", match={"bundleIds": ["x.y.z"]})
+        scoped["action"]["params"] = {"inlineCompletion": "forwardDelete"}
+        self.assertEqual(self.check(rules_doc(scoped)).returncode, 0)
+
     def test_paste_requires_opt_in(self):
         rule = good_rule(action={"strategy": "paste"})
         self.assertIn("PLT-R460", self.check(rules_doc(rule)).stderr)
@@ -358,6 +377,37 @@ class ForwardDeleteTests(TempDirTestCase):
         result = py("check-no-forward-delete.py", str(path))
         self.assertEqual(result.returncode, 1)
         self.assertIn("terminal.default", result.stdout)
+
+    def test_the_scoped_completion_handling_is_allowed(self):
+        """PLT-R407 as amended, PLT-R424: inlineCompletion forwardDelete in a rule scoped to apps or fields."""
+        for match in ({"bundleIds": ["com.example.launcher"]}, {"engines": ["native"], "ax": {"subroles": ["AXSearchField"]}}):
+            with self.subTest(match=match):
+                rule = good_rule("launcher.example", match=match)
+                rule["action"]["params"] = {"inlineCompletion": "forwardDelete"}
+                path = self.write_json("rules.json", rules_doc(rule))
+                result = py("check-no-forward-delete.py", str(path))
+                self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_the_completion_handling_is_rejected_outside_a_scoped_rule(self):
+        global_rule = good_rule("g.rule", match={})
+        global_rule["action"]["params"] = {"inlineCompletion": "forwardDelete"}
+        title_rule = good_rule("t.rule", match={"bundleIds": ["x.y.z"], "titlePattern": "Search"})
+        title_rule["action"]["params"] = {"inlineCompletion": "forwardDelete"}
+        doc = rules_doc(global_rule, title_rule)
+        doc["defaults"]["params"]["inlineCompletion"] = "forwardDelete"
+        result = py("check-no-forward-delete.py", str(self.write_json("rules.json", doc)))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("defaults.params.inlineCompletion", result.stdout)
+        self.assertIn("(rule g.rule)", result.stdout)
+        self.assertIn("(rule t.rule)", result.stdout)
+
+    def test_other_keys_still_may_not_name_it(self):
+        rule = good_rule("launcher.example", match={"bundleIds": ["com.example.launcher"]})
+        rule["action"]["params"] = {"inlineCompletion": "forwardDelete", "deleteMode": "forwardDelete"}
+        result = py("check-no-forward-delete.py", str(self.write_json("rules.json", rules_doc(rule))))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("deleteMode", result.stdout)
+        self.assertNotIn("inlineCompletion", result.stdout)
 
     def test_provenance_text_may_mention_it(self):
         rule = good_rule()

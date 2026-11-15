@@ -303,9 +303,12 @@ Strategy code is generic; which one runs is data (section 7). `backspaceReplace`
 bounded readback; `paste` is opt-in, preserves every pasteboard item and type, marks its item transient,
 concealed and auto-generated, and restores only if `changeCount` is unchanged (PLT-R461); `passThrough`
 builds no jobs. Inline completion handling (`axSelection`, `placeholder`, `axSelectionThenPlaceholder`)
-removes the selected suggestion before the first backspace (PLT-R420-R422). Timing parameters are capped at
+removes the selected suggestion before the first backspace (PLT-R420-R422); `forwardDelete` clears a suggestion
+shown after the caret without a selection with a Forward Delete before each backspace, only when one bounded AX read
+finds the caret at the end of the text (PLT-R423). Timing parameters are capped at
 50 ms each; pacing waits use absolute mach deadlines on the inject thread (PLT-R408, PLT-R409). Forward
-delete is never emitted by default or by shipped rules (PLT-R407).
+delete deletes no text: it is emitted only by `forwardDelete`, never by default, and only in rules scoped to apps or
+fields (PLT-R407 as amended, PLT-R424).
 
 ## 11. Settings and storage
 

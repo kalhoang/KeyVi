@@ -24,12 +24,13 @@ private func field(_ identifier: String? = nil, role: String = "AXTextField") ->
     FocusFixtures.attributes(role: role, identifier: identifier)
 }
 
-/// `launcher.spotlight` as resolved: overlay, inline completion read through AX, no restore hotkey (PLT-R353).
+/// `launcher.spotlight` as resolved: overlay, inline completion cleared after the caret (PLT-R423), no restore hotkey
+/// (PLT-R353).
 private func spotlightRules() -> FakeDecisionResolver {
     var decision = FocusFixtures.decision("launcher.spotlight")
     decision.overlay = true
     decision.features.restoreHotkey = false
-    decision.params.inlineCompletion = .axSelection
+    decision.params.inlineCompletion = .forwardDelete
     return FocusFixtures.resolver([spotlight: decision])
 }
 
@@ -79,7 +80,7 @@ struct FocusTriggerSettleTests {
         #expect(harness.snapshot.app?.bundle == spotlight)
         #expect(harness.snapshot.decision.overlay)
         #expect(!harness.snapshot.decision.restoreHotkeyEnabled)  // T5.8: Escape is never a restore there
-        #expect(harness.snapshot.decision.plan.parameters.inlineCompletion == .axSelection)
+        #expect(harness.snapshot.decision.plan.parameters.inlineCompletion == .forwardDelete)
     }
 
     /// Pa's items 7 and 9: open, close with Escape, open again, and open once more after Spotlight was relaunched

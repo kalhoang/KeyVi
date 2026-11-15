@@ -50,6 +50,54 @@ private func completionPlan(_ mode: InlineCompletionMode) -> InjectionPlan {
         #expect(rig.poster.posted.backspaceCount == 1)
         #expect(rig.healthKinds() == [.fallbackActivated])
     }
+
+    /// PLT-R423: through the worker, a caret at the end gets a Forward Delete before each Backspace (Spotlight on
+    /// macOS 27.2, `tiee` gave "tieê" at the retest of 15/11/2026).
+    @Test func forwardDeleteRunsThroughTheWorkerPLTR423() {
+        let field = SimulatedTextField(behaviour: .suggestionAfterCaret(suggestions: ["tieng.example"]))
+        let rig = WorkerRig(field: field)
+        for character in "tie" {
+            field.apply(InjectionFieldWiring.keyDown(character, receivedAt: Fixture.start), layout: rig.layout)
+        }
+        rig.pushEdit {
+            Fixture.job(sequence: $0, deleteCount: 1, insertion: "ê", plan: completionPlan(.forwardDelete))
+        }
+        rig.run()
+        #expect(field.text == "tiê")
+        #expect(rig.poster.posted.keyDowns.map(\.keyCode).prefix(2) == [.forwardDelete, .delete])
+        #expect(rig.healthKinds().isEmpty)
+        #expect(rig.metrics.fallbackActivations.value == 0)
+    }
+
+    /// PLT-R423: an AX read that times out or fails gets no Forward Delete and counts the PLT-R420 health event once
+    /// per focus session.
+    @Test(arguments: [FakeFocusedFieldAccess.Behaviour.timeout, .unavailable])
+    func anUnreadableCaretRecordsTheHealthEventPLTR423(_ ax: FakeFocusedFieldAccess.Behaviour) {
+        let rig = WorkerRig(field: SimulatedTextField(text: "a"))
+        rig.fieldAccess.setBehaviour(ax)
+        let plan = completionPlan(.forwardDelete)
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: plan) }
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, replaced: "á", insertion: "à", plan: plan) }
+        rig.run()
+        #expect(rig.field.text == "à")
+        #expect(!rig.poster.posted.keyDowns.contains { $0.keyCode == .forwardDelete })
+        #expect(rig.healthKinds() == [.fallbackActivated])
+        #expect(rig.metrics.fallbackActivations.value == 2)
+    }
+
+    /// PLT-R423: a caret before the end is normal editing, not a failure: no Forward Delete and no health event.
+    @Test func aCaretBeforeTheEndIsNotAHealthEventPLTR423() {
+        let field = SimulatedTextField(text: "viet")
+        field.click(at: 3)
+        let rig = WorkerRig(field: field)
+        rig.pushEdit {
+            Fixture.job(sequence: $0, deleteCount: 1, insertion: "ê", plan: completionPlan(.forwardDelete))
+        }
+        rig.run()
+        #expect(field.text == "viêt")
+        #expect(!rig.poster.posted.keyDowns.contains { $0.keyCode == .forwardDelete })
+        #expect(rig.healthKinds().isEmpty)
+    }
 }
 
 @Suite struct WorkerHistoryMismatchTests {
@@ -118,6 +166,11 @@ private struct BreakingFieldAccess: FocusedFieldAccess {
     func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
         box.feedback?.markPostingBroken()
         return base.selectedRange(field, timeout: timeout)
+    }
+
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        box.feedback?.markPostingBroken()
+        return base.caret(field, timeout: timeout)
     }
 
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {

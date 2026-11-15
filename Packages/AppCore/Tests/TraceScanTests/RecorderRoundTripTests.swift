@@ -74,6 +74,12 @@ private final class FollowingWallClock: WallClock, Sendable {
                     sequence: 9, generation: 2, kind: SampleReason.compose, strategy: .backspaceReplace,
                     outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 4, totalMicroseconds: 90_000,
                     runMicroseconds: 1_000, at: clock.now(), completion: "selected")))
+        dev.pushInject(
+            .job(
+                DevJobRecord(
+                    sequence: 10, generation: 2, kind: SampleReason.compose, strategy: .backspaceReplace,
+                    outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 6, totalMicroseconds: 1_600,
+                    runMicroseconds: 1_400, at: clock.now(), completion: "forwardDelete")))
         dev.note(
             .readback(
                 DevReadbackRecord(
@@ -93,16 +99,18 @@ private final class FollowingWallClock: WallClock, Sendable {
         #expect(result.exitCode == 0)
         #expect(result.output.contains("Launches: 1"))
         #expect(result.output.contains("Apps (key downs): com.example.editor 2"))
-        #expect(result.output.contains("Key downs: 2, engine steps: 2, jobs: 1, readbacks: 1, markers: 1"))
+        #expect(result.output.contains("Key downs: 2, engine steps: 2, jobs: 2, readbacks: 1, markers: 1"))
         #expect(result.output.contains("Unreadable lines: 0"))
         #expect(result.output.contains("resetWithOpenToken  focusChanged / focusChanged, token of 1 characters open"))
         #expect(result.output.contains("marker  menu"))
         #expect(result.output.contains("injectionProblem  job 9 compose backspaceReplace: slow 90 ms"))
+        #expect(!result.output.contains("job 10"))  // PLT-R423: two more events per deletion are not a problem
         let shown = TraceScanCommand.run(
             ["show", "1", "--dir", folder.path, "--before", "1s"], now: base, timeZone: .current, makeReplay: { nil })
         #expect(shown.output.contains("engine  edit  delete 1  insert \"â\"  token \"â\""))
         #expect(shown.output.contains("focus  com.example.editor  AXTextArea  -  rule editor.sample"))
         #expect(shown.output.contains("4 events  completion selected"))  // PLT-R420 read (retest of 15/11/2026)
+        #expect(shown.output.contains("6 events  completion forwardDelete  "))  // PLT-R423
     }
 }
 
