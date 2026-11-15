@@ -8,6 +8,7 @@ import AppModel
 import Diagnostics
 import Foundation
 import InputHost
+import TestSupport
 import Testing
 
 @testable import ShellCore
@@ -78,6 +79,41 @@ import Testing
         #expect(en.string(DiagnosticsText.recordTrace) == "Record typing trace...")
         #expect(en.string(DiagnosticsText.latencyTest) == "Run typing latency test")
         #expect(en.string(DiagnosticsText.openLogs) == "Open logs folder")
+    }
+
+    /// PLT-R397B, PLT-R1201: the Diagnostics window explains a secure-input bursts event with a label and a sentence
+    /// from this catalog, the app name an argument (PRD-R62); the report text the window shows and the copied block
+    /// say the same words (`DiagnosticsRenderer.healthNoticeText`).
+    @Test func healthNoticesAreExplainedInBothLanguagesLikeTheReport() throws {
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let vi = Localizer(language: .vietnamese, appBundle: app.bundle)
+        #expect(
+            vi.format(DiagnosticsText.healthSecureInputBurstsExplanation, "Bộ gõ")
+                == "Có ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật (Secure Input) trong lúc bạn gõ, nên vài phím "
+                + "có thể không tới được Bộ gõ. Hãy thử thoát các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng chạy "
+                + "nền mới cài để tìm ra ứng dụng đó.")
+        for language in [InterfaceLanguage.vietnamese, .english] {
+            let localizer = Localizer(language: language, appBundle: app.bundle)
+            for notice in HealthNotice.allCases {
+                let shown = DiagnosticsCopy.notice(notice, appName: "Bộ gõ", localizer)
+                let reported = DiagnosticsRenderer.healthNoticeText(notice, language: language, appName: "Bộ gõ")
+                #expect(shown == reported, "\(notice) [\(language)]")
+            }
+        }
+    }
+
+    /// The window lists the notices the shown report calls for, in the interface language.
+    @Test func theWindowShowsTheNoticesOfItsReport() throws {
+        let app = try TemporaryAppBundle(catalogs: [.diagnostics])
+        let en = Localizer(language: .english, appBundle: app.bundle)
+        var report = DiagnosticsFixtures.representativeReport()
+        #expect(DiagnosticsCopy.notices(for: report, appName: "Example", en).isEmpty)
+        let bursts = HealthEvent(
+            kind: .secureInputBursts, at: DiagnosticsFixtures.generatedAt.addingTimeInterval(-60), detail: .count(3))
+        report.healthEvents.append(bursts)
+        let notices = DiagnosticsCopy.notices(for: report, appName: "Example", en)
+        #expect(notices.map(\.label) == ["Secure Input keeps turning on and off"])
+        #expect(notices.first?.explanation.contains("may not reach Example.") == true)
     }
 }
 

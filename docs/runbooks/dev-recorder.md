@@ -68,6 +68,10 @@ Metadata only: files and hours, launches, key downs per app, counts of engine st
 gaps (secure input, secure field, overflow) and pauses, unreadable lines, then one numbered line per finding:
 local time, app bundle ID, compat rule, finding kind and a detail made of names and numbers. An app the focus reader
 could not name appears as the frontmost application in parentheses (`(com.example.app)`, format version 3) or `-`.
+Since the frontmost-app fallback of PLT-R381 (2026-11-15) such an app also gets its bundle-level compat rule and its
+per-app mode, so the finding names that rule; the parentheses still say that Accessibility did not name the app.
+When Accessibility starts or stops naming that same app (still without a focused field), a new focus line with the
+same `gen` switches between `bundle` and `front`.
 
 | Kind | Meaning |
 |---|---|
@@ -126,7 +130,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `start`, `stop` | `launch`, `app`, from version 3 `eng` (start); the recorder started or the app quit |
 | `pause`, `resume` | `until` (pause end, microseconds) |
 | `settings` | `s`: name to value (typing method, tone placement, English restore, Telex options, macros on and counts, hotkeys, word-list counts, global mode, safe mode) |
-| `focus` | `gen`, `bundle`, `role`, `subrole`, `rule`, `strat`, `rtf` (requireTextFocus), `ax`, `secure`, `mode`, `modeSrc`, `ctx` (engine context), `er` (English restore), `mac` (macros), `pause`; from version 3 `front` (NSWorkspace's frontmost application, only when `bundle` is absent) |
+| `focus` | `gen`, `bundle`, `role`, `subrole`, `rule`, `strat`, `rtf` (requireTextFocus), `ax`, `secure`, `mode`, `modeSrc`, `ctx` (engine context), `er` (English restore), `mac` (macros), `pause`; from version 3 `front` (NSWorkspace's frontmost application, only when `bundle` is absent; also when the snapshot took that application as its owner because Accessibility named none, PLT-R381, with `rule` the bundle-level rule it resolved to) |
 | `key` | `ev` (keyDown, keyUp, flagsChanged, mouseDown), `kc` key code, `fl` CGEventFlags, `ch` layout character, `out` (passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp) |
 | `engine` | `act` (passThrough, edit, editThenPassThrough), `del`, `ins`, `comp` token after the key, `dec` commit decision |
 | `boundary` | `reason` (the engine's reset reason), `job` (the boundary job reason; `unseenInput` for a keyUp the tap never saw go down, PLT-R397A) |

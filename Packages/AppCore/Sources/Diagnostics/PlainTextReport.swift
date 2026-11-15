@@ -82,6 +82,7 @@ struct PlainTextReport {
             field(labels.domClasses, joined(focus.domClasses))
             field(labels.editable, focus.editable.map(flag))
             field(labels.secureField, flag(focus.secure))
+            field(labels.appSource, focus.appSource.rawValue)  // PLT-R381 amendment
         }
         guard let rule = report.rule else { return }
         section(labels.rule)
@@ -151,6 +152,11 @@ struct PlainTextReport {
         section(labels.events)
         if report.healthEvents.isEmpty { lines.append("  " + labels.none) }
         lines += report.healthEvents.map { "  " + $0.summaryLine }
+        // PLT-R1201: the events of the last 24 hours that call for a plain explanation (PLT-R397B).
+        for notice in HealthNotice.notices(in: report) {
+            let text = labels.notice(notice, appName: report.app.displayName)
+            lines.append("  " + MetadataText.singleLine(text.label + ": " + text.explanation, maxLength: 2_000))
+        }
         section(labels.conflicts)
         lines.append(
             "  "

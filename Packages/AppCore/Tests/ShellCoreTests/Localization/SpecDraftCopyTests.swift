@@ -102,6 +102,17 @@ import Testing
         Draft(table: .macros, key: "macros.add", vi: "Thêm viết tắt"),
         Draft(table: .macros, key: "macros.import", vi: "Nhập từ file..."),
         Draft(table: .apps, key: "apps.empty", vi: "Các ứng dụng bạn gõ sẽ hiện ở đây để bạn đặt quy tắc riêng."),
+        // PLT-R397B: the Diagnostics window's explanation of a secure-input bursts event.
+        Draft(
+            table: .diagnostics, key: "diagnostics.health.secureInputBursts.explanation", arguments: [app],
+            vi:
+                "Có ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật (Secure Input) trong lúc bạn gõ, nên vài phím có "
+                + "thể không tới được {{AppName}}. Hãy thử thoát các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng "
+                + "chạy nền mới cài để tìm ra ứng dụng đó.",
+            en:
+                "An app keeps turning Secure Input on and off while you type, so some keys may not reach {{AppName}}. "
+                + "Try quitting other input methods, password managers or recently installed background apps to find "
+                + "it."),
     ]
 
     /// Section 4 (UI label vi / en), PRD-R24 pane names and the Advanced disclosure, PRD-R25 example.

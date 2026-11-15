@@ -128,6 +128,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     }
 
     public struct FocusSection: Sendable, Hashable, Codable {
+        /// Where the focused app's identity came from (PLT-R381 and its amendment of 2026-11-15).
+        public enum AppSource: String, Sendable, Hashable, Codable {
+            /// The system-wide AX focused application.
+            case accessibility
+            /// NSWorkspace's frontmost application, because AX named no focused application: rules applied at the
+            /// bundle level only, and the field facts are unknown.
+            case frontmostApplication
+        }
+
         public var bundle: BundleKey
         public var appVersion: String?
         public var engine: EngineFingerprint
@@ -138,10 +147,12 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var domClasses: [String]
         public var editable: Bool?
         public var secure: Bool
+        public var appSource: AppSource
 
         public init(
             bundle: BundleKey, appVersion: String?, engine: EngineFingerprint, axAvailability: AXAvailability,
-            role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?, secure: Bool
+            role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?, secure: Bool,
+            appSource: AppSource = .accessibility
         ) {
             self.bundle = bundle
             self.appVersion = appVersion
@@ -153,6 +164,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.domClasses = domClasses
             self.editable = editable
             self.secure = secure
+            self.appSource = appSource
         }
     }
 
@@ -438,6 +450,15 @@ public enum DiagnosticsRenderer {
     /// `<slug>` is `report.app.slug` (read from the bundle, never hard-coded). Values never contain newlines;
     /// lists are comma-separated. Keys match `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. At most 200 lines.
     public static func issueBlock(_ report: DiagnosticsReport) -> String { IssueBlock.render(report) }
+
+    /// The label and explanation the plain-text report and the copied block give a health notice, in `language`
+    /// with `appName` as the argument (PLT-R1201, PRD-R62). The Diagnostics window shows the same words from the
+    /// String Catalog.
+    public static func healthNoticeText(
+        _ notice: HealthNotice, language: InterfaceLanguage, appName: String
+    ) -> HealthNoticeText {
+        ReportLabels.labels(for: language).notice(notice, appName: appName)
+    }
 
     /// Inverse of `issueBlock` for tests and for the labeller contract: `nil` when no block or an unknown
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).

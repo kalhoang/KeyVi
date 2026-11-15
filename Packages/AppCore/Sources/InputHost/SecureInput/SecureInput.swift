@@ -57,13 +57,18 @@ public protocol ProcessIdentityProvider: Sendable {
     func isAlive(_ pid: Int32) -> Bool  // kill(pid, 0) != ESRCH
     func runningApplications() -> [ProcessIdentity]
     /// The application NSWorkspace calls frontmost (the dev recorder's attribution when AX names no focused
-    /// application, PLT-R904A). Never a focus source: PLT-R381 keeps the system-wide AX focus authoritative.
+    /// application, PLT-R904A). The system-wide AX focus stays authoritative (PLT-R381); the focus tracker takes the
+    /// frontmost application only when AX answers but names no focused application (PLT-R381 amendment).
     func frontmostApplication() -> ProcessIdentity?
+    /// The pid of `frontmostApplication()` without reading its bundle, so the focus tracker can reuse the identity
+    /// it already holds for that pid (PLT-R382, T6). Called on the ax thread, never on the tap (PLT-R304).
+    func frontmostApplicationPID() -> Int32?
 }
 
 extension ProcessIdentityProvider {
     /// Providers without a frontmost application (fakes) report none.
     public func frontmostApplication() -> ProcessIdentity? { nil }
+    public func frontmostApplicationPID() -> Int32? { frontmostApplication()?.pid }
 }
 
 /// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a

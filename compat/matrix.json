@@ -68,6 +68,7 @@
     { "bundleId": "dev.kiro.desktop", "displayName": "Kiro", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
     { "bundleId": "com.trae.app", "displayName": "Trae", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
     { "bundleId": "com.voideditor.Void", "displayName": "Void", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.google.antigravity", "displayName": "Antigravity", "category": "developer", "ruleId": "editor.vscodeFamily", "status": "notVerified", "issues": [] },
     { "bundleId": "com.jetbrains.intellij.ce", "displayName": "IntelliJ IDEA Community Edition", "category": "developer", "ruleId": "editor.jetbrains", "status": "notVerified", "issues": [] },
     { "bundleId": "com.jetbrains.pycharm", "displayName": "PyCharm", "category": "developer", "ruleId": "editor.jetbrains", "status": "notVerified", "issues": [] },
     { "bundleId": "com.jetbrains.pycharm.ce", "displayName": "PyCharm Community Edition", "category": "developer", "ruleId": "editor.jetbrains", "status": "notVerified", "issues": [] },

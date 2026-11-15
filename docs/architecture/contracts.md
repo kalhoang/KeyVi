@@ -3103,6 +3103,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     }
 
     public struct FocusSection: Sendable, Hashable, Codable {
+        /// Where the focused app's identity came from (PLT-R381 and its amendment of 2026-11-15).
+        public enum AppSource: String, Sendable, Hashable, Codable {
+            /// The system-wide AX focused application.
+            case accessibility
+            /// NSWorkspace's frontmost application, because AX named no focused application: rules applied at the
+            /// bundle level only, and the field facts are unknown.
+            case frontmostApplication
+        }
+
         public var bundle: BundleKey
         public var appVersion: String?
         public var engine: EngineFingerprint
@@ -3113,10 +3122,12 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var domClasses: [String]
         public var editable: Bool?
         public var secure: Bool
+        public var appSource: AppSource
 
         public init(
             bundle: BundleKey, appVersion: String?, engine: EngineFingerprint, axAvailability: AXAvailability,
-            role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?, secure: Bool
+            role: String?, subrole: String?, identifier: String?, domClasses: [String], editable: Bool?, secure: Bool,
+            appSource: AppSource = .accessibility
         ) {
             self.bundle = bundle
             self.appVersion = appVersion
@@ -3128,6 +3139,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.domClasses = domClasses
             self.editable = editable
             self.secure = secure
+            self.appSource = appSource
         }
     }
 
@@ -3413,6 +3425,15 @@ public enum DiagnosticsRenderer {
     /// `<slug>` is `report.app.slug` (read from the bundle, never hard-coded). Values never contain newlines;
     /// lists are comma-separated. Keys match `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. At most 200 lines.
     public static func issueBlock(_ report: DiagnosticsReport) -> String { IssueBlock.render(report) }
+
+    /// The label and explanation the plain-text report and the copied block give a health notice, in `language`
+    /// with `appName` as the argument (PLT-R1201, PRD-R62). The Diagnostics window shows the same words from the
+    /// String Catalog.
+    public static func healthNoticeText(
+        _ notice: HealthNotice, language: InterfaceLanguage, appName: String
+    ) -> HealthNoticeText {
+        ReportLabels.labels(for: language).notice(notice, appName: appName)
+    }
 
     /// Inverse of `issueBlock` for tests and for the labeller contract: `nil` when no block or an unknown
     /// format version is found. Accepts any slug of the shape `[a-z][a-z0-9-]*` (ADR 0501 rule 1).
@@ -7388,17 +7409,33 @@ public struct TapSettingsSnapshot: Sendable {
     }
 }
 
-/// The focus owner (PLT-R381): the system-wide AX focused application, which can be a non-activating panel.
+/// Where the focus owner's identity came from (PLT-R381 and its amendment of 2026-11-15).
+public enum FocusedAppSource: String, Sendable, Hashable, Codable {
+    /// The system-wide AX focused application: authoritative, with the focused element.
+    case accessibility
+    /// NSWorkspace's frontmost application, taken because AX answered but named no focused application. A weaker
+    /// identity: bundle-level rules, the app's mode and its per-app settings apply; the snapshot has no element, so
+    /// no rule that needs an AX role, subrole or other field fact matches.
+    case frontmostApplication
+}
+
+/// The focus owner (PLT-R381): the system-wide AX focused application, which can be a non-activating panel, or the
+/// frontmost application when AX names none (`source`).
 public struct FocusedApp: Sendable, Hashable {
     public var pid: Int32
     public var bundle: BundleKey
     public var appVersion: LooseVersion?
     public var engine: EngineFingerprint
-    public init(pid: Int32, bundle: BundleKey, appVersion: LooseVersion?, engine: EngineFingerprint) {
+    public var source: FocusedAppSource
+    public init(
+        pid: Int32, bundle: BundleKey, appVersion: LooseVersion?, engine: EngineFingerprint,
+        source: FocusedAppSource = .accessibility
+    ) {
         self.pid = pid
         self.bundle = bundle
         self.appVersion = appVersion
         self.engine = engine
+        self.source = source
     }
 }
 
@@ -9635,13 +9672,18 @@ public protocol ProcessIdentityProvider: Sendable {
     func isAlive(_ pid: Int32) -> Bool  // kill(pid, 0) != ESRCH
     func runningApplications() -> [ProcessIdentity]
     /// The application NSWorkspace calls frontmost (the dev recorder's attribution when AX names no focused
-    /// application, PLT-R904A). Never a focus source: PLT-R381 keeps the system-wide AX focus authoritative.
+    /// application, PLT-R904A). The system-wide AX focus stays authoritative (PLT-R381); the focus tracker takes the
+    /// frontmost application only when AX answers but names no focused application (PLT-R381 amendment).
     func frontmostApplication() -> ProcessIdentity?
+    /// The pid of `frontmostApplication()` without reading its bundle, so the focus tracker can reuse the identity
+    /// it already holds for that pid (PLT-R382, T6). Called on the ax thread, never on the tap (PLT-R304).
+    func frontmostApplicationPID() -> Int32?
 }
 
 extension ProcessIdentityProvider {
     /// Providers without a frontmost application (fakes) report none.
     public func frontmostApplication() -> ProcessIdentity? { nil }
+    public func frontmostApplicationPID() -> Int32? { frontmostApplication()?.pid }
 }
 
 /// Polls every 2 s with 10 % leeway through the injected scheduler and on demand (menu open), publishes a
@@ -9839,7 +9881,9 @@ public struct AXCircuitBreaker: Sendable {
 }
 
 /// The focus tracker. Owns AXObservers on the focused app and on `overlay` apps (PLT-R380), treats the
-/// system-wide AX focus as authoritative (PLT-R381), resolves rules and per-app mode, and publishes a
+/// system-wide AX focus as authoritative (PLT-R381) and, when AX answers but names no focused application, takes
+/// NSWorkspace's frontmost application as a bundle-level identity (PLT-R381 amendment, `FocusedAppSource`),
+/// resolves rules and per-app mode, and publishes a
 /// `FocusSnapshot` plus the current generation before the next key is processed (PLT-R391).
 ///
 /// Every public method may be called from any thread: it hops to the ax thread (`RunLoopThread.perform`) and
@@ -14826,6 +14870,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     private struct State {
         var focusedPID: Int32?
+        var systemWideTimingOut = false
         var attributes: [Int32: FocusAttributes] = [:]
         var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
@@ -14859,6 +14904,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     /// AX names no focused application (the system-wide element has none).
     public func clearFocusedApplication() { state.withLock { $0.focusedPID = nil } }
+
+    /// The system-wide focused-application read times out (PLT-R384): the focus is unknown, not empty.
+    public func setSystemWideTimingOut(_ timingOut: Bool) { state.withLock { $0.systemWideTimingOut = timingOut } }
 
     /// The focused application has no focused element.
     public func focusWithoutElement(pid: Int32, notify: AXNotificationKind?) {
@@ -14904,7 +14952,9 @@ public final class FakeAXProvider: AXProvider, Sendable {
         }
     }
 
-    public func focusedApplication() -> AXCallResult<Int32?> { .success(state.withLock { $0.focusedPID }) }
+    public func focusedApplication() -> AXCallResult<Int32?> {
+        state.withLock { $0.systemWideTimingOut ? .timedOut : .success($0.focusedPID) }
+    }
 
     public func focusedElement(pid: Int32) -> AXCallResult<AXFocusedElement?> {
         let (timingOut, unavailable, hasElement, element) = state.withLock { state in

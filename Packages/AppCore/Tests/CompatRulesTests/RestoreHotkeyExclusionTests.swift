@@ -4,7 +4,7 @@
 // default, and compatibility rules switch the binding off (`features.restoreHotkey: false`) in terminals, IDEs and
 // code editors, remote desktop clients and games, where Escape has its own meaning. Never per-app code
 // (PLT-R501): the bundle IDs below are test fixtures checked against compat/rules.json, whose rule notes record
-// the public source of each ID (Homebrew cask metadata, Apple documentation).
+// the source of each ID (Homebrew cask metadata, Apple documentation, the Info.plist of an installed app).
 
 import AppModel
 import Foundation
@@ -33,7 +33,7 @@ import Testing
 
     static let vscodeFamily: [App] = [
         "com.microsoft.VSCode", "com.microsoft.VSCodeInsiders", "com.vscodium", "com.todesktop.230313mzl4w4u92",
-        "dev.kiro.desktop", "com.trae.app", "com.voideditor.Void",
+        "dev.kiro.desktop", "com.trae.app", "com.voideditor.Void", "com.google.antigravity",
     ].map { App($0, .electron, rule: "editor.vscodeFamily") }
 
     static let jetBrains: [App] = [

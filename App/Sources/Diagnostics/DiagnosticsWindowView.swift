@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Diagnostics window content (PLT-R1201): the health state in plain words, the report in the interface language
-// (permission states, secure input with the likely holder, focused app and field, matched rule with strategy,
-// parameters and source, latency percentiles and recent health events, PLT-R1202, PRD-R62), the latency
-// histograms, the exact text that "Copy report" copies right above the buttons (PLT-R1204) and the five buttons.
+// Diagnostics window content (PLT-R1201): the health state in plain words, the health notices of the last 24 hours
+// with a label and an explanation (PLT-R397B), the report in the interface language (permission states, secure input
+// with the likely holder, focused app and field, matched rule with strategy, parameters and source, latency
+// percentiles and recent health events, PLT-R1202, PRD-R62), the latency histograms, the exact text that "Copy
+// report" copies right above the buttons (PLT-R1204) and the five buttons.
 
 import AppKit
 import AppModel
@@ -63,6 +64,11 @@ final class DiagnosticsWindowModel: ObservableObject {
     /// The shown report in the interface language, the exact text "Copy report" writes and the histograms.
     var display: ReportDisplay? { report.map { ReportDisplay(report: $0, language: localizer.language) } }
 
+    /// PLT-R1201, PLT-R397B: the health events of the shown report that call for a plain explanation.
+    var notices: [HealthNoticeText] {
+        report.map { DiagnosticsCopy.notices(for: $0, appName: services.resolvedBrand.displayName, localizer) } ?? []
+    }
+
     @Published var histogramsExpanded = false
     @Published var copyPreviewExpanded = false
 
@@ -101,6 +107,7 @@ struct DiagnosticsWindowView: View {
                     .font(.headline)
                     .accessibilityAddTraits(.isHeader)
             }
+            ForEach(model.notices, id: \.self) { notice in HealthNoticeView(notice: notice) }
             let display = model.display
             ReportTextView(text: display?.information ?? "", control: .reportInformation, localizer: localizer)
             DisclosureGroup(isExpanded: $model.histogramsExpanded) {
@@ -157,6 +164,28 @@ struct DiagnosticsWindowView: View {
                     .keyboardShortcut(.defaultAction, when: action == .copyReport)
             }
         }
+    }
+}
+
+/// One health notice (PLT-R1201, PLT-R397B): its label above its explanation, read by VoiceOver as one element.
+struct HealthNoticeView: View {
+    let notice: HealthNoticeText
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label {
+                Text(verbatim: notice.label).font(.callout.weight(.semibold))
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    .accessibilityHidden(true)
+            }
+            Text(verbatim: notice.explanation)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 

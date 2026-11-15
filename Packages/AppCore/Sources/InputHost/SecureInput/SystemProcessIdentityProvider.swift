@@ -33,7 +33,13 @@ public struct SystemProcessIdentityProvider: ProcessIdentityProvider {
     }
 
     public func frontmostApplication() -> ProcessIdentity? {
-        NSWorkspace.shared.frontmostApplication.flatMap { identity(of: $0.processIdentifier) }
+        frontmostApplicationPID().flatMap(identity(of:))
+    }
+
+    /// NSRunningApplication returns its properties atomically from any thread; the value is the one the main run
+    /// loop last updated, which is all the PLT-R381 fallback needs (AX is re-read on the next activation).
+    public func frontmostApplicationPID() -> Int32? {
+        NSWorkspace.shared.frontmostApplication?.processIdentifier
     }
 
     static func executablePath(of pid: Int32) -> String? {

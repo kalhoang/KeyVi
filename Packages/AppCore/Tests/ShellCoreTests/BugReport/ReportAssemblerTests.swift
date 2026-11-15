@@ -66,6 +66,16 @@ import Testing
         #expect(focus.engine == .electron)
     }
 
+    /// PLT-R381 amendment: an app taken from the frontmost application because AX named none is reported as such.
+    @Test func theFocusSectionSaysWhereTheAppCameFrom() throws {
+        #expect(ReportFixtures.report().focus?.appSource == .accessibility)
+        var host = ReportFixtures.host()
+        host.focus.app?.source = .frontmostApplication
+        let focus = try #require(ReportFixtures.report(host: host).focus)
+        #expect(focus.appSource == .frontmostApplication)
+        #expect(focus.bundle == ReportFixtures.focused)
+    }
+
     @Test func tapCountersCoverTheLast24Hours() {
         let tap = ReportFixtures.report().tap
         #expect(tap.enabled)

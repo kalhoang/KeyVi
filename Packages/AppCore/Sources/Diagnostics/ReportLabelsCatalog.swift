@@ -13,7 +13,8 @@ extension ReportLabels {
         lastReenable: "Lý do bật lại gần nhất", secureInput: "Nhập bảo mật",
         likelyHolder: "Ứng dụng có thể đang giữ", holderKind: "Loại", focus: "Ô đang nhập", engine: "Công nghệ",
         axData: "Dữ liệu trợ năng", role: "Vai trò", subrole: "Vai trò phụ", identifier: "Định danh",
-        domClasses: "Lớp DOM", editable: "Sửa được", secureField: "Ô bảo mật", rule: "Quy tắc tương thích",
+        domClasses: "Lớp DOM", editable: "Sửa được", secureField: "Ô bảo mật", appSource: "Nhận ra ứng dụng qua",
+        rule: "Quy tắc tương thích",
         ruleID: "Mã quy tắc", source: "Nguồn", specificity: "Độ cụ thể", strategy: "Cách chèn chữ",
         parameters: "Tham số", isUserOverride: "Quy tắc riêng của bạn", userOverride: "Quy tắc riêng (JSON)",
         omittedFields: "Trường không đưa vào báo cáo", settings: "Cài đặt", typingMethod: "Kiểu gõ",
@@ -31,6 +32,14 @@ extension ReportLabels {
             .lostLetters: "Mất chữ", .duplicatedLetters: "Lặp chữ", .lettersOutOfOrder: "Chữ sai thứ tự",
             .wrongTone: "Sai dấu", .cannotTypeVietnamese: "Không gõ được tiếng Việt",
             .nothingTyped: "Không ra chữ nào", .lag: "Chậm / giật", .other: "Khác",
+        ],
+        notices: [
+            .secureInputBursts: HealthNoticeText(
+                label: "Chế độ nhập bảo mật bật tắt liên tục",
+                explanation:
+                    "Có ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật (Secure Input) trong lúc bạn gõ, nên vài phím "
+                    + "có thể không tới được %@. Hãy thử thoát các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng "
+                    + "chạy nền mới cài để tìm ra ứng dụng đó.")
         ])
 
     static let english = ReportLabels(
@@ -44,7 +53,8 @@ extension ReportLabels {
         userInputDisables: "Disabled by user input in the last 24 hours", lastReenable: "Last re-enable reason",
         secureInput: "Secure input", likelyHolder: "Likely holder", holderKind: "Kind", focus: "Focused field",
         engine: "Engine", axData: "Accessibility data", role: "Role", subrole: "Subrole", identifier: "Identifier",
-        domClasses: "DOM classes", editable: "Editable", secureField: "Secure field", rule: "Compatibility rule",
+        domClasses: "DOM classes", editable: "Editable", secureField: "Secure field", appSource: "App identified by",
+        rule: "Compatibility rule",
         ruleID: "Rule ID", source: "Source", specificity: "Specificity", strategy: "Strategy",
         parameters: "Parameters", isUserOverride: "Your own rule", userOverride: "Your own rule (JSON)",
         omittedFields: "Fields left out of the report", settings: "Settings", typingMethod: "Typing method",
@@ -62,5 +72,13 @@ extension ReportLabels {
             .lettersOutOfOrder: "Letters out of order", .wrongTone: "Wrong tone",
             .cannotTypeVietnamese: "Cannot type Vietnamese", .nothingTyped: "Nothing typed", .lag: "Lag",
             .other: "Other",
+        ],
+        notices: [
+            .secureInputBursts: HealthNoticeText(
+                label: "Secure Input keeps turning on and off",
+                explanation:
+                    "An app keeps turning Secure Input on and off while you type, so some keys may not reach %@. Try "
+                    + "quitting other input methods, password managers or recently installed background apps to find "
+                    + "it.")
         ])
 }

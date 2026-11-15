@@ -145,7 +145,9 @@ public struct AXCircuitBreaker: Sendable {
 }
 
 /// The focus tracker. Owns AXObservers on the focused app and on `overlay` apps (PLT-R380), treats the
-/// system-wide AX focus as authoritative (PLT-R381), resolves rules and per-app mode, and publishes a
+/// system-wide AX focus as authoritative (PLT-R381) and, when AX answers but names no focused application, takes
+/// NSWorkspace's frontmost application as a bundle-level identity (PLT-R381 amendment, `FocusedAppSource`),
+/// resolves rules and per-app mode, and publishes a
 /// `FocusSnapshot` plus the current generation before the next key is processed (PLT-R391).
 ///
 /// Every public method may be called from any thread: it hops to the ax thread (`RunLoopThread.perform`) and

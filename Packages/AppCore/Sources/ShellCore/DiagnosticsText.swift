@@ -32,6 +32,8 @@ public enum DiagnosticsText: String, LocalizationKey {
     case stateFailTap = "diagnostics.state.failOpen.tapUnavailable"
     case stateFailWatchdog = "diagnostics.state.failOpen.watchdog"
     case stateFailStuck = "diagnostics.state.failOpen.callbackStuck"
+    case healthSecureInputBurstsLabel = "diagnostics.health.secureInputBursts.label"
+    case healthSecureInputBurstsExplanation = "diagnostics.health.secureInputBursts.explanation"
     case reportHeading = "diagnostics.report.heading"
     case reportNote = "diagnostics.report.note"
     case copyReport = "diagnostics.copyReport"
@@ -343,6 +345,28 @@ public enum DiagnosticsCopy {
 
     public static func stateLine(_ state: HostStateCode, _ localizer: Localizer) -> String {
         localizer.format(DiagnosticsText.stateLabel, localizer.string(stateKey(state)))
+    }
+
+    /// PLT-R1201 and PLT-R397B: the catalog keys of a health notice's label and explanation.
+    public static func noticeKeys(_ notice: HealthNotice) -> (label: DiagnosticsText, explanation: DiagnosticsText) {
+        switch notice {
+        case .secureInputBursts: (.healthSecureInputBurstsLabel, .healthSecureInputBurstsExplanation)
+        }
+    }
+
+    /// A health notice in the interface language, the app name an argument (PRD-R62). The plain-text report and
+    /// the copied block say the same words (`DiagnosticsRenderer.healthNoticeText`).
+    public static func notice(_ notice: HealthNotice, appName: String, _ localizer: Localizer) -> HealthNoticeText {
+        let keys = noticeKeys(notice)
+        return HealthNoticeText(
+            label: localizer.string(keys.label), explanation: localizer.format(keys.explanation, appName))
+    }
+
+    /// The notices the Diagnostics window shows for `report`, under its state line.
+    public static func notices(
+        for report: DiagnosticsReport, appName: String, _ localizer: Localizer
+    ) -> [HealthNoticeText] {
+        HealthNotice.notices(in: report).map { notice($0, appName: appName, localizer) }
     }
 
     public static func strategyKey(_ strategy: InjectionStrategy) -> DiagnosticsText {

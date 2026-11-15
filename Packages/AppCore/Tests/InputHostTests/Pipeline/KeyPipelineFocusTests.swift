@@ -245,6 +245,50 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(unreadable.log.resets == [.applicationChanged])
     }
 
+    /// PLT-R381 amendment (2026-11-15): when AX names no app the snapshot takes NSWorkspace's frontmost application,
+    /// without an element or field handle.
+    private func publishFrontmostSnapshot(_ fixture: PipelineFixture, generation: UInt64 = 2, pid: Int32 = 100) {
+        var focus = PipelineFixtures.focus(generation: generation, pid: pid, changedAt: fixture.clock.now())
+        focus.app?.source = .frontmostApplication
+        focus.fieldHandle = nil
+        focus.field = FieldContext(
+            axAvailability: .available, role: nil, subrole: nil, identifier: nil, domClasses: [], editable: nil,
+            secure: false)
+        fixture.publish(focus: focus)
+    }
+
+    /// AX then names the same process with a readable field: the field belongs to the process the word was typed
+    /// in, so the late focus change keeps the word and the first job verifies the field.
+    @Test func theSameProcessAfterTheFrontmostFallbackKeepsTheCompositionPLTR340() throws {
+        let fixture = PipelineFixture()
+        publishFrontmostSnapshot(fixture)
+        fixture.press(Key.a)
+        publishNewElement(fixture, generation: 3)
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.isEmpty)
+        let edit = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(edit.insertion == "â" && edit.verifyLateFocus && edit.replacedText == "a")
+    }
+
+    /// The weaker identity does not widen the rule the way a timed-out read does: another process is an
+    /// application change, and so is a late observation.
+    @Test func anotherProcessAfterTheFrontmostFallbackIsAHardBoundaryPLTR340() {
+        let other = PipelineFixture()
+        publishFrontmostSnapshot(other)
+        other.press(Key.a)
+        publishNewElement(other, generation: 3, pid: 300)
+        other.press(Key.a)
+        #expect(other.log.resets == [.applicationChanged])
+        #expect(other.popJobs().compactMap(\.edit).isEmpty)
+
+        let late = PipelineFixture()
+        publishFrontmostSnapshot(late)
+        late.press(Key.a)
+        publishNewElement(late, generation: 3, after: 600_000)
+        late.press(Key.a)
+        #expect(late.log.resets == [.focusChanged])
+    }
+
     /// 500 ms after the token's last key the change is no longer part of the word being typed.
     @Test func aChangeObservedTooLateIsAHardBoundaryPLTR340() {
         let fixture = PipelineFixture()
