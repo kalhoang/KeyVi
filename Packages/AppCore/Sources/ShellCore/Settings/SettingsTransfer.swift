@@ -25,14 +25,18 @@ public struct ImportSummary: Sendable, Hashable {
     public var hasRuleOverrides: Bool { preview.content["ruleOverrides"] != nil }
     public var hasMacros: Bool { preview.macros != nil }
     public var hasDuplicateMacros: Bool { !(preview.macros?.duplicates.isEmpty ?? true) }
+    /// The learned collision choices (PRD-R72), merged by adding counters.
+    public var hasLearnedChoices: Bool { preview.collisionMemoryEntries > 0 }
 
     /// Nothing would be applied with the current choices.
     public var isEmptySelection: Bool {
         !((choices.applySettings && hasSettings) || (choices.applyAppModes && hasAppModes)
-            || (choices.applyRuleOverrides && hasRuleOverrides) || (choices.applyMacros && hasMacros))
+            || (choices.applyRuleOverrides && hasRuleOverrides) || (choices.applyMacros && hasMacros)
+            || (choices.applyCollisionMemory && hasLearnedChoices))
     }
 
-    /// Summary lines in display order: changed settings, app entries, overrides, macro counts, skipped fields.
+    /// Summary lines in display order: changed settings, app entries, overrides, macro counts, learned words,
+    /// skipped fields.
     public func lines(_ localizer: Localizer) -> [String] {
         var lines: [String] = []
         if hasSettings {
@@ -48,6 +52,9 @@ public struct ImportSummary: Sendable, Hashable {
             lines.append(
                 localizer.format(
                     SettingsText.importMacros, macros.new.count, macros.duplicates.count, macros.invalid.count))
+        }
+        if hasLearnedChoices {
+            lines.append(localizer.format(SettingsText.importLearnedChoices, preview.collisionMemoryEntries))
         }
         if isNewerSchema { lines.append(localizer.string(SettingsText.importNewerSchema)) }
         if !preview.skippedFields.isEmpty {

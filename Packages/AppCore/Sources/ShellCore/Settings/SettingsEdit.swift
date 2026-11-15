@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // One change made in the Settings window. Every edit is an explicit user choice, so it is stored as `.set`
-// even when it equals today's default (PRD-R6, PLT-R1004), and applies immediately (PRD-R27, PLT-R1008).
+// even when it equals today's default (PRD-R6, PLT-R1004), and applies immediately (PRD-R27, PLT-R1008). The two
+// edits of the learned-words sheet change the collision memory (collision-memory.json, PLT-R914), not settings.json:
+// `SettingsCommands` sends them to the store's memory.
 
 public import AppModel
 public import SettingsStore
@@ -28,6 +30,10 @@ public enum SettingsEdit: Sendable, Hashable {
     case keepVietnamese(Set<String>)  // ENG-R860, the global entries
     case forgetLearnedWord(LearnedWord)  // ENG-R862 "remove"
     case makeLearnedWordGlobal(LearnedWord)  // ENG-R862 "use in every app"
+    case learnCollisionChoices(Bool)  // D28
+    case lookaheadRevision(Bool)  // D29
+    case forgetLearnedChoice(CollisionMemoryKey)  // PRD-R78, one row of the learned-words sheet
+    case clearLearnedChoices  // PRD-R78 "Xóa tất cả", acceptance counters included
 
     public func apply(to settings: inout UserSettings) {
         switch self {
@@ -52,6 +58,18 @@ public enum SettingsEdit: Sendable, Hashable {
         case .keepVietnamese(let value): settings.setGlobalWords(value, in: .keepVietnamese)
         case .forgetLearnedWord(let word): settings.forget(word)
         case .makeLearnedWordGlobal(let word): settings.makeGlobal(word)
+        case .learnCollisionChoices(let value): settings.learnCollisionChoices = .set(value)
+        case .lookaheadRevision(let value): settings.lookaheadRevision = .set(value)
+        case .forgetLearnedChoice, .clearLearnedChoices: break  // the collision memory, not settings.json
+        }
+    }
+
+    /// PRD-R78: the edit changes the learned collision memory, which `SettingsCommands` applies to the store's
+    /// `collisionMemory` instead of settings.json.
+    public var editsLearnedChoices: Bool {
+        switch self {
+        case .forgetLearnedChoice, .clearLearnedChoices: true
+        default: false
         }
     }
 
@@ -79,6 +97,8 @@ public enum SettingsEdit: Sendable, Hashable {
         case .keepVietnamese: .keepVietnamese
         case .forgetLearnedWord(let word), .makeLearnedWordGlobal(let word):
             word.list == .keepAsTyped ? .keepAsTyped : .keepVietnamese
+        case .learnCollisionChoices, .forgetLearnedChoice, .clearLearnedChoices: .learnCollisionChoices
+        case .lookaheadRevision: .lookaheadRevision
         }
     }
 }

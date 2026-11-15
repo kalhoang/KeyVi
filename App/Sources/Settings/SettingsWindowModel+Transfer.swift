@@ -11,10 +11,12 @@ import Foundation
 import SettingsStore
 import ShellCore
 
-/// Export sheet choices (PLT-R1010: macros and per-app modes can be unticked).
+/// Export sheet choices (PLT-R1010: macros, per-app modes and the learned words can be unticked).
 struct ExportSheetState: Equatable {
     var includeMacros = true
     var includeAppModes = true
+    /// The learned collision choices (PLT-R914, PRD-R72).
+    var includeLearnedChoices = true
     /// Set when the sheet was opened from a reset confirmation, which reopens afterwards.
     var resumeReset: ResetRequest?
 }
@@ -49,7 +51,9 @@ extension SettingsWindowModel {
 
     func saveExport() {
         guard let sheet = exportSheet else { return }
-        let options = ExportOptions(includeMacros: sheet.includeMacros, includeAppModes: sheet.includeAppModes)
+        let options = ExportOptions(
+            includeMacros: sheet.includeMacros, includeAppModes: sheet.includeAppModes,
+            includeCollisionMemory: sheet.includeLearnedChoices)
         let now = Date()
         exportSheet = nil
         FilePanels.save(

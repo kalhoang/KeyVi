@@ -102,6 +102,36 @@ public enum SettingsText: String, LocalizationKey {
     case listMakeGlobal = "settings.typing.list.makeGlobal"
     /// ENG-R862, under the lists when at least one entry was learned.
     case listLearnedNote = "settings.typing.list.learnedNote"
+    /// D28 (PRD-R79). The explanation's argument is the app name.
+    case learnCollisionTitle = "settings.typing.learnCollision.title"
+    case learnCollisionExplanation = "settings.typing.learnCollision.explanation"
+    /// D28 row button that opens the learned-words sheet (PRD-R78).
+    case learnedChoicesShow = "settings.typing.learnedChoices.show"
+    /// The learned-words sheet (PRD-R78, PRD-R79). The empty state and the clear-all body take the app name.
+    case learnedChoicesTitle = "settings.typing.learnedChoices.title"
+    case learnedChoicesIntro = "settings.typing.learnedChoices.intro"
+    case learnedChoicesEmpty = "settings.typing.learnedChoices.empty"
+    /// The empty state when D8 is another key (its name is the second argument) or off (ENG-R864: strong signals
+    /// come from the restore toggle).
+    case learnedChoicesEmptyOtherKey = "settings.typing.learnedChoices.emptyOtherKey"
+    case learnedChoicesEmptyNoKey = "settings.typing.learnedChoices.emptyNoKey"
+    case learnedChoicesRemoveAll = "settings.typing.learnedChoices.removeAll"
+    case learnedChoicesDone = "settings.typing.learnedChoices.done"
+    /// The context class of a row in words (ENG-R863): sentence start, after a Vietnamese, English or neutral word.
+    case learnedContextSentenceStart = "settings.typing.learnedChoices.context.sentenceStart"
+    case learnedContextAfterVietnamese = "settings.typing.learnedChoices.context.afterVietnamese"
+    case learnedContextAfterEnglish = "settings.typing.learnedChoices.context.afterEnglish"
+    case learnedContextAfterNeutral = "settings.typing.learnedChoices.context.afterNeutral"
+    case learnedContextAny = "settings.typing.learnedChoices.context.any"
+    /// VoiceOver text of a row. Arguments: the word, its Vietnamese reading, the context (Vietnamese choice); the
+    /// word and the context (English choice).
+    case learnedRowVietnamese = "settings.typing.learnedChoices.row.vietnamese"
+    case learnedRowEnglish = "settings.typing.learnedChoices.row.english"
+    /// "Xóa tất cả" confirmation (PRD-R78). The body's argument is the app name.
+    case learnedClearTitle = "settings.typing.learnedChoices.clear.title"
+    case learnedClearBody = "settings.typing.learnedChoices.clear.body"
+    case learnedClearConfirm = "settings.typing.learnedChoices.clear.confirm"
+    case learnedClearCancel = "settings.typing.learnedChoices.clear.cancel"
     case standaloneWTitle = "settings.typing.standaloneW.title"
     case standaloneWExplanation = "settings.typing.standaloneW.explanation"
     case bracketsTitle = "settings.typing.brackets.title"
@@ -109,6 +139,9 @@ public enum SettingsText: String, LocalizationKey {
     case restoreHotkeyTitle = "settings.typing.restoreHotkey.title"
     case restoreHotkeyExplanation = "settings.typing.restoreHotkey.explanation"
     case restoreHotkeySwitch = "settings.typing.restoreHotkey.switch"
+    /// D29 (PRD-R79), under Advanced.
+    case lookaheadRevisionTitle = "settings.typing.lookaheadRevision.title"
+    case lookaheadRevisionExplanation = "settings.typing.lookaheadRevision.explanation"
     case resetTitlePane = "settings.reset.title.pane"
     case resetTitleAll = "settings.reset.title.all"
     case resetBodyGeneral = "settings.reset.body.general"
@@ -127,6 +160,8 @@ public enum SettingsText: String, LocalizationKey {
     case exportIncludeMacros = "settings.export.includeMacros"
     case exportMacrosNote = "settings.export.macrosNote"
     case exportIncludeAppModes = "settings.export.includeAppModes"
+    /// The learned collision choices in the export (PLT-R914, PRD-R72).
+    case exportIncludeLearnedChoices = "settings.export.includeLearnedChoices"
     case exportSave = "settings.export.save"
     case exportCancel = "settings.export.cancel"
     case exportFailed = "settings.export.failed"
@@ -137,6 +172,8 @@ public enum SettingsText: String, LocalizationKey {
     case importAppEntries = "settings.import.appEntries"
     case importRuleOverrides = "settings.import.ruleOverrides"
     case importMacros = "settings.import.macros"
+    /// Argument: the number of learned-word entries in the file (PRD-R72).
+    case importLearnedChoices = "settings.import.learnedChoices"
     case importSkipped = "settings.import.skipped"
     case importNewerSchema = "settings.import.newerSchema"
     case importBackupNote = "settings.import.backupNote"
@@ -144,6 +181,7 @@ public enum SettingsText: String, LocalizationKey {
     case importApplyAppModes = "settings.import.apply.appModes"
     case importApplyRuleOverrides = "settings.import.apply.ruleOverrides"
     case importApplyMacros = "settings.import.apply.macros"
+    case importApplyLearnedChoices = "settings.import.apply.learnedChoices"
     case importDuplicatesTitle = "settings.import.duplicates"
     case importKeepMine = "settings.import.keepMine"
     case importUseImported = "settings.import.useImported"
@@ -210,8 +248,16 @@ public enum SettingsControl: String, AccessibleControl {
     case keepVietnameseAdd
     case wordRemove
     case wordMakeGlobal  // ENG-R862
+    case learnCollisionChoices  // D28
+    case learnedChoicesShow  // PRD-R78
+    case learnedChoiceRemove
+    case learnedChoicesRemoveAll
+    case learnedChoicesDone
+    case learnedClearConfirm
+    case learnedClearCancel
     case standaloneW
     case bracketKeys
+    case lookaheadRevision  // D29
     case resetPane
     case resetIncludeMacros
     case resetExportFirst
@@ -219,12 +265,14 @@ public enum SettingsControl: String, AccessibleControl {
     case resetCancel
     case exportIncludeMacros
     case exportIncludeAppModes
+    case exportIncludeLearnedChoices
     case exportSave
     case exportCancel
     case importApplySettings
     case importApplyAppModes
     case importApplyRuleOverrides
     case importApplyMacros
+    case importApplyLearnedChoices
     case importDuplicates
     case importConfirm
     case importCancel

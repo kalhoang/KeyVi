@@ -22,6 +22,29 @@ import Testing
         #expect(SettingsPaneKind.allCases.filter { $0.paneReset == nil } == [.about, .support, .licences])
     }
 
+    @Test func catalogIdentifiersAreTheSnapshot() {
+        // Every setting the window shows, its defaults-table row and its settings.json key, in catalog order. A new
+        // setting changes this list on purpose (W11-C added D28 and D29, decision of the product owner, 15/11/2026).
+        let snapshot = SettingItem.allCases.map { "\($0.rawValue) \($0.requirement) \($0.settingsKey ?? "-")" }
+        #expect(
+            snapshot == [
+                "openAtLogin D17 -", "toggleHotkey D11 toggleHotkey", "rememberPerApp D12 rememberPerApp",
+                "switchIndicator D14 showSwitchIndicator", "interfaceLanguage D18 interfaceLanguage",
+                "soundOnSwitch D15 soundOnSwitch", "clickIconToToggle D16 clickIconToToggle",
+                "layoutBinding PLT-R373 layoutBinding", "typingMethod D1 typingMethod",
+                "tonePlacement D2 tonePlacement", "englishRestore D4 englishRestore",
+                "keepAsTyped ENG-R860 keepAsTyped", "keepVietnamese ENG-R860 keepVietnamese",
+                "learnCollisionChoices D28 learnCollisionChoices",
+                "telexStandaloneW D5 telexStandaloneW", "telexBracketKeys D6 telexBracketKeys",
+                "restoreHotkey D8 restoreHotkey", "lookaheadRevision D29 lookaheadRevision",
+                "macrosEnabled D9 macrosEnabled", "updateChannel D21 updateChannel",
+                "automaticallyCheckForUpdates D19 automaticallyCheckForUpdates",
+                "automaticallyInstallUpdates D20 automaticallyInstallUpdates",
+            ])
+        #expect(SettingItem.learnCollisionChoices.pane == .typing && !SettingItem.learnCollisionChoices.isAdvanced)
+        #expect(SettingItem.lookaheadRevision.pane == .typing && SettingItem.lookaheadRevision.isAdvanced)
+    }
+
     @Test func paneContentsFollowPRDR24() {
         #expect(
             SettingsCatalog.items(in: .general, advanced: false) == [
@@ -31,11 +54,11 @@ import Testing
             SettingsCatalog.items(in: .general, advanced: true) == [.soundOnSwitch, .clickIconToToggle, .layoutBinding])
         #expect(
             SettingsCatalog.items(in: .typing, advanced: false) == [
-                .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese,
+                .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices,
             ])
         #expect(
             SettingsCatalog.items(in: .typing, advanced: true) == [
-                .telexStandaloneW, .telexBracketKeys, .restoreHotkey,
+                .telexStandaloneW, .telexBracketKeys, .restoreHotkey, .lookaheadRevision,
             ])
         #expect(SettingsCatalog.items(in: .macros, advanced: false) == [.macrosEnabled])
         #expect(
@@ -56,7 +79,7 @@ import Testing
         }
         // Every user-facing default of section 4 that is a real setting is shown somewhere.
         let settings = ["D1", "D2", "D4", "D5", "D6", "D8", "D9", "D11", "D12", "D14", "D15", "D16", "D17", "D18"]
-        for id in settings + ["D19", "D20", "D21"] { #expect(shown.contains(id), "\(id) has no control") }
+        for id in settings + ["D19", "D20", "D21", "D28", "D29"] { #expect(shown.contains(id), "\(id) has no control") }
         #expect(
             HiddenDefault.allCases.map(\.rawValue) == [
                 "D3", "D7", "D10", "D13", "D22", "D23", "D24", "D25", "D26", "D27",
@@ -85,7 +108,8 @@ import Testing
             "typingMethod", "tonePlacement", "englishRestore", "telexStandaloneW", "telexBracketKeys", "restoreHotkey",
             "macrosEnabled", "toggleHotkey", "rememberPerApp", "showSwitchIndicator", "soundOnSwitch",
             "clickIconToToggle", "interfaceLanguage", "automaticallyCheckForUpdates", "automaticallyInstallUpdates",
-            "updateChannel", "layoutBinding", "keepAsTyped", "keepVietnamese",
+            "updateChannel", "layoutBinding", "keepAsTyped", "keepVietnamese", "learnCollisionChoices",
+            "lookaheadRevision",
         ]
         for item in SettingItem.allCases where item != .openAtLogin {
             #expect(item.settingsKey.map(known.contains) == true, "\(item)")
@@ -100,7 +124,8 @@ import Testing
             .toggleHotkey(.defaultToggle),
             .rememberPerApp(true), .showSwitchIndicator(true), .soundOnSwitch(false), .clickIconToToggle(false),
             .interfaceLanguage(.vietnamese), .automaticallyCheckForUpdates(true), .automaticallyInstallUpdates(true),
-            .updateChannel(.stable), .layoutBinding(LayoutModeBinding()),
+            .updateChannel(.stable), .layoutBinding(LayoutModeBinding()), .learnCollisionChoices(true),
+            .lookaheadRevision(true),
         ]
         for edit in edits {
             var settings = UserSettings()
