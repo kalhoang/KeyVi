@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Runs every hosted test layer with one command (QA-R1 layers 1 to 4 plus repository checks):
-#   engine build + unit + corpus + property tests, engine coverage gate (95 %), AppCore tests and
-#   coverage gate (80 %), data reproducibility check, script self-tests, and optionally the engine
-#   benchmark gate and the unsigned app build. Layers 5 to 7 (integration, compatibility, upgrade)
+#   engine build + unit + corpus + property tests, the W11 collision corpus gate (QA-R68, its own layer
+#   so that a failure names it), engine coverage gate (95 %), AppCore tests and coverage gate (80 %),
+#   data reproducibility check, script self-tests, and optionally the engine benchmark gate and the
+#   unsigned app build. Layers 5 to 7 (integration, compatibility, upgrade)
 #   need granted permissions and run on the self-hosted runner (.github/workflows/integration.yml).
 set -euo pipefail
 
@@ -17,7 +18,9 @@ Options:
   --bench         run the engine benchmark gate (scripts/bench-compare.sh)
   --app           generate the Xcode project, build the app (universal Debug, unsigned) and run UpdaterTests
   --lint          run scripts/lint.sh first
-  --only LIST     comma-separated subset: engine,appcore,data,scripts,bench,app
+  --only LIST     comma-separated subset: engine,collision,appcore,data,scripts,bench,app
+                  (collision: the QA-R68 gate, Packages/VietnameseEngine CollisionCorpusTests; the
+                  engine layer runs it itself when the collision layer is not selected)
   --scratch NAME  use .build-NAME scratch paths (parallel builds, see CLAUDE.md)
   -h, --help      show this help
 Layers whose package or project does not exist yet are skipped with a notice.
@@ -65,17 +68,29 @@ step() {
   fi
 }
 
+# The QA-R68 gate's test target (spec/01-engine.md 13.11, ENG-R876, ENG-R877), as a swift test filter.
+collision_filter='CollisionCorpusTests\.'
+
 engine_tests() {
   local args=()
   while IFS= read -r a; do args+=("$a"); done < <(scratch_args "$engine")
   swift build --package-path "$engine" ${args[@]+"${args[@]}"}
   if [[ $coverage -eq 1 ]]; then
+    # The coverage run includes the collision gate, so its coverage counts.
     scripts/coverage.sh --package "$engine" --min 95 \
       --exclude '^Sources/(lexicon-builder|engine-benchmark|VietnameseEngineTesting)/' \
       ${args[@]+"${args[@]}"}
+  elif wanted collision; then
+    swift test --package-path "$engine" ${args[@]+"${args[@]}"} --skip "$collision_filter"
   else
     swift test --package-path "$engine" ${args[@]+"${args[@]}"}
   fi
+}
+
+collision_gate() {
+  local args=()
+  while IFS= read -r a; do args+=("$a"); done < <(scratch_args "$engine")
+  swift test --package-path "$engine" ${args[@]+"${args[@]}"} --filter "$collision_filter"
 }
 
 appcore_tests() {
@@ -112,6 +127,15 @@ if [[ $lint -eq 1 ]]; then
 fi
 if wanted engine; then
   if [[ -f "$engine/Package.swift" ]]; then step engine engine_tests; else info "engine: not present, skipped"; fi
+fi
+if wanted collision; then
+  if [[ ! -d "$engine/Tests/CollisionCorpusTests" ]]; then
+    info "collision: not present, skipped"
+  elif [[ $coverage -eq 1 ]] && wanted engine; then
+    info "collision: run by the engine coverage layer"
+  else
+    step collision collision_gate
+  fi
 fi
 if wanted appcore; then
   if [[ -f "$appcore/Package.swift" ]]; then step appcore appcore_tests; else info "appcore: not present, skipped"; fi

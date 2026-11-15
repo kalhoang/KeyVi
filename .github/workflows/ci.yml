@@ -44,8 +44,13 @@ jobs:
         run: python3 -I "$ENGINE/Scripts/check-traceability.py"
       - name: Build engine (ENG-R1201, Linux)
         run: swift build --package-path "$ENGINE"
+      - name: W11 collision corpus gate (QA-R68, ENG-R876, ENG-R877)
+        # The corpus and its three adversarial sets against their frozen outputs, any wrong revision fails, and the
+        # learned-memory simulation (docs/decisions/0008-collision-learning.md). Its own step so a failure names it;
+        # the next step skips the target. macOS runs it again inside the engine coverage run.
+        run: swift test --package-path "$ENGINE" --filter 'CollisionCorpusTests\.'
       - name: Engine tests, corpus and property tests (QA-R5, QA-R8)
-        run: swift test --package-path "$ENGINE" --parallel
+        run: swift test --package-path "$ENGINE" --parallel --skip 'CollisionCorpusTests\.'
       - name: Coverage-guided fuzzing of engine-fuzz, 60 s, both methods (QA-R8)
         # libFuzzer flags from Packages/VietnameseEngineFuzz/README.md (VERIFY on the first Linux run, ADR 0502).
         run: scripts/fuzz.sh --seconds 60 --sanitizers fuzzer,address --out .build/fuzz-out --require
