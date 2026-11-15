@@ -44,6 +44,9 @@ enum SettingsMetrics {
     /// The sidebar list's own top padding, taken off the title bar height so its first row sits just under the
     /// window buttons, like System Settings.
     static let sidebarListTopPadding: CGFloat = 10
+    /// Height of the two word-list boxes of the Typing pane: about seven rows (twice the first design; the product
+    /// owner's decision of 15/11/2026, which lets the Typing pane scroll, PRD-R24 acceptance).
+    static let wordListHeight: CGFloat = 152
 }
 
 /// A pane's scrolling content made of `SettingsGroup` sections.

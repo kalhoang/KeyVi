@@ -5354,13 +5354,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keys as typed"
+            "value" : "Add a word"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Các phím đã gõ"
+            "value" : "Thêm từ mới"
           }
         }
       }

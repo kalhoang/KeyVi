@@ -107,7 +107,7 @@ struct WordListBox: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 3)
             }
-            .frame(height: 76)
+            .frame(height: SettingsMetrics.wordListHeight)
             .background(Color(nsColor: .textBackgroundColor))
         }
         .frame(maxWidth: .infinity)
