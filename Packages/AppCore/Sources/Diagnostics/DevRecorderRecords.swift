@@ -67,17 +67,21 @@ public struct DevEngineStep: Sendable {
     public var composing: String
     /// `CommitDecision` when the key committed a token or expanded a macro.
     public var decision: (any Sendable)?
+    /// `RevisionReason` when the commit also revised the previous word (ENG-R828): a reason code, never the words
+    /// of a `CollisionSignal` (ENG-R866), which the recorder never stores.
+    public var revision: (any Sendable)?
     public var at: MonotonicInstant
 
     public init(
         action: Action, deleteCount: Int, insert: String, composing: String, decision: (any Sendable)?,
-        at: MonotonicInstant
+        revision: (any Sendable)? = nil, at: MonotonicInstant
     ) {
         self.action = action
         self.deleteCount = deleteCount
         self.insert = insert
         self.composing = composing
         self.decision = decision
+        self.revision = revision
         self.at = at
     }
 }
@@ -86,7 +90,8 @@ public struct DevEngineStep: Sendable {
 public struct DevJobRecord: Sendable {
     public var sequence: UInt64
     public var generation: UInt64
-    /// `EditKind`: compose, backspaceRecompose, restore, macro or reentry (history re-open).
+    /// `EditKind`: compose, backspaceRecompose, restore, macro, reentry (history re-open) or revision (the commit
+    /// also revised the previous word, PLT-R357).
     public var kind: any Sendable
     public var strategy: InjectionStrategy
     public var outcome: StaticString

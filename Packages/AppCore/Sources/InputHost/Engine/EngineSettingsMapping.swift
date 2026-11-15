@@ -7,18 +7,22 @@ internal import SettingsStore
 internal import VietnameseEngine
 
 extension EngineVariant {
-    /// Catalog slot: bit 2 = code context, bit 1 = English restore, bit 0 = macros.
+    /// The number of catalog slots: appContext x englishRestore x macros x lookaheadRevision.
+    static let catalogSize = 16
+
+    /// Catalog slot: bit 3 = revisions allowed, bit 2 = code context, bit 1 = English restore, bit 0 = macros.
     var catalogIndex: Int {
-        (appContext == .code ? 4 : 0) | (englishRestore ? 2 : 0) | (macros ? 1 : 0)
+        (lookaheadRevision ? 8 : 0) | (appContext == .code ? 4 : 0) | (englishRestore ? 2 : 0) | (macros ? 1 : 0)
     }
 
     init(catalogIndex index: Int) {
         self.init(
-            appContext: index & 4 != 0 ? .code : .general, englishRestore: index & 2 != 0, macros: index & 1 != 0)
+            appContext: index & 4 != 0 ? .code : .general, englishRestore: index & 2 != 0, macros: index & 1 != 0,
+            lookaheadRevision: index & 8 != 0)
     }
 
     /// Every variant, ordered by `catalogIndex`.
-    static let catalogOrder: [EngineVariant] = (0..<8).map { EngineVariant(catalogIndex: $0) }
+    static let catalogOrder: [EngineVariant] = (0..<catalogSize).map { EngineVariant(catalogIndex: $0) }
 }
 
 enum EngineSettingsMapping {
@@ -35,9 +39,17 @@ enum EngineSettingsMapping {
             // D4 is the global switch; a rule's `features.englishRestore: false` turns it off per app.
             autoRestore: settings.englishRestore && variant.englishRestore,
             appContext: variant.appContext == .code ? .code : .general,
-            // ENG-R829: off until the host verifies revision edits (PLT-R342) and gates them per app (W11-B);
-            // without that, a revision would be applied as an ordinary edit in every app.
-            lookaheadRevision: false)
+            // ENG-R829, PLT-R357: the rule's `features.lookaheadRevision` (off in terminals, code editors, launchers,
+            // games, remote desktop and for strategies that cannot carry a revision) AND the user's D29, so an
+            // engine never computes a revision the host would not apply.
+            lookaheadRevision: variant.lookaheadRevision && settings.lookaheadRevision)
+    }
+
+    /// ENG-R865: the learned memory is looked up only where English restore runs (D4 and the rule's
+    /// `features.englishRestore`) and while D28 is on; elsewhere the engine gets the empty snapshot, so the rules
+    /// alone decide, as nothing is recorded there either (PLT-R914).
+    static func includesCollisionMemory(_ variant: EngineVariant, settings: EffectiveSettings) -> Bool {
+        settings.learnCollisionChoices && settings.englishRestore && variant.englishRestore
     }
 
     /// ENG-R1107: a variant carries the macro table only when the variant and D9 both allow macros.
@@ -47,20 +59,22 @@ enum EngineSettingsMapping {
 
     static func resources(_ resources: Resources, for variant: EngineVariant, settings: EffectiveSettings) -> Resources
     {
-        guard !includesMacros(variant, settings: settings) else { return resources }
-        var withoutMacros = resources
-        withoutMacros.macros = .empty
-        return withoutMacros
+        var adjusted = resources
+        if !includesMacros(variant, settings: settings) { adjusted.macros = .empty }
+        if !includesCollisionMemory(variant, settings: settings) { adjusted.collisionMemory = .empty }
+        return adjusted
     }
 
-    static func catalog(settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil) -> EngineCatalog {
+    static func catalog(
+        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil, memoryRevision: UInt64 = 0
+    ) -> EngineCatalog {
         var engines: [EngineVariant: Engine] = [:]
         for variant in EngineVariant.catalogOrder {
             engines[variant] = Engine(
                 configuration: configuration(for: settings, variant: variant),
                 resources: self.resources(resources, for: variant, settings: settings))
         }
-        return EngineCatalog(engines: engines, revision: revision)
+        return EngineCatalog(engines: engines, revision: revision, memoryRevision: memoryRevision)
     }
 }
 

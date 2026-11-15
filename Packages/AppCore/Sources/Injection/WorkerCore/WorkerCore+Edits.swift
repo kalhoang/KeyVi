@@ -24,6 +24,8 @@ extension WorkerCore {
         #if DEV_RECORDER
         recordDevJob(job, outcome: outcome)  // PLT-R904A
         #endif
+        // PLT-R357: a revision that was not applied as computed leaves the engine's history unlike the screen.
+        if job.kind == .revision, outcome != .executed { feedback.requestCompositionReset() }
         feedback.record(outcome, for: job.sequence)
         outcomes.record(outcome, for: job.sequence)
         if outcome.deliveredEdit {
@@ -50,10 +52,59 @@ extension WorkerCore {
         // PLT-R340 amendment: a kept late focus change is confirmed before anything is posted, also for a job
         // without an edit (the check of a key that only passes).
         if !lateFocusMatches(job) { return passThrough(job) }
+        if job.kind == .revision { return revisionOutcome(job) }
         let prepared = prepare(job)
         if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
         if !reentryMatches(prepared) { return passThrough(prepared) }
         return runChain(prepared)
+    }
+
+    /// PLT-R357: a revision touches the previous token, so PLT-R342 applies as for re-entry. Where the rule verifies
+    /// (`verifyBeforeApply`), or after a focus change found late (PLT-R340), the text before the caret must end with
+    /// the previous token, one space and the current display (an unreadable field applies, as `whenReadable` says).
+    /// On a mismatch, or whenever the pipeline did not know the previous token, only the current token's part is
+    /// applied and the engine is reset: the previous token is never rewritten blind.
+    func revisionOutcome(_ job: EditJob) -> JobOutcome {
+        if let expected = job.revision?.expectedText, job.deleteCount <= expected.count,
+            revisionTextMatches(job, expected: expected)
+        {
+            var full = job
+            full.replacedText = expected
+            let prepared = prepare(full)
+            if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
+            return runChain(prepared)
+        }
+        feedback.requestCompositionReset()
+        guard let revision = job.revision else { return .executedWithFallback }
+        let part = revision.currentPart(deleteCount: job.deleteCount, insert: job.insertion)
+        var partial = job
+        partial.deleteCount = part.delete.count
+        partial.deleteUTF16Count = part.delete.utf16.count
+        partial.insertion = part.insert
+        partial.replacedText = part.delete
+        let prepared = prepare(partial)
+        if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executedWithFallback }
+        let outcome = runChain(prepared)
+        return outcome == .executed ? .executedWithFallback : outcome
+    }
+
+    /// The app applies posted events on its own schedule: right after this worker posted the jobs before the
+    /// revision (the current token's edits, replayed keys), the field may still show the text before them. A
+    /// mismatch read within `InjectionTiming.revisionSettle` of the last posted event is read once more when that
+    /// window ends, so a slow app does not turn every revision into the current-token fallback (PLT-R357). Bounded:
+    /// one wait of at most that window, on the worker thread, only after a mismatch.
+    private func revisionTextMatches(_ job: EditJob, expected: String) -> Bool {
+        guard job.verifyBeforeApply || job.verifyLateFocus, let field = job.field else { return true }
+        let read = {
+            self.textBeforeCaret(of: field, endsWith: expected, allowingSelection: false, atTokenStart: false)
+        }
+        if read() ?? true { return true }
+        guard let lastPosted else { return false }
+        let settled = MonotonicInstant(
+            nanoseconds: lastPosted.at.nanoseconds &+ InjectionTiming.nanoseconds(InjectionTiming.revisionSettle))
+        guard services.clock.now() < settled else { return false }
+        services.clock.sleep(until: settled)
+        return read() ?? true
     }
 
     /// PLT-R403 NFC, PLT-R480 4,000-grapheme cap, PLT-R402 prefix trim, PLT-R408 first-edit delay.
@@ -92,7 +143,10 @@ extension WorkerCore {
     /// been.
     func lateFocusMatches(_ job: EditJob) -> Bool {
         guard job.verifyLateFocus else { return true }
-        guard let expected = job.replacedText, !expected.isEmpty, let field = job.field else { return false }
+        // A revision carries no replaced text (PLT-R357): its token is the current display, after the separator.
+        guard let expected = job.revision?.currentDisplay ?? job.replacedText, !expected.isEmpty,
+            let field = job.field
+        else { return false }
         return textBeforeCaret(of: field, endsWith: expected, allowingSelection: true, atTokenStart: true) ?? false
     }
 

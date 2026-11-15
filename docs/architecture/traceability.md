@@ -3,7 +3,7 @@
 One row per requirement of `spec/02-platform.md` (PLT-R), `spec/03-product.md` (PRD-R),
 `spec/04-quality-release.md` (QA-R) and `spec/05-clean-room.md` (CLR-R): the owning module or file, how it is
 verified, and the workstream that implements it ([workstreams.md](workstreams.md)). Engine requirements
-(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (342 with PLT-R397A and PLT-R397B of 2026-11-15),
+(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (344 with PLT-R397A and PLT-R397B of 2026-11-15 and PLT-R357 and PLT-R914 of the same day),
 no requirement missing, none duplicated.
 
 ## Legend
@@ -116,6 +116,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R354 | Dead keys pass and reset | `UCKeyTranslateLayoutBuilder`, `KeyClassifier` | U | W1-E, W1-F1 |  |
 | PLT-R355 | Keypad digits are not VNI tone keys | `KeyClassifier` (`fromKeypad`), engine | U, E | W1-F1; engine track |  |
 | PLT-R356 | Navigation keys never edit | `KeyPipeline` | P | W1-F1 |  |
+| PLT-R357 | Revision edit job before the replayed boundary key, read-back and fallback, reset on failure; `features.lookaheadRevision` AND D29, sixteen engine variants | `KeyPipeline+Keys` (`.revision` job, `CommittedToken`), `WorkerCore+Edits` (`revisionOutcome`), `EngineSettingsMapping`, `HostDecisionMapping`, `CompiledRuleSet`, `compat/rules.json` | U (`KeyPipelineRevisionTests`, `RevisionEditJobTests`, `EngineBridgeTests`, `RulesFeatureFlagTests`, `HostDecisionMapperTests`), P (`RevisionConservationPropertyTests`), L (compat-lint) | W11-B |  |
 | PLT-R360 | UCKeyTranslate tables per layout, 4 states | `InputSource/InputSources.swift`, `LayoutTable` | U (system layouts read by ID) | W1-E |  |
 | PLT-R361 | Layout-produced letters (QWERTZ, AZERTY, Dvorak) | `LayoutTable`, `KeyPipeline` | U, I | W1-E, W1-F1; W2-E2 |  |
 | PLT-R362 | Layout ID in diagnostics | `ReportAssembler` | U | W1-G |  |
@@ -220,6 +221,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R911 | No retained engine state or raw keys | `KeyPipeline` | U, review | W1-F1 |  |
 | PLT-R912 | Settings import treated as untrusted | `SettingsStore.previewImport` | U (malformed and fuzzed files) | W1-B |  |
 | PLT-R913 | Reports include only the reported app memory | `ReportAssembler` | U | W1-G |  |
+| PLT-R914 | Collision memory file, validation against the bundled list, thresholds, decay, cap, export and import, nothing recorded in secure contexts or with D28 off, weak signals dropped at a reset | `CollisionMemory`, `CollisionMemoryStore` (SettingsStore), `InputHostController+Notices` (`noteCollisionSignals`), `TapSettingsPublisher.collisionMemoryChanged`, `LearningTracker` (ENG-R862 amendment) | U (`CollisionMemoryTests`, `CollisionMemoryStoreTests`, `CollisionSignalRoutingTests`, `LearnedCollisionEntriesReportTests`) | W11-B |  |
 | PLT-R1001 | Settings location and four files | `SettingsStore`, `StorageLocation`, `Brand` | U | W1-B |  |
 | PLT-R1002 | schemaVersion, writtenBy, unknown keys preserved | `DocumentEnvelope` | U | W1-B |  |
 | PLT-R1003 | Atomic, debounced, serialized writes | `SettingsStore`, `LocalFileSystem` | U | W1-B |  |

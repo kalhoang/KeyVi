@@ -110,7 +110,7 @@ struct RuleChecks {
     let rule: Rule
 
     func findings() -> [LintFinding] {
-        provenanceFindings() + testFindings() + placeholderFindings() + pasteFindings()
+        provenanceFindings() + testFindings() + placeholderFindings() + pasteFindings() + revisionFindings()
     }
 
     private func finding(_ severity: LintFinding.Severity, _ code: LintCode, _ detail: String) -> LintFinding {
@@ -210,5 +210,30 @@ struct RuleChecks {
     private func pasteFindings() -> [LintFinding] {
         guard rule.action.strategy == .paste, rule.action.requiresUserOptIn != true else { return [] }
         return [finding(.error, .pasteWithoutOptIn, "strategy paste requires requiresUserOptIn: true")]
+    }
+
+    /// PLT-R357: `lookaheadRevision: true` only with `backspaceReplace` or `selectReplace` (resolution turns it off
+    /// anyway, so the file would say something it does not do); and where the restore key is off the flag must be
+    /// off too, because the restore key is how a revision is undone (PLT-R353, ENG-R829).
+    private func revisionFindings() -> [LintFinding] {
+        let features = rule.action.features
+        var findings: [LintFinding] = []
+        if features?.lookaheadRevision == true,
+            !DecisionBuilder.revisionStrategies.contains(rule.action.strategy)
+        {
+            findings.append(
+                finding(
+                    .error, .lookaheadRevisionWithoutEditStrategy,
+                    "lookaheadRevision needs strategy backspaceReplace or selectReplace"))
+        }
+        if features?.restoreHotkey == false, features?.lookaheadRevision != false,
+            DecisionBuilder.revisionStrategies.contains(rule.action.strategy)
+        {
+            findings.append(
+                finding(
+                    .error, .lookaheadRevisionWithoutRestoreHotkey,
+                    "restoreHotkey is false, so lookaheadRevision must be false too"))
+        }
+        return findings
     }
 }

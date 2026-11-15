@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.4",
+  "rulesetVersion": "2026.11.5",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -154,7 +154,7 @@
         "strategy": "passThrough",
         "defaultMode": "en",
         "fallback": [],
-        "features": { "macros": false, "restoreHotkey": false }
+        "features": { "macros": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "The web client sends key codes to the remote machine, so injected text arrives as wrong letters or not at all.",
@@ -243,7 +243,11 @@
       "id": "editor.vscodeFamily",
       "summary": "VS Code and its forks: engine code context, Escape keeps its editor meaning",
       "match": { "bundleGroup": "vscodeFamily" },
-      "action": { "strategy": "backspaceReplace", "engineContext": "code", "features": { "restoreHotkey": false } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "engineContext": "code",
+        "features": { "restoreHotkey": false, "lookaheadRevision": false }
+      },
       "provenance": {
         "reason": "Code editors need the engine's code context so words such as 'tar' or 'less' are restored instead of transformed, and Escape closes suggestions and leaves Vim modes there, so it never restores a word (PLT-R353).",
         "evidence": [{ "type": "scenario", "ref": "compat/electron-editors" }],
@@ -262,7 +266,7 @@
         "strategy": "backspaceReplace",
         "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
         "engineContext": "code",
-        "features": { "autoCapitalize": false, "restoreHotkey": false }
+        "features": { "autoCapitalize": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "The integrated terminal feeds keys to a shell like a terminal emulator, and users asked for terminal behaviour there instead of the editor's.",
@@ -283,7 +287,7 @@
         "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
         "requireTextFocus": "never",
         "engineContext": "code",
-        "features": { "autoCapitalize": false, "restoreHotkey": false }
+        "features": { "autoCapitalize": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "TUIs (Claude Code, Kiro CLI) lost or appended letters when backspaces and UTF-8 arrived in one read.",
@@ -331,7 +335,7 @@
         "params": { "interEventDelayUs": 1000, "postDeleteSettleUs": 2000 },
         "requireTextFocus": "never",
         "engineContext": "code",
-        "features": { "restoreHotkey": false }
+        "features": { "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "Escape closes completion popups and tool windows in IDEs, so it never restores a word there (PLT-R353); the rest repeats jvm.default because rules do not merge (PLT-R520).",
@@ -351,7 +355,7 @@
         "strategy": "backspaceReplace",
         "requireTextFocus": "never",
         "engineContext": "code",
-        "features": { "restoreHotkey": false }
+        "features": { "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "Custom text views may not expose an editable AX role, so whenKnown gating could pause typing in a working editor; Escape leaves Vim modes and is a prefix key in Emacs, so it never restores a word there (PLT-R353).",
@@ -367,7 +371,11 @@
       "id": "editor.nativeCodeEditors",
       "summary": "Xcode, Nova and BBEdit: code context, Escape keeps its editor meaning",
       "match": { "bundleIds": ["com.apple.dt.Xcode", "com.panic.Nova", "com.barebones.bbedit"] },
-      "action": { "strategy": "backspaceReplace", "engineContext": "code", "features": { "restoreHotkey": false } },
+      "action": {
+        "strategy": "backspaceReplace",
+        "engineContext": "code",
+        "features": { "restoreHotkey": false, "lookaheadRevision": false }
+      },
       "provenance": {
         "reason": "Escape opens or closes code completion in these editors, so it never restores a word there (PLT-R353), and code editors get the engine's code context (ENG-R850).",
         "evidence": [{ "type": "scenario", "ref": "compat/native-code-editors" }],
@@ -414,7 +422,7 @@
         "strategy": "passThrough",
         "defaultMode": "en",
         "fallback": [],
-        "features": { "macros": false, "restoreHotkey": false }
+        "features": { "macros": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "Clients translate keycodes; injected text arrives as wrong letters ('a' for everything) or nothing.",
@@ -444,7 +452,7 @@
         "strategy": "passThrough",
         "defaultMode": "en",
         "fallback": [],
-        "features": { "macros": false, "restoreHotkey": false }
+        "features": { "macros": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "Games read key codes for their controls; transforming letters added input lag and changed controls.",
@@ -464,7 +472,7 @@
         "strategy": "backspaceReplace",
         "params": { "inlineCompletion": "axSelection" },
         "overlay": true,
-        "features": { "restoreHotkey": false }
+        "features": { "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "Spotlight is a non-activating panel with inline completion: 'books' gave 'boôooks' and 'cố' gave 'coố'. On macOS 27.2 the product owner saw 'tex' give 'teẽ', 'vieejt' give 'vieêệt' and, on the second opening, Escape restore the word (2026-11-14): opening and closing Spotlight posts no app activation, so this rule did not apply until a key after a pause revalidated the focus. PLT-R389 now revalidates after Command+Space, Escape, Return, Tab and clicks, and on every key while this rule applies.",
@@ -489,7 +497,7 @@
         "strategy": "backspaceReplace",
         "params": { "inlineCompletion": "axSelection" },
         "overlay": true,
-        "features": { "restoreHotkey": false }
+        "features": { "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
         "reason": "The panels take keyboard focus without becoming frontmost, so the remembered mode was ignored, and their search fields complete inline.",

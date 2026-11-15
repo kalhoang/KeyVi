@@ -16,7 +16,7 @@ private let settingNames = [
     "typingMethod", "tonePlacement", "englishRestore", "telexStandaloneW", "telexBracketKeys", "restoreHotkey",
     "macrosEnabled", "macrosInEnglishMode", "toggleHotkey", "rememberPerApp", "firstSeenAppMode",
     "showSwitchIndicator", "soundOnSwitch", "clickIconToToggle", "interfaceLanguage", "automaticallyCheckForUpdates",
-    "automaticallyInstallUpdates", "updateChannel", "layoutBinding",
+    "automaticallyInstallUpdates", "updateChannel", "layoutBinding", "learnCollisionChoices", "lookaheadRevision",
 ]
 
 /// The user lists, reported by name when non-empty.
@@ -45,6 +45,8 @@ private func everythingSet() -> UserSettings {
     user.automaticallyInstallUpdates = .set(false)
     user.updateChannel = .set(.beta)
     user.layoutBinding = .set(LayoutModeBinding(enabled: true))
+    user.learnCollisionChoices = .set(false)  // D28
+    user.lookaheadRevision = .set(defaults.lookaheadRevision)  // D29
     return user
 }
 

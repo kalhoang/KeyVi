@@ -36,6 +36,8 @@ extension InputHostController {
             if byTimeout, session?.thread.isEnabled == true { counters.tapRecoveries.increment() }
         case .learning(let signal, let bundle):
             noteLearning(signal, in: bundle)
+        case .collisionSignals(let signals, let recordable):
+            noteCollisionSignals(signals, recordable: recordable)
         case .echoMissed:
             checkPostAccessAfterEchoMiss()
         case .postingBroken:
@@ -62,10 +64,22 @@ extension InputHostController {
     /// promotable in Settings). `app` is the app the tap saw the token committed in, not the focus at drain time.
     /// The word is content: it goes to the settings store only, never to a log.
     func noteLearning(_ signal: LearningSignal, in app: BundleKey?) {
-        guard let proposal = learning.note(signal, in: app) else { return }
+        guard let proposal = learning.note(signal, in: app, collisionWords: collisionWords.current) else { return }
         let store = settingsStore
         Task { await store.updateSettings { proposal.apply(to: &$0) } }
         onEvent?(.learningProposal(proposal))
+    }
+
+    /// ENG-R864, PLT-R914: collision signals go to the learned memory on the utility queue (it writes with its own
+    /// debounce). Nothing is recorded in a secure field, where the rule turns English restore off (`recordable`),
+    /// while the system reports secure input, or with D28 off. The words are bundled vocabulary and are never
+    /// logged; diagnostics show the entry count only.
+    func noteCollisionSignals(_ signals: [CollisionSignal], recordable: Bool) {
+        guard recordable, settings?.effective.learnCollisionChoices == true else { return }
+        guard !channels.snapshots.secureInput.load().enabled else { return }
+        let memory = settingsStore.collisionMemory
+        let mapped = CollisionMemoryBridge.signals(signals)
+        dependencies.utilityQueue.async { memory.apply(mapped) }
     }
 
     // MARK: State shown by the shell

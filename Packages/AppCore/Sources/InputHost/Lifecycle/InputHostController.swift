@@ -170,6 +170,8 @@ public final class InputHostController {
     var conflictsReported = false
     var conflictsRescanned = false
     var learning = LearningTracker()
+    /// The bundled collision list, set on the utility queue at start, read by the learning tracker on main.
+    let collisionWords = CollisionVocabularyBox()
     /// Hands the ax thread's memory documents to the settings store in order (PLT-R392).
     var appModesRecorder: AppModesRecorder?
     var inactiveReasons: Set<SessionInactiveReason> = []
@@ -246,6 +248,12 @@ public final class InputHostController {
         refresh.connect { [weak self] in self?.refreshState() }
         makeMonitors()
         connectSignals()
+        // ENG-R865: every change of the learned memory's votes reaches the engines through the publisher, which keeps
+        // the settings revision so the tap swaps at a hard boundary.
+        let publisher = settingsPublisher
+        settingsStore.collisionMemory.setObserver { votes in
+            publisher.collisionMemoryChanged(CollisionMemoryBridge.snapshot(votes))
+        }
     }
 
     /// Ready after launch within 300 ms target / 1 s gate when permissions are granted (S1). The first settings
@@ -257,8 +265,18 @@ public final class InputHostController {
         self.rules = rules
         self.settings = settings
         let publisher = settingsPublisher
+        let memory = settingsStore.collisionMemory
+        let collisionWords = self.collisionWords
         dependencies.utilityQueue.sync {
             publisher.preloadResources()
+            // PLT-R914: the memory is validated against the bundled list and loaded before the first catalog, so the
+            // first engines already carry it. Crash-loop safe mode touches no file (PLT-R1009). Without the bundled
+            // list (it failed to load) the memory stays unloaded: nothing is recorded and the file is never
+            // rewritten (PLT-R1006).
+            if let vocabulary = publisher.collisionVocabulary() {
+                collisionWords.set(vocabulary)
+                if !settings.safeMode { memory.load(vocabulary: vocabulary) }
+            }
             publisher.publish(settings)
         }
         startServices(rules: rules, settings: settings)

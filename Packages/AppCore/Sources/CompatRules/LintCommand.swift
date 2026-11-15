@@ -212,6 +212,8 @@ extension LintCode {
         case .tier1MatrixRowOlderThan90Days: "Tier 1 row older than 90 days (PLT-R531)"
         case .matrixRuleUnknown: "matrix ruleId is not a shipped rule"
         case .pasteWithoutOptIn: "paste without requiresUserOptIn (PLT-R460)"
+        case .lookaheadRevisionWithoutEditStrategy: "lookaheadRevision on a strategy that cannot carry it (PLT-R357)"
+        case .lookaheadRevisionWithoutRestoreHotkey: "lookaheadRevision where the restore key is off (PLT-R357)"
         }
     }
 }

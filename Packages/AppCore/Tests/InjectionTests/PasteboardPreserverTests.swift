@@ -247,6 +247,36 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
         }
     }
 
+    /// PLT-R461 step 1, PLT-R462: the snapshot never asks for a plain-text conversion of a plain-text type it saved.
+    /// For items this process wrote (as after every restore) that request makes AppKit fulfil the conversion
+    /// synchronously on the bounded-read thread ("synchronous promise fulfillment requested from a background
+    /// thread"), a suspected source of the runner's intermittent SIGSEGV (never reproduced); the restore lets the
+    /// server derive it again. The real pasteboard round trip, then the types asked of an item, counted.
+    @Test func theSnapshotSkipsPlainTextConversionsOfItemsThisProcessWrote() throws {
+        try withUniquePasteboard { name, pasteboard in
+            write(twoItems, to: pasteboard)
+            let derived = pasteboard.pasteboardItems?.first?.types.map(\.rawValue) ?? []
+            #expect(derived.contains(utf16Plain), "the server no longer derives the type")
+            let access = NSPasteboardAccess(pasteboardName: name)
+            let snapshot = try access.snapshot(limits: generousLimits)
+            #expect(snapshot.items.first?.types == [plain, "public.rtf"])
+            try access.restore(snapshot)
+            #expect(pasteboard.string(forType: .string) == "xin chào")
+        }
+        let item = CountingItem(types: [plain, utf16Plain, "public.rtf"], missing: [])
+        let saved = try PasteboardIO.readItem(item) { _ in }
+        #expect(item.asked == [plain, "public.rtf"], "the conversion is never asked for")
+        #expect(saved.types == [plain, "public.rtf"])
+    }
+
+    /// Without a saved plain-text type the conversion is the only text there is, so it is read.
+    @Test func aConversionIsReadWhenNoPlainTextTypeWasSaved() throws {
+        let item = CountingItem(types: [plain, utf16Plain], missing: [plain])
+        let saved = try PasteboardIO.readItem(item) { _ in }
+        #expect(item.asked == [plain, utf16Plain])
+        #expect(saved.types == [utf16Plain])
+    }
+
     @Test func emptyPasteboardRoundTrips() throws {
         try withUniquePasteboard { name, pasteboard in
             pasteboard.clearContents()
@@ -286,4 +316,23 @@ private final class SilentProvider: NSObject, NSPasteboardItemDataProvider {
     func pasteboard(
         _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
     ) {}
+}
+
+private let utf16Plain = "public.utf16-external-plain-text"
+
+/// An item that records which types the snapshot asked for; `missing` types give no data.
+private final class CountingItem: PasteboardItemReading {
+    let typeNames: [String]
+    private let missing: Set<String>
+    private(set) var asked: [String] = []
+
+    init(types: [String], missing: Set<String>) {
+        typeNames = types
+        self.missing = missing
+    }
+
+    func data(forTypeName type: String) -> Data? {
+        asked.append(type)
+        return missing.contains(type) ? nil : Data(type.utf8)
+    }
 }

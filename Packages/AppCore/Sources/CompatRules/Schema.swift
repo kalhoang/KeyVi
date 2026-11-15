@@ -222,14 +222,18 @@ public struct RuleFeatures: Sendable, Hashable, Codable {
     public var macros: Bool?
     public var englishRestore: Bool?
     public var restoreHotkey: Bool?
+    /// PLT-R357: the engine may revise the previous word when the next one commits (ENG-R828, D29).
+    public var lookaheadRevision: Bool?
 
     public init(
-        autoCapitalize: Bool? = nil, macros: Bool? = nil, englishRestore: Bool? = nil, restoreHotkey: Bool? = nil
+        autoCapitalize: Bool? = nil, macros: Bool? = nil, englishRestore: Bool? = nil, restoreHotkey: Bool? = nil,
+        lookaheadRevision: Bool? = nil
     ) {
         self.autoCapitalize = autoCapitalize
         self.macros = macros
         self.englishRestore = englishRestore
         self.restoreHotkey = restoreHotkey
+        self.lookaheadRevision = lookaheadRevision
     }
 }
 

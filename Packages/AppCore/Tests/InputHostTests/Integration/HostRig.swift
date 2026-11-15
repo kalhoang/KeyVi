@@ -202,7 +202,7 @@ final class HostRig {
         layoutData: [InputSourceID: KeyboardLayoutData]? = nil, builder: (any LayoutTableBuilding)? = nil,
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
         capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil,
-        nestedHops: Bool = false
+        nestedHops: Bool = false, loadBundled: TapSettingsPublisher.BundledResourcesLoader? = nil
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -240,7 +240,8 @@ final class HostRig {
             makeTapThread: Self.gatedThreadMaker(
                 TapSession.productionThreadMaker(factory: dependencies.tapFactory), exitGate, contexts),
             tapClock: MachClock(),
-            loadBundled: realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources,
+            loadBundled: loadBundled
+                ?? (realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources),
             macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false, mainSignalQueue: mainSignalQueue)
         controller.onEvent = { [weak self] in self?.events.append($0) }
         focusEditor()

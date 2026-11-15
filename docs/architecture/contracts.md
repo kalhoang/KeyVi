@@ -3295,12 +3295,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
+        /// Entries of the learned collision memory: the count only, never a word (PLT-R901, PLT-R914). Nil when the
+        /// report was built without it.
+        public var learnedCollisionEntries: Int?
 
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
             toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, interfaceLanguage: InterfaceLanguage,
-            updateChannel: UpdateChannel, explicitlySetKeys: [String]
+            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -3316,6 +3319,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys
+            self.learnedCollisionEntries = learnedCollisionEntries
         }
     }
 
@@ -4035,6 +4039,11 @@ public struct UserSettings: Sendable, Hashable {
     public var automaticallyInstallUpdates: Setting<Bool> = .unset  // D20
     public var updateChannel: Setting<UpdateChannel> = .unset  // D21
     public var layoutBinding: Setting<LayoutModeBinding> = .unset  // PLT-R373 "layoutBinding"
+    /// D28 "learnCollisionChoices": learn which reading of a collision word the user chooses (ENG-R863, PLT-R914).
+    public var learnCollisionChoices: Setting<Bool> = .unset
+    /// D29 "lookaheadRevision": revise the previous word once the next word shows the language (ENG-R828,
+    /// PLT-R357). ANDed per app with the rule's `features.lookaheadRevision`.
+    public var lookaheadRevision: Setting<Bool> = .unset
 
     /// ENG-R860 user lists, keyed by lowercased raw keys ("englishRestoreLists" object). User-authored
     /// settings, allowed on disk (PLT-R901 a).
@@ -4104,6 +4113,8 @@ public struct EffectiveSettings: Sendable, Hashable {
     public var automaticallyInstallUpdates: Bool
     public var updateChannel: UpdateChannel
     public var layoutBinding: LayoutModeBinding
+    public var learnCollisionChoices: Bool
+    public var lookaheadRevision: Bool
     public var keepAsTyped: Set<String>
     public var keepVietnamese: Set<String>
     public var optedInRules: Set<RuleID>
@@ -4131,6 +4142,8 @@ public enum DefaultSettings {
         automaticallyInstallUpdates: true,  // D20
         updateChannel: .stable,  // D21
         layoutBinding: LayoutModeBinding(),
+        learnCollisionChoices: true,  // D28 on (decision of the product owner, 15/11/2026)
+        lookaheadRevision: true,  // D29 on, also at Return in chat apps (decision of the product owner, 15/11/2026)
         keepAsTyped: [],
         keepVietnamese: [],
         optedInRules: []
@@ -4161,6 +4174,8 @@ extension UserSettings {
                 default: defaults.automaticallyInstallUpdates),
             updateChannel: updateChannel.resolved(default: defaults.updateChannel),
             layoutBinding: layoutBinding.resolved(default: defaults.layoutBinding),
+            learnCollisionChoices: learnCollisionChoices.resolved(default: defaults.learnCollisionChoices),
+            lookaheadRevision: lookaheadRevision.resolved(default: defaults.lookaheadRevision),
             keepAsTyped: keepAsTyped,
             keepVietnamese: keepVietnamese,
             optedInRules: optedInRules
@@ -4421,6 +4436,10 @@ public actor SettingsStore {
     let launchGuard: LaunchGuard
     let scheduler: any DebounceScheduler
     let onChange: @Sendable (SettingsState) -> Void
+    /// The collision memory (PLT-R914) in the same folder, written on the same queue. InputHost loads it with the
+    /// bundled list and feeds it; the Settings window reads its votes and clears it; export, import and the
+    /// Typing pane reset go through this actor.
+    public nonisolated let collisionMemory: CollisionMemoryStore
 
     var user = UserSettings()
     var appModes = AppModesDocument()
@@ -4459,8 +4478,11 @@ public actor SettingsStore {
         self.writtenBy = writtenBy
         self.migrations = migrations
         self.launchGuard = launchGuard
-        self.scheduler = scheduler ?? DispatchDebounceScheduler(queue: queue)
+        let debounce = scheduler ?? DispatchDebounceScheduler(queue: queue)
+        self.scheduler = debounce
         self.onChange = onChange
+        collisionMemory = CollisionMemoryStore(
+            location: location, fileSystem: fileSystem, wallClock: wallClock, scheduler: debounce, writtenBy: writtenBy)
     }
 
     /// Loads all four files: migrate (with backups), recover from corruption (PLT-R1006), detect newer
@@ -4563,6 +4585,7 @@ public actor SettingsStore {
 
     /// Writes pending changes immediately (quit, update install).
     public func flush() {
+        collisionMemory.flush()
         var noticesChanged = false
         for file in SettingsFile.allCases {
             cancelPendingWrite(file)
@@ -4570,6 +4593,19 @@ public actor SettingsStore {
         }
         if noticesChanged { publish() }
     }
+
+    // MARK: Collision memory (PLT-R914, PRD-R78)
+
+    /// The learned-words sheet's rows: entries that vote for a side, never counters.
+    public func learnedCollisionChoices() -> [CollisionMemoryVote] { collisionMemory.learnedChoices }
+
+    /// One row removed (`context` nil: the any-context entry).
+    public func forgetCollisionChoice(word: String, context: CollisionMemoryContext?) {
+        collisionMemory.forget(word: word, context: context)
+    }
+
+    /// "Xóa tất cả" (PRD-R78): every entry, acceptance counters included; the file is deleted.
+    public func clearCollisionMemory() { collisionMemory.clearAll() }
 
     // MARK: Export and import (PLT-R1010, PRD-R72)
 
@@ -4600,7 +4636,8 @@ public actor SettingsStore {
 //       "settings": { ...settings.json without envelope... },
 //       "appModes": { ...app-modes.json without envelope... },   // optional (unticked = absent)
 //       "ruleOverrides": [ ...stored overrides... ],
-//       "macros": [ ...stored macros... ]                         // optional (unticked = absent)
+//       "macros": [ ...stored macros... ],                        // optional (unticked = absent)
+//       "collisionMemory": [ ...collision-memory.json entries... ]  // optional (PLT-R914, merged on import)
 //     }
 //
 // File name: `<slug>-settings-YYYYMMDD.json` (slug injected by the App).
@@ -4611,9 +4648,12 @@ public import Foundation
 public struct ExportOptions: Sendable, Hashable {
     public var includeMacros: Bool  // the sheet notes that macros may contain private text
     public var includeAppModes: Bool
-    public init(includeMacros: Bool = true, includeAppModes: Bool = true) {
+    /// The learned collision choices (PLT-R914, PRD-R72).
+    public var includeCollisionMemory: Bool
+    public init(includeMacros: Bool = true, includeAppModes: Bool = true, includeCollisionMemory: Bool = true) {
         self.includeMacros = includeMacros
         self.includeAppModes = includeAppModes
+        self.includeCollisionMemory = includeCollisionMemory
     }
 
     /// `<slug>-settings-YYYYMMDD.json`, dated in the user's time zone.
@@ -4636,6 +4676,8 @@ public struct ImportPreview: Sendable, Hashable {
     public var appEntries: Int
     public var ruleOverrides: Int
     public var macros: MacroImportPreview?
+    /// Entries of the `collisionMemory` section that passed the shape checks (words are checked at merge).
+    public var collisionMemoryEntries = 0
     /// Keys from a newer schema that this build will skip (PLT-R1010).
     public var skippedFields: [String]
     /// Opaque validated content applied by `applyImport`.
@@ -4649,15 +4691,19 @@ public struct ImportChoices: Sendable, Hashable {
     /// Off = the macros in the file are ignored (the preview still lists them).
     public var applyMacros: Bool
     public var macroDuplicates: MacroDuplicateResolution
+    /// The learned collision choices, merged by adding counters (PRD-R72).
+    public var applyCollisionMemory: Bool
     public init(
         applySettings: Bool = true, applyAppModes: Bool = true, applyRuleOverrides: Bool = true,
-        applyMacros: Bool = true, macroDuplicates: MacroDuplicateResolution = .keepMine
+        applyMacros: Bool = true, macroDuplicates: MacroDuplicateResolution = .keepMine,
+        applyCollisionMemory: Bool = true
     ) {
         self.applySettings = applySettings
         self.applyAppModes = applyAppModes
         self.applyRuleOverrides = applyRuleOverrides
         self.applyMacros = applyMacros
         self.macroDuplicates = macroDuplicates
+        self.applyCollisionMemory = applyCollisionMemory
     }
 }
 
@@ -4688,7 +4734,8 @@ public enum SettingsExportFormat {
     public static let maxImportBytes = 5 * 1024 * 1024
     static let headerKeys: Set<String> = ["kind", "schemaVersion", "writtenBy", "exportedAt"]
     static let settings = "settings", appModes = "appModes", ruleOverrides = "ruleOverrides", macros = "macros"
-    static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros]
+    static let collisionMemory = "collisionMemory"
+    static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros, collisionMemory]
 }
 
 /// The store's documents as an import is previewed against them.
@@ -4736,6 +4783,11 @@ struct SettingsImporter {
             skipped += RuleOverridesCodec.skippedPaths(in: object).map { "ruleOverrides." + $0 }
             preview.ruleOverrides = overrides.count
             content[SettingsExportFormat.ruleOverrides] = .array(RuleOverridesCodec.encodeList(overrides, over: []))
+        }
+        if let items = try arraySection(root, SettingsExportFormat.collisionMemory) {
+            let imported = CollisionMemoryStore.importedEntries(items)
+            preview.collisionMemoryEntries = imported.count
+            content[SettingsExportFormat.collisionMemory] = .array(CollisionMemoryCodec.encodeEntries(imported))
         }
         if let items = try arraySection(root, SettingsExportFormat.macros) {
             let object = try migrated(["macros": .array(items)], file: .macros, from: version)
@@ -5569,14 +5621,18 @@ public struct RuleFeatures: Sendable, Hashable, Codable {
     public var macros: Bool?
     public var englishRestore: Bool?
     public var restoreHotkey: Bool?
+    /// PLT-R357: the engine may revise the previous word when the next one commits (ENG-R828, D29).
+    public var lookaheadRevision: Bool?
 
     public init(
-        autoCapitalize: Bool? = nil, macros: Bool? = nil, englishRestore: Bool? = nil, restoreHotkey: Bool? = nil
+        autoCapitalize: Bool? = nil, macros: Bool? = nil, englishRestore: Bool? = nil, restoreHotkey: Bool? = nil,
+        lookaheadRevision: Bool? = nil
     ) {
         self.autoCapitalize = autoCapitalize
         self.macros = macros
         self.englishRestore = englishRestore
         self.restoreHotkey = restoreHotkey
+        self.lookaheadRevision = lookaheadRevision
     }
 }
 
@@ -5766,16 +5822,22 @@ public struct ResolvedFeatures: Sendable, Hashable, Codable {
     public var macros: Bool
     public var englishRestore: Bool
     public var restoreHotkey: Bool
+    /// PLT-R357: the rule allows revising the previous word, and its strategy is one whose edits a revision can
+    /// ride on (`backspaceReplace` or `selectReplace`). The host ANDs it with the user's D29.
+    public var lookaheadRevision: Bool
 
     /// 5.4: all true except `autoCapitalize`.
     public static let defaults = ResolvedFeatures(
-        autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
+        autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true, lookaheadRevision: true)
 
-    public init(autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool) {
+    public init(
+        autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool, lookaheadRevision: Bool = true
+    ) {
         self.autoCapitalize = autoCapitalize
         self.macros = macros
         self.englishRestore = englishRestore
         self.restoreHotkey = restoreHotkey
+        self.lookaheadRevision = lookaheadRevision
     }
 }
 
@@ -6140,6 +6202,8 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case tier1MatrixRowOlderThan90Days  // PLT-R531, 13.3 (release mode)
     case matrixRuleUnknown
     case pasteWithoutOptIn  // PLT-R460
+    case lookaheadRevisionWithoutEditStrategy  // PLT-R357: the flag is on with a strategy that cannot carry it
+    case lookaheadRevisionWithoutRestoreHotkey  // PLT-R357, PLT-R353: a revision the restore key cannot undo
 }
 
 public struct RulesLinter: Sendable {
@@ -6307,6 +6371,59 @@ public struct KeyEventRecord: Sendable, Hashable, BitwiseCopyable {
 
 public enum EditKind: UInt8, Sendable, Hashable {
     case compose, backspaceRecompose, restore, macro, reentry
+    /// PLT-R357: a commit that also revises the previous token (ENG-R828): one edit over the previous token, its
+    /// space and the current token, before the boundary key is replayed.
+    case revision
+}
+
+/// The text a commit left on screen for its token, kept as the pieces the tap already holds, so the tap builds no
+/// string (PLT-R304): the worker computes `text`. Content: never logged, kept only until the next commit or reset
+/// (PLT-R911).
+public struct CommittedToken: Sendable, Hashable {
+    /// The token's display before the commit.
+    public var display: String
+    /// Graphemes the commit edit deleted (0 without an edit); a revising commit deletes into the previous token.
+    public var deleteCount: Int
+    /// What the commit edit inserted (empty without an edit).
+    public var insert: String
+
+    public init(display: String, deleteCount: Int = 0, insert: String = "") {
+        self.display = display
+        self.deleteCount = deleteCount
+        self.insert = insert
+    }
+
+    /// The token's text after the commit: the end of `display` the edit kept plus the insertion, from its last
+    /// space on (a revising commit's insertion also holds the previous token and the space; words have no spaces).
+    public var text: String {
+        let kept = display.dropLast(min(deleteCount, display.count))
+        let joined = String(kept) + insert
+        guard let space = joined.lastIndex(of: " ") else { return joined }
+        return String(joined[joined.index(after: space)...])
+    }
+}
+
+/// PLT-R357: what the worker needs to verify a revision edit and, on a mismatch, to apply only the current token.
+public struct RevisionEdit: Sendable, Hashable {
+    /// The previous token as its own commit left it; nil when the pipeline does not know it.
+    public var previous: CommittedToken?
+    /// The current token's display before this commit: the end of the text the edit replaces.
+    public var currentDisplay: String
+
+    public init(previous: CommittedToken?, currentDisplay: String) {
+        self.previous = previous
+        self.currentDisplay = currentDisplay
+    }
+
+    /// The text before the caret the revision expects: the previous token, one space, the current display
+    /// (ENG-R828: exactly one space between them). Nil when the previous token is unknown.
+    public var expectedText: String? { previous.map { $0.text + " " + currentDisplay } }
+
+    /// The current token's part of a revision that deletes `deleteCount` graphemes and inserts `insert`: delete
+    /// its display, insert its new text.
+    public func currentPart(deleteCount: Int, insert: String) -> (delete: String, insert: String) {
+        (currentDisplay, CommittedToken(display: currentDisplay, deleteCount: deleteCount, insert: insert).text)
+    }
 }
 
 /// Key codes resolved on the tap from the current layout table (PLT-R405, PLT-R461 step 3).
@@ -6375,12 +6492,15 @@ public struct EditJob: Sendable {
     /// selection, when an inline completion is selected) ends with `replacedText`; otherwise the trigger passes
     /// through and the composition is reset. Strict, unlike `verifyBeforeApply`: an unreadable field fails.
     public var verifyLateFocus: Bool
+    /// Kind `.revision` only (PLT-R357): the previous token and the current display, for the PLT-R342 check.
+    public var revision: RevisionEdit?
 
     public init(
         sequence: JobSequence, generation: FocusGeneration, plan: InjectionPlan, field: FieldHandle?,
         kind: EditKind, deleteCount: Int, deleteUTF16Count: Int, replacedText: String?, insertion: String,
         keyCodes: JobKeyCodes, trigger: KeyEventRecord?, verifyBeforeApply: Bool,
-        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false
+        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false,
+        revision: RevisionEdit? = nil
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -6398,6 +6518,7 @@ public struct EditJob: Sendable {
         self.createdAt = createdAt
         self.isProbe = isProbe
         self.verifyLateFocus = verifyLateFocus
+        self.revision = revision
     }
 }
 
@@ -7474,10 +7595,14 @@ public struct EngineVariant: Sendable, Hashable {
     public var appContext: EngineContextKind
     public var englishRestore: Bool
     public var macros: Bool
-    public init(appContext: EngineContextKind, englishRestore: Bool, macros: Bool) {
+    /// The rule allows revising the previous word (`features.lookaheadRevision`, PLT-R357); the engine gets it
+    /// ANDed with the user's D29 (ENG-R829).
+    public var lookaheadRevision: Bool
+    public init(appContext: EngineContextKind, englishRestore: Bool, macros: Bool, lookaheadRevision: Bool = true) {
         self.appContext = appContext
         self.englishRestore = englishRestore
         self.macros = macros
+        self.lookaheadRevision = lookaheadRevision
     }
 
     public static let `default` = EngineVariant(appContext: .general, englishRestore: true, macros: true)
@@ -7790,8 +7915,8 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     }
 }
 
-/// Eight prebuilt engines: appContext x englishRestore x macros (ENG-R850, `features`, ENG-R1107). Lookup is an
-/// array index, so the tap never hashes or allocates to find an engine.
+/// Sixteen prebuilt engines: appContext x englishRestore x macros x lookaheadRevision (ENG-R850, `features`,
+/// ENG-R1107, PLT-R357). Lookup is an array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
     private let slots: [VietnameseEngine.Engine]
     /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
@@ -7799,14 +7924,20 @@ public struct EngineCatalog: Sendable {
     /// tap rebuilds only the hotkeys and keeps the word being typed. `nil` means unknown: every new settings
     /// generation builds a fresh engine, the safe default.
     public let revision: UInt64?
+    /// Identifies the learned collision memory the engines carry (ENG-R865). A catalog whose `revision` is the
+    /// previous one and whose `memoryRevision` is new differs only by the memory: the tap swaps it in at the next
+    /// hard boundary instead of resetting the word being typed (ENG-R1211).
+    public let memoryRevision: UInt64
 
     /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
-    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil) {
+    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil, memoryRevision: UInt64 = 0)
+    {
         let fallback =
             engines[.default] ?? engines.values.first
             ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
         slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
         self.revision = revision
+        self.memoryRevision = memoryRevision
     }
 
     public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { slots[variant.catalogIndex] }
@@ -7852,9 +7983,10 @@ public enum EngineBridge {
     /// `revision` identifies the engine-affecting settings (see `EngineCatalog.revision`); the publisher bumps it
     /// only when the catalog's inputs change.
     public static func catalog(
-        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil
+        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil, memoryRevision: UInt64 = 0
     ) -> EngineCatalog {
-        EngineSettingsMapping.catalog(settings: settings, resources: resources, revision: revision)
+        EngineSettingsMapping.catalog(
+            settings: settings, resources: resources, revision: revision, memoryRevision: memoryRevision)
     }
 }
 ```
@@ -7944,6 +8076,10 @@ public enum MainNotice: Sendable {
     /// on the tap with the snapshot it already holds, so the word belongs to that app whenever main drains the
     /// outbox (the focus may have moved by then).
     case learning(LearningSignal, bundle: BundleKey?)
+    /// ENG-R864, PLT-R914: signals for words of the bundled collision list. `recordable` is false in a secure field
+    /// and in an app whose rule turns English restore off; main drops those, and drops everything under secure
+    /// input or with D28 off. The words are never logged.
+    case collisionSignals([CollisionSignal], recordable: Bool)
     /// First echo miss of a run: the utility queue checks `CGPreflightPostEventAccess()` (ADR 0311).
     case echoMissed
     /// Three consecutive misses: the tap already failed open in this callback (PLT-R730).
@@ -8082,7 +8218,8 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
                 secureGeneration: secureInput.generation, lifecycleGeneration: lifecycle.generation,
                 resetCount: context.feedback.compositionResetCount, stateCode: nil, secureResumedGeneration: nil,
                 postingBroken: context.feedback.isPostingBroken,
-                pasteKeyCode: inputSource.table?.keyCode(producing: "v"), engineRevision: settings.engines.revision)
+                pasteKeyCode: inputSource.table?.keyCode(producing: "v"), engineRevision: settings.engines.revision,
+                memoryRevision: settings.engines.memoryRevision)
             return (
                 factory.makeEngine(for: focus.decision.variant, settings: settings),
                 Factory.Hotkeys(toggle: settings.toggleHotkey, restore: settings.restoreHotkey), observed,
@@ -9205,6 +9342,8 @@ public final class InputHostController {
     var conflictsReported = false
     var conflictsRescanned = false
     var learning = LearningTracker()
+    /// The bundled collision list, set on the utility queue at start, read by the learning tracker on main.
+    let collisionWords = CollisionVocabularyBox()
     /// Hands the ax thread's memory documents to the settings store in order (PLT-R392).
     var appModesRecorder: AppModesRecorder?
     var inactiveReasons: Set<SessionInactiveReason> = []
@@ -9281,6 +9420,12 @@ public final class InputHostController {
         refresh.connect { [weak self] in self?.refreshState() }
         makeMonitors()
         connectSignals()
+        // ENG-R865: every change of the learned memory's votes reaches the engines through the publisher, which keeps
+        // the settings revision so the tap swaps at a hard boundary.
+        let publisher = settingsPublisher
+        settingsStore.collisionMemory.setObserver { votes in
+            publisher.collisionMemoryChanged(CollisionMemoryBridge.snapshot(votes))
+        }
     }
 
     /// Ready after launch within 300 ms target / 1 s gate when permissions are granted (S1). The first settings
@@ -9292,8 +9437,18 @@ public final class InputHostController {
         self.rules = rules
         self.settings = settings
         let publisher = settingsPublisher
+        let memory = settingsStore.collisionMemory
+        let collisionWords = self.collisionWords
         dependencies.utilityQueue.sync {
             publisher.preloadResources()
+            // PLT-R914: the memory is validated against the bundled list and loaded before the first catalog, so the
+            // first engines already carry it. Crash-loop safe mode touches no file (PLT-R1009). Without the bundled
+            // list (it failed to load) the memory stays unloaded: nothing is recorded and the file is never
+            // rewritten (PLT-R1006).
+            if let vocabulary = publisher.collisionVocabulary() {
+                collisionWords.set(vocabulary)
+                if !settings.safeMode { memory.load(vocabulary: vocabulary) }
+            }
             publisher.publish(settings)
         }
         startServices(rules: rules, settings: settings)
@@ -15646,11 +15801,19 @@ public import VietnameseEngine
 /// last vowel, w -> ư), enough to exercise deletes and inserts without the real engine. Rules in
 /// `ScriptedComposer`.
 public struct ScriptedEngine: CompositionEngine {
-    private var composer = ScriptedComposer()
+    private var composer: ScriptedComposer
     private let log: EngineEventLog?
 
-    public init() { log = nil }
-    init(log: EngineEventLog?) { self.log = log }
+    /// `revisions`: `EngineConfiguration.lookaheadRevision` (ENG-R829); the factory passes the variant's flag.
+    public init(revisions: Bool = true) {
+        log = nil
+        composer = ScriptedComposer(revisions: revisions)
+    }
+
+    init(log: EngineEventLog?, revisions: Bool = true) {
+        self.log = log
+        composer = ScriptedComposer(revisions: revisions)
+    }
 
     public mutating func handle(_ event: EngineEvent) -> EngineOutput {
         log?.handled(event)
@@ -15671,7 +15834,57 @@ public struct ScriptedEngineFactory: CompositionEngineFactory, Sendable {
 
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine {
         log?.made(variant)
-        return ScriptedEngine(log: log)
+        return ScriptedEngine(log: log, revisions: variant.lookaheadRevision)
+    }
+}
+
+/// The text a field shows once the scripted engines' outputs for a logged run are applied in order, the way the
+/// pipeline applies them: a key that passes is typed, an edit deletes and inserts, a boundary key that follows an
+/// edit is typed after it (P0-3), Return, Tab and Escape type nothing (as `SimulatedTextField`); a new engine starts
+/// fresh. For a run in which every job executed, the field must show exactly this: every character the engine
+/// deleted was re-inserted or replaced exactly once (PLT-R312, PLT-R357).
+public struct ScriptedFieldModel: Sendable {
+    public private(set) var text = ""
+    /// Commits that revised the previous token (ENG-R828) and toggles that undid one (ENG-R829).
+    public private(set) var revisions = 0
+    public private(set) var undos = 0
+
+    public init(entries: [EngineEventLog.Entry]) {
+        var composer = ScriptedComposer()
+        var characters: [Character] = []
+        for entry in entries {
+            switch entry {
+            case .made(let variant): composer = ScriptedComposer(revisions: variant.lookaheadRevision)
+            case .event(let event):
+                let output = composer.handle(event)
+                if output.revision != nil { revisions += 1 }
+                if case .restoreToggle = event, !output.collisionSignals.isEmpty, case .edit = output.action {
+                    if output.composingText.isEmpty { undos += 1 }
+                }
+                Self.apply(output, of: event, to: &characters)
+            }
+        }
+        text = String(characters)
+    }
+
+    private static func apply(_ output: EngineOutput, of event: EngineEvent, to text: inout [Character]) {
+        let typed: Character? =
+            switch event {
+            case .key(let input): input.character != "\n" && input.character != "\t" ? input.character : nil
+            default: nil
+            }
+        switch output.action {
+        case .passThrough:
+            if case .backspace = event {
+                if !text.isEmpty { text.removeLast() }
+            } else if let typed {
+                text.append(typed)
+            }
+        case .edit(let edit, let thenPassThrough):
+            text.removeLast(min(edit.deleteCount, text.count))
+            text.append(contentsOf: edit.insert)
+            if thenPassThrough, let typed { text.append(typed) }
+        }
     }
 }
 

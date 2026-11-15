@@ -80,6 +80,10 @@ public enum MainNotice: Sendable {
     /// on the tap with the snapshot it already holds, so the word belongs to that app whenever main drains the
     /// outbox (the focus may have moved by then).
     case learning(LearningSignal, bundle: BundleKey?)
+    /// ENG-R864, PLT-R914: signals for words of the bundled collision list. `recordable` is false in a secure field
+    /// and in an app whose rule turns English restore off; main drops those, and drops everything under secure
+    /// input or with D28 off. The words are never logged.
+    case collisionSignals([CollisionSignal], recordable: Bool)
     /// First echo miss of a run: the utility queue checks `CGPreflightPostEventAccess()` (ADR 0311).
     case echoMissed
     /// Three consecutive misses: the tap already failed open in this callback (PLT-R730).

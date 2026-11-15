@@ -86,6 +86,10 @@ public actor SettingsStore {
     let launchGuard: LaunchGuard
     let scheduler: any DebounceScheduler
     let onChange: @Sendable (SettingsState) -> Void
+    /// The collision memory (PLT-R914) in the same folder, written on the same queue. InputHost loads it with the
+    /// bundled list and feeds it; the Settings window reads its votes and clears it; export, import and the
+    /// Typing pane reset go through this actor.
+    public nonisolated let collisionMemory: CollisionMemoryStore
 
     var user = UserSettings()
     var appModes = AppModesDocument()
@@ -124,8 +128,11 @@ public actor SettingsStore {
         self.writtenBy = writtenBy
         self.migrations = migrations
         self.launchGuard = launchGuard
-        self.scheduler = scheduler ?? DispatchDebounceScheduler(queue: queue)
+        let debounce = scheduler ?? DispatchDebounceScheduler(queue: queue)
+        self.scheduler = debounce
         self.onChange = onChange
+        collisionMemory = CollisionMemoryStore(
+            location: location, fileSystem: fileSystem, wallClock: wallClock, scheduler: debounce, writtenBy: writtenBy)
     }
 
     /// Loads all four files: migrate (with backups), recover from corruption (PLT-R1006), detect newer
@@ -228,6 +235,7 @@ public actor SettingsStore {
 
     /// Writes pending changes immediately (quit, update install).
     public func flush() {
+        collisionMemory.flush()
         var noticesChanged = false
         for file in SettingsFile.allCases {
             cancelPendingWrite(file)
@@ -235,6 +243,19 @@ public actor SettingsStore {
         }
         if noticesChanged { publish() }
     }
+
+    // MARK: Collision memory (PLT-R914, PRD-R78)
+
+    /// The learned-words sheet's rows: entries that vote for a side, never counters.
+    public func learnedCollisionChoices() -> [CollisionMemoryVote] { collisionMemory.learnedChoices }
+
+    /// One row removed (`context` nil: the any-context entry).
+    public func forgetCollisionChoice(word: String, context: CollisionMemoryContext?) {
+        collisionMemory.forget(word: word, context: context)
+    }
+
+    /// "Xóa tất cả" (PRD-R78): every entry, acceptance counters included; the file is deleted.
+    public func clearCollisionMemory() { collisionMemory.clearAll() }
 
     // MARK: Export and import (PLT-R1010, PRD-R72)
 

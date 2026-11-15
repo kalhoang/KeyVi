@@ -116,6 +116,9 @@ struct PlainTextReport {
         field(labels.interfaceLanguage, settings.interfaceLanguage.rawValue)
         field(labels.channel, settings.updateChannel.rawValue)
         field(labels.changedSettings, joined(settings.explicitlySetKeys))
+        if let entries = settings.learnedCollisionEntries {
+            field(labels.learnedCollisionEntries, String(entries))  // count only (PLT-R914)
+        }
         guard let mode = report.reportedAppMode else { return }
         section(labels.appMode)
         field(labels.app, mode.bundle.rawValue)

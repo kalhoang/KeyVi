@@ -137,15 +137,19 @@ final class CombinedHarness<Factory: CompositionEngineFactory> {
     private var noOpEdits: Set<Int> = []
 
     /// `settingsFor(generation)`: the settings snapshot of each generation (its engine catalog and revision).
+    /// `verifyReentry`: the first focus snapshot's rule value (PLT-R342; the revision suite turns the read-back off
+    /// to compare the field with the engine's outputs exactly, PLT-R357).
     init(
         factory: Factory, server mode: SimulatedWindowServer.Mode, engineLog: EngineEventLog?,
-        policy: InFlightPolicy = .untilEcho, settingsFor: @escaping (UInt64) -> TapSettingsSnapshot
+        policy: InFlightPolicy = .untilEcho, verifyReentry: VerifyReentry = .whenReadable,
+        settingsFor: @escaping (UInt64) -> TapSettingsSnapshot
     ) {
         server = SimulatedWindowServer(mode: mode)
         self.engineLog = engineLog
         self.settingsFor = settingsFor
         let epoch = ReaderEpoch()
-        let focusSnapshot = PipelineFixtures.focus(generation: 1, pid: 101)
+        let focusSnapshot = PipelineFixtures.focus(
+            generation: 1, pid: 101, decision: PipelineFixtures.decision(verifyReentry: verifyReentry))
         snapshots = TapSnapshots(
             epoch: epoch, settings: SnapshotCell(settingsFor(1), epoch: epoch),
             focus: SnapshotCell(focusSnapshot, epoch: epoch),

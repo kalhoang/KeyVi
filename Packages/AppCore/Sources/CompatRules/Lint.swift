@@ -42,6 +42,8 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case tier1MatrixRowOlderThan90Days  // PLT-R531, 13.3 (release mode)
     case matrixRuleUnknown
     case pasteWithoutOptIn  // PLT-R460
+    case lookaheadRevisionWithoutEditStrategy  // PLT-R357: the flag is on with a strategy that cannot carry it
+    case lookaheadRevisionWithoutRestoreHotkey  // PLT-R357, PLT-R353: a revision the restore key cannot undo
 }
 
 public struct RulesLinter: Sendable {

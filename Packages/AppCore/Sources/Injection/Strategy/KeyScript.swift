@@ -19,6 +19,9 @@ enum InjectionTiming {
     static let placeholder = "\u{200B}"
     /// PLT-R343: AX reads never exceed 64 UTF-16 units.
     static let maximumAXReadUnits = 64
+    /// PLT-R357: a revision read-back that mismatched within this long after the last posted event is read once
+    /// more when it ends (the app may not have applied the events before the revision yet). As `verifyAfterEdit`.
+    static let revisionSettle: TimeSpan = .milliseconds(50)
 
     static func nanoseconds(_ duration: TimeSpan) -> UInt64 { duration.unsignedNanoseconds }
 
@@ -65,7 +68,7 @@ enum SyntheticKeys {
         SyntheticKeyEvent(keyCode: keyCode, isKeyDown: true, flags: commandFlag, unicode: .empty)
     }
 
-    /// PLT-R405: the triggering keycode; restores and macros use the keycode of a character of the edit if the
+    /// PLT-R405: the triggering keycode; restores, macros and revisions use the keycode of a character of the edit if the
     /// current layout types one on a non-action key (`JobKeyCodes.firstCharacter`). No Unicode event rides on an action key (`JobKeyCodes.isActionKey`: Backspace,
     /// Return, keypad Enter, Tab, Space, Escape): an edit they trigger (a Backspace re-composition, PLT-R352; the
     /// commit at a boundary, ENG-R532, ENG-R803, ENG-R1103; a restore on the Escape hotkey, PLT-R353) uses the
@@ -77,7 +80,8 @@ enum SyntheticKeys {
     static func unicodeKeyCode(for job: EditJob) -> KeyCode {
         let codes = job.keyCodes
         let triggerActs = JobKeyCodes.isActionKey(codes.trigger)
-        let typesFirstCharacter = triggerActs || job.kind == .restore || job.kind == .macro
+        // A revision (PLT-R357) types the previous word too, so it never rides on the boundary key's keycode.
+        let typesFirstCharacter = triggerActs || job.kind == .restore || job.kind == .macro || job.kind == .revision
         if typesFirstCharacter, let first = codes.firstCharacter, !JobKeyCodes.isActionKey(first) { return first }
         return triggerActs ? letterFallback : codes.trigger
     }

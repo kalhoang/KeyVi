@@ -18,11 +18,16 @@ struct LearningTracker {
     private var pending: [LearningProposal] = []
 
     /// Returns the proposal when `signal` was seen for the second time in `app`; the count then starts over. A
-    /// signal from an unknown app is dropped: a learned word must belong to an app (ENG-R862).
-    mutating func note(_ signal: LearningSignal, in app: BundleKey?) -> LearningProposal? {
+    /// signal from an unknown app is dropped: a learned word must belong to an app (ENG-R862). So is a signal for a
+    /// word of the bundled collision list (`collisionWords`, ENG-R862 amendment of 15/11/2026): those feed the
+    /// learned memory, per user across apps, and a per-app list entry would fix them in one direction.
+    mutating func note(
+        _ signal: LearningSignal, in app: BundleKey?, collisionWords: CollisionVocabulary? = nil
+    ) -> LearningProposal? {
         guard let app else { return nil }
         let proposal = LearningProposal(signal, app: app)
         guard !proposal.rawKeys.isEmpty else { return nil }
+        if let collisionWords, collisionWords.contains(proposal.rawKeys.lowercased()) { return nil }
         if let index = pending.firstIndex(of: proposal) {
             pending.remove(at: index)
             return proposal

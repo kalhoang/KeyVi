@@ -56,6 +56,8 @@ enum SettingFields {
         field("automaticallyInstallUpdates", \.automaticallyInstallUpdates, .updates),
         field("updateChannel", \.updateChannel, .updates),
         field("layoutBinding", \.layoutBinding, .general),
+        field("learnCollisionChoices", \.learnCollisionChoices, .typing),  // D28
+        field("lookaheadRevision", \.lookaheadRevision, .typing),  // D29
     ]
 
     static let keys: Set<String> = Set(all.map(\.key))

@@ -10,7 +10,8 @@
 //       "settings": { ...settings.json without envelope... },
 //       "appModes": { ...app-modes.json without envelope... },   // optional (unticked = absent)
 //       "ruleOverrides": [ ...stored overrides... ],
-//       "macros": [ ...stored macros... ]                         // optional (unticked = absent)
+//       "macros": [ ...stored macros... ],                        // optional (unticked = absent)
+//       "collisionMemory": [ ...collision-memory.json entries... ]  // optional (PLT-R914, merged on import)
 //     }
 //
 // File name: `<slug>-settings-YYYYMMDD.json` (slug injected by the App).
@@ -21,9 +22,12 @@ public import Foundation
 public struct ExportOptions: Sendable, Hashable {
     public var includeMacros: Bool  // the sheet notes that macros may contain private text
     public var includeAppModes: Bool
-    public init(includeMacros: Bool = true, includeAppModes: Bool = true) {
+    /// The learned collision choices (PLT-R914, PRD-R72).
+    public var includeCollisionMemory: Bool
+    public init(includeMacros: Bool = true, includeAppModes: Bool = true, includeCollisionMemory: Bool = true) {
         self.includeMacros = includeMacros
         self.includeAppModes = includeAppModes
+        self.includeCollisionMemory = includeCollisionMemory
     }
 
     /// `<slug>-settings-YYYYMMDD.json`, dated in the user's time zone.
@@ -46,6 +50,8 @@ public struct ImportPreview: Sendable, Hashable {
     public var appEntries: Int
     public var ruleOverrides: Int
     public var macros: MacroImportPreview?
+    /// Entries of the `collisionMemory` section that passed the shape checks (words are checked at merge).
+    public var collisionMemoryEntries = 0
     /// Keys from a newer schema that this build will skip (PLT-R1010).
     public var skippedFields: [String]
     /// Opaque validated content applied by `applyImport`.
@@ -59,15 +65,19 @@ public struct ImportChoices: Sendable, Hashable {
     /// Off = the macros in the file are ignored (the preview still lists them).
     public var applyMacros: Bool
     public var macroDuplicates: MacroDuplicateResolution
+    /// The learned collision choices, merged by adding counters (PRD-R72).
+    public var applyCollisionMemory: Bool
     public init(
         applySettings: Bool = true, applyAppModes: Bool = true, applyRuleOverrides: Bool = true,
-        applyMacros: Bool = true, macroDuplicates: MacroDuplicateResolution = .keepMine
+        applyMacros: Bool = true, macroDuplicates: MacroDuplicateResolution = .keepMine,
+        applyCollisionMemory: Bool = true
     ) {
         self.applySettings = applySettings
         self.applyAppModes = applyAppModes
         self.applyRuleOverrides = applyRuleOverrides
         self.applyMacros = applyMacros
         self.macroDuplicates = macroDuplicates
+        self.applyCollisionMemory = applyCollisionMemory
     }
 }
 
@@ -98,7 +108,8 @@ public enum SettingsExportFormat {
     public static let maxImportBytes = 5 * 1024 * 1024
     static let headerKeys: Set<String> = ["kind", "schemaVersion", "writtenBy", "exportedAt"]
     static let settings = "settings", appModes = "appModes", ruleOverrides = "ruleOverrides", macros = "macros"
-    static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros]
+    static let collisionMemory = "collisionMemory"
+    static let sectionKeys: Set<String> = [settings, appModes, ruleOverrides, macros, collisionMemory]
 }
 
 /// The store's documents as an import is previewed against them.
@@ -146,6 +157,11 @@ struct SettingsImporter {
             skipped += RuleOverridesCodec.skippedPaths(in: object).map { "ruleOverrides." + $0 }
             preview.ruleOverrides = overrides.count
             content[SettingsExportFormat.ruleOverrides] = .array(RuleOverridesCodec.encodeList(overrides, over: []))
+        }
+        if let items = try arraySection(root, SettingsExportFormat.collisionMemory) {
+            let imported = CollisionMemoryStore.importedEntries(items)
+            preview.collisionMemoryEntries = imported.count
+            content[SettingsExportFormat.collisionMemory] = .array(CollisionMemoryCodec.encodeEntries(imported))
         }
         if let items = try arraySection(root, SettingsExportFormat.macros) {
             let object = try migrated(["macros": .array(items)], file: .macros, from: version)

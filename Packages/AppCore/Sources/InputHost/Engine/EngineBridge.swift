@@ -40,8 +40,8 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     }
 }
 
-/// Eight prebuilt engines: appContext x englishRestore x macros (ENG-R850, `features`, ENG-R1107). Lookup is an
-/// array index, so the tap never hashes or allocates to find an engine.
+/// Sixteen prebuilt engines: appContext x englishRestore x macros x lookaheadRevision (ENG-R850, `features`,
+/// ENG-R1107, PLT-R357). Lookup is an array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
     private let slots: [VietnameseEngine.Engine]
     /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
@@ -49,14 +49,20 @@ public struct EngineCatalog: Sendable {
     /// tap rebuilds only the hotkeys and keeps the word being typed. `nil` means unknown: every new settings
     /// generation builds a fresh engine, the safe default.
     public let revision: UInt64?
+    /// Identifies the learned collision memory the engines carry (ENG-R865). A catalog whose `revision` is the
+    /// previous one and whose `memoryRevision` is new differs only by the memory: the tap swaps it in at the next
+    /// hard boundary instead of resetting the word being typed (ENG-R1211).
+    public let memoryRevision: UInt64
 
     /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
-    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil) {
+    public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil, memoryRevision: UInt64 = 0)
+    {
         let fallback =
             engines[.default] ?? engines.values.first
             ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
         slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
         self.revision = revision
+        self.memoryRevision = memoryRevision
     }
 
     public func engine(for variant: EngineVariant) -> VietnameseEngine.Engine { slots[variant.catalogIndex] }
@@ -102,8 +108,9 @@ public enum EngineBridge {
     /// `revision` identifies the engine-affecting settings (see `EngineCatalog.revision`); the publisher bumps it
     /// only when the catalog's inputs change.
     public static func catalog(
-        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil
+        settings: EffectiveSettings, resources: Resources, revision: UInt64? = nil, memoryRevision: UInt64 = 0
     ) -> EngineCatalog {
-        EngineSettingsMapping.catalog(settings: settings, resources: resources, revision: revision)
+        EngineSettingsMapping.catalog(
+            settings: settings, resources: resources, revision: revision, memoryRevision: memoryRevision)
     }
 }

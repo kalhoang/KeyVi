@@ -260,6 +260,9 @@ extension KeyPipeline {
             if revision == nil || revision != seen.engineRevision {
                 rebuild = true
                 change.note(.configurationChanged, job: .settingsChanged)
+            } else if settings.engines.memoryRevision != seen.memoryRevision {
+                // ENG-R865, ENG-R1211: only the learned memory changed; swap at the next hard boundary.
+                seen.memorySwapPending = true
             }
             seen.engineRevision = revision
         }
@@ -276,10 +279,15 @@ extension KeyPipeline {
             seen.lifecycleGeneration = lifecycle.generation
             change.note(.unknown, job: .sessionChanged)
         }
-        if rebuild {
+        if rebuild || (seen.memorySwapPending && !engineDirty) {
+            // A clean engine holds no composition and no history (only a reset or a new engine leaves it clean), so
+            // swapping it now is invisible (ENG-R865).
             engine = factory.makeEngine(for: focus.decision.variant, settings: settings)
             engineDirty = false
+            keyState.lastCommit = nil
             seen.engineVariant = focus.decision.variant
+            seen.memoryRevision = settings.engines.memoryRevision
+            seen.memorySwapPending = false
         }
         if let reset = change.reset { hardBoundary(reset, job: change.job, generation: focus.generation) }
     }

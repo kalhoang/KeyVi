@@ -320,12 +320,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
+        /// Entries of the learned collision memory: the count only, never a word (PLT-R901, PLT-R914). Nil when the
+        /// report was built without it.
+        public var learnedCollisionEntries: Int?
 
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
             toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, interfaceLanguage: InterfaceLanguage,
-            updateChannel: UpdateChannel, explicitlySetKeys: [String]
+            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -341,6 +344,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys
+            self.learnedCollisionEntries = learnedCollisionEntries
         }
     }
 

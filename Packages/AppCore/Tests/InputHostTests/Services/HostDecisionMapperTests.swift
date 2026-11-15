@@ -36,6 +36,22 @@ private func field(
 
 @Suite("HostDecisionMapper and text-focus gate (PLT-R386, PLT-R387)")
 struct HostDecisionMapperTests {
+    /// PLT-R357: the variant carries the rule's `features.lookaheadRevision`, off for a plan that starts with a
+    /// strategy other than backspaceReplace or selectReplace (a paste rule promoted to its fallback included).
+    @Test func theVariantCarriesTheRevisionFlagPLTR357() {
+        var resolved = decision()
+        resolved.features.lookaheadRevision = true
+        #expect(HostDecisionMapper.map(resolved, engine: .native, optedIntoPaste: false).variant.lookaheadRevision)
+        resolved.features.lookaheadRevision = false
+        #expect(!HostDecisionMapper.map(resolved, engine: .native, optedIntoPaste: false).variant.lookaheadRevision)
+        var ax = decision(strategy: .axReplace)
+        ax.features.lookaheadRevision = true
+        #expect(!HostDecisionMapper.map(ax, engine: .native, optedIntoPaste: false).variant.lookaheadRevision)
+        var select = decision(strategy: .selectReplace)
+        select.features.lookaheadRevision = true
+        #expect(HostDecisionMapper.map(select, engine: .native, optedIntoPaste: false).variant.lookaheadRevision)
+    }
+
     /// PLT-R389: the tap revalidates on every key while the focus owner's rule is an overlay rule, so the flag
     /// travels with the decision, also through the per-app "ignore" choice.
     @Test func theOverlayFlagReachesTheTapPLTR389() {
