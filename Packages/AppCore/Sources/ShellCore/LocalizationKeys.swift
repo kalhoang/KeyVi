@@ -95,6 +95,7 @@ public enum MenuText: String, LocalizationKey {
     case iconSecureInputEnglish = "icon.secureInputEnglish.accessibilityLabel"
     case iconPaused = "icon.paused.accessibilityLabel"
     case iconNotWorking = "icon.notWorking.accessibilityLabel"
+    case iconPermissionMissing = "icon.permissionMissing.accessibilityLabel"
     case iconCapturing = "icon.capturing.accessibilityLabel"
     case iconStarting = "icon.starting.accessibilityLabel"
     case iconPausedNoTextFocus = "icon.paused.noTextFocus.accessibilityLabel"

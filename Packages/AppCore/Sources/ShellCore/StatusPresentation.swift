@@ -11,7 +11,8 @@ public import SettingsStore
 
 /// PRD-R10 glyph states; every case has a VoiceOver label key in the `Menu` table. The glyphs are Pa's KV mark
 /// (S7): the letters are solid or dimmed and a badge sits in the dot's place, so no state relies on colour alone
-/// (PRD-R67).
+/// (PRD-R67). The missing permission has its own warning badge, the one state that needs the user (decision 0005,
+/// 15/11/2026: the menu's status line alone was too easy to miss).
 public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
     case vietnamese  // solid KV, emerald dot
     case english  // dimmed KV, grey dot
@@ -19,7 +20,8 @@ public enum StatusIconState: String, Sendable, Hashable, CaseIterable {
     case secureInputVietnamese  // solid KV, lock badge
     case secureInputEnglish  // dimmed KV, lock badge
     case paused  // faint KV, pause bars (non-Latin source and other pauses)
-    case notWorking  // faint KV with a slash (permission missing or tap failed)
+    case notWorking  // faint KV with a slash (fail-open for another reason: tap failed, posting broken, watchdog)
+    case permissionMissing  // faint KV with a warning badge, an exclamation mark in a filled circle (no permission)
     case capturing  // solid KV, recording ring while a typing trace records (PLT-R905)
 
     public var accessibilityLabelKey: String { "icon.\(rawValue).accessibilityLabel" }
@@ -35,7 +37,8 @@ public enum StatusPresentation {
     {
         if capturing { return .capturing }
         switch state {
-        case .noPermission, .failOpen: return .notWorking
+        case .noPermission, .failOpen(.permissionRevoked): return .permissionMissing
+        case .failOpen: return .notWorking
         case .starting: return .paused
         case .ready(let readyMode):
             if ignored { return .ignoredApp }
@@ -79,7 +82,7 @@ public enum StatusPresentation {
             return MenuText.iconPausedSessionInactive.rawValue
         case (.paused, .paused(.diagnosticsTest)):
             return MenuText.iconPausedDiagnosticsTest.rawValue
-        case (.notWorking, .failOpen(let reason)) where reason != .permissionRevoked:
+        case (.notWorking, .failOpen):
             return MenuText.iconNotWorkingFailOpen.rawValue
         default:
             return icon.accessibilityLabelKey

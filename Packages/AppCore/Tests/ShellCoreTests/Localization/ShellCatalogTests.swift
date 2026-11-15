@@ -31,7 +31,10 @@ import Testing
             .secureInputVietnamese: ("Ô bảo mật đang bật", "Secure input active"),
             .secureInputEnglish: ("Ô bảo mật đang bật", "Secure input active"),
             .paused: ("Tạm dừng: đang dùng bộ gõ khác", "Paused: another input source is active"),
-            .notWorking: ("Chưa gõ được: cần cấp quyền", "Not working: permission needed"),
+            .permissionMissing: ("Cảnh báo: chưa gõ được, cần cấp quyền", "Warning: not working, permission needed"),
+            .notWorking: (
+                "Chưa gõ được: mở menu để xem cách khắc phục", "Not working: open the menu to see how to fix it"
+            ),
         ]
         for (state, (viLabel, enLabel)) in expected {
             #expect(vi.string(state.accessibilityLabelKey, table: .menu) == viLabel)

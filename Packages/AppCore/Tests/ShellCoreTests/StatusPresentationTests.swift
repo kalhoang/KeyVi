@@ -31,7 +31,7 @@ enum AllHostStates {
 @Suite struct StatusIconTests {
     @Test func iconTableCoversEveryHostState() {
         let expected: [HostState: StatusIconState] = [
-            .noPermission: .notWorking,
+            .noPermission: .permissionMissing,
             .starting: .paused,
             .ready(.vietnamese): .vietnamese,
             .ready(.english): .english,
@@ -45,7 +45,7 @@ enum AllHostStates {
             .paused(.userDisabled): .paused,
             .paused(.noTextFocus): .paused,
             .paused(.diagnosticsTest): .paused,
-            .failOpen(.permissionRevoked): .notWorking,
+            .failOpen(.permissionRevoked): .permissionMissing,
             .failOpen(.postingBroken): .notWorking,
             .failOpen(.tapUnavailable): .notWorking,
             .failOpen(.watchdog): .notWorking,
@@ -74,7 +74,17 @@ enum AllHostStates {
                 == .ignoredApp)
         #expect(
             StatusPresentation.iconState(state: .noPermission, mode: .vietnamese, ignored: true, capturing: false)
-                == .notWorking)
+                == .permissionMissing)
+    }
+
+    /// Decision 0005, 15/11/2026 (after the incident): the permission state is the one that needs the user, so it
+    /// has its own badge, distinct from every other glyph, and only the permission states show it (PRD-R10).
+    @Test func onlyTheMissingPermissionShowsTheWarningBadge() {
+        for state in AllHostStates.all {
+            let icon = StatusPresentation.iconState(state: state, mode: .vietnamese, ignored: false, capturing: false)
+            let permission = state == .noPermission || state == .failOpen(.permissionRevoked)
+            #expect((icon == .permissionMissing) == permission, "\(state)")
+        }
     }
 
     @Test func capturingWinsOverEveryStateForTheWholeRecording() {
@@ -99,9 +109,10 @@ enum AllHostStates {
         #expect(key(.paused(.userDisabled)) == MenuText.iconPausedUserDisabled.rawValue)
         #expect(key(.paused(.sessionInactive)) == MenuText.iconPausedSessionInactive.rawValue)
         #expect(key(.paused(.diagnosticsTest)) == MenuText.iconPausedDiagnosticsTest.rawValue)
-        #expect(key(.noPermission) == MenuText.iconNotWorking.rawValue)
-        #expect(key(.failOpen(.permissionRevoked)) == MenuText.iconNotWorking.rawValue)
+        #expect(key(.noPermission) == StatusIconState.permissionMissing.accessibilityLabelKey)
+        #expect(key(.failOpen(.permissionRevoked)) == StatusIconState.permissionMissing.accessibilityLabelKey)
         #expect(key(.failOpen(.watchdog)) == MenuText.iconNotWorkingFailOpen.rawValue)
+        #expect(key(.failOpen(.tapUnavailable)) == MenuText.iconNotWorkingFailOpen.rawValue)
         #expect(key(.ready(.vietnamese)) == MenuText.iconVietnamese.rawValue)
         #expect(key(.paused(.secureField)) == MenuText.iconSecureInputVietnamese.rawValue)
     }
