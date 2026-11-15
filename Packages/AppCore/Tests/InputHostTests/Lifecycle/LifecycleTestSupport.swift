@@ -27,6 +27,8 @@ extension PermissionStatus {
 struct LifecycleScript {
     private(set) var lifecycle = HostLifecycle()
     private(set) var now = MonotonicInstant(nanoseconds: 1_000_000_000)
+    /// Effects a test keeps for a later step (for example the retry delay of a circuit-breaker trip).
+    var lastEffects: [LifecycleEffect] = []
 
     var phase: LifecycleSnapshot.Phase { lifecycle.phase }
 

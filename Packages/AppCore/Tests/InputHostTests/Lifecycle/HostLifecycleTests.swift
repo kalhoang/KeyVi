@@ -214,28 +214,30 @@ import Testing
     }
 }
 
-/// PLT-R330, PLT-R331: a disabled tap is re-enabled, the composition reset, held events replayed, the reason
-/// recorded, and a notice shown after more than three disables within ten minutes.
+/// PLT-R330, PLT-R331: a disabled tap has the composition reset, held events replayed and the reason recorded, is
+/// re-enabled after a live permission check (amended 15/11/2026), and a notice is shown after more than three
+/// disables within ten minutes. Disables in these tables are further apart than the circuit breaker's window.
 @Suite struct HostLifecycleSystemDisableTests {
-    @Test func timeoutReenablesResetsFlushesAndRecords_PLT_R330() {
+    @Test func timeoutResetsFlushesRecordsThenReenablesOnALiveAnswer_PLT_R330() {
         var script = LifecycleScript.running()
         #expect(
             script.send(.tapDisabledBySystem(byTimeout: true)) == [
-                .reenableTap, .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapTimeout),
+                .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapTimeout), .checkPermissionsLive,
             ])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
         #expect(script.phase == .running)
     }
 
     @Test func userInputDisableRecordsItsOwnReason_PLT_R330() {
         var script = LifecycleScript.running()
-        #expect(script.send(.tapDisabledBySystem(byTimeout: false)).last == .recordHealth(.tapDisabledByUserInput))
+        #expect(script.send(.tapDisabledBySystem(byTimeout: false)).contains(.recordHealth(.tapDisabledByUserInput)))
     }
 
     @Test func unexpectedlyDisabledRunsTheSameProcedure_PLT_R331() {
         var script = LifecycleScript.running()
         #expect(
             script.send(.watchdogTripped(.unexpectedlyDisabled)) == [
-                .reenableTap, .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled),
+                .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled), .checkPermissionsLive,
             ])
     }
 
@@ -243,30 +245,36 @@ import Testing
         var script = LifecycleScript.running()
         for _ in 0..<3 {
             #expect(!script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
+            script.send(.livePermissions(.granted))
             script.advance(by: .seconds(180))
         }
-        #expect(script.send(.tapDisabledBySystem(byTimeout: true)).last == .showTapInstabilityNotice)
+        #expect(script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
+        script.send(.livePermissions(.granted))
         // Not repeated while the window that triggered it is still open.
-        script.advance(by: .seconds(30))
+        script.advance(by: .seconds(31))
         #expect(!script.send(.tapDisabledBySystem(byTimeout: false)).contains(.showTapInstabilityNotice))
     }
 
     @Test func noticeCountsUnexpectedDisablesToo_PLT_R331() {
         var script = LifecycleScript.running()
-        let gap = TimeSpan.seconds(20)  // distinct disables, outside the coalescing window
+        let gap = TimeSpan.seconds(40)  // distinct disables, outside the coalescing and circuit-breaker windows
         script.send(.tapDisabledBySystem(byTimeout: true))
+        script.send(.livePermissions(.granted))
         script.advance(by: gap)
         script.send(.watchdogTripped(.unexpectedlyDisabled))
+        script.send(.livePermissions(.granted))
         script.advance(by: gap)
         script.send(.tapDisabledBySystem(byTimeout: false))
+        script.send(.livePermissions(.granted))
         script.advance(by: gap)
-        #expect(script.send(.watchdogTripped(.unexpectedlyDisabled)).last == .showTapInstabilityNotice)
+        #expect(script.send(.watchdogTripped(.unexpectedlyDisabled)).contains(.showTapInstabilityNotice))
     }
 
     @Test func disablesSpreadOverMoreThanTenMinutesShowNoNotice() {
         var script = LifecycleScript.running()
         for _ in 0..<8 {
             #expect(!script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
+            script.send(.livePermissions(.granted))
             script.advance(by: .seconds(240))
         }
     }
@@ -275,12 +283,14 @@ import Testing
         var script = LifecycleScript.running()
         for _ in 0..<4 {
             script.send(.tapDisabledBySystem(byTimeout: true))
-            script.advance(by: .seconds(2))
+            script.send(.livePermissions(.granted))
+            script.advance(by: .seconds(40))
         }
         script.advance(by: .seconds(601))
         for _ in 0..<3 {
             #expect(!script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
-            script.advance(by: .seconds(2))
+            script.send(.livePermissions(.granted))
+            script.advance(by: .seconds(40))
         }
         #expect(script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
     }
@@ -288,7 +298,8 @@ import Testing
     @Test func disableWhileSessionInactiveKeepsThePhase() {
         var script = LifecycleScript.running()
         script.send(.sessionActive(false))
-        #expect(script.send(.tapDisabledBySystem(byTimeout: true)).first == .reenableTap)
+        #expect(script.send(.tapDisabledBySystem(byTimeout: true)).last == .checkPermissionsLive)
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
         #expect(script.phase == .sessionInactive)
     }
 

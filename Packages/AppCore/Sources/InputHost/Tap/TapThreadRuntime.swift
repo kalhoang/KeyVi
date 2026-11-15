@@ -17,6 +17,10 @@ final class TapThreadRuntime: Sendable {
     }
 
     static let threadName = "tap"
+    /// How long `start()` waits for the tap thread to create the tap. Creation normally takes milliseconds; one
+    /// that hangs in the system (a TCC answer that does not come) counts as failed after this, so the main thread
+    /// never waits longer (PLT-R332, PLT-R730), and a tap created later is invalidated before it is enabled.
+    static let creationTimeout: TimeSpan = .seconds(2)
 
     private enum Phase: Sendable, Hashable { case idle, starting, running, exited }
 
@@ -33,8 +37,9 @@ final class TapThreadRuntime: Sendable {
     private let state = Mutex(State())
     private let exited = DispatchGroup()
 
-    /// Spawns the thread, waits until `makeSession` (run on that thread) has created the tap or failed.
-    func start(_ makeSession: @escaping @Sendable () -> Session?) -> Bool {
+    /// Spawns the thread, waits until `makeSession` (run on that thread) has created the tap or failed, at most
+    /// `timeout`; after that the creation counts as failed and the thread drops a tap that arrives late.
+    func start(timeout: TimeSpan = creationTimeout, _ makeSession: @escaping @Sendable () -> Session?) -> Bool {
         let begin = state.withLock { state -> Bool? in
             guard state.phase == .idle, !state.stopRequested else { return state.phase == .running ? true : false }
             state.phase = .starting
@@ -50,7 +55,10 @@ final class TapThreadRuntime: Sendable {
         thread.name = Self.threadName
         thread.qualityOfService = .userInteractive
         thread.start()
-        created.wait()
+        guard created.wait(timeout: .now() + timeout.dispatchInterval) == .success else {
+            state.withLock { $0.stopRequested = true }  // `run` invalidates a tap created from now on
+            return false
+        }
         return state.withLock { $0.tapCreated }
     }
 

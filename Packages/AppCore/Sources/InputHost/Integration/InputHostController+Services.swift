@@ -19,7 +19,8 @@ extension InputHostController {
     func makeMonitors() {
         let hop = self.hop
         permissionMonitor = PermissionMonitor(
-            probe: dependencies.permissions, store: dependencies.keyValueStore, scheduler: dependencies.scheduler
+            probe: dependencies.permissions, store: dependencies.keyValueStore, scheduler: dependencies.scheduler,
+            runner: permissionRunner
         ) { [weak self] status in hop.hop { self?.permissionsChanged(status) } }
         let cell = channels.snapshots.secureInput
         let refresh = self.refresh
@@ -141,17 +142,14 @@ extension InputHostController {
         case .screenLocked: setInactive(.screenLocked, true)
         case .sessionResignedActive: setInactive(.sessionResigned, true)
         case .didWake:
-            feedFreshPermissions()
-            setInactive(.asleep, false)
+            withFreshPermissions { [weak self] in self?.setInactive(.asleep, false) }
             focusTracker.revalidate()
             refreshAfterAXWork()
             session?.watchdog.checkNow()
         case .screenUnlocked:
-            feedFreshPermissions()
-            setInactive(.screenLocked, false)
+            withFreshPermissions { [weak self] in self?.setInactive(.screenLocked, false) }
         case .sessionBecameActive:
-            feedFreshPermissions()
-            setInactive(.sessionResigned, false)
+            withFreshPermissions { [weak self] in self?.setInactive(.sessionResigned, false) }
             session?.watchdog.checkNow()
         }
     }

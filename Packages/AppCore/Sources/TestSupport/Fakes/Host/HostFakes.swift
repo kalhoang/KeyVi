@@ -337,7 +337,15 @@ public final class FakePermissionProbe: PermissionProbe, Sendable {
         var listenRequests = 0
         var postRequests = 0
         var liveListenChecks = 0
+        var accessibilityChecks = 0
+        var accessibilityChecksOnMain = 0
+        /// While set, every Accessibility check waits on it (at most `gateTimeout`): a TCC call that stalls.
+        var accessibilityGate: DispatchSemaphore?
     }
+
+    /// The longest a gated Accessibility check waits, so a test whose code under test still calls the probe on the
+    /// main thread fails instead of hanging.
+    public static let gateTimeout: DispatchTimeInterval = .seconds(2)
 
     private let state: Mutex<State>
 
@@ -359,7 +367,33 @@ public final class FakePermissionProbe: PermissionProbe, Sendable {
     /// The answer of the live Input Monitoring check (`canListenToEventsNow`); nil makes it follow `listen` again.
     public func setLiveListen(_ live: Bool?) { state.withLock { $0.liveListen = live } }
 
-    public func isAccessibilityTrusted() -> Bool { state.withLock { $0.trusted } }
+    public func isAccessibilityTrusted() -> Bool {
+        let gate = state.withLock { state -> DispatchSemaphore? in
+            state.accessibilityChecks += 1
+            if Thread.isMainThread { state.accessibilityChecksOnMain += 1 }
+            return state.accessibilityGate
+        }
+        if let gate {
+            _ = gate.wait(timeout: .now() + Self.gateTimeout)
+            gate.signal()  // the next gated call passes once the test opened the gate
+        }
+        return state.withLock { $0.trusted }
+    }
+
+    /// Makes every Accessibility check stall until `openAccessibilityGate()` (or the gate timeout).
+    public func holdAccessibilityChecks() { state.withLock { $0.accessibilityGate = DispatchSemaphore(value: 0) } }
+
+    public func openAccessibilityGate() {
+        let gate = state.withLock { state -> DispatchSemaphore? in
+            defer { state.accessibilityGate = nil }
+            return state.accessibilityGate
+        }
+        gate?.signal()
+    }
+
+    /// Calls of `isAccessibilityTrusted()`, and those made on the main thread.
+    public var accessibilityCheckCount: Int { state.withLock { $0.accessibilityChecks } }
+    public var accessibilityChecksOnMainThread: Int { state.withLock { $0.accessibilityChecksOnMain } }
     public func canPostEvents() -> Bool { state.withLock { $0.post } }
     public func canListenToEvents() -> Bool { state.withLock { $0.listen } }
     public func canListenToEventsNow() -> Bool {

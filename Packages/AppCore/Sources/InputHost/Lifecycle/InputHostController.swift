@@ -133,6 +133,8 @@ public final class InputHostController {
     let tapClock: any MonotonicClock
     /// False only in tests that drive the worker step by step (`InjectionWorker.runUntilIdle`).
     let runsWorkerThread: Bool
+    /// Where the permission monitor runs its probe calls (production: a serial queue of its own, PLT-R730).
+    let permissionRunner: any PermissionCheckRunner
     let ruleBox = RuleSetBox()
     /// Since-launch observations the integration hooks report (tap recoveries, first key after a secure-input
     /// release); shared with every tap session's pipeline.
@@ -146,6 +148,8 @@ public final class InputHostController {
     var retryTimer: (any ScheduledTimer)?
     /// Bumped on every schedule and cancel; a fire whose hop to main carries an older value is stale.
     var retryGeneration: UInt64 = 0
+    /// A timeout disabled the tap; its re-enable counts as a recovery for the integration hooks (QA-R11).
+    var timeoutRecoveryPending = false
 
     var lifecycle = HostLifecycle()
     var lifecycleGeneration: UInt64 = 0
@@ -191,15 +195,19 @@ public final class InputHostController {
             dependencies: dependencies, settingsStore: settingsStore, hop: DispatchMainHop(),
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
             loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
-            runsWorkerThread: true, mainSignalQueue: .main)
+            runsWorkerThread: true, mainSignalQueue: .main,
+            permissionRunner: QueuePermissionCheckRunner(
+                queue: DispatchQueue(label: (Bundle.main.bundleIdentifier ?? "host") + ".permissions", qos: .utility)))
     }
 
     init(
         dependencies: InputHostDependencies, settingsStore: SettingsStore, hop: any MainThreadHop,
         makeTapThread: @escaping TapThreadMaker, tapClock: any MonotonicClock,
         loadBundled: @escaping TapSettingsPublisher.BundledResourcesLoader, macOSVersion: LooseVersion,
-        runsWorkerThread: Bool, mainSignalQueue: DispatchQueue? = nil
+        runsWorkerThread: Bool, mainSignalQueue: DispatchQueue? = nil,
+        permissionRunner: any PermissionCheckRunner = InlinePermissionCheckRunner()
     ) {
+        self.permissionRunner = permissionRunner
         self.runsWorkerThread = runsWorkerThread
         self.dependencies = dependencies
         self.settingsStore = settingsStore
@@ -320,10 +328,13 @@ public final class InputHostController {
         secureInputMonitor?.pollNow() ?? channels.snapshots.secureInput.load()
     }
 
-    /// Immediate permission check on menu open, wake and session activation (PLT-R721).
+    /// Immediate permission check on menu open (PLT-R721), run on the monitor's runner: returns at once with the
+    /// newest status known, never waiting for a permission call (PRD-R13, PLT-R730). A change reaches the shell as
+    /// `.permissionsChanged` once the check answered.
     public func refreshPermissions() -> PermissionStatus {
         guard let monitor = permissionMonitor else { return latestPermissions ?? Self.unknownPermissions }
-        let status = monitor.checkNow()
+        monitor.requestCheck()
+        let status = monitor.latest ?? latestPermissions ?? Self.unknownPermissions
         latestPermissions = status
         return status
     }

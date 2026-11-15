@@ -202,7 +202,8 @@ final class HostRig {
         layoutData: [InputSourceID: KeyboardLayoutData]? = nil, builder: (any LayoutTableBuilding)? = nil,
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
         capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil,
-        nestedHops: Bool = false, loadBundled: TapSettingsPublisher.BundledResourcesLoader? = nil
+        nestedHops: Bool = false, loadBundled: TapSettingsPublisher.BundledResourcesLoader? = nil,
+        permissionRunner: (any PermissionCheckRunner)? = nil
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -242,7 +243,8 @@ final class HostRig {
             tapClock: MachClock(),
             loadBundled: loadBundled
                 ?? (realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources),
-            macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false, mainSignalQueue: mainSignalQueue)
+            macOSVersion: LooseVersion("15.0")!, runsWorkerThread: false, mainSignalQueue: mainSignalQueue,
+            permissionRunner: permissionRunner ?? InlinePermissionCheckRunner())
         controller.onEvent = { [weak self] in self?.events.append($0) }
         focusEditor()
     }

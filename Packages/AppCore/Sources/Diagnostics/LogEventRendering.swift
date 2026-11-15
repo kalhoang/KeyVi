@@ -146,7 +146,7 @@ extension HostStateCode {
 extension HealthEvent.Kind {
     var logCategory: LogCategory {
         switch self {
-        case .tapTimeout, .tapDisabledByUserInput, .tapReenabled, .watchdogTrip, .flush: .tap
+        case .tapTimeout, .tapDisabledByUserInput, .tapReenabled, .watchdogTrip, .flush, .tapUnstable: .tap
         case .fallbackActivated, .echoLoss, .postingBroken, .placeholderResidue, .pasteRestoreSkipped,
             .generationDiscard:
             .injection
@@ -163,7 +163,7 @@ extension HealthEvent.Kind {
     var logLevel: LogLevel {
         switch self {
         case .tapTimeout, .watchdogTrip, .postingBroken, .echoLoss, .ruleLoadError, .placeholderResidue,
-            .safeModeEntered:
+            .safeModeEntered, .tapUnstable:
             .error
         default: .notice
         }

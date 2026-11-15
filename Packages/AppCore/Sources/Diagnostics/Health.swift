@@ -12,7 +12,10 @@ public struct HealthEvent: Sendable, Hashable, Codable {
             ruleLoadError, ruleTie, placeholderResidue, pasteRestoreSkipped, generationDiscard,
             settingsRecovered, settingsNewerSchema, safeModeEntered,
             /// PLT-R397B: short secure-input episodes keep ending while the user types (`.count`).
-            secureInputBursts
+            secureInputBursts,
+            /// PLT-R330 step 6: the system kept disabling the tap, so it was removed (fail open) instead of
+            /// re-enabled again (`.failOpen` detail).
+            tapUnstable
     }
 
     public enum Detail: Sendable, Hashable, Codable {
