@@ -102,6 +102,12 @@ private func devRecords(_ capture: CaptureController) -> [DevTraceRecord] {
         #expect(try completionLabel(SimulatedTextField(text: "a")) == "none")
         #expect(try completionLabel(SimulatedTextField(text: "a"), ax: .timeout) == "unreadable")
         #expect(try completionLabel(SimulatedTextField(text: "a"), ax: .unavailable) == "unreadable")
+        // PLT-R421: with `axSelectionThenPlaceholder` an unreadable field takes the placeholder, which handles the
+        // suggestion, so the label says so and trace-scan does not report it (review of 16/11/2026).
+        let fallsBack: InlineCompletionMode = .axSelectionThenPlaceholder
+        let late = try completionLabel(SimulatedTextField(text: "a"), ax: .timeout, mode: fallsBack)
+        #expect(late == "unreadable then placeholder")
+        #expect(try completionLabel(SimulatedTextField(text: "a"), mode: fallsBack) == "none")
         #expect(try completionLabel(SimulatedTextField(text: "a"), mode: .none) == nil)
         #expect(try completionLabel(SimulatedTextField(text: "a"), mode: .placeholder) == nil)
     }

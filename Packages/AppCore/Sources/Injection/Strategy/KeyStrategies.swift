@@ -29,8 +29,12 @@ enum CompletionRead {
     case selected
     /// AX answered with an empty selection (`axSelection`).
     case none
-    /// AX timed out or was unavailable (`axSelection`).
+    /// AX timed out or was unavailable (`axSelection`); nothing is added.
     case unreadable
+    /// AX timed out or was unavailable (`axSelectionThenPlaceholder`); the placeholder handles the suggestion
+    /// (PLT-R421). A label of its own since the review of 16/11/2026, so trace-scan reports only the unreadable reads
+    /// that can lose a deletion.
+    case unreadableThenPlaceholder
     /// `forwardDelete`: the caret is at the end of the text; a Forward Delete goes before each Backspace.
     case forwardDelete
     /// `forwardDelete`: the caret is before the end of the text; nothing is added.
@@ -43,6 +47,7 @@ enum CompletionRead {
         case .selected: "selected"
         case .none: "none"
         case .unreadable: "unreadable"
+        case .unreadableThenPlaceholder: "unreadable then placeholder"
         case .forwardDelete: "forwardDelete"
         case .forwardDeleteNotAtEnd: "forwardDelete skipped notAtEnd"
         case .forwardDeleteUnreadable: "forwardDelete skipped unreadable"
@@ -100,9 +105,10 @@ enum CompletionPrefix: Equatable {
             host?.noteCompletionRead(range.length > 0 ? .selected : .none, duration: read.duration)
             return range.length > 0 ? .extraDeletion : .none
         }
-        host?.noteCompletionRead(.unreadable, duration: read?.duration)
+        let fallsBack = mode == .axSelectionThenPlaceholder
+        host?.noteCompletionRead(fallsBack ? .unreadableThenPlaceholder : .unreadable, duration: read?.duration)
         host?.completionFallback()
-        return mode == .axSelectionThenPlaceholder ? .placeholder : .none
+        return fallsBack ? .placeholder : .none
     }
 
     /// PLT-R423: one read of the selection and the character count, bounded by its own `forwardDeleteReadTimeout`

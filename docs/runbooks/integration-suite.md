@@ -479,7 +479,8 @@ Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM 
    answers the same question on any Mac: each job line of a rule with `forwardDelete` ends with `completion
    forwardDelete` (6 events for a delete-1 edit), `completion forwardDelete skipped notAtEnd`, `completion
    forwardDelete skipped unreadable` or `completion selected`; a rule with `axSelection` ends with `completion
-   selected`, `completion none` or `completion unreadable` (since 15/11/2026), each followed by the read's duration
+   selected`, `completion none` or `completion unreadable` (since 15/11/2026; `completion unreadable then placeholder`
+   with `axSelectionThenPlaceholder`, since 16/11/2026), each followed by the read's duration
    (`read 23.4 ms`, since 16/11/2026). Letters that still double with
    `forwardDelete skipped notAtEnd` while the caret is at the end mean the field counts its suggestion as text (next:
    `placeholder` after its PLT-R422 test); with `forwardDelete` and doubled letters, the field gives Forward Delete

@@ -150,7 +150,9 @@ private let command: UInt64 = 0x0010_0000
 
     /// Retest of 16/11/2026, items 34 and 40: a completion read that timed out is the cause of the lost deletion
     /// (Spotlight right after it opened), so it is an injection problem that names the read's duration; a slow job
-    /// says how much of it the read took.
+    /// says how much of it the read took. Only the reads with no fallback count: `forwardDelete skipped unreadable`
+    /// (PLT-R423) and a plain `axSelection` read (PLT-R420). With `axSelectionThenPlaceholder` the placeholder handles
+    /// the suggestion (PLT-R421), so `unreadable then placeholder` stays in `show` only (review of 16/11/2026).
     @Test func anUnreadableCompletionIsAnInjectionProblemPLTR423() throws {
         var trace = TraceBuilder()
         trace.launch()
@@ -162,12 +164,18 @@ private let command: UInt64 = 0x0010_0000
         var slow = Self.forwardDeleteJob(3, delete: 1, posted: 6, completion: "forwardDelete", readUs: 48_700)
         slow["totalUs"] = 50_900
         trace.line("job", slow)
+        let placeholder = "unreadable then placeholder"
+        trace.line("job", Self.forwardDeleteJob(4, delete: 1, posted: 8, completion: placeholder, readUs: 15_000))
+        var slowPlaceholder = Self.forwardDeleteJob(5, delete: 1, posted: 8, completion: placeholder, readUs: 15_000)
+        slowPlaceholder["totalUs"] = 61_200
+        trace.line("job", slowPlaceholder)
         let found = try findings(trace).filter { $0.kind == .injectionProblem }
         #expect(
             found.map(\.detail) == [
                 "job 1 compose backspaceReplace: completion forwardDelete skipped unreadable (read 50.0 ms); slow 52 ms",
                 "job 2 compose backspaceReplace: completion unreadable (read 15.0 ms)",
                 "job 3 compose backspaceReplace: slow 50 ms (completion read 48.7 ms)",
+                "job 5 compose backspaceReplace: slow 61 ms (completion read 15.0 ms)",
             ])
     }
 

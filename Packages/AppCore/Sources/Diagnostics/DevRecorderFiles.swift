@@ -125,8 +125,9 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var insN: Int?
     var totalUs: UInt64?
     var runUs: UInt64?
-    /// What the completion read found: `selected`, `none` or `unreadable` (PLT-R420); `selected`, `forwardDelete`,
-    /// `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable` (PLT-R423).
+    /// What the completion read found: `selected`, `none`, `unreadable` or `unreadable then placeholder` (PLT-R420,
+    /// PLT-R421); `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable`
+    /// (PLT-R423).
     var compl: String?
     /// How long that read took, timeouts included (since the retest of 16/11/2026; optional, so the format version
     /// stays).
