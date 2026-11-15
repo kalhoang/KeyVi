@@ -44,6 +44,7 @@ struct SettingItemRow: View {
             ) { .englishRestore($0) }
         case .keepAsTyped: WordListView(model: model, list: .keepAsTyped)
         case .keepVietnamese: WordListView(model: model, list: .keepVietnamese)
+        case .learnCollisionChoices: LearnCollisionChoicesRow(model: model)
         case .telexStandaloneW:
             ToggleSetting(
                 model: model, item: item, control: SettingsControl.standaloneW, isOn: settings.telexStandaloneW
@@ -53,6 +54,10 @@ struct SettingItemRow: View {
                 model: model, item: item, control: SettingsControl.bracketKeys, isOn: settings.telexBracketKeys
             ) { .telexBracketKeys($0) }
         case .restoreHotkey: HotkeyRow(model: model, item: item, role: .restoreLastWord)
+        case .lookaheadRevision:
+            ToggleSetting(
+                model: model, item: item, control: SettingsControl.lookaheadRevision, isOn: settings.lookaheadRevision
+            ) { .lookaheadRevision($0) }
         case .macrosEnabled:
             ToggleSetting(model: model, item: item, control: MacrosControl.enabled, isOn: settings.macrosEnabled) {
                 .macrosEnabled($0)

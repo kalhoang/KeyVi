@@ -175,6 +175,29 @@ import Testing
         Draft(
             table: .settings, key: "settings.typing.englishRestore.explanation",
             vi: "Ví dụ: gõ text vẫn ra text, không thành tẽt."),
+        // D28, D29 (section 4) and the PRD-R79 copy of the learned-words sheet.
+        Draft(
+            table: .settings, key: "settings.typing.learnCollision.title",
+            vi: "Nhớ cách bạn chọn giữa từ tiếng Anh và tiếng Việt", en: "Learn which reading you choose"),
+        Draft(
+            table: .settings, key: "settings.typing.lookaheadRevision.title",
+            vi: "Sửa lại từ trước khi từ sau cho biết ngôn ngữ",
+            en: "Fix the previous word once the next word shows the language"),
+        Draft(
+            table: .settings, key: "settings.typing.learnCollision.explanation", arguments: [app],
+            vi:
+                "Khi bạn sửa một từ vừa là tiếng Anh vừa là tiếng Việt (as/á, car/cả), {{AppName}} ghi nhớ lựa chọn "
+                + "đó cho lần sau. Chỉ lưu trên máy này."),
+        Draft(table: .settings, key: "settings.typing.learnedChoices.show", vi: "Xem từ đã học..."),
+        Draft(table: .settings, key: "settings.typing.learnedChoices.removeAll", vi: "Xóa tất cả..."),
+        Draft(
+            table: .settings, key: "settings.typing.learnedChoices.empty", arguments: [app],
+            vi: "Chưa có từ nào. {{AppName}} học khi bạn sửa một từ bằng phím Escape."),
+        Draft(
+            table: .settings, key: "settings.typing.lookaheadRevision.explanation",
+            vi:
+                "Ví dụ: gõ tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và trình soạn mã "
+                + "theo quy tắc ứng dụng."),
         Draft(table: .settings, key: "settings.control.resetConfirm.accessibilityLabel", vi: "Khôi phục mặc định"),
         Draft(table: .apps, key: "apps.rule.remember", vi: "Nhớ lựa chọn"),
         Draft(table: .apps, key: "apps.rule.alwaysEnglish", vi: "Luôn tiếng Anh"),

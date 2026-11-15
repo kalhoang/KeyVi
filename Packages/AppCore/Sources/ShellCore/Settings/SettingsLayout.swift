@@ -133,7 +133,7 @@ extension SettingsCatalog {
                     header: CatalogText(SettingsText.sectionVietnamese), items: [.typingMethod, .tonePlacement]),
                 SettingsSection(
                     header: CatalogText(SettingsText.sectionEnglish),
-                    items: [.englishRestore, .keepAsTyped, .keepVietnamese]),
+                    items: [.englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices]),
             ]
         case .apps: []
         case .macros: [SettingsSection(header: nil, items: [.macrosEnabled])]

@@ -91,14 +91,16 @@ import Testing
             ])
         #expect(
             SettingsCatalog.sections(in: .typing).map(\.items) == [
-                [.typingMethod, .tonePlacement], [.englishRestore, .keepAsTyped, .keepVietnamese],
+                [.typingMethod, .tonePlacement],
+                [.englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices],
             ])
         #expect(SettingsCatalog.sections(in: .about).first?.header == CatalogText(SupportText.updatesTitle))
         #expect(SettingsCatalog.sections(in: .support).isEmpty && SettingsCatalog.sections(in: .licences).isEmpty)
         // ENG-R860: the two user lists share one row, side by side; every other setting has a row of its own.
         #expect(
             SettingsCatalog.sections(in: .typing).map(\.rows) == [
-                [[.typingMethod], [.tonePlacement]], [[.englishRestore], [.keepAsTyped, .keepVietnamese]],
+                [[.typingMethod], [.tonePlacement]],
+                [[.englishRestore], [.keepAsTyped, .keepVietnamese], [.learnCollisionChoices]],
             ])
         #expect(SettingsSection(header: nil, items: [.keepVietnamese, .keepAsTyped]).rows.count == 2, "only in order")
     }

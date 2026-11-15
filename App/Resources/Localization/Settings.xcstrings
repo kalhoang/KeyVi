@@ -235,6 +235,42 @@
         }
       }
     },
+    "settings.control.exportIncludeLearnedChoices.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puts your learned choices between English and Vietnamese words in the exported file."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa các lựa chọn đã học giữa từ tiếng Anh và tiếng Việt vào file xuất."
+          }
+        }
+      }
+    },
+    "settings.control.exportIncludeLearnedChoices.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gồm từ đã học"
+          }
+        }
+      }
+    },
     "settings.control.exportIncludeMacros.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -375,6 +411,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nhập quy tắc theo ứng dụng"
+          }
+        }
+      }
+    },
+    "settings.control.importApplyLearnedChoices.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select to import this part."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn để nhập phần này."
+          }
+        }
+      }
+    },
+    "settings.control.importApplyLearnedChoices.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập từ đã học"
           }
         }
       }
@@ -879,6 +951,294 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chọn Việt/Anh theo bàn phím macOS"
+          }
+        }
+      }
+    },
+    "settings.control.learnCollisionChoices.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns learning your choice between English and Vietnamese words on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc ghi nhớ lựa chọn giữa từ tiếng Anh và tiếng Việt."
+          }
+        }
+      }
+    },
+    "settings.control.learnCollisionChoices.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn which reading you choose"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhớ cách bạn chọn giữa từ tiếng Anh và tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoiceRemove.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forgets this choice. Next time the rules decide this word."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quên lựa chọn này. Lần sau các quy tắc quyết định từ này."
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoiceRemove.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove the learned word"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa từ đã học"
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoicesDone.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes the list of learned words."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng danh sách từ đã học."
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoicesDone.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xong"
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoicesRemoveAll.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Asks before forgetting every learned choice."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hỏi lại trước khi quên mọi lựa chọn đã học."
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoicesRemoveAll.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa tất cả từ đã học"
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoicesShow.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the list of learned words to review or remove them."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở danh sách các từ đã học để xem hoặc xóa."
+          }
+        }
+      }
+    },
+    "settings.control.learnedChoicesShow.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem từ đã học"
+          }
+        }
+      }
+    },
+    "settings.control.learnedClearCancel.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Closes without removing anything."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng mà không xóa gì."
+          }
+        }
+      }
+    },
+    "settings.control.learnedClearCancel.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel removing"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy xóa"
+          }
+        }
+      }
+    },
+    "settings.control.learnedClearConfirm.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forgets every learned choice and deletes the file that keeps them."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quên mọi lựa chọn đã học và xóa file lưu chúng."
+          }
+        }
+      }
+    },
+    "settings.control.learnedClearConfirm.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa tất cả"
+          }
+        }
+      }
+    },
+    "settings.control.lookaheadRevision.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns fixing the previous word from the next word on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc sửa lại từ vừa gõ khi từ sau cho biết ngôn ngữ."
+          }
+        }
+      }
+    },
+    "settings.control.lookaheadRevision.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix the previous word once the next word shows the language"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sửa lại từ trước khi từ sau cho biết ngôn ngữ"
           }
         }
       }
@@ -2053,6 +2413,24 @@
         }
       }
     },
+    "settings.export.includeLearnedChoices" : {
+      "comment" : "Export option (PRD-R72): the learned English and Vietnamese choices.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ đã học"
+          }
+        }
+      }
+    },
     "settings.export.includeMacros" : {
       "comment" : "Checkbox.",
       "extractionState" : "manual",
@@ -2989,6 +3367,24 @@
         }
       }
     },
+    "settings.import.apply.learnedChoices" : {
+      "comment" : "Import option (PRD-R72): merge the learned words of the file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập từ đã học"
+          }
+        }
+      }
+    },
     "settings.import.apply.macros" : {
       "comment" : "Checkbox.",
       "extractionState" : "manual",
@@ -3309,6 +3705,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Giữ bản của bạn"
+          }
+        }
+      }
+    },
+    "settings.import.learnedChoices" : {
+      "comment" : "Import summary (PRD-R72). %d is the number of learned-word entries in the file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned word entries: %d"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ đã học: %d mục"
           }
         }
       }
@@ -3944,19 +4358,19 @@
       }
     },
     "settings.reset.body.typing" : {
-      "comment" : "PRD-R26.",
+      "comment" : "PRD-R26: the learned words of ENG-R862 and PRD-R78 go with the Typing pane.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The choices in this pane go back to their defaults and your two word lists are cleared. Other panes stay as they are."
+            "value" : "The choices in this pane go back to their defaults, and your two word lists and the learned words are cleared. Other panes stay as they are."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Các lựa chọn trong mục này trở về mặc định và hai danh sách từ của bạn được xóa. Các mục khác giữ nguyên."
+            "value" : "Các lựa chọn trong mục này trở về mặc định, hai danh sách từ của bạn và các từ đã học được xóa. Các mục khác giữ nguyên."
           }
         }
       }
@@ -4375,6 +4789,348 @@
         }
       }
     },
+    "settings.typing.learnCollision.explanation" : {
+      "comment" : "D28, PRD-R25 and PRD-R79. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you correct a word that is both English and Vietnamese (as/á, car/cả), %@ remembers your choice for next time. It is stored only on this Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khi bạn sửa một từ vừa là tiếng Anh vừa là tiếng Việt (as/á, car/cả), %@ ghi nhớ lựa chọn đó cho lần sau. Chỉ lưu trên máy này."
+          }
+        }
+      }
+    },
+    "settings.typing.learnCollision.title" : {
+      "comment" : "D28 (PRD-R79).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learn which reading you choose"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhớ cách bạn chọn giữa từ tiếng Anh và tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.clear.body" : {
+      "comment" : "Remove-all confirmation (PRD-R78). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ forgets every learned choice, including words it is still learning. This cannot be undone."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sẽ quên mọi lựa chọn đã học, kể cả những từ đang học dở. Không thể hoàn tác."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.clear.cancel" : {
+      "comment" : "Closes the confirmation without removing anything.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hủy"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.clear.confirm" : {
+      "comment" : "Confirms removing every learned word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa tất cả"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.clear.title" : {
+      "comment" : "Title of the remove-all confirmation (PRD-R78).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all learned words?"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa tất cả từ đã học?"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.context.afterEnglish" : {
+      "comment" : "Context of a learned word (ENG-R863): after an English word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "after an English word"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sau từ tiếng Anh"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.context.afterNeutral" : {
+      "comment" : "Context of a learned word (ENG-R863): after a neutral word (a number, or a word that reads as both languages).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "after a word of unclear language"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sau từ không rõ ngôn ngữ"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.context.afterVietnamese" : {
+      "comment" : "Context of a learned word (ENG-R863): after a Vietnamese word.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "after a Vietnamese word"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sau từ tiếng Việt"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.context.any" : {
+      "comment" : "Context of a learned word (ENG-R863): the entry for any context.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "any context"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mọi ngữ cảnh"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.context.sentenceStart" : {
+      "comment" : "Context of a learned word (ENG-R863): at the start of a sentence.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sentence start"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "đầu câu"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.done" : {
+      "comment" : "Closes the learned-words sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xong"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.empty" : {
+      "comment" : "Empty learned-words sheet (PRD-R79). %@ is the app name; Escape is the default restore key (D8).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words yet. %@ learns when you correct a word with the Escape key."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có từ nào. %@ học khi bạn sửa một từ bằng phím Escape."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.intro" : {
+      "comment" : "Under the heading of the learned-words sheet (PRD-R78).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These choices apply in every app and are stored only on this Mac."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Các lựa chọn này áp dụng trong mọi ứng dụng và chỉ lưu trên máy này."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.removeAll" : {
+      "comment" : "Opens the confirmation that removes every learned word (PRD-R78, PRD-R79).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa tất cả..."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.row.english" : {
+      "comment" : "VoiceOver text of a row that chose the English word. %1$@ is the word, %2$@ the context.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ stays English, %2$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ giữ nguyên tiếng Anh, %2$@"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.row.vietnamese" : {
+      "comment" : "VoiceOver text of a row that chose the Vietnamese reading. %1$@ is the word, %2$@ its Vietnamese reading, %3$@ the context.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ becomes %2$@, %3$@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ thành %2$@, %3$@"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.show" : {
+      "comment" : "D28 row button that opens the learned-words sheet (PRD-R78, PRD-R79).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show learned words..."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem từ đã học..."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.title" : {
+      "comment" : "Heading of the learned-words sheet (PRD-R78).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ đã học"
+          }
+        }
+      }
+    },
     "settings.typing.list.add" : {
       "comment" : "Adds the entry.",
       "extractionState" : "manual",
@@ -4533,6 +5289,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Xóa \"%@\""
+          }
+        }
+      }
+    },
+    "settings.typing.lookaheadRevision.explanation" : {
+      "comment" : "D29, PRD-R25 and PRD-R79.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For example, in tricky as hell, á changes back to as when you type hell. It is off in Terminal and code editors by the app rules."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ví dụ: gõ tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và trình soạn mã theo quy tắc ứng dụng."
+          }
+        }
+      }
+    },
+    "settings.typing.lookaheadRevision.title" : {
+      "comment" : "D29 (PRD-R79), under Advanced.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix the previous word once the next word shows the language"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sửa lại từ trước khi từ sau cho biết ngôn ngữ"
           }
         }
       }

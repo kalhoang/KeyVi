@@ -32,6 +32,8 @@ final class SettingsWindowModel: ObservableObject {
     @Published var macroImportError: String?
     @Published var macroToDelete: StoredMacro?
     @Published var appDetail: AppDetail?
+    /// The learned-words sheet of D28 (PRD-R78); nil while closed.
+    @Published var learnedChoices: LearnedChoicesSheetState?
     @Published var pendingPasteMode: BundleKey?
     /// PRD-R53 note after switching from Beta back to Stable (the updater's `Updates` copy).
     @Published var channelNote = UpdateChannelNote()

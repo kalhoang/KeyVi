@@ -3,7 +3,7 @@
 // Settings window layout in the style of macOS System Settings (Pa, 2026-11-14, feedback item 6): the sidebar with
 // the seven panes in PRD-R24 order on the left, running the window's full height under the transparent title bar; on
 // the right the pane's title in the title bar row, the store notices, then the pane's grouped sections, and the short
-// status line at the bottom. Also the sheets of the reset, export, import, macro and app flows.
+// status line at the bottom. Also the sheets of the reset, export, import, macro and app flows and the learned words.
 
 import AppModel
 import ShellCore
@@ -93,6 +93,7 @@ struct SettingsSheets: ViewModifier {
             .sheet(isPresented: presence(\.macroDraft)) { MacroEditorSheet(model: model).respectsReduceMotion() }
             .sheet(isPresented: macroImportPresented) { MacroImportSheet(model: model).respectsReduceMotion() }
             .sheet(isPresented: presence(\.appDetail)) { AppDetailSheet(model: model).respectsReduceMotion() }
+            .sheet(isPresented: presence(\.learnedChoices)) { LearnedChoicesSheet(model: model).respectsReduceMotion() }
             .modifier(MacroDeleteAlert(model: model))
             .modifier(PasteModeAlert(model: model))
     }

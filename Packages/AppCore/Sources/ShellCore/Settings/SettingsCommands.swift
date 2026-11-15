@@ -16,11 +16,20 @@ public struct SettingsCommands: Sendable {
 
     public func state() async -> SettingsState { await store.state }
 
-    /// PRD-R6: an explicit choice, kept even when equal to today's default.
+    /// PRD-R6: an explicit choice, kept even when equal to today's default. The learned-words sheet's edits go to
+    /// the collision memory on the store's queue (PRD-R78, PLT-R914); settings.json is not written for them.
     public func apply(_ edit: SettingsEdit) async -> SettingsState {
-        await store.updateSettings { edit.apply(to: &$0) }
+        switch edit {
+        case .forgetLearnedChoice(let key): await store.forgetCollisionChoice(word: key.word, context: key.context)
+        case .clearLearnedChoices: await store.clearCollisionMemory()
+        default: await store.updateSettings { edit.apply(to: &$0) }
+        }
         return await store.state
     }
+
+    /// The learned-words sheet's rows as the memory votes now (PRD-R78): entries that vote for a side, never
+    /// counters. Read when the sheet opens and after each of its edits.
+    public func learnedChoices() async -> [CollisionMemoryVote] { await store.learnedCollisionChoices() }
 
     /// PRD-R21 rule from the Apps pane; `.remember` clears the explicit rule.
     public func setRule(_ rule: PerAppRule, for bundle: BundleKey) async -> SettingsState {

@@ -42,9 +42,9 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
     // General (PRD-R24)
     case openAtLogin, toggleHotkey, rememberPerApp, switchIndicator, interfaceLanguage
     case soundOnSwitch, clickIconToToggle, layoutBinding
-    // Typing (PRD-R24)
-    case typingMethod, tonePlacement, englishRestore, keepAsTyped, keepVietnamese
-    case telexStandaloneW, telexBracketKeys, restoreHotkey
+    // Typing (PRD-R24); D28 under the two user lists, D29 under Advanced (PRD-R78, PRD-R79)
+    case typingMethod, tonePlacement, englishRestore, keepAsTyped, keepVietnamese, learnCollisionChoices
+    case telexStandaloneW, telexBracketKeys, restoreHotkey, lookaheadRevision
     // Macros (section 8)
     case macrosEnabled
     // About (D19 to D21)
@@ -55,18 +55,19 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .openAtLogin, .toggleHotkey, .rememberPerApp, .switchIndicator, .interfaceLanguage, .soundOnSwitch,
             .clickIconToToggle, .layoutBinding:
             .general
-        case .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .telexStandaloneW,
-            .telexBracketKeys, .restoreHotkey:
+        case .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices,
+            .telexStandaloneW, .telexBracketKeys, .restoreHotkey, .lookaheadRevision:
             .typing
         case .macrosEnabled: .macros
         case .updateChannel, .automaticallyCheckForUpdates, .automaticallyInstallUpdates: .about
         }
     }
 
-    /// Behind "Tùy chọn nâng cao" (PRD-R24): D15, D16, PLT-R373 binding, D5, D6, D8.
+    /// Behind "Tùy chọn nâng cao" (PRD-R24): D15, D16, PLT-R373 binding, D5, D6, D8, D29.
     public var isAdvanced: Bool {
         switch self {
-        case .soundOnSwitch, .clickIconToToggle, .layoutBinding, .telexStandaloneW, .telexBracketKeys, .restoreHotkey:
+        case .soundOnSwitch, .clickIconToToggle, .layoutBinding, .telexStandaloneW, .telexBracketKeys, .restoreHotkey,
+            .lookaheadRevision:
             true
         default: false
         }
@@ -92,6 +93,8 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .automaticallyCheckForUpdates: "D19"
         case .automaticallyInstallUpdates: "D20"
         case .updateChannel: "D21"
+        case .learnCollisionChoices: "D28"
+        case .lookaheadRevision: "D29"
         case .layoutBinding: "PLT-R373"
         case .keepAsTyped, .keepVietnamese: "ENG-R860"
         }
@@ -114,9 +117,11 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .englishRestore: "englishRestore"
         case .keepAsTyped: "keepAsTyped"
         case .keepVietnamese: "keepVietnamese"
+        case .learnCollisionChoices: "learnCollisionChoices"
         case .telexStandaloneW: "telexStandaloneW"
         case .telexBracketKeys: "telexBracketKeys"
         case .restoreHotkey: "restoreHotkey"
+        case .lookaheadRevision: "lookaheadRevision"
         case .macrosEnabled: "macrosEnabled"
         case .updateChannel: "updateChannel"
         case .automaticallyCheckForUpdates: "automaticallyCheckForUpdates"
@@ -139,9 +144,11 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .englishRestore: CatalogText(SettingsText.englishRestoreTitle)
         case .keepAsTyped: CatalogText(SettingsText.keepAsTypedTitle)
         case .keepVietnamese: CatalogText(SettingsText.keepVietnameseTitle)
+        case .learnCollisionChoices: CatalogText(SettingsText.learnCollisionTitle)
         case .telexStandaloneW: CatalogText(SettingsText.standaloneWTitle)
         case .telexBracketKeys: CatalogText(SettingsText.bracketsTitle)
         case .restoreHotkey: CatalogText(SettingsText.restoreHotkeyTitle)
+        case .lookaheadRevision: CatalogText(SettingsText.lookaheadRevisionTitle)
         case .macrosEnabled: CatalogText(MacrosText.enabledTitle)
         case .updateChannel: CatalogText(SupportText.channelTitle)
         case .automaticallyCheckForUpdates: CatalogText(SupportText.autoCheckTitle)
@@ -149,7 +156,7 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         }
     }
 
-    /// PRD-R25: the one-line explanation under the setting.
+    /// PRD-R25: the one-line explanation under the setting. D17 and D28 take the app name as their argument.
     public var explanation: CatalogText {
         switch self {
         case .openAtLogin: CatalogText(SettingsText.openAtLoginExplanation)
@@ -165,9 +172,11 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .englishRestore: CatalogText(SettingsText.englishRestoreExplanation)
         case .keepAsTyped: CatalogText(SettingsText.keepAsTypedExplanation)
         case .keepVietnamese: CatalogText(SettingsText.keepVietnameseExplanation)
+        case .learnCollisionChoices: CatalogText(SettingsText.learnCollisionExplanation)
         case .telexStandaloneW: CatalogText(SettingsText.standaloneWExplanation)
         case .telexBracketKeys: CatalogText(SettingsText.bracketsExplanation)
         case .restoreHotkey: CatalogText(SettingsText.restoreHotkeyExplanation)
+        case .lookaheadRevision: CatalogText(SettingsText.lookaheadRevisionExplanation)
         case .macrosEnabled: CatalogText(MacrosText.enabledExplanation)
         case .updateChannel: CatalogText(SupportText.channelExplanation)
         case .automaticallyCheckForUpdates: CatalogText(SupportText.autoCheckExplanation)

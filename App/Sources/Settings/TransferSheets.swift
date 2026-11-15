@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Reset confirmation (PRD-R26: confirmation, export offer, separate macros checkbox), export sheet (PLT-R1010:
-// macros and per-app modes can be unticked, with the privacy note) and import summary (PLT-R1010: changes,
-// counts, skipped fields, duplicate choice, backup note).
+// macros, per-app modes and the learned words can be unticked, with the privacy note) and import summary
+// (PLT-R1010: changes, counts, skipped fields, duplicate choice, backup note; PRD-R72: the learned words).
 
 import AppModel
 import SettingsStore
@@ -68,6 +68,10 @@ struct ExportSheet: View {
                 Text(verbatim: localizer.string(SettingsText.exportIncludeAppModes))
             }
             .settingsAccessibility(SettingsControl.exportIncludeAppModes, localizer)
+            Toggle(isOn: option(\.includeLearnedChoices)) {
+                Text(verbatim: localizer.string(SettingsText.exportIncludeLearnedChoices))
+            }
+            .settingsAccessibility(SettingsControl.exportIncludeLearnedChoices, localizer)
             HStack {
                 Spacer()
                 Button(action: model.cancelExport) { Text(verbatim: localizer.string(SettingsText.exportCancel)) }
@@ -149,6 +153,12 @@ struct ImportSummaryView: View {
             if summary.hasMacros {
                 Toggle(isOn: choice(\.applyMacros)) { Text(verbatim: localizer.string(SettingsText.importApplyMacros)) }
                     .settingsAccessibility(SettingsControl.importApplyMacros, localizer)
+            }
+            if summary.hasLearnedChoices {
+                Toggle(isOn: choice(\.applyCollisionMemory)) {
+                    Text(verbatim: localizer.string(SettingsText.importApplyLearnedChoices))
+                }
+                .settingsAccessibility(SettingsControl.importApplyLearnedChoices, localizer)
             }
             if summary.hasDuplicateMacros {
                 Picker(selection: duplicates) {

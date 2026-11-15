@@ -2,9 +2,10 @@
 //
 // "Kiểu gõ / Typing" (PRD-R24): method Telex/VNI (D1) with a live practice field, tone placement (D2) with hòa and
 // hoà side by side, English restore (D4) with its two user lists (ENG-R860), each learned entry with the app it was
-// learned in, a remove and a "use in every app" button (ENG-R862); Advanced: lone w (D5), brackets (D6),
-// restore-last-word hotkey (D8). The pane is `SettingsSectionsPane(pane: .typing)`; this file holds the practice
-// field and the word lists. The practice field's text stays in memory only (PLT-R901).
+// learned in, a remove and a "use in every app" button (ENG-R862), then D28 with "Xem từ đã học..." (PRD-R78,
+// LearnedChoicesSheet.swift); Advanced: lone w (D5), brackets (D6), restore-last-word hotkey (D8), D29. The pane is
+// `SettingsSectionsPane(pane: .typing)`; this file holds the practice field and the word lists. The practice field's
+// text stays in memory only (PLT-R901).
 
 import AppModel
 import SettingsStore
