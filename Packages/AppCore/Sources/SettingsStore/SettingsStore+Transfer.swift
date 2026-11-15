@@ -129,8 +129,8 @@ extension SettingsStore {
         if options.includeMacros {
             root[SettingsExportFormat.macros] = .array(MacrosCodec.encodeList(macros, over: []))
         }
-        if options.includeCollisionMemory {
-            root[SettingsExportFormat.collisionMemory] = collisionMemory.exportSection()
+        if options.includeCollisionMemory, let section = collisionMemory.exportSection() {
+            root[SettingsExportFormat.collisionMemory] = section
         }
         return try JSONSupport.serialize(.object(root))
     }

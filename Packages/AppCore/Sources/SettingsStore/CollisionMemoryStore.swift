@@ -186,10 +186,12 @@ public final class CollisionMemoryStore: Sendable {
         publish()
     }
 
-    /// Import (PRD-R72): counters are added to the current ones; words not on the bundled list are dropped.
+    /// Import (PRD-R72): counters are added to the current ones; words not on the bundled list are dropped. Days
+    /// after today are dated today first (PLT-R912).
     public func merge(_ imported: CollisionMemory) {
         guard !imported.isEmpty else { return }
         let today = currentDay()
+        let imported = imported.dated(notAfter: today)
         let changed: Bool = state.withLock { state in
             guard let vocabulary = state.vocabulary else {
                 state.pendingImport = state.pendingImport.merging(imported)
@@ -238,8 +240,14 @@ public final class CollisionMemoryStore: Sendable {
 
     // MARK: Export
 
-    /// The `collisionMemory` section of a settings export: the entries, without the envelope.
-    public func exportSection() -> JSONValue { .array(CollisionMemoryCodec.encodeEntries(memory)) }
+    /// The `collisionMemory` section of a settings export: the entries, without the envelope. Nil while the memory
+    /// is not loaded (the bundled lists failed, safe mode): an empty section would read as "no learned words" on the
+    /// Mac that imports it, while the file still holds them.
+    public func exportSection() -> JSONValue? {
+        state.withLock { state in
+            state.vocabulary == nil ? nil : .array(CollisionMemoryCodec.encodeEntries(state.memory))
+        }
+    }
 
     /// Entries of an export section; invalid entries are left out (PLT-R912). Words are checked at merge.
     public static func importedEntries(_ section: [JSONValue]) -> CollisionMemory {

@@ -196,6 +196,63 @@ extension SettingsStoreHarness {
         #expect(root?["collisionMemory"] == nil)
     }
 
+    /// The memory was never loaded (the bundled lists failed): the export leaves the section out rather than send an
+    /// empty list that would read as "no learned words", and the file stays as it is.
+    @Test func anExportWhileTheMemoryIsNotLoadedLeavesTheSectionOut() async throws {
+        let first = SettingsStoreHarness()
+        first.store.collisionMemory.load(vocabulary: vocabulary)
+        first.store.collisionMemory.apply([signal("as")])
+        first.store.collisionMemory.flush()
+        let harness = SettingsStoreHarness(reusing: first)
+        _ = await harness.store.load()
+        let data = try await harness.store.export(ExportOptions(), now: Date(timeIntervalSince1970: 1_800_000_000))
+        let root = try JSONDecoder().decode(JSONValue.self, from: data).objectValue
+        #expect(root?["collisionMemory"] == nil)
+        #expect(count(harness.memoryFile()?["entries"]) == 2)
+    }
+
+    /// The sheet's "Xóa tất cả" acts on the memory it lists: while the memory is not loaded the sheet is empty and
+    /// the button leaves the file alone. The pane and full resets, explicit requests, still delete it.
+    @Test func theSheetsClearAllLeavesAnUnloadedMemoryAlone() async {
+        let first = SettingsStoreHarness()
+        first.store.collisionMemory.load(vocabulary: vocabulary)
+        first.store.collisionMemory.apply([signal("as")])
+        first.store.collisionMemory.flush()
+        let harness = SettingsStoreHarness(reusing: first)
+        _ = await harness.store.load()
+        await harness.store.clearCollisionMemory()
+        #expect(harness.memoryNode != nil)
+        await harness.store.reset(.typing)
+        #expect(harness.memoryNode == nil)
+    }
+
+    /// PLT-R912: an imported entry dated in the future (a Mac with a wrong date, or a crafted export) is dated today
+    /// before it is merged, so it neither ages the local counters to that day nor freezes their decay.
+    @Test(arguments: [false, true])
+    func importedDaysInTheFutureAreDatedToday(importedBeforeLoad: Bool) {
+        let harness = SettingsStoreHarness()
+        let memory = harness.store.collisionMemory
+        let today = CollisionMemory.day(of: harness.wallClock.now())
+        let key = CollisionMemoryKey(word: "car", context: .afterEnglish)
+        var future = CollisionMemoryEntry(day: today + 1_000)
+        future.corrections.vietnamese = 1
+        let imported = CollisionMemory(entries: [key: future])
+        if importedBeforeLoad {
+            memory.merge(imported)
+            memory.load(vocabulary: vocabulary)
+            #expect(memory.memory.entries[key]?.decayDay == today)
+            #expect(memory.memory.entries[key]?.lastDay == today)
+            return
+        }
+        memory.load(vocabulary: vocabulary)
+        memory.apply([signal("car", .afterEnglish, .english), signal("car", .afterEnglish, .english)])
+        memory.merge(imported)
+        let entry = memory.memory.entries[key]
+        #expect(entry?.corrections.english == 2)
+        #expect(entry?.corrections.vietnamese == 1)
+        #expect(entry?.decayDay == today && entry?.lastDay == today)
+    }
+
     /// PRD-R26: the Typing pane reset clears the learned collision choices with the other Typing lists; D28 and D29
     /// are Typing settings and go back to unset.
     @Test func theTypingResetClearsTheMemory() async {
