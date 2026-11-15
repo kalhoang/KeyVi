@@ -55,23 +55,6 @@ enum CollisionMemoryBridge {
     }
 }
 
-/// For the learned-words sheet (PRD-R78): the Vietnamese reading of a collision word (`as` -> `á`), computed by the
-/// engine from the bundled word itself with Telex and no restore, so the sheet never stores or shows anything the
-/// user typed.
-public enum CollisionWordReading {
-    private static let engine = Engine(
-        configuration: EngineConfiguration(inputMethod: .telex(TelexOptions()), autoRestore: false),
-        resources: .empty)
-
-    /// The display of `word` typed key by key; the word itself when it does not compose.
-    public static func vietnamese(_ word: String) -> String {
-        var session = Session(engine: engine)
-        for character in word { _ = session.handle(.key(KeyInput(character))) }
-        let display = session.state.activeDisplay
-        return display.isEmpty ? word : display
-    }
-}
-
 /// The bundled collision list for the main thread's learning tracker (ENG-R862 amendment), set once on the utility
 /// queue when the bundled lists are loaded.
 final class CollisionVocabularyBox: Sendable {

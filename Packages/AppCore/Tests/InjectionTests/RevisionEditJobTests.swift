@@ -51,6 +51,13 @@ private final class LaggingApp: Sendable {
 
     func bind(_ clock: ManualClock) { self.clock.withLock { $0 = clock } }
 
+    /// A key that passed through the tap physically (nothing in flight for the worker) and that the app applies
+    /// `lag` after `at`.
+    func holdPhysical(_ character: Character, at: MonotonicInstant) {
+        let record = InjectionFieldWiring.keyDown(character, receivedAt: at)
+        pending.withLock { $0.append(Pending(due: at.nanoseconds + lag, posted: .replay(record, userData: 0))) }
+    }
+
     var poster: FakeEventPoster {
         FakeEventPoster { [self] posted in
             let now = clock.withLock { $0?.now().nanoseconds ?? 0 }
@@ -74,11 +81,26 @@ private final class LaggingApp: Sendable {
     }
 }
 
+/// Field access through a lagging app. `onRead` runs before each selected-range read with its index from 1: the
+/// moment a click or a focus change lands between the worker's reads.
 private struct LaggingFieldAccess: FocusedFieldAccess {
     let base: any FocusedFieldAccess
     let app: LaggingApp
+    var onRead: @Sendable (Int) -> Void = { _ in }
+    private let reads = Mutex(0)
+
+    init(base: any FocusedFieldAccess, app: LaggingApp, onRead: @escaping @Sendable (Int) -> Void = { _ in }) {
+        self.base = base
+        self.app = app
+        self.onRead = onRead
+    }
 
     func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
+        let index = reads.withLock { count in
+            count += 1
+            return count
+        }
+        onRead(index)
         app.catchUp()
         return base.selectedRange(field, timeout: timeout)
     }
@@ -110,9 +132,37 @@ private func laggingRevision(lagMilliseconds: UInt64) -> (WorkerRig, LaggingApp,
     return (rig, app, edit)
 }
 
+/// A rig over a lagging app where the last letter of the current word passed through the tap physically: `hel` is
+/// on screen and the app applies `l` `lag` after the trigger key; `postedBefore` adds a worker-posted job one second
+/// earlier, so the worker's last posted event is old.
+private func physicalLagRevision(lagMilliseconds: UInt64, postedBefore: Bool) -> (WorkerRig, LaggingApp, UInt64) {
+    let app = LaggingApp(
+        field: SimulatedTextField(text: postedBefore ? "tricky á he" : "tricky á hel"), lagMilliseconds: lagMilliseconds
+    )
+    let rig = WorkerRig(field: app.field, poster: app.poster) { LaggingFieldAccess(base: $0, app: app) }
+    app.bind(rig.clock)
+    if postedBefore {
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: "l") }
+        rig.run()
+        rig.clock.advance(byMicroseconds: 1_000_000)
+        app.catchUp()
+    }
+    let trigger = rig.clock.now()
+    app.holdPhysical("l", at: trigger)
+    let edit = rig.pushEdit { sequence in
+        var job = revisionJob(sequence: sequence)
+        job.createdAt = trigger
+        return job
+    }
+    rig.run()
+    rig.clock.advance(byMicroseconds: 500_000)
+    app.catchUp()
+    return (rig, app, edit)
+}
+
 @Suite struct RevisionEditJobTests {
     /// PLT-R357: the app has not applied the job before the revision when the read-back runs. The mismatch is read
-    /// again once the settle window after the last posted event ends, and the whole revision applies.
+    /// again once the settle window after the last posted event (later than the trigger here) ends, and the whole revision applies.
     @Test func aSlowAppIsReadAgainAfterTheSettleWindow() {
         let (rig, app, edit) = laggingRevision(lagMilliseconds: 20)
         #expect(rig.outcome(edit) == .executed)
@@ -293,6 +343,57 @@ private func laggingRevision(lagMilliseconds: UInt64) -> (WorkerRig, LaggingApp,
         rig.run()
         #expect(rig.outcome(edit) == .discardedForGeneration)
         #expect(rig.field.text == "tricky á hell")
+        #expect(rig.feedback.compositionResetCount >= 1)
+    }
+
+    /// PLT-R357: the letters of the current word usually pass through the tap physically, so the worker has posted
+    /// nothing recently. The settle window starts at the trigger key as well: an app 20 ms behind on the last
+    /// physical letter still gets the whole revision, with or without an old posted event.
+    @Test(arguments: [false, true])
+    func aSlowAppBehindOnAPhysicalLetterIsReadAgain(postedBefore: Bool) {
+        let (rig, app, edit) = physicalLagRevision(lagMilliseconds: 20, postedBefore: postedBefore)
+        #expect(rig.outcome(edit) == .executed)
+        #expect(app.field.text == "tricky as hell")
+        #expect(rig.feedback.compositionResetCount == 0)
+    }
+
+    /// PLT-R316 with PLT-R357: the focus changed while the worker waited for the app to settle (a mouse click is
+    /// never held, PLT-R317). Nothing is posted into the new field; the key is replayed and the engine reset.
+    @Test func aFocusChangeDuringTheSettleWaitDiscardsTheRevision() {
+        let app = LaggingApp(field: SimulatedTextField(text: "tricky á hel"), lagMilliseconds: 20)
+        let focus = Mutex<CurrentFocusGeneration?>(nil)
+        let rig = WorkerRig(field: app.field, poster: app.poster) { base in
+            LaggingFieldAccess(base: base, app: app) { read in
+                // The first read is the read-back, the second the one after the settle wait.
+                if read == 2 { focus.withLock { $0?.store(FocusGeneration(rawValue: 2)) } }
+            }
+        }
+        app.bind(rig.clock)
+        focus.withLock { $0 = rig.generation }
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: "l") }
+        let edit = rig.pushEdit { revisionJob(sequence: $0) }
+        rig.run()
+        #expect(rig.outcome(edit) == .discardedForGeneration)
+        #expect(rig.poster.posted.backspaceCount == 0)
+        #expect(rig.poster.posted.insertedText == "l")
+        #expect(rig.feedback.compositionResetCount >= 1)
+    }
+
+    /// PLT-R357 with PLT-R342: the read-back found the field unlike the engine's text because the caret moved (a
+    /// click between the trigger and the read). The current token is not before the caret either, so nothing is
+    /// edited: the key passes through and the engine is reset.
+    @Test func aMismatchWithTheCurrentTokenAwayFromTheCaretPassesTheKey() {
+        let rig = WorkerRig(field: SimulatedTextField(text: "x tét"))
+        rig.field.click(at: 1)
+        let edit = rig.pushEdit {
+            revisionJob(
+                sequence: $0, previous: CommittedToken(display: "á"), currentDisplay: "tét", deleteCount: 5,
+                insertion: "as test")
+        }
+        rig.run()
+        #expect(rig.outcome(edit) == .passedThroughByFallback)
+        #expect(rig.field.text == "x tét")
+        #expect(rig.poster.posted.keyDowns.isEmpty)
         #expect(rig.feedback.compositionResetCount >= 1)
     }
 }

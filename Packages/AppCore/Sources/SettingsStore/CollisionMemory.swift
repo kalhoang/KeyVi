@@ -310,6 +310,18 @@ public struct CollisionMemory: Sendable, Hashable {
         CollisionMemory(entries: entries.filter { vocabulary.contains($0.key.word) })
     }
 
+    /// Every day no later than `day` (PLT-R912): an imported entry dated in the future (a wrong clock, a crafted
+    /// export) would otherwise age the local counters to that day when merged, or freeze their decay until then.
+    public func dated(notAfter day: Int) -> CollisionMemory {
+        CollisionMemory(
+            entries: entries.mapValues { entry in
+                var dated = entry
+                dated.decayDay = min(entry.decayDay, day)
+                dated.lastDay = min(entry.lastDay, day)
+                return dated
+            })
+    }
+
     /// Without the entry `key` (one row of the learned-words sheet).
     public func removing(_ key: CollisionMemoryKey) -> CollisionMemory {
         var copy = entries
@@ -323,7 +335,9 @@ public struct CollisionMemory: Sendable, Hashable {
     }
 
     /// Import (PRD-R72): counters of the same entry are added after both are aged to the later decay day
-    /// (acceptances capped), class masks joined, days kept at the later one; then the cap applies.
+    /// (acceptances capped), class masks joined, days kept at the later one; then the cap applies. The older side
+    /// loses the phase of its current 90-day period when its decay clock moves to the later day, so merging and
+    /// ageing in either order differ by at most one halving of that side.
     public func merging(_ other: CollisionMemory) -> CollisionMemory {
         var merged = entries
         for (key, theirs) in other.entries {

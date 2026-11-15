@@ -15,6 +15,28 @@ enum HotkeyKeyNames {
         return localizer.format(MenuText.hotkeyUnknownKey, Int(keyCode.rawValue))
     }
 
+    /// A key in words, as printed on it, for copy that tells the user what to press (`ShortcutWords`, PRD-R78):
+    /// non-printing keys by their legend, which reads the same in every interface language like the modifiers, and
+    /// the arrow keys by name in the interface language; any other key as `name(for:localizer:)` gives it.
+    static func word(for keyCode: KeyCode, localizer: Localizer) -> String {
+        if let legend = legends[keyCode.rawValue] { return legend }
+        if let arrow = arrows[keyCode.rawValue] { return localizer.string(arrow) }
+        return name(for: keyCode, localizer: localizer)
+    }
+
+    /// Legends of the non-printing keys other than the arrows.
+    private static let legends: [UInt16: String] = [
+        KeyCode.returnKey.rawValue: "Return", KeyCode.tab.rawValue: "Tab", KeyCode.delete.rawValue: "Delete",
+        KeyCode.escape.rawValue: "Escape", KeyCode.forwardDelete.rawValue: "Forward Delete",
+        KeyCode.home.rawValue: "Home", KeyCode.end.rawValue: "End", KeyCode.pageUp.rawValue: "Page Up",
+        KeyCode.pageDown.rawValue: "Page Down", KeyCode.keypadEnter.rawValue: "Enter",
+    ]
+
+    private static let arrows: [UInt16: MenuText] = [
+        KeyCode.leftArrow.rawValue: .hotkeyLeftArrow, KeyCode.rightArrow.rawValue: .hotkeyRightArrow,
+        KeyCode.upArrow.rawValue: .hotkeyUpArrow, KeyCode.downArrow.rawValue: .hotkeyDownArrow,
+    ]
+
     /// Apple's symbols for non-printing keys.
     private static let symbols: [UInt16: String] = [
         KeyCode.returnKey.rawValue: "↩", KeyCode.tab.rawValue: "⇥", KeyCode.delete.rawValue: "⌫",

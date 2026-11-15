@@ -254,8 +254,13 @@ public actor SettingsStore {
         collisionMemory.forget(word: word, context: context)
     }
 
-    /// "Xóa tất cả" (PRD-R78): every entry, acceptance counters included; the file is deleted.
-    public func clearCollisionMemory() { collisionMemory.clearAll() }
+    /// "Xóa tất cả" (PRD-R78): every entry, acceptance counters included; the file is deleted. Only for a loaded
+    /// memory: before `load` (or when the bundled lists failed) the sheet lists nothing, and a button that deletes
+    /// what it never showed would lose the user's words. The pane and full resets clear it in any case (PLT-R914).
+    public func clearCollisionMemory() {
+        guard collisionMemory.isLoaded else { return }
+        collisionMemory.clearAll()
+    }
 
     // MARK: Export and import (PLT-R1010, PRD-R72)
 

@@ -1,6 +1,42 @@
 {
   "sourceLanguage" : "vi",
   "strings" : {
+    "hotkey.downArrow" : {
+      "comment" : "Name of an arrow key in a shortcut written in words (onboarding, learned-words sheet).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Down Arrow"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mũi tên xuống"
+          }
+        }
+      }
+    },
+    "hotkey.leftArrow" : {
+      "comment" : "Name of an arrow key in a shortcut written in words (onboarding, learned-words sheet).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Left Arrow"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mũi tên trái"
+          }
+        }
+      }
+    },
     "hotkey.right" : {
       "comment" : "Right-side modifier. %@ is the modifier symbol.",
       "extractionState" : "manual",
@@ -15,6 +51,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ phải"
+          }
+        }
+      }
+    },
+    "hotkey.rightArrow" : {
+      "comment" : "Name of an arrow key in a shortcut written in words (onboarding, learned-words sheet).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Right Arrow"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mũi tên phải"
           }
         }
       }
@@ -51,6 +105,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Phím %d"
+          }
+        }
+      }
+    },
+    "hotkey.upArrow" : {
+      "comment" : "Name of an arrow key in a shortcut written in words (onboarding, learned-words sheet).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up Arrow"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mũi tên lên"
           }
         }
       }

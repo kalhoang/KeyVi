@@ -44,8 +44,6 @@ extension SettingsWindowModel {
         learnedChoices = learnedChoices?.replacingVotes(votes, reading: learnedReading)
     }
 
-    /// Vietnamese readings in the tone placement the user has now (D2), as the user sees the words typed.
-    private var learnedReading: @Sendable (String) -> String {
-        LearnedChoiceReading.vietnamese(tonePlacement: settings.tonePlacement)
-    }
+    /// Vietnamese readings with the settings the user has now (D2, D5), as the user sees the words typed.
+    private var learnedReading: @Sendable (String) -> String { LearnedChoiceReading.vietnamese(for: settings) }
 }

@@ -14,7 +14,7 @@ import Testing
 
 @testable import ShellCore
 
-/// The Vietnamese readings the fixture rows use; the real ones come from the engine (`CollisionWordReading`).
+/// The Vietnamese readings the fixture rows use; the real ones come from the engine (`LearnedChoiceReading`).
 private let readings = ["as": "á", "car": "cả", "cos": "có", "gif": "gì"]
 private func reading(_ word: String) -> String { readings[word] ?? word }
 
@@ -75,6 +75,44 @@ private func strong(
         #expect(modern.rows.map(\.result) == ["toé"])
         #expect(LearnedChoiceReading.vietnamese(tonePlacement: .modern)("as") == "á")
         #expect(LearnedChoiceReading.vietnamese(tonePlacement: .modern)("xyz") == "xyz", "no reading: the word")
+    }
+
+    /// The reading comes from the bundled word itself (PRD-R78), with the user's settings now: D2 for the tone
+    /// placement and D5 for a lone w, so a row shows the word as the user would see it typed. The window passes its
+    /// settings (`vietnamese(for:)`), so a wiring that drops them is caught here.
+    @Test func theReadingFollowsTheUsersSettings_D2_D5() {
+        #expect(LearnedChoiceReading.vietnamese(tonePlacement: .traditional)("as") == "á")
+        #expect(LearnedChoiceReading.vietnamese(tonePlacement: .traditional)("cos") == "có")
+        #expect(LearnedChoiceReading.vietnamese(tonePlacement: .traditional)("car") == "cả")
+        var user = UserSettings()
+        #expect(LearnedChoiceReading.vietnamese(for: user.resolved())("toes") == "tóe")
+        #expect(LearnedChoiceReading.vietnamese(for: user.resolved())("war") == "ửa")
+        user.tonePlacement = .set(.modern)
+        user.telexStandaloneW = .set(false)
+        #expect(LearnedChoiceReading.vietnamese(for: user.resolved())("toes") == "toé")
+        #expect(LearnedChoiceReading.vietnamese(for: user.resolved())("war").hasPrefix("w"), "D5 off: w stays w")
+    }
+
+    /// Two rows of the ambiguity table are typed with VNI digits (`a4`, `o2`): their Telex reading is the word
+    /// itself, so the VNI reading is shown (PRD-R78).
+    @Test func rowsTypedWithDigitsReadInVNI() {
+        let reading = LearnedChoiceReading.vietnamese(tonePlacement: .traditional)
+        #expect(reading("a4") == "ã")
+        #expect(reading("o2") == "ò")
+        #expect(reading("xyz") == "xyz")
+    }
+
+    /// The empty state names the restore key of the settings the window passes (D8).
+    @Test func theEmptyStateReadsTheRestoreKeyFromTheSettings_D8() throws {
+        let l = try Localizers()
+        var user = UserSettings()
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "A", settings: user.resolved(), l.en)
+                == LearnedChoicesSheetState.emptyText(appName: "A", restoreHotkey: .key(.escape), l.en))
+        user.restoreHotkey = .set(nil)
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "A", settings: user.resolved(), l.en)
+                == LearnedChoicesSheetState.emptyText(appName: "A", restoreHotkey: nil, l.en))
     }
 
     @Test func contextIsSaidInWordsInBothLanguages() throws {
@@ -151,6 +189,22 @@ private func strong(
             LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: nil, l.en)
                 == "No words yet. {{AppName}} learns when you correct a word with the restore-last-word key, "
                 + "which is off in Advanced options.")
+        // PRD-R78 names the key in words: a non-printing key reads as its legend, never as Apple's symbol, also for
+        // VoiceOver; the arrow keys are named in the interface language.
+        let optionEscape = HotkeyBinding.keyCombo(modifiers: [.option], keyCode: .escape)
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: optionEscape, l.vi)
+                .hasSuffix("(Option + Escape)."))
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: .key(.returnKey), l.en)
+                .hasSuffix("(Return)."))
+        let arrow = HotkeyBinding.keyCombo(modifiers: [.control], keyCode: .leftArrow)
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: arrow, l.vi)
+                .hasSuffix("(Control + Mũi tên trái)."))
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: arrow, l.en)
+                .hasSuffix("(Control + Left Arrow)."))
     }
 
     // MARK: Remove and clear (PRD-R78, PLT-R914)

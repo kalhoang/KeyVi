@@ -53,13 +53,6 @@ struct CollisionLearningTrackerTests {
         #expect(snapshot.vote(word: "as", context: .afterEnglish) == .vietnamese)
         #expect(snapshot.vote(word: "car", context: .sentenceStart) == .english)
     }
-
-    /// The learned-words sheet renders the Vietnamese reading from the bundled word itself (PRD-R78).
-    @Test func theVietnameseReadingComesFromTheWord() {
-        #expect(CollisionWordReading.vietnamese("as") == "á")
-        #expect(CollisionWordReading.vietnamese("cos") == "có")
-        #expect(CollisionWordReading.vietnamese("car") == "cả")
-    }
 }
 
 @Suite("Collision signals through the host (PLT-R914)")
