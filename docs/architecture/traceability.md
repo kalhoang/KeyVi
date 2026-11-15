@@ -352,7 +352,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |
 | PRD-R77 | No in-app survey, rating prompt or usage counter | all UI | D | all UI workstreams |  |
 | PRD-R78 | Learned-words sheet: entries that vote, rendered in D2, remove per row and `Xóa tất cả`, D8 key in the empty state, cleared by the Typing and full resets; one line and no edit while the memory is not loaded | `App/Sources/Settings/LearnedChoicesSheet.swift`, `SettingsWindowModel+LearnedChoices`, `LearnedChoices` (ShellCore; `LearnedChoicesSheetState.isUnavailable`), `SettingsCommands.learnedChoices`, `CollisionMemoryStore.learnedChoices` | U (`LearnedChoicesPaneTests`), M | W11-C, W16-A | **Pa** |
-| PRD-R79 | Copy of D28, D29 and the learned-words sheet, including the line shown when the memory is not loaded | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`), L (l10n lint) | W11-C, W16-A; Pa (copy review before v1) | **Pa** |
+| PRD-R79 | Copy of D28, D29 and the learned-words sheet, including the line shown when the memory is not loaded; D29 example amended 15/11/2026 | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`; engine `RetestBeta2RealDataTests` pins the example), L (l10n lint) | W11-C, W16-A, W17-B; Pa (copy review before v1) | **Pa** |
 
 ## 04-quality-release.md (QA-R)
 

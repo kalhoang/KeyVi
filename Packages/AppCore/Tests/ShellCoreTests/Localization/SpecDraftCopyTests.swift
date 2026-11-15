@@ -203,11 +203,13 @@ import Testing
             vi:
                 "Chưa nhập được từ đã học vì không tải được danh sách từ đã học. Mở lại {{AppName}} có thể khắc phục "
                 + "lỗi này."),
+        // PRD-R79 amended 15/11/2026 (retest item 21): from an empty field `tricky as hell` has no revision, so the
+        // example starts with Vietnamese words.
         Draft(
             table: .settings, key: "settings.typing.lookaheadRevision.explanation",
             vi:
-                "Ví dụ: gõ tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và trình soạn mã "
-                + "theo quy tắc ứng dụng."),
+                "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và trình "
+                + "soạn mã theo quy tắc ứng dụng."),
         Draft(table: .settings, key: "settings.control.resetConfirm.accessibilityLabel", vi: "Khôi phục mặc định"),
         Draft(table: .apps, key: "apps.rule.remember", vi: "Nhớ lựa chọn"),
         Draft(table: .apps, key: "apps.rule.alwaysEnglish", vi: "Luôn tiếng Anh"),
