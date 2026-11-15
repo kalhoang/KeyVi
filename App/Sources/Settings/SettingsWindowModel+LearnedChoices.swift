@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The learned-words sheet of D28 (PRD-R78): the votes are read from the store's collision memory on the utility
-// queue when the sheet opens and again after each edit, so the sheet always shows what the memory votes now. The
-// rows and the edits are ShellCore's (`LearnedChoicesSheetState`, `SettingsEdit`), tested there.
+// queue when the sheet opens and again after each edit, so the sheet always shows what the memory votes now; nil
+// votes mean the memory is not loaded, and the sheet then offers no edit. The rows and the edits are ShellCore's
+// (`LearnedChoicesSheetState`, `SettingsEdit`), tested there.
 
 import ShellCore
 
@@ -18,6 +19,7 @@ extension SettingsWindowModel {
 
     /// One row: the row leaves at once, then the sheet shows the memory's votes after the edit.
     func forgetLearnedChoice(_ row: LearnedChoiceRow) {
+        guard learnedChoices?.canEdit == true else { return }
         learnedChoices = learnedChoices?.removing(row)
         Task {
             apply(await commands.apply(row.forgetEdit))
@@ -31,6 +33,7 @@ extension SettingsWindowModel {
 
     /// "Xóa tất cả" after the confirmation: every entry and the file (PLT-R914).
     func confirmClearLearnedChoices() {
+        guard learnedChoices?.canEdit == true else { return }
         learnedChoices = learnedChoices?.cleared
         Task {
             apply(await commands.apply(.clearLearnedChoices))

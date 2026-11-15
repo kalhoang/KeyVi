@@ -159,6 +159,17 @@ struct ImportSummaryView: View {
                     Text(verbatim: localizer.string(SettingsText.importApplyLearnedChoices))
                 }
                 .settingsAccessibility(SettingsControl.importApplyLearnedChoices, localizer)
+            } else if summary.learnedChoicesUnavailable {
+                // PRD-R72, PLT-R914: the memory is not loaded, so the option is shown off and disabled, with why.
+                Toggle(isOn: .constant(false)) {
+                    Text(verbatim: localizer.string(SettingsText.importApplyLearnedChoices))
+                }
+                .disabled(true)
+                .settingsAccessibility(SettingsControl.importApplyLearnedChoices, localizer)
+                Text(verbatim: ImportSummary.learnedChoicesUnavailableText(appName: model.appName, localizer))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if summary.hasDuplicateMacros {
                 Picker(selection: duplicates) {

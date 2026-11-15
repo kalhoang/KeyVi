@@ -172,7 +172,7 @@ extension SettingsStoreHarness {
         target.store.collisionMemory.load(vocabulary: vocabulary)
         target.store.collisionMemory.apply([signal("as")])
         let preview = try await target.store.previewImport(data)
-        #expect(preview.collisionMemoryEntries == 2)
+        #expect(preview.collisionMemory == CollisionMemoryImportPreview(importable: 2, skipped: 0, isAvailable: true))
         try await target.store.applyImport(preview, choices: ImportChoices())
         let key = CollisionMemoryKey(word: "as", context: .afterVietnamese)
         #expect(target.store.collisionMemory.memory.entries[key]?.corrections.vietnamese == 2)
@@ -185,7 +185,7 @@ extension SettingsStoreHarness {
         #expect(skipped.store.collisionMemory.entryCount == 0)
     }
 
-    /// The export option leaves the section out.
+    /// The export option leaves the section out, and the preview of such a file has no learned words.
     @Test func theSectionCanBeLeftOut() async throws {
         let harness = SettingsStoreHarness()
         _ = await harness.store.load()
@@ -194,6 +194,67 @@ extension SettingsStoreHarness {
             ExportOptions(includeCollisionMemory: false), now: Date(timeIntervalSince1970: 1_800_000_000))
         let root = try JSONDecoder().decode(JSONValue.self, from: data).objectValue
         #expect(root?["collisionMemory"] == nil)
+        #expect(try await harness.store.previewImport(data).collisionMemory == nil)
+    }
+
+    /// PRD-R72, PLT-R914: the preview checks the entries against this build's bundled list exactly as the merge does,
+    /// so its count is what will be imported; entries with a word the list does not have, a bad shape or a repeated
+    /// key are counted as skipped and left out of what the import applies.
+    @Test func thePreviewCountsOnlyWhatTheMergeKeepsAndHowManyAreSkipped() async throws {
+        let source = SettingsStoreHarness()
+        _ = await source.store.load()
+        source.store.collisionMemory.load(vocabulary: ["as", "car", "cos", "tee"])
+        source.store.collisionMemory.apply([signal("as"), signal("tee")])
+        let data = try Self.appendingEntries(
+            to: try await source.store.export(ExportOptions(), now: Date(timeIntervalSince1970: 1_800_000_000)),
+            [
+                ["word": "AS", "context": "any"],  // not lowercased raw keys: a bad shape
+                [
+                    "word": "as", "context": "afterVietnamese", "correctionsEnglish": 1, "correctionsVietnamese": 0,
+                    "acceptedEnglish": 0, "acceptedVietnamese": 0, "classesEnglish": 0, "classesVietnamese": 0,
+                    "decayDay": 20_000, "lastDay": 20_000,
+                ],  // a repeated key: the first one wins
+            ])
+
+        let target = SettingsStoreHarness()
+        _ = await target.store.load()
+        target.store.collisionMemory.load(vocabulary: vocabulary)
+        let preview = try await target.store.previewImport(data)
+        #expect(preview.collisionMemory == CollisionMemoryImportPreview(importable: 2, skipped: 4, isAvailable: true))
+        #expect(count(preview.content.objectValue?["collisionMemory"]) == 2, "only the importable entries")
+        try await target.store.applyImport(preview, choices: ImportChoices())
+        #expect(target.store.collisionMemory.entryCount == 2)
+        #expect(!target.store.collisionMemory.memory.entries.keys.contains { $0.word == "tee" })
+    }
+
+    /// PLT-R914: while the memory is not loaded (the bundled lists failed to load) nothing can be validated or
+    /// written, so the preview says the learned words are unavailable and the import leaves them out entirely; nothing
+    /// is kept to be merged later.
+    @Test func whileTheMemoryIsNotLoadedTheLearnedWordsAreNotImported() async throws {
+        let source = SettingsStoreHarness()
+        _ = await source.store.load()
+        source.store.collisionMemory.load(vocabulary: vocabulary)
+        source.store.collisionMemory.apply([signal("as")])
+        let data = try await source.store.export(ExportOptions(), now: Date(timeIntervalSince1970: 1_800_000_000))
+
+        let target = SettingsStoreHarness()
+        _ = await target.store.load()
+        #expect(!target.store.collisionMemory.isLoaded)
+        let preview = try await target.store.previewImport(data)
+        #expect(preview.collisionMemory == CollisionMemoryImportPreview(importable: 0, skipped: 0, isAvailable: false))
+        #expect(preview.content.objectValue?["collisionMemory"] == nil)
+        #expect(preview.content.objectValue?["settings"] != nil, "the rest of the file is still offered")
+        try await target.store.applyImport(preview, choices: ImportChoices())
+        target.store.collisionMemory.load(vocabulary: vocabulary)
+        #expect(target.store.collisionMemory.entryCount == 0, "nothing was kept for a later load")
+    }
+
+    /// The export with `extra` appended to its `collisionMemory` section.
+    private static func appendingEntries(to data: Data, _ extra: [[String: Any]]) throws -> Data {
+        var root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let entries = try #require(root["collisionMemory"] as? [Any])
+        root["collisionMemory"] = entries + extra
+        return try JSONSerialization.data(withJSONObject: root)
     }
 
     /// PRD-R26: the Typing pane reset clears the learned collision choices with the other Typing lists; D28 and D29

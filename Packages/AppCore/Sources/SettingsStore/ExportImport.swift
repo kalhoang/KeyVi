@@ -11,7 +11,8 @@
 //       "appModes": { ...app-modes.json without envelope... },   // optional (unticked = absent)
 //       "ruleOverrides": [ ...stored overrides... ],
 //       "macros": [ ...stored macros... ],                        // optional (unticked = absent)
-//       "collisionMemory": [ ...collision-memory.json entries... ]  // optional (PLT-R914, merged on import)
+//       "collisionMemory": [ ...collision-memory.json entries... ]  // optional (PLT-R914, merged on import; the
+//                                                                   // preview counts only entries of the bundled list)
 //     }
 //
 // File name: `<slug>-settings-YYYYMMDD.json` (slug injected by the App).
@@ -50,12 +51,38 @@ public struct ImportPreview: Sendable, Hashable {
     public var appEntries: Int
     public var ruleOverrides: Int
     public var macros: MacroImportPreview?
-    /// Entries of the `collisionMemory` section that passed the shape checks (words are checked at merge).
-    public var collisionMemoryEntries = 0
+    /// The `collisionMemory` section (PLT-R914, PRD-R72); nil when the file has none.
+    public var collisionMemory: CollisionMemoryImportPreview?
     /// Keys from a newer schema that this build will skip (PLT-R1010).
     public var skippedFields: [String]
     /// Opaque validated content applied by `applyImport`.
     public var content: JSONValue
+}
+
+/// What the import would do with the learned collision choices (PRD-R72, PLT-R914). The entries are checked against
+/// this build's bundled list exactly as the merge checks them, so `importable` is what the merge keeps; the rest is
+/// counted in `skipped`, the way the macro preview counts invalid entries.
+public struct CollisionMemoryImportPreview: Sendable, Hashable {
+    /// Entries the merge will add: a valid shape and a word on the bundled list.
+    public var importable: Int
+    /// Entries left out: a bad shape, a key repeated in the file, or a word this build's bundled list does not have.
+    public var skipped: Int
+    /// False while the memory is not loaded (the bundled lists failed to load): nothing can be checked or written,
+    /// so nothing is imported and both counts are 0.
+    public var isAvailable: Bool
+
+    public init(importable: Int, skipped: Int, isAvailable: Bool) {
+        self.importable = importable
+        self.skipped = skipped
+        self.isAvailable = isAvailable
+    }
+
+    /// The preview of a section: `vocabulary` nil means the memory is not loaded.
+    static func of(_ items: [JSONValue], vocabulary: CollisionVocabulary?) -> (Self, CollisionMemory?) {
+        guard let vocabulary else { return (Self(importable: 0, skipped: 0, isAvailable: false), nil) }
+        let kept = CollisionMemoryStore.importedEntries(items).validated(against: vocabulary)
+        return (Self(importable: kept.count, skipped: items.count - kept.count, isAvailable: true), kept)
+    }
 }
 
 public struct ImportChoices: Sendable, Hashable {
@@ -116,6 +143,8 @@ public enum SettingsExportFormat {
 struct ImportBaseline: Sendable {
     var user: UserSettings
     var macros: [StoredMacro]
+    /// The bundled collision list the memory was loaded with; nil while it is not loaded (PLT-R914).
+    var collisionVocabulary: CollisionVocabulary?
 }
 
 /// Validates an untrusted export (5 MB cap, bounded nesting, schema checks, no evaluation of content) and builds
@@ -159,9 +188,12 @@ struct SettingsImporter {
             content[SettingsExportFormat.ruleOverrides] = .array(RuleOverridesCodec.encodeList(overrides, over: []))
         }
         if let items = try arraySection(root, SettingsExportFormat.collisionMemory) {
-            let imported = CollisionMemoryStore.importedEntries(items)
-            preview.collisionMemoryEntries = imported.count
-            content[SettingsExportFormat.collisionMemory] = .array(CollisionMemoryCodec.encodeEntries(imported))
+            // PRD-R72: only what the merge keeps is counted and applied; unloaded, the section is left out.
+            let (section, kept) = CollisionMemoryImportPreview.of(items, vocabulary: baseline.collisionVocabulary)
+            preview.collisionMemory = section
+            if let kept {
+                content[SettingsExportFormat.collisionMemory] = .array(CollisionMemoryCodec.encodeEntries(kept))
+            }
         }
         if let items = try arraySection(root, SettingsExportFormat.macros) {
             let object = try migrated(["macros": .array(items)], file: .macros, from: version)

@@ -49,43 +49,66 @@ public struct LearnedChoiceRow: Sendable, Hashable, Identifiable {
 }
 
 /// What the sheet shows: the rows in the memory's key order (word, then the any-context entry, then sentence start,
-/// after a Vietnamese, English and neutral word) and whether the "Xóa tất cả" confirmation is open.
+/// after a Vietnamese, English and neutral word), whether the "Xóa tất cả" confirmation is open, and whether the memory
+/// could be loaded at all (PLT-R914: when the bundled lists failed to load, nothing is recorded, written, removed or
+/// cleared, so the sheet has no rows, offers no edit and says so in one line).
 public struct LearnedChoicesSheetState: Sendable, Hashable {
     public let rows: [LearnedChoiceRow]
     public let confirmsClearAll: Bool
+    /// The memory is not loaded (`SettingsCommands.learnedChoices()` returned nil).
+    public let isUnavailable: Bool
 
-    /// `reading` gives a word's Vietnamese reading; the default types the bundled word with the engine (Telex, no
-    /// restore), so nothing the user typed is stored or shown.
+    /// `votes` nil: the memory is not loaded. `reading` gives a word's Vietnamese reading; the default types the
+    /// bundled word with the engine (Telex, no restore), so nothing the user typed is stored or shown.
     public init(
-        votes: [CollisionMemoryVote], reading: (String) -> String = CollisionWordReading.vietnamese
+        votes: [CollisionMemoryVote]?, reading: (String) -> String = CollisionWordReading.vietnamese
     ) {
-        self.init(rows: LearnedChoices.rows(votes, reading: reading), confirmsClearAll: false)
+        self.init(
+            rows: votes.map { LearnedChoices.rows($0, reading: reading) } ?? [], confirmsClearAll: false,
+            isUnavailable: votes == nil)
     }
 
-    private init(rows: [LearnedChoiceRow], confirmsClearAll: Bool) {
+    private init(rows: [LearnedChoiceRow], confirmsClearAll: Bool, isUnavailable: Bool) {
         self.rows = rows
-        self.confirmsClearAll = confirmsClearAll
+        self.confirmsClearAll = confirmsClearAll && !isUnavailable
+        self.isUnavailable = isUnavailable
     }
 
     public var isEmpty: Bool { rows.isEmpty }
 
+    /// Remove and "Xóa tất cả..." are enabled: the memory is loaded, even when no row is listed (clearing also
+    /// removes entries the sheet does not list).
+    public var canEdit: Bool { !isUnavailable }
+
     /// The sheet once `row` is removed.
     public func removing(_ row: LearnedChoiceRow) -> LearnedChoicesSheetState {
-        LearnedChoicesSheetState(rows: rows.filter { $0.id != row.id }, confirmsClearAll: confirmsClearAll)
+        LearnedChoicesSheetState(
+            rows: rows.filter { $0.id != row.id }, confirmsClearAll: confirmsClearAll, isUnavailable: isUnavailable)
     }
 
     /// The sheet after "Xóa tất cả": empty, the confirmation closed.
-    public var cleared: LearnedChoicesSheetState { LearnedChoicesSheetState(rows: [], confirmsClearAll: false) }
-
-    public func confirmingClearAll(_ confirms: Bool) -> LearnedChoicesSheetState {
-        LearnedChoicesSheetState(rows: rows, confirmsClearAll: confirms)
+    public var cleared: LearnedChoicesSheetState {
+        LearnedChoicesSheetState(rows: [], confirmsClearAll: false, isUnavailable: isUnavailable)
     }
 
-    /// New votes from the store (after an edit); an open confirmation stays open.
+    /// Opens or closes the "Xóa tất cả" confirmation; it never opens while the memory is not loaded.
+    public func confirmingClearAll(_ confirms: Bool) -> LearnedChoicesSheetState {
+        LearnedChoicesSheetState(rows: rows, confirmsClearAll: confirms, isUnavailable: isUnavailable)
+    }
+
+    /// New votes from the store (after an edit; nil: the memory is not loaded); an open confirmation stays open.
     public func replacingVotes(
-        _ votes: [CollisionMemoryVote], reading: (String) -> String = CollisionWordReading.vietnamese
+        _ votes: [CollisionMemoryVote]?, reading: (String) -> String = CollisionWordReading.vietnamese
     ) -> LearnedChoicesSheetState {
-        LearnedChoicesSheetState(rows: LearnedChoices.rows(votes, reading: reading), confirmsClearAll: confirmsClearAll)
+        LearnedChoicesSheetState(
+            rows: votes.map { LearnedChoices.rows($0, reading: reading) } ?? [], confirmsClearAll: confirmsClearAll,
+            isUnavailable: votes == nil)
+    }
+
+    /// The one line shown instead of the list while the memory is not loaded (PRD-R78, PRD-R79): the list could not
+    /// be loaded and reopening the app may help.
+    public static func unavailableText(appName: String, _ localizer: Localizer) -> String {
+        localizer.format(SettingsText.learnedChoicesUnavailable, appName)
     }
 
     /// The empty state (PRD-R79): how words are learned, with the restore key the user has now (D8). Strong signals

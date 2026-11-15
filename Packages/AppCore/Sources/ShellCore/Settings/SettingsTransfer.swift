@@ -25,8 +25,15 @@ public struct ImportSummary: Sendable, Hashable {
     public var hasRuleOverrides: Bool { preview.content["ruleOverrides"] != nil }
     public var hasMacros: Bool { preview.macros != nil }
     public var hasDuplicateMacros: Bool { !(preview.macros?.duplicates.isEmpty ?? true) }
-    /// The learned collision choices (PRD-R72), merged by adding counters.
-    public var hasLearnedChoices: Bool { preview.collisionMemoryEntries > 0 }
+    /// The learned collision choices (PRD-R72), merged by adding counters: the checkbox is offered only when some
+    /// entries are importable (their word is on this build's bundled list).
+    public var hasLearnedChoices: Bool {
+        guard let section = preview.collisionMemory, section.isAvailable else { return false }
+        return section.importable > 0
+    }
+    /// The file has learned words but the memory is not loaded (the bundled lists failed to load, PLT-R914): the
+    /// option is shown unavailable with `learnedChoicesUnavailableText`.
+    public var learnedChoicesUnavailable: Bool { preview.collisionMemory?.isAvailable == false }
 
     /// Nothing would be applied with the current choices.
     public var isEmptySelection: Bool {
@@ -35,8 +42,8 @@ public struct ImportSummary: Sendable, Hashable {
             || (choices.applyCollisionMemory && hasLearnedChoices))
     }
 
-    /// Summary lines in display order: changed settings, app entries, overrides, macro counts, learned words,
-    /// skipped fields.
+    /// Summary lines in display order: changed settings, app entries, overrides, macro counts, learned words (the
+    /// importable entries and, when some are left out, how many), skipped fields.
     public func lines(_ localizer: Localizer) -> [String] {
         var lines: [String] = []
         if hasSettings {
@@ -53,8 +60,11 @@ public struct ImportSummary: Sendable, Hashable {
                 localizer.format(
                     SettingsText.importMacros, macros.new.count, macros.duplicates.count, macros.invalid.count))
         }
-        if hasLearnedChoices {
-            lines.append(localizer.format(SettingsText.importLearnedChoices, preview.collisionMemoryEntries))
+        if let section = preview.collisionMemory, section.isAvailable, section.importable + section.skipped > 0 {
+            lines.append(
+                section.skipped == 0
+                    ? localizer.format(SettingsText.importLearnedChoices, section.importable)
+                    : localizer.format(SettingsText.importLearnedChoicesSkipped, section.importable, section.skipped))
         }
         if isNewerSchema { lines.append(localizer.string(SettingsText.importNewerSchema)) }
         if !preview.skippedFields.isEmpty {
@@ -62,6 +72,12 @@ public struct ImportSummary: Sendable, Hashable {
                 localizer.format(SettingsText.importSkipped, ListFormat.join(preview.skippedFields, localizer)))
         }
         return lines
+    }
+
+    /// Why the learned words cannot be imported while the memory is not loaded, and that reopening the app may help
+    /// (PRD-R72, PRD-R43: what happened and what to do).
+    public static func learnedChoicesUnavailableText(appName: String, _ localizer: Localizer) -> String {
+        localizer.format(SettingsText.importLearnedChoicesUnavailable, appName)
     }
 }
 

@@ -262,7 +262,8 @@ public actor SettingsStore {
     public func export(_ options: ExportOptions, now: Date) throws -> Data { try exportData(options, now: now) }
     /// Validates untrusted data (5 MB cap, schema, no evaluation, PLT-R912) and builds a preview.
     public func previewImport(_ data: Data) throws -> ImportPreview {
-        try SettingsImporter(migrations: migrations).preview(data, baseline: ImportBaseline(user: user, macros: macros))
+        let baseline = ImportBaseline(user: user, macros: macros, collisionVocabulary: collisionMemory.vocabulary)
+        return try SettingsImporter(migrations: migrations).preview(data, baseline: baseline)
     }
     /// Backs up current files, applies, migrates older schemas, lists skipped fields of newer schemas.
     public func applyImport(_ preview: ImportPreview, choices: ImportChoices) throws {
