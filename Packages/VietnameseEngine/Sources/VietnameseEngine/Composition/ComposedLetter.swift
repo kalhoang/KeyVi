@@ -39,6 +39,29 @@ package struct KeySet: Sendable, Hashable {
         return KeySet(index: 63 - bits.leadingZeroBitCount)
     }
 
+    /// The keys of this set with an index above `index`.
+    @inline(__always)
+    package func after(_ index: Int) -> KeySet {
+        guard index >= 0 else { return self }
+        guard index < 63 else { return KeySet() }
+        var result = KeySet()
+        result.bits = bits & ~((UInt64(1) << UInt64(index + 1)) - 1)
+        return result
+    }
+
+    /// The highest index of this set; nil if the set is empty.
+    package var newestIndex: Int? { bits == 0 ? nil : 63 - bits.leadingZeroBitCount }
+
+    /// This set with every index at or above `offset` moved up by one, for a key inserted at `offset`.
+    package func inserting(at offset: Int) -> KeySet {
+        guard offset > 0 else { return KeySet(bits: bits << 1) }
+        guard offset < 64 else { return self }
+        let lowMask = (UInt64(1) << UInt64(offset)) - 1
+        return KeySet(bits: (bits & lowMask) | ((bits & ~lowMask) << 1))
+    }
+
+    private init(bits: UInt64) { self.bits = bits }
+
     /// The keys in either set.
     @inline(__always)
     package func union(_ other: KeySet) -> KeySet {

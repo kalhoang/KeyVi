@@ -199,10 +199,16 @@ extension Composition {
         }
         let madeBySameKey: (ComposedLetter) -> Bool = { $0.flags.contains(.bracket) && $0.letter == letter }
         guard letters.contains(where: madeBySameKey) else { return false }
+        // ENG-R711: the escape undid the removed letters' keys and their mark keys, except a mark key that
+        // still marks a letter that stays (`]ow]` shows `ơ]`: the `w` gave the `ơ` its horn).
+        var stillShown = KeySet()
+        for kept in letters where !madeBySameKey(kept) && kept.letter.modifier != .none {
+            stillShown.formUnion(kept.modifierSources)
+        }
         var undone = KeySet()
         for removed in letters where madeBySameKey(removed) {
             undone.formUnion(KeySet(index: Int(removed.source)))
-            undone.formUnion(removed.modifierSources)
+            undone.formUnion(removed.modifierSources.subtracting(stillShown))
         }
         letters.removeAll(where: madeBySameKey)
         escape(.bracket, key: key, at: index, undoing: undone)

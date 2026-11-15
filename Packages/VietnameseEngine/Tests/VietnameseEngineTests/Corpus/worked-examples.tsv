@@ -271,6 +271,12 @@ W242l	Backspace inside a token	Telex	trad	-	booo⌫	bo	an escape letter that sta
 W242m	Backspace inside a token	VNI	trad	-	a11⌫	a	
 W242n	Backspace inside a token	Telex	trad	-	daauszz⌫	da	after a mark removal Backspace takes one character (ENG-T38)
 W242o	Backspace inside a token	Telex	trad	-	aaz⌫		the `z` has nothing left to remove: it goes too
+W242p	Backspace inside a token	Telex	trad	-	wsaw⌫	á	the `s` waited for a vowel and lands on the `a` (ENG-R432)
+W242q	Backspace inside a token	Telex	trad	-	wsoww⌫	ó	
+W242r	Backspace inside a token	Telex	trad	-	wszaw⌫	a	the whole tone chain waits, the removal included
+W242s	Backspace inside a token	Telex	trad	-	wzow⌫	ư	after a mark removal only the later `w` gives the horn (ENG-R710)
+W242t	Backspace inside a token	VNI	trad	-	u70o7⌫	ư	
+W242u	Backspace inside a token	Telex	trad	-	dwndw⌫	đn	retyped from the letters shown (ENG-R711 fallback 2)
 W243	Backspace inside a token	Telex	trad	-	duwowngf⌫⌫⌫	dư	ơ deleted with its horn and tone; ư keeps its horn
 W243a	Backspace inside a token	Telex	trad	-	thuowr⌫	thư	one `w` marked `ư` and `ơ`: it stays with `ư` (ENG-R710)
 W243b	Backspace inside a token	Telex	trad	-	dduowcj⌫⌫	đư	the tone goes with `ợ`, the shared `w` stays

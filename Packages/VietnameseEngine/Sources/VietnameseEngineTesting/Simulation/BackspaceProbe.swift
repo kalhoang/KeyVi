@@ -29,7 +29,8 @@ public enum BackspaceProbe {
         /// only to complete the pair; it shows as typed again (`u[` shows `ươ`, Backspace gives `u`).
         case hornCompletion
         /// ENG-R906: a bracket letter takes the case of the word, and the deletion changed whether the
-        /// word is all caps (`]OU` shows `ƯƠU`, Backspace gives `ưƠ`).
+        /// word is all caps (`]OU` shows `ƯƠU`, Backspace gives `ưƠ`); the tone may also move by the
+        /// placement rule in the same press (ENG-R501).
         case bracketCase
         /// Anything else: a letter that was not deleted changed, or more than one character went.
         case violation
@@ -96,8 +97,14 @@ public enum BackspaceProbe {
         guard composition.literalStart == nil else { return .violation }
         let letters = composition.letters
         if isToneRelocation(expected: expected, after: after) { return .toneRelocated }
-        if letters.contains(where: { $0.flags.contains(.bracket) }), lowercased(expected) == lowercased(after) {
-            return .bracketCase
+        if letters.contains(where: { $0.flags.contains(.bracket) }) {
+            // ENG-R906 alone, or with the tone moving by the placement rule in the same press (ENG-R501:
+            // `]ZSOU` shows `UÓU`, Backspace gives `úO`).
+            let lowerExpected = lowercased(expected)
+            let lowerAfter = lowercased(after)
+            if lowerExpected == lowerAfter || isToneRelocation(expected: lowerExpected, after: lowerAfter) {
+                return .bracketCase
+            }
         }
         guard letters.count >= 2, onlyLastLetterDiffers(expected: expected, after: after) else { return .violation }
         let previous = letters[letters.count - 2]

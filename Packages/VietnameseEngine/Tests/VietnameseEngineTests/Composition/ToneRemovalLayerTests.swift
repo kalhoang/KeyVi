@@ -61,6 +61,9 @@ struct ToneRemovalLayerTests {
         ("daauszz⌫", "da"), ("aaz⌫", ""), ("ddaaz⌫", "d"), ("dduwowngfzz⌫", "duon"), ("tooz⌫", "t"),
         ("uowzw⌫", "ư"), ("ddaazaz⌫", "d"), ("woz⌫", "u"), ("wzw⌫", ""), ("daauszzs⌫", "dá"),
         ("daauszzss⌫", "dau"),
+        // A removal clears every mark, so the horn the `ư` shows after it comes from the later `w` alone,
+        // which stays for it (ENG-R710): the standalone `w` no longer gives the mark.
+        ("wzow⌫", "ư"), ("wozw⌫", "ư"), ("Wzow⌫", "Ư"),
     ])
     func backspaceAfterARemovalOnlyDeletes(keys: String, expected: String) throws {
         var driver = EngineDriver(configuration: Self.telex)
@@ -73,6 +76,10 @@ struct ToneRemovalLayerTests {
         var driver = EngineDriver(configuration: Self.vni)
         try driver.send(KeyNotation.events("da6u100⌫"))
         #expect(driver.field.string == "da")
+        // The `7` after the removal alone gives the horn of the `ư` (ENG-R710, ENG-R411).
+        var second = EngineDriver(configuration: Self.vni)
+        try second.send(KeyNotation.events("u70o7⌫"))
+        #expect(second.field.string == "ư")
     }
 
     /// The commit decides on the display as usual; the raw keys keep every key typed (ENG-R602).

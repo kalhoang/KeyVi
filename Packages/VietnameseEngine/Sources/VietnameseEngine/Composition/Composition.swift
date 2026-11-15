@@ -45,24 +45,44 @@ package struct Composition: Sendable, Hashable {
     /// Replays `keys` from an empty token (ENG-R601); `capsLockKeys` holds the offsets in `keys` of the
     /// keys typed with Caps Lock on (ENG-R906).
     ///
-    /// `idleTransforms` holds the offsets of keys that acted as transforms where they were first typed (a
-    /// tone key, a tone removal, a mark removal) and must not come back as letters: such a key is left out
-    /// when, replayed here, it would be appended as a letter or a literal character. Backspace uses this
-    /// (ENG-R710, ENG-R711): a removal key whose letters are gone, or a tone key whose vowel an escape
-    /// removed (`WSw`), goes with the deleted letter instead of reappearing.
+    /// Backspace uses the two other sets (ENG-R710, ENG-R711) for keys that acted as transforms where they
+    /// were first typed and must not come back as letters:
+    /// - `idleTransforms` (mark removals): such a key is left out when, replayed here, it would be
+    ///   appended as a letter or a literal character (`aaz` + Backspace is empty).
+    /// - `toneChain` (the keys that set or removed the tone): such a key that finds no vowel yet waits for
+    ///   the next letter and is tried again, in order, after each letter; it is left out only when no
+    ///   later letter takes it. A tone key typed before the vowel that an escape removed then lands on
+    ///   the vowel that follows (`wsaw` + Backspace is `á`, ENG-R432) or goes with the deleted letter
+    ///   (`WSw` + Backspace is empty). A waiting key moves after the letter that takes it in `raw`, so the
+    ///   raw keys still replay to this state.
     package init<S: Sequence>(
         replaying keys: S, capsLockKeys: KeySet = KeySet(), droppingIdle idleTransforms: KeySet = KeySet(),
-        rules: ComposerRules
+        deferringTone toneChain: KeySet = KeySet(), rules: ComposerRules
     ) where S.Element == UInt8 {
+        var waiting: [UInt8] = []
         for (offset, key) in keys.enumerated() {
             let capsLock = capsLockKeys.contains(offset)
-            guard idleTransforms.contains(offset) else {
+            let isTone = toneChain.contains(offset)
+            guard isTone || idleTransforms.contains(offset) else {
                 append(key, capsLock: capsLock, rules: rules)
+                if !waiting.isEmpty { waiting = appendingWaiting(waiting, rules: rules) }
                 continue
             }
-            var trial = self
-            if trial.append(key, capsLock: capsLock, rules: rules) { self = trial }
+            if !appendIfTransform(key, capsLock: capsLock, rules: rules), isTone { waiting.append(key) }
         }
+    }
+
+    /// Appends `key` only when it acts as a transform (ENG-R710); returns whether it did.
+    private mutating func appendIfTransform(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> Bool {
+        var trial = self
+        guard trial.append(key, capsLock: capsLock, rules: rules) else { return false }
+        self = trial
+        return true
+    }
+
+    /// Tries the waiting tone keys again in order and returns those that still find no vowel.
+    private mutating func appendingWaiting(_ waiting: [UInt8], rules: ComposerRules) -> [UInt8] {
+        waiting.filter { !appendIfTransform($0, rules: rules) }
     }
 
     package var isLiteral: Bool { literalStart != nil }

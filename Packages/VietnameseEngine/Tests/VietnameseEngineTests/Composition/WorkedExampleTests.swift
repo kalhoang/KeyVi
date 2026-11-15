@@ -20,7 +20,7 @@ struct WorkedExampleTests {
     }()
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 296)
+        #expect(Self.rows.count == 302)
     }
 
     @Test(arguments: rows)

@@ -79,7 +79,12 @@ separately from the app (spec/04-quality-release.md QA-R27).
   loses exactly one character and the kind is no longer escaped (ENG-R711, ENG-R714, product owner
   15/11/2026): `boss` + Backspace gives `bo`, `nhaamff` + Backspace gives `nhâm`. `InvariantChecker` and
   `BackspaceProbe` check strict deletion for escapes (the `escapeUndone` and `literalRecomputed` outcomes are
-  gone).
+  gone). In the replay a tone key that finds no vowel yet waits for the next letter (`wsaw` + Backspace gives
+  `á`); a bracket escape keeps a mark key that still marks a letter that stays (`]ow]` + Backspace gives `ơ`);
+  the fallbacks keep a standalone `w` or bracket letter shown unmarked as a `u` or `o` key and otherwise
+  retype the token from the letters shown (`dwndw` + Backspace gives `đn`). After a mark removal only the
+  later mark keys count for the shared-key rule of ENG-R710 (`wzow` + Backspace gives `ư`).
+  `BackspaceExhaustiveTests` checks ENG-T38 on every sequence of up to five transform keys.
 - Telex `z` and VNI `0` remove one layer per press: the tone, then every vowel mark and `đ` (ENG-R411,
   REG-34): `daauszz` gives `dau`. ENG-T36 probes the removal key with three presses.
 

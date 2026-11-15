@@ -41,6 +41,21 @@ struct EscapeBackspaceTests {
         // The `S` put its tone on the `Ư` that the escape removed: it goes too instead of coming back as
         // a letter (ENG-R432 note), so the field still loses exactly its last character.
         Row(keys: "WSw⌫", expected: ""),
+        // A tone key typed before the vowel that the escape removed, with another vowel after it: the
+        // tone shows on that vowel (`wsaw` shows `áw`), so the replay applies the tone key once the vowel
+        // is back and the field keeps `á` (ENG-R432 note, ENG-T38).
+        Row(keys: "wsaw⌫", expected: "á"),
+        Row(keys: "WSaw⌫", expected: "á"),
+        Row(keys: "wfaw⌫", expected: "à"),
+        Row(keys: "wsoww⌫", expected: "ó"),
+        Row(keys: "wsfaw⌫", expected: "à"),
+        Row(keys: "wfsaw⌫", expected: "á"),
+        // The whole chain of tone keys waits for the vowel, the removal included (ENG-R411).
+        Row(keys: "wszaw⌫", expected: "a"),
+        Row(keys: "wszfaw⌫", expected: "à"),
+        Row(keys: "]sa]⌫", expected: "á", bracketKeys: true),
+        // A mark removal never waits: with its letters gone it goes (`uowzw` shows `uow`).
+        Row(keys: "uowzw⌫", expected: "ư"),
         // Every kind: circumflex (an escape letter that stays a letter, `oo`), stroke, Telex `w`, VNI.
         Row(keys: "booo⌫", expected: "bo"),
         Row(keys: "aaa⌫", expected: "a"),
@@ -64,6 +79,21 @@ struct EscapeBackspaceTests {
         Row(keys: "wooo⌫", expected: "uo"),
         Row(keys: "WOOO⌫", expected: "UO"),
         Row(keys: "]w⌫", expected: "u", bracketKeys: true),
+        // The same for the `ơ` of a bracket key, unmarked by a `w` escape or a circumflex escape.
+        Row(keys: "[w⌫", expected: "o", bracketKeys: true),
+        Row(keys: "[sw⌫", expected: "ó", bracketKeys: true),
+        Row(keys: "[oo⌫", expected: "o", bracketKeys: true),
+        // Bracket doubling removes the bracket letters and their mark keys, except a mark key that still
+        // marks a letter that stays: the `w` of `]ow]` gave the `ơ` its horn.
+        Row(keys: "]ow]⌫", expected: "ơ", bracketKeys: true),
+        Row(keys: "u[w[⌫", expected: "ư", bracketKeys: true),
+        // Last resort, the token retyped from the letters shown: the remaining keys no longer allow the
+        // transform in the order typed (the stroke of `dwndw` applied while the `ư` stood; `ơu` takes no
+        // tone key; a bracket letter in an all-caps word, ENG-R906).
+        Row(keys: "dwndw⌫", expected: "đn"),
+        Row(keys: "]ous]⌫", expected: "óu", bracketKeys: true),
+        Row(keys: "][us]⌫", expected: "ớu", bracketKeys: true),
+        Row(keys: "S][U]⌫", expected: "SƠU", bracketKeys: true),
     ]
 
     @Test(arguments: rows)

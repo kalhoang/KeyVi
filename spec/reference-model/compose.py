@@ -290,13 +290,19 @@ def compose(keys, cfg):
 def mark_keys_going(st, last):
     """ENG-R710: the modifier keys of the deleted letter that go with it. A remaining letter that
     shows its mark, is not the letter of a standalone w or bracket key, and has no mark key outside
-    the deleted letter's keeps the newest shared key."""
+    the deleted letter's keeps the newest shared key. A mark removal clears every mark (ENG-R411), so
+    only the mark keys after the newest removal count, and a standalone w or bracket letter typed
+    before it no longer carries its own mark."""
+    last_rm = max(st.mark_rm, default=-1)
     needed = set()
     for x in st.ls[:-1]:
-        if not (x.mod or x.stroke) or x.fromw:
+        if not (x.mod or x.stroke):
             continue
-        shared = set(x.msrc) & set(last.msrc)
-        if shared and not set(x.msrc) - set(last.msrc):
+        if x.fromw and not (0 <= x.src < last_rm):
+            continue
+        shown = {k for k in x.msrc if k > last_rm}
+        shared = shown & set(last.msrc)
+        if shared and not shown - set(last.msrc):
             needed.add(max(shared))
     return set(last.msrc) - needed
 
@@ -320,38 +326,79 @@ def unshown_horn_before_last(st, cfg):
 
 
 def replay_without(st, drop, cfg, plain=None):
-    """ENG-R710: replay the raw keys not in `drop`. A key that set or removed a tone or removed marks is
-    left out when it would now be a letter; keys in `plain` replay as `u` (ENG-R711 fallback)."""
+    """ENG-R710, ENG-R711: replay the raw keys not in `drop`. A mark removal is left out when it would
+    now be a letter; a key that set or removed the tone and finds no vowel yet waits and is tried again,
+    in order, after each later letter (ENG-R432), and is left out if none takes it. Keys in `plain`
+    replay as the given letter (ENG-R711 fallback)."""
     plain = plain or {}
-    idle = set(st.tone_src) | set(st.mark_rm)
+    idle = set(st.mark_rm)
+    chain = set(st.tone_src)
     new = St()
+    waiting = []
     for i, key in enumerate(st.raw):
         if i in drop:
             continue
         if i in plain:
-            key = "U" if plain[i] else "u"
-        if i in idle:
+            key = plain[i]
+        if i in idle or i in chain:
             trial, done = step_ex(new, cfg, key)
             if done:
                 new = trial
+            elif i in chain:
+                waiting.append(key)
             continue
         new = step(new, cfg, key)
+        still = []
+        for w in waiting:
+            trial, done = step_ex(new, cfg, w)
+            if done:
+                new = trial
+            else:
+                still.append(w)
+        waiting = still
     return new
+
+
+MARK_KEYS = {"telex": {"circ": None, "horn": "w", "breve": "w"}, "vni": {"circ": "6", "horn": "7", "breve": "8"}}
+TONE_KEYS = {"telex": "sfrxj", "vni": "12345"}
+
+
+def retype(st, cfg, letters, expected):
+    """ENG-R711 fallback 2: type the letters shown one at a time, each mark key right after its letter,
+    the tone key after the letter that gives `expected`, tried from the last letter back."""
+    keys, ends = [], []
+    for x in letters:
+        keys.append(x.base.upper() if x.upper else x.base)
+        if x.mod:
+            mk = MARK_KEYS[cfg.im][x.mod]
+            keys.append(mk if mk else x.base)
+        if x.stroke:
+            keys.append("d" if cfg.im == "telex" else "9")
+        ends.append(len(keys))
+    tries = [keys] if not st.tone else [keys[:e] + [TONE_KEYS[cfg.im][st.tone - 1]] + keys[e:] for e in reversed(ends)]
+    for k in tries:
+        cand = compose(k, cfg)
+        if display(cand, cfg) == expected:
+            return cand
+    return None
 
 
 def escape_backspace(st, cfg, drop):
     """ENG-R711: the escape letter goes with the keys it undid; the result is the old display minus its
-    last character, with the fallback for an u of a standalone w shown plain."""
+    last character, with the fallbacks: a standalone-w letter shown plain kept as a plain key, then the
+    letters shown retyped."""
     expected = display(st, cfg)[:-1]
     cand = replay_without(st, drop, cfg)
     if display(cand, cfg) == expected:
         return cand
-    plain = {x.src: x.upper for x in st.ls if x.fromw and x.base == "u" and not x.mod}
+    plain = {x.src: (x.base.upper() if x.upper else x.base)
+             for x in st.ls if x.fromw and x.src >= 0 and x.base in "uo" and not x.mod}
     if plain:
         alt = replay_without(st, drop, cfg, plain)
         if display(alt, cfg) == expected:
             return alt
-    return cand
+    letters = st.ls if st.literal else st.ls[:-1]
+    return retype(st, cfg, letters, expected) or cand
 
 
 def backspace(st, cfg):

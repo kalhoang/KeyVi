@@ -78,7 +78,7 @@ public enum FuzzAlphabet {
         case 0x0D: return .key(KeyInput("\r"))
         case 0x09: return .key(KeyInput("\t"))
         case 0x08: return .backspace
-        case 0x7F: return .reset(resetReasons[12])
+        case 0x7F: return .reset(.unseenInput)
         case 0x1B: return .restoreToggle
         case 0x00...0x07: return .reset(resetReasons[Int(byte)])
         case 0x0B, 0x0C: return .reset(resetReasons[Int(byte) - 0x0B + 8])
