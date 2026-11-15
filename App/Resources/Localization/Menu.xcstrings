@@ -554,7 +554,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giới thiệu %@"
+            "value" : "Giới thiệu về %@"
           }
         }
       }
@@ -590,7 +590,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ẩn các ứng dụng khác"
+            "value" : "Ẩn các mục khác"
           }
         }
       }
@@ -608,7 +608,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hiện tất cả"
+            "value" : "Hiển thị tất cả"
           }
         }
       }
@@ -770,7 +770,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đưa tất cả ra trước"
+            "value" : "Đưa tất cả lên phía trước"
           }
         }
       }
