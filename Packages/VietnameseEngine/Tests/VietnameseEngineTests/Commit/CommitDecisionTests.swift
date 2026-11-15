@@ -3,7 +3,7 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035i, B064a and B064b) with the
+/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035l, B064a and B064b) with the
 /// 13.9 fixture resources, checking the committed text and the rule that decided (ENG-R801), then the same rows
 /// ended by every boundary key of section 9 (P0-3: the decision must not depend on which boundary key ended the
 /// token). The 13.9.2 rows and the rows whose keys hold several tokens type a whole run of tokens (ENG-R823,
@@ -56,10 +56,10 @@ struct CommitDecisionTests {
 
     /// Types the seed token of the row (13.9 "Previous token"), the keys and `boundary`; returns the text
     /// the token and the boundary left and the boundary's output.
-    static func run(_ row: CommitDecisionExample, boundary: KeyInput) throws -> (
-        text: String, output: EngineOutput, driver: EngineDriver
-    ) {
-        var driver = EngineDriver(configuration: row.configuration, resources: resources)
+    static func run(_ row: CommitDecisionExample, boundary: KeyInput, configuration: EngineConfiguration? = nil)
+        throws -> (text: String, output: EngineOutput, driver: EngineDriver)
+    {
+        var driver = EngineDriver(configuration: configuration ?? row.configuration, resources: resources)
         if let seed = row.seedKeys { try driver.type(seed + " ") }
         let prefix = driver.field.string
         try driver.type(row.keys)
@@ -69,7 +69,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 83)
+        #expect(Self.rows.count == 86)
     }
 
     @Test(arguments: rows)
@@ -91,6 +91,17 @@ struct CommitDecisionTests {
         // unrestored text, B064).
         for boundary in Self.boundaries(for: row.method) {
             let (text, output, driver) = try Self.run(row, boundary: boundary.input)
+            // RV5 of ENG-R828 (B035j) revises the token before only at a space, Return, `,`, `!` or `?`; at any
+            // other key the line keeps what it shows without RV5 (13.9.1).
+            let revises = output.revision == .lineVietnamese
+            if row.ruleText.contains("RV5 revises"), !CommitPolicy.confirmsVietnameseLine(boundary.input.character) {
+                var plain = row.configuration
+                plain.lineStartRevision = false
+                let unrevised = try Self.run(row, boundary: boundary.input, configuration: plain).text
+                #expect(!revises && text == unrevised, "\(row.id) \(row.keys) + \(boundary)")
+                #expect(output.decision == row.expectedDecision, "\(row.id) \(row.keys) + \(boundary)")
+                continue
+            }
             #expect(text == row.committed + String(boundary.input.character), "\(row.id) \(row.keys) + \(boundary)")
             #expect(output.decision == row.expectedDecision, "\(row.id) \(row.keys) + \(boundary)")
             if case .edit(_, let thenPassThrough) = output.action {

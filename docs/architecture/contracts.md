@@ -7567,6 +7567,17 @@ existing signature keeps compiling (new parameters have defaults).
   parameter.
 - New `CommitRule` cases `boundaryParticle`, `phrase`, `learned` (L9a to L9c); `RevisionReason` codes carry no text.
 
+Addition of 16/11/2026 (REG-36, ENG-R828 RV5, ENG-R850; workstream W18-B). It adds public API; every existing signature
+keeps compiling.
+
+- `EngineConfiguration.lineStartRevision` (default `true`) switches RV5 in the code context: a code-only word that
+  rule L9 restored as the first thing typed on its line takes its Vietnamese display once the next word shows
+  Vietnamese text (`Tar thuwr` gives `Tả thử`). It does not depend on `lookaheadRevision`, which the rules turn off in
+  every code-context app. The host passes the user's D29 switch alone (`EngineSettingsMapping`), so the catalog keeps
+  its 16 variants. The output is an ordinary revision (`EngineOutput.revision == .lineVietnamese`), injected as one
+  edit job of kind `revision` (PLT-R357); where the restore key is off it cannot be undone with it.
+- New `RevisionReason` case `lineVietnamese`; the dev recorder writes it as `rev: lineVietnamese`.
+
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift
 // SPDX-License-Identifier: GPL-3.0-or-later

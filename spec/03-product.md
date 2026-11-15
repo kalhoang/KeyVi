@@ -143,7 +143,7 @@ PRD-R6 A setting the user never touched MUST follow future default changes; a se
 | D26 | Ghi lại thao tác gõ để báo lỗi / Typing trace for a bug report | **Not a setting: on-demand action** (60 s, at most 180 s, visible countdown, deleted after 24 h) | The only case where typed content touches the disk, under the user's eyes (section 11.2, PLT-R905). Everything else in diagnostics is content-free at all times |
 | D27 | Đồng bộ iCloud / iCloud sync | n/a in v1 | Roadmap, opt-in |
 | D28 | Nhớ cách bạn chọn giữa từ tiếng Anh và tiếng Việt / Learn which reading you choose | **On** | Decision of the product owner, 15/11/2026: per user, all apps, from corrections and silent acceptance; the list is visible and clearable (PRD-R78) |
-| D29 | Sửa lại từ trước khi từ sau cho biết ngôn ngữ / Fix the previous word once the next word shows the language | **On**, under Advanced, also at Return in chat apps (decision of the product owner, 15/11/2026) | `tricky as hell` and `tricky á nha` both come out right; off automatically where edits are fragile (PLT-R357) |
+| D29 | Sửa lại từ trước khi từ sau cho biết ngôn ngữ / Fix the previous word once the next word shows the language | **On**, under Advanced, also at Return in chat apps (decision of the product owner, 15/11/2026) | `tricky as hell` and `tricky á nha` both come out right; off automatically where edits are fragile (PLT-R357), except that in terminals and code editors it still gives a command word that starts a Vietnamese line its Vietnamese display once the next word is typed (`Tả thử cái này`, ENG-R850, 16/11/2026) |
 
 PRD-R7 Settings that are "not a setting" above MUST NOT appear in the UI. They are documented on the website FAQ.
 

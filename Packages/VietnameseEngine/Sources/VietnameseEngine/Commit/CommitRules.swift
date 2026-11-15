@@ -112,12 +112,16 @@ package struct CommitPolicy: Sendable {
     package let appContext: AppContext
     /// ENG-R829: the context rules of the collision words are on.
     package let collisionRules: Bool
+    /// RV5 of ENG-R828 is on: the code context with `lineStartRevision` (the user's D29, ENG-R850). It does not
+    /// depend on `lookaheadRevision`, which the rules turn off in every code-context app (PLT-R357).
+    package let lineRevision: Bool
 
     package init(resources: Resources, configuration: EngineConfiguration) {
         self.resources = resources
         autoRestore = configuration.autoRestore
         appContext = configuration.appContext
         collisionRules = configuration.lookaheadRevision
+        lineRevision = configuration.appContext == .code && configuration.lineStartRevision
     }
 
     /// "R is English" (8.1): the lowercased word is in the English lexicon or the tech-always list.

@@ -42,7 +42,10 @@ enum EngineSettingsMapping {
             // ENG-R829, PLT-R357: the rule's `features.lookaheadRevision` (off in terminals, code editors, launchers,
             // games, remote desktop and for strategies that cannot carry a revision) AND the user's D29, so an
             // engine never computes a revision the host would not apply.
-            lookaheadRevision: variant.lookaheadRevision && settings.lookaheadRevision)
+            lookaheadRevision: variant.lookaheadRevision && settings.lookaheadRevision,
+            // ENG-R829, ENG-R850 (REG-36): RV5 of the code context follows D29 alone; the rule flag above is off in
+            // every code-context app, and RV5 only completes rule L9's line condition there.
+            lineStartRevision: settings.lookaheadRevision)
     }
 
     /// ENG-R865: the learned memory is looked up only where English restore runs (D4 and the rule's

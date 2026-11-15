@@ -43,6 +43,15 @@ extension CommitPolicy {
         return false
     }
 
+    /// RV5 of ENG-R828: the decision the rules after L9 give the token, as in the general context (L9a to L11 with
+    /// the token's own run, window and memory class), keeps its Vietnamese display. Evaluated once, at the commit
+    /// of a token that L9 restored as the first thing typed on its line.
+    package func keepsVietnameseAfterCodeRule(_ inputs: CommitInputs, context: CommitContext) -> Bool {
+        var general = context
+        general.inVietnameseText = true
+        return !decide(inputs, context: general).restores
+    }
+
     /// ENG-R850: the characters that mark code between two words, never Vietnamese prose: the backquote (a
     /// Markdown code span, shell command substitution), the vertical bar (a pipe), `&` (`&&`, a background job)
     /// and `$` (a variable). Quotes, brackets, `.`, `,`, `:`, `;` and the hyphen are prose punctuation when a

@@ -172,6 +172,7 @@ struct CorpusScore {
         case .particleTail: "RV2"
         case .nextEnglish: "RV3"
         case .nextVietnamese: "RV4"
+        case .lineVietnamese: "RV5"
         }
     }
 

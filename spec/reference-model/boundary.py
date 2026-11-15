@@ -55,27 +55,48 @@ def in_vietnamese_text(line):
     language, _, code_word, code_after, joined = line[-1]
     if language == "en" or code_word or code_after or joined: return False
     return any(lang == "vi" or as_typed for lang, as_typed, _, _, _ in line[-3:])
-def type_run(text, cfg=None, context="general"):
+# RV5 of ENG-R828 (16/11/2026, REG-36): a code-only word that L9 restored as the first thing typed on its line takes
+# its Vietnamese display when the next word is kept by L7 with a Vietnamese-only letter and is committed by a space,
+# Return, `,`, `!` or `?`, provided the rules after L9 (as in `general`, with its own window) keep that display and
+# exactly one space separates the two words. `line_start_revision` stands for `EngineConfiguration.lineStartRevision`.
+LINE_CONFIRMING_KEYS = set(" \n,!?")
+def type_run(text, cfg=None, context="general", line_start_revision=True):
     """Types `text` from an empty field: runs of ASCII letters are tokens, every other character is a boundary
     (9.2). Returns the field and the reason of the last decided token."""
     cfg = cfg or Cfg()
-    out, window, line, reason = "", [], [], None
+    pieces, window, line, reason = [], [], [], None
+    line_empty, pending = True, None  # pending: (piece index, Vietnamese display) of an RV5 candidate
     for token, boundary in re.findall(r"([A-Za-z]*)([^A-Za-z]*)", text):
         if token:
-            C, reason = decide(token, cfg, "en" if run_is_english(window) else "neutral", context,
-                               in_vietnamese_text(line))
+            prev = "en" if run_is_english(window) else "neutral"
+            C, reason = decide(token, cfg, prev, context, in_vietnamese_text(line))
             window.append(lang_of_decision(C, reason))
+            if (pending and reason == "kept: valid, raw not English" and window[-1] == "vi" and boundary
+                    and boundary[0] in LINE_CONFIRMING_KEYS):
+                pieces[pending[0]] = pending[1]  # RV5: the word takes its Vietnamese display
+                window[-2] = "neutral"
+                line[-1] = ("neutral",) + line[-1][1:2] + (False,) + line[-1][3:]
+            pending = None
             shown_as_typed = reason == "unchanged" or reason.startswith("restored")
             line.append((window[-1], vietnamese_as_typed(token, C, reason),
                          shown_as_typed and token.lower() in CODE_ONLY, False, False))
-            out += C
+            if (line_start_revision and line_empty and reason == "restored: code context, tech word"
+                    and boundary == " "):
+                general = decide(token, cfg, prev, context, vietnamese_text=True)
+                if not general[1].startswith("restored"):
+                    pending = (len(pieces), general[0])
+            pieces.append(C)
+            line_empty = False
         if line and token:
             line[-1] = line[-1][:3] + (any(ch in CODE_CHARACTERS for ch in boundary),
                                        not any(ch in SPACES for ch in boundary))
         if "\n" in boundary or "\t" in boundary:
             line = []
-        out += boundary
-    return out, reason
+            line_empty = re.split(r"[\n\t]", boundary)[-1] == ""
+        elif boundary:
+            line_empty = False
+        pieces.append(boundary)
+    return "".join(pieces), reason
 # 01-engine.md 13.9.2 (B065-B072) and the sentences of ENG-R823, with the 13.9 fixtures above.
 RUNS = [
     ("Khusc caif cacs app caafn thieest treen win cungx tricky as.", "Khúc cài các app cần thiết trên win cũng tricky á.", "kept: ambiguity table vi"),
@@ -93,8 +114,9 @@ RUNS = [
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
     ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
 ]
-# 01-engine.md 13.9 rows B035 to B035e and B035i and 13.9.1 rows B064a and B064b (Telex, code context, from an empty field;
-# the seed tokens `vieejt` and `and` stand for the previous token `vi` and `en`), and the sentences of ENG-R850.
+# 01-engine.md 13.9 rows B035 to B035e and B035i to B035l and 13.9.1 rows B064a and B064b (Telex, code context, from an
+# empty field; the seed tokens `vieejt` and `and` stand for the previous token `vi` and `en`), the sentences of ENG-R850
+# and the RV5 cases of ENG-R828 (REG-36).
 CODE_RUNS = [
     ("tar ", "tar ", "restored: code context, tech word"),
     ("vieejt tar ", "việt tả ", "kept: default vi"),
@@ -115,6 +137,28 @@ CODE_RUNS = [
     ("vieejt anh/tar ", "việt anh/tar ", "restored: code context, tech word"),
     ("vieejt. tar ", "việt. tả ", "kept: default vi"),
     ("vieejt; tar ", "việt; tả ", "kept: default vi"),
+    ("Tar thuwr ", "Tả thử ", "kept: valid, raw not English"),  # B035j, RV5
+    ("tar xf ", "tar xf ", "unchanged"),  # B035k
+    ("tar nhaatj-kys ", "tar nhật-ký ", "kept: valid, raw not English"),  # B035l
+    ("Tar thuwr cais nayf ", "Tả thử cái này ", "kept: valid, raw not English"),  # REG-36
+    ("tar thuwr\n", "tả thử\n", "kept: valid, raw not English"),
+    ("tar thuwr,", "tả thử,", "kept: valid, raw not English"),
+    ("tar thuwr.", "tar thử.", "kept: valid, raw not English"),
+    ("tar thuwr\t", "tar thử\t", "kept: valid, raw not English"),
+    ("tar nhaatj.log ", "tar nhật.log ", "unchanged"),
+    ("tar anh ", "tar anh ", "unchanged"),
+    ("tar  thuwr ", "tar  thử ", "kept: valid, raw not English"),
+    ("sudo tar thuwr ", "sudo tar thử ", "kept: valid, raw not English"),
+    (" tar thuwr ", " tar thử ", "kept: valid, raw not English"),
+    ("vieejt\ntar thuwr ", "việt\ntả thử ", "kept: valid, raw not English"),
+    ("and\ntar thuwr ", "and\ntar thử ", "kept: valid, raw not English"),  # L10 would restore `tar`
+    ("tar\nthuwr ", "tar\nthử ", "kept: valid, raw not English"),  # a one-word line
+    ("Tar thuwr tar ", "Tả thử tả ", "kept: default vi"),
+]
+# RV5 with `lineStartRevision` off (D29 off): the word keeps the keys.
+CODE_RUNS_WITHOUT_LINE_REVISION = [
+    ("Tar thuwr ", "Tar thử ", "kept: valid, raw not English"),
+    ("Tar thuwr cais nayf ", "Tar thử cái này ", "kept: valid, raw not English"),
 ]
 # Collision rules at commit (15/11/2026): L9a boundary particle (ENG-R825), L9b phrase looking back (ENG-R826), the
 # `run: vi` exemption of L10 and the English-lean window (ENG-R823, ENG-R827), with small fixture lists on top of the
@@ -167,7 +211,10 @@ if __name__ == "__main__":
             if type_run_collision(keys) != (want, why)]
     bad += [(keys, type_run(keys, context="code"), (want, why)) for keys, want, why in CODE_RUNS
             if type_run(keys, context="code") != (want, why)]
+    bad += [(keys, type_run(keys, context="code", line_start_revision=False), (want, why))
+            for keys, want, why in CODE_RUNS_WITHOUT_LINE_REVISION
+            if type_run(keys, context="code", line_start_revision=False) != (want, why)]
     for row in bad: print("mismatch:", row)
-    total = len(RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS)
+    total = len(RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
     print(f"{total - len(bad)}/{total} English-run, collision and code-context examples agree")
     sys.exit(1 if bad else 0)

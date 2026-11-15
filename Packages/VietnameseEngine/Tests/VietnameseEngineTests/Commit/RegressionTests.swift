@@ -350,4 +350,16 @@ struct RegressionTests {
         #expect(try Committing.text("tar -xzf ", code) == "tar -xzf ")
         #expect(try Committing.text("sudo tar ", code) == "sudo tar ")
     }
+
+    @Test("REG-36: a Vietnamese sentence typed in a terminal keeps no shell command at its start")
+    func reg36() throws {
+        // RV5 of ENG-R828 (ENG-R850 as amended on 16/11/2026): the product owner's retest in iTerm2, where the rules
+        // turn `lookaheadRevision` off (PLT-R357).
+        let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
+        #expect(try Committing.text("Tar thuwr cais nayf ", terminal) == "Tả thử cái này ")
+        // Commands keep their keys.
+        #expect(try Committing.text("tar xf ", terminal) == "tar xf ")
+        #expect(try Committing.text("tar nhaatj.log ", terminal) == "tar nhật.log ")
+        #expect(try Committing.text("tar\nthuwr ", terminal) == "tar\nthử ")
+    }
 }

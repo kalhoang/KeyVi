@@ -64,6 +64,12 @@ public struct EngineConfiguration: Sendable, Hashable {
     /// the engine decides exactly as it did without them. The learned memory (L9c) is governed by
     /// `Resources.collisionMemory` (empty: off) and the collision signals are emitted either way (ENG-R864).
     public var lookaheadRevision: Bool
+    /// The revision RV5 of the code context (ENG-R828, ENG-R850): a code-only word that rule L9 restored at the
+    /// start of a line takes its Vietnamese display when the next word shows the line is Vietnamese text. Default
+    /// on; the host passes the user's D29 switch alone, because the rules turn `lookaheadRevision` off in every
+    /// code-context app (PLT-R357) while RV5 only completes L9's own line rule. Read only in the code context and
+    /// with auto restore on; it does not depend on `lookaheadRevision`.
+    public var lineStartRevision: Bool
 
     /// A configuration; every argument defaults to the spec's default. `historyLimit` is raised to 1 if
     /// smaller.
@@ -73,7 +79,8 @@ public struct EngineConfiguration: Sendable, Hashable {
         autoRestore: Bool = true,
         appContext: AppContext = .general,
         historyLimit: Int = 16,
-        lookaheadRevision: Bool = true
+        lookaheadRevision: Bool = true,
+        lineStartRevision: Bool = true
     ) {
         self.inputMethod = inputMethod
         self.toneStyle = toneStyle
@@ -81,6 +88,7 @@ public struct EngineConfiguration: Sendable, Hashable {
         self.appContext = appContext
         self.historyLimit = max(1, historyLimit)
         self.lookaheadRevision = lookaheadRevision
+        self.lineStartRevision = lineStartRevision
     }
 }
 

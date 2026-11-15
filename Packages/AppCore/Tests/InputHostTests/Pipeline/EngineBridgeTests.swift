@@ -64,6 +64,47 @@ import VietnameseEngine
             #expect(EngineBridge.configuration(for: effective, variant: variant).lookaheadRevision == expected)
         }
     }
+
+    /// ENG-R829, ENG-R850, REG-36: `lineStartRevision` (RV5 of the code context) is D29 alone. The rules turn
+    /// `features.lookaheadRevision` off in every code-context app, where the restore key is off (PLT-R357), so a
+    /// Vietnamese sentence typed in iTerm2 that starts with `tar` gets `tả` once the next word is typed.
+    @Test(arguments: [true, false])
+    func lineStartRevisionIsD29Alone(d29: Bool) {
+        var effective = settings()
+        effective.lookaheadRevision = d29
+        for variant in EngineVariant.catalogOrder {
+            #expect(EngineBridge.configuration(for: effective, variant: variant).lineStartRevision == d29)
+        }
+        let terminal = EngineVariant(appContext: .code, englishRestore: true, macros: true, lookaheadRevision: false)
+        let configuration = EngineBridge.configuration(for: effective, variant: terminal)
+        #expect(!configuration.lookaheadRevision)
+        // `tar` is English and code-only; `tả` and `thử` are attested (the shape of the bundled data, ENG-R850).
+        let resources = Resources(
+            english: WordSet(["tar"]), techAlways: WordSet([]), techCodeOnly: WordSet(["tar"]),
+            attestedSyllables: WordSet(["tả", "thử"]), ambiguity: ["tar": .vietnamese], userKeepRaw: WordSet([]),
+            userKeepVietnamese: WordSet([]))
+        var session = Session(engine: Engine(configuration: configuration, resources: resources))
+        var field = ""
+        for character in "Tar thuwr " {
+            let output = session.handle(.key(KeyInput(character)))
+            field = Self.apply(output, character: character, to: field)
+        }
+        #expect(field == (d29 ? "Tả thử " : "Tar thử "))
+    }
+
+    /// The text after one key: the edit, then the key when it passes through.
+    private static func apply(_ output: EngineOutput, character: Character, to field: String) -> String {
+        var text = field
+        switch output.action {
+        case .passThrough:
+            text.append(character)
+        case .edit(let edit, let thenPassThrough):
+            text.removeLast(min(edit.deleteCount, text.count))
+            text += edit.insert
+            if thenPassThrough { text.append(character) }
+        }
+        return text
+    }
 }
 
 @Suite struct EngineCatalogTests {
