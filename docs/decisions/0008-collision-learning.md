@@ -1,6 +1,7 @@
 # 0008. Collision learning: words that are English and Vietnamese at once
 
-- Status: accepted, 2026-11-15. The product owner decided on 15/11/2026 that {{AppName}} learns how each user
+- Status: accepted, 2026-11-15, with one open question (the held-out floor of ENG-R877, see the last section
+  before Consequences). The product owner decided on 15/11/2026 that {{AppName}} learns how each user
   resolves these words (per user across all apps, from corrections and from silent acceptance, behind a switch that
   is on by default), proposed that the next word decide the word before it, asked for many more cases before an
   algorithm was chosen, and then reviewed the data lists ([0005](0005-pa-decisions-2026-11-13.md), "Decisions of
@@ -56,8 +57,11 @@ The research round of 13/11 to 15/11/2026 built, all from material written for t
    diagnostics, which show the entry count only (ENG-R866, PLT-R901).
 5. **The QA-R68 gate.** The corpus (both typing habits) and the three sets are fixtures of the engine package with the
    output of the engine of 15/11/2026 frozen; CI fails on any wrong revision, on any change of a word that is not a
-   collision, below the ENG-R876 floors, and on any difference from the frozen outputs, so a list change that moves a
-   number updates the fixtures and is reviewed with the list (QA-R6). A memory simulation checks ENG-R877 with a
+   collision, below the ENG-R876 floors (and below 98.8 % on the Vietnamese side with the tone typed after the
+   vowel, that habit's measured share), and on any difference from the frozen outputs, so a list change that moves a
+   number updates the fixtures and is reviewed with the list (QA-R6). The corpus only meets RV1 with one older
+   token (L9b restores a word that continues a phrase at its own commit), so a separate case pins RV1 with two older
+   tokens after the memory keeps a word inside a phrase (`more or less` with `or` learned as `ỏ`). A memory simulation checks ENG-R877 with a
    reference model written from the text of ENG-R863 (`ReferenceCollisionMemory` in VietnameseEngineTesting); the
    host's store must give the same votes for the same signals (parity test of W11-B).
 
@@ -155,10 +159,13 @@ shape added later is scored by the engine's order.
 
 ENG-R877 allows the memory to lower Vietnamese-intent accuracy on held-out sentences by at most 1.5 points. Measured
 with the engine and the reference model: 99.7 % to 98.2 %, 1.53 points (325 to 320 of 326 words). Four loanwords are
-meant as English after a Vietnamese word in half A (`tips`, `cans`, `tee`, `teen`) and as Vietnamese in the same
-context class in half B (`típ`, `cán`, `tê`, `tên`); the fifth word is an English-run restore caused by a learned
-English word before it. A stricter vote for English after a Vietnamese word (a score of 3 or 4 instead of 2) does
-not change the result: the training user keeps correcting the same words until the memory follows. The gate holds
+meant as English in half A and as Vietnamese in the same context class in half B: `tips`, `cans` and `tee` after a
+Vietnamese word, `teen` after a neutral one (`típ`, `cán`, `tê`, `tên`); the fifth word is an English-run restore
+(L10) after a word the memory learned as English at the start of a sentence. A stricter vote for English after a Vietnamese word (a score of 3 or 4 instead of 2) does
+not change the result: the training user keeps correcting the same words until the memory follows. Reading the
+first condition of ENG-R863 as a conflict as soon as one side reaches the score but misses the ratio does not change
+it either (still 320 of 326), while it contradicts the worked cases of the text (six corrections against two give
+the six). "Held out" means half B of the corpus here, not `set-held-out.tsv`. The gate holds
 the loss at the measured five words (a larger loss fails) and records the 1.5-point floor as a known issue until the
 product owner chooses: widen the floor to 2 points, accept the loss for these loanwords, or decide those rows of the
 ambiguity table so that the memory has less to learn.
