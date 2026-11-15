@@ -13,6 +13,11 @@ enum InjectionTiming {
     static let parameterCapMicroseconds = 50_000
     /// PLT-R420 (VERIFY value): bounded read of `AXSelectedTextRange` before deleting.
     static let axSelectionTimeout: TimeSpan = .milliseconds(15)
+    /// PLT-R423 (VERIFY value): bounded read of `AXSelectedTextRange` and `AXNumberOfCharacters` before deleting, for
+    /// `forwardDelete` only. Longer than `axSelectionTimeout` because Spotlight on macOS 27.2 answered in 16 to 21 ms
+    /// while it was opening (retest of 16/11/2026) and a missed read brings the lost deletion back; keys held behind
+    /// the job wait at most this read plus the job (PLT-R311), well under the 150 ms ceiling of PLT-R314.
+    static let forwardDeleteReadTimeout: TimeSpan = .milliseconds(50)
     /// 4.5: each AX call of `axReplace`, re-entry verification (PLT-R342) and `verifyAfterEdit` readback.
     static let axCallTimeout: TimeSpan = .milliseconds(30)
     /// PLT-R421 (VERIFY per app): U+200B ZERO WIDTH SPACE, its own grapheme cluster.

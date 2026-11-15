@@ -46,6 +46,10 @@ struct SequentialScan {
     static let intendedJobs: Set<String> = [
         "navigation", "mouseDown", "commandChord", "returnOrTab", "escape", "modeToggled",
     ]
+    /// Completion reads that did not answer and had no fallback, so the edit went out without its extra deletion or
+    /// Forward Delete: plain `axSelection` (PLT-R420) and `forwardDelete` (PLT-R423). Traces of 15/11/2026 wrote
+    /// `unreadable` for `axSelectionThenPlaceholder` as well.
+    static let lossyCompletionReads: Set<String> = ["unreadable", "forwardDelete skipped unreadable"]
 
     mutating func feed(_ event: TraceEvent, into found: inout [Finding]) {
         let line = event.line
@@ -224,8 +228,18 @@ struct SequentialScan {
         if let sequence = line.seq, let steps = fallbacks.removeValue(forKey: sequence) {
             problems += steps.map { "fallback " + $0 }
         }
+        // Retest of 16/11/2026: a completion read that timed out cost the edit its extra deletion or Forward Delete
+        // (PLT-R420, PLT-R423); the read's duration shows how far past its bound the app answered. With
+        // `axSelectionThenPlaceholder` the placeholder handles the suggestion (PLT-R421), so `unreadable then
+        // placeholder` is no finding.
+        let read = line.complUs.map { TraceRendering.microseconds($0) }
+        let unreadable = line.compl.map(Self.lossyCompletionReads.contains) == true
+        if unreadable, let completion = line.compl {
+            problems.append("completion " + completion + (read.map { " (read " + $0 + ")" } ?? ""))
+        }
         if let total = line.totalUs, total > FindingLimits.slowJob {
-            problems.append("slow " + milliseconds(Int64(total)))
+            let readShare = unreadable ? nil : read.map { " (completion read " + $0 + ")" }
+            problems.append("slow " + milliseconds(Int64(total)) + (readShare ?? ""))
         }
         let label = "job " + String(line.seq ?? 0) + " " + (line.kind ?? "?") + " " + (line.strat ?? "?")
         if !problems.isEmpty {

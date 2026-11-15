@@ -103,15 +103,19 @@ public struct DevJobRecord: Sendable {
     /// From the start of execution on the inject thread to its end.
     public var runMicroseconds: UInt64
     public var at: MonotonicInstant
-    /// What the completion read found: `selected`, `none` or `unreadable` (PLT-R420); `selected`, `forwardDelete`,
-    /// `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable` (PLT-R423); nil when the job made no
-    /// such read.
+    /// What the completion read found: `selected`, `none`, `unreadable` or `unreadable then placeholder` (PLT-R420,
+    /// PLT-R421); `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable`
+    /// (PLT-R423); nil when the job made no such read.
     public var completion: StaticString?
+    /// How long that read took, timeouts included (its bound is 15 ms for PLT-R420 and 50 ms for PLT-R423); nil when
+    /// the job made no read (no completion read, or a job without a field). Since the retest of 16/11/2026: Spotlight
+    /// answered just after the 15 ms bound while it was opening, so the bound is tuned from these values.
+    public var completionReadMicroseconds: UInt64?
 
     public init(
         sequence: UInt64, generation: UInt64, kind: any Sendable, strategy: InjectionStrategy, outcome: StaticString,
         deleteCount: Int, insertCount: Int, eventsPosted: Int, totalMicroseconds: UInt64, runMicroseconds: UInt64,
-        at: MonotonicInstant, completion: StaticString? = nil
+        at: MonotonicInstant, completion: StaticString? = nil, completionReadMicroseconds: UInt64? = nil
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -125,6 +129,7 @@ public struct DevJobRecord: Sendable {
         self.runMicroseconds = runMicroseconds
         self.at = at
         self.completion = completion
+        self.completionReadMicroseconds = completionReadMicroseconds
     }
 }
 

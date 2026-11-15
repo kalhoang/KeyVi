@@ -15,20 +15,26 @@ protocol StrategyHost: AnyObject {
     func pasteCompleted(restoreDelay: TimeSpan)
     /// PLT-R420, PLT-R423: AX could not answer and the next completion option was used.
     func completionFallback()
-    /// PLT-R420, PLT-R423, PLT-R904A: what the completion read found, for the dev recorder's job line.
-    func noteCompletionRead(_ read: CompletionRead)
+    /// PLT-R420, PLT-R423, PLT-R904A: what the completion read found and how long it took (timeouts included; nil
+    /// when the job had no field to read), for the dev recorder's job line.
+    func noteCompletionRead(_ read: CompletionRead, duration: TimeSpan?)
 }
 
 /// The AX read of `axSelection`, `axSelectionThenPlaceholder` (PLT-R420) and `forwardDelete` (PLT-R423). Recorded on
 /// the dev trace's job line since the retest of 15/11/2026 (Spotlight on macOS 27.2 lost one deletion per edit, and the
-/// trace could not tell whether AX reported no selection or did not answer).
+/// trace could not tell whether AX reported no selection or did not answer), with the read's duration since the retest
+/// of 16/11/2026 (Spotlight answered just after the 15 ms bound while it was opening).
 enum CompletionRead {
     /// A selection after the caret: one extra deletion removes it.
     case selected
     /// AX answered with an empty selection (`axSelection`).
     case none
-    /// AX timed out or was unavailable (`axSelection`).
+    /// AX timed out or was unavailable (`axSelection`); nothing is added.
     case unreadable
+    /// AX timed out or was unavailable (`axSelectionThenPlaceholder`); the placeholder handles the suggestion
+    /// (PLT-R421). A label of its own since the review of 16/11/2026, so trace-scan reports only the unreadable reads
+    /// that can lose a deletion.
+    case unreadableThenPlaceholder
     /// `forwardDelete`: the caret is at the end of the text; a Forward Delete goes before each Backspace.
     case forwardDelete
     /// `forwardDelete`: the caret is before the end of the text; nothing is added.
@@ -41,6 +47,7 @@ enum CompletionRead {
         case .selected: "selected"
         case .none: "none"
         case .unreadable: "unreadable"
+        case .unreadableThenPlaceholder: "unreadable then placeholder"
         case .forwardDelete: "forwardDelete"
         case .forwardDeleteNotAtEnd: "forwardDelete skipped notAtEnd"
         case .forwardDeleteUnreadable: "forwardDelete skipped unreadable"
@@ -79,44 +86,67 @@ enum CompletionPrefix: Equatable {
         case .none: return .none
         case .placeholder: return .placeholder
         case .forwardDelete: return forwardDelete(for: job, in: environment)
-        case .axSelection, .axSelectionThenPlaceholder:
-            let host = environment as? any StrategyHost
-            if let field = job.field,
-                case .success(let range) = environment.fieldAccess.selectedRange(
-                    field, timeout: InjectionTiming.axSelectionTimeout)
-            {
-                host?.noteCompletionRead(range.length > 0 ? .selected : .none)
-                return range.length > 0 ? .extraDeletion : .none
-            }
-            host?.noteCompletionRead(.unreadable)
-            host?.completionFallback()
-            return mode == .axSelectionThenPlaceholder ? .placeholder : .none
+        case .axSelection, .axSelectionThenPlaceholder: return axSelection(for: job, mode: mode, in: environment)
         }
     }
 
-    /// PLT-R423: one bounded read of the selection and the character count. A selection keeps PLT-R420's extra
-    /// deletion; only an empty selection at the end of the text gets Forward Delete, because anywhere else it would
-    /// delete the character after the caret. A caret before the end is normal editing; an unreadable field counts the
-    /// PLT-R420 health event.
+    /// PLT-R420: one read of the selection, bounded by `axSelectionTimeout` (15 ms). A selection gets one extra
+    /// deletion; an unreadable field takes the next option of the value and counts the health event.
+    private static func axSelection(
+        for job: EditJob, mode: InlineCompletionMode, in environment: any InjectionEnvironment
+    ) -> CompletionPrefix {
+        let host = environment as? any StrategyHost
+        let read = job.field.map { field in
+            timed(environment) {
+                environment.fieldAccess.selectedRange(field, timeout: InjectionTiming.axSelectionTimeout)
+            }
+        }
+        if let read, case .success(let range) = read.result {
+            host?.noteCompletionRead(range.length > 0 ? .selected : .none, duration: read.duration)
+            return range.length > 0 ? .extraDeletion : .none
+        }
+        let fallsBack = mode == .axSelectionThenPlaceholder
+        host?.noteCompletionRead(fallsBack ? .unreadableThenPlaceholder : .unreadable, duration: read?.duration)
+        host?.completionFallback()
+        return fallsBack ? .placeholder : .none
+    }
+
+    /// PLT-R423: one read of the selection and the character count, bounded by its own `forwardDeleteReadTimeout`
+    /// (50 ms; Spotlight answered in 16 to 21 ms while it was opening, retest of 16/11/2026). A selection keeps
+    /// PLT-R420's extra deletion; only an empty selection at the end of the text gets Forward Delete, because anywhere
+    /// else it would delete the character after the caret. A caret before the end is normal editing; an unreadable
+    /// field counts the PLT-R420 health event.
     private static func forwardDelete(for job: EditJob, in environment: any InjectionEnvironment) -> CompletionPrefix {
         let host = environment as? any StrategyHost
-        guard let field = job.field,
-            case .success(let caret) = environment.fieldAccess.caret(field, timeout: InjectionTiming.axSelectionTimeout)
-        else {
-            host?.noteCompletionRead(.forwardDeleteUnreadable)
+        let read = job.field.map { field in
+            timed(environment) {
+                environment.fieldAccess.caret(field, timeout: InjectionTiming.forwardDeleteReadTimeout)
+            }
+        }
+        guard let read, case .success(let caret) = read.result else {
+            host?.noteCompletionRead(.forwardDeleteUnreadable, duration: read?.duration)
             host?.completionFallback()
             return .none
         }
         if caret.selection.length > 0 {
-            host?.noteCompletionRead(.selected)
+            host?.noteCompletionRead(.selected, duration: read.duration)
             return .extraDeletion
         }
         guard caret.isAtEndOfText else {
-            host?.noteCompletionRead(.forwardDeleteNotAtEnd)
+            host?.noteCompletionRead(.forwardDeleteNotAtEnd, duration: read.duration)
             return .none
         }
-        host?.noteCompletionRead(.forwardDelete)
+        host?.noteCompletionRead(.forwardDelete, duration: read.duration)
         return .forwardDeleteBeforeEachDeletion
+    }
+
+    /// One completion read and how long it took on the worker's clock, for the dev recorder (PLT-R904A).
+    private static func timed<Value: Sendable>(
+        _ environment: any InjectionEnvironment, _ read: () -> AXCallResult<Value>
+    ) -> (result: AXCallResult<Value>, duration: TimeSpan) {
+        let started = environment.now
+        let result = read()
+        return (result, environment.now.duration(since: started))
     }
 
     static func placeholderEvent(for job: EditJob) -> SyntheticKeyEvent {

@@ -73,13 +73,14 @@ private final class FollowingWallClock: WallClock, Sendable {
                 DevJobRecord(
                     sequence: 9, generation: 2, kind: SampleReason.compose, strategy: .backspaceReplace,
                     outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 4, totalMicroseconds: 90_000,
-                    runMicroseconds: 1_000, at: clock.now(), completion: "selected")))
+                    runMicroseconds: 1_000, at: clock.now(), completion: "selected", completionReadMicroseconds: 480)))
         dev.pushInject(
             .job(
                 DevJobRecord(
                     sequence: 10, generation: 2, kind: SampleReason.compose, strategy: .backspaceReplace,
                     outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 6, totalMicroseconds: 1_600,
-                    runMicroseconds: 1_400, at: clock.now(), completion: "forwardDelete")))
+                    runMicroseconds: 1_400, at: clock.now(), completion: "forwardDelete",
+                    completionReadMicroseconds: 23_400)))
         dev.note(
             .readback(
                 DevReadbackRecord(
@@ -109,8 +110,9 @@ private final class FollowingWallClock: WallClock, Sendable {
             ["show", "1", "--dir", folder.path, "--before", "1s"], now: base, timeZone: .current, makeReplay: { nil })
         #expect(shown.output.contains("engine  edit  delete 1  insert \"â\"  token \"â\""))
         #expect(shown.output.contains("focus  com.example.editor  AXTextArea  -  rule editor.sample"))
-        #expect(shown.output.contains("4 events  completion selected"))  // PLT-R420 read (retest of 15/11/2026)
-        #expect(shown.output.contains("6 events  completion forwardDelete  "))  // PLT-R423
+        #expect(shown.output.contains("4 events  completion selected read 480 us"))  // PLT-R420 read (15/11/2026)
+        // PLT-R423, with the read's duration since the retest of 16/11/2026.
+        #expect(shown.output.contains("6 events  completion forwardDelete read 23.4 ms  1.6 ms total"))
     }
 }
 

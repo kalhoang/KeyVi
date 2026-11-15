@@ -395,6 +395,28 @@ struct DevRecorderFixture {
         #expect(lines[1].overlap == nil && lines[1].durUs == nil && lines[1].maxCallUs == nil)
     }
 
+    /// Retest of 16/11/2026: a job line carries what the completion read found and how long it took, timeouts
+    /// included (PLT-R420, PLT-R423); a job without such a read carries neither.
+    @Test func jobLinesCarryTheCompletionReadAndItsDuration() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        func job(_ sequence: UInt64, completion: StaticString?, readMicroseconds: UInt64?) -> DevTraceRecord {
+            .job(
+                DevJobRecord(
+                    sequence: sequence, generation: 1, kind: SampleRule.notEnglish, strategy: .backspaceReplace,
+                    outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 4, totalMicroseconds: 52_000,
+                    runMicroseconds: 51_000, at: fixture.clock.now(), completion: completion,
+                    completionReadMicroseconds: readMicroseconds))
+        }
+        fixture.dev.pushInject(job(1, completion: "forwardDelete skipped unreadable", readMicroseconds: 50_000))
+        fixture.dev.pushInject(job(2, completion: "forwardDelete", readMicroseconds: 480))
+        fixture.dev.pushInject(job(3, completion: nil, readMicroseconds: nil))
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour).filter { $0.type == .job }
+        #expect(lines.map(\.compl) == ["forwardDelete skipped unreadable", "forwardDelete", nil])
+        #expect(lines.map(\.complUs) == [50_000, 480, nil])
+    }
+
     /// PLT-R904A retention: 7 days, then 200 MB (a small cap here) oldest first; the file in use and foreign files
     /// stay.
     @Test func purgeKeepsSevenDaysAndTwoHundredMegabytes() throws {

@@ -479,10 +479,14 @@ Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM 
    answers the same question on any Mac: each job line of a rule with `forwardDelete` ends with `completion
    forwardDelete` (6 events for a delete-1 edit), `completion forwardDelete skipped notAtEnd`, `completion
    forwardDelete skipped unreadable` or `completion selected`; a rule with `axSelection` ends with `completion
-   selected`, `completion none` or `completion unreadable` (since 15/11/2026). Letters that still double with
+   selected`, `completion none` or `completion unreadable` (since 15/11/2026; `completion unreadable then placeholder`
+   with `axSelectionThenPlaceholder`, since 16/11/2026), each followed by the read's duration
+   (`read 23.4 ms`, since 16/11/2026). Letters that still double with
    `forwardDelete skipped notAtEnd` while the caret is at the end mean the field counts its suggestion as text (next:
    `placeholder` after its PLT-R422 test); with `forwardDelete` and doubled letters, the field gives Forward Delete
-   another meaning there.
+   another meaning there. Type the first word right after Command+Space too: Spotlight answers slowly while it opens
+   (16 to 21 ms at the retest of 16/11/2026, past the 15 ms bound the read had then), so `forwardDelete skipped
+   unreadable` with a read of 50 ms there means the 50 ms bound of PLT-R423 is still too short for that Mac.
 
 Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
 
