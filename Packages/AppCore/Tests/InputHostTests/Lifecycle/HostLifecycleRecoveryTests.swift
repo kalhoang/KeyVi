@@ -150,7 +150,8 @@ import Testing
 }
 
 /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
-/// report the same disable; each report runs the full procedure, but the instability notice counts it once.
+/// report the same disable; each report runs the procedure, but the instability notice counts it once and, while the
+/// live answer is pending, the second report asks for no second check (PLT-R330 amended 15/11/2026).
 @Suite struct HostLifecycleDisableCoalescingTests {
     @Test func watchdogReportJustAfterTheSystemEventStillRunsTheProcedure_PLT_R331() {
         var script = LifecycleScript.running()
@@ -158,7 +159,7 @@ import Testing
         script.advance(by: .milliseconds(100))
         #expect(
             script.send(.watchdogTripped(.unexpectedlyDisabled)) == [
-                .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled), .checkPermissionsLive,
+                .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled),
             ])
         #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
     }

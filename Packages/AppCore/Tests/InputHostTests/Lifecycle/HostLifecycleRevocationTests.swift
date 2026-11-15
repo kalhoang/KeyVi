@@ -175,3 +175,59 @@ import Testing
         return .zero
     }
 }
+
+/// PLT-R330 step 1 (amended): the wait for the live answer. The tap stays disabled meanwhile, so the watchdog's
+/// enabled check (PLT-R331) reports it again; that report is the same disable, never a second one for the breaker,
+/// and an answer that does not come within `liveCheckOverdue` turns into a visible fail-open instead of a host that
+/// sits in `running` with a disabled tap.
+@Suite struct HostLifecycleLiveAnswerWaitTests {
+    @Test func aWatchdogReportWhileTheAnswerIsPendingIsNotASecondDisable() {
+        var script = LifecycleScript.running()
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        script.advance(by: .milliseconds(1_500))  // past the coalescing window, before the overdue bound
+        let effects = script.send(.watchdogTripped(.unexpectedlyDisabled))
+        #expect(!effects.contains(.removeTap), "\(effects)")
+        #expect(!effects.contains(.recordHealth(.tapUnstable)))
+        #expect(script.phase == .running)
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+    }
+
+    @Test func anAnswerThatNeverComesBecomesAVisibleFailOpen() {
+        var script = LifecycleScript.running()
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        script.advance(by: HostLifecycle.liveCheckOverdue + .seconds(2))  // the next 5 s watchdog report
+        let effects = script.send(.watchdogTripped(.unexpectedlyDisabled))
+        #expect(effects.contains(.removeTap))
+        #expect(effects.contains(.recordHealth(.tapUnstable)))
+        #expect(effects.contains(.scheduleRetry(after: HostLifecycle.backoff[0])))
+        #expect(script.phase == .failOpen(.tapUnavailable))
+        #expect(!script.send(.livePermissions(.granted)).contains(.reenableTap), "the removed tap stays removed")
+        script.advance(by: HostLifecycle.backoff[0])
+        #expect(script.send(.retryTimerFired) == [.createTap], "it comes back on a fresh check, like a failed creation")
+    }
+
+    @Test func aSessionActivationThatReenabledTheTapEndsTheWait() {
+        var script = LifecycleScript.running()
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        script.send(.sessionActive(false))
+        #expect(script.send(.sessionActive(true)).contains(.reenableTap))
+        script.advance(by: HostLifecycle.breakerWindow + .seconds(1))
+        let effects = script.send(.watchdogTripped(.unexpectedlyDisabled))
+        #expect(effects.contains(.checkPermissionsLive), "a new disable of the re-enabled tap: \(effects)")
+        #expect(!effects.contains(.removeTap))
+    }
+
+    /// A disable counted for a tap that a revocation then removed never pairs with the first disable of the next tap.
+    @Test func aRecreatedTapStartsWithoutTheDisablesOfThePreviousOne() {
+        var script = LifecycleScript.running()
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        script.send(.livePermissions(.denied))
+        #expect(script.phase == .failOpen(.permissionRevoked))
+        #expect(script.send(.permissionsChanged(.granted)).contains(.createTap))
+        script.send(.tapCreated)
+        script.advance(by: .seconds(5))
+        let effects = script.send(.tapDisabledBySystem(byTimeout: true))
+        #expect(!effects.contains(.removeTap), "\(effects)")
+        #expect(effects.contains(.checkPermissionsLive))
+    }
+}

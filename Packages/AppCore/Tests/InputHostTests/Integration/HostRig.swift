@@ -127,6 +127,7 @@ final class ContextLog: Sendable {
     private let contexts = Mutex<[PipelineContext]>([])
     func append(_ context: PipelineContext) { contexts.withLock { $0.append(context) } }
     var last: PipelineContext? { contexts.withLock { $0.last } }
+    var count: Int { contexts.withLock { $0.count } }
 }
 
 /// Lets a test pretend that a removed tap thread has not left its run loop yet (ADR 0309).
@@ -203,7 +204,7 @@ final class HostRig {
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
         capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil,
         nestedHops: Bool = false, loadBundled: TapSettingsPublisher.BundledResourcesLoader? = nil,
-        permissionRunner: (any PermissionCheckRunner)? = nil
+        permissionRunner: (any PermissionCheckRunner)? = nil, tapCreationTimeout: TimeSpan? = nil
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -239,7 +240,8 @@ final class HostRig {
             dependencies: dependencies, settingsStore: store.store,
             hop: nestedHops ? NestingMainHop(queue: hop) as any MainThreadHop : hop,
             makeTapThread: Self.gatedThreadMaker(
-                TapSession.productionThreadMaker(factory: dependencies.tapFactory), exitGate, contexts),
+                TapSession.productionThreadMaker(
+                    factory: dependencies.tapFactory, creationTimeout: tapCreationTimeout), exitGate, contexts),
             tapClock: MachClock(),
             loadBundled: loadBundled
                 ?? (realResources ? TapSettingsPublisher.bundledLoader : HostRig.emptyResources),

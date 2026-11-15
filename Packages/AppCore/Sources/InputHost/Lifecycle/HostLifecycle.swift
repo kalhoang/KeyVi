@@ -110,6 +110,11 @@ public struct HostLifecycle: Sendable, Hashable {
     public static let breakerProbation: TimeSpan = .seconds(60)
     /// A trip later than the previous delay plus this interval starts the backoff again.
     public static let breakerStableInterval: TimeSpan = .seconds(600)
+    /// PLT-R330 step 1 (amended): how long a system disable waits for its live permission answer. A report of the
+    /// still disabled tap after this (the watchdog's 5 s check, PLT-R331) means the answer is not coming (a TCC call
+    /// that stalls): the tap is removed as for a failed creation, so the host never sits in `running` with a disabled
+    /// tap, and reports before it are the same disable, never a second one for the breaker.
+    public static let liveCheckOverdue: TimeSpan = .seconds(3)
 
     /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
     private enum TapPresence: Sendable, Hashable { case none, creating, alive }
@@ -143,8 +148,9 @@ public struct HostLifecycle: Sendable, Hashable {
     /// A tap is being recreated after a trip; once created it is on probation until `probationUntil`.
     private var breakerRecovering = false
     private var probationUntil: UInt64?
-    /// A system disable waits for `.livePermissions` before the tap is re-enabled (PLT-R330 step 1).
-    private var reenablePending = false
+    /// A system disable waits for `.livePermissions` before the tap is re-enabled (PLT-R330 step 1): the instant it
+    /// asked, nil when nothing waits. Cleared by every path that enables or removes the tap.
+    private var reenableRequestedAt: UInt64?
     /// Index into `postingBrokenBackoff` used by the latest postingBroken, and when it happened.
     private var postingBrokenAttempt = 0
     private var lastPostingBrokenAt: UInt64?
@@ -237,8 +243,8 @@ public struct HostLifecycle: Sendable, Hashable {
     /// removed the tap (PLT-R730). Granted: the same tap is enabled again, once for all reports of that disable.
     private mutating func livePermissions(granted: Bool) -> [LifecycleEffect] {
         var effects = permissionsChanged(granted: granted)
-        let pending = reenablePending
-        reenablePending = false
+        let pending = reenableRequestedAt != nil
+        reenableRequestedAt = nil
         guard pending, granted, tapIsInstalled else { return effects }
         effects.append(.reenableTap)
         return effects
@@ -252,7 +258,8 @@ public struct HostLifecycle: Sendable, Hashable {
         }
         tap = .alive
         retryAttempt = 0
-        reenablePending = false
+        reenableRequestedAt = nil
+        breakerDisables.removeAll()  // a fresh tap: disables of the previous one never pair with its first
         if breakerRecovering {
             breakerRecovering = false
             probationUntil = now.nanoseconds &+ Self.breakerProbation.unsignedNanoseconds
@@ -287,6 +294,7 @@ public struct HostLifecycle: Sendable, Hashable {
             // PLT-R306: the watchdog already disabled the tap (keys flow); `.disableTap` repeats it from the
             // lifecycle owner. Nothing touches the tap thread, which may be stuck (ADR 0309).
             guard tapIsInstalled else { return [] }
+            reenableRequestedAt = nil  // the watchdog holds the tap now; `callbackExited` decides
             return publish(.failOpen(.watchdog)) + [
                 .disableTap, .requestFlush(.failOpen), .resetComposition, .recordHealth(.watchdogTrip),
             ]
@@ -320,17 +328,36 @@ public struct HostLifecycle: Sendable, Hashable {
     /// within 10 minutes, then a live permission check; the tap is re-enabled only when that check answers granted
     /// (`.livePermissions`), never on the cached status, because a revoked grant leaves an untrusted tap that
     /// stalls input until it is removed (the incident of 15/11/2026). A tap the system keeps disabling is removed
-    /// by the circuit breaker instead (`breakerWindow`). Every report runs the procedure (a second disable within
-    /// the coalescing window is possible and needs the reset), but reports within `disableCoalescingWindow` of the
-    /// last counted one count once (PLT-R331).
+    /// by the circuit breaker instead (`breakerWindow`). Every report of an enabled tap runs the procedure (a second
+    /// disable within the coalescing window is possible and needs the reset), but reports within
+    /// `disableCoalescingWindow` of the last counted one count once (PLT-R331); a report while the live answer is
+    /// pending is the same disable (`stillWaiting`).
     private mutating func systemDisabled(reason: HealthEventKindCode, at now: MonotonicInstant) -> [LifecycleEffect] {
         guard tapIsInstalled else { return [] }
-        var effects: [LifecycleEffect] = [.resetComposition, .requestFlush(.tapDisabled), .recordHealth(reason)]
+        let procedure: [LifecycleEffect] = [.resetComposition, .requestFlush(.tapDisabled), .recordHealth(reason)]
+        if let requestedAt = reenableRequestedAt { return stillWaiting(since: requestedAt, at: now, procedure) }
+        var effects = procedure
         let counted = countDisable(at: now)
         if counted.notice { effects.append(.showTapInstabilityNotice) }
         if counted.trip { return effects + tripBreaker(at: now) }
-        reenablePending = true
+        reenableRequestedAt = now.nanoseconds
         return effects + [.checkPermissionsLive]
+    }
+
+    /// A report while the live answer is pending: the tap has stayed disabled since, so it is the same disable. It
+    /// runs the procedure (idempotent) but counts for neither the notice nor the breaker and asks for no second
+    /// check. Once the answer is `liveCheckOverdue` late it is not coming (a TCC call that stalls): the tap is removed
+    /// and retried like a failed creation (PLT-R332), whose retry checks permissions first, so the host shows
+    /// `failOpen(tapUnavailable)` instead of a silently disabled tap.
+    private mutating func stillWaiting(
+        since requestedAt: UInt64, at now: MonotonicInstant, _ procedure: [LifecycleEffect]
+    ) -> [LifecycleEffect] {
+        let waited = now.nanoseconds(since: MonotonicInstant(nanoseconds: requestedAt))
+        guard waited >= Self.liveCheckOverdue.unsignedNanoseconds else { return procedure }
+        let delay = Self.backoff[min(retryAttempt, Self.backoff.count - 1)]
+        retryAttempt += 1
+        retryPending = true
+        return failOpenRemovingTap(.tapUnavailable) + [.recordHealth(.tapUnstable), .scheduleRetry(after: delay)]
     }
 
     /// PLT-R330 step 6: remove the tap (fail open, keys flow), retry on `breakerBackoff` while permissions look
@@ -339,7 +366,6 @@ public struct HostLifecycle: Sendable, Hashable {
         let delay = noteBreakerTrip(at: now)
         breakerDisables.removeAll()
         probationUntil = nil
-        reenablePending = false
         breakerRecovering = true
         retryAttempt = 0
         retryPending = true
@@ -358,6 +384,7 @@ public struct HostLifecycle: Sendable, Hashable {
             return phase == .running ? move(to: .sessionInactive) : []
         }
         guard phase == .sessionInactive, permissionsGranted == true, tap == .alive else { return [] }
+        reenableRequestedAt = nil  // the activation re-enables on the fresh status the caller fed (PLT-R333)
         return [.reenableTap] + move(to: .running)
     }
 
@@ -412,6 +439,7 @@ public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R730: stop swallowing (the published phase), replay held events, reset, then remove the tap.
     private mutating func failOpenRemovingTap(_ reason: FailOpenReason) -> [LifecycleEffect] {
         tap = .none
+        reenableRequestedAt = nil
         return publish(.failOpen(reason)) + [.requestFlush(.failOpen), .resetComposition, .removeTap]
     }
 

@@ -28,6 +28,10 @@ final class TapSession: Sendable {
     /// How long `.createTap` waits for the previous tap thread to leave its run loop (ADR 0309). A stopped
     /// thread exits within one run-loop turn; a stuck one never does, and then no second tap is created.
     static let previousExitTimeout: TimeSpan = .seconds(1)
+    /// The same wait for a thread whose creation failed or timed out (PLT-R332, amended 15/11/2026). One that
+    /// returned nil exits at once; one still inside a creation that hangs in the system is not waited for again on
+    /// the main thread, and no second creation starts while it hangs (the next retry tries again).
+    static let abandonedExitTimeout: TimeSpan = .milliseconds(100)
 
     let thread: any TapControlStarting
     let echo: EchoTracker
@@ -68,9 +72,10 @@ final class TapSession: Sendable {
 
 extension TapSession {
     /// The production thread maker: one `TapThread` whose handler factory builds the pipeline on the tap thread.
-    static func productionThreadMaker(factory: any EventTapFactory) -> TapThreadMaker {
+    static func productionThreadMaker(factory: any EventTapFactory, creationTimeout: TimeSpan? = nil) -> TapThreadMaker
+    {
         { context in
-            TapThread(factory: factory) {
+            TapThread(factory: factory, creationTimeout: creationTimeout) {
                 ProductionPipeline(context: context, factory: VietnameseCompositionEngineFactory(), clock: MachClock())
             }
         }

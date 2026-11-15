@@ -93,6 +93,15 @@ final class TapThreadRuntime: Sendable {
             created.signal()
             return
         }
+        // A creation that came back after `start()` gave up is dropped before its source reaches the run loop.
+        if state.withLock({ $0.stopRequested }) {
+            session.handle.setEnabled(false)
+            session.handle.invalidate()
+            state.withLock { $0.phase = .exited }
+            created.signal()
+            withExtendedLifetime(session) {}
+            return
+        }
         session.handle.install(on: runLoop)
         let proceed = state.withLock { state -> Bool in
             guard !state.stopRequested else { return false }

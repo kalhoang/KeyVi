@@ -158,6 +158,9 @@ public final class InputHostController {
     var session: TapSession?
     /// A removed session whose thread may still be exiting; its echoes are retired before the next tap.
     var retiredSession: TapSession?
+    /// The retired session's thread never entered its run loop (its creation failed or timed out), so no callback of
+    /// it can be running; it is waited for only briefly (`TapSession.abandonedExitTimeout`).
+    var retiredSessionNeverRan = false
     var recorderActive = false
     var started = false
     var stopped = false

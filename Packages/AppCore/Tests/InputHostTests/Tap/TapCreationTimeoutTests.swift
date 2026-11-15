@@ -31,6 +31,7 @@ import Testing
         #expect(!thread.isRunning)
         #expect(factory.handles.count == 1)
         #expect(factory.handles.allSatisfy { $0.isInvalidated && !$0.isEnabled }, "the late tap is dropped")
+        #expect(factory.handles.allSatisfy { !$0.isInstalled }, "the late tap never reaches the run loop")
     }
 
     @Test func aPromptCreationIsUnaffected() {

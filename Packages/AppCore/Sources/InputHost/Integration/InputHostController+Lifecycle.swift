@@ -84,12 +84,14 @@ extension InputHostController {
     /// postingBroken flag is cleared before the new tap transforms (W1-F2 request, PLT-R731).
     func createTap() {
         if let retired = retiredSession {
-            guard retired.thread.waitUntilExited(timeout: TapSession.previousExitTimeout) else {
+            let timeout = retiredSessionNeverRan ? TapSession.abandonedExitTimeout : TapSession.previousExitTimeout
+            guard retired.thread.waitUntilExited(timeout: timeout) else {
                 feed(.tapCreationFailed)
                 return
             }
             retired.retireEchoes()
             retiredSession = nil
+            retiredSessionNeverRan = false
         }
         channels.feedback.clearPostingBroken()
         let echo = EchoTracker(queue: channels.queue, roundTrip: dependencies.metrics.echoRoundTrip)
@@ -104,6 +106,7 @@ extension InputHostController {
         guard thread.start() else {
             // The tracker never reached a tap thread; its expectations are settled with the next session.
             retiredSession = candidate
+            retiredSessionNeverRan = true
             permissionMonitor?.setTapUnavailable(true)
             feed(.tapCreationFailed)
             return
@@ -125,6 +128,7 @@ extension InputHostController {
         current.remove()
         session = nil
         retiredSession = current
+        retiredSessionNeverRan = false
         timeoutRecoveryPending = false
         permissionMonitor?.setTapInstalled(false)
         dependencies.logger.log(.lifecycle(.tapRemoved), level: .info)

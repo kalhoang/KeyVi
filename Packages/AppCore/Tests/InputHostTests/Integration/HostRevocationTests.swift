@@ -2,7 +2,7 @@
 //
 // Incident of 15/11/2026 end to end (decision 0005, "Decisions of 15/11/2026"): the Accessibility grant removed
 // while the app runs must never leave the keyboard or the mouse blocked (PRD-R44, PLT-R730). The live check removes
-// the tap within about a second (PLT-R721), a system disable never re-enables on a cached status and a tap the
+// the tap within about a second of macOS reporting the loss (PLT-R721), a system disable never re-enables on a cached status and a tap the
 // system keeps disabling is removed by the circuit breaker (PLT-R330), and the main thread never waits for a
 // permission probe (PRD-R13, PLT-R721).
 
@@ -136,6 +136,66 @@ struct HostRevocationTests {
         queue.sync {}
         rig.settle()
         #expect(rig.lifecyclePhase == .running)
+    }
+
+    /// PLT-R330 step 1 (amended): a live answer that does not come (the permission runner stuck in a TCC call)
+    /// never leaves the host in `running` with a disabled tap; the next watchdog report after `liveCheckOverdue`
+    /// removes the tap visibly, and one slower than the coalescing window but within the bound is not a second disable.
+    @Test func aStalledLiveAnswerAfterADisableEndsInAVisibleFailOpen() async throws {
+        let queue = DispatchQueue(label: "test.host.permissions")
+        let rig = HostRig(permissionRunner: QueueRunner(queue: queue))
+        await rig.start()
+        queue.sync {}
+        rig.settle()
+        defer { rig.stop() }
+        let handle = try #require(rig.liveHandles.first)
+        rig.permissions.holdAccessibilityChecks()
+        handle.systemDisables()
+        let enablesBefore = handle.enableCalls.filter { $0 }.count
+        rig.controller.handle(MainNotice.tapDisabled(byTimeout: true))
+        rig.settle()
+        rig.clock.advance(byMicroseconds: 1_500_000)
+        rig.controller.session?.watchdog.checkNow()  // the same disable, seen by the watchdog before the bound
+        rig.settle()
+        #expect(rig.lifecyclePhase == .running, "a slow answer is not a second disable")
+        #expect(!rig.health.recent(limit: 20).contains { $0.kind == .tapUnstable })
+        rig.scheduler.advance(by: TapWatchdog.enabledCheckInterval)  // the next periodic report, past the bound
+        rig.settle()
+        #expect(rig.lifecyclePhase == .failOpen(.tapUnavailable))
+        #expect(handle.isInvalidated, "the waiting tap is removed")
+        #expect(rig.health.recent(limit: 20).contains { $0.kind == .tapUnstable })
+        rig.permissions.openAccessibilityGate()
+        queue.sync {}
+        rig.settle()
+        #expect(handle.enableCalls.filter { $0 }.count == enablesBefore, "the late answer never re-enables the tap")
+    }
+
+    /// PLT-R332 (amended): a creation that hangs in the system blocks the main thread once, for the creation timeout;
+    /// the retries do not wait for the hung thread again and start no second creation while it hangs.
+    @Test func aHungCreationBlocksTheMainThreadOnlyOnce() async throws {
+        let rig = HostRig(tapCreationTimeout: .milliseconds(200))
+        rig.tapFactory.holdCreation()
+        await rig.start()
+        defer { rig.stop() }
+        #expect(rig.lifecyclePhase == .failOpen(.tapUnavailable))
+        #expect(rig.contexts.count == 1)
+        var waited: [TimeInterval] = []
+        for delay in HostLifecycle.backoff.prefix(3) {
+            let started = Date()
+            rig.scheduler.advance(by: delay)
+            rig.settle()
+            waited.append(Date().timeIntervalSince(started))
+        }
+        #expect(waited.allSatisfy { $0 < 0.5 }, "the retries waited \(waited) s on the main thread")
+        #expect(rig.contexts.count == 1, "no second creation while the first hangs")
+        #expect(rig.lifecyclePhase == .failOpen(.tapUnavailable))
+        rig.tapFactory.releaseCreation()
+        #expect(rig.controller.retiredSession?.thread.waitUntilExited(timeout: .seconds(3)) == true)
+        #expect(rig.tapFactory.handles.first.map { $0.isInvalidated && !$0.isInstalled } == true, "late tap dropped")
+        rig.scheduler.advance(by: HostLifecycle.backoff[3])
+        rig.settle()
+        #expect(rig.lifecyclePhase == .running, "the next retry after the hang cleared creates the tap")
+        #expect(rig.liveHandles.count == 1)
     }
 
     /// The revocation found by the menu-open check, delivered after the runner answered.
