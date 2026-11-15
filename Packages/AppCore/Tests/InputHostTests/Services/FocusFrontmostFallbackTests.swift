@@ -210,6 +210,82 @@ struct FocusFrontmostFallbackTests {
         #expect(harness.snapshot.generation == generation)
     }
 
+    /// Re-review W14-P, high: AX names the fallback app but its element read times out. The field's AX availability
+    /// would change, so this is no relabel; a timeout teaches nothing about the focus (PLT-R384) and a new generation
+    /// without a field handle would be a PLT-R340 boundary in the middle of a word.
+    @Test func axNamingTheFallbackAppWithATimedOutElementReadChangesNothing() {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.clearFocusedApplication()
+        harness.processes.setFrontmost(F.codePID)
+        harness.start(rules())
+        let before = harness.snapshot
+        harness.ax.setTimingOut(pid: F.codePID, true)
+        harness.ax.focusWithoutElement(pid: F.codePID, notify: nil)
+        harness.tracker.revalidate()
+        harness.sync()
+        #expect(harness.snapshot.generation == before.generation)
+        #expect(harness.snapshot.app?.source == .frontmostApplication)
+        #expect(harness.snapshot.field == before.field)
+    }
+
+    /// The same while the timeouts open the pid's breaker (PLT-R384), then on the PLT-R382 read after a pause, which
+    /// reaches the tracker because the breaker is open: AX flapping between naming the app and not must not mint a
+    /// generation on every pause. The reverse also holds: an open-breaker snapshot named by AX stays when AX drops
+    /// the app, because its field is `timedOut`, not the fallback's `available`.
+    @Test func axNamingTheFallbackAppWhileItsBreakerIsOpenChangesNothing() {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.clearFocusedApplication()
+        harness.processes.setFrontmost(F.codePID)
+        harness.start(rules())
+        let generation = harness.snapshot.generation
+        harness.ax.setTimingOut(pid: F.codePID, true)
+        harness.ax.focusWithoutElement(pid: F.codePID, notify: nil)
+        for _ in 0..<3 { harness.ax.post(.focusedElementChanged, from: F.codePID) }
+        harness.sync()
+        #expect(harness.health.recent(limit: 16).contains { $0.kind == .axCircuitBreakerTrip })
+        harness.idleRevalidation()
+        #expect(harness.snapshot.generation == generation)
+        #expect(harness.snapshot.app?.source == .frontmostApplication)
+        #expect(harness.snapshot.field.axAvailability == .available)
+        harness.ax.clearFocusedApplication()
+        harness.idleRevalidation()
+        #expect(harness.snapshot.generation == generation)
+    }
+
+    /// A relabel goes through the mode memory again: the manual toggle of this activation stays (PRD-R21) and no
+    /// new app-modes document is written.
+    @Test func aRelabelKeepsTheSessionModeAndWritesNoDocument() {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.clearFocusedApplication()
+        harness.processes.setFrontmost(F.codePID)
+        harness.start(rules())
+        harness.toggle(1, F.code, .english)
+        #expect(harness.snapshot.mode == .english)
+        let documents = harness.documents.count
+        harness.ax.focusWithoutElement(pid: F.codePID, notify: nil)
+        harness.idleRevalidation()
+        #expect(harness.snapshot.app?.source == .accessibility)
+        #expect(harness.snapshot.mode == .english)
+        #expect(harness.documents.count == documents)
+    }
+
+    /// PLT-R521: a runtime tie is recorded for a focus context, not again when only the app's label changes.
+    @Test func aRelabelRecordsNoSecondRuleTie() {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.clearFocusedApplication()
+        harness.processes.setFrontmost(F.codePID)
+        harness.start(F.resolver([F.code: F.decision(Self.editorRule, tieLoser: "editor.other", engine: .electron)]))
+        harness.ax.focusWithoutElement(pid: F.codePID, notify: nil)
+        harness.idleRevalidation()
+        #expect(harness.snapshot.app?.source == .accessibility)
+        let ties = harness.health.recent(limit: 16).filter { $0.kind == .ruleTie }
+        #expect(ties.count == 1)
+    }
+
     /// PLT-R382 and T6: an unchanged fallback publishes nothing, and the owner's identity is read once.
     @Test func repeatedReadsOfTheSameFallbackPublishNothing() {
         let harness = FocusHarness()

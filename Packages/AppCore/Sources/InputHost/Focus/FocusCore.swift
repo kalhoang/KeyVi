@@ -195,14 +195,24 @@ final class FocusCore {
         if reading.elementUnmoved { return .unchanged }
         let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false
-        let sameSource = current?.snapshot.app?.source == reading.appSource
-        if !force, sameElement, sameSource, current?.match == match { return .unchanged }
+        let sameContext = !force && sameElement && current?.match == match
+        if sameContext, !relabels(reading) { return .unchanged }
         let decision = rules.resolve(match)
-        recordSideEffects(of: decision, reading: reading)
+        // A relabel republishes a context whose tie was recorded when it was first published (PLT-R521).
+        recordSideEffects(of: decision, reading: reading, recordingTie: !sameContext)
         let published = resolveAndPublish(
             reading: reading, match: match, decision: decision, sameElement: sameElement, at: started)
         services.metrics.focusRefresh.record(nanoseconds: services.clock.now().nanoseconds(since: started))
         return published ? .published : .unchanged
+    }
+
+    /// PLT-R381: only the identity's source changed (AX started or stopped naming the same process) and the field
+    /// facts are the published ones. A read that times out or meets an open breaker changes the field's AX
+    /// availability, so it is no relabel: it keeps the published snapshot like before, because a new generation
+    /// without a field handle would be a PLT-R340 boundary and a timeout teaches nothing (PLT-R384).
+    private func relabels(_ reading: FocusReading) -> Bool {
+        guard let current, current.snapshot.app?.source != reading.appSource else { return false }
+        return current.snapshot.field == fieldContext(for: reading)
     }
 
     /// A timeout of the system-wide read (no pid), or of the current owner's element read while its breaker is
@@ -294,9 +304,9 @@ final class FocusCore {
     }
 
     /// PLT-R521 tie health event; PLT-R385 `AXManualAccessibility` only when the rule asks, recorded once per pid.
-    private func recordSideEffects(of decision: ResolvedDecision, reading: FocusReading) {
+    private func recordSideEffects(of decision: ResolvedDecision, reading: FocusReading, recordingTie: Bool) {
         let bundle = reading.identity?.bundle
-        if decision.tieLoser != nil {
+        if recordingTie, decision.tieLoser != nil {
             services.health.record(HealthEvent(kind: .ruleTie, at: Date(), bundle: bundle, rule: decision.rule))
         }
         guard decision.axEnable == .manual, let pid = reading.pid, !manualAccessibilityPIDs.contains(pid) else {
