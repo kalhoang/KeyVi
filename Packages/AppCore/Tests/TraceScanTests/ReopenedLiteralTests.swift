@@ -127,6 +127,20 @@ extension TraceBuilder {
         #expect(reopenedLiterals(trace).isEmpty)
     }
 
+    /// The real engine with letters that pass through after the re-open (`ti` + `ng` shows `ting`): the check runs
+    /// on real engine output and still finds nothing, since a fresh token would not compose those keys either.
+    @Test func theRealEngineNeverFiresOnLettersThatStayAsTyped() {
+        var trace = TraceBuilder()
+        trace.launch()
+        trace.boundary("focusChanged", job: "focusChanged")
+        trace.type("tiesng ")
+        for _ in 0..<5 { trace.backspace() }
+        trace.type("ng")
+        trace.boundary("pointerClicked", job: "mouseDown")
+        #expect(trace.events.contains { $0.line.dec?.hasPrefix("restored") == true }, "the fixture restores")
+        #expect(reopenedLiterals(trace).isEmpty)
+    }
+
     /// ENG-R1005: the restore lasts while a remaining raw key still transforms something (`tieesngg`, space, two
     /// Backspaces leave `tieesn`), so keys typed then stay as typed on purpose.
     @Test func keysTypedWhileTheRestoreRightlyLastsAreNoFinding() {

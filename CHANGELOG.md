@@ -39,6 +39,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Vietnamese wording: the Typing pane is "Kiểu gõ" (was "Gõ phím"), macros are "Viết tắt" everywhere (pane, menu, editor, import and export, messages and VoiceOver), "Mở khi đăng nhập" reads "Khởi động cùng hệ thống", the copy says "file" instead of "tệp", and the diagnostics, settings transfer and privacy lines of Support are reworded.
 - The About, Support and Licences panes, the README and the support replies write the name with its trademark sign, KeyVi™.
 - Backspace on a letter that undid a tone or mark deletes just that letter; the tone or mark no longer comes back.
+- The diagnostics block copied for a bug report says how KeyVi identified the app you were typing in, whether the two learned-word options of Settings > Typing are on, and how many learned words KeyVi keeps (a count only, never the words).
 
 ### Fixed
 
