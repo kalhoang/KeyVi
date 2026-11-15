@@ -272,6 +272,79 @@ class PlaceholderGateTests(TempDirTestCase):
         self.assertIn("compat/scenarios", result.stdout)
 
 
+class LookaheadRevisionLintTests(TempDirTestCase):
+    """PLT-R357: the two compat-lint errors for `features.lookaheadRevision` (CompatRules LintEngine.revisionFindings),
+    with the same codes and messages: the flag on a strategy that cannot carry a revision, and the flag left on where
+    the restore key is off (PLT-R353: the restore key is how a revision is undone)."""
+
+    STRATEGY_CODE = "lookaheadRevisionWithoutEditStrategy"
+    STRATEGY_MESSAGE = "lookaheadRevision needs strategy backspaceReplace or selectReplace"
+    HOTKEY_CODE = "lookaheadRevisionWithoutRestoreHotkey"
+    HOTKEY_MESSAGE = "restoreHotkey is false, so lookaheadRevision must be false too"
+
+    def lint(self, strategy: str, features: dict):
+        action = {"strategy": strategy, "features": features}
+        if strategy == "paste":
+            action["requiresUserOptIn"] = True
+        rules = self.write_json("rules.json", rules_doc(good_rule(action=action)))
+        schema = self.write_json("schema.json", {"type": "object"})
+        return py("check-rules.py", "--rules", str(rules), "--schema", str(schema), "--today", "2026-11-13",
+                  "--matrix", str(self.tmp / "missing-matrix.json"))
+
+    def test_the_flag_needs_an_edit_strategy(self):
+        for strategy in ("axReplace", "paste", "passThrough"):
+            with self.subTest(strategy=strategy):
+                result = self.lint(strategy, {"lookaheadRevision": True})
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(f"error: rule terminal.default: {self.STRATEGY_CODE}: {self.STRATEGY_MESSAGE}",
+                              result.stderr)
+        for strategy in ("backspaceReplace", "selectReplace"):
+            with self.subTest(strategy=strategy):
+                result = self.lint(strategy, {"lookaheadRevision": True})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn(self.STRATEGY_CODE, result.stderr)
+
+    def test_an_unset_or_false_flag_on_another_strategy_passes(self):
+        for features in ({}, {"lookaheadRevision": False}):
+            with self.subTest(features=features):
+                result = self.lint("axReplace", features)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("lookaheadRevision", result.stderr)
+
+    def test_the_restore_key_off_needs_the_flag_off(self):
+        for strategy in ("backspaceReplace", "selectReplace"):
+            for features in ({"restoreHotkey": False}, {"restoreHotkey": False, "lookaheadRevision": True}):
+                with self.subTest(strategy=strategy, features=features):
+                    result = self.lint(strategy, features)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertIn(f"error: rule terminal.default: {self.HOTKEY_CODE}: {self.HOTKEY_MESSAGE}",
+                                  result.stderr)
+            with self.subTest(strategy=strategy, features="flag off"):
+                result = self.lint(strategy, {"restoreHotkey": False, "lookaheadRevision": False})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn(self.HOTKEY_CODE, result.stderr)
+
+    def test_the_restore_key_check_applies_only_to_edit_strategies(self):
+        """Resolution turns the flag off on other strategies anyway, as in the Swift linter."""
+        result = self.lint("axReplace", {"restoreHotkey": False})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        both = self.lint("axReplace", {"restoreHotkey": False, "lookaheadRevision": True})
+        self.assertIn(self.STRATEGY_CODE, both.stderr)
+        self.assertNotIn(self.HOTKEY_CODE, both.stderr)
+
+    def test_codes_and_messages_are_the_swift_linters(self):
+        engine = (REPO / "Packages/AppCore/Sources/CompatRules/LintEngine.swift").read_text(encoding="utf-8")
+        lint = (REPO / "Packages/AppCore/Sources/CompatRules/Lint.swift").read_text(encoding="utf-8")
+        for code, message in ((self.STRATEGY_CODE, self.STRATEGY_MESSAGE), (self.HOTKEY_CODE, self.HOTKEY_MESSAGE)):
+            with self.subTest(code=code):
+                self.assertRegex(lint, rf"\bcase {code}\b")
+                self.assertRegex(engine, rf'\.{code},\s*"{re.escape(message)}"')
+
+    def test_the_shipped_rules_pass(self):
+        result = py("check-rules.py", "--matrix", str(self.tmp / "missing-matrix.json"))
+        self.assertNotIn("lookaheadRevision", result.stderr)
+
+
 class ForwardDeleteTests(TempDirTestCase):
     def test_clean_rules(self):
         path = self.write_json("rules.json", rules_doc(good_rule()))
