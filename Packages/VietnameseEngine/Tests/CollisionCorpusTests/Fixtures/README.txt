@@ -55,6 +55,8 @@ Updating
   intended words: they are the research's hand judgements and only a reviewed correction may change one.
   A change that moves the numbers of 13.11 also updates, in the same pull request, the counts the tests state on
   their own: CollisionCorpusTests.swift (1,206 sentences, 720 and 623 collisions, 507 for the tone after the
-  vowel and its floor, the baseline 421, 589 and 876), CollisionMemorySimulationTests.swift (the measured
-  held-out loss), spec/01-engine.md 13.11, docs/decisions/0008-collision-learning.md and the ENG-R876 and QA-R68
-  rows of docs/architecture/traceability.md and Packages/VietnameseEngine/TRACEABILITY.md.
+  vowel and its floor, the baseline 421, 589 and 876), CorpusFixtureTests.swift (the line counts 1,206, 57, 42
+  and 81), CollisionMemorySimulationTests.swift (the measured held-out loss and the first pass of the correcting
+  user, at least 548 English collisions right), spec/01-engine.md 13.11 and the ENG-R876 row of its requirement
+  table (the 99 % and 98.8 % floors), docs/decisions/0008-collision-learning.md and the ENG-R876 and QA-R68 rows
+  of docs/architecture/traceability.md and Packages/VietnameseEngine/TRACEABILITY.md.
