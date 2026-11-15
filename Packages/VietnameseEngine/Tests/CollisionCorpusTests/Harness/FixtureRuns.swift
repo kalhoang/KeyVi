@@ -16,11 +16,15 @@ enum GateResources {
 
     static func bundled() throws -> Resources { try loaded.get() }
 
-    /// The default engine (Telex, defaults) over the bundled data with `memory`.
-    static func engine(lookaheadRevision: Bool = true, memory: CollisionMemorySnapshot = .empty) throws -> Engine {
+    /// The default engine (Telex, defaults) over the bundled data with `memory`, in `appContext` (ENG-R850).
+    static func engine(
+        lookaheadRevision: Bool = true, appContext: AppContext = .general, memory: CollisionMemorySnapshot = .empty
+    ) throws -> Engine {
         var resources = try bundled()
         resources.collisionMemory = memory
-        return Engine(configuration: EngineConfiguration(lookaheadRevision: lookaheadRevision), resources: resources)
+        return Engine(
+            configuration: EngineConfiguration(appContext: appContext, lookaheadRevision: lookaheadRevision),
+            resources: resources)
     }
 }
 

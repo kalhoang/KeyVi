@@ -67,6 +67,7 @@ techAlways	www
 techAlways	wifi		
 techAlways	usb		
 techCodeOnly	tar		
+techCodeOnly	sudo		
 unattested	dóe		
 unattested	hẻ		
 unattested	dổ		

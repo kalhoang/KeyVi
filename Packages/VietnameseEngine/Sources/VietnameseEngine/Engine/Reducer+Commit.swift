@@ -47,7 +47,8 @@ extension Engine {
         let context = CommitContext(
             runIsEnglish: state.recentLanguages.isEnglishRun, boundary: boundary,
             memoryContext: Self.memoryContext(state.history),
-            phrases: commitPolicy.collisionRules ? PhraseChain(history: state.history) : PhraseChain())
+            phrases: commitPolicy.collisionRules ? PhraseChain(history: state.history) : PhraseChain(),
+            inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history))
         let result = commitResult(for: token, context: context)
         var action = result.action
         var revision: RevisionReason?
@@ -162,6 +163,8 @@ extension Engine {
         facts.composed = inputs.committed
         facts.context = context.memoryContext
         facts.listWord = commitPolicy.listWord(inputs.rawLowercased)
+        // Read only by rule L9, which only the code context reaches; the configuration is fixed per engine.
+        facts.vietnameseAsTyped = configuration.appContext == .code && commitPolicy.isVietnameseAsTyped(inputs)
         if commitPolicy.collisionRules {
             facts.phraseWord = resources.collision.phrases.number(of: inputs.rawLowercased)
         }

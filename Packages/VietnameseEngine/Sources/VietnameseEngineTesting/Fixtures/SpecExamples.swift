@@ -64,7 +64,8 @@ public struct WorkedExample: Sendable, Hashable {
     public var events: [EngineEvent] { SpecExamples.events(typing: keys) }
 }
 
-/// A commit-decision example of spec 13.9 and 13.9.1 (B001-B064).
+/// A commit-decision example of spec 13.9, 13.9.1 and 13.9.2 (B001-B072 with the lettered rows B035a-B035h, B064a
+/// and B064b).
 public struct CommitDecisionExample: Sendable, Hashable {
     /// Whether the commit kept, restored or left the token unchanged.
     public enum Outcome: String, Sendable, Hashable { case kept, restored, unchanged }
@@ -95,6 +96,13 @@ public struct CommitDecisionExample: Sendable, Hashable {
     /// The engine configuration of the row.
     public var configuration: EngineConfiguration {
         EngineConfiguration(inputMethod: method == .vni ? .vni : .telex(TelexOptions()), appContext: context)
+    }
+
+    /// The keys of the row's seed token (13.9 "Previous token") in the row's method: `việt` is typed `vie65t`
+    /// in VNI, where `vieejt` would stay as typed. Nil for `none`.
+    public var seedKeys: String? {
+        guard method == .vni, previous == .vietnamese else { return previous.seedKeys }
+        return "vie65t"
     }
 
     /// Keys of the example followed by the boundary key (no seed token).

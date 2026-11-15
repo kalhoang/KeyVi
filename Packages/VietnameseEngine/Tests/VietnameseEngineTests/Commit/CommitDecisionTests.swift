@@ -3,10 +3,11 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 with the 13.9 fixture resources, checking the committed
-/// text and the rule that decided (ENG-R801), then the same rows ended by every boundary key of section 9
-/// (P0-3: the decision must not depend on which boundary key ended the token). The 13.9.2 rows type a whole
-/// run of tokens (ENG-R823, REG-32); the rule is the one that decided the last token.
+/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035i, B064a and B064b) with the
+/// 13.9 fixture resources, checking the committed text and the rule that decided (ENG-R801), then the same rows
+/// ended by every boundary key of section 9 (P0-3: the decision must not depend on which boundary key ended the
+/// token). The 13.9.2 rows and the rows whose keys hold several tokens type a whole run of tokens (ENG-R823,
+/// REG-32, ENG-R850); the rule is the one that decided the last token.
 @Suite("Commit decisions B001-B072 (13.9, 13.9.1, 13.9.2)")
 struct CommitDecisionTests {
     static let rows: [CommitDecisionExample] = {
@@ -59,7 +60,7 @@ struct CommitDecisionTests {
         text: String, output: EngineOutput, driver: EngineDriver
     ) {
         var driver = EngineDriver(configuration: row.configuration, resources: resources)
-        if let seed = row.previous.seedKeys { try driver.type(seed + " ") }
+        if let seed = row.seedKeys { try driver.type(seed + " ") }
         let prefix = driver.field.string
         try driver.type(row.keys)
         let output = try driver.send(.key(boundary))
@@ -68,7 +69,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 72)
+        #expect(Self.rows.count == 83)
     }
 
     @Test(arguments: rows)
@@ -99,7 +100,9 @@ struct CommitDecisionTests {
             if boundary.isHard {
                 #expect(driver.state.historyCount == 0, "\(row.id) + \(boundary)")
             } else {
-                let tokens = row.keys.split(separator: " ").count + (row.previous == .none ? 0 : 1)
+                // Tokens are runs of letters (and of VNI digits); `anh.tar` is two tokens (B035i).
+                let isTokenCharacter = { (c: Character) in c.isLetter || (row.method == .vni && c.isNumber) }
+                let tokens = row.keys.split { !isTokenCharacter($0) }.count + (row.previous == .none ? 0 : 1)
                 #expect(driver.state.historyCount == tokens, "\(row.id) + \(boundary)")
             }
         }

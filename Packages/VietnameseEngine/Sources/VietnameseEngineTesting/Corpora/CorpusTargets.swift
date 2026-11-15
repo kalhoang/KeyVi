@@ -128,13 +128,15 @@ public enum ProseCorpusCheck {
 
     /// Types `text` with `order` in `method` and compares each word with the source. `style` is the typist's
     /// tone-style setting (spec 5.2); the keys are the same in both styles, only the placement differs.
-    /// `lookaheadRevision` is the configuration switch of the collision rules (ENG-R829).
+    /// `lookaheadRevision` is the configuration switch of the collision rules (ENG-R829); `appContext` is the
+    /// host's app context (ENG-R850).
     public static func run(
         text: String, method: CorpusMethod, order: CorpusOrder, style: ToneStyle = .traditional,
-        lookaheadRevision: Bool = true, resources: Resources
+        lookaheadRevision: Bool = true, appContext: AppContext = .general, resources: Resources
     ) -> Report {
         let configuration = EngineConfiguration(
-            inputMethod: method.inputMethod, toneStyle: style, lookaheadRevision: lookaheadRevision)
+            inputMethod: method.inputMethod, toneStyle: style, appContext: appContext,
+            lookaheadRevision: lookaheadRevision)
         let engine = Engine(configuration: configuration, resources: resources)
         var session = Session(engine: engine)
         var tokens = 0

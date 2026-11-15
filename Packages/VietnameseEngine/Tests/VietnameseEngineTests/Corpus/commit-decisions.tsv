@@ -38,7 +38,16 @@ B031	is	\s	Telex	vi	general	is\s	is	L11 ambiguity row = en: restore	L11	restored
 B032	as	\s	Telex	vi	general	á\s	á	L11 ambiguity row = vi: keep	L11	kept
 B033	did	\s	Telex	vi	general	đi\s	đi	L11 ambiguity row = vi: keep	L11	kept
 B034	tar	\s	Telex	vi	general	tả\s	tả	L11 no row, default vi: keep	L11	kept
-B035	tar	\s	Telex	vi	code	tar\s	tar	L9 code context, code-only tech word: restore	L9	restored
+B035	tar	\s	Telex	none	code	tar\s	tar	L9 code context, code-only tech word at the start of a line: restore	L9	restored
+B035a	tar	\s	Telex	vi	code	tả\s	tả	L11 no row, default vi (in Vietnamese text L9 does not apply): keep	L11	kept
+B035b	tar	\s	Telex	en	code	tar\s	tar	L9 code context, code-only tech word after an English word: restore	L9	restored
+B035c	chinhs tar	\s	Telex	none	code	chính tả\s	chính tả	L11 no row, default vi (after a Vietnamese word L9 does not apply): keep	L11	kept
+B035d	moo tar	\s	Telex	none	code	mô tả\s	mô tả	L11 no row, default vi (after a Vietnamese word L9 does not apply): keep	L11	kept
+B035e	sudo tar	\s	Telex	none	code	sudo tar\s	sudo tar	L9 code context, code-only tech word after a code word: restore	L9	restored
+B035f	ta3	\s	VNI	vi	code	tả\s	tả	L7 raw not English: keep	L7	kept
+B035g	mo6 ta3	\s	VNI	none	code	mô tả\s	mô tả	L7 raw not English: keep	L7	kept
+B035h	tar	\s	VNI	none	code	tar\s	tar	L0 output equals the keys typed: nothing to decide	L0	unchanged
+B035i	anh.tar	\s	Telex	none	code	anh.tar\s	anh.tar	L9 code context, code-only tech word joined to the previous word with no space: restore	L9	restored
 B036	Kroong	\s	Telex	none	general	Krông\s	Krông	L6 extended, raw not English: keep	L6	kept
 B037	DDawsk	\s	Telex	none	general	Đắk\s	Đắk	L6 extended, raw not English: keep	L6	kept
 B038	Pawsc	\s	Telex	none	general	Pắc\s	Pắc	L7 raw not English: keep	L7	kept
@@ -68,6 +77,8 @@ B061	case	!	Telex	none	general	case!	case	L5 invalid: restore	L5	restored
 B062	USB	)	Telex	none	general	USB)	USB	L5 invalid: restore	L5	restored
 B063	text	:	Telex	none	general	text:	text	L5 invalid: restore	L5	restored
 B064	text	\n	Telex	none	general	text\n	text	L5 invalid: restore, then Return is delivered	L5	restored
+B064a	Suwar looxi chinhs tar	"	Telex	none	code	Sửa lỗi chính tả"	Sửa lỗi chính tả	L11 no row, default vi (after a Vietnamese word L9 does not apply): keep	L11	kept
+B064b	tar	"	Telex	none	code	tar"	tar	L9 code context, code-only tech word at the start of a line: restore	L9	restored
 B065	Khusc caif cacs app caafn thieest treen win cungx tricky as	.	Telex	none	general	Khúc cài các app cần thiết trên win cũng tricky á.	Khúc cài các app cần thiết trên win cũng tricky á	L11 ambiguity row = vi: keep	L11	kept
 B066	dduwowcj as	.	Telex	none	general	được á.	được á	L11 ambiguity row = vi: keep	L11	kept
 B067	treen server been	\s	Telex	none	general	trên server bên\s	trên server bên	L11 ambiguity row = vi: keep	L11	kept

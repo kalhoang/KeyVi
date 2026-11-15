@@ -507,7 +507,7 @@ Examples: `vieejt` + Backspace -> `việ`, + Backspace -> `vi` (the tone goes wi
 
 ### 8.1 Decision at commit (normative, first matching rule wins)
 
-Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, the token flags (escape used, user-restored, user-kept), the language of the previous tokens in the run (8.3), the boundary key, the previous committed tokens of the run (rule L9b), the app context (8.6) and the resources (8.2), including the host's learned memory (ENG-R865). "R is English" means the lowercased `R` is in the English lexicon or the tech-always list. "The collision list" is the ambiguity table plus the collision supplement (8.2).
+Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, the token flags (escape used, user-restored, user-kept), the language of the previous tokens in the run (8.3), the boundary key, the previous committed tokens of the run (rule L9b), the tokens and boundary characters of the line before the token (rule L9, ENG-R850), the app context (8.6) and the resources (8.2), including the host's learned memory (ENG-R865). "R is English" means the lowercased `R` is in the English lexicon or the tech-always list. "The collision list" is the ambiguity table plus the collision supplement (8.2).
 
 | Rule | Condition | Result |
 |---|---|---|
@@ -521,14 +521,14 @@ Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, t
 | L6 | `C` is Tier B but not Tier A | restore if `R` is English, else keep |
 | L7 | `R` is not English | keep |
 | L8 | `C` is not in the attested-syllable list | restore |
-| L9 | app context is `code` and `R` is in the code-only tech list | restore (reached only when L6 and L7 did not decide, see ENG-R850) |
+| L9 | app context is `code`, `R` is in the code-only tech list and the token is not in Vietnamese text (ENG-R850: a Vietnamese word among the previous three tokens of the line, the previous token neither English nor a code word, a space and no code character between it and the token) | restore (reached only when L6 and L7 did not decide, see ENG-R850) |
 | L9a | `R` is on the boundary-particle list, the boundary key is `.`, `!`, `?` or Return and the token does not continue a phrase (L9b) | keep (ENG-R825) |
 | L9b | the previous 1 to 3 tokens of the run (each followed by exactly one space) plus `R`, lowercased, start a bundled phrase | restore (ENG-R826) |
 | L9c | `R` is on the collision list and the learned memory votes for it in the current context class | as voted (ENG-R863) |
 | L10 | the run is in English (8.3: an `en` token and no `vi` token among the previous three) and the ambiguity row of `R` has no `run: vi` mark (ENG-R827) | restore |
 | L11 | ambiguity table row for `R`: `en` -> restore, `vi` -> keep; no row: restore if `R` is in the tech-always list, else keep | as stated |
 
-- **ENG-R801** The engine MUST implement exactly this order, including the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)* L9a, L9b and L9c are evaluated in that order after L9 and before L10; their reason codes are `boundaryParticle`, `phrase` and `learned`. L9c also applies to a token that L6, L7 or L8 would decide when `R` is on the collision list and the memory votes for the other side (a vote that agrees leaves the rule as it is): the memory reaches the collision supplement (`cos`, kept `có` by L7) and the generated rows that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10 never apply.
+- **ENG-R801** The engine MUST implement exactly this order, including the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)* L9a, L9b and L9c are evaluated in that order after L9 and before L10; their reason codes are `boundaryParticle`, `phrase` and `learned`. L9c also applies to a token that L6, L7 or L8 would decide when `R` is on the collision list and the memory votes for the other side (a vote that agrees leaves the rule as it is): the memory reaches the collision supplement (`cos`, kept `có` by L7) and the generated rows that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10 never apply; L9 reads the line before the token either way (ENG-R850).
 - **ENG-R802** When auto restore is off, rules L3b to L11 MUST NOT restore anything. L1 and L2 (the user's own choices) still apply.
 - **ENG-R803** A restore at commit is an edit that replaces `C` with `R` followed by the boundary key (`thenPassThrough`). When the commit also revises the previous token (ENG-R828), the edit covers the previous token, its separator and the current token in one `TextEdit`; the boundary key follows.
 
@@ -540,7 +540,7 @@ All data is bundled in the app and loaded at start. Nothing is downloaded (ENG-R
 |---|---|---|---|
 | English lexicon | Common English words, lowercase, ASCII letters only | SCOWL (Kevin Atkinson), size levels up to 35 (VERIFY final level by measuring collisions), American and British variants. Licence: permissive MIT/X11-style notice that must be reproduced in documentation; most component lists are public domain. VERIFY: the readme states that some lists used COCA-derived data under an NDA "within the rights given"; confirm the chosen levels are redistributable. Alternatives: 12dicts by Alan Beale (public domain), ENABLE (public domain). | Only membership matters, not frequency. |
 | Tech-always list | Words with no common Vietnamese reading that should always stay as typed: `www`, `http`, `https`, `wifi`, `usb`, `ios`, `macos`, `json`, `html`, `api`, `url`, `a4`, `mp3`, `mp4`, `4g`, `5g`, `h2o`, brand and product names... | Written by the project, licensed with the engine. | Reviewed by Pa. |
-| Code-only tech list | Shell commands and flags that collide with Vietnamese: `tar`, `less`, `more`, `cat`, `top`, `make`, `sed`, `awk`... | Written by the project. | Used only in the `code` context (L9). |
+| Code-only tech list | Shell commands and flags that collide with Vietnamese: `tar`, `less`, `more`, `cat`, `top`, `make`, `sed`, `awk`... | Written by the project. | Used only in the `code` context, outside Vietnamese text (L9, ENG-R850). |
 | Attested syllables | Vietnamese syllables (with tone) that actually occur | Built by a reproducible script from legally safe text: Vietnamese legal normative documents (VERIFY: Vietnam IP Law 2005, Article 15, excludes legal normative and administrative documents from copyright protection), plus syllables added by Pa. MUST NOT use hunspell-vi or the Aspell Vietnamese list (GPL), Wiktionary (CC BY-SA), or data from any other input method. | Used only by L8, never to block typing. |
 | Ambiguity table | Rows `raw -> vi or en` for English words whose Telex typing produces an attested Vietnamese syllable, with the columns `run` (`en` or `vi`) and `viKind` (`particle`, `function`, `content`) of ENG-R827 | Generated candidate list (8.3), each row decided by Pa; `run` and `viKind` proposed by the W11 research (15/11/2026), reviewed by Pa. | Decides L11; `run` L10; `viKind` RV3, RV4. |
 | Phrases | English multiword expressions of 2 to 4 words that contain a collision word (`such as`, `has been`, `as hell`), 327 entries | Written by the project from general English usage, reviewed by Pa. The build fails when a phrase's Vietnamese reading occurs in the prose corpus (13.4). | L9b, RV1 (ENG-R826). |
@@ -608,7 +608,12 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 
 ### 8.6 App context (host-supplied)
 
-- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`). Because L6 and L7 decide before L9 (8.1), L9 only reaches code-only words whose raw keys are also English (in the English lexicon or the tech-always list); code-only words that are not English keep their Vietnamese display in `code` too (`chown` -> `chơn` and `ef` -> `è` by L7, `awk` -> `ăk` by L6). VERIFY (open point for Pa, docs/decisions/0005-pa-decisions-2026-11-13.md, "Found while applying the decisions"): keep this order, or let L9 decide before L6 and L7 for code-only words. Nothing else changes; Vietnamese prompts typed in a terminal compose exactly as elsewhere.
+- **ENG-R850** The configuration carries `appContext`: `general` (default) or `code` (terminals, IDEs and code editors, chosen by the host). In `code`, rule L9 restores code-only tech words (`tar` -> `tar` instead of `tả`) outside Vietnamese text. Terminals and editors carry Vietnamese prose as well as commands (prompts to command-line assistants, commit messages, chat, code comments), so L9 follows the line, not the app. The line before a token is its history (section 10): it starts empty, and Return, Tab and a reset clear it. A token is in Vietnamese text when all three hold:
+  (a) a Vietnamese word stands among the previous three tokens of the line: a token of language `vi` (ENG-R823), or a Vietnamese syllable typed unchanged, that is a Tier A syllable of at least two letters whose raw keys are not English and not all caps, the Vietnamese evidence of RV4 (ENG-R828): `anh`, `chim`, `tay`;
+  (b) the previous token is neither English (`en`, ENG-R823) nor a code-only word shown as typed (typed unchanged or restored, such as `sudo`; `chown` kept as `chơn` by L7 is a Vietnamese word);
+  (c) the boundary characters between the previous token and this one hold a space (U+0020 or the no-break space U+00A0) and no code character. A word glued to the previous one with no space between them is a code join, a file, directory or user name, not Vietnamese text: `anh.tar.gz`, `anh/tar`, `minh@host` (in prose a word is never glued to the next one by `.`, `/` or `@`). The code characters are the backquote (a Markdown code span, shell substitution), the vertical bar (a pipe), `&` and `$`. Quotes, brackets, `. , ; : ! ?`, the hyphen and the slash followed by a space are prose punctuation and change nothing.
+  So L9 restores at the start of the input or of a line (`tar -xzf`), after a code word (`sudo tar`), after an English word (`and tar`), after a code character (`echo "xong" | tee`, a backquote before `tar`), after a word it is glued to (`cp anh.tar.gz`, `ssh minh@host`) and when no Vietnamese word stands among the last three tokens (`ssh -p 22 host`). In Vietnamese text the rules after L9 decide exactly as in `general`: `chinhs tar` gives `chính tả`, `moo tar` gives `mô tả`, `tay tee` gives `tay tê`, and the learned memory (L9c) and the revisions (ENG-R828) apply as anywhere else. The boundary key that ends the token is not evidence, as for every rule but L9a (P0-3, 13.9.1): `chinhs tar"` gives `chính tả"`, and `tar"` at the start of a line gives `tar"`. The condition reads only the history and the token languages, which exist with `lookaheadRevision` off (ENG-R829); the switch changes it only through the English-lean words of ENG-R823 (`the` and `my` are English with the switch on and neutral with it off). The amended rule only removes L9 restores, it never adds one.
+  Because L6 and L7 decide before L9 (8.1), L9 only reaches code-only words whose raw keys are also English (in the English lexicon or the tech-always list): with the bundled data of 15/11/2026, Telex `host`, `tar` and `tee` (`hót`, `tả`, `tê`); VNI letters are plain, so VNI never reaches it. Code-only words that are not English keep their Vietnamese display in `code` too (`chown` -> `chơn` and `ef` -> `è` by L7, `awk` -> `ăk` by L6). Known costs: a line that starts with `tả`, `tê` or `hót` shows the keys as typed (the keep-Vietnamese list, L2, decides before L9); a Vietnamese word glued to the previous one with no space (`việt/tả`) shows the keys as typed; `;` is prose punctuation, so a Vietnamese-looking name before it reaches the next command (`cd anh; tar xf a` gives `cd anh; tả xf a`, while `cd anh && tar` keeps `tar`); and an English tech word right after a Vietnamese word takes its Vietnamese display, as in `general` (`Cấu hình hót và port`; the escape `hosst` keeps `host`, 4.7, and the learned memory can learn the word). VERIFY (open point for Pa, docs/decisions/0005-pa-decisions-2026-11-13.md, "Found while applying the decisions"): keep this order, or let L9 decide before L6 and L7 for code-only words; since 15/11/2026 such a change would only reach code-only words outside Vietnamese text. *(Amended after the product owner's report of 15/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, REG-35: the first version restored code-only words in `code` whatever the words around them, so a Vietnamese message typed in iTerm2, `Suwar looxi chinhs tar"`, committed `Sửa lỗi chính tar"`, twice in a row, against the promise that Vietnamese prompts typed in a terminal compose exactly as elsewhere.)*
 - **ENG-R851** The engine MUST NOT receive bundle identifiers, window titles or any other app information.
 
 ### 8.7 User lists and learning
@@ -1003,6 +1008,7 @@ extension Resources {
 | REG-32 | (Product owner, 14/11/2026) An English loanword in a Vietnamese sentence made the run English, so the next collision was restored: `cũng tricky as` committed `as` instead of `á`, `trên server been` kept `been` | ENG-R823, L10 | B065-B072 |
 | REG-33 | (Product owner, 15/11/2026, dev trace) Retyping a word re-opened after an automatic restore stayed as typed: `tiesng`, space, five Backspaces, `eesn` showed `tieesn`, not `tiến` | ENG-R1005 | W243k-W243o |
 | REG-34 | (Product owner, 15/11/2026) A second tone-removal press did nothing useful: `daauszz` gave `dâuz` where `dau` was expected | ENG-R411 | W158a-W158j, W184a-W184c, W242n, W242o, W242s, W242t |
+| REG-35 | (Product owner, 15/11/2026, dev trace in iTerm2) In the code context a Vietnamese word was turned into a shell command whatever the words around it: `Suwar looxi chinhs tar"` committed `Sửa lỗi chính tar"` | ENG-R850, L9 | B035-B035i, B064a, B064b |
 
 ### 13.6 Fuzz invariants
 
@@ -1335,9 +1341,9 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 
 Rows W249-W253 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
 
-### 13.9 Worked examples: commit decisions (52 rows, plus 13.9.1 to 13.9.3)
+### 13.9 Worked examples: commit decisions (61 rows, plus 13.9.1 to 13.9.3)
 
-Each row types the keys, then a space. Fixture data for this table only: the English lexicon contains `test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky`; the tech-always list contains `www wifi usb`; the code-only list contains `tar`; every Tier A syllable is attested except `dóe hẻ dổ pót sáy ửa tơn dơn`; the ambiguity table is the proposal in ENG-R821. "Previous token" is the language of the run (8.3).
+Each row types the keys, then a space. Fixture data for this table only: the English lexicon contains `test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky`; the tech-always list contains `www wifi usb`; the code-only list contains `tar sudo`; every Tier A syllable is attested except `dóe hẻ dổ pót sáy ửa tơn dơn`; the ambiguity table is the proposal in ENG-R821. "Previous token" is the language of the run (8.3): a seed token typed before the keys, `vieejt` (`vie65t` in VNI) for `vi` and `and` for `en`. Rows B035a to B035i were added on 15/11/2026 with the product owner's report and its review (REG-35, ENG-R850); when their keys hold several tokens, the row types them from an empty field, the committed text is the whole line and the rule column names the rule that decided the last token.
 
 | # | Keys typed, then Space | Method | Previous token | App context | Committed text | Rule that decided |
 |---|---|---|---|---|---|---|
@@ -1375,7 +1381,16 @@ Each row types the keys, then a space. Fixture data for this table only: the Eng
 | B032 | `as` | Telex | vi | general | `á` | L11 ambiguity row = vi: keep |
 | B033 | `did` | Telex | vi | general | `đi` | L11 ambiguity row = vi: keep |
 | B034 | `tar` | Telex | vi | general | `tả` | L11 no row, default vi: keep |
-| B035 | `tar` | Telex | vi | code | `tar` | L9 code context, code-only tech word: restore |
+| B035 | `tar` | Telex | none | code | `tar` | L9 code context, code-only tech word at the start of a line: restore |
+| B035a | `tar` | Telex | vi | code | `tả` | L11 no row, default vi (in Vietnamese text L9 does not apply): keep |
+| B035b | `tar` | Telex | en | code | `tar` | L9 code context, code-only tech word after an English word: restore |
+| B035c | `chinhs tar` | Telex | none | code | `chính tả` | L11 no row, default vi (after a Vietnamese word L9 does not apply): keep |
+| B035d | `moo tar` | Telex | none | code | `mô tả` | L11 no row, default vi (after a Vietnamese word L9 does not apply): keep |
+| B035e | `sudo tar` | Telex | none | code | `sudo tar` | L9 code context, code-only tech word after a code word: restore |
+| B035f | `ta3` | VNI | vi | code | `tả` | L7 raw not English: keep |
+| B035g | `mo6 ta3` | VNI | none | code | `mô tả` | L7 raw not English: keep |
+| B035h | `tar` | VNI | none | code | `tar` | L0 output equals the keys typed: nothing to decide |
+| B035i | `anh.tar` | Telex | none | code | `anh.tar` | L9 code context, code-only tech word joined to the previous word with no space: restore |
 | B036 | `Kroong` | Telex | none | general | `Krông` | L6 extended, raw not English: keep |
 | B037 | `DDawsk` | Telex | none | general | `Đắk` | L6 extended, raw not English: keep |
 | B038 | `Pawsc` | Telex | none | general | `Pắc` | L7 raw not English: keep |
@@ -1412,8 +1427,10 @@ Same fixtures as 13.9. The decision at commit MUST NOT depend on which boundary 
 | B062 | `USB` | `)` | Telex | none | general | `USB)` | L5 invalid: restore |
 | B063 | `text` | `:` | Telex | none | general | `text:` | L5 invalid: restore |
 | B064 | `text` | Return | Telex | none | general | `text` then a new line | L5 invalid: restore, then Return is delivered |
+| B064a | `Suwar looxi chinhs tar` | `"` | Telex | none | code | `Sửa lỗi chính tả"` | L11 no row, default vi (after a Vietnamese word L9 does not apply): keep |
+| B064b | `tar` | `"` | Telex | none | code | `tar"` | L9 code context, code-only tech word at the start of a line: restore |
 
-Rows B053-B064 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
+Rows B053-B064 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them. Rows B064a and B064b (REG-35, 15/11/2026) type the product owner's terminal message: the quote that ends the word is a boundary key like any other, so it changes nothing; only what comes before the word decides L9 (ENG-R850). `spec/reference-model/boundary.py` checks them with rows B035 to B035e and B035i.
 
 #### 13.9.2 English run in a sentence (ENG-R823)
 
@@ -1508,6 +1525,7 @@ The W11 research (13/11 to 15/11/2026) produced a labelled corpus of 1,206 chat,
 | Backspace tests over real words missed transform orders no word has (`wsaw`, `wzow`, `]ous]`) | ENG-R711, ENG-T38 (every sequence of up to five transform keys) |
 | A word re-opened after an automatic restore stayed as typed | ENG-R1005, REG-33 |
 | A second tone-removal press could not remove the letter marks | ENG-R411, REG-34 |
+| A code-context rule turned Vietnamese prose typed in a terminal into shell commands | ENG-R850 (L9 follows the line, not the app), REG-35 |
 | Restore damaged words, names, missing rhymes | sections 3.7 and 3.12, ENG-R843, REG-08 |
 | Blocking work per keystroke | ENG-R1210, ENG-R1230 (the engine never blocks; tap threading is in the host spec) |
 | Engine not reset after tap re-enable | ENG-R1010, ENG-R1011, REG-22 |

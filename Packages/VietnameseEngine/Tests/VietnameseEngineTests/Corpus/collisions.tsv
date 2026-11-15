@@ -33,7 +33,7 @@ CO025	Telex	-	did\s	đi\s	-	row vi (B033)
 CO026	Telex	-	theme\s	thêm\s	-	row vi
 CO027	Telex	-	max\s	mã\s	-	row vi
 CO028	Telex	-	tar\s	tả\s	-	no row: default Vietnamese (B034)
-CO029	Telex	code	tar\s	tar\s	-	code context restores code-only words (B035, L9)
+CO029	Telex	code	tar\s	tar\s	-	code context restores a code-only word at the start of a line (B035, L9, ENG-R850)
 CO030	Telex	-	and\sthis\sis\sthe\sbest\scar\s	and\sthis\sis\sthe\sbest\scar\s	-	ENG-R823 example: an English run restores every collision
 CO031	Telex	-	vieejt\sa\sthe\sas\s	việt\sa\sthe\sá\s	-	neutral tokens (a, the) do not start an English run
 CO032	Telex	-	and\s1\s2\s3\sthis\s	and\s1\s2\s3\sthis\s	-	digits are neutral: the run reaches past them
@@ -44,3 +44,18 @@ CO036	Telex	-	vieejt\sand\sthis\s	việt\sand\sthí\s	-	ENG-R823, REG-32: also b
 CO037	Telex	-	cungx\stricky\sas.	cũng\stricky\sá.	-	ENG-R823, REG-32: the product owner's report (B065)
 CO038	Telex	-	this\sis\sas\s	thí\sis\sas\s	-	ENG-R823: thí kept by L11 is neutral, so is and then as are in an English run
 CO039	Telex	-	vieejt\sand\snam\sthis\sas\s	việt\sand\snam\sthí\sas\s	-	ENG-R823: thí is neutral, so once việt leaves the window as is in an English run (open question to the product owner)
+CO040	Telex	code	vieejt\star\s	việt\stả\s	-	ENG-R850, REG-35: after a Vietnamese word L9 does not apply, L11 keeps (B035a)
+CO041	Telex	code	Suwar\slooxi\schinhs\star"	Sửa\slỗi\schính\stả"	-	ENG-R850, REG-35: the product owner's terminal message; the closing quote is not evidence (B064a)
+CO042	Telex	code	moo\star\s	mô\stả\s	-	ENG-R850: after a Vietnamese word (B035d)
+CO043	Telex	code	anh\star\s	anh\stả\s	-	ENG-R850: a Vietnamese syllable typed unchanged is a Vietnamese word (RV4 evidence)
+CO044	Telex	code	sudo\star\s	sudo\star\s	-	ENG-R850: after a code word shown as typed, L9 restores (B035e)
+CO045	Telex	code	vieejt\nsudo\star\s	việt\nsudo\star\s	-	ENG-R850: Return starts a new line, so the Vietnamese line before it does not count
+CO046	Telex	code	vieejt\ntar\s	việt\ntar\s	-	ENG-R850: at the start of a line L9 restores
+CO047	Telex	code	vieejt\s⟲tar\s	việt\star\s	-	ENG-R850: after a reset the line starts again
+CO048	Telex	code	dungf\s`tar`	dùng\s`tar`	-	ENG-R850: a backquote before the word is a code character
+CO049	Telex	code	echo\s"xin\schaof"\s|\star\s	echo\s"xin\schào"\s|\star\s	-	ENG-R850: a vertical bar before the word is a code character
+CO050	Telex	code	vieejt\s(tar)	việt\s(tả)	-	ENG-R850: brackets and quotes are prose punctuation, not code characters
+CO051	Telex	code	vieejt\sa\sa\sa\star\s	việt\sa\sa\sa\star\s	-	ENG-R850: no Vietnamese word among the previous three tokens of the line
+CO052	Telex	code	vieejt\sand\star\s	việt\sand\star\s	-	ENG-R850: after an English word L9 restores
+CO053	Telex	code	anh.tar\s	anh.tar\s	-	ENG-R850: a word joined to the previous one with no space is a code join, not Vietnamese text (B035i)
+CO054	Telex	code	vieejt.\star\s	việt.\stả\s	-	ENG-R850: punctuation followed by a space is prose, the join rule does not reach it

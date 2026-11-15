@@ -113,3 +113,19 @@ separately from the app (spec/04-quality-release.md QA-R27).
 - A re-opened token that a commit rule restored composes again once Backspace leaves keys that compose to
   the text shown (ENG-R1005, REG-33, product owner 15/11/2026): `tiesng`, space, five Backspaces, `eesn` gives
   `tiến`, not `tieesn`. A user restore (L1) stays literal.
+- Rule L9 follows the line, not the app (ENG-R850, REG-35, product owner 15/11/2026, dev trace in iTerm2): in
+  the code context a code-only word is restored only outside Vietnamese text, so `Suwar looxi chinhs tar"`
+  commits `Sửa lỗi chính tả"` instead of `Sửa lỗi chính tar"`. A token is in Vietnamese text when a Vietnamese
+  word (a `vi` token, or a Vietnamese syllable typed unchanged, the RV4 evidence) stands among the previous
+  three tokens of the line, the previous token is neither English nor a code word shown as typed, and the
+  characters between them hold a space and no code character (backquote, `|`, `&`, `$`); a word glued to the
+  previous one with no space is a code join (`cp anh.tar.gz`, `ssh minh@host` keep their keys); the line is the history, so Return, Tab and a reset start a
+  new one. `tar -xzf` at the start of a line, `sudo tar`, `echo "xong" | tee` and `ssh -p 22 host` keep the
+  keys as typed. The rule only removes L9 restores and does not read `lookaheadRevision`
+  (`CommitPolicy.isInVietnameseText`, `CollisionFacts.vietnameseAsTyped`, `CommitContext.inVietnameseText`).
+  With the bundled data L9 reaches Telex `host`, `tar` and `tee`. In the code context the prose corpus now
+  commits exactly as in the general context (8 `tả` were restored per typist before), and the W11 corpus keeps
+  every Vietnamese-intent collision of the general context (tone last 620 of 623, was 613; tone after the vowel
+  501 of 507, was 493); English intent in the code context 550 of 720 (was 559; 548 in the general context).
+  Spec rows B035-B035i and B064a, B064b; `spec/reference-model/boundary.py` models the rule (`CODE_RUNS`);
+  `ProseCorpusCheck.run` takes an `appContext`.

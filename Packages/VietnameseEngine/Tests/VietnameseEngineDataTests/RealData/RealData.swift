@@ -27,6 +27,11 @@ enum RealData {
         return words.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
     }
 
+    /// The bundled code-only tech list (8.2), in file order.
+    static func codeOnlyWords() throws -> [String] {
+        try lines(TestPaths.committedResources.appendingPathComponent("tech-code-only.txt"))
+    }
+
     /// `known-exceptions.txt` of the engine tests (ENG-T11), shared with the fixture run of ENG-T10.
     static var knownExceptionsFile: URL {
         TestPaths.packageRoot.appendingPathComponent("Tests/VietnameseEngineTests/Corpus/known-exceptions.txt")

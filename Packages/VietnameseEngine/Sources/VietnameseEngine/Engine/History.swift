@@ -15,6 +15,10 @@ package struct CollisionFacts: Sendable, Hashable {
     package var listWord: String?
     /// The revision that changed the token (ENG-R828); a revised token is never revised again.
     package var revision: RevisionReason?
+    /// A Vietnamese syllable typed unchanged (`anh`, `chim`): a Vietnamese word for rule L9 (ENG-R850) besides a
+    /// token of language `vi`. Fixed at commit (a token typed unchanged is never revised) and computed only in the
+    /// code context, the only one that reaches L9.
+    package var vietnameseAsTyped = false
 
     package init() {}
 }

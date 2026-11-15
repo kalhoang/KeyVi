@@ -17,7 +17,7 @@ public enum SpecFixtures {
     public static let techAlways: [String] = ["www", "wifi", "usb"]
 
     /// 13.9: the code-only tech list.
-    public static let techCodeOnly: [String] = ["tar"]
+    public static let techCodeOnly: [String] = ["tar", "sudo"]
 
     /// 13.9: the Tier A syllables that are not attested.
     public static let unattestedSyllables: [String] = ["dóe", "hẻ", "dổ", "pót", "sáy", "ửa", "tơn", "dơn"]
