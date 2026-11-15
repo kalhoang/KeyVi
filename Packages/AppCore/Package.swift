@@ -114,6 +114,8 @@ let package = Package(
             dependencies: [
                 "SettingsStore", "RealtimeSupport", "TestSupport",
                 .product(name: "VietnameseEngine", package: "VietnameseEngine"),
+                // ENG-R863 parity of CollisionMemoryStore with ReferenceCollisionMemory and its worked cases.
+                .product(name: "VietnameseEngineTesting", package: "VietnameseEngine"),
             ],
             swiftSettings: strict
         ),
