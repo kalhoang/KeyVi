@@ -44,6 +44,7 @@ extension SettingsStore {
             appModes = AppModesDocument(globalMode: appModes.globalMode)
             ruleOverrides = []
             if includeMacros { macros = [] }
+            collisionMemory.clearAll()  // PLT-R914
         case .general:
             unset(.general)
         case .typing:
@@ -51,6 +52,7 @@ extension SettingsStore {
             user.keepAsTyped = []
             user.keepVietnamese = []
             user.learnedWords = []  // ENG-R862: learned entries are shown and reset with the Typing pane lists
+            collisionMemory.clearAll()  // PLT-R914: the learned collision choices go with the Typing pane
         case .apps:
             unset(.apps)
             user.optedInRules = []
@@ -127,6 +129,9 @@ extension SettingsStore {
         if options.includeMacros {
             root[SettingsExportFormat.macros] = .array(MacrosCodec.encodeList(macros, over: []))
         }
+        if options.includeCollisionMemory {
+            root[SettingsExportFormat.collisionMemory] = collisionMemory.exportSection()
+        }
         return try JSONSupport.serialize(.object(root))
     }
 
@@ -144,6 +149,10 @@ extension SettingsStore {
             choices.applyRuleOverrides
             ? content[SettingsExportFormat.ruleOverrides].map { RuleOverridesCodec.decodeList(arrayItems($0)) } : nil
         let macroPreview = choices.applyMacros ? preview.macros : nil
+        // PRD-R72: the learned collision choices merge by adding counters; their file is not a settings file.
+        if choices.applyCollisionMemory, let section = content[SettingsExportFormat.collisionMemory] {
+            collisionMemory.merge(CollisionMemoryStore.importedEntries(arrayItems(section)))
+        }
 
         var affected = Set<SettingsFile>()
         if importedUser != nil { affected.insert(.settings) }

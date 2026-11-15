@@ -27,6 +27,11 @@ public struct UserSettings: Sendable, Hashable {
     public var automaticallyInstallUpdates: Setting<Bool> = .unset  // D20
     public var updateChannel: Setting<UpdateChannel> = .unset  // D21
     public var layoutBinding: Setting<LayoutModeBinding> = .unset  // PLT-R373 "layoutBinding"
+    /// D28 "learnCollisionChoices": learn which reading of a collision word the user chooses (ENG-R863, PLT-R914).
+    public var learnCollisionChoices: Setting<Bool> = .unset
+    /// D29 "lookaheadRevision": revise the previous word once the next word shows the language (ENG-R828,
+    /// PLT-R357). ANDed per app with the rule's `features.lookaheadRevision`.
+    public var lookaheadRevision: Setting<Bool> = .unset
 
     /// ENG-R860 user lists, keyed by lowercased raw keys ("englishRestoreLists" object). User-authored
     /// settings, allowed on disk (PLT-R901 a).
@@ -96,6 +101,8 @@ public struct EffectiveSettings: Sendable, Hashable {
     public var automaticallyInstallUpdates: Bool
     public var updateChannel: UpdateChannel
     public var layoutBinding: LayoutModeBinding
+    public var learnCollisionChoices: Bool
+    public var lookaheadRevision: Bool
     public var keepAsTyped: Set<String>
     public var keepVietnamese: Set<String>
     public var optedInRules: Set<RuleID>
@@ -123,6 +130,8 @@ public enum DefaultSettings {
         automaticallyInstallUpdates: true,  // D20
         updateChannel: .stable,  // D21
         layoutBinding: LayoutModeBinding(),
+        learnCollisionChoices: true,  // D28 on (decision of the product owner, 15/11/2026)
+        lookaheadRevision: true,  // D29 on, also at Return in chat apps (decision of the product owner, 15/11/2026)
         keepAsTyped: [],
         keepVietnamese: [],
         optedInRules: []
@@ -153,6 +162,8 @@ extension UserSettings {
                 default: defaults.automaticallyInstallUpdates),
             updateChannel: updateChannel.resolved(default: defaults.updateChannel),
             layoutBinding: layoutBinding.resolved(default: defaults.layoutBinding),
+            learnCollisionChoices: learnCollisionChoices.resolved(default: defaults.learnCollisionChoices),
+            lookaheadRevision: lookaheadRevision.resolved(default: defaults.lookaheadRevision),
             keepAsTyped: keepAsTyped,
             keepVietnamese: keepVietnamese,
             optedInRules: optedInRules
