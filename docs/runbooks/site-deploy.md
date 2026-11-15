@@ -12,14 +12,14 @@ deploy/site/stack-env.sh --owner <github owner>    # SITE_HOST, SITE_SLUG, IMAGE
 
 ## 0. Current deployment (2026-11-14)
 
-The preview is live at the site host. State on 2026-11-14, so the next maintainer does not redo it:
+The preview is live at the site host. State on 2026-11-15, after the repository became public, so the next maintainer does not redo it:
 
 | Item | State |
 |---|---|
-| Repository | `kalhoang/{{app-slug}}`, private. Branch protection for `prod` is not available on a private repository of a free account (GitHub answers 403); until the repository is public or on a paid plan, only Pa pushes `prod` by convention |
+| Repository | `kalhoang/{{AppName}}` (`APP_REPOSITORY_URL`), public since 15/11/2026. Branch protection on `main` and `prod` refuses force pushes and deletions. The history before publication was rewritten once (CLR-R12 amendment); the original history is the private repository `kalhoang/{{app-slug}}-original-history`, plus an offline bundle with the map of commit IDs |
 | GHCR package | `{{app-slug}}-site`, **public** (Pa, 2026-11-14), so the Swarm pulls it without a registry entry |
-| Actions | Only `Site` and `Site image` (and Dependabot) are enabled; `CI`, `Diagnostics labels`, `Integration`, `Nightly`, `PR labels` and `Release` are disabled by hand until macOS runners exist (ADR 0602, S6/Q12). Re-enable one with `gh workflow enable <name>` |
-| Variables and secrets | Repository variable `SITE_STRICT=false`; `IMAGE_OWNER` is unset, so the repository owner is used. Environment `site` limits deployments to `prod` and holds the secret `PORTAINER_WEBHOOK_URL` |
+| Actions | Only `Site` is enabled. `Site image` stays disabled until Pa finishes the two steps of the next row, and `CI`, `Diagnostics labels`, `Integration`, `Nightly`, `PR labels` and `Release` are disabled by hand until macOS runners exist (ADR 0602, S6/Q12). Re-enable one with `gh workflow enable <name>` |
+| Variables and secrets | Repository variable `SITE_STRICT=false`; `IMAGE_OWNER` is unset, so the repository owner is used. Environment `site` limits deployments to `prod`. Still to do by Pa on github.com, because neither value can be copied from the earlier repository: add the environment secret `PORTAINER_WEBHOOK_URL` (the service webhook from Portainer), and in the settings of the GHCR package `{{app-slug}}-site` under "Manage Actions access" give this repository write access; then `gh workflow enable "Site image"` |
 | Portainer | Stack `{{app-slug}}-site`, id 73, environment 7 (Swarm). Stack variables: `SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER=kalhoang`, `IMAGE_NAME`, `IMAGE_TAG=prod`. Service `{{app-slug}}-site_site`, 2 replicas |
 | Redeploy | A push to `prod` runs `site-image.yml`, which builds and pushes the image and calls the service webhook; verified end to end on 2026-11-14 |
 

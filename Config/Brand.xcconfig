@@ -20,7 +20,7 @@ APP_TRADEMARK_SIGN = ™
 APP_SUPPORT_EMAIL = keyvi@kal.vn
 // Public GitHub repository for issue forms (PRD-R47) and the URL host allowlist (QA-R60). Write it as
 // https:/$()/github.com/<owner>/<repo> because `//` starts an xcconfig comment. Empty hides the GitHub button.
-APP_REPOSITORY_URL =
+APP_REPOSITORY_URL = https:/$()/github.com/kalhoang/KeyVi
 // Storage folder names of earlier product names, newest first, separated by `;` (ADR 0307). scripts/rename-app.sh
 // appends the old folder name here so the first launch after a rename moves settings and logs.
 APP_LEGACY_STORAGE_FOLDER_NAMES =

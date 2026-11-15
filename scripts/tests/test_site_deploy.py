@@ -407,9 +407,12 @@ class StackEnvTests(unittest.TestCase):
             env_file.write_text(re.sub(r'APP_REPOSITORY_URL=".*"', 'APP_REPOSITORY_URL="https://github.com/Owner-1/repo"',
                                        text), encoding="utf-8")
             self.assertEqual(self.env_of(BRAND_ENV=str(env_file))["IMAGE_OWNER"], "owner-1")
-        missing = run("bash", self.SCRIPT, env={"IMAGE_OWNER": ""})
-        self.assertEqual(missing.returncode, 1)
-        self.assertIn("no image owner", missing.stderr)
+            # Without a repository URL and without IMAGE_OWNER or --owner there is no owner to fall back to.
+            env_file.write_text(re.sub(r'APP_REPOSITORY_URL=".*"', 'APP_REPOSITORY_URL=""', text), encoding="utf-8")
+            missing = run("bash", self.SCRIPT, env={"IMAGE_OWNER": "", "BRAND_ENV": str(env_file)})
+            self.assertEqual(missing.returncode, 1)
+            self.assertIn("no image owner", missing.stderr)
+        self.assertEqual(self.env_of()["IMAGE_OWNER"], "kalhoang", "the published repository names the GHCR owner")
         for args in (["--owner", "bad owner"], ["--owner", "x", "--image-name", "Bad/Name"], ["--owner", "x", "--tag", "-x"]):
             with self.subTest(args=args):
                 self.assertEqual(run("bash", self.SCRIPT, *args).returncode, 1)

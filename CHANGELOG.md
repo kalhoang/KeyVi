@@ -12,6 +12,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ### Added
 
+- The source code is public at https://github.com/kalhoang/KeyVi. Report a problem can open a GitHub issue form with the diagnostics filled in, and Settings > Licences links to the source code.
 - Project scaffold, written specification and clean-room rules. No installable build exists yet (pre-alpha).
 - Project documentation: README (English and Vietnamese), contributing guide, security policy, code of conduct, third-party notices, maintainer runbooks, support replies, provenance review process, issue forms and pull request template.
 - Compatibility script for testing an app in under 3 minutes (`compat/SCRIPT.md`).
