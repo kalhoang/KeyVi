@@ -245,7 +245,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1109 | minimumSystemVersion and minimumAutoupdateVersion | appcast scripts | R | release track |  |
 | PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew` | R | release track |  |
 | PLT-R1201 | Diagnostics window contents and buttons; health notices under the state line | `DiagnosticsWindowController`, `DiagnosticsWindowView` (`HealthNoticeView`), `DiagnosticsCopy.notices` | U (view model, `DiagnosticsCatalogTests`), M | W2-C, W14-P; Pa | **Pa** |
-| PLT-R1202 | Environment report contents | `DiagnosticsReport` (`FocusSection.appSource`), `ReportAssembler` | U (`FocusedAppSourceReportTests`, `ReportAssemblerTests`) | W1-A, W1-G, W14-P |  |
+| PLT-R1202 | Environment report contents | `DiagnosticsReport` (`FocusSection.appSource`; `SettingsSection.learnCollisionChoices`, `.lookaheadRevision`, `.learnedCollisionEntries`), `ReportAssembler`; the copied block writes them as `focus.appSource` and `settings.*` keys (ADR 0501) | U (`FocusedAppSourceReportTests`, `LearnedCollisionEntriesReportTests`, `ReportAssemblerTests`, `IssueBlockTests`) | W1-A, W1-G, W14-P, W16-A |  |
 | PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |
 | PLT-R1204 | User sees exact report before copying | `BugReportController` | M | W2-C; Pa | **Pa** |
 | PLT-R1205 | "This app misbehaves" guided flow; step 6 keyboard focus (Q43) | `GuidedTestRunner`, diagnostics UI; ShellCore `MisbehavesPanelFocus`, `MisbehavesFocusTracker`, `MisbehavesRetarget`; App `MisbehavesPanel` | U (`MisbehavesFocusTests`), M | W2-C; W5-C; Pa | **Pa** |

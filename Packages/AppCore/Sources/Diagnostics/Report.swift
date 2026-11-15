@@ -317,6 +317,10 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var rememberPerApp: Bool
         public var toggleHotkey: HotkeyBinding
         public var restoreHotkeySet: Bool
+        /// D28: learn which reading of a collision word the user chooses (PLT-R914).
+        public var learnCollisionChoices: Bool
+        /// D29: fix the previous word once the next word shows the language (PLT-R357).
+        public var lookaheadRevision: Bool
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
@@ -327,8 +331,9 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
-            toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, interfaceLanguage: InterfaceLanguage,
-            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
+            toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, learnCollisionChoices: Bool = true,
+            lookaheadRevision: Bool = true, interfaceLanguage: InterfaceLanguage, updateChannel: UpdateChannel,
+            explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -341,6 +346,8 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.rememberPerApp = rememberPerApp
             self.toggleHotkey = toggleHotkey
             self.restoreHotkeySet = restoreHotkeySet
+            self.learnCollisionChoices = learnCollisionChoices
+            self.lookaheadRevision = lookaheadRevision
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys

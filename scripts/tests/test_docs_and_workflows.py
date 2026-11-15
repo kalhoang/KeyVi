@@ -107,6 +107,7 @@ class Adr0501Tests(unittest.TestCase):
         "secureInput.holderKind": ("AppModel/HostState.swift", "Kind", "SecureInputHolder", None),
         "focus.engine": ("AppModel/Vocabulary.swift", "EngineFingerprint", None, None),
         "focus.ax": ("AppModel/Vocabulary.swift", "AXAvailability", None, None),
+        "focus.appSource": ("Diagnostics/Report.swift", "AppSource", "FocusSection", None),
         "rule.source": ("AppModel/Vocabulary.swift", "DecisionSource", None, None),
         "rule.userOverrideOmitted": ("Diagnostics/Report.swift", "OmittedMatchField", None, None),
         "settings.toneStyle": ("AppModel/Vocabulary.swift", "TonePlacement", None, None),

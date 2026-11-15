@@ -1,7 +1,9 @@
 # 0501. Diagnostics block format v1
 
-- Status: accepted, 2026-11-13; amended 2026-11-13 after wave 1 (full v1 key reference, symptom mapping)
-- Requirements: QA-R43, QA-R44, PRD-R45, PRD-R47, PRD-R49, PLT-R1202, PLT-R1203, PLT-R1205
+- Status: accepted, 2026-11-13; amended 2026-11-13 after wave 1 (full v1 key reference, symptom mapping); amended
+  2026-11-15 (keys added within v1 under rule 4: `focus.appSource`, `settings.learnCollisionChoices`,
+  `settings.learnedCollisionEntries`, `settings.lookaheadRevision`; closing `#` lines for the reader)
+- Requirements: QA-R43, QA-R44, PRD-R45, PRD-R47, PRD-R49, PLT-R381, PLT-R914, PLT-R1202, PLT-R1203, PLT-R1205
 
 ## Context
 
@@ -56,6 +58,7 @@ focus.identifier:
 focus.domClasses:
 focus.editable: true
 focus.secure: false
+focus.appSource: accessibility
 rule.id: browser.chromium.addressBar
 rule.specificity: 10
 rule.strategy: backspaceReplace
@@ -74,6 +77,9 @@ settings.macrosInEnglish: false
 settings.rememberPerApp: true
 settings.toggleHotkey: modifierTap:controlShift
 settings.restoreHotkey: false
+settings.learnCollisionChoices: true
+settings.learnedCollisionEntries: 37
+settings.lookaheadRevision: true
 settings.interfaceLanguage: vi
 settings.updateChannel: beta
 settings.changed: typingMethod,macrosEnabled
@@ -119,7 +125,9 @@ Rules (normative for v1):
 2. Every following line until the closing fence is `key: value`. Keys match
    `[a-z][A-Za-z0-9]*(\.[A-Za-z0-9]+)*`. Values are a single line, may be empty, and contain no backticks or
    tildes at the start of the line. Blank lines and lines starting with `#` are ignored. The first
-   occurrence of a key wins.
+   occurrence of a key wins. The app may close the block with `#` lines for the reader after the last key (the
+   health notices of the last 24 hours in the interface language, PLT-R397B); they are not keys and count toward
+   the 200 lines of rule 5.
 3. Content rules from PRD-R45 and PLT-R1203 apply: no typed text, field values, window titles, URLs,
    clipboard data, macro bodies or home-folder paths. Bundle IDs, layout IDs, roles and rule IDs are
    metadata and allowed.
@@ -181,6 +189,7 @@ comes from (rule 4).
 | `focus.domClasses` | list of DOM class names | |
 | `focus.editable` | boolean | empty when AX did not say |
 | `focus.secure` | boolean | |
+| `focus.appSource` | `accessibility`, `frontmostApplication` | where the focused app's identity came from; `frontmostApplication` when Accessibility named no focused application and NSWorkspace's frontmost app was used (PLT-R381 amendment of 2026-11-15, PLT-R1202); empty without a focused app. Added 2026-11-15; until then a closing `# focus.appSource:` line carried it |
 | `rule.id` | rule ID | stable; empty when the defaults applied |
 | `rule.specificity` | integer | matcher score (02-platform.md 5.5) |
 | `rule.strategy` | injection strategy | stable |
@@ -192,6 +201,8 @@ comes from (rule 4).
 | `settings.toneStyle` | `traditional`, `modern` | |
 | `settings.autoRestore`, `settings.standaloneW`, `settings.bracketKeys`, `settings.macros`, `settings.macrosInEnglish`, `settings.rememberPerApp`, `settings.restoreHotkey` | boolean | `restoreHotkey` says whether a binding is set, never which |
 | `settings.macroCount` | integer | count only (PRD-R33) |
+| `settings.learnCollisionChoices`, `settings.lookaheadRevision` | boolean | D28 (learn which reading of a word that is both English and Vietnamese the user chooses, PLT-R914) and D29 (fix the previous word, PLT-R357). Added 2026-11-15 |
+| `settings.learnedCollisionEntries` | integer | entries of the learned collision memory, a count only, never a word (PLT-R901, PLT-R914); empty while the memory is not loaded. Added 2026-11-15 |
 | `settings.toggleHotkey` | `modifierTap:<chord>`, `keyCombo:<modifiers>:<keyCode>`, `key:<keyCode>` | no characters |
 | `settings.interfaceLanguage` | `vi`, `en` | |
 | `settings.updateChannel` | `stable`, `beta` | |

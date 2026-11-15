@@ -74,6 +74,8 @@ struct ReportLabels: Sendable {
     var rememberPerApp: String
     var toggleHotkey: String
     var restoreHotkey: String
+    var learnCollisionChoices: String
+    var lookaheadRevision: String
     var interfaceLanguage: String
     var changedSettings: String
     var learnedCollisionEntries: String

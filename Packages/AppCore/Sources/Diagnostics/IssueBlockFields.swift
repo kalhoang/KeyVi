@@ -58,6 +58,7 @@ enum BlockFields {
         list.add("focus.domClasses", focus.map { $0.domClasses.joined(separator: ",") }, maxLength: 1_000)
         list.add("focus.editable", focus?.editable.map(flag))
         list.add("focus.secure", focus.map { flag($0.secure) })
+        list.add("focus.appSource", focus?.appSource.rawValue)  // PLT-R381 amendment
         let rule = report.rule
         list.add(.rule, rule?.rule?.rawValue)
         list.add("rule.specificity", rule.map { String($0.specificity) })
@@ -84,6 +85,10 @@ enum BlockFields {
         list.add("settings.rememberPerApp", flag(settings.rememberPerApp))
         list.add("settings.toggleHotkey", hotkey(settings.toggleHotkey))
         list.add("settings.restoreHotkey", flag(settings.restoreHotkeySet))
+        list.add("settings.learnCollisionChoices", flag(settings.learnCollisionChoices))  // D28
+        // Count only, never a word (PLT-R901, PLT-R914); empty when the report was built without it.
+        list.add("settings.learnedCollisionEntries", settings.learnedCollisionEntries.map { String($0) })
+        list.add("settings.lookaheadRevision", flag(settings.lookaheadRevision))  // D29
         list.add("settings.interfaceLanguage", settings.interfaceLanguage.rawValue)
         list.add("settings.updateChannel", settings.updateChannel.rawValue)
         list.add("settings.changed", settings.explicitlySetKeys.joined(separator: ","), maxLength: 2_000)

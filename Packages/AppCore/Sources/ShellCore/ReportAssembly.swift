@@ -98,7 +98,11 @@ enum ReportSections {
             userOverride: userOverride.map(ReportAssembler.reportedOverride(from:)))
     }
 
-    static func settings(_ state: SettingsState) -> DiagnosticsReport.SettingsSection {
+    /// `learnedCollisionEntries`: the collision memory's entry count, nil while it is not loaded (PLT-R914: a count
+    /// only, never a word).
+    static func settings(_ state: SettingsState, learnedCollisionEntries: Int? = nil)
+        -> DiagnosticsReport.SettingsSection
+    {
         let effective = state.effective
         return DiagnosticsReport.SettingsSection(
             typingMethod: effective.typingMethod, tonePlacement: effective.tonePlacement,
@@ -107,9 +111,10 @@ enum ReportSections {
             macroCount: state.macros.count,  // PRD-R33: count only
             macrosInEnglishMode: effective.macrosInEnglishMode, rememberPerApp: effective.rememberPerApp,
             toggleHotkey: effective.toggleHotkey, restoreHotkeySet: effective.restoreHotkey != nil,
+            learnCollisionChoices: effective.learnCollisionChoices, lookaheadRevision: effective.lookaheadRevision,
             interfaceLanguage: effective.interfaceLanguage, updateChannel: effective.updateChannel,
             // PRD-R6: names of explicitly set keys, never values (SettingsStore owns the names).
-            explicitlySetKeys: state.user.explicitlySetKeys)
+            explicitlySetKeys: state.user.explicitlySetKeys, learnedCollisionEntries: learnedCollisionEntries)
     }
 
     /// PLT-R913: the memory entry of the reported app only.

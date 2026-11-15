@@ -3292,6 +3292,10 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var rememberPerApp: Bool
         public var toggleHotkey: HotkeyBinding
         public var restoreHotkeySet: Bool
+        /// D28: learn which reading of a collision word the user chooses (PLT-R914).
+        public var learnCollisionChoices: Bool
+        /// D29: fix the previous word once the next word shows the language (PLT-R357).
+        public var lookaheadRevision: Bool
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
@@ -3302,8 +3306,9 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
-            toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, interfaceLanguage: InterfaceLanguage,
-            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
+            toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, learnCollisionChoices: Bool = true,
+            lookaheadRevision: Bool = true, interfaceLanguage: InterfaceLanguage, updateChannel: UpdateChannel,
+            explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -3316,6 +3321,8 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.rememberPerApp = rememberPerApp
             self.toggleHotkey = toggleHotkey
             self.restoreHotkeySet = restoreHotkeySet
+            self.learnCollisionChoices = learnCollisionChoices
+            self.lookaheadRevision = lookaheadRevision
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys
@@ -4612,7 +4619,8 @@ public actor SettingsStore {
     public func export(_ options: ExportOptions, now: Date) throws -> Data { try exportData(options, now: now) }
     /// Validates untrusted data (5 MB cap, schema, no evaluation, PLT-R912) and builds a preview.
     public func previewImport(_ data: Data) throws -> ImportPreview {
-        try SettingsImporter(migrations: migrations).preview(data, baseline: ImportBaseline(user: user, macros: macros))
+        let baseline = ImportBaseline(user: user, macros: macros, collisionVocabulary: collisionMemory.vocabulary)
+        return try SettingsImporter(migrations: migrations).preview(data, baseline: baseline)
     }
     /// Backs up current files, applies, migrates older schemas, lists skipped fields of newer schemas.
     public func applyImport(_ preview: ImportPreview, choices: ImportChoices) throws {
@@ -4637,7 +4645,8 @@ public actor SettingsStore {
 //       "appModes": { ...app-modes.json without envelope... },   // optional (unticked = absent)
 //       "ruleOverrides": [ ...stored overrides... ],
 //       "macros": [ ...stored macros... ],                        // optional (unticked = absent)
-//       "collisionMemory": [ ...collision-memory.json entries... ]  // optional (PLT-R914, merged on import)
+//       "collisionMemory": [ ...collision-memory.json entries... ]  // optional (PLT-R914, merged on import; the
+//                                                                   // preview counts only entries of the bundled list)
 //     }
 //
 // File name: `<slug>-settings-YYYYMMDD.json` (slug injected by the App).
@@ -4676,12 +4685,38 @@ public struct ImportPreview: Sendable, Hashable {
     public var appEntries: Int
     public var ruleOverrides: Int
     public var macros: MacroImportPreview?
-    /// Entries of the `collisionMemory` section that passed the shape checks (words are checked at merge).
-    public var collisionMemoryEntries = 0
+    /// The `collisionMemory` section (PLT-R914, PRD-R72); nil when the file has none.
+    public var collisionMemory: CollisionMemoryImportPreview?
     /// Keys from a newer schema that this build will skip (PLT-R1010).
     public var skippedFields: [String]
     /// Opaque validated content applied by `applyImport`.
     public var content: JSONValue
+}
+
+/// What the import would do with the learned collision choices (PRD-R72, PLT-R914). The entries are checked against
+/// this build's bundled list exactly as the merge checks them, so `importable` is what the merge keeps; the rest is
+/// counted in `skipped`, the way the macro preview counts invalid entries.
+public struct CollisionMemoryImportPreview: Sendable, Hashable {
+    /// Entries the merge will add: a valid shape and a word on the bundled list.
+    public var importable: Int
+    /// Entries left out: a bad shape, a key repeated in the file, or a word this build's bundled list does not have.
+    public var skipped: Int
+    /// False while the memory is not loaded (the bundled lists failed to load): nothing can be checked or written,
+    /// so nothing is imported and both counts are 0.
+    public var isAvailable: Bool
+
+    public init(importable: Int, skipped: Int, isAvailable: Bool) {
+        self.importable = importable
+        self.skipped = skipped
+        self.isAvailable = isAvailable
+    }
+
+    /// The preview of a section: `vocabulary` nil means the memory is not loaded.
+    static func of(_ items: [JSONValue], vocabulary: CollisionVocabulary?) -> (Self, CollisionMemory?) {
+        guard let vocabulary else { return (Self(importable: 0, skipped: 0, isAvailable: false), nil) }
+        let kept = CollisionMemoryStore.importedEntries(items).validated(against: vocabulary)
+        return (Self(importable: kept.count, skipped: items.count - kept.count, isAvailable: true), kept)
+    }
 }
 
 public struct ImportChoices: Sendable, Hashable {
@@ -4742,6 +4777,8 @@ public enum SettingsExportFormat {
 struct ImportBaseline: Sendable {
     var user: UserSettings
     var macros: [StoredMacro]
+    /// The bundled collision list the memory was loaded with; nil while it is not loaded (PLT-R914).
+    var collisionVocabulary: CollisionVocabulary?
 }
 
 /// Validates an untrusted export (5 MB cap, bounded nesting, schema checks, no evaluation of content) and builds
@@ -4785,9 +4822,12 @@ struct SettingsImporter {
             content[SettingsExportFormat.ruleOverrides] = .array(RuleOverridesCodec.encodeList(overrides, over: []))
         }
         if let items = try arraySection(root, SettingsExportFormat.collisionMemory) {
-            let imported = CollisionMemoryStore.importedEntries(items)
-            preview.collisionMemoryEntries = imported.count
-            content[SettingsExportFormat.collisionMemory] = .array(CollisionMemoryCodec.encodeEntries(imported))
+            // PRD-R72: only what the merge keeps is counted and applied; unloaded, the section is left out.
+            let (section, kept) = CollisionMemoryImportPreview.of(items, vocabulary: baseline.collisionVocabulary)
+            preview.collisionMemory = section
+            if let kept {
+                content[SettingsExportFormat.collisionMemory] = .array(CollisionMemoryCodec.encodeEntries(kept))
+            }
         }
         if let items = try arraySection(root, SettingsExportFormat.macros) {
             let object = try migrated(["macros": .array(items)], file: .macros, from: version)
@@ -11571,11 +11611,12 @@ public struct BugReportDraft: Sendable, Hashable {
 public enum ReportAssembler {
     /// Metadata only (PLT-R1202). The reported app is the draft's app, else the focused app; only its memory
     /// entry (PLT-R913) and its user override (PLT-R541, as a typed projection, ADR 0312) are included. The
-    /// draft's free text never enters the report.
+    /// draft's free text never enters the report. `learnedCollisionEntries` is the collision memory's entry count
+    /// (nil while it is not loaded): a count only, never a word (PLT-R901, PLT-R914).
     public static func report(
         identity: AppIdentity, system: SystemInfo, host: HostReportContext, settings: SettingsState,
         metrics: MetricsSnapshot, health: [HealthEvent], probe: LatencyProbeResult?, draft: BugReportDraft?,
-        now: Date
+        now: Date, learnedCollisionEntries: Int? = nil
     ) -> DiagnosticsReport {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
         // PLT-R541, ADR 0312: for the focused app the override that decided, so `rule.id` and
@@ -11588,7 +11629,7 @@ public enum ReportAssembler {
             tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
             focus: ReportSections.focus(host),
             rule: ReportSections.rule(host.decision, userOverride: decisionOverride ?? storedOverride),
-            settings: ReportSections.settings(settings),
+            settings: ReportSections.settings(settings, learnedCollisionEntries: learnedCollisionEntries),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
             healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),
