@@ -92,7 +92,11 @@ extension KeyPipeline {
         let output = engine.handle(.restoreToggle)
         engineDirty = true
         noteEngineCapture(output)
+        noteCollisionSignals(output, focus: focus)  // ENG-R864: a toggle against the rules is a correction
         guard case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty else { return nil }
+        // The toggle rewrote text behind the caret (ENG-R829 undoes a revision of the previous token with an edit
+        // that has no active word: its deletion is larger than the empty active display, PLT-R353).
+        keyState.lastCommit = nil
         return apply(output, kind: .restore, replaced: replaced, key, focus: focus, inputSource: inputSource)
     }
 
@@ -110,6 +114,7 @@ extension KeyPipeline {
         engineDirty = true
         keyState.lastComposedKeyAt = key.now  // PLT-R340 amendment: the late focus window starts here
         noteEngineCapture(output)
+        noteCollisionSignals(output, focus: focus)
         keyState.engineFedByThisKey = true  // PLT-R398B: the first key after a secure-input release reached the engine
         if case .backspace = input, Self.overDeletes(output, replaced: replaced) {
             // ENG-R714, PLT-R352: a Backspace edit never deletes more than the active token's display. The engine
@@ -121,7 +126,27 @@ extension KeyPipeline {
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
         // ENG-R861, memory only; ENG-R862: attributed to the app typed in (a copy from the snapshot, PLT-R304).
         if let learning = output.learning { notifyMain(.learning(learning, bundle: focus.app?.bundle)) }
-        return apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)
+        let verdict = apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)
+        // PLT-R357: the token this commit left on screen, for a revision of it by the next commit. After `apply`, so
+        // a revision job of this commit still sees the previous token; skipped when `apply` reset the engine.
+        if output.decision != nil, engineDirty { keyState.lastCommit = Self.committedToken(output, replaced: replaced) }
+        return verdict
+    }
+
+    /// The pieces of the text a commit left on screen for its token (`CommittedToken.text` builds it on the worker).
+    @inline(__always)
+    static func committedToken(_ output: EngineOutput, replaced: String) -> CommittedToken {
+        guard case .edit(let edit, _) = output.action else { return CommittedToken(display: replaced) }
+        return CommittedToken(display: replaced, deleteCount: edit.deleteCount, insert: edit.insert)
+    }
+
+    /// ENG-R864, PLT-R914: hands the engine's collision signals to main (one push of the array the engine already
+    /// built). Not recordable in a secure field or where the rule turns English restore off.
+    @inline(__always)
+    private func noteCollisionSignals(_ output: EngineOutput, focus: FocusSnapshot) {
+        guard !output.collisionSignals.isEmpty else { return }
+        let recordable = !focus.field.secure && focus.decision.variant.englishRestore
+        notifyMain(.collisionSignals(output.collisionSignals, recordable: recordable))
     }
 
     /// ENG-R714: the engine's answer to a Backspace deletes more than the display it had (`replaced`).
@@ -167,9 +192,12 @@ extension KeyPipeline {
             return applyRestore(edit, replaced: replaced, key, focus: focus, inputSource: inputSource)
         }
         let record = Self.record(key.event, probe: key.probe)
+        // PLT-R357: a commit that revises the previous token is one job of kind `revision`, pushed before the replay
+        // of the boundary key below, so a chat app that sends on Return receives the fixed line.
+        let jobKind = output.revision != nil ? EditKind.revision : editKind(kind, decision: output.decision)
         let job = makeEditJob(
-            edit, kind: editKind(kind, decision: output.decision), replaced: replaced,
-            trigger: thenPassThrough ? nil : record, key, focus: focus, inputSource: inputSource)
+            edit, kind: jobKind, replaced: replaced, trigger: thenPassThrough ? nil : record, key, focus: focus,
+            inputSource: inputSource)
         guard push(.edit(job)) else { return queueFull(key.event, now: key.now) }
         if thenPassThrough {
             // P0-3: punctuation and Return reach the app after the correction, as a replay of the original key.
@@ -209,20 +237,25 @@ extension KeyPipeline {
         // PLT-R405: an edit an action key triggered (Backspace, PLT-R352; Return, keypad Enter, Tab or Space at a
         // commit; Escape as the restore hotkey), and every restore and macro, types with the keycode of a character
         // of the edit that a non-action key types; other edits with the trigger's.
-        let typesOnACharacter = JobKeyCodes.isActionKey(key.event.keyCode) || kind == .restore || kind == .macro
+        let revises = kind == .revision
+        let typesOnACharacter =
+            JobKeyCodes.isActionKey(key.event.keyCode) || kind == .restore || kind == .macro || revises
         let firstCharacter =
             typesOnACharacter
             ? Self.letterKeyCode(insertion: edit.insert, replaced: replaced, table: inputSource.table) : nil
+        // PLT-R357, PLT-R342: a revision edits text behind the active token, so it is verified wherever the rule
+        // verifies re-entry; the worker builds the expected text from the previous token (no string here, PLT-R304).
+        let verifies = focus.decision.verifyReentry != .never && (revises || keyState.reopenedWord)
         return EditJob(
             sequence: context.queue.nextSequence(), generation: focus.generation, plan: focus.decision.plan,
             field: focus.fieldHandle, kind: kind, deleteCount: edit.deleteCount,
-            deleteUTF16Count: edit.deleteUTF16Count, replacedText: replaced.isEmpty ? nil : replaced,
+            deleteUTF16Count: edit.deleteUTF16Count, replacedText: replaced.isEmpty || revises ? nil : replaced,
             insertion: edit.insert,
             keyCodes: JobKeyCodes(trigger: key.event.keyCode, firstCharacter: firstCharacter, paste: seen.pasteKeyCode),
-            trigger: trigger,
-            verifyBeforeApply: keyState.reopenedWord && focus.decision.verifyReentry != .never,
+            trigger: trigger, verifyBeforeApply: verifies,
             wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe,
-            verifyLateFocus: takeLateFocusCheck())
+            verifyLateFocus: takeLateFocusCheck(),
+            revision: revises ? RevisionEdit(previous: keyState.lastCommit, currentDisplay: replaced) : nil)
     }
 
     /// PLT-R340 amendment: the first job after a kept late focus change carries the check.
@@ -370,6 +403,7 @@ extension KeyPipeline {
     /// A clean engine is in its initial state, so its reset is skipped (no observable difference).
     func resetEngineIfDirty(_ reason: ResetReason) {
         keyState.lateFocusCheckPending = false  // nothing kept to verify
+        keyState.lastCommit = nil  // PLT-R911: no copy of the history outlives the engine's
         guard engineDirty else { return }
         _ = engine.handle(.reset(reason))
         engineDirty = false

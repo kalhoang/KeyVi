@@ -116,6 +116,59 @@ public struct KeyEventRecord: Sendable, Hashable, BitwiseCopyable {
 
 public enum EditKind: UInt8, Sendable, Hashable {
     case compose, backspaceRecompose, restore, macro, reentry
+    /// PLT-R357: a commit that also revises the previous token (ENG-R828): one edit over the previous token, its
+    /// space and the current token, before the boundary key is replayed.
+    case revision
+}
+
+/// The text a commit left on screen for its token, kept as the pieces the tap already holds, so the tap builds no
+/// string (PLT-R304): the worker computes `text`. Content: never logged, kept only until the next commit or reset
+/// (PLT-R911).
+public struct CommittedToken: Sendable, Hashable {
+    /// The token's display before the commit.
+    public var display: String
+    /// Graphemes the commit edit deleted (0 without an edit); a revising commit deletes into the previous token.
+    public var deleteCount: Int
+    /// What the commit edit inserted (empty without an edit).
+    public var insert: String
+
+    public init(display: String, deleteCount: Int = 0, insert: String = "") {
+        self.display = display
+        self.deleteCount = deleteCount
+        self.insert = insert
+    }
+
+    /// The token's text after the commit: the end of `display` the edit kept plus the insertion, from its last
+    /// space on (a revising commit's insertion also holds the previous token and the space; words have no spaces).
+    public var text: String {
+        let kept = display.dropLast(min(deleteCount, display.count))
+        let joined = String(kept) + insert
+        guard let space = joined.lastIndex(of: " ") else { return joined }
+        return String(joined[joined.index(after: space)...])
+    }
+}
+
+/// PLT-R357: what the worker needs to verify a revision edit and, on a mismatch, to apply only the current token.
+public struct RevisionEdit: Sendable, Hashable {
+    /// The previous token as its own commit left it; nil when the pipeline does not know it.
+    public var previous: CommittedToken?
+    /// The current token's display before this commit: the end of the text the edit replaces.
+    public var currentDisplay: String
+
+    public init(previous: CommittedToken?, currentDisplay: String) {
+        self.previous = previous
+        self.currentDisplay = currentDisplay
+    }
+
+    /// The text before the caret the revision expects: the previous token, one space, the current display
+    /// (ENG-R828: exactly one space between them). Nil when the previous token is unknown.
+    public var expectedText: String? { previous.map { $0.text + " " + currentDisplay } }
+
+    /// The current token's part of a revision that deletes `deleteCount` graphemes and inserts `insert`: delete
+    /// its display, insert its new text.
+    public func currentPart(deleteCount: Int, insert: String) -> (delete: String, insert: String) {
+        (currentDisplay, CommittedToken(display: currentDisplay, deleteCount: deleteCount, insert: insert).text)
+    }
 }
 
 /// Key codes resolved on the tap from the current layout table (PLT-R405, PLT-R461 step 3).
@@ -184,12 +237,15 @@ public struct EditJob: Sendable {
     /// selection, when an inline completion is selected) ends with `replacedText`; otherwise the trigger passes
     /// through and the composition is reset. Strict, unlike `verifyBeforeApply`: an unreadable field fails.
     public var verifyLateFocus: Bool
+    /// Kind `.revision` only (PLT-R357): the previous token and the current display, for the PLT-R342 check.
+    public var revision: RevisionEdit?
 
     public init(
         sequence: JobSequence, generation: FocusGeneration, plan: InjectionPlan, field: FieldHandle?,
         kind: EditKind, deleteCount: Int, deleteUTF16Count: Int, replacedText: String?, insertion: String,
         keyCodes: JobKeyCodes, trigger: KeyEventRecord?, verifyBeforeApply: Bool,
-        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false
+        wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false,
+        revision: RevisionEdit? = nil
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -207,6 +263,7 @@ public struct EditJob: Sendable {
         self.createdAt = createdAt
         self.isProbe = isProbe
         self.verifyLateFocus = verifyLateFocus
+        self.revision = revision
     }
 }
 

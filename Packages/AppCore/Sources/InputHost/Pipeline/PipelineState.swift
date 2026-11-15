@@ -150,6 +150,11 @@ struct ObservedState {
     var pasteKeyCode: KeyCode?
     /// `EngineCatalog.revision` of the engine in use (nil: unknown, every settings generation rebuilds).
     var engineRevision: UInt64?
+    /// `EngineCatalog.memoryRevision` of the engine in use (ENG-R865).
+    var memoryRevision: UInt64 = 0
+    /// A catalog with a new learned memory and the same settings arrived: the engine is swapped at the next hard
+    /// boundary, when it is clean, so the word being typed is kept (ENG-R865, ENG-R1211).
+    var memorySwapPending = false
     /// PLT-R398B: a secure-input release was seen (key evidence, or a new generation with the OS flag off) and the
     /// next key-down is the first one after it (`HostCounters`).
     var awaitingKeyAfterSecureRelease = false
@@ -182,4 +187,8 @@ struct KeyState {
     var engineFedByThisKey = false
     /// PLT-R397A: key codes the tap saw go down and not yet up.
     var keysDown = KeysDown()
+    /// PLT-R357: the newest committed token as its commit left it, for the PLT-R342 check of a revision of it by the
+    /// next commit. Pieces the engine output already holds (no string is built on the tap); cleared by every
+    /// engine reset and restore, so it never outlives the engine's own history (PLT-R911).
+    var lastCommit: CommittedToken?
 }

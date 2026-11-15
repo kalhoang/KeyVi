@@ -65,12 +65,13 @@ extension KeyPipeline {
             capture.devSteps.append(
                 DevEngineStep(
                     action: .passThrough, deleteCount: 0, insert: "", composing: output.composingText,
-                    decision: output.decision, at: .zero))
+                    decision: output.decision, revision: output.revision, at: .zero))
         case .edit(let edit, let thenPassThrough):
             capture.devSteps.append(
                 DevEngineStep(
                     action: thenPassThrough ? .editThenPassThrough : .edit, deleteCount: edit.deleteCount,
-                    insert: edit.insert, composing: output.composingText, decision: output.decision, at: .zero))
+                    insert: edit.insert, composing: output.composingText, decision: output.decision,
+                    revision: output.revision, at: .zero))
             if edit.deleteCount > 0 || !edit.insert.isEmpty {
                 capture.deleteCount = edit.deleteCount
                 capture.insert = edit.insert

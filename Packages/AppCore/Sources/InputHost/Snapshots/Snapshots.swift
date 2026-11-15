@@ -95,10 +95,14 @@ public struct EngineVariant: Sendable, Hashable {
     public var appContext: EngineContextKind
     public var englishRestore: Bool
     public var macros: Bool
-    public init(appContext: EngineContextKind, englishRestore: Bool, macros: Bool) {
+    /// The rule allows revising the previous word (`features.lookaheadRevision`, PLT-R357); the engine gets it
+    /// ANDed with the user's D29 (ENG-R829).
+    public var lookaheadRevision: Bool
+    public init(appContext: EngineContextKind, englishRestore: Bool, macros: Bool, lookaheadRevision: Bool = true) {
         self.appContext = appContext
         self.englishRestore = englishRestore
         self.macros = macros
+        self.lookaheadRevision = lookaheadRevision
     }
 
     public static let `default` = EngineVariant(appContext: .general, englishRestore: true, macros: true)

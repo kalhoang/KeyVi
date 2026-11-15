@@ -13,6 +13,7 @@ enum Key {
     static let s: UInt16 = 0x01
     static let d: UInt16 = 0x02
     static let x: UInt16 = 0x07
+    static let q: UInt16 = 0x0C
     static let w: UInt16 = 0x0D
     static let e: UInt16 = 0x0E
     static let u: UInt16 = 0x20

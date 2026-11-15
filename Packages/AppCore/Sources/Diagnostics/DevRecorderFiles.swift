@@ -105,6 +105,8 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var ins: String?
     var comp: String?
     var dec: String?
+    /// Engine lines: the revision reason when the commit also revised the previous word (PLT-R357).
+    var rev: String?
     // boundary, gap, fallback, readback, pause
     var reason: String?
     var job: String?
@@ -184,6 +186,7 @@ extension DevTraceLine {
             ins = step.insert
             comp = step.composing
             dec = step.decision.map(DevTraceNames.describe)
+            rev = step.revision.map(DevTraceNames.describe)
         case .boundary(let reason, let job, _):
             self.init(type: .boundary, t: t)
             self.reason = DevTraceNames.describe(reason)

@@ -17,11 +17,19 @@ public import VietnameseEngine
 /// last vowel, w -> ư), enough to exercise deletes and inserts without the real engine. Rules in
 /// `ScriptedComposer`.
 public struct ScriptedEngine: CompositionEngine {
-    private var composer = ScriptedComposer()
+    private var composer: ScriptedComposer
     private let log: EngineEventLog?
 
-    public init() { log = nil }
-    init(log: EngineEventLog?) { self.log = log }
+    /// `revisions`: `EngineConfiguration.lookaheadRevision` (ENG-R829); the factory passes the variant's flag.
+    public init(revisions: Bool = true) {
+        log = nil
+        composer = ScriptedComposer(revisions: revisions)
+    }
+
+    init(log: EngineEventLog?, revisions: Bool = true) {
+        self.log = log
+        composer = ScriptedComposer(revisions: revisions)
+    }
 
     public mutating func handle(_ event: EngineEvent) -> EngineOutput {
         log?.handled(event)
@@ -42,7 +50,57 @@ public struct ScriptedEngineFactory: CompositionEngineFactory, Sendable {
 
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine {
         log?.made(variant)
-        return ScriptedEngine(log: log)
+        return ScriptedEngine(log: log, revisions: variant.lookaheadRevision)
+    }
+}
+
+/// The text a field shows once the scripted engines' outputs for a logged run are applied in order, the way the
+/// pipeline applies them: a key that passes is typed, an edit deletes and inserts, a boundary key that follows an
+/// edit is typed after it (P0-3), Return, Tab and Escape type nothing (as `SimulatedTextField`); a new engine starts
+/// fresh. For a run in which every job executed, the field must show exactly this: every character the engine
+/// deleted was re-inserted or replaced exactly once (PLT-R312, PLT-R357).
+public struct ScriptedFieldModel: Sendable {
+    public private(set) var text = ""
+    /// Commits that revised the previous token (ENG-R828) and toggles that undid one (ENG-R829).
+    public private(set) var revisions = 0
+    public private(set) var undos = 0
+
+    public init(entries: [EngineEventLog.Entry]) {
+        var composer = ScriptedComposer()
+        var characters: [Character] = []
+        for entry in entries {
+            switch entry {
+            case .made(let variant): composer = ScriptedComposer(revisions: variant.lookaheadRevision)
+            case .event(let event):
+                let output = composer.handle(event)
+                if output.revision != nil { revisions += 1 }
+                if case .restoreToggle = event, !output.collisionSignals.isEmpty, case .edit = output.action {
+                    if output.composingText.isEmpty { undos += 1 }
+                }
+                Self.apply(output, of: event, to: &characters)
+            }
+        }
+        text = String(characters)
+    }
+
+    private static func apply(_ output: EngineOutput, of event: EngineEvent, to text: inout [Character]) {
+        let typed: Character? =
+            switch event {
+            case .key(let input): input.character != "\n" && input.character != "\t" ? input.character : nil
+            default: nil
+            }
+        switch output.action {
+        case .passThrough:
+            if case .backspace = event {
+                if !text.isEmpty { text.removeLast() }
+            } else if let typed {
+                text.append(typed)
+            }
+        case .edit(let edit, let thenPassThrough):
+            text.removeLast(min(edit.deleteCount, text.count))
+            text.append(contentsOf: edit.insert)
+            if thenPassThrough, let typed { text.append(typed) }
+        }
     }
 }
 

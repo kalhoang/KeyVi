@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// ADR 0306: settings -> engine configuration, the eight-engine catalog, macros and resources.
+// ADR 0306: settings -> engine configuration, the sixteen-engine catalog (PLT-R357), macros and resources.
 
 import AppModel
 import Foundation
@@ -54,11 +54,14 @@ import VietnameseEngine
         #expect(EngineBridge.configuration(for: settings(), variant: .default).appContext == .general)
     }
 
-    /// ENG-R829: the collision context rules and the revision of the previous word stay off in every variant
-    /// until the host verifies revision edits and gates them per app (W11-B); the engine default is on.
-    @Test func collisionContextRulesStayOffUntilTheHostGatesThem() {
-        for variant in EngineVariant.catalogOrder {
-            #expect(!EngineBridge.configuration(for: settings(), variant: variant).lookaheadRevision)
+    /// ENG-R829, PLT-R357: `lookaheadRevision` = the rule's `features.lookaheadRevision` (the variant) AND D29, in
+    /// every combination of the other variant bits.
+    @Test(arguments: [(true, true, true), (true, false, false), (false, true, false), (false, false, false)])
+    func lookaheadRevisionIsTheRuleFlagAndD29(rule: Bool, d29: Bool, expected: Bool) {
+        var effective = settings()
+        effective.lookaheadRevision = d29
+        for variant in EngineVariant.catalogOrder where variant.lookaheadRevision == rule {
+            #expect(EngineBridge.configuration(for: effective, variant: variant).lookaheadRevision == expected)
         }
     }
 }
@@ -72,11 +75,33 @@ import VietnameseEngine
             let engine = catalog.engine(for: variant)
             #expect(engine.configuration == EngineBridge.configuration(for: DefaultSettings.v1, variant: variant))
         }
-        #expect(Set(Self.allVariants.map(\.catalogIndex)) == Set(0..<8))
+        #expect(Set(Self.allVariants.map(\.catalogIndex)) == Set(0..<16))
+        #expect(Set(Self.allVariants).count == 16)
     }
 
     @Test func variantIndexRoundTrips() {
-        for index in 0..<8 { #expect(EngineVariant(catalogIndex: index).catalogIndex == index) }
+        for index in 0..<16 { #expect(EngineVariant(catalogIndex: index).catalogIndex == index) }
+    }
+
+    /// ENG-R865, PLT-R914: the memory snapshot reaches exactly the variants where English restore runs, and none
+    /// when D28 is off.
+    @Test func theLearnedMemoryGoesOnlyWhereEnglishRestoreRuns() {
+        var resources = Resources.empty
+        resources.collisionMemory = CollisionMemorySnapshot([
+            .init(word: "as", context: .afterVietnamese, choice: .vietnamese)
+        ])
+        var settings = DefaultSettings.v1
+        let catalog = EngineBridge.catalog(settings: settings, resources: resources)
+        for variant in Self.allVariants {
+            #expect(catalog.engine(for: variant).resources.collisionMemory.isEmpty == !variant.englishRestore)
+        }
+        settings.learnCollisionChoices = false
+        let off = EngineBridge.catalog(settings: settings, resources: resources)
+        #expect(Self.allVariants.allSatisfy { off.engine(for: $0).resources.collisionMemory.isEmpty })
+        settings = DefaultSettings.v1
+        settings.englishRestore = false
+        let noRestore = EngineBridge.catalog(settings: settings, resources: resources)
+        #expect(Self.allVariants.allSatisfy { noRestore.engine(for: $0).resources.collisionMemory.isEmpty })
     }
 
     /// ENG-R1107: only variants that allow macros, with D9 on, carry the macro table.

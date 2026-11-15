@@ -24,6 +24,8 @@ extension WorkerCore {
         #if DEV_RECORDER
         recordDevJob(job, outcome: outcome)  // PLT-R904A
         #endif
+        // PLT-R357: a revision that was not applied as computed leaves the engine's history unlike the screen.
+        if job.kind == .revision, outcome != .executed { feedback.requestCompositionReset() }
         feedback.record(outcome, for: job.sequence)
         outcomes.record(outcome, for: job.sequence)
         if outcome.deliveredEdit {
@@ -50,10 +52,44 @@ extension WorkerCore {
         // PLT-R340 amendment: a kept late focus change is confirmed before anything is posted, also for a job
         // without an edit (the check of a key that only passes).
         if !lateFocusMatches(job) { return passThrough(job) }
+        if job.kind == .revision { return revisionOutcome(job) }
         let prepared = prepare(job)
         if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
         if !reentryMatches(prepared) { return passThrough(prepared) }
         return runChain(prepared)
+    }
+
+    /// PLT-R357: a revision touches the previous token, so PLT-R342 applies as for re-entry. Where the rule verifies
+    /// (`verifyBeforeApply`), the text before the caret must end with the previous token, one space and the current
+    /// display (an unreadable field applies, as `whenReadable` says). On a mismatch, or when the pipeline did not
+    /// know the previous token, only the current token's part is applied and the engine is reset.
+    func revisionOutcome(_ job: EditJob) -> JobOutcome {
+        let expected = job.revision?.expectedText
+        if let expected, job.deleteCount <= expected.count, revisionTextMatches(job, expected: expected) {
+            var full = job
+            full.replacedText = expected
+            let prepared = prepare(full)
+            if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }
+            return runChain(prepared)
+        }
+        if expected == nil, !job.verifyBeforeApply { return runChain(prepare(job)) }
+        feedback.requestCompositionReset()
+        guard let revision = job.revision else { return .executedWithFallback }
+        let part = revision.currentPart(deleteCount: job.deleteCount, insert: job.insertion)
+        var partial = job
+        partial.deleteCount = part.delete.count
+        partial.deleteUTF16Count = part.delete.utf16.count
+        partial.insertion = part.insert
+        partial.replacedText = part.delete
+        let prepared = prepare(partial)
+        if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executedWithFallback }
+        let outcome = runChain(prepared)
+        return outcome == .executed ? .executedWithFallback : outcome
+    }
+
+    private func revisionTextMatches(_ job: EditJob, expected: String) -> Bool {
+        guard job.verifyBeforeApply, let field = job.field else { return true }
+        return textBeforeCaret(of: field, endsWith: expected, allowingSelection: false, atTokenStart: false) ?? true
     }
 
     /// PLT-R403 NFC, PLT-R480 4,000-grapheme cap, PLT-R402 prefix trim, PLT-R408 first-edit delay.

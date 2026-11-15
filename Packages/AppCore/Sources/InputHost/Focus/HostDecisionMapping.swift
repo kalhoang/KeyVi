@@ -30,11 +30,17 @@ enum HostDecisionMapping {
             plan: InjectionPlan(strategy: strategy, parameters: parameters, fallback: fallback),
             variant: EngineVariant(
                 appContext: decision.engineContext, englishRestore: decision.features.englishRestore,
-                macros: decision.features.macros),
+                macros: decision.features.macros,
+                lookaheadRevision: decision.features.lookaheadRevision && allowsRevision(strategy)),
             requireTextFocus: concrete(decision.requireTextFocus, engine: engine),
             verifyReentry: decision.verifyReentry, restoreHotkeyEnabled: decision.features.restoreHotkey,
             rule: decision.rule, source: decision.source, specificity: decision.specificity,
             overlay: decision.overlay)
+    }
+
+    /// PLT-R357: the strategy the plan starts with (after the paste opt-in promotion) carries a revision.
+    static func allowsRevision(_ strategy: InjectionStrategy) -> Bool {
+        strategy == .backspaceReplace || strategy == .selectReplace
     }
 
     /// PLT-R386 default: `whenKnown` where AX is reliable (native, Catalyst), `never` elsewhere.

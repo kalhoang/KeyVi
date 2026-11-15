@@ -13,8 +13,9 @@ public import SettingsStore
 public import VietnameseEngine
 internal import VietnameseEngineData
 
-/// The engine-affecting part of the settings: D1, D2, D4, D5, D6, D9, the macros and the two user word lists of the
-/// focused app. `EngineCatalog.revision` changes exactly when this value changes, so a hotkey, UI-language or
+/// The engine-affecting part of the settings: D1, D2, D4, D5, D6, D9, D28, D29, the macros and the two user word lists
+/// of the focused app. The learned collision memory is not part of it: a new memory snapshot bumps only
+/// `EngineCatalog.memoryRevision` (ENG-R865). `EngineCatalog.revision` changes exactly when this value changes, so a hotkey, UI-language or
 /// update-channel change keeps the word being typed (PRD-R27, the W1-F1 contract on `EngineCatalog.revision`).
 public struct EngineInputs: Sendable, Hashable {
     public var typingMethod: TypingMethod
@@ -23,6 +24,10 @@ public struct EngineInputs: Sendable, Hashable {
     public var telexStandaloneW: Bool
     public var telexBracketKeys: Bool
     public var macrosEnabled: Bool
+    /// D28: the engines carry the learned memory (ENG-R865); off, they get the empty snapshot.
+    public var learnCollisionChoices: Bool
+    /// D29, ANDed per variant with the rule's `features.lookaheadRevision` (ENG-R829, PLT-R357).
+    public var lookaheadRevision: Bool
     /// NFC-normalised (`MacroNormalization`). Content: never logged.
     public var macros: [StoredMacro]
     /// The focused app's lists: the global entries plus the words learned in that app (ENG-R862). Content.
@@ -44,6 +49,8 @@ public struct EngineInputs: Sendable, Hashable {
         telexStandaloneW = settings.telexStandaloneW
         telexBracketKeys = settings.telexBracketKeys
         macrosEnabled = settings.macrosEnabled
+        learnCollisionChoices = settings.learnCollisionChoices
+        lookaheadRevision = settings.lookaheadRevision
         self.macros = MacroNormalization.normalized(macros)
         keepAsTyped = wordLists.keepAsTyped
         keepVietnamese = wordLists.keepVietnamese
@@ -106,6 +113,10 @@ public final class TapSettingsPublisher: Sendable {
         /// The last published settings and the focused app whose lists the engines carry (ENG-R851).
         var settings: SettingsState?
         var focusedApp: BundleKey?
+        /// The learned collision memory (ENG-R865) and its revision; attached to every catalog built.
+        var memory = CollisionMemorySnapshot.empty
+        var memoryRevision: UInt64 = 0
+        var effective: EffectiveSettings?
     }
 
     private struct Built {
@@ -143,6 +154,15 @@ public final class TapSettingsPublisher: Sendable {
         state.withLock { state in _ = bundledResources(&state) }
     }
 
+    /// ENG-R862, PLT-R914: the bundled collision list (the ambiguity table's words and the collision supplement) as
+    /// a membership test, from the bundled lists loaded once (empty when they failed to load). Utility queue.
+    public func collisionVocabulary() -> CollisionVocabulary {
+        let resources = state.withLock { state in bundledResources(&state) }
+        let ambiguity = resources.ambiguity
+        let supplement = resources.collision.supplement
+        return CollisionVocabulary { ambiguity[$0] != nil || supplement.contains($0) }
+    }
+
     /// Builds the snapshot for `settings` and publishes it. The engine catalog is rebuilt, and its revision
     /// bumped, only when `EngineInputs` changed (PRD-R27). The word lists are those of the focused app.
     @discardableResult
@@ -176,12 +196,41 @@ public final class TapSettingsPublisher: Sendable {
         return built.map(finish)
     }
 
+    /// ENG-R865: the learned memory's votes changed (utility queue). The catalog is rebuilt with the same settings
+    /// revision and a new memory revision, so the tap swaps engines at its next hard boundary and the word being
+    /// typed is kept. Nothing is published while D28 is off (the engines carry the empty snapshot then) or before the
+    /// first settings publication. Returns nil when nothing was published.
+    @discardableResult
+    public func collisionMemoryChanged(_ memory: CollisionMemorySnapshot) -> TapSettingsPublication? {
+        let built: Built? = state.withLock { state in
+            guard memory != state.memory else { return nil }
+            state.memory = memory
+            state.memoryRevision &+= 1
+            guard let inputs = state.inputs, inputs.learnCollisionChoices, let effective = state.effective else {
+                return nil
+            }
+            return build(&state, inputs: inputs, effective: effective, memoryOnly: true)
+        }
+        return built.map(finish)
+    }
+
     /// Rebuilds the catalog when `inputs` changed (the macro table only when the macros changed) and returns the
-    /// next snapshot. Called with the lock held.
-    private func build(_ state: inout State, inputs: EngineInputs, effective: EffectiveSettings) -> Built {
+    /// next snapshot. Called with the lock held. `memoryOnly`: same inputs, new learned memory (ENG-R865).
+    private func build(
+        _ state: inout State, inputs: EngineInputs, effective: EffectiveSettings, memoryOnly: Bool = false
+    ) -> Built {
         var rebuilt = false
         var rebuiltMacros = false
-        if state.inputs != inputs || state.catalog == nil {
+        state.effective = effective
+        if memoryOnly, let table = state.macroTable {
+            let resources = bundledResources(&state)
+            var attached = EngineBridge.resources(wordLists: inputs.wordLists, macros: table) { resources }
+            attached.collisionMemory = state.memory
+            state.catalog = EngineBridge.catalog(
+                settings: effective, resources: attached, revision: state.revision, memoryRevision: state.memoryRevision
+            )
+            rebuilt = true
+        } else if state.inputs != inputs || state.catalog == nil {
             state.revision &+= 1
             let table: MacroTable
             if let cached = state.macroTable, state.inputs?.macros == inputs.macros {
@@ -194,8 +243,11 @@ public final class TapSettingsPublisher: Sendable {
                 rebuiltMacros = true
             }
             let resources = bundledResources(&state)
-            let attached = EngineBridge.resources(wordLists: inputs.wordLists, macros: table) { resources }
-            state.catalog = EngineBridge.catalog(settings: effective, resources: attached, revision: state.revision)
+            var attached = EngineBridge.resources(wordLists: inputs.wordLists, macros: table) { resources }
+            attached.collisionMemory = state.memory
+            state.catalog = EngineBridge.catalog(
+                settings: effective, resources: attached, revision: state.revision, memoryRevision: state.memoryRevision
+            )
             state.inputs = inputs
             rebuilt = true
         }

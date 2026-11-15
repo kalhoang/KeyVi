@@ -76,6 +76,7 @@ struct ReportLabels: Sendable {
     var restoreHotkey: String
     var interfaceLanguage: String
     var changedSettings: String
+    var learnedCollisionEntries: String
     var appMode: String
     var perAppRule: String
     var rememberedMode: String
