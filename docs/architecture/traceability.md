@@ -3,7 +3,7 @@
 One row per requirement of `spec/02-platform.md` (PLT-R), `spec/03-product.md` (PRD-R),
 `spec/04-quality-release.md` (QA-R) and `spec/05-clean-room.md` (CLR-R): the owning module or file, how it is
 verified, and the workstream that implements it ([workstreams.md](workstreams.md)). Engine requirements
-(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (344 with PLT-R397A and PLT-R397B of 2026-11-15 and PLT-R357 and PLT-R914 of the same day),
+(ENG-R) are traced by the engine track. Generated on 2026-11-13 and checked against the spec: 340 rows (347 with PLT-R397A, PLT-R397B, PLT-R357, PLT-R914, QA-R68, PRD-R78 and PRD-R79 of 2026-11-15),
 no requirement missing, none duplicated.
 
 ## Legend
@@ -264,6 +264,8 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | ENG-R862 | Learned entries stored per app, typed entries global; words of the collision list go to the memory of ENG-R863 instead (amended 15/11/2026) | `SettingsStore/LearnedWords.swift`, `InputHost/Integration/LearningTracker.swift`, `TapSettingsPublisher.focusChanged(to:)`; ADR 0320; the collision-word skip in `LearningTracker` is planned (W11-B) | U (`PerAppLearningTests.swift`: `LearningTrackerTests`, `FocusedAppWordListTests`, `HostPerAppLearningTests`, in particular `HostPerAppLearningTests.aWordTypedBeforeTheFocusMovesBelongsToTheAppWhereItWasTyped`; W11-B adds a test that collision words never reach the per-app lists) | engine track; W5-B; W11-B |  |
 | ENG-R863 | Learned memory of collision words, per user across all apps, votes computed by the host | `SettingsStore` `CollisionMemoryStore` (planned, W11-B); the engine reads `Resources.collisionMemory` (W15-A) | U (planned by W11-B: thresholds, conflict, decay, cap, validation, file mode) | engine track W15-A; W11-B |  |
 | ENG-R864 | Collision signals drained on the main thread and applied to the memory off the tap thread; nothing recorded under secure input or with `englishRestore: false` | `InputHost` signal routing (planned, W11-B); the engine emits `EngineOutput.collisionSignals` (W15-A) | U (planned by W11-B: signal routing) | engine track W15-A; W11-B |  |
+| ENG-R876 | W11 collision targets: no wrong revision, no non-collision change, English at least 75 %, Vietnamese at least 99 %, the adversarial sets without a wrong revision | the engine (W15-A); the gate runs in CI: `.github/workflows/ci.yml` engine-linux step "W11 collision corpus gate", macOS engine coverage run, `scripts/run-tests.sh` layer `collision` (QA-R68) | E (`CollisionCorpusTests.corpus`, `CollisionCorpusTests.adversarialSet`, `CollisionCorpusTests.corpusWithoutTheCollisionRules`), L | engine track W15-A; W11-D |  |
+| ENG-R877 | A memory fed only by silent acceptance never changes a decision; held-out floor of 1.5 points | `SettingsStore` `CollisionMemoryStore` (planned, W11-B) must give the votes of the reference model `ReferenceCollisionMemory` (VietnameseEngineTesting, from the text of ENG-R863) for every signal sequence; held-out floor measured at 1.53 points, recorded as a known issue (ADR 0008, open question) | E (`CollisionMemorySimulationTests`, `ReferenceCollisionMemoryTests`), U (planned by W11-B: parity of the store with `CollisionMemoryVoteCases` and the reference model) | W11-D; W11-B |  |
 | ENG-R906 | Bracket letters uppercase under Caps Lock | `KeyPipeline` reports `KeyInput.capsLock` from the event flags (PLT-R304) | E, U (`KeyPipelineCapsLockTests`) | engine track; W5-A |  |
 | ENG-R1103 | Shadowed macro triggers rejected, including a trailing digit | Macros pane editor and importer refuse the pair; ADR 0321 | E, U (`MacroEditorTests`, `MacroEngineAgreementTests`) | engine track; W5-B |  |
 
@@ -349,6 +351,8 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R75 | Appcast host over HTTPS on a Pa-controlled domain | `deploy/site` on the Kalera Docker Swarm behind Traefik and Cloudflare (ADR 0602, [site deploy](../runbooks/site-deploy.md)), `Config/Sparkle.xcconfig` | R, U (`node deploy/site/test.mjs`), M (first deploy) | release track; Pa | **Pa** |
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |
 | PRD-R77 | No in-app survey, rating prompt or usage counter | all UI | D | all UI workstreams |  |
+| PRD-R78 | Learned-words sheet: entries that vote, rendered in D2, remove per row and `Xóa tất cả`, D8 key in the empty state, cleared by the Typing and full resets | `App/Sources/Settings/LearnedChoicesSheet.swift`, `SettingsWindowModel+LearnedChoices`, `LearnedChoices` (ShellCore), `CollisionMemoryStore.learnedChoices` | U (`LearnedChoicesPaneTests`), M | W11-C | **Pa** |
+| PRD-R79 | Copy of D28, D29 and the learned-words sheet | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`), L (l10n lint) | W11-C; Pa (copy review before v1) | **Pa** |
 
 ## 04-quality-release.md (QA-R)
 
@@ -421,6 +425,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | QA-R65 | Code of conduct | `CODE_OF_CONDUCT.md` | D | docs track |  |
 | QA-R66 | Required documents incl. ARCHITECTURE.md | `ARCHITECTURE.md` (this track), others; engine API docs (DocC) per ADR 0402 | D | platform design (done); docs track; CI and release (nightly DocC artifact) |  |
 | QA-R67 | Docs are part of done | process | D | all |  |
+| QA-R68 | W11 collision corpus and its three adversarial sets in CI with the ENG-R876 and ENG-R877 thresholds; any wrong revision fails; list changes that move a number are reviewed with the list | `Packages/VietnameseEngine/Tests/CollisionCorpusTests` (frozen fixtures, host-mode replay, memory simulation; `Fixtures/README.txt`); `.github/workflows/ci.yml` engine-linux step "W11 collision corpus gate"; `scripts/run-tests.sh` layer `collision`; ADR 0008 | E (`CollisionCorpusTests`, `CollisionMemorySimulationTests`, `PhraseRevisionDepthTests`, `HostReplayTests`, `CorpusFixtureTests`), L | W11-D |  |
 
 ## 05-clean-room.md (CLR-R)
 

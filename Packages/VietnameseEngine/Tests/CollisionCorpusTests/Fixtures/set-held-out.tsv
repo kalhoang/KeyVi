@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: MPL-2.0
+# W11 adversarial set: 81 held-out lines written before the final rules were run.
+# spec/01-engine.md 13.11, spec/04-quality-release.md QA-R68, ENG-R876. Sentences written for this project;
+# provenance, format and update rules in README.txt.
+# Columns (tab-separated): id, group, half, keys, expected, revised, tokens.
+HLD01	set	-	I love this car quas trowif{RET}	I love this car quá trời{RET}	-	I love this/E/set/- car/E/set/- quá trời
+HLD02	set	-	She has been nghir pheps tuaanf nayf{RET}	She has been nghỉ phép tuần này{RET}	-	She has/E/set/- been/E/set/- nghỉ phép tuần này
+HLD03	set	-	Just did it rooif nha{RET}	Just did it rồi nha{RET}	-	Just did/E/set/- it rồi nha
+HLD04	set	-	Read the terms kyx nha{RET}	Read the terms kỹ nha{RET}	-	Read the terms/E/set/- kỹ nha
+HLD05	set	-	Call me as soon as possible nhes{RET}	Call me as soon as possible nhé{RET}	-	Call me as/E/set/- soon/E/set/- as/E/set/- possible/E/set/- nhé
+HLD06	set	-	Nice hair ddos nha{RET}	Nice hair đó nha{RET}	-	Nice hair/E/set/- đó nha
+HLD07	set	-	Add a test case cho nos nuwax{RET}	Add a test case cho nó nữa{RET}	-	Add a test/E/set/- case/E/set/- cho nó nữa
+HLD08	set	-	Wait for the bus ddi, dduwngf ddi booj{RET}	Wait for the bus đi, đừng đi bộ{RET}	-	Wait/E/set/- for the bus/E/set/- đi đừng đi bộ
+HLD09	set	-	I was there hoom qua luoon{RET}	I was there hôm qua luôn{RET}	-	I was/E/set/- there/E/set/- hôm qua luôn
+HLD10	set	-	Push the car qua been kia giumf{RET}	Push the car qua bên kia giùm{RET}	4:nextVietnamese	Push/E/set/- the car/E/set/- qua bên/V/set/- kia giùm
+HLD11	set	-	He did his best rooif maf{RET}	He did his best rồi mà{RET}	-	He did/E/set/- his/E/set/- best/E/set/- rồi mà
+HLD12	set	-	Give me the list truwowcs 5 giowf{RET}	Give me the list trước 5 giờ{RET}	-	Give me the list/E/set/- trước giờ
+HLD13	set	-	Set the theme to dark giumf em{RET}	Set the theme to dark giùm em{RET}	-	Set the theme/E/set/- to dark/E/set/- giùm em
+HLD14	set	-	Look at these ddi{RET}	Look at these đi{RET}	-	Look/E/set/- at these/E/set/- đi
+HLD15	set	-	Try the new theme coi sao{RET}	Try the new theme coi sao{RET}	-	Try the new theme/E/set/- coi sao
+HLD16	set	-	Happy new year car nhaf{RET}	Happy new year cả nhà{RET}	3:nextVietnamese	Happy new year cả/V/set/- nhà
+HLD17	set	-	Good job been QA lamf nhanh ghee{RET}	Good job been QA làm nhanh ghê{RET}	-	Good/E/set/- job bên/V/set/- QA làm nhanh ghê
+HLD18	set	-	Merge done sex baos laij seeps{RET}	Merge done sẽ báo lại sếp{RET}	2:nextVietnamese	Merge/E/set/- done sẽ/V/set/- báo lại sếp/V/set/-
+HLD19	set	-	Thank you been minhf nhaanj dduwowcj rooif{RET}	Thank you been mình nhận được rồi{RET}	-	Thank you bên/V/set/- mình nhận được rồi
+HLD20	set	-	Welcome back car team{RET}	Welcome back car team{RET}	-	Welcome/E/set/- back cả/V/set/- team
+HLD21	set	-	No worries seeps sex duyeetj mai{RET}	No worries sếp sẽ duyệt mai{RET}	3:nextVietnamese	No worries/E/set/- sếp/V/set/- sẽ/V/set/- duyệt mai
+HLD22	set	-	Okay cool tows lamf lieenf{RET}	Okay cool tớ làm liền{RET}	-	Okay cool/E/set/- tớ/V/set/- làm liền
+HLD23	set	-	Congrats been anh nha{RET}	Congrats bên anh nha{RET}	1:nextVietnamese	Congrats bên/V/set/- anh nha
+HLD24	set	-	Nice work car nhoms{RET}	Nice work cả nhóm{RET}	2:nextVietnamese	Nice work/E/set/- cả/V/set/- nhóm
+HLD25	set	-	Ngon as and rer nuwax{RET}	Ngon á and rẻ nữa{RET}	-	Ngon á/V/set/- and rẻ nữa
+HLD26	set	-	Meetj as but vaanx phair lamf{RET}	Mệt á but vẫn phải làm{RET}	-	Mệt á/V/set/- but vẫn phải làm
+HLD27	set	-	Hay as or not{RET}	Hay á or not{RET}	-	Hay á/V/set/- or/E/set/- not
+HLD28	set	-	Dduwowcj as I think{RET}	Được á I think{RET}	-	Được á/V/set/- I think
+HLD29	set	-	Vaayj as you sure{RET}	Vậy á you sure{RET}	-	Vậy á/V/set/- you sure/E/set/-
+HLD30	set	-	Heets as of course{RET}	Hết á of course{RET}	2:phrase	Hết á/V/set/- of/E/set/- course
+HLD31	set	-	Oonr as so minhf lamf tieeps{RET}	Ổn á so mình làm tiếp{RET}	-	Ổn á/V/set/- so mình làm tiếp
+HLD32	set	-	Xong as the end{RET}	Xong á the end{RET}	-	Xong á/V/set/- the end
+HLD33	set	-	Cais nayf easy as pie{RET}	Cái này easy á pie{RET}	-	Cái này easy as/E/set/- pie
+HLD34	set	-	Nos chayj fast as hell luoon{RET}	Nó chạy fast as hell luôn{RET}	3:phrase	Nó chạy fast as/E/set/- hell luôn
+HLD35	set	-	Hard as nails{RET}	Hard as nails{RET}	-	Hard/E/set/- as/E/set/- nails
+HLD36	set	-	Lamf as per request nha{RET}	Làm as per request nha{RET}	1:phrase	Làm as/E/set/- per/E/set/- request nha
+HLD37	set	-	Nos tricky as always{RET}	Nó tricky as always{RET}	2:phrase	Nó tricky as/E/set/- always
+HLD38	set	-	Yes he did.{RET}	Yes he did.{RET}	-	Yes/E/set/- he did/E/set/-
+HLD39	set	-	No she has.{RET}	No she has.{RET}	-	No she has/E/set/-
+HLD40	set	-	I did!{RET}	I did!{RET}	-	I did/E/set/-
+HLD41	set	-	What is this?{RET}	What is this?{RET}	-	What/E/set/- is/E/set/- this/E/set/-
+HLD42	set	-	Daj ddungs as.{RET}	Dạ đúng á.{RET}	-	Dạ đúng á/V/set/-
+HLD43	set	-	Trowif owi mawcs as!{RET}	Trời ơi mắc á!{RET}	-	Trời ơi mắc á/V/set/-
+HLD44	set	-	Thieetj as?{RET}	Thiệt á?{RET}	-	Thiệt á/V/set/-
+HLD45	set	-	Uwf as{RET}	Ừ á{RET}	-	Ừ á/V/set/-
+HLD46	set	-	Em lamf xong rooif as, anh check giumf{RET}	Em làm xong rồi á, anh check giùm{RET}	-	Em làm xong rồi á/V/set/- anh check giùm
+HLD47	set	-	Anh coi giumf em cais nayf as.{RET}	Anh coi giùm em cái này á.{RET}	-	Anh coi giùm em cái này á/V/set/-
+HLD48	set	-	The theme looks great{RET}	The theme looks great{RET}	-	The theme/E/set/- looks/E/set/- great
+HLD49	set	-	My theme is dark{RET}	My theme is dark{RET}	-	My theme/E/set/- is/E/set/- dark/E/set/-
+HLD50	set	-	He did it again{RET}	He did it again{RET}	-	He did/E/set/- it again
+HLD51	set	-	Be there at 5{RET}	Be there at 5{RET}	-	Be there/E/set/- at
+HLD52	set	-	Me too nha{RET}	Me too nha{RET}	-	Me too/E/set/- nha
+HLD53	set	-	The car park is full{RET}	The car park is full{RET}	-	The car/E/set/- park/E/set/- is/E/set/- full
+HLD54	set	-	I did{RET}	I did{RET}	-	I did/E/set/-
+HLD55	set	-	We did it{RET}	We did it{RET}	-	We/E/set/- did/E/set/- it
+HLD56	set	-	Mua me chua veef ngaam{RET}	Mua me chua về ngâm{RET}	-	Mua me chua về ngâm
+HLD57	set	-	The nayf ddepj as{RET}	The này đẹp á{RET}	-	The này đẹp á/V/set/-
+HLD58	set	-	Me owi con ddois{RET}	Me ơi con đói{RET}	-	Me ơi con đói
+HLD59	set	-	Be bes owi{RET}	Be bé ơi{RET}	-	Be bé ơi
+HLD60	set	-	Meeting lucs 3 giowf toots hown{RET}	Meeting lúc 3 giờ tốt hơn{RET}	-	Meeting/E/set/- lúc giờ tốt/V/set/- hơn
+HLD61	set	-	See you sangs mai{RET}	See you sáng mai{RET}	-	See/E/set/- you sáng/V/set/- mai
+HLD62	set	-	Thanks seeps{RET}	Thanks sếp{RET}	-	Thanks sếp/V/set/-
+HLD63	set	-	Good night coo Ba{RET}	Good night cô Ba{RET}	-	Good/E/set/- night cô/V/set/- Ba
+HLD64	set	-	Bye boos{RET}	Bye bố{RET}	-	Bye bố/V/set/-
+HLD65	set	-	All good tows veef ddaay{RET}	All good tớ về đây{RET}	-	All good/E/set/- tớ/V/set/- về đây
+HLD66	set	-	Cais box nayf nawngj quas{RET}	Cái bõ này nặng quá{RET}	-	Cái box/E/set/- này nặng quá
+HLD67	set	-	Reset laij mays ddi{RET}	Rết lại máy đi{RET}	-	Reset/E/set/- lại máy đi
+HLD68	set	-	Ddi bus cho rer{RET}	Đi bú cho rẻ{RET}	-	Đi bus/E/set/- cho rẻ
+HLD69	set	-	This is how it works{RET}	This is how it works{RET}	0:phrase	This/E/set/- is/E/set/- how/E/set/- it works/E/set/-
+HLD70	set	-	There is no way{RET}	There is no way{RET}	0:phrase	There/E/set/- is/E/set/- no way/E/set/-
+HLD71	set	-	Has it been fixed yet{RET}	Há it been fixed yet{RET}	-	Has/E/set/- it been/E/set/- fixed yet
+HLD72	set	-	Did you test it{RET}	Did you test it{RET}	0:phrase	Did/E/set/- you test/E/set/- it
+HLD73	set	-	How about now{RET}	How about now{RET}	0:phrase	How/E/set/- about now/E/set/-
+HLD74	set	-	These days I work from home{RET}	These days I work from home{RET}	0:phrase	These/E/set/- days/E/set/- I work/E/set/- from home
+HLD75	set	-	Its own module{RET}	Ít ơn module{RET}	-	Its/E/set/- own/E/set/- module
+HLD76	set	-	Minhf nghix this is the best car{RET}	Mình nghĩ this is the best car{RET}	2:phrase	Mình nghĩ this/E/set/- is/E/set/- the best/E/set/- car/E/set/-
+HLD77	set	-	Em thaays there is a bug{RET}	Em thấy there is a bug{RET}	2:phrase	Em thấy there/E/set/- is/E/set/- a bug
+HLD78	set	-	Anh owi how about thuws 6{RET}	Anh ơi how about thứ 6{RET}	2:phrase	Anh ơi how/E/set/- about thứ
+HLD79	set	-	Chawcs as usual thooi{RET}	Chắc as usual thôi{RET}	1:phrase	Chắc as/E/set/- usual/E/set/- thôi
+HLD80	set	-	Nos nois this one is better{RET}	Nó nói this one is better{RET}	2:phrase	Nó nói this/E/set/- one is/E/set/- better
+HLD81	set	-	Tui thaays its fine{RET}	Tui thấy its fine{RET}	2:phrase	Tui thấy its/E/set/- fine
