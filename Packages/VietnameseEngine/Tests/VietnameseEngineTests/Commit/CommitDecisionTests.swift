@@ -3,7 +3,7 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035h, B064a and B064b) with the
+/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035i, B064a and B064b) with the
 /// 13.9 fixture resources, checking the committed text and the rule that decided (ENG-R801), then the same rows
 /// ended by every boundary key of section 9 (P0-3: the decision must not depend on which boundary key ended the
 /// token). The 13.9.2 rows and the rows whose keys hold several tokens type a whole run of tokens (ENG-R823,
@@ -69,7 +69,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 82)
+        #expect(Self.rows.count == 83)
     }
 
     @Test(arguments: rows)
@@ -100,7 +100,9 @@ struct CommitDecisionTests {
             if boundary.isHard {
                 #expect(driver.state.historyCount == 0, "\(row.id) + \(boundary)")
             } else {
-                let tokens = row.keys.split(separator: " ").count + (row.previous == .none ? 0 : 1)
+                // Tokens are runs of letters (and of VNI digits); `anh.tar` is two tokens (B035i).
+                let isTokenCharacter = { (c: Character) in c.isLetter || (row.method == .vni && c.isNumber) }
+                let tokens = row.keys.split { !isTokenCharacter($0) }.count + (row.previous == .none ? 0 : 1)
                 #expect(driver.state.historyCount == tokens, "\(row.id) + \(boundary)")
             }
         }

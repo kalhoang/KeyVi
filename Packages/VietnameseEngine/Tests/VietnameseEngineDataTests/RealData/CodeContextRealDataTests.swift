@@ -44,6 +44,8 @@ struct CodeContextRealDataTests {
             ("tay tee quas ", "tay tê quá "),
             ("con chim nayf host hay ", "con chim này hót hay "),
             ("vaawn tar canhr ", "văn tả cảnh "),
+            // Punctuation followed by a space is prose, so the no-space join rule does not reach it.
+            ("vieejt. tar canhr ", "việt. tả cảnh "),
         ])
     func vietnameseProse(_ keys: String, _ expected: String) throws {
         for configuration in Self.configurations {
@@ -61,10 +63,25 @@ struct CodeContextRealDataTests {
             ("ssh -p 22 host ", "ssh -p 22 host "),
             ("connect to the host ", "connect to the host "),
             ("cd ~/a && tar -xzf b ", "cd ~/a && tar -xzf b "),
+            // File, directory and user names that are Vietnamese syllables, joined to a code-only word with no
+            // space between them, are code joins, not Vietnamese text (ENG-R850 (c)).
+            ("cp anh.tar.gz /tmp/ ", "cp anh.tar.gz /tmp/ "),
+            ("scp anh.tar.gz host:/tmp ", "scp anh.tar.gz host:/tmp "),
+            ("mv anh.tar backup/ ", "mv anh.tar backup/ "),
+            ("ssh minh@host ", "ssh minh@host "),
+            ("tar czf phim.tar.gz phim/ ", "tar czf phim.tar.gz phim/ "),
+            ("cd anh && tar xf a ", "cd anh && tar xf a "),
         ])
     func shellLines(_ keys: String, _ expected: String) throws {
         for configuration in Self.configurations {
             #expect(try Self.field(keys, configuration).field.string == expected, "\(keys)")
+        }
+    }
+
+    @Test("Known cost (ENG-R850): `;` is prose punctuation, so a name before it reaches the next word")
+    func semicolonIsProsePunctuation() throws {
+        for configuration in Self.configurations {
+            #expect(try Self.field("cd anh; tar xf a ", configuration).field.string == "cd anh; tả xf a ")
         }
     }
 

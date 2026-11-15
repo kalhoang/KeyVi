@@ -57,3 +57,5 @@ CO049	Telex	code	echo\s"xin\schaof"\s|\star\s	echo\s"xin\schào"\s|\star\s	-	ENG
 CO050	Telex	code	vieejt\s(tar)	việt\s(tả)	-	ENG-R850: brackets and quotes are prose punctuation, not code characters
 CO051	Telex	code	vieejt\sa\sa\sa\star\s	việt\sa\sa\sa\star\s	-	ENG-R850: no Vietnamese word among the previous three tokens of the line
 CO052	Telex	code	vieejt\sand\star\s	việt\sand\star\s	-	ENG-R850: after an English word L9 restores
+CO053	Telex	code	anh.tar\s	anh.tar\s	-	ENG-R850: a word joined to the previous one with no space is a code join, not Vietnamese text (B035i)
+CO054	Telex	code	vieejt.\star\s	việt.\stả\s	-	ENG-R850: punctuation followed by a space is prose, the join rule does not reach it

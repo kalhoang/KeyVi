@@ -117,8 +117,9 @@ separately from the app (spec/04-quality-release.md QA-R27).
   the code context a code-only word is restored only outside Vietnamese text, so `Suwar looxi chinhs tar"`
   commits `Sửa lỗi chính tả"` instead of `Sửa lỗi chính tar"`. A token is in Vietnamese text when a Vietnamese
   word (a `vi` token, or a Vietnamese syllable typed unchanged, the RV4 evidence) stands among the previous
-  three tokens of the line, the previous token is neither English nor a code word shown as typed, and no code
-  character (backquote, `|`, `&`, `$`) follows it; the line is the history, so Return, Tab and a reset start a
+  three tokens of the line, the previous token is neither English nor a code word shown as typed, and the
+  characters between them hold a space and no code character (backquote, `|`, `&`, `$`); a word glued to the
+  previous one with no space is a code join (`cp anh.tar.gz`, `ssh minh@host` keep their keys); the line is the history, so Return, Tab and a reset start a
   new one. `tar -xzf` at the start of a line, `sudo tar`, `echo "xong" | tee` and `ssh -p 22 host` keep the
   keys as typed. The rule only removes L9 restores and does not read `lookaheadRevision`
   (`CommitPolicy.isInVietnameseText`, `CollisionFacts.vietnameseAsTyped`, `CommitContext.inVietnameseText`).
@@ -126,5 +127,5 @@ separately from the app (spec/04-quality-release.md QA-R27).
   commits exactly as in the general context (8 `tả` were restored per typist before), and the W11 corpus keeps
   every Vietnamese-intent collision of the general context (tone last 620 of 623, was 613; tone after the vowel
   501 of 507, was 493); English intent in the code context 550 of 720 (was 559; 548 in the general context).
-  Spec rows B035-B035h and B064a, B064b; `spec/reference-model/boundary.py` models the rule (`CODE_RUNS`);
+  Spec rows B035-B035i and B064a, B064b; `spec/reference-model/boundary.py` models the rule (`CODE_RUNS`);
   `ProseCorpusCheck.run` takes an `appContext`.

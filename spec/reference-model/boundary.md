@@ -43,6 +43,7 @@
 | B035f | `ta3` | VNI | vi | code | `tả` | L7 raw not English: keep |
 | B035g | `mo6 ta3` | VNI | none | code | `mô tả` | L7 raw not English: keep |
 | B035h | `tar` | VNI | none | code | `tar` | L0 output equals the keys typed: nothing to decide |
+| B035i | `anh.tar` | Telex | none | code | `anh.tar` | L9 code context, code-only tech word joined to the previous word with no space: restore |
 | B036 | `Kroong` | Telex | none | general | `Krông` | L6 extended, raw not English: keep |
 | B037 | `DDawsk` | Telex | none | general | `Đắk` | L6 extended, raw not English: keep |
 | B038 | `Pawsc` | Telex | none | general | `Pắc` | L7 raw not English: keep |

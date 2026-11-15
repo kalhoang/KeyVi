@@ -31,6 +31,15 @@ struct CodeContextTests {
         ("vieejt ⟲tar ", "việt tar "),
         ("vieejt a a a tar ", "việt a a a tar "),
         ("ANH tar ", "ANH tar "),
+        // A word glued to the previous one with no space between them is a code join (a file, directory or
+        // user name), not Vietnamese text: `anh.tar.gz`, `anh/tar`, `minh@host`.
+        ("anh.tar ", "anh.tar "),
+        ("anh/tar ", "anh/tar "),
+        ("anh-tar ", "anh-tar "),
+        ("anh@tar ", "anh@tar "),
+        ("anh:tar ", "anh:tar "),
+        ("vieejt.tar ", "việt.tar "),
+        ("vieejt anh.tar ", "việt anh.tar "),
     ]
 
     /// Keys and the field they leave when the last token is in Vietnamese text: a Vietnamese word (a
@@ -51,6 +60,8 @@ struct CodeContextTests {
         ("vieejt. tar ", "việt. tả "),
         ("vieejt, tar ", "việt, tả "),
         ("vieejt - tar ", "việt - tả "),
+        ("vieejt; tar ", "việt; tả "),
+        ("vieejt.\u{00A0}tar ", "việt.\u{00A0}tả "),
     ]
 
     @Test("L9 restores outside Vietnamese text, with and without lookaheadRevision")

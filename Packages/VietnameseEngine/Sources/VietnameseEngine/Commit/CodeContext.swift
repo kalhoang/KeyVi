@@ -12,7 +12,9 @@ extension CommitPolicy {
     /// Reads the line before the token, that is the history (section 10), which starts empty and is cleared by
     /// Return, Tab and a reset. The token is in Vietnamese text when a Vietnamese word stands among the previous
     /// three tokens of the line, the previous token is neither English (ENG-R823) nor a code-only word shown as
-    /// typed, and no code character stands between the previous token and this one. The boundary key that ends
+    /// typed, and the boundary characters between the previous token and this one hold a space and no code
+    /// character. A token glued to the previous one with no space is a code join (`anh.tar.gz`, `minh@host`),
+    /// never prose, where a word is not glued to the next one by `.`, `/` or `@`. The boundary key that ends
     /// the token is not read (P0-3), and neither is `lookaheadRevision` (ENG-R829): the history and the token
     /// languages exist without the collision rules.
     ///
@@ -21,14 +23,18 @@ extension CommitPolicy {
     package func isInVietnameseText(_ history: History) -> Bool {
         var tokens = 0
         var offset = 0
+        var sawSpace = false
         let limit = Self.vietnameseTextWindow * History.entriesPerToken
         while offset < limit, let entry = history.entry(beforeNewest: offset) {
             offset += 1
             switch entry {
             case .boundary(let character):
-                if tokens == 0, Self.isCodeCharacter(character) { return false }
+                if tokens == 0 {
+                    if Self.isCodeCharacter(character) { return false }
+                    if Self.isSpace(character) { sawSpace = true }
+                }
             case .token(let token):
-                if tokens == 0, token.language == .english || showsCodeWord(token) { return false }
+                if tokens == 0, !sawSpace || token.language == .english || showsCodeWord(token) { return false }
                 if token.language == .vietnamese || token.collision.vietnameseAsTyped { return true }
                 tokens += 1
                 if tokens == Self.vietnameseTextWindow { return false }
@@ -39,13 +45,20 @@ extension CommitPolicy {
 
     /// ENG-R850: the characters that mark code between two words, never Vietnamese prose: the backquote (a
     /// Markdown code span, shell command substitution), the vertical bar (a pipe), `&` (`&&`, a background job)
-    /// and `$` (a variable). Quotes, brackets, `.`, `,`, `:`, `;` and the hyphen are prose punctuation.
+    /// and `$` (a variable). Quotes, brackets, `.`, `,`, `:`, `;` and the hyphen are prose punctuation when a
+    /// space follows them.
     @inline(__always)
     static func isCodeCharacter(_ character: Character) -> Bool {
         switch character.asciiValue {
         case 0x60, 0x7C, 0x26, 0x24: return true
         default: return false
         }
+    }
+
+    /// ENG-R850 (c): the space and the no-break space, the characters that separate two words of prose.
+    @inline(__always)
+    static func isSpace(_ character: Character) -> Bool {
+        character == " " || character == "\u{00A0}"
     }
 
     /// The token is a code-only word shown as its keys: typed unchanged or restored (`sudo`); a code-only word

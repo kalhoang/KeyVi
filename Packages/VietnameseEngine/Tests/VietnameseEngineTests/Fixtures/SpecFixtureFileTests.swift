@@ -4,7 +4,7 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Integrity of the corpus files extracted from spec 13.8 to 13.10 by
-/// Scripts/extract-spec-examples.py (304 + 82 + 9 rows), and of the 13.9 fixture resources.
+/// Scripts/extract-spec-examples.py (304 + 83 + 9 rows), and of the 13.9 fixture resources.
 @Suite("Spec fixture files (13.8 to 13.10)")
 struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
@@ -48,17 +48,17 @@ struct SpecFixtureFileTests {
 
     @Test func commitDecisions() throws {
         let rows = try SpecExamples.commitDecisions(tsv: CorpusFiles.text(SpecExamples.commitDecisionsFile))
-        #expect(rows.count == 82)
-        // Lettered rows follow the row they extend: B035a-B035h and B064a, B064b (ENG-R850, REG-35, 15/11/2026).
-        let lettered: [Int: String] = [35: "abcdefgh", 64: "ab"]
+        #expect(rows.count == 83)
+        // Lettered rows follow the row they extend: B035a-B035i and B064a, B064b (ENG-R850, REG-35, 15/11/2026).
+        let lettered: [Int: String] = [35: "abcdefghi", 64: "ab"]
         let expectedIDs = (1...72).flatMap { number -> [String] in
             let id = "B" + String(repeating: "0", count: 3 - String(number).count) + String(number)
             return [id] + (lettered[number] ?? "").map { id + String($0) }
         }
         #expect(rows.map(\.id) == expectedIDs)
-        #expect(rows.prefix(60).allSatisfy { $0.boundary == " " })
+        #expect(rows.prefix(61).allSatisfy { $0.boundary == " " })
         #expect(
-            rows[60..<74].map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n", "\"", "\""])
+            rows[61..<75].map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n", "\"", "\""])
         // 13.9.2 (ENG-R823, REG-32): a whole run of tokens per row, from an empty field.
         #expect(rows.suffix(8).map(\.boundary) == [".", ".", " ", " ", " ", " ", " ", " "])
         #expect(rows.suffix(8).allSatisfy { $0.previous == .none && $0.keys.contains(" ") })

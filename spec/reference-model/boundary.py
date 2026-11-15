@@ -43,16 +43,18 @@ def run_is_english(window):
     return "en" in last and "vi" not in last
 # ENG-R850 as amended on 15/11/2026 (REG-35): rule L9 restores a code-only word only outside Vietnamese text. The
 # line is the history: it starts empty and Return, Tab and a reset clear it. Each entry of `line` is (language, a
-# Vietnamese syllable typed unchanged, a code-only word shown as typed, code character after it).
+# Vietnamese syllable typed unchanged, a code-only word shown as typed, code character after it, no space after it:
+# the next word is glued to it, a code join such as `anh.tar.gz` or `minh@host`).
 CODE_CHARACTERS = set("`|&$")
+SPACES = set(" \u00a0")
 def vietnamese_as_typed(keys, C, reason):
     return (reason == "unchanged" and validity(C) == "A" and keys.lower() not in EN and keys.lower() not in TECH
             and len(keys) >= 2 and keys.isalpha() and not (keys.isupper() and len(keys) > 1))
 def in_vietnamese_text(line):
     if not line: return False
-    language, _, code_word, code_after = line[-1]
-    if language == "en" or code_word or code_after: return False
-    return any(lang == "vi" or as_typed for lang, as_typed, _, _ in line[-3:])
+    language, _, code_word, code_after, joined = line[-1]
+    if language == "en" or code_word or code_after or joined: return False
+    return any(lang == "vi" or as_typed for lang, as_typed, _, _, _ in line[-3:])
 def type_run(text, cfg=None, context="general"):
     """Types `text` from an empty field: runs of ASCII letters are tokens, every other character is a boundary
     (9.2). Returns the field and the reason of the last decided token."""
@@ -65,10 +67,11 @@ def type_run(text, cfg=None, context="general"):
             window.append(lang_of_decision(C, reason))
             shown_as_typed = reason == "unchanged" or reason.startswith("restored")
             line.append((window[-1], vietnamese_as_typed(token, C, reason),
-                         shown_as_typed and token.lower() in CODE_ONLY, False))
+                         shown_as_typed and token.lower() in CODE_ONLY, False, False))
             out += C
-        if line and any(ch in CODE_CHARACTERS for ch in boundary):
-            line[-1] = line[-1][:3] + (True,)
+        if line and token:
+            line[-1] = line[-1][:3] + (any(ch in CODE_CHARACTERS for ch in boundary),
+                                       not any(ch in SPACES for ch in boundary))
         if "\n" in boundary or "\t" in boundary:
             line = []
         out += boundary
@@ -90,7 +93,7 @@ RUNS = [
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
     ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
 ]
-# 01-engine.md 13.9 rows B035 to B035e and 13.9.1 rows B064a and B064b (Telex, code context, from an empty field;
+# 01-engine.md 13.9 rows B035 to B035e and B035i and 13.9.1 rows B064a and B064b (Telex, code context, from an empty field;
 # the seed tokens `vieejt` and `and` stand for the previous token `vi` and `en`), and the sentences of ENG-R850.
 CODE_RUNS = [
     ("tar ", "tar ", "restored: code context, tech word"),
@@ -107,6 +110,11 @@ CODE_RUNS = [
     ('echo "xin chaof" | tar ', 'echo "xin chào" | tar ', "restored: code context, tech word"),
     ("vieejt (tar)", "việt (tả)", "kept: default vi"),
     ("vieejt a a a tar ", "việt a a a tar ", "restored: code context, tech word"),
+    ("anh.tar ", "anh.tar ", "restored: code context, tech word"),
+    ("anh@tar ", "anh@tar ", "restored: code context, tech word"),
+    ("vieejt anh/tar ", "việt anh/tar ", "restored: code context, tech word"),
+    ("vieejt. tar ", "việt. tả ", "kept: default vi"),
+    ("vieejt; tar ", "việt; tả ", "kept: default vi"),
 ]
 # Collision rules at commit (15/11/2026): L9a boundary particle (ENG-R825), L9b phrase looking back (ENG-R826), the
 # `run: vi` exemption of L10 and the English-lean window (ENG-R823, ENG-R827), with small fixture lists on top of the
