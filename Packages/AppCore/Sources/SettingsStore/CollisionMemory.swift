@@ -322,15 +322,19 @@ public struct CollisionMemory: Sendable, Hashable {
         CollisionMemory(entries: entries.filter { $0.key.word != word })
     }
 
-    /// Import (PRD-R72): counters of the same entry are added (acceptances capped), class masks joined, days kept
-    /// at the later one; then the cap applies.
+    /// Import (PRD-R72): counters of the same entry are added after both are aged to the later decay day
+    /// (acceptances capped), class masks joined, days kept at the later one; then the cap applies.
     public func merging(_ other: CollisionMemory) -> CollisionMemory {
         var merged = entries
-        for (key, incoming) in other.entries {
-            guard var entry = merged[key] else {
-                merged[key] = incoming
+        for (key, theirs) in other.entries {
+            guard let mine = merged[key] else {
+                merged[key] = theirs
                 continue
             }
+            // Both are aged to the later decay day first, so counters keep their own age.
+            let day = max(mine.decayDay, theirs.decayDay)
+            var entry = Self.aged(mine, to: day)
+            let incoming = Self.aged(theirs, to: day)
             for side in CollisionMemorySide.allCases {
                 entry.corrections[side] += incoming.corrections[side]
                 entry.acceptances[side] = min(entry.acceptances[side] + incoming.acceptances[side], Self.acceptanceCap)

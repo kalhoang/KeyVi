@@ -220,6 +220,20 @@ private let vietnameseClasses = CollisionMemoryContext.afterVietnamese.bit | Col
         #expect(merged?.lastDay == 9)
     }
 
+    /// Imported counters keep their age: both entries are aged to the later decay day before they are added, so an
+    /// old correction from a file does not count in full on the newer entry's clock (research section 4 decay).
+    @Test func mergingAgesBothSidesToTheLaterDecayDayFirst() {
+        let key = CollisionMemoryKey(word: "as", context: .afterVietnamese)
+        let mine = CollisionMemory(entries: [key: entry(english: 1, day: 1_000)])
+        let theirs = CollisionMemory(entries: [key: entry(vietnamese: 2, day: 0)])
+        let merged = mine.merging(theirs).aged(to: 1_000).entries[key]
+        #expect(merged?.corrections.english == 1)
+        #expect((merged?.corrections.vietnamese ?? 1) < 0.01, "eleven halvings of 2, not 2")
+        #expect(merged?.decayDay == 1_000)
+        let reversed = theirs.merging(mine).aged(to: 1_000).entries[key]
+        #expect(reversed?.corrections == merged?.corrections)
+    }
+
     @Test func removingOneRowOrAWord() {
         let memory = CollisionMemory.empty.applying([signal("as", .afterVietnamese, .vietnamese)], day: 1)
         #expect(memory.removing(CollisionMemoryKey(word: "as", context: nil)).count == 1)
