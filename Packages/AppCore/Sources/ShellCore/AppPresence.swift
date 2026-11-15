@@ -46,12 +46,26 @@ public enum AppPresence: Sendable, Hashable {
         windows.contains { $0.isUserWindow && $0.isOpen } ? .regular : .menuBarOnly
     }
 
-    /// A click on the Dock icon with no window on screen: AppKit brings back a window the user left in the Dock;
-    /// with none (the user kept the icon in the Dock), the app opens Settings, as the menu's "Cài đặt..." does.
-    public static func reopenOpensSettings(windows: [UserWindowTraits], hasVisibleWindows: Bool) -> Bool {
-        guard !hasVisibleWindows else { return false }
-        return !windows.contains { $0.isUserWindow && $0.isMiniaturized }
+    /// A click on the Dock icon: nothing to do while a user window is on screen; otherwise the app brings back the
+    /// first window the user left in the Dock, and with none (the user kept the icon in the Dock) it opens Settings,
+    /// as the menu's "Cài đặt..." does. Decided from the app's own windows: AppKit's "has visible windows" flag also
+    /// counts panels such as the switch HUD, and would leave a minimized Settings in the Dock while one is shown.
+    public static func dockReopenAction(windows: [UserWindowTraits]) -> DockReopenAction {
+        if windows.contains(where: { $0.isUserWindow && $0.isVisible }) { return .none }
+        if let index = windows.firstIndex(where: { $0.isUserWindow && $0.isMiniaturized }) {
+            return .restoreMinimizedWindow(at: index)
+        }
+        return .openSettings
     }
+}
+
+/// What a click on the Dock icon does (PRD-R28).
+public enum DockReopenAction: Sendable, Hashable {
+    /// A user window is on screen: the click only activates the app.
+    case none
+    /// Bring back the window at this index of the list the decision was made from.
+    case restoreMinimizedWindow(at: Int)
+    case openSettings
 }
 
 /// The application's activation policy, behind a protocol so the coordinator is tested without AppKit.
@@ -59,13 +73,18 @@ public enum AppPresence: Sendable, Hashable {
 public protocol ActivationPolicyApplying: AnyObject {
     var presence: AppPresence { get }
     func apply(_ presence: AppPresence)
+    /// Called right after the app returned to the menu bar. If the app is still the active app (the user closed its
+    /// last window), activation goes to the app that was in front before, so the menu bar and the keyboard do not
+    /// stay with a menu-bar app that has no window. It never activates this app.
+    func yieldActivation()
 }
 
 /// Keeps the activation policy in line with the open windows. `update()` decides at once (before the app activates
 /// for a window it shows, when a window becomes key or comes back from the Dock); `scheduleUpdate()` decides on the
 /// next main-queue turn (a window closes or resigns key), when a closed window is gone and a window opened by the same
 /// action is on screen, so closing Settings while Diagnostics opens does not flash the Dock icon. Nothing changes
-/// while the app is hidden (Command+H): the Dock icon and Command+Tab are how the user brings it back.
+/// while the app is hidden (Command+H): the Dock icon and Command+Tab are how the user brings it back. Returning to
+/// the menu bar hands activation back (`ActivationPolicyApplying.yieldActivation`).
 @MainActor
 public final class AppPresenceCoordinator {
     private let policy: any ActivationPolicyApplying
@@ -90,6 +109,7 @@ public final class AppPresenceCoordinator {
         let presence = AppPresence.presence(for: windows())
         guard policy.presence != presence else { return }
         policy.apply(presence)
+        if presence == .menuBarOnly { policy.yieldActivation() }
     }
 
     public func scheduleUpdate() {

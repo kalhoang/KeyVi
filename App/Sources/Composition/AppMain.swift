@@ -37,10 +37,11 @@ final class AppMain: NSObject, NSApplicationDelegate {
         environment.start()
     }
 
-    /// A click on the Dock icon (PRD-R28): AppKit brings back a window left in the Dock; with none, Settings opens.
+    /// A click on the Dock icon (PRD-R28): the app brings back a window left in the Dock, or opens Settings when
+    /// none is open. AppKit's own reopen handling is never needed, since its flag also counts panels.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        guard windowPresence?.reopenOpensSettings(hasVisibleWindows: flag) == true else { return true }
-        environment?.showSettingsFromMainMenu()
+        guard let windowPresence else { return true }
+        if windowPresence.handleDockReopen() { environment?.showSettingsFromMainMenu() }
         return false
     }
 

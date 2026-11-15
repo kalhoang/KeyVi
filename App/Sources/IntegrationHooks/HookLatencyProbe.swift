@@ -52,8 +52,9 @@ final class HookLatencyProbe: NSObject, NSTextViewDelegate {
             window.close()
             self.driver = nil
         }
-        NSApp.bringToFront()
+        // Ordered front first, so the app is a regular app before it activates (PRD-R28, `bringToFront`).
         window.makeKeyAndOrderFront(nil)
+        NSApp.bringToFront()
         window.makeFirstResponder(text)
         try? await Task.sleep(nanoseconds: Self.focusDelay.unsignedNanoseconds)
         guard window.isKeyWindow, window.firstResponder === text else { return .interrupted }
