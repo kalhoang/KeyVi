@@ -54,7 +54,7 @@ import Testing
     static let remoteClients: [App] = [
         "com.microsoft.rdc.macos", "com.p5sys.jump.mac.viewer.web", "com.realvnc.vncviewer",
         "com.realvnc.rvncconnect", "tv.parsec.www", "com.teamviewer.TeamViewer", "com.philandro.anydesk",
-        "com.apple.ScreenSharing",
+        "com.apple.ScreenSharing", "com.carriez.rustdesk",
     ].map { App($0, rule: "remote.passThrough") }
 
     static let excluded = terminals + vscodeFamily + jetBrains + editors + remoteClients

@@ -95,6 +95,7 @@
     { "bundleId": "tv.parsec.www", "displayName": "Parsec", "category": "remote", "ruleId": "remote.passThrough", "status": "notVerified", "issues": [] },
     { "bundleId": "com.teamviewer.TeamViewer", "displayName": "TeamViewer", "category": "remote", "ruleId": "remote.passThrough", "status": "notVerified", "issues": [] },
     { "bundleId": "com.philandro.anydesk", "displayName": "AnyDesk", "category": "remote", "ruleId": "remote.passThrough", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.carriez.rustdesk", "displayName": "RustDesk", "category": "remote", "ruleId": "remote.passThrough", "status": "notVerified", "issues": [] },
     { "bundleId": "org.freeplane.launcher", "displayName": "Freeplane (Java)", "category": "notes", "ruleId": "jvm.default", "status": "notVerified", "issues": [] }
   ]
 }

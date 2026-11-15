@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.7",
+  "rulesetVersion": "2026.11.8",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -415,7 +415,7 @@
           "com.microsoft.rdc.macos", "com.apple.ScreenSharing", "com.apple.ScreenContinuity",
           "com.parallels.desktop.console", "com.vmware.fusion", "com.utmapp.UTM", "com.philandro.anydesk",
           "com.teamviewer.TeamViewer", "com.p5sys.jump.mac.viewer.web", "com.realvnc.vncviewer",
-          "com.realvnc.rvncconnect", "tv.parsec.www"
+          "com.realvnc.rvncconnect", "tv.parsec.www", "com.carriez.rustdesk"
         ]
       },
       "action": {
@@ -428,7 +428,7 @@
         "reason": "Clients translate keycodes; injected text arrives as wrong letters ('a' for everything) or nothing.",
         "evidence": [{ "type": "scenario", "ref": "compat/remote-clients" }],
         "tested": [{ "app": "Screen Sharing", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY the iPhone Mirroring bundle ID. Users may opt into the 'paste' strategy per app. Escape belongs to the remote session, so the restore hotkey is off (PLT-R353). Bundle IDs from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): windows-app com.microsoft.rdc.macos (Microsoft Remote Desktop kept the ID when it became Windows App), jump-desktop com.p5sys.jump.mac.viewer.web, realvnc-connect-viewer com.realvnc.rvncconnect and the older VNC Viewer com.realvnc.vncviewer, parsec tv.parsec.www, teamviewer com.teamviewer.TeamViewer, anydesk com.philandro.anydesk. Screens 5 (Edovia) is App Store only with no public bundle ID yet, so it is not listed (VERIFY). The tested entry is a placeholder until the scenario passes.",
+        "notes": "VERIFY the iPhone Mirroring bundle ID. Users may opt into the 'paste' strategy per app. Escape belongs to the remote session, so the restore hotkey is off (PLT-R353). Bundle IDs from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): windows-app com.microsoft.rdc.macos (Microsoft Remote Desktop kept the ID when it became Windows App), jump-desktop com.p5sys.jump.mac.viewer.web, realvnc-connect-viewer com.realvnc.rvncconnect and the older VNC Viewer com.realvnc.vncviewer, parsec tv.parsec.www, teamviewer com.teamviewer.TeamViewer, anydesk com.philandro.anydesk. RustDesk com.carriez.rustdesk (added 2026-11-15: the bundle ID the product owner's dev traces recorded for the RustDesk client). Screens 5 (Edovia) is App Store only with no public bundle ID yet, so it is not listed (VERIFY). The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-11-01"
       },
