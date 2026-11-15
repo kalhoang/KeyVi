@@ -221,7 +221,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R911 | No retained engine state or raw keys | `KeyPipeline` | U, review | W1-F1 |  |
 | PLT-R912 | Settings import treated as untrusted | `SettingsStore.previewImport` | U (malformed and fuzzed files) | W1-B |  |
 | PLT-R913 | Reports include only the reported app memory | `ReportAssembler` | U | W1-G |  |
-| PLT-R914 | Collision memory file, validation against the bundled list, thresholds, decay, cap, export and import, nothing recorded in secure contexts or with D28 off, weak signals dropped at a reset | `CollisionMemory`, `CollisionMemoryStore` (SettingsStore), `InputHostController+Notices` (`noteCollisionSignals`), `TapSettingsPublisher.collisionMemoryChanged`, `LearningTracker` (ENG-R862 amendment) | U (`CollisionMemoryTests`, `CollisionMemoryStoreTests`, `CollisionSignalRoutingTests`, `LearnedCollisionEntriesReportTests`) | W11-B |  |
+| PLT-R914 | Collision memory file, validation against the bundled list, thresholds, decay, cap, export and import, nothing recorded in secure contexts or with D28 off, weak signals dropped at a reset | `CollisionMemory`, `CollisionMemoryStore` (SettingsStore), `InputHostController+Notices` (`noteCollisionSignals`), `TapSettingsPublisher.collisionMemoryChanged`, `LearningTracker` (ENG-R862 amendment) | U (`CollisionMemoryTests`, `CollisionMemoryStoreTests`, `CollisionSignalRoutingTests`, `LearnedCollisionEntriesReportTests`, `CollisionMemoryStoreParityTests`) | W11-B, W16-A |  |
 | PLT-R1001 | Settings location and four files | `SettingsStore`, `StorageLocation`, `Brand` | U | W1-B |  |
 | PLT-R1002 | schemaVersion, writtenBy, unknown keys preserved | `DocumentEnvelope` | U | W1-B |  |
 | PLT-R1003 | Atomic, debounced, serialized writes | `SettingsStore`, `LocalFileSystem` | U | W1-B |  |
@@ -345,14 +345,14 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R69 | No silent reading of other apps' data | `MacroImporter` (user-chosen files only) | D, L | W1-B |  |
 | PRD-R70 | Tolerant importers | `MacroImporter` | U | W1-B |  |
 | PRD-R71 | Website migration pages | `site/` | D | site track |  |
-| PRD-R72 | Own export format | `SettingsStore` export | U | W1-B |  |
+| PRD-R72 | Own export format; the learned words of the import counted only when importable (skipped ones counted), unavailable while the memory is not loaded (amended 15/11/2026) | `SettingsStore` export, `CollisionMemoryImportPreview`, `ImportSummary` (ShellCore), import sheet | U (`CollisionMemoryTransferTests`, `LearnedChoicesPaneTests`, `SpecDraftCopyTests`) | W1-B, W16-A |  |
 | PRD-R73 | Website pages | `site/`, served by the `deploy/site` container (ADR 0602) | D, U (`node site/test.mjs`) | site track |  |
 | PRD-R74 | No trackers on the website | `site/`; optional cookieless self-hosted Umami only when `site/config.json` configures it (Pa, 2026-11-13, Q7; ADR 0602 decision 7), never in the app or on release-notes pages | U (`node site/test.mjs`: no third-party origin without the config, only the Umami origin with it) | site track; Pa decision |  |
 | PRD-R75 | Appcast host over HTTPS on a Pa-controlled domain | `deploy/site` on the Kalera Docker Swarm behind Traefik and Cloudflare (ADR 0602, [site deploy](../runbooks/site-deploy.md)), `Config/Sparkle.xcconfig` | R, U (`node deploy/site/test.mjs`), M (first deploy) | release track; Pa | **Pa** |
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |
 | PRD-R77 | No in-app survey, rating prompt or usage counter | all UI | D | all UI workstreams |  |
-| PRD-R78 | Learned-words sheet: entries that vote, rendered in D2, remove per row and `Xóa tất cả`, D8 key in the empty state, cleared by the Typing and full resets | `App/Sources/Settings/LearnedChoicesSheet.swift`, `SettingsWindowModel+LearnedChoices`, `LearnedChoices` (ShellCore), `CollisionMemoryStore.learnedChoices` | U (`LearnedChoicesPaneTests`), M | W11-C | **Pa** |
-| PRD-R79 | Copy of D28, D29 and the learned-words sheet | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`), L (l10n lint) | W11-C; Pa (copy review before v1) | **Pa** |
+| PRD-R78 | Learned-words sheet: entries that vote, rendered in D2, remove per row and `Xóa tất cả`, D8 key in the empty state, cleared by the Typing and full resets; one line and no edit while the memory is not loaded | `App/Sources/Settings/LearnedChoicesSheet.swift`, `SettingsWindowModel+LearnedChoices`, `LearnedChoices` (ShellCore; `LearnedChoicesSheetState.isUnavailable`), `SettingsCommands.learnedChoices`, `CollisionMemoryStore.learnedChoices` | U (`LearnedChoicesPaneTests`), M | W11-C, W16-A | **Pa** |
+| PRD-R79 | Copy of D28, D29 and the learned-words sheet, including the line shown when the memory is not loaded | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`), L (l10n lint) | W11-C, W16-A; Pa (copy review before v1) | **Pa** |
 
 ## 04-quality-release.md (QA-R)
 
