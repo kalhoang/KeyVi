@@ -216,7 +216,8 @@ struct RuleChecks {
 
     /// PLT-R357: `lookaheadRevision: true` only with `backspaceReplace` or `selectReplace` (resolution turns it off
     /// anyway, so the file would say something it does not do); and where the restore key is off the flag must be
-    /// off too, because the restore key is how a revision is undone (PLT-R353, ENG-R829).
+    /// off too, because the restore key is how a revision is undone (PLT-R353, ENG-R829); and a code-context rule
+    /// needs one of those strategies, because RV5 revises there whatever the flag says (ENG-R828).
     private func revisionFindings() -> [LintFinding] {
         let features = rule.action.features
         var findings: [LintFinding] = []
@@ -235,6 +236,14 @@ struct RuleChecks {
                 finding(
                     .error, .lookaheadRevisionWithoutRestoreHotkey,
                     "restoreHotkey is false, so lookaheadRevision must be false too"))
+        }
+        // RV5 of ENG-R828 is gated by D29 alone (`EngineConfiguration.lineStartRevision`), not by the flag, so a
+        // code-context rule must ride on a strategy that carries a revision.
+        if rule.action.engineContext == .code, !DecisionBuilder.revisionStrategies.contains(rule.action.strategy) {
+            findings.append(
+                finding(
+                    .error, .codeContextWithoutEditStrategy,
+                    "engineContext code needs strategy backspaceReplace or selectReplace"))
         }
         return findings
     }

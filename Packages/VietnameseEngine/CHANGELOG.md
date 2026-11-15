@@ -134,10 +134,14 @@ separately from the app (spec/04-quality-release.md QA-R27).
   gave `Tar thử cái này`); once the next word shows the line is Vietnamese text, the word takes the display the rules
   after L9 give it, as in the general context (`Tả thử cái này`, reason `lineVietnamese`, the token becomes neutral,
   the restore toggle right after undoes it). Guards: the word was restored by L9 as the first thing typed on its line
-  (empty history: start of input, Return, Tab, reset), the rules after L9 keep its Vietnamese display with its own run
+  (empty history: start of input, Return, Tab, a reset, also in the middle of a line, or a Backspace that
+  emptied the line), the rules after L9 keep its Vietnamese display with its own run
   and window (never an `en` row, L10 or a learned English vote), one space follows it, the next word is kept by L7 with
   a Vietnamese-only letter (an unchanged syllable is not evidence: `host minh`) and is committed by a space, Return,
-  `,`, `!` or `?` (`tee nhật.log`, `tee nhật-ký.log` and Tab keep the command). New public switch
+  `,`, `!` or `?` (`tee nhật.log`, `tee nhật-ký.log` and Tab keep the command). A word that starts with a capital and
+  is not all caps starts a sentence (shell commands are lowercase): the next word may then be RV4's whole evidence, a
+  syllable typed unchanged too (`Tee tay quas` gives `Tê tay quá`, `Host minh` gives `Hót minh`), and may end with `.`
+  (`Tar thuwr.` gives `Tả thử.`; `RevisionEvidence.isSentenceCapital`). New public switch
   `EngineConfiguration.lineStartRevision` (default on, independent of `lookaheadRevision`, which the rules turn off in
   every code-context app; the host passes D29) and `RevisionReason.lineVietnamese` (`CommitPolicy.lineStartRevision`,
   `CollisionFacts.vietnameseAtLineStart`, `CommitPolicy.keepsVietnameseAfterCodeRule`). With the bundled data RV5
@@ -146,4 +150,4 @@ separately from the app (spec/04-quality-release.md QA-R27).
   context; Vietnamese intent unchanged (620 of 623, 501 of 507); with `lookaheadRevision` off, as the rules of
   terminals set it, RV5 fires once in the corpus (the same CS0571; English intent 423 of 720, was 424); the
   general-context numbers do not move. Spec rows
-  B035j-B035l and table 13.9.4 (K01-K12); `spec/reference-model/boundary.py` models RV5.
+  B035j-B035l and table 13.9.4 (K01-K16); `spec/reference-model/boundary.py` models RV5.

@@ -362,6 +362,41 @@ class LookaheadRevisionLintTests(TempDirTestCase):
     def test_the_shipped_rules_pass(self):
         result = py("check-rules.py", "--matrix", str(self.tmp / "missing-matrix.json"))
         self.assertNotIn("lookaheadRevision", result.stderr)
+        self.assertNotIn(self.CODE_CONTEXT_CODE, result.stderr)
+
+    CODE_CONTEXT_CODE = "codeContextWithoutEditStrategy"
+    CODE_CONTEXT_MESSAGE = "engineContext code needs strategy backspaceReplace or selectReplace"
+
+    def test_the_code_context_needs_an_edit_strategy(self):
+        """PLT-R357: RV5 of ENG-R828 runs in the code context whatever `lookaheadRevision` says (D29 alone), so a code
+        context rule must use a strategy that carries a revision."""
+        for strategy in ("axReplace", "paste", "passThrough"):
+            with self.subTest(strategy=strategy):
+                result = self.lint_action({"strategy": strategy, "engineContext": "code"})
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(f"error: rule terminal.default: {self.CODE_CONTEXT_CODE}: {self.CODE_CONTEXT_MESSAGE}",
+                              result.stderr)
+        for strategy in ("backspaceReplace", "selectReplace"):
+            with self.subTest(strategy=strategy):
+                result = self.lint_action({"strategy": strategy, "engineContext": "code"})
+                self.assertEqual(result.returncode, 0, result.stderr)
+        for action in ({"strategy": "axReplace", "engineContext": "general"}, {"strategy": "axReplace"}):
+            with self.subTest(action=action):
+                self.assertNotIn(self.CODE_CONTEXT_CODE, self.lint_action(action).stderr)
+
+    def test_the_code_context_code_and_message_are_the_swift_linters(self):
+        engine = (REPO / "Packages/AppCore/Sources/CompatRules/LintEngine.swift").read_text(encoding="utf-8")
+        lint = (REPO / "Packages/AppCore/Sources/CompatRules/Lint.swift").read_text(encoding="utf-8")
+        self.assertRegex(lint, rf"\bcase {self.CODE_CONTEXT_CODE}\b")
+        self.assertRegex(engine, rf'\.{self.CODE_CONTEXT_CODE},\s*"{re.escape(self.CODE_CONTEXT_MESSAGE)}"')
+
+    def lint_action(self, action: dict):
+        if action["strategy"] == "paste":
+            action = {**action, "requiresUserOptIn": True}
+        rules = self.write_json("rules.json", rules_doc(good_rule(action=action)))
+        schema = self.write_json("schema.json", {"type": "object"})
+        return py("check-rules.py", "--rules", str(rules), "--schema", str(schema), "--today", "2026-11-13",
+                  "--matrix", str(self.tmp / "missing-matrix.json"))
 
 
 class ForwardDeleteTests(TempDirTestCase):

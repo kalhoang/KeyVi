@@ -91,10 +91,13 @@ struct CommitDecisionTests {
         // unrestored text, B064).
         for boundary in Self.boundaries(for: row.method) {
             let (text, output, driver) = try Self.run(row, boundary: boundary.input)
-            // RV5 of ENG-R828 (B035j) revises the token before only at a space, Return, `,`, `!` or `?`; at any
-            // other key the line keeps what it shows without RV5 (13.9.1).
+            // RV5 of ENG-R828 (B035j) revises the token before only at a space, Return, `,`, `!` or `?`, and `.`
+            // after a sentence capital (`Tar`); at any other key the line keeps what it shows without RV5 (13.9.1).
             let revises = output.revision == .lineVietnamese
-            if row.ruleText.contains("RV5 revises"), !CommitPolicy.confirmsVietnameseLine(boundary.input.character) {
+            let sentence = RevisionEvidence.isSentenceCapital(row.keys)
+            if row.ruleText.contains("RV5 revises"),
+                !CommitPolicy.confirmsVietnameseLine(boundary.input.character, afterSentenceCapital: sentence)
+            {
                 var plain = row.configuration
                 plain.lineStartRevision = false
                 let unrevised = try Self.run(row, boundary: boundary.input, configuration: plain).text

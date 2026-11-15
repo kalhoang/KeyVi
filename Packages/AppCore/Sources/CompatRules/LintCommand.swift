@@ -215,6 +215,7 @@ extension LintCode {
         case .pasteWithoutOptIn: "paste without requiresUserOptIn (PLT-R460)"
         case .lookaheadRevisionWithoutEditStrategy: "lookaheadRevision on a strategy that cannot carry it (PLT-R357)"
         case .lookaheadRevisionWithoutRestoreHotkey: "lookaheadRevision where the restore key is off (PLT-R357)"
+        case .codeContextWithoutEditStrategy: "engineContext code on a strategy that cannot carry a revision (PLT-R357)"
         }
     }
 }

@@ -51,6 +51,11 @@ struct LineStartRevisionTests {
         for (keys, text) in [
             ("vieejt\ntar thuwr ", "việt\ntả thử "), ("vieejt\ttar thuwr ", "việt\ttả thử "),
             ("vieejt \u{27F2}tar thuwr ", "việt tả thử "), ("tar thuwr\ntar thuwr ", "tả thử\ntả thử "),
+            // The condition is the engine's empty history, so a Backspace that empties the line starts it again,
+            // and so does a reset in the middle of a line (a click, a focus change), L9's own blind spot after a
+            // reset (ENG-R850 known costs).
+            ("sudo \u{232B}\u{232B}\u{232B}\u{232B}\u{232B}tar thuwr ", "tả thử "),
+            ("sudo \u{27F2}tar thuwr ", "sudo tả thử "),
         ] {
             #expect(try Committing.text(keys, Self.terminal) == text, "\(keys.debugDescription)")
         }
@@ -76,7 +81,8 @@ struct LineStartRevisionTests {
         for (keys, text) in [
             ("tar xf ", "tar xf "),  // an option
             ("tar test ", "tar test "),  // English
-            ("tar anh ", "tar anh "),  // a syllable typed unchanged: a host, user or branch name
+            // A lowercase word before a syllable typed unchanged: a host, user or branch name.
+            ("tar anh ", "tar anh "),
             ("tar car ", "tar car "),  // a collision word, restored by the English run after `tar`
             ("tar Kroong ", "tar Krông "),  // Tier B (L6)
             ("tar ddc ", "tar đc "),  // no vowel (L3)
@@ -97,6 +103,39 @@ struct LineStartRevisionTests {
         }
         #expect(try Committing.text("tar nhaatj-kys ", Self.terminal) == "tar nhật-ký ")
         #expect(try Committing.text("tar nhaatj.log ", Self.terminal) == "tar nhật.log ")
+    }
+
+    @Test("A capital starts a sentence: a syllable typed unchanged and a closing period also confirm the line")
+    func sentenceCapital() throws {
+        // Shell commands are typed in lowercase, a sentence starts with a capital (ENG-R828 RV5, review of
+        // 16/11/2026): after a capitalised word t+1 may be RV4's whole evidence and its key may be `.`.
+        for (keys, text) in [
+            ("Tar anh ", "Tả anh "), ("Tar tay ", "Tả tay "), ("Tar anh\n", "Tả anh\n"), ("Tar anh,", "Tả anh,"),
+            ("Tar thuwr.", "Tả thử."), ("Tar anh.", "Tả anh."), ("Tar anh thuwr ", "Tả anh thử "),
+        ] {
+            let driver = try Committing.driver(keys, Self.terminal)
+            #expect(driver.field.string == text, "\(keys.debugDescription)")
+            #expect(Self.revisions(driver) == [.lineVietnamese], "\(keys.debugDescription)")
+        }
+        for (keys, text) in [
+            ("tar anh ", "tar anh "), ("tar thuwr.", "tar thử."),  // lowercase: a command line
+            ("TAR anh ", "TAR anh "), ("TAR thuwr.", "TAR thử."),  // all caps is not a sentence capital
+            ("Tar test ", "Tar test "),  // English
+            ("Tar ANH ", "Tar ANH "),  // an all-caps syllable is not evidence (RV4)
+            ("Tar a ", "Tar a "),  // one letter is not evidence (RV4)
+            ("Tar xf ", "Tar xf "),  // not Vietnamese
+            ("Tar anh-", "Tar anh-"), ("Tar thuwr/", "Tar thử/"), ("Tar thuwr\t", "Tar thử\t"),  // a file name
+            ("Tar anh:", "Tar anh:"), ("Tar anh;", "Tar anh;"),
+        ] {
+            let driver = try Committing.driver(keys, Self.terminal)
+            #expect(driver.field.string == text, "\(keys.debugDescription)")
+            #expect(Self.revisions(driver).isEmpty, "\(keys.debugDescription)")
+        }
+        // All caps with a Vietnamese-only letter is the lowercase case: revised at a space, not at `.`.
+        #expect(try Committing.text("TAR THUWR ", Self.terminal) == "TẢ THỬ ")
+        #expect(RevisionEvidence.isSentenceCapital("Tar") && RevisionEvidence.isSentenceCapital("TAr"))
+        #expect(!RevisionEvidence.isSentenceCapital("tar") && !RevisionEvidence.isSentenceCapital("TAR"))
+        #expect(!RevisionEvidence.isSentenceCapital("T") && !RevisionEvidence.isSentenceCapital(""))
     }
 
     @Test("Guard: the word is followed by exactly one space, and nothing happens between the two commits")

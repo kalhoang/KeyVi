@@ -58,8 +58,13 @@ def in_vietnamese_text(line):
 # RV5 of ENG-R828 (16/11/2026, REG-36): a code-only word that L9 restored as the first thing typed on its line takes
 # its Vietnamese display when the next word is kept by L7 with a Vietnamese-only letter and is committed by a space,
 # Return, `,`, `!` or `?`, provided the rules after L9 (as in `general`, with its own window) keep that display and
-# exactly one space separates the two words. `line_start_revision` stands for `EngineConfiguration.lineStartRevision`.
+# exactly one space separates the two words. A capital that starts a sentence (`Tar`, never a shell command) widens
+# the evidence to RV4's (also a Vietnamese syllable typed unchanged) and the keys to `.` as well.
+# `line_start_revision` stands for `EngineConfiguration.lineStartRevision`.
 LINE_CONFIRMING_KEYS = set(" \n,!?")
+SENTENCE_CONFIRMING_KEYS = LINE_CONFIRMING_KEYS | {"."}
+def sentence_capital(keys):
+    return keys[:1].isupper() and any(ch.islower() for ch in keys)
 def type_run(text, cfg=None, context="general", line_start_revision=True):
     """Types `text` from an empty field: runs of ASCII letters are tokens, every other character is a boundary
     (9.2). Returns the field and the reason of the last decided token."""
@@ -71,8 +76,12 @@ def type_run(text, cfg=None, context="general", line_start_revision=True):
             prev = "en" if run_is_english(window) else "neutral"
             C, reason = decide(token, cfg, prev, context, in_vietnamese_text(line))
             window.append(lang_of_decision(C, reason))
-            if (pending and reason == "kept: valid, raw not English" and window[-1] == "vi" and boundary
-                    and boundary[0] in LINE_CONFIRMING_KEYS):
+            if pending:
+                sentence = sentence_capital(pending[2])
+                evidence = (reason == "kept: valid, raw not English" and window[-1] == "vi") or (
+                    sentence and vietnamese_as_typed(token, C, reason))
+                keys = SENTENCE_CONFIRMING_KEYS if sentence else LINE_CONFIRMING_KEYS
+            if pending and evidence and boundary and boundary[0] in keys:
                 pieces[pending[0]] = pending[1]  # RV5: the word takes its Vietnamese display
                 window[-2] = "neutral"
                 line[-1] = ("neutral",) + line[-1][1:2] + (False,) + line[-1][3:]
@@ -84,7 +93,7 @@ def type_run(text, cfg=None, context="general", line_start_revision=True):
                     and boundary == " "):
                 general = decide(token, cfg, prev, context, vietnamese_text=True)
                 if not general[1].startswith("restored"):
-                    pending = (len(pieces), general[0])
+                    pending = (len(pieces), general[0], token)
             pieces.append(C)
             line_empty = False
         if line and token:
@@ -154,6 +163,14 @@ CODE_RUNS = [
     ("and\ntar thuwr ", "and\ntar thử ", "kept: valid, raw not English"),  # L10 would restore `tar`
     ("tar\nthuwr ", "tar\nthử ", "kept: valid, raw not English"),  # a one-word line
     ("Tar thuwr tar ", "Tả thử tả ", "kept: default vi"),
+    # A sentence capital (review of 16/11/2026): a syllable typed unchanged and a closing period confirm the line.
+    ("Tar anh ", "Tả anh ", "unchanged"),
+    ("Tar thuwr.", "Tả thử.", "kept: valid, raw not English"),
+    ("Tar anh.", "Tả anh.", "unchanged"),
+    ("TAR anh ", "TAR anh ", "unchanged"),
+    ("Tar test ", "Tar test ", "restored: English run"),
+    ("Tar anh-", "Tar anh-", "unchanged"),
+    ("Tar thuwr\t", "Tar thử\t", "kept: valid, raw not English"),
 ]
 # RV5 with `lineStartRevision` off (D29 off): the word keeps the keys.
 CODE_RUNS_WITHOUT_LINE_REVISION = [

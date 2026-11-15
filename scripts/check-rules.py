@@ -21,6 +21,8 @@ Checks:
   - features.lookaheadRevision true only with backspaceReplace or selectReplace, and false where
     features.restoreHotkey is false on those strategies (PLT-R357, PLT-R353; mirror of compat-lint's
     lookaheadRevisionWithoutEditStrategy and lookaheadRevisionWithoutRestoreHotkey, same codes and messages)
+  - action.engineContext "code" only with backspaceReplace or selectReplace, because RV5 of ENG-R828 revises there
+    whatever lookaheadRevision says (PLT-R357; mirror of compat-lint's codeContextWithoutEditStrategy)
   - manual scenarios have a row in compat/matrix.json (PLT-R531, test.automation)
 
 Usage:
@@ -210,6 +212,11 @@ def check_revision(rule: dict, label: str, report: Report) -> None:
     if features.get("restoreHotkey") is False and features.get("lookaheadRevision") is not False and edits:
         report.error(f"{label}: lookaheadRevisionWithoutRestoreHotkey: "
                      "restoreHotkey is false, so lookaheadRevision must be false too")
+    # RV5 of ENG-R828 is gated by D29 alone (EngineConfiguration.lineStartRevision), not by the flag, so a code
+    # context rule must ride on a strategy that carries a revision.
+    if action.get("engineContext") == "code" and not edits:
+        report.error(f"{label}: codeContextWithoutEditStrategy: "
+                     "engineContext code needs strategy backspaceReplace or selectReplace")
 
 
 def is_broad(match: dict) -> bool:

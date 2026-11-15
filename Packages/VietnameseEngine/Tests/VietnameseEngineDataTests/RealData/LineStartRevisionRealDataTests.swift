@@ -77,6 +77,41 @@ struct LineStartRevisionRealDataTests {
         }
     }
 
+    @Test(
+        "A capitalised first word starts a sentence: a syllable typed unchanged or a closing period confirms it",
+        arguments: [
+            ("Tee tay quas\n", "Tê tay quá\n"),
+            ("Tar anh aasy\n", "Tả anh ấy\n"),
+            ("Tar thuwr.\n", "Tả thử.\n"),
+            // The cost of the capital (ENG-R850): a capitalised host name line reads as a sentence.
+            ("Host minh\n", "Hót minh\n"),
+        ])
+    func sentenceCapital(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurations {
+            let driver = try Self.driver(keys, configuration)
+            #expect(driver.field.string == expected, "\(keys.debugDescription)")
+            #expect(driver.outputs.compactMap(\.revision) == [.lineVietnamese], "\(keys.debugDescription)")
+        }
+    }
+
+    @Test(
+        "Known costs of RV5 (ENG-R850): lowercase before an unchanged syllable or a period, punctuation after t",
+        arguments: [
+            ("tar anh aasy\n", "tar anh ấy\n"),
+            ("tee tay quas\n", "tee tay quá\n"),
+            ("tar thuwr.\n", "tar thử.\n"),
+            ("Tar: thuwr\n", "Tar: thử\n"),
+            // `em` is also English (the unit), so it is not RV4's evidence of a syllable typed unchanged.
+            ("Tar em ddi\n", "Tar em đi\n"),
+        ])
+    func knownCosts(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurations {
+            let driver = try Self.driver(keys, configuration)
+            #expect(driver.field.string == expected, "\(keys.debugDescription)")
+            #expect(!driver.outputs.contains { $0.revision == .lineVietnamese }, "\(keys.debugDescription)")
+        }
+    }
+
     @Test("After Return the line starts again; an English command line keeps the next line's word English (L10)")
     func afterACommandLine() throws {
         for configuration in Self.configurations {
@@ -127,9 +162,9 @@ struct LineStartRevisionRealDataTests {
         return rows
     }()
 
-    @Test("13.9.4 has its 12 rows")
+    @Test("13.9.4 has its 16 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...12).map { String(format: "K%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...16).map { String(format: "K%02d", $0) })
     }
 
     @Test("ENG-R850, ENG-R828: every row of 13.9.4", arguments: rows)
