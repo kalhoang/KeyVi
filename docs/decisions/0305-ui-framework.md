@@ -26,6 +26,10 @@
 
 - No SwiftUI `App` lifecycle: `AppMain` is an `NSApplicationDelegate` with `.accessory` activation policy,
   which keeps launch time and memory at rest low (S1, M1; VERIFY M1 against a measured baseline in the first
-  sprint).
+  sprint). *(Amended 15/11/2026, PRD-R28, PLT-R201.)* While a user window is open (shown or minimized) the policy
+  is `.regular`, so the window is in the Dock and the Command+Tab switcher, and `MainMenuController` installs the
+  app, Edit and Window menus; `WindowPresenceController` returns to `.accessory` one main-queue turn after the last
+  such window closes. The rule and its timing are ShellCore's `AppPresenceCoordinator`; the policy changes in
+  `NSApplication.bringToFront()` before activation and on window notifications of the whole process.
 - Text fields inside the app (practice field, macro editor) are ordinary fields; the tap treats the app itself
   like any other focus owner, except that hotkeys are suspended while the hotkey recorder is active.

@@ -70,6 +70,7 @@ enum CatalogInventory {
         add(SupportText.self)
         add(DiagnosticsText.self)
         add(CompositionText.self)
+        add(MainMenuText.self)
         #if DEV_RECORDER
         add(DevRecorderText.self)
         #endif

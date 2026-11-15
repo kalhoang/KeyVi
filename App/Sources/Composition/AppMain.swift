@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Entry point of the menu-bar app (LSUIElement, PLT-R201). It builds the composition root and forwards the
-// application events to it; everything else lives in `AppEnvironment`. Workstream W2-A.
+// application events to it; everything else lives in `AppEnvironment`. Workstream W2-A. Since 15/11/2026 (PRD-R28) it
+// also installs the main menu and the window presence: a Dock icon and a place in Command+Tab while a window is open.
 
 import AppKit
 import ShellCore
@@ -10,6 +11,8 @@ import ShellCore
 @MainActor
 final class AppMain: NSObject, NSApplicationDelegate {
     private var environment: AppEnvironment?
+    private(set) var windowPresence: WindowPresenceController?
+    private var mainMenu: MainMenuController?
 
     static func main() {
         let application = NSApplication.shared
@@ -22,7 +25,23 @@ final class AppMain: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let environment = AppEnvironment(bundle: .main)
         self.environment = environment
+        let presence = WindowPresenceController()
+        presence.start()
+        windowPresence = presence
+        let menu = MainMenuController(
+            language: environment.language, appName: environment.brand.displayName,
+            showAbout: { [unowned environment] in environment.showAboutFromMainMenu() },
+            showSettings: { [unowned environment] in environment.showSettingsFromMainMenu() })
+        menu.install()
+        mainMenu = menu
         environment.start()
+    }
+
+    /// A click on the Dock icon (PRD-R28): AppKit brings back a window left in the Dock; with none, Settings opens.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard windowPresence?.reopenOpensSettings(hasVisibleWindows: flag) == true else { return true }
+        environment?.showSettingsFromMainMenu()
+        return false
     }
 
     /// Quit waits for the settings flush (PLT-R1003, bounded); the reply comes from `AppEnvironment.terminate`

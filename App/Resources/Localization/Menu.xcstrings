@@ -541,6 +541,258 @@
         }
       }
     },
+    "mainMenu.app.about" : {
+      "comment" : "Main menu, app menu (PRD-R28, shown while a window is open). Opens Settings on the About pane. %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giới thiệu %@"
+          }
+        }
+      }
+    },
+    "mainMenu.app.hide" : {
+      "comment" : "Main menu, app menu (Command+H). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide %@"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ẩn %@"
+          }
+        }
+      }
+    },
+    "mainMenu.app.hideOthers" : {
+      "comment" : "Main menu, app menu (Option+Command+H).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Others"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ẩn các ứng dụng khác"
+          }
+        }
+      }
+    },
+    "mainMenu.app.showAll" : {
+      "comment" : "Main menu, app menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show All"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiện tất cả"
+          }
+        }
+      }
+    },
+    "mainMenu.edit" : {
+      "comment" : "Main menu: title of the Edit menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sửa"
+          }
+        }
+      }
+    },
+    "mainMenu.edit.copy" : {
+      "comment" : "Main menu, Edit (Command+C).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sao chép"
+          }
+        }
+      }
+    },
+    "mainMenu.edit.cut" : {
+      "comment" : "Main menu, Edit (Command+X).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cut"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cắt"
+          }
+        }
+      }
+    },
+    "mainMenu.edit.paste" : {
+      "comment" : "Main menu, Edit (Command+V).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dán"
+          }
+        }
+      }
+    },
+    "mainMenu.edit.redo" : {
+      "comment" : "Main menu, Edit (Shift+Command+Z).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redo"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Làm lại"
+          }
+        }
+      }
+    },
+    "mainMenu.edit.selectAll" : {
+      "comment" : "Main menu, Edit (Command+A).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select All"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chọn tất cả"
+          }
+        }
+      }
+    },
+    "mainMenu.edit.undo" : {
+      "comment" : "Main menu, Edit (Command+Z).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoàn tác"
+          }
+        }
+      }
+    },
+    "mainMenu.window" : {
+      "comment" : "Main menu: title of the Window menu (macOS lists the open windows under it).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Window"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cửa sổ"
+          }
+        }
+      }
+    },
+    "mainMenu.window.bringAllToFront" : {
+      "comment" : "Main menu, Window.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring All to Front"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đưa tất cả ra trước"
+          }
+        }
+      }
+    },
+    "mainMenu.window.minimize" : {
+      "comment" : "Main menu, Window (Command+M).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Minimize"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thu nhỏ"
+          }
+        }
+      }
+    },
     "menu.checkForUpdates" : {
       "comment" : "PRD-R11 item 6.",
       "extractionState" : "manual",
