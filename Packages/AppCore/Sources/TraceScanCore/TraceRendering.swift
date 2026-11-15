@@ -94,9 +94,9 @@ public enum TraceRendering {
             return [
                 "job " + String(line.seq ?? 0), line.kind ?? "?", line.strat ?? "?", line.out ?? "?",
                 "delete " + String(line.delN ?? 0) + " insert " + String(line.insN ?? 0),
-                String(line.posted ?? 0) + " events", microseconds(line.totalUs) + " total",
-                microseconds(line.runUs) + " run",
-            ].joined(separator: "  ")
+                String(line.posted ?? 0) + " events", line.compl.map { "completion " + $0 },
+                microseconds(line.totalUs) + " total", microseconds(line.runUs) + " run",
+            ].compactMap { $0 }.joined(separator: "  ")
         case "fallback":
             return "fallback job " + String(line.seq ?? 0) + "  " + (line.from ?? "?") + " -> " + (line.to ?? "?")
                 + "  (" + (line.reason ?? "?") + ")"

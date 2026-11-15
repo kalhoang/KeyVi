@@ -125,6 +125,8 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var insN: Int?
     var totalUs: UInt64?
     var runUs: UInt64?
+    /// The PLT-R420 read of a selected inline completion: `selected`, `none` or `unreadable`.
+    var compl: String?
     var from: String?
     var to: String?
     // focus, readback, mode
@@ -241,6 +243,7 @@ extension DevTraceLine {
         posted = job.eventsPosted
         totalUs = job.totalMicroseconds
         runUs = job.runMicroseconds
+        compl = job.completion?.description
     }
 
     private init(focus: DevFocusRecord, t: Int64) {

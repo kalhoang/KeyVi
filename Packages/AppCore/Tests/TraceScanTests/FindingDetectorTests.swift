@@ -159,6 +159,42 @@ private let command: UInt64 = 0x0010_0000
         #expect(found.first?.detail.contains("ế") == false)
     }
 
+    /// Return and Tab are fed to the engine first, then they are a hard boundary (KeyPipeline `commitLine`). The
+    /// recorder writes the boundary when it happens and the key's engine step after the key line, so the boundary
+    /// comes first in the file with the same time. Day finding 155 of 15/11/2026 was this: a revision committed by
+    /// Return replayed into an engine already reset. The replay applies such a boundary after the key's own step.
+    @Test func aReturnBoundaryIsAppliedAfterTheReturnsOwnStep() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        trace.boundary("focusChanged", job: "focusChanged")
+        trace.type("cais nayf tricky as hell")
+        let output = trace.engineOutput(.key(KeyInput("\n")))
+        guard case .edit(let edit, true) = output.action else {
+            Issue.record("Return commits with an edit (the revision of the previous word)")
+            return
+        }
+        #expect(edit.deleteCount > 0)
+        trace.line("key", ["ev": "keyDown", "kc": 0x24, "fl": 0, "out": "held"])
+        trace.boundary("cursorMoved", job: "returnOrTab")
+        trace.engineLine(output)
+        trace.advance(400)
+        trace.type("nha")  // a fresh engine after the Return: replays without a divergence too
+        #expect(try !kinds(trace, replay: true).contains(.replayDivergence))
+    }
+
+    /// The same boundary without an engine step of its own key (the recorder did not capture it) still resets.
+    @Test func aReturnBoundaryWithoutItsStepStillResets() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        trace.boundary("focusChanged", job: "focusChanged")
+        trace.type("vie")
+        trace.line("key", ["ev": "keyDown", "kc": 0x24, "fl": 0, "out": "passed"])
+        trace.boundary("cursorMoved", job: "returnOrTab")
+        trace.advance(400)
+        trace.type("ej")  // a fresh token: "e" then "ej" -> "ẹ" (replayed without the old "vie")
+        #expect(try !kinds(trace, replay: true).contains(.replayDivergence))
+    }
+
     /// Word-list and macro decisions cannot be replayed without the user's lists: no false divergence.
     @Test func userListDecisionsStopTheReplayQuietly() throws {
         var trace = TraceBuilder()

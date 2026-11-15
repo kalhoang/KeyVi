@@ -16,6 +16,8 @@ struct JobContext {
     /// PLT-R904A: events this job posted and when it started on the inject thread.
     var eventsPosted = 0
     var startedAt: MonotonicInstant?
+    /// What the PLT-R420 read of a selected inline completion found, when the job made one.
+    var completion: StaticString?
     #endif
 }
 

@@ -27,7 +27,7 @@ import Testing
             rules.document.bundleGroups[ReservedGroup.terminals]?.contains(bundleKey("com.googlecode.iterm2")) == true)
         #expect(
             rules.overlayBundles == [
-                bundleKey("com.apple.Spotlight"), bundleKey("com.raycast.macos"),
+                bundleKey("com.apple.Spotlight"), bundleKey("com.apple.campo"), bundleKey("com.raycast.macos"),
                 bundleKey("com.runningwithcrayons.Alfred"),
             ])
         #expect(rules.titlePatternBundles.isEmpty)
@@ -186,6 +186,17 @@ import Testing
             rule: "launcher.spotlight"
         ) {
             $0.overlay && $0.params.inlineCompletion == .axSelection && !$0.features.restoreHotkey
+        },
+        // Retest of 15/11/2026, items 7 and 9: on macOS 27.2 Command+Space opens the Siri app (`com.apple.campo`),
+        // whose search field the dev trace showed with no rule (`rule -`).
+        .init(
+            label: "Spotlight overlay on macOS 27.2 (the Siri app)",
+            context: Build.context(
+                bundle: "com.apple.campo", macOS: "27.2", role: "AXTextField", subrole: "AXSearchField"),
+            rule: "launcher.spotlight"
+        ) {
+            $0.overlay && $0.params.inlineCompletion == .axSelection && !$0.features.restoreHotkey
+                && !$0.features.lookaheadRevision
         },
         .init(
             label: "Raycast overlay", context: Build.context(bundle: "com.raycast.macos"),

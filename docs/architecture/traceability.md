@@ -71,7 +71,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R106 | macOS 12.0 minimum; newer APIs only behind `#available`; RealtimeSupport `Atomic`, `Mutex`, `TimeSpan` instead of `Synchronization` and `Duration` | `Package.swift` (AppCore, engine, fuzz), `project.yml`, `RealtimeSupport`, ADR 0315 | L, U | W4-A; every build fails on unguarded newer APIs; strong imports checked against the macOS 12.0 SDK (ADR 0315) |  |
 | PLT-R107 | Test matrix macOS 12, 15, 26, 27 plus next beta; macOS 12 smoke test in a tart VM | self-hosted runner, `compat/matrix.json`, `scripts/vm/smoke-macos12.sh`, ADR 0315; macOS 12.7.6 smoke test PASS 2026-11-13 (arm64 + x86_64 under Rosetta), ADR 0315 | M, V | W2-E2; W4-A (plan); W5-E; Pa | **Pa** (per release candidate: the manual onboarding and typing pass of ADR 0315) |
 | PLT-R108 | Licence note for rules/injection reuse | `docs/decisions/` (Pa) | D | Pa decision |  |
-| PLT-R201 | One process, no daemons, extensions or IMKit bundle | `App` target | I, R | W2-A; release track (bundle check) |  |
+| PLT-R201 | One process, no daemons, extensions or IMKit bundle; `.accessory`, `.regular` only while a user window is open (amended 15/11/2026) | `App` target; ShellCore `AppPresence` (`AppPresenceCoordinator`), App `WindowPresenceController` | I, R, U (`AppPresenceRuleTests`, `AppPresenceCoordinatorTests`), M | W2-A; release track (bundle check); W17-B | **Pa** |
 | PLT-R202 | Logical components | ARCHITECTURE.md section 2 | D | skeleton (done) |  |
 | PLT-R203 | Thread map | `InputHost/Tap`, `Injection/Worker`, `InputHost/Focus`, `RealtimeSupport/Threads` | U, I | W1-F2, W1-D, W1-E |  |
 | PLT-R204 | Nothing outlives the process | `InputHost/Tap` | I (kill -9 on runner) | W2-E2 |  |
@@ -105,7 +105,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
 | PLT-R332 | Tap creation failure: failOpen + backoff; breaker comeback 30/60/120/300 s on probation after a live check; creation waits at most 2 s on main, once per hung creation (15/11/2026) | `HostLifecycle`, `InputHostController`, `TapThreadRuntime` | U (`HostLifecycleCircuitBreakerTests`, `TapCreationTimeoutTests`, `HostRevocationTests`) | W1-F2; W17-A |  |
 | PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
-| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process or after a timed-out read without an app, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`, `FocusIdentity.appUnknownAfterTimeout`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`, `KeyPipelineDeleteKeyBoundaryTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A, W14-H; Pa | **Pa** |
+| PLT-R340 | Hard boundaries list; late focus change keeps the word (same process or after a timed-out read without an app, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`, `FocusIdentity.appUnknownAfterTimeout`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, among them `aCommandTabRoundTripEndsTheWordPLTR340` for retest item 24, `WorkerLateFocusTests`, `LateFocusEndToEndTests`, `KeyPipelineDeleteKeyBoundaryTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A, W14-H, W17-B; Pa | **Pa** |
 | PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F1; W2-E2 |  |
 | PLT-R342 | Re-entry verification with bounded AX read | `InjectionWorker` (`verifyBeforeApply`) | U | W1-D |  |
 | PLT-R343 | Bounded AX reads (64 characters) | `AXFocusedFieldAccess`, `SystemAXProvider` | U, L | W1-D, W1-E |  |
@@ -134,7 +134,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R386 | requireTextFocus gating | `HostDecisionMapper`, `HostStateResolver` | U, C (design apps) | W1-E, W1-F1; Pa | **Pa** |
 | PLT-R387 | Secure fields always pass through | `FocusTracker`, `HostStateResolver` | U, I (password field) | W1-E, W1-F1; W2-E2 |  |
 | PLT-R388 | Snapshot via one atomic reference | `RealtimeSupport/SnapshotCell.swift`, ADR 0303 | U, TSan | skeleton (done); W1-A |  |
-| PLT-R389 | Revalidation after shortcuts, Escape, Return, Tab, clicks and in overlays; moved-only reads | `KeyPipeline` (`KeyPipeline+Focus.swift`), `FocusTracker` (`FocusCore+Settle.swift`) | U (fake AX), C (`testhost.panel.*`, `testhost.sheet.commandS`, `launcher.spotlight.reopen`) | W8-A; Pa | **Pa** |
+| PLT-R389 | Revalidation after shortcuts, Escape, Return, Tab, clicks and in overlays; moved-only reads; `launcher.spotlight` lists the Siri app of macOS 27.2 (amended 15/11/2026) | `KeyPipeline` (`KeyPipeline+Focus.swift`), `FocusTracker` (`FocusCore+Settle.swift`), `compat/rules.json` | U (fake AX; `FocusSpotlightSeededRulesTests` with the shipped rules; `SeededDataTests`, `MatrixTests`), C (`testhost.panel.*`, `testhost.sheet.commandS`, `launcher.spotlight.reopen`, `launcher.spotlight.campo{,.reopen}`) | W8-A, W17-B; Pa | **Pa** |
 | PLT-R390 | Per-app memory keyed by focus owner, precedence | `AppModeMemory` | U | W1-E |  |
 | PLT-R391 | Mode in effect before the next key | `FocusTracker`, `KeyPipeline` toggle sequence | P | W1-E, W1-F1 |  |
 | PLT-R392 | LRU 1,000, writes debounced 5 s, bundle and mode only | `AppModeMemory`, `SettingsStore.recordAppModes` | U | W1-E, W1-B |  |
@@ -160,7 +160,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R408 | Timing parameters, caps, split | strategies, `ResolvedParams` | U | W1-D, W1-C |  |
 | PLT-R409 | Pacing on inject thread with absolute deadlines | `InjectionWorker`, `MachClock.sleep` | U | W1-D |  |
 | PLT-R410 | Verification modes echo/axReadback/human | `InjectionWorker` | U, I | W1-D; W2-C (human) |  |
-| PLT-R420 | Inline completion: axSelection | strategies | U, C | W1-D; W2-E2 |  |
+| PLT-R420 | Inline completion: axSelection; the read's result on the dev trace's job line (15/11/2026) | strategies (`CompletionPrefix`, `CompletionRead`) | U (`InlineCompletionTests`, `WorkerDevRecorderTests.theInlineCompletionReadIsRecordedPLTR420`), C | W1-D; W2-E2; W17-B |  |
 | PLT-R421 | Inline completion: placeholder | strategies | U, C | W1-D; W2-E2 |  |
 | PLT-R422 | Placeholder gate: 1,000-edit test, no broad rules | `RulesLinter`, compat scenario | L, C | W1-C; W2-E2 |  |
 | PLT-R460 | paste only opt-in or long text | strategies, rules `requiresUserOptIn` | U | W1-D, W1-C |  |
@@ -211,7 +211,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R902 | Typed logging API; interpolation lint | `Diagnostics/LogEvent.swift`, `Redaction.swift` | U, L | W1-A; CI track (lint) |  |
 | PLT-R903 | Log location, permissions, rotation, retention | `DiagnosticsLogger`, `LogStorePolicy` | U | W1-A; W1-B (legacy folder move, ADR 0307) |  |
 | PLT-R904 | No verbose/debug content mode | Diagnostics | D, L | W1-A |  |
-| PLT-R904A | Dev recorder, Debug builds only (ADR 0007) | `DevRecorder` (Diagnostics), `KeyPipeline+DevRecorder`, `DevReadback`, `WorkerCore+DevRecorder`, App `DevRecorderController`, `trace-scan`; `scripts/verify-release.sh` check | U (`DevRecorderTests`, `DevRecorderPipelineTests`, `DevReadbackTests`, `FocusDevRecorderTests`, `WorkerDevRecorderTests`, `DevRecorderShellTests`, `FindingDetectorTests`, `TraceScanCommandTests`, `RecorderRoundTripTests`, `SampleFixtureTests`, `ReadbackDivergenceTests`, `IncidentFixtureTests`, `ReopenedLiteralTests`: the ENG-R1005 regression guard `reopenedLiteral`), S (`scripts/tests` release check) | W8-E, W10-B, W16-A; Pa | **Pa** |
+| PLT-R904A | Dev recorder, Debug builds only (ADR 0007) | `DevRecorder` (Diagnostics), `KeyPipeline+DevRecorder`, `DevReadback`, `WorkerCore+DevRecorder`, App `DevRecorderController`, `trace-scan`; `scripts/verify-release.sh` check | U (`DevRecorderTests`, `DevRecorderPipelineTests`, `DevReadbackTests`, `FocusDevRecorderTests`, `WorkerDevRecorderTests`, `DevRecorderShellTests`, `FindingDetectorTests`, `TraceScanCommandTests`, `RecorderRoundTripTests`, `SampleFixtureTests`, `ReadbackDivergenceTests`, `IncidentFixtureTests`, `ReopenedLiteralTests`: the ENG-R1005 regression guard `reopenedLiteral`; the job line's `compl` field of PLT-R420 and the replay of Return and Tab boundaries after their step, 15/11/2026), S (`scripts/tests` release check) | W8-E, W10-B, W16-A, W17-B; Pa | **Pa** |
 | PLT-R905 | Time-boxed capture with HUD, 24 h deletion | `CaptureController`, `CaptureHUDController`; key and engine records from `KeyPipeline+Capture.swift`, focus records from `FocusCore.recordFocusCapture`; confirmation states the chosen duration (`TypingTraceConfirmation`) | U (`KeyPipelineCaptureTests`, HostRig `typingTraceRecordsKeysEngineDecisionsAndFocus_PLT_R905`, `TypingTraceConfirmationTests`), M | W1-A, W2-C; W5-C; Pa | **Pa** |
 | PLT-R906 | Egress limited to Sparkle | `App` (URL host allowlist), Sparkle; egress test: `TestSupport/Scenario/EgressCheck.swift` (`compat-harness egress`), hook `checkForUpdates`, [integration-suite.md](../runbooks/integration-suite.md) section 5 | L, I (13.7) | W2-D, W2-E2, W3-A; CI track |  |
 | PLT-R907 | No translation feature in v1 | n/a | D | n/a |  |
@@ -301,7 +301,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R25 | One-line explanation per setting | `Settings` table | M, D | W2-B |  |
 | PRD-R26 | Reset per pane and global with confirmation and export offer | `SettingsStore.reset`, Settings UI | U, M | W1-B, W2-B |  |
 | PRD-R27 | Changes apply immediately without losing the word | `InputHostController.apply` | U, I | W1-F1, W2-A |  |
-| PRD-R28 | Settings is a normal window, frame remembered | `SettingsWindowController` | M | W2-B |  |
+| PRD-R28 | Settings is a normal window, frame remembered; while a window is open the app is in the Dock, Command+Tab and has a main menu (amended 15/11/2026) | `SettingsWindowController`; ShellCore `AppPresence`, `MainMenuLayout`; App `WindowPresenceController`, `MainMenuController` | U (`AppPresenceRuleTests`, `AppPresenceCoordinatorTests`, `MainMenuLayoutTests`), M | W2-B, W17-B | **Pa** |
 | PRD-R29 | Macro shortcut and expansion rules | `MacroValidator`, engine `MacroTable` | U, E | W1-B; engine track |  |
 | PRD-R30 | Expansion triggers and case adaptation | engine (ENG-R1103), host macros feature | E, I | engine track; W2-E2 |  |
 | PRD-R31 | Macro list features | Macros pane | M | W2-B |  |
@@ -352,7 +352,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |
 | PRD-R77 | No in-app survey, rating prompt or usage counter | all UI | D | all UI workstreams |  |
 | PRD-R78 | Learned-words sheet: entries that vote, rendered in D2, remove per row and `Xóa tất cả`, D8 key in the empty state, cleared by the Typing and full resets; one line and no edit while the memory is not loaded | `App/Sources/Settings/LearnedChoicesSheet.swift`, `SettingsWindowModel+LearnedChoices`, `LearnedChoices` (ShellCore; `LearnedChoicesSheetState.isUnavailable`), `SettingsCommands.learnedChoices`, `CollisionMemoryStore.learnedChoices` | U (`LearnedChoicesPaneTests`), M | W11-C, W16-A | **Pa** |
-| PRD-R79 | Copy of D28, D29 and the learned-words sheet, including the line shown when the memory is not loaded | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`), L (l10n lint) | W11-C, W16-A; Pa (copy review before v1) | **Pa** |
+| PRD-R79 | Copy of D28, D29 and the learned-words sheet, including the line shown when the memory is not loaded; D29 example amended 15/11/2026 | `App/Resources/Localization/Settings.xcstrings` | U (`LearnedChoicesPaneTests`, `SpecDraftCopyTests`; engine `RetestBeta2RealDataTests` pins the example), L (l10n lint) | W11-C, W16-A, W17-B; Pa (copy review before v1) | **Pa** |
 
 ## 04-quality-release.md (QA-R)
 

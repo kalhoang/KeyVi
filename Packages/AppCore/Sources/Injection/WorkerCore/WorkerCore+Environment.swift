@@ -52,6 +52,12 @@ extension WorkerCore: StrategyHost {
         services.metrics.fallbackActivations.increment()
         if notes.shouldReport(.completionFallback) { recordHealth(.fallbackActivated) }
     }
+
+    func noteCompletionRead(_ read: CompletionRead) {
+        #if DEV_RECORDER
+        context?.completion = read.label
+        #endif
+    }
 }
 
 /// `verifyAfterEdit` for key-based strategies (PLT-R410). Key events reach the app asynchronously, so the

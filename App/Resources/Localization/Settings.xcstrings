@@ -5384,19 +5384,19 @@
       }
     },
     "settings.typing.lookaheadRevision.explanation" : {
-      "comment" : "D29, PRD-R25 and PRD-R79.",
+      "comment" : "D29, PRD-R25 and PRD-R79 (example amended 15/11/2026: from an empty field tricky as hell has no revision).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For example, in tricky as hell, á changes back to as when you type hell. It is off in Terminal and code editors by the app rules."
+            "value" : "For example, in cái này tricky as hell, á changes back to as when you type hell. It is off in Terminal and code editors by the app rules."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ví dụ: gõ tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và trình soạn mã theo quy tắc ứng dụng."
+            "value" : "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và trình soạn mã theo quy tắc ứng dụng."
           }
         }
       }

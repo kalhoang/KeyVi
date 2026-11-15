@@ -22,7 +22,7 @@
 
 | Topic | Decision | Section |
 |---|---|---|
-| Process model | One menu-bar process (LSUIElement). No helper daemons, no extensions, no IMKit bundle in v1 | 2 |
+| Process model | One menu-bar process (LSUIElement; a regular app with a Dock icon only while one of its windows is open, PRD-R28). No helper daemons, no extensions, no IMKit bundle in v1 | 2 |
 | Event tap | Session-level, head-insert, active filter, on a dedicated thread with its own run loop | 3.1 |
 | Hot path | Tap callback only decides and enqueues. A serial injection worker posts edits | 3.2 |
 | Ordering | Physical keyboard events are held and replayed behind in-flight edits. Event conservation invariant | 3.4 |
@@ -66,7 +66,7 @@
 
 ## 2. Process architecture
 
-- **PLT-R201** {{AppName}} MUST run as exactly one long-lived process: a menu-bar app with `LSUIElement = YES`. It MUST NOT install launch daemons, launch agents other than its own login item, privileged helpers, system or driver extensions, kernel extensions, browser extensions or XPC services in v1. Sparkle's installer helper runs only while an update is being installed.
+- **PLT-R201** {{AppName}} MUST run as exactly one long-lived process: a menu-bar app with `LSUIElement = YES`. *(Amended 15/11/2026.)* It starts with the `.accessory` activation policy and switches to `.regular` only while one of its user windows is open (shown or minimized: Settings, onboarding, Diagnostics and the like, never a panel, an alert or a sheet alone), so the window can be reached with Command+Tab and the Dock (PRD-R28); switching the policy never activates the app, and when it returns to `.accessory` while it is still the active app (its last window was closed), it hands activation to the app that was in front before. It MUST NOT install launch daemons, launch agents other than its own login item, privileged helpers, system or driver extensions, kernel extensions, browser extensions or XPC services in v1. Sparkle's installer helper runs only while an update is being installed.
   Rationale: the prior art ran event taps in two processes with a cross-process ownership handoff and a 500 ms timeout; failure modes included both sides staying passive and nobody transforming keys.
 - **PLT-R202** Logical components inside the process:
 
@@ -231,7 +231,7 @@ Fail-open reasons: `permissionRevoked`, `postingBroken`, `tapUnavailable`, `watc
   Rationale: prior-art users reported that double letters in Telex (aa, ee, dd) deleted the selected shape in Illustrator, Affinity and Photoshop, because the first letter was consumed as a tool shortcut and the second produced a synthetic backspace.
 - **PLT-R387** Secure fields: if the focused element's subrole is `AXSecureTextField`, the host MUST pass through, reset and never capture, regardless of rules or user overrides.
 - **PLT-R388** The snapshot is an immutable value published through one atomic reference. The tap reads it with a single atomic load.
-- **PLT-R389** Revalidation after events that can move the focus without an app activation *(from the product owner's manual tests of 14/11/2026, items 7 and 9: Spotlight typed "teẽ" for `tex` and "vieêệt" for `vieejt`, and its second opening turned Escape into a restore, because the snapshot still named the previous app)*. A non-activating panel (Spotlight, Raycast, Alfred) opening or closing, a sheet or a popover taking the focus post no activation notification and may post no AX notification the `ax` thread observes. Therefore:
+- **PLT-R389** Revalidation after events that can move the focus without an app activation *(from the product owner's manual tests of 14/11/2026, items 7 and 9: Spotlight typed "teẽ" for `tex` and "vieêệt" for `vieejt`, and its second opening turned Escape into a restore, because the snapshot still named the previous app; amended 15/11/2026: the retest showed the same symptoms with a fresh snapshot, because on macOS 27.2 the Spotlight panel belongs to the Siri app, `com.apple.campo`, which `launcher.spotlight` did not list; the rule now lists both bundles)*. A non-activating panel (Spotlight, Raycast, Alfred) opening or closing, a sheet or a popover taking the focus post no activation notification and may post no AX notification the `ax` thread observes. Therefore:
   - Triggers: any keyDown with Command or Control, Escape, Return, Tab (autorepeats excluded) and every mouse down. The tap pushes a lock-free notice; the `ax` thread does not read at once (the tap still holds the key, so the panel or sheet it opens cannot have the focus yet) and reads the system-wide focused application and element 25, 60, 100, 150, 220 and 400 ms after the trigger. These reads are idle reads: an unchanged focus publishes nothing, a timeout ends the window (PLT-R384), a later trigger restarts it. The read schedule is dense over the first 200 ms because such panels take the focus within tens of milliseconds to about 200 ms of the key, and the next key typically follows 80 to 300 ms later.
   - The first keyDown after a trigger asks for one more immediate read, like PLT-R382.
   - While the resolved rule of the focus owner has `overlay: true`, every keyDown asks for an immediate read, so the keys typed after the panel closed (Escape, a click outside, Return) use the previous app's rules.

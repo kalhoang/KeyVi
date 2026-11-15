@@ -14,6 +14,28 @@ protocol StrategyHost: AnyObject {
     func pasteCompleted(restoreDelay: TimeSpan)
     /// PLT-R420: AX could not answer and the next completion option was used.
     func completionFallback()
+    /// PLT-R420, PLT-R904A: what the read of a selected inline completion found, for the dev recorder's job line.
+    func noteCompletionRead(_ read: CompletionRead)
+}
+
+/// The AX read of `axSelection` and `axSelectionThenPlaceholder` (PLT-R420). Recorded on the dev trace's job line
+/// since the retest of 15/11/2026 (Spotlight on macOS 27.2 lost one deletion per edit, and the trace could not tell
+/// whether AX reported no selection or did not answer).
+enum CompletionRead {
+    /// A selection after the caret: one extra deletion removes it.
+    case selected
+    /// AX answered with an empty selection.
+    case none
+    /// AX timed out or was unavailable.
+    case unreadable
+
+    var label: StaticString {
+        switch self {
+        case .selected: "selected"
+        case .none: "none"
+        case .unreadable: "unreadable"
+        }
+    }
 }
 
 enum BuiltInExecutors {
@@ -44,13 +66,16 @@ enum CompletionPrefix: Equatable {
         case .none: return .none
         case .placeholder: return .placeholder
         case .axSelection, .axSelectionThenPlaceholder:
+            let host = environment as? any StrategyHost
             if let field = job.field,
                 case .success(let range) = environment.fieldAccess.selectedRange(
                     field, timeout: InjectionTiming.axSelectionTimeout)
             {
+                host?.noteCompletionRead(range.length > 0 ? .selected : .none)
                 return range.length > 0 ? .extraDeletion : .none
             }
-            (environment as? any StrategyHost)?.completionFallback()
+            host?.noteCompletionRead(.unreadable)
+            host?.completionFallback()
             return mode == .axSelectionThenPlaceholder ? .placeholder : .none
         }
     }

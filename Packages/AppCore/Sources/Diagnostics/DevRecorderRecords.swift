@@ -103,11 +103,14 @@ public struct DevJobRecord: Sendable {
     /// From the start of execution on the inject thread to its end.
     public var runMicroseconds: UInt64
     public var at: MonotonicInstant
+    /// What the read of a selected inline completion found (`selected`, `none`, `unreadable`, PLT-R420); nil when
+    /// the job made no such read.
+    public var completion: StaticString?
 
     public init(
         sequence: UInt64, generation: UInt64, kind: any Sendable, strategy: InjectionStrategy, outcome: StaticString,
         deleteCount: Int, insertCount: Int, eventsPosted: Int, totalMicroseconds: UInt64, runMicroseconds: UInt64,
-        at: MonotonicInstant
+        at: MonotonicInstant, completion: StaticString? = nil
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -120,6 +123,7 @@ public struct DevJobRecord: Sendable {
         self.totalMicroseconds = totalMicroseconds
         self.runMicroseconds = runMicroseconds
         self.at = at
+        self.completion = completion
     }
 }
 

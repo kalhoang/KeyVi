@@ -1,0 +1,30 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "launcher.spotlight.campo.reopen",
+  "targetBundleId": "com.apple.campo",
+  "setup": [],
+  "keys": [
+    "command+space",
+    "v",
+    "i",
+    "e",
+    "e",
+    "j",
+    "t",
+    "escape",
+    "escape",
+    "command+space",
+    "t",
+    "e",
+    "x",
+    "x",
+    "t"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "text"
+  },
+  "readback": "ax"
+}

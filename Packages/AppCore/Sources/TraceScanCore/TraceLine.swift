@@ -41,6 +41,9 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     public var insN: Int?
     public var totalUs: UInt64?
     public var runUs: UInt64?
+    /// Job lines: the PLT-R420 read of a selected inline completion (`selected`, `none`, `unreadable`; since the
+    /// retest of 15/11/2026), absent when the job made none.
+    public var compl: String?
     public var from: String?
     public var to: String?
     public var bundle: String?

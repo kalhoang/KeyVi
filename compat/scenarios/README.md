@@ -74,7 +74,7 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
 |---|---|---|
 | TestHost fields | `testhost.native.*`, `testhost.web.*`, `testhost.addressBar.*`, `testhost.sheetCell.*`, `testhost.password.noTransform` | QA-R10, QA-R21, PLT-R387, inline completion and edit-mode transition (4.3, 6) |
 | Key-code-first composer | `testhost.web.keycodeFirst.{backspace,returnCommit}` (`keycode-first-composer.html`: deletes on `event.code` "Backspace", sends on "Enter", types on keypress; default rules) | PLT-R405: an edit never types on the keycode of the key that triggered it (Pa's manual tests of 2026-11-14, chat apps) |
-| Focus moved without an activation | `testhost.sheet.commandS`, `testhost.panel.{inlineCompletionTwice,toneUndo}`, `testhost.web.editModeEditor`, `launcher.spotlight.reopen` | PLT-R389, PLT-R340 late focus change (Pa's manual tests of 2026-11-14: Spotlight, T5.5, T5.8) |
+| Focus moved without an activation | `testhost.sheet.commandS`, `testhost.panel.{inlineCompletionTwice,toneUndo}`, `testhost.web.editModeEditor`, `launcher.spotlight.reopen`, `launcher.spotlight.campo{,.reopen}` (macOS 27.2 opens Spotlight in the Siri app, retest of 2026-11-15) | PLT-R389, PLT-R340 late focus change (Pa's manual tests of 2026-11-14: Spotlight, T5.5, T5.8) |
 | Layouts and input sources | `testhost.layout.{abc,qwertz,azerty,dvorak}`, `testhost.inputSource.japanese` | 13.2, PLT-R361, PLT-R371 |
 | Secure input | `testhost.secureInput.{pause,release}`, `terminal.iterm2.secureKeyboardEntry{,Off}` | PLT-R398B, PLT-R398C |
 | Fail-open and tap recovery | `testhost.failOpen.permissionRevoked`, `testhost.tapTimeout.recovery` | 13.2, QA-R11 (manual for now, see below) |
@@ -99,7 +99,7 @@ The soak (`compat-harness soak`, QA-R16, 13.6) types into `textedit.telex.basic`
 - `results.json` gives a `reason` for every failed or `needsHuman` scenario (failing stage and error, no
   typed text), and the console prints it after the duration.
 - Bundle IDs were read from installed apps where present (TextEdit, Notes, Safari, Terminal, Chrome, Firefox,
-  iTerm2, VS Code, Spotlight, Screen Sharing, Chess). The others are the publicly documented IDs and must be
+  iTerm2, VS Code, Spotlight, the Siri app of macOS 27.2 that holds Spotlight (`com.apple.campo`, read with PlistBuddy on 2026-11-15), Screen Sharing, Chess). The others are the publicly documented IDs and must be
   checked against the installed app's `Info.plist` (02-platform.md 5.6): Ghostty `com.mitchellh.ghostty`,
   Affinity Designer 2, Excel, Word, LibreOffice `org.libreoffice.script`, Slack, IntelliJ IDEA, Sublime Text 4,
   Raycast.

@@ -32,6 +32,7 @@
     { "bundleId": "com.googlecode.iterm2", "displayName": "iTerm2", "category": "terminal", "tier": 1, "ruleId": "terminal.default", "status": "notVerified", "issues": [] },
     { "bundleId": "com.jetbrains.intellij", "displayName": "IntelliJ IDEA", "category": "developer", "tier": 1, "ruleId": "editor.jetbrains", "status": "notVerified", "issues": [] },
     { "bundleId": "com.apple.Spotlight", "displayName": "Spotlight", "category": "launcher", "tier": 1, "ruleId": "launcher.spotlight", "status": "notVerified", "issues": [] },
+    { "bundleId": "com.apple.campo", "displayName": "Spotlight (macOS 27.2)", "category": "launcher", "ruleId": "launcher.spotlight", "status": "notVerified", "issues": [] },
     { "bundleId": "com.apple.finder", "displayName": "Finder (rename)", "category": "system", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.figma.Desktop", "displayName": "Figma", "category": "design", "tier": 1, "ruleId": "design.shortcutHeavy", "status": "notVerified", "issues": [] },
     { "bundleId": "com.raycast.macos", "displayName": "Raycast", "category": "launcher", "tier": 2, "ruleId": "launcher.overlayPanels", "status": "notVerified", "issues": [] },

@@ -13614,6 +13614,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         present()
     }
 
+    /// Command+, and a click on the Dock icon (PRD-R28): the window as the user left it, or General when it was closed.
+    func showKeepingPane() {
+        guard let window, window.isVisible || window.isMiniaturized else { return show(.general) }
+        present()
+    }
+
     /// Opens the General pane with the toggle recorder already recording and focused. `role: .restoreLastWord`
     /// opens the Typing pane's restore recorder instead. Onboarding screen 4 records inline (PRD-R40).
     func showHotkeyRecorder(role: HotkeyRole = .toggleMode) {

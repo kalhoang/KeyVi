@@ -7,7 +7,9 @@
 // cannot be reproduced offline (the trace holds only their counts), so the segment stops there without a finding.
 // A segment also stops at a gap or a pause (keys inside are not recorded), and segments written by another engine
 // build than the scanner's, or by one that did not record its identity, are not replayed: the summary counts them
-// (ADR 0007 decision 13), unless `--replay-anyway` asks for the old behaviour.
+// (ADR 0007 decision 13), unless `--replay-anyway` asks for the old behaviour. Return and Tab are fed to the engine
+// before their boundary (KeyPipeline `commitLine`), but the recorder writes the boundary when it happens and the key's
+// engine step after the key, so that boundary applies after the key's own step (day finding 155 of 15/11/2026).
 
 internal import Diagnostics
 internal import Foundation
@@ -94,19 +96,28 @@ enum ReplayCheck {
         var session: Session?
         var stepIndex = 0
         var key: TraceLine?
+        /// A Return or Tab boundary waiting for that key's own engine step (its time).
+        var deferredReset: Int64?
+        func reset() {
+            deferredReset = nil
+            stepIndex = 0
+            session = nil
+            guard let engine = factory.engine(settings: context.settings, focus: context.focus) else { return }
+            guard anyEngine || context.engine == factory.identity else {
+                if context.engine == nil { skips.unidentifiedEngine += 1 } else { skips.otherEngine += 1 }
+                return
+            }
+            session = Session(engine: engine)
+        }
         for (position, event) in events.enumerated() {
             let line = event.line
+            if let pending = deferredReset, !(line.type == "engine" && line.t == pending) { reset() }
             context.apply(line)
             switch line.type {
+            case "boundary" where Self.endsALineAfterItsStep(line, key: key):
+                deferredReset = line.t
             case "start", "boundary":
-                stepIndex = 0
-                session = nil
-                guard let engine = factory.engine(settings: context.settings, focus: context.focus) else { continue }
-                guard anyEngine || context.engine == factory.identity else {
-                    if context.engine == nil { skips.unidentifiedEngine += 1 } else { skips.otherEngine += 1 }
-                    continue
-                }
-                session = Session(engine: engine)
+                reset()
             case "gap", "pause":
                 session = nil  // keys inside were not recorded; the next boundary or launch starts again
             case "key" where line.isKeyDown:
@@ -133,10 +144,17 @@ enum ReplayCheck {
                 } else {
                     session = current
                 }
+                if deferredReset == line.t { reset() }
             default: break
             }
         }
         return (found, skips)
+    }
+
+    /// The boundary of a Return or Tab key down at the same time: the pipeline took it after the key's engine step.
+    static func endsALineAfterItsStep(_ line: TraceLine, key: TraceLine?) -> Bool {
+        guard line.job == "returnOrTab", let key, key.t == line.t, key.isKeyDown else { return false }
+        return [TraceKeys.returnKey, TraceKeys.keypadEnter, TraceKeys.tab].contains(key.kc ?? 0)
     }
 
     /// The engine event the pipeline built from this key (PLT-R310 step 7): a restore binding, Backspace, Return

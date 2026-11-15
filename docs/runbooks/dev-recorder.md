@@ -87,7 +87,7 @@ same `gen` switches between `bundle` and `front`.
 | `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included) or took more than 50 ms |
 | `restoreOrReopen` | an Escape restore, a Backspace that re-opened a committed word, or a Backspace that re-opened a token a rule restored at its commit |
 | `reopenedLiteral` | the ENG-R1005 regression guard: a Backspace re-opened a token a rule restored at its commit (not one the user restored with the toggle), at least one more Backspace went into it, and then keys passed through as typed although the token shown before them no longer had a key that transforms anything and a fresh token with those keys would have composed them (`tiesng`, space, five Backspaces, `eesn` showing `tieesn`). The scanner replays the shown token through its own engine with the recorded settings, so this needs replay (not with `--no-replay`) and judges traces of any engine build; a token still open at the end of the selection or cut by a gap or a pause is not judged; at most one per token. The detail gives the commit decision and the counts only; `show` shows the excerpt, where the engine lines already carry the token as the recorder wrote it. It should never fire on a build with ENG-R1005 |
-| `replayDivergence` | replaying the keys since the last reset through the engine with the recorded settings gives another result than recorded: the host fed the engine something else, or kept state it should have dropped. Only for segments written by the scanner's engine build; a segment stops at a gap or a pause |
+| `replayDivergence` | replaying the keys since the last reset through the engine with the recorded settings gives another result than recorded: the host fed the engine something else, or kept state it should have dropped. Only for segments written by the scanner's engine build; a segment stops at a gap or a pause. Return and Tab are fed to the engine before their boundary, which the recorder writes first: the replay applies that boundary after the key's own step (since 15/11/2026; before, a revision committed by Return showed as a divergence, day finding 155 of that date) |
 | `undoAfterEdit` | Command+Z within 2 s after an engine edit |
 
 Not findings: app substitutions in a readback (curly quotes for straight ones, an ellipsis for three periods, an em
@@ -98,7 +98,8 @@ or en dash for hyphens, a period for the first of two spaces); the field then be
 `show N` prints the finding's header, then every line of the window in time order with the time relative to the
 finding; `>` marks the finding's own line. Keys print as in the PLT-R905 review window (`key keyDown 0x33 - -
 passed`), engine steps with the edit and the token after it, then jobs (`job 12 compose backspaceReplace executed
-... 4 events 3.1 ms total`), fallbacks, boundaries (`boundary focusChanged / focusChanged`), focus snapshots (bundle,
+... 4 events 3.1 ms total`; a job of a rule that reads a selected inline completion through AX, PLT-R420, adds
+`completion selected`, `completion none` or `completion unreadable` after the events, since 15/11/2026), fallbacks, boundaries (`boundary focusChanged / focusChanged`), focus snapshots (bundle,
 role, rule, strategy, requireTextFocus, mode), readbacks with the field text, markers, settings and gaps.
 
 Typical readings: a `resetWithOpenToken` just before the letters of a word went missing points at a focus or
@@ -135,7 +136,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `key` | `ev` (keyDown, keyUp, flagsChanged, mouseDown), `kc` key code, `fl` CGEventFlags, `ch` layout character, `out` (passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp) |
 | `engine` | `act` (passThrough, edit, editThenPassThrough), `del`, `ins`, `comp` token after the key, `dec` commit decision, `rev` revision reason when the commit also revised the previous word (`phrase`, `particleTail`, `nextEnglish`, `nextVietnamese`; PLT-R357). Words of the learned collision memory are never recorded |
 | `boundary` | `reason` (the engine's reset reason) and `job` (the boundary job reason); both are `unseenInput` for a keyUp the tap never saw go down (PLT-R397A) |
-| `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry, revision), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution) |
+| `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry, revision), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution), `compl` (only when the job read a selected inline completion through AX, PLT-R420: `selected`, `none` or `unreadable`; since 15/11/2026, an optional field, so the format version stays) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
 | `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `maxCallUs` (the longest single AX call of the read), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
 | `marker` | `src` (chord, menu) |

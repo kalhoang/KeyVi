@@ -140,6 +140,24 @@ import Testing
         #expect(schema.errors(json).isEmpty)
     }
 
+    /// A row that names a rule matched by bundle ID lists one of that rule's bundles, and every bundle of the
+    /// Spotlight rule has its row (retest of 15/11/2026, items 7 and 9: macOS 27.2 opens Spotlight in the Siri app,
+    /// `com.apple.campo`, a bundle the rule and the matrix did not list).
+    @Test func rowsOfBundleRulesNameTheRulesBundles() throws {
+        let rules = Dictionary(uniqueKeysWithValues: try Build.seededDocument().rules.map { ($0.id, $0) })
+        let entries = try Build.seededMatrix().entries
+        for row in entries {
+            guard let id = row.ruleId, let bundles = rules[id]?.match.bundleIds else { continue }
+            let label = "\(row.displayName) (\(row.bundleId.rawValue))"
+            #expect(bundles.contains(row.bundleId), "\(label) is not matched by \(id.rawValue)")
+        }
+        let spotlight = try #require(rules[ruleID("launcher.spotlight")]?.match.bundleIds)
+        #expect(spotlight.contains(bundleKey("com.apple.campo")))
+        for bundle in spotlight {
+            #expect(entries.contains { $0.bundleId == bundle && $0.ruleId == ruleID("launcher.spotlight") })
+        }
+    }
+
     @Test func seededMatrixReferencesOnlyShippedRules() throws {
         let ruleIDs = Set(try Build.seededDocument().rules.map(\.id))
         for row in try Build.seededMatrix().entries {
