@@ -102,7 +102,6 @@ public enum MenuText: String, LocalizationKey {
     case iconPausedUserDisabled = "icon.paused.userDisabled.accessibilityLabel"
     case iconPausedSessionInactive = "icon.paused.sessionInactive.accessibilityLabel"
     case iconPausedDiagnosticsTest = "icon.paused.diagnosticsTest.accessibilityLabel"
-    case iconNotWorkingFailOpen = "icon.notWorking.failOpen.accessibilityLabel"
     case hotkeySpace = "hotkey.space"
     case hotkeyRight = "hotkey.right"
     case hotkeyUnknownKey = "hotkey.unknownKey"

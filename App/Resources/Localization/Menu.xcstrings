@@ -361,24 +361,6 @@
         }
       }
     },
-    "icon.notWorking.failOpen.accessibilityLabel" : {
-      "comment" : "PLT-R211: failed open for a reason other than permission.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not working: open the menu to see how to fix it"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chưa gõ được: mở menu để xem cách khắc phục"
-          }
-        }
-      }
-    },
     "icon.paused.accessibilityLabel" : {
       "comment" : "PRD-R10.",
       "extractionState" : "manual",

@@ -111,8 +111,10 @@ enum AllHostStates {
         #expect(key(.paused(.diagnosticsTest)) == MenuText.iconPausedDiagnosticsTest.rawValue)
         #expect(key(.noPermission) == StatusIconState.permissionMissing.accessibilityLabelKey)
         #expect(key(.failOpen(.permissionRevoked)) == StatusIconState.permissionMissing.accessibilityLabelKey)
-        #expect(key(.failOpen(.watchdog)) == MenuText.iconNotWorkingFailOpen.rawValue)
-        #expect(key(.failOpen(.tapUnavailable)) == MenuText.iconNotWorkingFailOpen.rawValue)
+        // The slash means fail-open for a reason other than permission, so its one label says so (one key per glyph).
+        for reason in [FailOpenReason.watchdog, .tapUnavailable, .postingBroken, .callbackStuck] {
+            #expect(key(.failOpen(reason)) == MenuText.iconNotWorking.rawValue, "\(reason)")
+        }
         #expect(key(.ready(.vietnamese)) == MenuText.iconVietnamese.rawValue)
         #expect(key(.paused(.secureField)) == MenuText.iconSecureInputVietnamese.rawValue)
     }
