@@ -103,6 +103,8 @@ public final class TapSettingsPublisher: Sendable {
 
     private struct State {
         var bundled: Resources?
+        /// The bundled lists failed to load: the engines run with empty lists and there is no collision list.
+        var bundledFailed = false
         var generation: UInt64 = 0
         var revision: UInt64 = 0
         var inputs: EngineInputs?
@@ -155,9 +157,14 @@ public final class TapSettingsPublisher: Sendable {
     }
 
     /// ENG-R862, PLT-R914: the bundled collision list (the ambiguity table's words and the collision supplement) as
-    /// a membership test, from the bundled lists loaded once (empty when they failed to load). Utility queue.
-    public func collisionVocabulary() -> CollisionVocabulary {
-        let resources = state.withLock { state in bundledResources(&state) }
+    /// a membership test, from the bundled lists loaded once. Nil when they failed to load: an empty list would
+    /// validate every learned word away and the memory file would be rewritten empty (PLT-R1006). Utility queue.
+    public func collisionVocabulary() -> CollisionVocabulary? {
+        let loaded: Resources? = state.withLock { state in
+            let resources = bundledResources(&state)
+            return state.bundledFailed ? nil : resources
+        }
+        guard let resources = loaded else { return nil }
         let ambiguity = resources.ambiguity
         let supplement = resources.collision.supplement
         return CollisionVocabulary { ambiguity[$0] != nil || supplement.contains($0) }
@@ -276,6 +283,7 @@ public final class TapSettingsPublisher: Sendable {
         } catch {
             logger.log(.note("bundled word lists failed to load", category: .settings), level: .error)
             loaded = .empty
+            state.bundledFailed = true
         }
         state.bundled = loaded
         return loaded

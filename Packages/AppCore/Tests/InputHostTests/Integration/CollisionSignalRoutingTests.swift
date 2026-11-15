@@ -126,6 +126,29 @@ struct HostCollisionSignalTests {
         let user = await rig.store.store.state.user
         #expect(user.learnedWords.isEmpty)
     }
+
+    /// PLT-R914 with PLT-R1006 ("never wipe"): when the bundled lists fail to load there is no collision list to
+    /// validate the file against, so the memory is not loaded at all. The file on disk stays byte for byte as it was,
+    /// even after a signal and well past the 2 s debounce, and nothing is recorded.
+    @Test func aFailedBundledListLeavesTheMemoryFileUntouched() async throws {
+        struct BundledListsMissing: Error {}
+        let rig = HostRig(loadBundled: { throw BundledListsMissing() })
+        let url = SettingsStoreHarness.directory.appendingPathComponent(CollisionMemoryStore.fileName)
+        let seeded = Data(
+            (#"{"schemaVersion":1,"writtenBy":"0.1.0","entries":[{"word":"as","context":"any","#
+                + #""correctionsEnglish":0,"correctionsVietnamese":2,"acceptedEnglish":0,"acceptedVietnamese":0,"#
+                + #""classesEnglish":0,"classesVietnamese":2,"decayDay":20770,"lastDay":20770}]}"#).utf8)
+        try rig.store.memory.createDirectory(at: SettingsStoreHarness.directory, permissions: .ownerOnlyDirectory)
+        try rig.store.memory.writeAtomically(seeded, to: url, permissions: .ownerOnlyFile)
+        await rig.start()
+        defer { rig.stop() }
+        rig.controller.handle(MainNotice.collisionSignals([strong("as")], recordable: true))
+        #expect(recorded(rig) == 0)
+        await rig.store.advance(by: .seconds(3))
+        rig.utility.sync { rig.store.store.collisionMemory.flush() }
+        #expect(!rig.store.store.collisionMemory.isLoaded)
+        #expect(rig.store.memory.nodes[url.path]?.data == seeded)
+    }
 }
 
 @Suite("The learned memory reaches the engines (ENG-R865)")

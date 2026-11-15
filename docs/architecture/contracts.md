@@ -9442,10 +9442,13 @@ public final class InputHostController {
         dependencies.utilityQueue.sync {
             publisher.preloadResources()
             // PLT-R914: the memory is validated against the bundled list and loaded before the first catalog, so the
-            // first engines already carry it. Crash-loop safe mode touches no file (PLT-R1009).
-            let vocabulary = publisher.collisionVocabulary()
-            collisionWords.set(vocabulary)
-            if !settings.safeMode { memory.load(vocabulary: vocabulary) }
+            // first engines already carry it. Crash-loop safe mode touches no file (PLT-R1009). Without the bundled
+            // list (it failed to load) the memory stays unloaded: nothing is recorded and the file is never
+            // rewritten (PLT-R1006).
+            if let vocabulary = publisher.collisionVocabulary() {
+                collisionWords.set(vocabulary)
+                if !settings.safeMode { memory.load(vocabulary: vocabulary) }
+            }
             publisher.publish(settings)
         }
         startServices(rules: rules, settings: settings)
