@@ -61,6 +61,8 @@ QA-R5 The corpus MUST run on every PR on both macOS and Linux (the engine packag
 
 QA-R6 A corpus case may only change its expected output in a PR labelled `corpus-change`, with the reason in the PR description. Bulk regeneration of expected values without review is forbidden.
 
+QA-R68 The W11 collision corpus and its three adversarial sets (`01-engine.md` 13.11) run in CI as engine tests with the thresholds of ENG-R876 and ENG-R877; any wrong revision fails the build. The sets are fixtures in the engine package; a change to a bundled list that moves a number is reviewed with the list. *(Added on 15/11/2026 with the collision rules: the fixtures, the host-mode replay and the memory simulation are the `CollisionCorpusTests` target, run as their own step on Linux and inside the engine coverage run on macOS; `docs/decisions/0008-collision-learning.md`.)*
+
 ### 2.3 Property tests and fuzzing
 
 QA-R7 Properties checked for random key sequences (letters, digits, punctuation, backspace, ESC, modifiers, both methods, all option combinations):
@@ -118,6 +120,7 @@ QA-R21 A new per-app profile MUST come with a test in the integration suite that
 - CI on a PR runs lint, build, engine corpus (macOS and Linux), app logic tests, coverage, property tests and short fuzz, in under 15 minutes.
 - A deliberately injected crash on `quz` is caught by the corpus and by the fuzzer.
 - A deliberately injected 30% slowdown in the engine fails the performance gate.
+- A deliberately wrong collision rule threshold or bundled collision-list entry fails the QA-R68 gate.
 
 ---
 
