@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Retest of 15/11/2026, items 7 and 9 (PLT-R389, PLT-R353, PLT-R420): on macOS 27.2 Command+Space opens the search
-// field of the Siri app (`com.apple.campo`), not of `com.apple.Spotlight`. The dev trace showed that field with no
-// rule (`rule -`), so edits ran without the `axSelection` handling ("vieêệt", "teẽext") and Escape restored the
-// word ("vieệeejt"). The other focus tests use fake resolvers, which is why the missing bundle went unnoticed:
+// Retest of 15/11/2026, items 7 and 9 (PLT-R389, PLT-R353, PLT-R420, PLT-R423): on macOS 27.2 Command+Space opens the
+// search field of the Siri app (`com.apple.campo`), not of `com.apple.Spotlight`. The dev trace showed that field with
+// no rule (`rule -`), so edits ran without the completion handling ("vieêệt", "teẽext") and Escape restored the word
+// ("vieệeejt"). With the rule applied, finding 202 showed the suggestion after the caret is not selected, so the rule
+// now clears it with Forward Delete (`forwardDelete`). The other focus tests use fake resolvers, which is why the missing bundle went unnoticed:
 // these resolve the shipped compat/rules.json, follow the published decision into the tap and check that Escape
 // passes there. Bundle IDs are test fixtures checked against compat/rules.json (PLT-R501).
 
@@ -79,11 +80,11 @@ struct FocusSpotlightSeededRulesTests {
         #expect(snapshot.decision.rule == RuleID(rawValue: "launcher.spotlight"))
         #expect(snapshot.decision.overlay)
         #expect(!snapshot.decision.restoreHotkeyEnabled)
-        #expect(snapshot.decision.plan.parameters.inlineCompletion == .axSelection)
+        #expect(snapshot.decision.plan.parameters.inlineCompletion == .forwardDelete)
     }
 
-    /// End to end on the tap: with the published decision, a composing edit carries the `axSelection` handling
-    /// (the worker removes a selected completion first, PLT-R420), and Escape with an open word passes to the panel
+    /// End to end on the tap: with the published decision, a composing edit carries the `forwardDelete` handling
+    /// (the worker clears a suggestion after the caret first, PLT-R423), and Escape with an open word passes to the panel
     /// as a boundary, with no restore job (T5.8).
     @Test(arguments: panels)
     func escapePassesToThePanelAndEditsHandleTheCompletion(_ panel: Panel) throws {
@@ -99,7 +100,7 @@ struct FocusSpotlightSeededRulesTests {
         fixture.press(Key.a)
         fixture.press(Key.a)  // "aa" -> "â": one deletion
         let edit = try #require(fixture.completeJobs().compactMap(\.edit).first)
-        #expect(edit.deleteCount == 1 && edit.plan.parameters.inlineCompletion == .axSelection)
+        #expect(edit.deleteCount == 1 && edit.plan.parameters.inlineCompletion == .forwardDelete)
         #expect(fixture.keyDown(Key.escape) == .pass)
         #expect(fixture.keyUp(Key.escape) == .pass)
         #expect(fixture.popJobs().allSatisfy { $0.edit == nil })

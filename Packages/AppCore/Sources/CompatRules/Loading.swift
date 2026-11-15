@@ -14,6 +14,7 @@ public enum RulesValidationError: Error, Sendable, Hashable {
     case titlePatternInUserOverride(RuleID)  // PLT-R502
     case parameterOutOfRange(rule: RuleID?, key: String)
     case placeholderInBroadRule(RuleID)  // PLT-R422: not global, not title-only
+    case forwardDeleteInBroadRule(RuleID?)  // PLT-R424: not in defaults (nil), not global, not title-only
     case userOverrideIDNotPrefixed(RuleID)
 }
 

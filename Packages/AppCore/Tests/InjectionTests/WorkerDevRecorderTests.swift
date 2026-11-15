@@ -106,6 +106,40 @@ private func devRecords(_ capture: CaptureController) -> [DevTraceRecord] {
         #expect(try completionLabel(SimulatedTextField(text: "a"), mode: .placeholder) == nil)
     }
 
+    /// PLT-R423: what the `forwardDelete` read decided, and the events it cost (a Forward Delete pair before the
+    /// Backspace pair of a delete-1 job: 6 events instead of 4).
+    @Test func theForwardDeleteDecisionIsRecordedPLTR423() throws {
+        func record(
+            _ field: SimulatedTextField, ax: FakeFocusedFieldAccess.Behaviour = .normal
+        ) throws -> (label: String?, events: Int) {
+            let clock = ManualClock()
+            let capture = try recordingCapture(clock: clock)
+            let rig = WorkerRig(field: field, capture: capture)
+            rig.fieldAccess.setBehaviour(ax)
+            let plan = Fixture.plan(parameters: Fixture.parameters { $0.inlineCompletion = .forwardDelete })
+            rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: plan) }
+            rig.run()
+            guard case .job(let job)? = devRecords(capture).last else {
+                Issue.record("a job record")
+                return (nil, 0)
+            }
+            return (job.completion?.description, job.eventsPosted)
+        }
+        let atEnd = try record(SimulatedTextField(text: "a"))
+        #expect(atEnd.label == "forwardDelete" && atEnd.events == 6)
+        let middle = SimulatedTextField(text: "ab")
+        middle.click(at: 1)
+        let notAtEnd = try record(middle)
+        #expect(notAtEnd.label == "forwardDelete skipped notAtEnd" && notAtEnd.events == 4)
+        let unreadable = try record(SimulatedTextField(text: "a"), ax: .timeout)
+        #expect(unreadable.label == "forwardDelete skipped unreadable" && unreadable.events == 4)
+        let selecting = SimulatedTextField(behaviour: .inlineCompletion(suggestions: ["amazon"]))
+        selecting.apply(
+            InjectionFieldWiring.keyDown("a", receivedAt: Fixture.start), layout: InjectionTestLayouts.qwerty())
+        let selected = try record(selecting)
+        #expect(selected.label == "selected" && selected.events == 6)
+    }
+
     @Test func nothingIsRecordedWhileTheRecorderIsPaused() throws {
         let clock = ManualClock()
         let capture = try recordingCapture(clock: clock)

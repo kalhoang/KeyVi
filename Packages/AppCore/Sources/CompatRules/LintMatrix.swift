@@ -132,6 +132,7 @@ extension RulesValidationError {
             rule
         case .unknownBundleGroup(let rule, _): rule
         case .parameterOutOfRange(let rule, _): rule
+        case .forwardDeleteInBroadRule(let rule): rule
         }
     }
 
@@ -148,6 +149,8 @@ extension RulesValidationError {
         case .titlePatternInUserOverride: "user overrides cannot use titlePattern (PLT-R502)"
         case .parameterOutOfRange(_, let key): key + " is outside its allowed range (section 4)"
         case .placeholderInBroadRule: "placeholder in a global or title-only rule (PLT-R422)"
+        case .forwardDeleteInBroadRule(nil): "defaults enable forwardDelete globally (PLT-R424)"
+        case .forwardDeleteInBroadRule: "forwardDelete in a global or title-only rule (PLT-R424)"
         case .userOverrideIDNotPrefixed: "user override ids start with user."
         }
     }

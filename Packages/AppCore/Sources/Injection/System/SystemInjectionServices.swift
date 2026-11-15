@@ -30,6 +30,9 @@ public final class AXFocusedFieldAccess: FocusedFieldAccess {
     public func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<TextRange> {
         AXFieldCalls.selectedRange(field.element?.element, timeout: timeout)
     }
+    public func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        AXFieldCalls.caret(field.element?.element, timeout: timeout)
+    }
     public func text(_ field: FieldHandle, in range: TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         AXFieldCalls.text(field.element?.element, in: range, timeout: timeout)
     }

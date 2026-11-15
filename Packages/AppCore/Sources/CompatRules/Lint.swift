@@ -37,6 +37,7 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case reviewByMoreThan12Months  // PLT-R506
     case identicalMatchSignature  // PLT-R521
     case placeholderWithoutGateTest  // PLT-R422
+    case forwardDeleteInBroadRule  // PLT-R424: defaults, a global or a title-only rule enable forwardDelete
     case manualTestWithoutMatrixRow  // PLT-R531
     case manualMatrixRowUnverified  // PLT-R531: row lacks date, app version, macOS or tester; release blocker
     case tier1MatrixRowOlderThan90Days  // PLT-R531, 13.3 (release mode)

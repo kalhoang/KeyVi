@@ -12,6 +12,8 @@ Checks:
   - no two rules with identical match signatures (PLT-R521)
   - titlePattern only together with bundleIds, at most 200 characters, compiles (PLT-R502)
   - inlineCompletion "placeholder" never in defaults, a global rule or a title-only rule (PLT-R422)
+  - inlineCompletion "forwardDelete" never in defaults, a global rule or a title-only rule (PLT-R424, the same
+    scope as the placeholder; mirror of CompatRules' ForwardDeleteScope)
   - a scoped placeholder rule has an automated test whose scenario (compat/scenarios/<id>.json) declares the
     1,000-edit gate: repeat.words >= 1000, repeat.timing burst, expect.noPlaceholderResidue true, readback ax or
     webdriver; warning, blocking in --release mode (PLT-R422, mirror of compat-lint's PlaceholderGate)
@@ -47,6 +49,7 @@ REVIEW_BLOCK_AFTER_DAYS = 30
 TITLE_PATTERN_MAX = 200
 NARROWING_MATCH_KEYS = ("ax", "web")
 PLACEHOLDER_COMPLETIONS = ("placeholder", "axSelectionThenPlaceholder")
+FORWARD_DELETE_COMPLETION = "forwardDelete"  # PLT-R423, scoped by PLT-R424
 # PLT-R422 gate, the same values as CompatRules' PlaceholderGate (Packages/AppCore/Sources/CompatRules).
 GATE_MIN_WORDS = 1000
 GATE_TIMING = "burst"
@@ -183,6 +186,13 @@ def check_action(rule: dict, label: str, report: Report) -> None:
             report.error(f"{label}: placeholder in a title-only rule (PLT-R422)")
         elif not narrowing and not identity:
             report.error(f"{label}: placeholder needs a scoped match (PLT-R422)")
+    if params.get("inlineCompletion") == FORWARD_DELETE_COMPLETION:
+        if not match:
+            report.error(f"{label}: forwardDelete in a global rule (PLT-R424)")
+        elif match.get("titlePattern") and not any(match.get(key) for key in NARROWING_MATCH_KEYS):
+            report.error(f"{label}: forwardDelete in a title-only rule (PLT-R424)")
+        elif is_broad(match):
+            report.error(f"{label}: forwardDelete needs a scoped match (PLT-R424)")
     if action["strategy"] == "paste" and action.get("requiresUserOptIn") is not True:
         report.error(f"{label}: strategy paste requires requiresUserOptIn: true (PLT-R460)")
 
@@ -260,6 +270,8 @@ def check_document(doc: dict, schema: dict | None, matrix_text: str | None, toda
     defaults = doc.get("defaults") or {}
     if (defaults.get("params") or {}).get("inlineCompletion") in ("placeholder", "axSelectionThenPlaceholder"):
         report.error("defaults: placeholder must not be enabled globally (PLT-R422)")
+    if (defaults.get("params") or {}).get("inlineCompletion") == FORWARD_DELETE_COMPLETION:
+        report.error("defaults: forwardDelete must not be enabled globally (PLT-R424)")
     groups = doc.get("bundleGroups") or {}
     rules = doc.get("rules")
     if not isinstance(rules, list):

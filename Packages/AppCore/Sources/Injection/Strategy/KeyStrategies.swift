@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// `backspaceReplace` (4.2), `selectReplace` (4.4) and inline-completion handling (4.3), plus the executor table.
+// `backspaceReplace` (4.2), `selectReplace` (4.4) and inline-completion handling (4.3, PLT-R420-R423), plus the
+// executor table.
 
 internal import AppModel
 internal import RealtimeSupport
@@ -12,28 +13,37 @@ protocol StrategyHost: AnyObject {
     var pasteboardPreserver: PasteboardPreserver { get }
     /// Command+V was posted: the worker restores the clipboard after `restoreDelay` (PLT-R461 steps 4-5).
     func pasteCompleted(restoreDelay: TimeSpan)
-    /// PLT-R420: AX could not answer and the next completion option was used.
+    /// PLT-R420, PLT-R423: AX could not answer and the next completion option was used.
     func completionFallback()
-    /// PLT-R420, PLT-R904A: what the read of a selected inline completion found, for the dev recorder's job line.
+    /// PLT-R420, PLT-R423, PLT-R904A: what the completion read found, for the dev recorder's job line.
     func noteCompletionRead(_ read: CompletionRead)
 }
 
-/// The AX read of `axSelection` and `axSelectionThenPlaceholder` (PLT-R420). Recorded on the dev trace's job line
-/// since the retest of 15/11/2026 (Spotlight on macOS 27.2 lost one deletion per edit, and the trace could not tell
-/// whether AX reported no selection or did not answer).
+/// The AX read of `axSelection`, `axSelectionThenPlaceholder` (PLT-R420) and `forwardDelete` (PLT-R423). Recorded on
+/// the dev trace's job line since the retest of 15/11/2026 (Spotlight on macOS 27.2 lost one deletion per edit, and the
+/// trace could not tell whether AX reported no selection or did not answer).
 enum CompletionRead {
     /// A selection after the caret: one extra deletion removes it.
     case selected
-    /// AX answered with an empty selection.
+    /// AX answered with an empty selection (`axSelection`).
     case none
-    /// AX timed out or was unavailable.
+    /// AX timed out or was unavailable (`axSelection`).
     case unreadable
+    /// `forwardDelete`: the caret is at the end of the text; a Forward Delete goes before each Backspace.
+    case forwardDelete
+    /// `forwardDelete`: the caret is before the end of the text; nothing is added.
+    case forwardDeleteNotAtEnd
+    /// `forwardDelete`: AX timed out or was unavailable, or the job has no field; nothing is added.
+    case forwardDeleteUnreadable
 
     var label: StaticString {
         switch self {
         case .selected: "selected"
         case .none: "none"
         case .unreadable: "unreadable"
+        case .forwardDelete: "forwardDelete"
+        case .forwardDeleteNotAtEnd: "forwardDelete skipped notAtEnd"
+        case .forwardDeleteUnreadable: "forwardDelete skipped unreadable"
         }
     }
 }
@@ -50,13 +60,16 @@ enum BuiltInExecutors {
     }
 }
 
-/// What to do about a selected inline suggestion before the first deletion (PLT-R420, PLT-R421).
+/// What to do about an inline suggestion before the first deletion (PLT-R420, PLT-R421, PLT-R423).
 enum CompletionPrefix: Equatable {
     case none
     /// A suggestion is selected: one extra backspace removes it.
     case extraDeletion
     /// Insert a placeholder (replacing any suggestion), then delete one more grapheme.
     case placeholder
+    /// The caret is at the end of the text with nothing selected: a Forward Delete before each deletion step clears a
+    /// suggestion shown after the caret, also one the field offers again after a deletion (PLT-R423).
+    case forwardDeleteBeforeEachDeletion
 
     /// Only edits that delete need handling: an insertion replaces a selected suggestion like typing does.
     static func resolve(for job: EditJob, in environment: any InjectionEnvironment) -> CompletionPrefix {
@@ -65,6 +78,7 @@ enum CompletionPrefix: Equatable {
         switch mode {
         case .none: return .none
         case .placeholder: return .placeholder
+        case .forwardDelete: return forwardDelete(for: job, in: environment)
         case .axSelection, .axSelectionThenPlaceholder:
             let host = environment as? any StrategyHost
             if let field = job.field,
@@ -78,6 +92,31 @@ enum CompletionPrefix: Equatable {
             host?.completionFallback()
             return mode == .axSelectionThenPlaceholder ? .placeholder : .none
         }
+    }
+
+    /// PLT-R423: one bounded read of the selection and the character count. A selection keeps PLT-R420's extra
+    /// deletion; only an empty selection at the end of the text gets Forward Delete, because anywhere else it would
+    /// delete the character after the caret. A caret before the end is normal editing; an unreadable field counts the
+    /// PLT-R420 health event.
+    private static func forwardDelete(for job: EditJob, in environment: any InjectionEnvironment) -> CompletionPrefix {
+        let host = environment as? any StrategyHost
+        guard let field = job.field,
+            case .success(let caret) = environment.fieldAccess.caret(field, timeout: InjectionTiming.axSelectionTimeout)
+        else {
+            host?.noteCompletionRead(.forwardDeleteUnreadable)
+            host?.completionFallback()
+            return .none
+        }
+        if caret.selection.length > 0 {
+            host?.noteCompletionRead(.selected)
+            return .extraDeletion
+        }
+        guard caret.isAtEndOfText else {
+            host?.noteCompletionRead(.forwardDeleteNotAtEnd)
+            return .none
+        }
+        host?.noteCompletionRead(.forwardDelete)
+        return .forwardDeleteBeforeEachDeletion
     }
 
     static func placeholderEvent(for job: EditJob) -> SyntheticKeyEvent {
@@ -94,14 +133,20 @@ struct BackspaceReplaceExecutor: StrategyExecutor {
     func execute(_ job: EditJob, in environment: any InjectionEnvironment) -> StrategyOutcome {
         var script = KeyScript()
         var deletions = job.deleteCount
+        var clearsBeforeEachDeletion = false
         switch CompletionPrefix.resolve(for: job, in: environment) {
         case .none: break
         case .extraDeletion: deletions += 1
         case .placeholder:
             script.append(CompletionPrefix.placeholderEvent(for: job), phase: .prefix)
             deletions += 1
+        case .forwardDeleteBeforeEachDeletion: clearsBeforeEachDeletion = true
         }
-        script.append(SyntheticKeys.backspace, phase: .delete, count: deletions)
+        for _ in 0..<deletions {
+            // PLT-R423: the field may offer its suggestion again after each deletion.
+            if clearsBeforeEachDeletion { script.append(SyntheticKeys.forwardDelete, phase: .delete) }
+            script.append(SyntheticKeys.backspace, phase: .delete)
+        }
         script.appendInsertion(of: job)
         return ScriptRunner.run(script, job: job, limits: limits, in: environment)
     }
@@ -123,6 +168,9 @@ struct SelectReplaceExecutor: StrategyExecutor {
         case .placeholder:
             script.append(CompletionPrefix.placeholderEvent(for: job), phase: .prefix)
             selections += 1
+        case .forwardDeleteBeforeEachDeletion:
+            // PLT-R423: Shift+Left deletes nothing, so the field offers no new suggestion between the steps.
+            script.append(SyntheticKeys.forwardDelete, phase: .delete)
         }
         script.append(SyntheticKeys.shiftLeft, phase: .delete, count: selections)
         if job.insertion.isEmpty, selections > 0 {

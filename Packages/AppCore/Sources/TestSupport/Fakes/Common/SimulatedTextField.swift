@@ -21,6 +21,12 @@ public final class SimulatedTextField: Sendable {
         /// Address bar, Spotlight, Sheets (4.3): after an insertion at the end, if the text is a proper prefix of
         /// a suggestion, the remainder is appended and selected. Backspace then deletes only the selection.
         case inlineCompletion(suggestions: [String])
+        /// Spotlight on macOS 27.2 (PLT-R423, retest of 15/11/2026): after an insertion or a deletion at the end, if
+        /// the text is a proper prefix of a suggestion, the remainder is shown after the caret without being selected
+        /// and is not part of the text. Backspace and Forward Delete then only remove it; typing replaces it; moving
+        /// the caret drops it. `countedByAX`: the field reports the shown remainder in its character count and its
+        /// AX text (residual risk (b) of PLT-R423).
+        case suggestionAfterCaret(suggestions: [String], countedByAX: Bool = false)
         /// Edit-mode transition (section 6): the first keyDown after focus (init, `click`, `reset`) is dropped.
         case dropsFirstEventAfterFocus
         /// Remote clients: synthetic events insert the character their key code produces in the layout, not
@@ -60,6 +66,8 @@ public final class SimulatedTextField: Sendable {
     private struct State {
         var text: String
         var selection: TextRange
+        /// The remainder shown after the caret by `suggestionAfterCaret`; never part of `text`.
+        var suggestion = ""
         var dropNextKeyDown: Bool
         var pending: [Operation] = []
         var droppedEvents = 0
@@ -82,6 +90,8 @@ public final class SimulatedTextField: Sendable {
     }
 
     public var text: String { state.withLock { $0.text } }
+    /// The remainder `suggestionAfterCaret` shows after the caret ("" when none).
+    public var suggestionShown: String { state.withLock { $0.suggestion } }
     /// UTF-16 selection (`CFRange` semantics).
     public var selection: TextRange { state.withLock { $0.selection } }
     public var selectedText: String {
@@ -118,6 +128,7 @@ public final class SimulatedTextField: Sendable {
         state.withLock { state in
             let caret = min(max(0, offset), state.text.utf16.count)
             state.selection = TextRange(location: caret, length: 0)
+            state.suggestion = ""
             if behaviour == .dropsFirstEventAfterFocus { state.dropNextKeyDown = true }
         }
     }
@@ -144,13 +155,24 @@ public final class SimulatedTextField: Sendable {
 
     public func axSelectedRange() -> TextRange { selection }
 
+    /// `kAXNumberOfCharactersAttribute`: the text in UTF-16 units, plus the shown suggestion where AX counts it.
+    public func axCharacterCount() -> Int {
+        state.withLock { axValue(of: $0).utf16.count }
+    }
+
     /// At most `maximumAXTextUnits` UTF-16 units (PLT-R343).
     public func axText(in range: TextRange) -> String {
         state.withLock { state in
-            let clamped = Self.clamp(range, in: state.text)
+            let value = axValue(of: state)
+            let clamped = Self.clamp(range, in: value)
             let bounded = TextRange(location: clamped.location, length: min(clamped.length, Self.maximumAXTextUnits))
-            return Self.substring(state.text, bounded)
+            return Self.substring(value, bounded)
         }
+    }
+
+    private func axValue(of state: State) -> String {
+        guard case .suggestionAfterCaret(_, true) = behaviour else { return state.text }
+        return state.text + state.suggestion
     }
 
     public func axSetSelectedRange(_ range: TextRange) {
@@ -221,6 +243,11 @@ public final class SimulatedTextField: Sendable {
     // MARK: Editing
 
     private func perform(_ operation: Operation, on state: inout State) {
+        if case .ignored = operation { return }
+        if removesSuggestion(operation, &state) {
+            state.appliedEvents += 1
+            return
+        }
         switch operation {
         case .ignored:
             return
@@ -236,6 +263,7 @@ public final class SimulatedTextField: Sendable {
                 let start = Self.previousBoundary(state.text, before: state.selection.location)
                 state.selection = TextRange(location: start, length: state.selection.location - start)
                 Self.replaceSelection(with: "", in: &state)
+                offerSuggestionAfterDeletion(&state)
             }
         case .forwardDelete:
             if state.selection.length > 0 {
@@ -285,7 +313,31 @@ public final class SimulatedTextField: Sendable {
         }
     }
 
+    /// `suggestionAfterCaret`: a shown suggestion absorbs Backspace and Forward Delete, and is dropped by typing (the
+    /// insertion then applies) and by moving the caret (the move then applies).
+    private func removesSuggestion(_ operation: Operation, _ state: inout State) -> Bool {
+        guard !state.suggestion.isEmpty else { return false }
+        state.suggestion = ""
+        switch operation {
+        case .backspace, .forwardDelete: return true
+        case .insert, .paste, .moveLeft, .moveRight, .ignored: return false
+        }
+    }
+
+    /// `suggestionAfterCaret` offers again after a deletion at the end (the worst case PLT-R423 guards against).
+    private func offerSuggestionAfterDeletion(_ state: inout State) {
+        guard case .suggestionAfterCaret = behaviour else { return }
+        offerCompletion(&state)
+    }
+
     private func offerCompletion(_ state: inout State) {
+        if case .suggestionAfterCaret(let suggestions, _) = behaviour {
+            guard !state.text.isEmpty, state.selection.length == 0, state.selection.location == state.text.utf16.count,
+                let match = suggestions.first(where: { $0.hasPrefix(state.text) && $0.count > state.text.count })
+            else { return }
+            state.suggestion = String(match.dropFirst(state.text.count))
+            return
+        }
         guard case .inlineCompletion(let suggestions) = behaviour, !state.text.isEmpty,
             state.selection.length == 0, state.selection.location == state.text.utf16.count,
             let match = suggestions.first(where: { $0.hasPrefix(state.text) && $0.count > state.text.count })

@@ -185,17 +185,18 @@ import Testing
             label: "Spotlight overlay", context: Build.context(bundle: "com.apple.Spotlight", role: "AXTextField"),
             rule: "launcher.spotlight"
         ) {
-            $0.overlay && $0.params.inlineCompletion == .axSelection && !$0.features.restoreHotkey
+            $0.overlay && $0.params.inlineCompletion == .forwardDelete && !$0.features.restoreHotkey
         },
         // Retest of 15/11/2026, items 7 and 9: on macOS 27.2 Command+Space opens the Siri app (`com.apple.campo`),
-        // whose search field the dev trace showed with no rule (`rule -`).
+        // whose search field the dev trace showed with no rule (`rule -`), and whose suggestion after the caret is not
+        // selected (finding 202: `tiee` gave "tieê"), hence `forwardDelete` (PLT-R423).
         .init(
             label: "Spotlight overlay on macOS 27.2 (the Siri app)",
             context: Build.context(
                 bundle: "com.apple.campo", macOS: "27.2", role: "AXTextField", subrole: "AXSearchField"),
             rule: "launcher.spotlight"
         ) {
-            $0.overlay && $0.params.inlineCompletion == .axSelection && !$0.features.restoreHotkey
+            $0.overlay && $0.params.inlineCompletion == .forwardDelete && !$0.features.restoreHotkey
                 && !$0.features.lookaheadRevision
         },
         .init(
@@ -218,13 +219,23 @@ import Testing
         #expect(expectation.check(decision))
     }
 
-    /// PLT-R407: no shipped key or value can request a forward delete; the strategy enum has no such case.
-    @Test func noForwardDeleteAnywhereInTheRules() throws {
-        let raw = try String(contentsOf: RepoFiles.rules, encoding: .utf8).lowercased()
-        let actions = try Build.seededDocument().rules.map(\.action)
-        let encoded = String(decoding: try JSONEncoder().encode(actions), as: UTF8.self).lowercased()
-        #expect(!encoded.contains("forward"))
-        #expect(!raw.contains("\"forwarddelete\""))
+    /// PLT-R407, PLT-R424: the only forward delete a shipped rule can request is `inlineCompletion: forwardDelete` in a
+    /// rule scoped to apps (never `defaults`, a global or a title-only rule); no other key or value names it, and the
+    /// strategy enum has no such case. Today only `launcher.spotlight` uses it (retest of 15/11/2026).
+    @Test func forwardDeleteOnlyThroughTheScopedCompletionHandling() throws {
+        let document = try Build.seededDocument()
+        #expect(document.defaults.params.inlineCompletion != .forwardDelete)
+        for rule in document.rules {
+            var action = rule.action
+            if ForwardDeleteScope.usesForwardDelete(action.params) {
+                #expect(!PlaceholderScope.isBroad(rule.match), "\(rule.id.rawValue)")
+                action.params?.inlineCompletion = nil
+            }
+            let encoded = String(decoding: try JSONEncoder().encode(action), as: UTF8.self).lowercased()
+            #expect(!encoded.contains("forward"), "\(rule.id.rawValue)")
+        }
+        let users = document.rules.filter { ForwardDeleteScope.usesForwardDelete($0.action.params) }
+        #expect(users.map(\.id.rawValue) == ["launcher.spotlight"])
         #expect(InjectionStrategy.allCases.allSatisfy { !$0.rawValue.lowercased().contains("forward") })
     }
 

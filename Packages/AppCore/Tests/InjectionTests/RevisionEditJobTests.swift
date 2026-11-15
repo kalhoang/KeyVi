@@ -104,6 +104,10 @@ private struct LaggingFieldAccess: FocusedFieldAccess {
         app.catchUp()
         return base.selectedRange(field, timeout: timeout)
     }
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        app.catchUp()
+        return base.caret(field, timeout: timeout)
+    }
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         app.catchUp()
         return base.text(field, in: range, timeout: timeout)

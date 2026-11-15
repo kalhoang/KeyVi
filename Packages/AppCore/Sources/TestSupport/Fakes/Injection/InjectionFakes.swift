@@ -103,6 +103,11 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         read { self.field.axSelectedRange() }
     }
 
+    /// PLT-R423: selection and character count of the simulated field, read together.
+    public func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        read { FieldCaret(selection: self.field.axSelectedRange(), characterCount: self.field.axCharacterCount()) }
+    }
+
     public func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         read { self.field.axText(in: range) }
     }

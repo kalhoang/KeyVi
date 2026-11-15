@@ -173,6 +173,10 @@ struct InstrumentedFieldAccess: FocusedFieldAccess {
         call { base.selectedRange(field, timeout: timeout) }
     }
 
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        call { base.caret(field, timeout: timeout) }
+    }
+
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         call { base.text(field, in: range, timeout: timeout) }
     }

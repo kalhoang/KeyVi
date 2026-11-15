@@ -52,6 +52,20 @@ public struct TextRange: Sendable, Hashable {
     }
 }
 
+/// The caret of a field as `forwardDelete` reads it (PLT-R423): the selected range and the field's length in UTF-16
+/// units (`kAXNumberOfCharactersAttribute`), read together so they describe the same moment.
+public struct FieldCaret: Sendable, Hashable {
+    public var selection: TextRange
+    public var characterCount: Int
+    public init(selection: TextRange, characterCount: Int) {
+        self.selection = selection
+        self.characterCount = characterCount
+    }
+
+    /// An empty selection at the end of the text: a Forward Delete there deletes no character of the field.
+    public var isAtEndOfText: Bool { selection.length == 0 && selection.location == characterCount }
+}
+
 public enum AXCallResult<Value: Sendable>: Sendable {
     case success(Value)
     case timedOut
@@ -59,13 +73,16 @@ public enum AXCallResult<Value: Sendable>: Sendable {
     case failed(code: Int32)  // AXError raw value
 }
 
-/// Bounded AX access for injection (PLT-R342, PLT-R343, PLT-R420, 4.5). Never reads a full `AXValue`.
+/// Bounded AX access for injection (PLT-R342, PLT-R343, PLT-R420, PLT-R423, 4.5). Never reads a full `AXValue`.
 /// Production: `AXUIElementCopyAttributeValue(kAXSelectedTextRangeAttribute)`,
+/// `AXUIElementCopyMultipleAttributeValues(kAXSelectedTextRangeAttribute, kAXNumberOfCharactersAttribute)`,
 /// `AXUIElementCopyParameterizedAttributeValue(kAXStringForRangeParameterizedAttribute)`,
 /// `AXUIElementSetAttributeValue(kAXSelectedTextRangeAttribute / kAXSelectedTextAttribute)`, each after
 /// `AXUIElementSetMessagingTimeout` with the requested timeout.
 public protocol FocusedFieldAccess: Sendable {
     func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<TextRange>
+    /// PLT-R423: the selected range and the character count in one call (one round trip to the app).
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret>
     /// At most 64 UTF-16 units (PLT-R343); longer ranges are clamped by the implementation.
     func text(_ field: FieldHandle, in range: TextRange, timeout: TimeSpan) -> AXCallResult<String>
     func setSelectedRange(_ field: FieldHandle, to range: TextRange, timeout: TimeSpan) -> AXCallResult<Void>

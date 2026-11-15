@@ -444,9 +444,23 @@ notification. That part is the unit tests' (fake AX posts nothing) and the Spotl
 
 `launcher.spotlight.reopen` (runner only, `targetBundleId` Spotlight) types `vieejt`, Escape twice, then opens Spotlight
 again and types `tex` then `xt`; `launcher.spotlight.campo` and `launcher.spotlight.campo.reopen` do the same with
-`targetBundleId` `com.apple.campo`, the panel of macOS 27.2. Its `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
+`targetBundleId` `com.apple.campo`, the panel of macOS 27.2, and `launcher.spotlight.campo.suggestion` types `tieesng`
+(expect `tiếng`). Their `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
 completion that runs to its end (`AXReadbackText`): Spotlight with history shows `text` as `TextEdit` with `Edit`
-selected, which is the completion the `axSelection` handling removes, not text that was typed.
+selected, which is the completion the extra Backspace of PLT-R420 removes, not text that was typed.
+
+*Correction of 15/11/2026, evening (W17-D, dev build 20261115f):* with `launcher.spotlight` applied to
+`com.apple.campo`, `tiee` still gave `tieê`. Finding 202 of that day's dev trace (`trace-scan.sh show 202 --date
+2026-11-15`) shows the first edit as `job 1 compose backspaceReplace executed delete 1 insert 1 4 events completion
+none` and the commit readback `tieếng ` (selection 7+0) after `tieesng`: the first Backspace of the first edit went
+to the suggestion. By hand, with {{AppName}} switched to English, Pa saw the suggestion in grey after the caret; one
+Backspace removed only the suggestion, Shift with the arrow keys selected nothing (so `selectReplace` is no way out),
+and Forward Delete (Globe+Delete) removed the suggestion, after which a Backspace left `ti`. `AXSelectedTextRange` has
+length 0 while the suggestion shows, so `axSelection` never added its deletion. The rule now uses `forwardDelete`
+(PLT-R423): one read of `AXSelectedTextRange` and `AXNumberOfCharacters` per deleting edit; with the caret at the end of
+the text a Forward Delete goes before each Backspace (a delete-1 job posts 6 events, delete 2 posts 12 with a
+two-character insertion), a selection still gets the extra Backspace, and a caret before the end or an unreadable field
+gets nothing (unit tests: `ForwardDeleteCompletionTests`, `ForwardDeleteTests`, `WorkerCompletionFallbackTests`).
 
 Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM lock taken:
 
@@ -459,12 +473,16 @@ Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM 
    run: with the test build running, open Spotlight with Command+Space, type `vieejt` and `tex` then `xt`, press
    Escape, open it again and repeat; expect `việt`, `text` and an Escape that clears or closes Spotlight each time; then
    read the field with `ax-dump --bundle com.apple.campo --windows` (macOS 27.2; `com.apple.Spotlight` before it)
-   while a suggestion is shown, to confirm that the redesigned field exposes the selected completion as
-   `AXSelectedTextRange` (the `axSelection` handling of `launcher.spotlight` relies on it). The dev trace answers the
-   same question on any Mac: since 15/11/2026 each job line of a rule with `axSelection` ends with `completion
-   selected`, `completion none` or `completion unreadable`. Letters that still double with `completion none` mean AX
-   does not expose the completion (next: `placeholder` after its PLT-R422 test, or a pacing setting); with
-   `completion unreadable`, `axSelectionThenPlaceholder` would cover it.
+   while a suggestion is shown, to confirm that the field leaves the suggestion out of `AXValue` and
+   `AXNumberOfCharacters` (the `forwardDelete` handling of `launcher.spotlight` relies on it). Also type a word, move
+   the caret left with the arrow key and type `ees`: nothing to the right of the caret may disappear. The dev trace
+   answers the same question on any Mac: each job line of a rule with `forwardDelete` ends with `completion
+   forwardDelete` (6 events for a delete-1 edit), `completion forwardDelete skipped notAtEnd`, `completion
+   forwardDelete skipped unreadable` or `completion selected`; a rule with `axSelection` ends with `completion
+   selected`, `completion none` or `completion unreadable` (since 15/11/2026). Letters that still double with
+   `forwardDelete skipped notAtEnd` while the caret is at the end mean the field counts its suggestion as text (next:
+   `placeholder` after its PLT-R422 test); with `forwardDelete` and doubled letters, the field gives Forward Delete
+   another meaning there.
 
 Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
 

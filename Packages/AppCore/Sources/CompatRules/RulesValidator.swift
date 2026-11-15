@@ -2,7 +2,8 @@
 //
 // Semantic checks shared by the loader (PLT-R503), `RuleSet.init` and the linter: the parts of
 // compat/schema/rules.schema.json that Swift types cannot express (ranges, title patterns, group references,
-// list cardinality) plus the cross-rule rules (unique ids, PLT-R422 placeholder scope, PLT-R502 user overrides).
+// list cardinality) plus the cross-rule rules (unique ids, PLT-R422 placeholder and PLT-R424 forwardDelete scope,
+// PLT-R502 user overrides).
 
 import AppModel
 import Foundation
@@ -36,6 +37,10 @@ enum RulesValidator {
         if PlaceholderScope.usesPlaceholder(document.defaults.params) {
             // PLT-R422: never enabled globally.
             issues.append(.parameterOutOfRange(rule: nil, key: "inlineCompletion"))
+        }
+        if ForwardDeleteScope.usesForwardDelete(document.defaults.params) {
+            // PLT-R424: never enabled globally.
+            issues.append(.forwardDeleteInBroadRule(nil))
         }
         var seen = Set<RuleID>()
         for rule in document.rules {
@@ -88,6 +93,9 @@ enum RulesValidator {
         if PlaceholderScope.usesPlaceholder(rule.action.params) && PlaceholderScope.isBroad(rule.match) {
             issues.append(.placeholderInBroadRule(rule.id))
         }
+        if ForwardDeleteScope.usesForwardDelete(rule.action.params) && PlaceholderScope.isBroad(rule.match) {
+            issues.append(.forwardDeleteInBroadRule(rule.id))
+        }
         return issues
     }
 
@@ -138,6 +146,12 @@ enum PlaceholderScope {
         if match.titlePattern != nil && !narrowing { return true }
         return !narrowing && !identity
     }
+}
+
+/// PLT-R424: `forwardDelete` has the placeholder's scope (`PlaceholderScope.isBroad`). Same definition as
+/// scripts/check-rules.py and scripts/check-no-forward-delete.py.
+enum ForwardDeleteScope {
+    static func usesForwardDelete(_ params: StrategyParams?) -> Bool { params?.inlineCompletion == .forwardDelete }
 }
 
 /// Cardinality helpers: the schema requires every present match list to have at least one item.

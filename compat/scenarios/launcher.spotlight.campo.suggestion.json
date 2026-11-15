@@ -1,0 +1,23 @@
+{
+  "$schema": "../schema/scenario.schema.json",
+  "id": "launcher.spotlight.campo.suggestion",
+  "targetBundleId": "com.apple.campo",
+  "setup": [],
+  "keys": [
+    "command+space",
+    "t",
+    "i",
+    "e",
+    "e",
+    "s",
+    "n",
+    "g"
+  ],
+  "timing": "normal",
+  "method": "telex",
+  "layout": "com.apple.keylayout.ABC",
+  "expect": {
+    "text": "tiếng"
+  },
+  "readback": "ax"
+}

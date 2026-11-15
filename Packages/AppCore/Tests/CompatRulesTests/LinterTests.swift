@@ -311,13 +311,26 @@ import Testing
             ]))
     }
 
+    /// PLT-R424: `forwardDelete` in defaults or a broad rule is a lint error with its own code.
+    @Test func forwardDeleteOutsideAScopedRuleIsAnErrorPLTR424() throws {
+        var document = try Build.seededDocument()
+        document.defaults.params.inlineCompletion = .forwardDelete
+        let findings = RulesLinter(
+            rules: document, matrix: try Build.seededMatrix(), scenarioIDs: [], today: Self.today, releaseMode: false
+        ).run()
+        let forwardDelete = findings.filter { $0.code == .forwardDeleteInBroadRule }
+        #expect(forwardDelete.count == 1)
+        #expect(forwardDelete.first?.severity == .error && forwardDelete.first?.rule == nil)
+        #expect(RulesValidationError.forwardDeleteInBroadRule(nil).ruleID == nil)
+    }
+
     @Test func everyRuleValidationErrorHasDetailAndRuleMapping() {
         let id = ruleID("x.y")
         let errors: [RulesValidationError] = [
             .decoding(path: "$.a", reason: "wrong type"), .unsupportedSchemaVersion(2), .duplicateRuleID(id),
             .unknownBundleGroup(rule: id, group: "g"), .titlePatternWithoutBundleIDs(id), .titlePatternTooLong(id),
             .invalidTitlePattern(id), .titlePatternInUserOverride(id), .parameterOutOfRange(rule: id, key: "k"),
-            .placeholderInBroadRule(id), .userOverrideIDNotPrefixed(id),
+            .placeholderInBroadRule(id), .userOverrideIDNotPrefixed(id), .forwardDeleteInBroadRule(id),
         ]
         for error in errors {
             #expect(!error.detail.isEmpty)

@@ -49,6 +49,10 @@ private final class ElementTimeoutFieldAccess: FocusedFieldAccess, Sendable {
         defer { note(field, timeout) }
         return base.selectedRange(field, timeout: timeout)
     }
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        defer { note(field, timeout) }
+        return base.caret(field, timeout: timeout)
+    }
     func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
         defer { note(field, timeout) }
         return base.text(field, in: range, timeout: timeout)

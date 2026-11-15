@@ -49,13 +49,17 @@ struct StrategyLimits: Sendable, Hashable {
     }
 }
 
-/// Builders for the only synthetic keys any strategy posts. Forward delete is deliberately absent (PLT-R407).
+/// Builders for the only synthetic keys any strategy posts. Forward delete deletes no text: it only clears a suggestion
+/// shown after the caret, for the `forwardDelete` completion handling (PLT-R407 as amended, PLT-R423).
 enum SyntheticKeys {
     static let shiftFlag = CGEventFlags.maskShift.rawValue
     static let commandFlag = CGEventFlags.maskCommand.rawValue
 
     /// PLT-R407: `kVK_Delete`, no Unicode string, no flags.
     static let backspace = SyntheticKeyEvent(keyCode: .delete, isKeyDown: true, flags: 0, unicode: .empty)
+    /// PLT-R423: `kVK_ForwardDelete`, no Unicode string, no flags; posted only by `CompletionPrefix`, and only with the
+    /// caret read at the end of the field's text, where it deletes no character.
+    static let forwardDelete = SyntheticKeyEvent(keyCode: .forwardDelete, isKeyDown: true, flags: 0, unicode: .empty)
     /// 4.4: Shift+Left Arrow, layout independent (PLT-R406 allows Shift here).
     static let shiftLeft = SyntheticKeyEvent(keyCode: .leftArrow, isKeyDown: true, flags: shiftFlag, unicode: .empty)
 

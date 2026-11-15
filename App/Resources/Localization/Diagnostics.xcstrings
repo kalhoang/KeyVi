@@ -2693,6 +2693,24 @@
         }
       }
     },
+    "strategy.inlineCompletion.forwardDelete" : {
+      "comment" : "4.3, PLT-R423: a suggestion shown after the caret is removed with Forward Delete.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "remove the suggestion after the caret first"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "xóa gợi ý sau con trỏ trước"
+          }
+        }
+      }
+    },
     "strategy.inlineCompletion.placeholder" : {
       "comment" : "4.3.",
       "extractionState" : "manual",
