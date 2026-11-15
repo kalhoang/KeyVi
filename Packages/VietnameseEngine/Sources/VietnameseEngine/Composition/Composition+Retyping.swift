@@ -7,7 +7,7 @@
 extension Composition {
     /// A composition whose display is `expected`, typed from the first `count` letters of this one: each
     /// letter's key followed at once by the key of its mark, and the tone key after the letter that gives
-    /// `expected`, tried from the last letter back. A bracket letter shown without its mark is typed as
+    /// `expected`, tried from the last letter back, or no tone key when no letter shown takes it. A bracket letter shown without its mark is typed as
     /// its plain base letter, or else as the bracket key and a mark removal (ENG-R411), for a token whose
     /// plain letter would make it camel case (ENG-R904). Nil when no such order gives `expected` (none is
     /// known; the Backspace property tests and the fuzz campaign, ENG-T38, would report one).
@@ -27,17 +27,20 @@ extension Composition {
                 appendKeys(typing: letter, style: style, to: &keys, capsLock: &capsLock, rules: rules)
                 letterEnds.append(keys.count)
             }
-            if tone == .level {
-                if let result = composition(of: keys, capsLock, ifShowing: expected, rules: rules) { return result }
-                continue
+            if tone != .level {
+                let toneKey = Self.toneKey(tone, rules: rules)
+                for end in letterEnds.reversed() {
+                    var toned = keys
+                    toned.insert(toneKey, at: end)
+                    let shifted = capsLock.inserting(at: end)
+                    if let result = composition(of: toned, shifted, ifShowing: expected, rules: rules) {
+                        return result
+                    }
+                }
             }
-            let toneKey = Self.toneKey(tone, rules: rules)
-            for end in letterEnds.reversed() {
-                var toned = keys
-                toned.insert(toneKey, at: end)
-                let shifted = capsLock.inserting(at: end)
-                if let result = composition(of: toned, shifted, ifShowing: expected, rules: rules) { return result }
-            }
+            // ENG-R432, ENG-R710: a tone that no letter shown takes goes (its vowel went with the escape,
+            // `dwnsdw` shows `đnw`, Backspace gives `đn` typed `ddn`).
+            if let result = composition(of: keys, capsLock, ifShowing: expected, rules: rules) { return result }
         }
         return nil
     }

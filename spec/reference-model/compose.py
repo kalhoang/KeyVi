@@ -365,7 +365,8 @@ TONE_KEYS = {"telex": "sfrxj", "vni": "12345"}
 
 def retype(st, cfg, letters, expected):
     """ENG-R711 fallback 2: type the letters shown one at a time, each mark key right after its letter,
-    the tone key after the letter that gives `expected`, tried from the last letter back."""
+    the tone key after the letter that gives `expected`, tried from the last letter back, then no tone key
+    (a tone that no letter shown takes goes, ENG-R432)."""
     keys, ends = [], []
     for x in letters:
         keys.append(x.base.upper() if x.upper else x.base)
@@ -375,7 +376,8 @@ def retype(st, cfg, letters, expected):
         if x.stroke:
             keys.append("d" if cfg.im == "telex" else "9")
         ends.append(len(keys))
-    tries = [keys] if not st.tone else [keys[:e] + [TONE_KEYS[cfg.im][st.tone - 1]] + keys[e:] for e in reversed(ends)]
+    tries = [] if not st.tone else [keys[:e] + [TONE_KEYS[cfg.im][st.tone - 1]] + keys[e:] for e in reversed(ends)]
+    tries.append(keys)
     for k in tries:
         cand = compose(k, cfg)
         if display(cand, cfg) == expected:

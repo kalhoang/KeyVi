@@ -277,6 +277,8 @@ W242r	Backspace inside a token	Telex	trad	-	wszaw⌫	a	the whole tone chain wait
 W242s	Backspace inside a token	Telex	trad	-	wzow⌫	ư	after a mark removal only the later `w` gives the horn (ENG-R710)
 W242t	Backspace inside a token	VNI	trad	-	u70o7⌫	ư	
 W242u	Backspace inside a token	Telex	trad	-	dwndw⌫	đn	retyped from the letters shown (ENG-R711 fallback 2)
+W242v	Backspace inside a token	Telex	trad	-	dwnsdw⌫	đn	retyped without the tone key: its vowel went with the escape
+W242w	Backspace inside a token	Telex	trad	-	dwngsdw⌫	đng	the same with the coda `ng`
 W243	Backspace inside a token	Telex	trad	-	duwowngf⌫⌫⌫	dư	ơ deleted with its horn and tone; ư keeps its horn
 W243a	Backspace inside a token	Telex	trad	-	thuowr⌫	thư	one `w` marked `ư` and `ơ`: it stays with `ư` (ENG-R710)
 W243b	Backspace inside a token	Telex	trad	-	dduowcj⌫⌫	đư	the tone goes with `ợ`, the shared `w` stays
