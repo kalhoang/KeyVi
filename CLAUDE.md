@@ -63,4 +63,5 @@ and `spec/` keep the brand placeholders.
 - Product UI copy follows `spec/03-product.md` verbatim where a draft exists; new copy is standard, neutral
   Vietnamese addressed to "bạn" (PRD-R62). Code comments and commit messages are English.
 - Commits: English Conventional Commits (`type: description`). No AI attribution or Co-authored-by lines.
-  Keep the history intact (CLR-R12): no squashing of early history.
+  Keep the history intact (CLR-R12): no squashing or rewriting (the one rewrite before publication, 15/11/2026, is
+  recorded there).

@@ -208,3 +208,17 @@ into public issues.
   logs, and is harder to purge and to scan offline.
 - **A separate recording path.** Duplicates the rings, the drain and the secure-input rules of PLT-R905, and doubles
   the tap's cost.
+
+## Amendment, 15/11/2026: builds for invited testers
+
+The product owner wants traces from more people than one, so a development build may now go to testers the product
+owner invites personally (PLT-R904A, last item). Nothing in the build changes: it is the same Debug configuration with
+the same recorder, retention, indicator, pause and marker, built for Apple silicon and Intel, renamed
+`{{AppName}}-dev.app` and packed in a disk image with an Applications link and a notice in Vietnamese
+(`packaging/dev-tester/notice.vi.txt`). The notice comes before installation and says what the build records, that
+the files stay on the Mac for 7 days and are never sent by the app, how to pause recording, mark a problem, send the
+hours the tester chooses and remove everything, and that macOS asks to confirm the first launch because the build is
+signed for development and not notarized. The consequence above still holds for each tester: the files leave the Mac
+only when the tester sends them, and the integrator reads them under the rules of the runbook (section 2.3) and
+deletes them once the problem is understood. Release builds keep leaving the recorder out, which
+`scripts/verify-release.sh` checks.

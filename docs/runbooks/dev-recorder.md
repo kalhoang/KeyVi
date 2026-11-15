@@ -193,3 +193,27 @@ the worker had replayed as a rebuilt event. The fix is in the pipeline (PLT-R311
 a passed keyDown always passes). The readbacks next to the first two drops were coincidence. WebKit editors keep
 their readback and the pause rule stays as noise reduction. In a trace written before the fix, a `keyDropped`
 whose detail names "the first press of a key after its keyUp was held and replayed" is that bug, not the recorder.
+
+## 6. Builds for invited testers
+
+Since 15/11/2026 (PLT-R904A last item, ADR 0007 amendment "Builds for invited testers") the product owner may give
+the development build to testers the product owner invites personally, to collect traces from more people.
+
+1. **Build.** The same Debug configuration, for Apple silicon and Intel
+   (`xcodebuild ... -configuration Debug ONLY_ACTIVE_ARCH=NO ARCHS="arm64 x86_64"`), signed with the Apple Development
+   identity and never notarized. The bundle is renamed `{{AppName}}-dev.app` and packed with `hdiutil` into a disk
+   image holding the app, a link to `/Applications`, the licence texts and the notice
+   `packaging/dev-tester/notice.vi.txt` (brand placeholders filled in), which a tester reads before installing.
+2. **Before handing it out.** The build must carry the fixes the product owner's own dogfooding found that can hurt a
+   tester's Mac, in particular the fail-open on a removed Accessibility grant (PLT-R730): a tester who removes the
+   grant while the app runs must keep a working keyboard and mouse.
+3. **First launch on a tester's Mac.** macOS refuses to open a build that is not notarized; the tester opens it once
+   from System Settings, Privacy & Security, "Open Anyway" (on macOS 12: Control-click the app, then Open), then
+   grants the permission the onboarding asks for.
+4. **Getting traces.** The tester presses the marker chord right after a problem (not inside a password field: macOS
+   hides every key there, the chord included), notes the time, and later sends the hour files of that time from
+   "Mở thư mục nhật ký" (for example `20261115-16.jsonl`), after looking at them if they wish. The files hold what the
+   tester typed in that hour, so the tester chooses what to send.
+5. **Reading them.** `scripts/dev/trace-scan.sh summary --dir <folder with the received files>`, then excerpts only
+   around findings, as in section 2.3. Keep received files outside the repository, never commit or forward them, and
+   delete them once the problem is understood.

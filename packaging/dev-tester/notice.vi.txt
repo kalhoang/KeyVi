@@ -1,0 +1,51 @@
+{{AppName}} BẢN DEV DÀNH CHO NGƯỜI THỬ NGHIỆM
+=============================================
+
+Cảm ơn bạn đã nhận lời thử {{AppName}}, bộ gõ tiếng Việt cho macOS. Đây là bản dev, chưa phát hành, được gởi
+riêng cho người thử nghiệm. Bạn đọc hết trang này trước khi cài nha.
+
+1. BẢN NÀY GHI LẠI NHỮNG GÌ BẠN GÕ
+
+Để tìm lỗi, bản dev ghi nhật ký gõ phím liên tục từ lúc mở app:
+- mọi phím bạn gõ và cách {{AppName}} xử lý phím đó;
+- tên ứng dụng và loại ô nhập (không ghi tên cửa sổ hay địa chỉ web);
+- thỉnh thoảng, tối đa 64 ký tự ngay trước con trỏ, khi bạn ngừng gõ khoảng 1 giây.
+
+Bản dev KHÔNG ghi gì khi bạn đang ở ô mật khẩu hoặc khi macOS bật chế độ nhập bảo mật, và không ghi khi bạn tạm
+dừng.
+
+Nhật ký chỉ nằm trên máy bạn, trong thư mục ~/Library/Logs/{{AppName}}/dev-traces/ (mỗi giờ một file, chỉ tài khoản
+của bạn đọc được, Time Machine bỏ qua). File cũ hơn 7 ngày tự xóa. App không bao giờ tự gởi nhật ký đi đâu; chỉ khi
+bạn tự gởi thì người nhận mới đọc được.
+
+Lúc đang ghi, biểu tượng {{AppName}} trên thanh menu có một chấm nhỏ. Bạn có thể bấm vào biểu tượng rồi chọn
+"Tạm dừng ghi 30 phút" bất cứ lúc nào. Nếu bạn không đồng ý để máy ghi như vậy, đừng cài bản này.
+
+2. CÀI ĐẶT
+
+- Máy cần macOS 12 trở lên, chip Apple hoặc Intel.
+- Tắt các bộ gõ tiếng Việt khác đang chạy trước khi dùng.
+- Kéo {{AppName}}-dev vào thư mục Applications rồi mở.
+- Lần đầu mở, macOS báo không mở được vì bản dev chưa qua bước công chứng của Apple. Bạn vào System Settings
+  (Cài đặt hệ thống) > Privacy & Security (Quyền riêng tư & Bảo mật), kéo xuống dưới, bấm "Open Anyway" (Vẫn mở),
+  rồi xác nhận. Trên macOS 12: giữ Control, bấm vào app, chọn Open.
+- Làm theo màn hình hướng dẫn để cấp quyền cho {{AppName}}-dev.
+
+3. KHI GẶP LỖI
+
+- Bấm Control + Option + Command + ; (dấu chấm phẩy) ngay lúc gặp lỗi, rồi gõ tiếp bình thường. Biểu tượng nháy
+  một cái là đã đánh dấu. Hoặc bấm vào biểu tượng, chọn "Đánh dấu lỗi vừa gặp".
+- Trong ô mật khẩu macOS giấu mọi phím, kể cả phím đánh dấu, nên bạn đánh dấu sau khi ra khỏi ô đó.
+- Ghi lại khoảng giờ gặp lỗi và mô tả ngắn: đang gõ ở app nào, gõ gì, thấy ra gì.
+
+4. GỞI NHẬT KÝ
+
+Bấm vào biểu tượng, chọn "Mở thư mục nhật ký". Mỗi file mang tên theo giờ, ví dụ 20261115-16.jsonl là giờ 16 ngày
+15/11/2026. Chỉ gởi file của giờ có lỗi, cho người đã mời bạn thử. File đó chứa những gì bạn đã gõ trong giờ đó,
+nên bạn có thể mở ra coi trước và chỉ gởi khi thấy ổn.
+
+5. GỠ BỎ
+
+Bấm vào biểu tượng, chọn thoát app, kéo {{AppName}}-dev từ Applications vào Thùng rác, rồi xóa thư mục
+~/Library/Logs/{{AppName}}/. Nếu muốn, bỏ {{AppName}}-dev khỏi danh sách quyền trong System Settings >
+Privacy & Security.
