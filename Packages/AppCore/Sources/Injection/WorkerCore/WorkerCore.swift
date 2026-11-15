@@ -18,6 +18,8 @@ struct JobContext {
     var startedAt: MonotonicInstant?
     /// What the completion read found (PLT-R420, PLT-R423), when the job made one.
     var completion: StaticString?
+    /// How long that read took, timeouts included; nil when the job had no field to read.
+    var completionReadMicroseconds: UInt64?
     #endif
 }
 

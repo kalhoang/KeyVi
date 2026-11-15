@@ -94,7 +94,7 @@ public enum TraceRendering {
             return [
                 "job " + String(line.seq ?? 0), line.kind ?? "?", line.strat ?? "?", line.out ?? "?",
                 "delete " + String(line.delN ?? 0) + " insert " + String(line.insN ?? 0),
-                String(line.posted ?? 0) + " events", line.compl.map { "completion " + $0 },
+                String(line.posted ?? 0) + " events", completion(line),
                 microseconds(line.totalUs) + " total", microseconds(line.runUs) + " run",
             ].compactMap { $0 }.joined(separator: "  ")
         case "fallback":
@@ -128,6 +128,12 @@ public enum TraceRendering {
                 + (line.eng.map { "  engine " + $0 } ?? "")
         default: return line.type
         }
+    }
+
+    /// What the job's completion read found (PLT-R420, PLT-R423) and, since the retest of 16/11/2026, how long it took:
+    /// `completion forwardDelete read 23.4 ms`.
+    private static func completion(_ line: TraceLine) -> String? {
+        line.compl.map { "completion " + $0 + (line.complUs.map { " read " + microseconds($0) } ?? "") }
     }
 
     /// Format version 2: how long the AX calls took (and the longest of them), the wait since the trigger, the
@@ -177,7 +183,7 @@ public enum TraceRendering {
         return sign + String(TraceText.seconds(UInt64(abs(microseconds))).dropFirst())
     }
 
-    private static func microseconds(_ value: UInt64?) -> String {
+    static func microseconds(_ value: UInt64?) -> String {
         guard let value else { return "?" }
         return value >= 1_000
             ? String(value / 1_000) + "." + String((value % 1_000) / 100) + " ms" : String(value) + " us"

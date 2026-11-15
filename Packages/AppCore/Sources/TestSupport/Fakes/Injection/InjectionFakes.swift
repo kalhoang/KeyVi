@@ -79,14 +79,22 @@ extension FakeEventPoster.Posted {
     }
 }
 
-/// AX field access backed by a `SimulatedTextField`; can time out, be unavailable or ignore writes on demand.
+/// AX field access backed by a `SimulatedTextField`; can time out, be unavailable, ignore writes or answer reads late
+/// on demand.
 public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     /// `writesIgnored`: every write reports success and does nothing. `textWritesIgnored`: selection writes
     /// apply, text writes report success and do nothing (4.5 "writes may silently do nothing").
     public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored, textWritesIgnored }
 
+    /// How late the simulated app answers reads, on the clock the caller measures with.
+    private struct Latency: Sendable {
+        var delay: TimeSpan
+        var clock: any MonotonicClock
+    }
+
     private let field: SimulatedTextField
     private let behaviourState: Mutex<Behaviour>
+    private let latencyState = Mutex<Latency?>(nil)
     private let calls = Atomic<Int>(0)
 
     public init(field: SimulatedTextField, behaviour: Behaviour = .normal) {
@@ -99,17 +107,27 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     /// Number of AX calls made (bounded-call tests, PLT-R342).
     public var callCount: Int { calls.load(ordering: .relaxed) }
 
+    /// Every read waits `delay` on `clock` before it answers. A read whose timeout is shorter waits only its timeout
+    /// and times out, as `AXUIElementSetMessagingTimeout` makes a real call return `kAXErrorCannotComplete` (the
+    /// bounded reads of PLT-R420 and PLT-R423, Spotlight answering late while it opens, retest of 16/11/2026). Writes
+    /// are not delayed. `nil` answers at once again.
+    public func setReadLatency(_ delay: TimeSpan?, clock: any MonotonicClock) {
+        latencyState.withLock { $0 = delay.map { Latency(delay: $0, clock: clock) } }
+    }
+
     public func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
-        read { self.field.axSelectedRange() }
+        read(timeout: timeout) { self.field.axSelectedRange() }
     }
 
     /// PLT-R423: selection and character count of the simulated field, read together.
     public func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
-        read { FieldCaret(selection: self.field.axSelectedRange(), characterCount: self.field.axCharacterCount()) }
+        read(timeout: timeout) {
+            FieldCaret(selection: self.field.axSelectedRange(), characterCount: self.field.axCharacterCount())
+        }
     }
 
     public func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
-        read { self.field.axText(in: range) }
+        read(timeout: timeout) { self.field.axText(in: range) }
     }
 
     public func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan)
@@ -122,8 +140,14 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         write(text: true) { self.field.axSetSelectedText(text) }
     }
 
-    private func read<Value: Sendable>(_ body: () -> Value) -> AXCallResult<Value> {
+    private func read<Value: Sendable>(timeout: TimeSpan, _ body: () -> Value) -> AXCallResult<Value> {
         calls.wrappingAdd(1, ordering: .relaxed)
+        if let latency = latencyState.withLock({ $0 }) {
+            let waited = min(latency.delay, timeout)
+            let now = latency.clock.now().nanoseconds
+            latency.clock.sleep(until: MonotonicInstant(nanoseconds: now &+ UInt64(max(0, waited.nanoseconds))))
+            if latency.delay > timeout { return .timedOut }
+        }
         switch behaviour {
         case .normal, .writesIgnored, .textWritesIgnored: return .success(body())
         case .timeout: return .timedOut

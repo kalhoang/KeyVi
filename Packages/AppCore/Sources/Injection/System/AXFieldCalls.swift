@@ -97,6 +97,13 @@ enum AXFieldCalls {
         error == .success ? .success(()) : map(error)
     }
 
+    /// The bound each call asks for is the one it runs with (15 ms for PLT-R420, 50 ms for PLT-R423, 30 ms for 4.5).
+    /// A messaging timeout set on an element other than the system-wide one applies to that element object only, not
+    /// to equal objects, and overrides the process-wide 100 ms that `SystemAXProvider` sets on the system-wide element
+    /// (PLT-R384). The inject thread is the only thread that sets one on the `FieldHandle` element, and it sets it
+    /// again before every call: the ax thread sets timeouts only on the system-wide and application elements and reads
+    /// a new reference at every focus read, and the dev readback reads through its own reference (PLT-R904A,
+    /// `AXDevReadbackFieldResolver`).
     private static func prepare(_ element: AXUIElement, timeout: TimeSpan) {
         AXUIElementSetMessagingTimeout(element, Float(Double(InjectionTiming.nanoseconds(timeout)) / 1e9))
     }

@@ -84,7 +84,7 @@ same `gen` switches between `bundle` and `front`.
 | `extraCharacter` | the same, explained: the field holds exactly one character {{AppName}} did not type (autocorrect, a Backspace the app ignored); `show` names it |
 | `slowReadback` | a readback timed out, or one of its AX calls took more than 30 ms (longer than one AX call of the inject worker may take, so {{AppName}}'s own reads would time out in that field; the scanner compares the longest single call, not the sum of the read's calls) |
 | `resetWithOpenToken` | a boundary the user did not cause (focus change, late focus, revalidation, configuration, an unknown reason) while a word was being composed |
-| `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included) or took more than 50 ms |
+| `injectionProblem` | an edit job that failed, fell back to another strategy (with the reason, AX timeouts included), whose inline-completion read did not answer (`completion forwardDelete skipped unreadable (read 50.0 ms)`, since 16/11/2026) or took more than 50 ms (with the completion read's share when there was one) |
 | `restoreOrReopen` | an Escape restore, a Backspace that re-opened a committed word, or a Backspace that re-opened a token a rule restored at its commit |
 | `reopenedLiteral` | the ENG-R1005 regression guard: a Backspace re-opened a token a rule restored at its commit (not one the user restored with the toggle), at least one more Backspace went into it, and then keys passed through as typed although the token shown before them no longer had a key that transforms anything and a fresh token with those keys would have composed them (`tiesng`, space, five Backspaces, `eesn` showing `tieesn`). The scanner replays the shown token through its own engine with the recorded settings, so this needs replay (not with `--no-replay`) and judges traces of any engine build; a token still open at the end of the selection or cut by a gap or a pause is not judged; at most one per token. The detail gives the commit decision and the counts only; `show` shows the excerpt, where the engine lines already carry the token as the recorder wrote it. It should never fire on a build with ENG-R1005 |
 | `replayDivergence` | replaying the keys since the last reset through the engine with the recorded settings gives another result than recorded: the host fed the engine something else, or kept state it should have dropped. Only for segments written by the scanner's engine build; a segment stops at a gap or a pause. Return and Tab are fed to the engine before their boundary, which the recorder writes first: the replay applies that boundary after the key's own step (since 15/11/2026; before, a revision committed by Return showed as a divergence, day finding 155 of that date) |
@@ -102,7 +102,8 @@ passed`), engine steps with the edit and the token after it, then jobs (`job 12 
 `completion selected`, `completion none` or `completion unreadable` after the events, since 15/11/2026; a job of a rule
 with `forwardDelete`, PLT-R423, adds `completion forwardDelete` (a Forward Delete pair before each Backspace pair: 6
 events for a delete-1 edit), `completion forwardDelete skipped notAtEnd`, `completion forwardDelete skipped unreadable`
-or `completion selected`), fallbacks, boundaries (`boundary focusChanged / focusChanged`), focus snapshots (bundle,
+or `completion selected`; since 16/11/2026 followed by how long the read took, timeouts included, as in `completion
+forwardDelete read 23.4 ms` or `completion forwardDelete skipped unreadable read 50.0 ms`), fallbacks, boundaries (`boundary focusChanged / focusChanged`), focus snapshots (bundle,
 role, rule, strategy, requireTextFocus, mode), readbacks with the field text, markers, settings and gaps.
 
 Typical readings: a `resetWithOpenToken` just before the letters of a word went missing points at a focus or
@@ -111,7 +112,10 @@ path; an `injectionProblem` with `axTimedOut` in a given rule points at that app
 detail says a readback was in flight when the key went down, or started a few tens of milliseconds after it, points
 at the recorder itself (section 5); one with no readback near it happened without the observer, in the app or the
 system. A `slowReadback` in an app tells how slowly it answers accessibility requests; repeated ones next to
-`injectionProblem` lines with `axTimedOut` say the app is busy, not the strategy wrong.
+`injectionProblem` lines with `axTimedOut` say the app is busy, not the strategy wrong. A completion read that did
+not answer means the edit went out without its extra deletion or Forward Delete, so the field may show one letter too
+many (Spotlight right after it opens, 16/11/2026); the read durations of the jobs around it show how late the app
+answered, against the bounds of 15 ms (`axSelection`, PLT-R420) and 50 ms (`forwardDelete`, PLT-R423).
 
 `show` prints a finding's note under its detail: for `keyDropped`, `extraCharacter` and an explained
 `readbackMismatch` it names the character (`keyDropped: "c" passed at -1020 ms, absent from the field`). The note
@@ -139,7 +143,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `key` | `ev` (keyDown, keyUp, flagsChanged, mouseDown), `kc` key code, `fl` CGEventFlags, `ch` layout character, `out` (passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp) |
 | `engine` | `act` (passThrough, edit, editThenPassThrough), `del`, `ins`, `comp` token after the key, `dec` commit decision, `rev` revision reason when the commit also revised the previous word (`phrase`, `particleTail`, `nextEnglish`, `nextVietnamese`; PLT-R357). Words of the learned collision memory are never recorded |
 | `boundary` | `reason` (the engine's reset reason) and `job` (the boundary job reason); both are `unseenInput` for a keyUp the tap never saw go down (PLT-R397A) |
-| `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry, revision), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution), `compl` (only when the job read the inline completion through AX: `selected`, `none` or `unreadable` for PLT-R420; `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable` for PLT-R423; since 15/11/2026, an optional field, so the format version stays) |
+| `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry, revision), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution), `compl` (only when the job read the inline completion through AX: `selected`, `none` or `unreadable` for PLT-R420; `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable` for PLT-R423; since 15/11/2026, an optional field, so the format version stays), `complUs` (how long that read took in microseconds, timeouts included; absent when the job had no field to read; since 16/11/2026, optional as well) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
 | `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `maxCallUs` (the longest single AX call of the read), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
 | `marker` | `src` (chord, menu) |

@@ -136,24 +136,51 @@ private let command: UInt64 = 0x0010_0000
         trace.launch()
         trace.boundary("focusChanged", job: "focusChanged")
         trace.type("tiee")
-        trace.line("job", Self.forwardDeleteJob(1, delete: 1, posted: 6, completion: "forwardDelete"))
+        trace.line("job", Self.forwardDeleteJob(1, delete: 1, posted: 6, completion: "forwardDelete", readUs: 21_000))
         trace.type("ns")
-        trace.line("job", Self.forwardDeleteJob(2, delete: 2, posted: 12, completion: "forwardDelete"))
+        trace.line("job", Self.forwardDeleteJob(2, delete: 2, posted: 12, completion: "forwardDelete", readUs: 480))
         trace.type("g ")
         trace.line(
-            "job", Self.forwardDeleteJob(3, delete: 1, posted: 4, completion: "forwardDelete skipped notAtEnd"))
+            "job",
+            Self.forwardDeleteJob(3, delete: 1, posted: 4, completion: "forwardDelete skipped notAtEnd", readUs: 900))
         trace.advance(400)
         trace.readback("tiếng ")
         #expect(try kinds(trace, replay: true).isEmpty)
     }
 
-    private static func forwardDeleteJob(_ sequence: Int, delete: Int, posted: Int, completion: String) -> [String: Any]
-    {
-        [
+    /// Retest of 16/11/2026, items 34 and 40: a completion read that timed out is the cause of the lost deletion
+    /// (Spotlight right after it opened), so it is an injection problem that names the read's duration; a slow job
+    /// says how much of it the read took.
+    @Test func anUnreadableCompletionIsAnInjectionProblemPLTR423() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        var unreadable = Self.forwardDeleteJob(
+            1, delete: 1, posted: 4, completion: "forwardDelete skipped unreadable", readUs: 50_000)
+        unreadable["totalUs"] = 52_100
+        trace.line("job", unreadable)
+        trace.line("job", Self.forwardDeleteJob(2, delete: 1, posted: 4, completion: "unreadable", readUs: 15_000))
+        var slow = Self.forwardDeleteJob(3, delete: 1, posted: 6, completion: "forwardDelete", readUs: 48_700)
+        slow["totalUs"] = 50_900
+        trace.line("job", slow)
+        let found = try findings(trace).filter { $0.kind == .injectionProblem }
+        #expect(
+            found.map(\.detail) == [
+                "job 1 compose backspaceReplace: completion forwardDelete skipped unreadable (read 50.0 ms); slow 52 ms",
+                "job 2 compose backspaceReplace: completion unreadable (read 15.0 ms)",
+                "job 3 compose backspaceReplace: slow 50 ms (completion read 48.7 ms)",
+            ])
+    }
+
+    private static func forwardDeleteJob(
+        _ sequence: Int, delete: Int, posted: Int, completion: String, readUs: Int? = nil
+    ) -> [String: Any] {
+        var line: [String: Any] = [
             "seq": sequence, "gen": 1, "kind": "compose", "strat": "backspaceReplace", "out": "executed",
             "delN": delete,
             "insN": delete, "posted": posted, "totalUs": 1_600, "runUs": 1_400, "compl": completion,
         ]
+        if let readUs { line["complUs"] = readUs }
+        return line
     }
 
     /// (g) Escape restore and history re-open.

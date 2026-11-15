@@ -53,9 +53,10 @@ extension WorkerCore: StrategyHost {
         if notes.shouldReport(.completionFallback) { recordHealth(.fallbackActivated) }
     }
 
-    func noteCompletionRead(_ read: CompletionRead) {
+    func noteCompletionRead(_ read: CompletionRead, duration: TimeSpan?) {
         #if DEV_RECORDER
         context?.completion = read.label
+        context?.completionReadMicroseconds = duration.map { InjectionTiming.nanoseconds($0) / 1_000 }
         #endif
     }
 }

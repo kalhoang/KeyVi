@@ -140,6 +140,40 @@ private func devRecords(_ capture: CaptureController) -> [DevTraceRecord] {
         #expect(selected.label == "selected" && selected.events == 6)
     }
 
+    /// Retest of 16/11/2026, items 34 and 40: Spotlight answered the PLT-R423 read just past the 15 ms bound while it
+    /// was opening. The job line carries how long the completion read took, timeouts included, so the bounds (50 ms
+    /// for `forwardDelete`, 15 ms for `axSelection`) can be tuned from traces; a job that made no read carries none.
+    @Test func theCompletionReadDurationIsRecordedPLTR904A() throws {
+        func record(
+            _ mode: InlineCompletionMode, latency: TimeSpan, field: FieldHandle? = Fixture.field
+        ) throws -> (label: String?, microseconds: UInt64?) {
+            let clock = ManualClock()
+            let capture = try recordingCapture(clock: clock)
+            let rig = WorkerRig(field: SimulatedTextField(text: "a"), capture: capture)
+            rig.fieldAccess.setReadLatency(latency, clock: rig.clock)
+            let plan = Fixture.plan(parameters: Fixture.parameters { $0.inlineCompletion = mode })
+            rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: plan, field: field) }
+            rig.run()
+            guard case .job(let job)? = devRecords(capture).last else {
+                Issue.record("a job record")
+                return (nil, nil)
+            }
+            return (job.completion?.description, job.completionReadMicroseconds)
+        }
+        let answered = try record(.forwardDelete, latency: .microseconds(23_400))
+        #expect(answered.label == "forwardDelete" && answered.microseconds == 23_400)
+        let late = try record(.forwardDelete, latency: .milliseconds(80))
+        #expect(late.label == "forwardDelete skipped unreadable" && late.microseconds == 50_000)
+        let noField = try record(.forwardDelete, latency: .milliseconds(1), field: nil)
+        #expect(noField.label == "forwardDelete skipped unreadable" && noField.microseconds == nil)
+        let selectionLate = try record(.axSelection, latency: .milliseconds(20))
+        #expect(selectionLate.label == "unreadable" && selectionLate.microseconds == 15_000)
+        let selection = try record(.axSelection, latency: .microseconds(480))
+        #expect(selection.label == "none" && selection.microseconds == 480)
+        let noRead = try record(.none, latency: .milliseconds(1))
+        #expect(noRead.label == nil && noRead.microseconds == nil)
+    }
+
     @Test func nothingIsRecordedWhileTheRecorderIsPaused() throws {
         let clock = ManualClock()
         let capture = try recordingCapture(clock: clock)
