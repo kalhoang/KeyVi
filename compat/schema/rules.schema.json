@@ -122,7 +122,11 @@
         "autoCapitalize": { "type": "boolean" },
         "macros": { "type": "boolean" },
         "englishRestore": { "type": "boolean" },
-        "restoreHotkey": { "type": "boolean" }
+        "restoreHotkey": { "type": "boolean" },
+        "lookaheadRevision": {
+          "type": "boolean",
+          "description": "PLT-R357: the engine may revise the previous word when the next one commits (default true; false where the restore key is off and for strategies other than backspaceReplace or selectReplace)"
+        }
       }
     },
     "action": {

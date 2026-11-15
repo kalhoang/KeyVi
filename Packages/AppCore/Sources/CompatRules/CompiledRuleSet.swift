@@ -80,7 +80,7 @@ enum DecisionBuilder {
             params: params(base: defaults.params, overlay: nil), fallback: defaults.fallback,
             defaultMode: defaults.defaultMode, requireTextFocus: concrete(defaults.requireTextFocus, engine: engine),
             verifyReentry: defaults.verifyReentry, axEnable: .none, overlay: false, requiresUserOptIn: false,
-            engineContext: .general, features: .defaults)
+            engineContext: .general, features: features(nil, strategy: defaults.strategy))
     }
 
     static func decision(
@@ -95,7 +95,8 @@ enum DecisionBuilder {
             requireTextFocus: concrete(action.requireTextFocus ?? defaults.requireTextFocus, engine: engine),
             verifyReentry: action.verifyReentry ?? defaults.verifyReentry, axEnable: action.axEnable ?? .none,
             overlay: action.overlay ?? false, requiresUserOptIn: action.requiresUserOptIn ?? false,
-            engineContext: action.engineContext ?? .general, features: features(action.features),
+            engineContext: action.engineContext ?? .general,
+            features: features(action.features, strategy: action.strategy),
             matchedTitle: winner.hasTitlePattern, matchedURL: winner.hasURLPrefixes, tieLoser: tieLoser,
             userOverride: winner.source == .user ? winner.rule : nil)
     }
@@ -124,15 +125,22 @@ enum DecisionBuilder {
         ).capped()
     }
 
-    /// 5.4 `action.features`: all true except `autoCapitalize`.
-    static func features(_ features: RuleFeatures?) -> ResolvedFeatures {
+    /// 5.4 `action.features`: all true except `autoCapitalize`. PLT-R357: `lookaheadRevision` resolves like
+    /// `restoreHotkey` and is also false for a strategy other than `backspaceReplace` or `selectReplace` (marked
+    /// text, paste, AX and pass-through paths cannot carry a revision safely).
+    static func features(_ features: RuleFeatures?, strategy: InjectionStrategy) -> ResolvedFeatures {
         let fallback = ResolvedFeatures.defaults
         return ResolvedFeatures(
             autoCapitalize: features?.autoCapitalize ?? fallback.autoCapitalize,
             macros: features?.macros ?? fallback.macros,
             englishRestore: features?.englishRestore ?? fallback.englishRestore,
-            restoreHotkey: features?.restoreHotkey ?? fallback.restoreHotkey)
+            restoreHotkey: features?.restoreHotkey ?? fallback.restoreHotkey,
+            lookaheadRevision: (features?.lookaheadRevision ?? fallback.lookaheadRevision)
+                && revisionStrategies.contains(strategy))
     }
+
+    /// PLT-R357: the strategies whose edits a revision rides on.
+    static let revisionStrategies: Set<InjectionStrategy> = [.backspaceReplace, .selectReplace]
 }
 
 extension ResolvedParams {

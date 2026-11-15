@@ -88,16 +88,22 @@ public struct ResolvedFeatures: Sendable, Hashable, Codable {
     public var macros: Bool
     public var englishRestore: Bool
     public var restoreHotkey: Bool
+    /// PLT-R357: the rule allows revising the previous word, and its strategy is one whose edits a revision can
+    /// ride on (`backspaceReplace` or `selectReplace`). The host ANDs it with the user's D29.
+    public var lookaheadRevision: Bool
 
     /// 5.4: all true except `autoCapitalize`.
     public static let defaults = ResolvedFeatures(
-        autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true)
+        autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: true, lookaheadRevision: true)
 
-    public init(autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool) {
+    public init(
+        autoCapitalize: Bool, macros: Bool, englishRestore: Bool, restoreHotkey: Bool, lookaheadRevision: Bool = true
+    ) {
         self.autoCapitalize = autoCapitalize
         self.macros = macros
         self.englishRestore = englishRestore
         self.restoreHotkey = restoreHotkey
+        self.lookaheadRevision = lookaheadRevision
     }
 }
 
