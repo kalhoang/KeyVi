@@ -9,7 +9,9 @@ import ShellCore
 extension SettingsWindowModel {
     /// "Xem từ đã học...".
     func showLearnedChoices() {
-        Task { learnedChoices = LearnedChoicesSheetState(votes: await commands.learnedChoices()) }
+        Task {
+            learnedChoices = LearnedChoicesSheetState(votes: await commands.learnedChoices(), reading: learnedReading)
+        }
     }
 
     func closeLearnedChoices() { learnedChoices = nil }
@@ -39,6 +41,11 @@ extension SettingsWindowModel {
     /// The memory's votes now, while the sheet is open.
     private func reloadLearnedChoices() async {
         let votes = await commands.learnedChoices()
-        learnedChoices = learnedChoices?.replacingVotes(votes)
+        learnedChoices = learnedChoices?.replacingVotes(votes, reading: learnedReading)
+    }
+
+    /// Vietnamese readings in the tone placement the user has now (D2), as the user sees the words typed.
+    private var learnedReading: @Sendable (String) -> String {
+        LearnedChoiceReading.vietnamese(tonePlacement: settings.tonePlacement)
     }
 }

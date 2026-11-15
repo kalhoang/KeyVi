@@ -4292,13 +4292,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All settings, per-app rules and remembered choices go back to their defaults. Your macro list is kept unless you choose to delete it."
+            "value" : "All settings, per-app rules and remembered choices go back to their defaults, and the learned words are cleared. Your macro list is kept unless you choose to delete it."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định. Danh sách viết tắt được giữ, trừ khi bạn chọn xóa."
+            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định, các từ đã học được xóa. Danh sách viết tắt được giữ, trừ khi bạn chọn xóa."
           }
         }
       }
@@ -5019,6 +5019,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chưa có từ nào. %@ học khi bạn sửa một từ bằng phím Escape."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.emptyNoKey" : {
+      "comment" : "Empty learned-words sheet when the restore key (D8) is off (PRD-R79). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words yet. %@ learns when you correct a word with the restore-last-word key, which is off in Advanced options."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có từ nào. %@ học khi bạn sửa một từ bằng phím khôi phục từ vừa gõ, phím này đang tắt trong Tùy chọn nâng cao."
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.emptyOtherKey" : {
+      "comment" : "Empty learned-words sheet when the restore key (D8) is not Escape (PRD-R79). %1$@ is the app name, %2$@ the key in words.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No words yet. %1$@ learns when you correct a word with the restore-last-word key (%2$@)."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa có từ nào. %1$@ học khi bạn sửa một từ bằng phím khôi phục từ vừa gõ (%2$@)."
           }
         }
       }

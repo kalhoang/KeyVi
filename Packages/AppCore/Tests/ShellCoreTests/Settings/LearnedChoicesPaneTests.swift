@@ -64,6 +64,19 @@ private func strong(
         #expect(rows.map(\.result) == ["á", "cả", "có"])
     }
 
+    @Test func theReadingFollowsTheTonePlacement_D2() {
+        // `toes` reads tóe with the traditional placement and toé with the modern one, as the user types it.
+        let votes = [CollisionMemoryVote(word: "toes", context: nil, choice: .vietnamese)]
+        let traditional = LearnedChoicesSheetState(
+            votes: votes, reading: LearnedChoiceReading.vietnamese(tonePlacement: .traditional))
+        let modern = LearnedChoicesSheetState(
+            votes: votes, reading: LearnedChoiceReading.vietnamese(tonePlacement: .modern))
+        #expect(traditional.rows.map(\.result) == ["tóe"])
+        #expect(modern.rows.map(\.result) == ["toé"])
+        #expect(LearnedChoiceReading.vietnamese(tonePlacement: .modern)("as") == "á")
+        #expect(LearnedChoiceReading.vietnamese(tonePlacement: .modern)("xyz") == "xyz", "no reading: the word")
+    }
+
     @Test func contextIsSaidInWordsInBothLanguages() throws {
         let l = try Localizers()
         let rows = LearnedChoicesSheetState(votes: fixture, reading: reading).rows
@@ -109,12 +122,35 @@ private func strong(
         let onlyConflicts = LearnedChoicesSheetState(
             votes: [CollisionMemoryVote(word: "as", context: nil, choice: .conflict)], reading: reading)
         #expect(onlyConflicts.isEmpty)
+        // D8's default, Escape: the PRD-R79 draft as written.
         #expect(
-            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", l.vi)
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: .key(.escape), l.vi)
                 == "Chưa có từ nào. {{AppName}} học khi bạn sửa một từ bằng phím Escape.")
         #expect(
-            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", l.en)
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: .key(.escape), l.en)
                 == "No words yet. {{AppName}} learns when you correct a word with the Escape key.")
+    }
+
+    @Test func emptyStateNamesTheRestoreKeyTheUserChose_D8() throws {
+        // Strong signals come from the restore toggle (ENG-R864), and D8 can bind another key or none.
+        let l = try Localizers()
+        let combo = HotkeyBinding.keyCombo(modifiers: [.control], keyCode: .space)
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: combo, l.vi)
+                == "Chưa có từ nào. {{AppName}} học khi bạn sửa một từ bằng phím khôi phục từ vừa gõ "
+                + "(Control + Phím cách).")
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: combo, l.en)
+                == "No words yet. {{AppName}} learns when you correct a word with the restore-last-word key "
+                + "(Control + Space).")
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: nil, l.vi)
+                == "Chưa có từ nào. {{AppName}} học khi bạn sửa một từ bằng phím khôi phục từ vừa gõ, phím này "
+                + "đang tắt trong Tùy chọn nâng cao.")
+        #expect(
+            LearnedChoicesSheetState.emptyText(appName: "{{AppName}}", restoreHotkey: nil, l.en)
+                == "No words yet. {{AppName}} learns when you correct a word with the restore-last-word key, "
+                + "which is off in Advanced options.")
     }
 
     // MARK: Remove and clear (PRD-R78, PLT-R914)
@@ -196,13 +232,23 @@ private func strong(
         #expect(await commands.learnedChoices().isEmpty)
     }
 
+    @Test func theResetOfEverythingSaysItClearsTheLearnedWordsToo() throws {
+        // ResetScope.all clears the collision memory as well (PLT-R914), so its confirmation says so.
+        let l = try Localizers()
+        let request = ResetRequest(target: .all)
+        #expect(request.body == .resetBodyAll)
+        #expect(l.vi.string(request.body).contains("các từ đã học"))
+        #expect(l.en.string(request.body).contains("learned words"))
+    }
+
     // MARK: Copy (PRD-R25, PRD-R62, PRD-R79)
 
     @Test func everyNewStringExistsInBothLanguages() throws {
         let l = try Localizers()
         let keys: [SettingsText] = [
             .learnCollisionTitle, .learnCollisionExplanation, .learnedChoicesShow, .learnedChoicesTitle,
-            .learnedChoicesIntro, .learnedChoicesEmpty, .learnedChoicesRemoveAll, .learnedChoicesDone,
+            .learnedChoicesIntro, .learnedChoicesEmpty, .learnedChoicesEmptyOtherKey, .learnedChoicesEmptyNoKey,
+            .learnedChoicesRemoveAll, .learnedChoicesDone,
             .learnedContextSentenceStart, .learnedContextAfterVietnamese, .learnedContextAfterEnglish,
             .learnedContextAfterNeutral, .learnedContextAny, .learnedRowVietnamese, .learnedRowEnglish,
             .learnedClearTitle, .learnedClearBody, .learnedClearConfirm, .learnedClearCancel, .lookaheadRevisionTitle,

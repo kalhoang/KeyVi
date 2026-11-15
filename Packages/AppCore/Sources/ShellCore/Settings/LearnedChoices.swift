@@ -8,8 +8,10 @@
 // are not listed, though "Xóa tất cả" deletes them too (PLT-R914). The words are bundled vocabulary and are never
 // logged (PLT-R901).
 
+public import AppModel
 public import InputHost
 public import SettingsStore
+internal import VietnameseEngine
 
 /// One row of the sheet.
 public struct LearnedChoiceRow: Sendable, Hashable, Identifiable {
@@ -86,9 +88,44 @@ public struct LearnedChoicesSheetState: Sendable, Hashable {
         LearnedChoicesSheetState(rows: LearnedChoices.rows(votes, reading: reading), confirmsClearAll: confirmsClearAll)
     }
 
-    /// The empty state (PRD-R79): how words are learned. Escape is the restore key's default (D8).
-    public static func emptyText(appName: String, _ localizer: Localizer) -> String {
-        localizer.format(SettingsText.learnedChoicesEmpty, appName)
+    /// The empty state (PRD-R79): how words are learned, with the restore key the user has now (D8). Strong signals
+    /// come from the restore toggle (ENG-R864): Escape, D8's default, keeps the draft's wording; another key is
+    /// named in words; with D8 off the text says the key is off.
+    public static func emptyText(appName: String, restoreHotkey: HotkeyBinding?, _ localizer: Localizer) -> String {
+        switch restoreHotkey {
+        case nil: localizer.format(SettingsText.learnedChoicesEmptyNoKey, appName)
+        case .key(.escape)?: localizer.format(SettingsText.learnedChoicesEmpty, appName)
+        case let binding?:
+            localizer.format(
+                SettingsText.learnedChoicesEmptyOtherKey, appName,
+                ShortcutWords.string(for: binding, localizer: localizer))
+        }
+    }
+}
+
+/// The Vietnamese reading of a bundled collision word for the sheet, in the user's tone placement (D2): the engine
+/// types the word key by key with Telex and no restore (`toes` gives tóe, or toé with the modern placement), so the
+/// row shows the word as the user would see it and nothing the user typed is stored or shown (PLT-R901).
+public enum LearnedChoiceReading {
+    private static let traditional = engine(.traditional)
+    private static let modern = engine(.modern)
+
+    /// The reading for `tonePlacement`; the word itself when it does not compose.
+    public static func vietnamese(tonePlacement: TonePlacement) -> @Sendable (String) -> String {
+        let engine = tonePlacement == .modern ? modern : traditional
+        return { word in
+            var session = Session(engine: engine)
+            for character in word { _ = session.handle(.key(KeyInput(character))) }
+            let display = session.state.activeDisplay
+            return display.isEmpty ? word : display
+        }
+    }
+
+    private static func engine(_ style: ToneStyle) -> Engine {
+        Engine(
+            configuration: EngineConfiguration(
+                inputMethod: .telex(TelexOptions()), toneStyle: style, autoRestore: false),
+            resources: .empty)
     }
 }
 

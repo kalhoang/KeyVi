@@ -111,6 +111,10 @@ public enum SettingsText: String, LocalizationKey {
     case learnedChoicesTitle = "settings.typing.learnedChoices.title"
     case learnedChoicesIntro = "settings.typing.learnedChoices.intro"
     case learnedChoicesEmpty = "settings.typing.learnedChoices.empty"
+    /// The empty state when D8 is another key (its name is the second argument) or off (ENG-R864: strong signals
+    /// come from the restore toggle).
+    case learnedChoicesEmptyOtherKey = "settings.typing.learnedChoices.emptyOtherKey"
+    case learnedChoicesEmptyNoKey = "settings.typing.learnedChoices.emptyNoKey"
     case learnedChoicesRemoveAll = "settings.typing.learnedChoices.removeAll"
     case learnedChoicesDone = "settings.typing.learnedChoices.done"
     /// The context class of a row in words (ENG-R863): sentence start, after a Vietnamese, English or neutral word.

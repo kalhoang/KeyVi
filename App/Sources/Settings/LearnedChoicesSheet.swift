@@ -2,7 +2,7 @@
 //
 // D28 in the Typing pane and its learned-words sheet (PRD-R78, PRD-R79; decision of the product owner, 15/11/2026:
 // collision choices are learned per user across all apps, from corrections and silent acceptance). The row is the
-// switch with its explanation and "Xem từ đã học..." under it, like the button of the D17 row; the button stays
+// title and explanation with the switch and "Xem từ đã học..." under it in the control column; the button stays
 // available with the switch off, since turning D28 off keeps the learned words until "Xóa tất cả". The sheet lists the
 // entries that vote for a side as word, arrow, result and context (`LearnedChoicesSheetState`), each with a remove
 // button (VoiceOver label and hint, PRD-R66); from macOS 13 a row also has a context menu with the same command,
@@ -14,14 +14,16 @@ import SettingsStore
 import ShellCore
 import SwiftUI
 
-/// D28: the switch, its explanation with the app name (PRD-R25) and the button that opens the sheet.
+/// D28: the switch with the button that opens the sheet under it, in the row's control column, beside the title and
+/// its explanation with the app name (PRD-R25). In the control column the button adds no line of its own, which keeps
+/// the Typing pane as short as the design allows (PRD-R24 acceptance: no scrolling on a 13-inch display).
 struct LearnCollisionChoicesRow: View {
     @ObservedObject var model: SettingsWindowModel
 
     var body: some View {
         let localizer = model.localizer
-        VStack(alignment: .leading, spacing: 8) {
-            SettingRow(localizer: localizer, item: .learnCollisionChoices, arguments: [model.appName]) {
+        SettingRow(localizer: localizer, item: .learnCollisionChoices, arguments: [model.appName]) {
+            VStack(alignment: .trailing, spacing: 6) {
                 Toggle(
                     isOn: Binding(
                         get: { model.settings.learnCollisionChoices }, set: { model.edit(.learnCollisionChoices($0)) })
@@ -30,12 +32,10 @@ struct LearnCollisionChoicesRow: View {
                 }
                 .settingsAccessibility(SettingsControl.learnCollisionChoices, localizer)
                 .settingsSwitch()
-            }
-            HStack {
-                Spacer()
                 Button(action: model.showLearnedChoices) {
                     Text(verbatim: localizer.string(SettingsText.learnedChoicesShow))
                 }
+                .controlSize(.small)
                 .settingsAccessibility(SettingsControl.learnedChoicesShow, localizer)
             }
         }
@@ -58,11 +58,14 @@ struct LearnedChoicesSheet: View {
                 if let sheet, !sheet.isEmpty {
                     LearnedChoicesList(model: model, rows: sheet.rows)
                 } else {
-                    Text(verbatim: LearnedChoicesSheetState.emptyText(appName: model.appName, localizer))
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Text(
+                        verbatim: LearnedChoicesSheetState.emptyText(
+                            appName: model.appName, restoreHotkey: model.settings.restoreHotkey, localizer)
+                    )
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(height: 240)
