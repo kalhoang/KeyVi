@@ -114,6 +114,7 @@ enum ResourceFixture {
         "english.txt": "as\nis\ntest\nthis\n",
         "tech-always.txt": "usb\nwifi\nwww\n",
         "tech-code-only.txt": "tar\n",
+        "tech-code-capitalized.txt": "tar\n",
         "attested.txt": "hòa\nhoà\ná\nđi\n",
         "ambiguity.tsv":
             ambiguityHeader

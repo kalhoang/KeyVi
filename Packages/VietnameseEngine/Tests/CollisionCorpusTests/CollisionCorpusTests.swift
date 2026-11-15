@@ -80,6 +80,12 @@ struct CollisionCorpusTests {
     /// code context rule L9 restores a code-only word only outside Vietnamese text. The corpus, written for chat,
     /// is replayed in the code context: L9 may only add restores outside Vietnamese text, so no Vietnamese-intent
     /// collision is lost and nothing else moves.
+    ///
+    /// RV5 of ENG-R828 (16/11/2026, REG-36) gives a word that L9 restored at a line start the general context's
+    /// decision once the next word is Vietnamese, so its only wrong revision is a word the general context gets
+    /// wrong too: CS0571 `Host mới chạy nhanh gấp đôi` (`host` meant in English) shows `Hót`, as in the general
+    /// context (a known cost of ENG-R850). Any other wrong revision, or one that leaves a word the general context
+    /// shows differently, fails here until it is reviewed with the change.
     @Test(
         "ENG-R850: in the code context the corpus keeps every Vietnamese-intent collision of the general context",
         arguments: [CorpusFixture.toneLast, .toneAfterVowel])
@@ -91,11 +97,19 @@ struct CollisionCorpusTests {
         let general = runs.score
         print(code.report(title: "\(fixture) in the code context"))
         #expect(code.alignmentErrors.isEmpty)
-        #expect(code.badRevisions.isEmpty)
+        #expect(code.badRevisions == [Self.reviewedLineStartRevision], "\(code.badRevisions)")
+        for (index, result) in results.enumerated() {
+            // RV5 brings back exactly what the general context shows for the sentence.
+            guard result.tokens.contains(where: { $0.revision == .lineVietnamese }) else { continue }
+            #expect(result.field == runs.on[index].field, "\(runs.sentences[index].id)")
+        }
         #expect(code.nonCollisionChanges.isEmpty)
         #expect(code.collisions.vietnamese.right == general.collisions.vietnamese.right)
         #expect(code.collisions.english.right >= general.collisions.english.right)
     }
+
+    /// The one wrong RV5 revision of the corpus in the code context, reviewed on 16/11/2026 (REG-36).
+    static let reviewedLineStartRevision = "CS0571: Host -> Hót (Host), lineVietnamese"
 
     @Test(
         "ENG-R876: the adversarial sets make no wrong revision and match their frozen outputs",

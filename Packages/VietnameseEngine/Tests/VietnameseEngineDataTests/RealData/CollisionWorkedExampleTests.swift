@@ -38,6 +38,7 @@ struct CollisionWorkedExampleTests {
 
     static let revisionCodes: [(String, RevisionReason)] = [
         ("RV1", .phrase), ("RV2", .particleTail), ("RV3", .nextEnglish), ("RV4", .nextVietnamese),
+        ("RV5", .lineVietnamese),
     ]
 
     @Test("The table has its 36 rows")

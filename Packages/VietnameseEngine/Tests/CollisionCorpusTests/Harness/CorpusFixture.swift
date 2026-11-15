@@ -135,7 +135,7 @@ enum CorpusFixture: String, CaseIterable, CustomStringConvertible {
 
 /// The names the fixtures use for `RevisionReason` (ENG-R828).
 enum RevisionName {
-    static let all: Set<String> = ["phrase", "particleTail", "nextEnglish", "nextVietnamese"]
+    static let all: Set<String> = ["phrase", "particleTail", "nextEnglish", "nextVietnamese", "lineVietnamese"]
 
     static func of(_ reason: RevisionReason) -> String {
         switch reason {
@@ -143,6 +143,7 @@ enum RevisionName {
         case .particleTail: "particleTail"
         case .nextEnglish: "nextEnglish"
         case .nextVietnamese: "nextVietnamese"
+        case .lineVietnamese: "lineVietnamese"
         }
     }
 }

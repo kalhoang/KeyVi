@@ -62,16 +62,20 @@ package struct CommitContext: Sendable {
     package var phrases: PhraseChain
     /// ENG-R850: the token is in Vietnamese text, so rule L9 does not restore it (`CommitPolicy.isInVietnameseText`).
     package var inVietnameseText: Bool
+    /// ENG-R850 (d): the token is the first word of its line (`CommitPolicy.isLineStart`), for rule L9's sentence
+    /// condition (`CommitPolicy.startsSentence`) and RV5 of ENG-R828.
+    package var atLineStart: Bool
 
     package init(
         runIsEnglish: Bool, boundary: Character = " ", memoryContext: CollisionContext = .sentenceStart,
-        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false
+        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false, atLineStart: Bool = false
     ) {
         self.runIsEnglish = runIsEnglish
         self.boundary = boundary
         self.memoryContext = memoryContext
         self.phrases = phrases
         self.inVietnameseText = inVietnameseText
+        self.atLineStart = atLineStart
     }
 }
 
@@ -91,7 +95,7 @@ package struct CommitContext: Sendable {
 /// | L6 Tier B only | `extendedSpelling` | `extendedSpelling` |
 /// | L7 `R` not English | `notEnglish` | - |
 /// | L8 not attested | - | `notAttested` |
-/// | L9 code context, outside Vietnamese text (ENG-R850) | - | `codeContext` |
+/// | L9 code context, outside Vietnamese text, not starting a sentence (ENG-R850) | - | `codeContext` |
 /// | L9a boundary particle (ENG-R825) | `boundaryParticle` | - |
 /// | L9b phrase (ENG-R826) | - | `phrase` |
 /// | L9c learned memory (ENG-R863) | `learned` | `learned` |
@@ -112,12 +116,16 @@ package struct CommitPolicy: Sendable {
     package let appContext: AppContext
     /// ENG-R829: the context rules of the collision words are on.
     package let collisionRules: Bool
+    /// RV5 of ENG-R828 is on: the code context with `lineStartRevision` (the user's D29, ENG-R850). It does not
+    /// depend on `lookaheadRevision`, which the rules turn off in every code-context app (PLT-R357).
+    package let lineRevision: Bool
 
     package init(resources: Resources, configuration: EngineConfiguration) {
         self.resources = resources
         autoRestore = configuration.autoRestore
         appContext = configuration.appContext
         collisionRules = configuration.lookaheadRevision
+        lineRevision = configuration.appContext == .code && configuration.lineStartRevision
     }
 
     /// "R is English" (8.1): the lowercased word is in the English lexicon or the tech-always list.
@@ -177,11 +185,24 @@ package struct CommitPolicy: Sendable {
         if !resources.attestedSyllables.contains(inputs.facts.lowercased) {
             return learnedOverride(of: restore(.notAttested), rawLowercased: r, context: context)
         }
-        // L9: app context `code`, outside Vietnamese text (ENG-R850 as amended on 15/11/2026, REG-35). In Vietnamese
-        // text the rules below decide as in the general context (`chinhs tar` gives `chính tả`).
+        // L9: app context `code`, outside Vietnamese text (ENG-R850 as amended on 15/11/2026, REG-35) and not starting
+        // a sentence (amended by the product owner on 16/11/2026). In Vietnamese text the rules below decide as in the
+        // general context (`chinhs tar` gives `chính tả`). A word in sentence case that starts a line opens a new
+        // sentence, so the English run of the line before, which survives Return (ENG-R823), does not reach it
+        // either: `git status`, Return, `Tar` and a space give `Tả` (review of 16/11/2026).
         if appContext == .code, !context.inVietnameseText, resources.techCodeOnly.contains(r) {
-            return restore(.codeContext)
+            guard startsSentence(inputs, context: context) else { return restore(.codeContext) }
+            var sentence = context
+            sentence.runIsEnglish = false
+            return decideAfterCodeRule(inputs, rawLowercased: r, context: sentence)
         }
+        return decideAfterCodeRule(inputs, rawLowercased: r, context: context)
+    }
+
+    /// Rules L9a to L11, after rule L9 (ENG-R850).
+    private func decideAfterCodeRule(_ inputs: CommitInputs, rawLowercased r: String, context: CommitContext)
+        -> CommitDecision
+    {
         if collisionRules {
             let phrase = continuesPhrase(r, chain: context.phrases)
             // L9a: a boundary particle before `.`, `!`, `?` or Return (ENG-R825), unless it continues a

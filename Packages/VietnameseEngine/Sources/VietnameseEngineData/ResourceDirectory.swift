@@ -17,6 +17,8 @@ enum ResourceFile: String, CaseIterable {
     case english = "english.txt"
     case techAlways = "tech-always.txt"
     case techCodeOnly = "tech-code-only.txt"
+    /// The capitalized code-word list (ENG-R850 as amended on 16/11/2026).
+    case techCodeCapitalized = "tech-code-capitalized.txt"
     case attested = "attested.txt"
     case ambiguity = "ambiguity.tsv"
     case notices = "NOTICES.txt"
@@ -88,7 +90,8 @@ struct ResourceDirectory {
         let words: [String]
         switch file {
         case .english: words = try Self.asciiLines(data, file: file, allowDigits: false)
-        case .techAlways, .techCodeOnly: words = try Self.asciiLines(data, file: file, allowDigits: true)
+        case .techAlways, .techCodeOnly, .techCodeCapitalized:
+            words = try Self.asciiLines(data, file: file, allowDigits: true)
         case .attested, .tailWords, .tailParticles: words = try Self.syllableLines(data, file: file)
         case .collisionSupplement, .boundaryParticles, .englishFunctionWords, .englishLean, .preGuard:
             words = try Self.asciiLines(data, file: file, allowDigits: false)

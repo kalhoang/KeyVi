@@ -5,8 +5,8 @@ This Source Code Form is subject to the terms of the Mozilla Public License, v. 
 distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 This notice (MPL-2.0 Exhibit A) applies to the files of this directory that the project wrote: the scripts, the
-hand-written lists (inputs/tech-always.txt, inputs/tech-code-only.txt, inputs/attested-additions.txt,
-inputs/ambiguity.tsv), the source tables and the documentation. The licence text is the file LICENSE beside this
+hand-written lists (inputs/tech-always.txt, inputs/tech-code-only.txt, inputs/tech-code-capitalized.txt,
+inputs/attested-additions.txt, inputs/ambiguity.tsv), the source tables and the documentation. The licence text is the file LICENSE beside this
 one, unchanged, and every source file carries SPDX-License-Identifier: MPL-2.0. No Exhibit B notice applies, so a
 Larger Work may combine these files with code under the GNU GPL, LGPL or AGPL (Secondary Licenses, MPL-2.0
 section 3.3), as the KeyVi app does under GPL-3.0-or-later.

@@ -129,3 +129,52 @@ separately from the app (spec/04-quality-release.md QA-R27).
   501 of 507, was 493); English intent in the code context 550 of 720 (was 559; 548 in the general context).
   Spec rows B035-B035i and B064a, B064b; `spec/reference-model/boundary.py` models the rule (`CODE_RUNS`);
   `ProseCorpusCheck.run` takes an `appContext`.
+- RV5, a revision of the code context (ENG-R828, ENG-R850, REG-36, product owner's retest of 16/11/2026 in iTerm2):
+  at the start of a line nothing stands before a token, so L9 restores a code-only word there (`Tar thuwr cais nayf`
+  gave `Tar thử cái này`); once the next word shows the line is Vietnamese text, the word takes the display the rules
+  after L9 give it, as in the general context (`Tả thử cái này`, reason `lineVietnamese`, the token becomes neutral,
+  the restore toggle right after undoes it). Guards: the word was restored by L9 as the first word of its line
+  (no token since the start of input, Return, Tab, a reset, also in the middle of a line, or a Backspace that
+  emptied the line, and before it only spaces and the openers of prose, as for the sentence condition below), the rules after L9 keep its Vietnamese display with its own run
+  and window (never an `en` row, L10 or a learned English vote), one space follows it, the next word is kept by L7 with
+  a Vietnamese-only letter (an unchanged syllable is not evidence: `host minh`) and is committed by a space, Return,
+  `,`, `!` or `?` (`tee nhật.log`, `tee nhật-ký.log` and Tab keep the command). The case of the word never widens
+  this evidence (a widening by a capital first letter, added after a review the same day, was withdrawn with the
+  sentence condition below: `Host minh` keeps its keys). New public switch
+  `EngineConfiguration.lineStartRevision` (default on, independent of `lookaheadRevision`, which the rules turn off in
+  every code-context app; the host passes D29) and `RevisionReason.lineVietnamese` (`CommitPolicy.lineStartRevision`,
+  `CollisionFacts.vietnameseAtLineStart`, `CommitPolicy.keepsVietnameseAfterCodeRule`). With the bundled data RV5
+  reaches Telex `host`, `tar` and `tee`. The W11 corpus in the code context: one more revision per habit (99 and 97),
+  English intent 549 of 720 (was 550): CS0571 `Host mới chạy nhanh gấp đôi` now shows `Hót` as in the general
+  context; Vietnamese intent unchanged (620 of 623, 501 of 507); with `lookaheadRevision` off, as the rules of
+  terminals set it, RV5 fires once in the corpus (the same CS0571; English intent 423 of 720, was 424); the
+  general-context numbers do not move. Spec rows
+  B035j-B035l and table 13.9.4 (K01-K16); `spec/reference-model/boundary.py` models RV5.
+- The sentence condition of rule L9 (ENG-R850 as amended by the product owner on 16/11/2026, REG-36): shell commands
+  are typed in lowercase, so a capital first letter at the start of a line is itself a sign of a Vietnamese sentence.
+  In the code context L9 does not apply to a code-only word that is the first word of its line (no token yet on the
+  line, and before it at most 63 spaces and openers of prose: the straight and opening curly quotes, `(`, `[`, and the
+  list, heading, block-quote and comment markers `-`, `*`, `#`, `>`, `/`; the line start RV5 shares, after the review
+  of the same day, so `"Tar`, `- Tar`, `# Tar` and an indented `Tar` count, while `| Tee`, `./Tar` and `1. Tar` do
+  not), written in sentence case (the first letter uppercase, every other letter lowercase, at least
+  two letters: `Tar`, `Tee`; not `TAR` or `tar`), committed by a space (`Tee-Object`, `Host:`, `Tar.` keep L9) and not
+  on the new capitalized code-word list (v1: `host`, for `Host github.com` in `~/.ssh/config` and the HTTP header
+  `Host:`). The rules after L9 decide it at its own commit, as in the general context, with their reason code
+  (`Tar` gives `Tả`, `.kept(.ambiguityTable)` with the bundled data, where `tar` has a `vi` row, and
+  `.kept(.defaultVietnamese)` with the 13.9 fixtures), except that the English run of the lines before, which
+  survives Return, does not reach it (a capital at a line start opens a new sentence): after `git status` and Return,
+  `Tar thuwr cais nayf` gives `Tả thử cái này`, where the general context keeps `Tar` by L10; it reads neither `lookaheadRevision` nor
+  `lineStartRevision`. `Tar thuwr cais nayf` now gives `Tả thử cái này` with no revision, also with D29 off; `Host
+  minh` keeps its keys and `Host nayf` gives `Hót này` by RV5; `TAR thuwr` gives `TẢ thử` by RV5. New public
+  `Resources.techCodeCapitalized` (init parameter after `techCodeOnly`, default empty), bundled as
+  `tech-code-capitalized.txt` from `data/inputs/tech-code-capitalized.txt` (the build refuses an entry that is not on
+  `tech-code-only.txt`); `CommitPolicy.startsSentence`, `CommitPolicy.isSentenceCase`, `CommitPolicy.isLineStart`,
+  `CommitContext.atLineStart`;
+  `RevisionEvidence.isSentenceCapital` is removed. Known costs: an English line or a command typed with a capital
+  first letter shows the Vietnamese display of its first word (`Tar archives are` gives `Tả archives are`, `Tee
+  nhaatj.log` gives `Tê nhật.log`, also after an English line or behind a list or comment marker; the escape `Tarr`
+  keeps `Tar`); a numbered list item (`1. Tar thử`) keeps the keys. Spec rows B035j-B035n, B064c and table 13.9.4
+  (K01-K25); `spec/reference-model/boundary.py` models the condition (`CODE_RUNS`, `CODE_RUNS_CAPITALIZED`). The W11 corpus
+  does not move: in the code context English intent 549 of 720, Vietnamese intent 620 of 623 and 501 of 507, 99 and
+  97 revisions, the one reviewed wrong revision still CS0571 `Host mới` (`host` is on the list, so RV5 decides it as
+  before); the general-context numbers and the prose corpus in the code context are unchanged.

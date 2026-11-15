@@ -274,6 +274,9 @@ public enum RevisionReason: Sendable, Hashable {
     /// RV4: this token is Vietnamese; the previous token, restored by the English run, takes its Vietnamese
     /// display.
     case nextVietnamese
+    /// RV5 (code context): the previous token, a code-only word that rule L9 restored at the start of a line,
+    /// takes its Vietnamese display because this token shows the line is Vietnamese text (ENG-R850).
+    case lineVietnamese
 
     /// The revision restores the previous token's raw keys (otherwise it shows its Vietnamese display).
     var restores: Bool { self == .phrase || self == .nextEnglish }

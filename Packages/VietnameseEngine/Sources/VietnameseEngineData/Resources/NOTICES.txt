@@ -281,8 +281,8 @@ Legal texts obtained from the Intellectual Property Office of Viet Nam (ipvietna
 Official Gazette (congbao.chinhphu.vn).
 
 
-3. Lists written by the project (tech-always.txt, tech-code-only.txt, ambiguity.tsv, and the hand
-   additions to attested.txt)
+3. Lists written by the project (tech-always.txt, tech-code-only.txt, tech-code-capitalized.txt,
+   ambiguity.tsv, and the hand additions to attested.txt)
 ---------------------------------------------------------------------------------------------------
 
 Written by the contributors of the Vietnamese engine and distributed under the same licence as the

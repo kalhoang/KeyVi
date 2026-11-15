@@ -63,6 +63,7 @@ struct PublicAPITests {
         #expect(configuration.appContext == .general)  // ENG-R850
         #expect(configuration.historyLimit == 16)  // ENG-R1001
         #expect(configuration.lookaheadRevision)  // ENG-R829
+        #expect(configuration.lineStartRevision)  // ENG-R850, RV5 of ENG-R828
         #expect(EngineConfiguration(historyLimit: 0).historyLimit == 1)  // 12.2: minimum 1
         #expect(EngineState.initial.historyCount == 0 && EngineState.initial.activeDisplay.isEmpty)
         #expect(MacroTable.empty.triggerCount == 0)  // ENG-R110: the engine ships with an empty table
@@ -71,11 +72,13 @@ struct PublicAPITests {
     @Test("ENG-R450 no other engine option in v1")
     func closedOptionSet() {
         let configurationFields = Mirror(reflecting: EngineConfiguration()).children.compactMap(\.label)
-        // ENG-R829: `lookaheadRevision` is the host's switch for the collision rules, not a user option of the
-        // composition (ENG-R450 is about composition options).
+        // ENG-R829: `lookaheadRevision` is the host's switch for the collision rules, and `lineStartRevision` its
+        // switch for RV5 of the code context (ENG-R850); neither is a user option of the composition (ENG-R450 is
+        // about composition options).
         #expect(
             configurationFields == [
                 "inputMethod", "toneStyle", "autoRestore", "appContext", "historyLimit", "lookaheadRevision",
+                "lineStartRevision",
             ])
         let telexFields = Mirror(reflecting: TelexOptions()).children.compactMap(\.label)
         #expect(telexFields == ["standaloneW", "bracketKeys"])

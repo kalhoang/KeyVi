@@ -8,12 +8,17 @@ package struct RevisionEvidence: Sendable {
     package let text: String
     /// The number of the raw keys in the phrase list (0: in no phrase).
     package let phraseWord: UInt16
+    /// The boundary key that commits the token (read only by RV5).
+    package let boundary: Character
 
-    package init(inputs: CommitInputs, decision: CommitDecision, text: String, phraseWord: UInt16) {
+    package init(
+        inputs: CommitInputs, decision: CommitDecision, text: String, phraseWord: UInt16, boundary: Character = " "
+    ) {
         self.inputs = inputs
         self.decision = decision
         self.text = text
         self.phraseWord = phraseWord
+        self.boundary = boundary
     }
 
     /// Decided by a rule that reads the token alone (not L9a to L11), so it is evidence of its own language.
@@ -38,16 +43,18 @@ package struct RevisionEvidence: Sendable {
 }
 
 extension CommitPolicy {
-    /// RV1 to RV4 of ENG-R828, first match wins, for `previous` (the newest committed token, followed by
+    /// RV1 to RV5 of ENG-R828, first match wins, for `previous` (the newest committed token, followed by
     /// exactly one space) when `next` commits. `beforePrevious` is the token before `previous` when exactly
-    /// one space separates them; `chain` is the phrase chain whose nearest token is `previous`. The caller
-    /// checks the other preconditions (`lookaheadRevision`, nothing between the two commits).
+    /// one space separates them; `chain` is the phrase chain whose nearest token is `previous`. RV1 to RV4 need
+    /// `lookaheadRevision` and a token decided by L9c, L10 or L11; RV5 needs the code context's switch and a
+    /// token restored by L9. The caller checks the other preconditions (auto restore, nothing between the two
+    /// commits).
     package func revision(
         of previous: CommittedToken, beforePrevious: CommittedToken?, next: RevisionEvidence, chain: PhraseChain
     ) -> RevisionReason? {
-        guard previous.collision.revision == nil, let rule = previous.decision.rule, rule.isRevisable else {
-            return nil
-        }
+        guard previous.collision.revision == nil, let rule = previous.decision.rule else { return nil }
+        if rule == .codeContext { return lineStartRevision(of: previous, next: next) }
+        guard collisionRules, rule.isRevisable else { return nil }
         let word = previous.collision.rawLowercased
         let lists = resources.collision
         if !previous.decision.restores {
@@ -77,6 +84,34 @@ extension CommitPolicy {
             !isPreGuarded(beforePrevious)
         else { return nil }
         return .nextVietnamese
+    }
+
+    /// RV5 of ENG-R828 (ENG-R850 as amended on 16/11/2026, REG-36): at the start of a line nothing stands before a
+    /// token, so rule L9 restored a code-only word there (`Tar`); when the next word shows the line is Vietnamese
+    /// text, the word takes the display the rules after L9 give it, as in the general context (`Tả thử`). Guards:
+    /// `previous` was restored by L9 as the first word of its line (`isLineStart`, ENG-R850 (d)) and the rules after
+    /// L9 keep its Vietnamese display (`CollisionFacts.vietnameseAtLineStart`: never an `en` row, L10 or a learned
+    /// English vote); `next` is kept by L7 with a Vietnamese-only letter (a syllable typed unchanged is a host, user
+    /// or branch name as often: `host minh`, `Host minh`); and `next` is committed by a space, Return, `,`, `!` or
+    /// `?`. The case of `previous` never widens this evidence: a word in sentence case that starts a line is not
+    /// restored by L9 unless it is a capitalized code word (ENG-R850 as amended on 16/11/2026), and before those a
+    /// syllable typed unchanged is a host name.
+    func lineStartRevision(of previous: CommittedToken, next: RevisionEvidence) -> RevisionReason? {
+        guard lineRevision, previous.decision == .restored(.codeContext), previous.collision.vietnameseAtLineStart,
+            next.decision == .kept(.notEnglish), next.inputs.facts.hasVietnameseOnlyLetter,
+            Self.confirmsVietnameseLine(next.boundary)
+        else { return nil }
+        return .lineVietnamese
+    }
+
+    /// RV5's boundary keys after the next word: a space, Return, `,`, `!` or `?`. Never `.`, `-`, `/`, `_` or another
+    /// character of a file name or path (`tee nhật.log`, `tee nhật-ký.log`), and never Tab, which completes a file
+    /// name in a shell.
+    package static func confirmsVietnameseLine(_ boundary: Character) -> Bool {
+        switch boundary.asciiValue {
+        case 0x20, 0x0A, 0x0D, 0x2C, 0x21, 0x3F: return true
+        default: return false
+        }
     }
 
     /// The kind of the Vietnamese reading of an ambiguity row; `content` without a row (ENG-R827).

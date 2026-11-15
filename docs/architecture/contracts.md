@@ -6255,6 +6255,7 @@ public enum LintCode: String, Sendable, Hashable, CaseIterable {
     case pasteWithoutOptIn  // PLT-R460
     case lookaheadRevisionWithoutEditStrategy  // PLT-R357: the flag is on with a strategy that cannot carry it
     case lookaheadRevisionWithoutRestoreHotkey  // PLT-R357, PLT-R353: a revision the restore key cannot undo
+    case codeContextWithoutEditStrategy  // PLT-R357: RV5 of ENG-R828 revises in the code context, D29 alone
 }
 
 public struct RulesLinter: Sendable {
@@ -7566,6 +7567,22 @@ existing signature keeps compiling (new parameters have defaults).
   takes effect with a new engine at a hard boundary (ENG-R1211). `Resources.bundled` has a `collisionMemory:`
   parameter.
 - New `CommitRule` cases `boundaryParticle`, `phrase`, `learned` (L9a to L9c); `RevisionReason` codes carry no text.
+
+Addition of 16/11/2026 (REG-36, ENG-R828 RV5, ENG-R850; workstream W18-B). It adds public API; every existing signature
+keeps compiling.
+
+- `EngineConfiguration.lineStartRevision` (default `true`) switches RV5 in the code context: a code-only word that
+  rule L9 restored as the first word of its line takes its Vietnamese display once the next word shows
+  Vietnamese text (`tar thuwr` gives `tả thử`). It does not depend on `lookaheadRevision`, which the rules turn off in
+  every code-context app. The host passes the user's D29 switch alone (`EngineSettingsMapping`), so the catalog keeps
+  its 16 variants. The output is an ordinary revision (`EngineOutput.revision == .lineVietnamese`), injected as one
+  edit job of kind `revision` (PLT-R357); where the restore key is off it cannot be undone with it.
+- New `RevisionReason` case `lineVietnamese`; the dev recorder writes it as `rev: lineVietnamese`.
+- `Resources.techCodeCapitalized` (`WordSet`, init parameter after `techCodeOnly`, default empty): the capitalized
+  code-word list of the product owner's rule of 16/11/2026 (ENG-R850). In the code context rule L9 does not apply to a
+  code-only word that is the first word of its line (only spaces and openers of prose before it), written in sentence
+  case and committed by a space (`Tar` gives `Tả` at its own commit, with the reason the rules after L9 give and
+  without the English run of the lines before, whatever `lineStartRevision` says), unless the word is on this list. `Resources.bundled` loads it from `tech-code-capitalized.txt` (v1: `host`).
 
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift

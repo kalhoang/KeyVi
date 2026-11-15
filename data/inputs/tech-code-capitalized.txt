@@ -1,0 +1,11 @@
+# tech-code-capitalized.txt: code-only words that configuration and protocol text writes capitalized at the start
+# of a line, so that rule L9 keeps restoring them there even in sentence case (spec/01-engine.md 8.2, 8.6, ENG-R850).
+# Shell commands are typed in lowercase, so a word in sentence case that starts a line and is committed by a space
+# (`Tar`, `Tee`) starts a Vietnamese sentence and L9 leaves it to the rules after it; the words below are the
+# exceptions. `host`: `Host github.com` starts a block of ~/.ssh/config and `Host: example.com` is an HTTP header.
+# The product owner decided on 16/11/2026 that the list holds only `host`.
+# Written by the project; licensed with the engine (MPL-2.0). Every entry must be on tech-code-only.txt (the build
+# checks it). Format: one entry per line, lowercase ASCII letters and digits, at least one letter. '#' starts a
+# comment.
+
+host

@@ -19,6 +19,8 @@ enum ResourceName {
     static let english = "english.txt"
     static let techAlways = "tech-always.txt"
     static let techCodeOnly = "tech-code-only.txt"
+    /// The capitalized code-word list (ENG-R850 as amended on 16/11/2026).
+    static let techCodeCapitalized = "tech-code-capitalized.txt"
     static let attested = "attested.txt"
     static let ambiguity = "ambiguity.tsv"
     static let notices = "NOTICES.txt"
@@ -37,7 +39,10 @@ enum ResourceName {
         phrases, collisionSupplement, boundaryParticles, englishFunctionWords, englishLean, tailWords, tailParticles,
         preGuard,
     ]
-    static let all = [english, techAlways, techCodeOnly, attested, ambiguity] + collisionLists + [notices, manifest]
+    static let all =
+        [english, techAlways, techCodeOnly, techCodeCapitalized, attested, ambiguity] + collisionLists + [
+            notices, manifest,
+        ]
 }
 
 struct AttestedResult {
@@ -61,6 +66,9 @@ enum Builder {
         let english = try EnglishLexicon.load(layout)
         let techAlways = try TechList.load(layout.inputs.appendingPathComponent("tech-always.txt"))
         let techCodeOnly = try TechList.load(layout.inputs.appendingPathComponent("tech-code-only.txt"))
+        let techCodeCapitalized = try TechList.load(
+            layout.inputs.appendingPathComponent(ResourceName.techCodeCapitalized))
+        try checkCapitalizedCodeWords(techCodeCapitalized, codeOnly: Set(techCodeOnly))
         let ambiguity = try AmbiguityRow.load(layout.inputs.appendingPathComponent("ambiguity.tsv"))
         let attested = try attestedSyllables(layout)
         try checkGeneratedRows(
@@ -74,6 +82,7 @@ enum Builder {
             (ResourceName.english, utf8Sorted(english.keys)),
             (ResourceName.techAlways, utf8Sorted(techAlways)),
             (ResourceName.techCodeOnly, utf8Sorted(techCodeOnly)),
+            (ResourceName.techCodeCapitalized, utf8Sorted(techCodeCapitalized)),
             (ResourceName.attested, utf8Sorted(attested.syllables)),
         ]
         var entries: [String: Int] = [:]
@@ -107,6 +116,16 @@ enum Builder {
             ))
         output.derived.append((ResourceName.attestedCandidates, Data(candidatesTSV(attested.counts).utf8)))
         return output
+    }
+
+    /// ENG-R850: a capitalized code word only keeps rule L9 for a word that L9 reads, so every entry must be on the
+    /// code-only tech list; an entry that is not would silently do nothing.
+    static func checkCapitalizedCodeWords(_ words: [String], codeOnly: Set<String>) throws {
+        let missing = words.filter { !codeOnly.contains($0) }
+        guard missing.isEmpty else {
+            throw BuilderError(
+                "\(ResourceName.techCodeCapitalized): not on tech-code-only.txt: \(missing.joined(separator: ", "))")
+        }
     }
 
     /// The collision lists as resource files, in manifest order, each sorted by UTF-8 bytes.

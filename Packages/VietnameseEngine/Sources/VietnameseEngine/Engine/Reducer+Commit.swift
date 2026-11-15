@@ -23,7 +23,8 @@ extension Engine {
     /// boundary is recorded in the history (or, for Return and Tab, the history is cleared, ENG-R912) and the
     /// boundary key is delivered after any edit (`thenPassThrough`, ENG-R803). P0-3: nothing here depends on
     /// which boundary key it is, except whether it clears the history afterwards, whether it ends a macro
-    /// span (whitespace) and rule L9a (`.`, `!`, `?`, Return).
+    /// span (whitespace), rule L9a (`.`, `!`, `?`, Return), the space of rule L9's sentence condition (ENG-R850)
+    /// and the keys that let RV5 revise (ENG-R828).
     func commit(at boundary: Character, isHard: Bool, _ state: inout EngineState) -> EngineOutput {
         let mayRevise = state.newestTokenRevisable
         state.newestTokenRevisable = false
@@ -48,11 +49,20 @@ extension Engine {
             runIsEnglish: state.recentLanguages.isEnglishRun, boundary: boundary,
             memoryContext: Self.memoryContext(state.history),
             phrases: commitPolicy.collisionRules ? PhraseChain(history: state.history) : PhraseChain(),
-            inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history))
-        let result = commitResult(for: token, context: context)
+            inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history),
+            atLineStart: CommitPolicy.isLineStart(state.history))
+        var result = commitResult(for: token, context: context)
+        // RV5 of ENG-R828 (ENG-R850): a code-only word that L9 restored as the first word of its line (no token since
+        // the start of input, Return, Tab or a reset, only spaces and the openers of prose before it) remembers
+        // whether the rules after L9 keep its Vietnamese display, decided now with its own run and window.
+        if commitPolicy.lineRevision, result.decision == .restored(.codeContext), context.atLineStart,
+            let inputs = result.inputs
+        {
+            result.collision.vietnameseAtLineStart = commitPolicy.keepsVietnameseAfterCodeRule(inputs, context: context)
+        }
         var action = result.action
         var revision: RevisionReason?
-        if mayRevise, let revised = revisePrevious(result, display: token.display, chain: context.phrases, &state) {
+        if mayRevise, let revised = revisePrevious(result, display: token.display, context: context, &state) {
             revision = revised.reason
             action = .edit(revised.edit, thenPassThrough: true)
         }
@@ -85,21 +95,23 @@ extension Engine {
     /// ENG-R828: when the newest committed token is followed by exactly one space and the token being
     /// committed shows its language, the newest token is revised once, inside this commit's edit. Updates
     /// the history and the language window and returns the reason and the one edit that covers the previous
-    /// token, the space and the current token (ENG-R803).
+    /// token, the space and the current token (ENG-R803). RV1 to RV4 need `lookaheadRevision`, RV5 the code
+    /// context's `lineStartRevision` (ENG-R829); every revision needs auto restore.
     private func revisePrevious(
-        _ current: CommitResult, display: String, chain: PhraseChain, _ state: inout EngineState
+        _ current: CommitResult, display: String, context: CommitContext, _ state: inout EngineState
     ) -> (reason: RevisionReason, edit: TextEdit)? {
-        guard configuration.lookaheadRevision, configuration.autoRestore, let inputs = current.inputs,
-            state.history.entry(beforeNewest: 0) == .boundary(" "),
+        guard configuration.lookaheadRevision || commitPolicy.lineRevision, configuration.autoRestore,
+            let inputs = current.inputs, state.history.entry(beforeNewest: 0) == .boundary(" "),
             let previous = state.history.token(beforeNewest: 1)
         else { return nil }
         let beforePrevious =
             state.history.entry(beforeNewest: 2) == .boundary(" ") ? state.history.token(beforeNewest: 3) : nil
         let evidence = RevisionEvidence(
-            inputs: inputs, decision: current.decision, text: current.text, phraseWord: current.collision.phraseWord)
+            inputs: inputs, decision: current.decision, text: current.text, phraseWord: current.collision.phraseWord,
+            boundary: context.boundary)
         guard
             let reason = commitPolicy.revision(
-                of: previous, beforePrevious: beforePrevious, next: evidence, chain: chain)
+                of: previous, beforePrevious: beforePrevious, next: evidence, chain: context.phrases)
         else { return nil }
         let newText = reason.restores ? previous.token.rawText : previous.collision.composed
         let edit = DisplayEdit.edit(from: previous.committedText + " " + display, to: newText + " " + current.text)

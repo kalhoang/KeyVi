@@ -79,6 +79,7 @@ extension Resources {
             english: WordSet(try files.wordList(.english)),
             techAlways: WordSet(try files.wordList(.techAlways)),
             techCodeOnly: WordSet(try files.wordList(.techCodeOnly)),
+            techCodeCapitalized: WordSet(try files.wordList(.techCodeCapitalized)),
             attestedSyllables: WordSet(try files.wordList(.attested)),
             ambiguity: ambiguity.decisions,
             userKeepRaw: userKeepRaw,

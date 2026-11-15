@@ -64,6 +64,12 @@ public struct EngineConfiguration: Sendable, Hashable {
     /// the engine decides exactly as it did without them. The learned memory (L9c) is governed by
     /// `Resources.collisionMemory` (empty: off) and the collision signals are emitted either way (ENG-R864).
     public var lookaheadRevision: Bool
+    /// The revision RV5 of the code context (ENG-R828, ENG-R850): a code-only word that rule L9 restored at the
+    /// start of a line takes its Vietnamese display when the next word shows the line is Vietnamese text. Default
+    /// on; the host passes the user's D29 switch alone, because the rules turn `lookaheadRevision` off in every
+    /// code-context app (PLT-R357) while RV5 only completes L9's own line rule. Read only in the code context and
+    /// with auto restore on; it does not depend on `lookaheadRevision`.
+    public var lineStartRevision: Bool
 
     /// A configuration; every argument defaults to the spec's default. `historyLimit` is raised to 1 if
     /// smaller.
@@ -73,7 +79,8 @@ public struct EngineConfiguration: Sendable, Hashable {
         autoRestore: Bool = true,
         appContext: AppContext = .general,
         historyLimit: Int = 16,
-        lookaheadRevision: Bool = true
+        lookaheadRevision: Bool = true,
+        lineStartRevision: Bool = true
     ) {
         self.inputMethod = inputMethod
         self.toneStyle = toneStyle
@@ -81,6 +88,7 @@ public struct EngineConfiguration: Sendable, Hashable {
         self.appContext = appContext
         self.historyLimit = max(1, historyLimit)
         self.lookaheadRevision = lookaheadRevision
+        self.lineStartRevision = lineStartRevision
     }
 }
 
@@ -404,6 +412,10 @@ public struct Resources: Sendable {
     public var techAlways: WordSet
     /// Shell words restored only in the code context, outside Vietnamese text (rule L9, ENG-R850).
     public var techCodeOnly: WordSet
+    /// Code-only words that configuration and protocol text writes capitalized at the start of a line (`host`):
+    /// rule L9 still restores them there in sentence case, where it leaves other words to the rules after it
+    /// (ENG-R850 as amended on 16/11/2026).
+    public var techCodeCapitalized: WordSet
     /// Vietnamese syllables that occur, lowercase with tone (rule L8 only, never to block typing).
     public var attestedSyllables: WordSet
     /// The ambiguity table: lowercased raw keys -> decision (rule L11). Unreviewed rows behave as `vi`.
@@ -421,7 +433,7 @@ public struct Resources: Sendable {
 
     /// Resources from the given lists.
     public init(
-        english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
+        english: WordSet, techAlways: WordSet, techCodeOnly: WordSet, techCodeCapitalized: WordSet = WordSet([]),
         attestedSyllables: WordSet, ambiguity: [String: Language],
         userKeepRaw: WordSet, userKeepVietnamese: WordSet,
         macros: MacroTable = .empty, collision: CollisionLists = .empty,
@@ -430,6 +442,7 @@ public struct Resources: Sendable {
         self.english = english
         self.techAlways = techAlways
         self.techCodeOnly = techCodeOnly
+        self.techCodeCapitalized = techCodeCapitalized
         self.attestedSyllables = attestedSyllables
         self.ambiguity = ambiguity
         self.userKeepRaw = userKeepRaw

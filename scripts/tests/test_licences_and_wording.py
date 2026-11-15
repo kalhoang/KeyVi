@@ -260,6 +260,7 @@ class EngineLicenceWordingTests(unittest.TestCase):
     FILES = ("README.md", "README.vi.md", "CONTRIBUTING.md", "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "SECURITY.md",
              "CHANGELOG.md", ".github/pull_request_template.md", "data/README.md", "data/NOTICES.md",
              "data/licenses/bundled-notices.txt", "data/inputs/tech-always.txt", "data/inputs/tech-code-only.txt",
+             "data/inputs/tech-code-capitalized.txt",
              "Packages/VietnameseEngine/README.md", "Packages/VietnameseEngine/CHANGELOG.md",
              "Packages/VietnameseEngine/TRACEABILITY.md", "Packages/VietnameseEngineFuzz/README.md",
              "Packages/VietnameseEngine/Sources/VietnameseEngineData/Resources/NOTICES.txt",

@@ -31,8 +31,8 @@ struct LexiconBuilderTests {
             names == [
                 "NOTICES.txt", "ambiguity.tsv", "attested.txt", "boundary-particles.txt", "collision-supplement.txt",
                 "english-function-words.txt", "english-lean-neutral.txt", "english-pre-guard.txt", "english.txt",
-                "manifest.json", "phrases.txt", "tech-always.txt", "tech-code-only.txt", "vi-tail-particles.txt",
-                "vi-tail-words.txt",
+                "manifest.json", "phrases.txt", "tech-always.txt", "tech-code-capitalized.txt", "tech-code-only.txt",
+                "vi-tail-particles.txt", "vi-tail-words.txt",
             ])
         for name in names {
             let a = try Data(contentsOf: first.appendingPathComponent("Resources/\(name)"))
@@ -77,12 +77,32 @@ struct LexiconBuilderTests {
         #expect(loaded.collision.phrases.count == 1)
         #expect(loaded.collision.tailParticles.contains("nha") && loaded.collision.tailWords.contains("rồi"))
         #expect(loaded.collision.runExempt.contains("as") && loaded.collision.readingKinds["as"] == .particle)
+        // The capitalized code-word list (ENG-R850 as amended on 16/11/2026).
+        #expect(loaded.techCodeCapitalized.contains("tar") && loaded.techCodeOnly.contains("tar"))
         try write("www\nwifi\nnew\n", to: root.appendingPathComponent("data/inputs/tech-always.txt"))
         let refused = try BuilderProcess.run([
             "build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path,
         ])
         #expect(refused.status != 0)
         #expect(refused.errors.contains("changed: inputs/tech-always.txt"))
+    }
+
+    /// ENG-R850, ENG-R810: an entry of the capitalized code-word list that is not on the code-only tech list would do
+    /// nothing, so the build refuses it.
+    @Test func buildRefusesACapitalizedWordOffTheCodeOnlyList() throws {
+        #expect(throws: Never.self) { try Builder.checkCapitalizedCodeWords(["host"], codeOnly: ["host", "tar"]) }
+        #expect(throws: Never.self) { try Builder.checkCapitalizedCodeWords([], codeOnly: ["tar"]) }
+        #expect(throws: BuilderError.self) { try Builder.checkCapitalizedCodeWords(["host"], codeOnly: ["tar"]) }
+        let root = try MiniDataRoot.make()
+        defer { TempDirectory.remove(root) }
+        let data = root.appendingPathComponent("data")
+        try write("tar\nhost\n", to: data.appendingPathComponent("inputs/tech-code-capitalized.txt"))
+        #expect(try BuilderProcess.run(["pin", "--data-root", data.path]).status == 0)
+        let refused = try BuilderProcess.run([
+            "build", "--data-root", data.path, "--output", root.appendingPathComponent("out").path,
+        ])
+        #expect(refused.status != 0)
+        #expect(refused.errors.contains("tech-code-capitalized.txt: not on tech-code-only.txt: host"))
     }
 
     // MARK: Tokeniser
@@ -219,6 +239,7 @@ enum MiniDataRoot {
         try write("color\n", to: scowl.appendingPathComponent("american-words.20"))
         try write("# tech\nwww\nwifi\n", to: data.appendingPathComponent("inputs/tech-always.txt"))
         try write("tar\n", to: data.appendingPathComponent("inputs/tech-code-only.txt"))
+        try write("# capitalized\ntar\n", to: data.appendingPathComponent("inputs/tech-code-capitalized.txt"))
         try write(
             "# additions\nthủy\tfixture\ná\tfixture\n", to: data.appendingPathComponent("inputs/attested-additions.txt")
         )

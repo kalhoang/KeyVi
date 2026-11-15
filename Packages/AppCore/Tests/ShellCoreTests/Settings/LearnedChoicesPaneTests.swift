@@ -368,8 +368,8 @@ private func strong(
                 + "chọn đó cho lần sau. Chỉ lưu trên máy này.")
         #expect(
             l.vi.string(SettingItem.lookaheadRevision.explanation)
-                == "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Tắt trong Terminal và "
-                + "trình soạn mã theo quy tắc ứng dụng.")
+                == "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Trong Terminal và "
+                + "trình soạn mã, chỉ sửa chữ đầu dòng khi chữ sau là tiếng Việt (tar thử thành tả thử).")
         #expect(l.en.format(SettingItem.learnCollisionChoices.explanation, "{{AppName}}").contains("{{AppName}}"))
     }
 

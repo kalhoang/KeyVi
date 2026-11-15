@@ -43,6 +43,69 @@ extension CommitPolicy {
         return false
     }
 
+    /// ENG-R850 as amended by the product owner on 16/11/2026: the token starts a sentence, so rule L9 leaves it to the
+    /// rules after it, at its own commit. Shell commands are typed in lowercase, so a capital first letter at the start
+    /// of a line is itself a sign of a Vietnamese sentence (`Tar` is not a command): (d) the token is the first word of
+    /// its line (`isLineStart`, shared with RV5 of ENG-R828); (e) its raw keys are in sentence case; (f) a space
+    /// commits it, so `Tee-Object`, `Host:` and `Tar.` keep L9; (g) it is not on the capitalized code-word list
+    /// (`Host github.com` starts a block of ~/.ssh/config). Part of L9, not a revision: it reads neither
+    /// `lookaheadRevision` nor `lineStartRevision` (ENG-R829). Called only for a code-only word in the code context,
+    /// after L0 to L8; hash lookups on preallocated tables, no allocation (ENG-R1232).
+    package func startsSentence(_ inputs: CommitInputs, context: CommitContext) -> Bool {
+        context.atLineStart && context.boundary == " " && Self.isSentenceCase(inputs.raw)
+            && !resources.techCodeCapitalized.contains(inputs.rawLowercased)
+    }
+
+    /// ENG-R850 (d), the line start that the sentence condition of L9 and RV5 of ENG-R828 share: no token stands
+    /// in the history (section 10: it starts empty, Return, Tab and a reset clear it), and the boundary characters
+    /// typed since are only spaces and the openers of prose (`isLineOpener`), fewer than `History.entriesPerToken`
+    /// of them. So an indent, a quote, a bracket or a list, heading, block-quote or comment marker before the word
+    /// leaves it the first word of its line (`"Tả`, `- Tả`, `# Tả`, `// Tả`), while a code character, a path or
+    /// a number does not (`| Tee`, `./Tar`, `1. Tar`). Reads at most 63 stored entries and allocates nothing
+    /// (ENG-R1232, PLT-R304).
+    package static func isLineStart(_ history: History) -> Bool {
+        guard history.tokenCount == 0 else { return false }
+        var offset = 0
+        while let entry = history.entry(beforeNewest: offset) {
+            guard offset < History.entriesPerToken - 1, case .boundary(let character) = entry,
+                isLineOpener(character)
+            else { return false }
+            offset += 1
+        }
+        return true
+    }
+
+    /// ENG-R850 (d): the characters that may stand before the first word of a line of prose: the space (U+0020; a
+    /// no-break space does not separate words in a shell), the straight and opening curly quotes, `(` and `[`, and
+    /// the markers of Markdown lists, headings and block quotes and of comments (`-`, `*`, `#`, `>`, `/`).
+    @inline(__always)
+    static func isLineOpener(_ character: Character) -> Bool {
+        switch character {
+        case " ", "\"", "'", "\u{201C}", "\u{2018}", "(", "[", "-", "*", "#", ">", "/": return true
+        default: return false
+        }
+    }
+
+    /// ENG-R850 (e): the first letter is uppercase, every other letter lowercase, and there are at least two letters
+    /// (`Tar`, `Tee`, `Md5`; not `TAR`, `TAr`, `tar` or `T`). Reads the UTF-8 bytes and allocates nothing (PLT-R304).
+    package static func isSentenceCase(_ raw: String) -> Bool {
+        var letters = 0
+        for byte in raw.utf8 where ASCII.isLetter(byte) {
+            if ASCII.isUppercaseLetter(byte) != (letters == 0) { return false }
+            letters += 1
+        }
+        return letters >= 2
+    }
+
+    /// RV5 of ENG-R828: the decision the rules after L9 give the token, as in the general context (L9a to L11 with
+    /// the token's own run, window and memory class), keeps its Vietnamese display. Evaluated once, at the commit
+    /// of a token that L9 restored as the first word of its line (`isLineStart`).
+    package func keepsVietnameseAfterCodeRule(_ inputs: CommitInputs, context: CommitContext) -> Bool {
+        var general = context
+        general.inVietnameseText = true
+        return !decide(inputs, context: general).restores
+    }
+
     /// ENG-R850: the characters that mark code between two words, never Vietnamese prose: the backquote (a
     /// Markdown code span, shell command substitution), the vertical bar (a pipe), `&` (`&&`, a background job)
     /// and `$` (a variable). Quotes, brackets, `.`, `,`, `:`, `;` and the hyphen are prose punctuation when a

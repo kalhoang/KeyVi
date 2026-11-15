@@ -106,6 +106,28 @@ import Testing
         }
     }
 
+    /// compat-lint, PLT-R357: RV5 of ENG-R828 runs in the code context whatever `lookaheadRevision` says (D29 alone,
+    /// `EngineConfiguration.lineStartRevision`), so a code-context rule must use a strategy that carries a revision.
+    @Test func lintRequiresAnEditStrategyForTheCodeContext() throws {
+        let match = RuleMatch(bundleIds: [bundleKey("com.example.editor")])
+        let cases: [(RuleAction, Bool)] = [
+            (RuleAction(strategy: .axReplace, engineContext: .code), true),
+            (RuleAction(strategy: .passThrough, engineContext: .code), true),
+            (RuleAction(strategy: .backspaceReplace, engineContext: .code), false),
+            (RuleAction(strategy: .selectReplace, engineContext: .code), false),
+            (RuleAction(strategy: .axReplace, engineContext: .general), false),
+            (RuleAction(strategy: .axReplace), false),
+        ]
+        for (action, flagged) in cases {
+            let document = Build.document([Build.rule("app.rule", match: match, action: action)])
+            let linter = RulesLinter(
+                rules: document, matrix: nil, scenarioIDs: ["app.rule"], today: day("2026-11-16"), releaseMode: false)
+            let findings = linter.run().filter { $0.code == .codeContextWithoutEditStrategy }
+            #expect(findings.isEmpty == !flagged, "\(action)")
+            #expect(findings.allSatisfy { $0.severity == .error }, "\(action)")
+        }
+    }
+
     /// The shipped file passes the new checks.
     @Test func theSeededRulesPassTheRevisionChecks() throws {
         let linter = RulesLinter(
@@ -114,5 +136,6 @@ import Testing
         let codes = linter.run().map(\.code)
         #expect(!codes.contains(.lookaheadRevisionWithoutEditStrategy))
         #expect(!codes.contains(.lookaheadRevisionWithoutRestoreHotkey))
+        #expect(!codes.contains(.codeContextWithoutEditStrategy))
     }
 }
