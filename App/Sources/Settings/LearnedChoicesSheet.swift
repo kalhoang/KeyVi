@@ -60,7 +60,7 @@ struct LearnedChoicesSheet: View {
                 } else {
                     Text(
                         verbatim: LearnedChoicesSheetState.emptyText(
-                            appName: model.appName, restoreHotkey: model.settings.restoreHotkey, localizer)
+                            appName: model.appName, settings: model.settings, localizer)
                     )
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

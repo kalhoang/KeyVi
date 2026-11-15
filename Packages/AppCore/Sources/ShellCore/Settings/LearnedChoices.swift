@@ -54,10 +54,12 @@ public struct LearnedChoicesSheetState: Sendable, Hashable {
     public let rows: [LearnedChoiceRow]
     public let confirmsClearAll: Bool
 
-    /// `reading` gives a word's Vietnamese reading; the default types the bundled word with the engine (Telex, no
-    /// restore), so nothing the user typed is stored or shown.
+    /// `reading` gives a word's Vietnamese reading; the default types the bundled word with the engine (Telex with
+    /// the default options and the traditional placement, no restore), so nothing the user typed is stored or shown.
+    /// The window passes `LearnedChoiceReading.vietnamese(for:)` with the user's settings.
     public init(
-        votes: [CollisionMemoryVote], reading: (String) -> String = CollisionWordReading.vietnamese
+        votes: [CollisionMemoryVote],
+        reading: (String) -> String = LearnedChoiceReading.vietnamese(tonePlacement: .traditional)
     ) {
         self.init(rows: LearnedChoices.rows(votes, reading: reading), confirmsClearAll: false)
     }
@@ -83,7 +85,8 @@ public struct LearnedChoicesSheetState: Sendable, Hashable {
 
     /// New votes from the store (after an edit); an open confirmation stays open.
     public func replacingVotes(
-        _ votes: [CollisionMemoryVote], reading: (String) -> String = CollisionWordReading.vietnamese
+        _ votes: [CollisionMemoryVote],
+        reading: (String) -> String = LearnedChoiceReading.vietnamese(tonePlacement: .traditional)
     ) -> LearnedChoicesSheetState {
         LearnedChoicesSheetState(rows: LearnedChoices.rows(votes, reading: reading), confirmsClearAll: confirmsClearAll)
     }
@@ -91,6 +94,10 @@ public struct LearnedChoicesSheetState: Sendable, Hashable {
     /// The empty state (PRD-R79): how words are learned, with the restore key the user has now (D8). Strong signals
     /// come from the restore toggle (ENG-R864): Escape, D8's default, keeps the draft's wording; another key is
     /// named in words; with D8 off the text says the key is off.
+    public static func emptyText(appName: String, settings: EffectiveSettings, _ localizer: Localizer) -> String {
+        emptyText(appName: appName, restoreHotkey: settings.restoreHotkey, localizer)
+    }
+
     public static func emptyText(appName: String, restoreHotkey: HotkeyBinding?, _ localizer: Localizer) -> String {
         switch restoreHotkey {
         case nil: localizer.format(SettingsText.learnedChoicesEmptyNoKey, appName)
@@ -103,28 +110,40 @@ public struct LearnedChoicesSheetState: Sendable, Hashable {
     }
 }
 
-/// The Vietnamese reading of a bundled collision word for the sheet, in the user's tone placement (D2): the engine
-/// types the word key by key with Telex and no restore (`toes` gives tóe, or toé with the modern placement), so the
-/// row shows the word as the user would see it and nothing the user typed is stored or shown (PLT-R901).
+/// The Vietnamese reading of a bundled collision word for the sheet, with the user's settings (D2 tone placement, D5
+/// lone w): the engine types the word key by key with Telex and no restore (`toes` gives tóe, or toé with the modern
+/// placement), so the row shows the word as the user would see it and nothing the user typed is stored or shown
+/// (PLT-R901). A word with digits that Telex leaves as it is (the VNI rows `a4`, `o2`) gets its VNI reading.
 public enum LearnedChoiceReading {
-    private static let traditional = engine(.traditional)
-    private static let modern = engine(.modern)
+    /// The reading for the settings the window has now.
+    public static func vietnamese(for settings: EffectiveSettings) -> @Sendable (String) -> String {
+        vietnamese(tonePlacement: settings.tonePlacement, standaloneW: settings.telexStandaloneW)
+    }
 
-    /// The reading for `tonePlacement`; the word itself when it does not compose.
-    public static func vietnamese(tonePlacement: TonePlacement) -> @Sendable (String) -> String {
-        let engine = tonePlacement == .modern ? modern : traditional
+    /// The reading for `tonePlacement` and D5; the word itself when it does not compose.
+    public static func vietnamese(tonePlacement: TonePlacement, standaloneW: Bool = true)
+        -> @Sendable (String) -> String
+    {
+        let style: ToneStyle = tonePlacement == .modern ? .modern : .traditional
+        let telex = engine(.telex(TelexOptions(standaloneW: standaloneW)), style)
+        let vni = engine(.vni, style)
         return { word in
-            var session = Session(engine: engine)
-            for character in word { _ = session.handle(.key(KeyInput(character))) }
-            let display = session.state.activeDisplay
-            return display.isEmpty ? word : display
+            let display = reading(word, telex)
+            guard display == word, word.contains(where: \.isNumber) else { return display }
+            return reading(word, vni)
         }
     }
 
-    private static func engine(_ style: ToneStyle) -> Engine {
+    private static func reading(_ word: String, _ engine: Engine) -> String {
+        var session = Session(engine: engine)
+        for character in word { _ = session.handle(.key(KeyInput(character))) }
+        let display = session.state.activeDisplay
+        return display.isEmpty ? word : display
+    }
+
+    private static func engine(_ method: InputMethod, _ style: ToneStyle) -> Engine {
         Engine(
-            configuration: EngineConfiguration(
-                inputMethod: .telex(TelexOptions()), toneStyle: style, autoRestore: false),
+            configuration: EngineConfiguration(inputMethod: method, toneStyle: style, autoRestore: false),
             resources: .empty)
     }
 }

@@ -127,8 +127,8 @@ enum ShortcutWords {
         case .modifierTap(.rightOption): localizer.format(MenuText.hotkeyRight, name(of: .option))
         case .modifierTap(let chord): words(chord.modifiers).joined(separator: separator)
         case .keyCombo(let modifiers, let keyCode):
-            (words(modifiers) + [HotkeyKeyNames.name(for: keyCode, localizer: localizer)]).joined(separator: separator)
-        case .key(let keyCode): HotkeyKeyNames.name(for: keyCode, localizer: localizer)
+            (words(modifiers) + [HotkeyKeyNames.word(for: keyCode, localizer: localizer)]).joined(separator: separator)
+        case .key(let keyCode): HotkeyKeyNames.word(for: keyCode, localizer: localizer)
         }
     }
 
