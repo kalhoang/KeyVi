@@ -40,3 +40,6 @@ __pycache__/
 
 # Private Xcode derived data of parallel builds and reviewers
 .dd-*/
+
+# Instructions that only apply to the maintainer's Mac
+CLAUDE.local.md
