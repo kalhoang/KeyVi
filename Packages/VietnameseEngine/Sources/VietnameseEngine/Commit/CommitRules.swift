@@ -33,6 +33,36 @@ extension CommitDecision {
         if case .restored = self { return true }
         return false
     }
+
+    /// The rule that decided, nil for a macro expansion.
+    package var rule: CommitRule? {
+        switch self {
+        case .kept(let rule), .restored(let rule): return rule
+        case .macro: return nil
+        }
+    }
+}
+
+/// What the decision at commit reads besides the token itself (8.1).
+package struct CommitContext: Sendable {
+    /// ENG-R823: the run is in English (rule L10).
+    package var runIsEnglish: Bool
+    /// The key that ends the token (rule L9a).
+    package var boundary: Character
+    /// The class of the previous token (rule L9c, ENG-R863).
+    package var memoryContext: CollisionContext
+    /// The single-space chain of phrase words before the token (rule L9b, ENG-R826).
+    package var phrases: PhraseChain
+
+    package init(
+        runIsEnglish: Bool, boundary: Character = " ", memoryContext: CollisionContext = .sentenceStart,
+        phrases: PhraseChain = PhraseChain()
+    ) {
+        self.runIsEnglish = runIsEnglish
+        self.boundary = boundary
+        self.memoryContext = memoryContext
+        self.phrases = phrases
+    }
 }
 
 /// The restore policy of spec 8.1, evaluated for one token.
@@ -52,21 +82,32 @@ extension CommitDecision {
 /// | L7 `R` not English | `notEnglish` | - |
 /// | L8 not attested | - | `notAttested` |
 /// | L9 code context | - | `codeContext` |
+/// | L9a boundary particle (ENG-R825) | `boundaryParticle` | - |
+/// | L9b phrase (ENG-R826) | - | `phrase` |
+/// | L9c learned memory (ENG-R863) | `learned` | `learned` |
 /// | L10 English run | - | `englishRun` |
 /// | L11 ambiguity row | `ambiguityTable` (`vi`) | `ambiguityTable` (`en`) |
 /// | L11 no row | `defaultVietnamese` | `techList` (tech-always word) |
 ///
 /// ENG-R802: with auto restore off, a rule from L3b to L11 that would restore keeps the token and still
 /// names itself (`kept(.invalid)` reads "would have been restored as invalid; auto restore is off").
+///
+/// L9c also decides a collision word that L6, L7 or L8 would decide, when the memory votes for the other
+/// side (ENG-R863): the memory reaches the collision supplement (`cos` -> `có` by L7) and the generated rows
+/// that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10
+/// never apply.
 package struct CommitPolicy: Sendable {
     package let resources: Resources
     package let autoRestore: Bool
     package let appContext: AppContext
+    /// ENG-R829: the context rules of the collision words are on.
+    package let collisionRules: Bool
 
     package init(resources: Resources, configuration: EngineConfiguration) {
         self.resources = resources
         autoRestore = configuration.autoRestore
         appContext = configuration.appContext
+        collisionRules = configuration.lookaheadRevision
     }
 
     /// "R is English" (8.1): the lowercased word is in the English lexicon or the tech-always list.
@@ -78,7 +119,9 @@ package struct CommitPolicy: Sendable {
     /// The first rule of 8.1 that matches, in exactly the order L0, L1, L2, L3, L3b, L4 ... L11
     /// (ENG-R801). `includeUserChoice: false` evaluates "the rules alone" for the learning signal of
     /// ENG-R861 (L1 skipped).
-    package func decide(_ inputs: CommitInputs, runIsEnglish: Bool, includeUserChoice: Bool = true) -> CommitDecision {
+    package func decide(_ inputs: CommitInputs, context: CommitContext, includeUserChoice: Bool = true)
+        -> CommitDecision
+    {
         let r = inputs.rawLowercased
         // L0: nothing was transformed.
         if inputs.committed == inputs.raw { return .kept(.unchanged) }
@@ -96,11 +139,12 @@ package struct CommitPolicy: Sendable {
         // L3: abbreviations (`đc`, `ĐL`, `ĐHQG`). ENG-R801: L3 never keeps a token in which an escape was
         // used; L4 decides it, so `www` (displayed `ww`) commits as `www` (ENG-T12).
         if !inputs.facts.hasVowel, !inputs.escapeUsed { return .kept(.abbreviation) }
-        return decideAutomatic(inputs, rawLowercased: r, runIsEnglish: runIsEnglish)
+        return decideAutomatic(inputs, rawLowercased: r, context: context)
     }
 
     /// Rules L3b to L11, the ones that auto restore governs (ENG-R802).
-    private func decideAutomatic(_ inputs: CommitInputs, rawLowercased r: String, runIsEnglish: Bool) -> CommitDecision
+    private func decideAutomatic(_ inputs: CommitInputs, rawLowercased r: String, context: CommitContext)
+        -> CommitDecision
     {
         // L3b: camel case (ENG-R904).
         if inputs.camelCase { return restore(.camelCase) }
@@ -111,17 +155,36 @@ package struct CommitPolicy: Sendable {
         }
         switch inputs.facts.validity {
         case .invalid: return restore(.invalid)  // L5
-        case .extended: return isEnglish(r) ? restore(.extendedSpelling) : .kept(.extendedSpelling)  // L6
+        case .extended:  // L6, unless the memory votes for the other side (L9c)
+            let decision = isEnglish(r) ? restore(.extendedSpelling) : .kept(.extendedSpelling)
+            return learnedOverride(of: decision, rawLowercased: r, context: context)
         case .standard: break
         }
-        // L7: valid Tier A and R is not English (ENG-R316: no word list can restore it).
-        if !isEnglish(r) { return .kept(.notEnglish) }
+        // L7: valid Tier A and R is not English (ENG-R316: no word list can restore it); the memory may
+        // restore a word of the collision supplement (L9c).
+        if !isEnglish(r) { return learnedOverride(of: .kept(.notEnglish), rawLowercased: r, context: context) }
         // L8: the attested-syllable data may only break the tie for English raw keys.
-        if !resources.attestedSyllables.contains(inputs.facts.lowercased) { return restore(.notAttested) }
+        if !resources.attestedSyllables.contains(inputs.facts.lowercased) {
+            return learnedOverride(of: restore(.notAttested), rawLowercased: r, context: context)
+        }
         // L9: app context `code` (ENG-R850).
         if appContext == .code, resources.techCodeOnly.contains(r) { return restore(.codeContext) }
-        // L10: English run (ENG-R823).
-        if runIsEnglish { return restore(.englishRun) }
+        if collisionRules {
+            // L9a: a boundary particle before `.`, `!`, `?` or Return (ENG-R825).
+            if resources.collision.boundaryParticles.contains(r), Self.endsSentence(context.boundary) {
+                return .kept(.boundaryParticle)
+            }
+            // L9b: the token continues a bundled phrase with the previous tokens (ENG-R826).
+            if continuesPhrase(r, chain: context.phrases) { return restore(.phrase) }
+        }
+        // L9c: the learned memory (ENG-R863).
+        if let vote = memoryVote(r, context: context) {
+            return vote == .english ? restore(.learned) : .kept(.learned)
+        }
+        // L10: English run (ENG-R823), except the `run: vi` rows (ENG-R827).
+        if context.runIsEnglish, !(collisionRules && resources.collision.runExempt.contains(r)) {
+            return restore(.englishRun)
+        }
         // L11: the ambiguity table, then the tech-always list.
         switch resources.ambiguity[r] {
         case .english: return restore(.ambiguityTable)
@@ -139,10 +202,11 @@ package struct CommitPolicy: Sendable {
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the
     /// rules alone would have decided. The signal carries the lowercased raw keys, the key of the user
     /// lists (ENG-R860).
-    package func learningSignal(_ inputs: CommitInputs, decision: CommitDecision, runIsEnglish: Bool) -> LearningSignal?
+    package func learningSignal(_ inputs: CommitInputs, decision: CommitDecision, context: CommitContext)
+        -> LearningSignal?
     {
         guard decision == .restored(.userChoice) || decision == .kept(.userChoice) else { return nil }
-        let rulesAlone = decide(inputs, runIsEnglish: runIsEnglish, includeUserChoice: false)
+        let rulesAlone = decide(inputs, context: context, includeUserChoice: false)
         switch (decision.restores, rulesAlone.restores) {
         case (true, false): return .preferredRaw(raw: inputs.rawLowercased)
         case (false, true): return .preferredVietnamese(raw: inputs.rawLowercased)

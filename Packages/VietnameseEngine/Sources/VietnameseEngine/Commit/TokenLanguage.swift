@@ -22,12 +22,22 @@ package enum TokenLanguage: UInt8, Sendable, Hashable {
     /// With auto restore off (ENG-R802) a token an `en` row would have restored is `kept(.ambiguityTable)`
     /// as well, so it is neutral too and the later tokens name the same rule as with auto restore on
     /// (`test and this` keeps `this` by `kept(.englishRun)`).
-    package static func of(committed facts: CommittedTextFacts, decision: CommitDecision, resources: Resources)
-        -> TokenLanguage
-    {
+    ///
+    /// The collision rules add three cases (ENG-R823 as amended on 15/11/2026, ENG-R825, ENG-R863): a token
+    /// kept by L9a (boundary particle) or L9c (the memory's Vietnamese side), or kept by L9b because auto
+    /// restore is off, is neutral like an L11 keep; and a token typed unchanged (L0) whose raw keys are on the
+    /// English-lean list (`the`, `my`) is English when `collisionRules` is on.
+    package static func of(
+        committed facts: CommittedTextFacts, decision: CommitDecision, rawLowercased: String = "",
+        resources: Resources, collisionRules: Bool = true
+    ) -> TokenLanguage {
         switch decision {
         case .restored: return .english
-        case .kept(.ambiguityTable), .kept(.defaultVietnamese): return .neutral
+        case .kept(.ambiguityTable), .kept(.defaultVietnamese), .kept(.boundaryParticle), .kept(.phrase),
+            .kept(.learned):
+            return .neutral
+        case .kept(.unchanged):
+            if collisionRules, resources.collision.englishLean.contains(rawLowercased) { return .english }
         case .kept, .macro: break
         }
         if facts.hasVietnameseOnlyLetter { return .vietnamese }
@@ -65,6 +75,16 @@ package struct RecentLanguages: Sendable, Hashable {
         oldest = middle
         middle = newest
         newest = language
+    }
+
+    /// Replaces the language of the newest token (`distance` 1) or of the one before it (2): a revision
+    /// (ENG-R828) and its undo (ENG-R829) change a token that is already in the window.
+    package mutating func replace(atDistance distance: Int, with language: TokenLanguage) {
+        switch distance {
+        case 1: newest = language
+        case 2: middle = language
+        default: oldest = language
+        }
     }
 
     /// ENG-R823 (product owner, 14/11/2026, REG-32): the run is in English when the previous three

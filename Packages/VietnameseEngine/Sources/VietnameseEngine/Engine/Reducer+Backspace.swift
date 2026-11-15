@@ -42,6 +42,8 @@ extension Engine {
         guard case .token(let committed)? = state.history.last else { return }
         state.history.popLast()
         state.recentLanguages = committed.languagesBefore
+        // ENG-R864: the re-opened token is no longer final; its next commit decides again.
+        state.pendingSignals.popNewest()
         let token = committed.reopened
         state.active = token.isEmpty ? nil : token
     }

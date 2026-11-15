@@ -57,6 +57,12 @@ public struct EngineConfiguration: Sendable, Hashable {
     public var appContext: AppContext
     /// Committed tokens kept for Backspace re-opening (ENG-R1001). Default 16, minimum 1.
     public var historyLimit: Int
+    /// The context rules for words that are both English and Vietnamese (ENG-R829): rules L9a and L9b, the
+    /// `run: vi` exemption of L10, the English-lean words of the window (ENG-R823), the revision of the
+    /// previous token (ENG-R828) and its undo. Default on; the host passes the app's effective value. Off,
+    /// the engine decides exactly as it did without them. The learned memory (L9c) is governed by
+    /// `Resources.collisionMemory` (empty: off) and the collision signals are emitted either way (ENG-R864).
+    public var lookaheadRevision: Bool
 
     /// A configuration; every argument defaults to the spec's default. `historyLimit` is raised to 1 if
     /// smaller.
@@ -65,13 +71,15 @@ public struct EngineConfiguration: Sendable, Hashable {
         toneStyle: ToneStyle = .traditional,
         autoRestore: Bool = true,
         appContext: AppContext = .general,
-        historyLimit: Int = 16
+        historyLimit: Int = 16,
+        lookaheadRevision: Bool = true
     ) {
         self.inputMethod = inputMethod
         self.toneStyle = toneStyle
         self.autoRestore = autoRestore
         self.appContext = appContext
         self.historyLimit = max(1, historyLimit)
+        self.lookaheadRevision = lookaheadRevision
     }
 }
 
@@ -191,6 +199,12 @@ public enum CommitRule: Sendable, Hashable {
     case notAttested
     /// L9: code context and a code-only tech word: restored.
     case codeContext
+    /// L9a: a boundary particle (`as`) ended by `.`, `!`, `?` or Return: kept (ENG-R825).
+    case boundaryParticle
+    /// L9b: the token continues a bundled English phrase with the previous tokens: restored (ENG-R826).
+    case phrase
+    /// L9c: the learned memory voted for this word in this context (ENG-R863).
+    case learned
     /// L10: the run is in English (ENG-R823): restored.
     case englishRun
     /// L11: the ambiguity table row decided (`en` restores, `vi` keeps).
@@ -286,16 +300,23 @@ public struct EngineOutput: Sendable, Hashable {
     public var decision: CommitDecision?
     /// Set when a toggled token was committed against the rules (ENG-R861).
     public var learning: LearningSignal?
+    /// Set when the commit also revised the previous token (ENG-R828): `action` is then one edit that covers
+    /// the previous token, its separator and the current token (ENG-R803).
+    public var revision: RevisionReason?
+    /// Learning signals for words of the bundled collision list (ENG-R864); empty for most events.
+    public var collisionSignals: [CollisionSignal]
 
     /// An output.
     public init(
         action: KeyAction, composingText: String, decision: CommitDecision? = nil,
-        learning: LearningSignal? = nil
+        learning: LearningSignal? = nil, revision: RevisionReason? = nil, collisionSignals: [CollisionSignal] = []
     ) {
         self.action = action
         self.composingText = composingText
         self.decision = decision
         self.learning = learning
+        self.revision = revision
+        self.collisionSignals = collisionSignals
     }
 }
 
@@ -315,6 +336,14 @@ public struct EngineState: Sendable, Hashable {
     /// The languages of the last three committed tokens of the run (ENG-R823). Kept across Return and Tab
     /// (the run goes on), cleared by a reset.
     package var recentLanguages = RecentLanguages()
+    /// The newest committed token may still be revised by the next commit (ENG-R828): set by every commit,
+    /// cleared by a restore toggle, a Backspace into the history, a macro expansion and a reset.
+    package var newestTokenRevisable = false
+    /// The previous event was a commit that revised the token before it; a restore toggle now undoes the
+    /// revision (ENG-R829).
+    package var previousEventRevised = false
+    /// The weak signals of the newest committed tokens, not yet final (ENG-R864).
+    package var pendingSignals = PendingSignals()
 
     init() {}
 
@@ -349,6 +378,12 @@ public struct WordSet: Sendable {
     public func contains(_ word: some StringProtocol) -> Bool {
         word.utf8.count <= maximumUTF8Count && storage.contains(String(word))
     }
+
+    /// The set's own string equal to `word`, nil when it is not in the set (ENG-R866).
+    func member(_ word: String) -> String? {
+        guard word.utf8.count <= maximumUTF8Count, let index = storage.firstIndex(of: word) else { return nil }
+        return storage[index]
+    }
 }
 
 /// A decision of the ambiguity table (spec 8.3, ENG-R821).
@@ -378,13 +413,18 @@ public struct Resources: Sendable {
     public var userKeepVietnamese: WordSet
     /// The user's macros (section 11); empty when the host disables macros for the field (ENG-R1107).
     public var macros: MacroTable
+    /// The bundled lists of the collision rules (ENG-R825 to ENG-R828).
+    public var collision: CollisionLists
+    /// The host's learned memory for collision words (ENG-R865); the engine only reads it.
+    public var collisionMemory: CollisionMemorySnapshot
 
     /// Resources from the given lists.
     public init(
         english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
         attestedSyllables: WordSet, ambiguity: [String: Language],
         userKeepRaw: WordSet, userKeepVietnamese: WordSet,
-        macros: MacroTable = .empty
+        macros: MacroTable = .empty, collision: CollisionLists = .empty,
+        collisionMemory: CollisionMemorySnapshot = .empty
     ) {
         self.english = english
         self.techAlways = techAlways
@@ -394,6 +434,8 @@ public struct Resources: Sendable {
         self.userKeepRaw = userKeepRaw
         self.userKeepVietnamese = userKeepVietnamese
         self.macros = macros
+        self.collision = collision
+        self.collisionMemory = collisionMemory
     }
 
     /// No word lists and no macros: the rules that need data never match (tests, and a host without

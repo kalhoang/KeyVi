@@ -129,6 +129,8 @@ public struct FuzzStatistics: Sendable, Hashable {
 /// - ENG-T38: a Backspace takes exactly the last character of the field and leaves the others as they
 ///   were, except the documented exceptions of ENG-R714 (`BackspaceProbe.Outcome`); an edit answering a
 ///   Backspace deletes at most the active token's display.
+/// - ENG-R828: a commit that revises the previous token deletes at most that token, the one space after it
+///   and the active token's display.
 ///
 /// Checks that cost time proportional to the token are done every event for tokens up to a limit and
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
@@ -198,6 +200,7 @@ public struct InvariantChecker: Sendable {
         let produced = producedCount(before: event)
         let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
         let fieldBeforeBackspace = fieldTailBeforeBackspace(event, index: index)
+        let revisionBound = Self.revisionBound(session.state)
         let before = takesPureReduceSample(index) ? session.state : nil
         let start = Self.uptimeNanoseconds()
         let cpuStart = Self.hangClockNanoseconds()
@@ -208,6 +211,7 @@ public struct InvariantChecker: Sendable {
         try record(elapsed, cpu: cpu, index: index)
         if let before { try checkPureReduce(before, event, output, index: index) }
         try checkEdit(output, produced: produced, index: index)
+        try checkRevision(output, bound: revisionBound, index: index)
         try applyToField(event, output, index: index)
         try checkView(index: index)
         try checkBackspace(beforeBackspace, index: index)
@@ -299,6 +303,24 @@ public struct InvariantChecker: Sendable {
         }
         if let nfcCheck = options.nfcCheck, !nfcCheck(edit.insert) {
             throw violation("ENG-T34", "insert is not NFC", index)
+        }
+    }
+
+    // MARK: - ENG-R828: a revision deletes at most two tokens and one separator
+
+    /// The characters a revising commit may delete: the newest committed token, the single space after it
+    /// and the active display; 0 when the history does not end with a token and one space.
+    private static func revisionBound(_ state: EngineState) -> Int {
+        guard state.history.entry(beforeNewest: 0) == .boundary(" "),
+            let previous = state.history.token(beforeNewest: 1)
+        else { return 0 }
+        return previous.committedText.count + 1 + state.activeDisplay.count
+    }
+
+    private func checkRevision(_ output: EngineOutput, bound: Int, index: Int) throws {
+        guard output.revision != nil else { return }
+        guard case .edit(let edit, true) = output.action, edit.deleteCount <= bound else {
+            throw violation("ENG-R828", "a revision deletes more than the previous token, a space and the token", index)
         }
     }
 

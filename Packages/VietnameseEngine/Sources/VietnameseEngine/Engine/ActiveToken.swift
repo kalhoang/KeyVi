@@ -75,6 +75,14 @@ package struct ActiveToken: Sendable, Hashable {
         return token
     }
 
+    /// This token with the user's choice `choice` (the toggle that undoes a revision marks the revised token
+    /// as the user's choice, ENG-R829).
+    package func choosing(_ choice: UserChoice) -> ActiveToken {
+        var token = self
+        token.userChoice = choice
+        return token
+    }
+
     package var isMacro: Bool { macroKeys != nil }
 
     /// The token shows its raw keys: restored by the user, or by a commit rule and not kept since.
