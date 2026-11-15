@@ -496,6 +496,8 @@ norms	telex	nóm	nóm	no	scowl-35	0	en/proposed	en/proposed
 oaf	telex	òa	oà	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
 oafs	telex	óa	oá	no	scowl-35	0	en/proposed	en/proposed
 oars	telex	óa	oá	no	scowl-35	0	en/proposed	en/proposed
+ooze	telex	oe	oe	no	scowl-35	0	en/proposed	-
+oozes	telex	óe	oé	no	scowl-35	0	en/proposed	-
 ore	telex	ỏe	oẻ	no	scowl-35	0	en/proposed	en/proposed
 ores	telex	óe	oé	no	scowl-35	0	en/proposed	en/proposed
 ox	telex	õ	õ	no	scowl-35	0	en/proposed	en/proposed
@@ -604,6 +606,7 @@ visa	telex	vía	vía	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
 vow	telex	vơ	vơ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
 vows	telex	vớ	vớ	yes	scowl-35	0	vi/unreviewed	vi/unreviewed
 wax	telex	ữa	ữa	no	scowl-35	0	en/proposed	en/proposed
+wiz	telex	ui	ui	no	scowl-35	0	en/proposed	-
 nextjs	telex	nét	nét	yes	tech-always	1	en/proposed	en/proposed
 a4	vni	ã	ã	no	tech-always	0	en/proposed	en/proposed
 aux	telex	ãu	ãu	no	tech-always	0	en/proposed	en/proposed

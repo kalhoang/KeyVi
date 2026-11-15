@@ -161,9 +161,11 @@ into public issues.
     segments, and those of versions 1 and 2 (no identity), are counted in one summary line instead of being reported
     as `replayDivergence`; `--replay-anyway` replays them as before. A digest over probes misses a change no probe
     exercises; the failure mode is a divergence reported as before, never a hidden one. Format version 3 also adds
-    the frontmost application (`front`) to focus lines whose snapshot names no app (685 key downs of 15/11/2026 went
-    to an app the trace could not name; NSWorkspace is only an attribution, PLT-R381 keeps the AX focus
-    authoritative) and the likely holder (`holder`, `pid`, PLT-R396) and `durUs` to secure gap lines (PLT-R397B).
+    the frontmost application (`front`) to focus lines whose snapshot names no app or took that application as its
+    owner under the PLT-R381 frontmost-app fallback of 2026-11-15 (then without `bundle`, with the bundle-level rule
+    it resolved to; 685 key downs of 15/11/2026 went to an app the trace could not name). When Accessibility starts or
+    stops naming the same app without a focused element, a new focus line with the same `gen` switches between
+    `bundle` and `front`. It also adds the likely holder (`holder`, `pid`, PLT-R396) and `durUs` to secure gap lines (PLT-R397B).
 
 ## Why PLT-R904's rationale does not apply
 

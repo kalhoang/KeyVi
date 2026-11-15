@@ -96,6 +96,8 @@ Facts for the maintainer: while any app holds secure input, macOS stops deliveri
 
 {{AppName}} chỉ tạm dừng theo trạng thái của hệ điều hành hoặc khi ô đang gõ là ô mật khẩu thật sự, không bao giờ đoán.
 
+Nếu cửa sổ Chẩn đoán hiện mục "Chế độ nhập bảo mật bật tắt liên tục", có một ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật trong lúc bạn gõ, nên vài phím có thể không tới được {{AppNameTM}}. Bạn thử thoát lần lượt các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng chạy nền mới cài để tìm ra ứng dụng đó.
+
 ### English
 
 This is not an input method bug: when an app turns on **Secure Input**, macOS blocks keys for every input method, and {{AppNameTM}} pauses until it is off. Please:
@@ -107,6 +109,8 @@ This is not an input method bug: when an app turns on **Secure Input**, macOS bl
 5. If the holder cannot be identified, or the menu points to `loginwindow`: lock and unlock the screen (Control+Command+Q), or log out and in.
 
 {{AppName}} pauses only on the operating system's state or a real password field, and never guesses.
+
+If the Diagnostics window shows "Secure Input keeps turning on and off", an app keeps turning Secure Input on and off while you type, so some keys may not reach {{AppNameTM}}. Quit other input methods, password managers or recently installed background apps one at a time to find it.
 
 ---
 

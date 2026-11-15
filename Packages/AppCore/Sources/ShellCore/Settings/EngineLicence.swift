@@ -4,7 +4,7 @@
 // engine packages are MPL-2.0 and the app binary contains them, so the app shows their NOTICE and the verbatim MPL
 // text. A test keeps this text equal to Packages/VietnameseEngine/NOTICE and LICENSE.
 
-public import Foundation
+internal import Foundation
 
 /// The Mozilla Public License 2.0 of the Vietnamese engine (NOTICE and LICENSE of Packages/VietnameseEngine). The
 /// NOTICE names the authors by the display name, so the brand placeholder is replaced at run time.

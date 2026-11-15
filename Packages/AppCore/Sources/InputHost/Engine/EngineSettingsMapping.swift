@@ -34,7 +34,10 @@ enum EngineSettingsMapping {
             toneStyle: settings.tonePlacement == .modern ? .modern : .traditional,
             // D4 is the global switch; a rule's `features.englishRestore: false` turns it off per app.
             autoRestore: settings.englishRestore && variant.englishRestore,
-            appContext: variant.appContext == .code ? .code : .general)
+            appContext: variant.appContext == .code ? .code : .general,
+            // ENG-R829: off until the host verifies revision edits (PLT-R342) and gates them per app (W11-B);
+            // without that, a revision would be applied as an ordinary edit in every app.
+            lookaheadRevision: false)
     }
 
     /// ENG-R1107: a variant carries the macro table only when the variant and D9 both allow macros.

@@ -53,6 +53,14 @@ import VietnameseEngine
         #expect(code.appContext == .code)
         #expect(EngineBridge.configuration(for: settings(), variant: .default).appContext == .general)
     }
+
+    /// ENG-R829: the collision context rules and the revision of the previous word stay off in every variant
+    /// until the host verifies revision edits and gates them per app (W11-B); the engine default is on.
+    @Test func collisionContextRulesStayOffUntilTheHostGatesThem() {
+        for variant in EngineVariant.catalogOrder {
+            #expect(!EngineBridge.configuration(for: settings(), variant: variant).lookaheadRevision)
+        }
+    }
 }
 
 @Suite struct EngineCatalogTests {

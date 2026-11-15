@@ -25,7 +25,8 @@
    backspace `.backspace` (autorepeat backspaces one by one, PLT-R351); the restore hotkey `.restoreToggle`;
    hard boundaries `.reset(reason)` with the matching `ResetReason` (`pointerClicked`, `focusChanged`,
    `applicationChanged`, `cursorMoved`, `shortcut`, `forwardDelete`, `inputSourceChanged`,
-   `secureInputChanged`, `eventTapReenabled`, `modeToggled`, `configurationChanged`, `unknown` for flushes).
+   `secureInputChanged`, `eventTapReenabled`, `modeToggled`, `configurationChanged`, `unseenInput` for a keyUp the
+   tap never saw go down (PLT-R397A), `unknown` for flushes).
    Return and Tab are fed as `.key("\n")` / `.key("\t")` first (commit and restore, ENG-R912, P0-3) and then
    treated as hard boundaries by the host.
 4. **Output mapping.** `.passThrough` -> pass (or hold while busy); `.edit(e, thenPassThrough: false)` ->

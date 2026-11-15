@@ -22,7 +22,8 @@ legal texts keep their own terms (`NOTICES.md`).
 | `inputs/tech-always.txt` | words that always stay as typed (rule L11) | hand, reviewed by Pa |
 | `inputs/tech-code-only.txt` | shell commands and flags, restored only in the code context (rule L9) | hand, reviewed by Pa |
 | `inputs/attested-additions.txt` | `syllable<TAB>reason` added to the attested list | hand, reviewed by Pa |
-| `inputs/ambiguity.tsv` | `raw  decision  status  display  note` (ENG-R821) | hand / `ambiguity-candidates --merge` |
+| `inputs/ambiguity.tsv` | `raw  decision  status  display  run  viKind  note` (ENG-R821, ENG-R827) | hand / `ambiguity-candidates --merge` |
+| `inputs/phrases.txt`, `inputs/collision-supplement.txt`, `inputs/boundary-particles.txt`, `inputs/english-function-words.txt`, `inputs/english-lean-neutral.txt`, `inputs/vi-tail-words.txt`, `inputs/english-pre-guard.txt` | the collision lists (spec/01-engine.md 8.2, ENG-R825 to ENG-R828, ENG-R863); each file's header says what it is for | hand, reviewed by Pa |
 | `licenses/` | SCOWL `Copyright` and `README` (verbatim) and `bundled-notices.txt`, the template of `NOTICES.txt` | import / hand |
 | `derived/attested-candidates.tsv` | every legal-text token with its count, before the validity filter | `lexicon-builder build` |
 | `derived/ambiguity-candidates.tsv` | output of `ambiguity-candidates`, committed as Pa's review list (not checked by `check`) | `lexicon-builder ambiguity-candidates` |
@@ -43,7 +44,7 @@ cd ../..   # run the commands from the repository root (or pass --data-root data
 
 | Command | What it does |
 |---|---|
-| `"$BUILDER" build` | Verifies the inputs against `MANIFEST.sha256`, writes `english.txt`, `tech-always.txt`, `tech-code-only.txt`, `attested.txt`, `ambiguity.tsv`, `NOTICES.txt`, `manifest.json` into the package resources and `data/derived/attested-candidates.tsv`. `--output DIR` writes `DIR/Resources` and `DIR/derived` instead. |
+| `"$BUILDER" build` | Verifies the inputs against `MANIFEST.sha256`, writes `english.txt`, `tech-always.txt`, `tech-code-only.txt`, `attested.txt`, `ambiguity.tsv`, the eight collision lists (`phrases.txt`, `collision-supplement.txt`, `boundary-particles.txt`, `english-function-words.txt`, `english-lean-neutral.txt`, `vi-tail-words.txt`, `vi-tail-particles.txt`, `english-pre-guard.txt`), `NOTICES.txt`, `manifest.json` into the package resources and `data/derived/attested-candidates.tsv`. `--output DIR` writes `DIR/Resources` and `DIR/derived` instead. It fails when a phrase's Vietnamese reading occurs in `data/corpus/prose-vi.txt`, or when a collision-supplement word does not type as its listed display, the display is not attested, or the word is English. |
 | `"$BUILDER" check` | CI gate: verifies the pins, rebuilds everything in memory (resources, `derived/`, prose corpus) and fails if any committed file differs. |
 | `"$BUILDER" prose-corpus` | Writes `data/corpus/prose-vi.txt`. `--min-tokens N` (default 250000), `--output FILE` or `-`. |
 | `"$BUILDER" ambiguity-candidates` | ENG-R820: types every English and tech word through the engine (Telex defaults, traditional and modern style; words with a digit also in VNI) and writes the words whose display is a Tier A syllable to `data/derived/ambiguity-candidates.tsv`, most frequent first, with the columns `raw method traditional modern attested source corpus_count merge_as current_row`. Words whose display is not attested are listed too, because rule L8 restores them (docs/decisions/0202). `--merge` adds each candidate without a row as `merge_as` says: `en`/`proposed` for English words with an unattested display and for tech-always words (in the last block, `# [generated en rows]`, with a `[generated:unattested]` or `[generated:tech-always]` token in the note), `vi`/`unreviewed` otherwise (before that block). `build` and `check` fail when a generated row's reason no longer holds. `--fake-engine FILE` (tests) replaces the engine with a `raw  traditional  modern  validity  [telex\|vni]` table; `--output FILE` or `-`. |
@@ -99,13 +100,17 @@ Recorded in `docs/decisions/0005-pa-decisions-2026-11-13.md` (Q25 to Q34); the i
 | Attested sources | Keep the legal texts plus reviewed additions. | `inputs/legal/`, `inputs/attested-additions.txt` |
 | Review of the word lists | Later; unreviewed rows behave as `vi` (ENG-R821). Short English words missing from level 35 (`max`) need no change: Telex `max` gives `mã`, the reading the ENG-R821 row wants. | `inputs/ambiguity.tsv`, `derived/ambiguity-candidates.tsv` |
 
-## Resource format 1
+## Resource format 2
 
 - Word lists: UTF-8, LF, one entry per line, final newline, no blank lines or comments, unique, sorted by
   UTF-8 bytes. English `a-z` (one-letter entries only `a` and `i`); tech lists `a-z0-9` with a letter;
   attested lowercase NFC Vietnamese letters.
-- `ambiguity.tsv`: header `raw  decision  status  display  note`, tab-separated; `proposed` and `reviewed`
-  rows apply their decision, `unreviewed` rows behave as `vi`.
+- `ambiguity.tsv`: header `raw  decision  status  display  run  viKind  note`, tab-separated; `proposed` and
+  `reviewed` rows apply their decision, `unreviewed` rows behave as `vi`; `run` is `en` or `vi` (`vi`: rule L10
+  never restores the word), `viKind` is `particle`, `function` or `content`.
+- Collision lists: `phrases.txt` holds 2 to 4 lowercase words `a-z` separated by one space; the other lists hold
+  one lowercase word per line (ASCII for the English lists and the supplement, NFC Vietnamese letters for
+  `vi-tail-words.txt` and `vi-tail-particles.txt`), sorted by UTF-8 bytes. Format 1 is no longer loaded.
 - `manifest.json`: `format`, `inputsSHA256`, `files[]` (`name`, `bytes`, `entries`, `sha256`), `stats`. The
   loader rejects a file whose size, entry count or SHA-256 differs.
 - `NOTICES.txt`: built from `licenses/bundled-notices.txt`; `@include <file>` lines are replaced by the

@@ -18,6 +18,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Cốc Cốc gets the browser hint when a password field turns on Secure Input: the menu suggests clicking outside the password field or switching tabs, as it does for Safari, Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
 - Pressing z (Telex) or 0 (VNI) a second time removes the letter marks too: daauszz gives dau.
 - Words that are both English and Vietnamese, such as as/á, are decided from the words around them, and the previous word can be corrected when the next word shows which language you are writing.
+- Antigravity is handled like Visual Studio Code and its other forks: KeyVi types with its code editor settings there, and Escape keeps its editor meaning instead of restoring the last word.
+- The Diagnostics window explains when an app keeps turning Secure Input on and off while you type, which can keep some keys from reaching KeyVi, and suggests how to find that app. The copied report carries the same explanation.
 
 ### Changed
 
@@ -53,3 +55,4 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - When another app turned Secure Input on and off in short bursts while you typed, a word could come out garbled ("hay sao" became "hayayao"), because KeyVi did not see the keys the bursts hid and later corrected the wrong letters. KeyVi now notices a key it did not see go down and starts the next word afresh, and the diagnostics report notes when something keeps turning Secure Input on and off while you type.
 - Safari and other apps that answer accessibility slowly: right after a click into a field, the first letters of a word could lose their accents when KeyVi briefly could not tell which app was in front. The word now continues once KeyVi has checked the field.
 - Retyping a word after deleting back into an English or invalid word that was restored now gives Vietnamese again.
+- Apps that macOS Accessibility does not name as the app you are typing in (seen with an Electron code editor) now get their compatibility settings, their remembered Vietnamese or English mode, their per-app rule and their learned words: KeyVi uses the app in front. The diagnostics report says when the app was found this way.
