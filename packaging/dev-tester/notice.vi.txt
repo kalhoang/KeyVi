@@ -14,6 +14,9 @@ riêng cho người thử nghiệm. Bạn đọc hết trang này trước khi c
 Bản dev KHÔNG ghi gì khi bạn đang ở ô mật khẩu hoặc khi macOS bật chế độ nhập bảo mật, và không ghi khi bạn tạm
 dừng.
 
+Lưu ý: mật khẩu gõ trong Terminal hoặc trong khung terminal của trình soạn code (ví dụ khi chạy sudo) có thể bị ghi,
+vì macOS không coi chỗ đó là ô mật khẩu. Trước khi gõ mật khẩu ở đó, bạn chọn "Tạm dừng ghi 30 phút".
+
 Nhật ký chỉ nằm trên máy bạn, trong thư mục ~/Library/Logs/{{AppName}}/dev-traces/ (mỗi giờ một file, chỉ tài khoản
 của bạn đọc được, Time Machine bỏ qua). File cũ hơn 7 ngày tự xóa. App không bao giờ tự gởi nhật ký đi đâu; chỉ khi
 bạn tự gởi thì người nhận mới đọc được.

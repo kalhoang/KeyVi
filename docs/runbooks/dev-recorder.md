@@ -215,6 +215,8 @@ the development build to testers the product owner invites personally, to collec
    hides every key there, the chord included), notes the time, and later sends the hour files of that time from
    "Mở thư mục nhật ký" (for example `20261115-16.jsonl`), after looking at them if they wish. The files hold what the
    tester typed in that hour, so the tester chooses what to send.
+   The notice also warns that passwords typed in a terminal (for example at a `sudo` prompt) are not in a secure
+   field and may be recorded, so a tester pauses recording first.
 5. **Reading them.** `scripts/dev/trace-scan.sh summary --dir <folder with the received files>`, then excerpts only
    around findings, as in section 2.3. Keep received files outside the repository, never commit or forward them, and
    delete them once the problem is understood.

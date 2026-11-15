@@ -55,7 +55,7 @@ Common vocabulary is not a match: Vietnamese linguistic terms, Telex and VNI let
 ## 5. Related rules
 
 - **CLR-R11**: every source file carries an SPDX header (`MPL-2.0` in the engine packages, the `data/` pipeline and `spec/reference-model/`, `GPL-3.0-or-later` elsewhere; [ADR 0006](../decisions/0006-app-licence-and-pro-edition.md)). The review checks that no source file lacks one.
-- **CLR-R12**: the git history is intact from the first commit. No squashing of the early history, no history rewriting on `main`, no deleting and recreating the repository. The review lists the first commit and confirms continuity.
+- **CLR-R12**: the git history is intact from the first commit. No squashing of the early history and no history rewriting on `main`, apart from the one rewrite before publication that CLR-R12 records (15/11/2026: every commit kept, the original history kept privately with the map of commit IDs). The review lists the first commit and confirms continuity.
 - **CLR-R14**: external contributors confirm they followed the clean-room rule, through the DCO sign-off and the pull request attestation ([CONTRIBUTING.md](../../CONTRIBUTING.md) section 2).
 - **CLR-R6 and CLR-R7**: word lists, corpora, icons and images have recorded permissive licences or original authorship ([THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)). The review cross-checks that file.
 - **CLR-R8**: this repository's AI agents use a new, empty memory project. The review notes whether any agent worked with a memory store that held other input methods' internals.
