@@ -280,8 +280,8 @@ extension KeyPipeline {
             change.note(.unknown, job: .sessionChanged)
         }
         if rebuild || (seen.memorySwapPending && !engineDirty) {
-            // A clean engine holds no composition and no history: a hard boundary has just reset it, or nothing was
-            // typed since, so swapping it now is invisible (ENG-R865).
+            // A clean engine holds no composition and no history (only a reset or a new engine leaves it clean), so
+            // swapping it now is invisible (ENG-R865).
             engine = factory.makeEngine(for: focus.decision.variant, settings: settings)
             engineDirty = false
             keyState.lastCommit = nil

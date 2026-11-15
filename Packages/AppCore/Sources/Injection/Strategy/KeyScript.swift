@@ -19,6 +19,9 @@ enum InjectionTiming {
     static let placeholder = "\u{200B}"
     /// PLT-R343: AX reads never exceed 64 UTF-16 units.
     static let maximumAXReadUnits = 64
+    /// PLT-R357: a revision read-back that mismatched within this long after the last posted event is read once
+    /// more when it ends (the app may not have applied the events before the revision yet). As `verifyAfterEdit`.
+    static let revisionSettle: TimeSpan = .milliseconds(50)
 
     static func nanoseconds(_ duration: TimeSpan) -> UInt64 { duration.unsignedNanoseconds }
 
