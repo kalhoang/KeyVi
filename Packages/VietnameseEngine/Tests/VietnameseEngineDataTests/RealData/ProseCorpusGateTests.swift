@@ -82,6 +82,26 @@ struct ProseCorpusGateTests {
         #expect(on.differences.map(Self.key) == off.differences.map(Self.key))
     }
 
+    @Test(
+        "ENG-R850, REG-35: in the code context the prose corpus commits exactly as in the general context",
+        arguments: [(CorpusOrder.o2, true), (.o1, true), (.o3, true), (.o2, false)])
+    func codeContextLeavesProseAsInGeneral(_ order: CorpusOrder, _ lookaheadRevision: Bool) throws {
+        let resources = try RealData.resources()
+        let text = try Self.corpus.get()
+        let general = ProseCorpusCheck.run(
+            text: text, method: .telex, order: order, lookaheadRevision: lookaheadRevision, resources: resources)
+        let code = ProseCorpusCheck.run(
+            text: text, method: .telex, order: order, lookaheadRevision: lookaheadRevision, appContext: .code,
+            resources: resources)
+        let codeOnly = code.differences.filter { $0.decision == .restored(.codeContext) }
+        print(
+            "[ENG-R850] telex \(order) lookaheadRevision \(lookaheadRevision): \(code.tokens) tokens, "
+                + "\(code.differences.count) differences in the code context, \(general.differences.count) in the "
+                + "general context, \(codeOnly.count) restored by L9:\n" + RealData.listing(codeOnly))
+        #expect(code.differences.map(Self.key) == general.differences.map(Self.key))
+        #expect(codeOnly.isEmpty)
+    }
+
     /// A difference is attributable to an `en` row when rule L11 restored the word's raw keys because of
     /// such a row.
     static func isAttributableToAnEnglishRow(_ change: ChangedWord, resources: Resources) -> Bool {

@@ -3,7 +3,8 @@ import re, sys; sys.path.insert(0,'.')
 from compose import compose, Cfg, commit, display
 from ortho import validity, VOWELS, strip
 EN = set("""test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky""".split())
-TECH = {"www","wifi","usb","tar"}
+TECH = {"www","wifi","usb"}
+CODE_ONLY = {"tar","sudo"}
 NOT_ATTESTED = {"dóe","hẻ","dổ","pót","sáy","ửa","tơn","dơn"}
 AMBIG = {"as":"vi","is":"en","was":"en","has":"vi","its":"vi","us":"vi","this":"vi","these":"vi","there":"vi","been":"vi","car":"vi","test":"en","best":"en","list":"en","max":"vi","did":"vi","theme":"vi","cost":"en","room":"en"}
 def lang_of(out, restored):
@@ -11,7 +12,7 @@ def lang_of(out, restored):
     if any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in out): return "vi"
     if out.lower() in EN and validity(out) is None: return "en"
     return "neutral"
-def decide(keys, cfg, prev="neutral", context="general"):
+def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False):
     st = compose(list(keys), cfg)
     R = "".join(st.raw); C = commit(st, cfg); r = R.lower()
     if C == R: return C, "unchanged"
@@ -26,7 +27,7 @@ def decide(keys, cfg, prev="neutral", context="general"):
         return (R, "restored: Tier B and raw is English") if r in EN else (C, "kept: Tier B, not English")
     if r not in EN and r not in TECH: return C, "kept: valid, raw not English"
     if C.lower() not in {x for x in []} and strip(C.lower()) and C.lower() in NOT_ATTESTED: return R, "restored: not attested, raw is English"
-    if context == "code" and r in TECH: return R, "restored: code context, tech word"
+    if context == "code" and r in CODE_ONLY and not vietnamese_text: return R, "restored: code context, tech word"
     if prev == "en": return R, "restored: English run"
     d = AMBIG.get(r, "vi")
     return (R, "restored: ambiguity table en") if d == "en" else (C, "kept: ambiguity table vi" if r in AMBIG else "kept: default vi")
@@ -40,16 +41,36 @@ def lang_of_decision(out, reason):
 def run_is_english(window):
     last = window[-3:]
     return "en" in last and "vi" not in last
+# ENG-R850 as amended on 15/11/2026 (REG-35): rule L9 restores a code-only word only outside Vietnamese text. The
+# line is the history: it starts empty and Return, Tab and a reset clear it. Each entry of `line` is (language, a
+# Vietnamese syllable typed unchanged, a code-only word shown as typed, code character after it).
+CODE_CHARACTERS = set("`|&$")
+def vietnamese_as_typed(keys, C, reason):
+    return (reason == "unchanged" and validity(C) == "A" and keys.lower() not in EN and keys.lower() not in TECH
+            and len(keys) >= 2 and keys.isalpha() and not (keys.isupper() and len(keys) > 1))
+def in_vietnamese_text(line):
+    if not line: return False
+    language, _, code_word, code_after = line[-1]
+    if language == "en" or code_word or code_after: return False
+    return any(lang == "vi" or as_typed for lang, as_typed, _, _ in line[-3:])
 def type_run(text, cfg=None, context="general"):
     """Types `text` from an empty field: runs of ASCII letters are tokens, every other character is a boundary
     (9.2). Returns the field and the reason of the last decided token."""
     cfg = cfg or Cfg()
-    out, window, reason = "", [], None
+    out, window, line, reason = "", [], [], None
     for token, boundary in re.findall(r"([A-Za-z]*)([^A-Za-z]*)", text):
         if token:
-            C, reason = decide(token, cfg, "en" if run_is_english(window) else "neutral", context)
+            C, reason = decide(token, cfg, "en" if run_is_english(window) else "neutral", context,
+                               in_vietnamese_text(line))
             window.append(lang_of_decision(C, reason))
+            shown_as_typed = reason == "unchanged" or reason.startswith("restored")
+            line.append((window[-1], vietnamese_as_typed(token, C, reason),
+                         shown_as_typed and token.lower() in CODE_ONLY, False))
             out += C
+        if line and any(ch in CODE_CHARACTERS for ch in boundary):
+            line[-1] = line[-1][:3] + (True,)
+        if "\n" in boundary or "\t" in boundary:
+            line = []
         out += boundary
     return out, reason
 # 01-engine.md 13.9.2 (B065-B072) and the sentences of ENG-R823, with the 13.9 fixtures above.
@@ -68,6 +89,24 @@ RUNS = [
     ("tricky as hell ", "tricky as hell ", "unchanged"),
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
     ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
+]
+# 01-engine.md 13.9 rows B035 to B035e and 13.9.1 rows B064a and B064b (Telex, code context, from an empty field;
+# the seed tokens `vieejt` and `and` stand for the previous token `vi` and `en`), and the sentences of ENG-R850.
+CODE_RUNS = [
+    ("tar ", "tar ", "restored: code context, tech word"),
+    ("vieejt tar ", "việt tả ", "kept: default vi"),
+    ("and tar ", "and tar ", "restored: code context, tech word"),
+    ("chinhs tar ", "chính tả ", "kept: default vi"),
+    ("moo tar ", "mô tả ", "kept: default vi"),
+    ("sudo tar ", "sudo tar ", "restored: code context, tech word"),
+    ('Suwar looxi chinhs tar"', 'Sửa lỗi chính tả"', "kept: default vi"),
+    ('tar"', 'tar"', "restored: code context, tech word"),
+    ("anh tar ", "anh tả ", "kept: default vi"),
+    ("vieejt\ntar ", "việt\ntar ", "restored: code context, tech word"),
+    ("dungf `tar`", "dùng `tar`", "restored: code context, tech word"),
+    ('echo "xin chaof" | tar ', 'echo "xin chào" | tar ', "restored: code context, tech word"),
+    ("vieejt (tar)", "việt (tả)", "kept: default vi"),
+    ("vieejt a a a tar ", "việt a a a tar ", "restored: code context, tech word"),
 ]
 # Collision rules at commit (15/11/2026): L9a boundary particle (ENG-R825), L9b phrase looking back (ENG-R826), the
 # `run: vi` exemption of L10 and the English-lean window (ENG-R823, ENG-R827), with small fixture lists on top of the
@@ -118,7 +157,9 @@ if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]
     bad += [(keys, type_run_collision(keys), (want, why)) for keys, want, why in COLLISION_RUNS
             if type_run_collision(keys) != (want, why)]
+    bad += [(keys, type_run(keys, context="code"), (want, why)) for keys, want, why in CODE_RUNS
+            if type_run(keys, context="code") != (want, why)]
     for row in bad: print("mismatch:", row)
-    total = len(RUNS) + len(COLLISION_RUNS)
-    print(f"{total - len(bad)}/{total} English-run and collision examples agree")
+    total = len(RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS)
+    print(f"{total - len(bad)}/{total} English-run, collision and code-context examples agree")
     sys.exit(1 if bad else 0)

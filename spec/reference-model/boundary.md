@@ -34,7 +34,15 @@
 | B032 | `as` | Telex | vi | general | `á` | L11 ambiguity row = vi: keep |
 | B033 | `did` | Telex | vi | general | `đi` | L11 ambiguity row = vi: keep |
 | B034 | `tar` | Telex | vi | general | `tả` | L11 no row, default vi: keep |
-| B035 | `tar` | Telex | vi | code | `tar` | L9 code context, code-only tech word: restore |
+| B035 | `tar` | Telex | none | code | `tar` | L9 code context, code-only tech word at the start of a line: restore |
+| B035a | `tar` | Telex | vi | code | `tả` | L11 no row, default vi (in Vietnamese text L9 does not apply): keep |
+| B035b | `tar` | Telex | en | code | `tar` | L9 code context, code-only tech word after an English word: restore |
+| B035c | `chinhs tar` | Telex | none | code | `chính tả` | L11 no row, default vi (after a Vietnamese word L9 does not apply): keep |
+| B035d | `moo tar` | Telex | none | code | `mô tả` | L11 no row, default vi (after a Vietnamese word L9 does not apply): keep |
+| B035e | `sudo tar` | Telex | none | code | `sudo tar` | L9 code context, code-only tech word after a code word: restore |
+| B035f | `ta3` | VNI | vi | code | `tả` | L7 raw not English: keep |
+| B035g | `mo6 ta3` | VNI | none | code | `mô tả` | L7 raw not English: keep |
+| B035h | `tar` | VNI | none | code | `tar` | L0 output equals the keys typed: nothing to decide |
 | B036 | `Kroong` | Telex | none | general | `Krông` | L6 extended, raw not English: keep |
 | B037 | `DDawsk` | Telex | none | general | `Đắk` | L6 extended, raw not English: keep |
 | B038 | `Pawsc` | Telex | none | general | `Pắc` | L7 raw not English: keep |

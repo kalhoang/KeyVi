@@ -339,4 +339,15 @@ struct RegressionTests {
         // Unchanged where nothing is marked: REG-01, REG-25 and the `dz` onset.
         #expect(try text("quz ") == "quz " && text("za ") == "za " && text("dzui ") == "dzui ")
     }
+
+    @Test("REG-35 a code-only word after Vietnamese words keeps its Vietnamese display in the code context")
+    func reg35() throws {
+        // ENG-R850 as amended on 15/11/2026: the product owner's message in iTerm2 (code context).
+        let code = EngineConfiguration(appContext: .code)
+        #expect(try Committing.text("Suwar looxi chinhs tar\"", code) == "Sửa lỗi chính tả\"")
+        #expect(try Committing.text("moo tar ", code) == "mô tả ")
+        // A command still keeps its keys at the start of a line and after a code word.
+        #expect(try Committing.text("tar -xzf ", code) == "tar -xzf ")
+        #expect(try Committing.text("sudo tar ", code) == "sudo tar ")
+    }
 }

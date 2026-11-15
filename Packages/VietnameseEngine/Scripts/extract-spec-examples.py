@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MPL-2.0
 """Extract the worked examples of spec/01-engine.md into test corpus files.
 
-Reads tables 13.8 (W001-W253 with W158a-W158j, W184a-W184c, W242a-W242w and W243a-W243o), 13.9, 13.9.1 and 13.9.2 (B001-B072) and 13.10 (E01-E08, E02b), the fixture
+Reads tables 13.8 (W001-W253 with W158a-W158j, W184a-W184c, W242a-W242w and W243a-W243o), 13.9, 13.9.1 and 13.9.2
+(B001-B072 with B035a-B035h, B064a and B064b) and 13.10 (E01-E08, E02b), the fixture
 paragraph of 13.9 and the ENG-R821 proposal table, and writes into
 Tests/VietnameseEngineTests/Corpus/:
 
@@ -28,7 +29,7 @@ DEFAULT_SPEC = PACKAGE_DIR.parent.parent / "spec" / "01-engine.md"
 CORPUS_DIR = PACKAGE_DIR / "Tests" / "VietnameseEngineTests" / "Corpus"
 
 BOUNDARY_KEYS = {"Space": " ", "Return": "\n", "Tab": "\t"}
-EXPECTED_ROWS = {"worked-examples.tsv": 304, "commit-decisions.tsv": 72, "restore-toggle.tsv": 9}
+EXPECTED_ROWS = {"worked-examples.tsv": 304, "commit-decisions.tsv": 82, "restore-toggle.tsv": 9}
 
 
 def fail(message):
@@ -126,15 +127,15 @@ def rule_code_of(rule_text):
 
 def commit_decisions(lines):
     result = []
-    for cells in table_rows(section(lines, "### 13.9 "), r"B\d{3}"):
+    for cells in table_rows(section(lines, "### 13.9 "), r"B\d{3}[a-z]?"):
         if len(cells) != 7:
             fail(f"13.9 row with {len(cells)} cells: {cells[0]}")
         number, keys, method, previous, context, committed, rule = cells
         committed = unquote(committed)
         result.append([number, unquote(keys), " ", method, previous, context, committed + " ", committed, rule])
     # 13.9.2 (ENG-R823) has the columns of 13.9.1; its keys hold several tokens separated by spaces.
-    boundary_rows = table_rows(section(lines, "#### 13.9.1"), r"B\d{3}") + table_rows(
-        section(lines, "#### 13.9.2"), r"B\d{3}")
+    boundary_rows = table_rows(section(lines, "#### 13.9.1"), r"B\d{3}[a-z]?") + table_rows(
+        section(lines, "#### 13.9.2"), r"B\d{3}[a-z]?")
     for cells in boundary_rows:
         if len(cells) != 8:
             fail(f"13.9.1 or 13.9.2 row with {len(cells)} cells: {cells[0]}")

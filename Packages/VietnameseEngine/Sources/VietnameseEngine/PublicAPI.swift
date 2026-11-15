@@ -39,7 +39,8 @@ public enum ToneStyle: Sendable, Hashable {
 public enum AppContext: Sendable, Hashable {
     /// Every ordinary text field. The default.
     case general
-    /// Terminals, IDEs and code editors: rule L9 restores code-only tech words (`tar`).
+    /// Terminals, IDEs and code editors: rule L9 restores code-only tech words (`tar`) outside Vietnamese text,
+    /// so `tar -xzf` stays as typed and `chinhs tar` still gives `chính tả` (ENG-R850).
     case code
 }
 
@@ -197,7 +198,7 @@ public enum CommitRule: Sendable, Hashable {
     case notEnglish
     /// L8: English keys whose display is not an attested syllable: restored.
     case notAttested
-    /// L9: code context and a code-only tech word: restored.
+    /// L9: code context and a code-only tech word outside Vietnamese text: restored (ENG-R850).
     case codeContext
     /// L9a: a boundary particle (`as`) ended by `.`, `!`, `?` or Return: kept (ENG-R825).
     case boundaryParticle
@@ -401,7 +402,7 @@ public struct Resources: Sendable {
     public var english: WordSet
     /// Words that always stay as typed (`wifi`, `usb`); also count as English.
     public var techAlways: WordSet
-    /// Shell words restored only in the code context (rule L9).
+    /// Shell words restored only in the code context, outside Vietnamese text (rule L9, ENG-R850).
     public var techCodeOnly: WordSet
     /// Vietnamese syllables that occur, lowercase with tone (rule L8 only, never to block typing).
     public var attestedSyllables: WordSet

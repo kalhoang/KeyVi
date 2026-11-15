@@ -443,7 +443,7 @@ Rule fields:
 | `action.axEnable` | `none`, `manual` | no | PLT-R385 |
 | `action.overlay` | bool | no | Observe this app's AX focus even when not frontmost |
 | `action.requiresUserOptIn` | bool | no | Rule is offered in the UI but inactive until the user enables it |
-| `action.engineContext` | `general`, `code` | no | Passed to the engine as `appContext` (ENG-R850): `code` restores shell words such as `tar`, `less` in terminals and IDEs. Default `general` |
+| `action.engineContext` | `general`, `code` | no | Passed to the engine as `appContext` (ENG-R850): `code` restores shell words such as `tar`, `less` in terminals and IDEs, outside Vietnamese text. Default `general` |
 | `action.features` | object | no | Per-context feature switches defined by the engine and product specs: `autoCapitalize`, `macros`, `englishRestore`, `restoreHotkey`, `lookaheadRevision` (all default true except `autoCapitalize`, which is a later feature; `lookaheadRevision` resolves like `restoreHotkey` and is false for a strategy other than `backspaceReplace` or `selectReplace`, PLT-R357) |
 | `provenance.reason` | string | yes | Symptom and cause in one or two sentences |
 | `provenance.evidence` | [ {type, ref} ] | yes | Own issue tracker links, test reports |

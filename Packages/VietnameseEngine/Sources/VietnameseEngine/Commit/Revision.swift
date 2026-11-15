@@ -101,9 +101,7 @@ extension CommitPolicy {
         case .kept(.notEnglish):
             return facts.hasVietnameseOnlyLetter
         case .kept(.unchanged):
-            let raw = token.inputs.raw
-            return facts.validity == .standard && !isEnglish(token.inputs.rawLowercased) && raw.utf8.count >= 2
-                && raw.utf8.allSatisfy(ASCII.isLetter) && !RevisionEvidence.isAllCaps(raw)
+            return isVietnameseAsTyped(token.inputs)
         default:
             return false
         }

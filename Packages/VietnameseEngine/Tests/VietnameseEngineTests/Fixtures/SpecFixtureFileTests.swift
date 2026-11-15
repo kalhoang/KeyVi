@@ -4,7 +4,7 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Integrity of the corpus files extracted from spec 13.8 to 13.10 by
-/// Scripts/extract-spec-examples.py (304 + 72 + 9 rows), and of the 13.9 fixture resources.
+/// Scripts/extract-spec-examples.py (304 + 82 + 9 rows), and of the 13.9 fixture resources.
 @Suite("Spec fixture files (13.8 to 13.10)")
 struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
@@ -48,11 +48,17 @@ struct SpecFixtureFileTests {
 
     @Test func commitDecisions() throws {
         let rows = try SpecExamples.commitDecisions(tsv: CorpusFiles.text(SpecExamples.commitDecisionsFile))
-        #expect(rows.count == 72)
+        #expect(rows.count == 82)
+        // Lettered rows follow the row they extend: B035a-B035h and B064a, B064b (ENG-R850, REG-35, 15/11/2026).
+        let lettered: [Int: String] = [35: "abcdefgh", 64: "ab"]
+        let expectedIDs = (1...72).flatMap { number -> [String] in
+            let id = "B" + String(repeating: "0", count: 3 - String(number).count) + String(number)
+            return [id] + (lettered[number] ?? "").map { id + String($0) }
+        }
+        #expect(rows.map(\.id) == expectedIDs)
+        #expect(rows.prefix(60).allSatisfy { $0.boundary == " " })
         #expect(
-            rows.map(\.id) == (1...72).map { "B" + String(repeating: "0", count: 3 - String($0).count) + String($0) })
-        #expect(rows.prefix(52).allSatisfy { $0.boundary == " " })
-        #expect(rows[52..<64].map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n"])
+            rows[60..<74].map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n", "\"", "\""])
         // 13.9.2 (ENG-R823, REG-32): a whole run of tokens per row, from an empty field.
         #expect(rows.suffix(8).map(\.boundary) == [".", ".", " ", " ", " ", " ", " ", " "])
         #expect(rows.suffix(8).allSatisfy { $0.previous == .none && $0.keys.contains(" ") })
@@ -66,6 +72,12 @@ struct SpecFixtureFileTests {
         #expect(byID["B024"]?.expectedDecision == .restored(.ambiguityTable))
         #expect(byID["B034"]?.expectedDecision == .kept(.defaultVietnamese))
         #expect(byID["B035"]?.expectedDecision == .restored(.codeContext) && byID["B035"]?.context == .code)
+        // ENG-R850, REG-35: after a Vietnamese word L9 does not apply; VNI seeds `việt` with `vie65t`.
+        #expect(byID["B035a"]?.expectedDecision == .kept(.defaultVietnamese) && byID["B035a"]?.committed == "tả")
+        #expect(byID["B035c"]?.keys == "chinhs tar" && byID["B035c"]?.committed == "chính tả")
+        #expect(byID["B035f"]?.method == .vni && byID["B035f"]?.seedKeys == "vie65t")
+        #expect(byID["B029"]?.seedKeys == "vieejt" && byID["B028"]?.seedKeys == "and")
+        #expect(byID["B064a"]?.expectedText == "Sửa lỗi chính tả\"" && byID["B064a"]?.context == .code)
         #expect(byID["B044"]?.expectedDecision == .kept(.unchanged))
         #expect(byID["B047"]?.method == .vni && byID["B047"]?.expectedDecision == .restored(.invalid))
         #expect(byID["B028"]?.previous == .english && byID["B028"]?.previous.seedKeys == "and")

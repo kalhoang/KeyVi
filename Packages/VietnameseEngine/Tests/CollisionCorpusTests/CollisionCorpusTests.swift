@@ -76,6 +76,27 @@ struct CollisionCorpusTests {
         #expect(score.exactSentences == 876)
     }
 
+    /// ENG-R850 as amended on 15/11/2026 (REG-35): terminals and code editors carry Vietnamese prose too, so in the
+    /// code context rule L9 restores a code-only word only outside Vietnamese text. The corpus, written for chat,
+    /// is replayed in the code context: L9 may only add restores outside Vietnamese text, so no Vietnamese-intent
+    /// collision is lost and nothing else moves.
+    @Test(
+        "ENG-R850: in the code context the corpus keeps every Vietnamese-intent collision of the general context",
+        arguments: [CorpusFixture.toneLast, .toneAfterVowel])
+    func codeContext(_ fixture: CorpusFixture) throws {
+        let runs = try FixtureRuns.of(fixture)
+        let replay = HostReplay(engine: try GateResources.engine(appContext: .code))
+        let results = try runs.sentences.map { try replay.run(try HostInput.parse($0.keys)) }
+        let code = CorpusScore.score(runs.sentences, results, baseline: nil)
+        let general = runs.score
+        print(code.report(title: "\(fixture) in the code context"))
+        #expect(code.alignmentErrors.isEmpty)
+        #expect(code.badRevisions.isEmpty)
+        #expect(code.nonCollisionChanges.isEmpty)
+        #expect(code.collisions.vietnamese.right == general.collisions.vietnamese.right)
+        #expect(code.collisions.english.right >= general.collisions.english.right)
+    }
+
     @Test(
         "ENG-R876: the adversarial sets make no wrong revision and match their frozen outputs",
         arguments: CorpusFixture.sets)
