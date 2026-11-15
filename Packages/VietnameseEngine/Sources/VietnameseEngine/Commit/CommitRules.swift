@@ -12,9 +12,10 @@ package struct CommitInputs: Sendable {
     package let escapeUsed: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
-    /// The user's choice was already reported (ENG-R861, ENG-R864).
+    /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
     package let choiceSignalled: Bool
-    /// The side of the revision that last changed the re-opened token (ENG-R864), nil when none did.
+    /// The side of the revision that last changed the re-opened token (ENG-R864), nil when none did or its
+    /// raw keys were edited since.
     package let revisionRestored: Bool?
 
     package init(token: ActiveToken, style: ToneStyle) {
@@ -209,7 +210,8 @@ package struct CommitPolicy: Sendable {
 
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the
     /// rules alone would have decided. The signal carries the lowercased raw keys, the key of the user
-    /// lists (ENG-R860). One toggle gives one signal: a re-commit of a choice already reported gives none.
+    /// lists (ENG-R860). One toggle gives one signal: a re-commit of a choice already reported for the
+    /// same raw keys gives none.
     /// ENG-R864: for a re-opened token that a revision changed, the revision is what the user corrects, so
     /// its side stands for the rules' decision.
     package func learningSignal(_ inputs: CommitInputs, decision: CommitDecision, context: CommitContext)

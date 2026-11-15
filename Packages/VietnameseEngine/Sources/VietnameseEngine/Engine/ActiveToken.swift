@@ -48,14 +48,20 @@ package struct ActiveToken: Sendable, Hashable {
     /// ENG-R1002) instead of its composed display; cleared by the next event, which shows the composed
     /// display again.
     private var showsCommittedSpelling = false
-    /// ENG-R861, ENG-R864: the user's current choice has already been reported by a signal, so a later
-    /// commit of the same choice (after Backspace re-opened the token) reports nothing new. Cleared by the
+    /// ENG-R861, ENG-R864: the raw keys for which the user's current choice was reported by a signal, so a
+    /// later commit of the same choice for the same keys (after Backspace re-opened the token) reports
+    /// nothing new; keys edited since make another word, whose choice was never reported. Cleared by the
     /// next toggle, which is a new choice.
-    package private(set) var choiceSignalled = false
-    /// ENG-R864: the side a revision (ENG-R828) gave the token when it was re-opened (true: the raw keys),
-    /// so that a toggle against the revision counts as a correction. Cleared by any key or Backspace inside
-    /// the token, which makes it another word.
-    package private(set) var revisionRestored: Bool?
+    private var signalledRaw: String?
+    /// ENG-R864: the side a revision (ENG-R828) gave the token when it was re-opened (true: the raw keys)
+    /// and the raw keys it decided, so that a toggle against the revision counts as a correction while the
+    /// raw keys are still those; keys edited since make another word.
+    private var revision: RevisionSide?
+
+    private struct RevisionSide: Sendable, Hashable {
+        let raw: String
+        let restored: Bool
+    }
 
     package init() {}
 
@@ -80,7 +86,7 @@ package struct ActiveToken: Sendable, Hashable {
         var token = self
         token.display = display
         token.restoredByRule = restoredByRule
-        token.revisionRestored = revisionRestored
+        token.revision = revisionRestored.map { RevisionSide(raw: rawText, restored: $0) }
         token.showsCommittedSpelling = !token.isLiteral && token.composition.writesOpenHornPairAtCommit
         return token
     }
@@ -93,12 +99,19 @@ package struct ActiveToken: Sendable, Hashable {
         return token
     }
 
-    /// This token with its current choice reported (ENG-R861, ENG-R864).
+    /// This token with its current choice reported for its raw keys (ENG-R861, ENG-R864).
     package func reportingChoice() -> ActiveToken {
         var token = self
-        token.choiceSignalled = true
+        token.signalledRaw = rawText
         return token
     }
+
+    /// The user's current choice was already reported for these raw keys (ENG-R861, ENG-R864).
+    package var choiceSignalled: Bool { signalledRaw == rawText }
+
+    /// The side the revision gave these raw keys, if a revision changed the token before it was re-opened
+    /// (ENG-R864).
+    package var revisionRestored: Bool? { revision?.raw == rawText ? revision?.restored : nil }
 
     package var isMacro: Bool { macroKeys != nil }
 
@@ -128,7 +141,6 @@ package struct ActiveToken: Sendable, Hashable {
     /// ENG-R611). `capsLock` is the key's Caps Lock state (ENG-R906).
     package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> KeyAction {
         showsCommittedSpelling = false
-        revisionRestored = nil
         if macroKeys != nil {
             macroKeys?.append(key)
             display.unicodeScalars.append(Unicode.Scalar(key))
@@ -151,7 +163,6 @@ package struct ActiveToken: Sendable, Hashable {
     /// (ENG-R1005). Long literal tails shrink in place (no full render). A macro expansion loses its last
     /// character (ENG-R1104), and a key typed into it since the expansion if there is one.
     package mutating func backspace(rules: ComposerRules) -> KeyAction {
-        revisionRestored = nil
         if macroKeys != nil {
             display.removeLast()
             macroKeys?.dropAppendedKey()
@@ -194,7 +205,7 @@ package struct ActiveToken: Sendable, Hashable {
     /// reducer. Returns nil when neither branch applies, so the key passes through.
     package mutating func toggleRestore(rules: ComposerRules) -> KeyAction? {
         showsCommittedSpelling = false
-        choiceSignalled = false
+        signalledRaw = nil
         if let macroKeys { return restoreMacroSpan(macroKeys, rules: rules) }
         let raw = rawText
         if display != raw {
