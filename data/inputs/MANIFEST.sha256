@@ -1,7 +1,12 @@
 # SHA-256 of every pinned build input, relative to data/. Regenerate with `lexicon-builder pin`.
 # Verify without the tool: cd data && shasum -a 256 -c inputs/MANIFEST.sha256
-e457b9d6e49cb578411ff393a710337acef1f910a123c8b3c957f9f43cb9038c  inputs/ambiguity.tsv
+20f366090486f24a5ebefef6ba4e8db01ec50e2c1a7a78c9ad6c95f041248a76  inputs/ambiguity.tsv
 c9614bb9027603c85bd2190218c50d0bdd56446109d61f1f3183926ed33b1d58  inputs/attested-additions.txt
+762e8774d963f896f8fd407eb5f2021ee640929bc13dad486368ec6e92220999  inputs/boundary-particles.txt
+6a7a9b99ef648781ea9ed23a41a51a7cbc68dba023dd496e56b213cab36d6309  inputs/collision-supplement.txt
+0087fa9c1228ae8f66fffe6c9dd9dff671d99181278483a1119530bdc3cf030e  inputs/english-function-words.txt
+0df3f38a1d0220ef5bd5a56130a5118d7105ee03aac111e7a8af5589b2ecc01e  inputs/english-lean-neutral.txt
+f194701d435a5809d07b52ee79ef8b8433a8713fa896830a58bc2cbbcbd86eb3  inputs/english-pre-guard.txt
 c45f29f3969710868e9037e43a41d7a17df701042dd240e89e4011873c26bbd7  inputs/english/SOURCES.tsv
 6ed66394d8b46ed12feac7aad989dfc4620c4f2051316ab774560aae71140994  inputs/english/scowl-2020.12.07/american-words.10
 a7ae730cd5f2ee11b584c163bf0750cc7659e336c3a04da1a8a2e9c44b604b9e  inputs/english/scowl-2020.12.07/american-words.20
@@ -29,8 +34,10 @@ b97105c90de3862b49d9f31fd8a9ba9ded7436da49a9824c5eabbed561159c41  inputs/legal/i
 5bc3ee6d42db3e8d950ad4effa26f5365439a1c5e70d5c1f654d677415185de1  inputs/legal/publishing-law.txt
 759ff8e6df5384dfa7e490bed83fcecf407390bde3fdf703c508af342d00f597  inputs/legal/science-technology-law.txt
 12936db64db99fad88f474463ccc037da7c14bed6f1919c6c607053fe5c3373a  inputs/legal/technology-transfer-law.txt
+b9ce723b49f428d5c1cbb5c19b061d73700307805d565634f4199c15f6d7565d  inputs/phrases.txt
 30855d871608ab7d763078eb69418ad9a69fb011019ee8e4163238a4b86120cd  inputs/tech-always.txt
 8375c2f69614a43ae436e14fe6709c2484b7b23a50963cdc15cca231f792e7a7  inputs/tech-code-only.txt
+3a27b1fa6a25a908bf5e16a3926d0b03b84af2577cb652fd1bd273c527729288  inputs/vi-tail-words.txt
 283326a422e29c510e2ba6805518c418ce3c35ed1fadc3eec83d2da4f6c5a055  licenses/SCOWL-2020.12.07-Copyright.txt
 23243cedb0d5ef29e8a17ca56552f9fd65b11139b1611d1c35e0234dfc53c475  licenses/SCOWL-2020.12.07-README.txt
 e3efae85e32020f1c9159174f9f9dcc8554f3153ce83462425f4391915f7f531  licenses/bundled-notices.txt

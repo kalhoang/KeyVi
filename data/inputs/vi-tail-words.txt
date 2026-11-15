@@ -1,0 +1,70 @@
+# vi-tail-words.txt: Vietnamese words that end a clause after an English phrase (spec/01-engine.md ENG-R828).
+# A collision restored by the English run is never given its Vietnamese display because one of these follows
+# (`I parked the car rồi` keeps `car`, rule RV4). The `particle` lines are the sentence-final particles that
+# turn a restored `as` back into `á` (`tricky á nha`, rule RV2). Written by the project; the product owner
+# reviews the list before v1.
+# Format: <lowercase NFC word><TAB>particle|word. Lines starting with # are comments.
+
+chưa	particle
+chớ	particle
+chứ	particle
+ghê	particle
+ha	particle
+hem	particle
+hen	particle
+hông	particle
+hả	particle
+hở	particle
+không	particle
+kìa	particle
+luôn	particle
+mà	particle
+nghe	particle
+nghen	particle
+nha	particle
+nhe	particle
+nhé	particle
+nhỉ	particle
+nè	particle
+rồi	particle
+ta	particle
+thôi	particle
+vậy	particle
+à	particle
+đi	particle
+đó	particle
+đấy	particle
+ạ	particle
+ấy	particle
+coi	word
+dùm	word
+giùm	word
+haha	word
+hihi	word
+hok	word
+hoài	word
+hé	word
+hôm	word
+k	word
+ko	word
+liền	word
+lại	word
+lắm	word
+mai	word
+nay	word
+nhen	word
+nhá	word
+nhớ	word
+nữa	word
+quá	word
+rùi	word
+sau	word
+thui	word
+thêm	word
+thử	word
+tiếp	word
+trước	word
+xong	word
+zui	word
+òi	word
+được	word

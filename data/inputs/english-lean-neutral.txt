@@ -1,0 +1,18 @@
+# english-lean-neutral.txt: English words that are also valid Vietnamese syllables but rare as unmarked
+# Vietnamese in chat. Typed unchanged, each counts as English for the English run (spec/01-engine.md
+# ENG-R823 as amended on 15/11/2026): `The car` at a line start keeps `car`. Written by the project; the
+# product owner reviews the list before v1.
+# Format: one lowercase word per line. Lines starting with # are comments.
+
+am
+be
+by
+he
+i
+me
+my
+she
+the
+them
+then
+we

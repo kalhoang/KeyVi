@@ -104,21 +104,33 @@ import VietnameseEngine
     }
 
     @Test func ambiguityRowsParseAndRejectMalformedLines() throws {
-        let row = try AmbiguityRow.parse("as\tvi\tproposed\tá\tnote", number: 1)
-        #expect(row == AmbiguityRow(raw: "as", decision: .vi, status: .proposed, display: "á", note: "note"))
-        #expect(row.line == "as\tvi\tproposed\tá\tnote")
+        let row = try AmbiguityRow.parse("as\tvi\tproposed\tá\tvi\tparticle\tnote", number: 1)
+        #expect(
+            row
+                == AmbiguityRow(
+                    raw: "as", decision: .vi, status: .proposed, display: "á", run: .vi, viKind: .particle, note: "note"
+                ))
+        #expect(row.line == "as\tvi\tproposed\tá\tvi\tparticle\tnote")
+        // ENG-R827: new rows default to run en, viKind content.
+        #expect(
+            AmbiguityRow(raw: "x", decision: .vi, status: .unreviewed, display: "x", note: "").line
+                == "x\tvi\tunreviewed\tx\ten\tcontent\t")
         for bad in [
-            "as\tvi\tproposed\tá", "As\tvi\tproposed\tá\tx", "as\tmaybe\tproposed\tá\tx", "as\tvi\tlater\tá\tx",
-            "as\tvi\tproposed\ta\u{0301}\tx",
+            "as\tvi\tproposed\tá\ten\tcontent", "As\tvi\tproposed\tá\ten\tcontent\tx",
+            "as\tmaybe\tproposed\tá\ten\tcontent\tx", "as\tvi\tlater\tá\ten\tcontent\tx",
+            "as\tvi\tproposed\ta\u{0301}\ten\tcontent\tx", "as\tvi\tproposed\tá\tboth\tcontent\tx",
+            "as\tvi\tproposed\tá\ten\tnoun\tx", "as\tvi\tproposed\tá\tx",
         ] {
             #expect(throws: BuilderError.self, "\(bad.debugDescription)") { try AmbiguityRow.parse(bad, number: 3) }
         }
         let directory = try TempDirectory.make("ambiguity")
         defer { TempDirectory.remove(directory) }
         let file = directory.appendingPathComponent("ambiguity.tsv")
-        try write("as\tvi\tproposed\tá\tx\n", to: file)
+        try write("as\tvi\tproposed\tá\ten\tcontent\tx\n", to: file)
         #expect(throws: BuilderError.self, "the header comes first") { try AmbiguityRow.load(file) }
-        try write("\(AmbiguityRow.header)\nas\tvi\tproposed\tá\tx\nas\ten\tproposed\tá\ty\n", to: file)
+        try write(
+            "\(AmbiguityRow.header)\nas\tvi\tproposed\tá\ten\tcontent\tx\nas\ten\tproposed\tá\ten\tcontent\ty\n",
+            to: file)
         #expect(throws: BuilderError.self, "duplicate raw keys") { try AmbiguityRow.load(file) }
     }
 
@@ -174,7 +186,7 @@ import VietnameseEngine
         let json = Builder.manifestJSON(
             files, entries: ["a.txt": 1], stats: [("words", 1), ("more", 2)], inputsDigest: "d")
         #expect(
-            json.hasPrefix("{\n  \"format\": 1,\n  \"generator\": \"lexicon-builder\",\n  \"inputsSHA256\": \"d\","))
+            json.hasPrefix("{\n  \"format\": 2,\n  \"generator\": \"lexicon-builder\",\n  \"inputsSHA256\": \"d\","))
         #expect(json.contains("{\"name\": \"a.txt\", \"bytes\": 2, \"entries\": 1, \"sha256\": "))
         #expect(json.contains("{\"name\": \"NOTICES.txt\", \"bytes\": 2, \"sha256\": "))
         let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
@@ -251,18 +263,18 @@ import VietnameseEngine
             _ = try Builder.build(layout)
         }
         let valid = [
-            "is\ten\tproposed\tí\tgenerated [generated:unattested]",
-            "www\ten\tproposed\tww\tgenerated [generated:tech-always]",
-            "test\ten\tproposed\ttét\thand row, [generated: is not a token",
+            "is\ten\tproposed\tí\ten\tcontent\tgenerated [generated:unattested]",
+            "www\ten\tproposed\tww\ten\tcontent\tgenerated [generated:tech-always]",
+            "test\ten\tproposed\ttét\ten\tcontent\thand row, [generated: is not a token",
         ]
         try build(rows: valid)
         // á is attested (an addition of the fixture), so L8 no longer restores `as`.
-        let attested = "as\ten\tproposed\tá\tgenerated [generated:unattested]"
+        let attested = "as\ten\tproposed\tá\ten\tcontent\tgenerated [generated:unattested]"
         #expect(throws: BuilderError.self) { try build(rows: valid + [attested]) }
         // `tar` is a code-only word, not English (8.1), so L8 never restores it.
-        let notEnglish = "tar\ten\tproposed\ttả\tgenerated [generated:unattested]"
+        let notEnglish = "tar\ten\tproposed\ttả\ten\tcontent\tgenerated [generated:unattested]"
         #expect(throws: BuilderError.self) { try build(rows: valid + [notEnglish]) }
-        let notTechAlways = "usb\ten\tproposed\tú\tgenerated [generated:tech-always]"
+        let notTechAlways = "usb\ten\tproposed\tú\ten\tcontent\tgenerated [generated:tech-always]"
         #expect(throws: BuilderError.self) { try build(rows: valid + [notTechAlways]) }
         do {
             try build(rows: valid + [attested])

@@ -51,6 +51,8 @@ struct ProseCorpusGateTests {
                 + "), \(differences.count) differences:\n" + RealData.listing(differences))
         #expect(report.tokens >= 200_000)
         #expect(identical >= 0.9995)
+        // The W11 prose gate (ENG-R876): the collision rules never revise a word of Vietnamese prose.
+        #expect(report.revisions == 0)
         let unexplained = differences.filter { !Self.isAttributableToAnEnglishRow($0, resources: resources) }
         let unknown = unexplained.filter { !Self.knownEngineDifferences.contains(Self.key($0)) }
         #expect(unknown.isEmpty, "\(method) \(order) not attributable to an en row:\n\(RealData.listing(unknown))")
@@ -62,6 +64,22 @@ struct ProseCorpusGateTests {
         } else {
             #expect(known.isEmpty)
         }
+    }
+
+    @Test(
+        "ENG-R876, ENG-R829: the collision rules change no token and revise none in the prose corpus",
+        arguments: [CorpusOrder.o1, .o2])
+    func collisionRulesLeaveProseUnchanged(_ order: CorpusOrder) throws {
+        let resources = try RealData.resources()
+        let text = try Self.corpus.get()
+        let on = ProseCorpusCheck.run(text: text, method: .telex, order: order, resources: resources)
+        let off = ProseCorpusCheck.run(
+            text: text, method: .telex, order: order, lookaheadRevision: false, resources: resources)
+        print(
+            "[ENG-R876] telex \(order): \(on.tokens) tokens, \(on.revisions) revisions, "
+                + "\(on.differences.count) differences with the collision rules, \(off.differences.count) without")
+        #expect(on.revisions == 0 && off.revisions == 0)
+        #expect(on.differences.map(Self.key) == off.differences.map(Self.key))
     }
 
     /// A difference is attributable to an `en` row when rule L11 restored the word's raw keys because of

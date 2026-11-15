@@ -92,16 +92,36 @@ enum AttestedAdditions {
     }
 }
 
-/// The ambiguity table (spec/01-engine.md 8.3, ENG-R821): `raw  decision  status  display  note`.
+/// The ambiguity table (spec/01-engine.md 8.3, ENG-R821, ENG-R827): `raw  decision  status  display  run
+/// viKind  note`.
 struct AmbiguityRow: Equatable {
     enum Decision: String { case vi, en }
     enum Status: String { case proposed, reviewed, unreviewed }
+    /// ENG-R827: `vi` means rule L10 never restores the word.
+    enum Run: String { case en, vi }
+    /// ENG-R827: the kind of the Vietnamese reading.
+    enum ReadingKind: String { case particle, function, content }
 
     let raw: String
     let decision: Decision
     let status: Status
     let display: String
+    let run: Run
+    let viKind: ReadingKind
     let note: String
+
+    init(
+        raw: String, decision: Decision, status: Status, display: String, run: Run = .en,
+        viKind: ReadingKind = .content, note: String
+    ) {
+        self.raw = raw
+        self.decision = decision
+        self.status = status
+        self.display = display
+        self.run = run
+        self.viKind = viKind
+        self.note = note
+    }
 
     /// Why `ambiguity-candidates --merge` generated an `en` row (docs/decisions/0202), stored as a token in the
     /// note so that `build` can fail when the reason no longer holds.
@@ -112,14 +132,16 @@ struct AmbiguityRow: Equatable {
         case techAlways = "[generated:tech-always]"
     }
 
-    static let header = "raw\tdecision\tstatus\tdisplay\tnote"
+    static let header = "raw\tdecision\tstatus\tdisplay\trun\tviKind\tnote"
 
     /// The generation reason recorded in the note, if any.
     var generatedReason: GeneratedReason? {
         GeneratedReason.allCases.first { note.contains($0.rawValue) }
     }
 
-    var line: String { "\(raw)\t\(decision.rawValue)\t\(status.rawValue)\t\(display)\t\(note)" }
+    var line: String {
+        "\(raw)\t\(decision.rawValue)\t\(status.rawValue)\t\(display)\t\(run.rawValue)\t\(viKind.rawValue)\t\(note)"
+    }
 
     static func load(_ url: URL) throws -> [AmbiguityRow] {
         let lines = try FileIO.readUTF8(url).split(separator: "\n", omittingEmptySubsequences: false)
@@ -145,8 +167,8 @@ struct AmbiguityRow: Equatable {
 
     static func parse(_ line: String, number: Int) throws -> AmbiguityRow {
         let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-        guard fields.count == 5 else {
-            throw BuilderError("ambiguity.tsv line \(number): expected 5 tab-separated fields")
+        guard fields.count == 7 else {
+            throw BuilderError("ambiguity.tsv line \(number): expected 7 tab-separated fields")
         }
         guard TechList.isValidEntry(fields[0]) else {
             throw BuilderError("ambiguity.tsv line \(number): raw '\(fields[0])' must be lowercase a-z/0-9")
@@ -160,6 +182,14 @@ struct AmbiguityRow: Equatable {
         guard VietnameseText.isNFC(fields[3]) else {
             throw BuilderError("ambiguity.tsv line \(number): display must be NFC")
         }
-        return AmbiguityRow(raw: fields[0], decision: decision, status: status, display: fields[3], note: fields[4])
+        guard let run = Run(rawValue: fields[4]) else {
+            throw BuilderError("ambiguity.tsv line \(number): run must be en or vi")
+        }
+        guard let viKind = ReadingKind(rawValue: fields[5]) else {
+            throw BuilderError("ambiguity.tsv line \(number): viKind must be particle, function or content")
+        }
+        return AmbiguityRow(
+            raw: fields[0], decision: decision, status: status, display: fields[3], run: run, viKind: viKind,
+            note: fields[6])
     }
 }

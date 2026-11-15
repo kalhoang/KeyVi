@@ -12,11 +12,15 @@ import VietnameseEngineTesting
 
 @Suite("ENG-R823 English run with the bundled data")
 struct EnglishRunRealDataTests {
-    /// Checks the field after typing `keys` in Telex with default options, from an empty field.
-    static func expect(_ keys: String, gives expected: String, sourceLocation: SourceLocation = #_sourceLocation)
-        throws
-    {
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: try RealData.resources())
+    /// Checks the field after typing `keys` in Telex with default options, from an empty field. With
+    /// `lookaheadRevision: false` the engine decides as it did before the collision rules (ENG-R829).
+    static func expect(
+        _ keys: String, gives expected: String, lookaheadRevision: Bool = true,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(lookaheadRevision: lookaheadRevision),
+            resources: try RealData.resources())
         try driver.type(keys)
         let field = driver.field.string
         #expect(
@@ -39,15 +43,25 @@ struct EnglishRunRealDataTests {
         try Self.expect("guwir file car team ", gives: "gửi file cả team ")
     }
 
-    @Test("ENG-R823: English sentences stay English")
+    @Test("ENG-R823, ENG-R828: English sentences stay English, the first word too")
     func englishSentences() throws {
-        // ENG-R824: the first word is not corrected afterwards (`this` alone keeps `thí`).
-        try Self.expect("this is the best car ", gives: "thí is the best car ")
+        // ENG-R828 RV1: `this is` is a bundled phrase, so the first word is revised when `is` commits.
+        try Self.expect("this is the best car ", gives: "this is the best car ")
         try Self.expect("I think this is as good as it gets ", gives: "I think this is as good as it gets ")
-        // `Thí`, kept by its ambiguity row, is neutral, so `is` then `as` are read in an English run.
-        try Self.expect("This is as good ", gives: "Thí is as good ")
+        try Self.expect("This is as good ", gives: "This is as good ")
         // Only English in the window at the start of a message.
         try Self.expect("tricky as hell ", gives: "tricky as hell ")
+    }
+
+    @Test("ENG-R829: with lookaheadRevision off the first word stays as it was before the collision rules")
+    func englishSentencesWithoutTheCollisionRules() throws {
+        try Self.expect("this is the best car ", gives: "thí is the best car ", lookaheadRevision: false)
+        try Self.expect("This is as good ", gives: "Thí is as good ", lookaheadRevision: false)
+        try Self.expect("tricky as hell ", gives: "tricky as hell ", lookaheadRevision: false)
+        try Self.expect(
+            "Khusc caif cacs app caafn thieest treen win cungx tricky as.",
+            gives: "Khúc cài các app cần thiết trên win cũng tricky á.", lookaheadRevision: false)
+        try Self.expect("treen server been kia ", gives: "trên server bên kia ", lookaheadRevision: false)
     }
 
     @Test("REG-32: after a loanword in a Vietnamese sentence the whole lexicon commits as in Vietnamese context")

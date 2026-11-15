@@ -24,7 +24,20 @@ enum ResourceName {
     static let notices = "NOTICES.txt"
     static let manifest = "manifest.json"
     static let attestedCandidates = "attested-candidates.tsv"
-    static let all = [english, techAlways, techCodeOnly, attested, ambiguity, notices, manifest]
+    // The collision lists (ENG-R825 to ENG-R828, ENG-R863).
+    static let phrases = "phrases.txt"
+    static let collisionSupplement = "collision-supplement.txt"
+    static let boundaryParticles = "boundary-particles.txt"
+    static let englishFunctionWords = "english-function-words.txt"
+    static let englishLean = "english-lean-neutral.txt"
+    static let tailWords = "vi-tail-words.txt"
+    static let tailParticles = "vi-tail-particles.txt"
+    static let preGuard = "english-pre-guard.txt"
+    static let collisionLists = [
+        phrases, collisionSupplement, boundaryParticles, englishFunctionWords, englishLean, tailWords, tailParticles,
+        preGuard,
+    ]
+    static let all = [english, techAlways, techCodeOnly, attested, ambiguity] + collisionLists + [notices, manifest]
 }
 
 struct AttestedResult {
@@ -39,6 +52,10 @@ struct AttestedResult {
 }
 
 enum Builder {
+    /// The resource format (data/README.md). 2: the ambiguity table has the `run` and `viKind` columns and the
+    /// collision lists ship (15/11/2026).
+    static let resourceFormat = 2
+
     static func build(_ layout: Layout) throws -> BuildOutput {
         try InputManifest.verify(layout)
         let english = try EnglishLexicon.load(layout)
@@ -48,6 +65,9 @@ enum Builder {
         let attested = try attestedSyllables(layout)
         try checkGeneratedRows(
             ambiguity, english: english, techAlways: Set(techAlways), attested: attested.syllables)
+        let collision = try CollisionInputs.load(layout)
+        try checkCollisionInputs(
+            collision, layout: layout, english: english, techAlways: Set(techAlways), attested: attested.syllables)
 
         var output = BuildOutput()
         let lists: [(String, [String])] = [
@@ -65,6 +85,10 @@ enum Builder {
         output.resources.append(
             (ResourceName.ambiguity, Data(joinedLines([AmbiguityRow.header] + sortedRows.map(\.line)).utf8)))
         entries[ResourceName.ambiguity] = sortedRows.count
+        for (name, words) in collisionLists(collision) {
+            output.resources.append((name, Data(joinedLines(words).utf8)))
+            entries[name] = words.count
+        }
         output.resources.append((ResourceName.notices, Data(try notices(layout).utf8)))
 
         let stats: [(String, Int)] = [
@@ -83,6 +107,35 @@ enum Builder {
             ))
         output.derived.append((ResourceName.attestedCandidates, Data(candidatesTSV(attested.counts).utf8)))
         return output
+    }
+
+    /// The collision lists as resource files, in manifest order, each sorted by UTF-8 bytes.
+    static func collisionLists(_ inputs: CollisionInputs) -> [(String, [String])] {
+        [
+            (ResourceName.phrases, utf8Sorted(inputs.phrases)),
+            (ResourceName.collisionSupplement, utf8Sorted(inputs.supplement.map(\.raw))),
+            (ResourceName.boundaryParticles, utf8Sorted(inputs.boundaryParticles)),
+            (ResourceName.englishFunctionWords, utf8Sorted(inputs.functionWords)),
+            (ResourceName.englishLean, utf8Sorted(inputs.englishLean)),
+            (ResourceName.tailWords, utf8Sorted(inputs.tailWords.map(\.word))),
+            (ResourceName.tailParticles, utf8Sorted(inputs.tailWords.filter(\.isParticle).map(\.word))),
+            (ResourceName.preGuard, utf8Sorted(inputs.preGuard)),
+        ]
+    }
+
+    /// The build checks of the collision lists (ENG-R826, ENG-R863). The phrase check reads the committed prose
+    /// corpus when it exists (`check` regenerates the corpus and compares it, so CI always has it).
+    static func checkCollisionInputs(
+        _ inputs: CollisionInputs, layout: Layout, english: [String: Int], techAlways: Set<String>,
+        attested: Set<String>
+    ) throws {
+        let typer = EngineTyper()
+        try CollisionChecks.checkSupplement(
+            inputs.supplement, english: english, techAlways: techAlways, attested: attested, typer: typer)
+        if FileManager.default.fileExists(atPath: layout.corpusFile.path) {
+            try CollisionChecks.checkPhrases(
+                inputs.phrases, corpus: try FileIO.readUTF8(layout.corpusFile), typer: typer)
+        }
     }
 
     /// A generated `en` row (docs/decisions/0202) restates what rule L8 or the tech-always list does. When the
@@ -181,7 +234,7 @@ enum Builder {
         _ files: [(name: String, data: Data)], entries: [String: Int], stats: [(String, Int)], inputsDigest: String
     ) -> String {
         var lines = [
-            "{", "  \"format\": 1,", "  \"generator\": \"lexicon-builder\",",
+            "{", "  \"format\": \(resourceFormat),", "  \"generator\": \"lexicon-builder\",",
             "  \"inputsSHA256\": \"\(inputsDigest)\",", "  \"files\": [",
         ]
         for (index, file) in files.enumerated() {

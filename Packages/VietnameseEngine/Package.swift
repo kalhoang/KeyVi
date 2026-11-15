@@ -53,6 +53,13 @@ let package = Package(
             dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting", "lexicon-builder"],
             swiftSettings: strict
         ),
+        // QA-R68: the W11 collision corpus and its adversarial sets with their expected outputs (workstream
+        // W11-D fills it; spec/01-engine.md 13.11).
+        .testTarget(
+            name: "CollisionCorpusTests",
+            dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting"],
+            swiftSettings: strict
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

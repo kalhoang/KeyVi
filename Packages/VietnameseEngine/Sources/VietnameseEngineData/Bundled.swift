@@ -29,6 +29,10 @@ extension Resources {
             case invalidDecision
             case invalidStatus
             case invalidHeader
+            /// The `run` column of the ambiguity table is neither `en` nor `vi` (ENG-R827).
+            case invalidRun
+            /// The `viKind` column is not `particle`, `function` or `content` (ENG-R827).
+            case invalidReadingKind
         }
 
         public var description: String {
@@ -42,30 +46,44 @@ extension Resources {
     }
 
     /// Loads the resources shipped in this package's bundle (`Bundle.module`) and adds the host's
-    /// user lists (ENG-R860) and macros (section 11).
+    /// user lists (ENG-R860), macros (section 11) and learned collision memory (ENG-R865).
     public static func bundled(
-        userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty
+        userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
+        collisionMemory: CollisionMemorySnapshot = .empty
     ) throws -> Resources {
         guard let directory = bundledDirectory else { throw LoadError.missingResource("Resources") }
         return try load(
-            from: directory, userKeepRaw: userKeepRaw, userKeepVietnamese: userKeepVietnamese, macros: macros)
+            from: directory, userKeepRaw: userKeepRaw, userKeepVietnamese: userKeepVietnamese, macros: macros,
+            collisionMemory: collisionMemory)
     }
 
     /// Loads resource files in the bundled format from `directory` (manifest.json plus the lists).
     /// Used by `bundled` and by tests that need deliberately broken or tiny resource sets.
     public static func load(
-        from directory: URL, userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty
+        from directory: URL, userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
+        collisionMemory: CollisionMemorySnapshot = .empty
     ) throws -> Resources {
         let files = try ResourceDirectory(directory)
+        let ambiguity = try files.ambiguityTable()
+        let tailWords = try files.wordList(.tailWords)
+        let collision = CollisionLists(
+            phrases: PhraseList(try files.wordList(.phrases)),
+            supplement: WordSet(try files.wordList(.collisionSupplement)),
+            boundaryParticles: WordSet(try files.wordList(.boundaryParticles)),
+            runExempt: WordSet(ambiguity.runExempt), readingKinds: ambiguity.readingKinds,
+            englishFunctionWords: WordSet(try files.wordList(.englishFunctionWords)),
+            englishLean: WordSet(try files.wordList(.englishLean)), tailWords: WordSet(tailWords),
+            tailParticles: WordSet(try files.wordList(.tailParticles)),
+            preGuard: WordSet(try files.wordList(.preGuard)))
         return Resources(
             english: WordSet(try files.wordList(.english)),
             techAlways: WordSet(try files.wordList(.techAlways)),
             techCodeOnly: WordSet(try files.wordList(.techCodeOnly)),
             attestedSyllables: WordSet(try files.wordList(.attested)),
-            ambiguity: try files.ambiguityTable(),
+            ambiguity: ambiguity.decisions,
             userKeepRaw: userKeepRaw,
             userKeepVietnamese: userKeepVietnamese,
-            macros: macros)
+            macros: macros, collision: collision, collisionMemory: collisionMemory)
     }
 
     /// The notices the host must show in its acknowledgements (ENG-R811): SCOWL's copyright and

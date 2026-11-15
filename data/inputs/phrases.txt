@@ -1,0 +1,337 @@
+# phrases.txt: English multiword expressions of 2 to 4 words that contain a word that is both English and
+# Vietnamese (spec/01-engine.md 8.2, rule L9b and revision rule RV1, ENG-R826). When the tokens before a
+# collision word and the word itself, or the word after it, start one of these phrases, the collision word
+# is restored: `such as`, `has been`, the second `as` of `as soon as`, `tricky as hell`.
+# Written by the project from general English usage; the product owner reviews the list before v1.
+# Left out on purpose: `its own`, `has to`, `how to` (their Vietnamese readings `ít ơn`, `há to`, `hơ to` are
+# plausible Vietnamese) and `as of` (product owner, 15/11/2026: `Hết á of course` must keep `á`).
+# Format: one phrase per line, lowercase words a-z separated by one space. Lines starting with # are comments.
+# `lexicon-builder build` fails when the Vietnamese reading of a phrase occurs in data/corpus/prose-vi.txt.
+
+a lot of
+a must
+about us
+air conditioner
+air pods
+all of us
+all the best
+all this
+anything goes
+as a result
+as always
+as bad
+as described
+as discussed
+as early
+as easy
+as expected
+as far
+as far as
+as fast
+as follows
+as for
+as good
+as heck
+as hell
+as if
+as long
+as long as
+as many
+as mentioned
+as much
+as much as
+as needed
+as often
+as opposed
+as per
+as planned
+as possible
+as quickly
+as requested
+as shown
+as simple
+as soon
+as soon as
+as soon as possible
+as such
+as though
+as usual
+as well
+as well as
+at all costs
+at best
+at last
+at least
+at max
+at most
+at rest
+at sixes and sevens
+at worst
+away from
+bad hair day
+because of
+been there
+been there done that
+best friend
+best of luck
+best practice
+best regards
+black box
+blog post
+boost up
+born in
+break down
+bus stop
+by bus
+by car
+by now
+by the way
+calm down
+car park
+car wash
+chat room
+check box
+check list
+come here
+contact us
+cost effective
+cost of
+dark theme
+data bus
+data sets
+days ago
+did not
+did you
+do your best
+does it
+does not
+down to
+either or
+even if
+factory reset
+far away
+for now
+for us
+from here
+from now on
+get lost
+give away
+go away
+go wrong
+goes on
+google docs
+had been
+hair cut
+has been
+has got
+have been
+have seen
+her own
+here and there
+here goes
+here is
+here you go
+his own
+host name
+how about
+how are you
+how come
+how is
+how long
+how many
+how much
+hows it going
+i did
+i see
+i was
+if any
+if not
+if possible
+if so
+in days
+in front of
+in terms of
+in the air
+in the past
+in the queue
+in turn
+income tax
+instead of
+is it
+is not
+is that
+is there
+is this
+it does
+it goes
+it has
+it is
+it says
+it seems
+it was
+its fine
+its ok
+join us
+just now
+kind of
+know how
+known as
+last but not least
+last night
+last time
+last week
+last year
+let us
+lets go
+lie low
+like this
+list of
+living room
+local host
+long term
+lost and found
+lost in
+lots of
+low cost
+low key
+low level
+mailing list
+major in
+major update
+make the most of
+max level
+max out
+me too
+meeting room
+message queue
+mix and match
+mix up
+more or less
+most likely
+most of
+most people
+must be
+must have
+neither nor
+never seen
+no sir
+nor do i
+now and then
+now that
+of course
+of his
+on air
+on my own
+one of
+one of these
+one of those
+one of us
+only if
+or not
+or so
+out of
+out of the box
+out there
+over here
+over there
+own up
+past due
+past tense
+per cent
+per day
+per month
+post it
+post office
+read the docs
+reset password
+rest assured
+rest of
+right away
+right now
+room for
+run test
+same as
+see also
+see you
+see you soon
+seem to
+seems like
+seems to
+send a gif
+sex education
+short term
+shut down
+six months
+slow down
+so as to
+soon as
+sooner or later
+sort of
+such as
+take a rest
+take away
+tax free
+terms and conditions
+test case
+test drive
+that is
+that was
+thats it
+thats right
+the best
+the docs
+the last
+the most
+the rest
+the rest of
+the worst
+theme song
+there are
+there is
+there was
+there you go
+these are
+these days
+this is
+this morning
+this one
+this time
+this way
+this week
+those are
+those who
+thus far
+to do list
+to her
+toast message
+too late
+too many
+too much
+trade war
+trust in
+trust me
+turn off
+turn on
+turn out
+unit test
+until now
+up and down
+ur welcome
+wait and see
+was it
+was not
+what did you
+what does
+what if
+what is
+who says
+wish list
+with her
+with us
+world war
+worst case
+wrong with
+yes sir
+you too
+your own
+your turn
