@@ -17,7 +17,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Compatibility script for testing an app in under 3 minutes (`compat/SCRIPT.md`).
 - Cốc Cốc gets the browser hint when a password field turns on Secure Input: the menu suggests clicking outside the password field or switching tabs, as it does for Safari, Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
 - Pressing z (Telex) or 0 (VNI) a second time removes the letter marks too: daauszz gives dau.
-- Words that are both English and Vietnamese, such as as/á, are decided from the words around them, and the previous word can be corrected when the next word shows which language you are writing.
+- Words that are both English and Vietnamese, such as as/á or car/cả, are decided from the words around them. When the next word shows which language you are writing, KeyVi also fixes the word before it (tricky á hell becomes tricky as hell); press Escape right after to undo. Settings > Typing > Advanced options has a switch for it, and app rules turn it off in Terminal and code editors.
+- KeyVi learns which reading you choose for those words, in every app, from your corrections and from the words you leave as typed. Settings > Typing has a switch for it and a list where you can review and forget learned words; the list stays on this Mac.
 - Antigravity is handled like Visual Studio Code and its other forks: KeyVi types with its code editor settings there, and Escape keeps its editor meaning instead of restoring the last word.
 - The Diagnostics window explains when an app keeps turning Secure Input on and off while you type, which can keep some keys from reaching KeyVi, and suggests how to find that app. The copied report carries the same explanation.
 

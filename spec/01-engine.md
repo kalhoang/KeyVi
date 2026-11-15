@@ -632,7 +632,7 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 | ENG-R873 | Vietnamese prose corpus (13.4) typed by three simulated typists (canonical order, tone at end, free order): at least 99.95 % of tokens identical to the source; every difference attributable to an `en` row. |
 | ENG-R874 | VNI: words without digits are never changed (100 %). |
 | ENG-R875 | Zero crashes in fuzzing (13.6). |
-| ENG-R876 | On the W11 collision corpus (13.11) the collision rules make no wrong revision and change no non-collision token; English-intent collisions at least 75 %, Vietnamese-intent at least 99 %; on the W11 adversarial sets no wrong revision; on the prose corpus (13.4) no token changes and no revision. |
+| ENG-R876 | On the W11 collision corpus (13.11) the collision rules make no wrong revision and change no non-collision token; English-intent collisions at least 75 %, Vietnamese-intent at least 99 % with the tone typed at the end of the word (98.8 % with the tone typed after the vowel, 13.11); on the W11 adversarial sets no wrong revision; on the prose corpus (13.4) no token changes and no revision. |
 | ENG-R877 | A memory fed only by silent acceptance never changes a decision; on held-out sentences the memory never lowers Vietnamese-intent accuracy by more than 1.5 points. |
 
 ---
