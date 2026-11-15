@@ -13,10 +13,12 @@ import ShellCore
 extension AppEnvironment {
     /// Full onboarding (`startAt == nil`), the resume and "permission lost" variants at the permission screen
     /// (PRD-R41, PRD-R42). One window at a time; permissions are polled every second while it is open (PLT-R711).
-    func presentOnboarding(startAt screen: OnboardingScreen?) {
+    /// `activate == false` (the grant lost while the app runs, PRD-R42) shows the window in front without
+    /// activating the app, so the keyboard focus stays where the user types (PRD-R44).
+    func presentOnboarding(startAt screen: OnboardingScreen?, activate: Bool = true) {
         if let onboarding {
             onboarding.showWindow(nil)
-            NSApp.bringToFront()
+            if activate { NSApp.bringToFront() } else { onboarding.window?.orderFrontRegardless() }
             return
         }
         let inputs = onboardingInputs()
@@ -28,7 +30,18 @@ extension AppEnvironment {
         onboarding = controller
         host.setPermissionFastPolling(true)
         controller.showWindow(nil)
-        NSApp.bringToFront()
+        if activate { NSApp.bringToFront() } else { controller.window?.orderFrontRegardless() }
+    }
+
+    /// PRD-R42 (decision 0005, 15/11/2026): a grant lost while the app runs, after onboarding was completed,
+    /// shows the permission screen once per loss, next to the icon's warning badge, without taking the focus.
+    func showPermissionScreenIfLost(_ status: PermissionStatus) {
+        let wasReady = lastPermissionHealth == .ready
+        lastPermissionHealth = status.health
+        guard wasReady, status.health != .ready, onboarding == nil,
+            settings.user.onboarding.completedVersion != nil
+        else { return }
+        presentOnboarding(startAt: .permission, activate: false)
     }
 
     /// Read on presentation, on every screen change, on "Kiểm tra lại" (PRD-R40 screen 5) and when the
@@ -90,39 +103,46 @@ extension AppEnvironment {
 extension AppEnvironment: OnboardingActions {
     /// PLT-R701, PLT-R704: the Accessibility pane (Device Control and Data Access on macOS 27) through the deep
     /// link of SystemPanes.json; the system prompt adds the app to the list so the user only flips the switch.
+    /// The TCC calls run off the main thread, which never waits for them (PLT-R730).
     func openPermissionPane() {
-        SystemPermissionProbe().promptForAccessibility()
+        Self.permissionRequests.async { SystemPermissionProbe().promptForAccessibility() }
         openPane(.accessibility)
     }
 
     /// PLT-R702: only when the tap needs Input Monitoring; the primary button of screen 2 once it is the first
     /// permission still missing. A repeated request returns the earlier answer without a new prompt.
     func openInputMonitoringPane() {
-        _ = SystemPermissionProbe().requestListenEventAccess()
+        Self.permissionRequests.async { _ = SystemPermissionProbe().requestListenEventAccess() }
         openPane(.inputMonitoring)
     }
 
     /// PLT-R702: called once when screen 2 first shows Input Monitoring as needed, so macOS lists the app and shows
     /// its prompt before the user goes looking for the switch.
     func requestInputMonitoringAccess() {
-        _ = SystemPermissionProbe().requestListenEventAccess()
+        Self.permissionRequests.async { _ = SystemPermissionProbe().requestListenEventAccess() }
     }
 
     /// PLT-R740: after the user confirmed in the sheet; never automatic, never without the own bundle ID. After a
     /// reset macOS is asked to prompt again, which adds the app back to the list; a failure is logged and the
-    /// sheet says so (PRD-R43).
-    func resetPermission() -> PermissionReset.Outcome {
-        let outcome = PermissionReset.run(
-            TCCPermissionResetter(ownBundleIdentifier: brand.bundleIdentifier),
-            bundleIdentifier: brand.bundleIdentifier)
-        switch outcome {
-        case .reset: SystemPermissionProbe().promptForAccessibility()
-        case .failed:
-            diagnostics.logger.log(
-                .note("Accessibility permission reset failed", category: .permissions), level: .error)
+    /// sheet says so (PRD-R43). `tccutil` and the prompt run off the main thread; `completion` runs on main.
+    func resetPermission(completion: @escaping @MainActor @Sendable (PermissionReset.Outcome) -> Void) {
+        let bundleIdentifier = brand.bundleIdentifier
+        let logger = diagnostics.logger
+        Self.permissionRequests.async {
+            let outcome = PermissionReset.run(
+                TCCPermissionResetter(ownBundleIdentifier: bundleIdentifier), bundleIdentifier: bundleIdentifier)
+            switch outcome {
+            case .reset: SystemPermissionProbe().promptForAccessibility()
+            case .failed:
+                logger.log(.note("Accessibility permission reset failed", category: .permissions), level: .error)
+            }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    _ = self.host.refreshPermissions()
+                    completion(outcome)
+                }
+            }
         }
-        _ = host.refreshPermissions()
-        return outcome
     }
 
     func relaunch() { relaunchSelf() }

@@ -17,7 +17,8 @@ protocol OnboardingActions: AnyObject {
     func openInputMonitoringPane()  // PLT-R702, only when macOS demands Input Monitoring
     /// PLT-R702: `CGRequestListenEventAccess()` once, when screen 2 first shows Input Monitoring as needed.
     func requestInputMonitoringAccess()
-    func resetPermission() -> PermissionReset.Outcome  // PLT-R740, after confirmation
+    /// PLT-R740, after confirmation; runs off the main thread and answers on main.
+    func resetPermission(completion: @escaping @MainActor @Sendable (PermissionReset.Outcome) -> Void)
     func relaunch()  // PLT-R712
     func setTypingMethod(_ method: TypingMethod)
     /// PRD-R40 screen 4 "Đổi phím chuyển", recorded inline: the tap's hotkeys are suspended while the recorder
