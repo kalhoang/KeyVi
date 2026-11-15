@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.5",
+  "rulesetVersion": "2026.11.6",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -467,7 +467,7 @@
     {
       "id": "launcher.spotlight",
       "summary": "Spotlight: overlay panel with inline completion; Escape keeps closing it",
-      "match": { "bundleIds": ["com.apple.Spotlight"] },
+      "match": { "bundleIds": ["com.apple.Spotlight", "com.apple.campo"] },
       "action": {
         "strategy": "backspaceReplace",
         "params": { "inlineCompletion": "axSelection" },
@@ -475,15 +475,16 @@
         "features": { "restoreHotkey": false, "lookaheadRevision": false }
       },
       "provenance": {
-        "reason": "Spotlight is a non-activating panel with inline completion: 'books' gave 'boôooks' and 'cố' gave 'coố'. On macOS 27.2 the product owner saw 'tex' give 'teẽ', 'vieejt' give 'vieêệt' and, on the second opening, Escape restore the word (2026-11-14): opening and closing Spotlight posts no app activation, so this rule did not apply until a key after a pause revalidated the focus. PLT-R389 now revalidates after Command+Space, Escape, Return, Tab and clicks, and on every key while this rule applies.",
+        "reason": "Spotlight is a non-activating panel with inline completion: 'books' gave 'boôooks' and 'cố' gave 'coố'. On macOS 27.2 the product owner saw 'tex' give 'teẽ', 'vieejt' give 'vieêệt' and, on the second opening, Escape restore the word (2026-11-14), and again after the PLT-R389 fix ('teẽext', 'vieêệt', Escape giving 'vieệeejt', retest of 2026-11-15). On macOS 27.2 Command+Space opens the search panel of Siri AI.app (/System/Applications/Siri AI.app: CFBundleIdentifier com.apple.campo, LSUIElement true, LSMinimumSystemVersion 27.2, URL scheme spotlight; read from its Info.plist on 2026-11-15), whose field is AXTextField with subrole AXSearchField; no com.apple.Spotlight process runs. The dev trace of 2026-11-15 found that field 66 ms after Command+Space with no rule, so this rule never applied there: the edits ran without axSelection and Escape stayed the restore key. PLT-R389 (revalidation after Command+Space, Escape, Return, Tab, clicks and on every key while this rule applies) still makes it apply on every opening.",
         "evidence": [
           { "type": "scenario", "ref": "compat/launchers" },
           { "type": "scenario", "ref": "compat/scenarios/launcher.spotlight.reopen.json" },
           { "type": "scenario", "ref": "compat/scenarios/testhost.panel.inlineCompletionTwice.json" },
-          { "type": "report", "ref": "product owner manual tests T5.8 and items 7 and 9, 2026-11-14" }
+          { "type": "report", "ref": "product owner manual tests T5.8 and items 7 and 9, 2026-11-14" },
+          { "type": "report", "ref": "dev trace 2026-11-15 16:37 to 16:38 (com.apple.campo, rule -), retest of beta 2 items 7 and 9" }
         ],
         "tested": [{ "app": "Spotlight", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "axSelection stays: the reports show a completion after the caret absorbing exactly one deletion per edit, which is what axSelection removes first, and the stale focus snapshot explains why it was not used. Public descriptions of the redesigned Spotlight (Apple's macOS Tahoe 26 feature list; Spotlight articles of December 2025) say it autocompletes the query inline with the top hit; none says how Accessibility exposes that completion. VERIFY on macOS 27.2 that the redesigned field exposes that completion as AXSelectedTextRange (docs/runbooks/integration-suite.md section 10.6, step 4); if it does not, axSelectionThenPlaceholder is the fallback, which needs its 1,000-edit test first (PLT-R422). Also VERIFY macOS 26. The tested entry is a placeholder until the scenario passes.",
+        "notes": "com.apple.Spotlight stays listed for macOS 26 and earlier and for any Spotlight surface macOS 27.2 still opens in that process; the rule also applies to the other surfaces of Siri AI.app (its chat input), where Escape closes the panel too. axSelection stays: the reports show a completion after the caret absorbing exactly one deletion per edit, which is what axSelection removes first, and the missing bundle explains why it was not used. The dev trace's job lines say whether that read found a selection (completion selected, none or unreadable, since 2026-11-15): with this rule applied, a delete-1 job that posts 4 events and reads none while letters still double means AX does not expose the completion, and placeholder (after its PLT-R422 test) or a pacing setting is next (docs/runbooks/integration-suite.md section 10.6). Public descriptions of the redesigned Spotlight (Apple's macOS Tahoe 26 feature list; Spotlight articles of December 2025) say it autocompletes the query inline with the top hit; none says how Accessibility exposes that completion. VERIFY on macOS 27.2 that the redesigned field exposes that completion as AXSelectedTextRange (docs/runbooks/integration-suite.md section 10.6, step 4); if it does not, axSelectionThenPlaceholder is the fallback, which needs its 1,000-edit test first (PLT-R422). Also VERIFY macOS 26. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },

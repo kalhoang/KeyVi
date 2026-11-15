@@ -424,8 +424,8 @@ macOS 27.2, none of which the suite covered:
 
 | Report | Root cause (from the code, with fakes) | Fix | Unit tests |
 |---|---|---|---|
-| Spotlight: `tex` gave `teẽ`, then `xt` gave `teẽext`; `vieejt` gave `vieêệt` (item 7) | Every first deletion was absorbed by Spotlight's selected inline completion, so the edits ran with the previous app's rule (no `axSelection`). Spotlight is a non-activating panel: Command+Space and Escape post no activation, and nothing made `FocusCore` read the system-wide focus before the first keys unless the pause before them reached the 500 ms of PLT-R382 | PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click asks for reads 25 to 400 ms later, the next key for one more, and every key reads while an overlay rule applies; these reads ask for the element's attributes only when the focused app or element moved | `FocusTriggerSettleTests`, `FocusTriggerTests` |
-| T5.8: on the second opening, Escape gave `vieêệeejt` (item 9) | The same stale snapshot: the previous app's rule has the restore hotkey, so Escape restored `việt` through the absorbed first deletion | The same; `launcher.spotlight` (`restoreHotkey: false`) applies on every opening and stops when Spotlight closes | `FocusTriggerSettleTests.spotlightAppliesOnEveryOpenAndStopsOnCloseT58` |
+| Spotlight: `tex` gave `teẽ`, then `xt` gave `teẽext`; `vieejt` gave `vieêệt` (item 7) | Every first deletion was absorbed by Spotlight's field, so the edits ran without `launcher.spotlight` (no `axSelection`). *Correction of 15/11/2026 (retest of beta 2, dev trace 16:37 to 16:38): on macOS 27.2 the panel belongs to the Siri app (`com.apple.campo`), found 66 ms after Command+Space with a fresh snapshot and no rule (`rule -`), because the rule listed only `com.apple.Spotlight`; it now lists both. The stale snapshot below was real but not the whole cause.* Spotlight is a non-activating panel: Command+Space and Escape post no activation, and nothing made `FocusCore` read the system-wide focus before the first keys unless the pause before them reached the 500 ms of PLT-R382 | PLT-R389: a Command or Control shortcut, Escape, Return, Tab or a click asks for reads 25 to 400 ms later, the next key for one more, and every key reads while an overlay rule applies; these reads ask for the element's attributes only when the focused app or element moved | `FocusTriggerSettleTests`, `FocusTriggerTests` |
+| T5.8: on the second opening, Escape gave `vieêệeejt` (item 9) | The same stale snapshot: the previous app's rule has the restore hotkey, so Escape restored `việt` through the absorbed first deletion. *Correction of 15/11/2026: on macOS 27.2 the default decision of the unlisted `com.apple.campo` kept the restore key (the retest gave `vieệeejt`)* | The same; `launcher.spotlight` (`restoreHotkey: false`) applies on every opening and stops when Spotlight closes | `FocusTriggerSettleTests.spotlightAppliesOnEveryOpenAndStopsOnCloseT58` |
 | T5.5 step 3: Command+S, then `dduongwf` gave `ddường` (item 8) | The first `d` went into the sheet's name field on the document's snapshot; the field change was published after it (the PLT-R382 read that very key asked for) and PLT-R340 made it a hard boundary | PLT-R340 amendment: same process, readable element, observed within 500 ms of the token's last key: the word is kept; the first job checks the field's text before the caret (`EditJob.verifyLateFocus`) | `LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests` |
 
 New TestHost scenarios (the suite goes from 40 to 44):
@@ -443,7 +443,8 @@ and that the word survives the inline completion twice, not that a panel of anot
 notification. That part is the unit tests' (fake AX posts nothing) and the Spotlight check below.
 
 `launcher.spotlight.reopen` (runner only, `targetBundleId` Spotlight) types `vieejt`, Escape twice, then opens Spotlight
-again and types `tex` then `xt`. Its `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
+again and types `tex` then `xt`; `launcher.spotlight.campo` and `launcher.spotlight.campo.reopen` do the same with
+`targetBundleId` `com.apple.campo`, the panel of macOS 27.2. Its `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
 completion that runs to its end (`AXReadbackText`): Spotlight with history shows `text` as `TextEdit` with `Edit`
 selected, which is the completion the `axSelection` handling removes, not text that was typed.
 
@@ -457,9 +458,13 @@ Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM 
    possible (each run is a fresh clone), so the check is done by hand in a clone of `{{app-slug}}-dev` after the full
    run: with the test build running, open Spotlight with Command+Space, type `vieejt` and `tex` then `xt`, press
    Escape, open it again and repeat; expect `việt`, `text` and an Escape that clears or closes Spotlight each time; then
-   read the field with `ax-dump --bundle com.apple.Spotlight --windows` while a suggestion is shown, to confirm that
-   the redesigned field exposes the selected completion as `AXSelectedTextRange` (the `axSelection` handling of
-   `launcher.spotlight` relies on it).
+   read the field with `ax-dump --bundle com.apple.campo --windows` (macOS 27.2; `com.apple.Spotlight` before it)
+   while a suggestion is shown, to confirm that the redesigned field exposes the selected completion as
+   `AXSelectedTextRange` (the `axSelection` handling of `launcher.spotlight` relies on it). The dev trace answers the
+   same question on any Mac: since 15/11/2026 each job line of a rule with `axSelection` ends with `completion
+   selected`, `completion none` or `completion unreadable`. Letters that still double with `completion none` mean AX
+   does not expose the completion (next: `placeholder` after its PLT-R422 test, or a pacing setting); with
+   `completion unreadable`, `axSelectionThenPlaceholder` would cover it.
 
 Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
 

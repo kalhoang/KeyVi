@@ -134,7 +134,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R386 | requireTextFocus gating | `HostDecisionMapper`, `HostStateResolver` | U, C (design apps) | W1-E, W1-F1; Pa | **Pa** |
 | PLT-R387 | Secure fields always pass through | `FocusTracker`, `HostStateResolver` | U, I (password field) | W1-E, W1-F1; W2-E2 |  |
 | PLT-R388 | Snapshot via one atomic reference | `RealtimeSupport/SnapshotCell.swift`, ADR 0303 | U, TSan | skeleton (done); W1-A |  |
-| PLT-R389 | Revalidation after shortcuts, Escape, Return, Tab, clicks and in overlays; moved-only reads | `KeyPipeline` (`KeyPipeline+Focus.swift`), `FocusTracker` (`FocusCore+Settle.swift`) | U (fake AX), C (`testhost.panel.*`, `testhost.sheet.commandS`, `launcher.spotlight.reopen`) | W8-A; Pa | **Pa** |
+| PLT-R389 | Revalidation after shortcuts, Escape, Return, Tab, clicks and in overlays; moved-only reads; `launcher.spotlight` lists the Siri app of macOS 27.2 (amended 15/11/2026) | `KeyPipeline` (`KeyPipeline+Focus.swift`), `FocusTracker` (`FocusCore+Settle.swift`), `compat/rules.json` | U (fake AX; `FocusSpotlightSeededRulesTests` with the shipped rules; `SeededDataTests`, `MatrixTests`), C (`testhost.panel.*`, `testhost.sheet.commandS`, `launcher.spotlight.reopen`, `launcher.spotlight.campo{,.reopen}`) | W8-A, W17-B; Pa | **Pa** |
 | PLT-R390 | Per-app memory keyed by focus owner, precedence | `AppModeMemory` | U | W1-E |  |
 | PLT-R391 | Mode in effect before the next key | `FocusTracker`, `KeyPipeline` toggle sequence | P | W1-E, W1-F1 |  |
 | PLT-R392 | LRU 1,000, writes debounced 5 s, bundle and mode only | `AppModeMemory`, `SettingsStore.recordAppModes` | U | W1-E, W1-B |  |
@@ -160,7 +160,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R408 | Timing parameters, caps, split | strategies, `ResolvedParams` | U | W1-D, W1-C |  |
 | PLT-R409 | Pacing on inject thread with absolute deadlines | `InjectionWorker`, `MachClock.sleep` | U | W1-D |  |
 | PLT-R410 | Verification modes echo/axReadback/human | `InjectionWorker` | U, I | W1-D; W2-C (human) |  |
-| PLT-R420 | Inline completion: axSelection | strategies | U, C | W1-D; W2-E2 |  |
+| PLT-R420 | Inline completion: axSelection; the read's result on the dev trace's job line (15/11/2026) | strategies (`CompletionPrefix`, `CompletionRead`) | U (`InlineCompletionTests`, `WorkerDevRecorderTests.theInlineCompletionReadIsRecordedPLTR420`), C | W1-D; W2-E2; W17-B |  |
 | PLT-R421 | Inline completion: placeholder | strategies | U, C | W1-D; W2-E2 |  |
 | PLT-R422 | Placeholder gate: 1,000-edit test, no broad rules | `RulesLinter`, compat scenario | L, C | W1-C; W2-E2 |  |
 | PLT-R460 | paste only opt-in or long text | strategies, rules `requiresUserOptIn` | U | W1-D, W1-C |  |

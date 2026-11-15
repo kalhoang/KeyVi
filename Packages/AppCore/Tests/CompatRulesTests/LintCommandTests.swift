@@ -25,7 +25,7 @@ import Testing
     @Test func seededFilesPass() {
         let outcome = run(seededArguments)
         #expect(outcome.exitCode == CompatLintCommand.exitClean, "\(outcome.output)")
-        #expect(outcome.output.contains("compat-lint: 23 rule(s), 93 matrix row(s), 0 error(s)"))
+        #expect(outcome.output.contains("compat-lint: 23 rule(s), 94 matrix row(s), 0 error(s)"))
         #expect(outcome.output.contains("warning: unverifiedTestedEntry [rule terminal.default]"))
     }
 

@@ -21,7 +21,9 @@ import Testing
         #expect(!decision.features.lookaheadRevision)
     }
 
-    @Test(arguments: ["com.apple.Spotlight", "com.raycast.macos", "com.runningwithcrayons.Alfred"])
+    @Test(arguments: [
+        "com.apple.Spotlight", "com.apple.campo", "com.raycast.macos", "com.runningwithcrayons.Alfred",
+    ])
     func revisionsAreOffInLaunchers(_ bundle: String) throws {
         let decision = try Build.seededRuleSet().resolve(Build.context(bundle: bundle))
         #expect(!decision.features.lookaheadRevision && !decision.features.restoreHotkey)

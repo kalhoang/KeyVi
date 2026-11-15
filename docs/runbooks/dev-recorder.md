@@ -98,7 +98,8 @@ or en dash for hyphens, a period for the first of two spaces); the field then be
 `show N` prints the finding's header, then every line of the window in time order with the time relative to the
 finding; `>` marks the finding's own line. Keys print as in the PLT-R905 review window (`key keyDown 0x33 - -
 passed`), engine steps with the edit and the token after it, then jobs (`job 12 compose backspaceReplace executed
-... 4 events 3.1 ms total`), fallbacks, boundaries (`boundary focusChanged / focusChanged`), focus snapshots (bundle,
+... 4 events 3.1 ms total`; a job of a rule that reads a selected inline completion through AX, PLT-R420, adds
+`completion selected`, `completion none` or `completion unreadable` after the events, since 15/11/2026), fallbacks, boundaries (`boundary focusChanged / focusChanged`), focus snapshots (bundle,
 role, rule, strategy, requireTextFocus, mode), readbacks with the field text, markers, settings and gaps.
 
 Typical readings: a `resetWithOpenToken` just before the letters of a word went missing points at a focus or
@@ -135,7 +136,7 @@ opens starts with a `file` line, the settings and the focus in effect, so every 
 | `key` | `ev` (keyDown, keyUp, flagsChanged, mouseDown), `kc` key code, `fl` CGEventFlags, `ch` layout character, `out` (passed, held, consumedForEdit, consumedAsHotkey, consumedPairedKeyUp) |
 | `engine` | `act` (passThrough, edit, editThenPassThrough), `del`, `ins`, `comp` token after the key, `dec` commit decision, `rev` revision reason when the commit also revised the previous word (`phrase`, `particleTail`, `nextEnglish`, `nextVietnamese`; PLT-R357). Words of the learned collision memory are never recorded |
 | `boundary` | `reason` (the engine's reset reason) and `job` (the boundary job reason); both are `unseenInput` for a keyUp the tap never saw go down (PLT-R397A) |
-| `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry, revision), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution) |
+| `job` | `seq`, `gen`, `kind` (compose, backspaceRecompose, restore, macro, reentry, revision), `strat`, `out`, `delN`, `insN`, `posted`, `totalUs` (from the key), `runUs` (execution), `compl` (only when the job read a selected inline completion through AX, PLT-R420: `selected`, `none` or `unreadable`; since 15/11/2026, an optional field, so the format version stays) |
 | `fallback` | `seq`, `from`, `to`, `reason` |
 | `readback` | `reason` (backspaceEdit, commit, marker), `status` (ok, skippedRule, skippedSecure, skippedNoField, skippedBusy, unavailable, timedOut, failed), `text`, `selLoc`, `selLen`, `bundle`, `rule`; from version 2: `durUs` (the AX calls, timeouts included; absent when none was made), `maxCallUs` (the longest single AX call of the read), `waitUs` (from the first trigger to the read), `idleUs` (time since the last key, click or job when the read started), `overlap` (present and true when a key or click went down while the read was in flight). `t` is when the read started |
 | `marker` | `src` (chord, menu) |

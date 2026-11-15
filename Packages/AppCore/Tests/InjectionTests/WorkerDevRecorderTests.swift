@@ -74,6 +74,38 @@ private func devRecords(_ capture: CaptureController) -> [DevTraceRecord] {
         #expect(job.outcome.description == "executedWithFallback")
     }
 
+    /// Retest of 15/11/2026, items 7 and 9: Spotlight's field on macOS 27.2 lost one deletion per edit, and the
+    /// trace could not tell whether AX reported no selection or could not answer. A job whose plan reads the inline
+    /// completion through AX (PLT-R420) records what the read found; other jobs record nothing.
+    @Test func theInlineCompletionReadIsRecordedPLTR420() throws {
+        func completionLabel(
+            _ field: SimulatedTextField, ax: FakeFocusedFieldAccess.Behaviour = .normal,
+            mode: InlineCompletionMode = .axSelection
+        ) throws -> String? {
+            let clock = ManualClock()
+            let capture = try recordingCapture(clock: clock)
+            let rig = WorkerRig(field: field, capture: capture)
+            rig.fieldAccess.setBehaviour(ax)
+            let plan = Fixture.plan(parameters: Fixture.parameters { $0.inlineCompletion = mode })
+            rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "á", plan: plan) }
+            rig.run()
+            guard case .job(let job)? = devRecords(capture).last else {
+                Issue.record("a job record")
+                return nil
+            }
+            return job.completion?.description
+        }
+        let suggesting = SimulatedTextField(behaviour: .inlineCompletion(suggestions: ["amazon"]))
+        let typed = InjectionFieldWiring.keyDown("a", receivedAt: Fixture.start)
+        suggesting.apply(typed, layout: InjectionTestLayouts.qwerty())
+        #expect(try completionLabel(suggesting) == "selected")
+        #expect(try completionLabel(SimulatedTextField(text: "a")) == "none")
+        #expect(try completionLabel(SimulatedTextField(text: "a"), ax: .timeout) == "unreadable")
+        #expect(try completionLabel(SimulatedTextField(text: "a"), ax: .unavailable) == "unreadable")
+        #expect(try completionLabel(SimulatedTextField(text: "a"), mode: .none) == nil)
+        #expect(try completionLabel(SimulatedTextField(text: "a"), mode: .placeholder) == nil)
+    }
+
     @Test func nothingIsRecordedWhileTheRecorderIsPaused() throws {
         let clock = ManualClock()
         let capture = try recordingCapture(clock: clock)

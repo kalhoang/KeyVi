@@ -21,7 +21,8 @@ extension WorkerCore {
                     strategy: job.plan.strategy, outcome: outcome.captureLabel, deleteCount: job.deleteCount,
                     insertCount: job.insertion.count, eventsPosted: context?.eventsPosted ?? 0,
                     totalMicroseconds: now.nanoseconds(since: job.createdAt) / 1_000,
-                    runMicroseconds: now.nanoseconds(since: started) / 1_000, at: now)))
+                    runMicroseconds: now.nanoseconds(since: started) / 1_000, at: now,
+                    completion: context?.completion)))
     }
 
     func recordDevFallback(_ job: EditJob, from: InjectionStrategy, to: InjectionStrategy, reason: FallbackReason) {
