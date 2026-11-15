@@ -195,6 +195,41 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(fixture.popJobs().compactMap(\.edit).isEmpty)  // "a" starts a new word
     }
 
+    /// Retest of 15/11/2026, item 24 (Dokomo): `duw` shows "dư", Command+Tab to another app and back, then two
+    /// keys. The Command chord and the return through another process both end the word (PLT-R340; the late focus
+    /// exception needs the same process within 500 ms), so the keys start a new word: `x a` pass as typed and give
+    /// "dưxa" on screen, `a s` compose "á" from their own keys only. No job ever deletes into the old word.
+    @Test(arguments: [([Key.x, Key.a], 0), ([Key.a, Key.s], 1)])
+    func aCommandTabRoundTripEndsTheWordPLTR340(keys: [UInt16], edits: Int) throws {
+        let fixture = PipelineFixture()
+        for key in [Key.d, Key.u, Key.w] {
+            fixture.clock.advance(byMicroseconds: 120_000)
+            fixture.press(key)
+            fixture.completeJobs()
+        }
+        _ = fixture.popJobs()
+        fixture.clock.advance(byMicroseconds: 300_000)
+        fixture.flags(Key.command, Flag.command)
+        fixture.press(Key.tab, flags: Flag.command)  // Command+Tab: a Command chord
+        fixture.flags(Key.command, 0)
+        publishNewElement(fixture, generation: 2, pid: 300, after: 130_000)  // the other app
+        fixture.clock.advance(byMicroseconds: 400_000)
+        publishNewElement(fixture, generation: 3, pid: 100, after: 90_000)  // back to the same field's app
+        fixture.clock.advance(byMicroseconds: 600_000)
+        var verdicts: [TapVerdict] = []
+        for key in keys {
+            verdicts.append(fixture.keyDown(key))
+            fixture.keyUp(key)
+            fixture.clock.advance(byMicroseconds: 400_000)
+        }
+        let jobs = fixture.popJobs().compactMap(\.edit)
+        #expect(fixture.log.resets.first == .shortcut)
+        #expect(jobs.count == edits)
+        #expect(jobs.allSatisfy { $0.deleteCount <= 1 && !$0.verifyLateFocus })
+        if edits == 0 { #expect(verdicts.allSatisfy { $0 == .pass }) }
+        if edits == 1 { #expect(jobs.first?.insertion == "á" && jobs.first?.deleteCount == 1) }
+    }
+
     /// A snapshot whose system-wide focus read timed out names no app (Pa's Safari trace, 15/11/2026). The first
     /// real snapshot of the app right after it is not an application change: the composition is kept and the first
     /// job verifies the field (PLT-R340 amendment of 2026-11-15).
