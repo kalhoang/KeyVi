@@ -48,18 +48,21 @@ struct SpecFixtureFileTests {
 
     @Test func commitDecisions() throws {
         let rows = try SpecExamples.commitDecisions(tsv: CorpusFiles.text(SpecExamples.commitDecisionsFile))
-        #expect(rows.count == 86)
+        #expect(rows.count == 89)
         // Lettered rows follow the row they extend: B035a-B035i and B064a, B064b (ENG-R850, REG-35, 15/11/2026),
-        // B035j-B035l (RV5 of ENG-R828, REG-36, 16/11/2026).
-        let lettered: [Int: String] = [35: "abcdefghijkl", 64: "ab"]
+        // B035j-B035l (RV5 of ENG-R828, REG-36, 16/11/2026), B035m, B035n and B064c (the sentence condition of L9,
+        // ENG-R850, 16/11/2026).
+        let lettered: [Int: String] = [35: "abcdefghijklmn", 64: "abc"]
         let expectedIDs = (1...72).flatMap { number -> [String] in
             let id = "B" + String(repeating: "0", count: 3 - String(number).count) + String(number)
             return [id] + (lettered[number] ?? "").map { id + String($0) }
         }
         #expect(rows.map(\.id) == expectedIDs)
-        #expect(rows.prefix(64).allSatisfy { $0.boundary == " " })
+        #expect(rows.prefix(66).allSatisfy { $0.boundary == " " })
         #expect(
-            rows[64..<78].map(\.boundary) == [" ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n", "\"", "\""])
+            rows[66..<81].map(\.boundary) == [
+                " ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n", "\"", "\"", "-",
+            ])
         // 13.9.2 (ENG-R823, REG-32): a whole run of tokens per row, from an empty field.
         #expect(rows.suffix(8).map(\.boundary) == [".", ".", " ", " ", " ", " ", " ", " "])
         #expect(rows.suffix(8).allSatisfy { $0.previous == .none && $0.keys.contains(" ") })
@@ -79,8 +82,12 @@ struct SpecFixtureFileTests {
         #expect(byID["B035f"]?.method == .vni && byID["B035f"]?.seedKeys == "vie65t")
         #expect(byID["B029"]?.seedKeys == "vieejt" && byID["B028"]?.seedKeys == "and")
         #expect(byID["B064a"]?.expectedText == "Sửa lỗi chính tả\"" && byID["B064a"]?.context == .code)
-        // REG-36: RV5 revises `Tar` once `thử` commits (ENG-R828); the row names the rule of the last token.
+        // REG-36: `Tar` starts a sentence and is kept at its own commit (ENG-R850); the row names the rule of the last
+        // token. `TAR` is not sentence case, so RV5 revises it once `thử` commits (ENG-R828).
         #expect(byID["B035j"]?.committed == "Tả thử" && byID["B035j"]?.expectedDecision == .kept(.notEnglish))
+        #expect(byID["B035m"]?.committed == "Tả" && byID["B035m"]?.expectedDecision == .kept(.defaultVietnamese))
+        #expect(byID["B035n"]?.committed == "TẢ thử" && byID["B035n"]?.expectedDecision == .kept(.notEnglish))
+        #expect(byID["B064c"]?.expectedText == "Tar-" && byID["B064c"]?.expectedDecision == .restored(.codeContext))
         #expect(byID["B044"]?.expectedDecision == .kept(.unchanged))
         #expect(byID["B047"]?.method == .vni && byID["B047"]?.expectedDecision == .restored(.invalid))
         #expect(byID["B028"]?.previous == .english && byID["B028"]?.previous.seedKeys == "and")

@@ -353,10 +353,16 @@ struct RegressionTests {
 
     @Test("REG-36: a Vietnamese sentence typed in a terminal keeps no shell command at its start")
     func reg36() throws {
-        // RV5 of ENG-R828 (ENG-R850 as amended on 16/11/2026): the product owner's retest in iTerm2, where the rules
-        // turn `lookaheadRevision` off (PLT-R357).
+        // The product owner's retest in iTerm2, where the rules turn `lookaheadRevision` off (PLT-R357). `Tar` starts a
+        // sentence: in sentence case at the line start and committed by a space, L9 leaves it to the rules after it,
+        // at its own commit (ENG-R850 as amended by the product owner on 16/11/2026), whatever D29 says.
         let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
-        #expect(try Committing.text("Tar thuwr cais nayf ", terminal) == "Tả thử cái này ")
+        let sentence = try Committing.driver("Tar thuwr cais nayf ", terminal)
+        #expect(sentence.field.string == "Tả thử cái này " && sentence.outputs.allSatisfy { $0.revision == nil })
+        let d29Off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+        #expect(try Committing.text("Tar thuwr cais nayf ", d29Off) == "Tả thử cái này ")
+        // Typed in lowercase, RV5 of ENG-R828 revises it once the next word is Vietnamese.
+        #expect(try Committing.text("tar thuwr cais nayf ", terminal) == "tả thử cái này ")
         // Commands keep their keys.
         #expect(try Committing.text("tar xf ", terminal) == "tar xf ")
         #expect(try Committing.text("tar nhaatj.log ", terminal) == "tar nhật.log ")

@@ -3,7 +3,7 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035l, B064a and B064b) with the
+/// Spec 13.9, 13.9.1 and 13.9.2: every row B001-B072 (with the lettered rows B035a-B035n and B064a-B064c) with the
 /// 13.9 fixture resources, checking the committed text and the rule that decided (ENG-R801), then the same rows
 /// ended by every boundary key of section 9 (P0-3: the decision must not depend on which boundary key ended the
 /// token). The 13.9.2 rows and the rows whose keys hold several tokens type a whole run of tokens (ENG-R823,
@@ -69,7 +69,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 86)
+        #expect(Self.rows.count == 89)
     }
 
     @Test(arguments: rows)
@@ -91,13 +91,25 @@ struct CommitDecisionTests {
         // unrestored text, B064).
         for boundary in Self.boundaries(for: row.method) {
             let (text, output, driver) = try Self.run(row, boundary: boundary.input)
-            // RV5 of ENG-R828 (B035j) revises the token before only at a space, Return, `,`, `!` or `?`, and `.`
-            // after a sentence capital (`Tar`); at any other key the line keeps what it shows without RV5 (13.9.1).
+            // ENG-R850: a word in sentence case at the start of a line is decided by the rules after L9 only when a
+            // space commits it (B035m, B064c); at any other key L9 restores it (13.9.1).
+            if Self.startsSentence(row) {
+                if boundary.input.character == " " {
+                    var general = row.configuration
+                    general.appContext = .general
+                    let expected = try Self.run(row, boundary: boundary.input, configuration: general)
+                    #expect(text == expected.text, "\(row.id) \(row.keys) + \(boundary)")
+                    #expect(output.decision == expected.output.decision, "\(row.id) \(row.keys) + \(boundary)")
+                } else {
+                    #expect(text == row.keys + String(boundary.input.character), "\(row.id) \(row.keys) + \(boundary)")
+                    #expect(output.decision == .restored(.codeContext), "\(row.id) \(row.keys) + \(boundary)")
+                }
+                continue
+            }
+            // RV5 of ENG-R828 (B035n) revises the token before only at a space, Return, `,`, `!` or `?`; at any other
+            // key the line keeps what it shows without RV5 (13.9.1).
             let revises = output.revision == .lineVietnamese
-            let sentence = RevisionEvidence.isSentenceCapital(row.keys)
-            if row.ruleText.contains("RV5 revises"),
-                !CommitPolicy.confirmsVietnameseLine(boundary.input.character, afterSentenceCapital: sentence)
-            {
+            if row.ruleText.contains("RV5 revises"), !CommitPolicy.confirmsVietnameseLine(boundary.input.character) {
                 var plain = row.configuration
                 plain.lineStartRevision = false
                 let unrevised = try Self.run(row, boundary: boundary.input, configuration: plain).text
@@ -120,6 +132,17 @@ struct CommitDecisionTests {
                 #expect(driver.state.historyCount == tokens, "\(row.id) + \(boundary)")
             }
         }
+    }
+
+    /// A row that types one code-only word in sentence case from an empty line in the code context (ENG-R850 (d) to
+    /// (g), with the 13.9 fixtures, whose capitalized code-word list is empty).
+    static func startsSentence(_ row: CommitDecisionExample) -> Bool {
+        row.configuration.appContext == .code && row.previous == .none && row.keys.allSatisfy(\.isLetter)
+            && CommitPolicy.isSentenceCase(row.keys) && SpecFixtures.techCodeOnly.contains(row.keys.lowercased())
+    }
+
+    @Test func sentenceRowsAreTheExpectedOnes() {
+        #expect(Self.rows.filter(Self.startsSentence).map(\.id) == ["B035m", "B064c"])
     }
 
     @Test func boundaryListCoversSection9() {

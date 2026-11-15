@@ -62,16 +62,20 @@ package struct CommitContext: Sendable {
     package var phrases: PhraseChain
     /// ENG-R850: the token is in Vietnamese text, so rule L9 does not restore it (`CommitPolicy.isInVietnameseText`).
     package var inVietnameseText: Bool
+    /// ENG-R850 (d): the token is the first of its line, the engine's history is empty (rule L9's sentence condition,
+    /// `CommitPolicy.startsSentence`).
+    package var atLineStart: Bool
 
     package init(
         runIsEnglish: Bool, boundary: Character = " ", memoryContext: CollisionContext = .sentenceStart,
-        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false
+        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false, atLineStart: Bool = false
     ) {
         self.runIsEnglish = runIsEnglish
         self.boundary = boundary
         self.memoryContext = memoryContext
         self.phrases = phrases
         self.inVietnameseText = inVietnameseText
+        self.atLineStart = atLineStart
     }
 }
 
@@ -91,7 +95,7 @@ package struct CommitContext: Sendable {
 /// | L6 Tier B only | `extendedSpelling` | `extendedSpelling` |
 /// | L7 `R` not English | `notEnglish` | - |
 /// | L8 not attested | - | `notAttested` |
-/// | L9 code context, outside Vietnamese text (ENG-R850) | - | `codeContext` |
+/// | L9 code context, outside Vietnamese text, not starting a sentence (ENG-R850) | - | `codeContext` |
 /// | L9a boundary particle (ENG-R825) | `boundaryParticle` | - |
 /// | L9b phrase (ENG-R826) | - | `phrase` |
 /// | L9c learned memory (ENG-R863) | `learned` | `learned` |
@@ -181,9 +185,13 @@ package struct CommitPolicy: Sendable {
         if !resources.attestedSyllables.contains(inputs.facts.lowercased) {
             return learnedOverride(of: restore(.notAttested), rawLowercased: r, context: context)
         }
-        // L9: app context `code`, outside Vietnamese text (ENG-R850 as amended on 15/11/2026, REG-35). In Vietnamese
-        // text the rules below decide as in the general context (`chinhs tar` gives `chính tả`).
-        if appContext == .code, !context.inVietnameseText, resources.techCodeOnly.contains(r) {
+        // L9: app context `code`, outside Vietnamese text (ENG-R850 as amended on 15/11/2026, REG-35) and not starting
+        // a sentence (amended by the product owner on 16/11/2026). In Vietnamese text and for a word in sentence case
+        // that starts a line the rules below decide as in the general context (`chinhs tar` gives `chính tả`, `Tar`
+        // and a space give `Tả`).
+        if appContext == .code, !context.inVietnameseText, resources.techCodeOnly.contains(r),
+            !startsSentence(inputs, context: context)
+        {
             return restore(.codeContext)
         }
         if collisionRules {

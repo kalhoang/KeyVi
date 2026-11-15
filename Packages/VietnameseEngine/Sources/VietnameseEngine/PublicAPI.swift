@@ -412,6 +412,10 @@ public struct Resources: Sendable {
     public var techAlways: WordSet
     /// Shell words restored only in the code context, outside Vietnamese text (rule L9, ENG-R850).
     public var techCodeOnly: WordSet
+    /// Code-only words that configuration and protocol text writes capitalized at the start of a line (`host`):
+    /// rule L9 still restores them there in sentence case, where it leaves other words to the rules after it
+    /// (ENG-R850 as amended on 16/11/2026).
+    public var techCodeCapitalized: WordSet
     /// Vietnamese syllables that occur, lowercase with tone (rule L8 only, never to block typing).
     public var attestedSyllables: WordSet
     /// The ambiguity table: lowercased raw keys -> decision (rule L11). Unreviewed rows behave as `vi`.
@@ -429,7 +433,7 @@ public struct Resources: Sendable {
 
     /// Resources from the given lists.
     public init(
-        english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
+        english: WordSet, techAlways: WordSet, techCodeOnly: WordSet, techCodeCapitalized: WordSet = WordSet([]),
         attestedSyllables: WordSet, ambiguity: [String: Language],
         userKeepRaw: WordSet, userKeepVietnamese: WordSet,
         macros: MacroTable = .empty, collision: CollisionLists = .empty,
@@ -438,6 +442,7 @@ public struct Resources: Sendable {
         self.english = english
         self.techAlways = techAlways
         self.techCodeOnly = techCodeOnly
+        self.techCodeCapitalized = techCodeCapitalized
         self.attestedSyllables = attestedSyllables
         self.ambiguity = ambiguity
         self.userKeepRaw = userKeepRaw

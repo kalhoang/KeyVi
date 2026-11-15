@@ -6,7 +6,10 @@ import VietnameseEngineTesting
 /// RV5 of ENG-R828 (ENG-R850 as amended on 16/11/2026, REG-36): at the start of a line nothing stands before a
 /// token, so rule L9 restores a code-only word there; once the next word shows the line is Vietnamese text, the
 /// word takes the display the rules after L9 give it, as in the general context. 13.9 fixtures: `tar` is
-/// code-only, English and has no ambiguity row, so outside L9 it is kept by L11 (`defaultVietnamese`).
+/// code-only, English and has no ambiguity row, so outside L9 it is kept by L11 (`defaultVietnamese`). A word in
+/// sentence case committed by a space (`Tar`) is not restored by L9 at the line start at all (ENG-R850 as amended by
+/// the product owner on 16/11/2026, `LineStartSentenceTests`), so RV5 meets lowercase and all-caps words and the
+/// capitalized code words.
 @Suite("RV5: a code word at a line start, Vietnamese next (ENG-R828, ENG-R850, REG-36)")
 struct LineStartRevisionTests {
     /// The terminal configuration: the rules turn `lookaheadRevision` off in every code-context app (PLT-R357).
@@ -15,35 +18,35 @@ struct LineStartRevisionTests {
 
     static func revisions(_ driver: EngineDriver) -> [RevisionReason] { driver.outputs.compactMap(\.revision) }
 
-    @Test("REG-36: `Tar thuwr cais nayf` gives Tả thử cái này, in the terminal configuration too")
+    @Test("REG-36: `tar thuwr cais nayf` gives tả thử cái này, in the terminal configuration too")
     func productOwnerSentence() throws {
         for configuration in [Self.terminal, Self.code] {
-            let driver = try Committing.driver("Tar thuwr cais nayf ", configuration)
-            #expect(driver.field.string == "Tả thử cái này ")
+            let driver = try Committing.driver("tar thuwr cais nayf ", configuration)
+            #expect(driver.field.string == "tả thử cái này ")
             #expect(Self.revisions(driver) == [.lineVietnamese])
-            #expect(try Committing.text("tar thuwr ", configuration) == "tả thử ")
+            #expect(try Committing.text("TAR thuwr ", configuration) == "TẢ thử ")
         }
     }
 
     @Test("ENG-R803: one edit covers the word, the space and the next word; the boundary key follows")
     func oneEdit() throws {
-        let driver = try Committing.driver("Tar thuwr ", Self.terminal)
+        let driver = try Committing.driver("tar thuwr ", Self.terminal)
         guard case .edit(let edit, true)? = driver.outputs.last?.action else {
             Issue.record("the revising commit is not an edit with pass-through")
             return
         }
-        // The edit is minimal (ENG-R611): the shared `T` stays.
+        // The edit is minimal (ENG-R611): the shared `t` stays.
         #expect(edit.deleteCount == "ar thử".count && edit.insert == "ả thử")
         #expect(driver.outputs.last?.decision == .kept(.notEnglish))
         // ENG-R823: the revised token is neutral, keeps its L9 reason code and is never revised again.
         let revised = try #require(driver.state.history.token(beforeNewest: 3))
-        #expect(revised.committedText == "Tả" && revised.language == .neutral)
+        #expect(revised.committedText == "tả" && revised.language == .neutral)
         #expect(revised.decision == .restored(.codeContext) && revised.collision.revision == .lineVietnamese)
         var window = RecentLanguages()
         for language in [TokenLanguage.neutral, .vietnamese] { window.push(language) }
         #expect(driver.state.recentLanguages == window)
         // The next code-only word is in Vietnamese text (ENG-R850).
-        #expect(try Committing.text("Tar thuwr tar ", Self.terminal) == "Tả thử tả ")
+        #expect(try Committing.text("tar thuwr tar ", Self.terminal) == "tả thử tả ")
     }
 
     @Test("A line starts at the start of the input, after Return, after Tab and after a reset")
@@ -105,37 +108,32 @@ struct LineStartRevisionTests {
         #expect(try Committing.text("tar nhaatj.log ", Self.terminal) == "tar nhật.log ")
     }
 
-    @Test("A capital starts a sentence: a syllable typed unchanged and a closing period also confirm the line")
-    func sentenceCapital() throws {
-        // Shell commands are typed in lowercase, a sentence starts with a capital (ENG-R828 RV5, review of
-        // 16/11/2026): after a capitalised word t+1 may be RV4's whole evidence and its key may be `.`.
-        for (keys, text) in [
-            ("Tar anh ", "Tả anh "), ("Tar tay ", "Tả tay "), ("Tar anh\n", "Tả anh\n"), ("Tar anh,", "Tả anh,"),
-            ("Tar thuwr.", "Tả thử."), ("Tar anh.", "Tả anh."), ("Tar anh thuwr ", "Tả anh thử "),
+    @Test("The case of the word never widens the evidence (the widening of 16/11/2026 was withdrawn)")
+    func noWideningByCase() throws {
+        // The product owner's rule of 16/11/2026 decides a word in sentence case at its own commit (ENG-R850), so
+        // RV5 keeps its strict evidence for every word it meets: lowercase, all caps and the capitalized code words.
+        var capitalized = Committing.fixtures
+        capitalized.techCodeCapitalized = WordSet(["tar"])
+        for (keys, text, resources) in [
+            ("tar anh ", "tar anh ", Committing.fixtures), ("tar thuwr.", "tar thử.", Committing.fixtures),
+            ("TAR anh ", "TAR anh ", Committing.fixtures), ("TAR thuwr.", "TAR thử.", Committing.fixtures),
+            ("TAR tay\n", "TAR tay\n", Committing.fixtures),
+            // `Host minh` in ~/.ssh/config: a syllable typed unchanged is a host name, a period a file name.
+            ("Tar anh ", "Tar anh ", capitalized), ("Tar tay\n", "Tar tay\n", capitalized),
+            ("Tar anh,", "Tar anh,", capitalized), ("Tar thuwr.", "Tar thử.", capitalized),
         ] {
-            let driver = try Committing.driver(keys, Self.terminal)
-            #expect(driver.field.string == text, "\(keys.debugDescription)")
-            #expect(Self.revisions(driver) == [.lineVietnamese], "\(keys.debugDescription)")
-        }
-        for (keys, text) in [
-            ("tar anh ", "tar anh "), ("tar thuwr.", "tar thử."),  // lowercase: a command line
-            ("TAR anh ", "TAR anh "), ("TAR thuwr.", "TAR thử."),  // all caps is not a sentence capital
-            ("Tar test ", "Tar test "),  // English
-            ("Tar ANH ", "Tar ANH "),  // an all-caps syllable is not evidence (RV4)
-            ("Tar a ", "Tar a "),  // one letter is not evidence (RV4)
-            ("Tar xf ", "Tar xf "),  // not Vietnamese
-            ("Tar anh-", "Tar anh-"), ("Tar thuwr/", "Tar thử/"), ("Tar thuwr\t", "Tar thử\t"),  // a file name
-            ("Tar anh:", "Tar anh:"), ("Tar anh;", "Tar anh;"),
-        ] {
-            let driver = try Committing.driver(keys, Self.terminal)
+            let driver = try Committing.driver(keys, Self.terminal, resources: resources)
             #expect(driver.field.string == text, "\(keys.debugDescription)")
             #expect(Self.revisions(driver).isEmpty, "\(keys.debugDescription)")
         }
-        // All caps with a Vietnamese-only letter is the lowercase case: revised at a space, not at `.`.
-        #expect(try Committing.text("TAR THUWR ", Self.terminal) == "TẢ THỬ ")
-        #expect(RevisionEvidence.isSentenceCapital("Tar") && RevisionEvidence.isSentenceCapital("TAr"))
-        #expect(!RevisionEvidence.isSentenceCapital("tar") && !RevisionEvidence.isSentenceCapital("TAR"))
-        #expect(!RevisionEvidence.isSentenceCapital("T") && !RevisionEvidence.isSentenceCapital(""))
+        for (keys, text, resources) in [
+            ("TAR thuwr ", "TẢ thử ", Committing.fixtures), ("TAR THUWR ", "TẢ THỬ ", Committing.fixtures),
+            ("Tar thuwr ", "Tả thử ", capitalized), ("Tar thuwr!", "Tả thử!", capitalized),
+        ] {
+            let driver = try Committing.driver(keys, Self.terminal, resources: resources)
+            #expect(driver.field.string == text, "\(keys.debugDescription)")
+            #expect(Self.revisions(driver) == [.lineVietnamese], "\(keys.debugDescription)")
+        }
     }
 
     @Test("Guard: the word is followed by exactly one space, and nothing happens between the two commits")
@@ -174,23 +172,25 @@ struct LineStartRevisionTests {
     @Test("ENG-R829: D29 off (`lineStartRevision`), auto restore off or the general context: no RV5")
     func switches() throws {
         let off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
-        #expect(try Committing.text("Tar thuwr cais nayf ", off) == "Tar thử cái này ")
+        #expect(try Committing.text("tar thuwr cais nayf ", off) == "tar thử cái này ")
         let bothOff = EngineConfiguration(appContext: .code, lineStartRevision: false)
-        #expect(try Committing.text("Tar thuwr ", bothOff) == "Tar thử ")
+        #expect(try Committing.text("tar thuwr ", bothOff) == "tar thử ")
+        // The sentence condition of L9 does not depend on the switch (ENG-R850).
+        #expect(try Committing.text("Tar thuwr cais nayf ", off) == "Tả thử cái này ")
         // Auto restore off: L9 keeps `tả` (ENG-R802), so there is nothing to revise.
         let manual = EngineConfiguration(autoRestore: false, appContext: .code)
-        let driver = try Committing.driver("Tar thuwr ", manual)
-        #expect(driver.field.string == "Tả thử " && Self.revisions(driver).isEmpty)
+        let driver = try Committing.driver("tar thuwr ", manual)
+        #expect(driver.field.string == "tả thử " && Self.revisions(driver).isEmpty)
         // The general context never reaches L9, so never RV5.
-        let general = try Committing.driver("Tar thuwr ")
-        #expect(general.field.string == "Tả thử " && Self.revisions(general).isEmpty)
+        let general = try Committing.driver("tar thuwr ")
+        #expect(general.field.string == "tả thử " && Self.revisions(general).isEmpty)
     }
 
     @Test("ENG-R829: the toggle right after the revising commit gives the keys back; the next toggle passes through")
     func undo() throws {
-        var driver = try Committing.driver("Tar thuwr ", Self.code)
+        var driver = try Committing.driver("tar thuwr ", Self.code)
         let output = try driver.send(.restoreToggle)
-        #expect(driver.field.string == "Tar thử ")
+        #expect(driver.field.string == "tar thử ")
         guard case .edit(_, false) = output.action else {
             Issue.record("the undo is not an edit that consumes the key")
             return
@@ -200,19 +200,19 @@ struct LineStartRevisionTests {
         #expect(undone.language == .english)
         #expect(try driver.send(.restoreToggle).action == .passThrough)
         try driver.send(KeyNotation.events("cais "))
-        #expect(driver.field.string == "Tar thử cái ")
+        #expect(driver.field.string == "tar thử cái ")
     }
 
     @Test("A revised word re-opens with its Vietnamese display; re-committed, the line rules decide it again")
     func reopening() throws {
-        // Backspace over `thử ` and the space re-opens `Tả` (ENG-R1002).
+        // Backspace over `thử ` and the space re-opens `tả` (ENG-R1002).
         let driver = try Committing.driver(
-            "Tar thuwr \u{232B}\u{232B}\u{232B}\u{232B}\u{232B}", Self.terminal)
-        #expect(driver.field.string == "Tả" && driver.state.activeRawKeys == "Tar")
+            "tar thuwr \u{232B}\u{232B}\u{232B}\u{232B}\u{232B}", Self.terminal)
+        #expect(driver.field.string == "tả" && driver.state.activeRawKeys == "tar")
         // Committed again at the line start, L9 restores it, and the next Vietnamese word revises it again.
-        #expect(try Committing.text("Tar thuwr \u{232B}\u{232B}\u{232B}\u{232B}\u{232B} ", Self.terminal) == "Tar ")
+        #expect(try Committing.text("tar thuwr \u{232B}\u{232B}\u{232B}\u{232B}\u{232B} ", Self.terminal) == "tar ")
         #expect(
-            try Committing.text("Tar thuwr \u{232B}\u{232B}\u{232B}\u{232B}\u{232B} thuwr ", Self.terminal)
-                == "Tả thử ")
+            try Committing.text("tar thuwr \u{232B}\u{232B}\u{232B}\u{232B}\u{232B} thuwr ", Self.terminal)
+                == "tả thử ")
     }
 }

@@ -40,13 +40,6 @@ package struct RevisionEvidence: Sendable {
         }
         return letters > 0 && text.utf8.count > 1
     }
-
-    /// The first character is a capital letter and the word is not all caps (`Tar`, not `tar` or `TAR`): the capital
-    /// that starts a sentence, never a shell command, which is typed in lowercase (RV5 of ENG-R828).
-    package static func isSentenceCapital(_ text: String) -> Bool {
-        guard let first = text.utf8.first, ASCII.isUppercaseLetter(first) else { return false }
-        return text.utf8.contains { ASCII.isLetter($0) && !ASCII.isUppercaseLetter($0) }
-    }
 }
 
 extension CommitPolicy {
@@ -99,29 +92,24 @@ extension CommitPolicy {
     /// `previous` was restored by L9 as the first thing typed on its line (the history was empty) and the rules after
     /// L9 keep its Vietnamese display (`CollisionFacts.vietnameseAtLineStart`: never an `en` row, L10 or a learned
     /// English vote); `next` is kept by L7 with a Vietnamese-only letter (a syllable typed unchanged is a host, user
-    /// or branch name as often: `host minh`); and `next` is committed by a space, Return, `,`, `!` or `?`. A capital
-    /// that starts a sentence (`Tar`, never a shell command) widens the last two: `next` may be RV4's whole
-    /// evidence (`Tee tay quá`) and its key may also be `.` (`Tả thử.`).
+    /// or branch name as often: `host minh`, `Host minh`); and `next` is committed by a space, Return, `,`, `!` or
+    /// `?`. The case of `previous` never widens this evidence: a word in sentence case that starts a line is not
+    /// restored by L9 unless it is a capitalized code word (ENG-R850 as amended on 16/11/2026), and before those a
+    /// syllable typed unchanged is a host name.
     func lineStartRevision(of previous: CommittedToken, next: RevisionEvidence) -> RevisionReason? {
-        guard lineRevision, previous.decision == .restored(.codeContext), previous.collision.vietnameseAtLineStart
+        guard lineRevision, previous.decision == .restored(.codeContext), previous.collision.vietnameseAtLineStart,
+            next.decision == .kept(.notEnglish), next.inputs.facts.hasVietnameseOnlyLetter,
+            Self.confirmsVietnameseLine(next.boundary)
         else { return nil }
-        // L9 restored the token, so the committed text is its raw keys, with their case.
-        let sentence = RevisionEvidence.isSentenceCapital(previous.committedText)
-        let evidence =
-            sentence
-            ? isVietnameseEvidence(next)
-            : next.decision == .kept(.notEnglish) && next.inputs.facts.hasVietnameseOnlyLetter
-        guard evidence, Self.confirmsVietnameseLine(next.boundary, afterSentenceCapital: sentence) else { return nil }
         return .lineVietnamese
     }
 
-    /// RV5's boundary keys after the next word: a space, Return, `,`, `!` or `?`, and `.` after a sentence capital.
-    /// Never `-`, `/`, `_` or another character of a file name or path (`tee nhật.log`, `tee nhật-ký.log`), `.`
-    /// after a lowercase word, and never Tab, which completes a file name in a shell.
-    package static func confirmsVietnameseLine(_ boundary: Character, afterSentenceCapital: Bool) -> Bool {
+    /// RV5's boundary keys after the next word: a space, Return, `,`, `!` or `?`. Never `.`, `-`, `/`, `_` or another
+    /// character of a file name or path (`tee nhật.log`, `tee nhật-ký.log`), and never Tab, which completes a file
+    /// name in a shell.
+    package static func confirmsVietnameseLine(_ boundary: Character) -> Bool {
         switch boundary.asciiValue {
         case 0x20, 0x0A, 0x0D, 0x2C, 0x21, 0x3F: return true
-        case 0x2E: return afterSentenceCapital
         default: return false
         }
     }

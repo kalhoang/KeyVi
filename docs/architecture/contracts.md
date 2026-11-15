@@ -7573,11 +7573,16 @@ keeps compiling.
 
 - `EngineConfiguration.lineStartRevision` (default `true`) switches RV5 in the code context: a code-only word that
   rule L9 restored as the first thing typed on its line takes its Vietnamese display once the next word shows
-  Vietnamese text (`Tar thuwr` gives `Tả thử`). It does not depend on `lookaheadRevision`, which the rules turn off in
+  Vietnamese text (`tar thuwr` gives `tả thử`). It does not depend on `lookaheadRevision`, which the rules turn off in
   every code-context app. The host passes the user's D29 switch alone (`EngineSettingsMapping`), so the catalog keeps
   its 16 variants. The output is an ordinary revision (`EngineOutput.revision == .lineVietnamese`), injected as one
   edit job of kind `revision` (PLT-R357); where the restore key is off it cannot be undone with it.
 - New `RevisionReason` case `lineVietnamese`; the dev recorder writes it as `rev: lineVietnamese`.
+- `Resources.techCodeCapitalized` (`WordSet`, init parameter after `techCodeOnly`, default empty): the capitalized
+  code-word list of the product owner's rule of 16/11/2026 (ENG-R850). In the code context rule L9 does not apply to a
+  code-only word that is the first token of its line, written in sentence case and committed by a space (`Tar` gives
+  `Tả` at its own commit, with the reason the rules after L9 give, whatever `lineStartRevision` says), unless the word
+  is on this list. `Resources.bundled` loads it from `tech-code-capitalized.txt` (v1: `host`).
 
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift

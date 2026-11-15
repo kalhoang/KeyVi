@@ -1,11 +1,12 @@
 {
   "format": 2,
   "generator": "lexicon-builder",
-  "inputsSHA256": "becae75eb1967885337631ccb507dbec06eba672739ec4d0837fa27cd1b209f8",
+  "inputsSHA256": "6cedcbdc75759c89293e9c023d59fa9e643dc57225cae514fa2167741f0b915b",
   "files": [
     {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
     {"name": "tech-always.txt", "bytes": 2174, "entries": 388, "sha256": "9ed38dc89f5407a4c499fca259043c59bab9e9677584c32e0d5447e4cec95640"},
     {"name": "tech-code-only.txt", "bytes": 1169, "entries": 223, "sha256": "1d718c72491e7eb1afe87922ed01cd8cc5788b416fe2b01eb4ffe82f36b905ba"},
+    {"name": "tech-code-capitalized.txt", "bytes": 5, "entries": 1, "sha256": "d329be9e3aea365ba02a318d9392e22abd64076bb7e33eaaacd8b3f29b7f6de8"},
     {"name": "attested.txt", "bytes": 11451, "entries": 1955, "sha256": "869e636ed0590d05856000b9ca0d6088e829b4bebf42e563be260462c08e560c"},
     {"name": "ambiguity.tsv", "bytes": 85186, "entries": 618, "sha256": "3a1c930c118b3de1f618a8bf0f0b4cd581f510ee1c2e470bb6b329d1975db1e5"},
     {"name": "phrases.txt", "bytes": 3233, "entries": 327, "sha256": "b64088df4cae71f8e14e59a3c7316861c09a00dbdcce5a12509eeb82d3486698"},
@@ -16,7 +17,7 @@
     {"name": "vi-tail-words.txt", "bytes": 322, "entries": 63, "sha256": "9aceba1ec3e8a9bfa1f462f7096de906deace11249911a41dbc0a14650262cdf"},
     {"name": "vi-tail-particles.txt", "bytes": 155, "entries": 31, "sha256": "ef4e03d1c14a7852445d536c9c840423b9efa76366950a3cf901441dfea7f87a"},
     {"name": "english-pre-guard.txt", "bytes": 172, "entries": 44, "sha256": "b5de644916494e189e73760f5d9c1134983313dd1db09ec0a7da78099e37628b"},
-    {"name": "NOTICES.txt", "bytes": 14245, "sha256": "3bc3078d6244b338bb8e1b574482b535f01ced558d9fb7265a27f1d039764805"}
+    {"name": "NOTICES.txt", "bytes": 14272, "sha256": "d98354332ca9e835646da1551bbeab2ba37e7ad97ecba811b3a7d9c012088086"}
   ],
   "stats": {
     "englishWords": 40205,

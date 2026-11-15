@@ -23,7 +23,8 @@ extension Engine {
     /// boundary is recorded in the history (or, for Return and Tab, the history is cleared, ENG-R912) and the
     /// boundary key is delivered after any edit (`thenPassThrough`, ENG-R803). P0-3: nothing here depends on
     /// which boundary key it is, except whether it clears the history afterwards, whether it ends a macro
-    /// span (whitespace) and rule L9a (`.`, `!`, `?`, Return).
+    /// span (whitespace), rule L9a (`.`, `!`, `?`, Return), the space of rule L9's sentence condition (ENG-R850)
+    /// and the keys that let RV5 revise (ENG-R828).
     func commit(at boundary: Character, isHard: Bool, _ state: inout EngineState) -> EngineOutput {
         let mayRevise = state.newestTokenRevisable
         state.newestTokenRevisable = false
@@ -48,7 +49,8 @@ extension Engine {
             runIsEnglish: state.recentLanguages.isEnglishRun, boundary: boundary,
             memoryContext: Self.memoryContext(state.history),
             phrases: commitPolicy.collisionRules ? PhraseChain(history: state.history) : PhraseChain(),
-            inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history))
+            inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history),
+            atLineStart: state.history.isEmpty)
         var result = commitResult(for: token, context: context)
         // RV5 of ENG-R828 (ENG-R850): a code-only word that L9 restored as the first thing typed on its line (the
         // history is empty: start of input, Return, Tab or a reset) remembers whether the rules after L9 keep its

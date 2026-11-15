@@ -138,10 +138,9 @@ separately from the app (spec/04-quality-release.md QA-R27).
   emptied the line), the rules after L9 keep its Vietnamese display with its own run
   and window (never an `en` row, L10 or a learned English vote), one space follows it, the next word is kept by L7 with
   a Vietnamese-only letter (an unchanged syllable is not evidence: `host minh`) and is committed by a space, Return,
-  `,`, `!` or `?` (`tee nhật.log`, `tee nhật-ký.log` and Tab keep the command). A word that starts with a capital and
-  is not all caps starts a sentence (shell commands are lowercase): the next word may then be RV4's whole evidence, a
-  syllable typed unchanged too (`Tee tay quas` gives `Tê tay quá`, `Host minh` gives `Hót minh`), and may end with `.`
-  (`Tar thuwr.` gives `Tả thử.`; `RevisionEvidence.isSentenceCapital`). New public switch
+  `,`, `!` or `?` (`tee nhật.log`, `tee nhật-ký.log` and Tab keep the command). The case of the word never widens
+  this evidence (a widening by a capital first letter, added after a review the same day, was withdrawn with the
+  sentence condition below: `Host minh` keeps its keys). New public switch
   `EngineConfiguration.lineStartRevision` (default on, independent of `lookaheadRevision`, which the rules turn off in
   every code-context app; the host passes D29) and `RevisionReason.lineVietnamese` (`CommitPolicy.lineStartRevision`,
   `CollisionFacts.vietnameseAtLineStart`, `CommitPolicy.keepsVietnameseAfterCodeRule`). With the bundled data RV5
@@ -151,3 +150,23 @@ separately from the app (spec/04-quality-release.md QA-R27).
   terminals set it, RV5 fires once in the corpus (the same CS0571; English intent 423 of 720, was 424); the
   general-context numbers do not move. Spec rows
   B035j-B035l and table 13.9.4 (K01-K16); `spec/reference-model/boundary.py` models RV5.
+- The sentence condition of rule L9 (ENG-R850 as amended by the product owner on 16/11/2026, REG-36): shell commands
+  are typed in lowercase, so a capital first letter at the start of a line is itself a sign of a Vietnamese sentence.
+  In the code context L9 does not apply to a code-only word that is the first token of its line (empty history, the
+  line start of RV5), written in sentence case (the first letter uppercase, every other letter lowercase, at least
+  two letters: `Tar`, `Tee`; not `TAR` or `tar`), committed by a space (`Tee-Object`, `Host:`, `Tar.` keep L9) and not
+  on the new capitalized code-word list (v1: `host`, for `Host github.com` in `~/.ssh/config` and the HTTP header
+  `Host:`). The rules after L9 decide it at its own commit, as in the general context, with their reason code
+  (`Tar` gives `Tả`, `.kept(.defaultVietnamese)` with the bundled data); it reads neither `lookaheadRevision` nor
+  `lineStartRevision`. `Tar thuwr cais nayf` now gives `Tả thử cái này` with no revision, also with D29 off; `Host
+  minh` keeps its keys and `Host nayf` gives `Hót này` by RV5; `TAR thuwr` gives `TẢ thử` by RV5. New public
+  `Resources.techCodeCapitalized` (init parameter after `techCodeOnly`, default empty), bundled as
+  `tech-code-capitalized.txt` from `data/inputs/tech-code-capitalized.txt` (the build refuses an entry that is not on
+  `tech-code-only.txt`); `CommitPolicy.startsSentence`, `CommitPolicy.isSentenceCase`, `CommitContext.atLineStart`;
+  `RevisionEvidence.isSentenceCapital` is removed. Known costs: an English line or a command typed with a capital
+  first letter shows the Vietnamese display of its first word (`Tar archives are` gives `Tả archives are`, `Tee
+  nhaatj.log` gives `Tê nhật.log`; the escape `Tarr` keeps `Tar`). Spec rows B035j-B035n, B064c and table 13.9.4
+  (K01-K20); `spec/reference-model/boundary.py` models the condition (`CODE_RUNS`, `CODE_RUNS_CAPITALIZED`). The W11 corpus
+  does not move: in the code context English intent 549 of 720, Vietnamese intent 620 of 623 and 501 of 507, 99 and
+  97 revisions, the one reviewed wrong revision still CS0571 `Host mới` (`host` is on the list, so RV5 decides it as
+  before); the general-context numbers and the prose corpus in the code context are unchanged.

@@ -83,13 +83,21 @@ import VietnameseEngine
             english: WordSet(["tar"]), techAlways: WordSet([]), techCodeOnly: WordSet(["tar"]),
             attestedSyllables: WordSet(["tả", "thử"]), ambiguity: ["tar": .vietnamese], userKeepRaw: WordSet([]),
             userKeepVietnamese: WordSet([]))
+        #expect(Self.typed("tar thuwr ", configuration, resources) == (d29 ? "tả thử " : "tar thử "))
+        // A first word in sentence case committed by a space starts a sentence: L9 leaves it to the rules after it
+        // at its own commit, whatever D29 says (ENG-R850 as amended by the product owner on 16/11/2026).
+        #expect(Self.typed("Tar thuwr ", configuration, resources) == "Tả thử ")
+    }
+
+    /// The field after typing `keys` into a fresh session.
+    private static func typed(_ keys: String, _ configuration: EngineConfiguration, _ resources: Resources) -> String {
         var session = Session(engine: Engine(configuration: configuration, resources: resources))
         var field = ""
-        for character in "Tar thuwr " {
+        for character in keys {
             let output = session.handle(.key(KeyInput(character)))
             field = Self.apply(output, character: character, to: field)
         }
-        #expect(field == (d29 ? "Tả thử " : "Tar thử "))
+        return field
     }
 
     /// The text after one key: the edit, then the key when it passes through.

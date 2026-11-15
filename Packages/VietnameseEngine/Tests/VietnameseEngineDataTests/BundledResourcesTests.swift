@@ -35,6 +35,13 @@ struct BundledResourcesTests {
         for word in ["tar", "less", "more", "cat", "top", "make", "sed", "awk"] {
             #expect(resources.techCodeOnly.contains(word), "tech-code-only lacks \(word)")
         }
+        // The capitalized code-word list (8.2, ENG-R850 as amended on 16/11/2026): v1 holds `host` only, a
+        // code-only word (`Host github.com` in ~/.ssh/config, `Host: example.com`).
+        let capitalizedFile = TestPaths.committedResources.appendingPathComponent("tech-code-capitalized.txt")
+        let capitalized = try String(contentsOf: capitalizedFile, encoding: .utf8)
+        #expect(capitalized == "host\n" && resources.techCodeCapitalized.contains("host"))
+        #expect(resources.techCodeOnly.contains("host"))
+        #expect(!resources.techCodeCapitalized.contains("tar") && !resources.techCodeCapitalized.contains("tee"))
         // Words whose Telex typing is a common Vietnamese syllable must not be tech-always (L11).
         for word in ["gif", "uri", "rar"] { #expect(!resources.techAlways.contains(word)) }
         // Attested additions and both tone styles of open oa/oe/uy (5.2).

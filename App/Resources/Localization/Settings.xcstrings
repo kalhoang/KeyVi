@@ -5384,19 +5384,19 @@
       }
     },
     "settings.typing.lookaheadRevision.explanation" : {
-      "comment" : "D29, PRD-R25 and PRD-R79 (example amended 15/11/2026: from an empty field tricky as hell has no revision; second sentence amended 16/11/2026: RV5 of ENG-R828 still runs in terminals and code editors).",
+      "comment" : "D29, PRD-R25 and PRD-R79 (example amended 15/11/2026: from an empty field tricky as hell has no revision; second sentence amended 16/11/2026: RV5 of ENG-R828 still runs in terminals and code editors, with a lowercase example because a capitalised first word is decided at its own commit, ENG-R850).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "For example, in cái này tricky as hell, á changes back to as when you type hell. In Terminal and code editors, it only fixes the first word of a Vietnamese line (Tar thử becomes Tả thử)."
+            "value" : "For example, in cái này tricky as hell, á changes back to as when you type hell. In Terminal and code editors, it only fixes the first word of a line when the next word is Vietnamese (tar thử becomes tả thử)."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Trong Terminal và trình soạn mã, chỉ sửa từ đầu dòng của câu tiếng Việt (Tar thử thành Tả thử)."
+            "value" : "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Trong Terminal và trình soạn mã, chỉ sửa chữ đầu dòng khi chữ sau là tiếng Việt (tar thử thành tả thử)."
           }
         }
       }

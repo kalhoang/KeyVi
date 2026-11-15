@@ -43,6 +43,30 @@ extension CommitPolicy {
         return false
     }
 
+    /// ENG-R850 as amended by the product owner on 16/11/2026: the token starts a sentence, so rule L9 leaves it to the
+    /// rules after it, at its own commit. Shell commands are typed in lowercase, so a capital first letter at the start
+    /// of a line is itself a sign of a Vietnamese sentence (`Tar` is not a command): (d) the token is the first of its
+    /// line (the history is empty, the line start of RV5, ENG-R828); (e) its raw keys are in sentence case; (f) a space
+    /// commits it, so `Tee-Object`, `Host:` and `Tar.` keep L9; (g) it is not on the capitalized code-word list
+    /// (`Host github.com` starts a block of ~/.ssh/config). Part of L9, not a revision: it reads neither
+    /// `lookaheadRevision` nor `lineStartRevision` (ENG-R829). Called only for a code-only word in the code context,
+    /// after L0 to L8; hash lookups on preallocated tables, no allocation (ENG-R1232).
+    package func startsSentence(_ inputs: CommitInputs, context: CommitContext) -> Bool {
+        context.atLineStart && context.boundary == " " && Self.isSentenceCase(inputs.raw)
+            && !resources.techCodeCapitalized.contains(inputs.rawLowercased)
+    }
+
+    /// ENG-R850 (e): the first letter is uppercase, every other letter lowercase, and there are at least two letters
+    /// (`Tar`, `Tee`, `Md5`; not `TAR`, `TAr`, `tar` or `T`). Reads the UTF-8 bytes and allocates nothing (PLT-R304).
+    package static func isSentenceCase(_ raw: String) -> Bool {
+        var letters = 0
+        for byte in raw.utf8 where ASCII.isLetter(byte) {
+            if ASCII.isUppercaseLetter(byte) != (letters == 0) { return false }
+            letters += 1
+        }
+        return letters >= 2
+    }
+
     /// RV5 of ENG-R828: the decision the rules after L9 give the token, as in the general context (L9a to L11 with
     /// the token's own run, window and memory class), keeps its Vietnamese display. Evaluated once, at the commit
     /// of a token that L9 restored as the first thing typed on its line.
