@@ -107,11 +107,53 @@ struct CollisionSignalTests {
         let kept = try F.driver("great job car nhoms " + String(repeating: "\u{232B}", count: 6) + "\u{238B} ")
         #expect(kept.field.string == "great job car ")
         #expect(F.signals(kept) == [strong("car", .afterEnglish, .english)])
-        // A Backspace or key inside the re-opened word makes it typed again: the revision no longer counts and
-        // the rules alone decide what the toggle corrects (`á` here, so restoring `as` is a correction).
-        let edited = try F.driver("dduwowcj as hell " + String(repeating: "\u{232B}", count: 7) + "s\u{238B} ")
-        #expect(edited.field.string == "được as ")
-        #expect(F.signals(edited) == [strong("as", .afterVietnamese, .english)])
+        // A letter deleted and typed again leaves the raw keys RV1 decided: the revision still stands for the
+        // rules, so restoring `as` agrees with it and reports nothing.
+        let retyped = try F.driver("dduwowcj as hell " + String(repeating: "\u{232B}", count: 7) + "s\u{238B} ")
+        #expect(retyped.field.string == "được as ")
+        #expect(F.signals(retyped).isEmpty)
+        #expect(retyped.outputs.compactMap(\.learning).isEmpty)
+    }
+
+    @Test("ENG-R864: raw keys edited inside a re-opened revised word drop the revision's side")
+    func editingARevisedWordDropsTheRevision() throws {
+        // RV3 restored `been`; the toggle after a Backspace shows `bê`, which the rules alone give for `bee`,
+        // so it corrects nothing.
+        let backspaced = try F.driver("dduwowcj been you " + String(repeating: "\u{232B}", count: 6) + "\u{238B} ")
+        #expect(backspaced.field.string == "được bê ")
+        #expect(backspaced.outputs.compactMap(\.learning).isEmpty)
+        // The same after a key typed into it (`beenh`, `bênh`).
+        let typed = try F.driver("dduwowcj been you " + String(repeating: "\u{232B}", count: 5) + "h\u{238B} ")
+        #expect(typed.field.string == "được bênh ")
+        #expect(typed.outputs.compactMap(\.learning).isEmpty)
+        // A letter deleted and typed again leaves the raw keys the revision decided: the toggle against RV3
+        // still counts as a correction.
+        let same = try F.driver("dduwowcj been you " + String(repeating: "\u{232B}", count: 5) + "\u{238B}\u{232B}n ")
+        #expect(same.field.string == "được bên ")
+        #expect(same.outputs.compactMap(\.learning) == [.preferredVietnamese(raw: "been")])
+    }
+
+    @Test("ENG-R861, ENG-R864: the toggle that undoes a revision reports the choice once")
+    func undoReportsOnce() throws {
+        // RV1 restored `as`; the toggle undoes it (`á`) with a strong signal; re-opened and committed again with
+        // the same choice, `as` reports nothing new.
+        let driver = try F.driver("tricky as nha \u{238B}" + String(repeating: "\u{232B}", count: 5) + ".")
+        #expect(driver.field.string == "tricky as.")
+        #expect(F.signals(driver) == [strong("as", .afterEnglish, .english)])
+        #expect(driver.outputs.compactMap(\.learning).isEmpty)
+    }
+
+    @Test("ENG-R861: a re-opened token edited into other raw keys reports its own choice")
+    func editedTokenReportsItsOwnChoice() throws {
+        // `car` restored by the toggle, re-opened and edited to `cas`: a choice for `cas` never reported.
+        let edited = try F.driver("dduwowcj car\u{238B} \u{232B}\u{232B}s ")
+        #expect(edited.field.string == "được cas ")
+        #expect(edited.outputs.compactMap(\.learning) == [.preferredRaw(raw: "car"), .preferredRaw(raw: "cas")])
+        // The same letters deleted and typed again are the same choice: no second signal.
+        let retyped = try F.driver("dduwowcj car\u{238B} \u{232B}\u{232B}r ")
+        #expect(retyped.field.string == "được car ")
+        #expect(retyped.outputs.compactMap(\.learning) == [.preferredRaw(raw: "car")])
+        #expect(F.signals(retyped) == [strong("car", .afterVietnamese, .english)])
     }
 
     @Test("ENG-R866: a signal carries the bundled list's word in lowercase, whatever the case typed")

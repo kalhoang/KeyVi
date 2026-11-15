@@ -94,6 +94,14 @@ struct EscapeBackspaceTests {
         Row(keys: "]ous]⌫", expected: "óu", bracketKeys: true),
         Row(keys: "][us]⌫", expected: "ớu", bracketKeys: true),
         Row(keys: "S][U]⌫", expected: "SƠU", bracketKeys: true),
+        // The vowel that took the tone went with the escape and no letter shown can take it: the token
+        // is retyped without the tone key (ENG-R432, ENG-R710), not left in literal mode.
+        Row(keys: "dwnsdw⌫", expected: "đn"),
+        Row(keys: "dwsndw⌫", expected: "đn"),
+        Row(keys: "dwngsdw⌫", expected: "đng"),
+        Row(keys: "DWNSDW⌫", expected: "ĐN"),
+        Row(keys: "d]nsd]⌫", expected: "đn", bracketKeys: true),
+        Row(keys: "d[nsd[⌫", expected: "đn", bracketKeys: true),
     ]
 
     @Test(arguments: rows)
@@ -125,6 +133,37 @@ struct EscapeBackspaceTests {
             try driver.send(KeyNotation.events(keys))
             #expect(driver.state.activeRawKeys == raw, "\(keys)")
         }
+    }
+
+    /// The replay keeps the keys as typed where it can, so the restore toggle shows them; the retyping
+    /// of fallback 2 would give the same text from other keys. A waiting tone key moves after the letter
+    /// that takes it (`wsaw`, `wsfaw`, `wszaw`, ENG-R432); a bracket key's escape keeps the mark key that
+    /// still marks a letter (`]sow]`, not `ows`); a bracket `ơ` shown plain is kept as an `o` key in its
+    /// place (`[snw`, not `ons`; `[szw`, not `o`; fallback 1).
+    @Test(arguments: [
+        ("wsaw⌫", "as", false), ("wsfaw⌫", "asf", false), ("wszaw⌫", "asz", false),
+        ("]sow]⌫", "osw", true), ("[snw⌫", "osn", true), ("[szw⌫", "osz", true), ("]s[w⌫", "uso", true),
+    ])
+    func rawKeysKeepTheTypedOrder(keys: String, raw: String, bracketKeys: Bool) throws {
+        let configuration = EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: bracketKeys)))
+        var driver = EngineDriver(configuration: configuration)
+        try driver.send(KeyNotation.events(keys))
+        #expect(driver.state.activeRawKeys == raw, "\(keys)")
+    }
+
+    /// A retyped token (fallback 2) keeps deleting one character per press, and its raw keys are the
+    /// keys that type the letters shown, without a tone key that no letter shown takes.
+    @Test func retypedTokenWithoutItsToneKey() throws {
+        var driver = EngineDriver(configuration: EngineConfiguration())
+        try driver.send(KeyNotation.events("dwngsdw"))
+        #expect(driver.field.string == "đngw")
+        try driver.send(.backspace)
+        #expect(driver.field.string == "đng" && driver.state.activeRawKeys == "ddng")
+        try driver.send(.backspace)
+        #expect(driver.field.string == "đn" && driver.outputs.last?.action == .passThrough)
+        try driver.send(.backspace)
+        try driver.send(.backspace)
+        #expect(driver.field.string == "" && driver.outputs.last?.action == .passThrough)
     }
 
     /// An escape letter that stays a letter (`oo`, `soóc`) is deleted like any letter, its tone staying on

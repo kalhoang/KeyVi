@@ -4,17 +4,17 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Integrity of the corpus files extracted from spec 13.8 to 13.10 by
-/// Scripts/extract-spec-examples.py (302 + 72 + 9 rows), and of the 13.9 fixture resources.
+/// Scripts/extract-spec-examples.py (304 + 72 + 9 rows), and of the 13.9 fixture resources.
 @Suite("Spec fixture files (13.8 to 13.10)")
 struct SpecFixtureFileTests {
     @Test func workedExamples() throws {
         let rows = try SpecExamples.workedExamples(tsv: CorpusFiles.text(SpecExamples.workedExamplesFile))
-        #expect(rows.count == 302)
+        #expect(rows.count == 304)
         // Lettered rows follow the row they extend; the suffix keeps the numbers of the rows after them:
-        // W243a-W243j (REG-31, 14/11/2026), W158a-W158j, W184a-W184c, W242a-W242u and W243k-W243o
+        // W243a-W243j (REG-31, 14/11/2026), W158a-W158j, W184a-W184c, W242a-W242w and W243k-W243o
         // (REG-24, REG-33, REG-34, 15/11/2026).
         let lettered: [Int: String] = [
-            158: "abcdefghij", 184: "abc", 242: "abcdefghijklmnopqrstu", 243: "abcdefghijklmno",
+            158: "abcdefghij", 184: "abc", 242: "abcdefghijklmnopqrstuvw", 243: "abcdefghijklmno",
         ]
         let expectedIDs = (1...253).flatMap { number -> [String] in
             let id = "W" + String(repeating: "0", count: 3 - String(number).count) + String(number)

@@ -3,7 +3,8 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// ENG-T38 on every key sequence of up to five keys over small alphabets of transform keys, where
+/// ENG-T38 on every key sequence of up to five keys (six over the smallest alphabet) over small alphabets
+/// of transform keys, where
 /// escapes, tone removals, mark removals (ENG-R411), standalone `w` and bracket letters meet. Each
 /// sequence is typed, then Backspace is pressed until the field is empty; every press must delete
 /// exactly the last character or match a documented exception of ENG-R714 (`BackspaceProbe`). The
@@ -16,6 +17,7 @@ struct BackspaceExhaustiveTests {
         let alphabet: [Character]
         let configuration: EngineConfiguration
         var boundary: Character?
+        var length = 5
 
         var testDescription: String { name }
     }
@@ -36,6 +38,11 @@ struct BackspaceExhaustiveTests {
         Space(
             name: "Telex re-opened after a space", alphabet: ["w", "s", "z", "a", "o", "d", "e"],
             configuration: EngineConfiguration(), boundary: " "),
+        // Six keys: a stroke that applied while an escaped `ư` stood, with a tone key that lost its vowel
+        // (`dwnsdw`, `d]nsd]`, ENG-R711 fallback 2).
+        Space(
+            name: "Telex strokes and tones, six keys", alphabet: ["w", "s", "a", "d", "n", "]", "["],
+            configuration: EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true))), length: 6),
     ]
 
     @Test(arguments: spaces)
@@ -43,7 +50,7 @@ struct BackspaceExhaustiveTests {
         let engine = Engine(configuration: space.configuration, resources: .empty)
         var violations: [String] = []
         var layer = [""]
-        for _ in 1...5 {
+        for _ in 1...space.length {
             layer = layer.flatMap { prefix in space.alphabet.map { prefix + String($0) } }
             for keys in layer {
                 for finding in try BackspaceProbe.run(keys: keys, boundary: space.boundary, engine: engine)
