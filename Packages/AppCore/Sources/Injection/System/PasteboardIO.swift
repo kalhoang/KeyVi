@@ -52,32 +52,43 @@ final class PasteboardIO: @unchecked Sendable {
         var snapshotItems: [PasteboardItemData] = []
         var total = 0
         for item in items {
-            if item.types.contains(where: { Self.isFilePromise($0.rawValue) }) { throw .filePromise }
-            var types: [String] = []
-            var missing: [String] = []
-            var data: [String: Data] = [:]
-            for type in item.types {
-                // A plain-text conversion of a plain-text type already saved is never read: the pasteboard server
-                // derives it again from that type on restore. For items this process wrote (every restore makes it
-                // the owner) reading it makes AppKit fulfil the conversion promise synchronously on this
-                // background thread ("synchronous promise fulfillment requested from a background thread"), which
-                // AppKit warns is unsafe off the main thread and which crashed the test runner now and then.
-                if Self.isPlainTextConversion(type.rawValue, of: types) { continue }
-                guard let bytes = item.data(forType: type) else {
-                    missing.append(type.rawValue)
-                    continue
-                }
-                total += bytes.count
+            let saved = try Self.readItem(item) { (count: Int) throws(PasteboardError) in
+                total += count
                 guard total <= limits.maxTotalBytes else { throw .tooLarge }
                 guard clock.now().nanoseconds(since: started) <= timeout else { throw .timedOut }
-                types.append(type.rawValue)
-                data[type.rawValue] = bytes
             }
-            guard missing.allSatisfy({ Self.isRederivable($0, from: types) }) else { throw .lazyDataUnavailable }
-            snapshotItems.append(PasteboardItemData(types: types, data: data))
+            snapshotItems.append(saved)
         }
         guard pasteboard.changeCount == changeCount else { throw .unreadableItem }
         return PasteboardSnapshot(changeCount: changeCount, items: snapshotItems, totalBytes: total)
+    }
+
+    /// One item, every type it can give, in order; `afterEachRead` gets the size of each read (budget and deadline
+    /// checks of the caller). A plain-text conversion of a plain-text type already saved is never asked for: the
+    /// pasteboard server derives it again from that type on restore. For items this process wrote (every restore
+    /// makes it the owner), asking makes AppKit fulfil the conversion promise synchronously on this background
+    /// thread ("synchronous promise fulfillment requested from a background thread"), which AppKit warns is unsafe
+    /// off the main thread and which may be what crashed the test runner now and then (never reproduced).
+    static func readItem(
+        _ item: some PasteboardItemReading, afterEachRead: (Int) throws(PasteboardError) -> Void
+    ) throws(PasteboardError) -> PasteboardItemData {
+        let names = item.typeNames
+        if names.contains(where: isFilePromise) { throw .filePromise }
+        var types: [String] = []
+        var missing: [String] = []
+        var data: [String: Data] = [:]
+        for type in names {
+            if isPlainTextConversion(type, of: types) { continue }
+            guard let bytes = item.data(forTypeName: type) else {
+                missing.append(type)
+                continue
+            }
+            try afterEachRead(bytes.count)
+            types.append(type)
+            data[type] = bytes
+        }
+        guard missing.allSatisfy({ isRederivable($0, from: types) }) else { throw .lazyDataUnavailable }
+        return PasteboardItemData(types: types, data: data)
     }
 
     /// Step 2: one item with plain text and the nspasteboard.org marker types; returns the new `changeCount`.
@@ -130,4 +141,15 @@ final class PasteboardIO: @unchecked Sendable {
         guard let uti = UTType(type), !uti.isDynamic, uti.conforms(to: .plainText) else { return false }
         return saved.contains { UTType($0)?.conforms(to: .plainText) == true }
     }
+}
+
+/// One pasteboard item as the snapshot reads it: the seam that lets tests see which types are asked for.
+protocol PasteboardItemReading {
+    var typeNames: [String] { get }
+    func data(forTypeName type: String) -> Data?
+}
+
+extension NSPasteboardItem: PasteboardItemReading {
+    var typeNames: [String] { types.map(\.rawValue) }
+    func data(forTypeName type: String) -> Data? { data(forType: NSPasteboard.PasteboardType(type)) }
 }
