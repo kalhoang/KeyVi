@@ -9,7 +9,6 @@
 // logged (PLT-R901).
 
 public import AppModel
-public import InputHost
 public import SettingsStore
 internal import VietnameseEngine
 
