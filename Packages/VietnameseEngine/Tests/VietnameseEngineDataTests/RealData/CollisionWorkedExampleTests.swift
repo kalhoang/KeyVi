@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 //
-// spec/01-engine.md 13.9.3 (rows C001 to C035) with the bundled data: each row is read from the spec, typed
+// spec/01-engine.md 13.9.3 (rows C001 to C036) with the bundled data: each row is read from the spec, typed
 // from an empty field and ended with Return; the field must equal the row's text, the rules L9a and L9b it
 // names must have decided a token, and the revisions (RV1 to RV4, ENG-R828) must be exactly the ones it names.
 
@@ -40,9 +40,9 @@ struct CollisionWorkedExampleTests {
         ("RV1", .phrase), ("RV2", .particleTail), ("RV3", .nextEnglish), ("RV4", .nextVietnamese),
     ]
 
-    @Test("The table has its 35 rows")
+    @Test("The table has its 36 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...35).map { String(format: "C%03d", $0) })
+        #expect(Self.rows.map(\.id) == (1...36).map { String(format: "C%03d", $0) })
     }
 
     @Test("ENG-R825 to ENG-R828: every row of 13.9.3", arguments: rows)

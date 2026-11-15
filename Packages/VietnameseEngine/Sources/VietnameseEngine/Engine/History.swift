@@ -65,9 +65,10 @@ package struct CommittedToken: Sendable, Hashable {
     /// ENG-R1002: the token re-opened as the active token "with all its raw keys and flags". Its display
     /// is what the commit left on screen. A token that a commit rule or a revision restored shows its raw
     /// keys and the toggle can bring the composed form back (ENG-R701, ENG-R704); the user's own choice
-    /// (L1) is kept in `userChoice`.
+    /// (L1) is kept in `userChoice`. A revised token remembers the revision's side (ENG-R864).
     package var reopened: ActiveToken {
-        token.reopened(display: committedText, restoredByRule: showsRawKeysByRule)
+        token.reopened(
+            display: committedText, restoredByRule: showsRawKeysByRule, revisionRestored: collision.revision?.restores)
     }
 }
 

@@ -55,8 +55,10 @@ extension Engine {
             revision = revised.reason
             action = .edit(revised.edit, thenPassThrough: true)
         }
+        // ENG-R861, ENG-R864: a reported choice is not reported again when the token is re-committed.
+        let stored = result.learning == nil ? token : token.reportingChoice()
         let committed = CommittedToken(
-            token: token, committedText: result.text, decision: result.decision, language: result.language,
+            token: stored, committedText: result.text, decision: result.decision, language: result.language,
             languagesBefore: state.recentLanguages, collision: result.collision)
         state.history.record(committed, limit: configuration.historyLimit)
         state.recentLanguages.push(result.language)

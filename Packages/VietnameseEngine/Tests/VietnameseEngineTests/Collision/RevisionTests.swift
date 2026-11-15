@@ -46,6 +46,8 @@ struct RevisionTests {
         #expect(try F.field("dduwowcj car the ") == "được cả the ")
         // A token restored by an `en` row is not strict English evidence (`is`).
         #expect(try F.field("dduwowcj car is ") == "được cả is ")
+        // Nor is a token restored by L8 (`does`: English keys, display not attested).
+        #expect(try F.field("dduwowcj car does ") == "được cả does ")
     }
 
     @Test("ENG-R828 RV4: Vietnamese after a function word restored by the English run")

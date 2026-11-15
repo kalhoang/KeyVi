@@ -24,7 +24,9 @@ extension Engine {
         state.history.updateToken(beforeNewest: 3) { token in
             token.committedText = previousText
             token.decision = decision
+            // ENG-R864: the strong signal below reports the choice; a later re-commit reports nothing new.
             token.token = token.token.choosing(choice)
+            if revised.collision.listWord != nil { token.token = token.token.reportingChoice() }
             token.language = language
             token.collision.revision = nil
         }

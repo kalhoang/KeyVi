@@ -12,6 +12,10 @@ package struct CommitInputs: Sendable {
     package let escapeUsed: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
+    /// The user's choice was already reported (ENG-R861, ENG-R864).
+    package let choiceSignalled: Bool
+    /// The side of the revision that last changed the re-opened token (ENG-R864), nil when none did.
+    package let revisionRestored: Bool?
 
     package init(token: ActiveToken, style: ToneStyle) {
         // A literal token's commit form is its display (ENG-R532 does not apply to it), which the token
@@ -24,6 +28,8 @@ package struct CommitInputs: Sendable {
         escapeUsed = token.composition.escapeUsed
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
+        choiceSignalled = token.choiceSignalled
+        revisionRestored = token.revisionRestored
     }
 }
 
@@ -170,12 +176,14 @@ package struct CommitPolicy: Sendable {
         // L9: app context `code` (ENG-R850).
         if appContext == .code, resources.techCodeOnly.contains(r) { return restore(.codeContext) }
         if collisionRules {
-            // L9a: a boundary particle before `.`, `!`, `?` or Return (ENG-R825).
-            if resources.collision.boundaryParticles.contains(r), Self.endsSentence(context.boundary) {
+            let phrase = continuesPhrase(r, chain: context.phrases)
+            // L9a: a boundary particle before `.`, `!`, `?` or Return (ENG-R825), unless it continues a
+            // phrase, which L9b decides (`such as.`).
+            if !phrase, resources.collision.boundaryParticles.contains(r), Self.endsSentence(context.boundary) {
                 return .kept(.boundaryParticle)
             }
             // L9b: the token continues a bundled phrase with the previous tokens (ENG-R826).
-            if continuesPhrase(r, chain: context.phrases) { return restore(.phrase) }
+            if phrase { return restore(.phrase) }
         }
         // L9c: the learned memory (ENG-R863).
         if let vote = memoryVote(r, context: context) {
@@ -201,13 +209,17 @@ package struct CommitPolicy: Sendable {
 
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the
     /// rules alone would have decided. The signal carries the lowercased raw keys, the key of the user
-    /// lists (ENG-R860).
+    /// lists (ENG-R860). One toggle gives one signal: a re-commit of a choice already reported gives none.
+    /// ENG-R864: for a re-opened token that a revision changed, the revision is what the user corrects, so
+    /// its side stands for the rules' decision.
     package func learningSignal(_ inputs: CommitInputs, decision: CommitDecision, context: CommitContext)
         -> LearningSignal?
     {
-        guard decision == .restored(.userChoice) || decision == .kept(.userChoice) else { return nil }
-        let rulesAlone = decide(inputs, context: context, includeUserChoice: false)
-        switch (decision.restores, rulesAlone.restores) {
+        guard decision == .restored(.userChoice) || decision == .kept(.userChoice), !inputs.choiceSignalled
+        else { return nil }
+        let rulesAloneRestore =
+            inputs.revisionRestored ?? decide(inputs, context: context, includeUserChoice: false).restores
+        switch (decision.restores, rulesAloneRestore) {
         case (true, false): return .preferredRaw(raw: inputs.rawLowercased)
         case (false, true): return .preferredVietnamese(raw: inputs.rawLowercased)
         default: return nil

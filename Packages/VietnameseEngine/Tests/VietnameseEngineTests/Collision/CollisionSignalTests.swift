@@ -77,6 +77,43 @@ struct CollisionSignalTests {
         #expect(F.signals(try F.driver("vieejt\u{238B} ")).isEmpty)
     }
 
+    @Test("ENG-R861, ENG-R864: one toggle gives one signal, however often the token is re-committed")
+    func oneSignalPerToggle() throws {
+        // Toggle, space, Backspace (re-opens the token), space: the second commit repeats the same choice.
+        let driver = try F.driver("dduwowcj car\u{238B} \u{232B} ")
+        #expect(driver.field.string == "được car ")
+        #expect(F.signals(driver) == [strong("car", .afterVietnamese, .english)])
+        #expect(driver.outputs.compactMap(\.learning) == [.preferredRaw(raw: "car")])
+        // A new toggle on the re-opened token is a new choice and gives its own signal.
+        let again = try F.driver("test \u{232B}\u{238B} \u{232B}\u{238B} ")
+        #expect(again.field.string == "test ")
+        #expect(F.signals(again) == [strong("test", .sentenceStart, .vietnamese)])
+        let toggledTwice = try F.driver("dduwowcj car\u{238B} \u{232B}\u{238B} \u{232B}\u{238B} ")
+        #expect(toggledTwice.field.string == "được car ")
+        #expect(
+            F.signals(toggledTwice) == [
+                strong("car", .afterVietnamese, .english), strong("car", .afterVietnamese, .english),
+            ])
+    }
+
+    @Test("ENG-R864: correcting a revision after Backspace re-opened the word is a strong signal")
+    func correctingARevisionAfterBackspace() throws {
+        // RV1 restored `as`; six Backspaces re-open it; the toggle brings `á` back against the revision.
+        let restored = try F.driver("dduwowcj as hell " + String(repeating: "\u{232B}", count: 6) + "\u{238B} ")
+        #expect(restored.field.string == "được á ")
+        #expect(F.signals(restored) == [strong("as", .afterVietnamese, .vietnamese)])
+        #expect(restored.outputs.last?.learning == .preferredVietnamese(raw: "as"))
+        // RV4 made `car` Vietnamese; re-opened and toggled, it goes back to English.
+        let kept = try F.driver("great job car nhoms " + String(repeating: "\u{232B}", count: 6) + "\u{238B} ")
+        #expect(kept.field.string == "great job car ")
+        #expect(F.signals(kept) == [strong("car", .afterEnglish, .english)])
+        // A Backspace or key inside the re-opened word makes it typed again: the revision no longer counts and
+        // the rules alone decide what the toggle corrects (`á` here, so restoring `as` is a correction).
+        let edited = try F.driver("dduwowcj as hell " + String(repeating: "\u{232B}", count: 7) + "s\u{238B} ")
+        #expect(edited.field.string == "được as ")
+        #expect(F.signals(edited) == [strong("as", .afterVietnamese, .english)])
+    }
+
     @Test("ENG-R866: a signal carries the bundled list's word in lowercase, whatever the case typed")
     func signalWordIsTheListWord() throws {
         let driver = try F.driver("CAR\n")

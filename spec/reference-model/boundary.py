@@ -82,9 +82,9 @@ def decide_collision(keys, cfg, window, boundary, chain):
     R = "".join(compose(list(keys), cfg).raw); r = R.lower()
     if reason not in ("kept: ambiguity table vi", "kept: default vi", "restored: ambiguity table en"):
         return C, reason
-    if r in PARTICLES and boundary and boundary[0] in ".!?\n": return C, "kept: boundary particle"
-    for p in (1, 2, 3):
-        if len(chain) >= p and any(m[:p + 1] == tuple(chain[-p:]) + (r,) for m in PHRASES): return R, "restored: phrase"
+    phrase = any(len(chain) >= p and m[:p + 1] == tuple(chain[-p:]) + (r,) for p in (1, 2, 3) for m in PHRASES)
+    if r in PARTICLES and boundary and boundary[0] in ".!?\n" and not phrase: return C, "kept: boundary particle"
+    if phrase: return R, "restored: phrase"
     if run_is_english(window) and r not in RUN_EXEMPT: return R, "restored: English run"
     return C, reason
 def lang_of_collision(out, reason, keys):
@@ -112,6 +112,7 @@ COLLISION_RUNS = [
     ("the car ", "the car ", "restored: English run"),
     ("I car ", "I car ", "restored: English run"),
     ("tricky such as ", "tricky such as ", "restored: phrase"),
+    ("dduwowcj such as.", "được such as.", "restored: phrase"),
 ]
 if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]

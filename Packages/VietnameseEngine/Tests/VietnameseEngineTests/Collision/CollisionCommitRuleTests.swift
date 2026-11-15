@@ -23,6 +23,11 @@ struct CollisionCommitRuleTests {
         #expect(try F.field("tricky as ") == "tricky as ")
         // `has` is not a boundary particle: `Yes she has.` stays English.
         #expect(try F.field("yes she has.") == "yes she has.")
+        // A token that continues a phrase is not a boundary particle: L9b decides it.
+        let such = try F.driver("tricky such as.")
+        #expect(such.field.string == "tricky such as.")
+        #expect(F.decisions(such).last == .restored(.phrase))
+        #expect(try F.field("dduwowcj as soon as.") == "được as soon as.")
     }
 
     @Test("ENG-R825 L9a: a kept boundary particle is neutral for the window")
@@ -173,6 +178,7 @@ struct CollisionCommitRuleTests {
             ("the car ", "the car ", .restored(.englishRun)),
             ("I car ", "I car ", .restored(.englishRun)),
             ("tricky such as ", "tricky such as ", .restored(.phrase)),
+            ("dduwowcj such as.", "được such as.", .restored(.phrase)),
         ]
         for (keys, text, decision) in rows {
             let driver = try F.driver(keys, resources: resources)
