@@ -34,6 +34,7 @@ struct CollisionMemorySimulationTests {
     func silentAcceptanceNeverDecides() throws {
         let sentences = try Self.corpus.get()
         let simulation = MemorySimulation(resources: try GateResources.bundled(), user: .neverCorrects)
+        let rules = try FixtureRuns.of(.toneLast).score.collisions
         var memory = ReferenceCollisionMemory()
         for (number, order) in Self.shuffledPasses(sentences, count: 3, seed: 11).enumerated() {
             let pass = try simulation.pass(order, memory: memory)
@@ -44,7 +45,8 @@ struct CollisionMemorySimulationTests {
             #expect(pass.result.memoryDecisions.total == 0)
             #expect(pass.result.nonCollisionChanges == 0 && pass.result.misaligned == 0)
             #expect(pass.result.foreignSignals == 0, "ENG-R866")
-            #expect(pass.result.collisions.english.right == 548 && pass.result.collisions.vietnamese.right == 620)
+            #expect(pass.result.collisions.english.right == rules.english.right, "the rules alone decide")
+            #expect(pass.result.collisions.vietnamese.right == rules.vietnamese.right, "the rules alone decide")
         }
         #expect(memory.snapshot.isEmpty)
     }
@@ -52,6 +54,8 @@ struct CollisionMemorySimulationTests {
     /// ENG-R877, second sentence: on held-out sentences the memory never lowers Vietnamese-intent accuracy by more
     /// than 1.5 points. The user corrects every error on half A for four passes; half B is then typed with that
     /// memory frozen and compared with half B without memory (the fixed split of the fixture's `half` column).
+    /// "Held out" here means half B of the corpus; `set-held-out.tsv` is a different file, the 81 lines the
+    /// research wrote before it ran its final rules, and plays no part in this test.
     @Test("On held-out sentences the memory lowers Vietnamese accuracy by at most 1.5 points")
     func heldOutFloor() throws {
         let sentences = try Self.corpus.get()
@@ -71,11 +75,15 @@ struct CollisionMemorySimulationTests {
         #expect(!train.isEmpty && !test.isEmpty && train.count + test.count == sentences.count)
         #expect(with.nonCollisionChanges == 0 && with.misaligned == 0)
         // Measured on 15/11/2026 (docs/decisions/0008-collision-learning.md): 325 of 326 without memory, 320 with it,
-        // 1.53 points. Four loanwords are meant as English after a Vietnamese word in half A (`tips`, `cans`, `tee`,
-        // `teen`) and as Vietnamese in the same context class in half B (`típ`, `cán`, `tê`, `tên`); the fifth word is
-        // an English-run restore that a learned English word before it caused. The loss may never grow beyond that.
+        // 1.53 points. Four loanwords are meant as English in half A and as Vietnamese in the same context class in
+        // half B: `tips`, `cans` and `tee` after a Vietnamese word, `teen` after a neutral one (`típ`, `cán`, `tê`,
+        // `tên`); the fifth word is an English-run restore (L10) after a word the memory learned as English at the
+        // start of a sentence. The loss may never grow beyond that.
         let lost = without.collisions.vietnamese.right - with.collisions.vietnamese.right
         #expect(lost <= Self.measuredHeldOutLoss, "the held-out loss grew beyond the measurement of 0008")
+        // The day the loss falls to 1.5 points or less (a decision on the open question of 0008, a list or rule
+        // change), `withKnownIssue` itself fails with "Known issue was not recorded": then replace the block with
+        // the plain expectation, so the floor gates again.
         withKnownIssue("ENG-R877: 1.53 points measured against the 1.5-point floor, open question in 0008") {
             #expect(with.collisions.vietnamese.share >= without.collisions.vietnamese.share - 0.015)
         }

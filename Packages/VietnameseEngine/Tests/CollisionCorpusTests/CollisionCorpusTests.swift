@@ -23,9 +23,9 @@ struct CollisionCorpusTests {
     }
 
     /// ENG-R876 on the corpus. The 75 % and 99 % floors are stated for the habit 13.11 measures first (tone typed at
-    /// the end of the word); with the tone typed after the vowel 13.11 records 98.8 % for the Vietnamese side, which
-    /// the frozen outputs hold, while every other condition (no wrong revision, no non-collision change, English at
-    /// least 75 %) applies to both habits.
+    /// the end of the word); with the tone typed after the vowel 13.11 records 98.8 % (501 of 507) for the Vietnamese
+    /// side, which is that habit's own floor here, so it holds even when the fixture is regenerated. Every other
+    /// condition (no wrong revision, no non-collision change, English at least 75 %) applies to both habits.
     @Test(
         "ENG-R876: the corpus meets the targets and matches its frozen outputs",
         arguments: [
@@ -48,12 +48,18 @@ struct CollisionCorpusTests {
         if fixture == .toneLast {
             #expect(score.collisions.vietnamese.total == 623, "13.11: 623 Vietnamese-intent collisions")
             #expect(score.collisions.vietnamese.share >= 0.99)
+        } else {
+            #expect(score.collisions.vietnamese.total == 507, "13.11: 507 Vietnamese-intent collisions")
+            #expect(score.collisions.vietnamese.share >= Self.toneAfterVowelVietnameseFloor)
         }
         let mismatches =
             "\(score.mismatches.count) sentences differ from the frozen fixture (update it with COLLISION_CORPUS_RECORD "
             + "and review, Fixtures/README.txt):\n\(score.mismatches.prefix(30).joined(separator: "\n"))"
         #expect(score.mismatches.isEmpty, "\(mismatches)")
     }
+
+    /// 13.11 for the tone typed after the vowel: 501 of 507 (98.8 %), the measured share rounded down.
+    static let toneAfterVowelVietnameseFloor = 0.988
 
     /// ENG-R829: without the collision rules the engine decides as it did before them (13.11: 58.5 % and 94.5 %,
     /// no revision), so the gain of the rules is measured against a fixed baseline.

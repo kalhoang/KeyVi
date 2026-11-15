@@ -421,7 +421,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | QA-R65 | Code of conduct | `CODE_OF_CONDUCT.md` | D | docs track |  |
 | QA-R66 | Required documents incl. ARCHITECTURE.md | `ARCHITECTURE.md` (this track), others; engine API docs (DocC) per ADR 0402 | D | platform design (done); docs track; CI and release (nightly DocC artifact) |  |
 | QA-R67 | Docs are part of done | process | D | all |  |
-| QA-R68 | W11 collision corpus and its three adversarial sets in CI with the ENG-R876 and ENG-R877 thresholds; any wrong revision fails; list changes that move a number are reviewed with the list | `Packages/VietnameseEngine/Tests/CollisionCorpusTests` (frozen fixtures, host-mode replay, memory simulation; `Fixtures/README.txt`); `.github/workflows/ci.yml` engine-linux step "W11 collision corpus gate"; `scripts/run-tests.sh` layer `collision`; ADR 0008 | E (`CollisionCorpusTests`, `CollisionMemorySimulationTests`, `HostReplayTests`, `CorpusFixtureTests`), L | W11-D |  |
+| QA-R68 | W11 collision corpus and its three adversarial sets in CI with the ENG-R876 and ENG-R877 thresholds; any wrong revision fails; list changes that move a number are reviewed with the list | `Packages/VietnameseEngine/Tests/CollisionCorpusTests` (frozen fixtures, host-mode replay, memory simulation; `Fixtures/README.txt`); `.github/workflows/ci.yml` engine-linux step "W11 collision corpus gate"; `scripts/run-tests.sh` layer `collision`; ADR 0008 | E (`CollisionCorpusTests`, `CollisionMemorySimulationTests`, `PhraseRevisionDepthTests`, `HostReplayTests`, `CorpusFixtureTests`), L | W11-D |  |
 
 ## 05-clean-room.md (CLR-R)
 

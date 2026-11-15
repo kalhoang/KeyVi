@@ -53,3 +53,8 @@ Updating
   writes every fixture with the new expected and revised columns to that directory; diff it against this one,
   review every changed sentence with the list change, then copy the files here. Never regenerate the labels or the
   intended words: they are the research's hand judgements and only a reviewed correction may change one.
+  A change that moves the numbers of 13.11 also updates, in the same pull request, the counts the tests state on
+  their own: CollisionCorpusTests.swift (1,206 sentences, 720 and 623 collisions, 507 for the tone after the
+  vowel and its floor, the baseline 421, 589 and 876), CollisionMemorySimulationTests.swift (the measured
+  held-out loss), spec/01-engine.md 13.11, docs/decisions/0008-collision-learning.md and the ENG-R876 and QA-R68
+  rows of docs/architecture/traceability.md and Packages/VietnameseEngine/TRACEABILITY.md.
