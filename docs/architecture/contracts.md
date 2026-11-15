@@ -8929,6 +8929,11 @@ public struct HostLifecycle: Sendable, Hashable {
     public static let breakerProbation: TimeSpan = .seconds(60)
     /// A trip later than the previous delay plus this interval starts the backoff again.
     public static let breakerStableInterval: TimeSpan = .seconds(600)
+    /// PLT-R330 step 1 (amended): how long a system disable waits for its live permission answer. A report of the
+    /// still disabled tap after this (the watchdog's 5 s check, PLT-R331) means the answer is not coming (a TCC call
+    /// that stalls): the tap is removed as for a failed creation, so the host never sits in `running` with a disabled
+    /// tap, and reports before it are the same disable, never a second one for the breaker.
+    public static let liveCheckOverdue: TimeSpan = .seconds(3)
 
     /// Who holds the one tap (PLT-R302): nobody, a creation in flight, or a live tap thread.
     private enum TapPresence: Sendable, Hashable { case none, creating, alive }
@@ -8962,8 +8967,9 @@ public struct HostLifecycle: Sendable, Hashable {
     /// A tap is being recreated after a trip; once created it is on probation until `probationUntil`.
     private var breakerRecovering = false
     private var probationUntil: UInt64?
-    /// A system disable waits for `.livePermissions` before the tap is re-enabled (PLT-R330 step 1).
-    private var reenablePending = false
+    /// A system disable waits for `.livePermissions` before the tap is re-enabled (PLT-R330 step 1): the instant it
+    /// asked, nil when nothing waits. Cleared by every path that enables or removes the tap.
+    private var reenableRequestedAt: UInt64?
     /// Index into `postingBrokenBackoff` used by the latest postingBroken, and when it happened.
     private var postingBrokenAttempt = 0
     private var lastPostingBrokenAt: UInt64?
@@ -9056,8 +9062,8 @@ public struct HostLifecycle: Sendable, Hashable {
     /// removed the tap (PLT-R730). Granted: the same tap is enabled again, once for all reports of that disable.
     private mutating func livePermissions(granted: Bool) -> [LifecycleEffect] {
         var effects = permissionsChanged(granted: granted)
-        let pending = reenablePending
-        reenablePending = false
+        let pending = reenableRequestedAt != nil
+        reenableRequestedAt = nil
         guard pending, granted, tapIsInstalled else { return effects }
         effects.append(.reenableTap)
         return effects
@@ -9071,7 +9077,8 @@ public struct HostLifecycle: Sendable, Hashable {
         }
         tap = .alive
         retryAttempt = 0
-        reenablePending = false
+        reenableRequestedAt = nil
+        breakerDisables.removeAll()  // a fresh tap: disables of the previous one never pair with its first
         if breakerRecovering {
             breakerRecovering = false
             probationUntil = now.nanoseconds &+ Self.breakerProbation.unsignedNanoseconds
@@ -9106,6 +9113,7 @@ public struct HostLifecycle: Sendable, Hashable {
             // PLT-R306: the watchdog already disabled the tap (keys flow); `.disableTap` repeats it from the
             // lifecycle owner. Nothing touches the tap thread, which may be stuck (ADR 0309).
             guard tapIsInstalled else { return [] }
+            reenableRequestedAt = nil  // the watchdog holds the tap now; `callbackExited` decides
             return publish(.failOpen(.watchdog)) + [
                 .disableTap, .requestFlush(.failOpen), .resetComposition, .recordHealth(.watchdogTrip),
             ]
@@ -9139,17 +9147,36 @@ public struct HostLifecycle: Sendable, Hashable {
     /// within 10 minutes, then a live permission check; the tap is re-enabled only when that check answers granted
     /// (`.livePermissions`), never on the cached status, because a revoked grant leaves an untrusted tap that
     /// stalls input until it is removed (the incident of 15/11/2026). A tap the system keeps disabling is removed
-    /// by the circuit breaker instead (`breakerWindow`). Every report runs the procedure (a second disable within
-    /// the coalescing window is possible and needs the reset), but reports within `disableCoalescingWindow` of the
-    /// last counted one count once (PLT-R331).
+    /// by the circuit breaker instead (`breakerWindow`). Every report of an enabled tap runs the procedure (a second
+    /// disable within the coalescing window is possible and needs the reset), but reports within
+    /// `disableCoalescingWindow` of the last counted one count once (PLT-R331); a report while the live answer is
+    /// pending is the same disable (`stillWaiting`).
     private mutating func systemDisabled(reason: HealthEventKindCode, at now: MonotonicInstant) -> [LifecycleEffect] {
         guard tapIsInstalled else { return [] }
-        var effects: [LifecycleEffect] = [.resetComposition, .requestFlush(.tapDisabled), .recordHealth(reason)]
+        let procedure: [LifecycleEffect] = [.resetComposition, .requestFlush(.tapDisabled), .recordHealth(reason)]
+        if let requestedAt = reenableRequestedAt { return stillWaiting(since: requestedAt, at: now, procedure) }
+        var effects = procedure
         let counted = countDisable(at: now)
         if counted.notice { effects.append(.showTapInstabilityNotice) }
         if counted.trip { return effects + tripBreaker(at: now) }
-        reenablePending = true
+        reenableRequestedAt = now.nanoseconds
         return effects + [.checkPermissionsLive]
+    }
+
+    /// A report while the live answer is pending: the tap has stayed disabled since, so it is the same disable. It
+    /// runs the procedure (idempotent) but counts for neither the notice nor the breaker and asks for no second
+    /// check. Once the answer is `liveCheckOverdue` late it is not coming (a TCC call that stalls): the tap is removed
+    /// and retried like a failed creation (PLT-R332), whose retry checks permissions first, so the host shows
+    /// `failOpen(tapUnavailable)` instead of a silently disabled tap.
+    private mutating func stillWaiting(
+        since requestedAt: UInt64, at now: MonotonicInstant, _ procedure: [LifecycleEffect]
+    ) -> [LifecycleEffect] {
+        let waited = now.nanoseconds(since: MonotonicInstant(nanoseconds: requestedAt))
+        guard waited >= Self.liveCheckOverdue.unsignedNanoseconds else { return procedure }
+        let delay = Self.backoff[min(retryAttempt, Self.backoff.count - 1)]
+        retryAttempt += 1
+        retryPending = true
+        return failOpenRemovingTap(.tapUnavailable) + [.recordHealth(.tapUnstable), .scheduleRetry(after: delay)]
     }
 
     /// PLT-R330 step 6: remove the tap (fail open, keys flow), retry on `breakerBackoff` while permissions look
@@ -9158,7 +9185,6 @@ public struct HostLifecycle: Sendable, Hashable {
         let delay = noteBreakerTrip(at: now)
         breakerDisables.removeAll()
         probationUntil = nil
-        reenablePending = false
         breakerRecovering = true
         retryAttempt = 0
         retryPending = true
@@ -9177,6 +9203,7 @@ public struct HostLifecycle: Sendable, Hashable {
             return phase == .running ? move(to: .sessionInactive) : []
         }
         guard phase == .sessionInactive, permissionsGranted == true, tap == .alive else { return [] }
+        reenableRequestedAt = nil  // the activation re-enables on the fresh status the caller fed (PLT-R333)
         return [.reenableTap] + move(to: .running)
     }
 
@@ -9231,6 +9258,7 @@ public struct HostLifecycle: Sendable, Hashable {
     /// PLT-R730: stop swallowing (the published phase), replay held events, reset, then remove the tap.
     private mutating func failOpenRemovingTap(_ reason: FailOpenReason) -> [LifecycleEffect] {
         tap = .none
+        reenableRequestedAt = nil
         return publish(.failOpen(reason)) + [.requestFlush(.failOpen), .resetComposition, .removeTap]
     }
 
@@ -9481,6 +9509,9 @@ public final class InputHostController {
     var session: TapSession?
     /// A removed session whose thread may still be exiting; its echoes are retired before the next tap.
     var retiredSession: TapSession?
+    /// The retired session's thread never entered its run loop (its creation failed or timed out), so no callback of
+    /// it can be running; it is waited for only briefly (`TapSession.abandonedExitTimeout`).
+    var retiredSessionNeverRan = false
     var recorderActive = false
     var started = false
     var stopped = false
@@ -9519,8 +9550,8 @@ public final class InputHostController {
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
             loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
             runsWorkerThread: true, mainSignalQueue: .main,
-            permissionRunner: QueuePermissionCheckRunner(
-                queue: DispatchQueue(label: (Bundle.main.bundleIdentifier ?? "host") + ".permissions", qos: .utility)))
+            permissionRunner: QueuePermissionCheckRunner.production(
+                label: (Bundle.main.bundleIdentifier ?? "host") + ".permissions"))
     }
 
     init(
@@ -10400,8 +10431,8 @@ public struct PermissionStatus: Sendable, Hashable {
 /// Every 2 s while not ready, every 30 s while ready (timers from the injected scheduler, utility queue in
 /// production), immediately on wake, session activation and menu open (PLT-R721). While a tap is installed
 /// (`setTapInstalled(true)`) Accessibility alone is also checked every second, so a revoked grant removes the tap
-/// within about a second even when macOS never disables it (PLT-R721, PLT-R730; the incident of 15/11/2026, decision
-/// 0005). Remembers the identity digest of the last grant (key-value store) for `stale`.
+/// within about a second of `AXIsProcessTrusted()` reporting it, even when macOS never disables the tap (PLT-R721,
+/// PLT-R730; the incident of 15/11/2026, decision 0005, where that call kept its old answer for about 30 s). Remembers the identity digest of the last grant (key-value store) for `stale`.
 ///
 /// Every probe call runs on `runner` (production: a serial queue of its own), never on the caller's thread and
 /// never under the state lock: a TCC call that stalls (for example behind System Settings) holds only the runner,
@@ -10455,11 +10486,10 @@ public final class PermissionMonitor: Sendable {
     }
     /// Checks on the runner (PLT-R721: menu open, wake, session activation, a system tap disable) and then calls
     /// `completion` on the runner with the newest status (see `checkNow`). Returns at once.
+    /// Requests made while a check is queued and not yet started join it, so a stalled probe call never piles up
+    /// checks (PLT-R730).
     public func requestCheck(_ completion: (@Sendable (PermissionStatus) -> Void)? = nil) {
-        runner.run { [self] in
-            let status = check()
-            completion?(latest ?? status)
-        }
+        enqueueCheck(completion)
     }
     /// The status of the most recent check, already set while an older status is still being delivered. A receiver
     /// that forwards statuses compares the one in hand with this and drops it when a newer one is queued behind it,
@@ -10494,6 +10524,11 @@ public struct QueuePermissionCheckRunner: PermissionCheckRunner {
     public let queue: DispatchQueue
     public init(queue: DispatchQueue) { self.queue = queue }
     public func run(_ work: @escaping @Sendable () -> Void) { queue.async(execute: work) }
+    /// The production runner: user-initiated, because its answer gates re-enabling the tap after a system disable
+    /// (PLT-R330) and must not be starved behind background work while the user types.
+    public static func production(label: String) -> QueuePermissionCheckRunner {
+        QueuePermissionCheckRunner(queue: DispatchQueue(label: label, qos: .userInitiated))
+    }
 }
 
 extension PermissionProbe {
@@ -11339,8 +11374,9 @@ public enum StatusPresentation {
     }
 
     /// VoiceOver label key for the status item (PLT-R211: the label is truthful about the reason). PRD-R10
-    /// labels are used where they fit; the dimmed and slashed glyphs, which cover several states, get a
-    /// reason-specific label otherwise, so every pause reason is said in plain words even without a status line.
+    /// labels are used where they fit; the dimmed glyph, which covers several states, gets a reason-specific label
+    /// otherwise, so every pause reason is said in plain words even without a status line. The slash means fail-open
+    /// for a reason other than permission and its own label says that (the permission has its own badge).
     public static func accessibilityLabelKey(icon: StatusIconState, state: HostState) -> String {
         switch (icon, state) {
         case (.paused, .starting):
@@ -11353,8 +11389,6 @@ public enum StatusPresentation {
             return MenuText.iconPausedSessionInactive.rawValue
         case (.paused, .paused(.diagnosticsTest)):
             return MenuText.iconPausedDiagnosticsTest.rawValue
-        case (.notWorking, .failOpen):
-            return MenuText.iconNotWorkingFailOpen.rawValue
         default:
             return icon.accessibilityLabelKey
         }
