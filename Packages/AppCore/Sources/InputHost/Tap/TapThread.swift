@@ -96,26 +96,29 @@ public final class TapThread<Handler: TapEventHandler>: TapControl, Sendable {
     private let factory: any EventTapFactory
     private let mask: TapEventMask
     private let makeHandler: @Sendable () -> Handler
+    private let creationTimeout: TimeSpan
 
     public init(
-        factory: any EventTapFactory, mask: TapEventMask = .standard,
+        factory: any EventTapFactory, mask: TapEventMask = .standard, creationTimeout: TimeSpan? = nil,
         makeHandler: @escaping @Sendable () -> Handler
     ) {
         self.factory = factory
         self.mask = mask
+        self.creationTimeout = creationTimeout ?? TapThreadRuntime.creationTimeout
         self.makeHandler = makeHandler
     }
 
     deinit { runtime.stop() }
 
     /// Creates the tap on a new thread (QoS user-interactive) and runs its CFRunLoop. Returns once creation
-    /// succeeded or failed; false if the factory returned nil (the thread then exits). True without a second
-    /// tap when already running (PLT-R302); false after `stop()`.
+    /// succeeded or failed; false if the factory returned nil (the thread then exits) or did not answer within the
+    /// creation timeout (a tap it returns later is invalidated, never enabled). True without a second tap when
+    /// already running (PLT-R302); false after `stop()`.
     public func start() -> Bool {
         let factory = self.factory
         let mask = self.mask
         let makeHandler = self.makeHandler
-        return runtime.start {
+        return runtime.start(timeout: creationTimeout) {
             // Tap thread (PLT-R303): the handler and the tap are created here and never leave this thread.
             let target = TapCallbackContext(handler: makeHandler())
             let userInfo = Unmanaged.passUnretained(target).toOpaque()

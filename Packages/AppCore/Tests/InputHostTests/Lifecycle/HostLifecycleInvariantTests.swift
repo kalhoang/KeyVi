@@ -51,6 +51,7 @@ private let randomInputs: [LifecycleInput] = [
     .callbackExited, .postingBroken, .tapDisabledBySystem(byTimeout: true),
     .tapDisabledBySystem(byTimeout: false), .sessionActive(true), .sessionActive(false), .userDisabled(true),
     .userDisabled(false), .diagnosticsPassThrough(true), .diagnosticsPassThrough(false),
+    .livePermissions(.granted), .livePermissions(.denied),
 ]
 
 @Suite struct HostLifecycleInvariantTests {
@@ -91,7 +92,8 @@ private let randomInputs: [LifecycleInput] = [
     ) {
         switch input {
         case .tapCreated: model.tapAlive = !effects.contains(.removeTap)
-        case .permissionsChanged(let status): model.permissionsGranted = status.health == .ready
+        case .permissionsChanged(let status), .livePermissions(let status):
+            model.permissionsGranted = status.health == .ready
         case .watchdogTripped(.callbackOverLimit): if phase == .failOpen(.watchdog) { model.callbackMayBeStuck = true }
         case .callbackExited: model.callbackMayBeStuck = false
         default: break

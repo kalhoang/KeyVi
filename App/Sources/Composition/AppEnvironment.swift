@@ -59,6 +59,12 @@ final class AppEnvironment {
     /// PRD-R43: the "tap re-enabled" line stays in the status menu for a while after an instability notice.
     var tapReenabledUntil: Date?
     var lastMenuRefresh: Date?
+    /// Health of the last permission status the shell saw, to show the permission screen once per loss (PRD-R42).
+    var lastPermissionHealth: PermissionStatus.Health?
+    /// TCC requests the user started (prompt, Input Monitoring request, reset): never on the main thread, which
+    /// must not wait for them (PLT-R730, the incident of 15/11/2026).
+    static let permissionRequests = DispatchQueue(
+        label: (Bundle.main.bundleIdentifier ?? "app") + ".permission-requests", qos: .userInitiated)
     /// The quit under way (AppEnvironment+Quit.swift): settings flushed off the main actor, reply through the run loop.
     var quit: QuitCoordinator?
 
@@ -266,7 +272,9 @@ extension AppEnvironment: LaunchSteps {
     }
 
     func showShell(settings: SettingsState, safeMode: Bool) {
-        let item = StatusItemController(language: language, actions: self) { [unowned self] in menuModel() }
+        let item = StatusItemController(language: language, actions: self, appName: brand.displayName) {
+            [unowned self] in menuModel()
+        }
         statusItem = item
         switchHUD = SwitchHUDController(language: language)
         item.setClickToToggle(settings.effective.clickIconToToggle)

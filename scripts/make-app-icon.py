@@ -8,7 +8,8 @@ Subcommands:
              not a template: AppKit picks the variant from the status button's effective appearance when it
              draws, which follows the menu bar over a dark or tinted wallpaper and Increase Contrast.
              `vietnamese` and `english` are Pa's on and off files; the other states put a badge in the dot's
-             place so every state differs in shape, not only in colour (PRD-R10, PRD-R67).
+             place so every state differs in shape, not only in colour (PRD-R10, PRD-R67). `permissionMissing`
+             carries the warning badge (an exclamation mark in a filled circle, decision 0005, 15/11/2026).
   app-icon   App/Resources/Assets.xcassets/AppIcon.appiconset (16 to 512 pt at 1x and 2x). Needs Pillow.
              Cuts the photographed keycap out of its off-white background with a rounded-square mask, adds a
              soft shadow and places it on Apple's macOS icon grid (an 824 px body on a 1024 px canvas).
@@ -56,18 +57,21 @@ class Palette:
     ink: str  # letters and monochrome badges
     on_dot: str  # emerald dot of the on state
     off_dot: str  # gray dot of the off state
-    alert: str  # centre of the recording badge
+    alert: str  # centre of the recording badge, disc of the warning badge
     # Letter opacity of the paused and not-working glyphs: 0.5 keeps the KV mark at 3:1 or more on a light
     # menu bar (3.45:1 on white, 3.30:1 on #ECECEC) as PRD-R67 requires; the badge tells them apart from English.
     faint: str = "0.5"
+    alert_ink: str = "#FFFFFF"  # the exclamation mark knocked out of the warning disc
 
 
 # Increase Contrast: pure ink and dots with at least 3:1 against the menu bar (WCAG AA for graphics, PRD-R67).
 HIGH_CONTRAST = {
     "light-hc": Palette(ink="#000000", on_dot="#007A55", off_dot="#4B5563", alert="#B3001B"),
-    "dark-hc": Palette(ink="#FFFFFF", on_dot="#3DDC97", off_dot="#B4BAC4", alert="#FF8A8A"),
+    "dark-hc": Palette(ink="#FFFFFF", on_dot="#3DDC97", off_dot="#B4BAC4", alert="#FF8A8A", alert_ink="#000000"),
 }
 ALERT = {"light": "#D93036", "dark": "#FF6369"}
+# The exclamation mark on the warning disc: at least 4.5:1 against the disc in every variant.
+ALERT_INK = {"light": "#FFFFFF", "dark": "#000000"}
 
 
 @dataclass(frozen=True)
@@ -77,7 +81,7 @@ class Glyph:
 
 
 # PRD-R10 states. Without colour: solid or dimmed letters, then the badge shape (filled dot, ring, lock,
-# pause bars, slash, recording ring) tell every state apart.
+# pause bars, slash, warning disc with an exclamation mark, recording ring) tell every state apart.
 STATES = {
     "vietnamese": Glyph("on", "dot-on"),
     "english": Glyph("off", "dot-off"),
@@ -86,6 +90,7 @@ STATES = {
     "secureInputEnglish": Glyph("off", "lock"),
     "paused": Glyph("faint", "pause"),
     "notWorking": Glyph("faint", "slash"),
+    "permissionMissing": Glyph("faint", "warning"),
     "capturing": Glyph("on", "record"),
 }
 PA_FILES = {("vietnamese", "light"): "keyvi_menubar_on_light.svg", ("vietnamese", "dark"): "keyvi_menubar_on_dark.svg",
@@ -127,7 +132,8 @@ def load_mark(assets: Path = ASSETS) -> Mark:
         off_dot, off_letters = _parse_pa_file(assets / PA_FILES[("english", variant)])
         off_opacity = off_letters.get("opacity", "1")
         palettes[variant] = Palette(
-            ink=on_letters.get("fill"), on_dot=on_dot.get("fill"), off_dot=off_dot.get("fill"), alert=ALERT[variant])
+            ink=on_letters.get("fill"), on_dot=on_dot.get("fill"), off_dot=off_dot.get("fill"), alert=ALERT[variant],
+            alert_ink=ALERT_INK[variant])
     shapes = tuple(_shape_markup(child) for child in on_group)
     dot = {key: on_circle.get(key) for key in ("cx", "cy", "r")}
     return Mark(shapes=shapes, dot=dot, off_opacity=off_opacity, palettes=palettes)
@@ -158,6 +164,14 @@ def _badge(mark: Mark, glyph: Glyph, palette: Palette) -> str:
         return f'  <g fill="{palette.ink}">\n' + "\n".join(bars) + "\n  </g>"
     if glyph.badge == "slash":
         return f'  <line x1="2" y1="2" x2="20" y2="20" stroke="{palette.ink}" stroke-width="1.6" stroke-linecap="round"/>'
+    if glyph.badge == "warning":
+        # Larger than the dot and in the alert colour, so the state that needs the user is seen at once; the
+        # exclamation mark keeps it distinct without colour (PRD-R67). It stays above the letters (y < 6.5).
+        wx, wy, wr = cx + 0.8, 3.4, 3.0
+        return (f'  <circle cx="{wx:g}" cy="{wy:g}" r="{wr:g}" fill="{palette.alert}"/>\n'
+                f'  <g fill="{palette.alert_ink}">\n'
+                f'    <rect x="{wx - 0.5:g}" y="1.5" width="1" height="2.6" rx="0.4"/>\n'
+                f'    <circle cx="{wx:g}" cy="5.15" r="0.6"/>\n  </g>')
     if glyph.badge == "record":
         return (f'  <circle cx="{cx:g}" cy="3.6" r="2.35" fill="none" stroke="{palette.ink}" stroke-width="0.8"/>\n'
                 f'  <circle cx="{cx:g}" cy="3.6" r="1.25" fill="{palette.alert}"/>')

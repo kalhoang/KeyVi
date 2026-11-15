@@ -150,7 +150,8 @@ import Testing
 }
 
 /// PLT-R330 step 5, PLT-R331: the OS disable event and the watchdog's `CGEventTapIsEnabled` check can both
-/// report the same disable; each report runs the full procedure, but the instability notice counts it once.
+/// report the same disable; each report runs the procedure, but the instability notice counts it once and, while the
+/// live answer is pending, the second report asks for no second check (PLT-R330 amended 15/11/2026).
 @Suite struct HostLifecycleDisableCoalescingTests {
     @Test func watchdogReportJustAfterTheSystemEventStillRunsTheProcedure_PLT_R331() {
         var script = LifecycleScript.running()
@@ -158,8 +159,9 @@ import Testing
         script.advance(by: .milliseconds(100))
         #expect(
             script.send(.watchdogTripped(.unexpectedlyDisabled)) == [
-                .reenableTap, .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled),
+                .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled),
             ])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
     }
 
     @Test func oneDisableReportedTwiceCountsOnceTowardTheNotice_PLT_R330() {
@@ -168,20 +170,21 @@ import Testing
             #expect(!script.send(.tapDisabledBySystem(byTimeout: true)).contains(.showTapInstabilityNotice))
             script.advance(by: .milliseconds(100))
             #expect(!script.send(.watchdogTripped(.unexpectedlyDisabled)).contains(.showTapInstabilityNotice))
+            script.send(.livePermissions(.granted))
             script.advance(by: .seconds(60))
         }
         // Reports in the other order coalesce too; this is the fourth distinct disable.
-        #expect(script.send(.watchdogTripped(.unexpectedlyDisabled)).last == .showTapInstabilityNotice)
+        #expect(script.send(.watchdogTripped(.unexpectedlyDisabled)).contains(.showTapInstabilityNotice))
         script.advance(by: .milliseconds(100))
         #expect(!script.send(.tapDisabledBySystem(byTimeout: false)).contains(.showTapInstabilityNotice))
     }
 
+    /// Counted separately, two disables one coalescing window apart reach the circuit breaker's threshold.
     @Test func disablesFurtherApartThanTheCoalescingWindowCountSeparately() {
         var script = LifecycleScript.running()
-        for _ in 0..<3 {
-            script.send(.tapDisabledBySystem(byTimeout: true))
-            script.advance(by: HostLifecycle.disableCoalescingWindow)
-        }
-        #expect(script.send(.tapDisabledBySystem(byTimeout: true)).last == .showTapInstabilityNotice)
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        script.send(.livePermissions(.granted))
+        script.advance(by: HostLifecycle.disableCoalescingWindow)
+        #expect(script.send(.tapDisabledBySystem(byTimeout: true)).contains(.recordHealth(.tapUnstable)))
     }
 }

@@ -78,9 +78,12 @@ struct ShellActionsTests {
         let rig = HostRig()
         await rig.start()
         defer { rig.stop() }
+        // The installed tap keeps its own 1 s live Accessibility check (PLT-R721); onboarding adds the 1 s poll.
+        func oneSecondTimers() -> Int { rig.scheduler.repeatingIntervals.filter { $0 == .seconds(1) }.count }
+        #expect(oneSecondTimers() == 1)
         rig.controller.setPermissionFastPolling(true)
-        #expect(rig.scheduler.repeatingIntervals.contains(.seconds(1)))
+        #expect(oneSecondTimers() == 2)
         rig.controller.setPermissionFastPolling(false)
-        #expect(!rig.scheduler.repeatingIntervals.contains(.seconds(1)))
+        #expect(oneSecondTimers() == 1)
     }
 }

@@ -344,25 +344,7 @@
       }
     },
     "icon.notWorking.accessibilityLabel" : {
-      "comment" : "PRD-R10.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not working: permission needed"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chưa gõ được: cần cấp quyền"
-          }
-        }
-      }
-    },
-    "icon.notWorking.failOpen.accessibilityLabel" : {
-      "comment" : "PLT-R211: failed open for a reason other than permission.",
+      "comment" : "PRD-R10: the slash, fail-open for a reason other than permission (the permission has its own badge).",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -465,6 +447,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tạm dừng: bộ gõ đang tạm tắt"
+          }
+        }
+      }
+    },
+    "icon.permissionMissing.accessibilityLabel" : {
+      "comment" : "PRD-R10: the warning badge of the missing permission (decision 0005, 15/11/2026); names the badge first.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warning: not working, permission needed"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cảnh báo: chưa gõ được, cần cấp quyền"
           }
         }
       }

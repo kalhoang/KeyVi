@@ -31,9 +31,9 @@ extension InputHostController {
             secureInputMonitor?.keyEvidence(generation: generation)
             refreshState()
         case .tapDisabled(let byTimeout):
-            feedFreshPermissions()  // PLT-R330 step 1 re-enables only with valid permissions
+            // PLT-R330: the lifecycle resets and replays now, and re-enables only after a live permission check.
+            if byTimeout { timeoutRecoveryPending = true }
             feed(.tapDisabledBySystem(byTimeout: byTimeout))
-            if byTimeout, session?.thread.isEnabled == true { counters.tapRecoveries.increment() }
         case .learning(let signal, let bundle):
             noteLearning(signal, in: bundle)
         case .collisionSignals(let signals, let recordable):

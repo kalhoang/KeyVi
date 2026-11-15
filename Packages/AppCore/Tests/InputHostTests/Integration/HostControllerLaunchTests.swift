@@ -185,6 +185,7 @@ struct HostControllerLifecycleTests {
         #expect(rig.lifecyclePhase == .failOpen(.postingBroken))
     }
 
+    /// Four disables within ten minutes, each further apart than the circuit breaker's window (PLT-R330 step 6).
     @Test func systemDisableReenablesFlushesAndWarnsAfterFourInTenMinutes_PLT_R330() async throws {
         let rig = HostRig()
         await rig.start()
@@ -192,7 +193,8 @@ struct HostControllerLifecycleTests {
         let handle = try #require(rig.liveHandles.first)
         for index in 0..<4 {
             rig.controller.handle(MainNotice.tapDisabled(byTimeout: index % 2 == 0))
-            rig.clock.advance(byMicroseconds: 2_000_000)
+            rig.settle()  // the live permission check answers through the main hop
+            rig.clock.advance(byMicroseconds: 31_000_000)
         }
         rig.settle()
         #expect(handle.enableCalls.filter { $0 }.count == 4, "PLT-R330 step 1: one re-enable per disable")

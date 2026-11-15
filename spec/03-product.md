@@ -147,7 +147,7 @@ PRD-R8 Minimum macOS: **macOS 12 Monterey**, on Apple silicon and Intel Macs (Pa
 
 PRD-R9 The app MUST show its status icon in the menu bar at all times while running. The icon is the KV mark of the product owner's artwork (decision S7, 13/11/2026), drawn in colour and not a template image, so the emerald dot keeps its colour; light, dark and Increase Contrast variants follow the menu bar's appearance. The user cannot hide it (status is safety-relevant), but MAY quit the app.
 
-PRD-R10 Icon states, each with a VoiceOver label. The glyphs are coloured, not template images: the emerald dot (#0EA674) means Vietnamese typing is on. Every state is still told apart without colour (PRD-R67), by letter opacity (solid, dimmed, faint) and badge shape (dot, ring, lock, pause bars, slash, recording ring) in the dot's place:
+PRD-R10 Icon states, each with a VoiceOver label. The glyphs are coloured, not template images: the emerald dot (#0EA674) means Vietnamese typing is on. Every state is still told apart without colour (PRD-R67), by letter opacity (solid, dimmed, faint) and badge shape (dot, ring, lock, pause bars, slash, warning disc, recording ring) in the dot's place:
 
 | State | Glyph | VoiceOver label (vi / en) |
 |---|---|---|
@@ -156,7 +156,8 @@ PRD-R10 Icon states, each with a VoiceOver label. The glyphs are coloured, not t
 | Ignored app (rule) | dimmed `KV` with a ring in the dot's place | "Bỏ qua ứng dụng này" / "Ignored in this app" |
 | Secure Input active | solid (Vietnamese) or dimmed (English) `KV` with a lock badge | "Ô bảo mật đang bật" / "Secure input active" |
 | Paused (non-Latin input source) | faint `KV` with pause bars | "Tạm dừng: đang dùng bộ gõ khác" / "Paused: another input source is active" |
-| Permission missing or tap failed | faint `KV` with a slash | "Chưa gõ được: cần cấp quyền" / "Not working: permission needed" |
+| Permission missing or revoked (`noPermission`, `failOpen(permissionRevoked)`) | faint `KV` with a warning badge: an exclamation mark in a filled circle in the alert colour, larger than the dot (amendment of 15/11/2026, decision 0005: the status line alone was too easy to miss; the badge appears as soon as the host knows, within about a second of macOS reporting the revoked grant, PLT-R721, and goes as soon as the grant is back) | "Cảnh báo: chưa gõ được, cần cấp quyền" / "Warning: not working, permission needed" |
+| Not working for another reason (tap unavailable, posting broken, watchdog, circuit breaker; PLT-R330, PLT-R332) | faint `KV` with a slash | "Chưa gõ được: mở menu để xem cách khắc phục" / "Not working: open the menu to see how to fix it" |
 | Typing trace recording (D26) | solid `KV` with a recording ring | "Đang ghi thao tác gõ" / "Recording a typing trace" |
 
 PRD-R11 Menu layout (top to bottom). Items marked "conditional" appear only in that state.
@@ -172,7 +173,7 @@ PRD-R11 Menu layout (top to bottom). Items marked "conditional" appear only in t
 
 PRD-R12 The switch indicator (D14) is a small non-activating HUD near the screen centre bottom showing `V` or `E` for 600 ms, MUST NOT take focus, MUST respect Reduce Motion (no animation, plain fade off), and MUST NOT appear for automatic per-app switches.
 
-PRD-R13 The menu MUST open within 100 ms and MUST NOT block typing while open.
+PRD-R13 The menu MUST open within 100 ms and MUST NOT block typing while open. *(Amendment, 2026-11-15, after the incident of that day: an open status menu takes the keyboard and the mouse, so a main thread that waits while it is open blocks the whole Mac.)* Building the menu and its items only reads state: the open-time checks (PLT-R395, PLT-R721) never make the main thread wait for a permission call, and an answer that changes the state updates the open menu and the icon.
 
 Acceptance: a tester can tell the current mode, the reason for any problem, and the fix, from the menu bar alone, with VoiceOver on and with Increase Contrast on.
 
@@ -340,9 +341,9 @@ PRD-R40 Onboarding runs on first launch and can be reopened from the About pane.
 - Button: `Bắt đầu` (Pa, 2026-11-14; was `Bắt đầu gõ`)
 - No donation prompt, no newsletter, no rating request.
 
-PRD-R41 If the user closes onboarding before granting permission, the menu bar icon shows the slashed state and the status line offers to resume onboarding at screen 2.
+PRD-R41 If the user closes onboarding before granting permission, the menu bar icon shows the warning badge (PRD-R10; the slashed state before 15/11/2026) and the status line offers to resume onboarding at screen 2.
 
-PRD-R42 Onboarding MUST NOT show again after completion, including after updates, unless permissions are lost (then only screen 2 is shown, with the line `macOS đã tắt quyền của {{AppName}}, thường sau khi cập nhật hệ điều hành. Bật lại là gõ được ngay.`).
+PRD-R42 Onboarding MUST NOT show again after completion, including after updates, unless permissions are lost (then only screen 2 is shown, with the line `macOS đã tắt quyền của {{AppName}}, thường sau khi cập nhật hệ điều hành. Bật lại là gõ được ngay.`). *(Amendment, 2026-11-15, decision 0005.)* A grant lost while the app runs shows screen 2 at once, once per loss, next to the icon's warning badge; the window comes to the front without activating the app, so the keyboard focus stays where the user types (PRD-R44).
 
 Acceptance: 5 moderated first-time users (at least 2 non-technical) complete onboarding unaided; time to first correct Vietnamese word under 2 minutes for all.
 
@@ -356,7 +357,7 @@ PRD-R43 Every error message MUST state what happened, which app or component is 
 
 | Situation | Where shown | Copy draft (vi) | Action |
 |---|---|---|---|
-| Permission missing or revoked | Menu status line, icon slashed | `Chưa có quyền nhận phím gõ. {{AppName}} đang tạm dừng để không ảnh hưởng bàn phím.` | `Cấp quyền...` |
+| Permission missing or revoked | Menu status line, icon with the warning badge (PRD-R10); screen 2 of onboarding when the grant is lost while the app runs (PRD-R42) | `Chưa có quyền nhận phím gõ. {{AppName}} đang tạm dừng để không ảnh hưởng bàn phím.` | `Cấp quyền...` |
 | Secure Input held by another app | Menu status line, lock badge | `{{HolderApp}} đang bật chế độ nhập bảo mật, nên mọi bộ gõ đều tạm dừng. Thường do một ô mật khẩu còn mở.` | `Hiện {{HolderApp}}`; if unknown holder: `Không xác định được ứng dụng. Hướng dẫn...` |
 | Tap disabled by the system and re-enabled | Nothing visible if recovered within 1 s; otherwise status line | `Bộ gõ vừa bị macOS tạm ngắt và đã chạy lại.` | `Báo lỗi...` |
 | Secure Input turned on and off repeatedly while the user types (`secureInputBursts` health event, PLT-R397B) | Diagnostics window under the state line, with the label `Chế độ nhập bảo mật bật tắt liên tục`, for 24 hours after the event; the same words in the report text and the copied report | `Có ứng dụng liên tục bật rồi tắt chế độ nhập bảo mật (Secure Input) trong lúc bạn gõ, nên vài phím có thể không tới được {{AppName}}. Hãy thử thoát các bộ gõ khác, trình quản lý mật khẩu hoặc ứng dụng chạy nền mới cài để tìm ra ứng dụng đó.` | none |

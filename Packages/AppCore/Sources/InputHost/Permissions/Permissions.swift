@@ -3,7 +3,7 @@
 // Permissions (PLT-R701-R741). Probes are cheap system calls made off the tap thread.
 
 public import AppModel
-internal import Foundation
+public import Foundation
 public import RealtimeSupport
 public import SettingsStore
 
@@ -54,8 +54,14 @@ public struct PermissionStatus: Sendable, Hashable {
 }
 
 /// Every 2 s while not ready, every 30 s while ready (timers from the injected scheduler, utility queue in
-/// production), immediately on wake, session activation and menu open (PLT-R721). Remembers the identity digest
-/// of the last grant (key-value store) for `stale`.
+/// production), immediately on wake, session activation and menu open (PLT-R721). While a tap is installed
+/// (`setTapInstalled(true)`) Accessibility alone is also checked every second, so a revoked grant removes the tap
+/// within about a second of `AXIsProcessTrusted()` reporting it, even when macOS never disables the tap (PLT-R721,
+/// PLT-R730; the incident of 15/11/2026, decision 0005, where that call kept its old answer for about 30 s). Remembers the identity digest of the last grant (key-value store) for `stale`.
+///
+/// Every probe call runs on `runner` (production: a serial queue of its own), never on the caller's thread and
+/// never under the state lock: a TCC call that stalls (for example behind System Settings) holds only the runner,
+/// so nothing the main thread calls here (`latest`, `requestCheck`, the setters) waits for it (PRD-R13, PLT-R730).
 ///
 /// `onChange` runs for the first check after `start()` and then whenever the status changes, in check order,
 /// one at a time and outside the check lock: it may call back into the monitor (`checkNow`, `setTapUnavailable`);
@@ -64,6 +70,9 @@ public final class PermissionMonitor: Sendable {
     public static let notReadyInterval: TimeSpan = .seconds(2)
     public static let readyInterval: TimeSpan = .seconds(30)
     public static let onboardingInterval: TimeSpan = .seconds(1)
+    /// PLT-R721: the live Accessibility check while a tap is installed (the one steady-state timer below 2 s,
+    /// PLT-R803).
+    public static let liveInterval: TimeSpan = .seconds(1)
     /// PLT-R711: fast polling stops by itself after 5 minutes.
     public static let onboardingLimit: TimeSpan = .seconds(300)
     /// `KeyValueStore` key of the last granted identity (a 52-bit hash of the designated requirement digest).
@@ -72,40 +81,79 @@ public final class PermissionMonitor: Sendable {
     let probe: any PermissionProbe
     let store: any KeyValueStore
     let scheduler: any TimerScheduler
+    let runner: any PermissionCheckRunner
     let delivery: OrderedDelivery<PermissionStatus>
     let state = Mutex(PermissionMonitorState())
 
     public init(
         probe: any PermissionProbe, store: any KeyValueStore, scheduler: any TimerScheduler,
+        runner: any PermissionCheckRunner = InlinePermissionCheckRunner(),
         onChange: @escaping @Sendable (PermissionStatus) -> Void
     ) {
         self.probe = probe
         self.store = store
         self.scheduler = scheduler
+        self.runner = runner
         self.delivery = OrderedDelivery(onChange)
     }
 
+    /// The first check runs on the runner; its status reaches `onChange` like every other.
     public func start() { beginChecks() }
     public func stop() { endChecks() }
-    /// Checks at once and returns the newest status. When the check runs on main its status is delivered inside the
-    /// call, and that delivery may already have replaced it (a `ready` whose tap failed, PLT-R702): the replacement
-    /// is returned then, never the replaced status, so a caller that records or feeds the result (menu open, wake,
-    /// PLT-R721) agrees with what the receivers were told.
+    /// Checks at once on the caller's thread and returns the newest status. For tests and callers that may wait;
+    /// the main thread uses `requestCheck` (PLT-R730). When the check runs on main its status is delivered inside
+    /// the call, and that delivery may already have replaced it (a `ready` whose tap failed, PLT-R702): the
+    /// replacement is returned then, never the replaced status, so a caller that records or feeds the result agrees
+    /// with what the receivers were told.
     public func checkNow() -> PermissionStatus {
         let status = check()
         return latest ?? status
     }
+    /// Checks on the runner (PLT-R721: menu open, wake, session activation, a system tap disable) and then calls
+    /// `completion` on the runner with the newest status (see `checkNow`). Returns at once.
+    /// Requests made while a check is queued and not yet started join it, so a stalled probe call never piles up
+    /// checks (PLT-R730).
+    public func requestCheck(_ completion: (@Sendable (PermissionStatus) -> Void)? = nil) {
+        enqueueCheck(completion)
+    }
     /// The status of the most recent check, already set while an older status is still being delivered. A receiver
     /// that forwards statuses compares the one in hand with this and drops it when a newer one is queued behind it,
     /// so a `ready` replaced during its own delivery (the tap it allowed failed, PLT-R702) never reaches the UI
-    /// after its replacement (PRD-R40 screen 2). `nil` before the first check.
+    /// after its replacement (PRD-R40 screen 2). `nil` before the first check. Never waits for a probe call.
     public var latest: PermissionStatus? { state.withLock { $0.last } }
     /// Onboarding polls every 1 s for at most 5 minutes while visible (PLT-R711).
     public func setFastPolling(_ enabled: Bool) { updateFastPolling(enabled) }
     /// The lifecycle reports that the tap could not be created. With Accessibility granted and Input Monitoring
     /// missing (launch-time preflight and live check) this sets `listenEventRequired` (PLT-R702); the live check
-    /// clears it when the user turns Input Monitoring on while the app runs (PLT-R731).
+    /// clears it when the user turns Input Monitoring on while the app runs (PLT-R731). The check runs on the runner.
     public func setTapUnavailable(_ unavailable: Bool) { updateTapUnavailable(unavailable) }
+    /// The host installed (`true`) or removed (`false`) its tap: the 1 s live Accessibility check runs only while a
+    /// tap is installed (PLT-R721).
+    public func setTapInstalled(_ installed: Bool) { updateTapInstalled(installed) }
+}
+
+/// Where the permission monitor runs its probe calls (PLT-R730). Production: one serial queue of its own, so a TCC
+/// call that stalls holds neither the main thread nor the shared utility queue. Tests: inline.
+public protocol PermissionCheckRunner: Sendable {
+    func run(_ work: @escaping @Sendable () -> Void)
+}
+
+/// Runs the work on the caller's thread (tests, and code that already runs off main).
+public struct InlinePermissionCheckRunner: PermissionCheckRunner {
+    public init() {}
+    public func run(_ work: @escaping @Sendable () -> Void) { work() }
+}
+
+/// Runs the work on a serial dispatch queue (production).
+public struct QueuePermissionCheckRunner: PermissionCheckRunner {
+    public let queue: DispatchQueue
+    public init(queue: DispatchQueue) { self.queue = queue }
+    public func run(_ work: @escaping @Sendable () -> Void) { queue.async(execute: work) }
+    /// The production runner: user-initiated, because its answer gates re-enabling the tap after a system disable
+    /// (PLT-R330) and must not be starved behind background work while the user types.
+    public static func production(label: String) -> QueuePermissionCheckRunner {
+        QueuePermissionCheckRunner(queue: DispatchQueue(label: label, qos: .userInitiated))
+    }
 }
 
 extension PermissionProbe {

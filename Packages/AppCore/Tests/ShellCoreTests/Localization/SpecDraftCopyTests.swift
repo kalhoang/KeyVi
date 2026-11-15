@@ -60,9 +60,13 @@ import Testing
         Draft(
             table: .menu, key: "icon.paused.accessibilityLabel", vi: "Tạm dừng: đang dùng bộ gõ khác",
             en: "Paused: another input source is active"),
+        // Decision 0005, 15/11/2026: the permission state has its own warning badge; the slash is the other fail-open.
         Draft(
-            table: .menu, key: "icon.notWorking.accessibilityLabel", vi: "Chưa gõ được: cần cấp quyền",
-            en: "Not working: permission needed"),
+            table: .menu, key: "icon.permissionMissing.accessibilityLabel",
+            vi: "Cảnh báo: chưa gõ được, cần cấp quyền", en: "Warning: not working, permission needed"),
+        Draft(
+            table: .menu, key: "icon.notWorking.accessibilityLabel",
+            vi: "Chưa gõ được: mở menu để xem cách khắc phục", en: "Not working: open the menu to see how to fix it"),
         // PRD-R12 glyphs, PRD-R66 announcement.
         Draft(table: .menu, key: "hud.switch.vietnamese.glyph", vi: "V", en: "V"),
         Draft(table: .menu, key: "hud.switch.english.glyph", vi: "E", en: "E"),

@@ -101,9 +101,9 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R322 | Post at kCGSessionEventTap | `CGEventPoster` | I | W1-D |  |
 | PLT-R323 | Echo liveness, posting broken after 3 misses | `EchoTracker`, `KeyPipeline`, ADR 0311 | U, I, V | W1-D (skeleton seam), W1-F1; VERIFY echo delivery (else `InFlightPolicy.untilPosted`) | **Pa** |
 | PLT-R324 | Replays copy keycode, flags, autorepeat, keyboard type, Unicode | `KeyEventRecord`, `CGEventPoster.replay` | U, I | W1-D |  |
-| PLT-R330 | Tap disabled by system: re-enable, reset, replay, notice | `KeyPipeline`, `InputHostController`; hook `tapTimeout` (`InputHost/IntegrationHooks/IntegrationHookInstruments.swift`), `compat/scenarios/testhost.tapTimeout.recovery.json` | P, U (`HostHookActionsTests`), I (test hook) | W1-F2; W3-A |  |
+| PLT-R330 | Tap disabled by system: reset, replay, notice, re-enable after a live permission check; circuit breaker (2 disables within 30 s remove the tap); a live answer 3 s overdue fails open (15/11/2026) | `KeyPipeline`, `HostLifecycle` (`checkPermissionsLive`, `livePermissions`, breaker), `InputHostController`; hook `tapTimeout` (`InputHost/IntegrationHooks/IntegrationHookInstruments.swift`), `compat/scenarios/testhost.tapTimeout.recovery.json` | P, U (`HostHookActionsTests`, `HostLifecycleLiveReenableTests`, `HostLifecycleCircuitBreakerTests`, `HostLifecycleLiveAnswerWaitTests`, `HostRevocationTests`), I (test hook), M (pa-retest item 33) | W1-F2; W3-A; W17-A | **Pa** |
 | PLT-R331 | Tap-enabled watchdog every 5 s and on events | `TapWatchdog` | U | W1-F2 |  |
-| PLT-R332 | Tap creation failure: failOpen + backoff | `InputHostController` | U | W1-F2 |  |
+| PLT-R332 | Tap creation failure: failOpen + backoff; breaker comeback 30/60/120/300 s on probation after a live check; creation waits at most 2 s on main, once per hung creation (15/11/2026) | `HostLifecycle`, `InputHostController`, `TapThreadRuntime` | U (`HostLifecycleCircuitBreakerTests`, `TapCreationTimeoutTests`, `HostRevocationTests`) | W1-F2; W17-A |  |
 | PLT-R333 | Session inactive, sleep, lock: pause and revalidate | `InputHostController`, `WorkspaceEvents` | U, M | W1-F2, W1-E; Pa | **Pa** |
 | PLT-R340 | Hard boundaries list; late focus change keeps the word (same process or after a timed-out read without an app, readable, within 500 ms, verified on the first edit) | `KeyPipeline` (`keepsCompositionAcrossLateFocusChange`, `FocusIdentity.appUnknownAfterTimeout`), `WorkerCore.lateFocusMatches` | P, U (`LateFocusChangeTests`, `WorkerLateFocusTests`, `LateFocusEndToEndTests`, `KeyPipelineDeleteKeyBoundaryTests`), C (`testhost.sheet.commandS`) | W1-F1, W8-A, W14-H; Pa | **Pa** |
 | PLT-R341 | Soft boundaries keep re-entry history | engine + `KeyPipeline` | E, I | engine track; W1-F1; W2-E2 |  |
@@ -191,8 +191,8 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R711 | Onboarding permission flow with 1 s polling | `OnboardingFlow`, `PermissionMonitor` | U, M | W1-G, W1-E; Pa | **Pa** |
 | PLT-R712 | Relaunch offer for Input Monitoring | `OnboardingWindowController` | M | W1-G; Pa | **Pa** |
 | PLT-R720 | Permission states and stale detection | `PermissionMonitor` | U | W1-E |  |
-| PLT-R721 | Polling cadence 2 s / 30 s / on events | `PermissionMonitor` | U | W1-E |  |
-| PLT-R730 | Fail-open within the same callback | `KeyPipeline`, `InputHostController`, `InjectionWorker`; hook `revokePermission` (`RevocablePermissionProbe`), `compat/scenarios/testhost.failOpen.permissionRevoked.json` | P, U (`HostHookActionsTests`), I (revocation on runner), M | W1-F1, W1-F2; W2-E2; W3-A; Pa | **Pa** |
+| PLT-R721 | Polling cadence 2 s / 30 s / on events; 1 s live Accessibility check while a tap is installed; every permission call off the main thread, queued checks coalesce (15/11/2026) | `PermissionMonitor` (`PermissionCheckRunner`), `InputHostController`, `AppEnvironment` | U (`PermissionMonitorLiveCheckTests`, `HostRevocationTests`) | W1-E; W17-A |  |
+| PLT-R730 | Fail-open within the same callback; a revoked grant removes the tap within about 1 s of `AXIsProcessTrusted()` reporting it, never re-enabled on a cached status (15/11/2026) | `KeyPipeline`, `InputHostController`, `InjectionWorker`, `PermissionMonitor`; hook `revokePermission` (`RevocablePermissionProbe`), `compat/scenarios/testhost.failOpen.permissionRevoked.json` | P, U (`HostHookActionsTests`, `HostRevocationTests`, `PermissionMonitorLiveCheckTests`), I (revocation on runner), M (pa-retest item 33) | W1-F1, W1-F2; W2-E2; W3-A; W17-A; Pa | **Pa** |
 | PLT-R731 | Recreate tap when permission returns | `InputHostController`, `RevocablePermissionProbe.canListenToEventsNow` | U (`RevocablePermissionProbeTests`, `FakePermissionProbeLiveCheckTests`), M | W1-F2, W8-F; Pa | **Pa** |
 | PLT-R740 | Re-grant guidance, tccutil reset for own bundle | `PermissionResetting`, `Status` table | U, M | W1-E, W1-G; Pa | **Pa** |
 | PLT-R741 | Never suggest sudo or bundle-less tccutil | `Status`/`Onboarding` copy | D | W1-G |  |
@@ -202,7 +202,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R760 | MDM / PPPC documentation | `docs/support/managed-macs.md` | D, V | docs track (done; macOS 27 DDM note VERIFY) |  |
 | PLT-R801 | Lock-free histograms | `Diagnostics/Metrics.swift` (log2 buckets plus gate-aligned sub-buckets for T2 and T3, `PlatformMetrics.reset()`); echo round trip recorded by `EchoTracker(roundTrip:)` into `metrics.echoRoundTrip` | U (`MetricsPrecisionTests`, `HotPathAllocationTests`, `echoedJobsRecordTheRoundTrip`) | W1-A; W3-A |  |
 | PLT-R802 | Signposts around callback, job, AX | `PlatformSignposts`, emitted by `KeyPipeline.handle` (tap callback), `WorkerCore.process` (injection job), `InstrumentedFieldAccess` (worker AX calls) and `FocusCore.timed` (focus AX calls) | U (HostRig `signpostsReachTheTapCallback_PLT_R802`), I, M (Instruments) | W1-A |  |
-| PLT-R803 | No steady-state timer faster than 2 s | `TapWatchdog`, monitors, ADR 0309 | U, I (wakeups) | W1-F2, W1-E |  |
+| PLT-R803 | No steady-state timer faster than 2 s, except the 1 s live Accessibility check while a tap is installed (15/11/2026) | `TapWatchdog`, monitors, ADR 0309 | U (`PermissionMonitorTests`, `PermissionMonitorLiveCheckTests`), I (wakeups) | W1-F2, W1-E; W17-A |  |
 | PLT-R810 | Built-in latency probe | `LatencyProbeDriver`, `DiagnosticsWindowController` | U, M | W2-C; Pa runs it | **Pa** |
 | PLT-R820 | Hosted CI microbenchmarks with fakes | pipeline benchmark in `Tests/InputHostTests/Pipeline` | L | W1-F1; CI track |  |
 | PLT-R821 | Self-hosted metrics T2-T6, C1, C2, M1, M2 | `compat-harness` (`TestSupport/Scenario/AppMetrics.swift`, `PlatformBenchmark.swift`, `Soak.swift`), the app's hooks (`InputHost/IntegrationHooks/`, `App/Sources/IntegrationHooks/`), `perf/platform-baseline.json`, [integration-suite.md](../runbooks/integration-suite.md) sections 3 and 4, ADR 0502 | U (`AppMetricsTests`, `IntegrationHookServerTests`), I | W2-E2; W3-A |  |
@@ -283,10 +283,10 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R7 | "Not a setting" items absent from UI | Settings UI | U (view model), M | W2-B |  |
 | PRD-R8 | Minimum macOS 12 with Intel (Q6, ADR 0315) | `Package.swift`, `project.yml` | L | skeleton; W4-A |  |
 | PRD-R9 | Status icon always visible (Pa's coloured KV mark, not a template image; S7) | `StatusItemController`, `StatusGlyph`, assets from `scripts/make-app-icon.py menu-bar` | M | W1-G; W4-B; Pa | **Pa** |
-| PRD-R10 | Icon states with VoiceOver labels | `StatusPresentation`, `Menu` table, assets | U, M (VoiceOver) | W1-G; W2-F; Pa | **Pa** |
+| PRD-R10 | Icon states with VoiceOver labels; warning badge for a missing permission (15/11/2026) | `StatusPresentation`, `Menu` table, assets (`scripts/make-app-icon.py`) | U (`StatusIconTests`, `ShellCatalogTests`, `scripts/tests/test_make_app_icon.py`), M (VoiceOver, pa-retest item 33) | W1-G; W2-F; W17-A; Pa | **Pa** |
 | PRD-R11 | Menu layout | `MenuModel`, `StatusItemController` | U, M | W1-G |  |
 | PRD-R12 | Switch HUD 600 ms, non-activating, Reduce Motion | `SwitchHUDController` | U, M | W1-G; W2-F; Pa | **Pa** |
-| PRD-R13 | Menu opens within 100 ms and never blocks typing | `StatusItemController` | I, M | W1-G; W2-E2 |  |
+| PRD-R13 | Menu opens within 100 ms and never blocks typing; menu callbacks only read state, no permission call on main (15/11/2026) | `StatusItemController`, `AppEnvironment+Shell`, `InputHostController.refreshPermissions` | U (`HostRevocationTests`), I, M | W1-G; W2-E2; W17-A |  |
 | PRD-R14 | Toggle tap recogniser rules | `HotkeyRecognizer` | U | W1-E |  |
 | PRD-R15 | Recorder accepts listed chords in any press order | `HotkeyRecorder` | U | W1-E; W2-B (UI) |  |
 | PRD-R16 | Warn about macOS shortcuts, never refuse | `HotkeyRecorder.conflict`, Settings UI | U | W1-E, W2-B |  |
@@ -314,8 +314,8 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R38 | Both compatibility files ship in the app | `project.yml` copy phase | R | skeleton (done); W1-C |  |
 | PRD-R39 | Tier lists | `compat/matrix.json` `tier` | D | W1-C; Pa |  |
 | PRD-R40 | Onboarding screens 1-8 | `OnboardingFlow`, `OnboardingWindowController`, `Onboarding` table | U, M | W1-G; Pa (moderated test) | **Pa** |
-| PRD-R41 | Closing before permission: slashed icon, resume | `OnboardingFlow`, `StatusLine` | U, M | W1-G |  |
-| PRD-R42 | Not shown again; permission-lost variant | `OnboardingFlow` | U | W1-G |  |
+| PRD-R41 | Closing before permission: warning-badge icon, resume | `OnboardingFlow`, `StatusLine`, `StatusPresentation` | U, M | W1-G; W17-A |  |
+| PRD-R42 | Not shown again; permission-lost variant, also shown once when the grant is lost while the app runs, without taking the focus (15/11/2026) | `OnboardingFlow`, `AppEnvironment.showPermissionScreenIfLost` | U, M (pa-retest item 33) | W1-G; W17-A |  |
 | PRD-R43 | Error states: what, which, one action | `StatusLine`, `Status` table | U, M | W1-G |  |
 | PRD-R44 | Fail open when permission missing or tap down | `KeyPipeline`, `InputHostController` | P, I | W1-F2; W2-E2 |  |
 | PRD-R45 | Diagnostics allowed fields only | `DiagnosticsReport` | U | W1-A |  |

@@ -187,10 +187,10 @@ final class OnboardingModel: ObservableObject {
     func openConflictHelp(_ conflict: ConflictingInput) { actions?.openConflictHelp(conflict) }
     func openKeyboardPane() { actions?.openKeyboardPane() }
 
-    /// PLT-R740: runs only after the user confirmed in the sheet.
+    /// PLT-R740: runs only after the user confirmed in the sheet; the outcome arrives once `tccutil` returned.
     func resetPermission() {
         confirmPermissionReset = false
-        permissionResetFailed = actions?.resetPermission() == .failed
+        actions?.resetPermission { [weak self] outcome in self?.permissionResetFailed = outcome == .failed }
     }
 
     /// "Kiểm tra lại" on the conflicts screen: moves on once nothing conflicts any more.

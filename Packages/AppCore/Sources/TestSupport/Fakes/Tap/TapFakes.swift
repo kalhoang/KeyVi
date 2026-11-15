@@ -108,6 +108,8 @@ public final class FakeEventTapHandle: EventTapHandle, Sendable {
 public final class FakeEventTapFactory: EventTapFactory, Sendable {
     private struct State {
         var failCreation: Bool
+        /// While set, `makeTap` waits on it: a creation that hangs in the system.
+        var creationGate: DispatchSemaphore?
         var handles: [FakeEventTapHandle] = []
         var masks: [TapEventMask] = []
         var userInfos: [UInt] = []
@@ -118,6 +120,15 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
     public init(failCreation: Bool = false) { state = Mutex(State(failCreation: failCreation)) }
 
     public func setFailCreation(_ fail: Bool) { state.withLock { $0.failCreation = fail } }
+    /// Makes the next creations hang until `releaseCreation()`.
+    public func holdCreation() { state.withLock { $0.creationGate = DispatchSemaphore(value: 0) } }
+    public func releaseCreation() {
+        let gate = state.withLock { state -> DispatchSemaphore? in
+            defer { state.creationGate = nil }
+            return state.creationGate
+        }
+        gate?.signal()
+    }
     /// Handles created so far (PLT-R302: tests assert at most one is alive).
     public var handles: [FakeEventTapHandle] { state.withLock { $0.handles } }
     public var requestedMasks: [TapEventMask] { state.withLock { $0.masks } }
@@ -128,7 +139,11 @@ public final class FakeEventTapFactory: EventTapFactory, Sendable {
     public func makeTap(mask: TapEventMask, callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?)
         -> (any EventTapHandle)?
     {
-        state.withLock { state in
+        if let gate = state.withLock({ $0.creationGate }) {
+            gate.wait()
+            gate.signal()  // let any other held creation through as well
+        }
+        return state.withLock { state in
             state.masks.append(mask)
             state.userInfos.append(UInt(bitPattern: userInfo))
             guard !state.failCreation else { return nil }

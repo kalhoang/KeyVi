@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // `InputHostController` performs the effects of the pure `HostLifecycle` (02-platform.md 2.1, PLT-R330-R333,
-// PLT-R730, PLT-R731, ADR 0309, ADR 0311) with the real services: tap sessions, the worker's flush, composition
-// resets, the single retry timer and health records. Workstream W2-A.
+// PLT-R721, PLT-R730, PLT-R731, ADR 0309, ADR 0311) with the real services: tap sessions, the worker's flush,
+// composition resets, live permission checks, the single retry timer and health records. Workstream W2-A.
 
 internal import AppModel
 internal import Diagnostics
@@ -30,7 +30,7 @@ extension InputHostController {
         case .createTap: createTap()
         case .removeTap: removeTap()
         case .disableTap: session?.thread.setEnabled(false)
-        case .reenableTap: session?.reenable(at: tapClock)  // the worker stamps posts with `tapClock`
+        case .reenableTap: reenableTap()
         case .requestFlush(let reason): worker.requestFlush(reason)
         case .resetComposition: channels.feedback.requestCompositionReset()
         case .scheduleRetry(let delay): scheduleRetry(after: delay)
@@ -38,6 +38,29 @@ extension InputHostController {
         case .recordHealth(let kind): recordHealth(kind)
         case .showTapInstabilityNotice: onEvent?(.tapInstabilityNotice)
         case .publishFlags: publishLifecycle(lifecycle.phase)
+        case .checkPermissionsLive: requestLivePermissions()
+        }
+    }
+
+    /// PLT-R330 step 1. The integration hooks count a re-enable that follows a timeout as a recovery (QA-R11).
+    func reenableTap() {
+        session?.reenable(at: tapClock)  // the worker stamps posts with `tapClock`
+        if timeoutRecoveryPending, session?.thread.isEnabled == true { counters.tapRecoveries.increment() }
+        timeoutRecoveryPending = false
+    }
+
+    /// PLT-R330 step 1, PLT-R721: the check runs on the monitor's runner, never on main or in the tap callback
+    /// (PLT-R304, PLT-R305); its answer comes back through the main hop as `.livePermissions`, read from the
+    /// monitor's newest status (a status replaced during its own delivery never acts, PLT-R702).
+    func requestLivePermissions() {
+        guard let monitor = permissionMonitor else { return }
+        let hop = self.hop
+        monitor.requestCheck { [weak self] _ in
+            hop.hop {
+                guard let self, !self.stopped, let latest = monitor.latest else { return }
+                self.latestPermissions = latest
+                self.feed(.livePermissions(latest))
+            }
         }
     }
 
@@ -61,12 +84,14 @@ extension InputHostController {
     /// postingBroken flag is cleared before the new tap transforms (W1-F2 request, PLT-R731).
     func createTap() {
         if let retired = retiredSession {
-            guard retired.thread.waitUntilExited(timeout: TapSession.previousExitTimeout) else {
+            let timeout = retiredSessionNeverRan ? TapSession.abandonedExitTimeout : TapSession.previousExitTimeout
+            guard retired.thread.waitUntilExited(timeout: timeout) else {
                 feed(.tapCreationFailed)
                 return
             }
             retired.retireEchoes()
             retiredSession = nil
+            retiredSessionNeverRan = false
         }
         channels.feedback.clearPostingBroken()
         let echo = EchoTracker(queue: channels.queue, roundTrip: dependencies.metrics.echoRoundTrip)
@@ -81,6 +106,7 @@ extension InputHostController {
         guard thread.start() else {
             // The tracker never reached a tap thread; its expectations are settled with the next session.
             retiredSession = candidate
+            retiredSessionNeverRan = true
             permissionMonitor?.setTapUnavailable(true)
             feed(.tapCreationFailed)
             return
@@ -89,6 +115,7 @@ extension InputHostController {
         channels.activityRelay.connect { [weak watchdog] in watchdog?.callbackActivity() }
         watchdog.start()
         permissionMonitor?.setTapUnavailable(false)
+        permissionMonitor?.setTapInstalled(true)  // PLT-R721: the 1 s live Accessibility check
         dependencies.logger.log(.lifecycle(.tapCreated), level: .info)
         feed(.tapCreated)
     }
@@ -101,6 +128,9 @@ extension InputHostController {
         current.remove()
         session = nil
         retiredSession = current
+        retiredSessionNeverRan = false
+        timeoutRecoveryPending = false
+        permissionMonitor?.setTapInstalled(false)
         dependencies.logger.log(.lifecycle(.tapRemoved), level: .info)
     }
 
@@ -119,6 +149,7 @@ extension InputHostController {
     /// guarantees at most one is pending (W1-F2 request). PLT-R803: at least 10 % leeway.
     /// The timer fires on the scheduler's queue; if the retry was cancelled or rescheduled before the hop to
     /// main runs, the fire is stale and must not clear (and so cancel) the newer timer.
+    /// PLT-R332 (amended): a retry creates the tap only on fresh permissions, checked off main when it fires.
     func scheduleRetry(after delay: TimeSpan) {
         cancelRetry()
         let token = retryGeneration
@@ -127,7 +158,10 @@ extension InputHostController {
             hop.hop {
                 guard let self, self.retryGeneration == token else { return }
                 self.retryTimer = nil
-                self.feed(.retryTimerFired)
+                self.withFreshPermissions { [weak self] in
+                    guard let self, self.retryGeneration == token else { return }
+                    self.feed(.retryTimerFired)
+                }
             }
         }
     }
@@ -158,12 +192,24 @@ extension InputHostController {
         feed(.sessionActive(inactiveReasons.isEmpty))
     }
 
-    /// PLT-R721: on wake, activation and a system tap disable the permissions are checked first and fed before
-    /// the input that acts on them (the `LifecycleInput.permissionsChanged` contract).
-    func feedFreshPermissions() {
-        guard let monitor = permissionMonitor else { return }
-        let status = monitor.checkNow()
-        latestPermissions = status
-        feed(.permissionsChanged(status))
+    /// PLT-R721: on wake, activation and a retry the permissions are checked first and fed before the input that
+    /// acts on them (the `LifecycleInput.permissionsChanged` contract). The check runs on the monitor's runner, so
+    /// the main thread never waits for a permission call (PLT-R730); `then` runs on main after the fresh status.
+    func withFreshPermissions(then follow: @escaping @MainActor @Sendable () -> Void) {
+        guard let monitor = permissionMonitor else {
+            follow()
+            return
+        }
+        let hop = self.hop
+        monitor.requestCheck { [weak self] _ in
+            hop.hop {
+                guard let self, !self.stopped else { return }
+                if let latest = monitor.latest {
+                    self.latestPermissions = latest
+                    self.feed(.permissionsChanged(latest))
+                }
+                follow()
+            }
+        }
     }
 }

@@ -63,6 +63,7 @@ extension AppEnvironment {
         case .permissionsChanged(let status):
             onboarding?.permissionChanged(status)
             updateIcon()
+            showPermissionScreenIfLost(status)
         case .learningProposal:
             break  // open decision 8: visible and removable in Settings; nothing to show here
         }
@@ -93,7 +94,8 @@ extension AppEnvironment {
     // MARK: Menu model (built on every open)
 
     /// PRD-R13: rebuilt when the menu opens; secure input and permissions are checked at that moment
-    /// (PLT-R395, PLT-R721).
+    /// (PLT-R395, PLT-R721). Nothing here waits: the permission check runs off the main thread and its answer
+    /// updates the icon and the open menu (PLT-R730, the incident of 15/11/2026).
     func menuModel() -> MenuModel {
         refreshForMenu()
         let effective = settings.effective
@@ -106,8 +108,9 @@ extension AppEnvironment {
             updateCheckEnabled: updater?.canCheckForUpdates ?? false)
     }
 
-    /// The status item also asks for the model when it only needs the app name for the icon's label, so the
-    /// checks are skipped within `menuRefreshInterval` of the previous ones.
+    /// A rebuild of the open menu (its state changed) asks for the model again, so the checks are skipped within
+    /// `menuRefreshInterval` of the previous ones. The secure-input poll is a window-server read (PLT-R395); the
+    /// permission check only starts here and runs on the monitor's own queue (PLT-R721).
     private func refreshForMenu() {
         let now = Date()
         if let last = lastMenuRefresh, now.timeIntervalSince(last) < Self.menuRefreshInterval { return }

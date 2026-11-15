@@ -34,6 +34,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var labelKey: String?
     private var appName: String?
     private var clickToToggle = false
+    private var menuIsOpen = false
     private var languageObservation: AnyCancellable?
     #if DEV_RECORDER
     /// PLT-R904A: the dev recorder's badge and menu items.
@@ -46,13 +47,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
     #endif
 
-    /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13).
+    /// `menuModel` is called from `menuNeedsUpdate(_:)` so the menu is rebuilt on every open (PRD-R13); it only
+    /// reads state and starts the open-time checks off the main thread (PLT-R721). `appName` is the brand's
+    /// display name for the icon's hint, so an icon update never builds the menu model.
     init(
-        language: InterfaceLanguageModel, actions: any StatusMenuActions,
+        language: InterfaceLanguageModel, actions: any StatusMenuActions, appName: String,
         menuModel: @escaping @MainActor () -> MenuModel
     ) {
         self.language = language
         self.actions = actions
+        self.appName = appName
         self.menuModel = menuModel
         // PRD-R9: always visible; the default behavior does not allow the user to remove it.
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -72,12 +76,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     /// `accessibilityLabelKey` from `StatusPresentation.accessibilityLabelKey(icon:state:)` keeps the VoiceOver
-    /// label truthful for states that share a glyph (PLT-R211).
+    /// label truthful for states that share a glyph (PLT-R211). The warning badge of a missing permission shows on
+    /// the next draw (decision 0005, 15/11/2026); while the menu is open its items follow the new state too.
     func show(_ state: StatusIconState, accessibilityLabelKey: String?) {
+        let changed = state != iconState || accessibilityLabelKey != labelKey
         iconState = state
         labelKey = accessibilityLabelKey
-        appName = menuModel().appName
         applyIcon()
+        if changed, menuIsOpen { rebuildItems(menuModel()) }
     }
 
     /// D16: primary click toggles when enabled; the menu then opens on secondary click.
@@ -87,8 +93,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem.button?.sendAction(on: enabled ? [.leftMouseUp, .rightMouseUp] : [.leftMouseUp])
     }
 
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        let model = menuModel()
+    func menuNeedsUpdate(_ menu: NSMenu) { rebuildItems(menuModel()) }
+
+    func menuWillOpen(_ menu: NSMenu) { menuIsOpen = true }
+    func menuDidClose(_ menu: NSMenu) { menuIsOpen = false }
+
+    /// Reads the model only (PRD-R13: no waiting on main while the menu tracks keyboard and mouse).
+    private func rebuildItems(_ model: MenuModel) {
         appName = model.appName
         menu.removeAllItems()
         #if DEV_RECORDER
