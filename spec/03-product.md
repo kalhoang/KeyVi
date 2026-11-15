@@ -102,6 +102,7 @@ PRD-R4A Typo and spelling correction *(backlog, the product owner's decision of 
 - Only one-key mistakes (two neighbouring letters swapped, one letter missing, one extra, one neighbouring key), only when exactly one word fits, and only for words of at least five letters: `androdi` gives `android`, `gramar` gives `grammar`. English typos first; Vietnamese typo patterns next, and only the unambiguous ones (a mistyped Vietnamese syllable is usually close to many valid ones).
 - Never in the `code` context (terminals, code editors), in links, e-mail addresses and paths, or in words written in capitals.
 - Escape right after a correction gives the typed word back (as after a revision, ENG-R829); a word the user gave back is never corrected again (learned per user), and a "do not correct" list sits with the keep lists.
+- Case study (product owner, 16/11/2026): `gramar` composes "grẩm" today, because the Tier B onset clusters for place names (`gr` as in `Ia Grai`, 01-engine.md 3.3) make it a Tier B syllable and L6 keeps it when the raw keys are not English. The product owner chose to leave it until this feature exists, so the correction MUST treat a word that is only Tier B through such a cluster, with raw keys that are not English, as a candidate: `gramar` gives `grammar`.
 - Open for the product owner: on or off by default (the integrator recommends on, given the strict conditions above).
 
 ---
