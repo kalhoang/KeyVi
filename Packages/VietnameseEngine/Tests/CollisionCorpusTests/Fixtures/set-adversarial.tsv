@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MPL-2.0
+# W11 adversarial set: 57 lines written to break the precision-first rule set.
+# spec/01-engine.md 13.11, spec/04-quality-release.md QA-R68, ENG-R876. Sentences written for this project;
+# provenance, format and update rules in README.txt.
+# Columns (tab-separated): id, group, half, keys, expected, revised, tokens.
+ADV01	set	-	Have you been owr Ddaf Latj chuwa{RET}	Have you been ở Đà Lạt chưa{RET}	-	Have you been/E/set/- ở Đà Lạt chưa
+ADV02	set	-	Yes I did nha{RET}	Yes I did nha{RET}	-	Yes/E/set/- I did/E/set/- nha
+ADV03	set	-	My dad nois vaayj ddos{RET}	My dad nói vậy đó{RET}	-	My dad/E/set/- nói vậy đó
+ADV04	set	-	I love the dark theme ghee{RET}	I love the dark theme ghê{RET}	-	I love the dark/E/set/- theme/E/set/- ghê
+ADV05	set	-	Is anyone there khoong{RET}	Is anyone there không{RET}	-	Is/E/set/- anyone there/E/set/- không
+ADV06	set	-	I did it on my own luoon{RET}	I did it on my own luôn{RET}	-	I did/E/set/- it on my own/E/set/- luôn
+ADV07	set	-	I parked the car rooif{RET}	I parked the car rồi{RET}	-	I parked/E/set/- the car/E/set/- rồi
+ADV08	set	-	Book the car giumf tui{RET}	Book the car giùm tui{RET}	-	Book/E/set/- the car/E/set/- giùm tui
+ADV09	set	-	Where is my car vaayj{RET}	Where is my car vậy{RET}	-	Where/E/set/- is/E/set/- my car/E/set/- vậy
+ADV10	set	-	Did you see the car hoom qua{RET}	Did you see the car hôm qua{RET}	0:phrase	Did/E/set/- you see/E/set/- the car/E/set/- hôm qua
+ADV11	set	-	He has been baanj lawms{RET}	He has been bận lắm{RET}	-	He has/E/set/- been/E/set/- bận lắm
+ADV12	set	-	I know its price rooif{RET}	I know its price rồi{RET}	-	I know its/E/set/- price rồi
+ADV13	set	-	Can you check its status giumf{RET}	Can you check its status giùm{RET}	-	Can you check its/E/set/- status giùm
+ADV14	set	-	Everyone did quas toots{RET}	Everyone did quá tốt{RET}	-	Everyone did/E/set/- quá tốt/V/set/-
+ADV15	set	-	Trust your own gut nha{RET}	Trust your own gut nha{RET}	0:nextEnglish	Trust/E/set/- your own/E/set/- gut nha
+ADV16	set	-	Love the new theme quas{RET}	Love the new theme quá{RET}	-	Love the new theme/E/set/- quá
+ADV17	set	-	See you tomorrow tows ddi truwowcs nha{RET}	See you tomorrow tớ đi trước nha{RET}	-	See/E/set/- you tomorrow/E/set/- tớ/V/set/- đi trước nha
+ADV18	set	-	Thanks everyone been minhf xong rooif{RET}	Thanks everyone bên mình xong rồi{RET}	2:nextVietnamese	Thanks everyone bên/V/set/- mình xong rồi
+ADV19	set	-	Good morning coo{RET}	Good morning cô{RET}	-	Good/E/set/- morning/E/set/- cô/V/set/-
+ADV20	set	-	Happy birthday boos{RET}	Happy birthday bố{RET}	-	Happy birthday/E/set/- bố/V/set/-
+ADV21	set	-	Meeting xong rooif seeps sex guwir bieen banr{RET}	Meeting xong rồi sếp sẽ gửi biên bản{RET}	-	Meeting/E/set/- xong rồi sếp/V/set/- sẽ/V/set/- gửi biên bản
+ADV22	set	-	Deploy done sex baos laij sau{RET}	Deploy done sẽ báo lại sau{RET}	2:nextVietnamese	Deploy done sẽ/V/set/- báo lại sau
+ADV23	set	-	Great job car nhoms{RET}	Great job cả nhóm{RET}	2:nextVietnamese	Great job cả/V/set/- nhóm
+ADV24	set	-	Thanks for the update tows coi lieenf{RET}	Thanks for the update tớ coi liền{RET}	-	Thanks for the update tớ/V/set/- coi liền
+ADV25	set	-	Bij bug as fix giumf tui{RET}	Bị bug á fix giùm tui{RET}	-	Bị bug á/V/set/- fix giùm tui
+ADV26	set	-	Ddepj as nhuwng maf mawcs{RET}	Đẹp á nhưng mà mắc{RET}	-	Đẹp á/V/set/- nhưng mà mắc
+ADV27	set	-	Ngon as bro{RET}	Ngon á bro{RET}	-	Ngon á/V/set/- bro
+ADV28	set	-	Meetj as man{RET}	Mệt á man{RET}	-	Mệt á/V/set/- man
+ADV29	set	-	Khos as guys{RET}	Khó á guys{RET}	-	Khó á/V/set/- guys/E/set/-
+ADV30	set	-	Nos nois vaayj as check laij coi{RET}	Nó nói vậy á check lại coi{RET}	-	Nó nói vậy á/V/set/- check lại coi
+ADV31	set	-	Deex as maf sao lamf hoaif khoong dduwowcj{RET}	Dễ á mà sao làm hoài không được{RET}	-	Dễ á/V/set/- mà sao làm hoài không được
+ADV32	set	-	Cais nayf hay as thanks nha{RET}	Cái này hay á thanks nha{RET}	-	Cái này hay á/V/set/- thanks nha
+ADV33	set	-	This one is tricky as hell{RET}	This one is tricky as hell{RET}	0:phrase	This/E/set/- one is/E/set/- tricky as/E/set/- hell
+ADV34	set	-	It is just as good{RET}	It is just as good{RET}	-	It is/E/set/- just as/E/set/- good/E/set/-
+ADV35	set	-	Make it as fast as possible{RET}	Make it as fast as possible{RET}	-	Make it as/E/set/- fast as/E/set/- possible/E/set/-
+ADV36	set	-	Nos chayj as expected rooif{RET}	Nó chạy as expected rồi{RET}	2:phrase	Nó chạy as/E/set/- expected/E/set/- rồi
+ADV37	set	-	Cuws lamf as usual nha{RET}	Cứ làm as usual nha{RET}	2:phrase	Cứ làm as/E/set/- usual/E/set/- nha
+ADV38	set	-	Cais nayf tricky as heck{RET}	Cái này tricky as heck{RET}	3:phrase	Cái này tricky as/E/set/- heck
+ADV39	set	-	Cais ddos ddepj as.{RET}	Cái đó đẹp á.{RET}	-	Cái đó đẹp á/V/set/-
+ADV40	set	-	Nos lamf vaayj hoaif as!{RET}	Nó làm vậy hoài á!{RET}	-	Nó làm vậy hoài á/V/set/-
+ADV41	set	-	Thieetj har, cos vuj ddos as?{RET}	Thiệt hả, có vụ đó á?{RET}	-	Thiệt hả có vụ đó á/V/set/-
+ADV42	set	-	Yes she has.{RET}	Yes she has.{RET}	-	Yes/E/set/- she has/E/set/-
+ADV43	set	-	I think he has.{RET}	I think he has.{RET}	-	I think he has/E/set/-
+ADV44	set	-	Keep it as is.{RET}	Keep it as is.{RET}	-	Keep/E/set/- it as/E/set/- is/E/set/-
+ADV45	set	-	Awn banhs tets xong run quas{RET}	Ăn bánh tét xong run quá{RET}	-	Ăn bánh tét xong run quá
+ADV46	set	-	Chir conf its own nghiax thooi{RET}	Chỉ còn ít ơn nghĩa thôi{RET}	-	Chỉ còn ít/V/set/- ơn/V/set/- nghĩa thôi
+ADV47	set	-	Ddoof nayf conf lots in hinhf{RET}	Đồ này còn lót in hình{RET}	-	Đồ này còn lót/V/set/- in hình
+ADV48	set	-	Most of the time nos chayj oonr{RET}	Most of the time nó chạy ổn{RET}	0:phrase	Most/E/set/- of/E/set/- the time nó chạy ổn
+ADV49	set	-	Lots of bugs quas trowif{RET}	Lots of bugs quá trời{RET}	0:phrase	Lots/E/set/- of/E/set/- bugs quá trời
+ADV50	set	-	In terms of performance thif oonr{RET}	In terms of performance thì ổn{RET}	-	In terms/E/set/- of/E/set/- performance/E/set/- thì ổn
+ADV51	set	-	Last time minhf gawpj looix nayf rooif{RET}	Last time mình gặp lỗi này rồi{RET}	0:phrase	Last/E/set/- time mình gặp lỗi này rồi
+ADV52	set	-	Too many requests rooif{RET}	Too many requests rồi{RET}	0:phrase	Too/E/set/- many requests rồi
+ADV53	set	-	How about thuws Saus{RET}	How about thứ Sáu{RET}	0:phrase	How/E/set/- about thứ Sáu
+ADV54	set	-	How to fix looix nayf{RET}	Hơ to fix lỗi này{RET}	-	How/E/set/- to fix lỗi này
+ADV55	set	-	The rest ddeer mai lamf{RET}	The rest để mai làm{RET}	-	The rest/E/set/- để mai làm
+ADV56	set	-	Me too{RET}	Me too{RET}	-	Me too/E/set/-
+ADV57	set	-	As soon as possible nha{RET}	As soon as possible nha{RET}	0:phrase	As/E/set/- soon/E/set/- as/E/set/- possible/E/set/- nha

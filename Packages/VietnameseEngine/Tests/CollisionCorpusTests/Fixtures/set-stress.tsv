@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: MPL-2.0
+# W11 adversarial set: 42 lines written to break the accuracy-first rule set.
+# spec/01-engine.md 13.11, spec/04-quality-release.md QA-R68, ENG-R876. Sentences written for this project;
+# provenance, format and update rules in README.txt.
+# Columns (tab-separated): id, group, half, keys, expected, revised, tokens.
+STR01	set	-	xong rooif as team{RET}	xong rồi á team{RET}	-	xong rồi á/V/set/- team
+STR02	set	-	ddepj as bro{RET}	đẹp á bro{RET}	-	đẹp á/V/set/- bro
+STR03	set	-	ok as sep{RET}	ok á sep{RET}	-	ok á/V/set/- sep
+STR04	set	-	hay as Chrome cungx bij{RET}	hay á Chrome cũng bị{RET}	-	hay á/V/set/- Chrome cũng bị
+STR05	set	-	ddungs as boss{RET}	đúng á boss{RET}	-	đúng á/V/set/- boss/E/set/-
+STR06	set	-	nos tricky as bro{RET}	nó tricky á bro{RET}	-	nó tricky á/V/set/- bro
+STR07	set	-	cungx ok as anh{RET}	cũng ok á anh{RET}	-	cũng ok á/V/set/- anh
+STR08	set	-	nhowf been it xem giumf{RET}	nhờ bên it xem giùm{RET}	-	nhờ bên/V/set/- it xem giùm
+STR09	set	-	team been it bao giowf xong{RET}	team been it bao giờ xong{RET}	-	team bên/V/set/- it bao giờ xong
+STR10	set	-	gui car team nha{RET}	gui cả team nha{RET}	-	gui cả/V/set/- team nha
+STR11	set	-	car team ddeeuf ddi{RET}	cả team đều đi{RET}	-	cả/V/set/- team đều đi
+STR12	set	-	tows check mail roofi{RET}	tớ check mail rồi{RET}	-	tớ/V/set/- check mail rồi
+STR13	set	-	sex deploy toois nay{RET}	sẽ deploy tối nay{RET}	-	sẽ/V/set/- deploy tối nay
+STR14	set	-	seeps sex review{RET}	sếp sẽ review{RET}	-	sếp/V/set/- sẽ/V/set/- review
+STR15	set	-	been server ddang down{RET}	bên server đang down{RET}	-	bên/V/set/- server/E/set/- đang down/E/set/-
+STR16	set	-	coo Lan sex gui file{RET}	cô Lan sẽ gui file{RET}	-	cô/V/set/- Lan sẽ/V/set/- gui file
+STR17	set	-	its bug hown roofi{RET}	ít bug hơn rồi{RET}	-	ít/V/set/- bug hơn rồi
+STR18	set	-	car nhaf ddeeuf thichs{RET}	cả nhà đều thích{RET}	-	cả/V/set/- nhà đều thích
+STR19	set	-	mua me chua as{RET}	mua me chua á{RET}	-	mua me chua á/V/set/-
+STR20	set	-	vari the trawngs as{RET}	vải the trắng á{RET}	-	vải the trắng á/V/set/-
+STR21	set	-	toi am hieeur been ddos{RET}	toi am hiểu bên đó{RET}	-	toi am hiểu bên/V/set/- đó
+STR22	set	-	ddi as{RET}	đi á{RET}	-	đi á/V/set/-
+STR23	set	-	hen gaapj as{RET}	hen gập á{RET}	-	hẹn gặp á/V/set/-
+STR24	set	-	the best car{RET}	the best car{RET}	-	the best/E/set/- car/E/set/-
+STR25	set	-	this is my car{RET}	this is my car{RET}	0:phrase	this/E/set/- is/E/set/- my car/E/set/-
+STR26	set	-	it has been fixed{RET}	it has been fixed{RET}	-	it has/E/set/- been/E/set/- fixed
+STR27	set	-	as soon as you can{RET}	as soon as you can{RET}	0:phrase	as/E/set/- soon/E/set/- as/E/set/- you can
+STR28	set	-	how about this one{RET}	how about this one{RET}	0:phrase	how/E/set/- about this/E/set/- one
+STR29	set	-	there is a bug in this test{RET}	there is a bug in this test{RET}	0:phrase	there/E/set/- is/E/set/- a bug in this/E/set/- test/E/set/-
+STR30	set	-	its own module{RET}	ít ơn module{RET}	-	its/E/set/- own/E/set/- module
+STR31	set	-	too many requests{RET}	too many requests{RET}	0:phrase	too/E/set/- many requests
+STR32	set	-	did you test it{RET}	did you test it{RET}	0:phrase	did/E/set/- you test/E/set/- it
+STR33	set	-	lets go{RET}	lets go{RET}	0:phrase	lets/E/set/- go
+STR34	set	-	me too{RET}	me too{RET}	-	me too/E/set/-
+STR35	set	-	good as hell{RET}	good as hell{RET}	-	good/E/set/- as/E/set/- hell
+STR36	set	-	send it as a file{RET}	send it as a file{RET}	-	send it as/E/set/- a file
+STR37	set	-	Toois nay deploy as soon as possible nha{RET}	Tối nay deploy as soon as possible nha{RET}	3:phrase	Tối nay deploy as/E/set/- soon/E/set/- as/E/set/- possible/E/set/- nha
+STR38	set	-	Anh gui lai cais file this is the latest nha{RET}	Anh gui lai cái file this is the latest nha{RET}	5:phrase	Anh gui lai cái file this/E/set/- is/E/set/- the latest nha
+STR39	set	-	Cais nayf has been approved roofi{RET}	Cái này has been approved rồi{RET}	2:phrase	Cái này has/E/set/- been/E/set/- approved rồi
+STR40	set	-	Em nghix this is a bug{RET}	Em nghĩ this is a bug{RET}	2:phrase	Em nghĩ this/E/set/- is/E/set/- a bug
+STR41	set	-	Mai tows off{RET}	Mai tớ of{RET}	-	Mai tớ/V/set/- off/E/set/-
+STR42	set	-	Coi chuwngf been kia as{RET}	Coi chừng bên kia á{RET}	-	Coi chừng bên/V/set/- kia á/V/set/-
