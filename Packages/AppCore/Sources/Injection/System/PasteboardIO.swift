@@ -57,6 +57,12 @@ final class PasteboardIO: @unchecked Sendable {
             var missing: [String] = []
             var data: [String: Data] = [:]
             for type in item.types {
+                // A plain-text conversion of a plain-text type already saved is never read: the pasteboard server
+                // derives it again from that type on restore. For items this process wrote (every restore makes it
+                // the owner) reading it makes AppKit fulfil the conversion promise synchronously on this
+                // background thread ("synchronous promise fulfillment requested from a background thread"), which
+                // AppKit warns is unsafe off the main thread and which crashed the test runner now and then.
+                if Self.isPlainTextConversion(type.rawValue, of: types) { continue }
                 guard let bytes = item.data(forType: type) else {
                     missing.append(type.rawValue)
                     continue
@@ -116,6 +122,12 @@ final class PasteboardIO: @unchecked Sendable {
     static func isRederivable(_ type: String, from saved: [String]) -> Bool {
         guard let uti = UTType(type) else { return false }
         if uti.isDynamic { return true }
-        return uti.conforms(to: .plainText) && saved.contains { UTType($0)?.conforms(to: .plainText) == true }
+        return isPlainTextConversion(type, of: saved)
+    }
+
+    /// `type` is plain text and another plain-text type is already saved: the server converts between them.
+    static func isPlainTextConversion(_ type: String, of saved: [String]) -> Bool {
+        guard let uti = UTType(type), !uti.isDynamic, uti.conforms(to: .plainText) else { return false }
+        return saved.contains { UTType($0)?.conforms(to: .plainText) == true }
     }
 }

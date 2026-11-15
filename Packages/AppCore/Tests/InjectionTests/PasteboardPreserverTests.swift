@@ -247,6 +247,25 @@ private func ms(_ value: UInt64) -> MonotonicInstant {
         }
     }
 
+    /// PLT-R461 step 1, PLT-R462: the snapshot never asks for a plain-text conversion of a plain-text type it saved.
+    /// For items this process wrote (as after every restore) that request made AppKit fulfil the conversion
+    /// synchronously on the bounded-read thread ("synchronous promise fulfillment requested from a background
+    /// thread"), the source of the runner's intermittent SIGSEGV; the restore lets the server derive it again.
+    @Test func theSnapshotSkipsPlainTextConversionsOfItemsThisProcessWrote() throws {
+        try withUniquePasteboard { name, pasteboard in
+            write(twoItems, to: pasteboard)
+            let derived = pasteboard.pasteboardItems?.first?.types.map(\.rawValue) ?? []
+            #expect(derived.contains("public.utf16-external-plain-text"), "the server no longer derives the type")
+            let access = NSPasteboardAccess(pasteboardName: name)
+            let snapshot = try access.snapshot(limits: generousLimits)
+            #expect(snapshot.items.first?.types == [plain, "public.rtf"])
+            try access.restore(snapshot)
+            #expect(pasteboard.string(forType: .string) == "xin chào")
+            #expect(PasteboardIO.isPlainTextConversion("public.utf16-external-plain-text", of: [plain]))
+            #expect(!PasteboardIO.isPlainTextConversion(plain, of: ["public.rtf"]))
+        }
+    }
+
     @Test func emptyPasteboardRoundTrips() throws {
         try withUniquePasteboard { name, pasteboard in
             pasteboard.clearContents()
