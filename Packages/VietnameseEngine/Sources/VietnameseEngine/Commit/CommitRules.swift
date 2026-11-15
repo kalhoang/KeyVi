@@ -62,8 +62,8 @@ package struct CommitContext: Sendable {
     package var phrases: PhraseChain
     /// ENG-R850: the token is in Vietnamese text, so rule L9 does not restore it (`CommitPolicy.isInVietnameseText`).
     package var inVietnameseText: Bool
-    /// ENG-R850 (d): the token is the first of its line, the engine's history is empty (rule L9's sentence condition,
-    /// `CommitPolicy.startsSentence`).
+    /// ENG-R850 (d): the token is the first word of its line (`CommitPolicy.isLineStart`), for rule L9's sentence
+    /// condition (`CommitPolicy.startsSentence`) and RV5 of ENG-R828.
     package var atLineStart: Bool
 
     package init(
@@ -186,14 +186,23 @@ package struct CommitPolicy: Sendable {
             return learnedOverride(of: restore(.notAttested), rawLowercased: r, context: context)
         }
         // L9: app context `code`, outside Vietnamese text (ENG-R850 as amended on 15/11/2026, REG-35) and not starting
-        // a sentence (amended by the product owner on 16/11/2026). In Vietnamese text and for a word in sentence case
-        // that starts a line the rules below decide as in the general context (`chinhs tar` gives `chính tả`, `Tar`
-        // and a space give `Tả`).
-        if appContext == .code, !context.inVietnameseText, resources.techCodeOnly.contains(r),
-            !startsSentence(inputs, context: context)
-        {
-            return restore(.codeContext)
+        // a sentence (amended by the product owner on 16/11/2026). In Vietnamese text the rules below decide as in the
+        // general context (`chinhs tar` gives `chính tả`). A word in sentence case that starts a line opens a new
+        // sentence, so the English run of the line before, which survives Return (ENG-R823), does not reach it
+        // either: `git status`, Return, `Tar` and a space give `Tả` (review of 16/11/2026).
+        if appContext == .code, !context.inVietnameseText, resources.techCodeOnly.contains(r) {
+            guard startsSentence(inputs, context: context) else { return restore(.codeContext) }
+            var sentence = context
+            sentence.runIsEnglish = false
+            return decideAfterCodeRule(inputs, rawLowercased: r, context: sentence)
         }
+        return decideAfterCodeRule(inputs, rawLowercased: r, context: context)
+    }
+
+    /// Rules L9a to L11, after rule L9 (ENG-R850).
+    private func decideAfterCodeRule(_ inputs: CommitInputs, rawLowercased r: String, context: CommitContext)
+        -> CommitDecision
+    {
         if collisionRules {
             let phrase = continuesPhrase(r, chain: context.phrases)
             // L9a: a boundary particle before `.`, `!`, `?` or Return (ENG-R825), unless it continues a

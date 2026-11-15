@@ -5,7 +5,7 @@ import VietnameseEngineTesting
 
 /// The sentence condition of rule L9 (ENG-R850 as amended by the product owner on 16/11/2026, REG-36): shell commands
 /// are typed in lowercase, so a capital first letter at the start of a line is itself a sign of a Vietnamese sentence.
-/// In the code context L9 does not apply to a code-only word that (d) is the first token of its line, (e) is written in
+/// In the code context L9 does not apply to a code-only word that (d) is the first word of its line, (e) is written in
 /// sentence case, (f) is committed by a space and (g) is not on the capitalized code-word list; the rules after L9
 /// decide it at its own commit, as in `general`. 13.9 fixtures: `tar` is code-only, English and has no ambiguity row,
 /// so outside L9 it is kept by L11 (`defaultVietnamese`).
@@ -53,29 +53,43 @@ struct LineStartSentenceTests {
         return resources
     }
 
-    @Test("Guard (d): the first token of its line, that is the engine's history is empty")
+    @Test("Guard (d): the first word of its line, after nothing but spaces and the openers of prose")
     func firstTokenOfTheLine() throws {
+        let indent = String(repeating: " ", count: History.entriesPerToken - 1)
         for (keys, text) in [
             ("vieejt\nTar ", "việt\nTả "), ("vieejt\tTar ", "việt\tTả "), ("vieejt \u{27F2}Tar ", "việt Tả "),
             // A Backspace that empties the line starts it again.
             ("sudo \u{232B}\u{232B}\u{232B}\u{232B}\u{232B}Tar ", "Tả "),
+            // No token yet on the line, and only spaces and the openers of prose before the word (review of
+            // 16/11/2026): an indent, a quote, a bracket, a list, heading or block-quote marker, a comment marker.
+            (" Tar ", " Tả "), ("    Tar ", "    Tả "), (indent + "Tar ", indent + "Tả "), ("\"Tar ", "\"Tả "),
+            ("'Tar ", "'Tả "), ("\u{201C}Tar ", "\u{201C}Tả "), ("\u{2018}Tar ", "\u{2018}Tả "), ("(Tar ", "(Tả "),
+            ("- Tar ", "- Tả "), ("* Tar ", "* Tả "), ("# Tar ", "# Tả "), ("## Tar ", "## Tả "), ("> Tar ", "> Tả "),
+            ("// Tar ", "// Tả "), ("vieejt\n  - \"Tar ", "việt\n  - \"Tả "),
         ] {
             let driver = try Committing.driver(keys, Self.terminal)
             #expect(driver.field.string == text, "\(keys.debugDescription)")
             #expect(driver.outputs.last?.decision == .kept(.defaultVietnamese), "\(keys.debugDescription)")
         }
         for (keys, text) in [
-            (" Tar ", " Tar "),  // a space typed before it
             ("sudo Tar ", "sudo Tar "),  // after a code word
             ("and Tar ", "and Tar "),  // after an English word
             ("`Tar ", "`Tar "),  // after a code character
+            ("| Tar ", "| Tar "), ("$ Tar ", "$ Tar "), ("& Tar ", "& Tar "),
             ("anh.Tar ", "anh.Tar "),  // a code join
             ("tar Tar ", "tar Tar "),  // the second token of a line
+            // Characters that are not openers of prose: a path, a tag, a mention, an option, a number.
+            ("./Tar ", "./Tar "), ("<Tar ", "<Tar "), ("@Tar ", "@Tar "), ("=Tar ", "=Tar "), ("1. Tar ", "1. Tar "),
+            // A no-break space does not separate words in a shell (ENG-R850 (d), (f)).
+            ("\u{00A0}Tar ", "\u{00A0}Tar "),
+            // The walk is bounded: 64 boundary characters are not a line start (ENG-R1232).
+            (indent + " Tar ", indent + " Tar "),
         ] {
             let driver = try Committing.driver(keys, Self.terminal)
             #expect(driver.field.string == text, "\(keys.debugDescription)")
-            #expect(driver.outputs.last?.decision == .restored(.codeContext), "\(keys.debugDescription)")
+            #expect(driver.outputs.last?.decision?.restores == true, "\(keys.debugDescription)")
         }
+        #expect(CommitPolicy.isLineStart(History()))
     }
 
     @Test("Guard (e): sentence case, the first letter uppercase and every other letter lowercase, at least two letters")
@@ -144,9 +158,6 @@ struct LineStartSentenceTests {
         englishRow.ambiguity["tar"] = .english
         let english = try Committing.driver("Tar ", Self.terminal, resources: englishRow)
         #expect(english.field.string == "Tar " && english.outputs.last?.decision == .restored(.ambiguityTable))
-        // An English run from the previous line: L10 restores it, as in the general context.
-        let run = try Committing.driver("and\nTar ", Self.terminal)
-        #expect(run.field.string == "and\nTar " && run.outputs.last?.decision == .restored(.englishRun))
         // The learned memory (L9c).
         var learned = vietnameseRow
         learned.collisionMemory = CollisionMemorySnapshot([.init(word: "tar", context: nil, choice: .english)])
@@ -159,6 +170,31 @@ struct LineStartSentenceTests {
         let manual = EngineConfiguration(autoRestore: false, appContext: .code)
         #expect(try Committing.decision("Tar ", manual) == .kept(.defaultVietnamese))
         #expect(try Committing.decision("TAR ", manual) == .kept(.codeContext))
+    }
+
+    @Test("ENG-R823, L10: a capital at a line start opens a new sentence, so the English run of the line before ends")
+    func englishLineBefore() throws {
+        for configuration in Self.switches {
+            // The review of 16/11/2026: the run survives Return (ENG-R823), and the line before is a command.
+            let run = try Committing.driver("and\nTar ", configuration)
+            #expect(run.field.string == "and\nTả " && run.outputs.last?.decision == .kept(.defaultVietnamese))
+            let sentence = try Committing.driver("test this\nTar thuwr cais nayf ", configuration)
+            #expect(sentence.field.string == "test this\nTả thử cái này ", "\(configuration)")
+            #expect(Self.revisions(sentence).isEmpty, "\(configuration)")
+            // No restore, so no weak English signal for the word (ENG-R864).
+            #expect(!sentence.outputs.flatMap(\.collisionSignals).contains { $0.word == "tar" && $0.side == .english })
+        }
+        // Only the sentence condition ends the run: on the same line, in all caps, in lowercase or for a
+        // capitalized code word, L9 restores, and RV5 still refuses a word that L10 would restore.
+        #expect(try Committing.text("and Tar ", Self.terminal) == "and Tar ")
+        #expect(try Committing.text("and\nTAR thuwr ", Self.terminal) == "and\nTAR thử ")
+        #expect(try Committing.text("and\ntar thuwr ", Self.terminal) == "and\ntar thử ")
+        #expect(try Committing.text("and\nTar ", Self.terminal, resources: Self.capitalized) == "and\nTar ")
+        // An English word after it is decided by its own run, which the kept word does not break.
+        #expect(try Committing.text("and\nTar test ", Self.terminal) == "and\nTả test ")
+        // The general context never reaches L9, so the English run restores the word there (ENG-R823).
+        let general = try Committing.driver("and\nTar ", EngineConfiguration())
+        #expect(general.field.string == "and\nTar " && general.outputs.last?.decision == .restored(.englishRun))
     }
 
     @Test("ENG-R823: the kept word is neutral, so the next code word is decided by L9 as after any neutral word")

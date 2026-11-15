@@ -19,7 +19,7 @@ package struct CollisionFacts: Sendable, Hashable {
     /// token of language `vi`. Fixed at commit (a token typed unchanged is never revised) and computed only in the
     /// code context, the only one that reaches L9.
     package var vietnameseAsTyped = false
-    /// Rule L9 restored the token as the first thing typed on its line, and the rules after L9 (L9a to L11 with the
+    /// Rule L9 restored the token as the first word of its line (`CommitPolicy.isLineStart`), and the rules after L9 (L9a to L11 with the
     /// token's run and window, as in the general context) keep its Vietnamese display: RV5 may give it that display
     /// when the next word shows the line is Vietnamese text (ENG-R828, ENG-R850). Fixed at commit.
     package var vietnameseAtLineStart = false

@@ -50,12 +50,12 @@ extension Engine {
             memoryContext: Self.memoryContext(state.history),
             phrases: commitPolicy.collisionRules ? PhraseChain(history: state.history) : PhraseChain(),
             inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history),
-            atLineStart: state.history.isEmpty)
+            atLineStart: CommitPolicy.isLineStart(state.history))
         var result = commitResult(for: token, context: context)
-        // RV5 of ENG-R828 (ENG-R850): a code-only word that L9 restored as the first thing typed on its line (the
-        // history is empty: start of input, Return, Tab or a reset) remembers whether the rules after L9 keep its
-        // Vietnamese display, decided now with its own run and window.
-        if commitPolicy.lineRevision, result.decision == .restored(.codeContext), state.history.isEmpty,
+        // RV5 of ENG-R828 (ENG-R850): a code-only word that L9 restored as the first word of its line (no token since
+        // the start of input, Return, Tab or a reset, only spaces and the openers of prose before it) remembers
+        // whether the rules after L9 keep its Vietnamese display, decided now with its own run and window.
+        if commitPolicy.lineRevision, result.decision == .restored(.codeContext), context.atLineStart,
             let inputs = result.inputs
         {
             result.collision.vietnameseAtLineStart = commitPolicy.keepsVietnameseAfterCodeRule(inputs, context: context)

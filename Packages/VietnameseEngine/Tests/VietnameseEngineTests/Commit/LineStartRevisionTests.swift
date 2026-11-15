@@ -54,17 +54,21 @@ struct LineStartRevisionTests {
         for (keys, text) in [
             ("vieejt\ntar thuwr ", "việt\ntả thử "), ("vieejt\ttar thuwr ", "việt\ttả thử "),
             ("vieejt \u{27F2}tar thuwr ", "việt tả thử "), ("tar thuwr\ntar thuwr ", "tả thử\ntả thử "),
-            // The condition is the engine's empty history, so a Backspace that empties the line starts it again,
+            // The condition reads the engine's history, so a Backspace that empties the line starts it again,
             // and so does a reset in the middle of a line (a click, a focus change), L9's own blind spot after a
             // reset (ENG-R850 known costs).
             ("sudo \u{232B}\u{232B}\u{232B}\u{232B}\u{232B}tar thuwr ", "tả thử "),
             ("sudo \u{27F2}tar thuwr ", "sudo tả thử "),
+            // Spaces and the openers of prose before the word leave it the first word of its line (ENG-R850 (d),
+            // review of 16/11/2026): an indent, a quote, a bracket, a list, heading or comment marker.
+            (" tar thuwr ", " tả thử "), ("  - tar thuwr ", "  - tả thử "), ("# tar thuwr ", "# tả thử "),
+            ("\"tar thuwr ", "\"tả thử "), ("(tar thuwr ", "(tả thử "), ("// tar thuwr ", "// tả thử "),
         ] {
             #expect(try Committing.text(keys, Self.terminal) == text, "\(keys.debugDescription)")
         }
     }
 
-    @Test("Guard: the word is the first thing typed on its line")
+    @Test("Guard: the word is the first word of its line")
     func notFirstOnTheLine() throws {
         for (keys, text) in [
             ("sudo tar thuwr ", "sudo tar thử "),  // after a code word
@@ -72,7 +76,8 @@ struct LineStartRevisionTests {
             ("tar tar thuwr ", "tar tar thử "),  // the first `tar` is followed by a restored word
             ("vieejt `tar thuwr ", "việt `tar thử "),  // after a code character
             ("`tar thuwr ", "`tar thử "),  // a backquote before it on the line
-            (" tar thuwr ", " tar thử "),  // a space typed before it
+            ("| tar thuwr ", "| tar thử "),  // a pipe before it on the line
+            ("./tar thuwr ", "./tar thử "),  // a path
             ("anh.tar thuwr ", "anh.tar thử "),  // a code join
         ] {
             #expect(try Committing.text(keys, Self.terminal) == text, "\(keys.debugDescription)")

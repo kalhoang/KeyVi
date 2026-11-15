@@ -89,7 +89,7 @@ extension CommitPolicy {
     /// RV5 of ENG-R828 (ENG-R850 as amended on 16/11/2026, REG-36): at the start of a line nothing stands before a
     /// token, so rule L9 restored a code-only word there (`Tar`); when the next word shows the line is Vietnamese
     /// text, the word takes the display the rules after L9 give it, as in the general context (`Tả thử`). Guards:
-    /// `previous` was restored by L9 as the first thing typed on its line (the history was empty) and the rules after
+    /// `previous` was restored by L9 as the first word of its line (`isLineStart`, ENG-R850 (d)) and the rules after
     /// L9 keep its Vietnamese display (`CollisionFacts.vietnameseAtLineStart`: never an `en` row, L10 or a learned
     /// English vote); `next` is kept by L7 with a Vietnamese-only letter (a syllable typed unchanged is a host, user
     /// or branch name as often: `host minh`, `Host minh`); and `next` is committed by a space, Return, `,`, `!` or

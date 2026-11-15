@@ -58,12 +58,12 @@ struct CollisionFuzzTests {
         "tar", "Tar", "TAR", "thuwr", "cais", "nayf", "xf", "anh", "sudo", "nhaatj", "log", "vieejt", "and",
         "Tar thuwr", "tar thuwr cais", "tar xf", "sudo tar", "tar nhaatj-kys.log", "anh.tar", "TAR thuwr",
     ]
-    static let codeSeparators = [" ", " ", " ", "\n", "\n", ".", "-", ",", "  ", "!", "`", "\t"]
+    static let codeSeparators = [" ", " ", " ", "\n", "\n", ".", "-", ",", "  ", "!", "`", "\t", "\n# ", "\n  "]
 
     /// ENG-R828 RV5 and the sentence condition of L9 (ENG-R850) in the code context, in the terminal configuration
     /// (`lookaheadRevision` off, PLT-R357) and with every rule on, without and with `tar` on the capitalized code-word
     /// list: every invariant holds, the revision bound covers RV5, and L9 never restores a word that starts a sentence
-    /// (the first token of its line, in sentence case, committed by a space, not on the list).
+    /// (the first word of its line, in sentence case, committed by a space, not on the list).
     @Test("Random code-context streams keep every invariant", arguments: [0, 1])
     func randomCodeStreams(_ seed: UInt64) throws {
         var capitalized = CollisionFixture.resources()
@@ -86,7 +86,8 @@ struct CollisionFuzzTests {
                     let state = checker.session.state
                     let raw = state.activeRawKeys
                     let sentenceAtLineStart =
-                        event == .key(KeyInput(" ")) && state.history.isEmpty && CommitPolicy.isSentenceCase(raw)
+                        event == .key(KeyInput(" ")) && CommitPolicy.isLineStart(state.history)
+                        && CommitPolicy.isSentenceCase(raw)
                     let output = try checker.send(event)
                     if output.revision == .lineVietnamese { revisions += 1 }
                     guard sentenceAtLineStart, let decision = output.decision, decision.rule != .userChoice else {

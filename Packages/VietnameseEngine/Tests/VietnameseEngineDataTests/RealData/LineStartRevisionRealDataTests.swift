@@ -36,7 +36,8 @@ struct LineStartRevisionRealDataTests {
             let driver = try Self.driver("Tar thuwr cais nayf\n", configuration)
             #expect(driver.field.string == "Tả thử cái này\n")
             #expect(driver.outputs.compactMap(\.revision).isEmpty)
-            #expect(driver.outputs.first { $0.decision != nil }?.decision?.restores == false)
+            // `tar` has a `vi` row in the bundled ambiguity table, so L11 keeps it by that row.
+            #expect(driver.outputs.first { $0.decision != nil }?.decision == .kept(.ambiguityTable))
         }
         // Typed in lowercase, RV5 revises the first word once the next one is Vietnamese; with D29 off it stays.
         for configuration in Self.configurations {
@@ -99,6 +100,8 @@ struct LineStartRevisionRealDataTests {
             // The cost (ENG-R850): an English line or a command typed with a capital reads as a sentence.
             ("Tar archives are\n", "Tả archives are\n"),
             ("Tee nhaatj.log\n", "Tê nhật.log\n"),
+            ("Tee stderr into log\n", "Tê stderr into log\n"),
+            ("# Tar archives are\n", "# Tả archives are\n"),
         ])
     func sentenceCase(_ keys: String, _ expected: String) throws {
         for configuration in Self.configurations + [Self.d29Off] {
@@ -147,19 +150,49 @@ struct LineStartRevisionRealDataTests {
         }
     }
 
-    @Test("After Return the line starts again; an English command line keeps the next line's word English (L10)")
+    @Test("After Return the line starts again; a capital opens a sentence even after an English command line")
     func afterACommandLine() throws {
+        for configuration in Self.configurations + [Self.d29Off] {
+            #expect(try Self.driver("ls -la\nTar thuwr\n", configuration).field.string == "ls -la\nTả thử\n")
+            // The review of 16/11/2026: the run's window survives Return (ENG-R823), so after an English command
+            // L10 restored `Tar`; a word that starts a sentence ends the run of the line before (ENG-R850).
+            for command in ["git status", "swift test", "npm run build", "cd Projects", "check the logs"] {
+                let driver = try Self.driver(command + "\nTar thuwr cais nayf\n", configuration)
+                #expect(driver.field.string == command + "\nTả thử cái này\n", "\(command)")
+                let first = try Self.driver(command + "\nTar ", configuration).outputs.last?.decision
+                #expect(first?.restores == false, "\(command): \(String(describing: first))")
+            }
+        }
         for configuration in Self.configurations {
             #expect(try Self.driver("ls -la\ntar thuwr\n", configuration).field.string == "ls -la\ntả thử\n")
-            #expect(try Self.driver("ls -la\nTar thuwr\n", configuration).field.string == "ls -la\nTả thử\n")
-            // The run's window survives Return (ENG-R823): after an English line the general context's rules
-            // restore `tar` by L10, so RV5 leaves it, and so does the sentence condition.
+            // In lowercase the word keeps L9, and RV5 leaves a word that the rules after L9 restore by L10.
             #expect(
                 try Self.driver("check the logs\ntar thuwr\n", configuration).field.string
                     == "check the logs\ntar thử\n")
-            #expect(
-                try Self.driver("check the logs\nTar thuwr\n", configuration).field.string
-                    == "check the logs\nTar thử\n")
+        }
+    }
+
+    @Test(
+        "Spaces and the openers of prose before the first word keep it the first word of its line (ENG-R850 (d))",
+        arguments: [
+            ("\"Tar thuwr cais nayf\"\n", "\"Tả thử cái này\"\n"),
+            ("(Tar thuwr cais nayf)\n", "(Tả thử cái này)\n"),
+            ("- Tar thuwr cais nayf\n", "- Tả thử cái này\n"),
+            ("# Tar thuwr cais nayf\n", "# Tả thử cái này\n"),
+            ("// Tar thuwr cais nayf\n", "// Tả thử cái này\n"),
+            ("    Tar thuwr\n", "    Tả thử\n"),
+            ("\tTar thuwr\n", "\tTả thử\n"),
+        ])
+    func openersBeforeTheWord(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurations + [Self.d29Off] {
+            #expect(try Self.driver(keys, configuration).field.string == expected, "\(keys.debugDescription)")
+        }
+        // Code before the word keeps L9: a pipe, a command, a path.
+        for (keys, text) in [
+            ("echo xong | Tee log\n", "echo xong | Tee log\n"), ("sudo Tar thuwr\n", "sudo Tar thử\n"),
+            ("./Tar thuwr\n", "./Tar thử\n"),
+        ] {
+            #expect(try Self.driver(keys, Self.configurations[0]).field.string == text, "\(keys.debugDescription)")
         }
     }
 
@@ -201,9 +234,9 @@ struct LineStartRevisionRealDataTests {
         return rows
     }()
 
-    @Test("13.9.4 has its 20 rows")
+    @Test("13.9.4 has its 25 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...20).map { String(format: "K%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...25).map { String(format: "K%02d", $0) })
     }
 
     @Test("ENG-R850, ENG-R828: every row of 13.9.4", arguments: rows)
@@ -224,11 +257,18 @@ struct LineStartRevisionRealDataTests {
         // 13.9.4: with D29 off a row that names RV5 keeps the first word as typed, every other row is the same.
         let off = try Self.driver(row.keys + "\n", Self.d29Off).field.string
         if row.decided.contains("RV5 revises") {
-            let first = row.keys.prefix { $0 != " " }
-            let rest = row.text.drop { $0 != " " }
+            let first = Self.splitAtFirstWord(row.keys).head
+            let rest = Self.splitAtFirstWord(row.text).rest
             #expect(off == String(first) + String(rest) + "\n", "\(row.id): \(off.debugDescription)")
         } else {
             #expect(off == row.text + "\n", "\(row.id): \(off.debugDescription)")
         }
+    }
+
+    /// The text up to the end of its first word (any openers before it included) and the rest.
+    static func splitAtFirstWord(_ text: String) -> (head: Substring, rest: Substring) {
+        let start = text.firstIndex { $0.isLetter } ?? text.endIndex
+        let end = text[start...].firstIndex { !$0.isLetter } ?? text.endIndex
+        return (text[..<end], text[end...])
     }
 }

@@ -28,8 +28,9 @@ def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False, 
         return (R, "restored: Tier B and raw is English") if r in EN else (C, "kept: Tier B, not English")
     if r not in EN and r not in TECH: return C, "kept: valid, raw not English"
     if C.lower() not in {x for x in []} and strip(C.lower()) and C.lower() in NOT_ATTESTED: return R, "restored: not attested, raw is English"
-    if context == "code" and r in CODE_ONLY and not vietnamese_text and not starts_sentence:
-        return R, "restored: code context, tech word"
+    if context == "code" and r in CODE_ONLY and not vietnamese_text:
+        if not starts_sentence: return R, "restored: code context, tech word"
+        prev = "neutral"  # a capital at a line start opens a new sentence: the English run ends (review, 16/11/2026)
     if prev == "en": return R, "restored: English run"
     d = AMBIG.get(r, "vi")
     return (R, "restored: ambiguity table en") if d == "en" else (C, "kept: ambiguity table vi" if r in AMBIG else "kept: default vi")
@@ -58,12 +59,18 @@ def in_vietnamese_text(line):
     if language == "en" or code_word or code_after or joined: return False
     return any(lang == "vi" or as_typed for lang, as_typed, _, _, _ in line[-3:])
 # ENG-R850 as amended by the product owner on 16/11/2026: a token starts a sentence, and L9 does not apply to it, when
-# it is the first token of its line, its raw keys are in sentence case (first letter uppercase, every other letter
-# lowercase, at least two letters), a space commits it and it is not on the capitalized code-word list.
+# it is the first word of its line, its raw keys are in sentence case (first letter uppercase, every other letter
+# lowercase, at least two letters), a space commits it and it is not on the capitalized code-word list. Such a token
+# is decided by the rules after L9 with the English run of the line before ended. The first word of a line (shared with
+# RV5): no token yet on the line and, before it, only spaces and the openers of prose, at most 63 characters.
+LINE_OPENERS = set(' "\'\u201c\u2018([-*#>/')
+MAX_LINE_OPENERS = 63
+def opens_line(characters):
+    return len(characters) <= MAX_LINE_OPENERS and all(ch in LINE_OPENERS for ch in characters)
 def sentence_case(keys):
     letters = [ch for ch in keys if ch.isalpha()]
     return len(letters) >= 2 and letters[0].isupper() and all(ch.islower() for ch in letters[1:])
-# RV5 of ENG-R828 (16/11/2026, REG-36): a code-only word that L9 restored as the first thing typed on its line takes
+# RV5 of ENG-R828 (16/11/2026, REG-36): a code-only word that L9 restored as the first word of its line takes
 # its Vietnamese display when the next word is kept by L7 with a Vietnamese-only letter and is committed by a space,
 # Return, `,`, `!` or `?`, provided the rules after L9 (as in `general`, with its own window) keep that display and
 # exactly one space separates the two words. The case of the word never widens that evidence.
@@ -74,7 +81,7 @@ def type_run(text, cfg=None, context="general", line_start_revision=True, code_c
     (9.2). Returns the field and the reason of the last decided token."""
     cfg = cfg or Cfg()
     pieces, window, line, reason = [], [], [], None
-    line_empty, pending = True, None  # pending: (piece index, Vietnamese display) of an RV5 candidate
+    line_empty, opened, pending = True, "", None  # pending: (piece index, Vietnamese display) of an RV5 candidate
     for token, boundary in re.findall(r"([A-Za-z]*)([^A-Za-z]*)", text):
         if token:
             prev = "en" if run_is_english(window) else "neutral"
@@ -103,9 +110,11 @@ def type_run(text, cfg=None, context="general", line_start_revision=True, code_c
                                        not any(ch in SPACES for ch in boundary))
         if "\n" in boundary or "\t" in boundary:
             line = []
-            line_empty = re.split(r"[\n\t]", boundary)[-1] == ""
-        elif boundary:
-            line_empty = False
+            opened = re.split(r"[\n\t]", boundary)[-1]
+            line_empty = opens_line(opened)
+        elif boundary and line_empty:
+            opened += boundary
+            line_empty = opens_line(opened)
         pieces.append(boundary)
     return "".join(pieces), reason
 # 01-engine.md 13.9.2 (B065-B072) and the sentences of ENG-R823, with the 13.9 fixtures above.
@@ -124,6 +133,7 @@ RUNS = [
     ("tricky as hell ", "tricky as hell ", "unchanged"),
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
     ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
+    ("and\nTar ", "and\nTar ", "restored: English run"),  # the general context keeps the run across Return
 ]
 # 01-engine.md 13.9 rows B035 to B035e and B035i to B035n and 13.9.1 rows B064a to B064c (Telex, code context, from an
 # empty field; the seed tokens `vieejt` and `and` stand for the previous token `vi` and `en`), the sentences of ENG-R850
@@ -160,11 +170,16 @@ CODE_RUNS = [
     ("tar anh ", "tar anh ", "unchanged"),
     ("tar  thuwr ", "tar  thử ", "kept: valid, raw not English"),
     ("sudo tar thuwr ", "sudo tar thử ", "kept: valid, raw not English"),
-    (" tar thuwr ", " tar thử ", "kept: valid, raw not English"),
     ("vieejt\ntar thuwr ", "việt\ntả thử ", "kept: valid, raw not English"),
     ("and\ntar thuwr ", "and\ntar thử ", "kept: valid, raw not English"),  # L10 would restore `tar`
     ("tar\nthuwr ", "tar\nthử ", "kept: valid, raw not English"),  # a one-word line
     ("Tar thuwr tar ", "Tả thử tả ", "kept: default vi"),
+    # The first word of a line after spaces and the openers of prose (review of 16/11/2026, ENG-R850 (d)).
+    (" tar thuwr ", " tả thử ", "kept: valid, raw not English"),
+    ("- tar thuwr ", "- tả thử ", "kept: valid, raw not English"),
+    ('"tar thuwr ', '"tả thử ', "kept: valid, raw not English"),
+    ("| tar thuwr ", "| tar thử ", "kept: valid, raw not English"),
+    ("./tar thuwr ", "./tar thử ", "kept: valid, raw not English"),
     # The sentence condition of L9 (ENG-R850, product owner, 16/11/2026): decided at the word's own commit.
     ("Tar ", "Tả ", "kept: default vi"),  # B035m
     ('Tar-', 'Tar-', "restored: code context, tech word"),  # B064c
@@ -178,7 +193,24 @@ CODE_RUNS = [
     ("Tar\n", "Tar\n", "restored: code context, tech word"),
     ("Tar.", "Tar.", "restored: code context, tech word"),
     ("Tar:", "Tar:", "restored: code context, tech word"),
-    (" Tar ", " Tar ", "restored: code context, tech word"),  # not the first thing on its line
+    (" Tar ", " Tả ", "kept: default vi"),  # an indent before it
+    ("    Tar ", "    Tả ", "kept: default vi"),
+    ('"Tar ', '"Tả ', "kept: default vi"),  # a quote before it
+    ("(Tar ", "(Tả ", "kept: default vi"),
+    ("- Tar ", "- Tả ", "kept: default vi"),  # a list marker
+    ("# Tar ", "# Tả ", "kept: default vi"),  # a heading or comment marker
+    ("// Tar ", "// Tả ", "kept: default vi"),
+    ("vieejt\n> Tar ", "việt\n> Tả ", "kept: default vi"),
+    (" " * 63 + "Tar ", " " * 63 + "Tả ", "kept: default vi"),
+    (" " * 64 + "Tar ", " " * 64 + "Tar ", "restored: code context, tech word"),  # the bounded walk
+    ("| Tar ", "| Tar ", "restored: code context, tech word"),  # a code character
+    ("./Tar ", "./Tar ", "restored: code context, tech word"),  # a path
+    ("1. Tar ", "1. Tar ", "restored: code context, tech word"),  # a number
+    ("\u00a0Tar ", "\u00a0Tar ", "restored: code context, tech word"),  # a no-break space
+    # A capital at a line start opens a new sentence, so the English run of the line before ends (ENG-R823).
+    ("and\nTar ", "and\nTả ", "kept: default vi"),
+    ("and\nTar thuwr cais nayf ", "and\nTả thử cái này ", "kept: valid, raw not English"),
+    ("and\nTAR thuwr ", "and\nTAR thử ", "kept: valid, raw not English"),
     ("sudo Tar ", "sudo Tar ", "restored: code context, tech word"),
     ("TAr ", "TAr ", "restored: code context, tech word"),  # not sentence case
     ("TAR anh ", "TAR anh ", "unchanged"),
@@ -201,6 +233,7 @@ CODE_RUNS_CAPITALIZED = [
     ("Tar thuwr ", "Tả thử ", "kept: valid, raw not English"),
     ("Tar thuwr.", "Tar thử.", "kept: valid, raw not English"),
     ("tar thuwr ", "tả thử ", "kept: valid, raw not English"),
+    ("and\nTar ", "and\nTar ", "restored: code context, tech word"),
 ]
 # Collision rules at commit (15/11/2026): L9a boundary particle (ENG-R825), L9b phrase looking back (ENG-R826), the
 # `run: vi` exemption of L10 and the English-lean window (ENG-R823, ENG-R827), with small fixture lists on top of the
