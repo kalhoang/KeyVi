@@ -3710,7 +3710,7 @@
       }
     },
     "settings.import.learnedChoices" : {
-      "comment" : "Import summary (PRD-R72). %d is the number of learned-word entries in the file.",
+      "comment" : "Import summary (PRD-R72). %d is the number of learned-word entries that will be imported.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -3723,6 +3723,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Từ đã học: %d mục"
+          }
+        }
+      }
+    },
+    "settings.import.learnedChoicesSkipped" : {
+      "comment" : "Import summary (PRD-R72). %1$d is the number of learned-word entries that will be imported, %2$d the number left out (a word this version does not have, or an invalid entry).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned word entries: %1$d, %2$d skipped because this version cannot use them"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ đã học: %1$d mục, bỏ qua %2$d mục mà phiên bản này không dùng được"
+          }
+        }
+      }
+    },
+    "settings.import.learnedChoicesUnavailable" : {
+      "comment" : "Import sheet, under the unavailable learned-words checkbox, while the memory is not loaded (PRD-R72). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Learned words cannot be imported because their list could not be loaded. Reopening %@ may fix this."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa nhập được từ đã học vì không tải được danh sách từ đã học. Mở lại %@ có thể khắc phục lỗi này."
           }
         }
       }
@@ -5163,6 +5199,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Từ đã học"
+          }
+        }
+      }
+    },
+    "settings.typing.learnedChoices.unavailable" : {
+      "comment" : "Learned-words sheet while the memory is not loaded because the bundled word lists failed to load (PRD-R78, PRD-R79). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The list of learned words could not be loaded. Reopening %@ may fix this."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không tải được danh sách từ đã học. Mở lại %@ có thể khắc phục lỗi này."
           }
         }
       }

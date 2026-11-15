@@ -149,6 +149,14 @@ into public issues.
       texts before a readback is compared; when they explain the difference there is no finding and the field
       becomes the baseline.
     - `restoreOrReopen` also reports a Backspace that re-opens a token whose commit a rule restored.
+    - `reopenedLiteral` (added 2026-11-15, a regression guard for ENG-R1005): after such a re-open, at least one
+      more Backspace into the token and keys that passed through as typed, the scanner replays the token shown
+      before those keys and after them through a fresh engine of its own build with the recorded settings; it is a
+      finding when the first composes to itself (no remaining key transforms anything, so the restore should have
+      ended) and the second does not (a fresh token would have composed the keys). A restore by the user's toggle
+      (L1) and keys typed before any Backspace into the token stay literal by the rule and are never judged; an edit
+      in the token means the engine composed it. It reads only what the recorder already writes (`comp`, the
+      commit decision) and its detail holds counts and the decision.
     - Replay stops at `gap` and `pause` lines (keys inside are not recorded and the host reset at the end).
 
 13. **Engine identity** (2026-11-15). The engine package has no version and dev builds and the scanner are often built

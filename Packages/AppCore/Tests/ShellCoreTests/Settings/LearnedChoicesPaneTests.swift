@@ -207,6 +207,34 @@ private func strong(
                 .hasSuffix("(Control + Left Arrow)."))
     }
 
+    // MARK: Memory not loaded (PRD-R78, PLT-R914)
+
+    /// The bundled lists failed to load, so the memory is not loaded: nothing is recorded, written, removed or
+    /// cleared. The sheet shows no rows, keeps remove and "Xóa tất cả..." disabled and says so in one line.
+    @Test func whileTheMemoryIsNotLoadedTheSheetSaysSoAndOffersNoEdit() async throws {
+        let l = try Localizers()
+        let harness = SettingsStoreHarness()
+        _ = await harness.store.load()
+        let commands = SettingsCommands(store: harness.store)
+        #expect(await commands.learnedChoices() == nil, "nil: the memory is not loaded")
+        let sheet = LearnedChoicesSheetState(votes: await commands.learnedChoices(), reading: reading)
+        #expect(sheet.isUnavailable && sheet.rows.isEmpty && !sheet.canEdit)
+        #expect(!sheet.confirmingClearAll(true).confirmsClearAll, "Xóa tất cả cannot open its confirmation")
+        #expect(sheet.replacingVotes(nil, reading: reading).isUnavailable)
+        #expect(
+            LearnedChoicesSheetState.unavailableText(appName: "{{AppName}}", l.vi)
+                == "Không tải được danh sách từ đã học. Mở lại {{AppName}} có thể khắc phục lỗi này.")
+        #expect(
+            LearnedChoicesSheetState.unavailableText(appName: "{{AppName}}", l.en)
+                == "The list of learned words could not be loaded. Reopening {{AppName}} may fix this.")
+
+        // A loaded memory, even an empty one, can be edited: "Xóa tất cả" also removes unlisted acceptances.
+        let loaded = LearnedChoicesSheetState(votes: [], reading: reading)
+        #expect(!loaded.isUnavailable && loaded.canEdit)
+        #expect(loaded.replacingVotes(nil, reading: reading).isUnavailable, "the store can report it later too")
+        #expect(!LearnedChoicesSheetState(votes: fixture, reading: reading).isUnavailable)
+    }
+
     // MARK: Remove and clear (PRD-R78, PLT-R914)
 
     @Test func removeAndClearAreEditsOfTheMemoryNotOfSettingsJSON() {
@@ -257,7 +285,7 @@ private func strong(
         #expect(harness.memory.nodes[Self.memoryPath] != nil)
         let state = await commands.apply(.clearLearnedChoices)
         #expect(state.user == (await commands.state()).user)
-        #expect(await commands.learnedChoices().isEmpty)
+        #expect(await commands.learnedChoices() == [])
         #expect(memory.entryCount == 0)
         #expect(harness.memory.nodes[Self.memoryPath] == nil)
     }
@@ -267,7 +295,7 @@ private func strong(
         let state = await commands.apply(.learnCollisionChoices(false))
         #expect(state.effective.learnCollisionChoices == false)
         #expect(state.user.explicitlySetKeys == ["learnCollisionChoices"])
-        #expect(await commands.learnedChoices().count == 2, "the list stays until Xóa tất cả")
+        #expect(await commands.learnedChoices()?.count == 2, "the list stays until Xóa tất cả")
     }
 
     // MARK: Typing pane reset (PRD-R26)
@@ -283,7 +311,7 @@ private func strong(
         let state = await commands.perform(request.plan)
         #expect(state.effective.lookaheadRevision, "D29 is back to its default")
         #expect(harness.store.collisionMemory.entryCount == 0)
-        #expect(await commands.learnedChoices().isEmpty)
+        #expect(await commands.learnedChoices() == [])
     }
 
     @Test func theResetOfEverythingSaysItClearsTheLearnedWordsToo() throws {
@@ -307,7 +335,8 @@ private func strong(
             .learnedContextAfterNeutral, .learnedContextAny, .learnedRowVietnamese, .learnedRowEnglish,
             .learnedClearTitle, .learnedClearBody, .learnedClearConfirm, .learnedClearCancel, .lookaheadRevisionTitle,
             .lookaheadRevisionExplanation, .exportIncludeLearnedChoices, .importLearnedChoices,
-            .importApplyLearnedChoices,
+            .importApplyLearnedChoices, .learnedChoicesUnavailable, .importLearnedChoicesSkipped,
+            .importLearnedChoicesUnavailable,
         ]
         for key in keys {
             let vi = l.vi.string(key)
@@ -367,6 +396,59 @@ private func strong(
         #expect(!none.hasLearnedChoices && !none.lines(l.vi).contains { $0.hasPrefix("Từ đã học") })
     }
 
+    /// PRD-R72: the count is what the merge keeps (words on this build's bundled list); the skipped entries are
+    /// counted in the same line, the way the macro line counts invalid entries.
+    @Test func theImportSummaryCountsOnlyImportableEntriesAndSaysHowManyAreSkipped() async throws {
+        let l = try Localizers()
+        let (_, source) = await Self.loadedWithMemory()
+        let data = try await source.export(ExportOptions(), now: Date(timeIntervalSince1970: 1_794_700_000))
+        // Six entries; the target's bundled list lacks cos (its two entries) and then everything.
+        let partly = ImportSummary(preview: try await Self.target(vocabulary: ["as", "car"]).previewImport(data))
+        #expect(partly.hasLearnedChoices && !partly.learnedChoicesUnavailable)
+        #expect(partly.lines(l.vi).contains("Từ đã học: 4 mục, bỏ qua 2 mục mà phiên bản này không dùng được"))
+        #expect(partly.lines(l.en).contains("Learned word entries: 4, 2 skipped because this version cannot use them"))
+
+        var none = ImportSummary(preview: try await Self.target(vocabulary: ["gif"]).previewImport(data))
+        #expect(!none.hasLearnedChoices, "nothing to import: no checkbox")
+        #expect(none.lines(l.vi).contains("Từ đã học: 0 mục, bỏ qua 6 mục mà phiên bản này không dùng được"))
+        none.choices.applySettings = false
+        none.choices.applyRuleOverrides = false
+        none.choices.applyAppModes = false
+        none.choices.applyMacros = false
+        #expect(none.isEmptySelection, "skipped entries alone import nothing")
+    }
+
+    /// PLT-R914: while the memory is not loaded the learned-words option is unavailable and says why; the count line
+    /// is left out because nothing could be checked.
+    @Test func whileTheMemoryIsNotLoadedTheImportOptionIsUnavailableAndSaysWhy() async throws {
+        let l = try Localizers()
+        let (_, source) = await Self.loadedWithMemory()
+        let data = try await source.export(ExportOptions(), now: Date(timeIntervalSince1970: 1_794_700_000))
+        let unloaded = SettingsStoreHarness()
+        _ = await unloaded.store.load()
+        var summary = ImportSummary(preview: try await SettingsCommands(store: unloaded.store).previewImport(data))
+        #expect(summary.learnedChoicesUnavailable && !summary.hasLearnedChoices)
+        #expect(!summary.lines(l.vi).contains { $0.hasPrefix("Từ đã học") })
+        #expect(
+            ImportSummary.learnedChoicesUnavailableText(appName: "{{AppName}}", l.vi)
+                == "Chưa nhập được từ đã học vì không tải được danh sách từ đã học. Mở lại {{AppName}} có thể "
+                + "khắc phục lỗi này.")
+        #expect(
+            ImportSummary.learnedChoicesUnavailableText(appName: "{{AppName}}", l.en)
+                == "Learned words cannot be imported because their list could not be loaded. Reopening {{AppName}} "
+                + "may fix this.")
+        summary.choices.applySettings = false
+        summary.choices.applyRuleOverrides = false
+        summary.choices.applyAppModes = false
+        summary.choices.applyMacros = false
+        #expect(summary.isEmptySelection, "the unavailable learned words never count as a selection")
+
+        let without = try await source.export(ExportOptions(includeCollisionMemory: false), now: .distantPast)
+        #expect(
+            !ImportSummary(preview: try await SettingsCommands(store: unloaded.store).previewImport(without))
+                .learnedChoicesUnavailable, "no section, nothing to explain")
+    }
+
     // MARK: Helpers
 
     static var memoryPath: String {
@@ -386,5 +468,13 @@ private func strong(
             CollisionMemorySignal(word: "cos", context: .afterVietnamese, side: .vietnamese, strength: .weak),
         ])
         return (harness, SettingsCommands(store: harness.store))
+    }
+
+    /// A loaded store whose memory is loaded with `vocabulary` (the bundled list of the build that imports).
+    static func target(vocabulary: CollisionVocabulary) async -> SettingsCommands {
+        let harness = SettingsStoreHarness()
+        _ = await harness.store.load()
+        harness.store.collisionMemory.load(vocabulary: vocabulary)
+        return SettingsCommands(store: harness.store)
     }
 }

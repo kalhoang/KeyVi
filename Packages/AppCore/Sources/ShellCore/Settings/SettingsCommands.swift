@@ -28,8 +28,12 @@ public struct SettingsCommands: Sendable {
     }
 
     /// The learned-words sheet's rows as the memory votes now (PRD-R78): entries that vote for a side, never
-    /// counters. Read when the sheet opens and after each of its edits.
-    public func learnedChoices() async -> [CollisionMemoryVote] { await store.learnedCollisionChoices() }
+    /// counters. Read when the sheet opens and after each of its edits. Nil while the memory is not loaded (the
+    /// bundled lists failed to load, PLT-R914): the sheet then lists nothing, offers no edit and says so.
+    public func learnedChoices() async -> [CollisionMemoryVote]? {
+        guard store.collisionMemory.isLoaded else { return nil }
+        return await store.learnedCollisionChoices()
+    }
 
     /// PRD-R21 rule from the Apps pane; `.remember` clears the explicit rule.
     public func setRule(_ rule: PerAppRule, for bundle: BundleKey) async -> SettingsState {

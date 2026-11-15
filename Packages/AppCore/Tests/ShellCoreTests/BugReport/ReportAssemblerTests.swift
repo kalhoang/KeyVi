@@ -177,6 +177,25 @@ import Testing
         }
     }
 
+    /// PLT-R1202, ADR 0501: D28 and D29 as the user has them now, and the learned collision memory as a count only
+    /// (PLT-R901, PLT-R914); nil when the memory is not loaded.
+    @Test func collisionSettingsAndTheLearnedEntryCountAreReported() throws {
+        var user = UserSettings()
+        user.learnCollisionChoices = .set(false)
+        let settings = ReportSections.settings(SettingsState(user: user), learnedCollisionEntries: 12)
+        #expect(!settings.learnCollisionChoices && settings.lookaheadRevision)
+        #expect(settings.learnedCollisionEntries == 12)
+        #expect(ReportSections.settings(SettingsState(user: user)).learnedCollisionEntries == nil)
+        let report = ReportAssembler.report(
+            identity: ReportFixtures.identity, system: ReportFixtures.system, host: ReportFixtures.host(),
+            settings: SettingsState(user: user), metrics: ReportFixtures.metrics, health: [], probe: nil, draft: nil,
+            now: ReportFixtures.now, learnedCollisionEntries: 5)
+        #expect(report.settings.learnedCollisionEntries == 5)
+        let block = try #require(DiagnosticsRenderer.parseIssueBlock(DiagnosticsRenderer.issueBlock(report)))
+        #expect(block["settings.learnedCollisionEntries"] == "5")
+        #expect(block["settings.learnCollisionChoices"] == "false")
+    }
+
     @Test func onlyTheReportedAppsMemoryEntryIsIncluded() throws {
         // PLT-R913
         let mode = try #require(ReportFixtures.report().reportedAppMode)

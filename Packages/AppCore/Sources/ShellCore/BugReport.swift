@@ -33,11 +33,12 @@ public struct BugReportDraft: Sendable, Hashable {
 public enum ReportAssembler {
     /// Metadata only (PLT-R1202). The reported app is the draft's app, else the focused app; only its memory
     /// entry (PLT-R913) and its user override (PLT-R541, as a typed projection, ADR 0312) are included. The
-    /// draft's free text never enters the report.
+    /// draft's free text never enters the report. `learnedCollisionEntries` is the collision memory's entry count
+    /// (nil while it is not loaded): a count only, never a word (PLT-R901, PLT-R914).
     public static func report(
         identity: AppIdentity, system: SystemInfo, host: HostReportContext, settings: SettingsState,
         metrics: MetricsSnapshot, health: [HealthEvent], probe: LatencyProbeResult?, draft: BugReportDraft?,
-        now: Date
+        now: Date, learnedCollisionEntries: Int? = nil
     ) -> DiagnosticsReport {
         let reportedApp = draft?.app ?? host.focus.app?.bundle
         // PLT-R541, ADR 0312: for the focused app the override that decided, so `rule.id` and
@@ -50,7 +51,7 @@ public enum ReportAssembler {
             tap: ReportSections.tap(host, health: health, now: now), secureInput: ReportSections.secureInput(host),
             focus: ReportSections.focus(host),
             rule: ReportSections.rule(host.decision, userOverride: decisionOverride ?? storedOverride),
-            settings: ReportSections.settings(settings),
+            settings: ReportSections.settings(settings, learnedCollisionEntries: learnedCollisionEntries),
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
             healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),

@@ -76,6 +76,8 @@ public final class CollisionMemoryStore: Sendable {
 
     /// The memory has been loaded with the bundled list.
     public var isLoaded: Bool { state.withLock { $0.vocabulary != nil } }
+    /// The bundled list of `load`; nil until then (the import preview checks words against it, PRD-R72).
+    var vocabulary: CollisionVocabulary? { state.withLock { $0.vocabulary } }
     /// Diagnostics report this number only (PLT-R901, PLT-R914).
     public var entryCount: Int { state.withLock { $0.memory.count } }
     /// Every vote, conflicts included (the engine's snapshot).
@@ -249,7 +251,8 @@ public final class CollisionMemoryStore: Sendable {
         }
     }
 
-    /// Entries of an export section; invalid entries are left out (PLT-R912). Words are checked at merge.
+    /// Entries of an export section; invalid entries are left out (PLT-R912). Words are checked by the import preview
+    /// and again at merge.
     public static func importedEntries(_ section: [JSONValue]) -> CollisionMemory {
         CollisionMemoryCodec.decodeEntries(section)
     }

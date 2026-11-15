@@ -113,12 +113,14 @@ struct PlainTextReport {
         field(labels.rememberPerApp, flag(settings.rememberPerApp))
         field(labels.toggleHotkey, BlockFields.hotkey(settings.toggleHotkey))
         field(labels.restoreHotkey, flag(settings.restoreHotkeySet))
-        field(labels.interfaceLanguage, settings.interfaceLanguage.rawValue)
-        field(labels.channel, settings.updateChannel.rawValue)
-        field(labels.changedSettings, joined(settings.explicitlySetKeys))
+        field(labels.learnCollisionChoices, flag(settings.learnCollisionChoices))  // D28
         if let entries = settings.learnedCollisionEntries {
             field(labels.learnedCollisionEntries, String(entries))  // count only (PLT-R914)
         }
+        field(labels.lookaheadRevision, flag(settings.lookaheadRevision))  // D29
+        field(labels.interfaceLanguage, settings.interfaceLanguage.rawValue)
+        field(labels.channel, settings.updateChannel.rawValue)
+        field(labels.changedSettings, joined(settings.explicitlySetKeys))
         guard let mode = report.reportedAppMode else { return }
         section(labels.appMode)
         field(labels.app, mode.bundle.rawValue)

@@ -52,10 +52,13 @@ extension AppEnvironment {
     }
 
     private func diagnosticsReport(context: HostReportContext, draft: BugReportDraft?) -> DiagnosticsReport {
-        ReportAssembler.report(
+        // PLT-R914: the learned collision memory as a count only, nil while it is not loaded.
+        let memory = settingsStore.collisionMemory
+        return ReportAssembler.report(
             identity: appIdentity, system: SystemInfoReader.current(uiLanguage: language.localizer.language),
             host: context, settings: settings, metrics: diagnostics.metrics.snapshot(), health: reportHealthEvents(),
-            probe: latencyProbeResult, draft: draft, now: Date())
+            probe: latencyProbeResult, draft: draft, now: Date(),
+            learnedCollisionEntries: memory.isLoaded ? memory.entryCount : nil)
     }
 
     /// PLT-R1202, PRD-R46: this session's events from memory after the earlier sessions' events from the log, so

@@ -193,6 +193,16 @@ import Testing
         Draft(
             table: .settings, key: "settings.typing.learnedChoices.empty", arguments: [app],
             vi: "Chưa có từ nào. {{AppName}} học khi bạn sửa một từ bằng phím Escape."),
+        // PRD-R78, PRD-R79 and PRD-R72 (amended 15/11/2026): the learned words could not be loaded (the sheet and
+        // the import sheet; the import's count lines are pinned in LearnedChoicesPaneTests).
+        Draft(
+            table: .settings, key: "settings.typing.learnedChoices.unavailable", arguments: [app],
+            vi: "Không tải được danh sách từ đã học. Mở lại {{AppName}} có thể khắc phục lỗi này."),
+        Draft(
+            table: .settings, key: "settings.import.learnedChoicesUnavailable", arguments: [app],
+            vi:
+                "Chưa nhập được từ đã học vì không tải được danh sách từ đã học. Mở lại {{AppName}} có thể khắc phục "
+                + "lỗi này."),
         Draft(
             table: .settings, key: "settings.typing.lookaheadRevision.explanation",
             vi:

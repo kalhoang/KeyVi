@@ -16,6 +16,9 @@ Checks:
     1,000-edit gate: repeat.words >= 1000, repeat.timing burst, expect.noPlaceholderResidue true, readback ax or
     webdriver; warning, blocking in --release mode (PLT-R422, mirror of compat-lint's PlaceholderGate)
   - strategy "paste" requires requiresUserOptIn: true (PLT-R460)
+  - features.lookaheadRevision true only with backspaceReplace or selectReplace, and false where
+    features.restoreHotkey is false on those strategies (PLT-R357, PLT-R353; mirror of compat-lint's
+    lookaheadRevisionWithoutEditStrategy and lookaheadRevisionWithoutRestoreHotkey, same codes and messages)
   - manual scenarios have a row in compat/matrix.json (PLT-R531, test.automation)
 
 Usage:
@@ -48,6 +51,8 @@ PLACEHOLDER_COMPLETIONS = ("placeholder", "axSelectionThenPlaceholder")
 GATE_MIN_WORDS = 1000
 GATE_TIMING = "burst"
 GATE_READBACKS = ("ax", "webdriver")
+# PLT-R357: the strategies a revision of the previous word rides on (CompatRules DecisionBuilder.revisionStrategies).
+REVISION_STRATEGIES = ("backspaceReplace", "selectReplace")
 
 
 class Report:
@@ -182,6 +187,21 @@ def check_action(rule: dict, label: str, report: Report) -> None:
         report.error(f"{label}: strategy paste requires requiresUserOptIn: true (PLT-R460)")
 
 
+def check_revision(rule: dict, label: str, report: Report) -> None:
+    """PLT-R357, mirror of compat-lint's LintEngine.revisionFindings with its codes and messages: the flag on a
+    strategy that cannot carry it (resolution turns it off, so the file would say something it does not do), and the
+    flag not off where the restore key is off, because the restore key is how a revision is undone (PLT-R353)."""
+    action = rule.get("action") if isinstance(rule.get("action"), dict) else {}
+    features = action.get("features") if isinstance(action.get("features"), dict) else {}
+    edits = action.get("strategy") in REVISION_STRATEGIES
+    if features.get("lookaheadRevision") is True and not edits:
+        report.error(f"{label}: lookaheadRevisionWithoutEditStrategy: "
+                     "lookaheadRevision needs strategy backspaceReplace or selectReplace")
+    if features.get("restoreHotkey") is False and features.get("lookaheadRevision") is not False and edits:
+        report.error(f"{label}: lookaheadRevisionWithoutRestoreHotkey: "
+                     "restoreHotkey is false, so lookaheadRevision must be false too")
+
+
 def is_broad(match: dict) -> bool:
     """Global (no identity and no narrowing field) or title-only; such rules are rejected by check_action."""
     narrowing = any(match.get(key) for key in NARROWING_MATCH_KEYS)
@@ -266,6 +286,7 @@ def check_document(doc: dict, schema: dict | None, matrix_text: str | None, toda
         check_test(rule, label, matrix_text, report)
         check_match(rule, label, groups, report)
         check_action(rule, label, report)
+        check_revision(rule, label, report)
         check_placeholder_gate(rule, label, scenarios_dir, release, report)
         signature = json.dumps(canonical(rule.get("match") or {}), sort_keys=True)
         if signature in signatures:

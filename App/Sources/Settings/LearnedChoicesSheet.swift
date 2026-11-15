@@ -6,8 +6,9 @@
 // available with the switch off, since turning D28 off keeps the learned words until "Xóa tất cả". The sheet lists the
 // entries that vote for a side as word, arrow, result and context (`LearnedChoicesSheetState`), each with a remove
 // button (VoiceOver label and hint, PRD-R66); from macOS 13 a row also has a context menu with the same command,
-// macOS 12 keeps the buttons only (PRD-R8, ADR 0315). The words are bundled vocabulary and are never logged
-// (PLT-R901).
+// macOS 12 keeps the buttons only (PRD-R8, ADR 0315). While the memory is not loaded (the bundled lists failed,
+// PLT-R914) the sheet shows one line instead of the list and keeps remove and "Xóa tất cả..." disabled. The words are
+// bundled vocabulary and are never logged (PLT-R901).
 
 import AppModel
 import SettingsStore
@@ -58,14 +59,11 @@ struct LearnedChoicesSheet: View {
                 if let sheet, !sheet.isEmpty {
                     LearnedChoicesList(model: model, rows: sheet.rows)
                 } else {
-                    Text(
-                        verbatim: LearnedChoicesSheetState.emptyText(
-                            appName: model.appName, settings: model.settings, localizer)
-                    )
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Text(verbatim: placeholder(sheet))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(height: 240)
@@ -73,6 +71,7 @@ struct LearnedChoicesSheet: View {
                 Button(action: model.requestClearLearnedChoices) {
                     Text(verbatim: localizer.string(SettingsText.learnedChoicesRemoveAll))
                 }
+                .disabled(!(sheet?.canEdit ?? false))
                 .settingsAccessibility(SettingsControl.learnedChoicesRemoveAll, localizer)
                 Spacer()
                 Button(action: model.closeLearnedChoices) {
@@ -86,6 +85,15 @@ struct LearnedChoicesSheet: View {
         .frame(width: 480)
         .onExitCommand(perform: model.closeLearnedChoices)
         .modifier(ClearLearnedChoicesAlert(model: model))
+    }
+
+    /// The empty state, or one line saying the memory could not be loaded (PRD-R78: the bundled lists failed, so
+    /// nothing can be listed, removed or cleared, and reopening the app may help).
+    private func placeholder(_ sheet: LearnedChoicesSheetState?) -> String {
+        if sheet?.isUnavailable == true {
+            return LearnedChoicesSheetState.unavailableText(appName: model.appName, model.localizer)
+        }
+        return LearnedChoicesSheetState.emptyText(appName: model.appName, settings: model.settings, model.localizer)
     }
 }
 
@@ -154,6 +162,7 @@ struct LearnedChoiceRowView: View {
                 Image(systemName: "minus.circle").accessibilityHidden(true)
             }
             .buttonStyle(.borderless)
+            .disabled(!(model.learnedChoices?.canEdit ?? false))
             .help(Text(verbatim: remove))
             .settingsAccessibility(SettingsControl.learnedChoiceRemove, localizer, label: remove)
         }

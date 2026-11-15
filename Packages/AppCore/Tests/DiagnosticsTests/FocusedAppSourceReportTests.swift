@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R381 amendment, PLT-R1202: an app the focus tracker took from the frontmost application because Accessibility
-// named none is reported as such in the JSON, in the plain-text report the Diagnostics window shows and, as a `#` line
-// parsers ignore (ADR 0501 rule 2, no block key yet), in the copied block.
+// named none is reported as such in the JSON, in the plain-text report the Diagnostics window shows and in the copied
+// block as the key `focus.appSource` right after `focus.secure` (ADR 0501, added within v1 under rule 4).
 
 import AppModel
 import Foundation
@@ -27,13 +27,19 @@ import Testing
         #expect(named.contains("\n  " + labels.appSource + ": accessibility\n"))
     }
 
-    /// The block has no key for it yet (ADR 0501 names every key), so a comment line carries it for maintainers.
-    @Test func theCopiedBlockMarksTheFallbackWithAComment() throws {
+    /// ADR 0501: `focus.appSource` is a real key after `focus.secure`, with the values of `AppSource`; the closing
+    /// comment line that carried it before the key existed is gone. Empty without a focus section (rule 6).
+    @Test func theCopiedBlockCarriesTheSourceAsAKeyAfterFocusSecure() throws {
         let fallback = DiagnosticsRenderer.issueBlock(Self.report(.frontmostApplication))
-        #expect(fallback.contains("\n# focus.appSource: frontmostApplication\n"))
+        #expect(fallback.contains("\nfocus.secure: false\nfocus.appSource: frontmostApplication\n"))
+        #expect(!fallback.contains("# focus.appSource"))
         let parsed = try #require(DiagnosticsRenderer.parseIssueBlock(fallback))
-        #expect(parsed["focus.appSource"] == nil)
-        #expect(!DiagnosticsRenderer.issueBlock(Self.report(.accessibility)).contains("appSource"))
+        #expect(parsed["focus.appSource"] == "frontmostApplication")
+        let named = try #require(
+            DiagnosticsRenderer.parseIssueBlock(DiagnosticsRenderer.issueBlock(Self.report(.accessibility))))
+        #expect(named["focus.appSource"] == "accessibility")
+        let unfocused = DiagnosticsRenderer.issueBlock(DiagnosticsFixtures.minimalReport())
+        #expect(unfocused.contains("\nfocus.secure:\nfocus.appSource:\n"))
     }
 
     @Test func theJSONKeepsTheSource() throws {

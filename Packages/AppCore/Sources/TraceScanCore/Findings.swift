@@ -3,7 +3,8 @@
 // What the scanner flags in a dev trace (PLT-R904A, ADR 0007): the moments worth reading around. Kinds a to i of
 // the workstream: markers, Backspace edits, correction bursts, readback mismatches, resets with a token open,
 // injection problems, restores and history re-opens, replay divergences and Command+Z after an edit; since the
-// incidents of 2026-11-14 also dropped keys, extra characters and slow readbacks. A finding carries metadata only
+// incidents of 2026-11-14 also dropped keys, extra characters and slow readbacks, and since 2026-11-15 keys typed as
+// they were into a re-opened restored token that should compose (ENG-R1005). A finding carries metadata only
 // (time, app, rule, kind, a content-free detail); its note, which may name a typed character, and the excerpt are
 // printed by `show` only.
 
@@ -26,6 +27,10 @@ public struct Finding: Sendable, Hashable {
         case resetWithOpenToken
         case injectionProblem
         case restoreOrReopen
+        /// Keys passed through as typed into a token a rule restored, re-opened by Backspace, although its remaining
+        /// raw keys no longer transform anything and a fresh token would have composed them: the ENG-R1005
+        /// regression guard (needs the engine, so not with `--no-replay`).
+        case reopenedLiteral
         case replayDivergence
         case undoAfterEdit
     }
@@ -111,7 +116,7 @@ public enum FindingDetector {
         _ events: [TraceEvent], replay: ReplayEngineFactory?, replayAnyEngine: Bool = false
     ) -> (findings: [Finding], replaySkips: ReplaySkips) {
         var found: [Finding] = []
-        var scanner = SequentialScan()
+        var scanner = SequentialScan(replay: replay)
         for event in events { scanner.feed(event, into: &found) }
         scanner.finish(into: &found)
         var skips = ReplaySkips()

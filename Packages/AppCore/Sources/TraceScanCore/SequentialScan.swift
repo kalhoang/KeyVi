@@ -5,7 +5,9 @@
 // boundary can say whether a token was open and a readback can be compared with what KeyVi believes it typed
 // (`ReadbackCheck`: dropped keys, extra characters, slow readbacks). Since 2026-11-15 it also follows which keys are
 // down: a keyUp whose keyDown the tap never saw is an unseenKey (PLT-R397A), and the first press of a key after its
-// keyUp was held and replayed is remembered to name a dropped key (ADR 0322).
+// keyUp was held and replayed is remembered to name a dropped key (ADR 0322). With an engine (replay on) it also
+// follows a token a rule restored at its commit after a Backspace re-opens it, the ENG-R1005 regression guard
+// (`ReopenedLiteralTracker`).
 
 internal import Diagnostics
 internal import Foundation
@@ -31,6 +33,11 @@ struct SequentialScan {
     private var hints = ReadbackHints()
     /// The decision of the last commit since the last boundary (a rule-restored token can be re-opened).
     private var lastCommitDecision: String?
+    /// The re-opened rule-restored token, judged with `replay`'s engine (ENG-R1005); nil replay: not judged.
+    private var reopenedLiteral = ReopenedLiteralTracker()
+    private let replay: ReplayEngineFactory?
+
+    init(replay: ReplayEngineFactory? = nil) { self.replay = replay }
 
     /// Boundaries the user caused on purpose; any other one with a token open is a finding (e).
     static let intendedReasons: Set<String> = [
@@ -58,7 +65,9 @@ struct SequentialScan {
             windowEndT = line.t
             hints.unseenKeyT = nil
             lastCommitDecision = nil
+            reopenedLiteral.cancel()
         case "resume": windowEndT = line.t
+        case "pause": reopenedLiteral.cancel()  // keys inside are not recorded
         case "key": key(event, into: &found)
         case "engine": engine(event, into: &found)
         case "boundary": boundary(event, into: &found)
@@ -73,6 +82,7 @@ struct SequentialScan {
         case "gap":
             if line.reason != "overflow" { believed.reset() }
             windowEndT = line.end ?? line.t
+            reopenedLiteral.cancel()
         default: break
         }
     }
@@ -110,7 +120,12 @@ struct SequentialScan {
             let detail = "Backspace deleted " + String(line.del ?? 0) + ", inserted " + String((line.ins ?? "").count)
             add(.backspaceEdit, event, detail: detail, into: &found)
         }
-        if isBackspace { noteReopenedRestoredToken(event, into: &found) }
+        let reopened = isBackspace && noteReopenedRestoredToken(event, into: &found)
+        if !reopened,
+            let run = reopenedLiteral.step(line, key: key, before: composing, event: event, context: context)
+        {
+            judge(run, into: &found)
+        }
         if let decision = line.dec { lastCommitDecision = decision }
         if line.isEdit {
             let deleteCount = line.del ?? 0
@@ -143,13 +158,27 @@ struct SequentialScan {
         found.append(finding)
     }
 
-    /// (f) A Backspace that re-opens a token a rule restored at its commit (the engine shows it again).
-    private mutating func noteReopenedRestoredToken(_ event: TraceEvent, into found: inout [Finding]) {
+    /// (f) A Backspace that re-opens a token a rule restored at its commit (the engine shows it again); the token is
+    /// then followed for `reopenedLiteral`. True when this Backspace re-opened such a token.
+    private mutating func noteReopenedRestoredToken(_ event: TraceEvent, into found: inout [Finding]) -> Bool {
         guard composing.isEmpty, !(event.line.comp ?? "").isEmpty, let decision = lastCommitDecision,
             decision.hasPrefix("restored")
-        else { return }
+        else { return false }
         lastCommitDecision = nil
         add(.restoreOrReopen, event, detail: "Backspace re-opened a token committed as " + decision, into: &found)
+        reopenedLiteral.reopened(decision: decision)
+        return true
+    }
+
+    /// ENG-R1005: a run of keys typed into a re-opened restored token that a fresh token would have composed. One
+    /// finding per token; without an engine nothing is judged.
+    private mutating func judge(_ run: ReopenedLiteralCandidate, into found: inout [Finding]) {
+        guard let replay, ReopenedLiteralCheck.confirms(run, factory: replay) else { return }
+        reopenedLiteral.cancel()
+        found.append(
+            Finding(
+                kind: .reopenedLiteral, t: run.event.t, eventIndex: run.event.index, bundle: run.bundle,
+                rule: run.rule, detail: run.detail))
     }
 
     /// (c) An edit that changed letters of the word (a tone, a mark, a restore), not one that only added letters
@@ -176,6 +205,7 @@ struct SequentialScan {
             add(.resetWithOpenToken, event, detail: detail + " characters open", into: &found)
         }
         if line.job == "mouseDown" { burst = nil }
+        if let run = reopenedLiteral.ended(composing: composing, context: context) { judge(run, into: &found) }
         composing = ""
         believed.reset()
         hints.unseenKeyT = nil

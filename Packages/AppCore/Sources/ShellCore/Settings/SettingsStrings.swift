@@ -115,6 +115,8 @@ public enum SettingsText: String, LocalizationKey {
     /// come from the restore toggle).
     case learnedChoicesEmptyOtherKey = "settings.typing.learnedChoices.emptyOtherKey"
     case learnedChoicesEmptyNoKey = "settings.typing.learnedChoices.emptyNoKey"
+    /// The memory is not loaded (the bundled lists failed, PLT-R914); argument: the app name.
+    case learnedChoicesUnavailable = "settings.typing.learnedChoices.unavailable"
     case learnedChoicesRemoveAll = "settings.typing.learnedChoices.removeAll"
     case learnedChoicesDone = "settings.typing.learnedChoices.done"
     /// The context class of a row in words (ENG-R863): sentence start, after a Vietnamese, English or neutral word.
@@ -172,8 +174,12 @@ public enum SettingsText: String, LocalizationKey {
     case importAppEntries = "settings.import.appEntries"
     case importRuleOverrides = "settings.import.ruleOverrides"
     case importMacros = "settings.import.macros"
-    /// Argument: the number of learned-word entries in the file (PRD-R72).
+    /// Argument: the number of learned-word entries that will be imported (PRD-R72).
     case importLearnedChoices = "settings.import.learnedChoices"
+    /// Arguments: the entries that will be imported, then the entries left out.
+    case importLearnedChoicesSkipped = "settings.import.learnedChoicesSkipped"
+    /// The learned words cannot be imported while the memory is not loaded; argument: the app name.
+    case importLearnedChoicesUnavailable = "settings.import.learnedChoicesUnavailable"
     case importSkipped = "settings.import.skipped"
     case importNewerSchema = "settings.import.newerSchema"
     case importBackupNote = "settings.import.backupNote"
