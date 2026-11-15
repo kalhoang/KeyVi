@@ -16,6 +16,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Project documentation: README (English and Vietnamese), contributing guide, security policy, code of conduct, third-party notices, maintainer runbooks, support replies, provenance review process, issue forms and pull request template.
 - Compatibility script for testing an app in under 3 minutes (`compat/SCRIPT.md`).
 - Cốc Cốc gets the browser hint when a password field turns on Secure Input: the menu suggests clicking outside the password field or switching tabs, as it does for Safari, Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
+- Pressing z (Telex) or 0 (VNI) a second time removes the letter marks too: daauszz gives dau.
+- Words that are both English and Vietnamese, such as as/á, are decided from the words around them, and the previous word can be corrected when the next word shows which language you are writing.
 
 ### Changed
 
@@ -33,6 +35,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - The donation block shows the account details, each with a Copy button, a text to share through the macOS share menu or copy, and the VietQR code beside them.
 - Vietnamese wording: the Typing pane is "Kiểu gõ" (was "Gõ phím"), macros are "Viết tắt" everywhere (pane, menu, editor, import and export, messages and VoiceOver), "Mở khi đăng nhập" reads "Khởi động cùng hệ thống", the copy says "file" instead of "tệp", and the diagnostics, settings transfer and privacy lines of Support are reworded.
 - The About, Support and Licences panes, the README and the support replies write the name with its trademark sign, KeyVi™.
+- Backspace on a letter that undid a tone or mark deletes just that letter; the tone or mark no longer comes back.
 
 ### Fixed
 
@@ -49,3 +52,4 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - In some apps built on WebKit, a letter typed right after a word could go missing when a key was released at the same moment as a tone key; fixed.
 - When another app turned Secure Input on and off in short bursts while you typed, a word could come out garbled ("hay sao" became "hayayao"), because KeyVi did not see the keys the bursts hid and later corrected the wrong letters. KeyVi now notices a key it did not see go down and starts the next word afresh, and the diagnostics report notes when something keeps turning Secure Input on and off while you type.
 - Safari and other apps that answer accessibility slowly: right after a click into a field, the first letters of a word could lose their accents when KeyVi briefly could not tell which app was in front. The word now continues once KeyVi has checked the field.
+- Retyping a word after deleting back into an English or invalid word that was restored now gives Vietnamese again.

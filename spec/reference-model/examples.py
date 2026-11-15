@@ -43,6 +43,7 @@ EX = [
 # G tone removal
 ("asz","telex","old",{},"a"),("aszz","telex","old",{},"az"),("quz","telex","old",{},"quz"),("QUZ","telex","old",{},"QUZ"),("qutz","telex","old",{},"qutz"),
 ("za","telex","old",{},"za"),("zas","telex","old",{},"zá"),("vieejtz","telex","old",{},"viêt"),
+("daausz","telex","old",{},"dâu"),("daauszz","telex","old",{},"dau"),("daauszzz","telex","old",{},"dauz"),("aaz","telex","old",{},"a"),("daauszz⌫","telex","old",{},"da"),("a6100","vni","old",{},"a"),
 # H VNI
 ("a1","vni","old",{},"á"),("a2","vni","old",{},"à"),("a3","vni","old",{},"ả"),("a4","vni","old",{},"ã"),("a5","vni","old",{},"ạ"),
 ("a6","vni","old",{},"â"),("a8","vni","old",{},"ă"),("o7","vni","old",{},"ơ"),("u7","vni","old",{},"ư"),("d9","vni","old",{},"đ"),
@@ -63,7 +64,7 @@ EX = [
 ("Buoon","telex","old",{},"Buôn"),("pias","telex","old",{},"pía"),("buyts","telex","old",{},"buýt"),("quowrn","telex","old",{},"quởn"),("huow","telex","old",{},"hươ"),
 # L backspace
 ("vieejt⌫","telex","old",{},"việ"),("vieejt⌫⌫","telex","old",{},"vi"),("hoaf⌫","telex","old",{},"hò"),("hoaf⌫","telex","new",{},"ho"),("hoafn⌫","telex","old",{},"hòa"),
-("nhaamff⌫","telex","old",{},"nhầm"),("ass⌫","telex","old",{},"á"),("duwowngf⌫⌫⌫","telex","old",{},"dư"),
+("nhaamff⌫","telex","old",{},"nhâm"),("ass⌫","telex","old",{},"a"),("nhaamff⌫f","telex","old",{},"nhầm"),("boss⌫","telex","old",{},"bo"),("ww⌫","telex","old",{},""),("WSw⌫","telex","old",{},""),("wooo⌫","telex","old",{},"uo"),("duwowngf⌫⌫⌫","telex","old",{},"dư"),
 ("thuowr⌫","telex","old",{},"thư"),("dduowcj⌫⌫","telex","old",{},"đư"),("truowngf⌫⌫⌫","telex","old",{},"trư"),("thuwor⌫","telex","old",{},"thư"),("thuwowr⌫","telex","old",{},"thư"),
 ("thuo73⌫","vni","old",{},"thư"),("THUOWR⌫","telex","old",{},"THƯ"),("nguowif ⌫⌫⌫","telex","old",{},"ngư"),("thuowr ⌫⌫","telex","old",{},"thu"),("cuowios⌫⌫","telex","old",{},"cu"),
 # N options

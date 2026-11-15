@@ -55,11 +55,13 @@ public struct EnglishCorpusReport: Sendable {
 
 /// Runs the English corpus check of ENG-T10.
 public enum EnglishCorpusCheck {
-    /// Types every word after each seed and reports the words whose committed text changed.
+    /// Types every word after each seed and reports the words whose committed text changed. `configuration`
+    /// defaults to the spec's defaults (Telex, collision rules on, ENG-R829).
     public static func run(
-        words: [String], resources: Resources, englishSeed: String = "and", vietnameseSeed: String = "vieejt"
+        words: [String], resources: Resources, configuration: EngineConfiguration = EngineConfiguration(),
+        englishSeed: String = "and", vietnameseSeed: String = "vieejt"
     ) -> EnglishCorpusReport {
-        let engine = Engine(configuration: EngineConfiguration(), resources: resources)
+        let engine = Engine(configuration: configuration, resources: resources)
         func changes(after seed: String) -> [ChangedWord] {
             var session = Session(engine: engine)
             for key in seed + " " { _ = session.handle(.key(KeyInput(key))) }
@@ -113,6 +115,8 @@ public enum ProseCorpusCheck {
         public let tokens: Int
         /// Words whose typed result differs from the source.
         public let differences: [ChangedWord]
+        /// Commits that revised the previous word (ENG-R828); the W11 prose gate expects none.
+        public let revisions: Int
         /// The share of words typed exactly (ENG-R873).
         public var identicalShare: Double {
             tokens > 0 ? Double(tokens - differences.count) / Double(tokens) : 1
@@ -124,13 +128,17 @@ public enum ProseCorpusCheck {
 
     /// Types `text` with `order` in `method` and compares each word with the source. `style` is the typist's
     /// tone-style setting (spec 5.2); the keys are the same in both styles, only the placement differs.
+    /// `lookaheadRevision` is the configuration switch of the collision rules (ENG-R829).
     public static func run(
-        text: String, method: CorpusMethod, order: CorpusOrder, style: ToneStyle = .traditional, resources: Resources
+        text: String, method: CorpusMethod, order: CorpusOrder, style: ToneStyle = .traditional,
+        lookaheadRevision: Bool = true, resources: Resources
     ) -> Report {
-        let configuration = EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+        let configuration = EngineConfiguration(
+            inputMethod: method.inputMethod, toneStyle: style, lookaheadRevision: lookaheadRevision)
         let engine = Engine(configuration: configuration, resources: resources)
         var session = Session(engine: engine)
         var tokens = 0
+        var revisions = 0
         var differences: [ChangedWord] = []
         for (word, separator) in split(text) {
             var field = SimulatedTextField()
@@ -140,13 +148,14 @@ public enum ProseCorpusCheck {
                 let output = session.handle(event)
                 try? field.apply(event, output)
                 if let made = output.decision { decision = made }
+                if output.revision != nil { revisions += 1 }
             }
             guard !word.isEmpty else { continue }
             tokens += 1
             let typed = String(field.string.dropLast(separator.count))
             if typed != word { differences.append(ChangedWord(word: word, committed: typed, decision: decision)) }
         }
-        return Report(tokens: tokens, differences: differences)
+        return Report(tokens: tokens, differences: differences, revisions: revisions)
     }
 
     /// The keys that type `word`: the generated sequence for a Tier A syllable, in the word's case

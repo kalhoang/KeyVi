@@ -23,6 +23,9 @@ class St:
         self.free_order = False  # a modifier/stroke applied non-adjacently
         self.had_escape = False
         self.tone_src = []
+        self.mark_rm = []  # tone-removal keys that removed letter marks (ENG-R411)
+        self.lit_start = None  # raw index of the key that started literal mode
+        self.lit_undone = None  # that key was an escape: the keys it undid (ENG-R711)
         self.shown = None  # re-opened word: the text the commit left on screen (ENG-R1002)
 
     def copy(self):
@@ -33,6 +36,9 @@ class St:
         n.raw = list(self.raw)
         n.free_order, n.had_escape = self.free_order, self.had_escape
         n.tone_src = list(self.tone_src)
+        n.mark_rm = list(self.mark_rm)
+        n.lit_start = self.lit_start
+        n.lit_undone = None if self.lit_undone is None else set(self.lit_undone)
         return n
 
 
@@ -57,6 +63,7 @@ def display(st, cfg):
 def freeze_with(st, cfg, ch):
     st.frozen = render(st.ls, st.tone, cfg.style) + ch
     st.literal = True
+    st.lit_start = len(st.raw) - 1
 
 
 def append_letter(st, cfg, ch):
@@ -70,10 +77,16 @@ def append_letter(st, cfg, ch):
     freeze_with(st, cfg, ch)
 
 
-def escape(st, cfg, kind, ch):
+def escape(st, cfg, kind, ch, undone=()):
+    """4.7; `undone` are the keys whose effect the escape removed (ENG-R711)."""
     st.escaped.add(kind)
     st.had_escape = True
+    n = len(st.ls)
     append_letter(st, cfg, ch)
+    if len(st.ls) > n:
+        st.ls[-1].undone = list(undone)
+    else:
+        st.lit_undone = set(undone)
 
 
 def try_tone(st, cfg, t, ch):
@@ -83,17 +96,25 @@ def try_tone(st, cfg, t, ch):
     st.tone_src.append(len(st.raw) - 1)
     if st.tone == t:
         st.tone = 0
-        escape(st, cfg, "tone", ch)
+        escape(st, cfg, "tone", ch, st.tone_src[:-1])
         return True
     st.tone = t
     return True
 
 
 def try_untone(st, cfg, ch):
-    if st.tone == 0:
+    """ENG-R411, one layer per press: the tone, else every vowel mark and the stroke, else nothing."""
+    if "tone" in st.escaped:
         return False
-    st.tone = 0
-    st.tone_src.append(len(st.raw) - 1)
+    if st.tone:
+        st.tone = 0
+        st.tone_src.append(len(st.raw) - 1)
+        return True
+    if not any(x.mod or x.stroke for x in st.ls):
+        return False
+    for x in st.ls:
+        x.mod, x.stroke = "", False
+    st.mark_rm.append(len(st.raw) - 1)
     return True
 
 
@@ -110,8 +131,11 @@ def try_circ(st, cfg, ch, base=None):
              if (st.ls[p].base == base if base else st.ls[p].base in "aeo")]
     for p in cands:
         if st.ls[p].mod == "circ":
+            undone = list(st.ls[p].msrc)
+            if st.ls[p].base == "o" and p - 1 >= i and st.ls[p - 1].base == "u" and not st.ls[p - 1].mod:
+                undone += st.ls[p - 1].msrc  # the horn the circumflex removed (ENG-R533)
             st.ls[p].mod = ""
-            escape(st, cfg, "circ", ch)
+            escape(st, cfg, "circ", ch, undone)
             return True
         new = [x.copy() for x in st.ls]
         new[p].mod = "circ"
@@ -156,14 +180,17 @@ def try_w(st, cfg, ch, allowed="aou", kind="w", standalone=False):
     if has_w:
         # escape: drop w-made letters / mods
         keep = []
+        undone = []
         for p, x in enumerate(st.ls):
             if x.fromw:
+                undone += [x.src] + x.msrc
                 continue
             if i <= p < j and x.mod in ("horn", "breve"):
                 x.mod = ""
+                undone += x.msrc
             keep.append(x)
         st.ls = keep
-        escape(st, cfg, kind, ch)
+        escape(st, cfg, kind, ch, undone)
         return True
     if standalone and i == j:
         new = st.ls + [L("u", "horn", upper=ch.isupper(), fromw=True, src=len(st.raw) - 1)]
@@ -178,7 +205,7 @@ def try_stroke(st, cfg, ch):
         return False
     if st.ls[0].stroke:
         st.ls[0].stroke = False
-        escape(st, cfg, "stroke", ch)
+        escape(st, cfg, "stroke", ch, st.ls[0].msrc)
         return True
     new = [x.copy() for x in st.ls]
     new[0].stroke = True
@@ -192,11 +219,16 @@ def try_stroke(st, cfg, ch):
 
 
 def step(st, cfg, ch):
+    return step_ex(st, cfg, ch)[0]
+
+
+def step_ex(st, cfg, ch):
+    """One key; also returns whether it acted by its transform role (not as a letter or literal)."""
     st = st.copy()
     st.raw.append(ch)
     if st.literal:
         st.frozen += ch
-        return st
+        return st, False
     lc = ch.lower()
     done = False
     if cfg.im == "telex":
@@ -230,7 +262,7 @@ def step(st, cfg, ch):
             done = try_stroke(st, cfg, ch)
     if not done:
         append_letter(st, cfg, ch)
-    return st
+    return st, done
 
 
 def compose(keys, cfg):
@@ -258,13 +290,19 @@ def compose(keys, cfg):
 def mark_keys_going(st, last):
     """ENG-R710: the modifier keys of the deleted letter that go with it. A remaining letter that
     shows its mark, is not the letter of a standalone w or bracket key, and has no mark key outside
-    the deleted letter's keeps the newest shared key."""
+    the deleted letter's keeps the newest shared key. A mark removal clears every mark (ENG-R411), so
+    only the mark keys after the newest removal count, and a standalone w or bracket letter typed
+    before it no longer carries its own mark."""
+    last_rm = max(st.mark_rm, default=-1)
     needed = set()
     for x in st.ls[:-1]:
-        if not (x.mod or x.stroke) or x.fromw:
+        if not (x.mod or x.stroke):
             continue
-        shared = set(x.msrc) & set(last.msrc)
-        if shared and not set(x.msrc) - set(last.msrc):
+        if x.fromw and not (0 <= x.src < last_rm):
+            continue
+        shown = {k for k in x.msrc if k > last_rm}
+        shared = shown & set(last.msrc)
+        if shared and not shown - set(last.msrc):
             needed.add(max(shared))
     return set(last.msrc) - needed
 
@@ -287,18 +325,97 @@ def unshown_horn_before_last(st, cfg):
     return None
 
 
+def replay_without(st, drop, cfg, plain=None):
+    """ENG-R710, ENG-R711: replay the raw keys not in `drop`. A mark removal is left out when it would
+    now be a letter; a key that set or removed the tone and finds no vowel yet waits and is tried again,
+    in order, after each later letter (ENG-R432), and is left out if none takes it. Keys in `plain`
+    replay as the given letter (ENG-R711 fallback)."""
+    plain = plain or {}
+    idle = set(st.mark_rm)
+    chain = set(st.tone_src)
+    new = St()
+    waiting = []
+    for i, key in enumerate(st.raw):
+        if i in drop:
+            continue
+        if i in plain:
+            key = plain[i]
+        if i in idle or i in chain:
+            trial, done = step_ex(new, cfg, key)
+            if done:
+                new = trial
+            elif i in chain:
+                waiting.append(key)
+            continue
+        new = step(new, cfg, key)
+        still = []
+        for w in waiting:
+            trial, done = step_ex(new, cfg, w)
+            if done:
+                new = trial
+            else:
+                still.append(w)
+        waiting = still
+    return new
+
+
+MARK_KEYS = {"telex": {"circ": None, "horn": "w", "breve": "w"}, "vni": {"circ": "6", "horn": "7", "breve": "8"}}
+TONE_KEYS = {"telex": "sfrxj", "vni": "12345"}
+
+
+def retype(st, cfg, letters, expected):
+    """ENG-R711 fallback 2: type the letters shown one at a time, each mark key right after its letter,
+    the tone key after the letter that gives `expected`, tried from the last letter back."""
+    keys, ends = [], []
+    for x in letters:
+        keys.append(x.base.upper() if x.upper else x.base)
+        if x.mod:
+            mk = MARK_KEYS[cfg.im][x.mod]
+            keys.append(mk if mk else x.base)
+        if x.stroke:
+            keys.append("d" if cfg.im == "telex" else "9")
+        ends.append(len(keys))
+    tries = [keys] if not st.tone else [keys[:e] + [TONE_KEYS[cfg.im][st.tone - 1]] + keys[e:] for e in reversed(ends)]
+    for k in tries:
+        cand = compose(k, cfg)
+        if display(cand, cfg) == expected:
+            return cand
+    return None
+
+
+def escape_backspace(st, cfg, drop):
+    """ENG-R711: the escape letter goes with the keys it undid; the result is the old display minus its
+    last character, with the fallbacks: a standalone-w letter shown plain kept as a plain key, then the
+    letters shown retyped."""
+    expected = display(st, cfg)[:-1]
+    cand = replay_without(st, drop, cfg)
+    if display(cand, cfg) == expected:
+        return cand
+    plain = {x.src: (x.base.upper() if x.upper else x.base)
+             for x in st.ls if x.fromw and x.src >= 0 and x.base in "uo" and not x.mod}
+    if plain:
+        alt = replay_without(st, drop, cfg, plain)
+        if display(alt, cfg) == expected:
+            return alt
+    letters = st.ls if st.literal else st.ls[:-1]
+    return retype(st, cfg, letters, expected) or cand
+
+
 def backspace(st, cfg):
     """spec rule (ENG-R710): remove the key that produced the last visible character, the modifier
     keys that go with it, the horn keys of a u that shows none, and the tone keys if the tone is
-    shown on it."""
+    shown on it; an escape letter takes the keys it undid (ENG-R711)."""
     if not st.raw:
         return st
     if st.literal:
+        last = len(st.raw) - 1
+        if st.lit_start == last and st.lit_undone is not None:
+            return escape_backspace(st, cfg, {last} | st.lit_undone)
         return compose(st.raw[:-1], cfg)
     if not st.ls:
         return compose(st.raw[:-1], cfg)
     last = st.ls[-1]
-    drop = {last.src} | mark_keys_going(st, last)
+    drop = {last.src} | set(last.undone) | mark_keys_going(st, last)
     k = unshown_horn_before_last(st, cfg)
     if k is not None:
         drop |= set(st.ls[k].msrc)
@@ -306,8 +423,9 @@ def backspace(st, cfg):
     from ortho import TONE_MARKS
     if st.tone and unicodedata.normalize("NFD", shown[-1]) != shown[-1].lower() and any(m in unicodedata.normalize("NFD", shown[-1]) for m in TONE_MARKS.values()):
         drop |= set(st.tone_src)
-    cand = [key for i, key in enumerate(st.raw) if i not in drop]
-    return compose(cand, cfg)
+    if last.undone:
+        return escape_backspace(st, cfg, drop)
+    return replay_without(st, drop, cfg)
 
 
 def commit(st, cfg):

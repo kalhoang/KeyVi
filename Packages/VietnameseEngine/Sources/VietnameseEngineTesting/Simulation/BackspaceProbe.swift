@@ -7,11 +7,12 @@ public import VietnameseEngine
 /// loses its last character and every other character stays as it was (ENG-R710, ENG-R1003).
 ///
 /// The documented exceptions of ENG-R714 are classified instead of reported: the tone moving to the
-/// letter the placement rule now picks (ENG-R501, W240), an escape letter giving back the escaped effect
-/// (ENG-R711, W241), the recompute when Backspace removes the key that started literal mode (ENG-R421),
-/// the `ư` of a standalone `w` or bracket key that the field showed as `u` coming back, a `u` whose horn
-/// only completed the pair with a bracket `ơ` losing it with that `ơ`, and a bracket letter following
-/// the case of the word (ENG-R906). Every other difference is a violation.
+/// letter the placement rule now picks (ENG-R501, W240), the `ư` of a standalone `w` or bracket key that
+/// the field showed as `u` coming back, a `u` whose horn only completed the pair with a bracket `ơ`
+/// losing it with that `ơ`, and a bracket letter following the case of the word (ENG-R906). Every other
+/// difference is a violation, also on an escape letter and on the key that started literal mode: since
+/// 15/11/2026 Backspace removes an escape letter with the keys it undid (ENG-R711), so both take exactly
+/// the last character (the recompute of ENG-R421 gives back the display frozen before that key).
 public enum BackspaceProbe {
     /// How one Backspace changed the field.
     public enum Outcome: String, Sendable, Hashable, CaseIterable {
@@ -19,10 +20,6 @@ public enum BackspaceProbe {
         case deletedOnly
         /// ENG-R501, W240: the letters are the expected ones and the tone moved by the placement rule.
         case toneRelocated
-        /// ENG-R711: the deleted letter came from an escape and the escaped effect came back.
-        case escapeUndone
-        /// ENG-R421: the key that started literal mode was removed and the token was recomputed.
-        case literalRecomputed
         /// ENG-R103, ENG-R104: the letter before the deleted one is the `ư` of a standalone `w` or a
         /// bracket key, shown as `u` (a circumflex removed its horn, ENG-R533, or a re-opened word shows
         /// the commit spelling `uơ`, ENG-R532); that key is the only key left for it, so it shows `ư`
@@ -32,7 +29,8 @@ public enum BackspaceProbe {
         /// only to complete the pair; it shows as typed again (`u[` shows `ươ`, Backspace gives `u`).
         case hornCompletion
         /// ENG-R906: a bracket letter takes the case of the word, and the deletion changed whether the
-        /// word is all caps (`]OU` shows `ƯƠU`, Backspace gives `ưƠ`).
+        /// word is all caps (`]OU` shows `ƯƠU`, Backspace gives `ưƠ`); the tone may also move by the
+        /// placement rule in the same press (ENG-R501).
         case bracketCase
         /// Anything else: a letter that was not deleted changed, or more than one character went.
         case violation
@@ -96,14 +94,17 @@ public enum BackspaceProbe {
         if after == expected { return .deletedOnly }
         guard let token, !token.isMacro, !token.showsRawKeys else { return .violation }
         let composition = token.composition
-        if let literalStart = composition.literalStart {
-            return literalStart == composition.raw.count - 1 ? .literalRecomputed : .violation
-        }
+        guard composition.literalStart == nil else { return .violation }
         let letters = composition.letters
-        if letters.last?.flags.contains(.escape) == true { return .escapeUndone }
         if isToneRelocation(expected: expected, after: after) { return .toneRelocated }
-        if letters.contains(where: { $0.flags.contains(.bracket) }), lowercased(expected) == lowercased(after) {
-            return .bracketCase
+        if letters.contains(where: { $0.flags.contains(.bracket) }) {
+            // ENG-R906 alone, or with the tone moving by the placement rule in the same press (ENG-R501:
+            // `]ZSOU` shows `UÓU`, Backspace gives `úO`).
+            let lowerExpected = lowercased(expected)
+            let lowerAfter = lowercased(after)
+            if lowerExpected == lowerAfter || isToneRelocation(expected: lowerExpected, after: lowerAfter) {
+                return .bracketCase
+            }
         }
         guard letters.count >= 2, onlyLastLetterDiffers(expected: expected, after: after) else { return .violation }
         let previous = letters[letters.count - 2]

@@ -156,14 +156,19 @@ private func inputs(
         defer { TempDirectory.remove(directory) }
         let table = directory.appendingPathComponent("ambiguity.tsv")
         // No final newline: the merge must add one before appending.
-        try write("# comment\n\(AmbiguityRow.header)\nas\ten\treviewed\tá\tPa", to: table)
+        try write("# comment\n\(AmbiguityRow.header)\nas\ten\treviewed\tá\tvi\tparticle\tPa", to: table)
         let result = AmbiguityCandidates.candidates(
             inputs(english: ["as": 10, "is": 10], techAlways: ["exe"], attested: ["á", "ễ"]), typer: typer)
         #expect(try AmbiguityCandidates.merge(result, into: table) == 2)
         let rows = try AmbiguityRow.load(table)
         #expect(rows.map(\.raw) == ["as", "is", "exe"])
-        #expect(rows[0] == AmbiguityRow(raw: "as", decision: .en, status: .reviewed, display: "á", note: "Pa"))
+        #expect(
+            rows[0]
+                == AmbiguityRow(
+                    raw: "as", decision: .en, status: .reviewed, display: "á", run: .vi, viKind: .particle, note: "Pa"))
         #expect(rows[1].decision == .en && rows[1].status == .proposed)
+        // ENG-R827: merged rows start as run en, viKind content until the product owner reviews them.
+        #expect(rows[1].run == .en && rows[1].viKind == .content)
         #expect(rows[2].decision == .en && rows[2].status == .proposed)
         #expect(try AmbiguityCandidates.merge(result, into: table) == 0)
     }
@@ -174,7 +179,7 @@ private func inputs(
         let directory = try TempDirectory.make("merge-block")
         defer { TempDirectory.remove(directory) }
         let table = directory.appendingPathComponent("ambiguity.tsv")
-        try write("# comment\n\(AmbiguityRow.header)\ntest\ten\tproposed\ttét\tPa\n", to: table)
+        try write("# comment\n\(AmbiguityRow.header)\ntest\ten\tproposed\ttét\ten\tcontent\tPa\n", to: table)
         let typer = FakeTyper(
             telex: ["as": "á", "is": "í", "exe": "ễ", "sed": "sẹ"],
             validities: ["á": .standard, "í": .standard, "ễ": .standard, "sẹ": .standard])

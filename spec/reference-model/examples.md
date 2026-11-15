@@ -158,6 +158,16 @@
 | W156 | Tone removal | Telex | trad | - | `za` | `za` | z with no tone to remove is a letter (REG-25) |
 | W157 | Tone removal | Telex | trad | - | `zas` | `zá` | teencode z onset (Tier B) |
 | W158 | Tone removal | Telex | trad | - | `vieejtz` | `viêt` |  |
+| W158a | Tone removal | Telex | trad | - | `daausz` | `dâu` | z removes the tone (ENG-R411) |
+| W158b | Tone removal | Telex | trad | - | `daauszz` | `dau` | a second z removes the marks (REG-34) |
+| W158c | Tone removal | Telex | trad | - | `daauszzz` | `dauz` | nothing left to remove: a letter |
+| W158d | Tone removal | Telex | trad | - | `dduwowngfzz` | `duong` | every mark at once, `đ` becomes `d` |
+| W158e | Tone removal | Telex | trad | - | `aaz` | `a` | no tone: z removes the circumflex |
+| W158f | Tone removal | Telex | trad | - | `aaza` | `â` | after a removal the modifier key marks again |
+| W158g | Tone removal | Telex | trad | - | `aazaa` | `aa` | and its second press escapes |
+| W158h | Tone removal | Telex | trad | - | `daauszza` | `dâu` | the circumflex comes back on `a` |
+| W158i | Tone removal | Telex | trad | - | `ddz` | `d` | the stroke is a mark too |
+| W158j | Tone removal | Telex | trad | - | `wz` | `u` | the `ư` of a standalone `w` loses its horn |
 | W159 | VNI | VNI | trad | - | `a1` | `á` |  |
 | W160 | VNI | VNI | trad | - | `a2` | `à` |  |
 | W161 | VNI | VNI | trad | - | `a3` | `ả` |  |
@@ -184,6 +194,9 @@
 | W182 | VNI | VNI | trad | - | `d99` | `d9` | escape of đ |
 | W183 | VNI | VNI | trad | - | `qu0` | `qu0` | no nucleus: 0 is literal, no crash |
 | W184 | VNI | VNI | trad | - | `a10` | `a` | 0 removes the tone |
+| W184a | VNI | VNI | trad | - | `a610` | `â` | 0 removes the tone (ENG-R411) |
+| W184b | VNI | VNI | trad | - | `a6100` | `a` | a second 0 removes the circumflex (REG-34) |
+| W184c | VNI | VNI | trad | - | `a61000` | `a0` | nothing left to remove: literal |
 | W185 | VNI | VNI | trad | - | `2024` | `2024` | no vowel: digits are literal |
 | W186 | VNI | VNI | trad | - | `b2` | `b2` | no vowel: literal digit, token goes literal |
 | W187 | VNI | VNI | trad | - | `u7a4` | `ữa` |  |
@@ -240,8 +253,23 @@
 | W238 | Backspace inside a token | Telex | trad | - | `hoaf⌫` | `hò` | tone was on o: stays |
 | W239 | Backspace inside a token | Telex | modern | - | `hoaf⌫` | `ho` | tone was on à: removed with it |
 | W240 | Backspace inside a token | Telex | trad | - | `hoafn⌫` | `hòa` | tone relocates after the coda is deleted |
-| W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhầm` | deleting the escape letter restores the tone (REG-24) |
-| W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `á` | deleting the escape letter restores the tone |
+| W241 | Backspace inside a token | Telex | trad | - | `nhaamff⌫` | `nhâm` | the escape letter goes with the tone key it undid (ENG-R711) |
+| W242 | Backspace inside a token | Telex | trad | - | `ass⌫` | `a` | the escape letter goes with the tone key it undid |
+| W242a | Backspace inside a token | Telex | trad | - | `nhaamff⌫f` | `nhầm` | the tone can be applied again (REG-24) |
+| W242b | Backspace inside a token | Telex | trad | - | `boss⌫` | `bo` | one key too many costs one character |
+| W242c | Backspace inside a token | Telex | trad | - | `boss⌫s` | `bó` | the escape is gone, so `s` is a tone key again (ENG-R441) |
+| W242d | Backspace inside a token | Telex | trad | - | `cass⌫o` | `cao` |  |
+| W242e | Backspace inside a token | Telex | trad | - | `teee⌫e` | `tê` | the circumflex key went with the escape letter |
+| W242f | Backspace inside a token | Telex | trad | - | `teee⌫epj` | `tệp` |  |
+| W242g | Backspace inside a token | Telex | trad | - | `verr⌫` | `ve` |  |
+| W242h | Backspace inside a token | Telex | trad | - | `Saff⌫` | `Sa` |  |
+| W242i | Backspace inside a token | Telex | trad | - | `Quyeenff⌫` | `Quyên` |  |
+| W242j | Backspace inside a token | Telex | trad | - | `ww⌫` | `` | the escape removed the standalone `ư`: both keys go |
+| W242k | Backspace inside a token | Telex | trad | - | `WSw⌫` | `` | the `S` lost its vowel to the escape (ENG-R432): it goes too |
+| W242l | Backspace inside a token | Telex | trad | - | `booo⌫` | `bo` | an escape letter that stays a letter (`oo`) |
+| W242m | Backspace inside a token | VNI | trad | - | `a11⌫` | `a` |  |
+| W242n | Backspace inside a token | Telex | trad | - | `daauszz⌫` | `da` | after a mark removal Backspace takes one character (ENG-T38) |
+| W242o | Backspace inside a token | Telex | trad | - | `aaz⌫` | `` | the `z` has nothing left to remove: it goes too |
 | W243 | Backspace inside a token | Telex | trad | - | `duwowngf⌫⌫⌫` | `dư` | ơ deleted with its horn and tone; ư keeps its horn |
 | W243a | Backspace inside a token | Telex | trad | - | `thuowr⌫` | `thư` | one `w` marked `ư` and `ơ`: it stays with `ư` (ENG-R710) |
 | W243b | Backspace inside a token | Telex | trad | - | `dduowcj⌫⌫` | `đư` | the tone goes with `ợ`, the shared `w` stays |

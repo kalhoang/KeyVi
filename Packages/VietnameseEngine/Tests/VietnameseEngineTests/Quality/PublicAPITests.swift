@@ -40,6 +40,17 @@ struct PublicAPITests {
         requireHashable(Validity.self)
         requireHashable(Tone.self)
         requireHashable(SyllableAnalysis.self)
+        // The collision API (ENG-R825 to ENG-R866).
+        requireSendable(PhraseList.self)
+        requireSendable(CollisionLists.self)
+        requireHashable(VietnameseReadingKind.self)
+        requireHashable(CollisionContext.self)
+        requireHashable(CollisionVote.self)
+        requireHashable(CollisionMemorySnapshot.self)
+        requireHashable(CollisionMemorySnapshot.Vote.self)
+        requireHashable(CollisionSignal.self)
+        requireHashable(CollisionSignal.Strength.self)
+        requireHashable(RevisionReason.self)
     }
 
     @Test("Defaults: Telex with standalone w on and brackets off, traditional, auto restore on, history 16")
@@ -51,6 +62,7 @@ struct PublicAPITests {
         #expect(configuration.autoRestore)  // ENG-R106
         #expect(configuration.appContext == .general)  // ENG-R850
         #expect(configuration.historyLimit == 16)  // ENG-R1001
+        #expect(configuration.lookaheadRevision)  // ENG-R829
         #expect(EngineConfiguration(historyLimit: 0).historyLimit == 1)  // 12.2: minimum 1
         #expect(EngineState.initial.historyCount == 0 && EngineState.initial.activeDisplay.isEmpty)
         #expect(MacroTable.empty.triggerCount == 0)  // ENG-R110: the engine ships with an empty table
@@ -59,7 +71,12 @@ struct PublicAPITests {
     @Test("ENG-R450 no other engine option in v1")
     func closedOptionSet() {
         let configurationFields = Mirror(reflecting: EngineConfiguration()).children.compactMap(\.label)
-        #expect(configurationFields == ["inputMethod", "toneStyle", "autoRestore", "appContext", "historyLimit"])
+        // ENG-R829: `lookaheadRevision` is the host's switch for the collision rules, not a user option of the
+        // composition (ENG-R450 is about composition options).
+        #expect(
+            configurationFields == [
+                "inputMethod", "toneStyle", "autoRestore", "appContext", "historyLimit", "lookaheadRevision",
+            ])
         let telexFields = Mirror(reflecting: TelexOptions()).children.compactMap(\.label)
         #expect(telexFields == ["standaloneW", "bracketKeys"])
     }

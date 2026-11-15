@@ -33,6 +33,17 @@ struct MalformedResourceTests {
         #expect(resources.techCodeOnly.contains("tar"))
         #expect(resources.attestedSyllables.contains("hoà"))
         #expect(resources.ambiguity == ["as": .vietnamese, "is": .vietnamese, "test": .english])
+        // ENG-R827: the run and viKind columns, and the collision lists (format 2).
+        #expect(resources.collision.runExempt.contains("test") && !resources.collision.runExempt.contains("as"))
+        #expect(resources.collision.readingKinds == ["as": .particle, "test": .function])
+        #expect(resources.collision.phrases.count == 2)
+        #expect(resources.collision.supplement.contains("gif"))
+        #expect(resources.collision.boundaryParticles.contains("as"))
+        #expect(resources.collision.englishFunctionWords.contains("the"))
+        #expect(resources.collision.englishLean.contains("the"))
+        #expect(resources.collision.tailWords.contains("rồi") && !resources.collision.tailParticles.contains("rồi"))
+        #expect(resources.collision.preGuard.contains("the"))
+        #expect(resources.collisionMemory.isEmpty)
     }
 
     @Test func emptyListsAreAllowed() throws {
@@ -55,9 +66,10 @@ struct MalformedResourceTests {
 
     @Test func manifestProblems() throws {
         try expectLoadError(
-            .malformedResource("manifest.json: unsupported format 2"), manifest: "{\"format\": 2, \"files\": []}")
+            .malformedResource("manifest.json: unsupported format 1"), manifest: "{\"format\": 1, \"files\": []}")
         try expectLoadError(
-            .malformedResource("manifest.json has no entry for english.txt"), manifest: "{\"format\": 1, \"files\": []}"
+            .malformedResource("manifest.json has no entry for ambiguity.tsv"),
+            manifest: "{\"format\": 2, \"files\": []}"
         )
         let directory = try ResourceFixture.make(manifestOverride: "not json")
         defer { TempDirectory.remove(directory) }
@@ -154,25 +166,58 @@ struct MalformedResourceTests {
     }
 
     @Test func ambiguityProblems() throws {
-        let header = "raw\tdecision\tstatus\tdisplay\tnote\n"
+        let header = ResourceFixture.ambiguityHeader
         try expectLoadError(
             .malformedEntry(resource: "ambiguity.tsv", line: 1, reason: .invalidHeader),
             replacing: ["ambiguity.tsv": "raw\tdecision\n"], entryOverrides: ["ambiguity.tsv": -1])
+        // The format 1 header (no run and viKind columns) is no longer accepted.
+        try expectLoadError(
+            .malformedEntry(resource: "ambiguity.tsv", line: 1, reason: .invalidHeader),
+            replacing: ["ambiguity.tsv": "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tx\n"])
         try expectLoadError(
             .malformedEntry(resource: "ambiguity.tsv", line: 2, reason: .wrongFieldCount),
-            replacing: ["ambiguity.tsv": header + "as\tvi\tproposed\tá\n"])
+            replacing: ["ambiguity.tsv": header + "as\tvi\tproposed\tá\tx\n"])
         try expectLoadError(
             .malformedEntry(resource: "ambiguity.tsv", line: 2, reason: .invalidDecision),
-            replacing: ["ambiguity.tsv": header + "as\tVI\tproposed\tá\tx\n"])
+            replacing: ["ambiguity.tsv": header + "as\tVI\tproposed\tá\ten\tcontent\tx\n"])
         try expectLoadError(
             .malformedEntry(resource: "ambiguity.tsv", line: 2, reason: .invalidStatus),
-            replacing: ["ambiguity.tsv": header + "as\tvi\tdone\tá\tx\n"])
+            replacing: ["ambiguity.tsv": header + "as\tvi\tdone\tá\ten\tcontent\tx\n"])
         try expectLoadError(
             .malformedEntry(resource: "ambiguity.tsv", line: 2, reason: .invalidCharacter),
-            replacing: ["ambiguity.tsv": header + "As\tvi\tproposed\tá\tx\n"])
+            replacing: ["ambiguity.tsv": header + "As\tvi\tproposed\tá\ten\tcontent\tx\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "ambiguity.tsv", line: 2, reason: .invalidRun),
+            replacing: ["ambiguity.tsv": header + "as\tvi\tproposed\tá\tboth\tcontent\tx\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "ambiguity.tsv", line: 2, reason: .invalidReadingKind),
+            replacing: ["ambiguity.tsv": header + "as\tvi\tproposed\tá\ten\tnoun\tx\n"])
         try expectLoadError(
             .malformedEntry(resource: "ambiguity.tsv", line: 3, reason: .duplicate),
-            replacing: ["ambiguity.tsv": header + "as\tvi\tproposed\tá\tx\nas\ten\treviewed\tá\tx\n"])
+            replacing: [
+                "ambiguity.tsv": header + "as\tvi\tproposed\tá\ten\tcontent\tx\nas\ten\treviewed\tá\ten\tcontent\tx\n"
+            ])
+    }
+
+    @Test func collisionListProblems() throws {
+        // ENG-R826: a phrase is 2 to 4 lowercase words separated by one space.
+        for bad in ["single\n", "a b c d e\n", "Such as\n", "such  as\n"] {
+            try expectLoadError(
+                .malformedEntry(resource: "phrases.txt", line: 1, reason: .invalidCharacter),
+                replacing: ["phrases.txt": bad])
+        }
+        try expectLoadError(
+            .malformedEntry(resource: "phrases.txt", line: 2, reason: .emptyLine),
+            replacing: ["phrases.txt": "such as\n\n"], entryOverrides: ["phrases.txt": 1])
+        try expectLoadError(
+            .malformedEntry(resource: "english-function-words.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["english-function-words.txt": "The\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "vi-tail-words.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["vi-tail-words.txt": "Nha\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "collision-supplement.txt", line: 3, reason: .duplicate),
+            replacing: ["collision-supplement.txt": "gif\ncos\ngif\n"])
     }
 
     @Test func errorsDescribeTheProblem() {

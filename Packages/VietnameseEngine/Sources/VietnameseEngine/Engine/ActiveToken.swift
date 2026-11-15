@@ -39,7 +39,8 @@ package struct ActiveToken: Sendable, Hashable {
     package private(set) var display = ""
     package private(set) var userChoice = UserChoice.none
     /// Set when a token that a commit rule restored is re-opened (section 10): it shows its raw keys and
-    /// the toggle can bring the composed form back (ENG-R701, ENG-R704).
+    /// the toggle can bring the composed form back (ENG-R701, ENG-R704). Cleared by the first Backspace
+    /// after which the remaining raw keys compose to the text shown (ENG-R1005).
     package private(set) var restoredByRule = false
     /// Non-nil for a macro expansion (ENG-R1104); `composition` is then unused.
     package private(set) var macroKeys: MacroTokenKeys?
@@ -47,6 +48,14 @@ package struct ActiveToken: Sendable, Hashable {
     /// ENG-R1002) instead of its composed display; cleared by the next event, which shows the composed
     /// display again.
     private var showsCommittedSpelling = false
+    /// ENG-R861, ENG-R864: the user's current choice has already been reported by a signal, so a later
+    /// commit of the same choice (after Backspace re-opened the token) reports nothing new. Cleared by the
+    /// next toggle, which is a new choice.
+    package private(set) var choiceSignalled = false
+    /// ENG-R864: the side a revision (ENG-R828) gave the token when it was re-opened (true: the raw keys),
+    /// so that a toggle against the revision counts as a correction. Cleared by any key or Backspace inside
+    /// the token, which makes it another word.
+    package private(set) var revisionRestored: Bool?
 
     package init() {}
 
@@ -65,12 +74,29 @@ package struct ActiveToken: Sendable, Hashable {
         macroKeys = MacroTokenKeys(span: macroSpan)
     }
 
-    /// This token re-opened from history with `display` on screen (ENG-R1002).
-    package func reopened(display: String, restoredByRule: Bool) -> ActiveToken {
+    /// This token re-opened from history with `display` on screen (ENG-R1002); `revisionRestored` is the
+    /// side of the revision that last changed it, if any.
+    package func reopened(display: String, restoredByRule: Bool, revisionRestored: Bool? = nil) -> ActiveToken {
         var token = self
         token.display = display
         token.restoredByRule = restoredByRule
+        token.revisionRestored = revisionRestored
         token.showsCommittedSpelling = !token.isLiteral && token.composition.writesOpenHornPairAtCommit
+        return token
+    }
+
+    /// This token with the user's choice `choice` (the toggle that undoes a revision marks the revised token
+    /// as the user's choice, ENG-R829).
+    package func choosing(_ choice: UserChoice) -> ActiveToken {
+        var token = self
+        token.userChoice = choice
+        return token
+    }
+
+    /// This token with its current choice reported (ENG-R861, ENG-R864).
+    package func reportingChoice() -> ActiveToken {
+        var token = self
+        token.choiceSignalled = true
         return token
     }
 
@@ -102,6 +128,7 @@ package struct ActiveToken: Sendable, Hashable {
     /// ENG-R611). `capsLock` is the key's Caps Lock state (ENG-R906).
     package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> KeyAction {
         showsCommittedSpelling = false
+        revisionRestored = nil
         if macroKeys != nil {
             macroKeys?.append(key)
             display.unicodeScalars.append(Unicode.Scalar(key))
@@ -119,10 +146,12 @@ package struct ActiveToken: Sendable, Hashable {
         return action
     }
 
-    /// Backspace inside the token (7.4). A restored token is literal: it loses its last raw key. Long
-    /// literal tails shrink in place (no full render). A macro expansion loses its last character
-    /// (ENG-R1104), and a key typed into it since the expansion if there is one.
+    /// Backspace inside the token (7.4). A restored token is literal: it loses its last raw key, and a
+    /// token a commit rule restored composes again once no remaining key transforms anything
+    /// (ENG-R1005). Long literal tails shrink in place (no full render). A macro expansion loses its last
+    /// character (ENG-R1104), and a key typed into it since the expansion if there is one.
     package mutating func backspace(rules: ComposerRules) -> KeyAction {
+        revisionRestored = nil
         if macroKeys != nil {
             display.removeLast()
             macroKeys?.dropAppendedKey()
@@ -131,6 +160,7 @@ package struct ActiveToken: Sendable, Hashable {
         if showsRawKeys {
             composition.removeLastKey(rules: rules)
             display.unicodeScalars.removeLast()
+            endRuleRestoreIfComposedMatches(rules: rules)
             return .passThrough
         }
         if let literalStart = composition.literalStart, composition.raw.count - 1 > literalStart {
@@ -146,10 +176,25 @@ package struct ActiveToken: Sendable, Hashable {
         return action
     }
 
+    /// ENG-R1005: the restore of a re-opened token that a commit rule restored ends at the first Backspace
+    /// after which the composed display of the remaining raw keys equals the text shown, so the token
+    /// composes like one typed afresh with those keys (`tiesng`, space, five Backspaces, `eesn` shows
+    /// `tiến`). Nothing changes on screen. A user restore (L1) stays literal (ENG-R701, E02b). While the
+    /// composition is literal the flag changes nothing observable, and skipping the render there keeps a
+    /// long literal token's Backspace bounded (ENG-R641, ENG-R1232); the check runs again once a
+    /// Backspace leaves literal mode.
+    private mutating func endRuleRestoreIfComposedMatches(rules: ComposerRules) {
+        guard userChoice == .none, restoredByRule, !composition.isLiteral,
+            composition.display(style: rules.toneStyle) == display
+        else { return }
+        restoredByRule = false
+    }
+
     /// The restore toggle (ENG-R701, ENG-R703); the consecutive case (ENG-R702) is handled by the
     /// reducer. Returns nil when neither branch applies, so the key passes through.
     package mutating func toggleRestore(rules: ComposerRules) -> KeyAction? {
         showsCommittedSpelling = false
+        choiceSignalled = false
         if let macroKeys { return restoreMacroSpan(macroKeys, rules: rules) }
         let raw = rawText
         if display != raw {

@@ -20,6 +20,25 @@ enum ResourceFile: String, CaseIterable {
     case attested = "attested.txt"
     case ambiguity = "ambiguity.tsv"
     case notices = "NOTICES.txt"
+    // The collision lists (format 2; spec/01-engine.md ENG-R825 to ENG-R828, ENG-R863).
+    case phrases = "phrases.txt"
+    case collisionSupplement = "collision-supplement.txt"
+    case boundaryParticles = "boundary-particles.txt"
+    case englishFunctionWords = "english-function-words.txt"
+    case englishLean = "english-lean-neutral.txt"
+    case tailWords = "vi-tail-words.txt"
+    case tailParticles = "vi-tail-particles.txt"
+    case preGuard = "english-pre-guard.txt"
+}
+
+/// The ambiguity table as the loader returns it (ENG-R821, ENG-R827).
+struct AmbiguityTable {
+    /// Raw keys -> the decision rule L11 applies (unreviewed rows behave as `vi`).
+    var decisions: [String: Language] = [:]
+    /// Rows marked `run: vi`.
+    var runExempt: [String] = []
+    /// Raw keys -> the kind of the Vietnamese reading.
+    var readingKinds: [String: VietnameseReadingKind] = [:]
 }
 
 struct ResourceManifest: Decodable {
@@ -33,7 +52,9 @@ struct ResourceManifest: Decodable {
     let format: Int
     let files: [File]
 
-    static let supportedFormat = 1
+    /// Format 2 (15/11/2026): the ambiguity table has the `run` and `viKind` columns and the collision lists
+    /// ship.
+    static let supportedFormat = 2
     static let fileName = "manifest.json"
 }
 
@@ -68,7 +89,10 @@ struct ResourceDirectory {
         switch file {
         case .english: words = try Self.asciiLines(data, file: file, allowDigits: false)
         case .techAlways, .techCodeOnly: words = try Self.asciiLines(data, file: file, allowDigits: true)
-        case .attested: words = try Self.syllableLines(data, file: file)
+        case .attested, .tailWords, .tailParticles: words = try Self.syllableLines(data, file: file)
+        case .collisionSupplement, .boundaryParticles, .englishFunctionWords, .englishLean, .preGuard:
+            words = try Self.asciiLines(data, file: file, allowDigits: false)
+        case .phrases: words = try Self.phraseLines(data, file: file)
         case .ambiguity, .notices: preconditionFailure("\(file.rawValue) is not a word list")
         }
         try checkEntryCount(words.count, file: file)
@@ -76,19 +100,20 @@ struct ResourceDirectory {
         return words
     }
 
-    /// Rows `raw  decision  status  display  note` -> language used by rule L11 (ENG-R821): `en` and
-    /// `vi` rows apply as decided when proposed or reviewed; unreviewed rows behave as `vi`.
-    func ambiguityTable() throws -> [String: Language] {
+    /// Rows `raw  decision  status  display  run  viKind  note` -> the language used by rule L11 (ENG-R821):
+    /// `en` and `vi` rows apply as decided when proposed or reviewed; unreviewed rows behave as `vi`. `run: vi`
+    /// rows are exempt from rule L10 and `viKind` is the kind of the Vietnamese reading (ENG-R827).
+    func ambiguityTable() throws -> AmbiguityTable {
         let file = ResourceFile.ambiguity
         let lines = try Self.utf8Lines(try verifiedData(file), file: file)
-        guard lines.first == "raw\tdecision\tstatus\tdisplay\tnote" else {
+        guard lines.first == "raw\tdecision\tstatus\tdisplay\trun\tviKind\tnote" else {
             throw LoadError.malformedEntry(resource: file.rawValue, line: 1, reason: .invalidHeader)
         }
-        var table: [String: Language] = [:]
+        var result = AmbiguityTable()
         for (index, line) in lines.enumerated().dropFirst() {
             let number = index + 1
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
-            guard fields.count == 5 else {
+            guard fields.count == 7 else {
                 throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .wrongFieldCount)
             }
             let raw = String(fields[0])
@@ -106,12 +131,23 @@ struct ResourceDirectory {
             case "unreviewed": decision = .vietnamese
             default: throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .invalidStatus)
             }
-            guard table.updateValue(decision, forKey: raw) == nil else {
+            switch fields[4] {
+            case "en": break
+            case "vi": result.runExempt.append(raw)
+            default: throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .invalidRun)
+            }
+            switch fields[5] {
+            case "particle": result.readingKinds[raw] = .particle
+            case "function": result.readingKinds[raw] = .function
+            case "content": break
+            default: throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .invalidReadingKind)
+            }
+            guard result.decisions.updateValue(decision, forKey: raw) == nil else {
                 throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .duplicate)
             }
         }
-        try checkEntryCount(table.count, file: file)
-        return table
+        try checkEntryCount(result.decisions.count, file: file)
+        return result
     }
 
     func notices() throws -> String {
@@ -195,6 +231,23 @@ struct ResourceDirectory {
             }
             return words
         }
+    }
+
+    /// Phrases (ENG-R826): 2 to 4 lowercase words a-z separated by one space.
+    private static func phraseLines(_ data: Data, file: ResourceFile) throws -> [String] {
+        let lines = try utf8Lines(data, file: file)
+        for (index, line) in lines.enumerated() {
+            guard !line.isEmpty else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: index + 1, reason: .emptyLine)
+            }
+            let words = line.split(separator: " ", omittingEmptySubsequences: false)
+            guard (2...4).contains(words.count),
+                words.allSatisfy({ !$0.isEmpty && $0.utf8.allSatisfy { $0 >= 0x61 && $0 <= 0x7A } })
+            else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: index + 1, reason: .invalidCharacter)
+            }
+        }
+        return lines
     }
 
     /// Attested syllables: lowercase NFC strings of Vietnamese letters (spec/01-engine.md 3.2).

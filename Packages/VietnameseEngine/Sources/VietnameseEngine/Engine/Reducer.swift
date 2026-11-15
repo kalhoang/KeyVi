@@ -19,7 +19,9 @@ extension Engine {
     /// (ENG-R1210).
     package func process(_ state: inout EngineState, _ event: EngineEvent) -> EngineOutput {
         let followsToggle = state.previousEventWasRestoreToggle
+        let followsRevision = state.previousEventRevised
         state.previousEventWasRestoreToggle = false
+        state.previousEventRevised = false
         switch event {
         case .key(let input):
             switch TokenKey.classify(input, rules: rules) {
@@ -27,9 +29,13 @@ extension Engine {
             case .boundary(let isHard): return commit(at: input.character, isHard: isHard, &state)
             }
         case .backspace:
+            // ENG-R828: a Backspace into the history (not inside the next token) ends the chance to revise.
+            if state.active == nil { state.newestTokenRevisable = false }
             return backspace(&state)
         case .restoreToggle:
             state.previousEventWasRestoreToggle = true
+            state.newestTokenRevisable = false
+            if followsRevision, !followsToggle, state.active == nil, let undo = undoRevision(&state) { return undo }
             return toggleRestore(&state, followsToggle: followsToggle)
         case .reset:
             // ENG-R1011, ENG-R831: drop the token, the history and the run's language window; edit

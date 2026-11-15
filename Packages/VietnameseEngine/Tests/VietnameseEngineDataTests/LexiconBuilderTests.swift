@@ -29,8 +29,10 @@ struct LexiconBuilderTests {
             .sorted()
         #expect(
             names == [
-                "NOTICES.txt", "ambiguity.tsv", "attested.txt", "english.txt", "manifest.json", "tech-always.txt",
-                "tech-code-only.txt",
+                "NOTICES.txt", "ambiguity.tsv", "attested.txt", "boundary-particles.txt", "collision-supplement.txt",
+                "english-function-words.txt", "english-lean-neutral.txt", "english-pre-guard.txt", "english.txt",
+                "manifest.json", "phrases.txt", "tech-always.txt", "tech-code-only.txt", "vi-tail-particles.txt",
+                "vi-tail-words.txt",
             ])
         for name in names {
             let a = try Data(contentsOf: first.appendingPathComponent("Resources/\(name)"))
@@ -70,6 +72,11 @@ struct LexiconBuilderTests {
         #expect(!loaded.english.contains("don"), "entries with apostrophes are dropped")
         #expect(loaded.attestedSyllables.contains("thủy") && loaded.attestedSyllables.contains("thuỷ"))
         #expect(loaded.ambiguity["test"] == .english)
+        // The collision lists of the fixture (ENG-R825 to ENG-R828).
+        #expect(loaded.collision.supplement.contains("thuyr"))
+        #expect(loaded.collision.phrases.count == 1)
+        #expect(loaded.collision.tailParticles.contains("nha") && loaded.collision.tailWords.contains("rồi"))
+        #expect(loaded.collision.runExempt.contains("as") && loaded.collision.readingKinds["as"] == .particle)
         try write("www\nwifi\nnew\n", to: root.appendingPathComponent("data/inputs/tech-always.txt"))
         let refused = try BuilderProcess.run([
             "build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path,
@@ -155,7 +162,8 @@ struct LexiconBuilderTests {
         #expect(merged.status == 0, "\(merged.errors)")
         let table = try String(contentsOf: data.appendingPathComponent("inputs/ambiguity.tsv"), encoding: .utf8)
         let tar = try #require(
-            table.range(of: "\ntar\tvi\tunreviewed\ttả\tgenerated candidate (tech-code-only, corpus count 2)\n"))
+            table.range(
+                of: "\ntar\tvi\tunreviewed\ttả\ten\tcontent\tgenerated candidate (tech-code-only, corpus count 2)\n"))
         let block = try #require(table.range(of: "\n\(AmbiguityCandidates.generatedBlockMarker)"))
         let generated = try #require(table.range(of: "\nis\ten\tproposed\tí\t"))
         #expect(tar.lowerBound < block.lowerBound && block.lowerBound < generated.lowerBound)
@@ -215,8 +223,18 @@ enum MiniDataRoot {
             "# additions\nthủy\tfixture\ná\tfixture\n", to: data.appendingPathComponent("inputs/attested-additions.txt")
         )
         try write(
-            "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tfixture\ntest\ten\tproposed\ttét\tfixture\n",
+            "raw\tdecision\tstatus\tdisplay\trun\tviKind\tnote\nas\tvi\tproposed\tá\tvi\tparticle\tfixture\n"
+                + "test\ten\tproposed\ttét\ten\tcontent\tfixture\n",
             to: data.appendingPathComponent("inputs/ambiguity.tsv"))
+        // The collision lists (ENG-R825 to ENG-R828, ENG-R863).
+        let inputs = data.appendingPathComponent("inputs")
+        try write("# phrases\nsuch as\n", to: inputs.appendingPathComponent("phrases.txt"))
+        try write("# supplement\nthuyr\tthủy\n", to: inputs.appendingPathComponent("collision-supplement.txt"))
+        try write("as\n", to: inputs.appendingPathComponent("boundary-particles.txt"))
+        try write("is\nthe\n", to: inputs.appendingPathComponent("english-function-words.txt"))
+        try write("the\n", to: inputs.appendingPathComponent("english-lean-neutral.txt"))
+        try write("nha\tparticle\nrồi\tword\n", to: inputs.appendingPathComponent("vi-tail-words.txt"))
+        try write("the\n", to: inputs.appendingPathComponent("english-pre-guard.txt"))
         let header = "id\tfile\turl\tsha256\tbytes\tretrieved\ttitle\tnumber\tissued\tissuer\tpage\n"
         let row =
             "law\tlegal/law.doc\thttps://example.invalid/law.doc\t\(String(repeating: "0", count: 64))\t0\t2026-11-13\tLuật\t1/2026/QH15\t2026-01-01\tQuốc hội\thttps://example.invalid\n"

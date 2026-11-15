@@ -1,0 +1,7 @@
+# boundary-particles.txt: collision words whose Vietnamese reading is a sentence-final particle and that
+# keep their Vietnamese display when `.`, `!`, `?` or Return ends them, whatever the run says (rule L9a,
+# ENG-R825): `tricky as.` gives `tricky á.`. `has` and `did` are not listed because `Yes she has.` and
+# `Yes I did.` are English. The product owner decided on 15/11/2026 that the list holds only `as`.
+# Format: one lowercase word per line. Lines starting with # are comments.
+
+as

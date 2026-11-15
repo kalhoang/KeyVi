@@ -108,14 +108,27 @@ func sha256Hex(_ data: Data) -> String {
 /// Writes a resource directory in the bundled format: the given files plus a manifest.json that
 /// matches them (unless `manifestOverride` is given), so tests can target one validation at a time.
 enum ResourceFixture {
+    static let ambiguityHeader = "raw\tdecision\tstatus\tdisplay\trun\tviKind\tnote\n"
+
     static let valid: [String: String] = [
         "english.txt": "as\nis\ntest\nthis\n",
         "tech-always.txt": "usb\nwifi\nwww\n",
         "tech-code-only.txt": "tar\n",
         "attested.txt": "hòa\nhoà\ná\nđi\n",
         "ambiguity.tsv":
-            "raw\tdecision\tstatus\tdisplay\tnote\nas\tvi\tproposed\tá\tx\nis\ten\tunreviewed\tí\tx\ntest\ten\tproposed\ttét\tx\n",
+            ambiguityHeader
+            + "as\tvi\tproposed\tá\ten\tparticle\tx\nis\ten\tunreviewed\tí\ten\tcontent\tx\n"
+            + "test\ten\tproposed\ttét\tvi\tfunction\tx\n",
         "NOTICES.txt": "notices\n",
+        // The collision lists (format 2).
+        "phrases.txt": "as well\nsuch as\n",
+        "collision-supplement.txt": "cos\ngif\n",
+        "boundary-particles.txt": "as\n",
+        "english-function-words.txt": "as\nis\nthe\n",
+        "english-lean-neutral.txt": "the\n",
+        "vi-tail-words.txt": "nha\nrồi\n",
+        "vi-tail-particles.txt": "nha\n",
+        "english-pre-guard.txt": "the\n",
     ]
 
     static func make(
@@ -135,7 +148,7 @@ enum ResourceFixture {
             manifestFiles.append(
                 "{\"name\": \"\(name)\", \"bytes\": \(data.count)\(entryField), \"sha256\": \"\(sha256Hex(data))\"}")
         }
-        let manifest = manifestOverride ?? "{\"format\": 1, \"files\": [\(manifestFiles.joined(separator: ", "))]}"
+        let manifest = manifestOverride ?? "{\"format\": 2, \"files\": [\(manifestFiles.joined(separator: ", "))]}"
         try write(manifest, to: directory.appendingPathComponent("manifest.json"))
         return directory
     }

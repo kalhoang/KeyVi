@@ -1,5 +1,24 @@
 // SPDX-License-Identifier: MPL-2.0
 
+/// What the collision rules (ENG-R825 to ENG-R829) and the learning signals (ENG-R864) need to know about a
+/// committed token.
+package struct CollisionFacts: Sendable, Hashable {
+    /// `R` lowercased (ASCII only, ENG-R905); empty for a macro expansion.
+    package var rawLowercased = ""
+    /// `C`, the composed form the rules would keep (the Vietnamese display); empty for a macro expansion.
+    package var composed = ""
+    /// The number of the raw keys in the phrase list (0: the word is in no phrase, ENG-R826).
+    package var phraseWord: UInt16 = 0
+    /// The class of the previous token when this token committed (ENG-R863).
+    package var context = CollisionContext.sentenceStart
+    /// The bundled collision-list word equal to the raw keys (ENG-R866); nil when the word is not on the list.
+    package var listWord: String?
+    /// The revision that changed the token (ENG-R828); a revised token is never revised again.
+    package var revision: RevisionReason?
+
+    package init() {}
+}
+
 /// A token after its commit, kept so that Backspace can re-open it (ENG-R1001).
 package struct CommittedToken: Sendable, Hashable {
     /// The token as it was at commit: raw keys, composition (escape-used, camel case) and flags. For a
@@ -14,26 +33,42 @@ package struct CommittedToken: Sendable, Hashable {
     /// The run's language window before this token was committed; restored when the token is re-opened
     /// or folded into a macro expansion.
     package var languagesBefore: RecentLanguages
+    /// The collision facts of the token (ENG-R825 to ENG-R829, ENG-R864).
+    package var collision: CollisionFacts
 
     package init(
         token: ActiveToken, committedText: String, decision: CommitDecision, language: TokenLanguage,
-        languagesBefore: RecentLanguages
+        languagesBefore: RecentLanguages, collision: CollisionFacts = CollisionFacts()
     ) {
         self.token = token
         self.committedText = committedText
         self.decision = decision
         self.language = language
         self.languagesBefore = languagesBefore
+        self.collision = collision
+    }
+
+    /// The token shows its raw keys because of a rule: its decision restored it (not the user's toggle), or a
+    /// revision restored it (ENG-R828).
+    package var showsRawKeysByRule: Bool {
+        if let revision = collision.revision { return revision.restores }
+        if case .restored(let rule) = decision, rule != .userChoice { return true }
+        return false
+    }
+
+    /// The token shows its raw keys, whoever decided it.
+    package var showsRawKeys: Bool {
+        if let revision = collision.revision { return revision.restores }
+        return decision.restores
     }
 
     /// ENG-R1002: the token re-opened as the active token "with all its raw keys and flags". Its display
-    /// is what the commit left on screen. A token that a commit rule restored shows its raw keys and the
-    /// toggle can bring the composed form back (ENG-R701, ENG-R704); the user's own choice (L1) is kept
-    /// in `userChoice`.
+    /// is what the commit left on screen. A token that a commit rule or a revision restored shows its raw
+    /// keys and the toggle can bring the composed form back (ENG-R701, ENG-R704); the user's own choice
+    /// (L1) is kept in `userChoice`. A revised token remembers the revision's side (ENG-R864).
     package var reopened: ActiveToken {
-        var restoredByRule = false
-        if case .restored(let rule) = decision, rule != .userChoice { restoredByRule = true }
-        return token.reopened(display: committedText, restoredByRule: restoredByRule)
+        token.reopened(
+            display: committedText, restoredByRule: showsRawKeysByRule, revisionRestored: collision.revision?.restores)
     }
 }
 
@@ -98,6 +133,27 @@ package struct History: Sendable {
     package mutating func record(boundary: Character, limit: Int) {
         storage.append(.boundary(boundary))
         trim(limit: limit)
+    }
+
+    /// The entry `offset` entries before the newest one (0 is the newest), nil past the oldest.
+    package func entry(beforeNewest offset: Int) -> HistoryEntry? {
+        let index = storage.count - 1 - offset
+        return index >= head && index < storage.count ? storage[index] : nil
+    }
+
+    /// The token `offset` entries before the newest entry, nil when that entry is a boundary or missing.
+    package func token(beforeNewest offset: Int) -> CommittedToken? {
+        guard case .token(let token)? = entry(beforeNewest: offset) else { return nil }
+        return token
+    }
+
+    /// Applies `update` to the token `offset` entries before the newest entry; nothing happens when that
+    /// entry is not a token (revision and its undo, ENG-R828, ENG-R829; weak signals, ENG-R864).
+    package mutating func updateToken(beforeNewest offset: Int, _ update: (inout CommittedToken) -> Void) {
+        let index = storage.count - 1 - offset
+        guard index >= head, index < storage.count, case .token(var token) = storage[index] else { return }
+        update(&token)
+        storage[index] = .token(token)
     }
 
     /// Removes the newest entry (Backspace re-opening, ENG-R1002; macro expansion, ENG-R1103).

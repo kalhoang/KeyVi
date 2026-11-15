@@ -27,7 +27,7 @@ import Testing
         fixture.typeKeys([Key.d, Key.a])
         #expect(fixture.keyUp(Key.s) == .pass)  // its keyDown went to the app, not to the tap
         #expect(fixture.lastOutcome == .passed)
-        #expect(fixture.log.resets == [.unknown])
+        #expect(fixture.log.resets == [.unseenInput])
         #expect(fixture.keyDown(Key.a) == .pass)  // a fresh word: no edit
         #expect(fixture.popJobs().isEmpty)
         let unseen = taplogCodes(fixture).filter { $0.code == .unseenKeyUp }
@@ -66,7 +66,7 @@ import Testing
         #expect(fixture.log.resets.isEmpty)
         fixture.press(Key.a)
         fixture.keyUp(Key.a)
-        #expect(fixture.log.resets == [.unknown])
+        #expect(fixture.log.resets == [.unseenInput])
     }
 
     /// The pairing of consumed keys is untouched: the keyUp of a key consumed for an edit is seen.

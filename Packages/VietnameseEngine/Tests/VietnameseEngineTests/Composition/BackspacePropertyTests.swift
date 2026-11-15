@@ -10,8 +10,9 @@ import VietnameseEngineTesting
 /// typed, then Backspace is pressed until the field is empty, once before any boundary and once after a
 /// space (the first Backspace re-opens the word). Every press must take exactly the last character and
 /// leave every other character as it was, except the documented exceptions that `BackspaceProbe`
-/// classifies: tone relocation by the placement rule (W240), escapes (ENG-R711) and the literal-mode
-/// recompute (ENG-R421). No Backspace edit may delete more than the active token's display.
+/// classifies: tone relocation by the placement rule (W240) and the self-marked `ư`, horn completion and
+/// bracket case of ENG-R714. Escape letters (ENG-R711) and the key that started literal mode (ENG-R421)
+/// take exactly the last character. No Backspace edit may delete more than the active token's display.
 ///
 /// Resources are empty, so the commit keeps every valid Vietnamese word (rule L7) and the re-opened
 /// word is composed; the English list and the bundled data are covered by `BackspaceRealDataTests` in

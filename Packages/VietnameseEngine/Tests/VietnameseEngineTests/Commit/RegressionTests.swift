@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-32, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-34, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-32 (13.5)")
+@Suite("Regressions REG-01 to REG-34 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni)
 
@@ -213,10 +213,14 @@ struct RegressionTests {
         }
     }
 
-    @Test("REG-24 a tone comes back after deleting the escape letter")
+    @Test("REG-24 the tone can be applied again after deleting the escape letter")
     func reg24() throws {
-        #expect(try Committing.driver("nhaamff⌫").field.string == "nhầm")
-        #expect(try text("nhaamff⌫ ") == "nhầm ")
+        // ENG-R711 as amended on 15/11/2026: Backspace takes the escape letter and the tone key it undid, so
+        // the field loses one character and the next tone key applies (the tone kind is no longer escaped).
+        #expect(try Committing.driver("nhaamff⌫").field.string == "nhâm")
+        #expect(try Committing.driver("nhaamff⌫f").field.string == "nhầm")
+        #expect(try text("nhaamff⌫f ") == "nhầm ")
+        #expect(try text("nhaamff⌫ ") == "nhâm ")
     }
 
     @Test("REG-25 teencode z onset")
@@ -310,5 +314,29 @@ struct RegressionTests {
         // English stays English: only English in the window, or `Thí` (kept by L11, neutral) and then `is`.
         #expect(try text("tricky as ") == "tricky as ")
         #expect(try text("This is as ") == "Thí is as ")
+    }
+
+    @Test("REG-33 retyping a word re-opened after an automatic restore composes")
+    func reg33() throws {
+        // ENG-R1005: the product owner's traces of 15/11/2026; the first version kept the keys as typed.
+        #expect(try text("tiesng ⌫⌫⌫⌫⌫eesn") == "tiến")
+        #expect(try text("baas ⌫⌫⌫⌫aasm ") == "bấm ")
+        #expect(try text("huux ⌫⌫w") == "hưu")
+        // A user restore stays literal (ENG-R701).
+        #expect(try text("vieejt⎋ ⌫⌫⌫⌫⌫eejt ") == "vieejt ")
+    }
+
+    @Test("REG-34 a second tone-removal press removes the marks")
+    func reg34() throws {
+        // ENG-R411 as amended on 15/11/2026: one layer per press.
+        #expect(try Committing.driver("daauszz").field.string == "dau")
+        #expect(try Committing.driver("daauszzz").field.string == "dauz")
+        #expect(try Committing.driver("dduwowngfzz").field.string == "duong")
+        // The commit decides by 8.1 as for any token: `duong` is not a syllable, so L5 restores the raw keys,
+        // as it already did for a tone removal that leaves an invalid syllable (`vieejtz`). Known cost.
+        #expect(try text("dduwowngfzz ") == "dduwowngfzz " && text("vieejtz ") == "vieejtz ")
+        #expect(try Committing.driver("a6100", vni).field.string == "a")
+        // Unchanged where nothing is marked: REG-01, REG-25 and the `dz` onset.
+        #expect(try text("quz ") == "quz " && text("za ") == "za " && text("dzui ") == "dzui ")
     }
 }

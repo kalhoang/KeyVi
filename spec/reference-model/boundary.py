@@ -69,8 +69,56 @@ RUNS = [
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
     ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
 ]
+# Collision rules at commit (15/11/2026): L9a boundary particle (ENG-R825), L9b phrase looking back (ENG-R826), the
+# `run: vi` exemption of L10 and the English-lean window (ENG-R823, ENG-R827), with small fixture lists on top of the
+# 13.9 fixtures. The revisions of ENG-R828 are not modelled; the rows below have none. The engine test
+# `CollisionCommitRuleTests.referenceModelRows` types the same rows with the same lists.
+PARTICLES = {"as"}
+PHRASES = {("has", "been"), ("this", "is"), ("such", "as"), ("as", "good", "as")}
+RUN_EXEMPT = {"theme"}
+LEAN = {"the", "i"}
+def decide_collision(keys, cfg, window, boundary, chain):
+    C, reason = decide(keys, cfg, "neutral")
+    R = "".join(compose(list(keys), cfg).raw); r = R.lower()
+    if reason not in ("kept: ambiguity table vi", "kept: default vi", "restored: ambiguity table en"):
+        return C, reason
+    phrase = any(len(chain) >= p and m[:p + 1] == tuple(chain[-p:]) + (r,) for p in (1, 2, 3) for m in PHRASES)
+    if r in PARTICLES and boundary and boundary[0] in ".!?\n" and not phrase: return C, "kept: boundary particle"
+    if phrase: return R, "restored: phrase"
+    if run_is_english(window) and r not in RUN_EXEMPT: return R, "restored: English run"
+    return C, reason
+def lang_of_collision(out, reason, keys):
+    if reason == "kept: boundary particle": return "neutral"
+    if reason == "unchanged" and keys.lower() in LEAN: return "en"
+    return lang_of_decision(out, reason)
+def type_run_collision(text, cfg=None):
+    """`type_run` with the collision rules at commit; a phrase chain needs exactly one space after each token."""
+    cfg = cfg or Cfg()
+    out, window, chain, reason = "", [], [], None
+    for token, boundary in re.findall(r"([A-Za-z]*)([^A-Za-z]*)", text):
+        if token:
+            C, reason = decide_collision(token, cfg, window, boundary, chain)
+            window.append(lang_of_collision(C, reason, token))
+            chain = chain + [token.lower()] if boundary == " " else []
+            out += C
+        out += boundary
+    return out, reason
+COLLISION_RUNS = [
+    ("tricky as.", "tricky á.", "kept: boundary particle"),
+    ("tricky as ", "tricky as ", "restored: English run"),
+    ("tricky as. car ", "tricky á. car ", "restored: English run"),
+    ("and has been ", "and has been ", "restored: phrase"),
+    ("tricky theme ", "tricky thêm ", "kept: ambiguity table vi"),
+    ("the car ", "the car ", "restored: English run"),
+    ("I car ", "I car ", "restored: English run"),
+    ("tricky such as ", "tricky such as ", "restored: phrase"),
+    ("dduwowcj such as.", "được such as.", "restored: phrase"),
+]
 if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]
+    bad += [(keys, type_run_collision(keys), (want, why)) for keys, want, why in COLLISION_RUNS
+            if type_run_collision(keys) != (want, why)]
     for row in bad: print("mismatch:", row)
-    print(f"{len(RUNS) - len(bad)}/{len(RUNS)} English-run examples agree")
+    total = len(RUNS) + len(COLLISION_RUNS)
+    print(f"{total - len(bad)}/{total} English-run and collision examples agree")
     sys.exit(1 if bad else 0)

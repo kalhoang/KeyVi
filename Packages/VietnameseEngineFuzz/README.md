@@ -14,7 +14,7 @@ options (bit 0 VNI, bit 1 standalone `w` off, bit 2 bracket keys on, bit 3 moder
 restore off, bit 5 app context `code`, bit 6 the random 1,000-trigger macro table, bit 7 history limit 1);
 `@` is Telex with defaults and macros, `A` is VNI with macros. Every following byte is one event in the
 encoding of `FuzzAlphabet` (VietnameseEngineTesting): a printable ASCII byte is that key, `\n` `\r` `\t` are
-Return and Tab, BS and DEL are Backspace, ESC is the restore toggle, the other control bytes are the twelve
+Return and Tab, BS is Backspace, ESC is the restore toggle, the other control bytes and DEL are the thirteen
 reset reasons and keypad digits, and bytes from 0x80 are non-ASCII letters and spaces. Seed files are
 therefore mostly readable text. Each event is checked by `InvariantChecker` (simulated field, exact
 restore, replay, encoding, method isolation, escape, viability, bounded history); a broken invariant aborts

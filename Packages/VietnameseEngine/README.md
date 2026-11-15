@@ -79,7 +79,7 @@ Swift Testing, organised by area under `Tests/VietnameseEngineTests`:
 | `Letters` | the letter model and the generated letter table, re-derived from Unicode data |
 | `Orthography` | parser (3.13), validity tiers (3.10 to 3.12), viability (3.14), tone placement (5.1 to 5.4), horn normalisation (5.5), `Orthography.analyze`, the inventory counts printed for ENG-R350 |
 | `Oracle` | the oracle (ENG-T01) and the generated O1 to O4 corpus and variants (ENG-T02, ENG-T03) |
-| `Composition` | worked examples W001-W253 and W243a-W243j, the 6.2 edit traces, restore toggles E01-E08, the generated corpus against the oracle, rule tests, replay properties, a microbenchmark |
+| `Composition` | worked examples W001-W253 with the lettered rows W158a-W243o, the 6.2 edit traces, restore toggles E01-E08, the generated corpus against the oracle, rule tests, replay properties, a microbenchmark |
 | `Commit` | commit decisions B001-B072 at every boundary key, rules L0-L11, the English run, history, resets, macros, REG-01 to REG-32, the generated corpus committed (ENG-R870), the ENG-T12 spot list, commit properties, and the QA-R4 corpus loader |
 | `Quality` | the fuzz campaign (13.6), long tokens to 100,000 keys, keyboard layouts, the 8.8 targets with fixture data (the bundled-data gates are in `VietnameseEngineDataTests/RealData`), the API contract (ENG-R1203, ENG-R450), the REG-23 source scan, documentation and traceability checks |
 | `Corpus` | data files: the QA-R4 categories (`README.txt` lists them), the spec fixtures, `prose-sample.txt`, `known-exceptions.txt` |

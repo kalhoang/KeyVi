@@ -1,0 +1,42 @@
+# collision-supplement.txt: English and tech words outside the English lexicon whose Telex typing gives an
+# attested Vietnamese syllable (spec/01-engine.md 8.2, ENG-R863). No rule restores them (`cos` stays `có`
+# because rule L7 keeps every word whose raw keys are not English); they are on the collision list only so
+# that the learned memory can learn them from the user's corrections. Written by the project; the product
+# owner reviews the list before v1.
+# Format: <raw keys><TAB><Telex display>, lowercase. `lexicon-builder build` checks that the engine types
+# the raw keys as the display, that the display is attested and that the raw keys are not English.
+
+af	à
+asap	ấp
+asf	à
+bas	bá
+coif	còi
+cors	có
+cos	có
+cusp	cúp
+dana	dân
+ddos	đó
+gif	gì
+hist	hít
+homo	hôm
+kees	kế
+kirsch	kích
+lama	lâm
+lana	lân
+lars	lá
+lex	lẽ
+loo	lô
+lux	lũ
+max	mã
+mojo	mộ
+mono	môn
+nos	nó
+oof	ồ
+ow	ơ
+rex	rẽ
+sots	sót
+sus	sú
+taro	tảo
+theres	thế
+tuts	tút
+w	ư

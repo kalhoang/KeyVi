@@ -7302,7 +7302,7 @@ owner and decision, such as the restamp after the ax thread applied a toggle, is
 ### 10.5 Engine behaviour the host relies on
 
 Notes from the engine track (`Packages/VietnameseEngine`, public API in `Sources/VietnameseEngine/PublicAPI.swift`).
-None of them changes a public signature.
+None of the first notes changes a public signature; the additions of 15/11/2026 below add API.
 
 - Engines are built off the tap thread. `Engine.init` does the one-time table work: the first engine of a
   process builds the generated tables (about 12 ms on an Apple M4 in a release build: ADR 0104,
@@ -7327,6 +7327,32 @@ None of them changes a public signature.
   selection replacement, marked text) (ENG-R632); `EditJob` carries both (section 9).
 - Macro expansions are byte-exact: the engine does not normalise them, so the host normalises each expansion
   to NFC before building the `MacroTable` (ENG-R1101).
+
+Additions of 15/11/2026 for words that are both English and Vietnamese (ENG-R825 to ENG-R829, ENG-R863 to
+ENG-R866; workstream W15-A, `Sources/VietnameseEngine/PublicAPI+Collision.swift`). They add public API; every
+existing signature keeps compiling (new parameters have defaults).
+
+- `EngineConfiguration.lookaheadRevision` (default `true`) switches the context rules (L9a, L9b, the `run: vi`
+  exemption of L10, the English-lean window) and the revision of the previous word; off, the engine decides as it
+  did before. The host passes the app's effective value (`features.lookaheadRevision` ANDed with the user's D29
+  switch), so the engine catalog doubles (16 variants). The learned memory does not depend on it.
+- A commit may revise the previous token: `EngineOutput.revision` is then non-nil and `action` is one
+  `.edit(_, thenPassThrough: true)` whose `TextEdit` deletes the previous token, its single space and the active
+  display and inserts their new text (at most two tokens and one separator; the boundary key follows, ENG-R803).
+  It also happens at Return. The host injects it as one edit job before the boundary key (PLT-R357, W11-B).
+- A `restoreToggle` right after a revising commit (no event in between, soft ASCII boundary) is answered with an
+  edit that undoes the revision (`thenPassThrough: false`, the key is consumed, PLT-R353) and a strong
+  `CollisionSignal`; the next toggle passes through.
+- `EngineOutput.collisionSignals` carries `CollisionSignal(word, context, side, strength)` values for words of the
+  bundled collision list (ambiguity table and collision supplement): strong when the user's toggle went against
+  the rules (with the ENG-R861 `LearningSignal`) or undid a revision, weak when a decision became final untouched
+  (three later commits, or Return or Tab). `word` is the bundled list's string; the engine stores nothing.
+- `Resources.collision` (`CollisionLists`) holds the bundled lists, loaded by `Resources.bundled` (resource format
+  2); `Resources.collisionMemory` (`CollisionMemorySnapshot`, default empty) holds the host's votes per word and
+  context class (`CollisionContext`), read with `vote(word:context:)`. The engine never mutates it; a new snapshot
+  takes effect with a new engine at a hard boundary (ENG-R1211). `Resources.bundled` has a `collisionMemory:`
+  parameter.
+- New `CommitRule` cases `boundaryParticle`, `phrase`, `learned` (L9a to L9c); `RevisionReason` codes carry no text.
 
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift

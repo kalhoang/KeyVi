@@ -56,6 +56,8 @@ separately from the app (spec/04-quality-release.md QA-R27).
   placement difference only when the typed token is the source spelled in the typist's own style.
 - `GeneratedCorpusGateTests.exclusionTotal` prints the ENG-R870 exclusions over all shards.
 - `Scripts/coverage.py` also reports the line coverage of the data target and `lexicon-builder`.
+- `ResetReason.unseenInput`: input reached the app that the host never saw (a keyUp without its keyDown,
+  PLT-R397A). `FuzzAlphabet` encodes it as DEL, which was a second Backspace.
 
 ### Changed
 
@@ -73,6 +75,18 @@ separately from the app (spec/04-quality-release.md QA-R27).
 - `engine-benchmark` uses the bundled resources and replays the prose corpus with the three typists (ENG-T40);
   `Benchmarks/baseline.json` re-recorded for the new workloads.
 - The resource loader proves the uniqueness of byte-sorted lists without building a second set (ENG-R1231).
+- Backspace on an escape letter removes the escaping key and the keys whose effect it undid, so the display
+  loses exactly one character and the kind is no longer escaped (ENG-R711, ENG-R714, product owner
+  15/11/2026): `boss` + Backspace gives `bo`, `nhaamff` + Backspace gives `nhâm`. `InvariantChecker` and
+  `BackspaceProbe` check strict deletion for escapes (the `escapeUndone` and `literalRecomputed` outcomes are
+  gone). In the replay a tone key that finds no vowel yet waits for the next letter (`wsaw` + Backspace gives
+  `á`); a bracket escape keeps a mark key that still marks a letter that stays (`]ow]` + Backspace gives `ơ`);
+  the fallbacks keep a standalone `w` or bracket letter shown unmarked as a `u` or `o` key and otherwise
+  retype the token from the letters shown (`dwndw` + Backspace gives `đn`). After a mark removal only the
+  later mark keys count for the shared-key rule of ENG-R710 (`wzow` + Backspace gives `ư`).
+  `BackspaceExhaustiveTests` checks ENG-T38 on every sequence of up to five transform keys.
+- Telex `z` and VNI `0` remove one layer per press: the tone, then every vowel mark and `đ` (ENG-R411,
+  REG-34): `daauszz` gives `dau`. ENG-T36 probes the removal key with three presses.
 
 ### Fixed
 
@@ -96,3 +110,6 @@ separately from the app (spec/04-quality-release.md QA-R27).
   circumflex replaced stays plain. `BackspaceProbe` and the ENG-T38 property tests (generated corpus,
   English lexicon, prose corpus, fuzz invariant) check that every Backspace only deletes, except the
   documented exceptions of ENG-R714.
+- A re-opened token that a commit rule restored composes again once Backspace leaves keys that compose to
+  the text shown (ENG-R1005, REG-33, product owner 15/11/2026): `tiesng`, space, five Backspaces, `eesn` gives
+  `tiến`, not `tieesn`. A user restore (L1) stays literal.

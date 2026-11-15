@@ -1,0 +1,50 @@
+# english-pre-guard.txt: English determiners, pronouns and auxiliaries. A collision right after one of them
+# is inside an English phrase (`the car`, `you been`, `has been`), so rule RV4 never gives it its Vietnamese
+# display because of the next word (spec/01-engine.md ENG-R828: `Have you been ở Đà Lạt` keeps `been`).
+# Written by the project; the product owner reviews the list before v1.
+# Format: one lowercase word per line. Lines starting with # are comments.
+
+a
+am
+an
+and
+are
+at
+be
+been
+but
+did
+do
+does
+for
+had
+has
+have
+he
+her
+his
+i
+in
+is
+it
+its
+my
+of
+on
+or
+our
+she
+that
+the
+their
+these
+they
+this
+those
+to
+was
+we
+were
+with
+you
+your
