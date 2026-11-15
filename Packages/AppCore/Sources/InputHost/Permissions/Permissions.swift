@@ -56,8 +56,8 @@ public struct PermissionStatus: Sendable, Hashable {
 /// Every 2 s while not ready, every 30 s while ready (timers from the injected scheduler, utility queue in
 /// production), immediately on wake, session activation and menu open (PLT-R721). While a tap is installed
 /// (`setTapInstalled(true)`) Accessibility alone is also checked every second, so a revoked grant removes the tap
-/// within about a second even when macOS never disables it (PLT-R721, PLT-R730; the incident of 15/11/2026, decision
-/// 0005). Remembers the identity digest of the last grant (key-value store) for `stale`.
+/// within about a second of `AXIsProcessTrusted()` reporting it, even when macOS never disables the tap (PLT-R721,
+/// PLT-R730; the incident of 15/11/2026, decision 0005, where that call kept its old answer for about 30 s). Remembers the identity digest of the last grant (key-value store) for `stale`.
 ///
 /// Every probe call runs on `runner` (production: a serial queue of its own), never on the caller's thread and
 /// never under the state lock: a TCC call that stalls (for example behind System Settings) holds only the runner,
@@ -111,11 +111,10 @@ public final class PermissionMonitor: Sendable {
     }
     /// Checks on the runner (PLT-R721: menu open, wake, session activation, a system tap disable) and then calls
     /// `completion` on the runner with the newest status (see `checkNow`). Returns at once.
+    /// Requests made while a check is queued and not yet started join it, so a stalled probe call never piles up
+    /// checks (PLT-R730).
     public func requestCheck(_ completion: (@Sendable (PermissionStatus) -> Void)? = nil) {
-        runner.run { [self] in
-            let status = check()
-            completion?(latest ?? status)
-        }
+        enqueueCheck(completion)
     }
     /// The status of the most recent check, already set while an older status is still being delivered. A receiver
     /// that forwards statuses compares the one in hand with this and drops it when a newer one is queued behind it,
@@ -150,6 +149,11 @@ public struct QueuePermissionCheckRunner: PermissionCheckRunner {
     public let queue: DispatchQueue
     public init(queue: DispatchQueue) { self.queue = queue }
     public func run(_ work: @escaping @Sendable () -> Void) { queue.async(execute: work) }
+    /// The production runner: user-initiated, because its answer gates re-enabling the tap after a system disable
+    /// (PLT-R330) and must not be starved behind background work while the user types.
+    public static func production(label: String) -> QueuePermissionCheckRunner {
+        QueuePermissionCheckRunner(queue: DispatchQueue(label: label, qos: .userInitiated))
+    }
 }
 
 extension PermissionProbe {

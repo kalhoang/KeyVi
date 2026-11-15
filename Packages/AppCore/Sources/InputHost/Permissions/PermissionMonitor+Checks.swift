@@ -15,6 +15,12 @@ struct PermissionMonitorState: Sendable {
     var timerInterval: TimeSpan?
     var liveTimer: (any ScheduledTimer)?
     var fastPollingDeadline: (any ScheduledTimer)?
+    /// A full check (or a live check) is queued on the runner and has not started yet: later requests join it, so a
+    /// probe call that stalls never piles up checks behind it (PLT-R730).
+    var fullCheckQueued = false
+    var liveCheckQueued = false
+    /// Completions of the requests that joined the queued full check; they get its answer, read after they asked.
+    var pendingCompletions: [@Sendable (PermissionStatus) -> Void] = []
     /// Designated requirement digest of this build: read once, the signing identity cannot change at run time.
     var digest: String??
 }
@@ -31,7 +37,44 @@ private struct ProbeReading {
 extension PermissionMonitor {
     func beginChecks() {
         state.withLock { $0.started = true }
-        runner.run { [self] in _ = check() }
+        enqueueCheck()
+    }
+
+    /// Queues one full check on the runner, or joins the one already queued and not yet started; `completion` runs
+    /// on the runner with the newest status after that check (see `checkNow`).
+    func enqueueCheck(_ completion: (@Sendable (PermissionStatus) -> Void)? = nil) {
+        let schedule = state.withLock { state -> Bool in
+            if let completion { state.pendingCompletions.append(completion) }
+            guard !state.fullCheckQueued else { return false }
+            state.fullCheckQueued = true
+            return true
+        }
+        guard schedule else { return }
+        runner.run { [self] in
+            // Taken when the check starts: a request made from now on waits for the next check, read after it.
+            let completions = state.withLock { state -> [@Sendable (PermissionStatus) -> Void] in
+                state.fullCheckQueued = false
+                defer { state.pendingCompletions = [] }
+                return state.pendingCompletions
+            }
+            let status = check()
+            let newest = latest ?? status
+            for completion in completions { completion(newest) }
+        }
+    }
+
+    /// The 1 s live check, at most one queued at a time.
+    private func enqueueLiveCheck() {
+        let schedule = state.withLock { state -> Bool in
+            guard !state.liveCheckQueued else { return false }
+            state.liveCheckQueued = true
+            return true
+        }
+        guard schedule else { return }
+        runner.run { [self] in
+            state.withLock { $0.liveCheckQueued = false }
+            liveCheck()
+        }
     }
 
     func endChecks() {
@@ -88,7 +131,7 @@ extension PermissionMonitor {
             defer { state.tapUnavailable = unavailable }
             return state.tapUnavailable != unavailable
         }
-        if changed { runner.run { [self] in _ = check() } }
+        if changed { enqueueCheck() }
     }
 
     func updateTapInstalled(_ installed: Bool) {
@@ -156,17 +199,14 @@ extension PermissionMonitor {
         if state.timerInterval != interval {
             state.timer?.cancel()
             state.timer = scheduler.scheduleRepeating(every: interval, leeway: interval / 10) { [weak self] in
-                guard let self else { return }
-                runner.run { [self] in _ = check() }
+                self?.enqueueCheck()
             }
             state.timerInterval = interval
         }
         let wantsLive = ready && state.tapInstalled
         if wantsLive, state.liveTimer == nil {
             state.liveTimer = scheduler.scheduleRepeating(every: Self.liveInterval, leeway: Self.liveInterval / 10) {
-                [weak self] in
-                guard let self else { return }
-                runner.run { [self] in liveCheck() }
+                [weak self] in self?.enqueueLiveCheck()
             }
         } else if !wantsLive, let live = state.liveTimer {
             live.cancel()

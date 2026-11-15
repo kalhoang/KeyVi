@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R721 (amended 15/11/2026): while a tap is installed, Accessibility is checked live every second, so removing
-// the grant removes the tap within about one second even when macOS never disables it. PLT-R730: the probe calls
+// the grant removes the tap within about one second of `AXIsProcessTrusted()` reporting it, even when macOS never
+// disables the tap. PLT-R730: the probe calls
 // run on the monitor's own runner, never on the caller's thread, and nothing the main thread reads or sets waits
 // for a probe call that stalls (a TCC call blocked behind System Settings).
 
@@ -120,5 +121,35 @@ struct PermissionMonitorLiveCheckTests {
         queue.sync {}
         #expect(harness.probe.accessibilityChecksOnMainThread == 0)
         #expect(answered.last?.health == .noPermission)
+    }
+
+    /// While a probe call stalls, the 1 s live check, the polls and every request queue at most one full check and
+    /// one live check behind it; every request still gets an answer read after it was made.
+    @Test func checksQueuedBehindAStalledProbeCoalesce() async throws {
+        let queue = DispatchQueue(label: "test.permissions")
+        let harness = LiveHarness(runner: QueueRunner(queue: queue))
+        harness.monitor.start()
+        harness.monitor.setTapInstalled(true)
+        queue.sync {}
+        harness.probe.holdAccessibilityChecks()
+        let answered = Recorder<PermissionStatus>()
+        let entered = harness.probe.accessibilityCheckCount
+        harness.monitor.requestCheck { answered.append($0) }  // the runner is now stuck in this one
+        for _ in 0..<1_000 where harness.probe.accessibilityCheckCount == entered {
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        for _ in 0..<50 { harness.monitor.requestCheck { answered.append($0) } }
+        harness.scheduler.advance(by: .seconds(60))  // 60 live checks and two 30 s polls fire meanwhile
+        let before = harness.probe.accessibilityCheckCount
+        harness.probe.openAccessibilityGate()
+        queue.sync {}
+        #expect(answered.count == 51)
+        #expect(harness.probe.accessibilityCheckCount - before <= 2, "one full and one live check ran after the stall")
+    }
+
+    /// The runner's answer gates re-enabling the tap after a system disable (PLT-R330), so it is not starved behind
+    /// background work while the user types.
+    @Test func theProductionRunnerIsUserInitiated() {
+        #expect(QueuePermissionCheckRunner.production(label: "test.permissions").queue.qos == .userInitiated)
     }
 }

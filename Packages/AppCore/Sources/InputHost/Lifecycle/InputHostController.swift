@@ -199,8 +199,8 @@ public final class InputHostController {
             makeTapThread: TapSession.productionThreadMaker(factory: dependencies.tapFactory), tapClock: MachClock(),
             loadBundled: TapSettingsPublisher.bundledLoader, macOSVersion: Self.macOSVersion,
             runsWorkerThread: true, mainSignalQueue: .main,
-            permissionRunner: QueuePermissionCheckRunner(
-                queue: DispatchQueue(label: (Bundle.main.bundleIdentifier ?? "host") + ".permissions", qos: .utility)))
+            permissionRunner: QueuePermissionCheckRunner.production(
+                label: (Bundle.main.bundleIdentifier ?? "host") + ".permissions"))
     }
 
     init(
