@@ -330,7 +330,7 @@ For each key while composing a token:
 | Tone style | traditional | Section 5.2. |
 | Auto restore | on | Off: commit never restores; everything else is unchanged. |
 
-- **ENG-R450** There MUST be no other engine option in v1.
+- **ENG-R450** There MUST be no other engine option in v1. `EngineConfiguration.lookaheadRevision` (ENG-R829) is not a composition option: like `appContext` (8.6) it is a switch the host sets per app, here for the context rules of words that are both English and Vietnamese.
 
 ---
 
@@ -507,7 +507,7 @@ Examples: `vieejt` + Backspace -> `việ`, + Backspace -> `vi` (the tone goes wi
 
 ### 8.1 Decision at commit (normative, first matching rule wins)
 
-Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, the token flags (escape used, user-restored, user-kept), the language of the previous tokens in the run (8.3), the app context (8.6) and the resources (8.2). "R is English" means the lowercased `R` is in the English lexicon or the tech-always list.
+Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, the token flags (escape used, user-restored, user-kept), the language of the previous tokens in the run (8.3), the boundary key, the previous committed tokens of the run (rule L9b), the app context (8.6) and the resources (8.2), including the host's learned memory (ENG-R865). "R is English" means the lowercased `R` is in the English lexicon or the tech-always list. "The collision list" is the ambiguity table plus the collision supplement (8.2).
 
 | Rule | Condition | Result |
 |---|---|---|
@@ -522,12 +522,15 @@ Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, t
 | L7 | `R` is not English | keep |
 | L8 | `C` is not in the attested-syllable list | restore |
 | L9 | app context is `code` and `R` is in the code-only tech list | restore (reached only when L6 and L7 did not decide, see ENG-R850) |
-| L10 | the run is in English (8.3: an `en` token and no `vi` token among the previous three) | restore |
+| L9a | `R` is on the boundary-particle list and the boundary key is `.`, `!`, `?` or Return | keep (ENG-R825) |
+| L9b | the previous 1 to 3 tokens of the run (each followed by exactly one space) plus `R`, lowercased, start a bundled phrase | restore (ENG-R826) |
+| L9c | `R` is on the collision list and the learned memory votes for it in the current context class | as voted (ENG-R863) |
+| L10 | the run is in English (8.3: an `en` token and no `vi` token among the previous three) and the ambiguity row of `R` has no `run: vi` mark (ENG-R827) | restore |
 | L11 | ambiguity table row for `R`: `en` -> restore, `vi` -> keep; no row: restore if `R` is in the tech-always list, else keep | as stated |
 
-- **ENG-R801** The engine MUST implement exactly this order, including the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)*
+- **ENG-R801** The engine MUST implement exactly this order, including the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)* L9a, L9b and L9c are evaluated in that order after L9 and before L10; their reason codes are `boundaryParticle`, `phrase` and `learned`. L9c also applies to a token that L6, L7 or L8 would decide when `R` is on the collision list and the memory votes for the other side (a vote that agrees leaves the rule as it is): the memory reaches the collision supplement (`cos`, kept `có` by L7) and the generated rows that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10 never apply.
 - **ENG-R802** When auto restore is off, rules L3b to L11 MUST NOT restore anything. L1 and L2 (the user's own choices) still apply.
-- **ENG-R803** A restore at commit is an edit that replaces `C` with `R` followed by the boundary key (`thenPassThrough`).
+- **ENG-R803** A restore at commit is an edit that replaces `C` with `R` followed by the boundary key (`thenPassThrough`). When the commit also revises the previous token (ENG-R828), the edit covers the previous token, its separator and the current token in one `TextEdit`; the boundary key follows.
 
 ### 8.2 Data: what ships, from where, under which licence
 
@@ -539,7 +542,14 @@ All data is bundled in the app and loaded at start. Nothing is downloaded (ENG-R
 | Tech-always list | Words with no common Vietnamese reading that should always stay as typed: `www`, `http`, `https`, `wifi`, `usb`, `ios`, `macos`, `json`, `html`, `api`, `url`, `a4`, `mp3`, `mp4`, `4g`, `5g`, `h2o`, brand and product names... | Written by the project, licensed with the engine. | Reviewed by Pa. |
 | Code-only tech list | Shell commands and flags that collide with Vietnamese: `tar`, `less`, `more`, `cat`, `top`, `make`, `sed`, `awk`... | Written by the project. | Used only in the `code` context (L9). |
 | Attested syllables | Vietnamese syllables (with tone) that actually occur | Built by a reproducible script from legally safe text: Vietnamese legal normative documents (VERIFY: Vietnam IP Law 2005, Article 15, excludes legal normative and administrative documents from copyright protection), plus syllables added by Pa. MUST NOT use hunspell-vi or the Aspell Vietnamese list (GPL), Wiktionary (CC BY-SA), or data from any other input method. | Used only by L8, never to block typing. |
-| Ambiguity table | Rows `raw -> vi or en` for English words whose Telex typing produces an attested Vietnamese syllable | Generated candidate list (8.3), each row decided by Pa. | Decides L11. |
+| Ambiguity table | Rows `raw -> vi or en` for English words whose Telex typing produces an attested Vietnamese syllable, with the columns `run` (`en` or `vi`) and `viKind` (`particle`, `function`, `content`) of ENG-R827 | Generated candidate list (8.3), each row decided by Pa; `run` and `viKind` proposed by the W11 research (15/11/2026), reviewed by Pa. | Decides L11; `run` L10; `viKind` RV3, RV4. |
+| Phrases | English multiword expressions of 2 to 4 words that contain a collision word (`such as`, `has been`, `as hell`), 327 entries | Written by the project from general English usage, reviewed by Pa. The build fails when a phrase's Vietnamese reading occurs in the prose corpus (13.4). | L9b, RV1 (ENG-R826). |
+| Collision supplement | English and tech words outside the English lexicon whose Telex display is an attested syllable (`cos có`, `gif gì`, `nos nó`), 34 entries | Written by the project, reviewed by Pa. The build checks the display, the attestation and that the word is not English. | The memory only (L9c, ENG-R863). |
+| Boundary particles | `as` | Written by the project; the list holds only `as` (product owner, 15/11/2026). | L9a (ENG-R825). |
+| English function words | 150 closed-class English words (articles, pronouns, auxiliaries, prepositions, conjunctions, determiners, `lets`, `thats`, `theres`) | Written by the project, reviewed by Pa. | RV3, RV4 (ENG-R828). |
+| English-lean words | `the i my he she we by be then them me am` | Written by the project, reviewed by Pa. | The window (ENG-R823). |
+| Vietnamese tail words | 63 clause-final particles and adverbs (`nha`, `rồi`, `quá`); the 31 particles among them are marked | Written by the project, reviewed by Pa. | RV2 (particles), RV4 (ENG-R828). |
+| English pre-guard | 44 determiners, pronouns and auxiliaries (`the`, `you`, `has`) | Written by the project, reviewed by Pa. | RV4 (ENG-R828). |
 
 Do **not** use: wordfreq data (CC BY-SA 4.0), google-10000-english (derived from an LDC corpus; its own licence file advises against commercial use), hunspell-vi (GPL).
 
@@ -569,8 +579,18 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
   | did, theme, max | đi, thêm, mã | vi | very common Vietnamese |
 
 - **ENG-R822 Entry order matters.** The table is keyed by the exact raw keys, so a Vietnamese word blocked by an `en` row stays typable with another order: `tets` -> `tét` (L7, raw is not English).
-- **ENG-R823 English run.** The language of a committed token is, first match wins: `en` if it was restored (by the user or by a rule); `neutral` if rule L11 kept it (its raw keys are an English word and its display an attested syllable, kept by a `vi` row or by the unreviewed default, for example `thí`, `cả`, `á`, `tả`; with auto restore off, ENG-R802, also a token an `en` row would have restored, so `test and this` keeps `this` by `kept(englishRun)` as the auto-restore-on run restores it): such a token is evidence of neither language; `vi` if its committed text contains a Vietnamese-only letter (`ă â đ ê ô ơ ư` or any toned vowel); `en` if it is an unchanged ASCII word that is in the English lexicon and is not a valid Vietnamese syllable (`the` is valid Vietnamese, `and` and `you` are not); `neutral` otherwise (digits, `a`, `the`, `I`). The user's own choices (L1, L2) are evidence like any other token. The run is in English when the previous three committed tokens of the run contain at least one `en` token and no `vi` token: one Vietnamese token in that window means the writer is in Vietnamese and the English token is a loanword, so L10 does not apply and L11 decides. In an English run, rule L10 restores every remaining collision. Examples, Telex from an empty field: `this is the best car` gives `thí is the best car` (`thí` is neutral, `is` is restored by its `en` row, then `best` and `car` are in an English run; ENG-R824 leaves the first word as it is); `I think this is as good as it gets` and `tricky as hell` stay as typed; `This is as good` gives `Thí is as good`; `Khusc caif cacs app caafn thieest treen win cungx tricky as.` gives `Khúc cài các app cần thiết trên win cũng tricky á.` (`cũng` is in the window of `as`); `dduwowcj as.` gives `được á.`; `treen server been kia` gives `trên server bên kia`. *(Amended by the product owner on 14/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, REG-32: the first version made the run English when the nearest non-neutral token of the window was `en` and counted L11 keeps as `vi`, so any collision right after an English loanword was restored, `cũng tricky á` became `cũng tricky as`. The amended rule only removes L10 restores, it never adds one. Known costs: an ambiguous word within three tokens after a switch from Vietnamese to English stays Vietnamese, `tôi nghĩ the best car` gives `cả`; and because an L11 keep is neutral, a sentence can switch to English with no new English token once the Vietnamese one leaves the window, `vieejt and nam this as` gives `việt and nam thí as`, as the first version did for `as`.)*
-- **ENG-R824** Retroactive correction of an earlier token (for example fixing the first word of `This is a test` after the second word reveals English) is out of scope for v1. Candidate for v1.1.
+- **ENG-R823 English run.** The language of a committed token is, first match wins: `en` if it was restored (by the user or by a rule); `neutral` if rule L11 kept it (its raw keys are an English word and its display an attested syllable, kept by a `vi` row or by the unreviewed default, for example `thí`, `cả`, `á`, `tả`; with auto restore off, ENG-R802, also a token an `en` row would have restored, so `test and this` keeps `this` by `kept(englishRun)` as the auto-restore-on run restores it): such a token is evidence of neither language; `vi` if its committed text contains a Vietnamese-only letter (`ă â đ ê ô ơ ư` or any toned vowel); `en` if it is an unchanged ASCII word that is in the English lexicon and is not a valid Vietnamese syllable (`the` is valid Vietnamese, `and` and `you` are not); `en` also if it is an unchanged ASCII word on the English-lean list (8.2), such as `the`, `my`, `he`: these are valid Vietnamese syllables but rare as unmarked Vietnamese in chat (with `lookaheadRevision` on, ENG-R829); `neutral` otherwise (digits, `a`; `the` and `I` with the switch off). A token kept by L9a, by L9c on the Vietnamese side, or by L9b with auto restore off is `neutral` like an L11 keep. The language of a revised token (ENG-R828) replaces the language it had (`en` when the revision restores it, `neutral` when it takes its Vietnamese display), so later windows see the revision. The user's own choices (L1, L2) are evidence like any other token. The run is in English when the previous three committed tokens of the run contain at least one `en` token and no `vi` token: one Vietnamese token in that window means the writer is in Vietnamese and the English token is a loanword, so L10 does not apply and L11 decides. In an English run, rule L10 restores every remaining collision. Examples, Telex from an empty field: `this is the best car` gives `this is the best car` (`thí` is neutral, `is` is restored by its `en` row, then `best` and `car` are in an English run, and the phrase `this is` revises the first word, ENG-R828; with the 13.9 fixtures, which have no phrase list, the first word stays `thí`); `I think this is as good as it gets` and `tricky as hell` stay as typed; `This is as good` gives `This is as good` (`Thí` with the 13.9 fixtures); `Khusc caif cacs app caafn thieest treen win cungx tricky as.` gives `Khúc cài các app cần thiết trên win cũng tricky á.` (`cũng` is in the window of `as`); `dduwowcj as.` gives `được á.`; `treen server been kia` gives `trên server bên kia`. *(Amended by the product owner on 14/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, REG-32: the first version made the run English when the nearest non-neutral token of the window was `en` and counted L11 keeps as `vi`, so any collision right after an English loanword was restored, `cũng tricky á` became `cũng tricky as`. The amended rule only removes L10 restores, it never adds one. Known costs (the English-lean list of 15/11/2026 removes the first one at a line start: `The cả` becomes `The car`): an ambiguous word within three tokens after a switch from Vietnamese to English stays Vietnamese, `tôi nghĩ the best car` gives `cả`; and because an L11 keep is neutral, a sentence can switch to English with no new English token once the Vietnamese one leaves the window, `vieejt and nam this as` gives `việt and nam thí as`, as the first version did for `as`.)*
+- **ENG-R824 Revision of the previous token.** When token t+1 commits, token t MAY be revised once, by the rules of ENG-R828, as part of t+1's commit edit. Nothing older than t is ever changed. *(The first version left retroactive correction out of v1; the product owner asked on 15/11/2026 that the next word decide a collision word, `tricky á nha` and `tricky as hell`, docs/decisions/0005-pa-decisions-2026-11-13.md.)*
+- **ENG-R825 Boundary particle.** A collision whose lowercased raw keys are on the boundary-particle list (bundled, 8.2; v1: `as`) keeps its Vietnamese display when its boundary key is `.`, `!`, `?` or Return, whatever the window says, and is neutral for the window (rule L9a). An ellipsis is three `.` keys and the first one commits the token. Rationale: `tricky as.` is `tricky á.`; `has` and `did` are not on the list because `Yes she has.` and `Yes I did.` are English.
+- **ENG-R826 Phrases.** Resources carry the bundled phrase list (8.2): English multiword expressions of 2 to 4 words that contain a collision word. At commit, if for some p in 1...3 the previous p committed tokens of the run, each followed by exactly one space, together with the current token form the first p+1 words of a phrase (lowercased raw keys), the token is restored (L9b, reason `phrase`) and counts as `en`. Examples: `such as`, `has been`, `me too`, the second `as` of `as soon as`. Lookups are hash lookups on preallocated tables (ENG-R1232).
+- **ENG-R827 Run exemption, English-lean words, word kinds.** The ambiguity table carries two more columns: `run` (`en` or `vi`; `vi` means rule L10 never restores the word, only L9b, ENG-R828 or the memory can: common Vietnamese, rare English, such as `tows` -> `tớ`, `seeps` -> `sếp`, `teen` -> `tên`) and `viKind` (`particle`, `function`, `content`: the kind of the Vietnamese reading). Resources also carry the English-lean list (ENG-R823), the English function-word list, the tail-word list with its particle subset and the pre-guard list (ENG-R828). All are bundled, built from pinned inputs (ENG-R810) and reviewed by the product owner. New rows of the table start as `run: en`, `viKind: content`.
+- **ENG-R828 Revision rules.** Preconditions, all required: t was decided by L9c, L10 or L11 (never L1, L2, L9a, L9b or a previous revision); t is followed by exactly one space; no reset, Backspace into the history, restore toggle or macro expansion happened between the two commits (a Backspace inside t+1 is allowed); the configuration has `lookaheadRevision` and auto restore on. The first matching rule wins; a revised token is never revised again and its new language feeds the window (ENG-R823).
+  RV1 (phrase, looking forward): t shows its Vietnamese display, and the up to two tokens before t (each followed by one space), t and t+1 (lowercased raw keys) are the first two or more words of a bundled phrase: restore t.
+  RV2 (particle tail): t is a boundary-particle word restored by L10 or L9c, its ambiguity row is not `en`, it is not a tech-always word, t+1 is decided by a rule that reads the token alone (not L9a to L11) and t+1's committed text, lowercased, is on the tail-word list's particle subset: t takes its Vietnamese display.
+  RV3 (English function word next): t shows its Vietnamese display, t's `viKind` is not `particle`, t+1 is strict English evidence (decided by a rule that reads the token alone, never L4 or L8; raw keys English; typed unchanged or restored; its display not a valid Vietnamese syllable; not all caps) and t+1's lowercased raw keys are on the English function-word list and are not `it`: restore t.
+  RV4 (Vietnamese content next): t was restored by L10 or L9c, its row is not `en` and it is not a tech-always word; t+1 is Vietnamese evidence (kept by L7 with a Vietnamese-only letter, or typed unchanged as a Tier A syllable of at least two letters whose raw keys are not English and not all caps); t+1's committed text, lowercased, is not on the tail-word list; t is on the English function-word list or its `viKind` is `particle` or `function`; and the token before t, when exactly one space separates them, is not on the pre-guard list unless it shows a Vietnamese collision display: t takes its Vietnamese display.
+  The revision's reason codes are `phrase`, `particleTail`, `nextEnglish`, `nextVietnamese` (`EngineOutput.revision`). Examples (13.9.3): `tricky as hell` (RV1), `tricky á nha` (RV2), `If you cần quyền admin` (RV3), `Great job cả nhóm` (RV4); not revised: `I parked the car rồi` (tail word), `Have you been ở Đà Lạt` (pre-guard `you`), `Ngon á but mắc` (particle, RV3). A revision deletes at most t, the space after it and t+1's display (checked by the fuzz invariant checker).
+- **ENG-R829 Undo and configuration.** `EngineConfiguration.lookaheadRevision` (default true) enables L9a, L9b, the `run: vi` exemption of L10, the English-lean words of ENG-R823 and ENG-R828; off, the engine decides exactly as it did without them (the existing corpora pass unchanged with it off). The host passes the app's effective value (`02-platform.md`). The learned memory (L9c) is governed by `Resources.collisionMemory` (empty: no vote) and the signals of ENG-R864 are emitted either way. A `restoreToggle` that immediately follows a commit which revised t MUST answer with an edit that puts t's previous text back (t+1, the space and the boundary character unchanged), mark t as the user's choice (rule L1 if it is re-opened) and emit a strong signal for the side t showed first (ENG-R864); the next toggle passes through (ENG-R702). After Return or Tab the history is cleared and the toggle passes through, and so does a toggle after a non-ASCII boundary character.
 
 ### 8.4 When restore happens
 
@@ -596,7 +616,11 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 - **ENG-R860** Resources include two user lists: keep-as-typed and keep-Vietnamese, keyed by lowercased raw keys. The host stores them locally and shows them in settings, where entries can be removed.
 - **ENG-R861** When a token committed as user-restored or user-kept differs from what the rules alone would have decided, the output MUST carry a learning signal (`preferredRaw(raw)` or `preferredVietnamese(raw)`). The engine never stores it; the host decides whether to add it to a user list (ENG-R862).
 
-- **ENG-R862** Host policy for learning (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md; storage and migration in docs/decisions/0320-per-app-learned-words.md): the host adds an entry once the same learning signal (same list, same raw keys) has been seen twice in the same app, and stores the learned entry **for that app** (bundle identifier); it applies only in that app. Entries the user types in settings stay global. Settings shows the app next to each learned entry and lets the user remove it or make it global. The engine still knows nothing about apps (ENG-R851): for the focused app the host passes the global entries plus that app's learned entries as the user lists of `Resources`.
+- **ENG-R862** Host policy for learning (decision of the product owner, 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md; storage and migration in docs/decisions/0320-per-app-learned-words.md): the host adds an entry once the same learning signal (same list, same raw keys) has been seen twice in the same app, and stores the learned entry **for that app** (bundle identifier); it applies only in that app. Entries the user types in settings stay global. Settings shows the app next to each learned entry and lets the user remove it or make it global. The engine still knows nothing about apps (ENG-R851): for the focused app the host passes the global entries plus that app's learned entries as the user lists of `Resources`. This policy applies only to words that are not on the bundled collision list (the ambiguity table and the collision supplement). For collision words the host feeds the learned memory of ENG-R863 instead, which is per user across all apps (decision of the product owner, 15/11/2026). Rationale: a user-list entry makes a collision word permanent in one direction and breaks `tricky á` next to `as hell`.
+- **ENG-R863 Learned memory.** What is learned: only words on the bundled collision list, keyed by their lowercased raw keys, which are bundled vocabulary, never free text. Context class of the previous token of the run: sentence start (no previous token, after Return, Tab or a reset, or `.`, `!`, `?` or `:` among the boundary characters after it), otherwise its language (Vietnamese, English, neutral, ENG-R823). The host keeps two entries per word: one per class and one for any context, with corrections toward each side, silent acceptances of each side and the classes the corrections came from; it computes from them a vote per entry (`english`, `vietnamese`, `conflict`, or none): an entry votes for a side X when it holds at least one correction toward X, corrections(X) plus 0.25 x min(acceptances(X), 4) is at least 2, and that score is at least 3 x [corrections(Y) + 0.25 x min(acceptances(Y), 64)]; corrections on both sides and no winner is a conflict; the any-context entry votes only when its corrections came from at least two classes and none went to the other side. Lookup at commit: the class entry first; a class entry in conflict means the rules decide; otherwise the any-context entry. A revision (ENG-R828) may still revise a memory decision. The thresholds, decay, cap and storage are the host's (`02-platform.md`).
+- **ENG-R864 Learning signals for collisions.** For a word of the collision list, `EngineOutput.collisionSignals` carries zero or more `CollisionSignal(word, context, side, strength)`. Strong: the restore toggle against the rules' own decision, on the active word or after Backspace re-opened it (the token commits as the user's choice and the output also carries the ENG-R861 signal), and the toggle that undoes a revision (ENG-R829). Weak: a token whose raw keys differ from its display, decided by L6, L7, L8, L9c, L10 or L11, that becomes final untouched: three later commits in the run, or Return or Tab; a revision, its undo, a Backspace that re-opens the token, a macro that folds it and a reset withdraw it; L9a and L9b never give one. The context is the class at the token's commit (ENG-R863). The engine stores nothing (ENG-R1202); the host does.
+- **ENG-R865 Memory in resources.** `Resources.collisionMemory` is an immutable snapshot with `vote(word:context:) -> Language?`; the engine never mutates it. The host rebuilds the engine with a new snapshot at a hard boundary (ENG-R1211).
+- **ENG-R866 Privacy of the memory.** `CollisionSignal.word` is the string of the bundled collision list equal to the token's lowercased raw keys, never other text; it exists so that the host can store and display the user's choice (same exception as `LearningSignal` in ENG-R1220).
 
 ### 8.8 Measurable targets
 
@@ -608,6 +632,8 @@ Some English words type as real Vietnamese syllables: `as` -> `á`, `is` -> `í`
 | ENG-R873 | Vietnamese prose corpus (13.4) typed by three simulated typists (canonical order, tone at end, free order): at least 99.95 % of tokens identical to the source; every difference attributable to an `en` row. |
 | ENG-R874 | VNI: words without digits are never changed (100 %). |
 | ENG-R875 | Zero crashes in fuzzing (13.6). |
+| ENG-R876 | On the W11 collision corpus (13.11) the collision rules make no wrong revision and change no non-collision token; English-intent collisions at least 75 %, Vietnamese-intent at least 99 %; on the W11 adversarial sets no wrong revision; on the prose corpus (13.4) no token changes and no revision. |
+| ENG-R877 | A memory fed only by silent acceptance never changes a decision; on held-out sentences the memory never lowers Vietnamese-intent accuracy by more than 1.5 points. |
 
 ---
 
@@ -711,11 +737,13 @@ public struct EngineConfiguration: Sendable, Hashable {
     public var autoRestore: Bool          // default true
     public var appContext: AppContext     // default .general
     public var historyLimit: Int          // default 16 tokens, minimum 1
+    public var lookaheadRevision: Bool    // default true: L9a, L9b, run exemption, lean window, revisions (ENG-R829)
     public init(inputMethod: InputMethod = .telex(TelexOptions()),
                 toneStyle: ToneStyle = .traditional,
                 autoRestore: Bool = true,
                 appContext: AppContext = .general,
-                historyLimit: Int = 16)
+                historyLimit: Int = 16,
+                lookaheadRevision: Bool = true)
 }
 
 public struct KeyInput: Sendable, Hashable {
@@ -753,7 +781,8 @@ public enum KeyAction: Sendable, Hashable {
 public enum CommitRule: Sendable, Hashable {
     case unchanged, userChoice, userList, abbreviation, camelCase, escape,
          invalid, extendedSpelling, notEnglish, notAttested,
-         codeContext, englishRun, ambiguityTable, techList, defaultVietnamese
+         codeContext, boundaryParticle, phrase, learned,
+         englishRun, ambiguityTable, techList, defaultVietnamese
 }
 
 public enum CommitDecision: Sendable, Hashable {
@@ -783,6 +812,35 @@ public struct EngineOutput: Sendable, Hashable {
     public var composingText: String
     public var decision: CommitDecision?
     public var learning: LearningSignal?
+    public var revision: RevisionReason?            // the commit also revised the previous token (ENG-R828)
+    public var collisionSignals: [CollisionSignal]  // ENG-R864; empty for most events
+}
+
+public enum RevisionReason: Sendable, Hashable { case phrase, particleTail, nextEnglish, nextVietnamese }
+
+public enum CollisionContext: Sendable, Hashable, CaseIterable {
+    case sentenceStart, afterVietnamese, afterEnglish, afterNeutral
+}
+public enum CollisionVote: Sendable, Hashable { case english, vietnamese, conflict }
+
+public struct CollisionMemorySnapshot: Sendable, Hashable {     // ENG-R863, ENG-R865
+    public struct Vote: Sendable, Hashable {
+        public var word: String                 // a word of the bundled collision list
+        public var context: CollisionContext?   // nil: the any-context entry
+        public var choice: CollisionVote
+    }
+    public init<S: Sequence>(_ votes: S) where S.Element == Vote
+    public static let empty: CollisionMemorySnapshot
+    public var isEmpty: Bool { get }
+    public func vote(word: String, context: CollisionContext) -> Language?
+}
+
+public struct CollisionSignal: Sendable, Hashable {              // ENG-R864, ENG-R866
+    public enum Strength: Sendable, Hashable { case strong, weak }
+    public var word: String
+    public var context: CollisionContext
+    public var side: Language
+    public var strength: Strength
 }
 
 public struct EngineState: Sendable, Hashable {
@@ -800,11 +858,30 @@ public struct WordSet: Sendable {
 
 public enum Language: Sendable, Hashable { case vietnamese, english }
 
+public enum VietnameseReadingKind: Sendable, Hashable { case particle, function, content }
+
+public struct PhraseList: Sendable {                             // ENG-R826
+    public init<S: Sequence>(_ phrases: S) where S.Element == String
+    public let count: Int
+    public static let empty: PhraseList
+}
+
+public struct CollisionLists: Sendable {                         // 8.2, ENG-R825 to ENG-R828
+    public var phrases: PhraseList, supplement: WordSet, boundaryParticles: WordSet, runExempt: WordSet
+    public var readingKinds: [String: VietnameseReadingKind]
+    public var englishFunctionWords: WordSet, englishLean: WordSet
+    public var tailWords: WordSet, tailParticles: WordSet, preGuard: WordSet
+    public init(/* every list, each defaulting to empty */)
+    public static let empty: CollisionLists
+}
+
 public struct Resources: Sendable {
     public init(english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
                 attestedSyllables: WordSet, ambiguity: [String: Language],
                 userKeepRaw: WordSet, userKeepVietnamese: WordSet,
-                macros: MacroTable = .empty)
+                macros: MacroTable = .empty,
+                collision: CollisionLists = .empty,
+                collisionMemory: CollisionMemorySnapshot = .empty)
     public static let empty: Resources
 }
 
@@ -839,7 +916,8 @@ public enum Orthography {
 // In VietnameseEngineData:
 extension Resources {
     public static func bundled(userKeepRaw: WordSet, userKeepVietnamese: WordSet,
-                               macros: MacroTable = .empty) throws -> Resources
+                               macros: MacroTable = .empty,
+                               collisionMemory: CollisionMemorySnapshot = .empty) throws -> Resources
 }
 ```
 
@@ -849,7 +927,7 @@ extension Resources {
 
 ### 12.3 Privacy
 
-- **ENG-R1220** The engine MUST NOT log, print, persist or transmit keys or text. `CommitDecision` reason codes contain no text; `LearningSignal` contains text only so the host can update a user list the user can see.
+- **ENG-R1220** The engine MUST NOT log, print, persist or transmit keys or text. `CommitDecision` and `RevisionReason` reason codes contain no text; `LearningSignal` contains text only so the host can update a user list the user can see. `CollisionSignal.word` is a word of the bundled collision list, never other text; it exists so that the host can store and display the user's choice (ENG-R866).
 
 ### 12.4 Performance budget
 
@@ -1255,7 +1333,7 @@ Keys are typed in order; `⌫` means Backspace. "Output before boundary" is the 
 
 Rows W249-W253 were added from the product owner's P0 list after the reference-model run; add them to the oracle before relying on them.
 
-### 13.9 Worked examples: commit decisions (52 rows, plus 13.9.1 and 13.9.2)
+### 13.9 Worked examples: commit decisions (52 rows, plus 13.9.1 to 13.9.3)
 
 Each row types the keys, then a space. Fixture data for this table only: the English lexicon contains `test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky`; the tech-always list contains `www wifi usb`; the code-only list contains `tar`; every Tier A syllable is attested except `dóe hẻ dổ pót sáy ửa tơn dơn`; the ambiguity table is the proposal in ENG-R821. "Previous token" is the language of the run (8.3).
 
@@ -1337,7 +1415,7 @@ Rows B053-B064 were added from the product owner's P0 list after the reference-m
 
 #### 13.9.2 English run in a sentence (ENG-R823)
 
-Same fixtures as 13.9. Each row types the keys from an empty field, so every token before the last one is part of the run, and ends with the boundary key; the rule column names the rule that decided the last token. Rows B065-B072 were added with the product owner's report of 14/11/2026 (REG-32); `spec/reference-model/boundary.py` checks them.
+Same fixtures as 13.9. Each row types the keys from an empty field, so every token before the last one is part of the run, and ends with the boundary key; the rule column names the rule that decided the last token. Rows B065-B072 were added with the product owner's report of 14/11/2026 (REG-32); `spec/reference-model/boundary.py` checks them. The 13.9 fixtures have no collision lists (8.2), so rules L9a, L9b and the revisions of ENG-R828 never apply in these rows; 13.9.3 shows them with the bundled lists.
 
 | # | Keys typed | Boundary key | Method | Previous token | App context | Text after the boundary | Rule that decided |
 |---|---|---|---|---|---|---|---|
@@ -1349,6 +1427,48 @@ Same fixtures as 13.9. Each row types the keys from an empty field, so every tok
 | B070 | `I think this is as good as` | Space | Telex | none | general | `I think this is as good as ` | L10 English run: restore |
 | B071 | `This is as` | Space | Telex | none | general | `Thí is as ` | L10 English run: restore |
 | B072 | `tricky as` | Space | Telex | none | general | `tricky as ` | L10 English run: restore |
+
+#### 13.9.3 Collision decisions in a sentence (ENG-R825 to ENG-R828)
+
+The bundled data (8.2), Telex with default options, `lookaheadRevision` on. Each row types the keys from an empty field, then Return; the text column is the field before the new line. The last column names the rules that decided the collision words (L9a, L9b, L10, L11) and every revision (RV1 to RV4, ENG-R828); a row names a revision rule exactly when the engine revises. Rows C025 to C032 are the product owner's eight sentences (PA01 to PA08 of the W11 corpus); C033 and C034 are known costs of the RV4 guards. `CollisionWorkedExampleTests` (VietnameseEngineDataTests) replays this table.
+
+| # | Keys typed, then Return | Text before the new line | What decided |
+|---|---|---|---|
+| C001 | `tricky as.` | `tricky á.` | L9a keeps `as` before `.` |
+| C002 | `This is as.` | `This is á.` | L9a for `as`; L9b restores `is` (`this is`) and RV1 revises `This` |
+| C003 | `Yes she has.` | `Yes she has.` | L10: `has` is not a boundary particle |
+| C004 | `Yes he did.` | `Yes he did.` | L10: `did` is not a boundary particle |
+| C005 | `such as this` | `such as this` | L9b restores `as` (`such as`), L10 restores `this` |
+| C006 | `It has been a while` | `It has been a while` | L9b restores `has` and `been` (`has been`) |
+| C007 | `Me too` | `Me too` | L9b restores `too` (`me too`) |
+| C008 | `Call me as soon as possible` | `Call me as soon as possible` | L10 restores the first `as`, L9b the second (`as soon as`) |
+| C009 | `The car is here` | `The car is here` | L10: the English-lean `The` makes the run English (ENG-R823) |
+| C010 | `Great job car nhoms` | `Great job cả nhóm` | RV4 revises `car` |
+| C011 | `Deploy done sex baos` | `Deploy done sẽ báo` | RV4 revises `sex` |
+| C012 | `Thanks everyone been minhf` | `Thanks everyone bên mình` | RV4 revises `been` |
+| C013 | `Happy new year car nhaf` | `Happy new year cả nhà` | RV4 revises `car` |
+| C014 | `If you caanf quyeenf admin` | `If you cần quyền admin` | RV3 revises `If` |
+| C015 | `Reset your password` | `Reset your password` | RV3 revises `Reset` |
+| C016 | `I parked the car rooif` | `I parked the car rồi` | L10 for `car`; tail word `rồi` and pre-guard `the` |
+| C017 | `Love the new theme quas` | `Love the new theme quá` | L10 for `theme`; tail word `quá` |
+| C018 | `Have you been owr DDaf Latj chuwa` | `Have you been ở Đà Lạt chưa` | L10 for `been`; pre-guard `you` |
+| C019 | `Did you see the car hoom qua` | `Did you see the car hôm qua` | RV1 revises `Did` (`did you`); `car` stays (pre-guard `the`) |
+| C020 | `Ngon as but mawsc` | `Ngon á but mắc` | L11 for `as`; a particle reading is never restored before an English word |
+| C021 | `Nos ddepj as and rer` | `Nó đẹp á and rẻ` | L11 for `as`; particle reading |
+| C022 | `Hay as or not` | `Hay á or not` | L11 for `as`; particle reading |
+| C023 | `Is anyone there khoong` | `Is anyone there không` | L10 for `there`; tail word `không` |
+| C024 | `Heets as of course` | `Hết á of course` | RV1 revises `of` (`of course`); `as` stays because `as of` is not a phrase (product owner, 15/11/2026) |
+| C025 | `Khucs caif cacs app caanf thieets treen win cungx tricky as.` | `Khúc cài các app cần thiết trên win cũng tricky á.` | L9a keeps `as` before `.` |
+| C026 | `Cais nayf nos tricky as. Caanf phair lamf caanr thaanj` | `Cái này nó tricky á. Cần phải làm cẩn thận` | L9a keeps `as` before `.` |
+| C027 | `Cais nayf nos tricky as hell` | `Cái này nó tricky as hell` | RV1 revises `as` (`as hell`) |
+| C028 | `tricky as nha` | `tricky á nha` | RV2 revises `as` |
+| C029 | `treen server been kia` | `trên server bên kia` | L11 keeps `been`: no English run (ENG-R823) |
+| C030 | `Minhf nghix this is as good` | `Mình nghĩ this is as good` | L9b restores `is`; RV1 revises `this` (`this is`) and `as` (`as good`) |
+| C031 | `I think this is as good as it gets` | `I think this is as good as it gets` | L10 restores `this` and both `as`; L9b restores `is` |
+| C032 | `dduwowcj as.` | `được á.` | L9a keeps `as` before `.` |
+| C033 | `Thank you been minhf` | `Thank you been mình` | L10 for `been`; pre-guard `you` (known cost) |
+| C034 | `Welcome back car team` | `Welcome back car team` | L10 for `car`; the next word is English (known cost) |
+| C035 | `tricky tows` | `tricky tớ` | L11: `tows` is a `run: vi` row (ENG-R827) |
 
 ### 13.10 Worked examples: restore toggle
 
@@ -1363,6 +1483,10 @@ Same fixtures as 13.9. Each row types the keys from an empty field, so every tok
 | E06 | `vieejt`, space, toggle | Escape passes through (no active token) |
 | E07 | VNI `d9uo7c5`, toggle | `d9uo7c5` |
 | E08 | `traffic` (shows `trafic`), toggle | `traffic` |
+
+### 13.11 W11 collision corpus
+
+The W11 research (13/11 to 15/11/2026) produced a labelled corpus of 1,206 chat, office, developer and control sentences (11,180 tokens, 1,343 collision tokens: 720 meant as English, 623 as Vietnamese) and three small sets written to break the rules (57, 42 and 81 lines). They become fixtures of the `CollisionCorpusTests` target with their expected outputs under the rules of ENG-R825 to ENG-R828 (QA-R68). Measured with the engine of 15/11/2026 in host mode (Return ends the run), tone typed at the end: English-intent collisions 76.1 % (548 of 720), Vietnamese-intent 99.5 % (620 of 623), 98 revisions and none wrong, no non-collision token changed, 1,000 sentences exact; tone typed after the vowel: 76.1 % and 98.8 %, 96 revisions, none wrong; the three sets: 15, 11 and 21 revisions, none wrong. The same corpus without the collision rules (`lookaheadRevision` off) gives 58.5 % and 94.5 %. These numbers are the targets of ENG-R876.
 
 ---
 

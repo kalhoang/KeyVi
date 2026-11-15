@@ -17,6 +17,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Compatibility script for testing an app in under 3 minutes (`compat/SCRIPT.md`).
 - Cốc Cốc gets the browser hint when a password field turns on Secure Input: the menu suggests clicking outside the password field or switching tabs, as it does for Safari, Google Chrome, Microsoft Edge, Firefox, Arc and Brave.
 - Pressing z (Telex) or 0 (VNI) a second time removes the letter marks too: daauszz gives dau.
+- Words that are both English and Vietnamese, such as as/á, are decided from the words around them, and the previous word can be corrected when the next word shows which language you are writing.
 
 ### Changed
 
