@@ -786,8 +786,22 @@ try {
     assert.deepEqual(offenders, []);
   });
 
+  await check("vendor: anime.js 4.5.0 is vendored byte-exact with its licence (ADR 0603)", async () => {
+    const vendor = join(SITE_DIR, "static", "assets", "vendor");
+    const bundle = await readFile(join(vendor, "anime.umd.min.js"));
+    assert.ok(bundle.toString("utf8").startsWith("/**\n * Anime.js - UMD minified bundle\n * @version v4.5.0"), "the UMD bundle of anime.js 4.5.0");
+    const notices = await readFile(join(ROOT_DIR, "THIRD_PARTY_NOTICES.md"), "utf8");
+    const entry = notices.split("\n### anime.js 4.5.0\n")[1]?.split(/\n##/)[0] ?? "";
+    const recorded = entry.match(/SHA-256[^\n]*`([0-9a-f]{64})`/)?.[1];
+    assert.ok(recorded, "THIRD_PARTY_NOTICES.md section 5 records the SHA-256 of the vendored file in its anime.js entry");
+    assert.equal(createHash("sha256").update(bundle).digest("hex"), recorded, "the vendored file is the one the notice names");
+    assert.match(await readFile(join(vendor, "anime.LICENSE.txt"), "utf8"), /Julian Garnier/);
+  });
+
   await check("every source file carries an SPDX header", async () => {
-    const files = (await walk(SITE_DIR)).filter((f) => /\.(mjs|js|css)$/.test(f) && !f.includes(`${SITE_DIR}/dist`));
+    // Third-party files vendored byte-exact keep their own header; THIRD_PARTY_NOTICES.md records them (ADR 0603).
+    const vendor = join(SITE_DIR, "static", "assets", "vendor") + "/";
+    const files = (await walk(SITE_DIR)).filter((f) => /\.(mjs|js|css)$/.test(f) && !f.includes(`${SITE_DIR}/dist`) && !f.startsWith(vendor));
     const missing = [];
     for (const file of files) if (!(await readFile(file, "utf8")).slice(0, 400).includes("SPDX-License-Identifier: GPL-3.0-or-later")) missing.push(file.slice(SITE_DIR.length + 1));
     assert.deepEqual(missing, []);

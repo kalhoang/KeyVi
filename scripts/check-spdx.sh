@@ -9,7 +9,9 @@
 # Source files: *.swift, *.sh, *.bash, *.py, *.mjs, *.js, *.ts, *.css, *.rb, *.template,
 # *.xcconfig, workflow YAML under .github/, and extensionless executables under scripts/ with a
 # shebang. Excluded: spec/ (the specification, imported as is) except spec/reference-model/, generated
-# output (dist/, .build*/, site/dist/, node_modules/), JSON and Markdown (no comment syntax or not source).
+# output (dist/, .build*/, site/dist/, node_modules/), JSON and Markdown (no comment syntax or not source), and
+# third-party files vendored byte-exact under site/static/assets/vendor/ (their licence is recorded in
+# THIRD_PARTY_NOTICES.md, ADR 0603).
 set -euo pipefail
 
 usage() {
@@ -55,7 +57,7 @@ root, list_flag, file_list = sys.argv[1:]
 SOURCE_EXT = re.compile(r"\.(swift|sh|bash|py|mjs|cjs|js|ts|css|rb|template|xcconfig)$")
 WORKFLOW = re.compile(r"^\.github/.*\.ya?ml$")
 EXCLUDED = re.compile(r"^(spec/(?!reference-model/)|dist/|site/dist/)|(^|/)(\.build[^/]*|node_modules|DerivedData)/|"
-                      r"\.xcodeproj/|(^|/)__pycache__/")
+                      r"\.xcodeproj/|(^|/)__pycache__/|^site/static/assets/vendor/")
 MPL_PATH = re.compile(r"^(Packages/VietnameseEngine(Fuzz)?|data|spec/reference-model)/")
 HEADER = re.compile(r"SPDX-License-Identifier:\s*([A-Za-z0-9.+-]+)")
 

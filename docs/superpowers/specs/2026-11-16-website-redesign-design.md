@@ -136,10 +136,12 @@ Items marked *(integrator's call)* were not decided by the product owner; they c
 
 ### 7.2 Motion system
 
-- anime.js 4.5.0 vendored as one file (`dist/bundles/anime.esm.min.js`, about 41 KB gzipped), loaded as a module
-  only on pages that animate. *(integrator's call: one file instead of the modular tree, because the modular tree
-  imports its files by relative path without the `?v=hash` query, so an update could mix cached and new modules
-  under the one-year immutable cache.)*
+- anime.js 4.5.0 vendored as one file, `dist/bundles/anime.umd.min.js` (about 40 KB gzipped), loaded as a classic
+  deferred script only on pages that animate. *(integrator's call: one file instead of the modular tree, because the
+  modular tree imports its files by relative path without the `?v=hash` query, so an update could mix cached and new
+  modules under the one-year immutable cache. Builder's call, [ADR 0603](../../decisions/0603-website-motion-library.md):
+  the UMD bundle instead of the ES module bundle first named here, for the same reason; it is one fingerprinted
+  `<script src>` and exposes the global `anime`.)*
 - Tools used: timelines and timers for the typing demos, `stagger` for reveals, `onScroll` (or an
   IntersectionObserver) to start a section's motion when it enters the viewport, `createDrawable` and
   `createMotionPath` for the threads of section 4, springs or `outBack` easing for the small tags.

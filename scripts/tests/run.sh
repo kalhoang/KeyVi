@@ -152,7 +152,7 @@ expect 0 "typed calls, comments and CLI prints pass" "$S/lint-log-interpolation.
 
 echo "== check-spdx.sh"
 mkdir -p "$T/s/Packages/VietnameseEngine/Sources" "$T/s/Packages/VietnameseEngineFuzz" "$T/s/data" "$T/s/App" \
-  "$T/s/scripts" "$T/s/spec/reference-model"
+  "$T/s/scripts" "$T/s/spec/reference-model" "$T/s/site/static/assets/vendor"
 # ADR 0006 amendment of 2026-11-15: the engine packages, data/ and spec/reference-model/ are MPL-2.0.
 printf '// SPDX-License-Identifier: MPL-2.0\n' >"$T/s/Packages/VietnameseEngine/Sources/A.swift"
 printf '// SPDX-License-Identifier: MPL-2.0\n' >"$T/s/Packages/VietnameseEngineFuzz/F.swift"
@@ -161,17 +161,21 @@ printf '# SPDX-License-Identifier: MPL-2.0\n' >"$T/s/spec/reference-model/model.
 printf '// SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/App/B.swift"
 printf 'print(1)\n' >"$T/s/spec/model.py"
 printf '#!/bin/sh\n# SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/scripts/tool"
+# ADR 0603: third-party files vendored byte-exact keep their own header; their licence is in THIRD_PARTY_NOTICES.md.
+printf '/** vendored bundle, no SPDX line */\n' >"$T/s/site/static/assets/vendor/lib.min.js"
 expect 0 "correct headers pass, spec/ excluded except the reference model" "$S/check-spdx.sh" --root "$T/s"
 printf '// SPDX-License-Identifier: MIT\n' >"$T/s/App/B.swift"
 printf '// SPDX-License-Identifier: MIT\n' >"$T/s/Packages/VietnameseEngine/Sources/A.swift"
 printf '# SPDX-License-Identifier: GPL-3.0-or-later\n' >"$T/s/spec/reference-model/model.py"
 printf '#!/bin/sh\necho hi\n' >"$T/s/scripts/tool2"
+printf 'console.log(1);\n' >"$T/s/site/static/assets/own.js"
 expect 1 "wrong licence and missing header fail" "$S/check-spdx.sh" --root "$T/s"
 contains "wrong licence reported" "App/B.swift: SPDX licence MIT, expected GPL-3.0-or-later"
 contains "the engine expects MPL-2.0" "Packages/VietnameseEngine/Sources/A.swift: SPDX licence MIT, expected MPL-2.0"
 contains "the reference model is checked" \
   "spec/reference-model/model.py: SPDX licence GPL-3.0-or-later, expected MPL-2.0"
 contains "missing header reported" "scripts/tool2: missing"
+contains "first-party website scripts outside vendor/ are checked" "site/static/assets/own.js: missing"
 
 echo "== check-url-hosts.sh"
 cat >"$T/brand.env" <<'EOF'
