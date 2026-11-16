@@ -417,6 +417,26 @@ struct DevRecorderFixture {
         #expect(lines.map(\.complUs) == [50_000, 480, nil])
     }
 
+    /// Retest of 16/11/2026: a revision's job line names what its read-back found (PLT-R357), never the text read;
+    /// other jobs carry no `rb`.
+    @Test func revisionJobLinesCarryTheReadBackResult() throws {
+        let fixture = DevRecorderFixture.make()
+        try fixture.dev.start(appVersion: "1")
+        func job(_ sequence: UInt64, readback: StaticString?) -> DevTraceRecord {
+            .job(
+                DevJobRecord(
+                    sequence: sequence, generation: 1, kind: SampleRule.notEnglish, strategy: .backspaceReplace,
+                    outcome: "executedWithFallback", deleteCount: 6, insertCount: 5, eventsPosted: 0,
+                    totalMicroseconds: 52_100, runMicroseconds: 51_900, at: fixture.clock.now(), readback: readback))
+        }
+        fixture.dev.pushInject(job(1, readback: "mismatch differs afterSettle"))
+        fixture.dev.pushInject(job(2, readback: "skipped rule"))
+        fixture.dev.pushInject(job(3, readback: nil))
+        fixture.advance(seconds: 2)
+        let lines = fixture.lines(fixture.hour).filter { $0.type == .job }
+        #expect(lines.map(\.rb) == ["mismatch differs afterSettle", "skipped rule", nil])
+    }
+
     /// PLT-R904A retention: 7 days, then 200 MB (a small cap here) oldest first; the file in use and foreign files
     /// stay.
     @Test func purgeKeepsSevenDaysAndTwoHundredMegabytes() throws {

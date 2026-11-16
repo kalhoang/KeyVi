@@ -1,7 +1,7 @@
 {
   "$schema": "./schema/rules.schema.json",
   "schemaVersion": 1,
-  "rulesetVersion": "2026.11.8",
+  "rulesetVersion": "2026.11.9",
   "defaults": {
     "strategy": "backspaceReplace",
     "params": { "unicodeChunk": 1, "interEventDelayUs": 0, "postDeleteSettleUs": 0, "firstEditDelayUs": 0, "inlineCompletion": "none" },
@@ -265,6 +265,7 @@
       "action": {
         "strategy": "backspaceReplace",
         "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
+        "verifyReentry": "never",
         "engineContext": "code",
         "features": { "autoCapitalize": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
@@ -272,7 +273,7 @@
         "reason": "The integrated terminal feeds keys to a shell like a terminal emulator, and users asked for terminal behaviour there instead of the editor's.",
         "evidence": [{ "type": "scenario", "ref": "compat/terminal-tui" }],
         "tested": [{ "app": "Visual Studio Code", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "VERIFY that the terminal's helper textarea class is exposed through AX without enabling AXManualAccessibility; otherwise this rule never matches and the editor rule applies. The tested entry is a placeholder until the scenario passes.",
+        "notes": "VERIFY that the terminal's helper textarea class is exposed through AX without enabling AXManualAccessibility; otherwise this rule never matches and the editor rule applies. verifyReentry is never as in terminal.default (PLT-R342, PLT-R357, retest of 16/11/2026): the helper textarea does not hold the shell's line, so a read-back could not vouch for a re-entry or a revision. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },
@@ -286,6 +287,7 @@
         "strategy": "backspaceReplace",
         "params": { "unicodeChunk": 1, "interEventDelayUs": 1500, "postDeleteSettleUs": 4000 },
         "requireTextFocus": "never",
+        "verifyReentry": "never",
         "engineContext": "code",
         "features": { "autoCapitalize": false, "restoreHotkey": false, "lookaheadRevision": false }
       },
@@ -293,7 +295,7 @@
         "reason": "TUIs (Claude Code, Kiro CLI) lost or appended letters when backspaces and UTF-8 arrived in one read.",
         "evidence": [{ "type": "scenario", "ref": "compat/terminal-tui" }],
         "tested": [{ "app": "Terminal", "appVersion": "VERIFY", "macOS": "VERIFY", "date": "VERIFY", "result": "pass" }],
-        "notes": "Initial pacing values are hypotheses. VERIFY with an Ink-based TUI, zsh-autosuggestions, tmux over ssh. Warp reports caret 0, so no AX gating. Escape belongs to the shell and TUIs, so the restore hotkey is off (PLT-R353). Bundle IDs of the terminals group: Terminal com.apple.Terminal (Apple, the macOS Terminal preferences domain); the others from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): iterm2 com.googlecode.iterm2, ghostty com.mitchellh.ghostty, warp dev.warp.Warp-Stable, wezterm com.github.wez.wezterm, kitty net.kovidgoyal.kitty, alacritty org.alacritty. The tested entry is a placeholder until the scenario passes.",
+        "notes": "Initial pacing values are hypotheses. VERIFY with an Ink-based TUI, zsh-autosuggestions, tmux over ssh. Warp reports caret 0, so no AX gating. verifyReentry is never (PLT-R342, PLT-R357, retest of 16/11/2026): the Accessibility text is the screen grid, an echo of the shell's line editor that can lag by a network round trip (ssh, tmux), whose caret need not be a UTF-16 offset of the text read (Warp's caret 0; iTerm2's value holds the whole session), so in iTerm2 every RV5 revision read back a mismatch and kept 'tar thử'; the keys of an edit reach the line editor in order, and the tap's boundaries (navigation keys, clicks, focus changes, Return, chords) reset the history the edit is computed from. Escape belongs to the shell and TUIs, so the restore hotkey is off (PLT-R353). Bundle IDs of the terminals group: Terminal com.apple.Terminal (Apple, the macOS Terminal preferences domain); the others from Homebrew cask metadata (formulae.brew.sh/api/cask/<token>.json, uninstall quit and zap entries, retrieved 2026-11-13): iterm2 com.googlecode.iterm2, ghostty com.mitchellh.ghostty, warp dev.warp.Warp-Stable, wezterm com.github.wez.wezterm, kitty net.kovidgoyal.kitty, alacritty org.alacritty. The tested entry is a placeholder until the scenario passes.",
         "addedIn": "1.0.0",
         "reviewBy": "2027-05-01"
       },

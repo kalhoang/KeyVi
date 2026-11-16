@@ -111,11 +111,17 @@ public struct DevJobRecord: Sendable {
     /// the job made no read (no completion read, or a job without a field). Since the retest of 16/11/2026: Spotlight
     /// answered just after the 15 ms bound while it was opening, so the bound is tuned from these values.
     public var completionReadMicroseconds: UInt64?
+    /// Revision jobs (PLT-R357): what the read-back of the previous token found, as a name (`matches`,
+    /// `mismatch differs afterSettle`, `mismatch caretBeforeText`, `mismatch shortRead`, `unreadable`, `skipped rule`,
+    /// `skipped unknownPrevious`, ...), never the text read; nil for other jobs. Since the retest of 16/11/2026, so a
+    /// revision that fell back says why.
+    public var readback: StaticString?
 
     public init(
         sequence: UInt64, generation: UInt64, kind: any Sendable, strategy: InjectionStrategy, outcome: StaticString,
         deleteCount: Int, insertCount: Int, eventsPosted: Int, totalMicroseconds: UInt64, runMicroseconds: UInt64,
-        at: MonotonicInstant, completion: StaticString? = nil, completionReadMicroseconds: UInt64? = nil
+        at: MonotonicInstant, completion: StaticString? = nil, completionReadMicroseconds: UInt64? = nil,
+        readback: StaticString? = nil
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -130,6 +136,7 @@ public struct DevJobRecord: Sendable {
         self.at = at
         self.completion = completion
         self.completionReadMicroseconds = completionReadMicroseconds
+        self.readback = readback
     }
 }
 

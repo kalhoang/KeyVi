@@ -20,6 +20,8 @@ struct JobContext {
     var completion: StaticString?
     /// How long that read took, timeouts included; nil when the job had no field to read.
     var completionReadMicroseconds: UInt64?
+    /// What the PLT-R357 read-back of a revision found (`RevisionReadBackNote.label`); nil for other jobs.
+    var readback: StaticString?
     #endif
 }
 

@@ -81,6 +81,14 @@ private final class FollowingWallClock: WallClock, Sendable {
                     outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 6, totalMicroseconds: 1_600,
                     runMicroseconds: 1_400, at: clock.now(), completion: "forwardDelete",
                     completionReadMicroseconds: 23_400)))
+        // PLT-R357, retest of 16/11/2026: a revision that fell back names its read-back.
+        dev.pushInject(
+            .job(
+                DevJobRecord(
+                    sequence: 11, generation: 2, kind: SampleReason.revision, strategy: .backspaceReplace,
+                    outcome: "executedWithFallback", deleteCount: 6, insertCount: 5, eventsPosted: 0,
+                    totalMicroseconds: 1_200, runMicroseconds: 1_100, at: clock.now(),
+                    readback: "mismatch differs afterSettle")))
         dev.note(
             .readback(
                 DevReadbackRecord(
@@ -100,12 +108,16 @@ private final class FollowingWallClock: WallClock, Sendable {
         #expect(result.exitCode == 0)
         #expect(result.output.contains("Launches: 1"))
         #expect(result.output.contains("Apps (key downs): com.example.editor 2"))
-        #expect(result.output.contains("Key downs: 2, engine steps: 2, jobs: 2, readbacks: 1, markers: 1"))
+        #expect(result.output.contains("Key downs: 2, engine steps: 2, jobs: 3, readbacks: 1, markers: 1"))
         #expect(result.output.contains("Unreadable lines: 0"))
         #expect(result.output.contains("resetWithOpenToken  focusChanged / focusChanged, token of 1 characters open"))
         #expect(result.output.contains("marker  menu"))
         #expect(result.output.contains("injectionProblem  job 9 compose backspaceReplace: slow 90 ms"))
         #expect(!result.output.contains("job 10"))  // PLT-R423: two more events per deletion are not a problem
+        #expect(
+            result.output.contains(
+                "revisionFellBack  job 11 revision backspaceReplace: outcome executedWithFallback, 0 events, "
+                    + "readback mismatch differs afterSettle"))
         let shown = TraceScanCommand.run(
             ["show", "1", "--dir", folder.path, "--before", "1s"], now: base, timeZone: .current, makeReplay: { nil })
         #expect(shown.output.contains("engine  edit  delete 1  insert \"â\"  token \"â\""))
@@ -113,11 +125,12 @@ private final class FollowingWallClock: WallClock, Sendable {
         #expect(shown.output.contains("4 events  completion selected read 480 us"))  // PLT-R420 read (15/11/2026)
         // PLT-R423, with the read's duration since the retest of 16/11/2026.
         #expect(shown.output.contains("6 events  completion forwardDelete read 23.4 ms  1.6 ms total"))
+        #expect(shown.output.contains("0 events  readback mismatch differs afterSettle  1.2 ms total"))
     }
 }
 
 /// Stand-ins for the engine and injection enums the recorder boxes (their names are what the file holds).
 private enum SampleReason: Sendable {
-    case focusChanged, compose
+    case focusChanged, compose, revision
 }
 #endif

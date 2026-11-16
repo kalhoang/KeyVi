@@ -191,6 +191,42 @@ private let command: UInt64 = 0x0010_0000
         return line
     }
 
+    /// PLT-R357, retest of 16/11/2026: a revision whose previous word was not rewritten (only the current token's part
+    /// applied, the key passed, the job discarded) is its own finding, with its events and the read-back that decided
+    /// it; its slowness stays an injection problem. Traces written before the read-back field still parse and get
+    /// the finding without it.
+    @Test func aRevisionThatFellBackIsAFinding() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        let fellBack = Self.revisionJob(
+            1, outcome: "executedWithFallback", posted: 0, readback: "mismatch differs afterSettle", totalUs: 52_100)
+        trace.line("job", fellBack)
+        trace.line("job", Self.revisionJob(2, outcome: "executed", posted: 22, readback: "skipped rule"))
+        trace.line("job", Self.revisionJob(3, outcome: "passedThroughByFallback", posted: 2, readback: nil))
+        let found = try findings(trace)
+        #expect(
+            found.filter { $0.kind == .revisionFellBack }.map(\.detail) == [
+                "job 1 revision backspaceReplace: outcome executedWithFallback, 0 events, "
+                    + "readback mismatch differs afterSettle",
+                "job 3 revision backspaceReplace: outcome passedThroughByFallback, 2 events",
+            ])
+        #expect(
+            found.filter { $0.kind == .injectionProblem }.map(\.detail) == [
+                "job 1 revision backspaceReplace: slow 52 ms"
+            ])
+    }
+
+    private static func revisionJob(
+        _ sequence: Int, outcome: String, posted: Int, readback: String?, totalUs: Int = 1_600
+    ) -> [String: Any] {
+        var line: [String: Any] = [
+            "seq": sequence, "gen": 1, "kind": "revision", "strat": "backspaceReplace", "out": outcome, "delN": 6,
+            "insN": 5, "posted": posted, "totalUs": totalUs, "runUs": totalUs - 200,
+        ]
+        if let readback { line["rb"] = readback }
+        return line
+    }
+
     /// (g) Escape restore and history re-open.
     @Test func restoresAndReopensAreFindings() throws {
         var trace = TraceBuilder()
