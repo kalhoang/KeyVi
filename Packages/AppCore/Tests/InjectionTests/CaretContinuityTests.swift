@@ -247,6 +247,24 @@ extension [KeyCode] {
         #expect(!session.edit(delete: 1, insert: "b", latency: .milliseconds(60)).contains(.forwardDelete))
     }
 
+    /// Only a read that timed out keeps an answer. A read that fails at once (`.unavailable` for an element that is
+    /// gone, `.failed` for any other AX error) says the field is not the one that answered: something the tap cannot
+    /// see closed or replaced it, and focus may now be in another element before the new generation is published
+    /// (PLT-R316). Nothing is added (PLT-R407), the PLT-R420 health event is counted and the answer is forgotten, so a
+    /// later timeout in the same session adds nothing either.
+    @Test(arguments: [FakeFocusedFieldAccess.Behaviour.unavailable, .failed])
+    func aReadThatFailsAtOnceKeepsNothingAndForgetsPLTR423(behaviour: FakeFocusedFieldAccess.Behaviour) {
+        let session = SpotlightSession(field: SimulatedTextField(behaviour: .suggestionAfterCaret(suggestions: [])))
+        session.type("ab")
+        #expect(session.edit(delete: 1, insert: "b", latency: .milliseconds(3)).first == .forwardDelete)
+        session.rig.fieldAccess.setBehaviour(behaviour)
+        #expect(!session.edit(delete: 1, insert: "b", latency: .milliseconds(1)).contains(.forwardDelete))
+        #expect(session.rig.healthKinds().contains(.fallbackActivated))
+        session.rig.fieldAccess.setBehaviour(.normal)
+        #expect(!session.edit(delete: 1, insert: "b", latency: .milliseconds(60)).contains(.forwardDelete))
+        #expect(session.field.text == "ab")
+    }
+
     /// A liveness flush (PLT-R314) resets the composition: the answer is forgotten.
     @Test func aFlushForgetsTheAnswerPLTR314() {
         let session = SpotlightSession(field: SimulatedTextField(behaviour: .suggestionAfterCaret(suggestions: [])))

@@ -84,7 +84,11 @@ extension FakeEventPoster.Posted {
 public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     /// `writesIgnored`: every write reports success and does nothing. `textWritesIgnored`: selection writes
     /// apply, text writes report success and do nothing (4.5 "writes may silently do nothing").
-    public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored, textWritesIgnored }
+    /// `failed` answers every call with `kAXErrorFailure`, the `.failed` result of an AX error that is neither a
+    /// messaging timeout nor a missing element (PLT-R423 tests).
+    public enum Behaviour: Sendable, Hashable {
+        case normal, timeout, unavailable, failed, writesIgnored, textWritesIgnored
+    }
 
     /// How late the simulated app answers reads, on the clock the caller measures with.
     private struct Latency: Sendable {
@@ -152,8 +156,12 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         case .normal, .writesIgnored, .textWritesIgnored: return .success(body())
         case .timeout: return .timedOut
         case .unavailable: return .unavailable
+        case .failed: return .failed(code: Self.axFailureCode)
         }
     }
+
+    /// `kAXErrorFailure`.
+    private static let axFailureCode: Int32 = -25200
 
     private func write(text: Bool, _ body: () -> Void) -> AXCallResult<Void> {
         calls.wrappingAdd(1, ordering: .relaxed)
@@ -167,6 +175,7 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         case .writesIgnored: return .success(())
         case .timeout: return .timedOut
         case .unavailable: return .unavailable
+        case .failed: return .failed(code: Self.axFailureCode)
         }
     }
 }

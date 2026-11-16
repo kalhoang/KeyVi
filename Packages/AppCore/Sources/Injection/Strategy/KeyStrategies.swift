@@ -130,9 +130,10 @@ enum CompletionPrefix: Equatable {
     /// (50 ms; Spotlight answered in 16 to 21 ms while it was opening, retest of 16/11/2026). A selection keeps
     /// PLT-R420's extra deletion; only an empty selection at the end of the text gets Forward Delete, because anywhere
     /// else it would delete the character after the caret. A caret before the end is normal editing. A read that does
-    /// not answer keeps an earlier answer of "at the end" while the caret's continuity holds (amendment of 16/11/2026:
-    /// in one Spotlight session the reads took 3.2, 14.6, 27.2 and then more than 50 ms); without one, nothing is added
-    /// and the PLT-R420 health event is counted. A fresh answer always wins and replaces the remembered one.
+    /// not answer in time keeps an earlier answer of "at the end" while the caret's continuity holds (amendment of
+    /// 16/11/2026: in one Spotlight session the reads took 3.2, 14.6, 27.2 and then more than 50 ms); without one,
+    /// nothing is added and the PLT-R420 health event is counted. A fresh answer always wins and replaces the
+    /// remembered one.
     private static func forwardDelete(for job: EditJob, in environment: any InjectionEnvironment) -> CompletionPrefix {
         let host = environment as? any StrategyHost
         let epochBeforeRead = host?.caretEpoch
@@ -141,8 +142,12 @@ enum CompletionPrefix: Equatable {
                 environment.fieldAccess.caret(field, timeout: InjectionTiming.forwardDeleteReadTimeout)
             }
         }
-        guard let read, case .success(let caret) = read.result else {
-            return unanswered(job, duration: read?.duration, host: host)
+        guard let read else { return unreadable(duration: nil, host: host) }
+        let caret: FieldCaret
+        switch read.result {
+        case .success(let answer): caret = answer
+        case .timedOut: return unanswered(job, duration: read.duration, host: host)
+        case .unavailable, .failed: return unreadable(duration: read.duration, host: host)
         }
         guard caret.isAtEndOfText else {
             host?.forgetCaretAtEnd()
@@ -155,16 +160,26 @@ enum CompletionPrefix: Equatable {
         return .forwardDeleteBeforeEachDeletion
     }
 
-    /// PLT-R423: the read timed out, AX was unavailable or the job has no field. The caret's continuity since an
-    /// earlier answer of "at the end" keeps the Forward Delete; otherwise the caret is unknown, so nothing is added
-    /// (PLT-R407) and the PLT-R420 health event is counted.
+    /// PLT-R423: the read timed out (`kAXErrorCannotComplete`), the one result that means the app is busy (Spotlight
+    /// behind its search) rather than the field being gone. The caret's continuity since an earlier answer of "at the
+    /// end" keeps the Forward Delete; otherwise the caret is unknown.
     private static func unanswered(
-        _ job: EditJob, duration: TimeSpan?, host: (any StrategyHost)?
+        _ job: EditJob, duration: TimeSpan, host: (any StrategyHost)?
     ) -> CompletionPrefix {
         if let kept = host?.keptCaretAtEnd(for: job) {
             host?.noteCompletionRead(.forwardDeleteKept, duration: duration, kept: kept)
             return .forwardDeleteBeforeEachDeletion
         }
+        return unreadable(duration: duration, host: host)
+    }
+
+    /// PLT-R423: the caret is unknown, so nothing is added (PLT-R407) and the PLT-R420 health event is counted. A read
+    /// that failed at once (`.unavailable` for an element that is gone, `.failed`) or a job without a field never keeps
+    /// an earlier answer: something the tap cannot see closed or replaced the field, and focus may already be in
+    /// another element before the new generation is published (PLT-R316), where a Forward Delete would delete the
+    /// character after its caret. The remembered answer is forgotten for the same reason.
+    private static func unreadable(duration: TimeSpan?, host: (any StrategyHost)?) -> CompletionPrefix {
+        host?.forgetCaretAtEnd()
         host?.noteCompletionRead(.forwardDeleteUnreadable, duration: duration, kept: nil)
         host?.completionFallback()
         return .none

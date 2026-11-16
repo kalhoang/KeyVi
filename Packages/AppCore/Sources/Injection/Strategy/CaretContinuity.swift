@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // PLT-R423 caret continuity (amendment of 16/11/2026, second retest of beta 2): what the worker remembers of the last
-// `forwardDelete` read that found the caret at the end of the text, and when a later read that does not answer may
-// keep that answer.
+// `forwardDelete` read that found the caret at the end of the text, and when a later read that timed out may keep
+// that answer.
 
 internal import AppModel
 internal import RealtimeSupport
@@ -16,7 +16,8 @@ internal import RealtimeSupport
 /// caret, so while its epoch has not moved since the answer was read, in the same focus session and field, that answer
 /// still holds.
 ///
-/// Inject thread only. A fresh answer always wins: the memory is consulted only when the read did not answer.
+/// Inject thread only. A fresh answer always wins: the memory is consulted only when the read timed out. A read that
+/// fails at once (`.unavailable`, `.failed`) means the field is gone or refused, not busy, so it forgets instead.
 struct CaretAtEndMemory {
     /// How an answer was kept, for the dev recorder's job line (PLT-R904A).
     struct Kept: Sendable, Hashable {
@@ -50,7 +51,7 @@ struct CaretAtEndMemory {
             answeredAt: answeredAt, jobsSinceRead: 0)
     }
 
-    /// The read for `job` did not answer: the remembered answer if it still holds, that is, the same focus session and
+    /// The read for `job` timed out: the remembered answer if it still holds, that is, the same focus session and
     /// field, and neither the job's epoch nor the live one (`liveEpoch`, loaded after the read timed out, so a click
     /// during the read counts) moved since the answer. An answer that no longer holds is dropped for good: epochs and
     /// generations only grow.
