@@ -43,8 +43,10 @@ and the Web Animations API, but a few parts write markup strings. These are not 
 - the `debug` option of `onScroll` (`ScrollObserver`): it draws its markers through `innerHTML`;
 - any other API or option that writes `innerHTML`, or a markup string, into the page.
 
-First-party scripts never write `innerHTML`, `outerHTML`, `insertAdjacentHTML` or a `style` attribute either;
-`site/test.mjs` checks their source. The APIs the website uses: `animate`, `createTimeline`, `createTimer`,
+First-party scripts never write `innerHTML`, `outerHTML`, `insertAdjacentHTML` or a `style` attribute either.
+`site/test.mjs` checks the vendored file now (first line, SHA-256 and licence); the check of the first-party script
+sources and the 60 KB home page budget land with the first first-party script, the home page motion script (plan
+Task 6 of `docs/superpowers/plans/2026-11-17-website-redesign.md`). The APIs the website uses: `animate`, `createTimeline`, `createTimer`,
 `stagger`, `onScroll` (without `debug`), `svg.createDrawable`, `svg.createMotionPath`, `utils`, and the spring
 and `outBack` easings.
 
@@ -60,7 +62,8 @@ and `outBack` easings.
    `THIRD_PARTY_NOTICES.md`: heading, version, SHA-256, integrity value, copyright line, the licence text compared
    byte for byte, and the date of the comparison. Update the version in the first line check of `site/test.mjs`.
 5. Read the release notes for API changes and for new code paths that write markup or style attributes, then run
-   `node site/test.mjs` (hash, size budget, forbidden APIs) and the browser pass under the production CSP.
+   `node site/test.mjs` (hash and licence; the size budget and forbidden APIs once the motion script has landed)
+   and the browser pass under the production CSP.
 6. Amend this record with the new version and the date. A version change is a decision-record change (QA-R24).
 
 ## Consequences

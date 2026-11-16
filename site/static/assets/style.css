@@ -85,7 +85,7 @@ li + li { margin-top: 0.35rem; }
 hr { margin: 2.5rem 0; border: 0; border-top: 1px solid var(--line); }
 a { color: var(--green-text); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 a:hover { text-decoration-thickness: 2px; }
-:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 [id] { scroll-margin-top: 1rem; }
 img, svg { max-width: 100%; }
 strong { font-weight: 650; }
@@ -456,4 +456,5 @@ select {
   .site-header, .site-footer, .skip { display: none; }
   body { background: #ffffff; color: #000000; }
   .band-dark { box-shadow: none; background: none; color: #000000; }
+  .band-dark p, .band-dark .muted, .band-dark a, .band-dark .mark { color: inherit; }
 }

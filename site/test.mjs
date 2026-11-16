@@ -589,9 +589,20 @@ try {
     const sign = env.match(/^APP_TRADEMARK_SIGN="([^"]*)"$/m)?.[1] ?? "";
     const signs = new RegExp(`[™®]${sign ? `|${sign}` : ""}`);
     for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
-      assert.ok(pages.get(join(dist, "index.html")).match(/<title>([^<]*)<\/title>/)[1].includes(`${brand.name}${sign}`), `${dist}: home title carries the sign`);
+      const named = `${brand.name}${sign}`;
+      const guides = new Set(ROUTES.filter((route) => route.id.startsWith("migrate-")).flatMap((route) => LANGS.map((lang) => outputFile(routePath(route.id, lang)))));
+      assert.ok(pages.get(join(dist, "index.html")).match(/<title>([^<]*)<\/title>/)[1].includes(named), `${dist}: home title carries the sign`);
       for (const [file, html] of pages) {
         const page = file.slice(dist.length + 1);
+        // Every page title carries the sign: the home pages open with it, the others end with the " · " suffix.
+        const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
+        assert.ok(title !== undefined, `${page}: has a <title>`);
+        const home = page === "index.html" || page === join("en", "index.html");
+        assert.ok(home ? title.startsWith(named) : title.endsWith(` · ${named}`), `${page}: title "${title}" carries the sign`);
+        assert.equal(html.match(/<meta property="og:title" content="([^"]*)">/)?.[1], title, `${page}: og:title matches the title`);
+        // The ui.descriptions are prose ({{AppNameTM}}), so they carry the sign too. The migration guides take their
+        // description from the guide intro, which moves to {{AppNameTM}} with the inner-page copy (plan Task 7).
+        if (!guides.has(page)) assert.ok((html.match(/<meta name="description" content="([^"]*)">/)?.[1] ?? "").includes(named), `${page}: description carries the sign`);
         assert.ok(!html.includes("{{AppNameTM}}"), `${page}: unfilled {{AppNameTM}}`);
         for (const href of attrs(html, "href")) assert.ok(!signs.test(href), `${page}: sign in a URL ${href}`);
         for (const [, nav] of html.matchAll(/<nav\b[^>]*>([\s\S]*?)<\/nav>/g)) assert.ok(!signs.test(nav), `${page}: sign in navigation`);
@@ -623,6 +634,35 @@ try {
       }
     }
     assert.deepEqual(problems, []);
+  });
+
+  await check("styles: keyboard focus never reshapes an element; print turns the dark band into dark text on white", async () => {
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "style.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    // The body of the at-rule that starts at `head`, by brace matching (one level of nesting is enough here).
+    const atRule = (head) => {
+      const start = css.indexOf(head);
+      if (start < 0) return "";
+      let depth = 0;
+      for (let i = css.indexOf("{", start); i < css.length; i += 1) {
+        if (css[i] === "{") depth += 1;
+        if (css[i] === "}" && (depth -= 1) === 0) return css.slice(css.indexOf("{", start) + 1, i);
+      }
+      return "";
+    };
+    const rules = (text) => [...text.matchAll(/([^{}@;]+)\{([^{}]*)\}/g)].map(([, selector, body]) => ({ selectors: selector.split(",").map((part) => part.trim()), body }));
+    const sets = (body, property) => new RegExp(`(?:^|[;{\\s])${property}\\s*:\\s*([^;]+)`).exec(body)?.[1].trim();
+    // A select keeps its 10 px corners when focused: a focus rule may draw an outline, never change border-radius.
+    for (const { selectors, body } of rules(css)) {
+      if (selectors.some((selector) => selector.includes(":focus"))) assert.equal(sets(body, "border-radius"), undefined, `${selectors.join(", ")} sets border-radius`);
+    }
+    // Every light-on-dark colour of the band is reset in print, where the band has no background.
+    const print = rules(atRule("@media print"));
+    const printColour = (selector) => print.filter((rule) => rule.selectors.includes(selector)).map((rule) => sets(rule.body, "color")).filter(Boolean).at(-1);
+    const banded = rules(css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "")).filter(({ selectors, body }) => selectors.some((selector) => selector.startsWith(".band-dark")) && sets(body, "color"));
+    assert.ok(banded.length >= 3, "the band rules were found");
+    for (const { selectors } of banded) {
+      for (const selector of selectors) assert.match(printColour(selector) ?? "", /^(inherit|#000000)$/, `print resets the colour of ${selector}`);
+    }
   });
 
   await check("populated: language switch and hreflang alternates point at the sibling page", () => {
