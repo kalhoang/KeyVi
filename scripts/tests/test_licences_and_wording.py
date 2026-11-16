@@ -271,6 +271,7 @@ class EngineLicenceWordingTests(unittest.TestCase):
         r"to the project under (the )?MIT|cho dự án theo giấy phép MIT|inbound MIT|MIT grant|under MIT terms|"
         r"MIT licence text of the inbound grant|^MIT License$|"
         # Third-party material and the licences CLR-R6 accepts for third-party data.
+        r"anime\.js 4\.5\.0 is MIT|"  # the website design (docs/superpowers/specs, 16/11/2026)
         r"MIT/X11|MIT-CMU|\(MIT, BSD, Apache-2\.0|Licence: MIT, with additional licences for code bundled inside "
         r"Sparkle|under an MIT label|"
         # The question as first asked, and the history of the change itself.
