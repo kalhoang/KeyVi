@@ -53,12 +53,26 @@ extension WorkerCore: StrategyHost {
         if notes.shouldReport(.completionFallback) { recordHealth(.fallbackActivated) }
     }
 
-    func noteCompletionRead(_ read: CompletionRead, duration: TimeSpan?) {
+    func noteCompletionRead(_ read: CompletionRead, duration: TimeSpan?, kept: CaretAtEndMemory.Kept?) {
         #if DEV_RECORDER
         context?.completion = read.label
         context?.completionReadMicroseconds = duration.map { InjectionTiming.nanoseconds($0) / 1_000 }
+        context?.completionKept = kept
         #endif
     }
+
+    var caretEpoch: UInt64 { queue.caretEpoch }
+
+    func rememberCaretAtEnd(for job: EditJob, epochBeforeRead: UInt64) {
+        caretMemory.remember(job, epochBeforeRead: epochBeforeRead, answeredAt: services.clock.now())
+    }
+
+    /// The live epoch is loaded here, after the read gave up, so a click during the read's wait counts (PLT-R317).
+    func keptCaretAtEnd(for job: EditJob) -> CaretAtEndMemory.Kept? {
+        caretMemory.keep(for: job, liveEpoch: queue.caretEpoch, now: services.clock.now())
+    }
+
+    func forgetCaretAtEnd() { caretMemory.forget() }
 }
 
 /// `verifyAfterEdit` for key-based strategies (PLT-R410). Key events reach the app asynchronously, so the

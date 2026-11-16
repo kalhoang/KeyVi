@@ -48,6 +48,7 @@ public final class JobQueue: Sendable {
     private let settledByTap = Atomic<UInt64>(0)  // written by the tap only (echo seen or timed out)
     private let settledByWorker = Atomic<UInt64>(0)  // written by the worker only (nothing posted, or policy)
     private let sequence = Atomic<UInt64>(0)  // written by the tap only
+    private let caretEpochCounter = Atomic<UInt64>(0)  // written by the tap only
 
     /// Capacity above the 256-job liveness ceiling (PLT-R314) so a full ring is never the first symptom.
     /// Rounded up to a power of two.
@@ -86,6 +87,18 @@ public final class JobQueue: Sendable {
     public func nextSequence() -> JobSequence {
         JobSequence(rawValue: sequence.wrappingAdd(1, ordering: .relaxed).newValue)
     }
+
+    /// Tap: something happened after which the worker can no longer assume that the caret stayed where its last
+    /// completion read found it (PLT-R423 caret continuity, amendment of 16/11/2026): a hard boundary (PLT-R340), a
+    /// keyDown that does not type or delete one character at the caret, or the first keyDown after a typing pause
+    /// (PLT-R382). One atomic increment (PLT-R304).
+    @inline(__always)
+    public func breakCaretContinuity() { caretEpochCounter.wrappingAdd(1, ordering: .sequentiallyConsistent) }
+
+    /// Tap (stamped on every `EditJob`) and worker (checked before an answer is kept): how many times the caret's
+    /// continuity was broken since launch.
+    @inline(__always)
+    public var caretEpoch: UInt64 { caretEpochCounter.load(ordering: .sequentiallyConsistent) }
 
     /// Worker.
     public func pop() -> InjectionJob? { jobs.pop() }

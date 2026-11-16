@@ -20,6 +20,8 @@ struct JobContext {
     var completion: StaticString?
     /// How long that read took, timeouts included; nil when the job had no field to read.
     var completionReadMicroseconds: UInt64?
+    /// `forwardDelete kept` (PLT-R423 caret continuity): where the kept answer came from.
+    var completionKept: CaretAtEndMemory.Kept?
     #endif
 }
 
@@ -58,6 +60,8 @@ final class WorkerCore {
     var unreportedDiscards = 0
     var restoreDelay: TimeSpan?
     var pendingVerification: PendingVerification?
+    /// PLT-R423 caret continuity (amendment of 16/11/2026): the last `forwardDelete` answer of "caret at the end".
+    var caretMemory = CaretAtEndMemory()
 
     init(
         queue: JobQueue, feedback: WorkerFeedback, marker: EventMarker, focusGeneration: CurrentFocusGeneration,
@@ -136,6 +140,7 @@ final class WorkerCore {
     /// in order, request a composition reset, record a `flush` health event.
     func flush(reason: FlushReason?) {
         pullFromRing()
+        caretMemory.forget()  // PLT-R423: the composition is reset, the field may not be what the engine believes
         var abandoned = 0
         while let job = backlog.popFirst() {
             if case .edit(let edit) = job {
@@ -177,6 +182,8 @@ final class WorkerCore {
         case .boundary(let boundary):
             begin(boundary.sequence)
             firstEdit.boundary()
+            // PLT-R423: the tap broke the caret's continuity already; a boundary marked in FIFO order says so too.
+            caretMemory.forget()
             finish()
         }
     }

@@ -16,8 +16,17 @@ protocol StrategyHost: AnyObject {
     /// PLT-R420, PLT-R423: AX could not answer and the next completion option was used.
     func completionFallback()
     /// PLT-R420, PLT-R423, PLT-R904A: what the completion read found and how long it took (timeouts included; nil
-    /// when the job had no field to read), for the dev recorder's job line.
-    func noteCompletionRead(_ read: CompletionRead, duration: TimeSpan?)
+    /// when the job had no field to read), and for `forwardDeleteKept` where the kept answer came from, for the dev
+    /// recorder's job line.
+    func noteCompletionRead(_ read: CompletionRead, duration: TimeSpan?, kept: CaretAtEndMemory.Kept?)
+    /// PLT-R423 caret continuity (amendment of 16/11/2026): the live `JobQueue.caretEpoch`.
+    var caretEpoch: UInt64 { get }
+    /// A `forwardDelete` read for `job` found the caret at the end of the text (`CaretAtEndMemory.remember`).
+    func rememberCaretAtEnd(for job: EditJob, epochBeforeRead: UInt64)
+    /// The read for `job` did not answer: the remembered answer if it still holds (`CaretAtEndMemory.keep`).
+    func keptCaretAtEnd(for job: EditJob) -> CaretAtEndMemory.Kept?
+    /// A read found a selection or the caret before the end.
+    func forgetCaretAtEnd()
 }
 
 /// The AX read of `axSelection`, `axSelectionThenPlaceholder` (PLT-R420) and `forwardDelete` (PLT-R423). Recorded on
@@ -41,6 +50,10 @@ enum CompletionRead {
     case forwardDeleteNotAtEnd
     /// `forwardDelete`: AX timed out or was unavailable, or the job has no field; nothing is added.
     case forwardDeleteUnreadable
+    /// `forwardDelete`: AX timed out or was unavailable, but an earlier read of this focus session found the caret at
+    /// the end and nothing that can move it happened since (caret continuity, amendment of 16/11/2026: Spotlight's
+    /// reads took 3.2, 14.6, 27.2 and then more than 50 ms in one session); a Forward Delete goes before each Backspace.
+    case forwardDeleteKept
 
     var label: StaticString {
         switch self {
@@ -51,6 +64,7 @@ enum CompletionRead {
         case .forwardDelete: "forwardDelete"
         case .forwardDeleteNotAtEnd: "forwardDelete skipped notAtEnd"
         case .forwardDeleteUnreadable: "forwardDelete skipped unreadable"
+        case .forwardDeleteKept: "forwardDelete kept"
         }
     }
 }
@@ -102,11 +116,12 @@ enum CompletionPrefix: Equatable {
             }
         }
         if let read, case .success(let range) = read.result {
-            host?.noteCompletionRead(range.length > 0 ? .selected : .none, duration: read.duration)
+            host?.noteCompletionRead(range.length > 0 ? .selected : .none, duration: read.duration, kept: nil)
             return range.length > 0 ? .extraDeletion : .none
         }
         let fallsBack = mode == .axSelectionThenPlaceholder
-        host?.noteCompletionRead(fallsBack ? .unreadableThenPlaceholder : .unreadable, duration: read?.duration)
+        host?.noteCompletionRead(
+            fallsBack ? .unreadableThenPlaceholder : .unreadable, duration: read?.duration, kept: nil)
         host?.completionFallback()
         return fallsBack ? .placeholder : .none
     }
@@ -114,30 +129,45 @@ enum CompletionPrefix: Equatable {
     /// PLT-R423: one read of the selection and the character count, bounded by its own `forwardDeleteReadTimeout`
     /// (50 ms; Spotlight answered in 16 to 21 ms while it was opening, retest of 16/11/2026). A selection keeps
     /// PLT-R420's extra deletion; only an empty selection at the end of the text gets Forward Delete, because anywhere
-    /// else it would delete the character after the caret. A caret before the end is normal editing; an unreadable
-    /// field counts the PLT-R420 health event.
+    /// else it would delete the character after the caret. A caret before the end is normal editing. A read that does
+    /// not answer keeps an earlier answer of "at the end" while the caret's continuity holds (amendment of 16/11/2026:
+    /// in one Spotlight session the reads took 3.2, 14.6, 27.2 and then more than 50 ms); without one, nothing is added
+    /// and the PLT-R420 health event is counted. A fresh answer always wins and replaces the remembered one.
     private static func forwardDelete(for job: EditJob, in environment: any InjectionEnvironment) -> CompletionPrefix {
         let host = environment as? any StrategyHost
+        let epochBeforeRead = host?.caretEpoch
         let read = job.field.map { field in
             timed(environment) {
                 environment.fieldAccess.caret(field, timeout: InjectionTiming.forwardDeleteReadTimeout)
             }
         }
         guard let read, case .success(let caret) = read.result else {
-            host?.noteCompletionRead(.forwardDeleteUnreadable, duration: read?.duration)
-            host?.completionFallback()
-            return .none
-        }
-        if caret.selection.length > 0 {
-            host?.noteCompletionRead(.selected, duration: read.duration)
-            return .extraDeletion
+            return unanswered(job, duration: read?.duration, host: host)
         }
         guard caret.isAtEndOfText else {
-            host?.noteCompletionRead(.forwardDeleteNotAtEnd, duration: read.duration)
-            return .none
+            host?.forgetCaretAtEnd()
+            let selected = caret.selection.length > 0
+            host?.noteCompletionRead(selected ? .selected : .forwardDeleteNotAtEnd, duration: read.duration, kept: nil)
+            return selected ? .extraDeletion : .none
         }
-        host?.noteCompletionRead(.forwardDelete, duration: read.duration)
+        if let epochBeforeRead { host?.rememberCaretAtEnd(for: job, epochBeforeRead: epochBeforeRead) }
+        host?.noteCompletionRead(.forwardDelete, duration: read.duration, kept: nil)
         return .forwardDeleteBeforeEachDeletion
+    }
+
+    /// PLT-R423: the read timed out, AX was unavailable or the job has no field. The caret's continuity since an
+    /// earlier answer of "at the end" keeps the Forward Delete; otherwise the caret is unknown, so nothing is added
+    /// (PLT-R407) and the PLT-R420 health event is counted.
+    private static func unanswered(
+        _ job: EditJob, duration: TimeSpan?, host: (any StrategyHost)?
+    ) -> CompletionPrefix {
+        if let kept = host?.keptCaretAtEnd(for: job) {
+            host?.noteCompletionRead(.forwardDeleteKept, duration: duration, kept: kept)
+            return .forwardDeleteBeforeEachDeletion
+        }
+        host?.noteCompletionRead(.forwardDeleteUnreadable, duration: duration, kept: nil)
+        host?.completionFallback()
+        return .none
     }
 
     /// One completion read and how long it took on the worker's clock, for the dev recorder (PLT-R904A).

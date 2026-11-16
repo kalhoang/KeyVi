@@ -26,6 +26,9 @@ extension WorkerCore {
         #endif
         // PLT-R357: a revision that was not applied as computed leaves the engine's history unlike the screen.
         if job.kind == .revision, outcome != .executed { feedback.requestCompositionReset() }
+        // PLT-R423 caret continuity: an edit not applied as computed (a fallback, a pass-through after a failed check,
+        // a discard, broken posting) leaves the field unlike what the engine believes; the next read must answer.
+        if outcome != .executed { caretMemory.forget() }
         feedback.record(outcome, for: job.sequence)
         outcomes.record(outcome, for: job.sequence)
         if outcome.deliveredEdit {

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Focus revalidation requests from the tap (PLT-R382, PLT-R389) and the late focus change (PLT-R340 amendment of
-// 2026-11-14). Tap-safe: integer tests, one ring push and a wake-up; no AX, I/O, lock or allocation (PLT-R304,
-// PLT-R305). The tap never waits for a read: what it asks for is read on the ax thread, and a key that met a stale
-// snapshot is protected by the worker's generation check (PLT-R316) and, after a late focus change, by the
-// bounded read of the first job (`EditJob.verifyLateFocus`).
+// Focus revalidation requests from the tap (PLT-R382, PLT-R389), the caret continuity of PLT-R423 (amendment of
+// 2026-11-16) and the late focus change (PLT-R340 amendment of 2026-11-14). Tap-safe: integer tests, one ring push,
+// one atomic increment and a wake-up; no AX, I/O, lock or allocation (PLT-R304, PLT-R305). The tap never waits for a
+// read: what it asks for is read on the ax thread, and a key that met a stale snapshot is protected by the worker's
+// generation check (PLT-R316) and, after a late focus change, by the bounded read of the first job
+// (`EditJob.verifyLateFocus`).
 
 internal import AppModel
 internal import Diagnostics
@@ -26,6 +27,28 @@ enum FocusRevalidation {
         switch VirtualKeyGroup.of(event.keyCode) {
         case .escape, .returnKey, .tab: return true
         case .backspace, .forwardDelete, .navigation, .function, .other: return false
+        }
+    }
+}
+
+/// PLT-R423 caret continuity (amendment of 16/11/2026, second retest of beta 2): the worker keeps an earlier completion
+/// read's "caret at the end of the text" for a later read that does not answer only while the tap has seen nothing
+/// that can move the caret since. The tap breaks the continuity (`JobQueue.breakCaretContinuity`) at every hard
+/// boundary (`hardBoundary`), at every keyDown this type does not count as typing, in every host state, and at the
+/// first keyDown after a typing pause (PLT-R382).
+enum CaretContinuity {
+    /// A keyDown that types one character (a letter, digit, punctuation or space, with Shift or Option at most) or a
+    /// Backspace without Option: at the end of the text it inserts or deletes before the caret, and the caret stays at
+    /// the end. Every other keyDown may move the caret or select text: an arrow, Home, End, Page Up or Down, Forward
+    /// Delete, Option+Backspace, any Command or Control chord (Command+A selects all, Command+V pastes, Command+Z
+    /// undoes), Return, Tab, Escape, a function key. Pure, tap-safe.
+    @inline(__always)
+    static func keepsCaret(_ event: RawKeyEvent) -> Bool {
+        if event.flags & (EventFlags.command | EventFlags.control) != 0 { return false }
+        switch VirtualKeyGroup.of(event.keyCode) {
+        case .other: return true
+        case .backspace: return event.flags & EventFlags.option == 0
+        case .forwardDelete, .escape, .returnKey, .tab, .navigation, .function: return false
         }
     }
 }
@@ -53,15 +76,21 @@ extension KeyPipeline {
     /// launch would otherwise leave the first word on a stale snapshot.
     func noteKeyboardActivity(_ event: RawKeyEvent, now: MonotonicInstant, focus: FocusSnapshot) {
         defer { keyState.lastKeyboardEventAt = now }
+        guard event.kind == .keyDown else { return }
         // An autorepeat is never idle (repeats follow each other within the typing rhythm) and never a new press.
-        guard event.kind == .keyDown, !event.autorepeat else { return }
+        let idle =
+            !event.autorepeat
+            && (keyState.lastKeyboardEventAt.map { now.nanoseconds(since: $0) >= FocusRevalidation.idleNanoseconds }
+                ?? true)
+        // PLT-R423 amendment: before any state check, so keys that bypass the engine (English mode, a pause, a
+        // passThrough rule, fail-open) count too.
+        if idle || !CaretContinuity.keepsCaret(event) { context.queue.breakCaretContinuity() }
+        guard !event.autorepeat else { return }
         if FocusRevalidation.mayMoveFocus(event) {
             keyState.revalidateNextKey = true
             requestFocusRevalidation(.revalidateFocusAfterTrigger)
             return
         }
-        let idle =
-            keyState.lastKeyboardEventAt.map { now.nanoseconds(since: $0) >= FocusRevalidation.idleNanoseconds } ?? true
         guard idle || keyState.revalidateNextKey || focus.decision.overlay else { return }
         keyState.revalidateNextKey = false
         // The PLT-R382 read is a full one (the same element's attributes may have changed during the pause); the
@@ -110,7 +139,7 @@ extension KeyPipeline {
             replacedText: replaced.isEmpty ? nil : replaced, insertion: "",
             keyCodes: JobKeyCodes(trigger: key.event.keyCode, paste: seen.pasteKeyCode), trigger: nil,
             verifyBeforeApply: false, wordStartedNearFocusChange: false, createdAt: key.now, isProbe: key.probe,
-            verifyLateFocus: true)
+            verifyLateFocus: true, caretEpoch: context.queue.caretEpoch)
         guard context.queue.push(.edit(job)) else { return false }
         lastPushWasBoundary = false
         return true

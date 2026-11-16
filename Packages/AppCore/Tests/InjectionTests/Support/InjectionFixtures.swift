@@ -33,7 +33,7 @@ enum Fixture {
         insertion: String, plan: InjectionPlan = Fixture.plan(), generation: UInt64 = 1, kind: EditKind = .compose,
         trigger: KeyEventRecord? = Fixture.triggerS, field: FieldHandle? = Fixture.field,
         createdAt: MonotonicInstant = Fixture.start, verifyBeforeApply: Bool = false,
-        nearFocusChange: Bool = false, keyCodes: JobKeyCodes? = nil, isProbe: Bool = false
+        nearFocusChange: Bool = false, keyCodes: JobKeyCodes? = nil, isProbe: Bool = false, caretEpoch: UInt64 = 0
     ) -> EditJob {
         EditJob(
             sequence: JobSequence(rawValue: sequence), generation: FocusGeneration(rawValue: generation), plan: plan,
@@ -42,7 +42,7 @@ enum Fixture {
             keyCodes: keyCodes
                 ?? JobKeyCodes(trigger: trigger?.keyCode ?? KeyCode(rawValue: 0x01), paste: KeyCode(rawValue: 0x09)),
             trigger: trigger, verifyBeforeApply: verifyBeforeApply, wordStartedNearFocusChange: nearFocusChange,
-            createdAt: createdAt, isProbe: isProbe)
+            createdAt: createdAt, isProbe: isProbe, caretEpoch: caretEpoch)
     }
 }
 

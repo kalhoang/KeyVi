@@ -239,13 +239,17 @@ public struct EditJob: Sendable {
     public var verifyLateFocus: Bool
     /// Kind `.revision` only (PLT-R357): the previous token and the current display, for the PLT-R342 check.
     public var revision: RevisionEdit?
+    /// `JobQueue.caretEpoch` when the tap built the job (PLT-R423 caret continuity, amendment of 16/11/2026): the
+    /// worker remembers a completion read that found the caret at the end of the text only for a job built in the
+    /// epoch it read in, and keeps that answer only while the epoch has not moved.
+    public var caretEpoch: UInt64
 
     public init(
         sequence: JobSequence, generation: FocusGeneration, plan: InjectionPlan, field: FieldHandle?,
         kind: EditKind, deleteCount: Int, deleteUTF16Count: Int, replacedText: String?, insertion: String,
         keyCodes: JobKeyCodes, trigger: KeyEventRecord?, verifyBeforeApply: Bool,
         wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false,
-        revision: RevisionEdit? = nil
+        revision: RevisionEdit? = nil, caretEpoch: UInt64 = 0
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -264,6 +268,7 @@ public struct EditJob: Sendable {
         self.isProbe = isProbe
         self.verifyLateFocus = verifyLateFocus
         self.revision = revision
+        self.caretEpoch = caretEpoch
     }
 }
 

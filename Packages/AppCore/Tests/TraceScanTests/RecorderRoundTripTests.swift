@@ -81,6 +81,14 @@ private final class FollowingWallClock: WallClock, Sendable {
                     outcome: "executed", deleteCount: 1, insertCount: 1, eventsPosted: 6, totalMicroseconds: 1_600,
                     runMicroseconds: 1_400, at: clock.now(), completion: "forwardDelete",
                     completionReadMicroseconds: 23_400)))
+        // PLT-R423 caret continuity (amendment of 16/11/2026): a read that did not answer kept an earlier answer.
+        dev.pushInject(
+            .job(
+                DevJobRecord(
+                    sequence: 11, generation: 2, kind: SampleReason.compose, strategy: .backspaceReplace,
+                    outcome: "executed", deleteCount: 2, insertCount: 2, eventsPosted: 12, totalMicroseconds: 49_800,
+                    runMicroseconds: 49_600, at: clock.now(), completion: "forwardDelete kept",
+                    completionReadMicroseconds: 48_000, completionKeptJobs: 2, completionKeptAgeMicroseconds: 180_300)))
         dev.note(
             .readback(
                 DevReadbackRecord(
@@ -100,12 +108,13 @@ private final class FollowingWallClock: WallClock, Sendable {
         #expect(result.exitCode == 0)
         #expect(result.output.contains("Launches: 1"))
         #expect(result.output.contains("Apps (key downs): com.example.editor 2"))
-        #expect(result.output.contains("Key downs: 2, engine steps: 2, jobs: 2, readbacks: 1, markers: 1"))
+        #expect(result.output.contains("Key downs: 2, engine steps: 2, jobs: 3, readbacks: 1, markers: 1"))
         #expect(result.output.contains("Unreadable lines: 0"))
         #expect(result.output.contains("resetWithOpenToken  focusChanged / focusChanged, token of 1 characters open"))
         #expect(result.output.contains("marker  menu"))
         #expect(result.output.contains("injectionProblem  job 9 compose backspaceReplace: slow 90 ms"))
         #expect(!result.output.contains("job 10"))  // PLT-R423: two more events per deletion are not a problem
+        #expect(!result.output.contains("job 11"))  // a kept answer sent its Forward Deletes: nothing was lost
         let shown = TraceScanCommand.run(
             ["show", "1", "--dir", folder.path, "--before", "1s"], now: base, timeZone: .current, makeReplay: { nil })
         #expect(shown.output.contains("engine  edit  delete 1  insert \"â\"  token \"â\""))
@@ -113,6 +122,10 @@ private final class FollowingWallClock: WallClock, Sendable {
         #expect(shown.output.contains("4 events  completion selected read 480 us"))  // PLT-R420 read (15/11/2026)
         // PLT-R423, with the read's duration since the retest of 16/11/2026.
         #expect(shown.output.contains("6 events  completion forwardDelete read 23.4 ms  1.6 ms total"))
+        #expect(
+            shown.output.contains(
+                "12 events  completion forwardDelete kept read 48.0 ms, from read 2 jobs ago (180.3 ms)  49.8 ms total")
+        )
     }
 }
 

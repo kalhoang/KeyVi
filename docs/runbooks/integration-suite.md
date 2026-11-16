@@ -478,7 +478,9 @@ Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM 
    the caret left with the arrow key and type `ees`: nothing to the right of the caret may disappear. The dev trace
    answers the same question on any Mac: each job line of a rule with `forwardDelete` ends with `completion
    forwardDelete` (6 events for a delete-1 edit), `completion forwardDelete skipped notAtEnd`, `completion
-   forwardDelete skipped unreadable` or `completion selected`; a rule with `axSelection` ends with `completion
+   forwardDelete skipped unreadable`, `completion forwardDelete kept` (the read did not answer and the caret
+   continuity of PLT-R423 kept an earlier answer, since the second retest of 16/11/2026) or `completion selected`; a
+   rule with `axSelection` ends with `completion
    selected`, `completion none` or `completion unreadable` (since 15/11/2026; `completion unreadable then placeholder`
    with `axSelectionThenPlaceholder`, since 16/11/2026), each followed by the read's duration
    (`read 23.4 ms`, since 16/11/2026). Letters that still double with
@@ -486,7 +488,11 @@ Proof plan of W8-A, in this order, with Safari closed (Pa's VM rule) and the VM 
    `placeholder` after its PLT-R422 test); with `forwardDelete` and doubled letters, the field gives Forward Delete
    another meaning there. Type the first word right after Command+Space too: Spotlight answers slowly while it opens
    (16 to 21 ms at the retest of 16/11/2026, past the 15 ms bound the read had then), so `forwardDelete skipped
-   unreadable` with a read of 50 ms there means the 50 ms bound of PLT-R423 is still too short for that Mac.
+   unreadable` with a read of 50 ms there means the 50 ms bound of PLT-R423 is still too short for that Mac. Then type
+   a long query quickly (`tieesng vieejt nam`) and Command+A with `vieejt` over it: later reads slow down while
+   Spotlight searches (3.2, 14.6, 27.2 and more than 50 ms at the second retest of 16/11/2026), and their jobs should
+   say `completion forwardDelete kept`; only the first deleting edit after a click, an arrow, a Command chord or a
+   pause longer than 500 ms may still say `skipped unreadable`.
 
 Runs of W8-A (folders under `/Volumes/Data/tart/runs/`):
 

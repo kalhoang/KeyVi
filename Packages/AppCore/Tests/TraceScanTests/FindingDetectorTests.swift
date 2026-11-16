@@ -179,6 +179,33 @@ private let command: UInt64 = 0x0010_0000
             ])
     }
 
+    /// PLT-R423 caret continuity (amendment of 16/11/2026, second retest: Spotlight's reads took 3.2, 14.6, 27.2 and
+    /// then more than 50 ms in one session): a job whose read did not answer but kept an earlier answer sent its
+    /// Forward Deletes, so it is no lossy read; a slow one still says how much of it the read took. Lines written
+    /// before the amendment (no `complKeptJobs`) still parse.
+    @Test func aKeptAnswerIsNoLossyReadPLTR423() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        var kept = Self.forwardDeleteJob(1, delete: 2, posted: 12, completion: "forwardDelete kept", readUs: 50_000)
+        kept["complKeptJobs"] = 1
+        kept["complKeptUs"] = 120_400
+        kept["totalUs"] = 53_100
+        trace.line("job", kept)
+        var quick = Self.forwardDeleteJob(2, delete: 1, posted: 6, completion: "forwardDelete kept", readUs: 48_000)
+        quick["complKeptJobs"] = 2
+        quick["complKeptUs"] = 240_000
+        trace.line("job", quick)
+        let old = Self.forwardDeleteJob(
+            3, delete: 2, posted: 8, completion: "forwardDelete skipped unreadable", readUs: 51_000)
+        trace.line("job", old)
+        let found = try findings(trace).filter { $0.kind == .injectionProblem }
+        #expect(
+            found.map(\.detail) == [
+                "job 1 compose backspaceReplace: slow 53 ms (completion read 50.0 ms)",
+                "job 3 compose backspaceReplace: completion forwardDelete skipped unreadable (read 51.0 ms)",
+            ])
+    }
+
     private static func forwardDeleteJob(
         _ sequence: Int, delete: Int, posted: Int, completion: String, readUs: Int? = nil
     ) -> [String: Any] {

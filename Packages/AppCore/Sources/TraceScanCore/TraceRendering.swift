@@ -131,9 +131,16 @@ public enum TraceRendering {
     }
 
     /// What the job's completion read found (PLT-R420, PLT-R423) and, since the retest of 16/11/2026, how long it took:
-    /// `completion forwardDelete read 23.4 ms`.
+    /// `completion forwardDelete read 23.4 ms`; for a kept answer (PLT-R423 caret continuity) also where it came from:
+    /// `completion forwardDelete kept read 50.0 ms, from read 2 jobs ago (180.3 ms)`.
     private static func completion(_ line: TraceLine) -> String? {
-        line.compl.map { "completion " + $0 + (line.complUs.map { " read " + microseconds($0) } ?? "") }
+        guard let found = line.compl else { return nil }
+        let read = line.complUs.map { " read " + microseconds($0) } ?? ""
+        let origin = line.complKeptJobs.map { jobs in
+            ", from read " + String(jobs) + (jobs == 1 ? " job" : " jobs") + " ago ("
+                + microseconds(line.complKeptUs) + ")"
+        }
+        return "completion " + found + read + (origin ?? "")
     }
 
     /// Format version 2: how long the AX calls took (and the longest of them), the wait since the trigger, the
