@@ -107,6 +107,8 @@ The integrator chose approach 1 with the product owner's agreement ("Ok", 16/11/
   motif moves to section 4.
 - Home page structure, top to bottom, as section 7.3 lists it (the page map shown in the browser).
 - anime.js for the motion; terminal3.io as the polish reference.
+- The typing demo replaces PRD-R73's 20-second screen recording entirely; the page keeps no slot for a video
+  (17/11/2026).
 
 Reference mockups (local only, not in the repository, not to be copied as code):
 `/Volumes/Data/Projects-2026/Kal-Key-wt/site-design/.superpowers/brainstorm/10602-1794834666/content/`
@@ -161,7 +163,7 @@ Items marked *(integrator's call)* were not decided by the product owner; they c
    (chat, email, note) *(integrator's call)*; the first one is
    `Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha` giving
    "Chiều nay họp online, nhớ gửi file slide trước deadline nha". This replaces PRD-R73's 20-second screen
-   recording *(integrator's call, to be confirmed by the product owner)*: crisp at any size, in both languages,
+   recording (decided by the product owner on 17/11/2026, section 6): crisp at any size, in both languages,
    always in step with the engine, nothing to re-record per release.
 2. **"Một câu, hai thứ tiếng": three core behaviours,** each a small demo that plays when it scrolls into view:
    English words stay as typed even when the word ends with a comma, a period or Return, and in a chat app Return
@@ -261,9 +263,9 @@ QR code, any icons) as SVG or small PNG.
 
 ### 7.10 Spec and documentation
 
-PRD-R73 (the demo instead of the screen recording, if the product owner confirms, and the motion and
+PRD-R73 (the demo instead of the screen recording, and the motion and
 reduced-motion rules), a row in `docs/decisions/0005-pa-decisions-2026-11-13.md` under "Decisions of 16/11/2026"
-(audience, hero B, page structure), `THIRD_PARTY_NOTICES.md` (anime.js), the site's README or runbook if it
+(audience, hero B, page structure, and the demo replacing the video on 17/11/2026), `THIRD_PARTY_NOTICES.md` (anime.js), the site's README or runbook if it
 documents the build, and the traceability files where requirements move.
 
 ## 8. Left to the builder
