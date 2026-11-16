@@ -216,6 +216,44 @@ private let command: UInt64 = 0x0010_0000
             ])
     }
 
+    /// PLT-R357, review of 16/11/2026: `executedWithFallback` also means the full revision ran with a fallback
+    /// strategy (`runChain`), so the word before was rewritten. Only a read-back that decided against the previous
+    /// word (`mismatch ...`, `skipped unknownPrevious`, `skipped wideDeletion`) or an outcome that applied nothing
+    /// proves the word kept its text; a full attempt that fell back to another strategy stays an injection problem
+    /// with its fallback steps, and so does a line written before the read-back field, whose cause is unknown.
+    @Test func aRevisionRewrittenByAFallbackStrategyIsAnInjectionProblem() throws {
+        var trace = TraceBuilder()
+        trace.launch()
+        let fullAttempts = [
+            "matches", "unreadable afterSettle", "unreadable selection", "skipped rule", "skipped noField", nil,
+        ]
+        for (index, readback) in fullAttempts.enumerated() {
+            let posted = readback == nil ? 0 : 22
+            let job = Self.revisionJob(index + 1, outcome: "executedWithFallback", posted: posted, readback: readback)
+            trace.line("job", job)
+        }
+        let refused = ["mismatch shortRead", "skipped unknownPrevious", "skipped wideDeletion"]
+        for (index, readback) in refused.enumerated() {
+            let job = Self.revisionJob(index + 7, outcome: "executedWithFallback", posted: 8, readback: readback)
+            trace.line("job", job)
+        }
+        trace.line("job", Self.revisionJob(10, outcome: "abandoned", posted: 0, readback: "matches"))
+        trace.line("job", Self.revisionJob(11, outcome: "discardedForGeneration", posted: 0, readback: nil))
+        let found = try findings(trace)
+        #expect(
+            found.filter { $0.kind == .revisionFellBack }.map(\.detail) == [
+                "job 7 revision backspaceReplace: outcome executedWithFallback, 8 events, readback mismatch shortRead",
+                "job 8 revision backspaceReplace: outcome executedWithFallback, 8 events, "
+                    + "readback skipped unknownPrevious",
+                "job 9 revision backspaceReplace: outcome executedWithFallback, 8 events, "
+                    + "readback skipped wideDeletion",
+                "job 10 revision backspaceReplace: outcome abandoned, 0 events, readback matches",
+                "job 11 revision backspaceReplace: outcome discardedForGeneration, 0 events",
+            ])
+        let expectedProblems = (1...6).map { "job \($0) revision backspaceReplace: outcome executedWithFallback" }
+        #expect(found.filter { $0.kind == .injectionProblem }.map(\.detail) == expectedProblems)
+    }
+
     private static func revisionJob(
         _ sequence: Int, outcome: String, posted: Int, readback: String?, totalUs: Int = 1_600
     ) -> [String: Any] {
