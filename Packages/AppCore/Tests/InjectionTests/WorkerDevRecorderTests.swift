@@ -180,6 +180,33 @@ private func devRecords(_ capture: CaptureController) -> [DevTraceRecord] {
         #expect(noRead.label == nil && noRead.microseconds == nil)
     }
 
+    /// PLT-R423 caret continuity (amendment of 16/11/2026): a job whose read did not answer and that kept an earlier
+    /// answer says so on its job line, with how many completion decisions ago and how long ago that answer was read,
+    /// so the next trace shows which path decided. The read's own duration stays (here the whole 50 ms bound).
+    @Test func aKeptAnswerIsRecordedWithItsOriginPLTR904A() throws {
+        let clock = ManualClock()
+        let capture = try recordingCapture(clock: clock)
+        let rig = WorkerRig(field: SimulatedTextField(text: "a"), capture: capture)
+        let plan = Fixture.plan(parameters: Fixture.parameters { $0.inlineCompletion = .forwardDelete })
+        rig.fieldAccess.setReadLatency(.milliseconds(3), clock: rig.clock)
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "a", plan: plan) }
+        rig.run()
+        rig.fieldAccess.setReadLatency(.milliseconds(80), clock: rig.clock)
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "a", plan: plan) }
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 1, insertion: "a", plan: plan) }
+        rig.run()
+        let jobs: [DevJobRecord] = devRecords(capture).compactMap {
+            if case .job(let job) = $0 { return job }
+            return nil
+        }
+        #expect(
+            jobs.map { $0.completion?.description } == ["forwardDelete", "forwardDelete kept", "forwardDelete kept"])
+        #expect(jobs.map(\.completionReadMicroseconds) == [3_000, 50_000, 50_000])
+        #expect(jobs.map(\.completionKeptJobs) == [nil, 1, 2])
+        #expect(jobs.map(\.completionKeptAgeMicroseconds) == [nil, 50_000, 100_000])
+        #expect(jobs.map(\.eventsPosted) == [6, 6, 6])
+    }
+
     @Test func nothingIsRecordedWhileTheRecorderIsPaused() throws {
         let clock = ManualClock()
         let capture = try recordingCapture(clock: clock)

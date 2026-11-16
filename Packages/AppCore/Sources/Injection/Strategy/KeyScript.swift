@@ -16,7 +16,9 @@ enum InjectionTiming {
     /// PLT-R423 (VERIFY value): bounded read of `AXSelectedTextRange` and `AXNumberOfCharacters` before deleting, for
     /// `forwardDelete` only. Longer than `axSelectionTimeout` because Spotlight on macOS 27.2 answered in 16 to 21 ms
     /// while it was opening (retest of 16/11/2026) and a missed read brings the lost deletion back; keys held behind
-    /// the job wait at most this read plus the job (PLT-R311), well under the 150 ms ceiling of PLT-R314.
+    /// the job wait at most this read plus the job (PLT-R311), well under the 150 ms ceiling of PLT-R314. Not raised
+    /// when later reads of a session took longer (second retest of 16/11/2026: 3.2, 14.6, 27.2, then over 50 ms): the
+    /// caret continuity of PLT-R423 (`CaretAtEndMemory`) covers a read that does not answer.
     static let forwardDeleteReadTimeout: TimeSpan = .milliseconds(50)
     /// 4.5: each AX call of `axReplace`, re-entry verification (PLT-R342) and `verifyAfterEdit` readback.
     static let axCallTimeout: TimeSpan = .milliseconds(30)
@@ -63,7 +65,8 @@ enum SyntheticKeys {
     /// PLT-R407: `kVK_Delete`, no Unicode string, no flags.
     static let backspace = SyntheticKeyEvent(keyCode: .delete, isKeyDown: true, flags: 0, unicode: .empty)
     /// PLT-R423: `kVK_ForwardDelete`, no Unicode string, no flags; posted only by `CompletionPrefix`, and only with the
-    /// caret read at the end of the field's text, where it deletes no character.
+    /// caret read at the end of the field's text, where it deletes no character (or kept there by the caret continuity
+    /// when a later read does not answer, `CaretAtEndMemory`).
     static let forwardDelete = SyntheticKeyEvent(keyCode: .forwardDelete, isKeyDown: true, flags: 0, unicode: .empty)
     /// 4.4: Shift+Left Arrow, layout independent (PLT-R406 allows Shift here).
     static let shiftLeft = SyntheticKeyEvent(keyCode: .leftArrow, isKeyDown: true, flags: shiftFlag, unicode: .empty)

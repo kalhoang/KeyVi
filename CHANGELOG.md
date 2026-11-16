@@ -44,7 +44,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ### Fixed
 
-- Spotlight right after it opens: words no longer keep an extra letter while Spotlight is still slow to answer ("vieejt" gave "vieệt" instead of "việt" until you cleared the search or opened Spotlight again).
+- Spotlight: words no longer keep an extra letter while Spotlight is slow to answer, right after it opens or a few words into a search while it is still looking for results ("vieejt" gave "vieệt" instead of "việt" until you cleared the search or opened Spotlight again, and later now and then in the middle of a search).
 - RustDesk is now treated like the other remote desktop apps: KeyVi passes keys through untouched and starts in English there, so the remote machine's own input method types Vietnamese.
 - Turning off KeyVi's access in System Settings (Accessibility, Device Control and Data Access on macOS 27) while KeyVi was running could freeze the keyboard and mouse clicks until KeyVi was quit. KeyVi now steps aside within about a second of macOS reporting the change, and the menu bar icon shows a red warning badge until the access is turned back on. macOS can take about 30 seconds to report it; in that window typing can still stall, for up to about 20 seconds, before KeyVi steps aside on its own.
 - Settings: "Tùy chọn nâng cao" (Advanced options) in General and Typing could not be opened. Clicking anywhere on its row now opens and closes it, in the Apps Details sheet too.

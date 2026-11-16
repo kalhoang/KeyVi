@@ -22,7 +22,11 @@ extension WorkerCore {
                     insertCount: job.insertion.count, eventsPosted: context?.eventsPosted ?? 0,
                     totalMicroseconds: now.nanoseconds(since: job.createdAt) / 1_000,
                     runMicroseconds: now.nanoseconds(since: started) / 1_000, at: now,
-                    completion: context?.completion, completionReadMicroseconds: context?.completionReadMicroseconds)))
+                    completion: context?.completion, completionReadMicroseconds: context?.completionReadMicroseconds,
+                    completionKeptJobs: context?.completionKept?.jobsSinceRead,
+                    completionKeptAgeMicroseconds: context?.completionKept.map {
+                        InjectionTiming.nanoseconds($0.readAge) / 1_000
+                    })))
     }
 
     func recordDevFallback(_ job: EditJob, from: InjectionStrategy, to: InjectionStrategy, reason: FallbackReason) {

@@ -255,7 +255,8 @@ extension KeyPipeline {
             trigger: trigger, verifyBeforeApply: verifies,
             wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe,
             verifyLateFocus: takeLateFocusCheck(),
-            revision: revises ? RevisionEdit(previous: keyState.lastCommit, currentDisplay: replaced) : nil)
+            revision: revises ? RevisionEdit(previous: keyState.lastCommit, currentDisplay: replaced) : nil,
+            caretEpoch: context.queue.caretEpoch)
     }
 
     /// PLT-R340 amendment: the first job after a kept late focus change carries the check.
@@ -387,11 +388,14 @@ extension KeyPipeline {
 
     // MARK: Boundaries
 
-    /// PLT-R340: reset the composition and, while jobs are in flight, mark the boundary in FIFO order.
+    /// PLT-R340: reset the composition and, while jobs are in flight, mark the boundary in FIFO order. Every hard
+    /// boundary also breaks the caret's continuity (PLT-R423 amendment of 16/11/2026), whether or not a job is in
+    /// flight: the worker sees a `BoundaryJob` only while one is.
     func hardBoundary(_ reason: ResetReason, job: BoundaryReason?, generation: FocusGeneration) {
         #if DEV_RECORDER
         recordDevBoundary(reason, job: job)  // PLT-R904A
         #endif
+        context.queue.breakCaretContinuity()
         resetEngineIfDirty(reason)
         keyState.wordStartedAt = nil
         keyState.reopenedWord = false

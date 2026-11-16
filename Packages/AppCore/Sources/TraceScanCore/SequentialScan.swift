@@ -237,7 +237,7 @@ struct SequentialScan {
         if unreadable, let completion = line.compl {
             problems.append("completion " + completion + (read.map { " (read " + $0 + ")" } ?? ""))
         }
-        if let total = line.totalUs, total > FindingLimits.slowJob {
+        if let total = line.totalUs, total > FindingLimits.slowJob, !Self.slowOnlyByAKeptRead(line, total: total) {
             let readShare = unreadable ? nil : read.map { " (completion read " + $0 + ")" }
             problems.append("slow " + milliseconds(Int64(total)) + (readShare ?? ""))
         }
@@ -253,6 +253,13 @@ struct SequentialScan {
     }
 
     // MARK: Helpers
+
+    /// PLT-R423 caret continuity: a job that kept an earlier answer waited the whole read bound (50 ms) by design, so
+    /// it is slow only when its time without the read passes the limit. The read itself stays on the excerpt line.
+    private static func slowOnlyByAKeptRead(_ line: TraceLine, total: UInt64) -> Bool {
+        guard line.compl == "forwardDelete kept", let read = line.complUs else { return false }
+        return read >= total || total - read <= FindingLimits.slowJob
+    }
 
     /// A key with no engine step reached the app as typed (English mode, paused, a passThrough rule).
     private mutating func resolvePendingKey() {

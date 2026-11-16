@@ -126,12 +126,16 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var totalUs: UInt64?
     var runUs: UInt64?
     /// What the completion read found: `selected`, `none`, `unreadable` or `unreadable then placeholder` (PLT-R420,
-    /// PLT-R421); `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd` or `forwardDelete skipped unreadable`
-    /// (PLT-R423).
+    /// PLT-R421); `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd`, `forwardDelete skipped unreadable` or
+    /// `forwardDelete kept` (PLT-R423).
     var compl: String?
     /// How long that read took, timeouts included (since the retest of 16/11/2026; optional, so the format version
     /// stays).
     var complUs: UInt64?
+    /// `forwardDelete kept` only (PLT-R423 caret continuity, amendment of 16/11/2026; optional, so the format version
+    /// stays): how many completion decisions ago the kept answer was read, and how long ago in microseconds.
+    var complKeptJobs: Int?
+    var complKeptUs: UInt64?
     var from: String?
     var to: String?
     // focus, readback, mode
@@ -250,6 +254,8 @@ extension DevTraceLine {
         runUs = job.runMicroseconds
         compl = job.completion?.description
         complUs = job.completionReadMicroseconds
+        complKeptJobs = job.completionKeptJobs
+        complKeptUs = job.completionKeptAgeMicroseconds
     }
 
     private init(focus: DevFocusRecord, t: Int64) {

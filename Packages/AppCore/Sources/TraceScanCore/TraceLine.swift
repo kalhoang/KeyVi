@@ -43,11 +43,15 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     public var runUs: UInt64?
     /// Job lines: what the completion read found (PLT-R420: `selected`, `none`, `unreadable`, since the retest of
     /// 15/11/2026, and `unreadable then placeholder` for `axSelectionThenPlaceholder`, PLT-R421, since 16/11/2026;
-    /// PLT-R423: `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd`, `forwardDelete skipped unreadable`),
-    /// absent when the job made none.
+    /// PLT-R423: `selected`, `forwardDelete`, `forwardDelete skipped notAtEnd`, `forwardDelete skipped unreadable`,
+    /// and `forwardDelete kept` since the second retest of 16/11/2026), absent when the job made none.
     public var compl: String?
     /// Job lines: how long that read took in microseconds, timeouts included (since the retest of 16/11/2026).
     public var complUs: UInt64?
+    /// Job lines with `forwardDelete kept` (PLT-R423 caret continuity, since the second retest of 16/11/2026): how many
+    /// completion decisions ago the kept answer was read, and how long ago in microseconds.
+    public var complKeptJobs: Int?
+    public var complKeptUs: UInt64?
     public var from: String?
     public var to: String?
     public var bundle: String?
