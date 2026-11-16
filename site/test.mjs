@@ -781,7 +781,8 @@ try {
   await check("tone placement: the check flags modern placement only; site sources and the matrix pass (Q13)", async () => {
     assert.deepEqual(modernToneWords("hoá Xoá khoẻ tuỳ thuỷ huỷ hòa xóa tùy hoàn xoắn khuyết ngoài khuỷu quý quỳ"), ["hoá", "Xoá", "khoẻ", "tuỳ", "thuỷ", "huỷ"]);
     assert.deepEqual(siteToneOffenders("<em>hoà</em> <em>xoá</em> hoà"), ["xoá", "hoà"], "only the setting's examples, only in <em>");
-    const files = (await walk(SITE_DIR)).filter((f) => !f.includes(`${SITE_DIR}/dist`) && /\.(mjs|json|md|txt|html|xml)$/.test(f) && !/\/(test|lib\/tone)\.mjs$/.test(f));
+    // site/demo/ is engine input and output (site-demo-frames): the modern placement there is the setting's example.
+    const files = (await walk(SITE_DIR)).filter((f) => !f.includes(`${SITE_DIR}/dist`) && !f.startsWith(`${SITE_DIR}/demo/`) && /\.(mjs|json|md|txt|html|xml)$/.test(f) && !/\/(test|lib\/tone)\.mjs$/.test(f));
     const offenders = await toneOffendersInFiles([...files, join(ROOT_DIR, "compat", "matrix.json")], (f) => f.slice(ROOT_DIR.length + 1));
     assert.deepEqual(offenders, []);
   });

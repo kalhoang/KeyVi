@@ -35,10 +35,11 @@ import VietnameseEngineData
 
     /// The hero sentence is fixed by the product owner (design 7.3): the keys, the text and the English words the
     /// page tags as kept (online, file, slide, deadline) all come from the engine.
+    /// The keys are inlined so that the package tests stand alone; `committedFramesFileIsCurrent` pins the script.
     @Test func heroSentenceTypesAsScripted() throws {
-        let script = try DemoScript.load(from: Self.repoRoot.appendingPathComponent("site/demo/script.json"))
-        let hero = try #require(script.demos.first { $0.id == "hero-chat" })
-        #expect(hero.keys == "Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha")
+        let hero = Self.demo(
+            "Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha", id: "hero-chat",
+            expect: "Chiều nay họp online, nhớ gửi file slide trước deadline nha")
         let demo = try Self.recorder().record(hero)
         #expect(demo.text == "Chiều nay họp online, nhớ gửi file slide trước deadline nha")
         let commits = demo.frames.compactMap(\.commit)
@@ -64,8 +65,30 @@ import VietnameseEngineData
     /// D29, ENG-R828: the next word revises the previous one (the sentence starts with Vietnamese, PRD-R79).
     @Test func nextWordRevisesThePreviousOne() throws {
         let demo = try Self.recorder().record(Self.demo("cais nayf tricky as hell "))
-        #expect(demo.frames.contains { $0.revision })
         #expect(demo.text == "cái này tricky as hell ")
+        let earlier = try #require(demo.frames.compactMap(\.commit).first { $0.raw == "as" })
+        #expect(earlier.text == "á")
+        #expect(!earlier.english)
+        let revising = demo.frames.filter { $0.revision }
+        #expect(revising.count == 1)
+        let frame = try #require(revising.first)
+        #expect(frame.commit?.raw == "hell")
+        // The frame names the word it changed and what that word became, so the page can tag "as" (ENG-R828).
+        #expect(frame.revised == RecordedDemo.Revised(raw: "as", text: "as", english: true))
+        #expect(demo.frames.filter { $0.revised != nil }.count == 1)
+    }
+
+    /// RV4 (ENG-R828): a Vietnamese word after an English run gives the previous word, restored by that run, its
+    /// Vietnamese display back; the revised entry is then not English although its commit was.
+    @Test func revisionToVietnameseIsNotEnglish() throws {
+        let demo = try Self.recorder().record(Self.demo("Happy new year car nhaf "))
+        #expect(demo.text == "Happy new year cả nhà ")
+        let earlier = try #require(demo.frames.compactMap(\.commit).first { $0.raw == "car" })
+        #expect(earlier.text == "car")
+        #expect(earlier.english)
+        let frame = try #require(demo.frames.first { $0.revision })
+        #expect(frame.commit?.raw == "nhaf")
+        #expect(frame.revised == RecordedDemo.Revised(raw: "car", text: "cả", english: false))
     }
 
     /// Every frame's text is the whole field after its key; the keys and settings are carried over.
@@ -91,10 +114,14 @@ import VietnameseEngineData
             ])
     }
 
+    /// Design 7.3: English words stay as typed at a comma, a period and Return; each boundary commits one of them.
     @Test func returnCommitsTheLastWordAndStaysInTheText() throws {
-        let demo = try Self.recorder().record(Self.demo("Minhf check email, review slide.⏎"))
-        #expect(demo.text == "Mình check email, review slide.\n")
+        let demo = try Self.recorder().record(Self.demo("Minhf check email, review slide. Gwir file⏎"))
+        #expect(demo.text == "Mình check email, review slide. Gửi file\n")
+        let kept = demo.frames.filter { $0.commit?.english == true && $0.key != " " }.map { [$0.key, $0.commit?.raw] }
+        #expect(kept == [[",", "email"], [".", "slide"], ["⏎", "file"]])
         #expect(demo.frames.last?.key == "⏎")
+        #expect(demo.frames.last?.commit?.text == "file")
     }
 
     // MARK: The frames file
@@ -111,7 +138,10 @@ import VietnameseEngineData
 
     @Test func framesFileFollowsTheSchema() throws {
         let recorder = try Self.recorder()
-        let demos = try [Self.demo("Vieetj⎋", id: "escape"), Self.demo("a/b ⏎", id: "slash")].map(recorder.record)
+        let demos = try [
+            Self.demo("Vieetj⎋", id: "escape"), Self.demo("a/b ⏎", id: "slash"),
+            Self.demo("cais nayf tricky as hell ", id: "revision"),
+        ].map(recorder.record)
         let data = renderFramesFile(demos)
         let text = String(decoding: data, as: UTF8.self)
         #expect(!text.contains("null"))
@@ -120,7 +150,7 @@ import VietnameseEngineData
         let root = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(root["schemaVersion"] as? Int == 1)
         let all = try #require(root["demos"] as? [String: [String: Any]])
-        #expect(all.keys.sorted() == ["escape", "slash"])
+        #expect(all.keys.sorted() == ["escape", "revision", "slash"])
         let escape = try #require(all["escape"])
         #expect(escape["text"] as? String == "Vieetj")
         #expect(escape["method"] as? String == "telex")
@@ -132,6 +162,14 @@ import VietnameseEngineData
         #expect(slash["text"] as? String == "a/b \n")
         let commit = try #require((slash["frames"] as? [[String: Any]])?.compactMap { $0["commit"] as? [String: Any] })
         #expect(commit.allSatisfy { Set($0.keys) == ["raw", "text", "outcome", "rule", "english"] })
+        let revisionFrames = try #require(all["revision"]?["frames"] as? [[String: Any]])
+        let revising = try #require(revisionFrames.first { $0["revision"] as? Bool == true })
+        let revised = try #require(revising["revised"] as? [String: Any])
+        #expect(Set(revised.keys) == ["raw", "text", "english"])
+        #expect(revised["raw"] as? String == "as")
+        #expect(revised["text"] as? String == "as")
+        #expect(revised["english"] as? Bool == true)
+        #expect(revisionFrames.filter { $0["revised"] != nil }.count == 1)
     }
 
     // MARK: The command line
@@ -209,7 +247,14 @@ import VietnameseEngineData
 
     /// The committed `site/demo/frames.json` matches the engine of this commit: an engine change that alters a demo
     /// regenerates the file in the same commit (design 7.4).
-    @Test func committedFramesFileIsCurrent() {
+    @Test func committedFramesFileIsCurrent() throws {
+        let script = Self.repoRoot.appendingPathComponent(SiteDemoFrames.defaultScript)
+        try #require(
+            FileManager.default.fileExists(atPath: script.path),
+            """
+            \(script.path) is missing: this test needs the repository layout, with the engine package at \
+            <repo>/Packages/VietnameseEngine and the website at <repo>/site
+            """)
         var messages: [String] = []
         let status = SiteDemoFrames.run(
             arguments: ["--check"], currentDirectory: Self.repoRoot, log: { messages.append($0) }, output: { _ in })

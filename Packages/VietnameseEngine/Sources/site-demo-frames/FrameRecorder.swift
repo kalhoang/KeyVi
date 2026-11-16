@@ -23,6 +23,17 @@ struct RecordedDemo: Sendable, Hashable {
         let english: Bool
     }
 
+    /// What a revision made of the previous token (ENG-R828), read from the engine's history after the commit.
+    struct Revised: Sendable, Hashable {
+        /// The previous token's raw keys (ENG-R602).
+        let raw: String
+        /// What the previous token shows now.
+        let text: String
+        /// The same rule as ``Commit/english``: the previous token is now shown exactly as typed and is not
+        /// Vietnamese. The website tags it as kept, as for a commit.
+        let english: Bool
+    }
+
     /// The field after one key.
     struct Frame: Sendable, Hashable {
         /// The key in the script's notation.
@@ -31,10 +42,13 @@ struct RecordedDemo: Sendable, Hashable {
         let text: String
         /// Set when the key committed a token.
         let commit: Commit?
-        /// The commit also revised the previous token (ENG-R828).
-        let revision: Bool
+        /// Set when the commit also revised the previous token (ENG-R828): the token and what it became.
+        let revised: Revised?
         /// The key was the restore toggle (Escape).
         let toggle: Bool
+
+        /// The commit also revised the previous token (ENG-R828).
+        var revision: Bool { revised != nil }
     }
 
     let id: String
@@ -104,13 +118,16 @@ struct FrameRecorder: Sendable {
                 throw Failure("\(demo.id): key \(frames.count + 1) breaks the output contract: \(error)")
             }
             let field = driver.field.string
+            let body = Self.deliversKey(output, key) ? String(field.dropLast()) : field
             let commit = try output.decision.map {
-                try Self.commit($0, output: output, key: key, before: before, field: field, demo: demo.id)
+                try Self.commit($0, output: output, before: before, body: body, demo: demo.id)
+            }
+            let revised = try output.revision.map { _ in
+                try Self.revised(driver.state, body: body, commit: commit, demo: demo.id)
             }
             frames.append(
                 RecordedDemo.Frame(
-                    key: key.notation, text: field, commit: commit, revision: output.revision != nil,
-                    toggle: key.isToggle))
+                    key: key.notation, text: field, commit: commit, revised: revised, toggle: key.isToggle))
         }
         return RecordedDemo(
             id: demo.id, keys: demo.keys, method: demo.method, toneStyle: demo.toneStyle, text: driver.field.string,
@@ -120,10 +137,10 @@ struct FrameRecorder: Sendable {
     /// The commit a key made, read from the field: without a revision the token is what follows the unchanged text
     /// before it; with one (the edit also covers the previous token, ENG-R803) it is the composed form or the raw
     /// keys, whichever the decision names, and the field must end with it.
+    /// `body` is the field without the boundary key the app received after the edit.
     private static func commit(
-        _ decision: CommitDecision, output: EngineOutput, key: DemoKey, before: Before, field: String, demo: String
+        _ decision: CommitDecision, output: EngineOutput, before: Before, body: String, demo: String
     ) throws -> RecordedDemo.Commit {
-        let body = deliversKey(output, key) ? String(field.dropLast()) : field
         let prefix = String(before.field.dropLast(before.display.count))
         let text: String
         switch (output.revision, decision) {
@@ -135,11 +152,37 @@ struct FrameRecorder: Sendable {
         case (_, .macro): throw Failure("\(demo): a macro expansion revised the previous token")
         }
         guard body.hasSuffix(text) else { throw Failure("\(demo): the field does not end with the committed token") }
-        let english =
-            text == before.raw && before.raw.contains(where: \.isLetter)
-            && (decision.isRestored || Orthography.validity(of: before.raw) == .invalid)
         return RecordedDemo.Commit(
-            raw: before.raw, text: text, outcome: decision.outcome, rule: decision.rule?.name, english: english)
+            raw: before.raw, text: text, outcome: decision.outcome, rule: decision.rule?.name,
+            english: isEnglish(text: text, raw: before.raw, restoredByRule: decision.isRestored))
+    }
+
+    /// The previous token after a revision: the token before the one just committed in the engine's history
+    /// (ENG-R1001). The field must end with it, the boundaries after it and the committed token (ENG-R803).
+    private static func revised(
+        _ state: EngineState, body: String, commit: RecordedDemo.Commit?, demo: String
+    ) throws -> RecordedDemo.Revised {
+        guard let commit else { throw Failure("\(demo): a revision without a commit") }
+        let entries = Array(state.history.entries)
+        let tokens = entries.indices.filter { if case .token = entries[$0] { true } else { false } }
+        guard tokens.count >= 2, case .token(let current) = entries[tokens[tokens.count - 1]],
+            case .token(let previous) = entries[tokens[tokens.count - 2]], current.committedText == commit.text
+        else { throw Failure("\(demo): the history does not hold the revised token before the committed one") }
+        let between = entries[(tokens[tokens.count - 2] + 1)..<tokens[tokens.count - 1]].map(\.text).joined()
+        guard body.hasSuffix(previous.committedText + between + commit.text) else {
+            throw Failure("\(demo): the field does not end with the revised token")
+        }
+        let raw = previous.token.rawText
+        return RecordedDemo.Revised(
+            raw: raw, text: previous.committedText,
+            english: isEnglish(text: previous.committedText, raw: raw, restoredByRule: previous.showsRawKeysByRule))
+    }
+
+    /// The token is shown exactly as typed and is not Vietnamese: a rule restored it, or its keys are not a
+    /// Vietnamese syllable (`online`, `file`). A Vietnamese syllable typed unchanged (`nay`) is not English.
+    private static func isEnglish(text: String, raw: String, restoredByRule: Bool) -> Bool {
+        text == raw && raw.contains(where: \.isLetter)
+            && (restoredByRule || Orthography.validity(of: raw) == .invalid)
     }
 
     /// The original key reached the field after the edit (a boundary character the app receives, ENG-R803).

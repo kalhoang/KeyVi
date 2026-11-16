@@ -180,7 +180,8 @@ extension RecordedDemo.Frame {
     var json: JSONValue {
         let members: [(String, JSONValue)?] = [
             ("key", .string(key)), ("text", .string(text)), commit.map { ("commit", $0.json) },
-            revision ? ("revision", .bool(true)) : nil, toggle ? ("toggle", .bool(true)) : nil,
+            revision ? ("revision", .bool(true)) : nil, revised.map { ("revised", $0.json) },
+            toggle ? ("toggle", .bool(true)) : nil,
         ]
         return .object(Dictionary(uniqueKeysWithValues: members.compactMap { $0 }))
     }
@@ -193,6 +194,12 @@ extension RecordedDemo.Commit {
             rule.map { ("rule", .string($0)) }, ("english", .bool(english)),
         ]
         return .object(Dictionary(uniqueKeysWithValues: members.compactMap { $0 }))
+    }
+}
+
+extension RecordedDemo.Revised {
+    var json: JSONValue {
+        .object(["raw": .string(raw), "text": .string(text), "english": .bool(english)])
     }
 }
 

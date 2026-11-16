@@ -203,13 +203,67 @@
           "text": "Mình check email, review slide."
         },
         {
+          "key": " ",
+          "text": "Mình check email, review slide. "
+        },
+        {
+          "key": "G",
+          "text": "Mình check email, review slide. G"
+        },
+        {
+          "key": "w",
+          "text": "Mình check email, review slide. Gư"
+        },
+        {
+          "key": "i",
+          "text": "Mình check email, review slide. Gưi"
+        },
+        {
+          "key": "r",
+          "text": "Mình check email, review slide. Gửi"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Gwir",
+            "rule": "notEnglish",
+            "text": "Gửi"
+          },
+          "key": " ",
+          "text": "Mình check email, review slide. Gửi "
+        },
+        {
+          "key": "f",
+          "text": "Mình check email, review slide. Gửi f"
+        },
+        {
+          "key": "i",
+          "text": "Mình check email, review slide. Gửi fi"
+        },
+        {
+          "key": "l",
+          "text": "Mình check email, review slide. Gửi fil"
+        },
+        {
+          "key": "e",
+          "text": "Mình check email, review slide. Gửi file"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "file",
+            "rule": "unchanged",
+            "text": "file"
+          },
           "key": "⏎",
-          "text": "Mình check email, review slide.\n"
+          "text": "Mình check email, review slide. Gửi file\n"
         }
       ],
-      "keys": "Minhf check email, review slide.⏎",
+      "keys": "Minhf check email, review slide. Gwir file⏎",
       "method": "telex",
-      "text": "Mình check email, review slide.\n",
+      "text": "Mình check email, review slide. Gửi file\n",
       "toneStyle": "traditional"
     },
     "behaviour-revision": {
@@ -347,6 +401,11 @@
             "text": "hell"
           },
           "key": " ",
+          "revised": {
+            "english": true,
+            "raw": "as",
+            "text": "as"
+          },
           "revision": true,
           "text": "cái này tricky as hell "
         }

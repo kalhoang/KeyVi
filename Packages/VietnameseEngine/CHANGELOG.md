@@ -58,6 +58,9 @@ separately from the app (spec/04-quality-release.md QA-R27).
 - `Scripts/coverage.py` also reports the line coverage of the data target and `lexicon-builder`.
 - `ResetReason.unseenInput`: input reached the app that the host never saw (a keyUp without its keyDown,
   PLT-R397A). `FuzzAlphabet` encodes it as DEL, which was a second Backspace.
+- `site-demo-frames` (not a product): types the website's demo sentences (`site/demo/script.json`) through the
+  engine and writes `site/demo/frames.json`, the field after every key with each commit and revision; `--check`
+  fails when the committed file is stale (PRD-R73). The engine coverage gates exclude it like `lexicon-builder`.
 
 ### Changed
 
