@@ -224,7 +224,14 @@ struct SequentialScan {
     private mutating func job(_ event: TraceEvent, into found: inout [Finding]) {
         let line = event.line
         var problems: [String] = []
-        if let outcome = line.out, outcome != "executed" { problems.append("outcome " + outcome) }
+        let label = "job " + String(line.seq ?? 0) + " " + (line.kind ?? "?") + " " + (line.strat ?? "?")
+        if let outcome = line.out, outcome != "executed" {
+            if line.kind == "revision", Self.revisionKeptPreviousWord(outcome: outcome, readback: line.rb) {
+                revisionFellBack(event, label: label, outcome: outcome, into: &found)
+            } else {
+                problems.append("outcome " + outcome)
+            }
+        }
         if let sequence = line.seq, let steps = fallbacks.removeValue(forKey: sequence) {
             problems += steps.map { "fallback " + $0 }
         }
@@ -241,7 +248,6 @@ struct SequentialScan {
             let readShare = unreadable ? nil : read.map { " (completion read " + $0 + ")" }
             problems.append("slow " + milliseconds(Int64(total)) + (readShare ?? ""))
         }
-        let label = "job " + String(line.seq ?? 0) + " " + (line.kind ?? "?") + " " + (line.strat ?? "?")
         if !problems.isEmpty {
             add(.injectionProblem, event, detail: label + ": " + problems.joined(separator: "; "), into: &found)
         }
@@ -250,6 +256,27 @@ struct SequentialScan {
         case "reentry": add(.restoreOrReopen, event, detail: "history re-open (" + label + ")", into: &found)
         default: break
         }
+    }
+
+    /// PLT-R357, review of 16/11/2026: whether a revision job that did not run as computed left the previous word as
+    /// it was. `executedWithFallback` also follows a full revision that a fallback strategy completed (`runChain`), so
+    /// with that outcome only a read-back that decided against the previous word proves it; a line without the
+    /// read-back field (written before 16/11/2026) cannot say and stays an injection problem, as it was then.
+    static func revisionKeptPreviousWord(outcome: String, readback: String?) -> Bool {
+        guard outcome == "executedWithFallback" else { return true }
+        guard let readback else { return false }
+        return readback.hasPrefix("mismatch ") || readback == "skipped unknownPrevious"
+            || readback == "skipped wideDeletion"
+    }
+
+    /// PLT-R357, retest of 16/11/2026: a revision job not executed as computed left the previous word as it was;
+    /// its events and its read-back (absent on lines written before that field) say how and why.
+    private mutating func revisionFellBack(
+        _ event: TraceEvent, label: String, outcome: String, into found: inout [Finding]
+    ) {
+        var parts = ["outcome " + outcome, String(event.line.posted ?? 0) + " events"]
+        if let readback = event.line.rb { parts.append("readback " + readback) }
+        add(.revisionFellBack, event, detail: label + ": " + parts.joined(separator: ", "), into: &found)
     }
 
     // MARK: Helpers

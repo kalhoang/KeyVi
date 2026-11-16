@@ -204,7 +204,8 @@ final class HostRig {
         permissions: FakePermissionProbe = FakePermissionProbe(), realResources: Bool = false,
         capture: CaptureController? = nil, hooks: Bool = false, mainSignalQueue: DispatchQueue? = nil,
         nestedHops: Bool = false, loadBundled: TapSettingsPublisher.BundledResourcesLoader? = nil,
-        permissionRunner: (any PermissionCheckRunner)? = nil, tapCreationTimeout: TimeSpan? = nil
+        permissionRunner: (any PermissionCheckRunner)? = nil, tapCreationTimeout: TimeSpan? = nil,
+        fieldAccess: (@Sendable (SimulatedTextField) -> any FocusedFieldAccess)? = nil
     ) {
         scheduler = ManualScheduler(clock: clock)
         self.layout = layout
@@ -220,7 +221,8 @@ final class HostRig {
         health = HealthEventLog(mirror: logger)
         store = SettingsStoreHarness()
         let plain = InputHostDependencies(
-            tapFactory: tapFactory, poster: poster, fieldAccess: FakeFocusedFieldAccess(field: field),
+            tapFactory: tapFactory, poster: poster,
+            fieldAccess: fieldAccess?(field) ?? FakeFocusedFieldAccess(field: field),
             pasteboard: FakePasteboard(), ax: ax, processes: processes,
             bundleInspector: FakeBundleInspector(bundles: [:]),
             inputSources: inputSources, layoutBuilder: builder ?? FixedLayoutBuilder(table: layout),

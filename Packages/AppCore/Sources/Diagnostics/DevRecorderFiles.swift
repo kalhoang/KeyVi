@@ -136,6 +136,11 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     /// stays): how many completion decisions ago the kept answer was read, and how long ago in microseconds.
     var complKeptJobs: Int?
     var complKeptUs: UInt64?
+    /// Revision jobs: what the read-back of the previous token found (PLT-R357: `matches`, `mismatch differs
+    /// afterSettle`, `mismatch caretBeforeText`, `mismatch shortRead`, `unreadable`, `skipped rule`, `skipped
+    /// unknownPrevious`, ...), a name, never text (since the retest of 16/11/2026; optional, so the format version
+    /// stays).
+    var rb: String?
     var from: String?
     var to: String?
     // focus, readback, mode
@@ -256,6 +261,7 @@ extension DevTraceLine {
         complUs = job.completionReadMicroseconds
         complKeptJobs = job.completionKeptJobs
         complKeptUs = job.completionKeptAgeMicroseconds
+        rb = job.readback?.description
     }
 
     private init(focus: DevFocusRecord, t: Int64) {

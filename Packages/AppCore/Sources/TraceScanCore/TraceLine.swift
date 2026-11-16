@@ -52,6 +52,10 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     /// completion decisions ago the kept answer was read, and how long ago in microseconds.
     public var complKeptJobs: Int?
     public var complKeptUs: UInt64?
+    /// Revision job lines: what the read-back of the previous token found (PLT-R357), such as `matches`, `mismatch
+    /// differs afterSettle`, `mismatch caretBeforeText`, `mismatch shortRead`, `unreadable` or `skipped rule`
+    /// (since the retest of 16/11/2026; absent on older lines and on other jobs).
+    public var rb: String?
     public var from: String?
     public var to: String?
     public var bundle: String?

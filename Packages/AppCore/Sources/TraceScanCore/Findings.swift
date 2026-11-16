@@ -4,7 +4,8 @@
 // the workstream: markers, Backspace edits, correction bursts, readback mismatches, resets with a token open,
 // injection problems, restores and history re-opens, replay divergences and Command+Z after an edit; since the
 // incidents of 2026-11-14 also dropped keys, extra characters and slow readbacks, and since 2026-11-15 keys typed as
-// they were into a re-opened restored token that should compose (ENG-R1005). A finding carries metadata only
+// they were into a re-opened restored token that should compose (ENG-R1005), and since 2026-11-16 revisions that fell
+// back with the read-back that decided it (PLT-R357). A finding carries metadata only
 // (time, app, rule, kind, a content-free detail); its note, which may name a typed character, and the excerpt are
 // printed by `show` only.
 
@@ -26,6 +27,9 @@ public struct Finding: Sendable, Hashable {
         case slowReadback
         case resetWithOpenToken
         case injectionProblem
+        /// A revision job (PLT-R357) that did not rewrite the previous word as computed: only the current token's
+        /// part, the key passed or the job discarded. Since the retest of 16/11/2026.
+        case revisionFellBack
         case restoreOrReopen
         /// Keys passed through as typed into a token a rule restored, re-opened by Backspace, although its remaining
         /// raw keys no longer transform anything and a fresh token would have composed them: the ENG-R1005

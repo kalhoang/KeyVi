@@ -22,6 +22,8 @@ struct JobContext {
     var completionReadMicroseconds: UInt64?
     /// `forwardDelete kept` (PLT-R423 caret continuity): where the kept answer came from.
     var completionKept: CaretAtEndMemory.Kept?
+    /// What the PLT-R357 read-back of a revision found (`RevisionReadBackNote.label`); nil for other jobs.
+    var readback: StaticString?
     #endif
 }
 

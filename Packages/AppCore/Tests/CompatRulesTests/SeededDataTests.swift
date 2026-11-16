@@ -42,12 +42,14 @@ import Testing
     }
 
     static let expectations: [Expectation] = [
+        // PLT-R342, PLT-R357 (retest of 16/11/2026): a terminal's Accessibility text cannot vouch for the shell's
+        // line, so re-entries and revisions are never read back there.
         .init(
-            label: "terminal pacing, no gating, code context",
+            label: "terminal pacing, no gating, no read-back, code context",
             context: Build.context(bundle: "com.apple.Terminal", role: "AXTextArea"), rule: "terminal.default"
         ) {
             $0.params.interEventDelayUs == 1_500 && $0.params.postDeleteSettleUs == 4_000
-                && $0.requireTextFocus == .never
+                && $0.requireTextFocus == .never && $0.verifyReentry == .never
                 && $0.engineContext == .code && !$0.features.restoreHotkey && !$0.features.autoCapitalize
         },
         .init(
@@ -128,7 +130,7 @@ import Testing
             context: Build.context(bundle: "com.microsoft.VSCode", engine: .electron, role: "AXTextArea"),
             rule: "editor.vscodeFamily"
         ) {
-            $0.engineContext == .code
+            $0.engineContext == .code && $0.verifyReentry == .whenReadable
         },
         .init(
             label: "VS Code integrated terminal",
@@ -136,7 +138,7 @@ import Testing
                 bundle: "com.microsoft.VSCode", engine: .electron, domClasses: ["xterm-helper-textarea"]),
             rule: "editor.vscode.integratedTerminal"
         ) {
-            $0.params.interEventDelayUs == 1_500 && !$0.features.restoreHotkey
+            $0.params.interEventDelayUs == 1_500 && !$0.features.restoreHotkey && $0.verifyReentry == .never
         },
         .init(
             label: "other Java apps through the jvm engine",

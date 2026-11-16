@@ -67,9 +67,15 @@ extension WorkerCore {
     /// the previous token, one space and the current display (an unreadable field applies, as `whenReadable` says).
     /// On a mismatch, or whenever the pipeline did not know the previous token, only the current token's part is
     /// applied and the engine is reset: the previous token is never rewritten blind. A focus change seen after the
-    /// settle wait discards the job (PLT-R316).
+    /// settle wait discards the job (PLT-R316). A rule that never verifies (terminals, whose Accessibility text is
+    /// a late echo of the shell's line, retest of 16/11/2026) applies the revision as computed: the tap's history it
+    /// was computed from is reset by every navigation key, click, focus change and Return (PLT-R340).
     func revisionOutcome(_ job: EditJob) -> JobOutcome {
-        if let expected = job.revision?.expectedText, job.deleteCount <= expected.count {
+        guard let expected = job.revision?.expectedText else {
+            noteRevisionReadBack(.skippedUnknownPrevious)
+            return currentTokenOutcome(job)
+        }
+        if job.deleteCount <= expected.count {
             switch revisionReadBack(job, expected: expected) {
             case .matches:
                 var full = job
@@ -85,6 +91,8 @@ extension WorkerCore {
             case .mismatch:
                 break
             }
+        } else {
+            noteRevisionReadBack(.skippedWideDeletion)
         }
         return currentTokenOutcome(job)
     }
@@ -123,19 +131,41 @@ extension WorkerCore {
     /// after a mismatch. The wait leaves room for a mouse click into another field (never held, PLT-R317), so the
     /// focus generation is checked again after the second read.
     private func revisionReadBack(_ job: EditJob, expected: String) -> RevisionReadBack {
-        guard job.verifyBeforeApply || job.verifyLateFocus, let field = job.field else { return .matches }
-        let read = {
-            self.textBeforeCaret(of: field, endsWith: expected, allowingSelection: false, atTokenStart: false)
+        guard job.verifyBeforeApply || job.verifyLateFocus else {
+            noteRevisionReadBack(.skippedRule)
+            return .matches
         }
-        if read() ?? true { return .matches }
+        guard let field = job.field else {
+            noteRevisionReadBack(.skippedNoField)
+            return .matches
+        }
+        let read = {
+            self.checkTextBeforeCaret(of: field, endsWith: expected, allowingSelection: false, atTokenStart: false)
+        }
+        let first = read()
+        if first.verdict ?? true {
+            noteRevisionReadBack(.read(first, afterSettle: false))
+            return .matches
+        }
         let anchor = max(lastPosted?.at.nanoseconds ?? 0, job.createdAt.nanoseconds)
         let settled = MonotonicInstant(
             nanoseconds: anchor &+ InjectionTiming.nanoseconds(InjectionTiming.revisionSettle))
-        guard services.clock.now() < settled else { return .mismatch }
+        guard services.clock.now() < settled else {
+            noteRevisionReadBack(.read(first, afterSettle: false))
+            return .mismatch
+        }
         services.clock.sleep(until: settled)
-        let matches = read() ?? true
+        let second = read()
+        noteRevisionReadBack(.read(second, afterSettle: true))
         if job.generation < focusGeneration.load() { return .staleGeneration }
-        return matches ? .matches : .mismatch
+        return (second.verdict ?? true) ? .matches : .mismatch
+    }
+
+    /// PLT-R904A: the job line of a revision names what its read-back found (no text).
+    private func noteRevisionReadBack(_ note: RevisionReadBackNote) {
+        #if DEV_RECORDER
+        context?.readback = note.label
+        #endif
     }
 
     /// PLT-R403 NFC, PLT-R480 4,000-grapheme cap, PLT-R402 prefix trim, PLT-R408 first-edit delay.
@@ -187,21 +217,31 @@ extension WorkerCore {
     private func textBeforeCaret(
         of field: FieldHandle, endsWith expected: String, allowingSelection: Bool, atTokenStart: Bool
     ) -> Bool? {
+        checkTextBeforeCaret(
+            of: field, endsWith: expected, allowingSelection: allowingSelection, atTokenStart: atTokenStart
+        ).verdict
+    }
+
+    /// `textBeforeCaret` with the reason of a failed comparison, for the dev recorder (PLT-R904A).
+    private func checkTextBeforeCaret(
+        of field: FieldHandle, endsWith expected: String, allowingSelection: Bool, atTokenStart: Bool
+    ) -> CaretTextCheck {
         let timeout = InjectionTiming.axCallTimeout
-        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout),
-            allowingSelection || selection.length == 0
-        else { return nil }
+        guard case .success(let selection) = axAccess.selectedRange(field, timeout: timeout) else {
+            return .unreadable
+        }
+        guard allowingSelection || selection.length == 0 else { return .selection }
         let bound = InjectionTiming.maximumAXReadUnits
         let expectedUnits = Array(expected.utf16.suffix(bound))
-        guard selection.location >= expectedUnits.count else { return false }
+        guard selection.location >= expectedUnits.count else { return .caretBeforeText }
         let checksStart = atTokenStart && expectedUnits.count < bound && selection.location > expectedUnits.count
         let length = expectedUnits.count + (checksStart ? 1 : 0)
         let range = Injection.TextRange(location: selection.location - length, length: length)
-        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return nil }
+        guard case .success(let text) = axAccess.text(field, in: range, timeout: timeout) else { return .unreadable }
         let units = Array(text.utf16)
-        guard units.count == length else { return false }
-        if checksStart, !Self.separatesTokens(units[0]) { return false }
-        return Array(units.suffix(expectedUnits.count)) == expectedUnits
+        guard units.count == length else { return .shortRead }
+        if checksStart, !Self.separatesTokens(units[0]) { return .notAtTokenStart }
+        return Array(units.suffix(expectedUnits.count)) == expectedUnits ? .matches : .differs
     }
 
     /// Whitespace, punctuation, symbols and controls end a token; letters, marks and digits do not. A surrogate

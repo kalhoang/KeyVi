@@ -117,12 +117,18 @@ public struct DevJobRecord: Sendable {
     public var completionKeptJobs: Int?
     /// `forwardDelete kept` only: how long ago that read answered.
     public var completionKeptAgeMicroseconds: UInt64?
+    /// Revision jobs (PLT-R357): what the read-back of the previous token found, as a name (`matches`,
+    /// `mismatch differs afterSettle`, `mismatch caretBeforeText`, `mismatch shortRead`, `unreadable`, `skipped rule`,
+    /// `skipped unknownPrevious`, ...), never the text read; nil for other jobs. Since the retest of 16/11/2026, so a
+    /// revision that fell back says why.
+    public var readback: StaticString?
 
     public init(
         sequence: UInt64, generation: UInt64, kind: any Sendable, strategy: InjectionStrategy, outcome: StaticString,
         deleteCount: Int, insertCount: Int, eventsPosted: Int, totalMicroseconds: UInt64, runMicroseconds: UInt64,
         at: MonotonicInstant, completion: StaticString? = nil, completionReadMicroseconds: UInt64? = nil,
-        completionKeptJobs: Int? = nil, completionKeptAgeMicroseconds: UInt64? = nil
+        completionKeptJobs: Int? = nil, completionKeptAgeMicroseconds: UInt64? = nil,
+        readback: StaticString? = nil
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -139,6 +145,7 @@ public struct DevJobRecord: Sendable {
         self.completionReadMicroseconds = completionReadMicroseconds
         self.completionKeptJobs = completionKeptJobs
         self.completionKeptAgeMicroseconds = completionKeptAgeMicroseconds
+        self.readback = readback
     }
 }
 
