@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Home page sections only (design 7.3), linked from / and /en/ through page.styles after style.css, whose tokens and
+   components (button, card, window, tag, keycap, section header, dark band) the sections use. Breakpoints: one column
+   below 1024 px, two from there. Every demo area reserves its size, so nothing shifts when the motion starts. */
+
+/* Section rhythm */
+.home-section { margin-block: clamp(3.5rem, 8vw, 6rem); }
+.home-section > h2:first-child { margin-top: 0; }
+
+/* 1. Hero: headline and download on the left, the demo on the right from 1024 px. */
+.hero { display: grid; gap: clamp(2rem, 5vw, 3.5rem); align-items: center; padding-block: 0.5rem 1.5rem; }
+.hero h1 { max-width: 18ch; }
+.hero .lede { margin-bottom: 0; }
+.hero .cmd { margin-bottom: 1.25rem; }
+@media (min-width: 64rem) {
+  .hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+}
+
+/* The typed example beside the headline, until the demo window takes its place. */
+.typed {
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--card);
+  box-shadow: var(--shadow-window);
+}
+.typed p { margin: 0.3rem 0; font-family: var(--font-mono); font-size: 1.05rem; }
+.typed .arrow { color: var(--muted); }
+.typed .out { font-family: var(--font); font-size: 1.5rem; font-weight: 650; letter-spacing: -0.01em; }
+.typed .cap { margin-top: 0.85rem; color: var(--muted); font-family: var(--font); font-size: 0.9rem; }
+[data-slot="demo"] { margin-block: 2rem; }
+video { display: block; width: 100%; max-width: 44rem; border: 1px solid var(--line); border-radius: var(--radius-l); }
+
+/* 5. Proof: three points on the dark band. */
+.proof { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin: 2rem 0 0; padding: 0; list-style: none; }
+.proof li { margin: 0; padding-top: 1rem; border-top: 2px solid var(--green-on-dark); }
+.proof h3 { margin: 0 0 0.4rem; font-size: 1.15rem; }
+.proof p { margin: 0 0 0.5rem; }

@@ -16,7 +16,7 @@ import { loadBrand } from "./lib/brand.mjs";
 import { CATEGORIES, STATUSES } from "./lib/data.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "./lib/headers.mjs";
 import { changelogHeadingId } from "./lib/pages/simple.mjs";
-import { LANGS, ROUTES, outputFile } from "./lib/routes.mjs";
+import { LANGS, ROUTES, outputFile, routePath } from "./lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "./lib/tone.mjs";
 import { shortHash } from "./lib/util.mjs";
 
@@ -114,6 +114,16 @@ async function appHelpTargets() {
 }
 
 const sha256Base64 = (text) => createHash("sha256").update(text, "utf8").digest("base64");
+
+/** WCAG 2.2 contrast ratio of two #rrggbb colours (relative luminance of sRGB). */
+function contrast(first, second) {
+  const luminance = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [high, low] = [luminance(first), luminance(second)].sort((x, y) => y - x);
+  return (high + 0.05) / (low + 0.05);
+}
 
 /** Origins other than the site itself that a page or header can make the browser contact: resource attributes
  * (script src, stylesheet, preload, icon, img, media) and every CSP source with a scheme and host. */
@@ -395,16 +405,19 @@ try {
     assert.ok((await build({ outDir: join(tmp, "sponsors-placeholder"), today: "2026-11-13", configPath })).placeholders.includes("sponsorsUrl"), "a placeholder is still reported for --strict");
   });
 
-  await check("populated: favicon, touch icon and header logo come from the app icon (CLR-R7)", async () => {
+  await check("populated: favicon, touch icon and the header mark come from the app icon (CLR-R7)", async () => {
     for (const file of ["favicon.svg", "favicon.ico", "apple-touch-icon.png", "assets/brand/app-icon-64.png", "assets/brand/app-icon-128.png"]) {
       assert.ok(existsSync(join(populated, file)), `${file} shipped`);
     }
     const favicon = await readFile(join(populated, "favicon.svg"), "utf8");
     assert.match(favicon, /Source: derived from Pa's own artwork/);
     assert.match(read("index.html"), /<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml">/);
-    const css = await readFile(join(populated, "assets", "style.css"), "utf8");
-    assert.match(css, /\.brand::before\s*\{[^}]*url\("\/assets\/brand\/app-icon-64\.png"\)/, "header logo");
-    for (const [, src] of css.matchAll(/url\("([^"]+)"\)/g)) assert.ok(existsSync(join(populated, src)), `${src} exists`);
+    // The header mark is the KV of favicon.svg as an inline symbol (design 7.1); the shell check compares the shapes.
+    assert.match(read("index.html"), /<a class="brand" href="\/"><svg class="mark"[^>]*><use href="#mark"><\/use><\/svg>/, "header mark");
+    for (const sheet of ["style.css", "home.css"]) {
+      const css = await readFile(join(populated, "assets", sheet), "utf8");
+      for (const [, src] of css.matchAll(/url\("([^"]+)"\)/g)) assert.ok(existsSync(join(populated, src)), `${sheet}: ${src} exists`);
+    }
   });
 
   await check("populated: privacy page covers storage, network, diagnostics, analytics none", () => {
@@ -533,6 +546,83 @@ try {
       assert.equal(typeof example.appModes, "object");
       assert.ok(!Array.isArray(example.appModes), "appModes is an object");
     }
+  });
+
+  await check("shell: no inline style attribute or style element on any page (design 4)", () => {
+    const problems = [];
+    for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
+      for (const [file, html] of pages) {
+        const page = file.slice(dist.length + 1);
+        if (/\sstyle\s*=/i.test(html)) problems.push(`${page}: style attribute`);
+        // The release-notes rule (PLT-R906): that page inlines its stylesheet, allowed by its CSP hash (checked above).
+        if (!isReleaseNotesPage(page) && /<style/i.test(html)) problems.push(`${page}: style element`);
+      }
+    }
+    assert.deepEqual(problems, []);
+  });
+
+  await check("shell: header links features, compatibility, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
+    const part = (html, tag) => html.match(new RegExp(`<${tag} class="site-${tag}"[\\s\\S]*?</${tag}>`))?.[0] ?? "";
+    const links = (html) => attrs(html, "href").filter((href) => !href.startsWith("#"));
+    const features = { vi: "/#tinh-nang", en: "/en/#features" };
+    for (const [label, html, lang, other] of [["vi home", read("index.html"), "vi", "/en/"], ["en home", read("en", "index.html"), "en", "/"], ["vi support", read("ho-tro", "index.html"), "vi", "/en/support/"]]) {
+      const header = part(html, "header");
+      assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("compat", lang), routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
+      assert.match(header, /<a class="btn" href="[^"]+"[^>]*>[^<]+<\/a>/, `${label}: the download link is a button`);
+      assert.match(header, /<svg class="mark"[^>]*><use href="#mark"><\/use><\/svg>/, `${label}: the mark beside the name`);
+      assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), shipped.githubRepo, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);
+    }
+    // Review Focus 4: without a stable release the header shows the disabled state, never a download button.
+    const header = part(fallbackPages.get(join(fallback, "index.html")), "header");
+    assert.ok(!header.includes(`href="${routePath("download", "vi")}"`), "no download link in the header without a release");
+    assert.match(header, /<span class="btn btn-disabled" aria-disabled="true">Chưa có bản phát hành<\/span>/);
+    // The mark is the KV of site/static/favicon.svg (Pa's artwork, CLR-R7): the same shapes, attributes only.
+    const favicon = await readFile(join(SITE_DIR, "static", "favicon.svg"), "utf8");
+    const symbol = read("index.html").match(/<symbol id="mark"[\s\S]*?<\/symbol>/)?.[0] ?? "";
+    for (const points of attrs(favicon, "points")) assert.ok(symbol.includes(`points="${points}"`), `symbol polygon ${points}`);
+    assert.match(symbol, /<circle cx="15\.6" cy="4\.3" r="1\.9"/);
+  });
+
+  await check("shell: the trademark sign is in titles and prose, never in buttons, navigation or URLs (spec 03 Name and trademark sign)", async () => {
+    const brand = await loadBrand(join(ROOT_DIR, "scripts", "brand.env"));
+    const env = await readFile(join(ROOT_DIR, "scripts", "brand.env"), "utf8");
+    const sign = env.match(/^APP_TRADEMARK_SIGN="([^"]*)"$/m)?.[1] ?? "";
+    const signs = new RegExp(`[™®]${sign ? `|${sign}` : ""}`);
+    for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
+      assert.ok(pages.get(join(dist, "index.html")).match(/<title>([^<]*)<\/title>/)[1].includes(`${brand.name}${sign}`), `${dist}: home title carries the sign`);
+      for (const [file, html] of pages) {
+        const page = file.slice(dist.length + 1);
+        assert.ok(!html.includes("{{AppNameTM}}"), `${page}: unfilled {{AppNameTM}}`);
+        for (const href of attrs(html, "href")) assert.ok(!signs.test(href), `${page}: sign in a URL ${href}`);
+        for (const [, nav] of html.matchAll(/<nav\b[^>]*>([\s\S]*?)<\/nav>/g)) assert.ok(!signs.test(nav), `${page}: sign in navigation`);
+        for (const [, , text] of html.matchAll(/<(a|p|span|button)\b[^>]*class="(?:[^"]*\s)?btn(?:\s[^"]*)?"[^>]*>([\s\S]*?)<\/\1>/g)) assert.ok(!signs.test(text), `${page}: sign in a button`);
+      }
+    }
+  });
+
+  await check("tokens: text colours meet WCAG AA in light and dark (design 7.7)", async () => {
+    const css = await readFile(join(SITE_DIR, "static", "assets", "style.css"), "utf8");
+    const block = (text) => Object.fromEntries([...(text ?? "").matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]));
+    const light = block(css.match(/(?:^|\n):root\s*\{([^}]*)\}/)?.[1]);
+    const dark = { ...light, ...block(css.match(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/)?.[1]) };
+    const resolve = (tokens, name, depth = 0) => {
+      const value = tokens[name];
+      const ref = value?.match(/^var\((--[\w-]+)\)$/);
+      return ref && depth < 5 ? resolve(tokens, ref[1], depth + 1) : value;
+    };
+    // Text on its background: body, muted and link text on both surfaces, the tag, the button, the dark band.
+    const pairs = [["--ink", "--paper"], ["--muted", "--paper"], ["--muted", "--paper-2"], ["--green-text", "--paper"], ["--green-text", "--paper-2"],
+      ["--green-text", "--green-soft"], ["--on-green", "--green"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
+    const problems = [];
+    for (const [scheme, tokens] of [["light", light], ["dark", dark]]) {
+      for (const [text, background] of pairs) {
+        const [a, b] = [resolve(tokens, text), resolve(tokens, background)];
+        if (!/^#[0-9a-f]{6}$/i.test(a ?? "") || !/^#[0-9a-f]{6}$/i.test(b ?? "")) { problems.push(`${scheme}: ${text} or ${background} is not a #rrggbb value`); continue; }
+        const ratio = contrast(a, b);
+        if (ratio < 4.5) problems.push(`${scheme}: ${text} ${a} on ${background} ${b} is ${ratio.toFixed(2)}:1`);
+      }
+    }
+    assert.deepEqual(problems, []);
   });
 
   await check("populated: language switch and hreflang alternates point at the sibling page", () => {

@@ -74,6 +74,8 @@ function tokensFor(ctx, lang) {
   const { brand, config } = ctx;
   const tokens = {
     AppName: brand.name,
+    // Titles and prose only, never buttons, navigation, URLs or identifiers (spec/03-product.md, trademark sign).
+    AppNameTM: brand.name + brand.trademarkSign,
     slug: brand.slug,
     host: brand.host,
     bundleId: brand.bundleId,

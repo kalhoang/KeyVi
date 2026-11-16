@@ -2,6 +2,7 @@
 // Landing page (PRD-R73): value statement, demo slot, download button, brew line, three proof points.
 import { esc } from "../util.mjs";
 import { kit, macosRequirement } from "../context.mjs";
+import { FEATURES_ANCHOR } from "../layout.mjs";
 import { routePath } from "../routes.mjs";
 
 function demoBlock({ ctx, c, f, esc: e }) {
@@ -61,11 +62,11 @@ export function renderHome(ctx, lang) {
       <div>${typedExample(kt)}</div>
     </section>
     ${demoBlock(kt)}
-    <section aria-labelledby="proof-title">
+    <section aria-labelledby="proof-title" class="band-dark">
       <h2 id="proof-title">${esc(h.proofHeading)}</h2>
       <ul class="proof">${proof}</ul>
     </section>
-    <section aria-labelledby="why-title" class="prose">
+    <section id="${FEATURES_ANCHOR[lang]}" aria-labelledby="why-title" class="prose">
       <h2 id="why-title">${esc(h.whyHeading)}</h2>
       <ul>${why}</ul>
     </section>
@@ -80,5 +81,6 @@ export function renderHome(ctx, lang) {
     title: p(ui.titles.home),
     description: p(ui.descriptions.home),
     body,
+    styles: ["/assets/home.css"],
   };
 }
