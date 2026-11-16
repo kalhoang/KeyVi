@@ -40,6 +40,13 @@ let package = Package(
             path: "Benchmarks/EngineBenchmark",
             swiftSettings: strict
         ),
+        // PRD-R73: types the website's demo sentences through the real engine and writes site/demo/frames.json
+        // (website redesign design of 16/11/2026, section 7.4). Not a product: a development tool with a check mode.
+        .executableTarget(
+            name: "site-demo-frames",
+            dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting"],
+            swiftSettings: strict
+        ),
         .testTarget(
             name: "VietnameseEngineTests",
             dependencies: ["VietnameseEngine", "VietnameseEngineTesting"],
@@ -59,6 +66,12 @@ let package = Package(
             name: "CollisionCorpusTests",
             dependencies: ["VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting"],
             resources: [.copy("Fixtures")],
+            swiftSettings: strict
+        ),
+        // Unit-tests site-demo-frames in-process (`@testable import site_demo_frames`).
+        .testTarget(
+            name: "SiteDemoFramesTests",
+            dependencies: ["site-demo-frames", "VietnameseEngine", "VietnameseEngineData", "VietnameseEngineTesting"],
             swiftSettings: strict
         ),
     ],

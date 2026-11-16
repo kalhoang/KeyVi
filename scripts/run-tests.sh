@@ -78,7 +78,7 @@ engine_tests() {
   if [[ $coverage -eq 1 ]]; then
     # The coverage run includes the collision gate, so its coverage counts.
     scripts/coverage.sh --package "$engine" --min 95 \
-      --exclude '^Sources/(lexicon-builder|engine-benchmark|VietnameseEngineTesting)/' \
+      --exclude '^Sources/(lexicon-builder|engine-benchmark|site-demo-frames|VietnameseEngineTesting)/' \
       ${args[@]+"${args[@]}"}
   elif wanted collision; then
     swift test --package-path "$engine" ${args[@]+"${args[@]}"} --skip "$collision_filter"

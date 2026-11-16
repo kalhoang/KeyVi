@@ -1,0 +1,1540 @@
+{
+  "demos": {
+    "behaviour-escape": {
+      "frames": [
+        {
+          "key": "V",
+          "text": "V"
+        },
+        {
+          "key": "i",
+          "text": "Vi"
+        },
+        {
+          "key": "e",
+          "text": "Vie"
+        },
+        {
+          "key": "e",
+          "text": "Viê"
+        },
+        {
+          "key": "t",
+          "text": "Viêt"
+        },
+        {
+          "key": "j",
+          "text": "Việt"
+        },
+        {
+          "key": "⎋",
+          "text": "Vieetj",
+          "toggle": true
+        }
+      ],
+      "keys": "Vieetj⎋",
+      "method": "telex",
+      "text": "Vieetj",
+      "toneStyle": "traditional"
+    },
+    "behaviour-punctuation": {
+      "frames": [
+        {
+          "key": "M",
+          "text": "M"
+        },
+        {
+          "key": "i",
+          "text": "Mi"
+        },
+        {
+          "key": "n",
+          "text": "Min"
+        },
+        {
+          "key": "h",
+          "text": "Minh"
+        },
+        {
+          "key": "f",
+          "text": "Mình"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Minhf",
+            "rule": "notEnglish",
+            "text": "Mình"
+          },
+          "key": " ",
+          "text": "Mình "
+        },
+        {
+          "key": "c",
+          "text": "Mình c"
+        },
+        {
+          "key": "h",
+          "text": "Mình ch"
+        },
+        {
+          "key": "e",
+          "text": "Mình che"
+        },
+        {
+          "key": "c",
+          "text": "Mình chec"
+        },
+        {
+          "key": "k",
+          "text": "Mình check"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "check",
+            "rule": "unchanged",
+            "text": "check"
+          },
+          "key": " ",
+          "text": "Mình check "
+        },
+        {
+          "key": "e",
+          "text": "Mình check e"
+        },
+        {
+          "key": "m",
+          "text": "Mình check em"
+        },
+        {
+          "key": "a",
+          "text": "Mình check ema"
+        },
+        {
+          "key": "i",
+          "text": "Mình check emai"
+        },
+        {
+          "key": "l",
+          "text": "Mình check email"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "email",
+            "rule": "unchanged",
+            "text": "email"
+          },
+          "key": ",",
+          "text": "Mình check email,"
+        },
+        {
+          "key": " ",
+          "text": "Mình check email, "
+        },
+        {
+          "key": "r",
+          "text": "Mình check email, r"
+        },
+        {
+          "key": "e",
+          "text": "Mình check email, re"
+        },
+        {
+          "key": "v",
+          "text": "Mình check email, rev"
+        },
+        {
+          "key": "i",
+          "text": "Mình check email, revi"
+        },
+        {
+          "key": "e",
+          "text": "Mình check email, revie"
+        },
+        {
+          "key": "w",
+          "text": "Mình check email, review"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "review",
+            "rule": "unchanged",
+            "text": "review"
+          },
+          "key": " ",
+          "text": "Mình check email, review "
+        },
+        {
+          "key": "s",
+          "text": "Mình check email, review s"
+        },
+        {
+          "key": "l",
+          "text": "Mình check email, review sl"
+        },
+        {
+          "key": "i",
+          "text": "Mình check email, review sli"
+        },
+        {
+          "key": "d",
+          "text": "Mình check email, review slid"
+        },
+        {
+          "key": "e",
+          "text": "Mình check email, review slide"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "slide",
+            "rule": "unchanged",
+            "text": "slide"
+          },
+          "key": ".",
+          "text": "Mình check email, review slide."
+        },
+        {
+          "key": "⏎",
+          "text": "Mình check email, review slide.\n"
+        }
+      ],
+      "keys": "Minhf check email, review slide.⏎",
+      "method": "telex",
+      "text": "Mình check email, review slide.\n",
+      "toneStyle": "traditional"
+    },
+    "behaviour-revision": {
+      "frames": [
+        {
+          "key": "c",
+          "text": "c"
+        },
+        {
+          "key": "a",
+          "text": "ca"
+        },
+        {
+          "key": "i",
+          "text": "cai"
+        },
+        {
+          "key": "s",
+          "text": "cái"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "cais",
+            "rule": "notEnglish",
+            "text": "cái"
+          },
+          "key": " ",
+          "text": "cái "
+        },
+        {
+          "key": "n",
+          "text": "cái n"
+        },
+        {
+          "key": "a",
+          "text": "cái na"
+        },
+        {
+          "key": "y",
+          "text": "cái nay"
+        },
+        {
+          "key": "f",
+          "text": "cái này"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "nayf",
+            "rule": "notEnglish",
+            "text": "này"
+          },
+          "key": " ",
+          "text": "cái này "
+        },
+        {
+          "key": "t",
+          "text": "cái này t"
+        },
+        {
+          "key": "r",
+          "text": "cái này tr"
+        },
+        {
+          "key": "i",
+          "text": "cái này tri"
+        },
+        {
+          "key": "c",
+          "text": "cái này tric"
+        },
+        {
+          "key": "k",
+          "text": "cái này trick"
+        },
+        {
+          "key": "y",
+          "text": "cái này tricky"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "tricky",
+            "rule": "unchanged",
+            "text": "tricky"
+          },
+          "key": " ",
+          "text": "cái này tricky "
+        },
+        {
+          "key": "a",
+          "text": "cái này tricky a"
+        },
+        {
+          "key": "s",
+          "text": "cái này tricky á"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "as",
+            "rule": "ambiguityTable",
+            "text": "á"
+          },
+          "key": " ",
+          "text": "cái này tricky á "
+        },
+        {
+          "key": "h",
+          "text": "cái này tricky á h"
+        },
+        {
+          "key": "e",
+          "text": "cái này tricky á he"
+        },
+        {
+          "key": "l",
+          "text": "cái này tricky á hel"
+        },
+        {
+          "key": "l",
+          "text": "cái này tricky á hell"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "hell",
+            "rule": "unchanged",
+            "text": "hell"
+          },
+          "key": " ",
+          "revision": true,
+          "text": "cái này tricky as hell "
+        }
+      ],
+      "keys": "cais nayf tricky as hell ",
+      "method": "telex",
+      "text": "cái này tricky as hell ",
+      "toneStyle": "traditional"
+    },
+    "card-anywhere": {
+      "frames": [
+        {
+          "key": "v",
+          "text": "v"
+        },
+        {
+          "key": "i",
+          "text": "vi"
+        },
+        {
+          "key": "e",
+          "text": "vie"
+        },
+        {
+          "key": "t",
+          "text": "viet"
+        },
+        {
+          "key": "e",
+          "text": "viêt"
+        },
+        {
+          "key": "j",
+          "text": "việt"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "vietej",
+            "rule": "notEnglish",
+            "text": "việt"
+          },
+          "key": " ",
+          "text": "việt "
+        },
+        {
+          "key": "t",
+          "text": "việt t"
+        },
+        {
+          "key": "i",
+          "text": "việt ti"
+        },
+        {
+          "key": "e",
+          "text": "việt tie"
+        },
+        {
+          "key": "e",
+          "text": "việt tiê"
+        },
+        {
+          "key": "n",
+          "text": "việt tiên"
+        },
+        {
+          "key": "g",
+          "text": "việt tiêng"
+        },
+        {
+          "key": "s",
+          "text": "việt tiếng"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "tieengs",
+            "rule": "notEnglish",
+            "text": "tiếng"
+          },
+          "key": " ",
+          "text": "việt tiếng "
+        },
+        {
+          "key": "d",
+          "text": "việt tiếng d"
+        },
+        {
+          "key": "a",
+          "text": "việt tiếng da"
+        },
+        {
+          "key": "n",
+          "text": "việt tiếng dan"
+        },
+        {
+          "key": "g",
+          "text": "việt tiếng dang"
+        },
+        {
+          "key": "d",
+          "text": "việt tiếng đang"
+        }
+      ],
+      "keys": "vietej tieengs dangd",
+      "method": "telex",
+      "text": "việt tiếng đang",
+      "toneStyle": "traditional"
+    },
+    "card-modern": {
+      "frames": [
+        {
+          "key": "h",
+          "text": "h"
+        },
+        {
+          "key": "o",
+          "text": "ho"
+        },
+        {
+          "key": "a",
+          "text": "hoa"
+        },
+        {
+          "key": "f",
+          "text": "hoà"
+        }
+      ],
+      "keys": "hoaf",
+      "method": "telex",
+      "text": "hoà",
+      "toneStyle": "modern"
+    },
+    "card-slang": {
+      "frames": [
+        {
+          "key": "d",
+          "text": "d"
+        },
+        {
+          "key": "z",
+          "text": "dz"
+        },
+        {
+          "key": "o",
+          "text": "dzo"
+        },
+        {
+          "key": "o",
+          "text": "dzô"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "dzoo",
+            "rule": "extendedSpelling",
+            "text": "dzô"
+          },
+          "key": " ",
+          "text": "dzô "
+        },
+        {
+          "key": "d",
+          "text": "dzô d"
+        },
+        {
+          "key": "z",
+          "text": "dzô dz"
+        },
+        {
+          "key": "a",
+          "text": "dzô dza"
+        },
+        {
+          "key": "a",
+          "text": "dzô dzâ"
+        },
+        {
+          "key": "j",
+          "text": "dzô dzậ"
+        },
+        {
+          "key": "y",
+          "text": "dzô dzậy"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "dzaajy",
+            "rule": "extendedSpelling",
+            "text": "dzậy"
+          },
+          "key": " ",
+          "text": "dzô dzậy "
+        },
+        {
+          "key": "h",
+          "text": "dzô dzậy h"
+        },
+        {
+          "key": "e",
+          "text": "dzô dzậy he"
+        },
+        {
+          "key": "o",
+          "text": "dzô dzậy heo"
+        },
+        {
+          "key": "j",
+          "text": "dzô dzậy hẹo"
+        }
+      ],
+      "keys": "dzoo dzaajy heoj",
+      "method": "telex",
+      "text": "dzô dzậy hẹo",
+      "toneStyle": "traditional"
+    },
+    "card-telex": {
+      "frames": [
+        {
+          "key": "v",
+          "text": "v"
+        },
+        {
+          "key": "i",
+          "text": "vi"
+        },
+        {
+          "key": "e",
+          "text": "vie"
+        },
+        {
+          "key": "e",
+          "text": "viê"
+        },
+        {
+          "key": "t",
+          "text": "viêt"
+        },
+        {
+          "key": "j",
+          "text": "việt"
+        }
+      ],
+      "keys": "vieetj",
+      "method": "telex",
+      "text": "việt",
+      "toneStyle": "traditional"
+    },
+    "card-traditional": {
+      "frames": [
+        {
+          "key": "h",
+          "text": "h"
+        },
+        {
+          "key": "o",
+          "text": "ho"
+        },
+        {
+          "key": "a",
+          "text": "hoa"
+        },
+        {
+          "key": "f",
+          "text": "hòa"
+        }
+      ],
+      "keys": "hoaf",
+      "method": "telex",
+      "text": "hòa",
+      "toneStyle": "traditional"
+    },
+    "card-vni": {
+      "frames": [
+        {
+          "key": "v",
+          "text": "v"
+        },
+        {
+          "key": "i",
+          "text": "vi"
+        },
+        {
+          "key": "e",
+          "text": "vie"
+        },
+        {
+          "key": "6",
+          "text": "viê"
+        },
+        {
+          "key": "5",
+          "text": "việ"
+        },
+        {
+          "key": "t",
+          "text": "việt"
+        }
+      ],
+      "keys": "vie65t",
+      "method": "vni",
+      "text": "việt",
+      "toneStyle": "traditional"
+    },
+    "hero-chat": {
+      "frames": [
+        {
+          "key": "C",
+          "text": "C"
+        },
+        {
+          "key": "h",
+          "text": "Ch"
+        },
+        {
+          "key": "i",
+          "text": "Chi"
+        },
+        {
+          "key": "e",
+          "text": "Chie"
+        },
+        {
+          "key": "e",
+          "text": "Chiê"
+        },
+        {
+          "key": "u",
+          "text": "Chiêu"
+        },
+        {
+          "key": "f",
+          "text": "Chiều"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Chieeuf",
+            "rule": "notEnglish",
+            "text": "Chiều"
+          },
+          "key": " ",
+          "text": "Chiều "
+        },
+        {
+          "key": "n",
+          "text": "Chiều n"
+        },
+        {
+          "key": "a",
+          "text": "Chiều na"
+        },
+        {
+          "key": "y",
+          "text": "Chiều nay"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "nay",
+            "rule": "unchanged",
+            "text": "nay"
+          },
+          "key": " ",
+          "text": "Chiều nay "
+        },
+        {
+          "key": "h",
+          "text": "Chiều nay h"
+        },
+        {
+          "key": "o",
+          "text": "Chiều nay ho"
+        },
+        {
+          "key": "j",
+          "text": "Chiều nay họ"
+        },
+        {
+          "key": "p",
+          "text": "Chiều nay họp"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "hojp",
+            "rule": "notEnglish",
+            "text": "họp"
+          },
+          "key": " ",
+          "text": "Chiều nay họp "
+        },
+        {
+          "key": "o",
+          "text": "Chiều nay họp o"
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay họp on"
+        },
+        {
+          "key": "l",
+          "text": "Chiều nay họp onl"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay họp onli"
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay họp onlin"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay họp online"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "online",
+            "rule": "unchanged",
+            "text": "online"
+          },
+          "key": ",",
+          "text": "Chiều nay họp online,"
+        },
+        {
+          "key": " ",
+          "text": "Chiều nay họp online, "
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay họp online, n"
+        },
+        {
+          "key": "h",
+          "text": "Chiều nay họp online, nh"
+        },
+        {
+          "key": "o",
+          "text": "Chiều nay họp online, nho"
+        },
+        {
+          "key": "w",
+          "text": "Chiều nay họp online, nhơ"
+        },
+        {
+          "key": "s",
+          "text": "Chiều nay họp online, nhớ"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "nhows",
+            "rule": "notEnglish",
+            "text": "nhớ"
+          },
+          "key": " ",
+          "text": "Chiều nay họp online, nhớ "
+        },
+        {
+          "key": "g",
+          "text": "Chiều nay họp online, nhớ g"
+        },
+        {
+          "key": "u",
+          "text": "Chiều nay họp online, nhớ gu"
+        },
+        {
+          "key": "w",
+          "text": "Chiều nay họp online, nhớ gư"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay họp online, nhớ gưi"
+        },
+        {
+          "key": "r",
+          "text": "Chiều nay họp online, nhớ gửi"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "guwir",
+            "rule": "notEnglish",
+            "text": "gửi"
+          },
+          "key": " ",
+          "text": "Chiều nay họp online, nhớ gửi "
+        },
+        {
+          "key": "f",
+          "text": "Chiều nay họp online, nhớ gửi f"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay họp online, nhớ gửi fi"
+        },
+        {
+          "key": "l",
+          "text": "Chiều nay họp online, nhớ gửi fil"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay họp online, nhớ gửi file"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "file",
+            "rule": "unchanged",
+            "text": "file"
+          },
+          "key": " ",
+          "text": "Chiều nay họp online, nhớ gửi file "
+        },
+        {
+          "key": "s",
+          "text": "Chiều nay họp online, nhớ gửi file s"
+        },
+        {
+          "key": "l",
+          "text": "Chiều nay họp online, nhớ gửi file sl"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay họp online, nhớ gửi file sli"
+        },
+        {
+          "key": "d",
+          "text": "Chiều nay họp online, nhớ gửi file slid"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay họp online, nhớ gửi file slide"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "slide",
+            "rule": "unchanged",
+            "text": "slide"
+          },
+          "key": " ",
+          "text": "Chiều nay họp online, nhớ gửi file slide "
+        },
+        {
+          "key": "t",
+          "text": "Chiều nay họp online, nhớ gửi file slide t"
+        },
+        {
+          "key": "r",
+          "text": "Chiều nay họp online, nhớ gửi file slide tr"
+        },
+        {
+          "key": "u",
+          "text": "Chiều nay họp online, nhớ gửi file slide tru"
+        },
+        {
+          "key": "w",
+          "text": "Chiều nay họp online, nhớ gửi file slide trư"
+        },
+        {
+          "key": "o",
+          "text": "Chiều nay họp online, nhớ gửi file slide trươ"
+        },
+        {
+          "key": "w",
+          "text": "Chiều nay họp online, nhớ gửi file slide trươ"
+        },
+        {
+          "key": "c",
+          "text": "Chiều nay họp online, nhớ gửi file slide trươc"
+        },
+        {
+          "key": "s",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "truwowcs",
+            "rule": "notEnglish",
+            "text": "trước"
+          },
+          "key": " ",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước "
+        },
+        {
+          "key": "d",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước d"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước de"
+        },
+        {
+          "key": "a",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước dea"
+        },
+        {
+          "key": "d",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước dead"
+        },
+        {
+          "key": "l",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadl"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadli"
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadlin"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "deadline",
+            "rule": "unchanged",
+            "text": "deadline"
+          },
+          "key": " ",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline "
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline n"
+        },
+        {
+          "key": "h",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline nh"
+        },
+        {
+          "key": "a",
+          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline nha"
+        }
+      ],
+      "keys": "Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha",
+      "method": "telex",
+      "text": "Chiều nay họp online, nhớ gửi file slide trước deadline nha",
+      "toneStyle": "traditional"
+    },
+    "hero-email": {
+      "frames": [
+        {
+          "key": "A",
+          "text": "A"
+        },
+        {
+          "key": "n",
+          "text": "An"
+        },
+        {
+          "key": "h",
+          "text": "Anh"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Anh",
+            "rule": "unchanged",
+            "text": "Anh"
+          },
+          "key": " ",
+          "text": "Anh "
+        },
+        {
+          "key": "g",
+          "text": "Anh g"
+        },
+        {
+          "key": "w",
+          "text": "Anh gư"
+        },
+        {
+          "key": "i",
+          "text": "Anh gưi"
+        },
+        {
+          "key": "r",
+          "text": "Anh gửi"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "gwir",
+            "rule": "notEnglish",
+            "text": "gửi"
+          },
+          "key": " ",
+          "text": "Anh gửi "
+        },
+        {
+          "key": "l",
+          "text": "Anh gửi l"
+        },
+        {
+          "key": "a",
+          "text": "Anh gửi la"
+        },
+        {
+          "key": "i",
+          "text": "Anh gửi lai"
+        },
+        {
+          "key": "j",
+          "text": "Anh gửi lại"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "laij",
+            "rule": "notEnglish",
+            "text": "lại"
+          },
+          "key": " ",
+          "text": "Anh gửi lại "
+        },
+        {
+          "key": "e",
+          "text": "Anh gửi lại e"
+        },
+        {
+          "key": "m",
+          "text": "Anh gửi lại em"
+        },
+        {
+          "key": "a",
+          "text": "Anh gửi lại ema"
+        },
+        {
+          "key": "i",
+          "text": "Anh gửi lại emai"
+        },
+        {
+          "key": "l",
+          "text": "Anh gửi lại email"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "email",
+            "rule": "unchanged",
+            "text": "email"
+          },
+          "key": " ",
+          "text": "Anh gửi lại email "
+        },
+        {
+          "key": "c",
+          "text": "Anh gửi lại email c"
+        },
+        {
+          "key": "h",
+          "text": "Anh gửi lại email ch"
+        },
+        {
+          "key": "o",
+          "text": "Anh gửi lại email cho"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "cho",
+            "rule": "unchanged",
+            "text": "cho"
+          },
+          "key": " ",
+          "text": "Anh gửi lại email cho "
+        },
+        {
+          "key": "t",
+          "text": "Anh gửi lại email cho t"
+        },
+        {
+          "key": "e",
+          "text": "Anh gửi lại email cho te"
+        },
+        {
+          "key": "a",
+          "text": "Anh gửi lại email cho tea"
+        },
+        {
+          "key": "m",
+          "text": "Anh gửi lại email cho team"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "team",
+            "rule": "unchanged",
+            "text": "team"
+          },
+          "key": " ",
+          "text": "Anh gửi lại email cho team "
+        },
+        {
+          "key": "t",
+          "text": "Anh gửi lại email cho team t"
+        },
+        {
+          "key": "r",
+          "text": "Anh gửi lại email cho team tr"
+        },
+        {
+          "key": "u",
+          "text": "Anh gửi lại email cho team tru"
+        },
+        {
+          "key": "w",
+          "text": "Anh gửi lại email cho team trư"
+        },
+        {
+          "key": "o",
+          "text": "Anh gửi lại email cho team trươ"
+        },
+        {
+          "key": "w",
+          "text": "Anh gửi lại email cho team trươ"
+        },
+        {
+          "key": "c",
+          "text": "Anh gửi lại email cho team trươc"
+        },
+        {
+          "key": "s",
+          "text": "Anh gửi lại email cho team trước"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "truwowcs",
+            "rule": "notEnglish",
+            "text": "trước"
+          },
+          "key": " ",
+          "text": "Anh gửi lại email cho team trước "
+        },
+        {
+          "key": "m",
+          "text": "Anh gửi lại email cho team trước m"
+        },
+        {
+          "key": "e",
+          "text": "Anh gửi lại email cho team trước me"
+        },
+        {
+          "key": "e",
+          "text": "Anh gửi lại email cho team trước mê"
+        },
+        {
+          "key": "t",
+          "text": "Anh gửi lại email cho team trước mêt"
+        },
+        {
+          "key": "i",
+          "text": "Anh gửi lại email cho team trước mêti"
+        },
+        {
+          "key": "n",
+          "text": "Anh gửi lại email cho team trước mêtin"
+        },
+        {
+          "key": "g",
+          "text": "Anh gửi lại email cho team trước mêting"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "raw": "meeting",
+            "rule": "invalid",
+            "text": "meeting"
+          },
+          "key": " ",
+          "text": "Anh gửi lại email cho team trước meeting "
+        },
+        {
+          "key": "n",
+          "text": "Anh gửi lại email cho team trước meeting n"
+        },
+        {
+          "key": "h",
+          "text": "Anh gửi lại email cho team trước meeting nh"
+        },
+        {
+          "key": "e",
+          "text": "Anh gửi lại email cho team trước meeting nhe"
+        },
+        {
+          "key": "s",
+          "text": "Anh gửi lại email cho team trước meeting nhé"
+        }
+      ],
+      "keys": "Anh gwir laij email cho team truwowcs meeting nhes",
+      "method": "telex",
+      "text": "Anh gửi lại email cho team trước meeting nhé",
+      "toneStyle": "traditional"
+    },
+    "hero-note": {
+      "frames": [
+        {
+          "key": "N",
+          "text": "N"
+        },
+        {
+          "key": "h",
+          "text": "Nh"
+        },
+        {
+          "key": "o",
+          "text": "Nho"
+        },
+        {
+          "key": "w",
+          "text": "Nhơ"
+        },
+        {
+          "key": "s",
+          "text": "Nhớ"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Nhows",
+            "rule": "notEnglish",
+            "text": "Nhớ"
+          },
+          "key": " ",
+          "text": "Nhớ "
+        },
+        {
+          "key": "m",
+          "text": "Nhớ m"
+        },
+        {
+          "key": "u",
+          "text": "Nhớ mu"
+        },
+        {
+          "key": "a",
+          "text": "Nhớ mua"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "mua",
+            "rule": "unchanged",
+            "text": "mua"
+          },
+          "key": " ",
+          "text": "Nhớ mua "
+        },
+        {
+          "key": "r",
+          "text": "Nhớ mua r"
+        },
+        {
+          "key": "o",
+          "text": "Nhớ mua ro"
+        },
+        {
+          "key": "u",
+          "text": "Nhớ mua rou"
+        },
+        {
+          "key": "t",
+          "text": "Nhớ mua rout"
+        },
+        {
+          "key": "e",
+          "text": "Nhớ mua route"
+        },
+        {
+          "key": "r",
+          "text": "Nhớ mua router"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "router",
+            "rule": "unchanged",
+            "text": "router"
+          },
+          "key": " ",
+          "text": "Nhớ mua router "
+        },
+        {
+          "key": "w",
+          "text": "Nhớ mua router ư"
+        },
+        {
+          "key": "i",
+          "text": "Nhớ mua router ưi"
+        },
+        {
+          "key": "f",
+          "text": "Nhớ mua router ừi"
+        },
+        {
+          "key": "i",
+          "text": "Nhớ mua router ừii"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "raw": "wifi",
+            "rule": "invalid",
+            "text": "wifi"
+          },
+          "key": " ",
+          "text": "Nhớ mua router wifi "
+        },
+        {
+          "key": "m",
+          "text": "Nhớ mua router wifi m"
+        },
+        {
+          "key": "o",
+          "text": "Nhớ mua router wifi mo"
+        },
+        {
+          "key": "w",
+          "text": "Nhớ mua router wifi mơ"
+        },
+        {
+          "key": "i",
+          "text": "Nhớ mua router wifi mơi"
+        },
+        {
+          "key": "s",
+          "text": "Nhớ mua router wifi mới"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "mowis",
+            "rule": "notEnglish",
+            "text": "mới"
+          },
+          "key": ",",
+          "text": "Nhớ mua router wifi mới,"
+        },
+        {
+          "key": " ",
+          "text": "Nhớ mua router wifi mới, "
+        },
+        {
+          "key": "c",
+          "text": "Nhớ mua router wifi mới, c"
+        },
+        {
+          "key": "h",
+          "text": "Nhớ mua router wifi mới, ch"
+        },
+        {
+          "key": "e",
+          "text": "Nhớ mua router wifi mới, che"
+        },
+        {
+          "key": "c",
+          "text": "Nhớ mua router wifi mới, chec"
+        },
+        {
+          "key": "k",
+          "text": "Nhớ mua router wifi mới, check"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "kept",
+            "raw": "check",
+            "rule": "unchanged",
+            "text": "check"
+          },
+          "key": " ",
+          "text": "Nhớ mua router wifi mới, check "
+        },
+        {
+          "key": "l",
+          "text": "Nhớ mua router wifi mới, check l"
+        },
+        {
+          "key": "a",
+          "text": "Nhớ mua router wifi mới, check la"
+        },
+        {
+          "key": "i",
+          "text": "Nhớ mua router wifi mới, check lai"
+        },
+        {
+          "key": "j",
+          "text": "Nhớ mua router wifi mới, check lại"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "laij",
+            "rule": "notEnglish",
+            "text": "lại"
+          },
+          "key": " ",
+          "text": "Nhớ mua router wifi mới, check lại "
+        },
+        {
+          "key": "p",
+          "text": "Nhớ mua router wifi mới, check lại p"
+        },
+        {
+          "key": "a",
+          "text": "Nhớ mua router wifi mới, check lại pa"
+        },
+        {
+          "key": "s",
+          "text": "Nhớ mua router wifi mới, check lại pá"
+        },
+        {
+          "key": "s",
+          "text": "Nhớ mua router wifi mới, check lại pas"
+        },
+        {
+          "key": "w",
+          "text": "Nhớ mua router wifi mới, check lại pasw"
+        },
+        {
+          "key": "o",
+          "text": "Nhớ mua router wifi mới, check lại paswo"
+        },
+        {
+          "key": "r",
+          "text": "Nhớ mua router wifi mới, check lại paswor"
+        },
+        {
+          "key": "d",
+          "text": "Nhớ mua router wifi mới, check lại pasword"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "raw": "password",
+            "rule": "escape",
+            "text": "password"
+          },
+          "key": ".",
+          "text": "Nhớ mua router wifi mới, check lại password."
+        }
+      ],
+      "keys": "Nhows mua router wifi mowis, check laij password.",
+      "method": "telex",
+      "text": "Nhớ mua router wifi mới, check lại password.",
+      "toneStyle": "traditional"
+    }
+  },
+  "generator": "site-demo-frames",
+  "schemaVersion": 1
+}

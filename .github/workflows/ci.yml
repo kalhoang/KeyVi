@@ -40,6 +40,8 @@ jobs:
           python3 -I "$ENGINE/Scripts/generate-letter-table.py" --check
           python3 -I "$ENGINE/Scripts/extract-spec-examples.py" --check
           python3 -I "$ENGINE/Scripts/generate-layout-corpus.py" --check
+          # PRD-R73: the website's demo frames (site/demo/frames.json) match what this engine types.
+          swift run --package-path "$ENGINE" site-demo-frames --check
       - name: Every engine requirement has a traceability row (spec/01-engine.md)
         run: python3 -I "$ENGINE/Scripts/check-traceability.py"
       - name: Build engine (ENG-R1201, Linux)
@@ -167,7 +169,7 @@ jobs:
           require=()
           [[ "$REQUIRE_BASELINE" == true ]] && require=(--require-baseline)
           scripts/coverage.sh --package "$ENGINE" --min 95 \
-            --exclude '^Sources/(lexicon-builder|engine-benchmark|VietnameseEngineTesting)/' \
+            --exclude '^Sources/(lexicon-builder|engine-benchmark|site-demo-frames|VietnameseEngineTesting)/' \
             --baseline .build/coverage-baseline/engine.json --summary-out .build/coverage/engine.json \
             ${require[@]+"${require[@]}"}
       - name: Engine core target coverage, at least 95 % (QA-R2)
