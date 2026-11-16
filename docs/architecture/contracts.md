@@ -6546,13 +6546,17 @@ public struct EditJob: Sendable {
     public var verifyLateFocus: Bool
     /// Kind `.revision` only (PLT-R357): the previous token and the current display, for the PLT-R342 check.
     public var revision: RevisionEdit?
+    /// `JobQueue.caretEpoch` when the tap built the job (PLT-R423 caret continuity, amendment of 16/11/2026): the
+    /// worker remembers a completion read that found the caret at the end of the text only for a job built in the
+    /// epoch it read in, and keeps that answer only while the epoch has not moved.
+    public var caretEpoch: UInt64
 
     public init(
         sequence: JobSequence, generation: FocusGeneration, plan: InjectionPlan, field: FieldHandle?,
         kind: EditKind, deleteCount: Int, deleteUTF16Count: Int, replacedText: String?, insertion: String,
         keyCodes: JobKeyCodes, trigger: KeyEventRecord?, verifyBeforeApply: Bool,
         wordStartedNearFocusChange: Bool, createdAt: MonotonicInstant, isProbe: Bool, verifyLateFocus: Bool = false,
-        revision: RevisionEdit? = nil
+        revision: RevisionEdit? = nil, caretEpoch: UInt64 = 0
     ) {
         self.sequence = sequence
         self.generation = generation
@@ -6571,6 +6575,7 @@ public struct EditJob: Sendable {
         self.isProbe = isProbe
         self.verifyLateFocus = verifyLateFocus
         self.revision = revision
+        self.caretEpoch = caretEpoch
     }
 }
 
@@ -6885,6 +6890,7 @@ public final class JobQueue: Sendable {
     private let settledByTap = Atomic<UInt64>(0)  // written by the tap only (echo seen or timed out)
     private let settledByWorker = Atomic<UInt64>(0)  // written by the worker only (nothing posted, or policy)
     private let sequence = Atomic<UInt64>(0)  // written by the tap only
+    private let caretEpochCounter = Atomic<UInt64>(0)  // written by the tap only
 
     /// Capacity above the 256-job liveness ceiling (PLT-R314) so a full ring is never the first symptom.
     /// Rounded up to a power of two.
@@ -6923,6 +6929,18 @@ public final class JobQueue: Sendable {
     public func nextSequence() -> JobSequence {
         JobSequence(rawValue: sequence.wrappingAdd(1, ordering: .relaxed).newValue)
     }
+
+    /// Tap: something happened after which the worker can no longer assume that the caret stayed where its last
+    /// completion read found it (PLT-R423 caret continuity, amendment of 16/11/2026): a hard boundary (PLT-R340), a
+    /// keyDown that does not type or delete one character at the caret, or the first keyDown after a typing pause
+    /// (PLT-R382). One atomic increment (PLT-R304).
+    @inline(__always)
+    public func breakCaretContinuity() { caretEpochCounter.wrappingAdd(1, ordering: .sequentiallyConsistent) }
+
+    /// Tap (stamped on every `EditJob`) and worker (checked before an answer is kept): how many times the caret's
+    /// continuity was broken since launch.
+    @inline(__always)
+    public var caretEpoch: UInt64 { caretEpochCounter.load(ordering: .sequentiallyConsistent) }
 
     /// Worker.
     public func pop() -> InjectionJob? { jobs.pop() }
@@ -15187,7 +15205,11 @@ extension FakeEventPoster.Posted {
 public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
     /// `writesIgnored`: every write reports success and does nothing. `textWritesIgnored`: selection writes
     /// apply, text writes report success and do nothing (4.5 "writes may silently do nothing").
-    public enum Behaviour: Sendable, Hashable { case normal, timeout, unavailable, writesIgnored, textWritesIgnored }
+    /// `failed` answers every call with `kAXErrorFailure`, the `.failed` result of an AX error that is neither a
+    /// messaging timeout nor a missing element (PLT-R423 tests).
+    public enum Behaviour: Sendable, Hashable {
+        case normal, timeout, unavailable, failed, writesIgnored, textWritesIgnored
+    }
 
     /// How late the simulated app answers reads, on the clock the caller measures with.
     private struct Latency: Sendable {
@@ -15255,8 +15277,12 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         case .normal, .writesIgnored, .textWritesIgnored: return .success(body())
         case .timeout: return .timedOut
         case .unavailable: return .unavailable
+        case .failed: return .failed(code: Self.axFailureCode)
         }
     }
+
+    /// `kAXErrorFailure`.
+    private static let axFailureCode: Int32 = -25200
 
     private func write(text: Bool, _ body: () -> Void) -> AXCallResult<Void> {
         calls.wrappingAdd(1, ordering: .relaxed)
@@ -15270,6 +15296,7 @@ public final class FakeFocusedFieldAccess: FocusedFieldAccess, Sendable {
         case .writesIgnored: return .success(())
         case .timeout: return .timedOut
         case .unavailable: return .unavailable
+        case .failed: return .failed(code: Self.axFailureCode)
         }
     }
 }
