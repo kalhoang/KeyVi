@@ -205,6 +205,11 @@ fi
 notes_vi="${notes_vi:-$notes_en}"
 py scripts/lib/publish_helpers.py release-notes-page --check --app-name "$APP_DISPLAY_NAME" --version "$version" \
   --trademark-sign "$APP_TRADEMARK_SIGN" --notes-vi "$notes_vi" --notes-en "$notes_en" || die "the release notes for $version are not publishable"
+# QA-R37: releases.json carries the date of the version's CHANGELOG.md heading, so the download page and the changelog
+# page agree. The heading may be one day off today in UTC (the maintainer's time zone); without a dated heading, today
+# in UTC. Checked here, before any download or keychain access.
+release_date="$(py scripts/lib/publish_helpers.py release-date --file CHANGELOG.md --version "$version")" \
+  || die "the CHANGELOG.md heading of $version needs the date of the release"
 
 # QA-R29: a stable release has been on beta for at least 72 hours with no new P0/P1, except P0 hotfixes and a release
 # whose waiver is recorded as a decision (ADR 0507). Checked before any download or keychain access; a dry run only
@@ -365,7 +370,6 @@ changelog_url_vi="$site_url/nhat-ky-thay-doi/#$anchor"
 changelog_url_en="$site_url/en/changelog/#$anchor"
 notes_url="$site_url/release-notes/$version/"
 
-today="$(date -u +%Y-%m-%d)"
 
 # --- 4. Appcast and releases.json -------------------------------------------------------------
 appcast_args=(
@@ -389,7 +393,7 @@ py scripts/lib/publish_helpers.py release-notes-page --out "$out_root/$notes_pag
   --notes-vi "$notes_vi" --notes-en "$notes_en" --changelog-url-vi "$changelog_url_vi" --changelog-url-en "$changelog_url_en"
 info "releases.json entry"
 py scripts/lib/publish_helpers.py releases-add --file "$out_root/site/data/releases.json" \
-  --version "$version" --build "$build" --channel "$channel" --date "$today" --dmg-url "$dmg_url" \
+  --version "$version" --build "$build" --channel "$channel" --date "$release_date" --dmg-url "$dmg_url" \
   --sha256 "$dmg_sha" --size "$dmg_len" --minimum-system-version "$min_system" \
   --notes-vi "$notes_vi" --notes-en "$notes_en" --app-name "$APP_DISPLAY_NAME" --trademark-sign "$APP_TRADEMARK_SIGN"
 

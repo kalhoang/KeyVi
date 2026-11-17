@@ -11,6 +11,7 @@ Subcommands:
   render-cask      render packaging/homebrew/Casks/cask.rb.template (QA-R36, PLT-R1110)
   render-zap       print the zap paths with brand values (PLT-R1012)
   changelog-notes  extract the notes of one version from a Keep a Changelog file
+  release-date     the release date: the date of the version's changelog heading, at most a day from today in UTC
 """
 from __future__ import annotations
 
@@ -458,6 +459,36 @@ def cmd_changelog_notes(args) -> int:
     return 0
 
 
+def cmd_release_date(args) -> int:
+    """QA-R37: the date releases.json carries is the one the changelog page shows, the date of the version's
+    heading (`## [X.Y.Z] - YYYY-MM-DD`). The maintainer dates it in their own time zone, so it may be one day off
+    today in UTC; further off means a stale heading, which stops the release. No dated heading: today in UTC."""
+    today = dt.date.fromisoformat(args.today) if args.today else dt.datetime.now(dt.timezone.utc).date()
+    heading = re.compile(r"^##\s+\[v?%s\](?:\s+-\s+(\S+))?\s*$" % re.escape(args.version))
+    stated = None
+    if os.path.exists(args.file):
+        with open(args.file, encoding="utf-8") as handle:
+            for line in handle.read().splitlines():
+                match = heading.match(line)
+                if match:
+                    stated = match.group(1)
+                    break
+    if not stated:
+        print(today.isoformat())
+        return 0
+    try:
+        date = dt.date.fromisoformat(stated)
+    except ValueError:
+        print(f"the {args.version} heading in {args.file} has no valid date: {stated}", file=sys.stderr)
+        return 1
+    if abs((date - today).days) > 1:
+        print(f"the {args.version} heading in {args.file} is dated {date.isoformat()}, more than a day from today "
+              f"({today.isoformat()}, UTC): date it on the day of the release", file=sys.stderr)
+        return 1
+    print(date.isoformat())
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -544,6 +575,12 @@ def main(argv: list[str]) -> int:
     p.add_argument("--file", required=True)
     p.add_argument("--version", required=True)
     p.set_defaults(func=cmd_changelog_notes)
+
+    p = sub.add_parser("release-date")
+    p.add_argument("--file", required=True, help="CHANGELOG.md")
+    p.add_argument("--version", required=True)
+    p.add_argument("--today", default="", help="YYYY-MM-DD (default: today, UTC)")
+    p.set_defaults(func=cmd_release_date)
 
     args = parser.parse_args(argv)
     return args.func(args)

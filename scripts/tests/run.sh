@@ -917,7 +917,9 @@ if [[ $no_macos -eq 0 ]]; then
   # publish-release inlines the release-notes stylesheet into each notes page (PLT-R906).
   mkdir -p "$M/site/static/assets"
   cp "$REPO/site/static/assets/release-notes.css" "$M/site/static/assets/"
-  printf '# Changelog\n\n## [1.2.3] - 2026-11-13\n- First public test\n' >"$M/CHANGELOG.md"
+  # QA-R37: the heading's date is the release date, at most a day from today in UTC, so the fixture is dated today.
+  release_day="$(date -u +%Y-%m-%d)"
+  printf '# Changelog\n\n## [1.2.3] - %s\n- First public test\n' "$release_day" >"$M/CHANGELOG.md"
   app="$M/dist/testapp-1.2.3/Test App.app"
   mkdir -p "$app/Contents/MacOS"
   cat >"$app/Contents/Info.plist" <<'EOF'
@@ -975,6 +977,7 @@ EOF
   contains "notes page links the English changelog" 'href="https://testapp.example.vn/en/changelog/#v1.2.3"'
   contains "notes page carries the release notes" "<li>First public test</li>"
   contains "releases.json entry printed" "\"dmgUrl\": \"https://testapp.example.vn/download/testapp-1.2.3.dmg\""
+  contains "releases.json dated by the changelog heading (QA-R37)" "\"date\": \"$release_day\""
   contains "cask rendered" "cask \"testapp\" do"
   # shellcheck disable=SC2088 # literal text in the rendered cask, not a path to expand
   contains "zap uses the folder rule" "~/Library/Application Support/Test App"
@@ -993,11 +996,17 @@ EOF
   contains "missing Vietnamese notes named" "no Vietnamese notes for 1.2.3"
   if [[ -e "$T/sign-called" ]]; then ko "missing notes fail before sign_update"; else ok "missing notes fail before sign_update"; fi
   cp "$M/CHANGELOG.md" "$T/changelog-short.md"
-  printf '## [1.2.3] - 2026-11-13\n- a\n- b\n- c\n- d\n- e\n- f\n' >"$M/CHANGELOG.md"
+  printf '## [1.2.3] - %s\n- a\n- b\n- c\n- d\n- e\n- f\n' "$release_day" >"$M/CHANGELOG.md"
   expect 1 "notes above five visible lines are refused" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
     "$M/scripts/publish-release" 1.2.3 --sign-in-dry-run --skip-attestation --skip-gatekeeper
   contains "long notes cite PRD-R51" "PRD-R51 allows at most 5"
   if [[ -e "$T/sign-called" ]]; then ko "long notes fail before sign_update"; else ok "long notes fail before sign_update"; fi
+  # QA-R37: a heading dated more than a day from today is stale and stops the release before the keychain.
+  printf '# Changelog\n\n## [1.2.3] - 2020-01-01\n- First public test\n' >"$M/CHANGELOG.md"
+  expect 1 "a stale changelog date is refused" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --sign-in-dry-run --skip-attestation --skip-gatekeeper
+  contains "the stale date is named" "is dated 2020-01-01"
+  if [[ -e "$T/sign-called" ]]; then ko "a stale date fails before sign_update"; else ok "a stale date fails before sign_update"; fi
   cp "$T/changelog-short.md" "$M/CHANGELOG.md"
 
   echo "== publish-release: the signing key is the one installed apps trust (QA-R33, PLT-R1102)"
