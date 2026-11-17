@@ -485,7 +485,7 @@ PRD-R73 Static site, Vietnamese at `/` and English at `/en/`. Required pages:
 
 | Path (vi) | Purpose | Must contain |
 |---|---|---|
-| `/` | Landing | One-sentence value statement, 20-second screen recording of typing (Telex, English restore, per-app switch), download button with version and minimum macOS, `brew install --cask {{app-slug}}` line, three proof points (no telemetry, free, open-source engine), link to compatibility |
+| `/` | Landing | One-sentence value statement, typing demo generated from the engine ([design of 16/11/2026](../docs/superpowers/specs/2026-11-16-website-redesign-design.md)), which never autoplays under reduced motion and shows its final state without JavaScript, download button with version and minimum macOS, `brew install --cask {{app-slug}}` line, three proof points (no telemetry, free, open-source engine), link to compatibility |
 | `/tai-ve` | Download | Latest stable DMG and beta DMG, SHA-256, signature and notarization statement, system requirements, Homebrew instructions, older versions archive |
 | `/tuong-thich` | Compatibility matrix | Generated from the shipped compatibility data: app, status, notes, last verified date and macOS version; filter by category; "report an app" link |
 | `/nhat-ky-thay-doi` | Changelog | Per release: date, channel, user-visible changes grouped by app, known issues |
@@ -493,6 +493,8 @@ PRD-R73 Static site, Vietnamese at `/` and English at `/en/`. Required pages:
 | `/ho-tro` | Support | FAQ, troubleshooting by symptom (permission, Secure Input, conflicts, app-specific), how to report a bug, response targets (QA-R), migration guides |
 | `/ung-ho` | Donate | Same content as the in-app block |
 | `/appcast.xml` | Sparkle feed | One stable URL that never moves; beta builds are items with `sparkle:channel="beta"` in the same feed (PLT-R1101, QA-R28) |
+
+Motion on the website (design 7.2): it explains and never decorates; typing at a human pace of 80 to 110 ms per key and interface motion of 200 to 600 ms; loops pause off-screen and while the tab is hidden; the hero has a pause and play button; no parallax and no scroll hijacking; under `prefers-reduced-motion: reduce` nothing autoplays and every demo shows its final state.
 
 PRD-R74 The website MUST NOT use trackers or cookies that require consent. Traffic numbers come from cookieless aggregate analytics (decision of the product owner, 13/11/2026): Umami, self-hosted by the project (no cookies, no local storage, no personal data, IP addresses not stored, Do Not Track respected, aggregated page views only), so no consent banner is needed. The script URL and the website id are configuration values; while they are empty the site loads no analytics. Analytics never runs in the app or on the release-notes pages. `/rieng-tu` describes exactly what is collected.
 
