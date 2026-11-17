@@ -132,9 +132,11 @@ export async function runDataChecks(check, fixtures) {
   });
 
   await check("populated: favicon, touch icon and the header mark come from the app icon (CLR-R7)", async () => {
-    for (const file of ["favicon.svg", "favicon.ico", "apple-touch-icon.png", "assets/brand/app-icon-64.png", "assets/brand/app-icon-128.png"]) {
+    for (const file of ["favicon.svg", "favicon.ico", "apple-touch-icon.png"]) {
       assert.ok(existsSync(join(populated, file)), `${file} shipped`);
     }
+    // The raster logo files went with the 2026-11-17 redesign: no page used them, so they are no longer made or shipped.
+    assert.ok(!existsSync(join(populated, "assets", "brand")), "no unused raster logo files");
     const favicon = await readFile(join(populated, "favicon.svg"), "utf8");
     assert.match(favicon, /Source: derived from Pa's own artwork/);
     assert.match(read("index.html"), /<link rel="icon" href="\/favicon\.svg" type="image\/svg\+xml">/);

@@ -13,8 +13,8 @@ Subcommands:
   app-icon   App/Resources/Assets.xcassets/AppIcon.appiconset (16 to 512 pt at 1x and 2x). Needs Pillow.
              Cuts the photographed keycap out of its off-white background with a rounded-square mask, adds a
              soft shadow and places it on Apple's macOS icon grid (an 824 px body on a 1024 px canvas).
-  site       site/static: favicon.svg (the KV mark on a keycap plate), favicon.ico, apple-touch-icon.png and
-             the raster logo files in assets/brand/. Needs Pillow.
+  site       site/static: favicon.svg (the KV mark on a keycap plate), favicon.ico and apple-touch-icon.png.
+             Needs Pillow.
   all        every output above.
 
 Usage:
@@ -420,10 +420,6 @@ def write_site_icons(source_path: Path = LOGO, static: Path = SITE_STATIC, asset
     # Home-screen icons must be opaque (iOS fills transparency with black): Pa's photo, centred on the keycap.
     touch = source.convert("RGB").crop(touch_crop_box(keycap_box(source)))
     touch.resize((180, 180), Image.Resampling.LANCZOS).save(static / "apple-touch-icon.png", optimize=True)
-    brand = static / "assets" / "brand"
-    brand.mkdir(parents=True, exist_ok=True)
-    for pixels in (64, 128):
-        scaled(tight, pixels).save(brand / f"app-icon-{pixels}.png", optimize=True)
 
 
 # ---------------------------------------------------------------------------------------------------------------
