@@ -299,6 +299,7 @@ class FrontDoorBrandTests(unittest.TestCase):
             "compat/SCRIPT.md": ("| {{AppName}} version and build, channel |\n", "{{AppName}}"),
             # GitHub shows it as it is; the site build and the appcast notes take it verbatim (2026-11-14).
             "CHANGELOG.md": ("All notable changes to {{AppName}}.\n", "{{AppName}}"),
+            "CHANGELOG.vi.md": ("Mọi thay đổi của {{AppName}}.\n", "{{AppName}}"),
         }
         for rel, (text, _) in cases.items():
             self.write(self.root, rel, text)
@@ -311,7 +312,7 @@ class FrontDoorBrandTests(unittest.TestCase):
     def test_front_door_files_accept_the_literal_values(self):
         for rel in ("README.md", "README.vi.md", "CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md",
                     "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "CLAUDE.md", ".github/pull_request_template.md",
-                    ".github/ISSUE_TEMPLATE/bug.yml", "compat/SCRIPT.md", "CHANGELOG.md"):
+                    ".github/ISSUE_TEMPLATE/bug.yml", "compat/SCRIPT.md", "CHANGELOG.md", "CHANGELOG.vi.md"):
             self.write(self.root, rel, self.LITERAL)
         self.write(self.root, "docs/runbooks/a.md", "Install {{AppName}} from https://{{app-slug}}.kal.vn.\n")
         result = self.brand(self.root)
@@ -1195,36 +1196,68 @@ class IntegratorDecisionTests(unittest.TestCase):
 
 
 class ChangelogTests(unittest.TestCase):
-    """CHANGELOG.md, Unreleased: the user-visible changes of wave 5 and the licence (QA-R66, QA-R67; ADR 0006,
-    ADR 0320, ADR 0321, decision 0005 Q14, Q43)."""
+    """CHANGELOG.md and CHANGELOG.vi.md (QA-R66, QA-R67, PRD-R51; ADR 0507): an empty Unreleased section above the
+    first public release, 1.0.0 of 2026-11-17. A release section is also its release notes, which
+    scripts/publish-release reads from these two files, so it has to pass the same check: at most five visible lines
+    in each language, no dash, no unfilled placeholder."""
 
-    TEXT = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    FILES = {"en": REPO / "CHANGELOG.md", "vi": REPO / "CHANGELOG.vi.md"}
+    RELEASE = "1.0.0"
+    HEADINGS = ["[Unreleased]", "[1.0.0] - 2026-11-17"]
 
-    def unreleased(self) -> str:
-        return self.TEXT.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
+    @classmethod
+    def text(cls, lang: str = "en") -> str:
+        return cls.FILES[lang].read_text(encoding="utf-8")
 
-    def group(self, name: str) -> str:
-        return " ".join(self.unreleased().split(f"### {name}\n", 1)[1].split("\n### ", 1)[0].split())
+    @classmethod
+    def notes(cls, lang: str = "en") -> str:
+        """The release section as publish-release reads it (publish_helpers.py changelog-notes)."""
+        result = py("lib/publish_helpers.py", "changelog-notes", "--file", str(cls.FILES[lang]), "--version",
+                    cls.RELEASE)
+        if result.returncode != 0:
+            raise AssertionError(result.stderr)
+        return result.stdout.strip()
 
-    def test_the_groups_follow_keep_a_changelog(self):
-        groups = re.findall(r"^### (.+)$", self.unreleased(), re.M)
-        order = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Known issues"]
-        self.assertEqual(groups, [name for name in order if name in groups], "groups out of order or unknown")
-        self.assertGreaterEqual(set(groups), {"Added", "Changed", "Fixed"})
+    @classmethod
+    def release_text(cls, lang: str = "en") -> str:
+        return " ".join(cls.notes(lang).split())
 
-    def test_wave_5_entries(self):
+    def test_unreleased_is_empty_and_sits_above_the_first_release(self):
+        for lang in self.FILES:
+            with self.subTest(lang=lang):
+                text = self.text(lang)
+                self.assertEqual(re.findall(r"^## (.+)$", text, re.M), self.HEADINGS)
+                unreleased = text.split("\n## [Unreleased]\n", 1)[1].split("\n## [", 1)[0]
+                self.assertEqual(unreleased.strip(), "", "Unreleased is empty right after the release")
+
+    def test_the_release_notes_pass_the_publish_check(self):
+        brand = FrontDoorBrandTests.repo_brand()
+        check = py("lib/publish_helpers.py", "release-notes-page", "--check", "--app-name", brand["APP_DISPLAY_NAME"],
+                   "--trademark-sign", brand.get("APP_TRADEMARK_SIGN", ""), "--version", self.RELEASE,
+                   "--notes-vi", self.notes("vi"), "--notes-en", self.notes("en"))
+        self.assertEqual(check.returncode, 0, check.stderr)
+        items = {lang: re.findall(r"^- .+$", self.notes(lang), re.M) for lang in self.FILES}
+        self.assertEqual(len(items["en"]), 5, "five lines that sum up what 1.0.0 gives a user")
+        self.assertEqual(len(items["vi"]), len(items["en"]), "the Vietnamese notes say the same, line for line")
+        for lang in self.FILES:
+            with self.subTest(lang=lang):
+                self.assertEqual(self.notes(lang).splitlines(), items[lang], "list items only, no other visible line")
+
+    def test_the_notes_sum_up_what_1_0_gives_a_user(self):
         expected = {
-            "Changed": ("only in the app where you taught it", "stay global", "Settings > Typing",
-                        "Escape restores the last word", "terminals, code editors, games and remote desktop apps",
-                        "launchers such as Spotlight, Raycast and Alfred",
-                        "trailing digit", "`k` and `k1`", "delete or rename one of the pair",
-                        "GPL-3.0-or-later", "LICENSE", "THIRD_PARTY_NOTICES"),
-            "Fixed": ("This app misbehaves", "keyboard"),
+            "en": ("First public release", "English in the same sentence without switching", "Escape",
+                   "launchers such as Spotlight, Raycast and Alfred", "learns from your corrections in each app",
+                   "Settings > Typing", "Macros", "Keep as typed", "Keep as Vietnamese",
+                   "Nothing you type leaves your Mac"),
+            "vi": ("Bản phát hành công khai đầu tiên", "tiếng Anh trong cùng một câu", "Escape",
+                   "trình khởi chạy như Spotlight, Raycast và Alfred", "trong từng ứng dụng", "Cài đặt > Kiểu gõ",
+                   "Viết tắt", "Giữ nguyên như đã gõ", "Giữ là tiếng Việt",
+                   "Những gì bạn gõ không bao giờ rời khỏi máy Mac"),
         }
-        for group, needles in expected.items():
-            text = self.group(group)
+        for lang, needles in expected.items():
+            text = self.release_text(lang)
             for needle in needles:
-                with self.subTest(group=group, needle=needle):
+                with self.subTest(lang=lang, needle=needle):
                     self.assertIn(needle, text)
 
     def test_the_escape_exclusions_name_the_same_families_everywhere(self):
@@ -1246,20 +1279,30 @@ class ChangelogTests(unittest.TestCase):
             "PLT-R353": next(line for line in platform.splitlines() if line.startswith("- **PLT-R353**")),
             "Q14": next(line for line in adr.splitlines() if line.startswith("| Q14 |")),
             "traceability": next(line for line in matrix.splitlines() if line.startswith("| PLT-R353 |")),
-            "changelog": self.group("Changed"),
+            "changelog": self.release_text("en"),
         }
         for name, text in places.items():
             with self.subTest(place=name):
                 self.assertIn(needle, " ".join(text.split()))
 
-    def test_no_placeholder_or_dash_in_the_entries(self):
-        """CHANGELOG.md is part of the front door since 2026-11-14 (ADR 0400 decision 1 amendment): GitHub shows it as
-        it is, so it writes the display name of scripts/brand.env instead of {{AppName}}."""
-        text = self.unreleased()
-        self.assertNotRegex(text, r"\{\{\s*[A-Za-z][\w-]*\s*\}\}")
-        self.assertIn(FrontDoorBrandTests.repo_brand()["APP_DISPLAY_NAME"], text)
-        self.assertNotIn("\u2014", text)
-        self.assertNotIn("\u2013", text)
+    def test_no_placeholder_dash_or_pre_release_wording(self):
+        """Both files are front door (ADR 0400 decision 1 amendment): GitHub shows them as they are, so they write the
+        display name of scripts/brand.env instead of {{AppName}}. The development notes of builds no user ever had
+        are gone with the first release."""
+        name = FrontDoorBrandTests.repo_brand()["APP_DISPLAY_NAME"]
+        for lang in self.FILES:
+            text = self.text(lang)
+            with self.subTest(lang=lang):
+                self.assertNotRegex(text, r"\{\{\s*[A-Za-z][\w-]*\s*\}\}")
+                self.assertIn(name, text)
+                self.assertIn(name, self.notes(lang))
+                self.assertNotIn("\u2014", text)
+                self.assertNotIn("\u2013", text)
+                for stale in ("pre-alpha", "No installable build", "no release yet", "chưa có bản"):
+                    self.assertNotIn(stale.lower(), text.lower())
+        self.assertTrue(self.text("vi").startswith("# Nhật ký thay đổi\n"), "a Vietnamese header")
+        self.assertIn("[CHANGELOG.md](CHANGELOG.md)", self.text("vi"))
+        self.assertIn("[CHANGELOG.vi.md](CHANGELOG.vi.md)", self.text("en"))
 
 
 class ScriptSuiteTests(unittest.TestCase):
@@ -1575,8 +1618,8 @@ class PaneNameCopyTests(unittest.TestCase):
 
 class W7bCopyTests(unittest.TestCase):
     """The Apps pane names the guided test's state with the term of the menu and Diagnostics (integrator decision
-    2026-11-14, decision 0005 Q44 row; GuidedStateCopyTests checks the catalogs), and the changelog lists both
-    user-visible changes of W7-B with the literal name (front door, ADR 0400 decision 1)."""
+    2026-11-14, decision 0005 Q44 row; GuidedStateCopyTests checks the catalogs). The changelog entries of W7-B were
+    folded into the five lines of 1.0.0 (ADR 0507)."""
 
     def test_the_decision_is_recorded_in_q44(self):
         adr = (REPO / "docs" / "decisions" / "0005-pa-decisions-2026-11-13.md").read_text(encoding="utf-8")
@@ -1584,16 +1627,6 @@ class W7bCopyTests(unittest.TestCase):
         for needle in ("2026-11-14", "Theo kết quả thử tự động", "Set by the guided test", "GuidedStateCopyTests"):
             with self.subTest(needle=needle):
                 self.assertIn(needle, row)
-
-    def test_the_changelog_lists_the_changes(self):
-        log = ChangelogTests()
-        expected = {"Changed": ("Apps pane", "Theo kết quả thử tự động", "Set by the guided test"),
-                    "Added": ("Cốc Cốc", "Secure Input")}
-        for group, needles in expected.items():
-            text = log.group(group)
-            for needle in needles:
-                with self.subTest(group=group, needle=needle):
-                    self.assertIn(needle, text)
 
 
 if __name__ == "__main__":
