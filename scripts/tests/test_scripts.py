@@ -769,7 +769,9 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         cask = out.read_text(encoding="utf-8")
         self.assertIn('cask "testapp" do', cask)
-        self.assertIn('depends_on macos: ">= :sequoia"', cask)
+        # PRD-R8, PLT-R106, ADR 0315: the minimum system is macOS 12 Monterey, as the app's deployment target.
+        self.assertIn('depends_on macos: ">= :monterey"', cask)
+        self.assertNotIn("sequoia", cask.lower())
         self.assertIn("auto_updates true", cask)
         self.assertIn('"~/Library/Application Support/Test App"', cask)
         self.assertIn('"~/Library/Preferences/vn.example.test.plist"', cask)

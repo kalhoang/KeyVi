@@ -245,7 +245,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1107 | Rollback procedure | runbooks | M (drill) | docs/release tracks; Pa | **Pa** |
 | PLT-R1108 | Update tests before publication | self-hosted runner (13.5) | I, M | W2-E2; Pa | **Pa** |
 | PLT-R1109 | minimumSystemVersion and minimumAutoupdateVersion | appcast scripts | R | release track |  |
-| PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew` | R | release track |  |
+| PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew`; `depends_on macos: ">= :monterey"` since 2026-11-17 (ADR 0315, ADR 0507), tap `kalhoang/homebrew-tap` | R | release track |  |
 | PLT-R1201 | Diagnostics window contents and buttons; health notices under the state line | `DiagnosticsWindowController`, `DiagnosticsWindowView` (`HealthNoticeView`), `DiagnosticsCopy.notices` | U (view model, `DiagnosticsCatalogTests`), M | W2-C, W14-P; Pa | **Pa** |
 | PLT-R1202 | Environment report contents | `DiagnosticsReport` (`FocusSection.appSource`; `SettingsSection.learnCollisionChoices`, `.lookaheadRevision`, `.learnedCollisionEntries`), `ReportAssembler`; the copied block writes them as `focus.appSource` and `settings.*` keys (ADR 0501) | U (`FocusedAppSourceReportTests`, `LearnedCollisionEntriesReportTests`, `ReportAssemblerTests`, `IssueBlockTests`) | W1-A, W1-G, W14-P, W16-A |  |
 | PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |

@@ -22,7 +22,7 @@ Do these once; the sections linked from each line explain how.
 - [ ] `SPARKLE_PUBLIC_ED_KEY` filled in `Config/Sparkle.xcconfig` with the public key printed by `generate_keys`, as described in the [EdDSA key note of ADR 0304](../decisions/0304-sparkle-version-pin.md#runbook-note-filling-sparkle_public_ed_key). `scripts/verify-release.sh` and `scripts/publish-release` refuse a build whose `SUPublicEDKey` is empty.
 - [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
 - [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
-- [ ] Homebrew tap repository exists (template: `packaging/homebrew/Casks/cask.rb.template`).
+- [ ] Homebrew tap repository `kalhoang/homebrew-tap` exists (brew name `kalhoang/tap`; template: `packaging/homebrew/Casks/cask.rb.template`).
 - [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
 
 ## 1. Decide the version and build number
@@ -160,7 +160,7 @@ The Sparkle EdDSA private key is never in CI (QA-R32, PLT-R1103). The final step
    - adds the appcast item to `site/static/appcast.xml` with `sparkle:version` (build integer), `sparkle:shortVersionString`, `sparkle:minimumSystemVersion`, the EdDSA signature and length, one link to the bilingual release-notes page (no `xml:lang` variants, because Sparkle would pick them by the macOS language instead of the app's language; [ADR 0304](../decisions/0304-sparkle-version-pin.md#release-notes-language-amendment-2026-11-13-design-review-finding-15)), and `sparkle:channel="beta"` for betas. Stable releases use phased rollout (`sparkle:phasedRolloutInterval`, for example 24 hours per group; a P0 hotfix may skip it). `sparkle:criticalUpdate` only for security or data-loss fixes (PRD-R54);
    - writes the release-notes page `site/static/release-notes/X.Y.Z/index.html` (Vietnamese first, then English, each with a link to the changelog page; no donation line because the update window shows it, PRD-R57). It needs Vietnamese notes: a `## [X.Y.Z]` section in `CHANGELOG.vi.md`, or `--notes-vi FILE`. Each language may have at most five visible lines (list items and paragraphs; `###` headings do not count, PRD-R51): the script checks this before it downloads or signs anything and stops otherwise, so keep the details in the changelog, which the page links;
    - writes `site/data/releases.json` (version, build, channel, date, DMG URL, SHA-256, minimum system version, notes in Vietnamese and English), which feeds the download page and changelog;
-   - bumps the Homebrew cask in the tap (`auto_updates true`, `depends_on macos: ">= :sequoia"`, `zap` paths per PLT-R1012). Betas do not change the cask.
+   - bumps the Homebrew cask in the tap (`auto_updates true`, `depends_on macos: ">= :monterey"`, the macOS 12 floor of [ADR 0315](../decisions/0315-minimum-macos-12.md), `zap` paths per PLT-R1012). Betas do not change the cask. The tap is the repository `kalhoang/homebrew-tap` (brew name `kalhoang/tap`); pass its checkout with `--tap-dir` (and `--tap-commit` to commit the cask there).
 
    The appcast, the website and the cask are updated by this one script so they never disagree.
 4. Review `git diff` in the repository (appcast, release-notes page, releases.json), commit and push through a pull request to `main`, then deploy the website by moving `prod` to that commit ([site deploy](site-deploy.md) section 6). The site image fetches the DMG and update archive of every release listed in `site/data/releases.json` from its GitHub Release, so un-draft the GitHub Release (step 5) before you move `prod`.
@@ -173,7 +173,7 @@ The appcast URL is one stable address, `https://{{app-slug}}.kal.vn/appcast.xml`
 - [ ] `curl -sSf https://$APP_SITE_HOST/appcast.xml | xmllint --noout -` passes, and the new item is present with the right channel.
 - [ ] The DMG URL in `site/data/releases.json` downloads, and its SHA-256 equals the value on the download page.
 - [ ] On a machine with the previous version: "Check for Updates..." offers the new build (manual checks get it immediately even with phased rollout).
-- [ ] `brew update && brew install --cask OWNER/tap/{{app-slug}}` works in a fresh shell for a stable release (tap owner: VERIFY).
+- [ ] `brew update && brew install --cask kalhoang/tap/{{app-slug}}` works in a fresh shell for a stable release (tap repository `kalhoang/homebrew-tap`).
 - [ ] Download page, changelog page and appcast show the same version and date.
 
 ## 9. After the release
