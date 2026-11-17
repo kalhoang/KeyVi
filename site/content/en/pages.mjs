@@ -248,6 +248,11 @@ export const privacy = {
   updated: "Last updated: 17 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
   // The "This website" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
   // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
+  // Where the page's files come from; the Umami variant excepts the script the analytics line discloses.
+  served: {
+    off: "Fonts are the ones already on your device; code, images, updates and the installer (DMG) are all served from this site's own server.",
+    umami: "Fonts are the ones already on your device; apart from the Umami script named above, code, images, updates and the installer (DMG) are all served from this site's own server.",
+  },
   analytics: {
     off: "<strong>Visitor analytics: none.</strong> No Google Analytics, no third-party measurement, no tracking pixels.",
     umami: "<strong>Visitor analytics: Umami, self-hosted by the project.</strong> The pages of this website (not the app, not the release-notes pages) load Umami's script from <code>{{analyticsOrigin}}</code>, a server the project runs itself, and send it page views: the page address, the page title, the referring page, the screen size and the browser language. Umami uses no cookies and nothing is stored in your browser; it collects no personal data and keeps no user profiles. To count visitors, the server derives a visit identifier from a one-way hash of your IP address and browser with a value that changes every month; the IP address is not stored, only the approximate country and city derived from it and the browser, operating system and device type. If your browser sends Do Not Track, nothing is sent at all. Only aggregated page views are looked at (per page, referrer and country); the data is not shared with anyone and there is no advertising.",
@@ -317,7 +322,7 @@ export const privacy = {
 <h2 id="website">This website</h2>
 <ul>
   <li>{{analyticsHtml}}</li>
-  <li>No cookies and no tracking storage. Fonts are the ones already on your device; code, images, updates and the installer (DMG) are all served from this site's own server.</li>
+  <li>No cookies and no tracking storage. {{servedHtml}}</li>
   <li>The web server logs each request with only the time, method, path (without the query part), result code and size; it does not log IP addresses, browsers or referring pages. From this log the project counts, per day, the requests to <code>appcast.xml</code> (to estimate how many Macs run the app) and the downloads of each file.</li>
   <li>Connections pass through Cloudflare and the server's router before they reach the web server; like on any website, these layers see your IP address while they handle the request. Cloudflare handles it under its own privacy policy.</li>
   <li>If you install with Homebrew, Homebrew's own anonymous analytics apply, under Homebrew's policy; <code>brew analytics off</code> turns them off.</li>

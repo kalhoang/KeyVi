@@ -310,6 +310,9 @@ export async function runShellChecks(check, fixtures) {
     for (const needle of ["Umami", "self-hosted", "no cookies", "nothing is stored in your browser", "no personal data", "IP address is not stored", "Do Not Track", "page views", "the page title", `<code>${origin}</code>`]) assert.ok(privacyEn.includes(needle), `en privacy: ${needle}`);
     assert.ok(!/PostHog/.test(privacyVi + privacyEn), "PostHog is gone");
     assert.ok(!/Phân tích truy cập: không có/.test(privacyVi) && !/Visitor analytics: none/.test(privacyEn), "the privacy page states what ships");
+    // The sentence on where code comes from must not deny the Umami script the page just disclosed.
+    assert.ok(privacyVi.includes("ngoài mã Umami nêu ở trên, mã, hình ảnh"), "vi privacy: the served-from line excepts Umami");
+    assert.ok(privacyEn.includes("apart from the Umami script named above, code, images"), "en privacy: the served-from line excepts Umami");
   });
 
   await check("analytics config is validated (provider, https URL on an allowed host, UUID shape, no stray keys)", async () => {

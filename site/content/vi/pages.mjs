@@ -259,6 +259,11 @@ export const privacy = {
   updated: "Cập nhật lần cuối: 17/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
   // The "Trang web" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
   // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
+  // Where the page's files come from; the Umami variant excepts the script the analytics line discloses.
+  served: {
+    off: "Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.",
+    umami: "Phông chữ là phông có sẵn trên máy bạn; ngoài mã Umami nêu ở trên, mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.",
+  },
   analytics: {
     off: "<strong>Phân tích truy cập: không có.</strong> Không Google Analytics, không công cụ đo lường của bên thứ ba, không pixel theo dõi.",
     umami: "<strong>Phân tích truy cập: Umami, do dự án tự vận hành.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải mã của Umami từ <code>{{analyticsOrigin}}</code>, một máy chủ do chính dự án vận hành, và gửi tới đó lượt xem trang: địa chỉ trang, tiêu đề trang, trang dẫn tới, kích thước màn hình và ngôn ngữ của trình duyệt. Umami không dùng cookie và không lưu gì trong trình duyệt của bạn; dự án không thu thập dữ liệu cá nhân và không lập hồ sơ người dùng. Để đếm số người xem, máy chủ tạo một mã lượt truy cập bằng cách băm một chiều địa chỉ IP và trình duyệt của bạn cùng một giá trị đổi mỗi tháng; địa chỉ IP không được lưu, chỉ lưu quốc gia và thành phố ước tính từ địa chỉ đó cùng loại trình duyệt, hệ điều hành và thiết bị. Nếu trình duyệt của bạn bật Do Not Track, không có gì được gửi đi. Dự án chỉ xem số liệu tổng hợp (theo trang, nguồn truy cập và quốc gia); dữ liệu không được chia sẻ với ai và không có quảng cáo.",
@@ -328,7 +333,7 @@ export const privacy = {
 <h2 id="trang-web">Trang web</h2>
 <ul>
   <li>{{analyticsHtml}}</li>
-  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.</li>
+  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. {{servedHtml}}</li>
   <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Từ nhật ký này, dự án đếm theo ngày số yêu cầu tới <code>appcast.xml</code> (để ước lượng số máy đang dùng) và số lượt tải từng file.</li>
   <li>Kết nối đi qua Cloudflare và bộ định tuyến của máy chủ trước khi tới máy chủ web; như mọi trang web, các lớp này thấy địa chỉ IP của bạn trong lúc xử lý yêu cầu. Cloudflare xử lý dữ liệu đó theo chính sách quyền riêng tư của Cloudflare.</li>
   <li>Nếu bạn cài bằng Homebrew, cơ chế thống kê ẩn danh của Homebrew được áp dụng theo chính sách của Homebrew; lệnh <code>brew analytics off</code> tắt cơ chế này.</li>
