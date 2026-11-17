@@ -51,14 +51,24 @@ function validateFrames(id, run) {
   if (run.frames.at(-1).text !== run.text) fail(id, "the last frame's text differs from the demo's text");
 }
 
-/** A learning demo's teaching keys (with the restore toggle ⎋, a correction) and passes come together. */
+/** A learning demo's teaching keys (with the restore toggle ⎋, a correction) and passes come together. The site
+ * re-checks what the generator enforces, as the only guard of the Site workflow (design 9 item 4): each pass corrects
+ * with the restore toggle, and the final frames keep a word by rule `learned` (L9c, ENG-R863), so the page never
+ * claims a learning the engine did not do. */
 function validateTeaching(id, demo) {
   if (!("teachKeys" in demo) && !("teachPasses" in demo)) return;
   if (typeof demo.teachKeys !== "string" || !demo.teachKeys.includes("⎋") || !("teachPasses" in demo)) {
     fail(id, "teachKeys must hold the restore toggle ⎋ and come with teachPasses");
   }
   if (!Array.isArray(demo.teachPasses) || demo.teachPasses.length === 0) fail(id, "teachPasses must be a non-empty array");
-  demo.teachPasses.forEach((pass, index) => validateFrames(`${id}: teaching pass ${index + 1}`, pass));
+  demo.teachPasses.forEach((pass, index) => {
+    const label = `${id}: teaching pass ${index + 1}`;
+    validateFrames(label, pass);
+    if (!pass.frames.some((frame) => frame.toggle === true)) fail(label, "a teaching pass must contain the restore toggle frame");
+  });
+  if (!demo.frames.some((frame) => frame.commit?.rule === "learned")) {
+    fail(id, "a learning demo's final frames must keep a word by rule learned (L9c)");
+  }
 }
 
 function validateDemo(id, demo) {
@@ -103,7 +113,9 @@ const plainPieces = (text) => (text.match(/[\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]
  * The final text split into words and separators, in order, each `{ text, english }`, and `plain` on an English word
  * that plain Telex would have typed otherwise (ENG-R802). A word is English when its latest state is: a commit says what
  * a token became, and a later frame's `revised` replaces the commit of the token before it (the next word fixed it,
- * D29). Joining the pieces gives the demo's text back. A teaching pass (`{ text, frames }`) is read the same way.
+ * D29). `learned: true` marks a word the engine kept from memory (commit rule `learned`, L9c): the learning section's
+ * "remembered" badge reads it, never the word itself; a revised token has no rule, so a revision drops the mark.
+ * Joining the pieces gives the demo's text back. A teaching pass (`{ text, frames }`) is read the same way.
  */
 export function wordsOf(demo) {
   const tokens = demo.frames.reduce((list, frame) => {
@@ -113,7 +125,12 @@ export function wordsOf(demo) {
   const { pieces, cursor } = tokens.reduce((state, token) => {
     const at = token.text ? findWord(demo.text, token.text, state.cursor) : -1;
     if (at < 0) return state;
-    const piece = { text: token.text, english: token.english === true, ...(token.plain ? { plain: token.plain } : {}) };
+    const piece = {
+      text: token.text,
+      english: token.english === true,
+      ...(token.plain ? { plain: token.plain } : {}),
+      ...(token.rule === "learned" ? { learned: true } : {}),
+    };
     return { pieces: [...state.pieces, ...plainPieces(demo.text.slice(state.cursor, at)), piece], cursor: at + token.text.length };
   }, { pieces: [], cursor: 0 });
   return [...pieces, ...plainPieces(demo.text.slice(cursor))];

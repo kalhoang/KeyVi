@@ -38,8 +38,14 @@ export async function runHomeChecks(check, fixtures) {
     for (const [label, html] of homePages) {
       const heroIds = (framesAttr(heroTag(html)) ?? []).map((demo) => demo.id);
       const used = new Set([...heroIds, ...attrs(html, "data-demo")]);
-      // The learning demos (design 9 item 4, those with teaching passes) wait for their home section.
-      const placed = Object.keys(frames.demos).filter((id) => !frames.demos[id].teachPasses);
+      // Demos waiting for their home section (design 9 item 4). The exception removes itself: once the page shows a
+      // pending demo the check fails until the id leaves this set, and a new demo is never hidden by it.
+      const pending = new Set(["learning-reset"]);
+      for (const id of pending) {
+        assert.ok(id in frames.demos, `${label}: pending demo ${id} is in frames.json`);
+        assert.ok(!used.has(id), `${label}: ${id} is on the page now, take it out of the pending set`);
+      }
+      const placed = Object.keys(frames.demos).filter((id) => !pending.has(id));
       assert.deepEqual([...used].sort(), placed.sort(), `${label}: the page uses every demo of frames.json`);
       const text = textOf(mainOf(html));
       for (const id of used) {
@@ -234,6 +240,13 @@ export async function runHomeChecks(check, fixtures) {
     await rejects("a pass without frames", /learning-reset: teaching pass 2: has no frames/, (data) => { learning(data).teachPasses[1].frames = []; });
     await rejects("a pass that is not an object", /learning-reset: teaching pass 1: is not an object/, (data) => { learning(data).teachPasses[0] = "x"; });
     await rejects("a pass frame without a key", /learning-reset: teaching pass 1: frame 0 needs/, (data) => { delete learning(data).teachPasses[0].frames[0].key; });
+    // L9c: the page claims a learning only when the engine did it and every pass corrected with the restore toggle.
+    await rejects("a final pass that keeps no word by rule learned", /learning-reset: .*rule learned/, (data) => {
+      for (const frame of learning(data).frames) if (frame.commit?.rule === "learned") frame.commit.rule = "userChoice";
+    });
+    await rejects("a teaching pass without the restore toggle", /learning-reset: teaching pass 2: .*restore toggle/, (data) => {
+      for (const frame of learning(data).teachPasses[1].frames) delete frame.toggle;
+    });
     await rejects("a pass commit with a bad plain", /learning-reset: teaching pass 1: frame \d+: commit plain/, (data) => {
       learning(data).teachPasses[0].frames.find((frame) => frame.commit?.plain).commit.plain = "";
     });
@@ -266,6 +279,11 @@ export async function runHomeChecks(check, fixtures) {
         assert.ok(pass.frames.some((frame) => frame.toggle), "each pass corrects with Escape");
       }
       assert.ok(demo.frames.some((frame) => frame.commit?.rule === "learned"), "the final pass keeps a word by rule L9c");
+      // The "remembered" mark comes from the engine (rule learned), never from the word itself.
+      const learned = wordsOf(demo).filter((piece) => piece.learned);
+      assert.equal(learned.length, 1, "exactly one word of the final pass is learned");
+      assert.ok(learned.every((piece) => piece.learned === true && piece.english), "the learned word is kept as English");
+      for (const pass of demo.teachPasses) assert.ok(wordsOf(pass).every((piece) => !("learned" in piece)), "a teaching pass learns nothing yet");
       assert.ok(Object.isFrozen(demo.teachPasses[0].frames[0]), "the passes are frozen like the demo");
     }
   });
