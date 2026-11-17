@@ -172,3 +172,14 @@ four files.
   its file and waits for Pa's review.
 - The consequences above are done: `attested.txt` holds 1,954 syllables (1,678 from the legal texts) and the
   ambiguity table holds the merged candidates.
+
+## Amendment, 2026-11-17 (escape regression corpus, REG-37)
+
+- **Webster's Second International Dictionary (web2)**, the `/usr/share/dict/words` list of macOS and the BSDs
+  (234,936 words; its README: "The 1934 copyright has lapsed, according to the supplier"): public domain, so
+  allowed by CLR-R6 as a test corpus. It is not shipped and not an input of `lexicon-builder`. 343 of its words
+  (313 restored, 30 kept as escaped forms) and 50 SCOWL words of `english.txt` (45 restored, 5 kept) form
+  `Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus/escape-regression.txt`, the regression corpus of
+  rule L4 (spec/01-engine.md ENG-R804), whose header records how the words were chosen. Recorded in
+  `data/NOTICES.md`.
+

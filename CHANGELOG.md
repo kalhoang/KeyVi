@@ -44,6 +44,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ### Fixed
 
+- English words that run into a doubled or repeated letter now stay as typed: "leecher", "cheeseburger", "coffeehouse", "dessert", "costs" and "pass" no longer become "lecher", "chéeburger", "cofeehouse", "desert", "cots" and "pas". A letter doubled on purpose still works as before ("Karr" gives "Kar", "boooong" gives "booong"), and "off" gives "of" on its own or in a Vietnamese sentence but stays "off" in an English one ("turn off the light").
 - Spotlight: words no longer keep an extra letter while Spotlight is slow to answer, right after it opens or a few words into a search while it is still looking for results ("vieejt" gave "vieệt" instead of "việt" until you cleared the search or opened Spotlight again, and later now and then in the middle of a search).
 - RustDesk is now treated like the other remote desktop apps: KeyVi passes keys through untouched and starts in English there, so the remote machine's own input method types Vietnamese.
 - Turning off KeyVi's access in System Settings (Accessibility, Device Control and Data Access on macOS 27) while KeyVi was running could freeze the keyboard and mouse clicks until KeyVi was quit. KeyVi now steps aside within about a second of macOS reporting the change, and the menu bar icon shows a red warning badge until the access is turned back on. macOS can take about 30 seconds to report it; in that window typing can still stall, for up to about 20 seconds, before KeyVi steps aside on its own.

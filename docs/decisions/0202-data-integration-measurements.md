@@ -133,7 +133,11 @@ An independent review asked for these data changes, all made (tests first where 
 1. **Rule L4 keeps escape forms that are English words** (50 words, ENG-R871 failures inside the 0.5 %):
    `off` -> `of`, `pass` -> `pas`, `mess` -> `mes`, `mass` -> `mas`, `hiss` -> `his`, `costs` -> `cots`.
    Dropping `of`, `as`, `his` or `pas` from the lexicon would break those words, so this is an engine or spec
-   question (L4 order), not data.
+   question (L4 order), not data. *Resolved on 17/11/2026* by rule L4 as amended by the product owner (ENG-R804,
+   REG-37, [0005](0005-pa-decisions-2026-11-13.md)): an escape that was not needed (`pass`, `dessert`) or is no
+   doubling (`costs`) restores the keys, and a needed doubling (`off`, `mess`, `mass`, `hiss`, `ass`) keeps the
+   escaped form only outside English, so ENG-T11 lists no L4 entry for the English run (56 changed words, 99.862 %
+   unchanged) and the five words stay as Vietnamese-context entries of `known-exceptions.txt`.
 2. **Rule L10 after an English word of the source** (ENG-R873, 1 token per Telex typist): `trên Internet.
    Cơ chế` made the run English (ENG-R823), so `Cơ`, typed `Cow`, was restored. *Resolved on 14/11/2026* by
    the amended ENG-R823 (Pa's report `cũng tricky á` -> `as`, [0005](0005-pa-decisions-2026-11-13.md)): the

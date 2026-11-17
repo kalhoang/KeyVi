@@ -22,6 +22,8 @@ class St:
         self.raw = []
         self.free_order = False  # a modifier/stroke applied non-adjacently
         self.had_escape = False
+        self.escape_across = False  # an escape key not right after a key it undid: no doubling (ENG-R804)
+        self.last_escape = None  # raw index of the newest escape key (ENG-R804)
         self.tone_src = []
         self.mark_rm = []  # tone-removal keys that removed letter marks (ENG-R411)
         self.lit_start = None  # raw index of the key that started literal mode
@@ -35,6 +37,7 @@ class St:
         n.escaped = set(self.escaped)
         n.raw = list(self.raw)
         n.free_order, n.had_escape = self.free_order, self.had_escape
+        n.escape_across, n.last_escape = self.escape_across, self.last_escape
         n.tone_src = list(self.tone_src)
         n.mark_rm = list(self.mark_rm)
         n.lit_start = self.lit_start
@@ -81,6 +84,10 @@ def escape(st, cfg, kind, ch, undone=()):
     """4.7; `undone` are the keys whose effect the escape removed (ENG-R711)."""
     st.escaped.add(kind)
     st.had_escape = True
+    index = len(st.raw) - 1
+    if index == 0 or index - 1 not in undone:
+        st.escape_across = True
+    st.last_escape = index
     n = len(st.ls)
     append_letter(st, cfg, ch)
     if len(st.ls) > n:

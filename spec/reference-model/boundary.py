@@ -13,15 +13,27 @@ def lang_of(out, restored):
     if any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in out): return "vi"
     if out.lower() in EN and validity(out) is None: return "en"
     return "neutral"
+def vowel_groups(text):
+    """Maximal runs of vowel letters (ENG-R804 (d))."""
+    return len(re.findall(f"[{''.join(VOWELS)}]+", strip(text.lower())))
 def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False, starts_sentence=False):
     st = compose(list(keys), cfg)
     R = "".join(st.raw); C = commit(st, cfg); r = R.lower()
     if C == R: return C, "unchanged"
-    if not any(ch in VOWELS for ch in strip(C.lower())): return C, "kept: no vowel (abbreviation)"
-    if st.had_escape:
-        if C.lower() in EN: return C, "kept: escaped form is an English word"
-        if r in EN: return R, "restored: escaped token, raw is English"
-        return C, "kept: user escape"
+    if not any(ch in VOWELS for ch in strip(C.lower())) and not st.had_escape:  # ENG-R801: L4 decides an escape
+        return C, "kept: no vowel (abbreviation)"
+    if st.had_escape:  # rule L4 as amended by the product owner on 17/11/2026 (ENG-R804, REG-37)
+        c_english, r_english = C.lower() in EN | TECH, r in EN | TECH
+        if c_english and r_english:
+            # the keys of C typed alone in the same context; the phrase evidence of ENG-R804 (a) is not modelled
+            alone, _ = decide(C, cfg, prev, context, vietnamese_text, starts_sentence)
+            if not st.escape_across and prev != "en" and alone != C: return C, "kept: deliberate escape"
+            return R, "restored: escaped token, both English"
+        if c_english: return C, "kept: escaped form is an English word"
+        if r_english: return R, "restored: escaped token, raw is English"
+        ends_with_escape = st.last_escape == len(st.raw) - 1
+        if not st.escape_across and (vowel_groups(C) <= 1 or ends_with_escape): return C, "kept: user escape"
+        return R, "restored: escaped token typed through"
     v = validity(C)
     if v is None: return R, "restored: invalid syllable"
     if v == "B":
@@ -280,8 +292,26 @@ COLLISION_RUNS = [
     ("tricky such as ", "tricky such as ", "restored: phrase"),
     ("dduwowcj such as.", "được such as.", "restored: phrase"),
 ]
+# Rule L4 as amended on 17/11/2026 (ENG-R804, REG-37) with the 13.9 fixtures, where no escaped form and its keys are
+# both English (case (a) is checked by the engine's EscapeCommitTests and the rows of 13.9.5).
+ESCAPE_RUNS = [
+    ("leecher ", "leecher ", "restored: escaped token typed through"),
+    ("cookout ", "cookout ", "restored: escaped token typed through"),
+    ("coffeehouse ", "coffeehouse ", "restored: escaped token typed through"),
+    ("pajama ", "pajama ", "restored: escaped token typed through"),
+    ("costs ", "costs ", "restored: escaped token typed through"),
+    ("current ", "current ", "restored: escaped token typed through"),
+    ("boooong ", "booong ", "kept: user escape"),
+    ("nhaamff ", "nhâmf ", "kept: user escape"),
+    ("Kroong Anaa ", "Krông Ana ", "kept: user escape"),
+    ("ass ", "as ", "kept: escaped form is an English word"),
+    ("tarr ", "tar ", "kept: escaped form is an English word"),
+    ("password ", "password ", "restored: escaped token, raw is English"),
+    ("www ", "www ", "restored: escaped token, raw is English"),
+]
 if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]
+    bad += [(keys, type_run(keys), (want, why)) for keys, want, why in ESCAPE_RUNS if type_run(keys) != (want, why)]
     bad += [(keys, type_run_collision(keys), (want, why)) for keys, want, why in COLLISION_RUNS
             if type_run_collision(keys) != (want, why)]
     bad += [(keys, type_run(keys, context="code"), (want, why)) for keys, want, why in CODE_RUNS
@@ -293,7 +323,7 @@ if __name__ == "__main__":
             for keys, want, why in CODE_RUNS_CAPITALIZED
             if type_run(keys, context="code", code_capitalized={"tar"}) != (want, why)]
     for row in bad: print("mismatch:", row)
-    total = (len(RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
+    total = (len(RUNS) + len(ESCAPE_RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
              + len(CODE_RUNS_CAPITALIZED))
-    print(f"{total - len(bad)}/{total} English-run, collision and code-context examples agree")
+    print(f"{total - len(bad)}/{total} English-run, escape, collision and code-context examples agree")
     sys.exit(1 if bad else 0)
