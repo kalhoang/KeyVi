@@ -214,7 +214,7 @@ Every asset is original work created for this project unless a row below says ot
 
 ### Website icons
 
-- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the raster logo files `site/static/assets/brand/app-icon-64.png` and `site/static/assets/brand/app-icon-128.png`. The page header draws the KV mark as an inline SVG symbol with the same shapes as `favicon.svg`; since the website redesign (2026-11-17) no page references the two raster logo files, which are still generated and shipped at their URLs.
+- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px) and `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque). The page header draws the KV mark as an inline SVG symbol with the same shapes as `favicon.svg`. The raster logo files `assets/brand/app-icon-64.png` and `app-icon-128.png` were removed after the website redesign (2026-11-17), since no page used them.
 - Source: `scripts/make-app-icon.py site` on 2026-11-13, from Pa's artwork.
 - Source record: an XML comment in `favicon.svg`, and this entry.
 - Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); derived from Pa's artwork only.

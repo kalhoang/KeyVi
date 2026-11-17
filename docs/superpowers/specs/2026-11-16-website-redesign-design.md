@@ -221,7 +221,8 @@ support, a "Tải về" button, the language switch. Privacy and changelog move 
   anywhere, slang onsets, Telex and VNI, tone placement). What the engine does not decide is shown as static
   illustration, never animated as if typed: keyboard layouts (the engine sees characters after layout mapping),
   macros, per-app memory and rules, the menu bar icon, Return delivered after the correction, Secure Input. Each
-  of those statements cites the requirement whose tests prove it (PRD-R2, P0-1, P0-3, ENG-R910). No second
+  of those statements cites the requirement whose tests prove it (PRD-R2, P0-1, P0-3, ENG-R910) in a `data-req`
+  attribute; the page does not show the IDs, which a general reader cannot use (Pa, 17/11/2026). No second
   generator in AppCore.
 - Which engine is the truth: the engine of the commit the site is built from. The live site is built from the
   `prod` branch, so it shows the engine of `prod`; before the first release it describes the coming 1.0. Any engine

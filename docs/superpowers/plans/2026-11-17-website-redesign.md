@@ -443,7 +443,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
     - **Section 3 cards:**
       - Engine cards show `<code>keys</code>` and the result: `<span class="out">`, or `<em>` for `card-modern`.
       - Static cards carry `data-static`.
-      - Each card ends with its `req` in a `<small>`.
+      - Each card ends with its `req` in a `<small>`. *(Changed after the merge, 17/11/2026: Pa asked to hide the
+        IDs; the cards, the Return note and the Secure Input card carry them in `data-req` instead.)*
     - **Section 4:**
       - `<div class="hub" data-hub>` with an inline SVG of thread paths (`<path data-thread>`) from the mark to
         category nodes, and a `<ul>` fallback list of categories with up to four app names (tier 1 first) from

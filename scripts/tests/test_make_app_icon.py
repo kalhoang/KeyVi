@@ -227,8 +227,8 @@ class SiteIconTests(unittest.TestCase):
 
     def test_raster_icons_have_the_expected_sizes(self):
         self.assertEqual(png_size(STATIC / "apple-touch-icon.png"), (180, 180, 2))  # opaque for iOS
-        for pixels in (64, 128):
-            self.assertEqual(png_size(STATIC / "assets" / "brand" / f"app-icon-{pixels}.png"), (pixels, pixels, 6))
+        # The raster logo files went with the 2026-11-17 website redesign: no page used them.
+        self.assertFalse((STATIC / "assets" / "brand").exists())
         ico = (STATIC / "favicon.ico").read_bytes()
         reserved, kind, count = struct.unpack("<HHH", ico[:6])
         self.assertEqual((reserved, kind), (0, 1))

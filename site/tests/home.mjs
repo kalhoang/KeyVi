@@ -73,6 +73,26 @@ export async function runHomeChecks(check, fixtures) {
     assert.match(css, /\[data-motion-ready\]\s*\.motion-toggle,\s*\[data-motion-ready\]\s*\.replay\s*\{\s*visibility:\s*visible;\s*\}/, "home.js reveals a control by marking its owner data-motion-ready");
   });
 
+  await check("home: requirement IDs stay in data-req and never show on the page (Pa, 17/11/2026)", async () => {
+    for (const [label, html, lang] of homePages) {
+      const h = homeCopy[lang];
+      const expected = [
+        ...h.behaviours.items.filter((item) => item.note).map((item) => item.noteReq),
+        ...h.cards.items.map((item) => item.req),
+        h.apps.secureInput.req,
+      ];
+      const main = mainOf(html);
+      assert.deepEqual(attrs(main, "data-req"), expected.map(esc), `${label}: the Return note, every card and the Secure Input card carry their requirement`);
+      assert.ok(!/class="[^"]*\breq\b/.test(main), `${label}: no visible requirement line`);
+      const visible = unescapeHtml(textOf(main));
+      for (const id of new Set(expected.flatMap((req) => req.split(/,\s*/)))) {
+        assert.ok(!new RegExp(`(?<![\\w-])${id}(?![\\w-])`).test(visible), `${label}: ${id} is not in the page text`);
+      }
+    }
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.ok(!/\.req\b/.test(css), "home.css has no rule left for the removed requirement line");
+  });
+
   await check("home: the apps intro goes through the token filler like every other intro", async () => {
     const intro = "{{AppName}} <code>Spotlight</code>";
     const apps = { ...homeCopy.vi.apps, intro };

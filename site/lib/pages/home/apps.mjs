@@ -4,7 +4,8 @@
 // order of the file). The list is the content: from 900 px home.css places each item where its thread ends; below that
 // the threads hide and the list stays. While an entry has no current result nothing says it was checked; a current
 // result shows its date (QA-R19). home.js draws the threads and moves dots along them (plan Task 6). The Secure Input
-// card closes the section (P0-1, PLT-R395 to PLT-R398D).
+// card closes the section (P0-1, PLT-R395 to PLT-R398D); its requirement stays in data-req, not on the page (Pa,
+// 17/11/2026).
 import { formatDate } from "../../dates.mjs";
 import { markSvg } from "../../layout.mjs";
 import { routePath } from "../../routes.mjs";
@@ -67,10 +68,9 @@ export function renderApps(kt) {
         <ul class="hub-list">${HUB_CATEGORIES.map((category, index) => node(kt, category, index)).join("")}</ul>
       </div>
       <p class="hub-link"><a href="${esc(routePath("compat", lang))}">${esc(apps.link)}</a></p>
-      <div class="card secure-input">
+      <div class="card secure-input" data-req="${esc(apps.secureInput.req)}">
         <h3>${esc(apps.secureInput.title)}</h3>
         <p>${f(apps.secureInput.body)}</p>
-        <small class="req">${esc(apps.secureInput.req)}</small>
       </div>
     </section>`;
 }
