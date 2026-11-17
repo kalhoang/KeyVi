@@ -83,7 +83,7 @@ export async function runHomeChecks(check, fixtures) {
       ];
       const main = mainOf(html);
       assert.deepEqual(attrs(main, "data-req"), expected.map(esc), `${label}: the Return note, every card and the Secure Input card carry their requirement`);
-      assert.ok(!/class="req"/.test(main), `${label}: no visible requirement line`);
+      assert.ok(!/class="[^"]*\breq\b/.test(main), `${label}: no visible requirement line`);
       const visible = unescapeHtml(textOf(main));
       for (const id of new Set(expected.flatMap((req) => req.split(/,\s*/)))) {
         assert.ok(!new RegExp(`(?<![\\w-])${id}(?![\\w-])`).test(visible), `${label}: ${id} is not in the page text`);

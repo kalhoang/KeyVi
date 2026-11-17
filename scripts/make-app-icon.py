@@ -269,7 +269,7 @@ BODY = 824  # Apple's macOS icon grid: the body is 824 x 824 px, centred on the 
 SHADOWS = ((4, 4, 0.20), (12, 16, 0.22))
 ICON_POINTS = (16, 32, 128, 256, 512)
 SHARPEN_AT_OR_BELOW = 64  # px; small sizes get a light unsharp mask so the KV mark stays readable
-TIGHT_BOX = (84, 84, 940, 940)  # the body and most of its shadow, for favicons and the site header
+TIGHT_BOX = (84, 84, 940, 940)  # the body and most of its shadow, for favicon.ico
 
 
 def _pillow():
