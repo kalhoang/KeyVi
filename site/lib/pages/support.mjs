@@ -3,6 +3,7 @@
 import { kit } from "../context.mjs";
 import { MIGRATION_SOURCES, routePath } from "../routes.mjs";
 import { esc } from "../util.mjs";
+import { pageHead } from "./head.mjs";
 
 function faq(kt) {
   const { c, f } = kt;
@@ -43,8 +44,7 @@ export function renderSupport(ctx, lang) {
   const s = c.support;
   const toc = s.toc.map(([id, label]) => `<li><a href="#${id}">${esc(label)}</a></li>`).join("");
   const body = `
-    <h1>${esc(s.h1)}</h1>
-    <p class="lede">${esc(s.lede)}</p>
+    ${pageHead(esc(s.h1), esc(s.lede))}
     <nav aria-label="${esc(s.tocLabel)}"><ul class="toc">${toc}</ul></nav>
     <div class="prose">
     <h2 id="${s.toc[0][0]}">${esc(s.faqHeading)}</h2>
@@ -80,7 +80,8 @@ export function renderMigration(ctx, lang, sourceId) {
   const { c, f, p, ui } = kt;
   const m = c.migrate;
   const page = m.pages[sourceId];
-  const [other] = m.indexNames[sourceId];
+  // The name inside a sentence ({{Other}}): a common noun is lowercase there and capitalised only in the card list.
+  const [listName, , other = listName] = m.indexNames[sourceId];
   const extra = { Other: other };
   const heading = p(m.title, extra);
   const list = (items) => `<ol class="steps">${items.map((item) => `<li>${f(item, extra)}</li>`).join("")}</ol>`;
@@ -92,10 +93,9 @@ export function renderMigration(ctx, lang, sourceId) {
     ? `<h2 id="export">${f(m.stepsHeading, extra)}</h2>${list(page.steps)}${screenshotSlot(kt, other)}<div class="callout warn"><p>${f("{{verifyHtml}}")} ${f(m.verifyNote)}</p></div>`
     : "";
   const body = `
-    <p><a href="${esc(routePath("support", lang))}#${esc(c.support.toc[4][0])}">&larr; ${esc(m.back)}</a></p>
-    <h1>${esc(heading)}</h1>
+    <p class="back-link"><a href="${esc(routePath("support", lang))}#${esc(c.support.toc[4][0])}">&larr; ${esc(m.back)}</a></p>
+    ${pageHead(esc(heading), f(page.intro, extra))}
     <div class="prose">
-      <p class="lede">${f(page.intro, extra)}</p>
       ${page.html ? f(page.html, extra) : ""}
       ${exportBlock}
       ${importBlock}

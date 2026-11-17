@@ -88,3 +88,13 @@ Amendment, final review (2026-11-13):
   This replaces "Website analytics: none" of decision 5 and ADR 0001 item 18 for builds that configure it;
   `/rieng-tu` describes whichever state the build has. The first version of this amendment used PostHog Cloud; it
   was replaced by Umami the same day (ADR 0602 decision 7).
+
+Amendment, website redesign (2026-11-17, [design](../superpowers/specs/2026-11-16-website-redesign-design.md)):
+
+- The generator now ships two more first-party scripts and one vendored library, each on specific pages only:
+  `home.js` with the vendored anime.js 4.5.0 ([ADR 0603](0603-website-motion-library.md)) on the two home pages and
+  `copy.js` on the two donate pages, beside the existing `matrix.js` of the compatibility pages. A page lists them in
+  `page.scripts` (classic scripts with `defer`, fingerprinted) and its extra stylesheets in `page.styles`; the CSP stays
+  as it is, with no inline script and no style attribute.
+- The build reads `site/demo/frames.json`, which `site-demo-frames` in `Packages/VietnameseEngine` writes from the
+  engine and which is committed, so the build still needs Node only; a malformed file stops the build.

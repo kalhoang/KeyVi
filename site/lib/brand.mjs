@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Reads the brand values (display name, slug, bundle IDs, site host) from scripts/brand.env.
+// Reads the brand values (display name, slug, bundle IDs, site host, trademark sign) from scripts/brand.env.
 // The name is temporary; scripts/rename-app.sh keeps brand.env in sync, so the site never hard-codes it.
 import { readFile } from "node:fs/promises";
 
@@ -34,5 +34,7 @@ export async function loadBrand(brandEnvPath) {
     slug: env.APP_SLUG,
     bundleId: env.APP_BUNDLE_ID_RELEASE,
     host: env.APP_SITE_HOST,
+    // Optional: the sign after the name in page titles and prose ({{AppNameTM}}); "" writes the bare name.
+    trademarkSign: env.APP_TRADEMARK_SIGN ?? "",
   });
 }

@@ -333,9 +333,9 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R54 | Critical updates shown immediately, dismissible | appcast | R | release track |  |
 | PRD-R55 | No Sparkle system profiling | `App/Info.plist` `SUEnableSystemProfiling` | L | skeleton (done) |  |
 | PRD-R56 | Free; donations are a tip jar | n/a | D | n/a |  |
-| PRD-R57 | Donation entry points only those listed | menu, About pane, site | M | W1-G, W2-B; site track |  |
+| PRD-R57 | Donation entry points only those listed (amended 17/11/2026: also the website footer link and the home page closing line) | menu, About pane, site (`/ung-ho`, footer link, home closing line in `site/lib/pages/home/closing.mjs`) | M, U (`node site/test.mjs`: donation entry points only where PRD-R57 allows) | W1-G, W2-B; site track |  |
 | PRD-R58 | No nags, counters or locked features | all UI | D, M | all UI workstreams |  |
-| PRD-R59 | Donation block content (Pa's copy of 15/11/2026: two columns, account details with copy buttons, share text with the macOS share menu), bundled QR assets | `DonationInfo.details`, `AboutSupportContent.shareText`, `DonationSection` (About pane) | U, M (`SettingsModelsTests`, `SpecDraftCopyTests`, `DonationQRTests`) | W2-B, W12-S; Pa | **Pa** |
+| PRD-R59 | Donation block content (Pa's copy of 15/11/2026: two columns, account details with copy buttons, share text with the macOS share menu), bundled QR assets | `DonationInfo.details`, `AboutSupportContent.shareText`, `DonationSection` (About pane); the website's `/ung-ho` (`renderDonate` in `site/lib/pages/simple.mjs`, `site/static/assets/copy.js`) | U, M (`SettingsModelsTests`, `SpecDraftCopyTests`, `DonationQRTests`, `node site/test.mjs`) | W2-B, W12-S; Pa | **Pa** |
 | PRD-R60 | No Polar.sh or Buy Me a Coffee | site, docs | D | site track |  |
 | PRD-R61 | Optional public sponsor list | site | D | site track; Pa |  |
 | PRD-R62 | String Catalogs vi + en, neutral copy | `App/Resources/Localization/*.xcstrings` | L (l10n lint), D | W1-G, W2-B, W2-C, W2-D, W2-F |  |
@@ -349,7 +349,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R70 | Tolerant importers | `MacroImporter` | U | W1-B |  |
 | PRD-R71 | Website migration pages | `site/` | D | site track |  |
 | PRD-R72 | Own export format; the learned words of the import counted only when importable (skipped ones counted), unavailable while the memory is not loaded (amended 15/11/2026) | `SettingsStore` export, `CollisionMemoryImportPreview`, `ImportSummary` (ShellCore), import sheet | U (`CollisionMemoryTransferTests`, `LearnedChoicesPaneTests`, `SpecDraftCopyTests`) | W1-B, W16-A |  |
-| PRD-R73 | Website pages | `site/`, served by the `deploy/site` container (ADR 0602) | D, U (`node site/test.mjs`) | site track |  |
+| PRD-R73 | Website pages; the home page's typing demo is generated from the engine (design of 16/11/2026) | `site/`, served by the `deploy/site` container (ADR 0602); home sections `site/lib/pages/home/`; demo script and frames `site/demo/`, written by `site-demo-frames` (`Packages/VietnameseEngine`) | D, U (`node site/test.mjs`), L (`site-demo-frames --check`) | site track; W20 |  |
 | PRD-R74 | No trackers on the website | `site/`; optional cookieless self-hosted Umami only when `site/config.json` configures it (Pa, 2026-11-13, Q7; ADR 0602 decision 7), never in the app or on release-notes pages | U (`node site/test.mjs`: no third-party origin without the config, only the Umami origin with it) | site track; Pa decision |  |
 | PRD-R75 | Appcast host over HTTPS on a Pa-controlled domain | `deploy/site` on the Kalera Docker Swarm behind Traefik and Cloudflare (ADR 0602, [site deploy](../runbooks/site-deploy.md)), `Config/Sparkle.xcconfig` | R, U (`node deploy/site/test.mjs`), M (first deploy) | release track; Pa | **Pa** |
 | PRD-R76 | Success metrics without telemetry | `scripts/metrics.py` | D | CI track |  |

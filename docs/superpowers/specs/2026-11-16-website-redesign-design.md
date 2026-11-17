@@ -136,10 +136,12 @@ Items marked *(integrator's call)* were not decided by the product owner; they c
 
 ### 7.2 Motion system
 
-- anime.js 4.5.0 vendored as one file (`dist/bundles/anime.esm.min.js`, about 41 KB gzipped), loaded as a module
-  only on pages that animate. *(integrator's call: one file instead of the modular tree, because the modular tree
-  imports its files by relative path without the `?v=hash` query, so an update could mix cached and new modules
-  under the one-year immutable cache.)*
+- anime.js 4.5.0 vendored as one file, `dist/bundles/anime.umd.min.js` (about 40 KB gzipped), loaded as a classic
+  deferred script only on pages that animate. *(integrator's call: one file instead of the modular tree, because the
+  modular tree imports its files by relative path without the `?v=hash` query, so an update could mix cached and new
+  modules under the one-year immutable cache. Builder's call, [ADR 0603](../../decisions/0603-website-motion-library.md):
+  the UMD bundle instead of the ES module bundle first named here, for the same reason; it is one fingerprinted
+  `<script src>` and exposes the global `anime`.)*
 - Tools used: timelines and timers for the typing demos, `stagger` for reveals, `onScroll` (or an
   IntersectionObserver) to start a section's motion when it enters the viewport, `createDrawable` and
   `createMotionPath` for the threads of section 4, springs or `outBack` easing for the small tags.
@@ -164,7 +166,10 @@ Items marked *(integrator's call)* were not decided by the product owner; they c
    `Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha` giving
    "Chiều nay họp online, nhớ gửi file slide trước deadline nha". This replaces PRD-R73's 20-second screen
    recording (decided by the product owner on 17/11/2026, section 6): crisp at any size, in both languages,
-   always in step with the engine, nothing to re-record per release.
+   always in step with the engine, nothing to re-record per release. The other sentences live in
+   `site/demo/script.json`; each hero sentence ends with a Vietnamese word (`nha`, `nhé`), because an English last
+   word is decided, and restored, only when a boundary commits it. `behaviour-punctuation` is the demo that ends
+   English words before a boundary (a comma, a period, Return).
 2. **"Một câu, hai thứ tiếng": three core behaviours,** each a small demo that plays when it scrolls into view:
    English words stay as typed even when the word ends with a comma, a period or Return, and in a chat app Return
    is delivered after the correction (P0-3, ENG-R910); typing the next word fixes the previous one (D29,
@@ -172,7 +177,7 @@ Items marked *(integrator's call)* were not decided by the product owner; they c
    already restored at its own commit, PRD-R79); Escape right after a word gives back the keys as typed
    (`Vieetj`, "Việt", Escape, "Vieetj"; D8, PRD-R18).
 3. **"Gõ theo cách của bạn": a grid of six cards** (generated or static as section 7.4 says): tone and modifier keys work anywhere in the word, nothing to
-   switch on (`vietj`, `tieengs`, `dangd`; ENG-R107, section 3.2 of the spec); slang onsets (`dzô`, `dzậy`,
+   switch on (`vietej`, `tieengs`, `dangd`; ENG-R107, section 3.2 of the spec); slang onsets (`dzô`, `dzậy`,
    `hẹo`; P0-2, ENG-R316); Telex or VNI, traditional or modern tone placement (`hòa` / `hoà`; D1, D2); macros
    (user-defined text expansion with import and export, PRD-R2; example `dc` gives "được" as a user's own
    macro); keyboard layouts (QWERTY, QWERTZ, AZERTY, Dvorak, Colemak; PRD-R2); per-app language memory and

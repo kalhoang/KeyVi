@@ -131,8 +131,12 @@ export async function loadMatrix(matrixPath, fixturesDir, today, warn) {
   const usingFixture = real === undefined;
   const raw = usingFixture ? await readJsonIfExists(join(fixturesDir, "matrix.json")) : real;
   if (usingFixture) warn("compat/matrix.json not found: using the sample fixture (every row not verified)");
+  // `order` keeps the position in the file, the maintainers' ranking within a tier (the home page hub lists by it).
   const entries = asList(raw, ["entries"])
-    .map((entry) => normalizeMatrixEntry(entry, today, warn))
+    .map((entry, order) => {
+      const normalized = normalizeMatrixEntry(entry, today, warn);
+      return normalized && { ...normalized, order };
+    })
     .filter(Boolean)
     .sort((a, b) => (a.tier || 9) - (b.tier || 9) || a.name.localeCompare(b.name, "en"));
   return { entries, usingFixture };

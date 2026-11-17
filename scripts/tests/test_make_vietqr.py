@@ -155,8 +155,8 @@ class CommittedImageTests(unittest.TestCase):
             with self.subTest(lang=lang):
                 pages = (REPO / "site" / "content" / lang / "pages.mjs").read_text(encoding="utf-8")
                 donate = pages.split("export const donate = {", 1)[1].split("};", 1)[0]
-                self.assertIn(f'bankValue: "{vietqr.BANK_NAME}"', donate)
-                self.assertIn(f'accountValue: "{vietqr.ACCOUNT}"', donate)
+                self.assertIn(f'bank: "{vietqr.BANK_NAME}"', donate)
+                self.assertIn(f'account: "{vietqr.ACCOUNT}"', donate)
                 self.assertNotIn("momo", donate.lower())
 
     def test_default_outputs_are_the_committed_files(self):

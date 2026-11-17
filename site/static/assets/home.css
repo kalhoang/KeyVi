@@ -1,0 +1,233 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Home page sections only (design 7.3), linked from / and /en/ through page.styles after style.css, whose tokens and
+   components (button, card, window, tag, keycap, section header, dark band) the sections use. Breakpoints: the hero is
+   one column below 1024 px and two from there; the hub draws its threads from 900 px and is a list below. Every demo
+   area reserves its size, so nothing shifts when the motion of home.js starts (design 7.8). No style attribute: the
+   hub nodes take their places from the classes below (design 4). */
+
+/* Section rhythm */
+.home-section { margin-block: clamp(4rem, 9vw, 6.5rem); }
+.home-section > .section-head { margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
+.req { display: block; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.02em; }
+
+/* Motion controls (the hero's pause button, the behaviours' replay buttons) keep their place in the flow without
+   JavaScript and stay invisible, out of the tab order and the accessibility tree, until home.js marks their owner (the
+   hero section, a behaviour figure) data-motion-ready; showing them then moves nothing (design 7.8). */
+.motion-toggle, .replay { visibility: hidden; }
+[data-motion-ready] .motion-toggle, [data-motion-ready] .replay { visibility: visible; }
+
+/* Demo text: English words kept as typed get the soft green highlight (design 7.1). */
+[data-input] mark { padding: 0 0.12em; border-radius: 4px; background: var(--green-soft); color: inherit; }
+/* The caret home.js puts at the end of a field while it types. It does not blink (WCAG 2.2.2), and its negative
+   margin cancels its width, so the text wraps where the finished text does. */
+.caret { display: inline-block; width: 2px; height: 1.15em; margin-right: -2px; vertical-align: text-bottom; background: var(--green); }
+/* The strip keeps the newest keys at the right and clips the oldest at the left edge; the fade there (clear for the
+   first 0.75rem, opaque from 2rem) turns a cut keycap into a soft edge instead of a sliver. */
+.keys {
+  display: flex; justify-content: flex-end; gap: 0.3rem; min-width: 0; height: 2rem; margin: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0.75rem, #000 2rem);
+  mask-image: linear-gradient(to right, transparent 0.75rem, #000 2rem);
+}
+.keys .keycap { flex: none; min-width: 2rem; height: 2rem; padding: 0 0.5rem; font-size: 0.78rem; }
+
+/* 1. Hero: headline and download on the left, the chat window on the right from 1024 px. */
+.hero { display: grid; gap: clamp(2rem, 5vw, 3.5rem); align-items: center; padding-block: 0.5rem 1.5rem; }
+.hero > * { min-width: 0; }
+.hero h1 { max-width: 16ch; }
+.hero .lede { margin-bottom: 0; }
+.hero .cmd { margin-bottom: 0; }
+.hero-meta { margin: 1rem 0 0; color: var(--muted); font-size: 0.95rem; }
+@media (min-width: 64rem) {
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
+}
+/* A minmax(0, 1fr) track: the keys strip clips its oldest keys instead of widening the page on a phone. */
+.hero-demo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.85rem; min-width: 0; }
+.menubar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 2rem;
+  margin-bottom: 0.75rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--paper-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.menubar-item { display: inline-flex; align-items: center; gap: 0.45rem; }
+.menubar-mark { width: 1.15rem; }
+/* The chat keeps one height whatever the sentence: every part that changes reserves its largest state (the sent cell
+   its tallest bubble, the field three lines, the tags the rows of the sentence with the most), so it grows with the width instead of clipping the
+   peer's message, and sending or typing moves nothing; messages sit at the bottom, as in a chat. */
+.chat { display: flex; flex-direction: column; justify-content: flex-end; gap: 0.75rem; min-height: 22rem; }
+.chat-peer { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; margin: 0; }
+.chat-name { color: var(--muted); font-size: 0.8rem; }
+.bubble { max-width: 85%; margin: 0; padding: 0.55rem 0.9rem; border-radius: 1.1rem; line-height: 1.4; overflow-wrap: anywhere; }
+.bubble-in { background: var(--paper-2); border-bottom-left-radius: 0.35rem; }
+.bubble-out { border-bottom-right-radius: 0.35rem; background: var(--green-soft); color: var(--ink); }
+/* One sent bubble per hero sentence in one grid cell, invisible (still in the layout) until home.js shows the one just
+   sent; without JavaScript, or under reduced motion, nothing is sent and the cell stays empty. */
+.chat-sent { display: grid; }
+.chat-sent > .bubble-out { grid-area: 1 / 1; justify-self: end; align-self: end; visibility: hidden; }
+.chat-status { display: block; margin-top: 0.15rem; color: var(--muted); font-size: 0.72rem; text-align: right; }
+.chat-input { padding: 0.7rem 0.95rem; border: 1px solid var(--line-strong); border-radius: 1.2rem; background: var(--card); }
+.chat-input [data-input] { min-height: calc(3 * 1.45em); margin: 0; font-size: 1.05rem; line-height: 1.45; overflow-wrap: anywhere; }
+.tags { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.4rem; min-height: 3.6rem; margin: 0; }
+/* The live tags and an invisible copy of each sentence's tags (lib/pages/home/hero.mjs) share one cell, so the row
+   keeps the height of the sentence with the most tag rows at every width. */
+.tags-cell { display: grid; }
+.tags-cell > .tags { grid-area: 1 / 1; }
+.tags-sizer { visibility: hidden; }
+.keys-strip { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.9rem; border-top: 1px solid var(--line); background: var(--paper-2); }
+.keys-label { flex: none; color: var(--muted); font-size: 0.75rem; }
+.keys-strip .keys { flex: 1 1 0; }
+.motion-toggle { justify-self: start; }
+
+/* 2. Behaviours: three demos in cards, one column on phones. */
+.behaviours { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.behaviour {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: clamp(1.1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+.demo-window { display: grid; gap: 0.6rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--paper); }
+.demo-field { min-height: calc(2 * 1.45em); margin: 0; font-size: 1.05rem; line-height: 1.45; overflow-wrap: anywhere; }
+.behaviour figcaption { margin: 0; color: var(--ink); font-size: 1rem; }
+.behaviour h3 { margin: 0 0 0.4rem; }
+.behaviour figcaption p { margin-bottom: 0; }
+.behaviour-note { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--line); color: var(--muted); font-size: 0.92rem; }
+.behaviour-note .req { display: inline; }
+.replay { align-self: flex-start; margin-block: 0.75rem 1.1rem; }
+
+/* 3. Cards: engine results and static illustrations. */
+.feature-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.feature-grid > li { display: flex; flex-direction: column; margin: 0; }
+.feature h3 { margin: 0 0 0.4rem; }
+.feature .req { margin-top: auto; padding-top: 0.9rem; }
+.demo-rows, .chips, .app-modes { display: grid; gap: 0.45rem; margin: 0.25rem 0 0; padding: 0; list-style: none; }
+.demo-rows li, .chips li, .app-modes li { margin: 0; }
+.demo-row, .illustration.macro { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.6rem; padding: 0.55rem 0.75rem; border-radius: var(--radius-s); }
+.demo-row { background: var(--paper-2); }
+.demo-label { min-width: 6.5rem; color: var(--muted); font-size: 0.85rem; }
+.demo-row code, .illustration code { padding: 0; background: none; font-size: 0.92rem; }
+.arrow { color: var(--muted); }
+.out { font-size: 1.15rem; font-weight: 650; letter-spacing: -0.01em; }
+/* Engine cards: on hover the keys step back and the result comes forward, a softer form of design 7.3 item 3 (recorded
+   in the plan, Task 6). The cards hold nothing focusable, so there is no focus state. CSS only; style.css turns the
+   transitions off under reduced motion. */
+.demo-row code, .demo-row .arrow, .demo-row .out { transition: color 200ms ease, transform 200ms ease; }
+.demo-row:hover code { color: var(--muted); }
+.demo-row:hover .arrow { color: var(--green-text); transform: translateX(3px); }
+.demo-row:hover .out { color: var(--green-text); }
+.out em { font-style: normal; }
+.illustration.macro { margin: 0.25rem 0 0; border: 1px dashed var(--line-strong); }
+.illustration.macro small { flex-basis: 100%; color: var(--muted); font-size: 0.85rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chips li { padding: 0.3rem 0.75rem; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 0.88rem; }
+.app-modes li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-s); background: var(--paper-2); }
+.app-modes .mode { color: var(--green-text); font-weight: 600; }
+
+/* 4. Apps: a list of categories below 900 px; from 900 px the hub with the threads, each node where its thread ends
+   (the points of HUB_NODES in site/lib/pages/home/apps.mjs, in percent of the 1000 x 600 drawing). */
+.hub { position: relative; }
+.hub-threads, .hub-centre { display: none; }
+.hub-list { display: grid; gap: 0.85rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.hub-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+.hub-node strong { font-size: 1rem; }
+.hub-apps { color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+.hub-link { margin: 1.5rem 0 0; }
+.secure-input { max-width: 46rem; margin-top: 2rem; }
+.secure-input h3 { margin-top: 0; }
+.secure-input .req { margin-top: 0.75rem; }
+@media (min-width: 56.25rem) {
+  .hub { aspect-ratio: 1000 / 600; }
+  .hub-threads { display: block; position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .hub-threads path { fill: none; stroke: var(--line-strong); stroke-width: 1.5; stroke-linecap: round; }
+  /* The dots home.js sends along the threads; they leave from under the mark and end under a category card. */
+  .hub-dot { fill: var(--green); }
+  .hub-centre {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7rem;
+    height: 7rem;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--card);
+    box-shadow: var(--shadow-window);
+    transform: translate(-50%, -50%);
+  }
+  .hub-mark { width: 3.5rem; }
+  .hub-list { display: block; position: absolute; inset: 0; }
+  .hub-node { position: absolute; width: 21%; text-align: center; transform: translate(-50%, -50%); }
+  .hub-node-1 { left: 12.5%; top: 13.3333%; }
+  .hub-node-2 { left: 37.5%; top: 13.3333%; }
+  .hub-node-3 { left: 62.5%; top: 13.3333%; }
+  .hub-node-4 { left: 87.5%; top: 13.3333%; }
+  .hub-node-5 { left: 20%; top: 86.6667%; }
+  .hub-node-6 { left: 50%; top: 86.6667%; }
+  .hub-node-7 { left: 80%; top: 86.6667%; }
+}
+
+/* 5. Proof: three points on the dark band. */
+.proof { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); margin: 2rem 0 0; padding: 0; list-style: none; }
+.proof li { margin: 0; padding-top: 1rem; border-top: 2px solid var(--green-on-dark); }
+.proof h3 { margin: 0 0 0.4rem; font-size: 1.15rem; }
+.proof p { margin: 0 0 0.5rem; }
+
+/* 6. Install: three numbered steps. */
+.install-steps { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); margin: 0 0 1.75rem; padding: 0; list-style: none; counter-reset: step; }
+.install-steps li {
+  position: relative;
+  margin: 0;
+  padding: 3.4rem 1.25rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--card);
+  counter-increment: step;
+}
+.install-steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 1.1rem;
+  left: 1.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--on-green);
+  font-weight: 700;
+}
+
+/* 7. Closing call. */
+.closing {
+  display: grid;
+  justify-items: center;
+  padding: clamp(2.5rem, 6vw, 4rem) var(--gutter);
+  border-radius: var(--radius-l);
+  background: var(--paper-2);
+  text-align: center;
+}
+.closing h2 { max-width: 26ch; margin: 0; }
+.closing .actions { justify-content: center; }
+.closing > p:last-child { margin-bottom: 0; }

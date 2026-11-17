@@ -111,7 +111,9 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
   - `EngineDriver(engine:)`, `driver.send(_:)`, `driver.field.string`, `driver.state.activeRawKeys` and
     `driver.state.activeDisplay` (VietnameseEngineTesting)
   - `Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))` (VietnameseEngineData)
-  - `resources.english.contains(_:)` and `resources.techAlways.contains(_:)`
+  - `Orthography.validity(of:)` (VietnameseEngine) for the `english` flag
+  - the engine's history after a revising commit (`state.history`, package access): the revised token's raw keys,
+    its new text and whether a rule or the revision restored it
 - **Produces:**
   - **CLI:** `swift run --package-path Packages/VietnameseEngine site-demo-frames [--check] [--script PATH] [--out PATH]`,
     run from the repository root.
@@ -143,7 +145,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
         "frames": [ { "key": "C", "text": "C" },
                     { "key": " ", "text": "Chiều ", "commit": { "raw": "Chieeuf", "text": "Chiều",
                       "outcome": "kept", "rule": "notEnglish", "english": false } },
-                    { "key": " ", "text": "…", "commit": { … }, "revision": true },
+                    { "key": " ", "text": "…", "commit": { … }, "revision": true,
+                      "revised": { "raw": "as", "text": "as", "english": true } },
                     { "key": "⎋", "text": "Vieetj", "toggle": true } ] } } }
     ```
     - `text` is the whole simulated field after the key.
@@ -152,8 +155,15 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
       - `text` is what the token became.
       - `outcome` is `kept`, `restored` or `macro`.
       - `rule` is the `CommitRule` case name.
-      - `english` is `text == raw && (outcome == "restored" || english.contains(raw.lowercased()) || techAlways.contains(raw.lowercased()))`.
+      - `english` is `text == raw && raw has a letter && (outcome == "restored" || Orthography.validity(of: raw) == .invalid)`:
+        shown exactly as typed, and either restored or not a Vietnamese syllable. A list test would mark `nay` (in the
+        English list) and miss `online` (in no bundled list).
     - `revision: true` when `output.revision != nil`.
+    - `revised` is present on every revising frame: the previous token's `raw`, the `text` it shows now and `english`
+      by the same rule (a revision that restores counts as restored). It replaces the earlier commit of that token:
+      in `behaviour-revision` the commit of `as` says `á`, not English, and the frame of `hell` revises it to `as`,
+      English. In the other direction (RV4) a word restored as English gets its Vietnamese display back and is no
+      longer English.
     - `toggle: true` for `⎋`.
     - Absent keys are omitted, never written as null.
 
@@ -163,8 +173,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
     `online`, `file`, `slide` and `deadline` have `english == true`.
   - `escapeGivesBackTheKeys`: keys `Vieetj⎋`. The frame before `⎋` has text `"Việt"`; the last frame has text
     `"Vieetj"` and `toggle == true`.
-  - `nextWordRevisesThePreviousOne`: keys `cais nayf tricky as hell `. At least one frame has `revision == true`; the
-    final text is `"cái này tricky as hell "`.
+  - `nextWordRevisesThePreviousOne`: keys `cais nayf tricky as hell `. One frame has `revision == true`, with
+    `revised` raw `as`, text `as`, english true; the final text is `"cái này tricky as hell "`.
   - `framesFileIsDeterministic`: `renderFramesFile` twice on the same input gives identical bytes ending in `"\n"`.
   - `expectMismatchFails`: a demo whose `expect` differs returns exit code 1 from `run`, and the message names the
     demo id.
@@ -184,17 +194,25 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
   | id | method / style | keys | expect |
   |---|---|---|---|
   | `hero-chat` | telex / traditional | `Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha` | `Chiều nay họp online, nhớ gửi file slide trước deadline nha` |
-  | `hero-email` | telex / traditional | `Anh gwir laij email cho team truwowcs meeting nhes` | `Anh gửi lại email cho team trước meeting nhé` |
-  | `hero-note` | telex / traditional | `Nhows mua router wifi mowis, check laij password` | `Nhớ mua router wifi mới, check lại password` |
-  | `behaviour-punctuation` | telex / traditional | `Minhf check email, review slide.⏎` | `Mình check email, review slide.\n` |
+  | `hero-email` | telex / traditional | `Anh gwir laij email cho team truwowcs buooir call nhes` | `Anh gửi lại email cho team trước buổi call nhé` |
+  | `hero-note` | telex / traditional | `Nhows caapj nhaatj app mowis, check laij link nhes` | `Nhớ cập nhật app mới, check lại link nhé` |
+  | `behaviour-punctuation` | telex / traditional | `Minhf check email, review slide. Gwir file⏎` | `Mình check email, review slide. Gửi file\n` |
   | `behaviour-revision` | telex / traditional | `cais nayf tricky as hell ` | `cái này tricky as hell ` |
   | `behaviour-escape` | telex / traditional | `Vieetj⎋` | `Vieetj` |
-  | `card-anywhere` | telex / traditional | `vietj tieengs dangd` | `việt tiếng đang` |
+  | `card-anywhere` | telex / traditional | `vietej tieengs dangd` | `việt tiếng đang` |
   | `card-slang` | telex / traditional | `dzoo dzaajy heoj` | `dzô dzậy hẹo` |
   | `card-telex` | telex / traditional | `vieetj` | `việt` |
   | `card-vni` | vni / traditional | `vie65t` | `việt` |
   | `card-traditional` | telex / traditional | `hoaf` | `hòa` |
   | `card-modern` | telex / modern | `hoaf` | `hoà` |
+
+  Rows changed by the engine (17/11/2026): the hero sentences after the first use English words that never show a
+  Vietnamese in-between form while typed (`meeting` showed `mêting`, `wifi` showed `ừii`, `password` showed
+  `pasword` before their commit), so the hero reads cleanly; section 2 is where the restore itself is shown
+  (integrator's call, design 8); `card-anywhere` types `vietej`
+  (`vietj` has no circumflex key and `iet` alone is not a rhyme, so it stays as typed); `behaviour-punctuation` ends
+  its second sentence with an English word, so Return commits `file` as the comma commits `email` and the period
+  `slide` (design 7.3).
 
 - [ ] **Step 5: Generate the file and run the tests.**
   Run: `swift run --package-path Packages/VietnameseEngine --scratch-path .build-demo site-demo-frames && swift test --package-path Packages/VietnameseEngine --scratch-path .build-demo --filter SiteDemoFramesTests`.
@@ -393,7 +411,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
   - `site/lib/context.mjs`: `ctx.demos`; drop `ctx.demo` (the video list).
   - `site/static/assets/home.css`.
   - `site/test.mjs`: the source tone scan skips `site/demo/*.json`, with a comment: engine input and output; the modern
-    placement is the setting's example.
+    placement is the setting's example. (Done in Task 1, which adds the files, so that the `Site` workflow stays
+    green on `main`.)
 
 **Interfaces:**
 - **Consumes:** `site/demo/frames.json` (Task 1 schema), `home` content (Task 4), components (Task 3).
@@ -403,7 +422,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
       a string `key` and a string `text`, and that the last frame's `text === demo.text`. On failure it throws
       ``Error(`site/demo/frames.json: ${id}: ${reason}`)``.
     - `wordsOf(demo) -> Array<{ text: string, english: boolean }>` splits the final text into words and separators,
-      marking the words whose commit has `english: true`.
+      marking the words whose latest state is English: a frame's `revised` replaces the earlier commit of that
+      token (Task 1 schema).
   - **Markup contract for Task 6:**
     - **Hero:**
       - `<div class="mac-window" data-hero data-demo-frames="<JSON of [hero-chat, hero-email, hero-note] demos>">`
@@ -412,7 +432,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
         - `[data-keys]` holds the last keys as `<kbd class="keycap">`
         - `[data-tags]` holds one `<span class="tag">` per English word, from `keepTag`
         - `[data-sent]` is the sent bubble, holding the first sentence
-      - a `<button type="button" data-motion-toggle aria-pressed="false">` with the pause label
+      - a `<button type="button" data-motion-toggle aria-pressed="false">` with the pause label, in the flow and
+        invisible until home.js marks the hero `data-motion-ready` (see Task 6, "Showing the controls")
       - a visually hidden `<p>` with the finished sentence; the window is `aria-hidden="true"`
       - above the window, a static mini menu bar: the mark in its Vietnamese state with `menuBarLabel`, unchanged for
         the whole demo (design 6)
@@ -480,17 +501,34 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
     other key is itself.
   - `SiteMotion.shouldAnimate({ reducedMotion, hidden, visible }) -> boolean`: true only when not reduced, not hidden
     and visible.
-  - `SiteMotion.tagsFor(frames) -> string[]`: the `commit.raw` of commits with `english: true`, in order.
+  - `SiteMotion.tagsFor(frames) -> string[]`: the `raw` of the English words in the order they become English: a
+    commit with `english: true`, or a `revised` with `english: true` (`as` in `behaviour-revision`). A `revised` with
+    `english: false` takes its word back out of the tags.
 - **Behaviour** (DOM, verified in Task 9):
   - **Hero:** types the three hero demos in rotation:
     - the input text follows each frame's `text`
     - the keys strip keeps the last 8 keycaps
     - a tag pops in when an English commit lands (spring or `outBack`, 300 to 500 ms)
-    - at the end the message moves into the sent bubble, then the next sentence starts
+    - at the end the message moves into the sent bubble, then the next sentence starts. Review fix of Task 6: the
+      hero renders one sent bubble per sentence, stacked in one grid cell of `[data-sent]` and `visibility: hidden`,
+      and home.js shows the one just sent through `el.style.visibility`; `.chat` has a `min-height` instead of a
+      fixed height with `overflow: hidden`, so the window reserves its tallest state at every width (the first
+      sentence clipped the peer's message at 390 px and by 13 px at 1280 px) and sending moves nothing (design 7.8).
   - **Pause:** the button toggles `aria-pressed` and its label, and pauses or resumes the timeline. Loops also pause
     when the hero leaves the viewport (IntersectionObserver) and on `visibilitychange`.
-  - **Section 2:** each demo plays once when it scrolls into view, with a replay button.
-  - **Section 3:** engine cards swap keys to result on hover and focus (CSS transition, no JS needed).
+  - **Section 2:** each demo plays once when it scrolls into view, with a replay button. Review fix of Task 6: the
+    punctuation demo types for about 6 s, so the button shows from the demo's first frame and stops it while it plays
+    (`data-label-stop`, content key `home.behaviours.stop`), then replays it (`data-label-replay`); a stopped demo shows
+    its final state and does not start again by itself (design 4, WCAG 2.2.2).
+  - **Showing the controls** (review fix of Task 5): the pause button and the replay buttons are in the static HTML
+    without a `hidden` attribute, so they hold their place, and `home.css` keeps them `visibility: hidden` until their
+    owner carries `data-motion-ready`. home.js sets `data-motion-ready` on the hero section when the hero loop starts,
+    and on a behaviour figure when its demo starts; it never removes a control from the flow, so showing one moves
+    nothing (design 7.8). Each replay button comes before its figure's `figcaption`, which stays the last child.
+  - **Section 3:** engine cards swap keys to result on hover and focus (CSS transition, no JS needed). Deviation of
+    Task 6, for the integrator to approve or reverse: on hover the keys turn muted, the arrow moves 3 px and the result
+    turns green, rather than the keys being replaced by the result (design 7.3 item 3); the cards hold nothing
+    focusable, so there is no focus state.
   - **Section 4:** threads draw in with `anime.svg.createDrawable` when the hub enters the viewport. Dots travel with
     `createMotionPath`, under the same pause rules.
   - **Reduced motion:** nothing autoplays, the final states stay, and the threads are drawn statically.
@@ -620,6 +658,26 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
 
 **Phase C:**
 - Task 9.
-- A whole-branch review.
+- A whole-branch review. Whole-branch review fixes (17/11/2026), in three commits:
+  - `site/test.mjs` (about 1,670 lines) is split into check modules under `site/tests/` (fixtures, helpers, the
+    per-build site checks, then data, shell, home, motion, copy and tooling), still run by `node site/test.mjs`, which
+    builds once; the 96 checks kept their names and order.
+  - Motion and accessibility: the hero pause button is a plain action button (no `aria-pressed`; its label swaps and
+    says what pressing does; `aria-describedby` names the hidden caption `#hero-caption`); a behaviour demo's player
+    mirrors the environment even at rest, so Replay in a hidden tab or off screen waits; a demo starts at
+    min(60 %, 80 % of what the viewport can show of it), with geometric observer thresholds, so a short viewport or a
+    high zoom still starts it; each replay button is described by its figure's title (`#behaviour-<id>-title`) and the
+    `.demo-window` is `aria-hidden` while it types (design 7.7); the fake DOM now completes animations (the faded hero
+    tags are removed; reduced motion mid-sentence settles on the finished sentence); `site/preview.mjs` refuses a
+    symbolic link that leads outside the folder; nginx compresses at `gzip_comp_level 6`, the level the 60 KB check
+    measures; the keys strip fades its clipped left edge with a `mask-image` gradient.
+  - Copy and docs: the tone-marks-anywhere FAQ and spec 03 (D3, the "never a switch" line) say `vieetj`, since `vietj`
+    stays as typed (Task 1 note), and a check ties every key example of that FAQ to an engine result; the English
+    section 2 intro says you never have to stop and switch languages, as the Vietnamese one does; PRD-R57 is amended
+    for the footer link and the home closing line, and PRD-R59 and the trademark-sign paragraph note the redesign as
+    done; the home hub names its categories from `ui.categories` like the compatibility page (`HUB_CATEGORIES` in
+    `lib/pages/home/apps.mjs` keeps the node order; English `developer` became "Code editors" so it fits its node);
+    the Vietnamese home page says Escape, as the FAQ and the app do; design 7.3 item 1 says each hero sentence ends
+    with a Vietnamese word.
 - The integrator's local gate `Kal-Key-wt/tools/verify-all.sh`. Add `swift run --package-path Packages/VietnameseEngine --scratch-path .build-main site-demo-frames --check` to it.
 - Merge to `main` with `--no-ff`.

@@ -1,43 +1,137 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // English page copy: home, download, compatibility, changelog, privacy, donate (mirrors content/vi/pages.mjs).
-// Trusted HTML; tokens like {{AppName}} are filled at build time.
+// Trusted HTML; tokens like {{AppName}} are filled at build time. Prose names the product with {{AppNameTM}} at its
+// first mention in a block (a paragraph, an item, an answer); headings, buttons, steps that name the app as macOS shows
+// it (open, quit, its menu, a list or folder), paths and identifiers keep {{AppName}}. The donate copy is the app's.
 
+// Home (design 7.3, 7.6): same structure as the vi copy. The demos still type Vietnamese, so the chat scene keeps its
+// Vietnamese messages and the behaviours intro explains what keeping English words means.
 export const home = {
-  h1: "Type Vietnamese correctly from the first key, in every app on your Mac.",
-  lede: "A Vietnamese input method for Mac. Setup takes about a minute, then you just type as usual.",
-  footnote: "{{AppName}} never sends what you type anywhere and never stores what you type.",
-  typedLabel: "Telex example",
-  typed: [
-    { keys: "tieengs Vieetj", out: "tiếng Việt" },
-    { keys: "text user wifi", out: "text user wifi" },
+  h1: "Type Vietnamese and English without switching.",
+  lede: "{{AppNameTM}} adds the marks to Vietnamese words and leaves English words as you typed them, in the same sentence. Just keep typing, with no mode to toggle.",
+  meta: "macOS {{minMacos}} or later · Apple silicon and Intel · Free and open source",
+  hero: {
+    windowTitle: "Chat",
+    peerName: "Lan",
+    peerMessage: "Buổi họp chiều nay cần chuẩn bị gì không?",
+    keepTag: "{{word}}: kept as typed",
+    pause: "Pause",
+    play: "Play",
+    keysLabel: "Keys just pressed",
+    sentLabel: "Sent",
+    menuBarLabel: "Typing in Vietnamese",
+    caption: "Example typed in Telex in one go, with no mode switch. English words stay as typed, Vietnamese words get their marks:",
+  },
+  behaviours: {
+    heading: "One sentence, two languages",
+    intro: "A Vietnamese keyboard turns some letters into marks: in Telex, a letter after a vowel can add a tone and a doubled vowel adds a circumflex, so English words would come out with marks they should not have. {{AppNameTM}} recognizes English words and leaves them exactly as you typed them, while the Vietnamese words around them get their marks, so you never have to stop and switch between English and Vietnamese.",
+    replay: "Replay",
+    stop: "Stop",
+    items: [
+      {
+        id: "punctuation",
+        title: "Kept as typed, however the word ends",
+        body: "English words stay as typed when you end them with a comma, a period or Return.",
+        note: "In chat apps, Return reaches the app only after the last word is corrected, so the message goes out exactly as you see it.",
+        noteReq: "P0-3, ENG-R910",
+      },
+      {
+        id: "revision",
+        title: "The next word fixes the one before",
+        body: "Some keys spell both a Vietnamese and an English word, such as <code>as</code>, which Telex reads as <em>á</em>. When you type the next word, {{AppNameTM}} looks at both and corrects the earlier one if needed.",
+      },
+      {
+        id: "escape",
+        title: "Escape gives your keys back",
+        body: "Press Escape right after a word to get back exactly the keys you typed: <em>Việt</em> turns back into <code>Vieetj</code>.",
+      },
+    ],
+  },
+  cards: {
+    heading: "Type your way",
+    items: [
+      {
+        id: "anywhere",
+        title: "Marks anywhere in the word",
+        body: "Tone and modifier keys work in the middle or at the end of a word. There is nothing to switch on.",
+        demos: ["card-anywhere"],
+        req: "ENG-R107",
+      },
+      {
+        id: "slang",
+        title: "Slang types too",
+        body: "Onsets such as <code>dz</code> type normally, because validity comes from Vietnamese spelling rules, not from a dictionary.",
+        demos: ["card-slang"],
+        req: "P0-2, ENG-R316",
+      },
+      {
+        id: "method",
+        title: "Telex or VNI, the tone placement you prefer",
+        body: "Pick Telex or VNI, and traditional or modern tone placement. Telex with traditional placement is the default.",
+        demos: ["card-telex", "card-vni", "card-traditional", "card-modern"],
+        labels: { "card-telex": "Telex", "card-vni": "VNI", "card-traditional": "Traditional", "card-modern": "Modern" },
+        req: "D1, D2",
+      },
+      {
+        id: "macros",
+        title: "Your own macros",
+        body: "Define abbreviations for the phrases you type often, and export or import the whole list when you move to another Mac.",
+        illustration: { keys: "dc", result: "được", caption: "A macro you define" },
+        req: "PRD-R2",
+      },
+      {
+        id: "layouts",
+        title: "Any keyboard layout",
+        body: "{{AppNameTM}} reads the letters your keyboard layout types, so Telex and VNI work the same on every layout.",
+        illustration: { layouts: ["QWERTY", "QWERTZ", "AZERTY", "Dvorak", "Colemak"] },
+        req: "PRD-R2",
+      },
+      {
+        id: "perApp",
+        title: "Remembers each app",
+        body: "{{AppNameTM}} remembers whether you type Vietnamese or English in each app, and you can set rules for a single app.",
+        illustration: { apps: [{ app: "Terminal", mode: "English" }, { app: "Zalo", mode: "Vietnamese" }] },
+        req: "PRD-R2",
+      },
+    ],
+  },
+  // Section 4 never says an app was checked while every matrix entry is notVerified (design 7.3 item 4).
+  apps: {
+    heading: "Works in the apps you use every day",
+    intro: "Browsers, chat, office apps, notes, Spotlight, terminals and code editors. The compatibility list shows the status of each app.",
+    verifiedOn: "verified {{dateHtml}}",
+    link: "See the compatibility list",
+    secureInput: {
+      title: "When macOS blocks every input method",
+      body: "When an app turns on secure input, usually because a password field is still open, macOS pauses every input method. {{AppNameTM}} tells you which app holds it and how to turn it off, and types again from the first key after it is released. {{AppName}} never guesses that you are typing a password.",
+      req: "P0-1, PLT-R395",
+    },
+  },
+  proofHeading: "Three things you can check",
+  proof: [
+    { h: "No data collection", p: "No telemetry, no analytics SDK, no \"anonymous usage data\". {{AppNameTM}} never sends what you type anywhere; the only automatic network traffic is the update check.", link: "{{hrefPrivacy}}", linkText: "Read the privacy details" },
+    { h: "Free", p: "{{AppNameTM}} is free and always will be. No feature is locked, and the app never nags you for donations." },
+    { h: "Open source", p: "The Vietnamese typing engine is a Swift package under the Mozilla Public License 2.0 (MPL-2.0), written from scratch from Vietnamese spelling rules, with its own test suite. The rest of the app is under GPL-3.0-or-later.", link: "{{repo}}", linkText: "Read the source", external: true },
   ],
-  typedCaption: "English words stay as typed, no mode switch needed.",
-  demoPlaceholder: "A 20-second recording is being prepared",
-  demoCaption: "Typing Telex, automatic English restore, and per-app mode switching.",
-  demoAlt: "A 20-second recording showing how typing Vietnamese works with {{AppName}}",
+  install: {
+    heading: "Install in a minute",
+    steps: [
+      "Open the DMG and drag {{AppName}} into the Applications folder.",
+      "Open {{AppName}} and grant its one permission: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}}",
+      "Type a few words in the practice field to see the result right away.",
+    ],
+    brewLabel: "Or install with Homebrew",
+  },
+  closing: {
+    heading: "No more switching back and forth between Vietnamese and English.",
+    donateLine: "{{AppNameTM}} is free. If you find it useful, you can <a href=\"{{hrefDonate}}\">chip in so Kal has more time to keep building it</a>.",
+  },
   downloadBtn: "Download {{AppName}} {{version}}",
   downloadSub: "{{requirement}}",
   noReleaseBtn: "No release yet",
   preRelease: "Status: in development, not publicly released yet.",
   brewLabel: "Or install with Homebrew",
   allDownloads: "All downloads and SHA-256 checksums",
-  proofHeading: "Three things you can check",
-  proof: [
-    { h: "No data collection", p: "No telemetry, no analytics SDK, no \"anonymous usage data\". The only automatic network traffic is the update check.", link: "{{hrefPrivacy}}", linkText: "Read the privacy details" },
-    { h: "Free", p: "{{AppName}} is free and always will be. No feature is locked, and the app never nags you for donations." },
-    { h: "Open-source engine", p: "The Vietnamese typing engine is a Swift package under the Mozilla Public License 2.0, written from scratch from Vietnamese spelling rules, with its own test suite. The rest of the app is open source too, under GPL-3.0-or-later.", link: "{{repo}}", linkText: "Read the source", external: true },
-  ],
-  whyHeading: "What you will notice",
-  why: [
-    "English words such as <code>text</code>, <code>user</code> and <code>wifi</code> stay as typed, even when you end the word with a comma, a full stop or Enter.",
-    "Slang such as <em>dzô</em> and <em>hẹo</em> types normally, because validity comes from spelling rules, not from a dictionary.",
-    "When macOS blocks every input method (Secure Input), {{AppName}} tells you which app holds it and how to turn it off. It never guesses that you are typing a password.",
-    "Tone marks at the end of a word still work: <code>vietj</code>, <code>tieengs</code>, <code>dangd</code>.",
-    "It remembers Vietnamese or English per app: English in Terminal, Vietnamese in Zalo.",
-  ],
-  compatHeading: "Does your app work well?",
-  compatText: "Each app is checked with a fixed script and the check date is shown.",
-  compatLink: "See the compatibility list",
 };
 
 export const download = {
@@ -45,7 +139,7 @@ export const download = {
   lede: "A signed and notarized DMG that runs on Apple silicon and Intel.",
   stableHeading: "Stable release",
   betaHeading: "Beta release",
-  betaNote: "Betas may still have bugs. You can go back to the Stable channel in Settings, under About & Support.",
+  betaNote: "Betas may still have bugs. You can go back to the Stable channel in Settings, under About.",
   releaseDate: "Release date",
   fileHash: "SHA-256",
   button: "Download {{AppName}} {{version}} (DMG)",
@@ -60,7 +154,7 @@ export const download = {
   reqArch: "A Mac with Apple silicon or Intel (one build runs on both). macOS 27 runs on Apple silicon only.",
   reqExcluded: "Macs that cannot run macOS 12 Monterey are not supported. macOS 13 and 14 are supported but not tested separately.",
   reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
-  reqNoOthers: "{{AppName}} asks for no other permission (no Screen Recording, no Full Disk Access).",
+  reqNoOthers: "{{AppNameTM}} asks for no other permission (no Screen Recording, no Full Disk Access).",
   trustHeading: "Signature and notarization",
   trustBody: "Every DMG is signed with Kal's Developer ID certificate, notarized by Apple and stapled with the notarization ticket, so macOS opens it without a warning. Automatic updates use Sparkle 2 and are signed with EdDSA; the app rejects an update with a wrong signature.",
   verifyHeading: "Check the file you downloaded",
@@ -96,17 +190,32 @@ export const compat = {
 export const changelog = {
   h1: "Changelog",
   lede: "The changes you can see in each release, grouped by app.",
-  donateLine: "{{AppName}} is free. If you find it useful, you can <a href=\"{{hrefDonate}}\">chip in so Kal has more time to keep building it</a>.",
+  donateLine: "{{AppNameTM}} is free. If you find it useful, you can <a href=\"{{hrefDonate}}\">chip in so Kal has more time to keep building it</a>.",
 };
 
+// The donation block of the About pane in English (PRD-R59): App/Resources/Localization/Support.xcstrings,
+// support.donate.*, word for word. Pa's decision S8: a bank VietQR code only; the bank name and the account number are
+// shown, never the holder's name. The share text is posted in the user's own voice, so it stays as Pa wrote it.
 export const donate = {
-  h1: "Donate to {{AppName}}",
-  thanks: "{{AppName}} is free and always will be. If you find it useful, you can chip in so Kal has more time to keep building it.",
-  promise: "Donating is a tip jar, nothing more. No feature is locked, and the app never shows a donation prompt.",
-  // Pa's decision S8: a bank VietQR code only; the bank name and the account number are shown, never the holder's name.
-  vietqr: { h: "VietQR (Napas)", alt: "VietQR code for a donation transfer to LioBank account 688688678", bankLabel: "Bank", bankValue: "LioBank", accountLabel: "Account number", accountValue: "688688678", how: "Open your banking app and choose scan QR. It shows the recipient's name so you can check it before you confirm." },
+  title: "Support {{AppNameTM}}",
+  body: "{{AppNameTM}} is free forever. If you find it useful, you can buy Kal a coffee to keep new features coming.",
+  howTo: "You can donate by bank transfer to the account below, or simply share {{AppName}} and recommend it to others.",
+  accountTitle: "Account details",
+  bankLabel: "Bank",
+  bank: "LioBank",
+  accountLabel: "Account number",
+  account: "688688678",
+  copy: "Copy",
+  // The VoiceOver names of the copy buttons (support.control.copy*.accessibilityLabel): each says what it copies.
+  copyLabels: { bank: "Copy bank name", account: "Copy account number", shareText: "Copy share text" },
+  copied: "Copied.",
+  shareTitle: "Share text",
+  shareText: "Check out {{AppNameTM}}, a free Vietnamese keyboard for Mac that is really good! Get it here: https://{{host}}",
+  share: "Share...",
+  qrCaption: "VietQR (Napas)",
+  qrAlt: "VietQR code for a donation transfer",
+  qrHow: "Scan the code with your banking app. It shows the recipient's name so you can check it before you send.",
   sponsors: { h: "GitHub Sponsors", body: "If you use GitHub, you can sponsor monthly or once.", link: "Open GitHub Sponsors" },
-  privacy: "The app stores no donor information. The money goes straight from your account to the receiving account, with no one in between.",
 };
 
 export const privacy = {
@@ -191,7 +300,7 @@ export const privacy = {
 </ul>
 
 <h2 id="feedback">Bug reports and support</h2>
-<p>When you open a GitHub issue or send an email, what you write is your choice and is covered by the policy of GitHub or your email provider. {{AppName}} never sends what you typed on its own.</p>
+<p>When you open a GitHub issue or send an email, what you write is your choice and is covered by the policy of GitHub or your email provider. {{AppNameTM}} never sends what you typed on its own.</p>
 
 <h2 id="donations">Donations</h2>
 <p>The app does not store or send donor information. The money moves between you and your bank or GitHub, under their own policies.</p>

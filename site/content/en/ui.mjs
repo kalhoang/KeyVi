@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// English UI strings shared by every page.
+// English UI strings shared by every page. {{AppNameTM}} adds the trademark sign: titles and prose only, never buttons
+// or navigation (spec/03-product.md, trademark sign).
 export default {
   lang: "en",
   siteTagline: "Vietnamese input for Mac",
   notice: { label: "Notice", link: "Details" },
   skipLink: "Skip to content",
   navLabel: "Main navigation",
-  nav: { download: "Download", compat: "Compatibility", support: "Support", privacy: "Privacy", changelog: "Changelog" },
+  nav: { features: "Features", compat: "Compatibility", support: "Support", downloadCta: "Download", privacy: "Privacy", changelog: "Changelog" },
   langSwitch: { text: "Tiếng Việt", title: "Xem trang này bằng tiếng Việt", lang: "vi" },
   footer: {
     promise: "No cookies, no tracking, no third-party fonts or scripts.",
@@ -14,9 +15,10 @@ export default {
     donate: "Donate",
     repo: "Source code",
     appcast: "Update feed (appcast)",
+    language: "Language",
   },
   titles: {
-    home: "{{AppName}}: Vietnamese input for Mac",
+    home: "{{AppNameTM}}: Vietnamese input for Mac",
     download: "Download",
     compat: "App compatibility",
     changelog: "Changelog",
@@ -26,13 +28,13 @@ export default {
     notFound: "Page not found",
   },
   descriptions: {
-    home: "{{AppName}} is a Vietnamese input method for macOS: sensible defaults, English words stay as typed, no data collection, free.",
-    download: "Download {{AppName}} for macOS: stable and beta builds, SHA-256 checksums, system requirements and Homebrew.",
-    compat: "Apps tested with {{AppName}}, with status, notes and the date of the last check.",
-    changelog: "User-visible changes in every {{AppName}} release.",
-    privacy: "Everything {{AppName}} stores and sends, what diagnostics contain, and the website analytics policy.",
-    support: "FAQ, troubleshooting by symptom, how to report a bug, and guides for moving from another input method to {{AppName}}.",
-    donate: "{{AppName}} is free. Here is how to chip in if you find it useful.",
+    home: "{{AppNameTM}} is a Vietnamese input method for macOS: sensible defaults, English words stay as typed, no data collection, free.",
+    download: "Download {{AppNameTM}} for macOS: stable and beta builds, SHA-256 checksums, system requirements and Homebrew.",
+    compat: "Apps tested with {{AppNameTM}}, with status, notes and the date of the last check.",
+    changelog: "User-visible changes in every {{AppNameTM}} release.",
+    privacy: "Everything {{AppNameTM}} stores and sends, what diagnostics contain, and the website analytics policy.",
+    support: "FAQ, troubleshooting by symptom, how to report a bug, and guides for moving from another input method to {{AppNameTM}}.",
+    donate: "{{AppNameTM}} is free. Here is how to chip in if you find it useful.",
   },
   status: {
     works: { label: "Works", help: "Verified on a recent version." },
@@ -41,7 +43,7 @@ export default {
     knownLimitation: { label: "Known limitation", help: "A known limit, with an explanation and a workaround." },
   },
   categories: {
-    browser: "Browsers", office: "Office", chat: "Chat", developer: "Editors and development",
+    browser: "Browsers", office: "Office", chat: "Chat", developer: "Code editors",
     terminal: "Terminals", design: "Design", launcher: "Launchers", remote: "Remote desktop",
     system: "System", game: "Games", notes: "Note-taking", other: "Other",
   },

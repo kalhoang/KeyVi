@@ -214,7 +214,7 @@ Every asset is original work created for this project unless a row below says ot
 
 ### Website icons
 
-- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the header logo `site/static/assets/brand/app-icon-64.png` and `site/static/assets/brand/app-icon-128.png`.
+- Files: `site/static/favicon.svg` (the KV mark of `assets/keyvi_menubar_on_light.svg` on a keycap-coloured rounded square), `site/static/favicon.ico` (16, 32 and 48 px), `site/static/apple-touch-icon.png` (180 px, Pa's photo centred on the keycap, opaque) and the raster logo files `site/static/assets/brand/app-icon-64.png` and `site/static/assets/brand/app-icon-128.png`. The page header draws the KV mark as an inline SVG symbol with the same shapes as `favicon.svg`; since the website redesign (2026-11-17) no page references the two raster logo files, which are still generated and shipped at their URLs.
 - Source: `scripts/make-app-icon.py site` on 2026-11-13, from Pa's artwork.
 - Source record: an XML comment in `favicon.svg`, and this entry.
 - Licence: the app's licence (GPL-3.0-or-later, the root `LICENSE`); derived from Pa's artwork only.
@@ -235,7 +235,29 @@ Every asset is original work created for this project unless a row below says ot
 
 ## 5. Website
 
-Dependencies of the static site generator (`site/`) are development-time only and are not redistributed in the generated output unless listed here (placeholder, filled by the site track).
+The static site generator (`site/`) has no dependencies: it runs on Node 22 alone, so nothing it uses at build time is redistributed. The generated website ships one third-party file, listed below; nothing of it ships in the app.
+
+### anime.js 4.5.0
+
+- Project: <https://animejs.com>
+- Used for: the motion of the website's home page (the typing demos, the section reveals, the threads of the compatibility section), loaded with `defer` only on the pages that animate ([ADR 0603](docs/decisions/0603-website-motion-library.md)).
+- File: `site/static/assets/vendor/anime.umd.min.js`, byte-exact `dist/bundles/anime.umd.min.js` of the npm tarball `animejs-4.5.0.tgz`. The licence text below sits beside it as `site/static/assets/vendor/anime.LICENSE.txt`, byte-exact `LICENSE.md` of the same tarball.
+- Version: **4.5.0**, vendored as one file (no npm, no lockfile; the update procedure is in ADR 0603).
+- SHA-256 of the vendored file: `8d5b3a58a1f64023a04a4cedeef135a2263b18da04b35177ac13438a0bad033b` (`site/test.mjs` fails if the file differs). The tarball matched the registry's integrity value `sha512-NQimYX+lz8WaXonGS9zVVoviCIAjONeJayxacUditaivYLqyXgGjFKjuyl0aUUhFKm5MriX9ty1TGovNzoJQWA==`.
+- Licence: anime.js 4.5.0 is MIT. Copyright line of its licence file: "Copyright (c) 2025 Julian Garnier"; the header of the bundle says `@copyright 2026 - Julian Garnier`.
+- Source of the notice text below: the `LICENSE.md` file of `animejs-4.5.0.tgz`, compared byte for byte with `anime.LICENSE.txt` on 2026-11-17 (identical). Re-fetch and compare it whenever the version changes; a version change is a change to ADR 0603.
+
+```text
+The MIT License
+
+Copyright (c) 2025 Julian Garnier
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
 
 ## 6. Documentation
 

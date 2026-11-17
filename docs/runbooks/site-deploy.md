@@ -121,6 +121,8 @@ curl -sS "https://$APP_SITE_HOST/healthz"                              # ok
 3. `site-image.yml` then runs the tests, fetches the release files, builds the image, starts it and runs the live header check, pushes `sha-<commit>` and `prod`, and calls the Portainer webhook. The Swarm pulls `prod` and replaces the two replicas one at a time (start-first; a failing healthcheck rolls back).
 4. Roll back the site: in Portainer, the service's **Rollback**, or set `IMAGE_TAG` to a previous `sha-<commit>` and update the stack.
 
+**Demo frames.** The home page demos come from `site/demo/frames.json`, which the engine writes from `site/demo/script.json` (PRD-R73, design 7.4 of the [website redesign](../superpowers/specs/2026-11-16-website-redesign-design.md)); the build and the image read the committed file and need Node only. After an engine change that alters a demo, run `swift run --package-path Packages/VietnameseEngine site-demo-frames` from the repository root and commit `site/demo/frames.json` in the same commit as the engine change. `site-demo-frames --check` fails when the committed file differs from what the engine produces; it runs in the `engine-linux` job of `ci.yml` (disabled by hand for now, section 0) and in the integrator's local gate, which is the guard meanwhile. When the engine no longer produces what a sentence was meant to show, change the sentence in `script.json`, never the frames.
+
 ## 7. Analytics (Q7)
 
 The website counts page views with Umami, self-hosted on the Kalera Swarm at `https://stats.kal.vn` ([analytics runbook](analytics.md), ADR 0602 decision 7). It is already configured:

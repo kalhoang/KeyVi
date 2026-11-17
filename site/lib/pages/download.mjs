@@ -3,6 +3,7 @@
 import { kit, macosRequirement } from "../context.mjs";
 import { formatDate } from "../dates.mjs";
 import { esc } from "../util.mjs";
+import { pageHead } from "./head.mjs";
 
 function releaseBlock(kt, release, heading, headingId) {
   const { c, ui, f, lang } = kt;
@@ -17,7 +18,7 @@ function releaseBlock(kt, release, heading, headingId) {
     .filter(([, value]) => value !== "")
     .map(([term, value]) => `<dt>${esc(term)}</dt><dd>${value}</dd>`)
     .join("");
-  return `<section class="release" aria-labelledby="${headingId}">
+  return `<section class="card release" aria-labelledby="${headingId}">
       <h3 id="${headingId}">${esc(heading)}</h3>
       <dl class="facts">${facts}</dl>
       <p><a class="btn" href="${esc(release.url)}">${f(d.button, { version: release.version })}</a></p>
@@ -56,8 +57,7 @@ export function renderDownload(ctx, lang) {
   }
 
   const body = `
-    <h1>${f(d.h1)}</h1>
-    <p class="lede">${esc(d.lede)}</p>
+    ${pageHead(f(d.h1), esc(d.lede))}
     ${releaseSections.join("\n")}
     <div class="prose">
     <h2 id="install">${esc(d.installHeading)}</h2>

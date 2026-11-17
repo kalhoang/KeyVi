@@ -14,7 +14,7 @@ Subcommands:
              Cuts the photographed keycap out of its off-white background with a rounded-square mask, adds a
              soft shadow and places it on Apple's macOS icon grid (an 824 px body on a 1024 px canvas).
   site       site/static: favicon.svg (the KV mark on a keycap plate), favicon.ico, apple-touch-icon.png and
-             the header logo in assets/brand/. Needs Pillow.
+             the raster logo files in assets/brand/. Needs Pillow.
   all        every output above.
 
 Usage:
