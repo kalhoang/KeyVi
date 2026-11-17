@@ -18,6 +18,7 @@ Version: 0.1.0-dev (see `CHANGELOG.md`; the engine is versioned separately from 
 | `VietnameseEngineTesting` | Test support: independent oracle, generated corpus, spec fixture loaders, simulated text field, the fuzz invariant checker, seeded event streams, random macro tables, corpus targets (English corpus, prose typists). |
 | `lexicon-builder` | Builds the bundled resources from pinned inputs (data track). |
 | `engine-benchmark` | ENG-T40 benchmark (not a product; `Benchmarks/EngineBenchmark/`). |
+| `site-demo-frames` | Types the website's demo sentences (`site/demo/script.json`) through the engine and writes `site/demo/frames.json`; `--check` fails when the committed file is stale (PRD-R73; not a product). |
 
 `Packages/VietnameseEngineFuzz` is a separate package with the libFuzzer harness (its `README.md` has the
 Linux commands).

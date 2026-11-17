@@ -124,8 +124,9 @@ runner (`compat-harness bench`, below).
 ## Coverage (`scripts/coverage.sh`)
 
 - Line coverage from `swift test --enable-code-coverage`, counted over `<package>/Sources/` only.
-- Engine: at least 95 %, excluding `Sources/lexicon-builder`, `Sources/engine-benchmark` and
-  `Sources/VietnameseEngineTesting` (tools and test support, not shipped engine code). The engine's own
+- Engine: at least 95 %, excluding `Sources/lexicon-builder`, `Sources/engine-benchmark`,
+  `Sources/site-demo-frames` (added 2026-11-17) and `Sources/VietnameseEngineTesting` (tools and test support, not
+  shipped engine code). The engine's own
   core gate, `Packages/VietnameseEngine/Scripts/coverage.py` (95 % of `Sources/VietnameseEngine`, the gate
   of `Scripts/coverage.sh`), reads the same coverage export, so the engine tests run once.
 - AppCore: at least 80 %, excluding `Sources/CompatHarness` and `Sources/TestSupport`.
