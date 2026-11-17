@@ -23,9 +23,10 @@ The state on 2026-11-17:
 - No app source has changed since `231ac7e9`. The later commits on `main` change the website, the documentation and
   the engine package's `site-demo-frames` executable, which the app does not link.
 - Nothing is published on a public channel: no appcast item, no Homebrew cask, no GitHub Release.
-- The macOS workflows (`CI`, `Integration`, `Nightly`, `Release`) are disabled until macOS runners exist
-  ([site deploy runbook](../runbooks/site-deploy.md), state table, row "Actions"; [0602](0602-site-hosting-kalera-swarm.md);
-  [0005](0005-pa-decisions-2026-11-13.md) S6 and Q12), so none of the release gates that run in GitHub Actions can run.
+- The macOS workflows (`CI`, `Integration`, `Nightly`, `Release`) are disabled by hand until macOS runners exist,
+  as the state table of the [site deploy runbook](../runbooks/site-deploy.md) records (row "Actions"); the runner
+  itself is still the open question of [0005](0005-pa-decisions-2026-11-13.md) S6 and Q12. None of the release
+  gates that run in GitHub Actions can run.
 
 ## Decision
 
