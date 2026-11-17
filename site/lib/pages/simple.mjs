@@ -39,9 +39,16 @@ export function renderPrivacy(ctx, lang) {
   return { routeId: "privacy", navId: "privacy", title: p(ui.titles.privacy), description: p(ui.descriptions.privacy), body };
 }
 
-// One value of the account block: selectable text, and a copy button that copy.js shows when the browser can copy.
-function copyRow(label, value, copyLabel) {
-  return `<dt>${esc(label)}</dt><dd><span data-copy-value>${esc(value)}</span><button type="button" class="btn btn-ghost btn-small" data-copy="${esc(value)}" hidden>${esc(copyLabel)}</button></dd>`;
+// A copy button that copy.js shows when the browser can copy. The visible text is the short "Copy"; the accessible name
+// says what it copies, as the app's VoiceOver labels do, so the buttons differ in the Tab order (WCAG 2.5.3: the name
+// starts with the visible text).
+function copyButton(value, text, name, className) {
+  return `<button type="button" class="${className}" data-copy="${esc(value)}" aria-label="${esc(name)}" hidden>${esc(text)}</button>`;
+}
+
+// One value of the account block: selectable text and its copy button.
+function copyRow(label, value, copyText, copyName) {
+  return `<dt>${esc(label)}</dt><dd><span data-copy-value>${esc(value)}</span>${copyButton(value, copyText, copyName, "btn btn-ghost btn-small")}</dd>`;
 }
 
 // The status line of a block with copy buttons: empty until copy.js writes data-copied into it (role=status announces it).
@@ -75,13 +82,13 @@ export function renderDonate(ctx, lang) {
         <p>${f(m.howTo)}</p>
         <section class="card donate-block" aria-labelledby="donate-account" data-copy-scope>
           <h2 id="donate-account">${esc(m.accountTitle)}</h2>
-          <dl class="facts copy-facts">${copyRow(m.bankLabel, m.bank, m.copy)}${copyRow(m.accountLabel, m.account, m.copy)}</dl>
+          <dl class="facts copy-facts">${copyRow(m.bankLabel, m.bank, m.copy, m.copyLabels.bank)}${copyRow(m.accountLabel, m.account, m.copy, m.copyLabels.account)}</dl>
           ${copyStatus(m)}
         </section>
         <section class="card donate-block" aria-labelledby="donate-share" data-copy-scope>
           <h2 id="donate-share">${esc(m.shareTitle)}</h2>
           <p class="share-text" data-copy-value>${esc(shareText)}</p>
-          <p class="donate-actions"><button type="button" class="btn" data-share="${esc(shareText)}" hidden>${esc(m.share)}</button><button type="button" class="btn btn-ghost" data-copy="${esc(shareText)}" hidden>${esc(m.copy)}</button></p>
+          <p class="donate-actions"><button type="button" class="btn" data-share="${esc(shareText)}" hidden>${esc(m.share)}</button>${copyButton(shareText, m.copy, m.copyLabels.shareText, "btn btn-ghost")}</p>
           ${copyStatus(m)}
         </section>${sponsors}
       </div>

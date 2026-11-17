@@ -36,14 +36,18 @@
     return button.closest("[data-copy-scope]");
   }
 
-  function confirmCopied(win, button) {
+  /** Says the text was copied for STATUS_MS. A new copy in the same block restarts the moment: `timers` (one per
+   * boot) holds each status line's pending timer, cleared first so an earlier click cannot blank the new message. */
+  function confirmCopied(win, timers, button) {
     const scope = scopeOf(button);
     const status = scope && scope.querySelector("[data-copy-status]");
     if (!status) return;
+    if (timers.has(status)) win.clearTimeout(timers.get(status));
     status.textContent = status.getAttribute("data-copied") || "";
-    win.setTimeout(() => {
+    timers.set(status, win.setTimeout(() => {
+      timers.delete(status);
       status.textContent = "";
-    }, STATUS_MS);
+    }, STATUS_MS));
   }
 
   /** The browser refused the copy: select the value on the page so the visitor can copy it by hand. */
@@ -55,33 +59,34 @@
     if (value && selection) selection.selectAllChildren(value);
   }
 
-  function copyText(win, button, text) {
+  function copyText(win, timers, button, text) {
     return win.navigator.clipboard.writeText(text).then(
-      () => confirmCopied(win, button),
+      () => confirmCopied(win, timers, button),
       () => selectValue(win, button, text),
     );
   }
 
-  function share(win, button, text) {
+  function share(win, timers, button, text) {
     return win.navigator.share({ text }).catch((error) => {
       // Closing the share sheet is the visitor's choice; any other failure falls back to copying the same text.
       if (error && error.name === "AbortError") return undefined;
-      return canCopy(win) ? copyText(win, button, text) : selectValue(win, button, text);
+      return canCopy(win) ? copyText(win, timers, button, text) : selectValue(win, button, text);
     });
   }
 
   function boot(win) {
     const doc = win.document;
+    const timers = new Map();
     if (canCopy(win)) {
       Array.from(doc.querySelectorAll("[data-copy]")).forEach((button) => {
         button.hidden = false;
-        button.addEventListener("click", () => copyText(win, button, button.getAttribute("data-copy")));
+        button.addEventListener("click", () => copyText(win, timers, button, button.getAttribute("data-copy")));
       });
     }
     if (canShare(win)) {
       Array.from(doc.querySelectorAll("[data-share]")).forEach((button) => {
         button.hidden = false;
-        button.addEventListener("click", () => share(win, button, button.getAttribute("data-share")));
+        button.addEventListener("click", () => share(win, timers, button, button.getAttribute("data-share")));
       });
     }
   }

@@ -132,14 +132,15 @@ export const support = {
 
 export const migrate = {
   title: "Moving from {{Other}} to {{AppName}}",
+  // [name in the card list, what moves, name inside a sentence ({{Other}}) when it is not a proper name]
   indexNames: {
     xkey: ["XKey", "Macros, through the plain text template"],
     openkey: ["OpenKey", "Macros, through the plain text template"],
     evkey: ["EVKey", "Macros, through the plain text template"],
     gonhanh: ["Gõ Nhanh", "Macros, through the plain text template"],
     phtv: ["PHTV", "Macros, through the plain text template"],
-    macos: ["Built-in macOS Vietnamese", "Text Replacements"],
-    plaintext: ["Plain text or CSV file", "Macros, the common format for any source"],
+    macos: ["Built-in macOS Vietnamese", "Text Replacements", "the built-in macOS Vietnamese input"],
+    plaintext: ["Plain text or CSV file", "Macros, the common format for any source", "a plain text or CSV file"],
   },
   back: "Back to Support",
   stepsHeading: "Get your macros out of {{Other}}",
@@ -228,7 +229,7 @@ dc,được
 "cam on","Cảm ơn bạn rất nhiều, hẹn gặp lại"</code></pre>
 <p>UTF-8 encoding. Wrap text that contains commas in double quotes.</p>
 <h2 id="own-export">{{AppName}}'s own settings export</h2>
-<p>In Settings &gt; About &amp; Support you can export all settings to one JSON file, UTF-8, named like <code>{{slug}}-settings-YYYYMMDD.json</code>. The <code>kind</code> field is always <code>settings-export</code>; <code>schemaVersion</code> (an integer) is the format version; <code>writtenBy</code> is the app version that wrote the file; <code>exportedAt</code> is the export time (ISO 8601, UTC). Then come <code>settings</code>, <code>appModes</code> (per-app modes), <code>ruleOverrides</code> (compatibility rules you set yourself) and <code>macros</code> (shortcut <code>trigger</code>, text <code>expansion</code>, case following <code>adaptCase</code>, on or off <code>enabled</code>). When exporting you can untick macros and per-app modes, because macros may contain private text; an unticked part is left out of the file. When you import a file written by a newer version, {{AppNameTM}} imports the fields it understands and lists the ones it skipped.</p>
+<p>In Settings &gt; Support you can export all settings to one JSON file, UTF-8, named like <code>{{slug}}-settings-YYYYMMDD.json</code>. The <code>kind</code> field is always <code>settings-export</code>; <code>schemaVersion</code> (an integer) is the format version; <code>writtenBy</code> is the app version that wrote the file; <code>exportedAt</code> is the export time (ISO 8601, UTC). Then come <code>settings</code>, <code>appModes</code> (per-app modes), <code>ruleOverrides</code> (compatibility rules you set yourself) and <code>macros</code> (shortcut <code>trigger</code>, text <code>expansion</code>, case following <code>adaptCase</code>, on or off <code>enabled</code>). When exporting you can untick macros and per-app modes, because macros may contain private text; an unticked part is left out of the file. When you import a file written by a newer version, {{AppNameTM}} imports the fields it understands and lists the ones it skipped.</p>
 <pre><code>{
   "kind": "settings-export",
   "schemaVersion": 1,

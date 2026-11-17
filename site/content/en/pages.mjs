@@ -140,7 +140,7 @@ export const download = {
   lede: "A signed and notarized DMG that runs on Apple silicon and Intel.",
   stableHeading: "Stable release",
   betaHeading: "Beta release",
-  betaNote: "Betas may still have bugs. You can go back to the Stable channel in Settings, under About & Support.",
+  betaNote: "Betas may still have bugs. You can go back to the Stable channel in Settings, under About.",
   releaseDate: "Release date",
   fileHash: "SHA-256",
   button: "Download {{AppName}} {{version}} (DMG)",
@@ -207,6 +207,8 @@ export const donate = {
   accountLabel: "Account number",
   account: "688688678",
   copy: "Copy",
+  // The VoiceOver names of the copy buttons (support.control.copy*.accessibilityLabel): each says what it copies.
+  copyLabels: { bank: "Copy bank name", account: "Copy account number", shareText: "Copy share text" },
   copied: "Copied.",
   shareTitle: "Share text",
   shareText: "Check out {{AppNameTM}}, a free Vietnamese keyboard for Mac that is really good! Get it here: https://{{host}}",

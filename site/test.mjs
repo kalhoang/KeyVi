@@ -1461,7 +1461,10 @@ try {
       const navigator = {};
       if (clipboard) navigator.clipboard = { writeText: async (text) => { log.written.push(text); if (clipboard === "denied") throw new Error("NotAllowedError"); } };
       if (share) navigator.share = async (data) => { log.shared.push(data); if (share !== true) throw Object.assign(new Error(share), { name: share }); };
-      const win = { document: doc, navigator, setTimeout: (fn) => log.timers.push(fn), getSelection: () => ({ selectAllChildren: (el) => log.selected.push(el) }) };
+      // A timer id is its index + 1 in log.timers; clearTimeout empties the slot, so a cleared timer never runs.
+      const setTimeout = (fn) => log.timers.push(fn);
+      const clearTimeout = (id) => { if (id > 0 && id <= log.timers.length) log.timers[id - 1] = null; };
+      const win = { document: doc, navigator, setTimeout, clearTimeout, getSelection: () => ({ selectAllChildren: (el) => log.selected.push(el) }) };
       siteCopy.boot(win);
       return { log, status, value, copyButton, shareButton };
     };
@@ -1473,8 +1476,20 @@ try {
     await flush();
     assert.deepEqual(copy.log.written, ["688688678"], "copies the button's text");
     assert.equal(copy.status.textContent, "Copied.", "the status line says so");
-    copy.log.timers.forEach((fn) => fn());
+    const runTimers = (log) => log.timers.splice(0).forEach((fn) => fn?.());
+    runTimers(copy.log);
     assert.equal(copy.status.textContent, "", "and clears after a moment");
+    // A second copy restarts the moment: the first click's timer no longer blanks the second confirmation.
+    const twice = page({ clipboard: "ok" });
+    twice.copyButton.dispatch("click");
+    await flush();
+    twice.copyButton.dispatch("click");
+    await flush();
+    assert.deepEqual(twice.log.written, ["688688678", "688688678"]);
+    twice.log.timers[0]?.();
+    assert.equal(twice.status.textContent, "Copied.", "the earlier timer was cleared");
+    runTimers(twice.log);
+    assert.equal(twice.status.textContent, "", "the latest timer still clears the line");
     const denied = page({ clipboard: "denied" });
     denied.copyButton.dispatch("click");
     await flush();
@@ -1513,6 +1528,72 @@ try {
     assert.deepEqual(problems, []);
   });
 
+  // The Settings panes as the app names them (PRD-R24; Pa, 15/11/2026: Gõ phím became Kiểu gõ, Gõ tắt became Viết tắt
+  // and About & Support was split), read from Settings.xcstrings so the site cannot drift from the app again.
+  const settingsCatalog = JSON.parse(await readFile(join(ROOT_DIR, "App", "Resources", "Localization", "Settings.xcstrings"), "utf8"));
+  const paneNames = Object.fromEntries(LANGS.map((lang) => [lang, Object.entries(settingsCatalog.strings)
+    .filter(([key]) => /^settings\.pane\.[a-z]+$/.test(key))
+    .map(([, entry]) => entry.localizations?.[lang]?.stringUnit?.value)
+    .filter(Boolean)]));
+  // Copy pages: the changelog records the old names on purpose, release notes are written by the release script.
+  const copyPages = () => [[fallback, fallbackPages], [populated, pop]].flatMap(([dist, pages]) => [...pages]
+    .map(([file, html]) => [file.slice(dist.length + 1), html])
+    .filter(([page]) => !isReleaseNotesPage(page) && !["changelog", "nhat-ky-thay-doi"].some((name) => page.split("/").includes(name))));
+  const plainText = (html) => unescapeHtml(mainOf(html).replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ");
+
+  await check("content: every Settings pane the site names exists in the app, and vi copy calls macros viết tắt (PRD-R24)", () => {
+    assert.ok(paneNames.vi.includes("Kiểu gõ") && paneNames.en.includes("Typing"), "pane names read from Settings.xcstrings");
+    // "Cài đặt, mục X", "Cài đặt của <app>, mục X", "Cài đặt > X"; "Settings, X", "Settings, under X", "Settings > X".
+    // macOS System Settings ("Cài đặt hệ thống", "System Settings") is not the app's window.
+    const reference = { vi: /(?<!hệ thống )Cài đặt(?: của [^\s,]+)?(?:, mục | > )(.{0,40})/g, en: /(?<!System )Settings(?:, under |, (?=\p{Lu})| > )(.{0,40})/gu };
+    const problems = [];
+    let found = 0;
+    for (const [page, html] of copyPages()) {
+      const lang = page.startsWith("en/") ? "en" : "vi";
+      const text = plainText(html);
+      for (const [whole, rest] of text.matchAll(reference[lang])) {
+        found += 1;
+        // A pane name ends at a word boundary and is not the start of an old combined pane ("About & Support").
+        const known = paneNames[lang].some((name) => rest.startsWith(name) && !/^(?:\p{L}|\s*&)/u.test(rest.slice(name.length)));
+        if (!known) problems.push(`${page}: "${whole}" names no pane of ${paneNames[lang].join(", ")}`);
+      }
+      // The D7 non-goal keeps its spec name, "gõ tắt phụ âm nhanh"; macros are "viết tắt" everywhere in the app.
+      if (lang === "vi") for (const [context] of text.matchAll(/.{0,30}gõ tắt(?! phụ âm).{0,30}/giu)) problems.push(`${page}: ${context}`);
+    }
+    assert.ok(found >= 10, `the check sees the pane references (${found})`);
+    assert.deepEqual(problems, []);
+  });
+
+  await check("content: a migration source that is not a proper name is lowercase in the middle of the page title", () => {
+    const titles = [
+      [["ho-tro", "chuyen-tu", "tep-van-ban"], "Chuyển từ file văn bản hoặc CSV sang"],
+      [["ho-tro", "chuyen-tu", "macos-co-san"], "Chuyển từ bộ gõ Tiếng Việt có sẵn của macOS sang"],
+      [["en", "support", "migrate-from", "plain-text-file"], "Moving from a plain text or CSV file to"],
+      [["en", "support", "migrate-from", "built-in-macos"], "Moving from the built-in macOS Vietnamese input to"],
+    ];
+    for (const [path, start] of titles) {
+      const html = read(...path, "index.html");
+      assert.ok(html, `${path.join("/")} built`);
+      assert.ok(mainOf(html).match(/<h1>([^<]*)<\/h1>/)?.[1].startsWith(start), `${path.join("/")}: h1 starts "${start}"`);
+      assert.ok(html.match(/<title>([^<]*)<\/title>/)?.[1].startsWith(start), `${path.join("/")}: title starts "${start}"`);
+    }
+    // The cards on the support page keep the capitalised list form.
+    assert.match(read("ho-tro", "index.html"), /<strong>File văn bản hoặc CSV<\/strong>/);
+    assert.match(read("en", "support", "index.html"), /<strong>Plain text or CSV file<\/strong>/);
+  });
+
+  await check("donate: each copy button is named after the value it copies, as the app's VoiceOver labels are", () => {
+    const supportStrings = supportCatalog.strings;
+    for (const [lang, html] of donatePages) {
+      const buttons = (mainOf(html).match(/<button\b[^>]*>[^<]*<\/button>/g) ?? []).filter((tag) => /\sdata-copy="/.test(tag));
+      const labels = buttons.map((tag) => unescapeHtml(attrs(tag, "aria-label")[0] ?? ""));
+      const expected = ["copyBank", "copyAccount", "copyShareText"].map((key) => supportStrings[`support.control.${key}.accessibilityLabel`].localizations[lang].stringUnit.value);
+      assert.deepEqual(labels, expected, `${lang}: Support.xcstrings support.control.*.accessibilityLabel`);
+      // WCAG 2.5.3: the accessible name starts with the visible text.
+      for (const tag of buttons) assert.ok(unescapeHtml(attrs(tag, "aria-label")[0]).startsWith(tag.match(/>([^<]*)<\/button>$/)[1]), `${lang}: ${tag}`);
+    }
+  });
+
   await check("preview: serves the production CSP header for / and immutable caching for /assets/", async () => {
     // site/preview.mjs (plan Task 9): the browser pass sees the headers of dist/_headers, as the container sends them.
     const { startPreview } = await import(pathToFileURL(join(SITE_DIR, "preview.mjs")).href);
@@ -1548,11 +1629,18 @@ try {
       assert.equal(appcast.headers.get("content-type"), "application/rss+xml; charset=utf-8", "a Content-Type of _headers replaces the default");
       const folder = await fetch(`${preview.url}/tai-ve`, { redirect: "manual" });
       assert.deepEqual([folder.status, folder.headers.get("location")], [301, "/tai-ve/"], "a folder without its slash redirects, relatively");
+      assert.equal(folder.headers.get("content-type"), null, "the empty redirect body claims no type");
+      assert.equal(folder.headers.get("content-security-policy"), cspOf(rules, "/tai-ve")[0], "the redirect keeps the path's headers");
       const missing = await fetch(`${preview.url}/assets/nope.css`);
       assert.equal(missing.status, 404);
       assert.match(await missing.text(), /<html lang="vi">/, "the 404 page");
       assert.equal(missing.headers.get("cache-control"), null, "the 404 page carries its own headers, not the asset's");
       for (const path of ["/../test.mjs", "/%2e%2e/test.mjs", "/assets/%2e%2e/%2e%2e/build.mjs"]) assert.equal((await raw(path)).statusCode, 404, `${path} stays inside the site`);
+      // The paths above are collapsed by the URL parser before resolveTarget sees them. Encoded slashes are not: this
+      // one decodes to /../config-no-analytics.json, a real file next to the site folder, and only the root check of
+      // resolveTarget keeps it out.
+      assert.ok(existsSync(join(fallback, "..", "config-no-analytics.json")), "the file outside the site exists");
+      assert.equal((await raw("/%2e%2e%2fconfig-no-analytics.json")).statusCode, 404, "an encoded-slash path stays inside the site");
     } finally {
       await preview.close();
     }

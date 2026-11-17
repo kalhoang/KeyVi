@@ -78,9 +78,9 @@ export const home = {
       },
       {
         id: "macros",
-        title: "Gõ tắt của riêng bạn",
+        title: "Viết tắt của riêng bạn",
         body: "Tự đặt chữ viết tắt cho những cụm hay dùng, rồi xuất hoặc nhập cả danh sách khi đổi máy.",
-        illustration: { keys: "dc", result: "được", caption: "Một gõ tắt do bạn tự đặt" },
+        illustration: { keys: "dc", result: "được", caption: "Một mục viết tắt do bạn tự đặt" },
         req: "PRD-R2",
       },
       {
@@ -145,7 +145,7 @@ export const download = {
   lede: "Bản DMG đã ký và công chứng, chạy trên Apple silicon và Intel.",
   stableHeading: "Bản ổn định",
   betaHeading: "Bản beta",
-  betaNote: "Bản beta có thể còn lỗi. Bạn có thể quay về kênh Ổn định trong Cài đặt, mục Giới thiệu & Hỗ trợ.",
+  betaNote: "Bản beta có thể còn lỗi. Bạn có thể quay về kênh Ổn định trong Cài đặt, mục Giới thiệu.",
   releaseDate: "Ngày phát hành",
   fileHash: "SHA-256",
   button: "Tải {{AppName}} {{version}} (DMG)",
@@ -213,6 +213,8 @@ export const donate = {
   accountLabel: "Số tài khoản",
   account: "688688678",
   copy: "Sao chép",
+  // The VoiceOver names of the copy buttons (support.control.copy*.accessibilityLabel): each says what it copies.
+  copyLabels: { bank: "Sao chép tên ngân hàng", account: "Sao chép số tài khoản", shareText: "Sao chép nội dung chia sẻ" },
   copied: "Đã sao chép.",
   shareTitle: "Nội dung chia sẻ",
   shareText: "Giới thiệu với mọi người {{AppNameTM}}, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: https://{{host}}",
@@ -247,7 +249,7 @@ export const privacy = {
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Nơi lưu</th><th scope="col">Ghi chú</th></tr></thead>
 <tbody>
-<tr><th scope="row">Cài đặt, quy tắc theo ứng dụng, chế độ Việt/Anh theo ứng dụng, gõ tắt</th><td><code>~/Library/Application Support/{{AppName}}/</code></td><td>Chỉ lưu những lựa chọn bạn tự đặt. Thư mục chỉ mình bạn đọc được. Gõ tắt là nội dung do bạn viết, có thể chứa chữ riêng tư.</td></tr>
+<tr><th scope="row">Cài đặt, quy tắc theo ứng dụng, chế độ Việt/Anh theo ứng dụng, viết tắt</th><td><code>~/Library/Application Support/{{AppName}}/</code></td><td>Chỉ lưu những lựa chọn bạn tự đặt. Thư mục chỉ mình bạn đọc được. Danh sách viết tắt là nội dung do bạn viết, có thể chứa chữ riêng tư.</td></tr>
 <tr><th scope="row">Bản sao lưu cài đặt</th><td><code>~/Library/Application Support/{{AppName}}/backups/</code></td><td>Giữ 5 bản gần nhất để khôi phục khi file bị hỏng.</td></tr>
 <tr><th scope="row">Nhật ký sức khỏe ứng dụng</th><td><code>~/Library/Logs/{{AppName}}/</code></td><td>Chỉ có sự kiện không chứa nội dung (loại phím, mã kết quả, thời gian). Tối đa 5 file, mỗi file 1 MB, giữ 14 ngày.</td></tr>
 <tr><th scope="row">Bản ghi thao tác gõ (chỉ khi bạn bấm bắt đầu)</th><td><code>~/Library/Logs/{{AppName}}/captures/</code></td><td>Xem mục bên dưới. Tự xóa sau 24 giờ, không nằm trong bản sao lưu Time Machine.</td></tr>
@@ -279,7 +281,7 @@ export const privacy = {
 <ul>
   <li>Chữ bạn đã gõ, từ, giá trị của ô nhập, nội dung bảng nhớ tạm (clipboard).</li>
   <li>Tiêu đề cửa sổ, địa chỉ trang web, đường dẫn file trong thư mục cá nhân của bạn (ngoài thư mục riêng của {{AppName}}).</li>
-  <li>Nội dung gõ tắt (chỉ ghi số lượng).</li>
+  <li>Nội dung viết tắt (chỉ ghi số lượng).</li>
   <li>Danh sách chế độ theo ứng dụng của bạn, trừ mục của đúng ứng dụng bạn đang báo lỗi.</li>
 </ul>
 

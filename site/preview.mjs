@@ -75,7 +75,9 @@ async function respond(root, rules, req, res) {
   }
   const target = path ? await resolveTarget(root, path) : {};
   if (target.redirect) {
-    res.writeHead(301, { ...responseHeaders(rules, url.pathname, ""), Location: `${url.pathname}/${url.search}` });
+    // The path's headers without a Content-Type: the redirect has an empty body, so it claims no type.
+    const { "Content-Type": _none, ...headers } = responseHeaders(rules, url.pathname, "");
+    res.writeHead(301, { ...headers, Location: `${url.pathname}/${url.search}` });
     res.end();
   } else if (target.file) {
     await send(req, res, 200, responseHeaders(rules, url.pathname, target.file), target.file);

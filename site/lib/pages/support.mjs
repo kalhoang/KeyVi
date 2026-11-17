@@ -80,7 +80,8 @@ export function renderMigration(ctx, lang, sourceId) {
   const { c, f, p, ui } = kt;
   const m = c.migrate;
   const page = m.pages[sourceId];
-  const [other] = m.indexNames[sourceId];
+  // The name inside a sentence ({{Other}}): a common noun is lowercase there and capitalised only in the card list.
+  const [listName, , other = listName] = m.indexNames[sourceId];
   const extra = { Other: other };
   const heading = p(m.title, extra);
   const list = (items) => `<ol class="steps">${items.map((item) => `<li>${f(item, extra)}</li>`).join("")}</ol>`;
