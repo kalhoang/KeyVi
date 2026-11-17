@@ -4,8 +4,8 @@
 // (lib/pages/home/). With it:
 // - the hero types its three sentences in rotation from data-demo-frames, the engine's frames (site/demo/frames.json):
 //   the field follows each frame, the keys strip keeps the last eight keys, a tag pops in when an English word is
-//   committed, and the finished message shows as sent (its bubble, reserved in the layout) before the next sentence
-//   starts;
+//   committed (naming its plain Telex form when the engine recorded one, design 9 item 1), and the finished message
+//   shows as sent (its bubble, reserved in the layout) before the next sentence starts;
 // - each behaviour demo of section 2 plays once when it scrolls into view (60 % of it, or most of what a short viewport
 //   can show); its button shows as the demo starts, stops it while it plays (WCAG 2.2.2: the punctuation demo types for
 //   more than five seconds) and replays it at rest; while it types, its window is hidden from screen readers (design
@@ -147,17 +147,21 @@
     return placed.pieces.concat(plainPieces(text.slice(placed.cursor)));
   }
 
-  /** The tag state after one frame. A tag is `{ raw, at }`, `at` being the index of its token. */
+  /** A tag for an English token: its raw keys and, when plain Telex would have typed another word, that `plain` form
+   * (ENG-R802, design 9 item 1). */
+  const tagOf = (token, at) => (token.plain ? { raw: token.raw, plain: token.plain, at } : { raw: token.raw, at });
+
+  /** The tag state after one frame. A tag is `{ raw, plain?, at }`, `at` being the index of its token. */
   function nextTags(state, frame) {
     const last = state.tokens.length - 1;
     const revise = Boolean(frame.revised) && last >= 0;
     const was = revise && state.tokens[last].english === true;
     const now = revise && frame.revised.english === true;
     const tokens = revise ? state.tokens.slice(0, last).concat([frame.revised]) : state.tokens;
-    const tags = now && !was ? state.tags.concat([{ raw: frame.revised.raw, at: last }])
+    const tags = now && !was ? state.tags.concat([tagOf(frame.revised, last)])
       : was && !now ? state.tags.filter((tag) => tag.at !== last) : state.tags;
     if (!frame.commit) return { tokens, tags };
-    const committed = frame.commit.english === true ? tags.concat([{ raw: frame.commit.raw, at: tokens.length }]) : tags;
+    const committed = frame.commit.english === true ? tags.concat([tagOf(frame.commit, tokens.length)]) : tags;
     return { tokens: tokens.concat([frame.commit]), tags: committed };
   }
 
@@ -170,11 +174,16 @@
     });
   }
 
+  /** The tags after the last frame. */
+  function finalTags(frames) {
+    const steps = tagSteps(frames);
+    return steps.length === 0 ? [] : steps[steps.length - 1];
+  }
+
   /** The raw keys of the English words, in the order they become English: a commit or a revision that keeps a word
    * as typed adds it, a revision that gives it back to Vietnamese takes it out. */
   function tagsFor(frames) {
-    const steps = tagSteps(frames);
-    return steps.length === 0 ? [] : steps[steps.length - 1].map((tag) => tag.raw);
+    return finalTags(frames).map((tag) => tag.raw);
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -304,11 +313,23 @@
   // ---------------------------------------------------------------------------------------------------------------
   // Section 1: the hero
 
-  function tagElement(hero, raw) {
-    const tag = hero.view.doc.createElement("span");
-    tag.className = "tag";
-    tag.textContent = `${hero.tagBefore}${raw}${hero.tagAfter}`;
-    return tag;
+  /** A slot of a tag template: the word strong, the plain form in the span home.css strikes through. */
+  function tagSlot(doc, slot, tag) {
+    const el = doc.createElement(slot === "word" ? "strong" : "span");
+    if (slot === "plain") el.className = "tag-plain";
+    el.textContent = slot === "word" ? tag.raw : tag.plain;
+    return el;
+  }
+
+  /** A tag as lib/pages/home/hero.mjs writes it, from the template parts of data-tag-plain or data-tag-keep: literal
+   * text at even indexes, a slot at odd ones. */
+  function tagElement(hero, tag) {
+    const doc = hero.view.doc;
+    const parts = tag.plain ? hero.templates.plain : hero.templates.keep;
+    const el = doc.createElement("span");
+    el.className = "tag";
+    el.append(...parts.flatMap((part, index) => (index % 2 === 1 ? [tagSlot(doc, part, tag)] : part ? [doc.createTextNode(part)] : [])));
+    return el;
   }
 
   function showTags(hero, before, after) {
@@ -319,7 +340,7 @@
       hero.tagEls.delete(tag.at);
     });
     after.filter((tag) => !had.has(tag.at)).forEach((tag) => {
-      const el = tagElement(hero, tag.raw);
+      const el = tagElement(hero, tag);
       hero.tagEls.set(tag.at, el);
       hero.tags.append(el);
       hero.player.animate(el, { scale: [0.6, 1], opacity: [0, 1], duration: UI.tag, ease: "outBack(1.7)" });
@@ -391,7 +412,7 @@
     const frames = hero.demos[hero.current].frames;
     showFinal(hero.view, frames);
     hero.tagEls.clear();
-    hero.tags.replaceChildren(...tagsFor(frames).map((raw) => tagElement(hero, raw)));
+    hero.tags.replaceChildren(...finalTags(frames).map((tag) => tagElement(hero, tag)));
   }
 
   function wireToggle(hero, toggle, env) {
@@ -400,6 +421,15 @@
       toggle.textContent = toggle.getAttribute(hero.userPaused ? "data-label-play" : "data-label-pause");
       heroUpdate(hero, env);
     });
+  }
+
+  /** A tag template from its data attribute; one that lacks a slot fails the hero, which keeps its static state. */
+  function readTemplate(el, name, slots) {
+    const parts = JSON.parse(el.getAttribute(name) || "null");
+    const valid = Array.isArray(parts) && parts.every((part) => typeof part === "string")
+      && slots.every((slot) => parts.filter((part, index) => index % 2 === 1 && part === slot).length === 1);
+    if (!valid) throw new Error(`${name} holds no tag template`);
+    return parts;
   }
 
   function setupHero(ctx) {
@@ -412,8 +442,7 @@
       section,
       view: { doc: ctx.doc, input: windowEl.querySelector("[data-input]"), keys: windowEl.querySelector("[data-keys]"), caret: caretElement(ctx.doc) },
       tags,
-      tagBefore: tags.getAttribute("data-tag-before") || "",
-      tagAfter: tags.getAttribute("data-tag-after") || "",
+      templates: { keep: readTemplate(tags, "data-tag-keep", ["word"]), plain: readTemplate(tags, "data-tag-plain", ["word", "plain"]) },
       tagEls: new Map(),
       // One sent bubble per sentence, in the order of the demos (lib/pages/home/hero.mjs).
       bubbles: Array.from(windowEl.querySelector("[data-sent]").children),

@@ -78,6 +78,11 @@
 .tags-cell { display: grid; }
 .tags-cell > .tags { grid-area: 1 / 1; }
 .tags-sizer { visibility: hidden; }
+/* A tag reads "test, không thành tét" (design 9 item 1): the word stands out, the rest is muted and the plain Telex form
+   is struck through. The words carry the meaning; the strike only shows it. */
+.tags .tag { color: var(--muted); font-weight: 500; }
+.tags .tag strong { color: var(--green-text); font-weight: 700; }
+.tag-plain { text-decoration: line-through; text-decoration-thickness: 1.5px; }
 .keys-strip { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.9rem; border-top: 1px solid var(--line); background: var(--paper-2); }
 .keys-label { flex: none; color: var(--muted); font-size: 0.75rem; }
 .keys-strip .keys { flex: 1 1 0; }

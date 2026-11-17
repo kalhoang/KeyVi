@@ -36,6 +36,12 @@ export async function runCopyChecks(check, fixtures) {
     assert.ok(!("categories" in vi.apps) && !("categories" in en.apps), "the hub takes its category names from ui.categories, as the compatibility page does");
     assert.deepEqual(vi.cards.items.flatMap((item) => item.demos ?? []), ["card-anywhere", "card-slang", "card-telex", "card-vni", "card-traditional", "card-modern"]);
     assert.ok(vi.hero.keepTag.includes("{{word}}") && en.hero.keepTag.includes("{{word}}"), "keepTag names the word");
+    // Design 9 item 1: a kept word's tag names what plain Telex would have typed; the caption says so; the peer's message
+    // is Vietnamese on both pages.
+    assert.deepEqual([vi.hero.plainTag, en.hero.plainTag], ["{{word}}, không thành {{plain}}", "{{word}}, not {{plain}}"]);
+    assert.equal(vi.hero.caption, "Ví dụ gõ Telex một mạch, không chuyển chế độ. Từ tiếng Anh giữ nguyên, kể cả những từ mà Telex thông thường biến thành chữ khác:");
+    assert.equal(en.hero.caption, "Example typed in Telex in one go, with no mode switch. English words stay as typed, even the ones plain Telex would turn into other words:");
+    assert.deepEqual([vi.hero.peerMessage, en.hero.peerMessage], ["Kế hoạch tuần này sao rồi?", "Kế hoạch tuần này sao rồi?"]);
     assert.equal(vi.install.steps.length, 3);
     // Step 2 names the permission as the download page does, with its VERIFY marker (design 7.3 item 6).
     const download = (await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href)).download;

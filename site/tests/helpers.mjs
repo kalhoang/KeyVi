@@ -156,3 +156,8 @@ export const heroTag = (html) => html.match(/<[^>]*\sdata-hero[\s>][^>]*>/)?.[0]
 // Visible text of <main>: tags dropped (pageText) or turned into spaces (plainText), entities unescaped, spaces folded.
 export const pageText = (html) => unescapeHtml(mainOf(html).replace(/<[^>]*>/g, "")).replace(/\s+/g, " ");
 export const plainText = (html) => unescapeHtml(mainOf(html).replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ");
+// The hero tags (design 9 item 1): the inner HTML of each `<span class="tag">` of a tags row, in order. A tag holds a
+// <strong> word and, for a word plain Telex would have changed, a struck-through <span class="tag-plain">.
+export const tagsOf = (rowHtml) => rowHtml.split('<span class="tag">').slice(1).map((piece) => piece.replace(/<\/span>\s*$/, ""));
+/** What a tag says, in words: the plain form's template when plain Telex would have changed the word, keepTag otherwise. */
+export const tagText = (copy, { text, plain }) => (plain ? copy.plainTag.replace("{{word}}", text).replace("{{plain}}", plain) : copy.keepTag.replace("{{word}}", text));

@@ -203,13 +203,18 @@ export function fakeBehaviour(demo, buttonAttributes) {
   return { figure, demoWindow, input, keys, replay };
 }
 
+/** The tag templates of fakeHero and what a tag of each says (fakeTagText). */
+export const FAKE_TAGS = Object.freeze({ keep: ["", "word", ": kept"], plain: ["", "word", ", not ", "plain", ""] });
+export const fakeTagText = ({ text, plain }) => (plain ? `${text}, not ${plain}` : `${text}: kept`);
+
 /** The hero as lib/pages/home/hero.mjs renders it: one sent bubble per sentence inside [data-sent]. */
 export function fakeHero(demos) {
   const section = fakeElement("section", { "data-section": "hero" });
   const windowEl = fakeElement("div", { "data-hero": "", "data-demo-frames": JSON.stringify(demos) });
   const input = fakeElement("p", { "data-input": "" });
   const keys = fakeElement("span", { "data-keys": "" });
-  const tags = fakeElement("p", { "data-tags": "", "data-tag-before": "", "data-tag-after": ": kept" });
+  // The tag templates as lib/pages/home/hero.mjs writes them: literal text at even indexes, a slot at odd ones.
+  const tags = fakeElement("p", { "data-tags": "", "data-tag-keep": JSON.stringify(FAKE_TAGS.keep), "data-tag-plain": JSON.stringify(FAKE_TAGS.plain) });
   const sent = fakeElement("div", { "data-sent": "" });
   const bubbles = demos.map((demo) => {
     const bubble = fakeElement("p");

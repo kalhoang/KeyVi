@@ -8,7 +8,7 @@ import { keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { HUB_CATEGORIES, HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
 import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
+import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText } from "./helpers.mjs";
 
 /** Home page sections, compat hub and demo data. */
 export async function runHomeChecks(check, fixtures) {
@@ -131,10 +131,37 @@ export async function runHomeChecks(check, fixtures) {
     const english = words.filter((word) => word.english).map((word) => word.raw);
     assert.ok(english.length > 0, "the hero sentence has English words");
     for (const [label, html, lang] of homePages) {
-      const tags = html.match(/\sdata-tags[^>]*>([\s\S]*?)<\/(?:p|div)>/)?.[1] ?? "";
-      const shown = [...tags.matchAll(/<span class="tag">([^<]*)<\/span>/g)].map((m) => m[1]);
-      assert.deepEqual(shown, english.map((word) => esc(homeCopy[lang].hero.keepTag.replace("{{word}}", word))), label);
+      const row = html.match(/\sdata-tags[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "";
+      const shown = tagsOf(row);
+      assert.deepEqual(shown.map((tag) => unescapeHtml(textOf(tag))), english.map((raw) => tagText(homeCopy[lang].hero, words.find((word) => word.raw === raw))), label);
     }
+  });
+
+  await check("home: a kept word's tag names its plain Telex form, struck through, in words too (design 9 item 1, ENG-R802)", async () => {
+    const chat = wordsOf(frames.demos["hero-chat"]).filter((piece) => piece.english);
+    assert.ok(chat.length > 0 && chat.every((piece) => piece.plain), "every kept word of hero-chat has a plain form");
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang].hero;
+      const shown = tagsOf(html.match(/\sdata-tags[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "");
+      chat.forEach((piece, index) => {
+        const tag = shown[index] ?? "";
+        // "test, không thành tét" (en "test, not tét"): the word strong, the plain form struck through by CSS.
+        assert.ok(tag.includes(`<strong>${esc(piece.text)}</strong>`), `${label}: ${piece.text} is strong in ${tag}`);
+        assert.ok(tag.includes(`<span class="tag-plain">${esc(piece.plain)}</span>`), `${label}: ${piece.plain} is the struck-through plain form in ${tag}`);
+        assert.equal(unescapeHtml(textOf(tag)), copy.plainTag.replace("{{word}}", piece.text).replace("{{plain}}", piece.plain), `${label}: ${piece.text}`);
+      });
+      // Screen readers never meet the strike alone: the scene is aria-hidden, and the hidden list says each tag in words.
+      const hidden = section(html, "hero").match(/<div class="visually-hidden">([\s\S]*?)<\/div>/)?.[1] ?? "";
+      for (const id of ["hero-chat", "hero-email", "hero-note"]) {
+        const item = [...hidden.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => unescapeHtml(textOf(m[1]))).find((text) => text.startsWith(frames.demos[id].text));
+        assert.ok(item, `${label}: ${id} is in the hidden list`);
+        for (const piece of wordsOf(frames.demos[id]).filter((p) => p.english)) assert.ok(item.includes(tagText(copy, piece)), `${label}: ${id} says "${tagText(copy, piece)}" in words`);
+      }
+    }
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.match(css, /\.tag-plain\s*\{[^}]*text-decoration:\s*line-through/, "home.css strikes the plain form through");
+    assert.match(css, /\.tags \.tag\s*\{[^}]*color:\s*var\(--muted\)/, "the rest of the tag is muted");
+    assert.match(css, /\.tags \.tag strong\s*\{[^}]*color:\s*var\(--green-text\)/, "the word stands out");
   });
 
   await check("home: compat hub shows categories and app names without verified wording while entries are notVerified", async () => {

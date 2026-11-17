@@ -91,7 +91,7 @@ export async function runShellChecks(check, fixtures) {
     };
     // Text on its background: body, muted and link text on both surfaces, the tag, the button, the dark band.
     const pairs = [["--ink", "--paper"], ["--muted", "--paper"], ["--muted", "--paper-2"], ["--green-text", "--paper"], ["--green-text", "--paper-2"],
-      ["--green-text", "--green-soft"], ["--on-green", "--green"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
+      ["--green-text", "--green-soft"], ["--muted", "--green-soft"], ["--on-green", "--green"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
     const problems = [];
     for (const [scheme, tokens] of [["light", light], ["dark", dark]]) {
       for (const [text, background] of pairs) {

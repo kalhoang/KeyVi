@@ -8,8 +8,8 @@ import { gzipSync } from "node:zlib";
 import { englishWords, keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { LANGS } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
-import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
+import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeTagText, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
+import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, textOf } from "./helpers.mjs";
 
 // deploy/site/nginx.conf compresses at this level; the 60 KB budget of design 7.8 is measured at it.
 const GZIP_LEVEL = 6;
@@ -130,8 +130,8 @@ export async function runMotionChecks(check, fixtures) {
       assert.ok(!/\shidden[\s>]/.test(sent), `${label}: the sent bubbles keep their place in the flow`);
       // The tags row reserves the most rows any sentence needs: an invisible copy of each sentence's tags shares its cell.
       const cell = hero.match(/<div class="tags-cell">([\s\S]*?)<\/div>/)?.[1] ?? "";
-      const sizers = [...cell.matchAll(/<p class="tags tags-sizer">([\s\S]*?)<\/p>/g)].map((m) => [...m[1].matchAll(/<span class="tag">([^<]*)<\/span>/g)].map((t) => unescapeHtml(t[1])));
-      const expected = (framesAttr(heroTag(html)) ?? []).map((demo) => englishWords(demo).map((word) => copy.keepTag.replace("{{word}}", word)));
+      const sizers = [...cell.matchAll(/<p class="tags tags-sizer">([\s\S]*?)<\/p>/g)].map((m) => tagsOf(m[1]).map((tag) => unescapeHtml(textOf(tag))));
+      const expected = (framesAttr(heroTag(html)) ?? []).map((demo) => wordsOf(demo).filter((piece) => piece.english).map((piece) => tagText(copy, piece)));
       assert.deepEqual(sizers, expected, `${label}: a tag sizer for each hero sentence`);
       assert.match(cell, /<p class="tags" data-tags\b/, `${label}: the live tags share the sizers' cell`);
       const toggle = hero.match(/<button\b[^>]*\sdata-motion-toggle\b[^>]*>/)?.[0] ?? "";
@@ -141,10 +141,14 @@ export async function runMotionChecks(check, fixtures) {
       assert.ok(!/\saria-pressed=/.test(toggle), `${label}: the pause button has no aria-pressed`);
       const describedBy = attrs(toggle, "aria-describedby")[0] ?? "";
       assert.match(hero, new RegExp(`<div class="visually-hidden"><p id="${describedBy}">${esc(copy.caption)}</p>`), `${label}: the pause button is described by the hero caption`);
-      // The tag template around the word, so a tag home.js writes reads like a static one.
+      // The two tag templates as parts, literal text at even indexes and a slot at odd ones, so a tag home.js writes reads
+      // like a static one (design 9 item 1).
       const tags = hero.match(/<p class="tags" data-tags[^>]*>/)?.[0] ?? "";
-      const [before, after] = ["data-tag-before", "data-tag-after"].map((name) => unescapeHtml(attrs(tags, name)[0] ?? "\u0000"));
-      assert.equal(`${before}online${after}`, copy.keepTag.replace("{{word}}", "online"), `${label}: data-tag-before and data-tag-after`);
+      const [keep, plain] = ["data-tag-keep", "data-tag-plain"].map((name) => JSON.parse(unescapeHtml(attrs(tags, name)[0] ?? "null")));
+      const fill = (parts, values) => (parts ?? []).map((part, index) => (index % 2 === 0 ? part : values[part])).join("");
+      assert.equal(fill(keep, { word: "online" }), copy.keepTag.replace("{{word}}", "online"), `${label}: data-tag-keep`);
+      assert.equal(fill(plain, { word: "test", plain: "tét" }), copy.plainTag.replace("{{word}}", "test").replace("{{plain}}", "tét"), `${label}: data-tag-plain`);
+      assert.deepEqual([keep.filter((part, index) => index % 2 === 1), plain.filter((part, index) => index % 2 === 1)], [["word"], ["word", "plain"]], `${label}: the slots of each template`);
       for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
         for (const hook of ["data-input", "data-keys", "data-replay"]) assert.match(figure, new RegExp(`\\s${hook}[\\s>]`), `${label}: ${figure.slice(0, 60)} ${hook}`);
         // The button is the demo's stop control while it plays and its replay button at rest (WCAG 2.2.2).
@@ -275,7 +279,13 @@ export async function runMotionChecks(check, fixtures) {
     assert.ok(live.every((animation) => animation.completed), "stop() completes every live animation, so each element ends in its final state");
     const second = demos[1];
     assert.equal(parts.input.children.map(fakeTextOf).join(""), second.text.replace(/\n+$/, ""), "the field shows the finished sentence");
-    assert.deepEqual(parts.tags.children.map(fakeTextOf), englishWords(second).map((word) => `${word}: kept`), "the tags name the sentence's English words");
+    assert.deepEqual(parts.tags.children.map(fakeTextOf), wordsOf(second).filter((piece) => piece.english).map(fakeTagText), "the tags name the sentence's English words and their plain forms");
+    // Design 9 item 1: the word strong, the plain form in its own struck-through span, as the static tags.
+    for (const [index, piece] of wordsOf(second).filter((p) => p.english).entries()) {
+      const tag = parts.tags.children[index];
+      assert.equal(tag.children.find((child) => child.tagName === "STRONG")?.textContent, piece.text, `${piece.text} is strong`);
+      assert.equal(tag.children.find((child) => child.className === "tag-plain")?.textContent, piece.plain, `${piece.plain} is the plain form`);
+    }
     assert.ok(!parts.section.hasAttribute("data-motion-ready"), "the pause button goes, nothing moves any more");
   });
 
@@ -283,7 +293,7 @@ export async function runMotionChecks(check, fixtures) {
     const demos = ["hero-chat", "hero-email", "hero-note"].map((id) => ({ id, ...frames.demos[id] }));
     const parts = fakeHero(demos);
     // The static tags of the first sentence, as lib/pages/home/hero.mjs renders them.
-    const staticTags = englishWords(demos[0]).map((word) => Object.assign(fakeElement("span", { class: "tag" }), { textContent: `${word}: kept` }));
+    const staticTags = wordsOf(demos[0]).filter((piece) => piece.english).map((piece) => Object.assign(fakeElement("span", { class: "tag" }), { textContent: fakeTagText(piece) }));
     parts.tags.append(...staticTags);
     const { anime, win } = bootFake((w) => w.document.found.set("[data-hero]", parts.windowEl));
     win.show(parts.windowEl, 1);

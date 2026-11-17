@@ -13,14 +13,15 @@ export const home = {
   hero: {
     windowTitle: "Chat",
     peerName: "Lan",
-    peerMessage: "Buổi họp chiều nay cần chuẩn bị gì không?",
+    peerMessage: "Kế hoạch tuần này sao rồi?",
     keepTag: "{{word}}: kept as typed",
+    plainTag: "{{word}}, not {{plain}}",
     pause: "Pause",
     play: "Play",
     keysLabel: "Keys just pressed",
     sentLabel: "Sent",
     menuBarLabel: "Typing in Vietnamese",
-    caption: "Example typed in Telex in one go, with no mode switch. English words stay as typed, Vietnamese words get their marks:",
+    caption: "Example typed in Telex in one go, with no mode switch. English words stay as typed, even the ones plain Telex would turn into other words:",
   },
   behaviours: {
     heading: "One sentence, two languages",
