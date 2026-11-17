@@ -23,6 +23,7 @@ Do these once; the sections linked from each line explain how.
 - [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
 - [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
 - [ ] GitHub private vulnerability reporting is enabled in the repository settings (Security, "Private vulnerability reporting"): `SECURITY.md` names it as the preferred channel. Check with `gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting` (`"enabled": true`).
+- [ ] GitHub Discussions is enabled in the repository settings (General, Features): the question link of the New Issue chooser (`.github/ISSUE_TEMPLATE/config.yml`), `CONTRIBUTING.md` and the README send questions there (QA-R43, QA-R51). Check with `gh api repos/kalhoang/{{AppName}} --jq .has_discussions` (`true`).
 - [ ] Homebrew tap repository `kalhoang/homebrew-tap` exists (brew name `kalhoang/tap`; template: `packaging/homebrew/Casks/cask.rb.template`).
 - [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
 

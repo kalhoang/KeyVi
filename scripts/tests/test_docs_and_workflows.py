@@ -339,6 +339,15 @@ class FrontDoorBrandTests(unittest.TestCase):
                 text = (REPO / ".github" / "ISSUE_TEMPLATE" / form).read_text(encoding="utf-8")
                 self.assertIn(f"`{slug}-diagnostics v1`", text)
                 self.assertNotIn("<slug>", text)
+        # The New Issue chooser links go to the public repository of APP_REPOSITORY_URL (ADR 0400 VERIFY row 1, ADR
+        # 0507): no OWNER/REPO left, and the security link matches the one SECURITY.md names.
+        repo_url = brand["APP_REPOSITORY_URL"]
+        chooser = (REPO / ".github" / "ISSUE_TEMPLATE" / "config.yml").read_text(encoding="utf-8")
+        self.assertNotIn("OWNER/REPO", chooser)
+        self.assertNotIn("VERIFY", chooser)
+        self.assertIn(f"url: {repo_url}/discussions\n", chooser)
+        self.assertIn(f"url: {repo_url}/security/advisories/new\n", chooser)
+        self.assertIn(f"{repo_url}/security/advisories/new", (REPO / "SECURITY.md").read_text(encoding="utf-8"))
 
     def test_both_readmes_state_the_current_facts(self):
         """The name is final (2026-11-13), the floor is macOS 12 (ADR 0315), the licences are decided (ADR 0006), and
