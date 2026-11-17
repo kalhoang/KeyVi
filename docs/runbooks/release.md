@@ -22,6 +22,7 @@ Do these once; the sections linked from each line explain how.
 - [ ] `SPARKLE_PUBLIC_ED_KEY` filled in `Config/Sparkle.xcconfig` with the public key printed by `generate_keys`, as described in the [EdDSA key note of ADR 0304](../decisions/0304-sparkle-version-pin.md#runbook-note-filling-sparkle_public_ed_key). `scripts/verify-release.sh` and `scripts/publish-release` refuse a build whose `SUPublicEDKey` is empty.
 - [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
 - [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
+- [ ] GitHub private vulnerability reporting is enabled in the repository settings (Security, "Private vulnerability reporting"): `SECURITY.md` names it as the preferred channel. Check with `gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting` (`"enabled": true`).
 - [ ] Homebrew tap repository `kalhoang/homebrew-tap` exists (brew name `kalhoang/tap`; template: `packaging/homebrew/Casks/cask.rb.template`).
 - [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
 

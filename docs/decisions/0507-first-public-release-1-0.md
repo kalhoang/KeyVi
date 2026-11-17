@@ -111,7 +111,7 @@ disabled.
 | Network egress test (spec/02-platform.md section 13.7) | Not run ([integration suite runbook](../runbooks/integration-suite.md) section 5) | waived |
 | No compatibility rule past `reviewBy` by more than 30 days | `scripts/check-rules.py --release` on 2026-11-17: 23 rules, 0 errors, 0 warnings; every `reviewBy` is in 2027 | met |
 | Provenance review (CLR-R13) | Separate report in [`docs/provenance/`](../provenance/) | not waived (decision 5) |
-| `THIRD_PARTY_NOTICES.md` complete (CLR-R6, CLR-R7) | The notices tests of `scripts/tests/run.sh` pass (Sparkle pin, data notices, artwork) | met |
+| `THIRD_PARTY_NOTICES.md` complete (CLR-R6, CLR-R7) | The notices tests of `scripts/tests/run.sh` pass (Sparkle pin, bundled data, app artwork). Three lines are still marked placeholder: the DMG background (none exists yet), the website's fonts and the illustrations or screen recordings of the website and onboarding | partly met; the placeholder lines are open (site track and Pa) |
 | Changelog and release notes in Vietnamese and English (PRD-R51) | `CHANGELOG.md` and `CHANGELOG.vi.md`, section `[1.0.0] - 2026-11-17`, five visible lines each; `scripts/publish-release` checks them before signing | met |
 | No open P0 issue, no unresolved `update-regression` issue | `gh issue list` on 2026-11-17: no open issue | met |
 
@@ -128,6 +128,8 @@ is the QA-R19 waiver above.
 - The waived criteria are open work, not closed: the Tier 1 compatibility script, the integration suite on the
   newest macOS, a Linux fuzz run, the egress test and a rollback rehearsal on the beta channel are the first things
   to do after 1.0.0, in that order of risk.
+- GitHub private vulnerability reporting, the preferred channel of `SECURITY.md`, was still disabled on 2026-11-17
+  (`gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting`); the release runbook section 0 lists enabling it.
 - Without a public beta, a regression reaches every user who installs 1.0.0. The appcast pull (within 1 hour of a
   confirmed P0, [appcast pull](../runbooks/appcast-pull.md)) and the [rollback](../runbooks/rollback.md) runbook are
   the mitigation.
