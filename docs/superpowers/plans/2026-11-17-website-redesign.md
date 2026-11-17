@@ -194,8 +194,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
   | id | method / style | keys | expect |
   |---|---|---|---|
   | `hero-chat` | telex / traditional | `Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha` | `Chiều nay họp online, nhớ gửi file slide trước deadline nha` |
-  | `hero-email` | telex / traditional | `Anh gwir laij email cho team truwowcs meeting nhes` | `Anh gửi lại email cho team trước meeting nhé` |
-  | `hero-note` | telex / traditional | `Nhows mua router wifi mowis, check laij password.` | `Nhớ mua router wifi mới, check lại password.` |
+  | `hero-email` | telex / traditional | `Anh gwir laij email cho team truwowcs buooir call nhes` | `Anh gửi lại email cho team trước buổi call nhé` |
+  | `hero-note` | telex / traditional | `Nhows caapj nhaatj app mowis, check laij link nhes` | `Nhớ cập nhật app mới, check lại link nhé` |
   | `behaviour-punctuation` | telex / traditional | `Minhf check email, review slide. Gwir file⏎` | `Mình check email, review slide. Gửi file\n` |
   | `behaviour-revision` | telex / traditional | `cais nayf tricky as hell ` | `cái này tricky as hell ` |
   | `behaviour-escape` | telex / traditional | `Vieetj⎋` | `Vieetj` |
@@ -206,8 +206,10 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
   | `card-traditional` | telex / traditional | `hoaf` | `hòa` |
   | `card-modern` | telex / modern | `hoaf` | `hoà` |
 
-  Rows changed by the engine (17/11/2026): `hero-note` ends with a period (without a boundary `password` is still
-  composing and shows `pasword`; the period commits it and the engine restores it); `card-anywhere` types `vietej`
+  Rows changed by the engine (17/11/2026): the hero sentences after the first use English words that never show a
+  Vietnamese in-between form while typed (`meeting` showed `mêting`, `wifi` showed `ừii`, `password` showed
+  `pasword` before their commit), so the hero reads cleanly; section 2 is where the restore itself is shown
+  (integrator's call, design 8); `card-anywhere` types `vietej`
   (`vietj` has no circumflex key and `iet` alone is not a rhyme, so it stays as typed); `behaviour-punctuation` ends
   its second sentence with an English word, so Return commits `file` as the comma commits `email` and the period
   `slide` (design 7.3).

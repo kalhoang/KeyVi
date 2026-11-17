@@ -1273,64 +1273,87 @@
           "text": "Anh gửi lại email cho team trước "
         },
         {
-          "key": "m",
-          "text": "Anh gửi lại email cho team trước m"
+          "key": "b",
+          "text": "Anh gửi lại email cho team trước b"
         },
         {
-          "key": "e",
-          "text": "Anh gửi lại email cho team trước me"
+          "key": "u",
+          "text": "Anh gửi lại email cho team trước bu"
         },
         {
-          "key": "e",
-          "text": "Anh gửi lại email cho team trước mê"
+          "key": "o",
+          "text": "Anh gửi lại email cho team trước buo"
         },
         {
-          "key": "t",
-          "text": "Anh gửi lại email cho team trước mêt"
+          "key": "o",
+          "text": "Anh gửi lại email cho team trước buô"
         },
         {
           "key": "i",
-          "text": "Anh gửi lại email cho team trước mêti"
+          "text": "Anh gửi lại email cho team trước buôi"
         },
         {
-          "key": "n",
-          "text": "Anh gửi lại email cho team trước mêtin"
+          "key": "r",
+          "text": "Anh gửi lại email cho team trước buổi"
         },
         {
-          "key": "g",
-          "text": "Anh gửi lại email cho team trước mêting"
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "buooir",
+            "rule": "notEnglish",
+            "text": "buổi"
+          },
+          "key": " ",
+          "text": "Anh gửi lại email cho team trước buổi "
+        },
+        {
+          "key": "c",
+          "text": "Anh gửi lại email cho team trước buổi c"
+        },
+        {
+          "key": "a",
+          "text": "Anh gửi lại email cho team trước buổi ca"
+        },
+        {
+          "key": "l",
+          "text": "Anh gửi lại email cho team trước buổi cal"
+        },
+        {
+          "key": "l",
+          "text": "Anh gửi lại email cho team trước buổi call"
         },
         {
           "commit": {
             "english": true,
-            "outcome": "restored",
-            "raw": "meeting",
-            "rule": "invalid",
-            "text": "meeting"
+            "outcome": "kept",
+            "raw": "call",
+            "rule": "unchanged",
+            "text": "call"
           },
           "key": " ",
-          "text": "Anh gửi lại email cho team trước meeting "
+          "text": "Anh gửi lại email cho team trước buổi call "
         },
         {
           "key": "n",
-          "text": "Anh gửi lại email cho team trước meeting n"
+          "text": "Anh gửi lại email cho team trước buổi call n"
         },
         {
           "key": "h",
-          "text": "Anh gửi lại email cho team trước meeting nh"
+          "text": "Anh gửi lại email cho team trước buổi call nh"
         },
         {
           "key": "e",
-          "text": "Anh gửi lại email cho team trước meeting nhe"
+          "text": "Anh gửi lại email cho team trước buổi call nhe"
         },
         {
           "key": "s",
-          "text": "Anh gửi lại email cho team trước meeting nhé"
+          "text": "Anh gửi lại email cho team trước buổi call nhé"
         }
       ],
-      "keys": "Anh gwir laij email cho team truwowcs meeting nhes",
+      "keys": "Anh gwir laij email cho team truwowcs buooir call nhes",
       "method": "telex",
-      "text": "Anh gửi lại email cho team trước meeting nhé",
+      "text": "Anh gửi lại email cho team trước buổi call nhé",
       "toneStyle": "traditional"
     },
     "hero-note": {
@@ -1367,109 +1390,113 @@
           "text": "Nhớ "
         },
         {
-          "key": "m",
-          "text": "Nhớ m"
-        },
-        {
-          "key": "u",
-          "text": "Nhớ mu"
+          "key": "c",
+          "text": "Nhớ c"
         },
         {
           "key": "a",
-          "text": "Nhớ mua"
+          "text": "Nhớ ca"
+        },
+        {
+          "key": "a",
+          "text": "Nhớ câ"
+        },
+        {
+          "key": "p",
+          "text": "Nhớ câp"
+        },
+        {
+          "key": "j",
+          "text": "Nhớ cập"
         },
         {
           "commit": {
             "english": false,
             "outcome": "kept",
-            "raw": "mua",
-            "rule": "unchanged",
-            "text": "mua"
+            "raw": "caapj",
+            "rule": "notEnglish",
+            "text": "cập"
           },
           "key": " ",
-          "text": "Nhớ mua "
+          "text": "Nhớ cập "
         },
         {
-          "key": "r",
-          "text": "Nhớ mua r"
+          "key": "n",
+          "text": "Nhớ cập n"
         },
         {
-          "key": "o",
-          "text": "Nhớ mua ro"
+          "key": "h",
+          "text": "Nhớ cập nh"
         },
         {
-          "key": "u",
-          "text": "Nhớ mua rou"
+          "key": "a",
+          "text": "Nhớ cập nha"
+        },
+        {
+          "key": "a",
+          "text": "Nhớ cập nhâ"
         },
         {
           "key": "t",
-          "text": "Nhớ mua rout"
+          "text": "Nhớ cập nhât"
         },
         {
-          "key": "e",
-          "text": "Nhớ mua route"
+          "key": "j",
+          "text": "Nhớ cập nhật"
         },
         {
-          "key": "r",
-          "text": "Nhớ mua router"
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "nhaatj",
+            "rule": "notEnglish",
+            "text": "nhật"
+          },
+          "key": " ",
+          "text": "Nhớ cập nhật "
+        },
+        {
+          "key": "a",
+          "text": "Nhớ cập nhật a"
+        },
+        {
+          "key": "p",
+          "text": "Nhớ cập nhật ap"
+        },
+        {
+          "key": "p",
+          "text": "Nhớ cập nhật app"
         },
         {
           "commit": {
             "english": true,
             "outcome": "kept",
-            "raw": "router",
+            "raw": "app",
             "rule": "unchanged",
-            "text": "router"
+            "text": "app"
           },
           "key": " ",
-          "text": "Nhớ mua router "
-        },
-        {
-          "key": "w",
-          "text": "Nhớ mua router ư"
-        },
-        {
-          "key": "i",
-          "text": "Nhớ mua router ưi"
-        },
-        {
-          "key": "f",
-          "text": "Nhớ mua router ừi"
-        },
-        {
-          "key": "i",
-          "text": "Nhớ mua router ừii"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "restored",
-            "raw": "wifi",
-            "rule": "invalid",
-            "text": "wifi"
-          },
-          "key": " ",
-          "text": "Nhớ mua router wifi "
+          "text": "Nhớ cập nhật app "
         },
         {
           "key": "m",
-          "text": "Nhớ mua router wifi m"
+          "text": "Nhớ cập nhật app m"
         },
         {
           "key": "o",
-          "text": "Nhớ mua router wifi mo"
+          "text": "Nhớ cập nhật app mo"
         },
         {
           "key": "w",
-          "text": "Nhớ mua router wifi mơ"
+          "text": "Nhớ cập nhật app mơ"
         },
         {
           "key": "i",
-          "text": "Nhớ mua router wifi mơi"
+          "text": "Nhớ cập nhật app mơi"
         },
         {
           "key": "s",
-          "text": "Nhớ mua router wifi mới"
+          "text": "Nhớ cập nhật app mới"
         },
         {
           "commit": {
@@ -1480,31 +1507,31 @@
             "text": "mới"
           },
           "key": ",",
-          "text": "Nhớ mua router wifi mới,"
+          "text": "Nhớ cập nhật app mới,"
         },
         {
           "key": " ",
-          "text": "Nhớ mua router wifi mới, "
+          "text": "Nhớ cập nhật app mới, "
         },
         {
           "key": "c",
-          "text": "Nhớ mua router wifi mới, c"
+          "text": "Nhớ cập nhật app mới, c"
         },
         {
           "key": "h",
-          "text": "Nhớ mua router wifi mới, ch"
+          "text": "Nhớ cập nhật app mới, ch"
         },
         {
           "key": "e",
-          "text": "Nhớ mua router wifi mới, che"
+          "text": "Nhớ cập nhật app mới, che"
         },
         {
           "key": "c",
-          "text": "Nhớ mua router wifi mới, chec"
+          "text": "Nhớ cập nhật app mới, chec"
         },
         {
           "key": "k",
-          "text": "Nhớ mua router wifi mới, check"
+          "text": "Nhớ cập nhật app mới, check"
         },
         {
           "commit": {
@@ -1515,23 +1542,23 @@
             "text": "check"
           },
           "key": " ",
-          "text": "Nhớ mua router wifi mới, check "
+          "text": "Nhớ cập nhật app mới, check "
         },
         {
           "key": "l",
-          "text": "Nhớ mua router wifi mới, check l"
+          "text": "Nhớ cập nhật app mới, check l"
         },
         {
           "key": "a",
-          "text": "Nhớ mua router wifi mới, check la"
+          "text": "Nhớ cập nhật app mới, check la"
         },
         {
           "key": "i",
-          "text": "Nhớ mua router wifi mới, check lai"
+          "text": "Nhớ cập nhật app mới, check lai"
         },
         {
           "key": "j",
-          "text": "Nhớ mua router wifi mới, check lại"
+          "text": "Nhớ cập nhật app mới, check lại"
         },
         {
           "commit": {
@@ -1542,55 +1569,55 @@
             "text": "lại"
           },
           "key": " ",
-          "text": "Nhớ mua router wifi mới, check lại "
+          "text": "Nhớ cập nhật app mới, check lại "
         },
         {
-          "key": "p",
-          "text": "Nhớ mua router wifi mới, check lại p"
+          "key": "l",
+          "text": "Nhớ cập nhật app mới, check lại l"
         },
         {
-          "key": "a",
-          "text": "Nhớ mua router wifi mới, check lại pa"
+          "key": "i",
+          "text": "Nhớ cập nhật app mới, check lại li"
         },
         {
-          "key": "s",
-          "text": "Nhớ mua router wifi mới, check lại pá"
+          "key": "n",
+          "text": "Nhớ cập nhật app mới, check lại lin"
         },
         {
-          "key": "s",
-          "text": "Nhớ mua router wifi mới, check lại pas"
-        },
-        {
-          "key": "w",
-          "text": "Nhớ mua router wifi mới, check lại pasw"
-        },
-        {
-          "key": "o",
-          "text": "Nhớ mua router wifi mới, check lại paswo"
-        },
-        {
-          "key": "r",
-          "text": "Nhớ mua router wifi mới, check lại paswor"
-        },
-        {
-          "key": "d",
-          "text": "Nhớ mua router wifi mới, check lại pasword"
+          "key": "k",
+          "text": "Nhớ cập nhật app mới, check lại link"
         },
         {
           "commit": {
             "english": true,
-            "outcome": "restored",
-            "raw": "password",
-            "rule": "escape",
-            "text": "password"
+            "outcome": "kept",
+            "raw": "link",
+            "rule": "unchanged",
+            "text": "link"
           },
-          "key": ".",
-          "text": "Nhớ mua router wifi mới, check lại password."
+          "key": " ",
+          "text": "Nhớ cập nhật app mới, check lại link "
+        },
+        {
+          "key": "n",
+          "text": "Nhớ cập nhật app mới, check lại link n"
+        },
+        {
+          "key": "h",
+          "text": "Nhớ cập nhật app mới, check lại link nh"
+        },
+        {
+          "key": "e",
+          "text": "Nhớ cập nhật app mới, check lại link nhe"
+        },
+        {
+          "key": "s",
+          "text": "Nhớ cập nhật app mới, check lại link nhé"
         }
       ],
-      "keys": "Nhows mua router wifi mowis, check laij password.",
+      "keys": "Nhows caapj nhaatj app mowis, check laij link nhes",
       "method": "telex",
-      "text": "Nhớ mua router wifi mới, check lại password.",
+      "text": "Nhớ cập nhật app mới, check lại link nhé",
       "toneStyle": "traditional"
     }
   },
