@@ -3,42 +3,136 @@
 // Drafts from spec/03-product.md are reused verbatim where they exist (PRD-R40, PRD-R59).
 // Trusted HTML; tokens like {{AppName}} are filled at build time. Standard Vietnamese, addressed to "bạn".
 
+// Home (design 7.3): seven sections. Prose that names the product uses {{AppNameTM}}, buttons and the install steps
+// (which name the app as Finder shows it) use {{AppName}}. Demo ids name site/demo/frames.json entries; `req` cites the
+// requirement whose tests prove a statement (design 7.4).
 export const home = {
-  h1: "Gõ tiếng Việt đúng ngay từ đầu, ở mọi ứng dụng trên Mac.",
-  lede: "Bộ gõ tiếng Việt cho Mac. Cài đặt chỉ mất khoảng một phút, sau đó bạn cứ gõ như bình thường.",
-  footnote: "{{AppName}} không gửi nội dung bạn gõ đi đâu cả và không lưu lại những gì bạn gõ.",
-  typedLabel: "Ví dụ gõ Telex",
-  typed: [
-    { keys: "tieengs Vieetj", out: "tiếng Việt" },
-    { keys: "text user wifi", out: "text user wifi" },
+  h1: "Gõ tiếng Việt lẫn tiếng Anh, không cần chuyển.",
+  lede: "{{AppNameTM}} bỏ dấu cho từ tiếng Việt và để nguyên từ tiếng Anh, ngay trong cùng một câu. Bạn cứ gõ một mạch, không phải bật tắt chế độ.",
+  meta: "macOS {{minMacos}} trở lên · Apple silicon và Intel · Miễn phí, mã nguồn mở",
+  // The chat scene of the hero. The messages stay Vietnamese on the English page: the demos type Vietnamese (7.6).
+  hero: {
+    windowTitle: "Trò chuyện",
+    peerName: "Lan",
+    peerMessage: "Buổi họp chiều nay cần chuẩn bị gì không?",
+    keepTag: "{{word}}: giữ nguyên",
+    pause: "Tạm dừng",
+    play: "Phát tiếp",
+    keysLabel: "Phím vừa gõ",
+    sentLabel: "Đã gửi",
+    menuBarLabel: "Đang gõ tiếng Việt",
+    caption: "Ví dụ gõ Telex một mạch, không chuyển chế độ. Từ tiếng Anh giữ nguyên, từ tiếng Việt có dấu:",
+  },
+  behaviours: {
+    heading: "Một câu, hai thứ tiếng",
+    intro: "Bạn gõ tiếng Việt như bình thường. Từ tiếng Anh tự giữ nguyên, nên bạn không phải dừng lại để chuyển chế độ.",
+    items: [
+      {
+        id: "punctuation",
+        title: "Kết thúc từ kiểu nào cũng giữ nguyên",
+        body: "Từ tiếng Anh vẫn giữ nguyên khi bạn kết thúc bằng dấu phẩy, dấu chấm hay phím Return.",
+        note: "Trong ứng dụng trò chuyện, phím Return chỉ tới ứng dụng sau khi từ cuối đã được sửa xong, nên tin nhắn gửi đi đúng như bạn thấy.",
+        noteReq: "P0-3, ENG-R910",
+      },
+      {
+        id: "revision",
+        title: "Từ sau sửa giúp từ trước",
+        body: "Có những phím vừa là từ tiếng Việt vừa là từ tiếng Anh, như <code>as</code> mà Telex đọc thành <em>á</em>. Khi bạn gõ từ tiếp theo, {{AppNameTM}} xét cả hai từ và sửa lại từ trước nếu cần.",
+      },
+      {
+        id: "escape",
+        title: "Esc trả lại đúng phím bạn gõ",
+        body: "Bấm Esc ngay sau một từ để lấy lại đúng các phím đã gõ: <em>Việt</em> trở về <code>Vieetj</code>.",
+      },
+    ],
+  },
+  cards: {
+    heading: "Gõ theo cách của bạn",
+    items: [
+      {
+        id: "anywhere",
+        title: "Bỏ dấu ở đâu trong từ cũng được",
+        body: "Phím dấu, phím mũ và phím móc đặt ở giữa hay cuối từ đều ra đúng chữ. Không có tùy chọn nào phải bật.",
+        demos: ["card-anywhere"],
+        req: "ENG-R107",
+      },
+      {
+        id: "slang",
+        title: "Gõ được tiếng lóng",
+        body: "Phụ âm đầu như <code>dz</code> vẫn gõ bình thường, vì tính hợp lệ dựa trên quy tắc chính tả tiếng Việt chứ không dựa trên từ điển.",
+        demos: ["card-slang"],
+        req: "P0-2, ENG-R316",
+      },
+      {
+        id: "method",
+        title: "Telex hay VNI, đặt dấu theo ý bạn",
+        body: "Chọn Telex hoặc VNI, và kiểu đặt dấu truyền thống hoặc kiểu mới. Mặc định là Telex với kiểu đặt dấu truyền thống.",
+        demos: ["card-telex", "card-vni", "card-traditional", "card-modern"],
+        labels: { "card-telex": "Telex", "card-vni": "VNI", "card-traditional": "Truyền thống", "card-modern": "Kiểu mới" },
+        req: "D1, D2",
+      },
+      {
+        id: "macros",
+        title: "Gõ tắt của riêng bạn",
+        body: "Tự đặt chữ viết tắt cho những cụm hay dùng, rồi xuất hoặc nhập cả danh sách khi đổi máy.",
+        illustration: { keys: "dc", result: "được", caption: "Một gõ tắt do bạn tự đặt" },
+        req: "PRD-R2",
+      },
+      {
+        id: "layouts",
+        title: "Bàn phím nào cũng gõ được",
+        body: "{{AppNameTM}} đọc chữ mà bố cục bàn phím của bạn gõ ra, nên Telex và VNI chạy giống nhau trên mọi bố cục.",
+        illustration: { layouts: ["QWERTY", "QWERTZ", "AZERTY", "Dvorak", "Colemak"] },
+        req: "PRD-R2",
+      },
+      {
+        id: "perApp",
+        title: "Nhớ chế độ cho từng ứng dụng",
+        body: "{{AppNameTM}} nhớ bạn gõ tiếng Việt hay tiếng Anh ở từng ứng dụng, và bạn có thể đặt quy tắc riêng cho một ứng dụng.",
+        illustration: { apps: [{ app: "Terminal", mode: "Tiếng Anh" }, { app: "Zalo", mode: "Tiếng Việt" }] },
+        req: "PRD-R2",
+      },
+    ],
+  },
+  // Section 4 never says an app was checked while every matrix entry is notVerified (design 7.3 item 4); `verifiedOn`
+  // shows only beside an entry that has a current result.
+  apps: {
+    heading: "Chạy trong app bạn dùng hằng ngày",
+    intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã. Danh sách tương thích ghi rõ tình trạng của từng ứng dụng.",
+    categories: { browser: "Trình duyệt", chat: "Trò chuyện", office: "Văn phòng", notes: "Ghi chú", launcher: "Gọi nhanh", terminal: "Terminal", developer: "Soạn mã" },
+    verifiedOn: "kiểm tra {{date}}",
+    link: "Xem danh sách ứng dụng tương thích",
+    secureInput: {
+      title: "Khi macOS chặn mọi bộ gõ",
+      body: "Khi một ứng dụng bật chế độ nhập bảo mật (Secure Input), thường vì một ô mật khẩu còn mở, macOS tạm dừng mọi bộ gõ. {{AppNameTM}} cho bạn biết ứng dụng nào đang giữ chế độ này và cách tắt, rồi gõ lại ngay từ phím đầu tiên sau khi chế độ này tắt. {{AppName}} không tự đoán là bạn đang gõ mật khẩu.",
+      req: "P0-1, PLT-R395",
+    },
+  },
+  proofHeading: "Ba điều bạn có thể kiểm chứng",
+  proof: [
+    { h: "Không thu thập dữ liệu", p: "Không telemetry, không SDK phân tích, không \"dữ liệu sử dụng ẩn danh\". {{AppNameTM}} không gửi nội dung bạn gõ đi đâu cả; lưu lượng mạng tự động duy nhất là kiểm tra cập nhật.", link: "{{hrefPrivacy}}", linkText: "Xem chi tiết về riêng tư" },
+    { h: "Miễn phí", p: "{{AppNameTM}} miễn phí và sẽ luôn miễn phí. Không có tính năng nào bị khóa, không có nhắc nhở ủng hộ trong ứng dụng." },
+    { h: "Mã nguồn mở", p: "Bộ máy gõ là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng. Phần còn lại của ứng dụng theo giấy phép GPL-3.0-or-later.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
   ],
-  typedCaption: "Từ tiếng Anh được giữ nguyên, bạn không cần chuyển chế độ.",
-  demoPlaceholder: "Video 20 giây đang được chuẩn bị",
-  demoCaption: "Gõ Telex, tự khôi phục từ tiếng Anh, chuyển chế độ theo từng ứng dụng.",
-  demoAlt: "Video minh họa 20 giây về cách gõ tiếng Việt với {{AppName}}",
+  install: {
+    heading: "Cài trong một phút",
+    steps: [
+      "Mở file DMG và kéo {{AppName}} vào thư mục Applications.",
+      "Mở {{AppName}} và cấp một quyền duy nhất: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}}",
+      "Gõ vài chữ vào ô gõ thử để thấy kết quả ngay.",
+    ],
+    brewLabel: "Hoặc cài bằng Homebrew",
+  },
+  closing: {
+    heading: "Không cần chuyển qua chuyển lại giữa tiếng Việt và tiếng Anh nữa.",
+    donateLine: "{{AppNameTM}} miễn phí. Nếu thấy có ích, bạn có thể <a href=\"{{hrefDonate}}\">ủng hộ để Kal có thêm thời gian làm tiếp</a>.",
+  },
   downloadBtn: "Tải {{AppName}} {{version}}",
   downloadSub: "{{requirement}}",
   noReleaseBtn: "Chưa có bản phát hành",
   preRelease: "Trạng thái: đang phát triển, chưa phát hành công khai.",
   brewLabel: "Hoặc cài bằng Homebrew",
   allDownloads: "Tất cả bản tải và mã SHA-256",
-  proofHeading: "Ba điều bạn có thể kiểm chứng",
-  proof: [
-    { h: "Không thu thập dữ liệu", p: "Không telemetry, không SDK phân tích, không \"dữ liệu sử dụng ẩn danh\". Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật.", link: "{{hrefPrivacy}}", linkText: "Xem chi tiết về riêng tư" },
-    { h: "Miễn phí", p: "{{AppName}} miễn phí và sẽ luôn miễn phí. Không có tính năng nào bị khóa, không có nhắc nhở ủng hộ trong ứng dụng." },
-    { h: "Bộ máy gõ mã nguồn mở", p: "Phần xử lý tiếng Việt là một gói Swift theo Giấy phép Công cộng Mozilla 2.0 (MPL-2.0), viết từ đầu theo quy tắc chính tả tiếng Việt và có bộ kiểm thử riêng. Phần còn lại của ứng dụng cũng là mã nguồn mở, giấy phép GPL-3.0-or-later.", link: "{{repo}}", linkText: "Xem mã nguồn", external: true },
-  ],
-  whyHeading: "Những điều bạn sẽ thấy khác",
-  why: [
-    "Từ tiếng Anh như <code>text</code>, <code>user</code>, <code>wifi</code> tự giữ nguyên, kể cả khi bạn kết thúc từ bằng dấu phẩy, dấu chấm hay phím Enter.",
-    "Tiếng lóng như <em>dzô</em>, <em>hẹo</em> gõ được bình thường, vì tính hợp lệ dựa trên quy tắc chính tả chứ không dựa trên từ điển.",
-    "Khi macOS chặn mọi bộ gõ (Secure Input), {{AppName}} nói rõ ứng dụng nào đang giữ và cách tắt. {{AppName}} không tự đoán là bạn đang gõ mật khẩu.",
-    "Gõ dấu ở cuối từ vẫn đúng: <code>vietj</code>, <code>tieengs</code>, <code>dangd</code>.",
-    "Nhớ chế độ Việt hoặc Anh cho từng ứng dụng: Terminal luôn tiếng Anh, Zalo luôn tiếng Việt.",
-  ],
-  compatHeading: "Ứng dụng của bạn có chạy tốt không?",
-  compatText: "Mỗi ứng dụng được kiểm tra theo một quy trình cố định và ghi rõ ngày kiểm tra.",
-  compatLink: "Xem danh sách ứng dụng tương thích",
 };
 
 export const download = {

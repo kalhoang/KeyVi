@@ -917,6 +917,33 @@ try {
     assert.deepEqual(offenders, []);
   });
 
+  await check("content: home copy has the same keys in vi and en, uses file not tệp, and has no dash characters", async () => {
+    const load = async (lang) => (await import(pathToFileURL(join(SITE_DIR, "content", lang, "pages.mjs")).href)).home;
+    const [vi, en] = [await load("vi"), await load("en")];
+    // The shape of the copy: object keys and array lengths, recursively, with the type of every leaf.
+    const shape = (value) => (Array.isArray(value) ? value.map(shape)
+      : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, shape(value[key])])) : typeof value);
+    assert.deepEqual(shape(en), shape(vi), "the en home copy has the keys of the vi copy");
+    const strings = (value) => (typeof value === "string" ? [value] : value && typeof value === "object" ? Object.values(value).flatMap(strings) : []);
+    assert.deepEqual(strings(vi).filter((text) => /tệp/i.test(text)), [], "vi home says file, never tệp");
+    for (const [lang, home] of [["vi", vi], ["en", en]]) assert.deepEqual(strings(home).filter((text) => /[\u2013\u2014]/.test(text)), [], `${lang}: em or en dash`);
+    assert.equal(vi.h1, "Gõ tiếng Việt lẫn tiếng Anh, không cần chuyển.");
+    assert.equal(en.h1, "Type Vietnamese and English without switching.");
+    // The section headings of design 7.3 and the ids the renderers and frames.json share (plan Task 4).
+    assert.deepEqual([vi.behaviours.heading, vi.cards.heading, vi.apps.heading, vi.proofHeading, vi.install.heading],
+      ["Một câu, hai thứ tiếng", "Gõ theo cách của bạn", "Chạy trong app bạn dùng hằng ngày", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
+    assert.deepEqual(vi.behaviours.items.map((item) => item.id), ["punctuation", "revision", "escape"]);
+    assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "macros", "layouts", "perApp"]);
+    assert.deepEqual(Object.keys(vi.apps.categories), ["browser", "chat", "office", "notes", "launcher", "terminal", "developer"]);
+    assert.deepEqual(vi.cards.items.flatMap((item) => item.demos ?? []), ["card-anywhere", "card-slang", "card-telex", "card-vni", "card-traditional", "card-modern"]);
+    assert.ok(vi.hero.keepTag.includes("{{word}}") && en.hero.keepTag.includes("{{word}}"), "keepTag names the word");
+    assert.equal(vi.install.steps.length, 3);
+    // Step 2 names the permission as the download page does, with its VERIFY marker (design 7.3 item 6).
+    const download = (await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href)).download;
+    for (const name of [...download.reqPermission.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1]).concat("{{verifyHtml}}")) assert.ok(vi.install.steps[1].includes(name), `install step 2: ${name}`);
+    for (const retired of ["demoPlaceholder", "demoCaption", "demoAlt", "typed", "why"]) assert.ok(!(retired in vi) && !(retired in en), `${retired} is retired`);
+  });
+
   await check("vendor: anime.js 4.5.0 is vendored byte-exact with its licence (ADR 0603)", async () => {
     const vendor = join(SITE_DIR, "static", "assets", "vendor");
     const bundle = await readFile(join(vendor, "anime.umd.min.js"));
