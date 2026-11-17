@@ -46,7 +46,10 @@ export async function runReleaseChecks(check, fixtures) {
     assert.match(shipped.homebrewTap, /^[a-z0-9-]+\/tap$/, "homebrewTap is <owner>/tap (repository <owner>/homebrew-tap)");
     assert.ok(!("githubRepo" in shipped) || !shipped.githubRepo.includes("OWNER"), "githubRepo comes from APP_REPOSITORY_URL");
     assert.match(brand.repositoryUrl, /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+$/, "scripts/brand.env names the repository");
-    assert.equal(shipped.sponsorsUrl, "", "no GitHub Sponsors page: empty, which is not a placeholder");
+    // Empty (no GitHub Sponsors page yet) or a real https URL; either way no placeholder marker (site/lib/config.mjs).
+    const sponsors = shipped.sponsorsUrl ?? "";
+    assert.ok(sponsors === "" || /^https:\/\/[^\s"'<>]+$/.test(sponsors), "sponsorsUrl is empty or an https URL");
+    assert.ok(!["OWNER", ".invalid"].some((marker) => sponsors.includes(marker)), "sponsorsUrl carries no placeholder marker");
   });
 
   await check("release gate: --strict passes before the first release, with the no-release state shown", async () => {
