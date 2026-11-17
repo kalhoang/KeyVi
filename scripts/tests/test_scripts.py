@@ -810,6 +810,38 @@ class PublishHelpersTests(TempDirTestCase):
         result = self.helper("changelog-notes", "--file", str(changelog), "--version", "1.0.0")
         self.assertEqual(result.stdout.strip(), "- First")
 
+    def test_release_date_follows_the_changelog_heading(self):
+        """QA-R37: releases.json and the changelog page show the same date, so the release date is the one of the
+        version's changelog heading. It may be a day off today in UTC (the maintainer's time zone), not more."""
+        changelog = self.tmp / "CHANGELOG.md"
+        changelog.write_text("# Changelog\n\n## [Unreleased]\n\n## [1.1.0] - 2026-11-18\n- New\n\n"
+                             "## [1.0.0] - 2026-11-13\n- First\n", encoding="utf-8")
+
+        def date(version, today):
+            return self.helper("release-date", "--file", str(changelog), "--version", version, "--today", today)
+
+        for today in ("2026-11-17", "2026-11-18", "2026-11-19"):
+            result = date("1.1.0", today)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), "2026-11-18", today)
+        for today in ("2026-11-16", "2026-11-20"):
+            result = date("1.1.0", today)
+            self.assertEqual(result.returncode, 1, today)
+            self.assertIn("2026-11-18", result.stderr)
+        # No heading for the version, or one without a date: today in UTC (or --today).
+        self.assertEqual(date("1.2.0", "2026-12-02").stdout.strip(), "2026-12-02")
+        changelog.write_text("# Changelog\n\n## [1.2.0]\n- Undated\n", encoding="utf-8")
+        self.assertEqual(date("1.2.0", "2026-12-02").stdout.strip(), "2026-12-02")
+        # An impossible date in the heading stops the release instead of falling back.
+        changelog.write_text("# Changelog\n\n## [1.2.0] - 2026-02-30\n- Bad\n", encoding="utf-8")
+        result = date("1.2.0", "2026-03-01")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("2026-02-30", result.stderr)
+        # A missing file behaves like a missing heading.
+        result = self.helper("release-date", "--file", str(self.tmp / "none.md"), "--version", "1.0.0",
+                             "--today", "2026-11-18")
+        self.assertEqual(result.stdout.strip(), "2026-11-18")
+
 
 class BenchCompareTests(TempDirTestCase):
     def result(self, name, calibration, p50, p99, budget=True):
