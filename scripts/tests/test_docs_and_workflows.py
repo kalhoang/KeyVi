@@ -229,6 +229,49 @@ class NoticesTests(unittest.TestCase):
             self.assertIn("ships only as a `VietnameseEngineData` resource", data)
 
 
+class ProvenanceReportTests(unittest.TestCase):
+    """docs/provenance/reports/ and the index of docs/provenance/README.md agree (CLR-R13; spec/05-clean-room.md
+    section 5: a report exists for each public release): every report file is named `YYYY-MM-DD-<release>.md`, is
+    listed in the index with its date and link, every listed report exists, and each report keeps the eight sections
+    of the template and names the commit it reviewed."""
+
+    FOLDER = REPO / "docs" / "provenance"
+    NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-[0-9A-Za-z.\-]+\.md$")
+
+    @classmethod
+    def index(cls) -> str:
+        return (cls.FOLDER / "README.md").read_text(encoding="utf-8").split("\n## Index of reports", 1)[1]
+
+    @classmethod
+    def reports(cls) -> list[Path]:
+        return sorted((cls.FOLDER / "reports").glob("*.md"))
+
+    def test_the_index_and_the_reports_folder_agree(self):
+        reports = self.reports()
+        self.assertGreaterEqual(len(reports), 1, "the 1.0.0 report of 2026-11-17 is the first")
+        index = self.index()
+        self.assertNotIn("(none yet)", index)
+        for path in reports:
+            with self.subTest(report=path.name):
+                self.assertRegex(path.name, self.NAME)
+                self.assertIn(f"| {path.name[:10]} |", index, "the index row starts with the report's date")
+                self.assertIn(f"](reports/{path.name})", index, "the index links the report")
+        for link in re.findall(r"\]\(reports/([^)]+)\)", index):
+            with self.subTest(link=link):
+                self.assertTrue((self.FOLDER / "reports" / link).is_file(), "the index links a missing report")
+
+    def test_every_report_keeps_the_template_sections_and_names_its_commit(self):
+        headings = re.findall(r"^## .+$", (self.FOLDER / "report-template.md").read_text(encoding="utf-8"), re.M)
+        self.assertEqual(len(headings), 8)
+        for path in self.reports():
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(report=path.name):
+                for heading in headings:
+                    self.assertIn(heading, text)
+                self.assertRegex(text, r"commit SHA reviewed \| `[0-9a-f]{40}`", "the full SHA of the reviewed commit")
+                self.assertNotIn("Copy this file to", text, "the template's instruction line is removed")
+
+
 class FrontDoorBrandTests(unittest.TestCase):
     """ADR 0400 decision 1, amended 2026-11-13: the files GitHub or the DMG shows as they are (the front door) write the
     literal display name, slug and site host of scripts/brand.env, because nothing renders them; docs/ (outside the
