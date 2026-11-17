@@ -131,13 +131,10 @@ export const home = {
       },
     ],
   },
-  // Section 4 never says an app was checked while every matrix entry is notVerified (design 7.3 item 4); `verifiedOn`
-  // shows only beside an entry that has a current result.
+  // Section 5 names the categories and apps of compat/matrix.json, with no status, date or link (design 9 item 2).
   apps: {
-    heading: "Chạy trong app bạn dùng hằng ngày",
-    intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã. Danh sách tương thích ghi rõ tình trạng của từng ứng dụng.",
-    verifiedOn: "kiểm tra {{dateHtml}}",
-    link: "Xem danh sách ứng dụng tương thích",
+    heading: "Chạy trong mọi ứng dụng phổ biến",
+    intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã: bạn gõ ở đâu, {{AppNameTM}} chạy ở đó.",
     secureInput: {
       title: "Khi macOS chặn mọi bộ gõ",
       body: "Khi một ứng dụng bật chế độ nhập bảo mật (Secure Input), thường vì một ô mật khẩu còn mở, macOS tạm dừng mọi bộ gõ. {{AppNameTM}} cho bạn biết ứng dụng nào đang giữ chế độ này và cách tắt, rồi gõ lại ngay từ phím đầu tiên sau khi chế độ này tắt. {{AppName}} không tự đoán là bạn đang gõ mật khẩu.",

@@ -8,7 +8,7 @@ export default {
   skipLink: "Chuyển đến nội dung",
   notice: { label: "Thông báo", link: "Xem chi tiết" },
   navLabel: "Điều hướng chính",
-  nav: { features: "Tính năng", compat: "Tương thích", support: "Hỗ trợ", downloadCta: "Tải về", privacy: "Riêng tư", changelog: "Nhật ký thay đổi" },
+  nav: { features: "Tính năng", support: "Hỗ trợ", downloadCta: "Tải về", privacy: "Riêng tư", changelog: "Nhật ký thay đổi" },
   langSwitch: { text: "English", title: "Read this page in English", lang: "en" },
   footer: {
     promise: "Không cookie, không theo dõi, không phông chữ hay mã từ bên thứ ba.",

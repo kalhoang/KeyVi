@@ -7,7 +7,7 @@ export default {
   notice: { label: "Notice", link: "Details" },
   skipLink: "Skip to content",
   navLabel: "Main navigation",
-  nav: { features: "Features", compat: "Compatibility", support: "Support", downloadCta: "Download", privacy: "Privacy", changelog: "Changelog" },
+  nav: { features: "Features", support: "Support", downloadCta: "Download", privacy: "Privacy", changelog: "Changelog" },
   langSwitch: { text: "Tiếng Việt", title: "Xem trang này bằng tiếng Việt", lang: "vi" },
   footer: {
     promise: "No cookies, no tracking, no third-party fonts or scripts.",

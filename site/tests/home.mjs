@@ -11,7 +11,14 @@ import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
 import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, stripKeys, LEARNED_BADGE, learningRows } from "./helpers.mjs";
 
-/** Home page sections, compat hub and demo data. */
+/** No status, date or "verified" wording in the apps section (design 9 item 2), whatever the matrix says. */
+function assertNoStatus(label, html) {
+  const list = html.match(/<ul class="hub-list">[\s\S]*?<\/ul>/)?.[0] ?? "";
+  assert.ok(list.length > 0 && !/kiểm tra|verif|hoạt động|works|hạn chế|limitation/i.test(textOf(list)), `${label}: no status or verified wording in the hub`);
+  assert.ok(!/\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}|<time\b|data-status/.test(html), `${label}: no date or status`);
+}
+
+/** Home page sections, apps hub and demo data. */
 export async function runHomeChecks(check, fixtures) {
   const { tmp, read, framesPath, frames, homeCopy, homePages, emptyHome } = fixtures;
 
@@ -30,7 +37,8 @@ export async function runHomeChecks(check, fixtures) {
       }
       assert.match(hero, /<code class="cmd">brew install --cask [^<\s]+\/[a-z0-9-]+<\/code>/, `${label}: brew line in the hero`);
       assert.equal((section(html, "proof").match(/<li\b/g) ?? []).length, 3, `${label}: three proof points`);
-      assert.ok(main.includes(`href="${routePath("compat", lang)}"`), `${label}: a link to the compatibility page in the page body`);
+      // Design 9 item 2: the landing page no longer links to the compatibility page (PRD-R73 amended 17/11/2026).
+      assert.ok(!main.includes(`href="${routePath("compat", lang)}"`), `${label}: no link to the compatibility page`);
       assert.ok(!/<video\b/i.test(html), `${label}: no video (design 6)`);
     }
   });
@@ -255,7 +263,7 @@ export async function runHomeChecks(check, fixtures) {
     assert.match(css, /\.tags \.tag strong\s*\{[^}]*color:\s*var\(--green-text\)/, "the word stands out");
   });
 
-  await check("home: compat hub shows categories and app names without verified wording while entries are notVerified", async () => {
+  await check("home: the apps hub shows categories and app names, never a status, a date, verified wording or a link (design 9 item 2)", async () => {
     const hub = (html) => section(html, "apps");
     const nodes = (html) => [...hub(html).matchAll(/<li class="hub-node[^"]*" data-category="([^"]+)">([\s\S]*?)<\/li>/g)].map(([, category, inner]) => ({ category, inner }));
     const sample = JSON.parse(await readFile(join(SITE_DIR, "fixtures", "matrix.json"), "utf8")).entries;
@@ -280,20 +288,16 @@ export async function runHomeChecks(check, fixtures) {
         const tierOne = inCategory.filter((entry) => entry.tier === 1).map((entry) => base(entry.displayName));
         if (names.length > 0 && tierOne.length > 0) assert.ok(tierOne.includes(names[0]), `${label}: ${category} lists tier 1 first`);
       }
-      if (entries.every((entry) => entry.status === "notVerified")) {
-        const text = textOf(hub(html));
-        assert.ok(!/kiểm tra|verif/i.test(text), `${label}: no verified wording while every entry is notVerified`);
-        assert.ok(!/\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}|<time\b/.test(hub(html)), `${label}: no date`);
-      }
-      assert.ok(hub(html).includes(`href="${routePath("compat", lang)}"`), `${label}: link to the compatibility page`);
+      assertNoStatus(label, hub(html));
+      assert.ok(!/<a\b/.test(hub(html)), `${label}: no link in the apps section`);
       assert.match(hub(html), /class="card secure-input"/, `${label}: the Secure Input card below the hub`);
     }
     assert.ok(nodes(homePages[0][1]).find((node) => node.category === "browser").inner.includes("Safari"), "the real matrix lists Safari first among browsers");
-    // fixtures/populated: Safari verified on 2026-12-01 shows its date; iTerm2 (2026-06-01) is stale, so it shows none.
-    const populatedHub = { vi: hub(read("index.html")), en: hub(read("en", "index.html")) };
-    assert.match(populatedHub.vi, /Safari \(kiểm tra <time datetime="2026-12-01">01\/12\/2026<\/time>\)/);
-    assert.match(populatedHub.en, /Safari \(verified <time datetime="2026-12-01">1 Dec 2026<\/time>\)/);
-    assert.ok(!populatedHub.vi.includes("2026-06-01"), "a stale result shows no date");
+    // fixtures/populated: Safari has a current result (2026-12-01); the hub still names it alone, with no date.
+    for (const [label, html] of [["populated vi", read("index.html")], ["populated en", read("en", "index.html")]]) {
+      assertNoStatus(label, hub(html));
+      assert.match(nodes(html).find((node) => node.category === "browser").inner, /<span class="hub-apps">Safari(?:, |<)/, `${label}: Safari, by name only`);
+    }
   });
 
   await check("home: home.css places every hub node where its thread ends (design 7.3 item 4)", async () => {

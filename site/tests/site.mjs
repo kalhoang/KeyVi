@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
-import { LANGS, ROUTES, outputFile } from "../lib/routes.mjs";
+import { LANGS, ROUTES, outputFile, routePath } from "../lib/routes.mjs";
 import { siteToneOffenders } from "../lib/tone.mjs";
 import { walk, readPages, assertWellFormedXml, attrs, isReleaseNotesPage, resolveInternal, sha256Base64 } from "./helpers.mjs";
 
@@ -88,9 +88,35 @@ export async function checkSite(check, label, dist, { allowedScriptTag = "" } = 
     const sitemap = await readFile(join(dist, "sitemap.xml"), "utf8");
     assertWellFormedXml(sitemap, "sitemap.xml");
     const locs = [...sitemap.matchAll(/<loc>https:\/\/[^/]+(\/[^<]*)<\/loc>/g)].map((m) => m[1]);
-    assert.equal(locs.length, ROUTES.length * LANGS.length);
+    const listed = ROUTES.filter((route) => !route.unlisted);
+    assert.equal(locs.length, listed.length * LANGS.length);
     for (const path of locs) assert.ok(existsSync(join(dist, path, "index.html")), `sitemap: ${path}`);
     assert.match(await readFile(join(dist, "robots.txt"), "utf8"), /Sitemap: https:\/\/[^/]+\/sitemap\.xml/);
+  });
+
+  // Design 9 item 2: the compatibility page is unlisted. It stays at its URL, because the app's menu opens it
+  // (CompatibilityPage in Packages/AppCore/Sources/ShellCore/StatusPresentation.swift), but no other page links to it,
+  // the sitemap leaves it out and it asks search engines not to index it.
+  const compatPaths = new Set(LANGS.map((lang) => routePath("compat", lang)));
+  const isCompatPage = (file) => compatPaths.has(`/${rel(file).replace(/index\.html$/, "")}`);
+  await check(`${label}: no page links to the compatibility page, which is unlisted and noindex (design 9 item 2)`, async () => {
+    assert.ok(ROUTES.find((route) => route.id === "compat")?.unlisted === true, "routes.mjs marks compat unlisted");
+    const problems = [];
+    for (const [file, html] of pages) {
+      const compat = isCompatPage(file);
+      const robots = /<meta name="robots" content="noindex">/.test(html);
+      // The 404 page has always carried noindex; every listed page is indexed.
+      if (compat ? !robots : robots && rel(file) !== "404.html") problems.push(`${rel(file)}: ${compat ? "no" : "unexpected"} noindex`);
+      // The compatibility pages may link to each other (language switch, alternates); no other page links to them.
+      if (compat) continue;
+      for (const href of attrs(html, "href")) {
+        const path = href.replace(/^https:\/\/[^/]+/, "").split(/[?#]/)[0];
+        if (compatPaths.has(path) || compatPaths.has(`${path}/`)) problems.push(`${rel(file)} -> ${href}`);
+      }
+    }
+    assert.deepEqual(problems, []);
+    const sitemap = await readFile(join(dist, "sitemap.xml"), "utf8");
+    for (const path of compatPaths) assert.ok(!sitemap.includes(`${path}<`) && !sitemap.includes(`${path}"`), `sitemap.xml lists ${path}`);
   });
 
   await check(`${label}: prose rules (no dashes, no unfilled tokens, no forbidden donation services)`, () => {

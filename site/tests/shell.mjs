@@ -30,13 +30,14 @@ export async function runShellChecks(check, fixtures) {
     assert.deepEqual(problems, []);
   });
 
-  await check("shell: header links features, compatibility, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
+  await check("shell: header links features, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
     const part = (html, tag) => html.match(new RegExp(`<${tag} class="site-${tag}"[\\s\\S]*?</${tag}>`))?.[0] ?? "";
     const links = (html) => attrs(html, "href").filter((href) => !href.startsWith("#"));
     const features = { vi: "/#tinh-nang", en: "/en/#features" };
     for (const [label, html, lang, other] of [["vi home", read("index.html"), "vi", "/en/"], ["en home", read("en", "index.html"), "en", "/"], ["vi support", read("ho-tro", "index.html"), "vi", "/en/support/"]]) {
       const header = part(html, "header");
-      assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("compat", lang), routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
+      // The compatibility page is unlisted (design 9 item 2): the header no longer links to it.
+      assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
       assert.match(header, /<a class="btn" href="[^"]+"[^>]*>[^<]+<\/a>/, `${label}: the download link is a button`);
       assert.match(header, /<svg class="mark"[^>]*><use href="#mark"><\/use><\/svg>/, `${label}: the mark beside the name`);
       assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), shipped.githubRepo, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);

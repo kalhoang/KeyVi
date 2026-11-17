@@ -30,7 +30,12 @@ export async function runCopyChecks(check, fixtures) {
     assert.equal(en.h1, "Type Vietnamese and English without switching.");
     // The section headings of design 7.3 and the ids the renderers and frames.json share (plan Task 4).
     assert.deepEqual([vi.behaviours.heading, vi.learning.heading, vi.cards.heading, vi.apps.heading, vi.proofHeading, vi.install.heading],
-      ["Một câu, hai thứ tiếng", "Càng gõ càng hợp với bạn", "Gõ theo cách của bạn", "Chạy trong app bạn dùng hằng ngày", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
+      ["Một câu, hai thứ tiếng", "Càng gõ càng hợp với bạn", "Gõ theo cách của bạn", "Chạy trong mọi ứng dụng phổ biến", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
+    // Design 9 item 2: the apps section names categories and apps, with no status and no link to the compatibility page.
+    assert.equal(en.apps.heading, "Works in all the popular apps");
+    assert.equal(vi.apps.intro, "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã: bạn gõ ở đâu, {{AppNameTM}} chạy ở đó.");
+    assert.equal(en.apps.intro, "Browsers, chat, office apps, notes, Spotlight, Terminal and code editors: wherever you type, {{AppNameTM}} works.");
+    for (const retired of ["verifiedOn", "link"]) assert.ok(!(retired in vi.apps) && !(retired in en.apps), `apps.${retired} is retired`);
     assert.deepEqual(vi.behaviours.items.map((item) => item.id), ["punctuation", "revision", "escape"]);
     assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "layouts"]);
     assert.deepEqual(vi.learning.cards.map((item) => item.id), ["learned", "perApp", "macros", "wordLists"]);

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Compatibility matrix (PRD-R35, QA-R17, QA-R19): server-rendered, grouped by category, JS only adds filters.
+// Unlisted since 17/11/2026 (design 9 item 2, routes.mjs): no other page links here and the page carries noindex, but it
+// stays at its URL because the app's menu opens it for a known-limitation app (CompatibilityPage, StatusPresentation.swift).
 import { kit } from "../context.mjs";
 import { STATUSES } from "../data.mjs";
 import { formatDate } from "../dates.mjs";
@@ -101,7 +103,7 @@ ${keys.map((k) => groupSection(kt, k, byCategory.get(k))).join("\n")}
 
   return {
     routeId: "compat",
-    navId: "compat",
+    robots: "noindex",
     title: p(ui.titles.compat),
     description: p(ui.descriptions.compat),
     body,
