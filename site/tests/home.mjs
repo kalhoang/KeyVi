@@ -276,6 +276,8 @@ export async function runHomeChecks(check, fixtures) {
     assert.match(css, /\.tag-plain\s*\{[^}]*text-decoration:\s*line-through/, "home.css strikes the plain form through");
     assert.match(css, /\.tags \.tag\s*\{[^}]*color:\s*var\(--muted\)/, "the rest of the tag is muted");
     assert.match(css, /\.tags \.tag strong\s*\{[^}]*color:\s*var\(--green-text\)/, "the word stands out");
+    // .tag is an inline flex box elsewhere; in a hero tag its gap would open before the comma ("test , không thành").
+    assert.match(css, /\.tags \.tag\s*\{[^}]*display:\s*inline-block/, "a hero tag is not a flex container");
   });
 
   await check("home: the apps hub shows categories and app names, never a status, a date, verified wording or a link (design 9 item 2)", async () => {
