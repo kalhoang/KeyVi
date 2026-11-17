@@ -157,6 +157,24 @@ struct EscapeCommitTests {
         }
     }
 
+    @Test("Known cost: a tone key between the circumflex key and its escape is no doubling (theesee, not thesee)")
+    func toneKeyBetweenBreaksTheDoubling() throws {
+        // ENG-R804 known costs: the chat elongation of `thế` typed with the tone before the extra `e` restores the
+        // keys, while the tone typed first keeps the escaped form; neither is the intended `thếee`. Counting a key
+        // that adds no letter as part of the doubling would keep `théee`, but then `referent`, `samsara` and
+        // `menses` (59 words of /usr/share/dict/words, none in the lexicon) would commit `rẻent`, `sảma`, `mêns`.
+        for word in ["theesee", "theeseee", "coosooo", "caasaa", "referent", "samsara", "menses"] {
+            let driver = try Self.driver(word + " ")
+            #expect(driver.field.string == word + " ", "\(word)")
+            #expect(driver.outputs.last?.decision == .restored(.escape), "\(word)")
+        }
+        for (keys, text) in [("thesee ", "thée "), ("cosooo ", "cóoo "), ("casaa ", "cáa ")] {
+            let driver = try Self.driver(keys)
+            #expect(driver.field.string == text, "\(keys)")
+            #expect(driver.outputs.last?.decision == .kept(.escape), "\(keys)")
+        }
+    }
+
     @Test("Neither English, one vowel group at most: the escape is deliberate and C is kept")
     func oneVowelGroupKeepsTheEscapedForm() throws {
         for (keys, text) in [
@@ -217,10 +235,14 @@ struct EscapeCommitTests {
         }
         // Doublings of every kind: tone, circumflex, horn and breve, standalone `w`, stroke; a tone set twice
         // (`afss`: the escape undoes `f` and `s`, the last of them right before it).
-        for keys in ["off", "ass", "afss", "Anaa", "boooong", "aaa", "aww", "uww", "ww", "ddd", "nhaamff", "vieejt"] {
+        for keys in [
+            "off", "ass", "afss", "Anaa", "boooong", "aaa", "aww", "uww", "ww", "ddd", "nhaamff", "vieejt", "thesee",
+        ] {
             #expect(!across(keys), "\(keys)")
         }
-        for keys in ["costs", "leecher", "pajama", "beefer", "ddid", "wsaw", "cookout"] {
+        // A key between the undone key and the escape breaks the doubling, even one that adds no letter (the tone
+        // key `s` of `theesee`, ENG-R804 known costs).
+        for keys in ["costs", "leecher", "pajama", "beefer", "ddid", "wsaw", "cookout", "theesee"] {
             #expect(across(keys), "\(keys)")
         }
         let vni = ComposerRules(EngineConfiguration(inputMethod: .vni))

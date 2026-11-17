@@ -201,4 +201,6 @@ separately from the app (spec/04-quality-release.md QA-R27).
   lexicon now commit as typed, none newly changed; ENG-T11 lists no L4 entry for the English run (56 changed
   words, was 106) and five Vietnamese-context entries; the W11 fixtures keep `pass`, `posts`, `costs`, `off`,
   `Terraform`, `Grafana`, `DeepSeek` in 34 more sentences with the collision numbers unchanged. Spec rows X01 to X24
-  (13.9.5), `escape-regression.txt` (393 words).
+  (13.9.5), `escape-regression.txt` (393 words). Known costs, pinned by tests: the English context looks back only
+  (`day off`, `mess up` and `Off the record` keep `day of`, `mes up`, `Of the record`), and a tone key between the
+  circumflex key and its escape breaks the doubling (`theesee` is restored, `thesee` keeps `thée`).

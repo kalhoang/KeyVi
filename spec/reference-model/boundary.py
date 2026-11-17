@@ -302,6 +302,9 @@ ESCAPE_RUNS = [
     ("costs ", "costs ", "restored: escaped token typed through"),
     ("current ", "current ", "restored: escaped token typed through"),
     ("boooong ", "booong ", "kept: user escape"),
+    ("thesee ", "thée ", "kept: user escape"),
+    ("theesee ", "theesee ", "restored: escaped token typed through"),  # known cost: the tone key breaks the doubling
+    ("beefer ", "beefer ", "restored: escaped token typed through"),
     ("nhaamff ", "nhâmf ", "kept: user escape"),
     ("Kroong Anaa ", "Krông Ana ", "kept: user escape"),
     ("ass ", "as ", "kept: escaped form is an English word"),

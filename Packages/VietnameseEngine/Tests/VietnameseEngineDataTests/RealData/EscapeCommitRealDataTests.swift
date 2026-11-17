@@ -160,6 +160,27 @@ struct EscapeCommitRealDataTests {
     }
 
     @Test(
+        "ENG-R804 known cost: the English context looks back only, so a neutral word before keeps the escape",
+        arguments: [
+            ("day off ", "day of "), ("a mess ", "a mes "), ("ok off ", "ok of "), ("50% off ", "50% of "),
+            ("mess up ", "mes up "), ("off topic ", "of topic "), ("off and on ", "of and on "),
+            ("Off the record ", "Of the record "),
+        ])
+    func contextLooksBackOnly(_ keys: String, _ expected: String) throws {
+        // `day`, `a` and `ok` are kept (`day` is Vietnamese, `a` and `ok` neutral), so the run is not English and no
+        // phrase starts there; a word that only the next token shows to be English keeps the deliberate escape, as
+        // `off` typed alone does. The revisions of ENG-R828 do not take a token decided by L4.
+        #expect(try Self.text(keys) == expected)
+    }
+
+    @Test(
+        "ENG-R804 (a): with English evidence before the word, the word typed is kept (L10 run or L9b phrase)",
+        arguments: ["get 50% off today ", "log off ", "sign off ", "what a mess ", "take off ", "clean up the mess "])
+    func englishEvidenceBefore(_ keys: String) throws {
+        #expect(try Self.text(keys) == keys)
+    }
+
+    @Test(
         "The deliberate escapes of Telex users and the escape examples of the spec do not change",
         arguments: [
             ("boooong ", "booong "), ("sooocs ", "soóc "), ("nhaamff ", "nhâmf "), ("ddd ", "dd "), ("www ", "www "),
