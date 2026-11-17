@@ -323,7 +323,7 @@ export const privacy = {
 <ul>
   <li>{{analyticsHtml}}</li>
   <li>No cookies and no tracking storage. {{servedHtml}}</li>
-  <li>The web server logs each request with only the time, method, path (without the query part), result code and size; it does not log IP addresses, browsers or referring pages. From this log the project counts, per day, the requests to <code>appcast.xml</code> (to estimate how many Macs run the app) and the downloads of each file.</li>
+  <li>The web server logs each request with only the time, method, path (without the query part), result code and size; it does not log IP addresses, browsers or referring pages. This log is the only source from which the project could count, per day, the requests to <code>appcast.xml</code> (to estimate how many Macs run the app) and the downloads of each file.</li>
   <li>Connections pass through Cloudflare and the server's router before they reach the web server; like on any website, these layers see your IP address while they handle the request. Cloudflare handles it under its own privacy policy.</li>
   <li>If you install with Homebrew, Homebrew's own anonymous analytics apply, under Homebrew's policy; <code>brew analytics off</code> turns them off.</li>
 </ul>

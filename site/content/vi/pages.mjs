@@ -334,7 +334,7 @@ export const privacy = {
 <ul>
   <li>{{analyticsHtml}}</li>
   <li>Không cookie, không bộ nhớ cục bộ để theo dõi. {{servedHtml}}</li>
-  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Từ nhật ký này, dự án đếm theo ngày số yêu cầu tới <code>appcast.xml</code> (để ước lượng số máy đang dùng) và số lượt tải từng file.</li>
+  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Nhật ký này là nguồn duy nhất mà dự án có thể dùng để đếm theo ngày số yêu cầu tới <code>appcast.xml</code> (để ước lượng số máy đang dùng) và số lượt tải từng file.</li>
   <li>Kết nối đi qua Cloudflare và bộ định tuyến của máy chủ trước khi tới máy chủ web; như mọi trang web, các lớp này thấy địa chỉ IP của bạn trong lúc xử lý yêu cầu. Cloudflare xử lý dữ liệu đó theo chính sách quyền riêng tư của Cloudflare.</li>
   <li>Nếu bạn cài bằng Homebrew, cơ chế thống kê ẩn danh của Homebrew được áp dụng theo chính sách của Homebrew; lệnh <code>brew analytics off</code> tắt cơ chế này.</li>
 </ul>
